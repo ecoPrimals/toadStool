@@ -1,12 +1,13 @@
 //! Tests for AdaDelta Optimizer
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 #[tokio::test]
 async fn test_adadelta_basic() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
         .await
         .unwrap();
@@ -32,8 +33,9 @@ async fn test_adadelta_basic() {
 
 #[tokio::test]
 async fn test_adadelta_zero_gradients() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![1.0, 2.0], vec![2], device.clone())
         .await
         .unwrap();
@@ -55,8 +57,9 @@ async fn test_adadelta_zero_gradients() {
 
 #[tokio::test]
 async fn test_adadelta_different_rho() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights1 = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
         .await
         .unwrap();
@@ -86,8 +89,9 @@ async fn test_adadelta_different_rho() {
 
 #[tokio::test]
 async fn test_adadelta_validation() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())
         .await
         .unwrap();
@@ -117,8 +121,9 @@ async fn test_adadelta_validation() {
 
 #[tokio::test]
 async fn test_adadelta_large_batch() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let size = 128;
     let weights_data: Vec<f32> = (0..size).map(|i| (i as f32) / 10.0).collect();
     let grads_data = vec![0.01; size];
@@ -146,8 +151,9 @@ async fn test_adadelta_large_batch() {
 
 #[tokio::test]
 async fn test_adadelta_multi_step() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![10.0, 20.0], vec![2], device.clone())
         .await
         .unwrap();

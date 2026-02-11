@@ -45,7 +45,7 @@ impl Normalize {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/normalize.wgsl")
+        include_str!("../shaders/norm/normalize.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -206,12 +206,13 @@ impl Normalize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_normalize_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
             .await
             .unwrap();
@@ -224,8 +225,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_normalize_2d() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0; 12], vec![3, 4], device.clone())
             .await
             .unwrap();

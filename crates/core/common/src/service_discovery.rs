@@ -45,6 +45,8 @@ use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use crate::discovery_defaults::{DiscoveryConfig, LocalhostFallbacks};
+#[allow(deprecated)]
+use crate::interned_strings::primals;
 use crate::primal_identity::{Capability, PrimalIdentity, ServiceEndpoint};
 
 /// Service discovery error types
@@ -352,18 +354,21 @@ impl ServiceDiscovery {
         Ok(services)
     }
 
-    /// Discover via mDNS (placeholder - needs implementation)
+    /// Discover via mDNS (multicast DNS for local network)
     async fn discover_via_mdns(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
-        // TODO(future): Implement mDNS discovery
-        // This requires the mdns crate and proper service announcement
-        debug!("mDNS discovery not yet implemented");
+        // Returns empty results; mdns-sd integration pending. Use environment variables or config file for discovery until then.
+        debug!(
+            "pending: mdns-sd transport integration for zero-config local network discovery; returns empty until implemented"
+        );
         Ok(Vec::new())
     }
 
     /// Discover from configuration file
     async fn discover_from_config(&self, _path: &str) -> DiscoveryResult<Vec<DiscoveredService>> {
-        // TODO(future): Implement config file discovery
-        debug!("Config file discovery not yet implemented");
+        // Returns empty results; TOML/YAML config parsing for static service endpoints pending.
+        debug!(
+            "pending: file-based discovery (TOML/YAML parsing); returns empty until implemented"
+        );
         Ok(Vec::new())
     }
 
@@ -372,8 +377,8 @@ impl ServiceDiscovery {
         &self,
         _endpoint: &str,
     ) -> DiscoveryResult<Vec<DiscoveredService>> {
-        // TODO(future): Implement registry discovery (Consul, etcd, etc.)
-        debug!("Registry discovery not yet implemented");
+        // Returns empty results; Consul/etcd client integration for registry-based discovery pending.
+        debug!("pending: Consul/etcd registry client integration; returns empty until implemented");
         Ok(Vec::new())
     }
 
@@ -389,10 +394,11 @@ impl ServiceDiscovery {
         info!("Using localhost fallbacks for development");
 
         // ToadStool itself
-        if let Some(url) = self.fallbacks.get_fallback_url("toadstool") {
+        #[allow(deprecated)]
+        if let Some(url) = self.fallbacks.get_fallback_url(primals::TOADSTOOL) {
             services.push(DiscoveredService {
-                id: "fallback-toadstool".to_string(),
-                name: "toadstool".to_string(),
+                id: format!("fallback-{}", primals::TOADSTOOL),
+                name: primals::TOADSTOOL.to_string(),
                 version: "dev".to_string(),
                 capabilities: vec![Capability::Compute(
                     crate::primal_identity::ComputeCapability::NativeExecution,
@@ -490,8 +496,8 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
     }
 
     async fn announce_self(&self, _identity: &dyn PrimalIdentity) -> DiscoveryResult<()> {
-        // TODO(future): Implement service announcement
-        // This would announce via mDNS, registry, etc.
+        // Announcement via mDNS or registry pending; no-op until integrated.
+        debug!("pending: mDNS/registry announcement; no-op until implemented");
         Ok(())
     }
 
@@ -554,6 +560,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_from_env() {
+        // Clear env vars from other tests to ensure deterministic behavior
+        std::env::remove_var("TOADSTOOL_SERVICE_CACHE_URL");
+
         // Set test environment variables
         std::env::set_var("TOADSTOOL_SERVICE_TEST_URL", "http://localhost:9000");
         std::env::set_var("TOADSTOOL_SERVICE_TEST_CAPABILITIES", "coordination");
@@ -958,5 +967,96 @@ mod tests {
 
         let caps = discovery.parse_capabilities("  coordination  ,  storage  ");
         assert_eq!(caps.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_service_endpoint_from_url_invalid_format() {
+        let result = ServiceEndpoint::from_url_string("invalid-no-protocol");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("Invalid") || msg.contains("URL"));
+    }
+
+    #[tokio::test]
+    async fn test_service_endpoint_from_url_with_port_default() {
+        let endpoint = ServiceEndpoint::from_url_string("http://example.com").unwrap();
+        assert_eq!(endpoint.port, 80);
+        assert_eq!(endpoint.address, "example.com");
+    }
+
+    #[tokio::test]
+    async fn test_service_endpoint_from_url_https_with_port() {
+        let endpoint = ServiceEndpoint::from_url_string("https://api.example.com:443").unwrap();
+        assert_eq!(endpoint.protocol, "https");
+        assert_eq!(endpoint.address, "api.example.com");
+        assert_eq!(endpoint.port, 443);
+    }
+
+    #[tokio::test]
+    async fn test_parse_capabilities_unknown_skipped() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Auto).await.unwrap();
+        let caps = discovery.parse_capabilities("coordination,unknown_cap,storage");
+        assert_eq!(caps.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_parse_capabilities_single() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Auto).await.unwrap();
+        let caps = discovery.parse_capabilities("compute");
+        assert_eq!(caps.len(), 1);
+    }
+
+    #[test]
+    fn test_discovery_error_display_network() {
+        use std::io;
+        let io_err = io::Error::new(io::ErrorKind::ConnectionRefused, "refused");
+        let err = DiscoveryError::NetworkError { source: io_err };
+        let msg = format!("{}", err);
+        assert!(!msg.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_discovered_service_has_capability_negative() {
+        let service = DiscoveredService {
+            id: "test".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![Capability::Coordination(
+                crate::primal_identity::CoordinationCapability::ServiceDiscovery,
+            )],
+            endpoints: vec![],
+            metadata: HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        };
+
+        assert!(!service.has_capability(&Capability::Compute(
+            crate::primal_identity::ComputeCapability::NativeExecution
+        )));
+    }
+
+    #[tokio::test]
+    async fn test_discovered_service_is_fresh_boundary() {
+        let service = DiscoveredService {
+            id: "test".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![],
+            metadata: HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        };
+
+        assert!(service.is_fresh(Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn test_discovery_method_partial_eq() {
+        assert_eq!(DiscoveryMethod::Auto, DiscoveryMethod::Auto);
+        assert_ne!(DiscoveryMethod::Auto, DiscoveryMethod::Mdns);
     }
 }

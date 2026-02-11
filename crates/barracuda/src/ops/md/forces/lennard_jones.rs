@@ -239,12 +239,13 @@ impl LennardJonesForce {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_lj_force_argon() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Two argon atoms
         let positions = vec![0.0, 0.0, 0.0, 3.4, 0.0, 0.0]; // σ apart

@@ -354,4 +354,67 @@ mod tests {
         let count = coordinator.service_count().await;
         assert_eq!(count, 0); // No services initially
     }
+
+    #[tokio::test]
+    async fn test_healthy_count_initially_zero() {
+        let coordinator = EcosystemCoordinator::new().await.unwrap();
+        let healthy = coordinator.healthy_count().await;
+        assert_eq!(healthy, 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_discovered_services_initially_empty() {
+        let coordinator = EcosystemCoordinator::new().await.unwrap();
+        let services = coordinator.get_discovered_services().await;
+        assert!(services.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_service_statuses_initially_empty() {
+        let coordinator = EcosystemCoordinator::new().await.unwrap();
+        let statuses = coordinator.get_service_statuses().await;
+        assert!(statuses.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_send_heartbeat_no_channel() {
+        let coordinator = EcosystemCoordinator::new().await.unwrap();
+        let result = coordinator.send_heartbeat("unknown-service-id").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_send_ecosystem_message_no_channel() {
+        let coordinator = EcosystemCoordinator::new().await.unwrap();
+        let msg =
+            EcosystemMessage::heartbeat("sender".to_string(), "unknown-service-id".to_string());
+        let result = coordinator
+            .send_ecosystem_message("unknown-service-id", msg)
+            .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_service_status_unknown() {
+        let coordinator = EcosystemCoordinator::new().await.unwrap();
+        let status = coordinator.get_service_status("unknown-service-id").await;
+        assert!(status.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_coordinator_with_environment_method() {
+        let config = EcosystemConfig::builder()
+            .discovery_method(DiscoveryMethodConfig::Environment)
+            .build();
+        let coordinator = EcosystemCoordinator::with_config(config).await;
+        assert!(coordinator.is_ok());
+    }
+
+    #[allow(deprecated)]
+    #[tokio::test]
+    async fn test_deprecated_primal_available() {
+        let coordinator = EcosystemCoordinator::new().await.unwrap();
+        let available = coordinator.is_primal_available("unknown-primal").await;
+        assert!(!available);
+    }
 }

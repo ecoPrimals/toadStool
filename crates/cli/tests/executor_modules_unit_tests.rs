@@ -29,7 +29,6 @@ fn test_executor_modules_exist() {
     // - executor::lifecycle (biome lifecycle)
 
     // If this test compiles, all modules exist
-    assert!(true);
 }
 
 #[test]
@@ -39,8 +38,6 @@ fn test_executor_impl_reduced_size() {
 
     // Target: 933 lines → <500 lines
     // Phase 2 Progress: 503 lines extracted, ~430 remaining
-
-    assert!(true);
 }
 
 // ============================================================================
@@ -60,8 +57,6 @@ mod signal_manager_tests {
         // - Handle SIGTERM and SIGINT
         // - Support wait_for_interrupt()
         // - Support send_signal()
-
-        assert!(true);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -82,7 +77,7 @@ mod signal_manager_tests {
             .map(|_| {
                 tokio::spawn(async {
                     // Simulate signal handling
-                    tokio::time::sleep(Duration::from_millis(10)).await;
+                    tokio::task::yield_now().await;
                     true
                 })
             })
@@ -170,7 +165,6 @@ mod resource_manager_tests {
         // ResourceManager<'a> should hold reference to BiomeExecutor
 
         // This verifies the lifetime parameter is correct
-        assert!(true);
     }
 
     #[tokio::test]
@@ -237,7 +231,6 @@ mod lifecycle_manager_tests {
         // BiomeLifecycle<'a> should hold reference to BiomeExecutor
 
         // This verifies the lifetime parameter is correct
-        assert!(true);
     }
 
     #[tokio::test]
@@ -296,7 +289,7 @@ mod lifecycle_manager_tests {
             .map(|i| {
                 tokio::spawn(async move {
                     // Simulate start or stop operation
-                    tokio::time::sleep(Duration::from_millis(10)).await;
+                    tokio::task::yield_now().await;
                     i % 2 == 0 // Even: start, Odd: stop
                 })
             })
@@ -342,7 +335,6 @@ mod integration_structure_tests {
         // - lifecycle: Biome lifecycle (start, stop, env setup)
 
         // Each module should have single responsibility
-        assert!(true);
     }
 
     #[test]
@@ -355,7 +347,6 @@ mod integration_structure_tests {
         // executor_impl → display
 
         // No module should depend on executor_impl
-        assert!(true);
     }
 
     #[test]
@@ -369,8 +360,6 @@ mod integration_structure_tests {
         // Static managers don't need lifetimes:
         // - SignalManager
         // - DisplayManager
-
-        assert!(true);
     }
 }
 
@@ -479,8 +468,6 @@ mod property_tests {
 
 #[cfg(test)]
 mod async_concurrent_tests {
-    use tokio::time::Duration;
-
     #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
     async fn test_high_concurrency_operations() {
         // Test high concurrency with many operations
@@ -489,7 +476,7 @@ mod async_concurrent_tests {
                 tokio::spawn(async move {
                     // Simulate various module operations
                     let op_type = i % 4;
-                    tokio::time::sleep(Duration::from_micros(100)).await;
+                    tokio::task::yield_now().await;
 
                     match op_type {
                         0 => "signal",    // Signal handling
@@ -517,10 +504,10 @@ mod async_concurrent_tests {
 
         let handles: Vec<_> = (0..4)
             .map(|_| {
-                let b = barrier.clone();
+                let b = std::sync::Arc::clone(&barrier);
                 tokio::spawn(async move {
                     // Simulate module operation
-                    tokio::time::sleep(Duration::from_millis(10)).await;
+                    tokio::task::yield_now().await;
 
                     // Synchronize
                     b.wait().await;

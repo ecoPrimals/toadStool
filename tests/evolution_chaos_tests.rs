@@ -220,7 +220,6 @@ async fn test_memory_pressure_handling() {
 
     // Memory should be reclaimed
     drop(workloads);
-    assert!(true);
 }
 
 // ============================================================================

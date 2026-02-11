@@ -292,7 +292,6 @@ pub struct ClientStats {
 }
 
 #[cfg(test)]
-#[cfg(test)]
 #[allow(deprecated)] // This module is deprecated, allow its tests
 mod tests {
     use super::*;

@@ -235,3 +235,63 @@ pub async fn get_platform_status() -> PlatformStatus {
     // For now, always return running
     PlatformStatus::Running
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_universal_platform_config_default() {
+        let config = UniversalPlatformConfig::default();
+        assert!(config.recursive_hosting);
+        assert!(config.ecosystem_integration);
+        assert!(config.biomeos_integration);
+        assert_eq!(config.max_concurrent_jobs, 100);
+        assert!(!config.pure_ecosystem);
+    }
+
+    #[test]
+    fn test_universal_platform_config_serialization_roundtrip() {
+        let config = UniversalPlatformConfig {
+            recursive_hosting: false,
+            ecosystem_integration: false,
+            biomeos_integration: false,
+            max_concurrent_jobs: 42,
+            pure_ecosystem: true,
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: UniversalPlatformConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.recursive_hosting, deserialized.recursive_hosting);
+        assert_eq!(config.max_concurrent_jobs, deserialized.max_concurrent_jobs);
+        assert_eq!(config.pure_ecosystem, deserialized.pure_ecosystem);
+    }
+
+    #[test]
+    fn test_platform_status_variants() {
+        assert_eq!(PlatformStatus::Initializing, PlatformStatus::Initializing);
+        assert_eq!(PlatformStatus::Running, PlatformStatus::Running);
+        assert_eq!(PlatformStatus::Degraded, PlatformStatus::Degraded);
+        assert_eq!(PlatformStatus::Stopped, PlatformStatus::Stopped);
+        assert_ne!(PlatformStatus::Initializing, PlatformStatus::Running);
+    }
+
+    #[test]
+    fn test_platform_status_serialization_roundtrip() {
+        for status in [
+            PlatformStatus::Initializing,
+            PlatformStatus::Running,
+            PlatformStatus::Degraded,
+            PlatformStatus::Stopped,
+        ] {
+            let json = serde_json::to_string(&status).unwrap();
+            let deserialized: PlatformStatus = serde_json::from_str(&json).unwrap();
+            assert_eq!(status, deserialized);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_platform_status_returns_running() {
+        let status = get_platform_status().await;
+        assert_eq!(status, PlatformStatus::Running);
+    }
+}

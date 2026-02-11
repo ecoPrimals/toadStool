@@ -160,7 +160,7 @@ mod tests {
     fn test_paths() {
         // Test runtime-discovered paths
         let temp_dir = paths::temp_dir();
-        assert!(temp_dir.exists() || temp_dir.parent().map_or(false, |p| p.exists()));
+        assert!(temp_dir.exists() || temp_dir.parent().is_some_and(|p| p.exists()));
 
         // Test prefix functions
         let checkpoint = paths::checkpoint_prefix();

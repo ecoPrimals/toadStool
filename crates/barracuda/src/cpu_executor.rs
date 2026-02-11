@@ -27,18 +27,20 @@ use std::sync::Arc;
 /// CPU executor implementation
 pub struct CpuExecutor {
     capabilities: HardwareCapabilities,
-    #[allow(dead_code)] // Available for future use
-    num_threads: usize,
+    /// Thread count (stored for future parallel execution tuning)
+    _num_threads: usize,
 }
 
 impl CpuExecutor {
     /// Create new CPU executor
     pub fn new() -> Self {
-        let num_threads = num_cpus::get();
+        let num_threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(4);
 
         Self {
             capabilities: Self::detect_capabilities(num_threads),
-            num_threads,
+            _num_threads: num_threads,
         }
     }
 
@@ -120,7 +122,8 @@ impl CpuExecutor {
     }
 
     /// Execute unary operation on CPU
-    #[allow(dead_code)] // Will be used when execute() is fully implemented
+    // Pending: Wire into CpuExecutor::execute() dispatch once compute graph is integrated
+    #[allow(dead_code)]
     fn execute_unary_cpu(&self, op: &MathOp, input: &[f32]) -> Result<Vec<f32>> {
         use MathOp::*;
 
@@ -144,7 +147,7 @@ impl CpuExecutor {
     }
 
     /// Execute binary operation on CPU
-    #[allow(dead_code)] // Will be used when execute() is fully implemented
+    #[allow(dead_code)]
     fn execute_binary_cpu(&self, op: &MathOp, a: &[f32], b: &[f32]) -> Result<Vec<f32>> {
         use MathOp::*;
 
@@ -167,7 +170,7 @@ impl CpuExecutor {
     }
 
     /// Execute reduction operation on CPU
-    #[allow(dead_code)] // Will be used when execute() is fully implemented
+    #[allow(dead_code)]
     fn execute_reduce_cpu(&self, op: &MathOp, input: &[f32]) -> Result<f32> {
         use MathOp::*;
 
@@ -192,8 +195,8 @@ impl CpuExecutor {
     }
 
     /// Execute matrix multiply on CPU (naive implementation)
-    /// TODO: Use optimized BLAS library (e.g., ndarray with BLAS backend)
-    #[allow(dead_code)] // Will be used when execute() is fully implemented
+    // Pending: Use optimized BLAS (e.g. ndarray+openblas) when CPU matmul becomes hot path
+    #[allow(dead_code)]
     fn execute_matmul_cpu(
         &self,
         a: &[f32],
@@ -386,7 +389,7 @@ mod tests {
         let cpu = CpuExecutor::new();
         assert_eq!(cpu.name(), "CPU (Native Rust + SIMD)");
         assert_eq!(cpu.hardware_type(), HardwareType::CPU);
-        assert!(cpu.num_threads > 0);
+        assert!(cpu._num_threads > 0);
     }
 
     #[test]
@@ -409,7 +412,7 @@ mod tests {
     fn test_cpu_can_execute_all() {
         let cpu = CpuExecutor::new();
         let desc = TensorDescriptor::new(vec![10, 10], crate::unified_math::DType::F32);
-        assert!(cpu.can_execute(&MathOp::ReLU, &[desc.clone()]));
+        assert!(cpu.can_execute(&MathOp::ReLU, std::slice::from_ref(&desc)));
         assert!(cpu.can_execute(&MathOp::Add, &[desc.clone(), desc]));
     }
 

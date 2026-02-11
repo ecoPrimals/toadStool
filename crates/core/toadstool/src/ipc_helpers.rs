@@ -40,7 +40,7 @@ fn get_default_songbird_socket() -> String {
             format!("/run/user/{}", uid)
         } else {
             // Ultimate fallback for non-Linux systems
-            "/tmp/biomeos-runtime".to_string()
+            String::from("/tmp/biomeos-runtime")
         }
     });
     format!("{}/biomeos/songbird.sock", runtime_dir)
@@ -91,13 +91,13 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
 
     // Build registration request
     let request = json!({
-        "jsonrpc": "2.0",
+        "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
         "method": "ipc.register",
         "params": {
             "primal_name": "toadstool",
             "capabilities": ["compute", "gpu", "wasm", "container"],
             "endpoint": std::env::var("TOADSTOOL_SOCKET")
-                .unwrap_or_else(|_| "/primal/toadstool".to_string())
+                .unwrap_or_else(|_| String::from("/primal/toadstool"))
         },
         "id": 1
     });
@@ -160,7 +160,7 @@ pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
 
     // Build resolve request
     let request = json!({
-        "jsonrpc": "2.0",
+        "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
         "method": "ipc.resolve",
         "params": {
             "primal_name": primal_name
@@ -282,7 +282,7 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
 
     // Build capabilities request
     let request = json!({
-        "jsonrpc": "2.0",
+        "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
         "method": "ipc.capabilities",
         "params": {
             "capability": capability
@@ -342,8 +342,10 @@ async fn write_json_rpc(stream: &mut UnixStream, message: &Value) -> ToadStoolRe
     let json_str = serde_json::to_string(message)
         .map_err(|e| ToadStoolError::integration(format!("Failed to serialize JSON-RPC: {}", e)))?;
 
-    // Write with newline delimiter
-    let data = format!("{}\n", json_str);
+    // Write with newline delimiter (zero-copy: avoid format! allocation)
+    let mut data = String::with_capacity(json_str.len() + 1);
+    data.push_str(&json_str);
+    data.push('\n');
 
     stream
         .write_all(data.as_bytes())
@@ -374,7 +376,7 @@ async fn read_json_rpc(stream: &mut UnixStream) -> ToadStoolResult<Value> {
         return Err(ToadStoolError::integration("Connection closed by peer"));
     }
 
-    serde_json::from_str(&line)
+    serde_json::from_slice(line.as_bytes())
         .map_err(|e| ToadStoolError::integration(format!("Failed to parse JSON-RPC: {}", e)))
 }
 
@@ -425,14 +427,14 @@ pub fn resolve_method_name(method: &str) -> String {
     if registry.is_semantic(method) {
         if let Some(impl_name) = registry.resolve(method) {
             debug!("Resolved semantic method '{}' → '{}'", method, impl_name);
-            return impl_name.to_string();
+            return String::from(impl_name);
         }
         // Unknown semantic name - pass through (might be new/external)
         debug!("Unknown semantic method '{}', passing through", method);
-        method.to_string()
+        String::from(method)
     } else {
         // Not semantic (no dot) - pass through as implementation name
-        method.to_string()
+        String::from(method)
     }
 }
 
@@ -458,13 +460,13 @@ pub fn is_semantic_method(method: &str) -> bool {
 /// ```
 /// use toadstool::ipc_helpers::get_semantic_name;
 ///
-/// assert_eq!(get_semantic_name("execute_workload"), Some("compute.execute"));
+/// assert_eq!(get_semantic_name("execute_workload"), Some("compute.execute".to_string()));
 /// assert_eq!(get_semantic_name("unknown_method"), None);
 /// ```
 pub fn get_semantic_name(implementation: &str) -> Option<String> {
     get_registry()
         .get_semantic(implementation)
-        .map(|s| s.to_string())
+        .map(String::from)
 }
 
 /// Get all registered semantic method names
@@ -473,8 +475,8 @@ pub fn get_semantic_name(implementation: &str) -> Option<String> {
 pub fn list_semantic_methods() -> Vec<String> {
     get_registry()
         .semantic_names()
-        .iter()
-        .map(|s| s.to_string())
+        .into_iter()
+        .map(String::from)
         .collect()
 }
 
@@ -536,7 +538,7 @@ mod tests {
     #[test]
     fn test_json_rpc_request_format() {
         let request = json!({
-            "jsonrpc": "2.0",
+            "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
             "method": "ipc.register",
             "params": {
                 "primal_name": "toadstool",
@@ -668,5 +670,421 @@ mod tests {
         assert!(has_network, "Missing network domain");
         assert!(has_security, "Missing security domain");
         assert!(has_runtime, "Missing runtime domain");
+    }
+
+    // ========================================================================
+    // Comprehensive Semantic Method Resolution Tests
+    // ========================================================================
+
+    /// 1. Test ALL semantic -> implementation mappings individually
+    #[test]
+    fn test_all_semantic_to_implementation_mappings() {
+        // Compute domain
+        assert_eq!(resolve_method_name("compute.execute"), "execute_workload");
+        assert_eq!(resolve_method_name("compute.stop"), "stop_workload");
+        assert_eq!(resolve_method_name("compute.pause"), "pause_workload");
+        assert_eq!(resolve_method_name("compute.resume"), "resume_workload");
+        assert_eq!(resolve_method_name("compute.cancel"), "cancel_workload");
+        assert_eq!(
+            resolve_method_name("compute.container.run"),
+            "run_container"
+        );
+        assert_eq!(
+            resolve_method_name("compute.container.stop"),
+            "stop_container"
+        );
+        assert_eq!(
+            resolve_method_name("compute.wasm.execute"),
+            "start_wasm_module"
+        );
+        assert_eq!(resolve_method_name("compute.wasm.stop"), "stop_wasm_module");
+        assert_eq!(
+            resolve_method_name("compute.python.execute"),
+            "run_python_script"
+        );
+        assert_eq!(
+            resolve_method_name("compute.python.stop"),
+            "stop_python_script"
+        );
+        assert_eq!(
+            resolve_method_name("compute.native.execute"),
+            "run_native_binary"
+        );
+        assert_eq!(
+            resolve_method_name("compute.native.stop"),
+            "stop_native_binary"
+        );
+        assert_eq!(
+            resolve_method_name("compute.gpu.execute"),
+            "run_gpu_compute"
+        );
+        assert_eq!(resolve_method_name("compute.gpu.stop"), "stop_gpu_compute");
+
+        // Resource domain
+        assert_eq!(
+            resolve_method_name("resource.cpu.get_usage"),
+            "get_cpu_usage"
+        );
+        assert_eq!(
+            resolve_method_name("resource.memory.get_usage"),
+            "get_memory_usage"
+        );
+        assert_eq!(
+            resolve_method_name("resource.disk.get_usage"),
+            "get_disk_usage"
+        );
+        assert_eq!(
+            resolve_method_name("resource.network.get_usage"),
+            "get_network_usage"
+        );
+        assert_eq!(
+            resolve_method_name("resource.gpu.get_usage"),
+            "get_gpu_usage"
+        );
+        assert_eq!(resolve_method_name("resource.health.check"), "check_health");
+        assert_eq!(resolve_method_name("resource.metrics.get"), "get_metrics");
+        assert_eq!(resolve_method_name("resource.metrics.list"), "list_metrics");
+        assert_eq!(resolve_method_name("resource.status.get"), "get_status");
+        assert_eq!(
+            resolve_method_name("resource.limits.get"),
+            "get_resource_limits"
+        );
+        assert_eq!(
+            resolve_method_name("resource.limits.set"),
+            "set_resource_limits"
+        );
+        assert_eq!(
+            resolve_method_name("resource.limits.update"),
+            "update_resource_limits"
+        );
+
+        // Storage domain
+        assert_eq!(
+            resolve_method_name("storage.artifact.store"),
+            "store_artifact"
+        );
+        assert_eq!(
+            resolve_method_name("storage.artifact.get"),
+            "retrieve_artifact"
+        );
+        assert_eq!(
+            resolve_method_name("storage.artifact.list"),
+            "list_artifacts"
+        );
+        assert_eq!(
+            resolve_method_name("storage.artifact.delete"),
+            "delete_artifact"
+        );
+        assert_eq!(
+            resolve_method_name("storage.artifact.exists"),
+            "artifact_exists"
+        );
+        assert_eq!(resolve_method_name("storage.cache.get"), "get_from_cache");
+        assert_eq!(resolve_method_name("storage.cache.set"), "set_in_cache");
+        assert_eq!(resolve_method_name("storage.cache.clear"), "clear_cache");
+        assert_eq!(
+            resolve_method_name("storage.cache.stats"),
+            "get_cache_stats"
+        );
+
+        // Network domain
+        assert_eq!(
+            resolve_method_name("network.configure"),
+            "configure_networking"
+        );
+        assert_eq!(
+            resolve_method_name("network.connectivity.check"),
+            "check_connectivity"
+        );
+        assert_eq!(
+            resolve_method_name("network.status.get"),
+            "get_network_status"
+        );
+
+        // Security domain
+        assert_eq!(
+            resolve_method_name("security.policy.apply"),
+            "apply_security_policies"
+        );
+        assert_eq!(
+            resolve_method_name("security.policy.get"),
+            "get_security_policy"
+        );
+        assert_eq!(
+            resolve_method_name("security.policy.list"),
+            "list_security_policies"
+        );
+        assert_eq!(
+            resolve_method_name("security.policy.validate"),
+            "validate_security_policy"
+        );
+        assert_eq!(
+            resolve_method_name("security.permission.check"),
+            "check_permissions"
+        );
+        assert_eq!(
+            resolve_method_name("security.permission.grant"),
+            "grant_permission"
+        );
+        assert_eq!(
+            resolve_method_name("security.permission.revoke"),
+            "revoke_permission"
+        );
+        assert_eq!(
+            resolve_method_name("security.sandbox.create"),
+            "create_sandbox"
+        );
+        assert_eq!(
+            resolve_method_name("security.sandbox.destroy"),
+            "destroy_sandbox"
+        );
+        assert_eq!(
+            resolve_method_name("security.sandbox.status"),
+            "get_sandbox_status"
+        );
+
+        // Runtime domain
+        assert_eq!(
+            resolve_method_name("runtime.engine.list"),
+            "list_runtime_engines"
+        );
+        assert_eq!(
+            resolve_method_name("runtime.engine.get"),
+            "get_runtime_engine"
+        );
+        assert_eq!(
+            resolve_method_name("runtime.engine.capabilities"),
+            "get_runtime_capabilities"
+        );
+        assert_eq!(
+            resolve_method_name("runtime.workload.submit"),
+            "submit_workload"
+        );
+        assert_eq!(
+            resolve_method_name("runtime.workload.status"),
+            "get_workload_status"
+        );
+        assert_eq!(
+            resolve_method_name("runtime.workload.result"),
+            "get_workload_result"
+        );
+        assert_eq!(
+            resolve_method_name("runtime.workload.list"),
+            "list_workloads"
+        );
+    }
+
+    /// 2. Test that unknown semantic names pass through unchanged
+    #[test]
+    fn test_unknown_semantic_names_pass_through() {
+        assert_eq!(resolve_method_name("unknown.method"), "unknown.method");
+        assert_eq!(resolve_method_name("future.api.call"), "future.api.call");
+        assert_eq!(resolve_method_name("a.b.c.d"), "a.b.c.d");
+        assert_eq!(resolve_method_name("compute.fake"), "compute.fake");
+        assert_eq!(
+            resolve_method_name("resource.nonexistent.op"),
+            "resource.nonexistent.op"
+        );
+    }
+
+    /// 3. Test that implementation names pass through unchanged
+    #[test]
+    fn test_implementation_names_pass_through() {
+        assert_eq!(resolve_method_name("execute_workload"), "execute_workload");
+        assert_eq!(resolve_method_name("check_health"), "check_health");
+        assert_eq!(resolve_method_name("store_artifact"), "store_artifact");
+        assert_eq!(
+            resolve_method_name("configure_networking"),
+            "configure_networking"
+        );
+        assert_eq!(
+            resolve_method_name("apply_security_policies"),
+            "apply_security_policies"
+        );
+        assert_eq!(resolve_method_name("run_container"), "run_container");
+        assert_eq!(
+            resolve_method_name("list_runtime_engines"),
+            "list_runtime_engines"
+        );
+    }
+
+    /// 4. Test is_semantic_method for all known semantic methods
+    #[test]
+    fn test_is_semantic_method_all_known() {
+        let methods = list_semantic_methods();
+        for method in &methods {
+            assert!(
+                is_semantic_method(method),
+                "{} should be detected as semantic (from list_semantic_methods)",
+                method
+            );
+        }
+    }
+
+    /// 5. Test is_semantic_method for non-semantic strings
+    #[test]
+    fn test_is_semantic_method_non_semantic() {
+        assert!(!is_semantic_method("execute_workload"));
+        assert!(!is_semantic_method("check_health"));
+        assert!(!is_semantic_method("single_word"));
+        assert!(!is_semantic_method("camelCaseMethod"));
+        assert!(!is_semantic_method("snake_case_method"));
+        assert!(!is_semantic_method(""));
+        assert!(!is_semantic_method("no_dots_here"));
+    }
+
+    /// 6. Test get_semantic_name for all implementation names
+    #[test]
+    fn test_get_semantic_name_all_implementations() {
+        let impl_to_semantic = [
+            ("execute_workload", "compute.execute"),
+            ("stop_workload", "compute.stop"),
+            ("pause_workload", "compute.pause"),
+            ("resume_workload", "compute.resume"),
+            ("cancel_workload", "compute.cancel"),
+            ("run_container", "compute.container.run"),
+            ("stop_container", "compute.container.stop"),
+            ("start_wasm_module", "compute.wasm.execute"),
+            ("stop_wasm_module", "compute.wasm.stop"),
+            ("run_python_script", "compute.python.execute"),
+            ("stop_python_script", "compute.python.stop"),
+            ("run_native_binary", "compute.native.execute"),
+            ("stop_native_binary", "compute.native.stop"),
+            ("run_gpu_compute", "compute.gpu.execute"),
+            ("stop_gpu_compute", "compute.gpu.stop"),
+            ("get_cpu_usage", "resource.cpu.get_usage"),
+            ("get_memory_usage", "resource.memory.get_usage"),
+            ("get_disk_usage", "resource.disk.get_usage"),
+            ("get_network_usage", "resource.network.get_usage"),
+            ("get_gpu_usage", "resource.gpu.get_usage"),
+            ("check_health", "resource.health.check"),
+            ("get_metrics", "resource.metrics.get"),
+            ("list_metrics", "resource.metrics.list"),
+            ("get_status", "resource.status.get"),
+            ("get_resource_limits", "resource.limits.get"),
+            ("set_resource_limits", "resource.limits.set"),
+            ("update_resource_limits", "resource.limits.update"),
+            ("store_artifact", "storage.artifact.store"),
+            ("retrieve_artifact", "storage.artifact.get"),
+            ("list_artifacts", "storage.artifact.list"),
+            ("delete_artifact", "storage.artifact.delete"),
+            ("artifact_exists", "storage.artifact.exists"),
+            ("get_from_cache", "storage.cache.get"),
+            ("set_in_cache", "storage.cache.set"),
+            ("clear_cache", "storage.cache.clear"),
+            ("get_cache_stats", "storage.cache.stats"),
+            ("configure_networking", "network.configure"),
+            ("check_connectivity", "network.connectivity.check"),
+            ("get_network_status", "network.status.get"),
+            ("apply_security_policies", "security.policy.apply"),
+            ("get_security_policy", "security.policy.get"),
+            ("list_security_policies", "security.policy.list"),
+            ("validate_security_policy", "security.policy.validate"),
+            ("check_permissions", "security.permission.check"),
+            ("grant_permission", "security.permission.grant"),
+            ("revoke_permission", "security.permission.revoke"),
+            ("create_sandbox", "security.sandbox.create"),
+            ("destroy_sandbox", "security.sandbox.destroy"),
+            ("get_sandbox_status", "security.sandbox.status"),
+            ("list_runtime_engines", "runtime.engine.list"),
+            ("get_runtime_engine", "runtime.engine.get"),
+            ("get_runtime_capabilities", "runtime.engine.capabilities"),
+            ("submit_workload", "runtime.workload.submit"),
+            ("get_workload_status", "runtime.workload.status"),
+            ("get_workload_result", "runtime.workload.result"),
+            ("list_workloads", "runtime.workload.list"),
+        ];
+        for (impl_name, expected_semantic) in impl_to_semantic {
+            assert_eq!(
+                get_semantic_name(impl_name),
+                Some(expected_semantic.to_string()),
+                "get_semantic_name for '{}'",
+                impl_name
+            );
+        }
+    }
+
+    /// 7. Test get_semantic_name returns None for unknown implementations
+    #[test]
+    fn test_get_semantic_name_unknown_returns_none() {
+        assert_eq!(get_semantic_name("unknown_method"), None);
+        assert_eq!(get_semantic_name("some_fake_impl"), None);
+        assert_eq!(get_semantic_name("execute"), None); // partial match
+        assert_eq!(get_semantic_name("workload"), None);
+    }
+
+    /// 8. Test list_semantic_methods returns correct count and all expected methods
+    #[test]
+    fn test_list_semantic_methods_count_and_contents() {
+        let methods = list_semantic_methods();
+
+        // Exact count: 56 mappings from semantic_methods.rs
+        assert_eq!(methods.len(), 56, "Should have exactly 56 semantic methods");
+
+        // Spot-check expected methods from each domain
+        assert!(methods.contains(&"compute.execute".to_string()));
+        assert!(methods.contains(&"compute.container.run".to_string()));
+        assert!(methods.contains(&"resource.health.check".to_string()));
+        assert!(methods.contains(&"resource.cpu.get_usage".to_string()));
+        assert!(methods.contains(&"storage.artifact.store".to_string()));
+        assert!(methods.contains(&"storage.cache.get".to_string()));
+        assert!(methods.contains(&"network.configure".to_string()));
+        assert!(methods.contains(&"security.policy.apply".to_string()));
+        assert!(methods.contains(&"security.sandbox.create".to_string()));
+        assert!(methods.contains(&"runtime.engine.list".to_string()));
+        assert!(methods.contains(&"runtime.workload.submit".to_string()));
+
+        // All should be semantic (contain '.')
+        for m in &methods {
+            assert!(m.contains('.'), "{} should contain a dot", m);
+        }
+    }
+
+    /// 9. Test resolution consistency: resolve -> get_semantic -> resolve = identity
+    #[test]
+    fn test_resolution_consistency_roundtrip() {
+        let methods = list_semantic_methods();
+        for semantic in &methods {
+            let impl_name = resolve_method_name(semantic);
+            let back_to_semantic = get_semantic_name(&impl_name);
+            assert_eq!(
+                back_to_semantic,
+                Some(semantic.clone()),
+                "Roundtrip: {} -> {} -> {:?}",
+                semantic,
+                impl_name,
+                back_to_semantic
+            );
+        }
+    }
+
+    /// 10. Test edge cases: empty string, whitespace, special characters
+    #[test]
+    fn test_edge_cases_semantic_resolution() {
+        // Empty string - not semantic (no dot), passes through
+        assert_eq!(resolve_method_name(""), "");
+        assert!(!is_semantic_method(""));
+        assert_eq!(get_semantic_name(""), None);
+
+        // Whitespace - not semantic (no dot), passes through
+        assert_eq!(resolve_method_name(" "), " ");
+        assert_eq!(resolve_method_name("  "), "  ");
+        assert!(!is_semantic_method(" "));
+
+        // Single dot - semantic format but unregistered, passes through
+        assert_eq!(resolve_method_name("."), ".");
+        assert!(is_semantic_method("."));
+
+        // Dotted but unregistered - passes through
+        assert_eq!(resolve_method_name("a.b"), "a.b");
+        assert!(is_semantic_method("a.b"));
+
+        // Special characters - pass through
+        assert_eq!(
+            resolve_method_name("method_with_underscore"),
+            "method_with_underscore"
+        );
+        assert_eq!(resolve_method_name("a.b.c"), "a.b.c"); // unregistered triple
+        assert_eq!(resolve_method_name("foo-bar.baz"), "foo-bar.baz");
     }
 }

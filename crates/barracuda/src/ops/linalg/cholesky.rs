@@ -57,7 +57,7 @@ impl Cholesky {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/cholesky.wgsl")
+        include_str!("../../shaders/linalg/cholesky.wgsl")
     }
 
     /// Execute Cholesky decomposition on GPU
@@ -252,12 +252,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_cholesky_2x2() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Simple 2x2 SPD matrix: [[4, 2], [2, 3]]
         // Expected L: [[2, 0], [1, sqrt(2)]]
         // Verification: L·Lᵀ = [[4, 2], [2, 3]] ✓
@@ -293,9 +294,9 @@ mod tests {
             output[2]
         );
 
-        // Check L[1,1] ≈ sqrt(2) ≈ 1.414
+        // Check L[1,1] ≈ sqrt(2)
         assert!(
-            (output[3] - 1.414213).abs() < 1e-3,
+            (output[3] - std::f32::consts::SQRT_2).abs() < 1e-3,
             "L[1,1] should be sqrt(2), got {}",
             output[3]
         );
@@ -303,8 +304,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cholesky_identity() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Identity matrix should have L = I
         let input_data = vec![1.0, 0.0, 0.0, 1.0];
         let input = Tensor::from_vec_on(input_data, vec![2, 2], device)
@@ -323,8 +325,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cholesky_3x3() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 3x3 SPD matrix
         let input_data = vec![4.0, 2.0, 1.0, 2.0, 3.0, 1.0, 1.0, 1.0, 3.0];
         let input = Tensor::from_vec_on(input_data, vec![3, 3], device)
@@ -350,8 +353,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cholesky_reconstruction() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test that L·Lᵀ = A
         let input_data = vec![4.0, 2.0, 2.0, 3.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![2, 2], device.clone())

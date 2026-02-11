@@ -117,12 +117,13 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore] // Requires NPU hardware
     fn test_sparse_encoding() {
         let scene = Scene::sparse();
         let ray = scene.camera_ray(400, 300);
         let encoded = encode_ray_event(&ray, &scene);
 
         // Sparse scenes should have many empty events
-        assert!(encoded.len() == 0 || encoded.len() == 32);
+        assert!(encoded.is_empty() || encoded.len() == 32);
     }
 }

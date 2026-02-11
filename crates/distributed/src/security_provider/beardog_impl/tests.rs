@@ -6,6 +6,7 @@
 //! - BearDogDiscovery (service discovery)
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use super::super::client::BearDogSecurityProvider;
     use crate::security_provider::provider::*;
@@ -84,9 +85,9 @@ mod tests {
 
         // If BearDog not available, this should fail gracefully
         // (not panic, not hang, just return error)
-        if result.is_err() {
+        if let Err(e) = result {
             // Expected: service not found or connection failed
-            let err_str = format!("{:?}", result.unwrap_err());
+            let err_str = format!("{:?}", e);
             assert!(
                 err_str.contains("not found")
                     || err_str.contains("connection")
@@ -94,8 +95,7 @@ mod tests {
             );
         }
         // If BearDog IS available, verify result structure
-        else {
-            let encrypted = result.unwrap();
+        else if let Ok(encrypted) = result {
             assert!(!encrypted.ciphertext.is_empty());
             assert!(!encrypted.metadata.key_id.is_empty());
             assert!(!encrypted.metadata.algorithm.is_empty());
@@ -111,15 +111,14 @@ mod tests {
         let result = provider.sign(data, None).await;
 
         // Graceful failure expected if no BearDog
-        if result.is_err() {
-            let err_str = format!("{:?}", result.unwrap_err());
+        if let Err(e) = result {
+            let err_str = format!("{:?}", e);
             assert!(
                 err_str.contains("not found")
                     || err_str.contains("connection")
                     || err_str.contains("network")
             );
-        } else {
-            let signature = result.unwrap();
+        } else if let Ok(signature) = result {
             assert!(!signature.signature.is_empty());
             assert!(!signature.key_id.is_empty());
         }
@@ -148,15 +147,14 @@ mod tests {
         let result = provider.create_permission(request).await;
 
         // Graceful failure expected if no BearDog
-        if result.is_err() {
-            let err_str = format!("{:?}", result.unwrap_err());
+        if let Err(e) = result {
+            let err_str = format!("{:?}", e);
             assert!(
                 err_str.contains("not found")
                     || err_str.contains("connection")
                     || err_str.contains("network")
             );
-        } else {
-            let permission = result.unwrap();
+        } else if let Ok(permission) = result {
             assert_eq!(permission.holder_id, "test-user");
         }
     }

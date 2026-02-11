@@ -86,8 +86,10 @@ async fn test_timeout_and_retry_logic() {
             }
         }).await;
         
-        if result.is_ok() && result.unwrap().is_ok() {
-            break;
+        if let Ok(inner_result) = result {
+            if inner_result.is_ok() {
+                break;
+            }
         }
         
         // Exponential backoff

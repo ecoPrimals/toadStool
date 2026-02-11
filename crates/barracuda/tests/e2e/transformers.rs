@@ -9,8 +9,7 @@ use barracuda::ops::*;
 #[tokio::test]
 async fn test_bert_embedding_layer() {
     // BERT embedding: Token + Position + Segment embeddings
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     // Token embedding (vocab_size=30522, hidden=768)
     let token_ids = vec![101, 2003, 2023, 102]; // [CLS] is this [SEP]
     let token_embed_weights = vec![0.1f32; 30522 * 768];
@@ -47,8 +46,7 @@ async fn test_bert_embedding_layer() {
 #[tokio::test]
 async fn test_bert_attention_block() {
     // Single BERT attention block
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 2;
     let seq_len = 8;
     let hidden = 768;
@@ -87,8 +85,7 @@ async fn test_bert_attention_block() {
 #[tokio::test]
 async fn test_bert_ffn_block() {
     // BERT Feed-Forward Network: Linear → GELU → Linear
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 2;
     let seq_len = 8;
     let hidden = 768;
@@ -136,8 +133,7 @@ async fn test_bert_ffn_block() {
 #[tokio::test]
 async fn test_gpt_layer_sequential() {
     // GPT layer: LayerNorm → Attention → Add → LayerNorm → FFN → Add
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 1;
     let seq_len = 4;
     let hidden = 256;
@@ -181,8 +177,7 @@ async fn test_gpt_layer_sequential() {
 #[tokio::test]
 async fn test_transformer_encoder_stack() {
     // Stack of 3 transformer encoder layers
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 1;
     let seq_len = 4;
     let hidden = 128;

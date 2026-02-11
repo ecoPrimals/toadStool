@@ -145,7 +145,7 @@ impl SGD {
 
     /// WGSL shader source
     pub(super) fn shader() -> &'static str {
-        include_str!("../../shaders/sgd.wgsl")
+        include_str!("../../shaders/optimizer/sgd.wgsl")
     }
 
     /// Get weights tensor

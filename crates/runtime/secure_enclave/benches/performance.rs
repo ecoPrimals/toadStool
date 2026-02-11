@@ -16,7 +16,7 @@ use toadstool_runtime_secure_enclave::{
 fn bench_memory_allocation(c: &mut Criterion) {
     let mut group = c.benchmark_group("memory_allocation");
 
-    for size in [1024, 4096, 65536, 1_048_576].iter() {
+    for size in &[1024, 4096, 65536, 1_048_576] {
         group.throughput(Throughput::Bytes(*size as u64));
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
             b.iter(|| {
@@ -33,7 +33,7 @@ fn bench_memory_allocation(c: &mut Criterion) {
 fn bench_memory_wiping(c: &mut Criterion) {
     let mut group = c.benchmark_group("memory_wiping");
 
-    for size in [4096, 65536, 1_048_576].iter() {
+    for size in &[4096, 65536, 1_048_576] {
         group.throughput(Throughput::Bytes(*size as u64));
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
             b.iter(|| {
@@ -59,7 +59,7 @@ fn bench_zstd_decompression(c: &mut Criterion) {
         (1_048_576, "1MB"),
     ];
 
-    for (size, label) in sizes.iter() {
+    for (size, label) in &sizes {
         let data = vec![42u8; *size];
         let compressed = zstd::encode_all(&data[..], 3).unwrap();
 
@@ -90,7 +90,7 @@ fn bench_lz4_decompression(c: &mut Criterion) {
 
     let sizes = [(1024, "1KB"), (10_240, "10KB"), (102_400, "100KB")];
 
-    for (size, label) in sizes.iter() {
+    for (size, label) in &sizes {
         let data = vec![42u8; *size];
         let compressed = lz4_flex::compress_prepend_size(&data);
 

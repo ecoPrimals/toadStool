@@ -63,7 +63,7 @@ impl CenterLoss {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/center_loss.wgsl")
+        include_str!("../shaders/loss/center_loss.wgsl")
     }
 
     /// Execute CenterLoss on tensor
@@ -238,12 +238,13 @@ impl CenterLoss {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_center_loss_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 4;
         let feature_dim = 3;
         let num_classes = 2;

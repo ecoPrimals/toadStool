@@ -147,14 +147,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_soft_nms_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Boxes: [N, 4] format
         let boxes = Tensor::new(
             vec![
@@ -166,12 +167,14 @@ mod tests {
         );
         let scores = Tensor::new(vec![0.9, 0.8], vec![2], device.clone());
         let keep = boxes.soft_nms(scores, 0.5, 0.5).unwrap();
-        assert!(keep.len() >= 1);
+        assert!(!keep.is_empty());
     }
 
     #[tokio::test]
     async fn test_soft_nms_edge_cases() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
 
         // Single box
         let boxes = Tensor::new(vec![0.0, 0.0, 10.0, 10.0], vec![1, 4], device.clone());
@@ -192,7 +195,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_soft_nms_boundary() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
 
         // High overlap - boxes [N, 4] format
         let boxes_data = vec![
@@ -202,19 +207,21 @@ mod tests {
         let boxes = Tensor::new(boxes_data, vec![2, 4], device.clone());
         let scores = Tensor::new(vec![0.9, 0.85], vec![2], device.clone());
         let keep = boxes.soft_nms(scores, 0.5, 0.5).unwrap();
-        assert!(keep.len() >= 1);
+        assert!(!keep.is_empty());
 
         // Different sigma
         let boxes_data = vec![0.0, 0.0, 10.0, 10.0, 1.0, 1.0, 11.0, 11.0];
         let boxes = Tensor::new(boxes_data, vec![2, 4], device.clone());
         let scores = Tensor::new(vec![0.9, 0.8], vec![2], device.clone());
         let keep = boxes.soft_nms(scores, 0.5, 0.3).unwrap();
-        assert!(keep.len() >= 1);
+        assert!(!keep.is_empty());
     }
 
     #[tokio::test]
     async fn test_soft_nms_large_batch() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
 
         // 100 boxes
         let mut boxes_data = Vec::new();
@@ -226,12 +233,14 @@ mod tests {
         let boxes = Tensor::new(boxes_data, vec![100, 4], device.clone());
         let scores = Tensor::new(scores_data, vec![100], device.clone());
         let keep = boxes.soft_nms(scores, 0.5, 0.5).unwrap();
-        assert!(keep.len() > 0);
+        assert!(!keep.is_empty());
     }
 
     #[tokio::test]
     async fn test_soft_nms_precision() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
 
         // Verify score reduction - boxes [N, 4] format
         let boxes_data = vec![
@@ -242,8 +251,8 @@ mod tests {
         let scores = Tensor::new(vec![0.9, 0.8], vec![2], device.clone());
         let keep = boxes.soft_nms(scores, 0.5, 0.5).unwrap();
 
-        assert!(keep.len() >= 1);
+        assert!(!keep.is_empty());
         // Soft NMS should keep at least one box
-        assert!(keep.iter().any(|&idx| idx == 0)); // High score box should be kept
+        assert!(keep.contains(&0)); // High score box should be kept
     }
 }

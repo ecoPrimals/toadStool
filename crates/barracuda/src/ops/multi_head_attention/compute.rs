@@ -12,12 +12,12 @@ use wgpu::util::DeviceExt;
 impl MultiHeadAttention {
     /// Get WGSL shader for MHA projection
     pub(super) fn wgsl_shader_projection() -> &'static str {
-        include_str!("../../shaders/mha_projection.wgsl")
+        include_str!("../../shaders/attention/mha_projection.wgsl")
     }
 
     /// Get WGSL shader for MHA output projection
     pub(super) fn wgsl_shader_output() -> &'static str {
-        include_str!("../../shaders/mha_output.wgsl")
+        include_str!("../../shaders/tensor/mha_output.wgsl")
     }
 }
 

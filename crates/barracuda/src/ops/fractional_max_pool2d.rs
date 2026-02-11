@@ -92,7 +92,7 @@ impl FractionalMaxPool2d {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/fractional_max_pool2d.wgsl")
+        include_str!("../shaders/pooling/fractional_max_pool2d.wgsl")
     }
 
     /// Execute fractional max pool 2D on tensor
@@ -313,12 +313,13 @@ impl FractionalMaxPool2d {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_fractional_max_pool2d_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0; 2 * 3 * 8 * 8], vec![2, 3, 8, 8], device.clone())
             .await
             .unwrap();

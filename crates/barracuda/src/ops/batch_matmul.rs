@@ -31,7 +31,7 @@ impl BatchMatMul {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/batch_matmul.wgsl")
+        include_str!("../shaders/math/batch_matmul.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -157,12 +157,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_batch_matmul_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Create A [2, 2, 3] - 2 batches, 2x3 matrices
         let a_data = vec![
             1.0f32, 2.0, 3.0, // Batch 0, row 0
@@ -192,8 +193,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_matmul_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Single batch, identity-like multiplication
         let a_data = vec![1.0, 0.0, 0.0, 1.0]; // [1, 2, 2]
         let b_data = vec![1.0, 2.0, 3.0, 4.0]; // [1, 2, 2]
@@ -210,8 +212,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_matmul_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test with different matrix sizes
         let a_data = vec![1.0; 2 * 4 * 3]; // [2, 4, 3]
         let b_data = vec![1.0; 2 * 3 * 5]; // [2, 3, 5]
@@ -230,8 +233,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_matmul_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Transformer-style: multiple batches, attention heads
         let batch_size = 4;
         let seq_len = 8;
@@ -253,8 +257,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_matmul_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test determinism and functional correctness
         let a_data = vec![1.0, 2.0, 3.0, 4.0]; // [1, 2, 2]
         let b_data = vec![5.0, 6.0, 7.0, 8.0]; // [1, 2, 2]

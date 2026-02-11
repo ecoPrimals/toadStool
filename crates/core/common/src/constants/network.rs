@@ -202,3 +202,136 @@ pub fn etcd_endpoints() -> String {
         http_url(&host, port)
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_ports() {
+        assert_eq!(DEFAULT_HTTP_PORT, 8080);
+        assert_eq!(DEFAULT_HTTPS_PORT, 8443);
+        assert_eq!(DEV_HTTP_PORT, 3000);
+        assert_eq!(TEST_HTTP_PORT, 9000);
+        assert_eq!(DEFAULT_WS_PORT, 8081);
+        assert_eq!(METRICS_PORT, 9090);
+        assert_eq!(HEALTH_CHECK_PORT, 8082);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_vendor_fallback_ports() {
+        assert_eq!(REDIS_FALLBACK_PORT, 6379);
+        assert_eq!(POSTGRES_FALLBACK_PORT, 5432);
+        assert_eq!(MONGODB_FALLBACK_PORT, 27017);
+        assert_eq!(PROMETHEUS_FALLBACK_PORT, 9090);
+        assert_eq!(GRAFANA_FALLBACK_PORT, 3000);
+        assert_eq!(CONSUL_FALLBACK_PORT, 8500);
+        assert_eq!(ETCD_FALLBACK_PORT, 2379);
+    }
+
+    #[test]
+    fn test_address_constants() {
+        assert_eq!(LOCALHOST_IPV4, "127.0.0.1");
+        assert_eq!(LOCALHOST_IPV6, "::1");
+        assert_eq!(BIND_ALL_IPV4, "0.0.0.0");
+        assert_eq!(BIND_ALL_IPV6, "::");
+        assert_eq!(DEFAULT_HOSTNAME, "localhost");
+    }
+
+    #[test]
+    fn test_protocol_constants() {
+        assert_eq!(HTTP_PROTOCOL, "http://");
+        assert_eq!(HTTPS_PROTOCOL, "https://");
+        assert_eq!(WS_PROTOCOL, "ws://");
+        assert_eq!(WSS_PROTOCOL, "wss://");
+    }
+
+    #[test]
+    fn test_protocol_format() {
+        assert!(HTTP_PROTOCOL.ends_with("://"));
+        assert!(HTTPS_PROTOCOL.ends_with("://"));
+        assert!(WS_PROTOCOL.ends_with("://"));
+        assert!(WSS_PROTOCOL.ends_with("://"));
+    }
+
+    #[test]
+    fn test_http_url() {
+        assert_eq!(http_url("localhost", 8080), "http://localhost:8080");
+        assert_eq!(http_url("127.0.0.1", 3000), "http://127.0.0.1:3000");
+    }
+
+    #[test]
+    fn test_https_url() {
+        assert_eq!(https_url("example.com", 443), "https://example.com:443");
+    }
+
+    #[test]
+    fn test_ws_url() {
+        assert_eq!(ws_url("localhost", 8081), "ws://localhost:8081");
+    }
+
+    #[test]
+    fn test_wss_url() {
+        assert_eq!(wss_url("example.com", 443), "wss://example.com:443");
+    }
+
+    #[test]
+    fn test_default_http_url() {
+        let url = default_http_url();
+        assert_eq!(url, "http://127.0.0.1:8080");
+    }
+
+    #[test]
+    fn test_default_https_url() {
+        let url = default_https_url();
+        assert_eq!(url, "https://127.0.0.1:8443");
+    }
+
+    #[test]
+    fn test_consul_http_addr_default() {
+        std::env::remove_var("CONSUL_HTTP_ADDR");
+        std::env::remove_var("CONSUL_HOST");
+        std::env::remove_var("CONSUL_PORT");
+        let addr = consul_http_addr();
+        assert!(addr.starts_with("http://"));
+        assert!(addr.contains(":8500"));
+    }
+
+    #[test]
+    fn test_consul_http_addr_from_env() {
+        std::env::set_var("CONSUL_HTTP_ADDR", "http://consul.example.com:8500");
+        let addr = consul_http_addr();
+        assert_eq!(addr, "http://consul.example.com:8500");
+        std::env::remove_var("CONSUL_HTTP_ADDR");
+    }
+
+    #[test]
+    fn test_etcd_endpoints_default() {
+        std::env::remove_var("ETCD_ENDPOINTS");
+        std::env::remove_var("ETCD_HOST");
+        std::env::remove_var("ETCD_PORT");
+        let endpoints = etcd_endpoints();
+        assert!(endpoints.starts_with("http://"));
+        assert!(endpoints.contains(":2379"));
+    }
+
+    #[test]
+    fn test_etcd_endpoints_from_env() {
+        std::env::set_var("ETCD_ENDPOINTS", "http://etcd.example.com:2379");
+        let endpoints = etcd_endpoints();
+        assert_eq!(endpoints, "http://etcd.example.com:2379");
+        std::env::remove_var("ETCD_ENDPOINTS");
+    }
+
+    #[test]
+    fn test_etcd_endpoints_host_port_env() {
+        std::env::remove_var("ETCD_ENDPOINTS");
+        std::env::set_var("ETCD_HOST", "etcd.local");
+        std::env::set_var("ETCD_PORT", "2379");
+        let endpoints = etcd_endpoints();
+        assert_eq!(endpoints, "http://etcd.local:2379");
+        std::env::remove_var("ETCD_HOST");
+        std::env::remove_var("ETCD_PORT");
+    }
+}

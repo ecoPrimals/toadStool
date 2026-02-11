@@ -237,12 +237,13 @@ impl YukawaForce {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_yukawa_reduces_to_coulomb() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // With κ=0, Yukawa should equal Coulomb
         let positions = vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0];
@@ -268,7 +269,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_yukawa_screening() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Large κ should significantly reduce force at distance
         let positions = vec![0.0, 0.0, 0.0, 5.0, 0.0, 0.0];

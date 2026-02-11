@@ -150,12 +150,13 @@ impl ComplexSqrt {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_complex_sqrt_basic() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test sqrt(4+0i) = 2+0i
         let data = vec![4.0f32, 0.0];
@@ -177,7 +178,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_complex_sqrt_identity() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test sqrt(z)^2 = z for z = 3+4i
         let data = vec![3.0f32, 4.0];

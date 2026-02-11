@@ -210,7 +210,7 @@ async fn test_resolver_creation() {
 async fn test_resolver_with_registry_cache() {
     let discovery = Arc::new(DiscoveryEngine::new());
     let registry = Arc::new(CapabilityRegistry::new());
-    let resolver = CapabilityResolver::new(discovery, registry.clone());
+    let resolver = CapabilityResolver::new(discovery, Arc::clone(&registry));
 
     // Pre-populate registry
     let capability = StandardCapability::CryptoSignatureEd25519.id();
@@ -307,7 +307,7 @@ fn test_standard_capabilities_exist() {
 async fn test_full_workflow_register_and_resolve() {
     let discovery = Arc::new(DiscoveryEngine::new());
     let registry = Arc::new(CapabilityRegistry::new());
-    let resolver = CapabilityResolver::new(discovery, registry.clone());
+    let resolver = CapabilityResolver::new(discovery, Arc::clone(&registry));
 
     let capability = StandardCapability::CryptoSignatureEd25519.id();
 

@@ -5,7 +5,7 @@
 //! Normalizes activations per filter, not per batch.
 //! Enables single-sample inference.
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -73,7 +73,7 @@ impl FilterResponseNorm {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/filter_response_norm.wgsl")
+        include_str!("../shaders/norm/filter_response_norm.wgsl")
     }
 
     /// Execute the filter response normalization operation
@@ -267,43 +267,39 @@ impl FilterResponseNorm {
                 timestamp_writes: None,
             });
 
-            // Pass 1: Compute sum of squares
+            // Pass 1: Compute sum of squares per filter (one workgroup per batch*channel)
             compute_pass.set_pipeline(&compute_pipeline_pass1);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups = (total_elements as u32).div_ceil(optimal_wg_size);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
+            let pass1_workgroups = self.batch_size * self.channels;
+            compute_pass.dispatch_workgroups(pass1_workgroups as u32, 1, 1);
 
             // Pass 2: Normalize and scale
             compute_pass.set_pipeline(&compute_pipeline_pass2);
             compute_pass.set_bind_group(0, &bind_group, &[]);
+            let caps = DeviceCapabilities::from_device(device);
+            let workgroups = caps.dispatch_1d(total_elements as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        // Output shape: same as input
         let output_shape = self.input.shape().to_vec();
-
-        Ok(Tensor::from_buffer(
-            output_buffer,
-            output_shape,
-            device.clone(),
-        ))
+        let output_data = crate::utils::read_buffer(device, &output_buffer, total_elements)?;
+        Ok(Tensor::new(output_data, output_shape, device.clone()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_filter_response_norm_basic() {
-        let device = get_test_device().await;
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        let input = Tensor::from_vec_on(vec![1.0; 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
             .await
             .unwrap();
         let gamma = Tensor::from_vec_on(vec![1.0; 3], vec![3], device.clone())

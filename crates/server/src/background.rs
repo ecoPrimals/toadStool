@@ -229,7 +229,10 @@ async fn capability_heartbeat_task(state: ServerState) {
 }
 
 /// Perform comprehensive health check
-async fn perform_health_check(state: &ServerState) -> bool {
+///
+/// Exposed as pub(crate) for unit testing - not part of public API
+#[doc(hidden)]
+pub(crate) async fn perform_health_check(state: &ServerState) -> bool {
     let config = &state.config.health_check;
 
     // Check system resources using real data
@@ -290,4 +293,199 @@ async fn perform_health_check(state: &ServerState) -> bool {
     }
 
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use std::time::Duration;
+    use tokio::sync::{broadcast, RwLock};
+
+    use crate::config::{HealthCheckConfig, ServerConfig};
+    use crate::state::{ActiveExecution, ClientInfo, ServerState, ServerStatistics};
+    use toadstool::{ExecutionStatus, RuntimeType};
+    use toadstool_testing::mocks::resource_monitors::MockResourceMonitor;
+    use toadstool_testing::mocks::runtime_engines::MockRuntimeEngine;
+    use uuid::Uuid;
+
+    fn create_test_state(config: ServerConfig) -> ServerState {
+        let (event_broadcaster, _) = broadcast::channel(100);
+        ServerState {
+            runtime_engines: Arc::new(RwLock::new(HashMap::new())),
+            active_executions: Arc::new(RwLock::new(HashMap::new())),
+            event_broadcaster,
+            config,
+            resource_monitor: Arc::new(MockResourceMonitor::new_successful()),
+            stats: Arc::new(RwLock::new(ServerStatistics::default())),
+            capability_provider: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_perform_health_check_all_checks_disabled_returns_true() {
+        let config = ServerConfig {
+            health_check: HealthCheckConfig {
+                check_resources: false,
+                check_runtime_engines: false,
+                ..HealthCheckConfig::default()
+            },
+            ..ServerConfig::default()
+        };
+        let state = create_test_state(config);
+        let healthy = perform_health_check(&state).await;
+        assert!(healthy);
+    }
+
+    #[tokio::test]
+    #[allow(unused_mut)] // mut needed for state.resource_monitor assignment
+    async fn test_perform_health_check_resource_monitor_failure_returns_false() {
+        let config = ServerConfig {
+            health_check: HealthCheckConfig {
+                check_resources: true,
+                check_runtime_engines: false,
+                ..HealthCheckConfig::default()
+            },
+            ..ServerConfig::default()
+        };
+        let mut state = create_test_state(config);
+        state.resource_monitor = Arc::new(MockResourceMonitor::new_monitoring_failure());
+
+        let healthy = perform_health_check(&state).await;
+        assert!(!healthy);
+    }
+
+    #[tokio::test]
+    async fn test_perform_health_check_cpu_threshold_exceeded_returns_false() {
+        // perform_health_check uses hardcoded 50% cpu, 45% memory
+        let config = ServerConfig {
+            health_check: HealthCheckConfig {
+                check_resources: true,
+                check_runtime_engines: false,
+                cpu_threshold_percent: 40.0, // 50 > 40
+                memory_threshold_percent: 90.0,
+                ..HealthCheckConfig::default()
+            },
+            ..ServerConfig::default()
+        };
+        let state = create_test_state(config);
+        let healthy = perform_health_check(&state).await;
+        assert!(!healthy);
+    }
+
+    #[tokio::test]
+    async fn test_perform_health_check_memory_threshold_exceeded_returns_false() {
+        let config = ServerConfig {
+            health_check: HealthCheckConfig {
+                check_resources: true,
+                check_runtime_engines: false,
+                cpu_threshold_percent: 95.0,
+                memory_threshold_percent: 40.0, // 45 > 40
+                ..HealthCheckConfig::default()
+            },
+            ..ServerConfig::default()
+        };
+        let state = create_test_state(config);
+        let healthy = perform_health_check(&state).await;
+        assert!(!healthy);
+    }
+
+    #[tokio::test]
+    async fn test_perform_health_check_empty_runtime_engines_returns_false() {
+        let config = ServerConfig {
+            health_check: HealthCheckConfig {
+                check_resources: false,
+                check_runtime_engines: true,
+                ..HealthCheckConfig::default()
+            },
+            ..ServerConfig::default()
+        };
+        let state = create_test_state(config);
+        let healthy = perform_health_check(&state).await;
+        assert!(!healthy);
+    }
+
+    #[tokio::test]
+    async fn test_perform_health_check_engine_get_metrics_fails_returns_false() {
+        let config = ServerConfig {
+            health_check: HealthCheckConfig {
+                check_resources: false,
+                check_runtime_engines: true,
+                ..HealthCheckConfig::default()
+            },
+            ..ServerConfig::default()
+        };
+        let state = create_test_state(config);
+        {
+            let mut engines = state.runtime_engines.write().await;
+            engines.insert(
+                RuntimeType::Native,
+                Box::new(MockRuntimeEngine::new_metrics_failure()),
+            );
+        }
+
+        let healthy = perform_health_check(&state).await;
+        assert!(!healthy);
+    }
+
+    #[tokio::test]
+    async fn test_perform_health_check_too_many_active_executions_returns_false() {
+        let config = ServerConfig {
+            max_concurrent_executions: 2,
+            health_check: HealthCheckConfig {
+                check_resources: false,
+                check_runtime_engines: false,
+                ..HealthCheckConfig::default()
+            },
+            ..ServerConfig::default()
+        };
+        let state = create_test_state(config);
+        for i in 0..3 {
+            let id = Uuid::new_v4();
+            state.active_executions.write().await.insert(
+                id,
+                ActiveExecution {
+                    execution_id: id,
+                    runtime_type: RuntimeType::Native,
+                    started_at: chrono::Utc::now(),
+                    timeout: Duration::from_secs(300),
+                    status: ExecutionStatus::Running,
+                    client_info: ClientInfo {
+                        ip_address: Some(format!("127.0.0.{}", i)),
+                        user_agent: None,
+                        api_key: None,
+                        authenticated_user: None,
+                    },
+                },
+            );
+        }
+
+        let healthy = perform_health_check(&state).await;
+        assert!(!healthy);
+    }
+
+    #[tokio::test]
+    async fn test_perform_health_check_all_conditions_pass_returns_true() {
+        let config = ServerConfig {
+            max_concurrent_executions: 100,
+            health_check: HealthCheckConfig {
+                check_resources: true,
+                check_runtime_engines: true,
+                ..HealthCheckConfig::default()
+            },
+            ..ServerConfig::default()
+        };
+        let state = create_test_state(config);
+        {
+            let mut engines = state.runtime_engines.write().await;
+            engines.insert(
+                RuntimeType::Native,
+                Box::new(MockRuntimeEngine::new_successful()),
+            );
+        }
+
+        let healthy = perform_health_check(&state).await;
+        assert!(healthy);
+    }
 }

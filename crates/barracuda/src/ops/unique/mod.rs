@@ -50,12 +50,12 @@ impl Unique {
 
     /// WGSL shader source for unique marking and compaction
     pub(super) fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/unique.wgsl")
+        include_str!("../../shaders/misc/unique.wgsl")
     }
 
     /// WGSL shader source for prefix sum computation
     pub(super) fn prefix_sum_shader() -> &'static str {
-        include_str!("../../shaders/prefix_sum.wgsl")
+        include_str!("../../shaders/misc/prefix_sum.wgsl")
     }
 
     /// Get input tensor (for use by compute module)

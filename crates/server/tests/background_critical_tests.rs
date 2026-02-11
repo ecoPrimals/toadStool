@@ -19,7 +19,7 @@ async fn test_background_task_spawn() {
     // Test that we can spawn background tasks with event-driven completion
 
     let complete_notify = Arc::new(Notify::new());
-    let notify_clone = complete_notify.clone();
+    let notify_clone = Arc::clone(&complete_notify);
 
     let handle = tokio::spawn(async move {
         // Simulate some work
@@ -47,7 +47,7 @@ async fn test_background_task_cancellation() {
 
     let (_tx, rx) = oneshot::channel::<()>();
     let cancel_notify = Arc::new(Notify::new());
-    let notify_clone = cancel_notify.clone();
+    let notify_clone = Arc::clone(&cancel_notify);
 
     let handle = tokio::spawn(async move {
         // ✅ MODERN: Wait for cancellation (timeout removed for mock test)
@@ -88,8 +88,8 @@ async fn test_background_task_timeout_handling() {
     // Test timeout handling with event-driven coordination
 
     let slow_task = async {
-        // ✅ INTENTIONAL DELAY: Testing timeout behavior requires exceeding the limit
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        // Future that never completes - timeout will fire without sleep
+        std::future::pending::<()>().await
     };
 
     let result = timeout(Duration::from_millis(50), slow_task).await;
@@ -105,9 +105,9 @@ async fn test_multiple_background_tasks() {
 
     for i in 0..5 {
         let complete_notify = Arc::new(Notify::new());
-        notifiers.push(complete_notify.clone());
+        notifiers.push(Arc::clone(&complete_notify));
 
-        let notify_clone = complete_notify.clone();
+        let notify_clone = Arc::clone(&complete_notify);
         let handle = tokio::spawn(async move {
             tokio::task::yield_now().await;
             notify_clone.notify_one();
@@ -139,9 +139,9 @@ async fn test_background_task_cleanup() {
     use std::sync::Arc;
 
     let cleanup_called = Arc::new(AtomicBool::new(false));
-    let cleanup_called_clone = cleanup_called.clone();
+    let cleanup_called_clone = Arc::clone(&cleanup_called);
     let cleanup_complete = Arc::new(Notify::new());
-    let notify_clone = cleanup_complete.clone();
+    let notify_clone = Arc::clone(&cleanup_complete);
 
     {
         let _guard = tokio::spawn(async move {

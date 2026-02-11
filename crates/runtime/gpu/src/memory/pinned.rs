@@ -56,7 +56,7 @@ impl PinnedMemory {
         let layout = std::alloc::Layout::from_size_align(size, ALIGNMENT)
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {}", e)))?;
 
-        // SAFETY: Layout is valid, size > 0, alignment is power of 2
+        // SAFETY: Layout valid (size>0, ALIGNMENT=64 power-of-2). alloc returns null on OOM.
         let ptr = unsafe { std::alloc::alloc(layout) };
 
         if ptr.is_null() {
@@ -66,7 +66,7 @@ impl PinnedMemory {
             )));
         }
 
-        // SAFETY: We just checked that ptr is not null
+        // SAFETY: ptr non-null (checked above); valid allocation from alloc(layout).
         let ptr = unsafe { NonNull::new_unchecked(ptr) };
 
         tracing::debug!("Allocated {} bytes of pinned memory (aligned to {})", size, ALIGNMENT);
@@ -82,7 +82,7 @@ impl PinnedMemory {
     ///
     /// Zero-copy access to underlying data
     pub fn as_slice(&self) -> &[u8] {
-        // SAFETY: ptr is valid for size bytes, properly aligned, and we have shared ownership
+        // SAFETY: ptr valid for size bytes; u8 align=1; lifetime tied to &self.
         unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.size) }
     }
 
@@ -90,7 +90,7 @@ impl PinnedMemory {
     ///
     /// Zero-copy access to underlying data
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        // SAFETY: ptr is valid for size bytes, properly aligned, and we have exclusive ownership
+        // SAFETY: ptr valid for size bytes; &mut self gives exclusive access.
         unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.size) }
     }
 
@@ -123,7 +123,7 @@ impl Drop for PinnedMemory {
         let layout = std::alloc::Layout::from_size_align(self.size, ALIGNMENT)
             .expect("Layout valid during drop");
 
-        // SAFETY: ptr was allocated with this layout, size > 0
+        // SAFETY: ptr from alloc(layout) in new(); layout matches; Drop runs exactly once.
         unsafe {
             std::alloc::dealloc(self.ptr.as_ptr(), layout);
         }

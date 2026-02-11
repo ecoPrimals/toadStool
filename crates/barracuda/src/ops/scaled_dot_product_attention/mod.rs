@@ -28,7 +28,7 @@
 //! ## Reference
 //!
 //! "Attention is All You Need" (Vaswani et al., 2017)
-//! https://arxiv.org/abs/1706.03762
+//! <https://arxiv.org/abs/1706.03762>
 
 mod compute;
 
@@ -122,17 +122,17 @@ impl ScaledDotProductAttention {
 
     /// Get WGSL shader for attention matrix multiplication (Pass 1)
     pub(super) fn wgsl_shader_matmul() -> &'static str {
-        include_str!("../../shaders/attention_matmul.wgsl")
+        include_str!("../../shaders/math/attention_matmul.wgsl")
     }
 
     /// Get WGSL shader for attention softmax (Pass 2)
     pub(super) fn wgsl_shader_softmax() -> &'static str {
-        include_str!("../../shaders/attention_softmax.wgsl")
+        include_str!("../../shaders/activation/attention_softmax.wgsl")
     }
 
     /// Get WGSL shader for attention apply (Pass 3)
     pub(super) fn wgsl_shader_apply() -> &'static str {
-        include_str!("../../shaders/attention_apply.wgsl")
+        include_str!("../../shaders/attention/attention_apply.wgsl")
     }
 
     /// Get query tensor

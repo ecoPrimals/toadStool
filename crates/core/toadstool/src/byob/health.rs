@@ -1,6 +1,7 @@
 //! Health monitoring for BYOB deployments
 
 use super::byob_types::{HealthCheckConfig, ServiceInstanceStatus, ServiceSpec};
+use toadstool_common::constants::network::DEFAULT_HTTP_PORT;
 use super::deployment::ActiveDeployment;
 use crate::{ToadStoolError, ToadStoolResult};
 use std::collections::HashMap;
@@ -174,7 +175,7 @@ impl HealthMonitor {
         health_check: &HealthCheckConfig,
         deployment: &ActiveDeployment,
     ) -> ToadStoolResult<bool> {
-        let port = health_check.port.unwrap_or(8080);
+        let port = health_check.port.unwrap_or(DEFAULT_HTTP_PORT);
 
         debug!(
             "Performing TCP health check for {} on port {}",

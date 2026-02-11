@@ -2,7 +2,6 @@
 //!
 //! Safe wrappers around evdev input device operations (100% Pure Rust!).
 
-#[allow(unused_imports)]
 use crate::{DisplayError, Result};
 use std::path::{Path, PathBuf};
 

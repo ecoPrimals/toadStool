@@ -90,8 +90,8 @@ pub fn npu_layer_norm(input: &[f32], gamma: &[f32], beta: &[f32], eps: f32) -> R
     // Note: Tensor API uses learned gamma/beta internally, here we use epsilon only
     let normalized_tensor = input_tensor.layer_norm_wgsl(eps)?;
 
-    // Apply scale (gamma) and shift (beta) manually
-    // TODO: Evolve Tensor::layer_norm() to accept gamma/beta parameters
+    // Apply scale (gamma) and shift (beta) manually.
+    // Pending: Evolve Tensor::layer_norm_wgsl() to accept gamma/beta; API change in barracuda.
     let gamma_tensor = futures::executor::block_on(Tensor::from_vec_on(
         gamma.to_vec(),
         vec![n],

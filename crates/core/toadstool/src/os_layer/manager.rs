@@ -196,3 +196,90 @@ impl OSLayerManager {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_os_layer_config_default() {
+        let config = OSLayerConfig::default();
+        assert!(config.enabled);
+        assert!(!config.available_modes.is_empty());
+        assert!(config.available_modes.contains(&"linux".to_string()));
+        assert!(config.available_modes.contains(&"windows".to_string()));
+        assert!(config.available_modes.contains(&"macos".to_string()));
+        assert_eq!(config.max_nesting_depth, 5);
+    }
+
+    #[test]
+    fn test_os_layer_config_default_mode() {
+        let config = OSLayerConfig::default();
+        assert_eq!(config.default_mode, std::env::consts::OS);
+    }
+
+    #[test]
+    fn test_os_layer_config_serialization_roundtrip() {
+        let config = OSLayerConfig {
+            enabled: false,
+            available_modes: vec!["test".to_string()],
+            default_mode: "custom".to_string(),
+            max_nesting_depth: 10,
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: OSLayerConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.enabled, deserialized.enabled);
+        assert_eq!(config.available_modes, deserialized.available_modes);
+        assert_eq!(config.default_mode, deserialized.default_mode);
+        assert_eq!(config.max_nesting_depth, deserialized.max_nesting_depth);
+    }
+
+    #[test]
+    fn test_platform_info_detect() {
+        let info = PlatformInfo::detect();
+        assert!(!info.os.is_empty());
+        assert!(!info.arch.is_empty());
+        assert_eq!(info.version, "unknown");
+        assert_eq!(info.kernel, "unknown");
+        assert!(!info.features.is_empty());
+    }
+
+    #[test]
+    fn test_platform_info_serialization_roundtrip() {
+        let info = PlatformInfo {
+            os: "linux".to_string(),
+            arch: "x86_64".to_string(),
+            version: "1.0".to_string(),
+            kernel: "5.0".to_string(),
+            features: vec!["unix".to_string()],
+        };
+        let json = serde_json::to_string(&info).unwrap();
+        let deserialized: PlatformInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(info.os, deserialized.os);
+        assert_eq!(info.arch, deserialized.arch);
+        assert_eq!(info.features, deserialized.features);
+    }
+
+    #[test]
+    fn test_os_layer_manager_new() {
+        let config = OSLayerConfig::default();
+        let manager = OSLayerManager::new(config.clone());
+        let info = manager.get_platform_info();
+        assert_eq!(info.os, std::env::consts::OS);
+        assert_eq!(info.arch, std::env::consts::ARCH);
+        assert_eq!(info.features, vec![std::env::consts::FAMILY.to_string()]);
+    }
+
+    #[test]
+    fn test_os_layer_manager_custom_config() {
+        let config = OSLayerConfig {
+            enabled: false,
+            available_modes: vec!["custom".to_string()],
+            default_mode: "custom".to_string(),
+            max_nesting_depth: 1,
+        };
+        let manager = OSLayerManager::new(config);
+        let info = manager.get_platform_info();
+        assert!(!info.os.is_empty());
+    }
+}

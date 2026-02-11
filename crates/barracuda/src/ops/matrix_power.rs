@@ -6,6 +6,7 @@
 //! - Self-knowledge: Validates square matrix
 //! - Modern idiomatic Rust: Result<T, E>
 
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::ops::matmul::MatMul;
 use crate::tensor::Tensor;
@@ -47,7 +48,7 @@ impl MatrixPower {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/matrix_power.wgsl")
+        include_str!("../shaders/math/matrix_power.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -174,18 +175,19 @@ impl MatrixPower {
                 pass.set_pipeline(&pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
 
-                let workgroups = (size as u32).div_ceil(16);
-                pass.dispatch_workgroups(workgroups, workgroups, 1);
+                // Dispatch using standard 2D shader workgroup size (16, 16)
+                let caps = DeviceCapabilities::from_device(device);
+                let (workgroups_x, workgroups_y) = caps.dispatch_2d(size as u32, size as u32);
+                pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
             }
 
             device.queue.submit(Some(encoder.finish()));
 
             let output_shape = shape.to_vec();
-            return Ok(Tensor::from_buffer(
-                identity_buffer,
-                output_shape,
-                device.clone(),
-            ));
+            let output_elem_count = output_shape.iter().product::<usize>();
+            let output_data =
+                crate::utils::read_buffer(device, &identity_buffer, output_elem_count)?;
+            return Ok(Tensor::new(output_data, output_shape, device.clone()));
         }
 
         if self.power == 1 {
@@ -193,23 +195,20 @@ impl MatrixPower {
         }
 
         // Exponentiation by squaring: M^n
-        let mut result = self.input;
-        let mut power = self.power as u32;
-        let mut base = result.clone();
+        // result = I, base = M; while n>0: if n odd then result *= base; base *= base; n /= 2
+        let mut n = self.power as u32;
+        let mut base = self.input.clone();
+        let identity_data: Vec<f32> = (0..matrix_size)
+            .map(|i| if i % (size + 1) == 0 { 1.0 } else { 0.0 })
+            .collect();
+        let mut result = Tensor::from_data(&identity_data, shape.to_vec(), device.clone())?;
 
-        while power > 1 {
-            if power % 2 == 1 {
-                // Odd power: multiply result by base
+        while n > 0 {
+            if n % 2 == 1 {
                 result = MatMul::new(result, base.clone()).execute()?;
             }
-            // Square the base
             base = MatMul::new(base.clone(), base.clone()).execute()?;
-            power /= 2;
-        }
-
-        // Final multiplication if needed
-        if power == 1 {
-            result = MatMul::new(result, base).execute()?;
+            n /= 2;
         }
 
         Ok(result)
@@ -219,11 +218,13 @@ impl MatrixPower {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_matrix_power_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let matrix = Tensor::from_vec_on(vec![2.0, 0.0, 0.0, 2.0], vec![2, 2], device.clone())
             .await
             .unwrap();
@@ -237,7 +238,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_matrix_power_zero() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let matrix = Tensor::from_vec_on(vec![5.0, 3.0, 2.0, 1.0], vec![2, 2], device.clone())
             .await
             .unwrap();
@@ -252,7 +255,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_matrix_power_one() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let matrix = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], device.clone())
             .await
             .unwrap();

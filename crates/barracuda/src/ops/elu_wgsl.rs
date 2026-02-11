@@ -26,7 +26,7 @@ impl ELU {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/elu.wgsl")
+        include_str!("../shaders/activation/elu.wgsl")
     }
 
     /// Execute the elu operation

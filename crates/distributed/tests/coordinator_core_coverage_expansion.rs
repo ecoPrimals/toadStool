@@ -91,7 +91,7 @@ async fn test_coordinator_creation_detects_capabilities() {
     // Coordinator should have detected capabilities
     // We verify this indirectly by checking it doesn't panic on start
     let coordinator = Arc::new(coordinator);
-    let result = coordinator.clone().start().await;
+    let result = Arc::clone(&coordinator).start().await;
 
     assert!(
         result.is_ok(),
@@ -123,7 +123,7 @@ async fn test_concurrent_coordinator_creation() {
     let barrier = Arc::new(Barrier::new(5));
     let handles: Vec<_> = (0..5)
         .map(|i| {
-            let b = barrier.clone();
+            let b = Arc::clone(&barrier);
             tokio::spawn(async move {
                 b.wait().await; // All start simultaneously
                 let config = create_test_config();
@@ -198,7 +198,7 @@ async fn test_concurrent_execution_submissions() {
 
     let handles: Vec<_> = (0..10)
         .map(|i| {
-            let coord = coordinator.clone();
+            let coord = Arc::clone(&coordinator);
             tokio::spawn(async move {
                 let request = create_test_execution_request();
                 let result = coord.submit_execution(request).await;
@@ -226,7 +226,7 @@ async fn test_coordinator_start_succeeds() {
             .expect("Should create coordinator"),
     );
 
-    let result = coordinator.clone().start().await;
+    let result = Arc::clone(&coordinator).start().await;
 
     assert!(result.is_ok(), "Coordinator start should succeed");
 }
@@ -245,7 +245,7 @@ async fn test_coordinator_start_after_execution_submission() {
 
     // Then start coordinator
     let coordinator = Arc::new(coordinator);
-    let start_result = coordinator.clone().start().await;
+    let start_result = Arc::clone(&coordinator).start().await;
     assert!(start_result.is_ok(), "Should start after submission");
 }
 
@@ -366,7 +366,10 @@ async fn test_full_coordinator_lifecycle() {
 
     // Start
     let coordinator = Arc::new(coordinator);
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 
     // Submit after start (should also work)
     let request2 = create_test_execution_request();
@@ -387,12 +390,15 @@ async fn test_coordinator_under_load() {
             .expect("Should create coordinator"),
     );
 
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 
     // Submit 50 executions concurrently
     let handles: Vec<_> = (0..50)
         .map(|_| {
-            let coord = coordinator.clone();
+            let coord = Arc::clone(&coordinator);
             tokio::spawn(async move {
                 let request = create_test_execution_request();
                 coord.submit_execution(request).await

@@ -305,15 +305,18 @@ impl SecurityProvider for BearDogSecurityProvider {
     }
 
     async fn health_check(&self) -> ToadStoolResult<ProviderHealth> {
-        let client_lock = self.client.read().await;
+        let client_opt = self.client.read().await;
+        let client = match client_opt.as_ref() {
+            Some(c) => Arc::clone(c),
+            None => return Ok(ProviderHealth::Unhealthy),
+        };
+        drop(client_opt);
 
-        match &*client_lock {
-            Some(_client) => {
-                // TODO: Check if client is responsive once health_check is available
-                // For now, assume healthy if we have a client
-                Ok(ProviderHealth::Healthy)
-            }
-            None => Ok(ProviderHealth::Unhealthy),
+        // Call BearDog health_check to verify client is responsive
+        match client.health_check().await {
+            Ok(endpoints) if !endpoints.is_empty() => Ok(ProviderHealth::Healthy),
+            Ok(_) => Ok(ProviderHealth::Degraded),
+            Err(_) => Ok(ProviderHealth::Unhealthy),
         }
     }
 }

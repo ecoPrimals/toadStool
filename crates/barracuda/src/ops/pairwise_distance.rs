@@ -58,7 +58,7 @@ impl PairwiseDistance {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/pairwise_distance.wgsl")
+        include_str!("../shaders/math/pairwise_distance.wgsl")
     }
 
     /// Execute the pairwise distance operation
@@ -229,12 +229,13 @@ impl PairwiseDistance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_pairwise_distance_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let num_pairs = 3;
         let dim = 2;
 

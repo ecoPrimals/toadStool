@@ -51,6 +51,7 @@ semver = { version = "1.0.27", features = ["serde"] }
 [dev-dependencies]
 tokio-test = { workspace = true }
 tokio = { workspace = true }
+proptest = { workspace = true }
 
 [features]
 default = [] 

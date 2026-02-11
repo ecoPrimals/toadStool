@@ -62,23 +62,29 @@ pub struct ServerState {
 
 /// JSON-RPC 2.0 request
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)] // Fields used via serde deserialization
 struct JsonRpcRequest {
+    /// Protocol version (must be "2.0")
     jsonrpc: String,
+    /// Method name (e.g., "daemon.health")
     method: String,
+    /// Request parameters (deserialized from JSON)
     params: Value,
+    /// Request ID for matching request/response
     id: Option<Value>,
 }
 
 /// JSON-RPC 2.0 response
 #[derive(Debug, Serialize)]
-#[allow(dead_code)] // Fields used via serde serialization
 struct JsonRpcResponse {
+    /// Protocol version ("2.0")
     jsonrpc: String,
+    /// Success result (present on success, omitted on error)
     #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<Value>,
+    /// Error object (present on failure, omitted on success)
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<JsonRpcError>,
+    /// Request ID from original request
     id: Option<Value>,
 }
 
@@ -91,19 +97,9 @@ struct JsonRpcError {
     data: Option<Value>,
 }
 
-/// Error codes (JSON-RPC 2.0 standard + custom)
-#[allow(dead_code)]
+/// Error codes -- re-exported from shared ecosystem constants
 mod error_codes {
-    pub const PARSE_ERROR: i32 = -32700;
-    pub const INVALID_REQUEST: i32 = -32600;
-    pub const METHOD_NOT_FOUND: i32 = -32601;
-    pub const INVALID_PARAMS: i32 = -32602;
-    pub const INTERNAL_ERROR: i32 = -32603;
-
-    // Custom error codes (application-specific)
-    pub const WORKLOAD_NOT_FOUND: i32 = -32000;
-    pub const WORKLOAD_SUBMIT_FAILED: i32 = -32001;
-    pub const WORKLOAD_DELETE_FAILED: i32 = -32002;
+    pub use toadstool_common::constants::jsonrpc::error_codes::*;
 }
 
 /// Start JSON-RPC API server over Unix socket
@@ -179,10 +175,10 @@ async fn handle_connection(stream: UnixStream, state: ServerState) -> anyhow::Re
             break;
         }
 
-        let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
+        let response = match serde_json::from_slice::<JsonRpcRequest>(line.as_bytes()) {
             Ok(request) => handle_request(request, &state).await,
             Err(e) => JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
+                jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
                 result: None,
                 error: Some(JsonRpcError {
                     code: error_codes::PARSE_ERROR,
@@ -205,6 +201,20 @@ async fn handle_connection(stream: UnixStream, state: ServerState) -> anyhow::Re
 
 /// Handle JSON-RPC request
 async fn handle_request(request: JsonRpcRequest, state: &ServerState) -> JsonRpcResponse {
+    // Validate JSON-RPC version
+    if request.jsonrpc != toadstool_common::constants::jsonrpc::VERSION {
+        return JsonRpcResponse {
+            jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
+            result: None,
+            error: Some(JsonRpcError {
+                code: error_codes::INVALID_REQUEST,
+                message: "Invalid JSON-RPC version (must be \"2.0\")".to_string(),
+                data: None,
+            }),
+            id: request.id,
+        };
+    }
+
     let result = match request.method.as_str() {
         "daemon.health" => handle_health(state).await,
         "daemon.metrics" => handle_metrics(state).await,
@@ -221,13 +231,13 @@ async fn handle_request(request: JsonRpcRequest, state: &ServerState) -> JsonRpc
 
     match result {
         Ok(value) => JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
             result: Some(value),
             error: None,
             id: request.id,
         },
         Err(error) => JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
             result: None,
             error: Some(error),
             id: request.id,
@@ -381,7 +391,7 @@ mod tests {
     #[test]
     fn test_jsonrpc_response_serialization() {
         let response = JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
             result: Some(json!({"status": "ok"})),
             error: None,
             id: Some(json!(1)),

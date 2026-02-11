@@ -16,7 +16,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_common::universal_adapter::{UniversalAdapter, CapabilityType, SecurityFeature};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {

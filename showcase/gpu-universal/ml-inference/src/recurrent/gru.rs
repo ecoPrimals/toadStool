@@ -45,8 +45,8 @@ impl GRUCell {
     /// * `hidden` - Previous hidden state [batch, d_hidden]
     /// * `w_ih` - Input-hidden weights [d_input, 3*d_hidden] (concat: r,z,n)
     /// * `w_hh` - Hidden-hidden weights [d_hidden, 3*d_hidden] (concat: r,z,n)
-    /// * `b_ih` - Input-hidden bias [3*d_hidden]
-    /// * `b_hh` - Hidden-hidden bias [3*d_hidden]
+    /// * `b_ih` - Input-hidden bias `3*d_hidden`
+    /// * `b_hh` - Hidden-hidden bias `3*d_hidden`
     /// * `batch` - Batch size
     ///
     /// # Returns
@@ -228,7 +228,7 @@ mod tests {
                 let b_ih = vec![0.0f32; (4 * 8) as usize];
                 let b_hh = vec![0.0f32; (4 * 8) as usize];
 
-                let result = lstm
+                let result: Result<(Vec<f32>, Vec<f32>)> = lstm
                     .forward(&input, &hidden, &cell, &w_ih, &w_hh, &b_ih, &b_hh, batch)
                     .await;
                 assert!(result.is_ok(), "LSTM forward pass failed");

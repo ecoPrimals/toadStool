@@ -2,6 +2,8 @@
 //!
 //! This module provides macOS-specific sandboxing functionality using
 //! macOS sandbox profiles and system security features.
+//!
+//! Requires `macos-sandbox` feature to enable Core Foundation bindings.
 
 use crate::{SandboxConfig, SandboxError, SandboxResult};
 use std::path::Path;

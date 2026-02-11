@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)] // expect() is idiomatic in tests
 //! Week 3 Integration Scenario Tests - Simplified
 //! Cross-module integration testing focusing on coordinator and config integration
 
@@ -38,7 +39,7 @@ async fn test_coordinator_can_start() {
     let coordinator = create_test_coordinator().await;
 
     // Start the coordinator
-    let start_result = coordinator.clone().start().await;
+    let start_result = Arc::clone(&coordinator).start().await;
 
     assert!(
         start_result.is_ok(),
@@ -52,10 +53,10 @@ async fn test_coordinator_start_is_idempotent() {
     let coordinator = create_test_coordinator().await;
 
     // Start twice - should be safe
-    let first_start = coordinator.clone().start().await;
+    let first_start = Arc::clone(&coordinator).start().await;
     assert!(first_start.is_ok(), "First start should succeed");
 
-    let second_start = coordinator.clone().start().await;
+    let second_start = Arc::clone(&coordinator).start().await;
     assert!(second_start.is_ok(), "Second start should be safe");
 }
 
@@ -67,9 +68,9 @@ async fn test_multiple_coordinators_can_coexist() {
     let coord3 = create_test_coordinator().await;
 
     // All should start successfully
-    assert!(coord1.clone().start().await.is_ok());
-    assert!(coord2.clone().start().await.is_ok());
-    assert!(coord3.clone().start().await.is_ok());
+    assert!(Arc::clone(&coord1).start().await.is_ok());
+    assert!(Arc::clone(&coord2).start().await.is_ok());
+    assert!(Arc::clone(&coord3).start().await.is_ok());
 }
 
 #[tokio::test]
@@ -77,7 +78,7 @@ async fn test_coordinator_survives_multiple_clones() {
     let coordinator = create_test_coordinator().await;
 
     // Create multiple clones
-    let clones: Vec<_> = (0..10).map(|_| coordinator.clone()).collect();
+    let clones: Vec<_> = (0..10).map(|_| Arc::clone(&coordinator)).collect();
 
     // All clones should be valid
     assert_eq!(clones.len(), 10);
@@ -192,7 +193,7 @@ async fn test_concurrent_coordinator_starts() {
     let mut handles = vec![];
 
     for _ in 0..5 {
-        let coord = coordinator.clone();
+        let coord = Arc::clone(&coordinator);
         let handle = tokio::spawn(async move { coord.start().await });
         handles.push(handle);
     }
@@ -281,8 +282,8 @@ async fn test_arc_coordinator_sharing() {
     let initial_count = Arc::strong_count(&coordinator);
 
     // Create clones
-    let clone1 = coordinator.clone();
-    let clone2 = coordinator.clone();
+    let clone1 = Arc::clone(&coordinator);
+    let clone2 = Arc::clone(&coordinator);
 
     // Reference count should increase
     assert_eq!(Arc::strong_count(&coordinator), initial_count + 2);
@@ -300,12 +301,12 @@ async fn test_coordinator_shared_across_tasks() {
     let coordinator = create_test_coordinator().await;
 
     // Share across tasks
-    let coord1 = coordinator.clone();
-    let coord2 = coordinator.clone();
+    let coord1 = Arc::clone(&coordinator);
+    let coord2 = Arc::clone(&coordinator);
 
-    let task1 = tokio::spawn(async move { coord1.clone().start().await });
+    let task1 = tokio::spawn(async move { Arc::clone(&coord1).start().await });
 
-    let task2 = tokio::spawn(async move { coord2.clone().start().await });
+    let task2 = tokio::spawn(async move { Arc::clone(&coord2).start().await });
 
     // Both should succeed
     let (result1, result2) = tokio::join!(task1, task2);
@@ -325,11 +326,11 @@ async fn test_full_coordinator_lifecycle() {
     assert!(Arc::strong_count(&coordinator) >= 1, "Should be created");
 
     // 2. Start coordinator (simulates background services)
-    let start_result = coordinator.clone().start().await;
+    let start_result = Arc::clone(&coordinator).start().await;
     assert!(start_result.is_ok(), "Should start successfully");
 
     // 3. Use coordinator (simulates operations)
-    let _clone_for_use = coordinator.clone();
+    let _clone_for_use = Arc::clone(&coordinator);
     assert!(Arc::strong_count(&coordinator) >= 2, "Should be shareable");
 
     // 4. Coordinator goes out of scope (simulates shutdown)
@@ -342,14 +343,14 @@ async fn test_sequential_coordinator_operations() {
     let coordinator = create_test_coordinator().await;
 
     // Operation 1: Start
-    assert!(coordinator.clone().start().await.is_ok());
+    assert!(Arc::clone(&coordinator).start().await.is_ok());
 
     // Operation 2: Clone
-    let _clone1 = coordinator.clone();
-    let _clone2 = coordinator.clone();
+    let _clone1 = Arc::clone(&coordinator);
+    let _clone2 = Arc::clone(&coordinator);
 
     // Operation 3: Start again (idempotent)
-    assert!(coordinator.clone().start().await.is_ok());
+    assert!(Arc::clone(&coordinator).start().await.is_ok());
 }
 
 #[tokio::test]
@@ -357,9 +358,9 @@ async fn test_parallel_coordinator_operations() {
     let coordinator = create_test_coordinator().await;
 
     // Perform multiple operations in parallel
-    let coord1 = coordinator.clone();
-    let coord2 = coordinator.clone();
-    let coord3 = coordinator.clone();
+    let coord1 = Arc::clone(&coordinator);
+    let coord2 = Arc::clone(&coordinator);
+    let coord3 = Arc::clone(&coordinator);
 
     let (r1, r2, r3) = tokio::join!(coord1.start(), coord2.start(), async {
         coord3.start().await

@@ -35,7 +35,7 @@ impl ReflectionPad2D {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/reflection_pad.wgsl")
+        include_str!("../shaders/tensor/reflection_pad.wgsl")
     }
 
     /// Execute the reflection pad 2D operation
@@ -215,14 +215,13 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_reflection_pad2d_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else { return };
         let input = Tensor::new(vec![1.0, 2.0, 3.0, 4.0], vec![1, 1, 2, 2], device.clone());
         let output = input.reflection_pad2d((1, 1, 1, 1)).unwrap();
         assert_eq!(output.shape(), &[1, 1, 4, 4]);
@@ -230,8 +229,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reflection_pad2d_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else { return };
         // No padding
         let input = Tensor::new(vec![1.0; 1 * 1 * 4 * 4], vec![1, 1, 4, 4], device.clone());
         let output = input.reflection_pad2d((0, 0, 0, 0)).unwrap();
@@ -245,8 +243,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reflection_pad2d_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else { return };
         // Large padding
         let input = Tensor::new(vec![1.0; 1 * 3 * 4 * 4], vec![1, 3, 4, 4], device.clone());
         let output = input.reflection_pad2d((2, 2, 2, 2)).unwrap();
@@ -260,8 +257,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reflection_pad2d_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else { return };
         // Batch size 4, multiple channels
         let batch_size = 4;
         let channels = 3;

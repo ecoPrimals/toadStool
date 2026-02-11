@@ -31,7 +31,7 @@ impl GroupNorm {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/group_norm.wgsl")
+        include_str!("../shaders/norm/group_norm.wgsl")
     }
 
     /// Execute the group normalization operation
@@ -211,15 +211,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_group_norm_simple() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 1 batch, 4 channels, 1x1 spatial, 2 groups
         let data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::new(data, vec![1, 4, 1, 1], device.clone());
@@ -237,8 +237,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_group_norm_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 2 batches, 2 channels, 1x1 spatial, 1 group
         let data = vec![
             1.0, 2.0, // batch 0

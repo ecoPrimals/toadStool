@@ -97,7 +97,13 @@ pub mod auto_tensor;
 pub mod benchmarks;
 pub mod cpu_executor;
 pub mod gpu_executor;
+pub mod linalg;
+pub mod numerical;
+pub mod optimize;
+pub mod sample;
 pub mod scheduler;
+pub mod special;
+pub mod surrogate;
 pub mod unified_hardware;
 pub mod unified_math;
 

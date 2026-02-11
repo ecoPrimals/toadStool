@@ -26,7 +26,7 @@ impl Tan {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/tan.wgsl")
+        include_str!("../shaders/math/tan.wgsl")
     }
 
     /// Execute the tan operation

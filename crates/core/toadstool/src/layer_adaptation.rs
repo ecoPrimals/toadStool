@@ -335,7 +335,11 @@ impl LayerCapabilityAdapter {
             compute: ComputeCapabilities {
                 gpu_access: GpuAccess::Direct,
                 has_cpu: true,
-                cpu_cores: Some(num_cpus::get()),
+                cpu_cores: Some(
+                    std::thread::available_parallelism()
+                        .map(|n| n.get())
+                        .unwrap_or(4),
+                ),
                 memory_bytes: Self::get_total_memory(),
                 supports_tensor_ops: true,
                 supports_nn_training: true,
@@ -368,7 +372,11 @@ impl LayerCapabilityAdapter {
             compute: ComputeCapabilities {
                 gpu_access: GpuAccess::ViaHost,
                 has_cpu: true,
-                cpu_cores: Some(num_cpus::get()),
+                cpu_cores: Some(
+                    std::thread::available_parallelism()
+                        .map(|n| n.get())
+                        .unwrap_or(4),
+                ),
                 memory_bytes: Self::get_total_memory(),
                 supports_tensor_ops: true,
                 supports_nn_training: true,
@@ -403,7 +411,11 @@ impl LayerCapabilityAdapter {
             compute: ComputeCapabilities {
                 gpu_access: GpuAccess::Direct,
                 has_cpu: true,
-                cpu_cores: Some(num_cpus::get()),
+                cpu_cores: Some(
+                    std::thread::available_parallelism()
+                        .map(|n| n.get())
+                        .unwrap_or(4),
+                ),
                 memory_bytes: Self::get_total_memory(),
                 supports_tensor_ops: true,
                 supports_nn_training: true,
@@ -436,7 +448,11 @@ impl LayerCapabilityAdapter {
             compute: ComputeCapabilities {
                 gpu_access: GpuAccess::ViaHost, // Can be Direct with nvidia-container-runtime
                 has_cpu: true,
-                cpu_cores: Some(num_cpus::get()), // May be limited by cgroups
+                cpu_cores: Some(
+                    std::thread::available_parallelism()
+                        .map(|n| n.get())
+                        .unwrap_or(4),
+                ), // May be limited by cgroups
                 memory_bytes: Self::get_total_memory(), // May be limited by cgroups
                 supports_tensor_ops: true,
                 supports_nn_training: true,
@@ -473,7 +489,11 @@ impl LayerCapabilityAdapter {
                     GpuAccess::None
                 },
                 has_cpu: true,
-                cpu_cores: Some(num_cpus::get()),
+                cpu_cores: Some(
+                    std::thread::available_parallelism()
+                        .map(|n| n.get())
+                        .unwrap_or(4),
+                ),
                 memory_bytes: Self::get_total_memory(),
                 supports_tensor_ops: gpu_passthrough,
                 supports_nn_training: gpu_passthrough,
@@ -522,7 +542,11 @@ impl LayerCapabilityAdapter {
             compute: ComputeCapabilities {
                 gpu_access: GpuAccess::ViaCloud,
                 has_cpu: true,
-                cpu_cores: Some(num_cpus::get()),
+                cpu_cores: Some(
+                    std::thread::available_parallelism()
+                        .map(|n| n.get())
+                        .unwrap_or(4),
+                ),
                 memory_bytes: Self::get_total_memory(),
                 supports_tensor_ops: true, // Cloud GPUs support this
                 supports_nn_training: true,

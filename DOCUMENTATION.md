@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 9, 2026
+**Last Updated**: February 11, 2026
 
 ---
 
@@ -12,8 +12,10 @@
 | See current status | [STATUS.md](STATUS.md) |
 | Quick one-page summary | [QUICK_STATUS.md](QUICK_STATUS.md) |
 | Commands and API reference | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
+| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-26-total) |
 | Try GPU operations | [docs/guides/QUICK_START_GPU.md](docs/guides/QUICK_START_GPU.md) |
 | Learn FHE | [docs/guides/QUICK_START_ENCRYPTION.md](docs/guides/QUICK_START_ENCRYPTION.md) |
+| Use scientific computing | [docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md](docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md) |
 | Run tests | [docs/guides/TESTING.md](docs/guides/TESTING.md) |
 | Deploy NPU drivers | [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md) |
 | Understand NPU driver design | [specs/NPU_DRIVER_ARCHITECTURE.md](specs/NPU_DRIVER_ARCHITECTURE.md) |
@@ -21,65 +23,76 @@
 
 ---
 
-## Latest: Distributed GPU Compute (February 9, 2026)
+## Current State (February 11, 2026)
 
-Cross-vendor, cross-machine distributed compute validated in production:
+- **0 clippy warnings** (down from 453)
+- **15,490+ tests passing**, 0 failing, 156 ignored
+- **414 WGSL shaders** (up from 401 -- Bessel, eigh, linsolve, spherical harmonics, PRNG, sparse matvec, LOO-CV)
+- **Scientific middleware** (6 modules: linalg, numerical, special, optimize, surrogate, sample -- 85 tests, 0 unsafe)
+- **17 WorkloadHint variants** with auto-routing (GPU, NPU, CPU) and user preference override
+- **26 JSON-RPC methods** across 6 domains (toadstool, compute, gpu, ollama, gate, resources)
+- GPU job queue with cross-gate routing
+- NPU detection: `/dev/akida*` and IOMMU/VFIO sysfs scan for BrainChip 0x1e7c
+- Ollama model lifecycle management
+- Shared error tracking across all server transports
+- 100% `unsafe` block documentation (35 blocks, all with `// SAFETY:`)
+- Zero production `todo!()`, zero production mocks
+- Cross-vendor distributed GPU compute validated (NVIDIA + AMD, bit-identical)
+- 39.85 tok/s distributed LLM inference with encrypted tensor transport
 
-- **Bit-identical results** on NVIDIA RTX 4070, NVIDIA RTX 3090, AMD RX 6950 XT
-- **39.85 tok/s** pipeline-parallel LLM inference across LAN
-- **BearDog-encrypted** tensor transport (ChaCha20-Poly1305)
-- Single binary, zero vendor SDK
+### Test Coverage
 
-See [docs/sessions/feb-9-2026/DISTRIBUTED_GPU_COMPUTE_HANDOFF.md](docs/sessions/feb-9-2026/DISTRIBUTED_GPU_COMPUTE_HANDOFF.md) for the full handoff document.
+| Crate | Line Coverage |
+|-------|-------------|
+| `toadstool-server` | 81% |
+| `toadstool-common` | 81% |
+| `toadstool-config` | 83% |
 
 ---
 
 ## Core Documentation
 
-**[README.md](README.md)** -- Project overview, architecture, honest status, evolution roadmap.
+**[README.md](README.md)** -- Project overview, architecture, quality gates, evolution roadmap.
 
-**[STATUS.md](STATUS.md)** -- Detailed technical status: build, shader coverage, hardware interface, scientific computing, evolution gaps, deep debt.
-
-**[CHANGELOG.md](CHANGELOG.md)** -- Version history with all major sessions documented.
-
----
-
-## Quick Start Guides
-
-**[docs/guides/QUICK_START_GPU.md](docs/guides/QUICK_START_GPU.md)** -- GPU operations: matrix multiplication, transformer attention, object detection.
-
-**[docs/guides/QUICK_START_ENCRYPTION.md](docs/guides/QUICK_START_ENCRYPTION.md)** -- Fully Homomorphic Encryption: NTT/INTT, GPU acceleration (21.1x speedup).
-
-**[docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)** -- NPU driver deployment: kernel vs userspace backends, systemd install, multi-tenant setup.
+**[STATUS.md](STATUS.md)** -- Detailed technical status: quality gates, new features, code quality evolution, shader coverage, evolution gaps, deep debt.
 
 ---
 
 ## Architecture and Specs
 
-**[specs/NPU_DRIVER_ARCHITECTURE.md](specs/NPU_DRIVER_ARCHITECTURE.md)** -- Dual-backend NPU driver: kernel (DMA, interrupts) and userspace (mmap, polling). Runtime capability discovery.
+**[specs/](specs/)** -- Technical specifications for compute, crypto, display, fractal composition, and more.
 
-**[specs/MULTITENANT_COMPUTE_ARCHITECTURE.md](specs/MULTITENANT_COMPUTE_ARCHITECTURE.md)** -- Multi-tenant design: owner vs tenant access, sandboxing via userspace drivers, resource isolation.
+**[docs/architecture/](docs/architecture/)** -- Design documents, ADRs, migration patterns.
 
-**[docs/architecture/](docs/architecture/)** -- GPU strategy, daemon evolution, CPU ops, hardware discovery, migration patterns.
-
----
-
-## Testing
-
-**[docs/guides/TESTING.md](docs/guides/TESTING.md)** -- Testing strategy: unit, integration, property-based, fault, chaos testing. FHE suite at 79% coverage.
+**[docs/architecture/adrs/](docs/architecture/adrs/)** -- Architecture Decision Records (WGPU, feature gates, NTT, capability discovery).
 
 ---
 
-## Session Archives
+## Guides
 
-Session documentation is organized by date under `docs/sessions/`:
+**[docs/guides/TESTING.md](docs/guides/TESTING.md)** -- Testing strategy: unit, integration, property-based, fault, chaos testing.
 
-| Date | Key Topic |
-|------|-----------|
-| [feb-9-2026](docs/sessions/feb-9-2026/) | Distributed GPU compute, cross-vendor validation |
-| [feb-8-2026](docs/sessions/feb-8-2026/) | ToadStool pure Rust, NPU drivers, RBF scientific computing, hardware wiring |
+**[docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)** -- NPU driver deployment.
 
-Older sessions archived in `docs/archive/`.
+**[docs/guides/BARRACUDA_V2_QUICKSTART.md](docs/guides/BARRACUDA_V2_QUICKSTART.md)** -- BarraCUDA quick start.
+
+---
+
+## Scientific Middleware
+
+**[docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md](docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md)** -- Comprehensive implementation guide: all 5 modules, functions, tests, algorithms, design principles.
+
+**[docs/PHASE1_COMPLETION_REPORT.md](docs/PHASE1_COMPLETION_REPORT.md)** -- Validation report: test results, metrics, deep debt compliance, architecture.
+
+**[docs/MIDDLEWARE_COMPLETION_SUMMARY.md](docs/MIDDLEWARE_COMPLETION_SUMMARY.md)** -- Technical summary: deliverables, design decisions, capabilities.
+
+**[DEEP_DEBT_STATUS.md](DEEP_DEBT_STATUS.md)** -- Deep debt compliance verification (modern Rust, zero unsafe, pure dependencies).
+
+---
+
+## Audits
+
+**[docs/audits/](docs/audits/)** -- Dependency audits, unsafe code audits, deep debt audits.
 
 ---
 
@@ -87,7 +100,9 @@ Older sessions archived in `docs/archive/`.
 
 **ML/AI Engineers**: [README.md](README.md) then [docs/guides/QUICK_START_GPU.md](docs/guides/QUICK_START_GPU.md)
 
-**System Architects**: [STATUS.md](STATUS.md) then [specs/NPU_DRIVER_ARCHITECTURE.md](specs/NPU_DRIVER_ARCHITECTURE.md)
+**Computational Scientists**: [docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md](docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md) then [QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api)
+
+**System Architects**: [STATUS.md](STATUS.md) then [specs/](specs/)
 
 **DevOps Engineers**: [QUICK_REFERENCE.md](QUICK_REFERENCE.md) then [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)
 
@@ -103,24 +118,15 @@ STATUS.md                  -- Detailed technical status
 DOCUMENTATION.md           -- This file (navigation hub)
 QUICK_STATUS.md            -- One-page summary
 QUICK_REFERENCE.md         -- Commands and API reference
-CHANGELOG.md               -- Version history
-docs/guides/
-  QUICK_START_GPU.md         -- GPU quick start
-  QUICK_START_ENCRYPTION.md  -- FHE quick start
-  TESTING.md                 -- Testing guide
-
 docs/
-  sessions/                -- Session archives by date
-  architecture/            -- Design documents
-  planning/                -- Roadmaps
-  guides/                  -- Deployment guides
-  reference/               -- API reference
-  archive/                 -- Historical documentation
-  audits/                  -- Security audits
-
+  guides/                  -- Deployment and usage guides
+  architecture/            -- Design documents and ADRs
+  planning/                -- Roadmaps and evolution plans
+  reference/               -- API reference, constants
+  audits/                  -- Security and quality audits
 specs/                     -- Technical specifications
 ```
 
 ---
 
-**Last Updated**: February 9, 2026
+**Last Updated**: February 11, 2026

@@ -67,7 +67,7 @@ impl SSIM {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/ssim.wgsl")
+        include_str!("../shaders/misc/ssim.wgsl")
     }
 
     /// Execute the SSIM operation
@@ -271,14 +271,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_ssim_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let image1 = Tensor::new(vec![0.5; 64 * 64], vec![64, 64], device.clone());
         let image2 = Tensor::new(vec![0.5; 64 * 64], vec![64, 64], device.clone());
         let similarity = image1.ssim(image2, 11, 0.01, 0.03).unwrap();
@@ -288,8 +289,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_ssim_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Small image
         let image1 = Tensor::new(vec![0.5; 16 * 16], vec![16, 16], device.clone());
         let image2 = Tensor::new(vec![0.5; 16 * 16], vec![16, 16], device.clone());

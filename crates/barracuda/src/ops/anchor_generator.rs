@@ -52,7 +52,7 @@ impl AnchorGenerator {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/anchor_generator.wgsl")
+        include_str!("../shaders/detection/anchor_generator.wgsl")
     }
 
     /// Execute the anchor generator operation
@@ -256,14 +256,15 @@ mod tests {
     use super::*;
     // No longer needed - using Tensor method API
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_anchor_generator_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let op = AnchorGenerator::new(
             4,
             4,
@@ -279,25 +280,29 @@ mod tests {
 
     #[tokio::test]
     async fn test_anchor_generator_edge_cases() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
 
         // Single feature map location
         let op1 = AnchorGenerator::new(1, 1, 8, vec![16.0], vec![1.0], device.clone()).unwrap();
         let result1 = op1.execute().unwrap();
         let anchors1 = result1.to_vec().unwrap();
-        assert_eq!(anchors1.len(), 1 * 1 * 1 * 1 * 4); // 4 coordinates
+        assert_eq!(anchors1.len(), 4); // 4 coordinates
         assert!(anchors1.iter().all(|&x| x.is_finite()));
 
         // Test with single aspect ratio
         let op2 = AnchorGenerator::new(2, 2, 16, vec![32.0], vec![1.0], device.clone()).unwrap();
         let result2 = op2.execute().unwrap();
         let anchors2 = result2.to_vec().unwrap();
-        assert_eq!(anchors2.len(), 2 * 2 * 1 * 1 * 4);
+        assert_eq!(anchors2.len(), 2 * 2 * 4);
     }
 
     #[tokio::test]
     async fn test_anchor_generator_boundary() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
 
         // Test with different strides
         let op1 = AnchorGenerator::new(3, 3, 8, vec![16.0], vec![1.0], device.clone()).unwrap();
@@ -319,7 +324,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_anchor_generator_large_batch() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
 
         // Large feature map with multiple scales and ratios
         let feature_h = 16;
@@ -348,7 +355,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_anchor_generator_precision() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
 
         // Test with known values - single anchor at (0,0)
         let op = AnchorGenerator::new(1, 1, 16, vec![32.0], vec![1.0], device.clone()).unwrap();

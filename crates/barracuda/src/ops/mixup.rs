@@ -41,7 +41,7 @@ impl Mixup {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/mixup.wgsl")
+        include_str!("../shaders/augmentation/mixup.wgsl")
     }
 
     /// Execute Mixup on tensor
@@ -202,12 +202,13 @@ impl Mixup {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_mixup_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 4;
         let feature_size = 3;
 

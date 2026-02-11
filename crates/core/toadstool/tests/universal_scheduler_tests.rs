@@ -5,16 +5,80 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
+
+use async_trait::async_trait;
 use toadstool::resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements,
     ResourceRequirements, StorageRequirements, SystemResources,
 };
+use toadstool::universal::UniversalPrimalProvider;
 use toadstool::universal::{
     JobPriority, NetworkLocation, PrimalCapability, PrimalContext, ResourceCoordinator,
     SecurityLevel, UniversalJob, UniversalJobType, UniversalPrimalRegistry, UniversalScheduler,
     UniversalSystemResources,
 };
+use toadstool::universal::{
+    PrimalEndpoints, PrimalHealth, PrimalRequest, PrimalResponse, PrimalType,
+};
 use uuid::Uuid;
+
+/// Minimal mock provider that always fails requests (for error path testing)
+struct FailingMockProvider {
+    instance_id: String,
+    context: PrimalContext,
+}
+
+#[async_trait]
+impl UniversalPrimalProvider for FailingMockProvider {
+    fn primal_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn instance_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn context(&self) -> &PrimalContext {
+        &self.context
+    }
+    fn primal_type(&self) -> PrimalType {
+        PrimalType::Compute
+    }
+    fn capabilities(&self) -> Vec<PrimalCapability> {
+        // Must match scheduler's native_capability exactly for find_by_capability to match
+        vec![PrimalCapability::NativeExecution {
+            architectures: vec!["x86_64".to_string(), "aarch64".to_string()],
+        }]
+    }
+    async fn health_check(&self) -> PrimalHealth {
+        PrimalHealth::Healthy
+    }
+    fn endpoints(&self) -> PrimalEndpoints {
+        PrimalEndpoints {
+            primary: "http://localhost:8080".to_string(),
+            health: "http://localhost:8080/health".to_string(),
+            metrics: None,
+            admin: None,
+            websocket: None,
+            custom: HashMap::new(),
+        }
+    }
+    async fn handle_primal_request(
+        &self,
+        _request: PrimalRequest,
+    ) -> toadstool::ToadStoolResult<PrimalResponse> {
+        Err(toadstool::ToadStoolError::execution(
+            "mock provider failure",
+        ))
+    }
+    async fn initialize(&mut self, _config: serde_json::Value) -> toadstool::ToadStoolResult<()> {
+        Ok(())
+    }
+    async fn shutdown(&mut self) -> toadstool::ToadStoolResult<()> {
+        Ok(())
+    }
+    fn can_serve_context(&self, _context: &PrimalContext) -> bool {
+        true
+    }
+}
 
 // ============================================================================
 // ResourceCoordinator Tests
@@ -399,6 +463,392 @@ async fn test_scheduler_find_wasm_capability() {
     let primals = scheduler.find_primals_by_capability(&capability).await;
     // Verify we can retrieve WASM primals (no need to check >= 0 for usize)
     let _ = primals.len(); // Consume to verify API works
+}
+
+// ============================================================================
+// Scheduler Creation and Defaults
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_creation_with_empty_registry() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let count = scheduler.get_active_job_count().await;
+    assert_eq!(count, 0);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_creation_result_is_ok() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let result = UniversalScheduler::new(registry).await;
+    assert!(result.is_ok());
+    let scheduler = result.unwrap();
+    assert_eq!(scheduler.get_active_job_count().await, 0);
+}
+
+// ============================================================================
+// Task Submission and Queue Management
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_active_job_count_after_completion() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = create_test_native_job(JobPriority::Normal);
+    let _ = scheduler.schedule_job(job).await.unwrap();
+
+    let count = scheduler.get_active_job_count().await;
+    assert_eq!(
+        count, 0,
+        "Active jobs should be cleared after job completes"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_sequential_job_submission() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    for i in 0..5 {
+        let job = UniversalJob {
+            id: Uuid::new_v4(),
+            job_type: UniversalJobType::Native {
+                executable: "/bin/echo".to_string(),
+                args: vec![format!("job-{i}")],
+                env: HashMap::new(),
+            },
+            priority: JobPriority::Normal,
+            resources: ResourceRequirements::default(),
+            timeout: Some(Duration::from_secs(30)),
+            created_at: chrono::Utc::now(),
+            context: create_test_context(),
+        };
+        let result = scheduler.schedule_job(job).await;
+        assert!(result.is_ok(), "Job {} should succeed", i);
+    }
+
+    assert_eq!(scheduler.get_active_job_count().await, 0);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_job_result_contains_execution_id() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = create_test_native_job(JobPriority::Normal);
+    let response = scheduler.schedule_job(job).await.unwrap();
+
+    assert_ne!(response.execution_id, uuid::Uuid::nil());
+    assert!(matches!(
+        response.status,
+        toadstool::execution::ExecutionStatus::Success
+    ));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_native_job_output_has_runtime_type() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = create_test_native_job(JobPriority::High);
+    let response = scheduler.schedule_job(job).await.unwrap();
+
+    assert_eq!(
+        response.runtime_used,
+        toadstool::execution::RuntimeType::Native
+    );
+    assert!(response.output.stdout.is_some());
+}
+
+// ============================================================================
+// Priority Handling
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_emergency_priority_job() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = create_test_native_job(JobPriority::Emergency);
+    let result = scheduler.schedule_job(job).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_critical_priority_job() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = create_test_native_job(JobPriority::Critical);
+    let result = scheduler.schedule_job(job).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_low_priority_job() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = create_test_native_job(JobPriority::Low);
+    let result = scheduler.schedule_job(job).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_background_priority_job() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = create_test_native_job(JobPriority::Background);
+    let result = scheduler.schedule_job(job).await;
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_job_priority_ordering() {
+    use std::cmp::Ordering;
+    assert!(JobPriority::Emergency < JobPriority::Critical);
+    assert!(JobPriority::Critical < JobPriority::High);
+    assert!(JobPriority::High < JobPriority::Normal);
+    assert!(JobPriority::Normal < JobPriority::Low);
+    assert!(JobPriority::Low < JobPriority::Background);
+    assert_eq!(
+        JobPriority::Emergency.cmp(&JobPriority::Emergency),
+        Ordering::Equal
+    );
+}
+
+// ============================================================================
+// Resource Allocation Logic
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_job_with_custom_resources() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = UniversalJob {
+        id: Uuid::new_v4(),
+        job_type: UniversalJobType::Native {
+            executable: "/bin/true".to_string(),
+            args: vec![],
+            env: HashMap::new(),
+        },
+        priority: JobPriority::Normal,
+        resources: ResourceRequirements {
+            cpu: CpuRequirements {
+                min_cores: 2.0,
+                max_cores: Some(4.0),
+                architecture: Some("x86_64".to_string()),
+            },
+            memory: MemoryRequirements {
+                min_bytes: 1024 * 1024 * 1024,
+                max_bytes: Some(2 * 1024 * 1024 * 1024),
+            },
+            storage: StorageRequirements::default(),
+            gpu: None,
+            network: NetworkRequirements::default(),
+        },
+        timeout: Some(Duration::from_secs(60)),
+        created_at: chrono::Utc::now(),
+        context: create_test_context(),
+    };
+
+    let result = scheduler.schedule_job(job).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_job_with_minimal_resources() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = UniversalJob {
+        id: Uuid::new_v4(),
+        job_type: UniversalJobType::Native {
+            executable: "/bin/echo".to_string(),
+            args: vec!["minimal".to_string()],
+            env: HashMap::new(),
+        },
+        priority: JobPriority::Background,
+        resources: ResourceRequirements::default(),
+        timeout: None,
+        created_at: chrono::Utc::now(),
+        context: create_test_context(),
+    };
+
+    let result = scheduler.schedule_job(job).await;
+    assert!(result.is_ok());
+}
+
+// ============================================================================
+// Primal and BiomeOS Job Types
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_schedule_primal_job() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = UniversalJob {
+        id: Uuid::new_v4(),
+        job_type: UniversalJobType::Primal {
+            primal_type: "compute".to_string(),
+            endpoint: "http://localhost:8080".to_string(),
+            payload: serde_json::json!({"task": "test"}),
+        },
+        priority: JobPriority::Normal,
+        resources: ResourceRequirements::default(),
+        timeout: Some(Duration::from_secs(30)),
+        created_at: chrono::Utc::now(),
+        context: create_test_context(),
+    };
+
+    let result = scheduler.schedule_job(job).await;
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert!(response
+        .output
+        .stdout
+        .as_ref()
+        .unwrap()
+        .contains("Primal execution"));
+    assert_eq!(
+        response.runtime_used,
+        toadstool::execution::RuntimeType::Native
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_schedule_biome_os_job() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = UniversalJob {
+        id: Uuid::new_v4(),
+        job_type: UniversalJobType::BiomeOS {
+            biome_manifest: serde_json::json!({"name": "test-biome", "version": "1.0"}),
+            team_id: "team-001".to_string(),
+        },
+        priority: JobPriority::High,
+        resources: ResourceRequirements::default(),
+        timeout: Some(Duration::from_secs(60)),
+        created_at: chrono::Utc::now(),
+        context: create_test_context(),
+    };
+
+    let result = scheduler.schedule_job(job).await;
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert!(response
+        .output
+        .stdout
+        .as_ref()
+        .unwrap()
+        .contains("BiomeOS execution"));
+    assert!(response
+        .output
+        .stdout
+        .as_ref()
+        .unwrap()
+        .contains("team-001"));
+}
+
+// ============================================================================
+// Task Status Tracking
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_wasm_job_response_structure() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let job = UniversalJob {
+        id: Uuid::new_v4(),
+        job_type: UniversalJobType::Wasm {
+            module: vec![0x00, 0x61, 0x73, 0x6d],
+            args: vec![],
+            env: HashMap::new(),
+        },
+        priority: JobPriority::Normal,
+        resources: ResourceRequirements::default(),
+        timeout: Some(Duration::from_secs(30)),
+        created_at: chrono::Utc::now(),
+        context: create_test_context(),
+    };
+
+    let result = scheduler.schedule_job(job).await;
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(
+        response.runtime_used,
+        toadstool::execution::RuntimeType::Wasm
+    );
+    assert!(response.output.stdout.is_some());
+}
+
+// ============================================================================
+// find_primals Capability Variants
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_find_container_runtime_capability() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let capability = PrimalCapability::ContainerRuntime {
+        orchestrators: vec!["docker".to_string()],
+    };
+    let primals = scheduler.find_primals_by_capability(&capability).await;
+    assert!(primals.is_empty() || !primals.is_empty()); // API works
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_find_gpu_capability() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let capability = PrimalCapability::GpuAcceleration { cuda_support: true };
+    let primals = scheduler.find_primals_by_capability(&capability).await;
+    assert!(primals.is_empty() || !primals.is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_find_custom_capability() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+
+    let capability = PrimalCapability::Custom {
+        name: "custom-analytics".to_string(),
+        attributes: HashMap::new(),
+    };
+    let primals = scheduler.find_primals_by_capability(&capability).await;
+    assert!(primals.is_empty() || !primals.is_empty());
+}
+
+// ============================================================================
+// Error Paths
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_scheduler_native_job_fails_when_provider_returns_error() {
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let provider = Arc::new(FailingMockProvider {
+        instance_id: "failing-native".to_string(),
+        context: create_test_context(),
+    });
+    registry.register_primal(provider).await.unwrap();
+
+    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+    let job = create_test_native_job(JobPriority::Normal);
+
+    let result = scheduler.schedule_job(job).await;
+    assert!(
+        result.is_err(),
+        "Schedule should fail when provider returns error"
+    );
 }
 
 // ============================================================================

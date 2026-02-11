@@ -301,7 +301,7 @@ mod tests {
         let mut profile = OperationProfile::new(OpType::MatMul);
         let config = WorkgroupConfig::new(128, 1000.0);
 
-        profile.add_config(SizeClass::Medium, config.clone());
+        profile.add_config(SizeClass::Medium, config);
         assert!(profile.get_config(SizeClass::Medium).is_some());
         assert!(profile.get_config(SizeClass::Large).is_none());
     }

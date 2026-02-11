@@ -25,7 +25,7 @@ impl Round {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/round.wgsl")
+        include_str!("../shaders/math/round.wgsl")
     }
 
     /// Execute the round operation

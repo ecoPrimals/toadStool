@@ -17,7 +17,7 @@
 //! Uses bilinear interpolation for smooth sampling
 //! ```
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 
@@ -32,7 +32,7 @@ impl GridSample {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/grid_sample.wgsl")
+        include_str!("../shaders/misc/grid_sample.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -190,18 +190,18 @@ impl GridSample {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 2D shader workgroup size (16, 16)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32).div_ceil(optimal_wg_size);
-            let workgroups_y = (out_height as u32).div_ceil(optimal_wg_size);
+            let (workgroups_x, workgroups_y) =
+                caps.dispatch_2d(out_width as u32, out_height as u32);
             pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(
-            output_buffer,
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+        Ok(Tensor::new(
+            output_data,
             vec![batch_size, channels, out_height, out_width],
             device.clone(),
         ))
@@ -217,11 +217,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_grid_sample_identity() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Simple 1x1x2x2 input
         let input_data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::from_vec_on(input_data, vec![1, 1, 2, 2], device.clone())

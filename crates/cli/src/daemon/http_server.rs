@@ -224,14 +224,15 @@ async fn list_workloads_handler(State(state): State<ServerState>) -> impl IntoRe
     let workload_ids = state.workload_manager.list_workloads().await;
 
     let mut summaries = Vec::new();
-    for id in workload_ids {
-        if let Some(status) = state.workload_manager.get_workload_status(&id).await {
+    for id in &workload_ids {
+        if let Some(status) = state.workload_manager.get_workload_status(id).await {
+            let (requester, persistent) = state.workload_manager.get_workload_metadata(id).await;
             summaries.push(WorkloadSummary {
-                workload_id: id,
+                workload_id: id.clone(),
                 status: status.status,
-                requester: "unknown".to_string(), // TODO: Store requester in metadata
+                requester: requester.unwrap_or_else(|| "unknown".to_string()),
                 started_at: status.started_at.unwrap_or_else(|| "unknown".to_string()),
-                persistent: false, // TODO: Expose persistent flag
+                persistent: persistent.unwrap_or(false),
             });
         }
     }

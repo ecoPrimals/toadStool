@@ -101,7 +101,7 @@ impl RbfKernel {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/rbf_kernel.wgsl")
+        include_str!("../../shaders/interpolation/rbf_kernel.wgsl")
     }
 
     /// Execute RBF kernel evaluation on GPU
@@ -303,9 +303,10 @@ impl RbfKernel {
 
         device.queue.submit(Some(encoder.finish()));
 
-        // Return kernel matrix K [N, M]
-        Ok(Tensor::from_buffer(
-            output_buffer,
+        let output_size = n_rows * n_cols;
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+        Ok(Tensor::new(
+            output_data,
             vec![n_rows, n_cols],
             device.clone(),
         ))
@@ -344,12 +345,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_rbf_kernel_same_points() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Two identical points should have kernel value = 0 for TPS (r=0)
         let x_data = vec![1.0, 2.0, 3.0, 1.0, 2.0, 3.0];
         let x = Tensor::from_vec_on(x_data, vec![2, 3], device)
@@ -379,8 +381,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_rbf_kernel_gaussian() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test Gaussian kernel at origin: should be 1.0
         let x_data = vec![0.0, 0.0, 0.0];
         let x = Tensor::from_vec_on(x_data, vec![1, 3], device)
@@ -400,8 +403,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_rbf_kernel_dimensions() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test that output has correct dimensions
         let x_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]; // 2 points, 3D
         let y_data = vec![7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0]; // 3 points, 3D

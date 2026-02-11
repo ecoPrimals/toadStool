@@ -67,7 +67,7 @@ impl NMS {
 
     /// WGSL shader source (embedded at compile time)
     pub(super) fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/nms.wgsl")
+        include_str!("../../shaders/detection/nms.wgsl")
     }
 }
 

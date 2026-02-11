@@ -39,7 +39,7 @@ impl LayerScale {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/layer_scale.wgsl")
+        include_str!("../shaders/misc/layer_scale.wgsl")
     }
 
     /// Execute the layer scale operation
@@ -203,11 +203,13 @@ impl LayerScale {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_layer_scale_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();
@@ -224,8 +226,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_layer_scale_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Single element
         let input = Tensor::from_vec_on(vec![5.0], vec![1], device.clone())
             .await
@@ -252,8 +255,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_layer_scale_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Gamma = 0 (complete suppression)
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await

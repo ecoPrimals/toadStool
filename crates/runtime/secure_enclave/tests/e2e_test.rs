@@ -128,6 +128,7 @@ fn test_e2e_compress_encrypt_process() {
             assert_eq!(plaintext, &sensitive[..]);
 
             // Perform computation (count 'A's)
+            #[allow(clippy::naive_bytecount)] // test code, no bytecount dependency needed
             let count = plaintext.iter().filter(|&&b| b == b'A').count();
             Ok(count)
         })

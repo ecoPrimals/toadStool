@@ -77,7 +77,7 @@ impl IndexAdd {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/index_add.wgsl")
+        include_str!("../shaders/math/index_add.wgsl")
     }
 
     /// Execute the index add operation (modifies input in-place)
@@ -275,15 +275,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_index_add_1d() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::new(vec![1.0, 2.0, 3.0, 4.0, 5.0], vec![5], device.clone());
         let values = Tensor::new(vec![10.0, 20.0], vec![2], device.clone());
 

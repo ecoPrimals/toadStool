@@ -371,7 +371,6 @@ async fn test_deep_debt_no_hardcoding() {
     let _integration = runtime.barracuda_integration();
 
     // If we got here, runtime is working without hardcoded assumptions
-    assert!(true);
 }
 
 /// Test: Deep Debt compliance - self-knowledge only

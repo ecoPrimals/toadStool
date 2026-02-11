@@ -244,7 +244,7 @@ mod tests {
     async fn test_resolve_from_registry() {
         let discovery = Arc::new(DiscoveryEngine::new());
         let registry = Arc::new(CapabilityRegistry::new());
-        let resolver = CapabilityResolver::new(discovery, registry.clone());
+        let resolver = CapabilityResolver::new(discovery, Arc::clone(&registry));
 
         // Pre-populate registry
         let capability = StandardCapability::CryptoSignatureEd25519.id();

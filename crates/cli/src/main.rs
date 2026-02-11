@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
     if bin_name == "toadstool-server" {
         info!("🍄 ToadStool invoked as 'toadstool-server' (legacy mode)");
         info!("💡 TIP: Use 'toadstool daemon' for the modern UniBin interface");
-        return run_server_daemon().await;
+        return run_server_daemon(None).await;
     }
 
     // Parse command line arguments
@@ -303,6 +303,7 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             config,
             max_workloads,
             biomeos_socket,
+            family_id,
         }
         | Commands::Daemon {
             register,
@@ -311,6 +312,7 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             config,
             max_workloads,
             biomeos_socket,
+            family_id,
         } => {
             // Determine which command name was used
             let is_server = matches!(&cli.command, Commands::Server { .. });
@@ -337,9 +339,12 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             if let Some(biomeos) = biomeos_socket {
                 info!("   BiomeOS: {}", biomeos.display());
             }
+            if let Some(fid) = family_id {
+                info!("   Family ID: {}", fid);
+            }
 
             // TODO: UniBin Phase 3 - Full server daemon integration
-            run_server_daemon().await?;
+            run_server_daemon(family_id.clone()).await?;
         }
 
         // UNIBIN PHASE 1: ZeroConfig temporarily disabled (HTTP dependencies)
@@ -583,11 +588,11 @@ async fn execute_ecosystem_command(action: &EcosystemCommands) -> Result<()> {
 /// UNIBIN PHASE 2 BLOCKED: Server crate has 51 compilation errors
 ///
 /// Honest status: NOW 100% UniBin compliant! Library compiles, server integrated!
-async fn run_server_daemon() -> Result<()> {
+async fn run_server_daemon(family_id: Option<String>) -> Result<()> {
     info!("🚀 Starting ToadStool server (UniBin mode)...");
 
     // Call shared server implementation
-    toadstool_server::run_server_main()
+    toadstool_server::run_server_main(family_id)
         .await
         .map_err(|e| anyhow::anyhow!("Server failed: {}", e))?;
 

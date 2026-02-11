@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)] // expect() is idiomatic in tests
 //! Week 3 E2E Workflow Tests
 //! End-to-end workflow testing simulating real-world usage patterns
 //!
@@ -36,8 +37,7 @@ async fn test_e2e_user_workflow_single_execution() {
     let coordinator = create_test_coordinator().await;
 
     // 2. Start coordinator
-    coordinator
-        .clone()
+    Arc::clone(&coordinator)
         .start()
         .await
         .expect("Start should succeed");
@@ -56,8 +56,8 @@ async fn test_e2e_user_workflow_multiple_sequential_operations() {
     let coordinator = create_test_coordinator().await;
 
     let start_notify = Arc::new(Notify::new());
-    let coord_clone = coordinator.clone();
-    let notify_clone = start_notify.clone();
+    let coord_clone = Arc::clone(&coordinator);
+    let notify_clone = Arc::clone(&start_notify);
 
     tokio::spawn(async move {
         coord_clone.start().await.expect("Start should succeed");
@@ -71,9 +71,9 @@ async fn test_e2e_user_workflow_multiple_sequential_operations() {
 
     // Operation 1: Run workload
     let op1_notify = Arc::new(Notify::new());
-    let _clone1 = coordinator.clone();
+    let _clone1 = Arc::clone(&coordinator);
     tokio::spawn({
-        let notify = op1_notify.clone();
+        let notify = Arc::clone(&op1_notify);
         async move {
             tokio::task::yield_now().await;
             notify.notify_one();
@@ -85,9 +85,9 @@ async fn test_e2e_user_workflow_multiple_sequential_operations() {
 
     // Operation 2: Check status
     let op2_notify = Arc::new(Notify::new());
-    let _clone2 = coordinator.clone();
+    let _clone2 = Arc::clone(&coordinator);
     tokio::spawn({
-        let notify = op2_notify.clone();
+        let notify = Arc::clone(&op2_notify);
         async move {
             tokio::task::yield_now().await;
             notify.notify_one();
@@ -99,9 +99,9 @@ async fn test_e2e_user_workflow_multiple_sequential_operations() {
 
     // Operation 3: View logs
     let op3_notify = Arc::new(Notify::new());
-    let _clone3 = coordinator.clone();
+    let _clone3 = Arc::clone(&coordinator);
     tokio::spawn({
-        let notify = op3_notify.clone();
+        let notify = Arc::clone(&op3_notify);
         async move {
             tokio::task::yield_now().await;
             notify.notify_one();
@@ -122,8 +122,8 @@ async fn test_e2e_user_workflow_parallel_operations() {
     let coordinator = create_test_coordinator().await;
 
     let start_notify = Arc::new(Notify::new());
-    let coord_clone = coordinator.clone();
-    let notify_clone = start_notify.clone();
+    let coord_clone = Arc::clone(&coordinator);
+    let notify_clone = Arc::clone(&start_notify);
 
     tokio::spawn(async move {
         coord_clone.start().await.expect("Start should succeed");
@@ -135,13 +135,13 @@ async fn test_e2e_user_workflow_parallel_operations() {
         .expect("Coordinator should start");
 
     // Spawn multiple concurrent tasks (simulating parallel CLI commands)
-    let coord1 = coordinator.clone();
-    let coord2 = coordinator.clone();
-    let coord3 = coordinator.clone();
+    let coord1 = Arc::clone(&coordinator);
+    let coord2 = Arc::clone(&coordinator);
+    let coord3 = Arc::clone(&coordinator);
 
     let task1_notify = Arc::new(Notify::new());
     let task1 = tokio::spawn({
-        let notify = task1_notify.clone();
+        let notify = Arc::clone(&task1_notify);
         async move {
             tokio::task::yield_now().await;
             notify.notify_one();
@@ -151,7 +151,7 @@ async fn test_e2e_user_workflow_parallel_operations() {
 
     let task2_notify = Arc::new(Notify::new());
     let task2 = tokio::spawn({
-        let notify = task2_notify.clone();
+        let notify = Arc::clone(&task2_notify);
         async move {
             tokio::task::yield_now().await;
             notify.notify_one();
@@ -161,7 +161,7 @@ async fn test_e2e_user_workflow_parallel_operations() {
 
     let task3_notify = Arc::new(Notify::new());
     let task3 = tokio::spawn({
-        let notify = task3_notify.clone();
+        let notify = Arc::clone(&task3_notify);
         async move {
             tokio::task::yield_now().await;
             notify.notify_one();
@@ -182,10 +182,13 @@ async fn test_e2e_rapid_coordinator_creation_and_use() {
 
     for _ in 0..10 {
         let coordinator = create_test_coordinator().await;
-        coordinator.clone().start().await.expect("Should start");
+        Arc::clone(&coordinator)
+            .start()
+            .await
+            .expect("Should start");
 
         // Use coordinator briefly
-        let _clone = coordinator.clone();
+        let _clone = Arc::clone(&coordinator);
 
         // Coordinator drops and cleans up automatically
     }
@@ -200,8 +203,8 @@ async fn test_e2e_long_running_coordinator_session() {
     let coordinator = create_test_coordinator().await;
 
     let start_notify = Arc::new(Notify::new());
-    let coord_clone = coordinator.clone();
-    let notify_clone = start_notify.clone();
+    let coord_clone = Arc::clone(&coordinator);
+    let notify_clone = Arc::clone(&start_notify);
 
     tokio::spawn(async move {
         coord_clone.start().await.expect("Start should succeed");
@@ -214,9 +217,9 @@ async fn test_e2e_long_running_coordinator_session() {
 
     // Perform many operations over time using event-driven coordination
     for i in 0..20 {
-        let _clone = coordinator.clone();
+        let _clone = Arc::clone(&coordinator);
         let op_notify = Arc::new(Notify::new());
-        let notify_clone = op_notify.clone();
+        let notify_clone = Arc::clone(&op_notify);
 
         tokio::spawn(async move {
             tokio::task::yield_now().await;
@@ -243,8 +246,8 @@ async fn test_e2e_resource_cleanup_after_executions() {
     let coordinator = create_test_coordinator().await;
 
     let start_notify = Arc::new(Notify::new());
-    let coord_clone = coordinator.clone();
-    let notify_clone = start_notify.clone();
+    let coord_clone = Arc::clone(&coordinator);
+    let notify_clone = Arc::clone(&start_notify);
 
     tokio::spawn(async move {
         coord_clone.start().await.expect("Start should succeed");
@@ -258,10 +261,10 @@ async fn test_e2e_resource_cleanup_after_executions() {
     // Simulate multiple executions with event-driven coordination
     for _ in 0..5 {
         let _execution_id = Uuid::new_v4();
-        let _clone = coordinator.clone();
+        let _clone = Arc::clone(&coordinator);
 
         let exec_complete = Arc::new(Notify::new());
-        let notify_clone = exec_complete.clone();
+        let notify_clone = Arc::clone(&exec_complete);
 
         tokio::spawn(async move {
             tokio::task::yield_now().await;
@@ -283,8 +286,7 @@ async fn test_e2e_concurrent_execution_management() {
     // Test managing multiple concurrent executions
 
     let coordinator = create_test_coordinator().await;
-    coordinator
-        .clone()
+    Arc::clone(&coordinator)
         .start()
         .await
         .expect("Start should succeed");
@@ -293,7 +295,7 @@ async fn test_e2e_concurrent_execution_management() {
     let mut handles = vec![];
 
     for _ in 0..5 {
-        let coord = coordinator.clone();
+        let coord = Arc::clone(&coordinator);
         let handle = tokio::spawn(async move {
             let _execution_id = Uuid::new_v4();
             // ✅ MODERN: Immediate return (no artificial delay)
@@ -313,8 +315,7 @@ async fn test_e2e_execution_with_timeout() {
     // Test execution workflow with timeout handling
 
     let coordinator = create_test_coordinator().await;
-    coordinator
-        .clone()
+    Arc::clone(&coordinator)
         .start()
         .await
         .expect("Start should succeed");
@@ -324,7 +325,7 @@ async fn test_e2e_execution_with_timeout() {
 
     // Use timeout to ensure execution doesn't hang (event-driven)
     let result = tokio::time::timeout(Duration::from_secs(1), async {
-        let _clone = coordinator.clone();
+        let _clone = Arc::clone(&coordinator);
         // ✅ MODERNIZED: yield instead of sleep
         tokio::task::yield_now().await;
     })
@@ -350,10 +351,13 @@ async fn test_e2e_custom_config_workflow() {
         .expect("Should create with custom config");
 
     let coordinator = Arc::new(coordinator);
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 
     // Use coordinator with custom config
-    let _clone = coordinator.clone();
+    let _clone = Arc::clone(&coordinator);
 
     assert!(Arc::strong_count(&coordinator) >= 1);
 }
@@ -376,7 +380,10 @@ async fn test_e2e_config_serialization_workflow() {
         .expect("Should create from loaded config");
 
     let coordinator = Arc::new(coordinator);
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 }
 
 #[tokio::test]
@@ -386,7 +393,10 @@ async fn test_e2e_config_modification_workflow() {
     // Start with default config
     let config1 = DistributedConfig::default();
     let coordinator1 = create_test_coordinator().await;
-    coordinator1.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator1)
+        .start()
+        .await
+        .expect("Should start");
 
     // Simulate shutdown (drop coordinator)
     drop(coordinator1);
@@ -400,7 +410,10 @@ async fn test_e2e_config_modification_workflow() {
         .expect("Should create with new config");
 
     let coordinator2 = Arc::new(coordinator2);
-    coordinator2.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator2)
+        .start()
+        .await
+        .expect("Should start");
 }
 
 // ============================================================================
@@ -414,7 +427,7 @@ async fn test_e2e_graceful_error_recovery() {
     let coordinator = create_test_coordinator().await;
 
     // Even if start fails, system should be stable
-    let start_result = coordinator.clone().start().await;
+    let start_result = Arc::clone(&coordinator).start().await;
 
     // System remains in valid state
     assert!(
@@ -431,13 +444,16 @@ async fn test_e2e_concurrent_error_scenarios() {
     // Test that errors in one operation don't affect others
 
     let coordinator = create_test_coordinator().await;
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 
     // Run multiple operations, some might error
     let mut handles = vec![];
 
     for i in 0..5 {
-        let coord = coordinator.clone();
+        let coord = Arc::clone(&coordinator);
         let handle = tokio::spawn(async move {
             if i % 2 == 0 {
                 // ✅ MODERN: Normal operation (immediate return)
@@ -480,14 +496,20 @@ async fn test_e2e_state_isolation_between_coordinators() {
     let coord1 = create_test_coordinator().await;
     let coord2 = create_test_coordinator().await;
 
-    coord1.clone().start().await.expect("Coord1 should start");
-    coord2.clone().start().await.expect("Coord2 should start");
+    Arc::clone(&coord1)
+        .start()
+        .await
+        .expect("Coord1 should start");
+    Arc::clone(&coord2)
+        .start()
+        .await
+        .expect("Coord2 should start");
 
     // Operations on coord1 don't affect coord2
-    let _use_coord1 = coord1.clone();
+    let _use_coord1 = Arc::clone(&coord1);
 
     // coord2 should still be healthy
-    let _use_coord2 = coord2.clone();
+    let _use_coord2 = Arc::clone(&coord2);
 
     assert!(Arc::strong_count(&coord1) >= 1);
     assert!(Arc::strong_count(&coord2) >= 1);
@@ -498,12 +520,15 @@ async fn test_e2e_state_sharing_within_coordinator() {
     // Test that state is properly shared within a coordinator
 
     let coordinator = create_test_coordinator().await;
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 
     // Multiple clones share the same state
-    let clone1 = coordinator.clone();
-    let clone2 = coordinator.clone();
-    let clone3 = coordinator.clone();
+    let clone1 = Arc::clone(&coordinator);
+    let clone2 = Arc::clone(&coordinator);
+    let clone3 = Arc::clone(&coordinator);
 
     // All clones reference the same coordinator
     assert!(Arc::ptr_eq(&coordinator, &clone1) || Arc::strong_count(&coordinator) >= 3);
@@ -518,19 +543,22 @@ async fn test_e2e_stateful_operation_sequence() {
     // Test a sequence of operations that depend on state
 
     let coordinator = create_test_coordinator().await;
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 
     // Operation 1: Initialize state
     let _exec1 = Uuid::new_v4();
-    let _clone1 = coordinator.clone();
+    let _clone1 = Arc::clone(&coordinator);
 
     // Operation 2: Modify state
     let _exec2 = Uuid::new_v4();
-    let _clone2 = coordinator.clone();
+    let _clone2 = Arc::clone(&coordinator);
 
     // Operation 3: Read state
     let _exec3 = Uuid::new_v4();
-    let _clone3 = coordinator.clone();
+    let _clone3 = Arc::clone(&coordinator);
 
     // All operations see consistent state
     assert!(Arc::strong_count(&coordinator) >= 1);
@@ -545,7 +573,10 @@ async fn test_e2e_high_volume_execution_requests() {
     // Test handling high volume of execution requests
 
     let coordinator = create_test_coordinator().await;
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 
     // Create many execution IDs (simulating high load)
     let mut execution_ids = vec![];
@@ -566,12 +597,15 @@ async fn test_e2e_burst_traffic_pattern() {
     // Test handling burst traffic pattern
 
     let coordinator = create_test_coordinator().await;
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 
     // Burst 1: 10 concurrent requests
     let mut handles1 = vec![];
     for _ in 0..10 {
-        let coord = coordinator.clone();
+        let coord = Arc::clone(&coordinator);
         handles1.push(tokio::spawn(async move {
             // ✅ MODERN: Immediate execution (sleep removed)
             coord
@@ -589,7 +623,7 @@ async fn test_e2e_burst_traffic_pattern() {
     // Burst 2: 10 more concurrent requests
     let mut handles2 = vec![];
     for _ in 0..10 {
-        let coord = coordinator.clone();
+        let coord = Arc::clone(&coordinator);
         handles2.push(tokio::spawn(async move {
             // ✅ MODERN: Immediate execution (sleep removed)
             coord
@@ -609,11 +643,14 @@ async fn test_e2e_sustained_load_pattern() {
     // Test handling sustained load over time
 
     let coordinator = create_test_coordinator().await;
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 
     // Sustained load: steady stream of requests
     for _ in 0..50 {
-        let _clone = coordinator.clone();
+        let _clone = Arc::clone(&coordinator);
         // ✅ MODERN: Immediate execution (sleep removed)
     }
 
@@ -639,10 +676,13 @@ async fn test_e2e_standalone_mode_integration() {
         .expect("Should work in standalone mode");
 
     let coordinator = Arc::new(coordinator);
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 
     // Coordinator works without Songbird
-    let _clone = coordinator.clone();
+    let _clone = Arc::clone(&coordinator);
 }
 
 #[tokio::test]
@@ -663,7 +703,10 @@ async fn test_e2e_songbird_config_present() {
         .expect("Should accept Songbird config");
 
     let coordinator = Arc::new(coordinator);
-    coordinator.clone().start().await.expect("Should start");
+    Arc::clone(&coordinator)
+        .start()
+        .await
+        .expect("Should start");
 }
 
 #[tokio::test]
@@ -695,6 +738,12 @@ async fn test_e2e_mixed_integration_modes() {
     let coord2 = Arc::new(coord2);
 
     // Both should work
-    coord1.clone().start().await.expect("Coord1 should start");
-    coord2.clone().start().await.expect("Coord2 should start");
+    Arc::clone(&coord1)
+        .start()
+        .await
+        .expect("Coord1 should start");
+    Arc::clone(&coord2)
+        .start()
+        .await
+        .expect("Coord2 should start");
 }

@@ -225,7 +225,7 @@ impl IsolatedMemoryRegion {
     ///
     /// Wipes the entire physical allocation, not just the logical size.
     pub fn wipe(&mut self) {
-        // SAFETY: ptr is valid and physical_size is the actual allocated size
+        // SAFETY: ptr valid; physical_size matches allocation; write_bytes for u8 is safe.
         unsafe {
             std::ptr::write_bytes(self.ptr.as_ptr(), 0, self.physical_size);
         }
@@ -240,8 +240,7 @@ impl IsolatedMemoryRegion {
 impl Drop for IsolatedMemoryRegion {
     fn drop(&mut self) {
         // Step 1: Explicitly wipe memory before unlocking/deallocating
-        // Wipe entire physical allocation
-        // SAFETY: ptr is valid and physical_size is the actual allocated size
+        // SAFETY: ptr valid; physical_size matches allocation.
         unsafe {
             std::ptr::write_bytes(self.ptr.as_ptr(), 0, self.physical_size);
         }
@@ -250,9 +249,7 @@ impl Drop for IsolatedMemoryRegion {
         std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
 
         // Step 2: Unlock memory (reverse of mlock)
-        // SAFETY:
-        // - ptr is valid (not yet deallocated)
-        // - physical_size matches what was locked in new()
+        // SAFETY: ptr valid; physical_size matches mlock in new(); munlock is idempotent-safe.
         #[cfg(target_family = "unix")]
         unsafe {
             let result =
@@ -266,9 +263,7 @@ impl Drop for IsolatedMemoryRegion {
         }
 
         // Step 3: Deallocate memory
-        // SAFETY:
-        // - ptr was allocated with this layout in new()
-        // - This is called exactly once (Drop guarantee)
+        // SAFETY: ptr from alloc(layout) in new(); layout matches; Drop runs exactly once.
         unsafe {
             dealloc(self.ptr.as_ptr(), self.layout);
         }

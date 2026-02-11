@@ -27,7 +27,7 @@ pub fn compute_broadcast_shape(
     let target_rank = target_shape.len();
 
     let mut broadcasted_input_shape = vec![1; target_rank];
-    
+
     if target_rank > input_rank {
         // Pad at the back (right): [3] → [3, 1] for target [3, 5]
         for (i, &dim) in input_shape.iter().enumerate() {
@@ -44,7 +44,8 @@ pub fn compute_broadcast_shape(
             if input_dim != target_dim && input_dim != 1 && target_dim != 1 {
                 // Special case: if this is the last (only) dimension and target is a multiple of input
                 // This will be handled specially in execute_expand by reshaping
-                if i == target_rank - 1 && target_rank == 1 && target_dim % input_dim == 0 {
+                if i == target_rank - 1 && target_rank == 1 && target_dim.is_multiple_of(input_dim)
+                {
                     // Allow it - will be handled in execute_expand
                     compatible = true;
                     break;
@@ -54,7 +55,7 @@ pub fn compute_broadcast_shape(
                 }
             }
         }
-        
+
         if compatible {
             broadcasted_input_shape = input_shape.to_vec();
         } else {
@@ -138,21 +139,22 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
     // Special case: handle [3] → [9] type expansions where ranks are equal
     // but target size is a multiple of input size
     // We treat this as adding a leading dimension: [3] → [1, 3] → [3, 3] → [9]
-    let (effective_target_shape, effective_broadcasted_input_shape) = 
-        if input_shape.len() == original_target_shape.len() 
-            && input_shape.len() == 1 
-            && original_target_shape[0] % input_shape[0] == 0 
-            && original_target_shape[0] != input_shape[0] {
-            // [3] → [9]: treat as [1, 3] → [3, 3]
-            let leading_dim = original_target_shape[0] / input_shape[0];
-            let effective_target = vec![leading_dim, input_shape[0]];
-            let effective_input = vec![1, input_shape[0]];
-            (effective_target, effective_input)
-        } else {
-            // Normal case: use target_shape as-is
-            let broadcasted = compute_broadcast_shape(input_shape, &original_target_shape)?;
-            (original_target_shape.clone(), broadcasted)
-        };
+    let (effective_target_shape, effective_broadcasted_input_shape) = if input_shape.len()
+        == original_target_shape.len()
+        && input_shape.len() == 1
+        && original_target_shape[0].is_multiple_of(input_shape[0])
+        && original_target_shape[0] != input_shape[0]
+    {
+        // [3] → [9]: treat as [1, 3] → [3, 3]
+        let leading_dim = original_target_shape[0] / input_shape[0];
+        let effective_target = vec![leading_dim, input_shape[0]];
+        let effective_input = vec![1, input_shape[0]];
+        (effective_target, effective_input)
+    } else {
+        // Normal case: use target_shape as-is
+        let broadcasted = compute_broadcast_shape(input_shape, &original_target_shape)?;
+        (original_target_shape.clone(), broadcasted)
+    };
 
     let broadcasted_input_shape = effective_broadcasted_input_shape;
     let target_shape = effective_target_shape;
@@ -349,7 +351,10 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
         ],
     });
 
-    let shader = device.compile_shader(include_str!("../../shaders/expand.wgsl"), Some("Expand"));
+    let shader = device.compile_shader(
+        include_str!("../../shaders/math/expand.wgsl"),
+        Some("Expand"),
+    );
     let pipeline_layout = device
         .device
         .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

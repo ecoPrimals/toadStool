@@ -86,7 +86,7 @@ impl RotaryEmbedding {
 
     /// WGSL shader source
     fn shader() -> &'static str {
-        include_str!("../shaders/rotary_embedding.wgsl")
+        include_str!("../shaders/attention/rotary_embedding.wgsl")
     }
 
     /// Execute RoPE (single GPU pass)
@@ -279,12 +279,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_rope_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 1;
         let seq = 4;
         let heads = 2;
@@ -307,8 +308,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_rope_single_position() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 1;
         let seq = 1;
         let heads = 2;
@@ -329,8 +331,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_rope_llama_dims() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Llama-style dimensions
         let batch = 2;
         let seq = 128;
@@ -354,8 +357,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_rope_magnitude_preservation() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 1;
         let seq = 4;
         let heads = 1;
@@ -378,16 +382,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_rope_shape_validation() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Valid: even head_dim
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 4 * 2 * 8], vec![1, 4, 2, 8], device.clone())
+        let input = Tensor::from_vec_on(vec![1.0; 4 * 2 * 8], vec![1, 4, 2, 8], device.clone())
             .await
             .unwrap();
         assert!(input.rotary_embedding().is_ok());
 
         // Invalid: odd head_dim
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 4 * 2 * 7], vec![1, 4, 2, 7], device)
+        let input = Tensor::from_vec_on(vec![1.0; 4 * 2 * 7], vec![1, 4, 2, 7], device)
             .await
             .unwrap();
         assert!(input.rotary_embedding().is_err());

@@ -1,12 +1,15 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
     use crate::ops::unique::Unique;
     use crate::tensor::Tensor;
 
     #[tokio::test]
     async fn test_unique_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 1.0, 3.0, 2.0], vec![5], device.clone())
             .await
             .unwrap();
@@ -19,7 +22,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_unique_all_same() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![5.0, 5.0, 5.0], vec![3], device.clone())
             .await
             .unwrap();
@@ -32,7 +37,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_unique_all_different() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();
@@ -44,7 +51,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_unique_empty() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![], vec![0], device.clone())
             .await
             .unwrap();

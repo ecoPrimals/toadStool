@@ -1,12 +1,13 @@
 //! Tests for Scaled Dot-Product Attention
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 #[tokio::test]
 async fn test_attention_basic() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // Small test: [1 batch, 1 head, 4 seq, 8 dim]
     let query = Tensor::from_vec_on(vec![1.0; 32], vec![1, 1, 4, 8], device.clone())
         .await
@@ -30,8 +31,9 @@ async fn test_attention_basic() {
 
 #[tokio::test]
 async fn test_attention_shape_validation() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let query = Tensor::from_vec_on(vec![1.0; 32], vec![1, 1, 4, 8], device.clone())
         .await
         .unwrap();
@@ -48,8 +50,9 @@ async fn test_attention_shape_validation() {
 
 #[tokio::test]
 async fn test_attention_multi_head() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // Test with multiple heads: [2 batch, 4 heads, 8 seq, 16 dim]
     let size = 2 * 4 * 8 * 16;
     let query = Tensor::from_vec_on(vec![0.5; size], vec![2, 4, 8, 16], device.clone())

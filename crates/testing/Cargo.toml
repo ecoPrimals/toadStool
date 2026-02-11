@@ -77,9 +77,6 @@ async-trait = "0.1"
 # Error handling
 anyhow = "1.0"
 
-# System interfaces
-libc = { version = "0.2", optional = true }
-
 # Resource monitoring mocks
 sysinfo = "0.30"
 
@@ -92,5 +89,5 @@ harness = false
 
 [features]
 default = []
-integration-tests = ["wiremock", "libc"] # Removed reqwest - use unix sockets!
+integration-tests = ["wiremock"] # Pure Rust: removed libc (unix sockets via std)
 benchmarks = [] 

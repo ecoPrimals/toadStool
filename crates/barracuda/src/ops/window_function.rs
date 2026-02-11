@@ -66,7 +66,7 @@ impl WindowFunction {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/window_function.wgsl")
+        include_str!("../shaders/audio/window_function.wgsl")
     }
 
     /// Execute the window function operation
@@ -202,11 +202,13 @@ impl WindowFunction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_window_hann() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let window = WindowFunction::new(512, WindowType::Hann, device.clone())
             .unwrap()
             .execute()
@@ -223,7 +225,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_window_hamming() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let window = WindowFunction::new(256, WindowType::Hamming, device.clone())
             .unwrap()
             .execute()
@@ -233,7 +237,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_window_rectangular() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let window = WindowFunction::new(128, WindowType::Rectangular, device.clone())
             .unwrap()
             .execute()

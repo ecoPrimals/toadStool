@@ -31,7 +31,7 @@
 
 use std::sync::Arc;
 use toadstool_common::primal_identity::{Capability, DiscoveredService};
-use toadstool_common::runtime_discovery::{DiscoveryClient, RuntimeDiscovery};
+use toadstool_common::runtime_discovery::RuntimeDiscovery;
 use toadstool_common::ToadStoolResult;
 
 /// Discover a service by capability with fallback to legacy endpoint
@@ -196,77 +196,83 @@ pub async fn discover_with_load_balancing(
     }
 }
 
-/// Create a mock discovery client for testing
+/// Create a new service discovery instance using localhost discovery
 ///
-/// This creates a simple in-memory discovery client that can be used for testing
-/// or as a fallback when no real discovery service is available.
-struct MockDiscoveryClient {
-    services: Arc<tokio::sync::RwLock<Vec<DiscoveredService>>>,
-}
-
-#[async_trait::async_trait]
-impl DiscoveryClient for MockDiscoveryClient {
-    async fn discover_by_capability(
-        &self,
-        capability: &Capability,
-    ) -> ToadStoolResult<Vec<DiscoveredService>> {
-        let services = self.services.read().await;
-        Ok(services
-            .iter()
-            .filter(|s| s.capabilities.contains(capability))
-            .cloned()
-            .collect())
-    }
-
-    async fn discover_all(&self) -> ToadStoolResult<Vec<DiscoveredService>> {
-        Ok(self.services.read().await.clone())
-    }
-
-    async fn register_service(&self, service: &DiscoveredService) -> ToadStoolResult<()> {
-        self.services.write().await.push(service.clone());
-        Ok(())
-    }
-
-    async fn deregister_service(&self, service_id: &str) -> ToadStoolResult<()> {
-        self.services
-            .write()
-            .await
-            .retain(|s| s.id.as_deref() != Some(service_id));
-        Ok(())
-    }
-
-    async fn health_check(&self, _service_id: &str) -> ToadStoolResult<bool> {
-        Ok(true)
-    }
-}
-
-/// Create a new service discovery instance with mock client
+/// Creates a `RuntimeDiscovery` instance that discovers services on the
+/// local machine via socket probing and environment variables. This is the
+/// standard production discovery path — primals discover each other at
+/// runtime using capability-based socket discovery.
 ///
-/// This is a convenience function that creates a `RuntimeDiscovery` instance
-/// with a mock discovery client for testing or fallback scenarios.
-///
-/// For production use, you should create a RuntimeDiscovery with a real
-/// discovery client (e.g., mDNS, Consul, etcd).
+/// For multi-machine deployments, use a network-aware discovery client
+/// (e.g., mDNS, Birdsong UDP, or Songbird coordination).
 ///
 /// # Returns
 ///
-/// A configured `RuntimeDiscovery` instance with mock client
+/// A configured `RuntimeDiscovery` instance with localhost discovery
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use toadstool_config::discovery_integration::create_discovery;
+///
+/// let discovery = create_discovery()?;
+/// // Discovers services on localhost via socket probing
+/// ```
 pub fn create_discovery() -> ToadStoolResult<RuntimeDiscovery> {
-    let mock_client = Arc::new(MockDiscoveryClient {
-        services: Arc::new(tokio::sync::RwLock::new(Vec::new())),
-    });
-    Ok(RuntimeDiscovery::new(mock_client))
+    let client = Arc::new(toadstool_common::runtime_discovery::LocalhostDiscoveryClient::new());
+    Ok(RuntimeDiscovery::new(client))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use toadstool_common::runtime_discovery::LocalhostDiscoveryClient;
+    use async_trait::async_trait;
+    use toadstool_common::primal_identity::{CoordinationCapability, ServiceEndpoint};
+    use toadstool_common::runtime_discovery::{DiscoveryClient, LocalhostDiscoveryClient};
+
+    /// Test discovery client that returns configurable results
+    struct TestDiscoveryClient {
+        services: Vec<DiscoveredService>,
+        fail: bool,
+    }
+
+    #[async_trait]
+    impl DiscoveryClient for TestDiscoveryClient {
+        async fn discover_by_capability(
+            &self,
+            _capability: &Capability,
+        ) -> ToadStoolResult<Vec<DiscoveredService>> {
+            if self.fail {
+                return Err(toadstool_common::ToadStoolError::Integration(
+                    toadstool_common::error::IntegrationError::ServiceUnavailable {
+                        service: "test".to_string(),
+                        reason: "forced failure".to_string(),
+                    },
+                ));
+            }
+            Ok(self.services.clone())
+        }
+
+        async fn discover_all(&self) -> ToadStoolResult<Vec<DiscoveredService>> {
+            Ok(self.services.clone())
+        }
+
+        async fn register_service(&self, _service: &DiscoveredService) -> ToadStoolResult<()> {
+            Ok(())
+        }
+
+        async fn deregister_service(&self, _service_id: &str) -> ToadStoolResult<()> {
+            Ok(())
+        }
+
+        async fn health_check(&self, _service_id: &str) -> ToadStoolResult<bool> {
+            Ok(true)
+        }
+    }
 
     #[tokio::test]
     async fn test_discover_or_fallback_uses_fallback() {
         // When discovery fails or returns no results, should use fallback
-        // Use LocalhostDiscoveryClient for testing - it provides fallback behavior
         let client = Arc::new(LocalhostDiscoveryClient::new());
         let discovery = RuntimeDiscovery::new(client);
         let fallback = "http://localhost:50001";
@@ -279,8 +285,215 @@ mod tests {
         .await
         .unwrap();
 
-        // Should return fallback since no services are registered in test environment
         assert_eq!(result, fallback);
+    }
+
+    #[tokio::test]
+    async fn test_discover_or_fallback_uses_discovered_service_with_endpoints() {
+        let service_with_endpoint = DiscoveredService {
+            id: Some("coord-1".to_string()),
+            capabilities: vec![Capability::Coordination(CoordinationCapability::default())],
+            endpoints: vec![ServiceEndpoint::http("discovered.host", 9000)],
+            healthy: true,
+            metadata: std::collections::HashMap::new(),
+        };
+        let client = Arc::new(TestDiscoveryClient {
+            services: vec![service_with_endpoint],
+            fail: false,
+        });
+        let discovery = RuntimeDiscovery::new(client);
+        let fallback = "http://localhost:50001";
+
+        let result = discover_or_fallback(
+            &discovery,
+            &Capability::Coordination(Default::default()),
+            fallback,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result, "http://discovered.host:9000");
+    }
+
+    #[tokio::test]
+    async fn test_discover_or_fallback_uses_fallback_when_service_has_no_endpoints() {
+        let service_no_endpoints = DiscoveredService {
+            id: Some("coord-1".to_string()),
+            capabilities: vec![Capability::Coordination(CoordinationCapability::default())],
+            endpoints: vec![],
+            healthy: true,
+            metadata: std::collections::HashMap::new(),
+        };
+        let client = Arc::new(TestDiscoveryClient {
+            services: vec![service_no_endpoints],
+            fail: false,
+        });
+        let discovery = RuntimeDiscovery::new(client);
+        let fallback = "http://localhost:9999";
+
+        let result = discover_or_fallback(
+            &discovery,
+            &Capability::Coordination(Default::default()),
+            fallback,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result, fallback);
+    }
+
+    #[tokio::test]
+    async fn test_discover_or_fallback_uses_fallback_when_no_services() {
+        let client = Arc::new(TestDiscoveryClient {
+            services: vec![],
+            fail: false,
+        });
+        let discovery = RuntimeDiscovery::new(client);
+        let fallback = "http://localhost:8888";
+
+        let result = discover_or_fallback(
+            &discovery,
+            &Capability::Coordination(Default::default()),
+            fallback,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result, fallback);
+    }
+
+    #[tokio::test]
+    async fn test_discover_or_fallback_uses_fallback_on_discovery_error() {
+        let client = Arc::new(TestDiscoveryClient {
+            services: vec![],
+            fail: true,
+        });
+        let discovery = RuntimeDiscovery::new(client);
+        let fallback = "http://localhost:7777";
+
+        let result = discover_or_fallback(
+            &discovery,
+            &Capability::Coordination(Default::default()),
+            fallback,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result, fallback);
+    }
+
+    #[tokio::test]
+    async fn test_discover_all_by_capability() {
+        let service = DiscoveredService {
+            id: Some("coord-1".to_string()),
+            capabilities: vec![Capability::Coordination(CoordinationCapability::default())],
+            endpoints: vec![ServiceEndpoint::http("host1", 8080)],
+            healthy: true,
+            metadata: std::collections::HashMap::new(),
+        };
+        let client = Arc::new(TestDiscoveryClient {
+            services: vec![service],
+            fail: false,
+        });
+        let discovery = RuntimeDiscovery::new(client);
+
+        let services =
+            discover_all_by_capability(&discovery, &Capability::Coordination(Default::default()))
+                .await
+                .unwrap();
+
+        assert_eq!(services.len(), 1);
+        assert_eq!(services[0].id.as_deref(), Some("coord-1"));
+    }
+
+    #[tokio::test]
+    async fn test_discover_with_load_balancing_uses_discovered_service() {
+        let service = DiscoveredService {
+            id: Some("coord-1".to_string()),
+            capabilities: vec![Capability::Coordination(CoordinationCapability::default())],
+            endpoints: vec![ServiceEndpoint::http("lb.host", 9001)],
+            healthy: true,
+            metadata: std::collections::HashMap::new(),
+        };
+        let client = Arc::new(TestDiscoveryClient {
+            services: vec![service],
+            fail: false,
+        });
+        let discovery = RuntimeDiscovery::new(client);
+
+        let result = discover_with_load_balancing(
+            &discovery,
+            &Capability::Coordination(Default::default()),
+            "http://fallback:5000",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result, "http://lb.host:9001");
+    }
+
+    #[tokio::test]
+    async fn test_discover_with_load_balancing_uses_fallback_when_no_endpoints() {
+        let service = DiscoveredService {
+            id: Some("coord-1".to_string()),
+            capabilities: vec![Capability::Coordination(CoordinationCapability::default())],
+            endpoints: vec![],
+            healthy: true,
+            metadata: std::collections::HashMap::new(),
+        };
+        let client = Arc::new(TestDiscoveryClient {
+            services: vec![service],
+            fail: false,
+        });
+        let discovery = RuntimeDiscovery::new(client);
+
+        let result = discover_with_load_balancing(
+            &discovery,
+            &Capability::Coordination(Default::default()),
+            "http://fallback:6000",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result, "http://fallback:6000");
+    }
+
+    #[tokio::test]
+    async fn test_discover_with_load_balancing_uses_fallback_when_no_services() {
+        let client = Arc::new(TestDiscoveryClient {
+            services: vec![],
+            fail: false,
+        });
+        let discovery = RuntimeDiscovery::new(client);
+
+        let result = discover_with_load_balancing(
+            &discovery,
+            &Capability::Coordination(Default::default()),
+            "http://fallback:7000",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result, "http://fallback:7000");
+    }
+
+    #[tokio::test]
+    async fn test_discover_with_load_balancing_uses_fallback_on_error() {
+        let client = Arc::new(TestDiscoveryClient {
+            services: vec![],
+            fail: true,
+        });
+        let discovery = RuntimeDiscovery::new(client);
+
+        let result = discover_with_load_balancing(
+            &discovery,
+            &Capability::Coordination(Default::default()),
+            "http://fallback:8000",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result, "http://fallback:8000");
     }
 
     #[tokio::test]

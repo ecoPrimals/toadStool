@@ -17,13 +17,18 @@
 //! ## Usage
 //!
 //! ```no_run
-//! use barracuda::tensor::Tensor;
-//! use barracuda::ops::reduce::ReduceOperation;
-//!
-//! let input = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device)?;
-//! let sum_tensor = input.reduce(ReduceOperation::Sum)?;
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # use barracuda::tensor::Tensor;
+//! # use barracuda::ops::reduce::ReduceOperation;
+//! # use barracuda::device::test_pool;
+//! # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! let input = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device)?;
+//! let _sum_tensor = input.reduce(ReduceOperation::Sum)?;
+//! # Ok(())
+//! # }
 //! ```
 
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -63,7 +68,7 @@ impl ReduceOperation {
 
 impl Reduce {
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/reduce.wgsl")
+        include_str!("../shaders/misc/reduce.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -77,18 +82,21 @@ impl Reduce {
             _pad1: 0,
         };
 
-        // Deep Debt Evolution: Capability-based dispatch
-        // Note: Shader hardcodes @workgroup_size(256), so we must use 256 here
-        let workgroup_size = 256u32;  // Must match shader's @workgroup_size(256)
-        let num_workgroups = (size as u32).div_ceil(workgroup_size);
+        // Dispatch using standard 1D shader workgroup size (256)
+        let caps = DeviceCapabilities::from_device(device);
+        let num_workgroups = caps.dispatch_1d(size as u32);
 
-        // Initialize output buffer to zeros
+        // Initialize output buffer to zeros (COPY_DST for shader write on some backends)
         let output_data = vec![0.0f32; num_workgroups as usize];
-        let output_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("reduce_output"),
-            contents: bytemuck::cast_slice(&output_data),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-        });
+        let output_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("reduce_output"),
+                contents: bytemuck::cast_slice(&output_data),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            });
 
         let params_buffer = device
             .device
@@ -199,13 +207,12 @@ impl Reduce {
         }
 
         device.queue.submit(Some(encoder.finish()));
-        
-        // Ensure GPU finishes before returning
-        device.device.poll(wgpu::Maintain::Wait);
 
-        // Return partial results (caller can reduce further if needed)
-        Ok(Tensor::from_buffer(
-            output_buffer,
+        // Read back partial results (like scatter_wgsl - ensures GPU writes visible)
+        let partial_data =
+            crate::utils::read_buffer(device, &output_buffer, num_workgroups as usize)?;
+        Ok(Tensor::new(
+            partial_data,
             vec![num_workgroups as usize],
             device.clone(),
         ))
@@ -230,15 +237,21 @@ impl Tensor {
     /// ## Example
     ///
     /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use barracuda::tensor::Tensor;
     /// # use barracuda::ops::reduce::ReduceOperation;
-    /// # let input = todo!();
+    /// # use barracuda::device::test_pool;
+    /// # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let input = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device).unwrap();
     /// // Sum all elements
-    /// let partial_sums = input.reduce(ReduceOperation::Sum)?;
-    /// let total: f32 = partial_sums.to_vec()?.iter().sum();
+    /// let partial_sums = input.clone().reduce(ReduceOperation::Sum)?;
+    /// let _total: f32 = partial_sums.to_vec()?.iter().sum();
     ///
     /// // Find maximum
     /// let partial_maxes = input.reduce(ReduceOperation::Max)?;
-    /// let max = partial_maxes.to_vec()?.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+    /// let _max = partial_maxes.to_vec()?.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn reduce(self, operation: ReduceOperation) -> Result<Self> {
         let op = Reduce {
@@ -252,12 +265,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_reduce_sum() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         let input = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
 
@@ -273,7 +287,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_reduce_max() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         let input = Tensor::from_data(&vec![1.0, 5.0, 3.0, 2.0], vec![4], device.clone()).unwrap();
 

@@ -5,6 +5,7 @@
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 use toadstool_config::network_config::{BindMode, NetworkConfig};
+use toadstool_config::ports;
 
 // ============================================================================
 // NetworkConfig Tests
@@ -15,10 +16,10 @@ fn test_network_config_default() {
     let config = NetworkConfig::default();
 
     assert_eq!(config.listen_address, IpAddr::V4(Ipv4Addr::LOCALHOST));
-    assert_eq!(config.service_port, 8080);
-    assert_eq!(config.api_port, 8080);
-    assert_eq!(config.metrics_port, 9090);
-    assert_eq!(config.health_port, 8081);
+    assert_eq!(config.service_port, ports::toadstool::SERVER);
+    assert_eq!(config.api_port, ports::toadstool::SERVER);
+    assert_eq!(config.metrics_port, ports::toadstool::METRICS);
+    assert_eq!(config.health_port, ports::toadstool::HEALTH);
     assert!(config.enable_mdns);
     assert_eq!(config.bind_mode, BindMode::Localhost);
 }

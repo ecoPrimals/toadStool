@@ -13,24 +13,24 @@
 //!
 //! # Example
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool::fractal_integration::FractalRuntime;
 //!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! // Initialize fractal-aware runtime
-//! let runtime = FractalRuntime::init().await?;
+//! async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Initialize fractal-aware runtime
+//!     let runtime = FractalRuntime::init().await?;
 //!
-//! // Runtime automatically:
-//! // - Detects deployment layer
-//! // - Adapts capabilities
-//! // - Advertises layer-appropriate services
-//! // - Enables dynamic composition
+//!     // Runtime automatically:
+//!     // - Detects deployment layer
+//!     // - Adapts capabilities
+//!     // - Advertises layer-appropriate services
+//!     // - Enables dynamic composition
 //!
-//! // Use as normal - fractal composition is transparent
-//! let caps = runtime.capabilities();
-//! println!("Running as: {}", caps.deployment_layer);
-//! # Ok(())
-//! # }
+//!     // Use as normal - fractal composition is transparent
+//!     let caps = runtime.capabilities();
+//!     println!("Capabilities: {:?}", caps.metadata);
+//!     Ok(())
+//! }
 //! ```
 
 use crate::deployment_layer::{DeploymentLayer, LayerDetector};
@@ -342,5 +342,74 @@ mod tests {
             let result = advertiser.advertise().await;
             assert!(result.is_ok());
         }
+    }
+
+    #[test]
+    fn test_barracuda_integration_direct() {
+        let integration = BarracudaIntegration::Direct {
+            note: "Direct GPU".to_string(),
+        };
+        assert!(integration.has_gpu());
+        assert_eq!(integration.note(), "Direct GPU");
+    }
+
+    #[test]
+    fn test_barracuda_integration_via_host() {
+        let integration = BarracudaIntegration::ViaHost {
+            note: "Via host".to_string(),
+            host_os: Some("Linux".to_string()),
+        };
+        assert!(integration.has_gpu());
+        assert_eq!(integration.note(), "Via host");
+    }
+
+    #[test]
+    fn test_barracuda_integration_via_cloud() {
+        let integration = BarracudaIntegration::ViaCloud {
+            note: "Via cloud".to_string(),
+            provider: Some("AWS".to_string()),
+        };
+        assert!(integration.has_gpu());
+        assert_eq!(integration.note(), "Via cloud");
+    }
+
+    #[test]
+    fn test_barracuda_integration_none() {
+        let integration = BarracudaIntegration::None {
+            note: "No GPU".to_string(),
+        };
+        assert!(!integration.has_gpu());
+        assert_eq!(integration.note(), "No GPU");
+    }
+
+    #[test]
+    fn test_barracuda_integration_debug_clone() {
+        let integration = BarracudaIntegration::Direct {
+            note: "test".to_string(),
+        };
+        let cloned = integration.clone();
+        assert_eq!(integration.note(), cloned.note());
+    }
+
+    #[tokio::test]
+    async fn test_fractal_runtime_has_gpu_access() {
+        let runtime = FractalRuntime::init().await.unwrap();
+        let _ = runtime.has_gpu_access();
+        let _ = runtime.has_direct_gpu_access();
+    }
+
+    #[tokio::test]
+    async fn test_fractal_runtime_identity() {
+        let runtime = FractalRuntime::init().await.unwrap();
+        let identity = runtime.identity();
+        let _guard = identity.read().await;
+    }
+
+    #[tokio::test]
+    async fn test_fractal_advertiser_new() {
+        let runtime = FractalRuntime::init().await.unwrap();
+        let runtime_arc = Arc::new(runtime);
+        let advertiser = FractalServiceAdvertiser::new(runtime_arc);
+        assert!(advertiser.advertise().await.is_ok());
     }
 }

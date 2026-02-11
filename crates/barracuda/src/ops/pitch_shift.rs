@@ -40,7 +40,7 @@ impl PitchShift {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/pitch_shift.wgsl")
+        include_str!("../shaders/audio/pitch_shift.wgsl")
     }
 
     /// Execute the pitch shift operation
@@ -202,11 +202,13 @@ impl PitchShift {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_pitch_shift_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let signal = Tensor::from_vec_on(vec![0.5; 10000], vec![10000], device.clone())
             .await
             .unwrap();

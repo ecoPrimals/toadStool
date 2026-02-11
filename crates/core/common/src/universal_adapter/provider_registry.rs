@@ -265,7 +265,10 @@ impl Default for ProviderRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::universal_adapter::{SecurityFeature, ServiceEndpoint, TrustLevel};
+    use crate::universal_adapter::{
+        ComputeFeature, CoordinationFeature, IntelligenceFeature, ModelType, SecurityFeature,
+        ServiceEndpoint, StorageFeature, TrustLevel,
+    };
 
     fn create_test_security_provider() -> CapabilityInfo {
         CapabilityInfo {
@@ -273,6 +276,58 @@ mod tests {
             capability: CapabilityType::Security {
                 features: vec![SecurityFeature::Encryption, SecurityFeature::Signing],
                 min_trust_level: TrustLevel::High,
+            },
+            metadata: HashMap::new(),
+            endpoint: ServiceEndpoint::InProcess,
+            health: HealthStatus::Healthy,
+        }
+    }
+
+    fn create_storage_provider(throughput: Option<u64>) -> CapabilityInfo {
+        CapabilityInfo {
+            provider_id: "test-storage-1".to_string(),
+            capability: CapabilityType::Storage {
+                features: vec![StorageFeature::Compression, StorageFeature::Encryption],
+                min_throughput_mbps: throughput,
+            },
+            metadata: HashMap::new(),
+            endpoint: ServiceEndpoint::InProcess,
+            health: HealthStatus::Healthy,
+        }
+    }
+
+    fn create_coordination_provider(latency: Option<u64>) -> CapabilityInfo {
+        CapabilityInfo {
+            provider_id: "test-coord-1".to_string(),
+            capability: CapabilityType::Coordination {
+                features: vec![CoordinationFeature::ServiceDiscovery],
+                max_latency_ms: latency,
+            },
+            metadata: HashMap::new(),
+            endpoint: ServiceEndpoint::InProcess,
+            health: HealthStatus::Healthy,
+        }
+    }
+
+    fn create_compute_provider(memory_gb: Option<f64>) -> CapabilityInfo {
+        CapabilityInfo {
+            provider_id: "test-compute-1".to_string(),
+            capability: CapabilityType::Compute {
+                features: vec![ComputeFeature::GPU],
+                min_memory_gb: memory_gb,
+            },
+            metadata: HashMap::new(),
+            endpoint: ServiceEndpoint::InProcess,
+            health: HealthStatus::Healthy,
+        }
+    }
+
+    fn create_intelligence_provider() -> CapabilityInfo {
+        CapabilityInfo {
+            provider_id: "test-intel-1".to_string(),
+            capability: CapabilityType::Intelligence {
+                features: vec![IntelligenceFeature::NaturalLanguage],
+                model_types: vec![ModelType::LLM],
             },
             metadata: HashMap::new(),
             endpoint: ServiceEndpoint::InProcess,
@@ -386,5 +441,241 @@ mod tests {
 
         registry.clear();
         assert_eq!(registry.provider_count(), 0);
+    }
+
+    #[test]
+    fn test_registry_default() {
+        let registry = ProviderRegistry::default();
+        assert_eq!(registry.provider_count(), 0);
+    }
+
+    #[test]
+    fn test_storage_capability_matching_throughput() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(create_storage_provider(Some(200)))
+            .unwrap();
+
+        let request = CapabilityType::Storage {
+            features: vec![StorageFeature::Compression],
+            min_throughput_mbps: Some(100),
+        };
+        let matched = registry.find_best_match(&request).unwrap();
+        assert!(matched.is_some());
+
+        let request_too_high = CapabilityType::Storage {
+            features: vec![StorageFeature::Compression],
+            min_throughput_mbps: Some(500),
+        };
+        let no_match = registry.find_best_match(&request_too_high).unwrap();
+        assert!(no_match.is_none());
+    }
+
+    #[test]
+    fn test_storage_capability_request_no_throughput() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(create_storage_provider(Some(100)))
+            .unwrap();
+
+        let request = CapabilityType::Storage {
+            features: vec![StorageFeature::Compression],
+            min_throughput_mbps: None,
+        };
+        let matched = registry.find_best_match(&request).unwrap();
+        assert!(matched.is_some());
+    }
+
+    #[test]
+    fn test_storage_provider_no_throughput_fails_when_required() {
+        let mut registry = ProviderRegistry::new();
+        registry.register(create_storage_provider(None)).unwrap();
+
+        let request = CapabilityType::Storage {
+            features: vec![StorageFeature::Compression],
+            min_throughput_mbps: Some(100),
+        };
+        let matched = registry.find_best_match(&request).unwrap();
+        assert!(matched.is_none());
+    }
+
+    #[test]
+    fn test_coordination_capability_matching_latency() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(create_coordination_provider(Some(50)))
+            .unwrap();
+
+        let request = CapabilityType::Coordination {
+            features: vec![CoordinationFeature::ServiceDiscovery],
+            max_latency_ms: Some(100),
+        };
+        let matched = registry.find_best_match(&request).unwrap();
+        assert!(matched.is_some());
+
+        let request_too_strict = CapabilityType::Coordination {
+            features: vec![CoordinationFeature::ServiceDiscovery],
+            max_latency_ms: Some(10),
+        };
+        let no_match = registry.find_best_match(&request_too_strict).unwrap();
+        assert!(no_match.is_none());
+    }
+
+    #[test]
+    fn test_compute_capability_matching_memory() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(create_compute_provider(Some(16.0)))
+            .unwrap();
+
+        let request = CapabilityType::Compute {
+            features: vec![ComputeFeature::GPU],
+            min_memory_gb: Some(8.0),
+        };
+        let matched = registry.find_best_match(&request).unwrap();
+        assert!(matched.is_some());
+
+        let request_too_high = CapabilityType::Compute {
+            features: vec![ComputeFeature::GPU],
+            min_memory_gb: Some(32.0),
+        };
+        let no_match = registry.find_best_match(&request_too_high).unwrap();
+        assert!(no_match.is_none());
+    }
+
+    #[test]
+    fn test_intelligence_capability_matching() {
+        let mut registry = ProviderRegistry::new();
+        registry.register(create_intelligence_provider()).unwrap();
+
+        let request = CapabilityType::Intelligence {
+            features: vec![IntelligenceFeature::NaturalLanguage],
+            model_types: vec![ModelType::LLM],
+        };
+        let matched = registry.find_best_match(&request).unwrap();
+        assert!(matched.is_some());
+
+        let request_missing_model = CapabilityType::Intelligence {
+            features: vec![IntelligenceFeature::NaturalLanguage],
+            model_types: vec![ModelType::Vision],
+        };
+        let no_match = registry.find_best_match(&request_missing_model).unwrap();
+        assert!(no_match.is_none());
+    }
+
+    #[test]
+    fn test_network_capability_matching() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(CapabilityInfo {
+                provider_id: "net-1".to_string(),
+                capability: CapabilityType::Network {
+                    features: vec![],
+                    min_bandwidth_mbps: None,
+                },
+                metadata: HashMap::new(),
+                endpoint: ServiceEndpoint::InProcess,
+                health: HealthStatus::Healthy,
+            })
+            .unwrap();
+
+        let request = CapabilityType::Network {
+            features: vec![],
+            min_bandwidth_mbps: Some(100),
+        };
+        let matched = registry.find_best_match(&request).unwrap();
+        assert!(matched.is_some());
+    }
+
+    #[test]
+    fn test_monitoring_capability_matching() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(CapabilityInfo {
+                provider_id: "mon-1".to_string(),
+                capability: CapabilityType::Monitoring {
+                    features: vec![],
+                    retention_days: None,
+                },
+                metadata: HashMap::new(),
+                endpoint: ServiceEndpoint::InProcess,
+                health: HealthStatus::Healthy,
+            })
+            .unwrap();
+
+        let request = CapabilityType::Monitoring {
+            features: vec![],
+            retention_days: Some(30),
+        };
+        let matched = registry.find_best_match(&request).unwrap();
+        assert!(matched.is_some());
+    }
+
+    #[test]
+    fn test_capability_cross_type_no_match() {
+        let mut registry = ProviderRegistry::new();
+        registry.register(create_test_security_provider()).unwrap();
+
+        let request = CapabilityType::Storage {
+            features: vec![StorageFeature::Compression],
+            min_throughput_mbps: None,
+        };
+        let matched = registry.find_best_match(&request).unwrap();
+        assert!(matched.is_none());
+    }
+
+    #[test]
+    fn test_unhealthy_provider_filtered_out() {
+        let mut registry = ProviderRegistry::new();
+        let mut provider = create_test_security_provider();
+        provider.health = HealthStatus::Unhealthy;
+        registry.register(provider).unwrap();
+
+        let request = CapabilityType::Security {
+            features: vec![SecurityFeature::Encryption],
+            min_trust_level: TrustLevel::Medium,
+        };
+        let matched = registry.find_best_match(&request).unwrap();
+        assert!(matched.is_none());
+    }
+
+    #[test]
+    fn test_unknown_health_provider_matches() {
+        let mut registry = ProviderRegistry::new();
+        let mut provider = create_test_security_provider();
+        provider.health = HealthStatus::Unknown;
+        registry.register(provider).unwrap();
+
+        let request = CapabilityType::Security {
+            features: vec![SecurityFeature::Encryption],
+            min_trust_level: TrustLevel::Medium,
+        };
+        let matched = registry.find_best_match(&request).unwrap();
+        assert!(matched.is_some());
+    }
+
+    #[test]
+    fn test_update_health_nonexistent_no_panic() {
+        let mut registry = ProviderRegistry::new();
+        registry.update_health("nonexistent", HealthStatus::Degraded);
+        assert_eq!(registry.provider_count(), 0);
+    }
+
+    #[test]
+    fn test_record_success_nonexistent_no_panic() {
+        let mut registry = ProviderRegistry::new();
+        registry.record_success("nonexistent");
+    }
+
+    #[test]
+    fn test_record_failure_nonexistent_no_panic() {
+        let mut registry = ProviderRegistry::new();
+        registry.record_failure("nonexistent");
+    }
+
+    #[test]
+    fn test_get_provider_nonexistent() {
+        let registry = ProviderRegistry::new();
+        assert!(registry.get_provider("missing").is_none());
     }
 }

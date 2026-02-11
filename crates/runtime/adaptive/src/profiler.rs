@@ -48,7 +48,7 @@ impl RuntimeProfiler {
     /// # Errors
     ///
     /// Returns error if GPU initialization fails.
-    pub async fn new(fingerprint: GpuFingerprint) -> Result<Self> {
+    pub fn new(fingerprint: GpuFingerprint) -> Result<Self> {
         Ok(Self {
             fingerprint,
             config: ProfilingConfig::default(),
@@ -128,7 +128,6 @@ impl RuntimeProfiler {
                 }
                 Err(e) => {
                     tracing::warn!("  Workgroup {} failed: {}", workgroup_size, e);
-                    continue;
                 }
             }
         }
@@ -145,9 +144,9 @@ impl RuntimeProfiler {
         size: usize,
         workgroup_size: usize,
     ) -> Result<f64> {
-        // TODO: Actual GPU benchmarking
-        // For now, simulate with conservative estimates
-        // Real implementation will use wgpu executor
+        // Pending: Replace simulation with actual wgpu executor.execute_operation()
+        // micro-benchmarks. Requires RuntimeProfiler to hold executor reference and
+        // run real compute shaders; simulation provides conservative estimates until then.
 
         // Simulate warmup
         for _ in 0..self.config.warmup_runs {
@@ -169,10 +168,13 @@ impl RuntimeProfiler {
             .await;
 
             let elapsed = start.elapsed();
+            #[allow(clippy::cast_precision_loss)]
+            // microsecond measurements fit comfortably in f64
             measurements.push(elapsed.as_micros() as f64);
         }
 
         // Calculate average
+        #[allow(clippy::cast_precision_loss)] // measurement count is small (~10 iterations)
         let avg = measurements.iter().sum::<f64>() / measurements.len() as f64;
 
         Ok(avg)
@@ -192,6 +194,7 @@ impl RuntimeProfiler {
         };
 
         // Larger sizes take longer
+        #[allow(clippy::cast_precision_loss)] // size values are well within f64 precision
         let size_factor = (size as f64 / 1000.0).sqrt();
 
         // Suboptimal workgroup sizes are slower
@@ -203,7 +206,11 @@ impl RuntimeProfiler {
             1.0 // Reasonable
         };
 
-        (f64::from(base_time) * size_factor * workgroup_penalty) as u64
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        // Result is always positive and within u64 range (simulation timing)
+        {
+            (f64::from(base_time) * size_factor * workgroup_penalty) as u64
+        }
     }
 
     /// Quick profile all common operations
@@ -258,14 +265,14 @@ mod tests {
     #[tokio::test]
     async fn test_profiler_creation() {
         let fingerprint = mock_fingerprint();
-        let profiler = RuntimeProfiler::new(fingerprint).await;
+        let profiler = RuntimeProfiler::new(fingerprint);
         assert!(profiler.is_ok());
     }
 
     #[tokio::test]
     async fn test_profile_operation() {
         let fingerprint = mock_fingerprint();
-        let profiler = RuntimeProfiler::new(fingerprint).await.unwrap();
+        let profiler = RuntimeProfiler::new(fingerprint).unwrap();
 
         let profile = profiler
             .profile_operation(
@@ -284,7 +291,7 @@ mod tests {
     #[tokio::test]
     async fn test_benchmark_workgroup() {
         let fingerprint = mock_fingerprint();
-        let profiler = RuntimeProfiler::new(fingerprint).await.unwrap();
+        let profiler = RuntimeProfiler::new(fingerprint).unwrap();
 
         let result = profiler
             .benchmark_workgroup(OpType::MatMul, 10_000, 128)

@@ -25,7 +25,7 @@ static TEST_DEVICE_POOL: Lazy<Arc<Mutex<Option<Arc<WgpuDevice>>>>> =
 /// ```rust
 /// #[tokio::test]
 /// async fn test_matmul() {
-///     let dev = get_test_device().await;
+///     let Some(dev) = get_test_device().await else { return };
 ///     let result = matmul(&dev.device, &dev.queue, ...).await.unwrap();
 /// }
 /// ```
@@ -59,6 +59,34 @@ pub async fn get_test_device() -> Arc<WgpuDevice> {
 pub async fn reset_test_device_pool() {
     let mut pool = TEST_DEVICE_POOL.lock().await;
     *pool = None;
+}
+
+/// GPU-only device pool for tests that require real GPU hardware.
+///
+/// Software adapters (llvmpipe, lavapipe, swiftshader) produce NaN/Inf for
+/// transcendental operations. Tests using this pool skip when no real GPU exists.
+static TEST_GPU_DEVICE_POOL: Lazy<Arc<Mutex<Option<Arc<WgpuDevice>>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(None)));
+
+/// Get test device, returning None if only a software/CPU adapter is available.
+///
+/// GPU shader tests should use this to gracefully skip on machines without GPUs.
+/// Use: `let Some(device) = get_test_device().await else { return };`
+pub async fn get_test_device_if_gpu_available() -> Option<Arc<WgpuDevice>> {
+    let mut pool = TEST_GPU_DEVICE_POOL.lock().await;
+
+    if let Some(device) = pool.as_ref() {
+        return Some(Arc::clone(device));
+    }
+
+    match WgpuDevice::new_gpu().await {
+        Ok(device) => {
+            let device = Arc::new(device);
+            *pool = Some(Arc::clone(&device));
+            Some(device)
+        }
+        Err(_) => None,
+    }
 }
 
 #[cfg(test)]

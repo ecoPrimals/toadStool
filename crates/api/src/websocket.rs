@@ -132,7 +132,7 @@ pub async fn handle_websocket(socket: WebSocket, state: ApiState) {
                     debug!("Received WebSocket message: {}", text);
 
                     // Parse message
-                    match serde_json::from_str::<WebSocketMessage>(&text) {
+                    match serde_json::from_slice::<WebSocketMessage>(text.as_bytes()) {
                         Ok(ws_msg) => {
                             match ws_msg {
                                 WebSocketMessage::Subscribe { event_types } => {

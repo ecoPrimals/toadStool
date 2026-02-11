@@ -46,7 +46,6 @@ impl FallbackStrategy {
                 // Real vendor hints would be learned, not hardcoded!
                 match op_type {
                     OpType::MatMul | OpType::Conv2D => 256,
-                    OpType::LayerNorm | OpType::BatchNorm => 128,
                     _ => 128,
                 }
             }

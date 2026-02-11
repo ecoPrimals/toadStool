@@ -31,7 +31,7 @@ impl Add {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/elementwise_add.wgsl")
+        include_str!("../shaders/math/elementwise_add.wgsl")
     }
 
     /// Execute addition on tensors
@@ -169,12 +169,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_add_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let lhs = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0, 5.0], vec![5], device.clone())
             .await
             .unwrap();
@@ -193,8 +194,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Very small values, zero, negatives
         let lhs = Tensor::from_vec_on(vec![-1e-6, 0.0, 1e-6, -1.0, 1.0], vec![5], device.clone())
             .await
@@ -215,8 +217,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Infinities and large values
         let lhs = Tensor::from_vec_on(
             vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY],
@@ -242,8 +245,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_large_tensor() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 1000;
         let lhs_data: Vec<f32> = (0..size).map(|i| i as f32).collect();
         let rhs_data: Vec<f32> = (0..size).map(|i| (size - i) as f32).collect();
@@ -271,8 +275,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let lhs_data = vec![-5.0, -2.5, -1.0, 0.0, 1.0, 2.5, 5.0];
         let rhs_data = vec![2.0, 1.5, 0.5, 0.0, -0.5, -1.5, -2.0];
 

@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn test_test_scope_cleanup() {
         let called = Arc::new(std::sync::Mutex::new(false));
-        let called_clone = called.clone();
+        let called_clone = Arc::clone(&called);
 
         {
             let _scope = TestScope::with_cleanup(42, move |_val| {

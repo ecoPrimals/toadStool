@@ -13,6 +13,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[allow(deprecated)]
+use crate::interned_strings::primals;
+
 /// Primal identity trait - defines what a primal knows about itself
 pub trait PrimalIdentity: Send + Sync {
     /// Get the primal's name (e.g., "toadstool", "songbird")
@@ -350,9 +353,10 @@ impl Default for ToadStoolIdentity {
     }
 }
 
+#[allow(deprecated)] // Self-knowledge: ToadStool knows its own name
 impl PrimalIdentity for ToadStoolIdentity {
     fn primal_name(&self) -> &'static str {
-        "toadstool"
+        primals::TOADSTOOL
     }
 
     fn version(&self) -> &str {
@@ -759,9 +763,10 @@ mod tests {
             StorageCapability::FileStorage,
             StorageCapability::Database,
             StorageCapability::Cache,
+            StorageCapability::ArtifactStorage,
         ];
 
-        assert_eq!(caps.len(), 5);
+        assert_eq!(caps.len(), 6);
     }
 
     #[test]
@@ -770,9 +775,164 @@ mod tests {
             AuthCapability::UserAuth,
             AuthCapability::ServiceAuth,
             AuthCapability::TokenManagement,
-            AuthCapability::UserAuth,
+            AuthCapability::OAuthProvider,
+            AuthCapability::SamlProvider,
+        ];
+
+        assert_eq!(caps.len(), 5);
+    }
+
+    // === Capability variant coverage (all branches) ===
+
+    #[test]
+    fn test_all_crypto_capabilities() {
+        let caps = vec![
+            CryptoCapability::Encryption,
+            CryptoCapability::KeyManagement,
+            CryptoCapability::CertificateAuthority,
+            CryptoCapability::SecretsManagement,
+            CryptoCapability::HardwareSecurity,
+            CryptoCapability::GeneticEntropy,
+            CryptoCapability::DigitalSignatures,
+            CryptoCapability::Hashing,
+        ];
+
+        assert_eq!(caps.len(), 8);
+    }
+
+    #[test]
+    fn test_all_coordination_capabilities() {
+        let caps = vec![
+            CoordinationCapability::ServiceDiscovery,
+            CoordinationCapability::LoadBalancing,
+            CoordinationCapability::HealthChecking,
+            CoordinationCapability::ConfigManagement,
+            CoordinationCapability::WorkflowOrchestration,
+        ];
+
+        assert_eq!(caps.len(), 5);
+    }
+
+    #[test]
+    fn test_all_discovery_capabilities() {
+        let caps = vec![
+            DiscoveryCapability::CapabilityDiscovery,
+            DiscoveryCapability::DnsDiscovery,
+            DiscoveryCapability::MdnsDiscovery,
+            DiscoveryCapability::RegistryDiscovery,
         ];
 
         assert_eq!(caps.len(), 4);
+    }
+
+    #[test]
+    fn test_discovered_service_with_crypto_capability() {
+        let service = DiscoveredService {
+            id: None,
+            capabilities: vec![Capability::Crypto(CryptoCapability::Encryption)],
+            endpoints: vec![],
+            healthy: true,
+            metadata: HashMap::new(),
+        };
+
+        assert!(service.has_capability(&Capability::Crypto(CryptoCapability::Encryption)));
+        assert!(!service.has_compute_capability());
+        assert!(!service.has_storage_capability());
+        assert!(!service.has_auth_capability());
+    }
+
+    #[test]
+    fn test_discovered_service_with_discovery_capability() {
+        let service = DiscoveredService {
+            id: None,
+            capabilities: vec![Capability::Discovery(
+                DiscoveryCapability::CapabilityDiscovery,
+            )],
+            endpoints: vec![],
+            healthy: true,
+            metadata: HashMap::new(),
+        };
+
+        assert!(service.has_capability(&Capability::Discovery(
+            DiscoveryCapability::CapabilityDiscovery
+        )));
+    }
+
+    #[test]
+    fn test_discovered_service_with_coordination_capability() {
+        let service = DiscoveredService {
+            id: None,
+            capabilities: vec![Capability::Coordination(
+                CoordinationCapability::LoadBalancing,
+            )],
+            endpoints: vec![],
+            healthy: true,
+            metadata: HashMap::new(),
+        };
+
+        assert!(service.has_capability(&Capability::Coordination(
+            CoordinationCapability::LoadBalancing
+        )));
+    }
+
+    #[test]
+    fn test_capability_debug_formatting() {
+        let cap = Capability::Compute(ComputeCapability::WasmExecution);
+        let debug_str = format!("{:?}", cap);
+        assert!(!debug_str.is_empty());
+        assert!(debug_str.contains("Compute"));
+        assert!(debug_str.contains("WasmExecution"));
+
+        let custom = Capability::Custom {
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+        };
+        let custom_debug = format!("{:?}", custom);
+        assert!(!custom_debug.is_empty());
+        assert!(custom_debug.contains("Custom"));
+    }
+
+    #[test]
+    fn test_service_endpoint_debug_formatting() {
+        let ep = ServiceEndpoint::http("localhost", 8080);
+        let debug_str = format!("{:?}", ep);
+        assert!(!debug_str.is_empty());
+        assert!(debug_str.contains("localhost"));
+    }
+
+    #[test]
+    fn test_toadstool_identity_debug_formatting() {
+        let identity = ToadStoolIdentity::new();
+        let debug_str = format!("{:?}", identity);
+        assert!(!debug_str.is_empty());
+    }
+
+    #[test]
+    fn test_discovered_service_debug_formatting() {
+        let service = DiscoveredService {
+            id: Some("id".to_string()),
+            capabilities: vec![],
+            endpoints: vec![],
+            healthy: true,
+            metadata: HashMap::new(),
+        };
+        let debug_str = format!("{:?}", service);
+        assert!(!debug_str.is_empty());
+    }
+
+    #[test]
+    fn test_capability_serialize_deserialize() {
+        let cap = Capability::Compute(ComputeCapability::GpuCompute);
+        let json = serde_json::to_string(&cap).unwrap();
+        let deserialized: Capability = serde_json::from_str(&json).unwrap();
+        assert_eq!(cap, deserialized);
+
+        let custom = Capability::Custom {
+            name: "custom-service".to_string(),
+            version: "2.0".to_string(),
+        };
+        let json = serde_json::to_string(&custom).unwrap();
+        let deserialized: Capability = serde_json::from_str(&json).unwrap();
+        assert_eq!(custom, deserialized);
     }
 }

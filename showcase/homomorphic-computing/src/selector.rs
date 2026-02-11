@@ -271,9 +271,7 @@ impl SubstrateSelector {
 
         // Batch size
         if let Some(batch) = hints.batch_size {
-            if batch >= 100 && cap.best_for_batch {
-                score += 25.0;
-            } else if batch <= 10 && cap.best_for_streaming {
+            if (batch >= 100 && cap.best_for_batch) || (batch <= 10 && cap.best_for_streaming) {
                 score += 25.0;
             }
         }

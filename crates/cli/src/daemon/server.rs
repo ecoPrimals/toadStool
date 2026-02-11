@@ -90,7 +90,7 @@ impl DaemonServer {
         // Start JSON-RPC server (EVOLVED: Pure Rust over Unix sockets!)
         {
             let socket = socket_path.clone();
-            let manager = self.workload_manager.clone();
+            let manager = Arc::clone(&self.workload_manager);
 
             tokio::spawn(async move {
                 if let Err(e) = jsonrpc_server::start_jsonrpc_server(&socket, manager).await {
@@ -104,7 +104,7 @@ impl DaemonServer {
         if std::env::var("TOADSTOOL_HTTP_COMPAT").is_ok() {
             warn!("⚠️  HTTP compatibility mode enabled (DEPRECATED)");
             let port = self.config.port;
-            let manager = self.workload_manager.clone();
+            let manager = Arc::clone(&self.workload_manager);
 
             tokio::spawn(async move {
                 if let Err(e) = http_server::start_http_server(port, manager).await {
@@ -167,8 +167,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_daemon_server_with_biomeos() {
-        let mut config = DaemonConfig::default();
-        config.register_with_biomeos = true;
+        let config = DaemonConfig {
+            register_with_biomeos: true,
+            ..Default::default()
+        };
 
         // Should handle biomeOS connection failure gracefully (may fail to connect, but should not crash)
         let result = DaemonServer::start(config).await;

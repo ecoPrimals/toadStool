@@ -55,7 +55,7 @@ impl RandomAffine {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/random_affine.wgsl")
+        include_str!("../shaders/augmentation/random_affine.wgsl")
     }
 
     /// Execute the random affine operation

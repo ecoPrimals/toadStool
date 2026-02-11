@@ -268,7 +268,7 @@ pub enum Commands {
         register: bool,
 
         /// HTTP API port
-        #[arg(long, default_value = "8084")]
+        #[arg(long, default_value_t = toadstool_config::defaults::network::API_PORT)]
         port: u16,
 
         /// Unix socket path for IPC
@@ -286,6 +286,10 @@ pub enum Commands {
         /// biomeOS registry socket path
         #[arg(long)]
         biomeos_socket: Option<PathBuf>,
+
+        /// Family ID for multi-family socket support (creates toadstool-{family_id}.sock)
+        #[arg(long)]
+        family_id: Option<String>,
     },
 
     /// Start ToadStool as a daemon service (workload execution service)
@@ -303,7 +307,7 @@ pub enum Commands {
         register: bool,
 
         /// HTTP API port
-        #[arg(long, default_value = "8084")]
+        #[arg(long, default_value_t = toadstool_config::defaults::network::API_PORT)]
         port: u16,
 
         /// Unix socket path for IPC
@@ -321,6 +325,10 @@ pub enum Commands {
         /// biomeOS registry socket path
         #[arg(long)]
         biomeos_socket: Option<PathBuf>,
+
+        /// Family ID for multi-family socket support (creates toadstool-{family_id}.sock)
+        #[arg(long)]
+        family_id: Option<String>,
     },
 
     // UNIBIN PHASE 1: ZeroConfig temporarily disabled (has HTTP dependencies)

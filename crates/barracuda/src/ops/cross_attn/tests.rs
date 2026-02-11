@@ -3,11 +3,13 @@
 //! Validates encoder-decoder attention with asymmetric sequence lengths.
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 #[tokio::test]
 async fn test_cross_attention_basic() {
-    let device = get_test_device().await;
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
 
     let batch = 1;
     let heads = 2;
@@ -48,7 +50,9 @@ async fn test_cross_attention_basic() {
 
 #[tokio::test]
 async fn test_cross_attention_shape_validation() {
-    let device = get_test_device().await;
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
 
     let batch = 2;
     let heads = 4;
@@ -85,7 +89,7 @@ async fn test_cross_attention_shape_validation() {
 
     // Invalid: mismatched batch
     let k_bad = Tensor::from_vec_on(
-        vec![0.5; 1 * heads * enc_seq * dim],
+        vec![0.5; heads * enc_seq * dim],
         vec![1, heads, enc_seq, dim],
         device,
     )
@@ -97,7 +101,9 @@ async fn test_cross_attention_shape_validation() {
 
 #[tokio::test]
 async fn test_cross_attention_whisper_style() {
-    let device = get_test_device().await;
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
 
     // Whisper-style: short decoder, long encoder (audio)
     let batch = 1;

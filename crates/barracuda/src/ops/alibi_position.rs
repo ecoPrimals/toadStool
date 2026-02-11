@@ -5,6 +5,8 @@
 //!
 //! Reference: "Train Short, Test Long" (Press et al., 2021)
 
+use crate::error::Result;
+
 pub async fn alibi_position(
     _device: &wgpu::Device,
     _queue: &wgpu::Queue,
@@ -12,7 +14,7 @@ pub async fn alibi_position(
     batch_size: usize,
     num_heads: usize,
     seq_len: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+) -> Result<Vec<f32>> {
     let mut output = attention_scores.to_vec();
 
     // Head-specific slopes (geometric sequence)
@@ -43,12 +45,14 @@ pub async fn alibi_position(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_alibi_position_basic() {
-        let dev = get_test_device().await;
-        let scores = vec![1.0; 1 * 2 * 4 * 4]; // batch=1, heads=2, seq=4
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        let scores = vec![1.0; 2 * 4 * 4]; // batch=1, heads=2, seq=4
         let output = alibi_position(&dev.device, &dev.queue, &scores, 1, 2, 4)
             .await
             .unwrap();
@@ -60,8 +64,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_alibi_position_edge_cases() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test with single head, single token
         let scores = vec![5.0];
         let output = alibi_position(&dev.device, &dev.queue, &scores, 1, 1, 1)
@@ -72,7 +77,7 @@ mod tests {
         assert!((output[0] - 5.0).abs() < 1e-6);
 
         // Test with zero attention scores
-        let scores = vec![0.0; 1 * 1 * 4 * 4];
+        let scores = vec![0.0; 4 * 4];
         let output = alibi_position(&dev.device, &dev.queue, &scores, 1, 1, 4)
             .await
             .unwrap();
@@ -81,15 +86,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_alibi_position_boundary() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test with different numbers of heads (slope variations)
-        let scores1 = vec![0.0; 1 * 1 * 4 * 4];
+        let scores1 = vec![0.0; 4 * 4];
         let output1 = alibi_position(&dev.device, &dev.queue, &scores1, 1, 1, 4)
             .await
             .unwrap();
 
-        let scores2 = vec![0.0; 1 * 4 * 4 * 4];
+        let scores2 = vec![0.0; 4 * 4 * 4];
         let output2 = alibi_position(&dev.device, &dev.queue, &scores2, 1, 4, 4)
             .await
             .unwrap();
@@ -103,8 +109,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_alibi_position_large_batch() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Multiple batches, heads, longer sequences
         let batch_size = 4;
         let num_heads = 8;
@@ -128,10 +135,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_alibi_position_precision() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test with known distances and biases
-        let scores = vec![0.0; 1 * 1 * 3 * 3]; // seq_len=3
+        let scores = vec![0.0; 3 * 3]; // seq_len=3
         let output = alibi_position(&dev.device, &dev.queue, &scores, 1, 1, 3)
             .await
             .unwrap();

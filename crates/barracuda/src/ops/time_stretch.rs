@@ -68,7 +68,7 @@ impl TimeStretch {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/time_stretch.wgsl")
+        include_str!("../shaders/audio/time_stretch.wgsl")
     }
 
     /// Execute the time stretch operation
@@ -268,14 +268,16 @@ impl TimeStretch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
     use crate::ops::window_function::{WindowFunction, WindowType};
     #[allow(unused_imports)]
     use std::sync::Arc;
 
     #[tokio::test]
     async fn test_time_stretch_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let signal = Tensor::from_vec_on(vec![0.5; 10000], vec![10000], device.clone())
             .await
             .unwrap();

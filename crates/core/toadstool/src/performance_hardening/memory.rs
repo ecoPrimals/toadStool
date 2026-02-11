@@ -135,3 +135,133 @@ impl<T: Send + Sync + 'static> Drop for PooledObject<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_memory_pool_construction() {
+        let config = MemoryPoolConfig {
+            initial_size: 5,
+            max_size: 100,
+            ..Default::default()
+        };
+        let pool = MemoryPool::new(config, || String::from("obj"));
+
+        let stats = pool.get_stats().await;
+        assert_eq!(stats.current_size, 5);
+        assert_eq!(stats.available, 5);
+        assert_eq!(stats.in_use, 0);
+        assert_eq!(stats.total_allocations, 0);
+        assert_eq!(stats.total_deallocations, 0);
+    }
+
+    #[tokio::test]
+    async fn test_memory_pool_get_release_cycle() {
+        let config = MemoryPoolConfig {
+            initial_size: 3,
+            max_size: 10,
+            ..Default::default()
+        };
+        let pool = MemoryPool::new(config, || Vec::<i32>::new());
+
+        let obj1 = pool.get().await;
+        assert!(obj1.get().is_some());
+        let obj2 = pool.get().await;
+        assert!(obj2.get().is_some());
+
+        let stats = pool.get_stats().await;
+        assert_eq!(stats.total_allocations, 2);
+        assert_eq!(stats.in_use, 2);
+        assert_eq!(stats.available, 1);
+
+        drop(obj1);
+        drop(obj2);
+
+        let stats = pool.get_stats().await;
+        assert_eq!(stats.total_deallocations, 2);
+    }
+
+    #[tokio::test]
+    async fn test_memory_pool_exhaustion_and_reuse() {
+        let config = MemoryPoolConfig {
+            initial_size: 2,
+            max_size: 5,
+            ..Default::default()
+        };
+        let pool = MemoryPool::new(config, || String::from("allocated"));
+
+        let mut objs = Vec::new();
+        for _ in 0..5 {
+            objs.push(pool.get().await);
+        }
+        assert_eq!(objs.len(), 5);
+
+        let stats = pool.get_stats().await;
+        assert_eq!(stats.total_allocations, 5);
+
+        drop(objs);
+
+        let obj_reuse = pool.get().await;
+        assert_eq!(obj_reuse.get(), Some(&String::from("allocated")));
+
+        let stats = pool.get_stats().await;
+        assert_eq!(stats.total_deallocations, 5);
+    }
+
+    #[tokio::test]
+    async fn test_memory_pool_reuse_after_release() {
+        let config = MemoryPoolConfig {
+            initial_size: 2,
+            max_size: 10,
+            ..Default::default()
+        };
+        let pool = MemoryPool::new(config, || 42i32);
+
+        let obj1 = pool.get().await;
+        assert_eq!(obj1.get(), Some(&42));
+        drop(obj1);
+
+        let obj2 = pool.get().await;
+        assert_eq!(obj2.get(), Some(&42));
+
+        let stats = pool.get_stats().await;
+        assert_eq!(stats.total_allocations, 2);
+    }
+
+    #[tokio::test]
+    async fn test_pooled_object_get_mut() {
+        let config = MemoryPoolConfig {
+            initial_size: 1,
+            max_size: 10,
+            ..Default::default()
+        };
+        let pool = MemoryPool::new(config, || vec![1, 2, 3]);
+
+        let mut obj = pool.get().await;
+        if let Some(v) = obj.get_mut() {
+            v.push(4);
+            assert_eq!(v, &[1, 2, 3, 4]);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_pooled_object_drop_automatic_release() {
+        let config = MemoryPoolConfig {
+            initial_size: 1,
+            max_size: 10,
+            ..Default::default()
+        };
+        let pool = MemoryPool::new(config, || String::from("test"));
+
+        {
+            let _obj = pool.get().await;
+            let stats = pool.get_stats().await;
+            assert_eq!(stats.in_use, 1);
+        }
+
+        let stats = pool.get_stats().await;
+        assert_eq!(stats.total_deallocations, 1);
+    }
+}

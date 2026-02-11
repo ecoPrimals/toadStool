@@ -89,7 +89,7 @@ impl GcnConv {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/gcn_conv.wgsl")
+        include_str!("../shaders/gnn/gcn_conv.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -376,12 +376,13 @@ impl GcnConv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_gcn_conv_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let num_nodes = 4;
         let in_features = 8;
         let out_features = 16;
@@ -416,8 +417,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_gcn_conv_no_self_loops() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let num_nodes = 3;
         let in_features = 4;
         let out_features = 8;
@@ -452,8 +454,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_gcn_conv_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let num_nodes = 100;
         let in_features = 64;
         let out_features = 128;

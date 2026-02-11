@@ -299,8 +299,8 @@ async fn main() -> Result<()> {
         println!("  Shape: ({} x {}) - attention matrix", rows, cols);
         println!("  First row (attention from token 0):");
         print!("    [");
-        for i in 0..8.min(*cols) {
-            print!("{:.3}", scores[i]);
+        for (i, &score) in scores.iter().enumerate().take(8.min(*cols)) {
+            print!("{:.3}", score);
             if i < 7.min(*cols - 1) {
                 print!(", ");
             }

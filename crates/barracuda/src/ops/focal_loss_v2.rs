@@ -53,7 +53,7 @@ impl FocalLossV2 {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/focal_loss_v2.wgsl")
+        include_str!("../shaders/loss/focal_loss_v2.wgsl")
     }
 
     /// Execute the focal loss v2 operation
@@ -227,11 +227,13 @@ impl FocalLossV2 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_focal_loss_v2_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let preds = Tensor::from_vec_on(vec![0.9, 0.1, 0.8], vec![3], device.clone())
             .await
             .unwrap();
@@ -249,8 +251,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_focal_loss_v2_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Perfect predictions
         let preds = Tensor::from_vec_on(vec![1.0, 0.0, 1.0, 0.0], vec![4], device.clone())
             .await

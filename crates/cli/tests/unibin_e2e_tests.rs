@@ -20,7 +20,7 @@ use tokio::time::timeout;
 async fn test_server_mode_starts() {
     // Test that server mode starts successfully
     let mut cmd = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8085"])
+        .args(["run", "--", "server", "--port", "8085"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn server");
@@ -30,9 +30,6 @@ async fn test_server_mode_starts() {
 
     // Kill the server
     cmd.kill().await.ok();
-
-    // Should have started successfully
-    assert!(true);
 }
 
 #[tokio::test]
@@ -45,7 +42,7 @@ async fn test_server_mode_with_socket() {
     let _ = tokio::fs::remove_file(socket_path).await;
 
     let mut cmd = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--",
             "server",
@@ -66,7 +63,6 @@ async fn test_server_mode_with_socket() {
 
     // Socket should have been created
     // Note: May need to check if socket exists
-    assert!(true);
 
     // Cleanup
     let _ = tokio::fs::remove_file(socket_path).await;
@@ -77,7 +73,7 @@ async fn test_server_mode_with_socket() {
 async fn test_daemon_mode_backward_compat() {
     // Test that daemon mode still works (backward compatibility)
     let mut cmd = Command::new("cargo")
-        .args(&["run", "--", "daemon", "--port", "8087"])
+        .args(["run", "--", "daemon", "--port", "8087"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn daemon");
@@ -87,9 +83,6 @@ async fn test_daemon_mode_backward_compat() {
 
     // Kill the daemon
     cmd.kill().await.ok();
-
-    // Daemon mode should work
-    assert!(true);
 }
 
 #[tokio::test]
@@ -104,7 +97,7 @@ async fn test_server_mode_with_all_options() {
     let _ = tokio::fs::remove_file(socket_path).await;
 
     let mut cmd = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--",
             "server",
@@ -130,9 +123,6 @@ async fn test_server_mode_with_all_options() {
     // Kill the server
     cmd.kill().await.ok();
 
-    // Should handle all options
-    assert!(true);
-
     // Cleanup
     let _ = tokio::fs::remove_file(socket_path).await;
 }
@@ -148,7 +138,7 @@ async fn test_cli_to_server_communication() {
 
     // Start server in background
     let mut server = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8089"])
+        .args(["run", "--", "server", "--port", "8089"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn server");
@@ -158,7 +148,7 @@ async fn test_cli_to_server_communication() {
 
     // Run a CLI command (list biomes)
     let output = Command::new("cargo")
-        .args(&["run", "--", "list"])
+        .args(["run", "--", "list"])
         .output()
         .await
         .expect("Failed to run list command");
@@ -167,7 +157,8 @@ async fn test_cli_to_server_communication() {
     server.kill().await.ok();
 
     // Command should succeed
-    assert!(output.status.success() || true); // May fail if no biomes, but shouldn't crash
+    // May fail if no biomes, but shouldn't crash - we just verify it ran
+    let _ran = output.status.success();
 }
 
 #[tokio::test]
@@ -177,7 +168,7 @@ async fn test_multiple_cli_commands_to_server() {
 
     // Start server
     let mut server = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8090"])
+        .args(["run", "--", "server", "--port", "8090"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn server");
@@ -190,7 +181,7 @@ async fn test_multiple_cli_commands_to_server() {
         .map(|_| {
             tokio::spawn(async {
                 let output = Command::new("cargo")
-                    .args(&["run", "--", "list"])
+                    .args(["run", "--", "list"])
                     .output()
                     .await;
                 output.is_ok()
@@ -220,7 +211,7 @@ async fn test_multiple_cli_commands_to_server() {
 async fn test_server_graceful_shutdown() {
     // Test server graceful shutdown on SIGTERM
     let mut cmd = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8091"])
+        .args(["run", "--", "server", "--port", "8091"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn server");
@@ -252,7 +243,7 @@ async fn test_server_restart_after_crash() {
 
     // Start server
     let mut cmd1 = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8092"])
+        .args(["run", "--", "server", "--port", "8092"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn server");
@@ -267,7 +258,7 @@ async fn test_server_restart_after_crash() {
 
     // Start again
     let mut cmd2 = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8092"])
+        .args(["run", "--", "server", "--port", "8092"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn server second time");
@@ -276,8 +267,6 @@ async fn test_server_restart_after_crash() {
 
     // Should start successfully
     cmd2.kill().await.ok();
-
-    assert!(true);
 }
 
 // ============================================================================
@@ -312,7 +301,7 @@ memory_limit = "256M"
 
     // Start server
     let mut server = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8093"])
+        .args(["run", "--", "server", "--port", "8093"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn server");
@@ -321,7 +310,7 @@ memory_limit = "256M"
 
     // Run workload via CLI
     let output = Command::new("cargo")
-        .args(&["run", "--", "run", manifest_path])
+        .args(["run", "--", "run", manifest_path])
         .output()
         .await
         .expect("Failed to run workload");
@@ -333,7 +322,7 @@ memory_limit = "256M"
     let _ = tokio::fs::remove_file(manifest_path).await;
 
     // Should execute (may fail if server mode not fully implemented)
-    assert!(output.status.success() || true);
+    let _ran = output.status.success();
 }
 
 // ============================================================================
@@ -350,7 +339,7 @@ async fn test_multiple_servers_different_ports() {
 
     for port in &ports {
         let cmd = Command::new("cargo")
-            .args(&["run", "--", "server", "--port", &port.to_string()])
+            .args(["run", "--", "server", "--port", &port.to_string()])
             .stdout(std::process::Stdio::piped())
             .spawn()
             .expect("Failed to spawn server");
@@ -376,7 +365,7 @@ async fn test_server_handles_concurrent_requests() {
 
     // Start server
     let mut server = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--",
             "server",
@@ -395,14 +384,14 @@ async fn test_server_handles_concurrent_requests() {
     let barrier = Arc::new(Barrier::new(20));
     let handles: Vec<_> = (0..20)
         .map(|_| {
-            let b = barrier.clone();
+            let b = Arc::clone(&barrier);
             tokio::spawn(async move {
                 // Synchronize start
                 b.wait().await;
 
                 // Send request
                 let output = Command::new("cargo")
-                    .args(&["run", "--", "list"])
+                    .args(["run", "--", "list"])
                     .output()
                     .await;
 
@@ -436,7 +425,7 @@ async fn test_single_binary_multiple_modes() {
 
     // Start server mode
     let mut server = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8098"])
+        .args(["run", "--", "server", "--port", "8098"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn server");
@@ -445,7 +434,7 @@ async fn test_single_binary_multiple_modes() {
 
     // Use CLI mode
     let cli_output = Command::new("cargo")
-        .args(&["run", "--", "list"])
+        .args(["run", "--", "list"])
         .output()
         .await;
 
@@ -463,7 +452,7 @@ async fn test_server_and_daemon_equivalence() {
 
     // Start with server
     let mut server = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8099"])
+        .args(["run", "--", "server", "--port", "8099"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn server");
@@ -475,16 +464,13 @@ async fn test_server_and_daemon_equivalence() {
 
     // Start with daemon (should work identically)
     let mut daemon = Command::new("cargo")
-        .args(&["run", "--", "daemon", "--port", "8099"])
+        .args(["run", "--", "daemon", "--port", "8099"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn daemon");
 
     tokio::time::sleep(Duration::from_secs(2)).await;
     daemon.kill().await.ok();
-
-    // Both should work equivalently
-    assert!(true);
 }
 
 // ============================================================================
@@ -497,7 +483,7 @@ async fn test_server_recovers_from_invalid_request() {
     // Test server recovers from invalid requests
 
     let mut server = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8100"])
+        .args(["run", "--", "server", "--port", "8100"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn server");
@@ -506,13 +492,13 @@ async fn test_server_recovers_from_invalid_request() {
 
     // Send invalid request (nonexistent command)
     let _ = Command::new("cargo")
-        .args(&["run", "--", "nonexistent-command"])
+        .args(["run", "--", "nonexistent-command"])
         .output()
         .await;
 
     // Send valid request
     let valid = Command::new("cargo")
-        .args(&["run", "--", "list"])
+        .args(["run", "--", "list"])
         .output()
         .await;
 
@@ -529,7 +515,7 @@ async fn test_server_handles_port_already_in_use() {
 
     // Start first server
     let mut server1 = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8101"])
+        .args(["run", "--", "server", "--port", "8101"])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
@@ -539,7 +525,7 @@ async fn test_server_handles_port_already_in_use() {
 
     // Try to start second server on same port
     let mut server2 = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8101"])
+        .args(["run", "--", "server", "--port", "8101"])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()

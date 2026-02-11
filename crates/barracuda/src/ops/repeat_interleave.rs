@@ -44,7 +44,7 @@ impl RepeatInterleave {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/repeat_interleave.wgsl")
+        include_str!("../shaders/tensor/repeat_interleave.wgsl")
     }
 
     /// Execute the repeat interleave operation
@@ -224,13 +224,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_repeat_interleave_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
         let result = RepeatInterleave::new(input, 2, 0)
@@ -242,7 +244,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_repeat_interleave_2d() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..6).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![2, 3], device.clone()).unwrap();
 
@@ -255,7 +259,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_repeat_interleave_invalid_dim() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
 
         assert!(RepeatInterleave::new(input, 2, 10).is_err());
@@ -263,7 +269,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_repeat_interleave_zero() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
 
         assert!(RepeatInterleave::new(input, 0, 0).is_err());
@@ -271,7 +279,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_repeat_interleave_large() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..100).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![10, 10], device.clone()).unwrap();
 

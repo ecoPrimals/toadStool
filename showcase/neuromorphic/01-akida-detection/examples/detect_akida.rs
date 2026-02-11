@@ -3,7 +3,6 @@
 //! Demonstrates PCIe bus scanning and board discovery.
 
 use akida_detection_demo::{detect_all_boards, substrate_integration};
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

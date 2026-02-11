@@ -13,7 +13,6 @@ use std::fs;
 use std::time::Instant;
 use tfhe::prelude::*;
 use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheUint8};
-use tracing_subscriber;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct BenchmarkResult {
@@ -534,7 +533,7 @@ fn query_gpu_power() -> f32 {
 
     // Try to query nvidia-smi for real-time power draw
     match Command::new("nvidia-smi")
-        .args(&["--query-gpu=power.draw", "--format=csv,noheader,nounits"])
+        .args(["--query-gpu=power.draw", "--format=csv,noheader,nounits"])
         .output()
     {
         Ok(output) if output.status.success() => {
@@ -683,7 +682,7 @@ async fn execute_gpu_polynomial_add(device: &WgpuDevice, degree: usize) -> Resul
         });
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        pass.dispatch_workgroups((degree as u32 + 255) / 256, 1, 1);
+        pass.dispatch_workgroups((degree as u32).div_ceil(256), 1, 1);
     }
     device.queue().submit(Some(encoder.finish()));
     device.device().poll(wgpu::Maintain::Wait);

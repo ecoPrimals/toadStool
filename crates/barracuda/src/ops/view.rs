@@ -36,7 +36,7 @@ struct ViewParams {
 ///
 /// View is semantically identical to reshape - it changes the shape metadata
 /// without copying or modifying the underlying data buffer. The operation is
-/// zero-copy via Arc<Buffer> sharing.
+/// zero-copy via `Arc<Buffer>` sharing.
 ///
 /// ## Usage
 ///
@@ -79,7 +79,7 @@ impl View {
     /// WGSL shader source (embedded at compile time)
     #[allow(dead_code)]
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/view.wgsl")
+        include_str!("../shaders/tensor/view.wgsl")
     }
 
     /// Execute view operation on tensor
@@ -128,12 +128,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_view_2d_to_1d() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let input = Tensor::zeros_on(vec![2, 3], device.clone()).await.unwrap();
 
         let output = input.view(&[6]).unwrap();
@@ -144,7 +145,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_view_1d_to_2d() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let input = Tensor::zeros_on(vec![6], device.clone()).await.unwrap();
 
         let output = input.view(&[2, 3]).unwrap();
@@ -155,7 +159,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_view_3d() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let input = Tensor::zeros_on(vec![2, 3, 4], device.clone())
             .await
             .unwrap();
@@ -168,7 +175,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_view_invalid_size() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let input = Tensor::zeros_on(vec![6], device).await.unwrap();
 
         let result = input.view(&[2, 4]); // Needs 8 elements, but input has 6
@@ -178,7 +188,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_view_same_shape() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let input = Tensor::zeros_on(vec![2, 3], device.clone()).await.unwrap();
 
         let output = input.view(&[2, 3]).unwrap();

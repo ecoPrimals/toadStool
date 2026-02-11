@@ -9,8 +9,7 @@ use barracuda::ops::*;
 #[tokio::test]
 async fn test_matmul_random_dimensions() {
     // Test matmul with 100 random dimension combinations
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     for i in 0..100 {
         // Random dimensions (1..256)
         let m = 1 + (i * 7) % 256;
@@ -46,8 +45,7 @@ async fn test_matmul_random_dimensions() {
 #[tokio::test]
 async fn test_relu_random_sizes() {
     // Test ReLU with random input sizes
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     for i in 0..50 {
         let size = 1 + (i * 17) % 10000;
         let input = vec![-0.5f32; size];
@@ -74,8 +72,7 @@ async fn test_relu_random_sizes() {
 #[tokio::test]
 async fn test_softmax_random_shapes() {
     // Test softmax with random batch/class dimensions
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     for i in 0..50 {
         let batch = 1 + (i * 3) % 64;
         let classes = 2 + (i * 5) % 128;
@@ -111,8 +108,7 @@ async fn test_softmax_random_shapes() {
 #[tokio::test]
 async fn test_conv2d_random_parameters() {
     // Test Conv2D with random kernel/stride/padding
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     for i in 0..20 {
         let batch = 1 + i % 4;
         let in_channels = 1 + i % 16;
@@ -168,8 +164,7 @@ async fn test_conv2d_random_parameters() {
 #[tokio::test]
 async fn test_add_random_vectors() {
     // Test element-wise add with random sizes
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     for i in 0..100 {
         let size = 1 + (i * 23) % 1000;
         let a = vec![0.5f32; size];

@@ -239,12 +239,13 @@ impl BornMayerForce {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_born_mayer_repulsion() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Two ions at close range (strong repulsion)
         let positions = vec![0.0, 0.0, 0.0, 0.5, 0.0, 0.0]; // Close!

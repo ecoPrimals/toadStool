@@ -9,8 +9,7 @@ use barracuda::ops::*;
 #[tokio::test]
 async fn test_pipeline_error_stops_execution() {
     // If one operation fails, pipeline should stop
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let input = vec![0.5f32; 100];
 
     // Step 1: Valid ReLU
@@ -28,8 +27,7 @@ async fn test_pipeline_error_stops_execution() {
 #[tokio::test]
 async fn test_error_contains_context() {
     // Errors should have meaningful messages
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let a = vec![0.5f32; 10];
     let b = vec![0.3f32; 20]; // Mismatched!
 
@@ -51,8 +49,7 @@ async fn test_error_contains_context() {
 #[tokio::test]
 async fn test_recoverable_error_allows_retry() {
     // After an error, device should still work for next operation
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     // First operation: intentionally fail
     let _fail = softmax(&dev.device, &dev.queue, &vec![0.5; 10], 10, 0).await;
 
@@ -68,8 +65,7 @@ async fn test_recoverable_error_allows_retry() {
 #[tokio::test]
 async fn test_multiple_errors_independent() {
     // Multiple errors should not affect each other
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     // Error 1
     let err1 = softmax(&dev.device, &dev.queue, &vec![], 0, 0).await;
 

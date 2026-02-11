@@ -7,12 +7,18 @@
 //! ## Zero-Copy Optimization
 //! String constants use `&'static str` for zero-cost sharing across the codebase.
 
+pub mod compute;
+pub mod display;
+pub mod jsonrpc;
 pub mod network;
 pub mod resources;
 pub mod timeouts;
 pub mod versions;
 
 // Re-export commonly used constants
+pub use compute::*;
+pub use display::*;
+pub use jsonrpc::*;
 pub use network::*;
 pub use resources::*;
 pub use timeouts::*;

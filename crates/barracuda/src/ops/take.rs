@@ -7,7 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -35,13 +35,17 @@ impl Take {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/take.wgsl")
+        include_str!("../shaders/tensor/take.wgsl")
     }
 
     /// Execute the take operation
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let output_size = self.indices.len();
+
+        if output_size == 0 {
+            return Ok(Tensor::new(vec![], vec![0], device.clone()));
+        }
 
         // Access input buffer directly (zero-copy)
         let input_buffer = self.input.buffer();
@@ -55,8 +59,16 @@ impl Take {
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             });
 
-        // Create output buffer
-        let output_buffer = device.create_buffer_f32(output_size)?;
+        // Create output buffer (ensure minimum 32 bytes for WebGPU storage binding)
+        let output_byte_size = (output_size * std::mem::size_of::<f32>()).max(32);
+        let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Take Output Buffer"),
+            size: output_byte_size as u64,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
 
         // Create uniform buffer for parameters
         #[repr(C)]
@@ -196,21 +208,15 @@ impl Take {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(output_size as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
-
-        // Return tensor without reading back (zero-copy)
-        Ok(Tensor::from_buffer(
-            output_buffer,
-            vec![output_size],
-            device.clone(),
-        ))
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+        Ok(Tensor::new(output_data, vec![output_size], device.clone()))
     }
 }
 
@@ -220,13 +226,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_take_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[10.0, 20.0, 30.0, 40.0], vec![4], device.clone()).unwrap();
 
         let result = Take::new(input, vec![0, 2, 1]).unwrap().execute().unwrap();
@@ -240,7 +248,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_take_repeated() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
         let result = Take::new(input, vec![0, 0, 1, 1, 2])
@@ -259,7 +269,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_take_large() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..1000).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![1000], device.clone()).unwrap();
 
@@ -275,7 +287,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_take_empty() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
         let result = Take::new(input, vec![]).unwrap().execute().unwrap();
@@ -286,7 +300,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_take_invalid() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
         assert!(Take::new(input, vec![0, 5]).is_err());

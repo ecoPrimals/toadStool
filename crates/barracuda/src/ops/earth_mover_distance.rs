@@ -46,7 +46,7 @@ impl EarthMoverDistance {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/earth_mover_distance.wgsl")
+        include_str!("../shaders/loss/earth_mover_distance.wgsl")
     }
 
     /// Execute Earth Mover's Distance on tensors
@@ -208,12 +208,13 @@ impl EarthMoverDistance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_earth_mover_distance_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let dist1 = Tensor::from_vec_on(vec![0.5, 0.3, 0.2], vec![3], device.clone())
             .await
             .unwrap();

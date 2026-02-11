@@ -157,6 +157,170 @@ mod tests {
         }
     }
 
+    fn sample_agent_info() -> AgentInfo {
+        let now = chrono::Utc::now();
+        AgentInfo {
+            name: "test-agent".to_string(),
+            agent_id: "test-agent-abc123".to_string(),
+            model: "test-model".to_string(),
+            status: AgentStatus::Running,
+            replicas: 1,
+            capabilities: vec!["chat".to_string(), "reasoning".to_string()],
+            resources: AgentResourceUsage {
+                cpu_millicores: 500,
+                memory_bytes: 1024 * 1024 * 512,
+                gpu_percent: None,
+                network_bytes_per_sec: 1024,
+            },
+            created_at: now,
+            last_updated: now,
+        }
+    }
+
+    #[test]
+    fn test_agent_deployment_config_construction() {
+        let config = test_config();
+        assert_eq!(config.squirrel_endpoint, "http://localhost:8080");
+        assert_eq!(config.model_registry, "local");
+        assert_eq!(config.agent_runtime, "container");
+        assert!(config.mcp_enabled);
+        assert!(config.resource_limits.is_empty());
+    }
+
+    #[test]
+    fn test_agent_deployment_config_serialization_roundtrip() {
+        let config = test_config();
+        let json = serde_json::to_string(&config).expect("serialize");
+        let restored: AgentDeploymentConfig = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(config.squirrel_endpoint, restored.squirrel_endpoint);
+    }
+
+    #[test]
+    fn test_agent_status_variants() {
+        assert_eq!(AgentStatus::Deploying, AgentStatus::Deploying);
+        assert_eq!(AgentStatus::Running, AgentStatus::Running);
+        assert_eq!(AgentStatus::Scaling, AgentStatus::Scaling);
+        assert_eq!(AgentStatus::Updating, AgentStatus::Updating);
+        assert_eq!(AgentStatus::Terminating, AgentStatus::Terminating);
+        assert_eq!(AgentStatus::Stopped, AgentStatus::Stopped);
+        assert!(matches!(
+            AgentStatus::Failed("reason".to_string()),
+            AgentStatus::Failed(s) if s == "reason"
+        ));
+    }
+
+    #[test]
+    fn test_model_status_variants() {
+        assert_eq!(ModelStatus::Loading, ModelStatus::Loading);
+        assert_eq!(ModelStatus::Ready, ModelStatus::Ready);
+        assert_eq!(ModelStatus::Updating, ModelStatus::Updating);
+        assert_eq!(ModelStatus::Unloading, ModelStatus::Unloading);
+        assert!(matches!(
+            ModelStatus::Error("load failed".to_string()),
+            ModelStatus::Error(s) if s == "load failed"
+        ));
+    }
+
+    #[test]
+    fn test_agent_info_construction() {
+        let info = sample_agent_info();
+        assert_eq!(info.name, "test-agent");
+        assert_eq!(info.agent_id, "test-agent-abc123");
+        assert_eq!(info.status, AgentStatus::Running);
+        assert_eq!(info.replicas, 1);
+        assert_eq!(info.capabilities.len(), 2);
+        assert_eq!(info.resources.cpu_millicores, 500);
+    }
+
+    #[test]
+    fn test_agent_info_serialization_roundtrip() {
+        let info = sample_agent_info();
+        let json = serde_json::to_string(&info).expect("serialize");
+        let restored: AgentInfo = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(info.name, restored.name);
+        assert_eq!(info.status, restored.status);
+    }
+
+    #[test]
+    fn test_agent_resource_usage_construction() {
+        let usage = AgentResourceUsage {
+            cpu_millicores: 1000,
+            memory_bytes: 2 * 1024 * 1024 * 1024,
+            gpu_percent: Some(50.0),
+            network_bytes_per_sec: 2048,
+        };
+        assert_eq!(usage.cpu_millicores, 1000);
+        assert_eq!(usage.memory_bytes, 2 * 1024 * 1024 * 1024);
+        assert_eq!(usage.gpu_percent, Some(50.0));
+    }
+
+    #[test]
+    fn test_agent_resource_usage_serialization_roundtrip() {
+        let usage = AgentResourceUsage {
+            cpu_millicores: 500,
+            memory_bytes: 1024 * 1024,
+            gpu_percent: None,
+            network_bytes_per_sec: 512,
+        };
+        let json = serde_json::to_string(&usage).expect("serialize");
+        let restored: AgentResourceUsage = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(usage.cpu_millicores, restored.cpu_millicores);
+    }
+
+    #[test]
+    fn test_model_info_construction() {
+        let now = chrono::Utc::now();
+        let info = ModelInfo {
+            name: "gpt-4".to_string(),
+            model_id: "model-xyz".to_string(),
+            model_type: "llm".to_string(),
+            size_bytes: 1_000_000_000,
+            status: ModelStatus::Ready,
+            resource_requirements: ModelResourceRequirements {
+                min_cpu_cores: 4.0,
+                min_memory_gb: 8.0,
+                gpu_required: true,
+                min_gpu_memory_gb: Some(16.0),
+            },
+            performance: ModelPerformanceMetrics {
+                avg_inference_time_ms: 50,
+                throughput_rps: 10.0,
+                success_rate: 99.5,
+            },
+            loaded_at: now,
+        };
+        assert_eq!(info.name, "gpt-4");
+        assert_eq!(info.status, ModelStatus::Ready);
+        assert_eq!(info.resource_requirements.min_cpu_cores, 4.0);
+    }
+
+    #[test]
+    fn test_model_info_serialization_roundtrip() {
+        let now = chrono::Utc::now();
+        let info = ModelInfo {
+            name: "model-a".to_string(),
+            model_id: "id-1".to_string(),
+            model_type: "type-a".to_string(),
+            size_bytes: 100,
+            status: ModelStatus::Loading,
+            resource_requirements: ModelResourceRequirements {
+                min_cpu_cores: 1.0,
+                min_memory_gb: 2.0,
+                gpu_required: false,
+                min_gpu_memory_gb: None,
+            },
+            performance: ModelPerformanceMetrics {
+                avg_inference_time_ms: 10,
+                throughput_rps: 5.0,
+                success_rate: 100.0,
+            },
+            loaded_at: now,
+        };
+        let json = serde_json::to_string(&info).expect("serialize");
+        let restored: ModelInfo = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(info.name, restored.name);
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_manager_with_inmemory_backend() {
         let config = test_config();
@@ -178,5 +342,45 @@ mod tests {
         assert_eq!(agent_info.name, "test-agent");
         assert!(agent_info.agent_id.starts_with("test-agent-"));
         assert_eq!(agent_info.status, AgentStatus::Running);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_list_agents_returns_deployed() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let agent_config = AgentConfig {
+            name: "list-test-agent".to_string(),
+            model: "test-model".to_string(),
+            capabilities: vec!["chat".to_string()],
+            resources: None,
+            environment: HashMap::new(),
+            config: HashMap::new(),
+        };
+        manager.deploy_agent(&agent_config).await.unwrap();
+
+        let agents = manager.list_agents().await;
+        assert!(!agents.is_empty());
+        assert!(agents.iter().any(|a| a.name == "list-test-agent"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_get_agent_status_after_deploy() {
+        let config = test_config();
+        let mut manager = AgentDeploymentManager::with_inmemory(config);
+
+        let agent_config = AgentConfig {
+            name: "status-agent".to_string(),
+            model: "test-model".to_string(),
+            capabilities: vec!["chat".to_string()],
+            resources: None,
+            environment: HashMap::new(),
+            config: HashMap::new(),
+        };
+        manager.deploy_agent(&agent_config).await.unwrap();
+
+        let status = manager.get_agent_status("status-agent").await;
+        assert!(status.is_ok());
+        assert_eq!(status.unwrap(), AgentStatus::Running);
     }
 }

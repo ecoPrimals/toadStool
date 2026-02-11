@@ -30,8 +30,9 @@ rppal = { version = "0.17", optional = true }
 esp-idf-sys = { version = "0.34", optional = true }
 # arduino-hal = { version = "0.1", optional = true }  # Not available on crates.io
 cross = "0.2"
-cc = "1.0"
-bindgen = "0.69"
+# C build dependencies - only needed for native bindings
+cc = { version = "1.0", optional = true }
+bindgen = { version = "0.69", optional = true }
 
 # Network and communication
 mdns = "3.0"
@@ -41,20 +42,26 @@ mdns = "3.0"
 
 # Device discovery and management
 sysinfo = "0.30"
-udev = "0.8"
-libudev = "0.3"
+# Pure Rust udev parsing - reading /sys/class directly instead of libudev
+# Removed: udev = "0.8" (uses libudev C library)
+# Removed: libudev = "0.3" (C library dependency)
 
 # Cross-compilation support
 # cargo-cross = "0.2"  # Not available on crates.io, use `cross` binary directly
 # cross-toolchain = "0.1"  # Not available on crates.io
 
 [features]
-default = ["raspberry-pi", "esp32"]
+# Default features: zero C dependencies for ecoBin compliance
+default = []
+# Platform-specific features (enable as needed)
 raspberry-pi = ["rppal"]
 # arduino = ["arduino-hal"]  # Temporarily disabled - not available on crates.io
+# ESP32 support requires esp-idf-sys (C dependency) - not in default
 esp32 = ["esp-idf-sys"]
 all-platforms = ["raspberry-pi", "esp32"]
+# Enable C build dependencies for native bindings (only if needed)
+native-bindings = ["cc", "bindgen"]
 
 [build-dependencies]
-bindgen = "0.69"
-cc = "1.0" 
+bindgen = { version = "0.69", optional = true }
+cc = { version = "1.0", optional = true } 

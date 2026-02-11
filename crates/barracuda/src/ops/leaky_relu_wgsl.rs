@@ -26,7 +26,7 @@ impl LeakyRelu {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/leaky_relu.wgsl")
+        include_str!("../shaders/activation/leaky_relu.wgsl")
     }
 
     /// Execute the leaky_relu operation

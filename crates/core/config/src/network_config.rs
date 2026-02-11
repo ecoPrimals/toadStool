@@ -12,6 +12,8 @@
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
+use crate::ports;
+
 /// Network configuration - centralized, environment-aware, zero hardcoding
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConfig {
@@ -68,14 +70,13 @@ impl std::str::FromStr for BindMode {
 
 impl Default for NetworkConfig {
     fn default() -> Self {
-        // Deep Debt: Prefer standard ports, but these are just preferences
-        // Actual runtime will check availability and adjust
+        // Deep Debt: Use ports module (self-knowledge). ToadStool knows its own ports.
         Self {
             listen_address: IpAddr::V4(Ipv4Addr::LOCALHOST),
-            service_port: 8080,
-            api_port: 8080,
-            metrics_port: 9090,
-            health_port: 8081,
+            service_port: ports::toadstool::SERVER,
+            api_port: ports::toadstool::SERVER,
+            metrics_port: ports::toadstool::METRICS,
+            health_port: ports::toadstool::HEALTH,
             // Deep Debt: No hardcoded discovery endpoints by default
             // Services should be discovered via mDNS or provided via environment
             discovery_endpoints: vec![],
@@ -101,10 +102,10 @@ impl NetworkConfig {
     pub fn from_env() -> Self {
         Self {
             listen_address: env_var_or("TOADSTOOL_LISTEN_ADDRESS", IpAddr::V4(Ipv4Addr::LOCALHOST)),
-            service_port: env_var_or("TOADSTOOL_SERVICE_PORT", 8080),
-            api_port: env_var_or("TOADSTOOL_API_PORT", 8080),
-            metrics_port: env_var_or("TOADSTOOL_METRICS_PORT", 9090),
-            health_port: env_var_or("TOADSTOOL_HEALTH_PORT", 8081),
+            service_port: env_var_or("TOADSTOOL_SERVICE_PORT", ports::toadstool::SERVER),
+            api_port: env_var_or("TOADSTOOL_API_PORT", ports::toadstool::SERVER),
+            metrics_port: env_var_or("TOADSTOOL_METRICS_PORT", ports::toadstool::METRICS),
+            health_port: env_var_or("TOADSTOOL_HEALTH_PORT", ports::toadstool::HEALTH),
             // Deep Debt: Only use discovery endpoints from environment
             // No hardcoded fallbacks - rely on mDNS or explicit configuration
             discovery_endpoints: env_var_list_or("TOADSTOOL_DISCOVERY_ENDPOINTS", vec![]),
@@ -175,21 +176,19 @@ impl NetworkConfig {
     }
 }
 
-/// Helper to get environment variable with type parsing and fallback
-fn env_var_or<T>(key: &str, default: T) -> T
+/// Pure version: parse a string value with fallback
+#[must_use]
+fn parse_or<T>(value: Option<&str>, default: T) -> T
 where
     T: std::str::FromStr,
 {
-    std::env::var(key)
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(default)
+    value.and_then(|v| v.parse().ok()).unwrap_or(default)
 }
 
-/// Helper to get comma-separated list from environment variable
-fn env_var_list_or(key: &str, default: Vec<String>) -> Vec<String> {
-    std::env::var(key)
-        .ok()
+/// Pure version: parse comma-separated list
+#[must_use]
+fn parse_list_or(value: Option<&str>, default: Vec<String>) -> Vec<String> {
+    value
         .map(|v| {
             v.split(',')
                 .map(|s| s.trim().to_string())
@@ -198,6 +197,19 @@ fn env_var_list_or(key: &str, default: Vec<String>) -> Vec<String> {
         })
         .filter(|list: &Vec<String>| !list.is_empty())
         .unwrap_or(default)
+}
+
+/// Helper to get environment variable with type parsing and fallback
+fn env_var_or<T>(key: &str, default: T) -> T
+where
+    T: std::str::FromStr,
+{
+    parse_or(std::env::var(key).ok().as_deref(), default)
+}
+
+/// Helper to get comma-separated list from environment variable
+fn env_var_list_or(key: &str, default: Vec<String>) -> Vec<String> {
+    parse_list_or(std::env::var(key).ok().as_deref(), default)
 }
 
 /// Service endpoint builder - creates endpoint URLs from configuration
@@ -238,29 +250,21 @@ impl EndpointBuilder {
 
     fn build_url(&self, port: u16) -> String {
         let host = match self.config.bind_mode {
-            BindMode::Localhost => "localhost",
-            BindMode::AllInterfaces => {
-                // Use hostname or default to localhost
-                std::env::var("HOSTNAME")
-                    .or_else(|_| std::env::var("HOST"))
-                    .unwrap_or_else(|_| "localhost".to_string())
-                    .leak()
-            }
-            BindMode::Specific => {
-                // Use the specific address
-                match self.config.listen_address {
-                    IpAddr::V4(addr) => {
-                        if addr.is_loopback() {
-                            "localhost"
-                        } else {
-                            Box::leak(addr.to_string().into_boxed_str())
-                        }
+            BindMode::Localhost => "localhost".to_string(),
+            BindMode::AllInterfaces => std::env::var("HOSTNAME")
+                .or_else(|_| std::env::var("HOST"))
+                .unwrap_or_else(|_| "localhost".to_string()),
+            BindMode::Specific => match self.config.listen_address {
+                IpAddr::V4(addr) => {
+                    if addr.is_loopback() {
+                        "localhost".to_string()
+                    } else {
+                        addr.to_string()
                     }
-                    IpAddr::V6(addr) => Box::leak(format!("[{addr}]").into_boxed_str()),
                 }
-            }
+                IpAddr::V6(addr) => format!("[{addr}]"),
+            },
         };
-
         format!("http://{host}:{port}")
     }
 }
@@ -272,7 +276,7 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = NetworkConfig::default();
-        assert_eq!(config.service_port, 8080);
+        assert_eq!(config.service_port, ports::toadstool::SERVER);
         assert_eq!(config.bind_mode, BindMode::Localhost);
     }
 
@@ -302,17 +306,29 @@ mod tests {
         let config = NetworkConfig::default();
         let builder = EndpointBuilder::new(config);
 
-        assert_eq!(builder.service_url(), "http://localhost:8080");
-        assert_eq!(builder.api_url(), "http://localhost:8080");
-        assert_eq!(builder.metrics_url(), "http://localhost:9090");
-        assert_eq!(builder.health_url(), "http://localhost:8081");
+        assert_eq!(
+            builder.service_url(),
+            format!("http://localhost:{}", ports::toadstool::SERVER)
+        );
+        assert_eq!(
+            builder.api_url(),
+            format!("http://localhost:{}", ports::toadstool::SERVER)
+        );
+        assert_eq!(
+            builder.metrics_url(),
+            format!("http://localhost:{}", ports::toadstool::METRICS)
+        );
+        assert_eq!(
+            builder.health_url(),
+            format!("http://localhost:{}", ports::toadstool::HEALTH)
+        );
     }
 
     #[test]
     fn test_env_var_override() {
-        std::env::set_var("TOADSTOOL_SERVICE_PORT", "9999");
-        let config = NetworkConfig::from_env();
-        assert_eq!(config.service_port, 9999);
-        std::env::remove_var("TOADSTOOL_SERVICE_PORT");
+        // Test the pure parsing logic directly - no env var mutation
+        assert_eq!(parse_or(Some("9999"), 8080u16), 9999);
+        assert_eq!(parse_or(Some("invalid"), 8080u16), 8080);
+        assert_eq!(parse_or::<u16>(None, 8080), 8080);
     }
 }

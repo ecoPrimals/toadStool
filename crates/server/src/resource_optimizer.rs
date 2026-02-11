@@ -234,7 +234,9 @@ impl ResourceOptimizer {
     /// Query system capabilities
     async fn query_system_capabilities(&self) -> Result<SystemCapabilities, OptimizationError> {
         // Query CPU
-        let total_cpu_cores = num_cpus::get() as u32;
+        let total_cpu_cores = std::thread::available_parallelism()
+            .map(|n| n.get() as u32)
+            .unwrap_or(4);
         let available_cpu_cores = (total_cpu_cores as f32 * 0.8) as u32;
 
         // Query memory - Pure Rust Evolution (Jan 17, 2026)
@@ -418,14 +420,14 @@ impl ResourceOptimizer {
         // If any level has only 1 node but could have more, suggest parallelization
         for (level, nodes) in level_groups {
             if nodes.len() == 1 && level > 0 {
-                // Check if this node could be split
-                if let Some(node) = graph.get_node(&nodes[0]) {
+                let first_node_id = nodes[0].clone();
+                if let Some(node) = graph.get_node(&first_node_id) {
                     if node.operation == "cpu_compute" || node.operation == "gpu_compute" {
                         opportunities.push(Opportunity {
                             opportunity_type: OpportunityType::Parallelization,
-                            affected_nodes: nodes.clone(),
+                            affected_nodes: nodes,
                             benefit: 0.7,
-                            description: format!("Node '{}' could be parallelized", nodes[0]),
+                            description: format!("Node '{}' could be parallelized", first_node_id),
                             recommendation:
                                 "Consider splitting this node into multiple parallel tasks."
                                     .to_string(),
@@ -518,11 +520,12 @@ impl ResourceOptimizer {
 
         for (operation, nodes) in operation_groups {
             if nodes.len() >= 3 {
+                let node_count = nodes.len();
                 opportunities.push(Opportunity {
                     opportunity_type: OpportunityType::Batching,
-                    affected_nodes: nodes.clone(),
+                    affected_nodes: nodes,
                     benefit: 0.5,
-                    description: format!("{} nodes with operation '{}'", nodes.len(), operation),
+                    description: format!("{} nodes with operation '{}'", node_count, operation),
                     recommendation:
                         "Consider batching these operations together for better efficiency."
                             .to_string(),
@@ -643,6 +646,9 @@ pub enum OptimizationError {
 
 #[cfg(test)]
 mod tests {
+    #[allow(deprecated)]
+    use toadstool_common::interned_strings::primals;
+
     use super::*;
     use crate::graph_types::{EdgeType, GraphEdge, GraphNode, NodeResourceRequirements};
 
@@ -655,7 +661,7 @@ mod tests {
             nodes: vec![
                 GraphNode {
                     id: "node-1".to_string(),
-                    primal: "toadstool".to_string(),
+                    primal: primals::TOADSTOOL.to_string(),
                     operation: "cpu_compute".to_string(),
                     duration: None,
                     requirements: NodeResourceRequirements::default(),
@@ -663,7 +669,7 @@ mod tests {
                 },
                 GraphNode {
                     id: "node-2".to_string(),
-                    primal: "toadstool".to_string(),
+                    primal: primals::TOADSTOOL.to_string(),
                     operation: "cpu_compute".to_string(),
                     duration: None,
                     requirements: NodeResourceRequirements::default(),
@@ -671,7 +677,7 @@ mod tests {
                 },
                 GraphNode {
                     id: "node-3".to_string(),
-                    primal: "toadstool".to_string(),
+                    primal: primals::TOADSTOOL.to_string(),
                     operation: "cpu_compute".to_string(),
                     duration: None,
                     requirements: NodeResourceRequirements::default(),
@@ -706,5 +712,264 @@ mod tests {
 
         // Should have some optimization opportunities
         assert!(!suggestions.opportunities.is_empty());
+    }
+
+    #[test]
+    fn test_default_optimizer() {
+        let default_opt = ResourceOptimizer::default();
+        let new_opt = ResourceOptimizer::new();
+        // Both should be valid; Default delegates to new()
+        assert_eq!(
+            std::mem::size_of_val(&default_opt),
+            std::mem::size_of_val(&new_opt)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_optimization_error_estimation_failed_empty_graph() {
+        let optimizer = ResourceOptimizer::new();
+        let graph = ExecutionGraph::simple("empty");
+        let err = optimizer.suggest_optimizations(&graph).await.unwrap_err();
+        match &err {
+            OptimizationError::EstimationFailed(e) => {
+                assert!(e.to_string().contains("empty") || e.to_string().contains("Invalid"));
+            }
+            _ => panic!("expected EstimationFailed, got {:?}", err),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_optimization_error_estimation_failed_cyclic_graph() {
+        let optimizer = ResourceOptimizer::new();
+        let graph = ExecutionGraph::builder("cyclic")
+            .nodes([
+                GraphNode::simple("a", "cpu_compute"),
+                GraphNode::simple("b", "cpu_compute"),
+                GraphNode::simple("c", "cpu_compute"),
+            ])
+            .connect("a", "b")
+            .connect("b", "c")
+            .connect("c", "a")
+            .build();
+        let err = optimizer.suggest_optimizations(&graph).await.unwrap_err();
+        match &err {
+            OptimizationError::EstimationFailed(e) => {
+                let s = e.to_string();
+                assert!(s.contains("cycle") || s.contains("cyclic") || s.contains("Invalid"));
+            }
+            _ => panic!("expected EstimationFailed, got {:?}", err),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_long_critical_path_bottleneck() {
+        let optimizer = ResourceOptimizer::new();
+        // Linear chain of 7 nodes -> critical path length 7 > 5
+        let graph = ExecutionGraph::builder("long-path")
+            .nodes([
+                GraphNode::simple("n1", "cpu_compute"),
+                GraphNode::simple("n2", "cpu_compute"),
+                GraphNode::simple("n3", "cpu_compute"),
+                GraphNode::simple("n4", "cpu_compute"),
+                GraphNode::simple("n5", "cpu_compute"),
+                GraphNode::simple("n6", "cpu_compute"),
+                GraphNode::simple("n7", "cpu_compute"),
+            ])
+            .connect("n1", "n2")
+            .connect("n2", "n3")
+            .connect("n3", "n4")
+            .connect("n4", "n5")
+            .connect("n5", "n6")
+            .connect("n6", "n7")
+            .build();
+        let suggestions = optimizer.suggest_optimizations(&graph).await.unwrap();
+        assert!(suggestions
+            .bottlenecks
+            .iter()
+            .any(|b| b.bottleneck_type == BottleneckType::LongCriticalPath));
+    }
+
+    #[tokio::test]
+    async fn test_memory_bottleneck_and_high_memory_nodes() {
+        let optimizer = ResourceOptimizer::new();
+        // 4 nodes with 20GB each at same level (parallel) = 80GB level memory (> 64GB threshold)
+        let graph = ExecutionGraph::builder("high-mem")
+            .nodes([
+                GraphNode::builder("root", "cpu_compute")
+                    .memory_gb(1)
+                    .build(),
+                GraphNode::builder("big1", "cpu_compute")
+                    .memory_gb(20)
+                    .build(),
+                GraphNode::builder("big2", "cpu_compute")
+                    .memory_gb(20)
+                    .build(),
+                GraphNode::builder("big3", "cpu_compute")
+                    .memory_gb(20)
+                    .build(),
+                GraphNode::builder("big4", "cpu_compute")
+                    .memory_gb(20)
+                    .build(),
+            ])
+            .connect("root", "big1")
+            .connect("root", "big2")
+            .connect("root", "big3")
+            .connect("root", "big4")
+            .build();
+        let suggestions = optimizer.suggest_optimizations(&graph).await.unwrap();
+        assert!(suggestions
+            .bottlenecks
+            .iter()
+            .any(|b| b.bottleneck_type == BottleneckType::MemoryBottleneck));
+        // Should also have memory streaming opportunities (nodes > 16GB)
+        assert!(suggestions
+            .opportunities
+            .iter()
+            .any(|o| o.opportunity_type == OpportunityType::MemoryStreaming));
+    }
+
+    #[tokio::test]
+    async fn test_caching_opportunity() {
+        let optimizer = ResourceOptimizer::new();
+        // Fan-out: node "fan" has two dependents (b and c)
+        let graph = ExecutionGraph::builder("caching")
+            .nodes([
+                GraphNode::simple("fan", "cpu_compute"),
+                GraphNode::simple("b", "cpu_compute"),
+                GraphNode::simple("c", "cpu_compute"),
+            ])
+            .connect("fan", "b")
+            .connect("fan", "c")
+            .build();
+        let suggestions = optimizer.suggest_optimizations(&graph).await.unwrap();
+        assert!(suggestions
+            .opportunities
+            .iter()
+            .any(|o| o.opportunity_type == OpportunityType::Caching));
+    }
+
+    #[tokio::test]
+    async fn test_parallelization_opportunity() {
+        let optimizer = ResourceOptimizer::new();
+        // Diamond: a -> b,c -> d. Level 2 has only node d (single node at level > 0)
+        let graph = ExecutionGraph::builder("parallel")
+            .nodes([
+                GraphNode::simple("a", "cpu_compute"),
+                GraphNode::simple("b", "cpu_compute"),
+                GraphNode::simple("c", "cpu_compute"),
+                GraphNode::simple("d", "cpu_compute"),
+            ])
+            .connect("a", "b")
+            .connect("a", "c")
+            .connect("b", "d")
+            .connect("c", "d")
+            .build();
+        let suggestions = optimizer.suggest_optimizations(&graph).await.unwrap();
+        assert!(suggestions
+            .opportunities
+            .iter()
+            .any(|o| o.opportunity_type == OpportunityType::Parallelization));
+    }
+
+    #[tokio::test]
+    async fn test_batching_opportunity() {
+        let optimizer = ResourceOptimizer::new();
+        // 4 nodes with same operation
+        let graph = ExecutionGraph::builder("batch")
+            .nodes([
+                GraphNode::simple("n1", "storage"),
+                GraphNode::simple("n2", "storage"),
+                GraphNode::simple("n3", "storage"),
+                GraphNode::simple("n4", "storage"),
+            ])
+            .connect("n1", "n2")
+            .connect("n2", "n3")
+            .connect("n3", "n4")
+            .build();
+        let suggestions = optimizer.suggest_optimizations(&graph).await.unwrap();
+        assert!(suggestions
+            .opportunities
+            .iter()
+            .any(|o| o.opportunity_type == OpportunityType::Batching));
+    }
+
+    #[tokio::test]
+    async fn test_improvement_estimate_structure() {
+        let optimizer = ResourceOptimizer::new();
+        let graph = ExecutionGraph::builder("improve")
+            .nodes([
+                GraphNode::simple("a", "cpu_compute"),
+                GraphNode::simple("b", "cpu_compute"),
+                GraphNode::simple("c", "cpu_compute"),
+            ])
+            .connect("a", "b")
+            .connect("b", "c")
+            .build();
+        let suggestions = optimizer.suggest_optimizations(&graph).await.unwrap();
+        let imp = &suggestions.estimated_improvement;
+        assert!(imp.current_duration_secs > 0);
+        assert!(imp.speedup_factor >= 1.0);
+        assert!(!imp.current_resources.is_empty());
+        assert!(!imp.optimized_resources.is_empty());
+    }
+
+    #[test]
+    fn test_optimization_error_display() {
+        let err = OptimizationError::SystemQueryFailed("test failure".into());
+        assert!(err.to_string().contains("test failure"));
+        assert!(err.to_string().contains("System query"));
+
+        let err2 = OptimizationError::AnalysisFailed("analysis failed".into());
+        assert!(err2.to_string().contains("analysis failed"));
+    }
+
+    #[test]
+    fn test_bottleneck_type_serialization() {
+        let t = BottleneckType::ResourceContention;
+        let json = serde_json::to_string(&t).unwrap();
+        let restored: BottleneckType = serde_json::from_str(&json).unwrap();
+        assert_eq!(t, restored);
+    }
+
+    #[test]
+    fn test_opportunity_type_serialization() {
+        let t = OpportunityType::Reordering;
+        let json = serde_json::to_string(&t).unwrap();
+        let restored: OpportunityType = serde_json::from_str(&json).unwrap();
+        assert_eq!(t, restored);
+    }
+
+    #[test]
+    fn test_optimization_suggestions_roundtrip() {
+        let suggestions = OptimizationSuggestions {
+            graph_id: "g1".into(),
+            bottlenecks: vec![Bottleneck {
+                bottleneck_type: BottleneckType::InefficientAllocation,
+                affected_nodes: vec!["n1".into()],
+                severity: 0.5,
+                description: "test".into(),
+                time_impact_secs: 10,
+            }],
+            opportunities: vec![Opportunity {
+                opportunity_type: OpportunityType::NodeSplitting,
+                affected_nodes: vec!["n2".into()],
+                benefit: 0.6,
+                description: "split".into(),
+                recommendation: "do it".into(),
+                time_savings_secs: 5,
+                resource_savings: HashMap::new(),
+            }],
+            estimated_improvement: ImprovementEstimate {
+                current_duration_secs: 100,
+                optimized_duration_secs: 80,
+                time_savings_secs: 20,
+                speedup_factor: 1.25,
+                current_resources: HashMap::new(),
+                optimized_resources: HashMap::new(),
+            },
+            priority_order: vec!["first".into()],
+        };
+        let json = serde_json::to_string(&suggestions).unwrap();
+        let _restored: OptimizationSuggestions = serde_json::from_str(&json).unwrap();
     }
 }

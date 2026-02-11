@@ -27,7 +27,7 @@ impl Softmax {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/softmax_simple.wgsl")
+        include_str!("../shaders/activation/softmax_simple.wgsl")
     }
 
     /// Execute Softmax on tensor
@@ -178,12 +178,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_softmax_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device)
             .await
             .unwrap();
@@ -199,8 +200,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_softmax_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1e-6, 2e-6, 3e-6], vec![3], device)
             .await
             .unwrap();
@@ -213,8 +215,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_softmax_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![100.0, 200.0, 300.0], vec![3], device)
             .await
             .unwrap();
@@ -228,8 +231,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_softmax_large_tensor() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 1000;
         let input_data: Vec<f32> = (0..size).map(|i| (i as f32) / 10.0).collect();
         let input = Tensor::from_vec_on(input_data, vec![size], device)
@@ -244,8 +248,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_softmax_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         fn softmax_cpu(x: &[f32]) -> Vec<f32> {
             let max = x.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
             let exps: Vec<f32> = x.iter().map(|&v| (v - max).exp()).collect();

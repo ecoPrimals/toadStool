@@ -64,7 +64,7 @@ impl Determinant {
 
     /// WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/determinant.wgsl")
+        include_str!("../shaders/math/determinant.wgsl")
     }
 
     /// Execute determinant calculation
@@ -227,11 +227,13 @@ impl Determinant {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_determinant_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 2x2 matrix: [[4, 7], [2, 6]]
         // det = 4*6 - 7*2 = 24 - 14 = 10
         let matrix = Tensor::from_vec_on(vec![4.0, 7.0, 2.0, 6.0], vec![2, 2], device)
@@ -251,8 +253,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_determinant_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 1x1 matrix
         let matrix = Tensor::from_vec_on(vec![5.0], vec![1, 1], device.clone())
             .await
@@ -280,8 +283,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_determinant_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 3x3 matrix
         let matrix = Tensor::from_vec_on(
             vec![1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0],
@@ -304,8 +308,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_determinant_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 2x2 matrix with precise values
         let matrix = Tensor::from_vec_on(vec![1.5, 2.5, 3.5, 4.5], vec![2, 2], device)
             .await
@@ -320,8 +325,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_determinant_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 2x2 negative determinant
         let matrix = Tensor::from_vec_on(vec![2.0, 3.0, 1.0, 4.0], vec![2, 2], device)
             .await

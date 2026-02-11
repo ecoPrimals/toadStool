@@ -36,6 +36,25 @@
 use crate::device::WgpuDevice;
 use std::fmt;
 
+// ============================================================================
+// Standard WGSL Shader Workgroup Sizes
+// ============================================================================
+//
+// ALL BarraCUDA WGSL shaders use these fixed workgroup sizes.
+// Dispatch calculations MUST use these constants to match the shader.
+//
+// The previous `optimal_workgroup_size()` method is retained for advisory use
+// (e.g., when generating dynamic shaders), but dispatch calculations should
+// use these constants or the `dispatch_*` helper methods below.
+
+/// Standard 1D shader workgroup size.
+/// Matches `@workgroup_size(256)` in all 1D WGSL shaders.
+pub const WORKGROUP_SIZE_1D: u32 = 256;
+
+/// Standard 2D shader workgroup size per dimension.
+/// Matches `@workgroup_size(16, 16)` in all 2D WGSL shaders.
+pub const WORKGROUP_SIZE_2D: u32 = 16;
+
 /// Device capabilities - runtime hardware limits
 ///
 /// **Deep Debt**: All values discovered at runtime, zero hardcoding
@@ -220,6 +239,40 @@ impl DeviceCapabilities {
         let z = side.min(self.max_workgroup_size.2);
 
         (x, y, z)
+    }
+
+    /// Calculate number of workgroups for a 1D dispatch.
+    ///
+    /// Uses [`WORKGROUP_SIZE_1D`] (256) to match all `@workgroup_size(256)` shaders.
+    /// This is the correct way to calculate dispatch count for BarraCUDA ops.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let caps = DeviceCapabilities::from_device(device);
+    /// let workgroups = caps.dispatch_1d(element_count as u32);
+    /// compute_pass.dispatch_workgroups(workgroups, 1, 1);
+    /// ```
+    #[must_use]
+    pub fn dispatch_1d(&self, element_count: u32) -> u32 {
+        element_count.div_ceil(WORKGROUP_SIZE_1D)
+    }
+
+    /// Calculate number of workgroups for a 2D dispatch.
+    ///
+    /// Uses [`WORKGROUP_SIZE_2D`] (16) to match all `@workgroup_size(16, 16)` shaders.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let caps = DeviceCapabilities::from_device(device);
+    /// let (wg_x, wg_y) = caps.dispatch_2d(width as u32, height as u32);
+    /// compute_pass.dispatch_workgroups(wg_x, wg_y, batch_count);
+    /// ```
+    #[must_use]
+    pub fn dispatch_2d(&self, width: u32, height: u32) -> (u32, u32) {
+        (
+            width.div_ceil(WORKGROUP_SIZE_2D),
+            height.div_ceil(WORKGROUP_SIZE_2D),
+        )
     }
 
     /// Get maximum allocation size for this device

@@ -9,8 +9,7 @@ use barracuda::ops::*;
 #[tokio::test]
 async fn test_matmul_one_dimension() {
     // Matmul with m=1, n=1, k=1 (smallest valid)
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let a = vec![2.0f32];
     let b = vec![3.0f32];
 
@@ -27,8 +26,7 @@ async fn test_matmul_one_dimension() {
 #[tokio::test]
 async fn test_relu_with_infinities() {
     // ReLU with inf and -inf
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let input = vec![f32::INFINITY, f32::NEG_INFINITY, 0.0, 1.0, -1.0];
 
     let result = relu(&dev.device, &dev.queue, &input, 5).await;
@@ -45,8 +43,7 @@ async fn test_relu_with_infinities() {
 #[tokio::test]
 async fn test_softmax_with_large_values() {
     // Softmax with very large values (numerical stability test)
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let input = vec![1000.0, 1001.0, 999.0]; // Large values
     let result = softmax(&dev.device, &dev.queue, &input, 1, 3).await;
 
@@ -64,8 +61,7 @@ async fn test_softmax_with_large_values() {
 #[tokio::test]
 async fn test_div_by_near_zero() {
     // Division by very small numbers
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let a = vec![1.0f32; 10];
     let b = vec![1e-10f32; 10]; // Very small
 
@@ -82,8 +78,7 @@ async fn test_div_by_near_zero() {
 #[tokio::test]
 async fn test_layer_norm_single_element() {
     // Layer norm with single element
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let input = vec![5.0f32];
     let weights = vec![1.0f32];
     let bias = vec![0.0f32];
@@ -96,8 +91,7 @@ async fn test_layer_norm_single_element() {
 #[tokio::test]
 async fn test_maxpool_one_by_one() {
     // MaxPool with 1x1 input and 1x1 kernel
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let input = vec![5.0f32];
 
     let result = maxpool2d(
@@ -128,8 +122,7 @@ async fn test_maxpool_one_by_one() {
 #[tokio::test]
 async fn test_concat_empty_dimension() {
     // Concatenate with one tensor having size 0 in concat dimension
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 4;
     let a = vec![0.5f32; batch * 10];
     let b = vec![]; // Empty

@@ -246,15 +246,15 @@ async fn test_concurrent_coordinator_creation() {
         }));
     }
 
-    let mut successes = 0;
+    let mut _successes = 0;
     for task in tasks {
         if task.await.expect("Task failed") {
-            successes += 1;
+            _successes += 1;
         }
     }
 
     // Some should succeed (if GPU available)
-    assert!(successes >= 0); // At least doesn't panic
+    // successes is usize, so it's always >= 0
 }
 
 // ============================================================================

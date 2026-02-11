@@ -6,6 +6,7 @@
 //!
 //! **Philosophy**: "Test the unhappy paths as thoroughly as the happy paths"
 
+use std::sync::Arc;
 use std::time::Duration;
 use toadstool::ExecutionRequest;
 use toadstool_distributed::core::{DistributedConfig, DistributedCoordinator};
@@ -269,11 +270,11 @@ async fn test_double_start() {
     let coordinator = std::sync::Arc::new(coordinator);
 
     // Start once
-    let result1 = coordinator.clone().start().await;
+    let result1 = Arc::clone(&coordinator).start().await;
     assert!(result1.is_ok(), "First start should succeed");
 
     // Try to start again
-    let result2 = coordinator.clone().start().await;
+    let result2 = Arc::clone(&coordinator).start().await;
 
     // Should either succeed (idempotent) or fail clearly
     match result2 {

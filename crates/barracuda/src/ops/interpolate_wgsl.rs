@@ -31,7 +31,7 @@ impl Interpolate {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/interpolate.wgsl")
+        include_str!("../shaders/misc/interpolate.wgsl")
     }
 
     /// Execute the interpolate operation
@@ -221,15 +221,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_interpolate_upscale() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 1x1x2x2 input
         let data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::new(data, vec![1, 1, 2, 2], device.clone());
@@ -242,8 +242,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_interpolate_downscale() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 1x1x4x4 input
         let data = vec![
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,

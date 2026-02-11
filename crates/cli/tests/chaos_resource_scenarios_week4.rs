@@ -127,7 +127,7 @@ async fn chaos_resource_contention() {
     let mut handles = vec![];
 
     for _ in 0..10 {
-        let resource = shared_resource.clone();
+        let resource = Arc::clone(&shared_resource);
         let handle = tokio::spawn(async move {
             for _ in 0..10 {
                 let mut val = resource.lock().await;
@@ -157,8 +157,8 @@ async fn chaos_deadlock_detection() {
     let resource_a = Arc::new(Mutex::new(0));
     let resource_b = Arc::new(Mutex::new(0));
 
-    let a = resource_a.clone();
-    let b = resource_b.clone();
+    let a = Arc::clone(&resource_a);
+    let b = Arc::clone(&resource_b);
 
     let handle = tokio::spawn(async move {
         // ⚠️ ANTI-PATTERN DEMO: Holding lock across await (for chaos testing only!)
@@ -200,7 +200,7 @@ async fn chaos_resource_leak_detection() {
     let counter = Arc::new(AtomicU64::new(0));
 
     for _ in 0..100 {
-        let c = counter.clone();
+        let c = Arc::clone(&counter);
         tokio::spawn(async move {
             c.fetch_add(1, Ordering::SeqCst);
         });

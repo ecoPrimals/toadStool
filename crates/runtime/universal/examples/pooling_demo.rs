@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
     let maxpool_workload = Workload {
         operation: OperationType::MaxPool2D,
         data_type: DataType::F32,
-        num_operations: 1 * 1 * 2 * 2 * 2 * 2, // batch * ch * out_h * out_w * pool_h * pool_w
+        num_operations: 2 * 2 * 2 * 2, // batch * ch * out_h * out_w * pool_h * pool_w
         required_memory: (input.len() + 4) * std::mem::size_of::<f32>(),
         input: WorkloadData::F32Pool2D {
             input: input.clone(),
@@ -141,7 +141,7 @@ async fn main() -> Result<()> {
     let avgpool_workload = Workload {
         operation: OperationType::AvgPool2D,
         data_type: DataType::F32,
-        num_operations: 1 * 1 * 2 * 2 * 2 * 2,
+        num_operations: 2 * 2 * 2 * 2,
         required_memory: (input.len() + 4) * std::mem::size_of::<f32>(),
         input: WorkloadData::F32Pool2D {
             input: input.clone(),
@@ -233,7 +233,7 @@ async fn main() -> Result<()> {
     let pattern1_workload = Workload {
         operation: OperationType::MaxPool2D,
         data_type: DataType::F32,
-        num_operations: 1 * 1 * 2 * 2 * 2 * 2,
+        num_operations: 2 * 2 * 2 * 2,
         required_memory: (pattern1.len() + 4) * std::mem::size_of::<f32>(),
         input: WorkloadData::F32Pool2D {
             input: pattern1.clone(),
@@ -287,7 +287,7 @@ async fn main() -> Result<()> {
     let pattern2_workload = Workload {
         operation: OperationType::MaxPool2D,
         data_type: DataType::F32,
-        num_operations: 1 * 1 * 2 * 2 * 2 * 2,
+        num_operations: 2 * 2 * 2 * 2,
         required_memory: (pattern2.len() + 4) * std::mem::size_of::<f32>(),
         input: WorkloadData::F32Pool2D {
             input: pattern2.clone(),

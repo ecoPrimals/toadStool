@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use crate::device::WgpuDevice;
     use crate::error::Result;
@@ -18,7 +19,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_multi_head_attention_basic() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(dev) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+            return;
+        };
 
         let batch = 1;
         let seq_len = 4;

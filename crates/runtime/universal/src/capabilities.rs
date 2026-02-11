@@ -178,8 +178,8 @@ impl WorkloadProfile {
         &self,
         units: &'a [Box<dyn ComputeUnit>],
         workload: &Workload,
-    ) -> Option<&'a Box<dyn ComputeUnit>> {
-        let mut best_unit: Option<&Box<dyn ComputeUnit>> = None;
+    ) -> Option<&'a dyn ComputeUnit> {
+        let mut best_unit: Option<&dyn ComputeUnit> = None;
         let mut best_score = 0.0;
 
         for unit in units {
@@ -192,7 +192,7 @@ impl WorkloadProfile {
 
             if score > best_score {
                 best_score = score;
-                best_unit = Some(unit);
+                best_unit = Some(unit.as_ref());
             }
         }
 

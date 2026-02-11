@@ -1,23 +1,22 @@
-# Toadstool-Compute Specifications
+# ToadStool + BarraCUDA Specifications
 
-## ✅ **CURRENT STATUS** (January 2026)
-
-**ToadStool is PRODUCTION READY with A- grade (90/100) + CUTTING-EDGE RESEARCH!**
+## Current Status (February 11, 2026)
 
 **For current status, read these first**:
-1. **`../STATUS.md`** ⭐ Start here! - Current status (A- 90/100)
-2. **`../HANDOFF_DEC_19_2025.md`** - Complete handoff document
-3. **`../ULTIMATE_STATUS_DEC_19_2025.md`** - Comprehensive status report
-4. **`../COMPREHENSIVE_CODE_AUDIT_DEC_20_2025.md`** - Latest audit (Dec 20, 2025)
+1. **`../STATUS.md`** — Detailed technical status
+2. **`../QUICK_STATUS.md`** — One-page summary
+3. **`../README.md`** — Project overview and architecture
 
-**Latest Achievement**: 
-- A- grade (90/100), 787/787 tests passing (100%)
-- **NEW**: Neuromorphic computing 100% complete (2x Akida AKD1000, 160 NPUs)
-- **NEW**: Reservoir computing research active (echo state networks on neuromorphic hardware)
-- **NEW**: BarraCUDA tensor operations (vendor-free CUDA replacement)
-- Production ready + active research!
+**Key Numbers**:
+- **15,460+ tests passing**, 0 failing
+- **414 WGSL shaders** (reorganized into categories)
+- **5 scientific middleware modules** (linalg, numerical, special, optimize, surrogate)
+- **0 clippy warnings**, 0 build warnings
+- **0 unsafe blocks** in middleware
+- Cross-vendor GPU compute validated (NVIDIA + AMD, bit-identical)
+- 39.85 tok/s distributed LLM inference with encrypted transport
 
-The specs below provide architectural context and remain valid, with new neuromorphic and reservoir computing specs added.
+**Active Work**: Phase 2A — Sampling & Global Optimization (Latin Hypercube, Multi-start Nelder-Mead)
 
 ---
 
@@ -81,32 +80,18 @@ Toadstool-Compute serves as the **universal compute platform** that:
 
 ## Specifications Index
 
-### ⭐ **Current Status Reports** (December 2025)
-- **[../STATUS.md](../STATUS.md)** ⭐ Current status dashboard (A- 90/100)
-- **[../COMPREHENSIVE_CODE_AUDIT_DEC_20_2025.md](../COMPREHENSIVE_CODE_AUDIT_DEC_20_2025.md)** - Complete audit (Dec 20, 2025)
-- **[../HANDOFF_DEC_19_2025.md](../HANDOFF_DEC_19_2025.md)** - Session handoff and architecture
-- **[../ULTIMATE_STATUS_DEC_19_2025.md](../ULTIMATE_STATUS_DEC_19_2025.md)** - Comprehensive progress report
-- **[../SONGBIRD_INTEGRATION_PLAN_DEC_19_2025.md](../SONGBIRD_INTEGRATION_PLAN_DEC_19_2025.md)** - Integration roadmap
+### Active Roadmap
+- **[BARRACUDA_EVOLUTION_ROADMAP.md](./BARRACUDA_EVOLUTION_ROADMAP.md)** ⭐ **Active** — Evolution roadmap, remaining work, cross-domain vision
 
-### 📊 **Architectural Specifications** (Valid & Current)
+### BarraCUDA Compute
 
-#### ⭐ BarraCUDA Universal Compute (v2.0) - February 2026
-- **[BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md](./BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md)** ⭐ **NEW!** - Complete v2.0 spec (CPU, GPU, NPU)
-  - Automatic device selection (96+ test decision matrix)
-  - Energy-aware compute (7× ML efficiency on NPU!)
-  - Sparsity analysis & workload classification
-  - Event-driven NPU execution
-- [BARRACUDA_PURE_RUST_TENSOR_OPS.md](./BARRACUDA_PURE_RUST_TENSOR_OPS.md) - v1.x spec (GPU focus, 21 operations)
-- [RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md) - Neuromorphic extensions
+- **[BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md](./BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md)** — Universal tensor operations (CPU, GPU, NPU)
+- [BARRACUDA_PURE_RUST_TENSOR_OPS.md](./BARRACUDA_PURE_RUST_TENSOR_OPS.md) — Pure Rust tensor ops (v1.x, GPU focus)
+- [BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md](./BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md) — Complex arithmetic, FFT, physics primitives
+- [BARRACUDA_UNIVERSAL_COMPUTE_EVOLUTION.md](./BARRACUDA_UNIVERSAL_COMPUTE_EVOLUTION.md) — Operation coverage tracker
+- [RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md) — Neuromorphic extensions
 
-#### Platform & Architecture
-
-#### ⭐ BarraCUDA Universal Compute (v2.0) - February 2026
-- **[BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md](./BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md)** ⭐ **NEW!** - Universal tensor operations (CPU, GPU, NPU)
-- [BARRACUDA_PURE_RUST_TENSOR_OPS.md](./BARRACUDA_PURE_RUST_TENSOR_OPS.md) - Pure Rust tensor ops (v1.x, GPU focus)
-- [RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md) - Neuromorphic extensions (Jan 29, 2026)
-
-#### Platform & Architecture
+### Platform & Architecture
 - [PRIMAL_CAPABILITY_SYSTEM.md](./PRIMAL_CAPABILITY_SYSTEM.md) - Capability system (implemented)
 - [UNIVERSAL_COMPUTE_PLATFORM.md](./UNIVERSAL_COMPUTE_PLATFORM.md) - Platform architecture
 - [UNIVERSAL_UNIFIED_MEMORY.md](./UNIVERSAL_UNIFIED_MEMORY.md) - Unified memory architecture (Jan 2026)
@@ -167,17 +152,16 @@ Toadstool-Compute serves as the **universal compute platform** that:
 - [x] Capability-based discovery
 - [x] Self-knowledge architecture
 
-### In Progress 🟡
-- [ ] Test coverage expansion (45% → 90%)
-- [ ] Performance benchmarking and optimization
-- [ ] Phase 4 auto-discovery (mDNS/DNS-SD)
-- [ ] Inter-primal showcase demonstrations
+### In Progress
+- [ ] Phase 2A: Latin Hypercube Sampling + Multi-start Nelder-Mead
+- [ ] Test coverage expansion (81% → 90%)
+- [ ] hotSpring L2 accuracy parity (χ²/datum < 2)
 
-### Future Enhancements 📋
-- [ ] Horizontal scaling optimization
-- [ ] Additional runtime backends
-- [ ] Enhanced monitoring and observability
-- [ ] Extended chaos engineering scenarios
+### Remaining Work (see [BARRACUDA_EVOLUTION_ROADMAP.md](./BARRACUDA_EVOLUTION_ROADMAP.md))
+- [ ] Phase 2B: Full SparsitySampler (if Phase 2A insufficient)
+- [ ] Phase 2C: GPU-accelerated RBF surrogate training (14× speedup)
+- [ ] Phase 3: Cross-domain shader evolution (ray tracing, audio, neural)
+- [ ] Phase 4: VFIO NPU driver, multi-GPU DevicePool, quantization
 
 ## Contributing
 

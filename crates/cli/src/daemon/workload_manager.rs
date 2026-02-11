@@ -134,14 +134,14 @@ impl WorkloadManager {
         let resource_usage = Arc::new(RwLock::new(None));
 
         // Clone for task
-        let semaphore = self.semaphore.clone();
-        let executor = self.executor.clone();
-        let workloads = self.workloads.clone();
+        let semaphore = Arc::clone(&self.semaphore);
+        let executor = Arc::clone(&self.executor);
+        let workloads = Arc::clone(&self.workloads);
         let metadata_clone = metadata.clone();
-        let status_clone = status.clone();
-        let exit_code_clone = exit_code.clone();
-        let error_clone = error_msg.clone();
-        let resource_clone = resource_usage.clone();
+        let status_clone = Arc::clone(&status);
+        let exit_code_clone = Arc::clone(&exit_code);
+        let error_clone = Arc::clone(&error_msg);
+        let resource_clone = Arc::clone(&resource_usage);
 
         // Spawn workload execution task
         let task_handle = tokio::spawn(async move {
@@ -203,9 +203,8 @@ impl WorkloadManager {
     ) -> Result<i32> {
         info!("🔧 Executing workload: {}", metadata.id);
 
-        // TODO: Parse biome.yaml and create manifest file
-        // For Phase 3, we'll simulate execution
-        // Phase 4 will add real execution with BiomeExecutor
+        // Pending: Parse biome.yaml into validated manifest struct (BiomeManifest) and apply
+        // defaults before writing. Phase 3 simulation writes raw YAML as-is.
 
         // Write biome.yaml to temp file
         let temp_dir = std::env::temp_dir();
@@ -217,8 +216,8 @@ impl WorkloadManager {
 
         info!("📄 Manifest written to: {}", manifest_path.display());
 
-        // TODO Phase 4: Actually execute using executor.run_biome()
-        // For now, simulate execution with a delay
+        // Pending Phase 4: Replace simulation with executor.run_biome(manifest_path).
+        // BiomeExecutor.run_biome() will execute the workload; currently simulate with delay.
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
         // Simulate resource usage
@@ -263,6 +262,19 @@ impl WorkloadManager {
             error,
             resource_usage,
         })
+    }
+
+    /// Get workload metadata (requester, persistent) for display
+    pub async fn get_workload_metadata(&self, workload_id: &str) -> (Option<String>, Option<bool>) {
+        let workloads = self.workloads.read().await;
+        let workload = match workloads.get(workload_id) {
+            Some(w) => w,
+            None => return (None, None),
+        };
+        (
+            Some(workload.metadata.requester.clone()),
+            Some(workload.metadata.persistent),
+        )
     }
 
     /// List all workloads

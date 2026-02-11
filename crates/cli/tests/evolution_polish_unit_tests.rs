@@ -365,7 +365,7 @@ async fn test_no_regression_concurrent_operations() {
 
     let handles: Vec<_> = (0..5)
         .map(|i| {
-            let exec = executor.clone();
+            let exec = Arc::clone(&executor);
             tokio::spawn(async move {
                 exec.list_biomes(i % 2 == 0, "json".to_string(), false, None)
                     .await

@@ -354,6 +354,9 @@ impl WgpuDevice {
 impl WgpuDevice {
     /// Read buffer to host memory
     pub fn read_buffer_f32(&self, buffer: &wgpu::Buffer, size: usize) -> Result<Vec<f32>> {
+        if size == 0 {
+            return Ok(Vec::new());
+        }
         // Create staging buffer
         let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Staging Buffer"),
@@ -457,7 +460,10 @@ mod tests {
     #[tokio::test]
     async fn test_wgpu_device_creation() {
         // Should always succeed (wgpu has CPU fallback)
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         println!("barraCUDA device: {}", device.name());
         println!("Device type: {:?}", device.device_type());
 
@@ -487,7 +493,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_buffer_operations() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Create buffer
         let buffer = device.create_buffer_f32(10).unwrap();

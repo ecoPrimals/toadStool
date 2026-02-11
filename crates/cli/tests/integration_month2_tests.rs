@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)] // expect() is idiomatic in tests
 //! CLI integration tests - Month 2 Week 1 Day 2
 //!
 //! Tier 1 tests: Coverage-measured integration tests
@@ -51,7 +52,7 @@ async fn test_executor_concurrent_tasks() {
 
     let mut handles = vec![];
     for i in 0..10 {
-        let exec = executor.clone();
+        let exec = Arc::clone(&executor);
         let handle = tokio::spawn(async move { exec.start_task(&format!("task-{}", i)).await });
         handles.push(handle);
     }
@@ -163,8 +164,8 @@ async fn test_state_consistency_under_load() {
 
     let mut handles = vec![];
     for _ in 0..100 {
-        let exec = executor.clone();
-        let state_clone = state.clone();
+        let exec = Arc::clone(&executor);
+        let state_clone = Arc::clone(&state);
 
         let handle = tokio::spawn(async move {
             let _task = exec.start_task("test").await.unwrap();
@@ -257,7 +258,7 @@ impl TestExecutor {
 
         let mut count = self.active_tasks.write().await;
         *count += 1;
-        Ok(MockTask::new(self.active_tasks.clone()))
+        Ok(MockTask::new(Arc::clone(&self.active_tasks)))
     }
 
     async fn start_task_with_memory(
@@ -271,8 +272,8 @@ impl TestExecutor {
         let mut count = self.active_tasks.write().await;
         *count += 1;
         Ok(MockTask::with_memory(
-            self.active_tasks.clone(),
-            self.allocated_memory.clone(),
+            Arc::clone(&self.active_tasks),
+            Arc::clone(&self.allocated_memory),
             memory_mb,
         ))
     }
@@ -340,10 +341,14 @@ impl MockTask {
 impl Drop for MockTask {
     fn drop(&mut self) {
         // Decrement active tasks count (blocking is acceptable in Drop)
-        let active_tasks = self.active_tasks.clone();
+        let active_tasks = Arc::clone(&self.active_tasks);
         std::thread::spawn(move || {
-            let rt = tokio::runtime::Handle::try_current()
-                .unwrap_or_else(|_| tokio::runtime::Runtime::new().unwrap().handle().clone());
+            let rt = tokio::runtime::Handle::try_current().unwrap_or_else(|_| {
+                tokio::runtime::Runtime::new()
+                    .expect("failed to create tokio runtime for Drop cleanup")
+                    .handle()
+                    .clone()
+            });
             rt.block_on(async move {
                 let mut count = active_tasks.write().await;
                 *count = count.saturating_sub(1);
@@ -354,11 +359,15 @@ impl Drop for MockTask {
 
         // Clean up allocated memory
         if let Some((mem, amount)) = &self.allocated_memory {
-            let mem = mem.clone();
+            let mem = Arc::clone(mem);
             let amount = *amount;
             std::thread::spawn(move || {
-                let rt = tokio::runtime::Handle::try_current()
-                    .unwrap_or_else(|_| tokio::runtime::Runtime::new().unwrap().handle().clone());
+                let rt = tokio::runtime::Handle::try_current().unwrap_or_else(|_| {
+                    tokio::runtime::Runtime::new()
+                        .expect("failed to create tokio runtime for Drop cleanup")
+                        .handle()
+                        .clone()
+                });
                 rt.block_on(async move {
                     let mut allocated = mem.write().await;
                     *allocated = allocated.saturating_sub(amount);

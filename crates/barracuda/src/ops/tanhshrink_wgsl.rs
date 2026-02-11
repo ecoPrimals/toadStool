@@ -25,7 +25,7 @@ impl Tanhshrink {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/tanhshrink.wgsl")
+        include_str!("../shaders/activation/tanhshrink.wgsl")
     }
 
     /// Execute the tanhshrink operation

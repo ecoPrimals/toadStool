@@ -203,13 +203,14 @@ impl Laplacian {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     // Test un-ignored - issue was test code structure, not tensor implementation
     async fn test_laplacian_simple() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Simple 3x3x3 grid
         let (nx, ny, nz) = (3, 3, 3);

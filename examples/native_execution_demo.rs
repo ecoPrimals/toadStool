@@ -408,9 +408,6 @@ mod tests {
         let monitor = SystemResourceMonitor::new();
         let engine = toadstool_runtime_native::NativeRuntimeEngine::new();
         let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
-
-        // Basic smoke test
-        assert!(true);
     }
 
     #[test]

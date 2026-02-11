@@ -132,6 +132,7 @@ fn test_server_command_all_options() {
         config,
         max_workloads,
         biomeos_socket,
+        family_id: _,
     } = cli.command
     {
         assert!(register);
@@ -211,6 +212,7 @@ fn test_daemon_command_all_options() {
         config,
         max_workloads,
         biomeos_socket,
+        family_id: _,
     } = cli.command
     {
         assert!(register);

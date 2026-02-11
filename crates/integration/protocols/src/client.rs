@@ -8,7 +8,7 @@ use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, info};
 
 use crate::config::{ProtocolConfig, RoutingStrategy, ServiceDiscoveryConfig};
-use crate::transport::{Connection, TransportManager};
+use crate::transport::TransportManager;
 use crate::types::{
     HealthStatus, MessageHandler, MessagePriority, ProtocolError, ProtocolEvent, ProtocolMessage,
     ProtocolResult, ServiceEndpoint, ServiceInfo,
@@ -19,8 +19,6 @@ pub struct ProtocolClient {
     config: ProtocolConfig,
     transport_manager: Arc<TransportManager>,
     services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
-    #[allow(dead_code)]
-    connections: Arc<RwLock<HashMap<String, Connection>>>,
     message_handlers: Arc<RwLock<HashMap<String, Box<dyn MessageHandler>>>>,
     event_bus: broadcast::Sender<ProtocolEvent>,
 }
@@ -35,7 +33,6 @@ impl ProtocolClient {
             config,
             transport_manager,
             services: Arc::new(RwLock::new(HashMap::new())),
-            connections: Arc::new(RwLock::new(HashMap::new())),
             message_handlers: Arc::new(RwLock::new(HashMap::new())),
             event_bus,
         };
@@ -215,7 +212,8 @@ impl ProtocolClient {
         );
 
         let handlers = self.message_handlers.read().await;
-        if let Some(handler) = handlers.get(&message.message_type) {
+        // Use &str reference directly for lookup (no clone needed)
+        if let Some(handler) = handlers.get(message.message_type.as_str()) {
             let result = handler.handle_message(message.clone())?;
 
             // Emit event

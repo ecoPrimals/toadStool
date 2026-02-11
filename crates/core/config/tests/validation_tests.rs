@@ -565,10 +565,11 @@ fn test_validation_sandbox_type_required() {
 #[test]
 fn test_validation_cache_config() {
     let mut config = ToadStoolConfig::default();
-    let mut cache_config = BackendCacheConfig::default();
-
     // Test empty cache type
-    cache_config.cache_type = String::new();
+    let cache_config = BackendCacheConfig {
+        cache_type: String::new(),
+        ..Default::default()
+    };
     config.cache = Some(cache_config.clone());
     let result = config.validate_runtime_config();
     assert!(result.is_err());
@@ -578,8 +579,10 @@ fn test_validation_cache_config() {
         .contains("Cache type cannot be empty"));
 
     // Test zero max size
-    let mut cache_config2 = BackendCacheConfig::default();
-    cache_config2.max_size = 0;
+    let cache_config2 = BackendCacheConfig {
+        max_size: 0,
+        ..Default::default()
+    };
     config.cache = Some(cache_config2);
     let result2 = config.validate_runtime_config();
     assert!(result2.is_err());
@@ -589,8 +592,10 @@ fn test_validation_cache_config() {
         .contains("Cache max size must be greater than 0"));
 
     // Test zero TTL
-    let mut cache_config3 = BackendCacheConfig::default();
-    cache_config3.ttl = Duration::from_secs(0);
+    let cache_config3 = BackendCacheConfig {
+        ttl: Duration::from_secs(0),
+        ..Default::default()
+    };
     config.cache = Some(cache_config3);
     let result3 = config.validate_runtime_config();
     assert!(result3.is_err());
@@ -604,10 +609,11 @@ fn test_validation_cache_config() {
 #[test]
 fn test_validation_metrics_config() {
     let mut config = ToadStoolConfig::default();
-    let mut metrics_config = MetricsConfig::default();
-
     // Test empty endpoint
-    metrics_config.endpoint = String::new();
+    let metrics_config = MetricsConfig {
+        endpoint: String::new(),
+        ..Default::default()
+    };
     config.metrics = Some(metrics_config.clone());
     let result = config.validate_runtime_config();
     assert!(result.is_err());
@@ -617,8 +623,10 @@ fn test_validation_metrics_config() {
         .contains("Metrics endpoint cannot be empty"));
 
     // Test empty format
-    let mut metrics_config2 = MetricsConfig::default();
-    metrics_config2.format = String::new();
+    let metrics_config2 = MetricsConfig {
+        format: String::new(),
+        ..Default::default()
+    };
     config.metrics = Some(metrics_config2);
     let result2 = config.validate_runtime_config();
     assert!(result2.is_err());
@@ -628,8 +636,10 @@ fn test_validation_metrics_config() {
         .contains("Metrics format cannot be empty"));
 
     // Test zero collection interval
-    let mut metrics_config3 = MetricsConfig::default();
-    metrics_config3.collection_interval = Duration::from_secs(0);
+    let metrics_config3 = MetricsConfig {
+        collection_interval: Duration::from_secs(0),
+        ..Default::default()
+    };
     config.metrics = Some(metrics_config3);
     let result3 = config.validate_runtime_config();
     assert!(result3.is_err());
@@ -753,10 +763,12 @@ fn test_validation_multiple_failures_returns_first() {
 /// Test config with all optional sections None passes basic validation
 #[test]
 fn test_validation_optional_sections_none() {
-    let mut config = ToadStoolConfig::default();
-    config.cache = None;
-    config.metrics = None;
-    config.database = None;
+    let config = ToadStoolConfig {
+        cache: None,
+        metrics: None,
+        database: None,
+        ..Default::default()
+    };
 
     let result = config.validate_runtime_config();
     // Should pass validation (optional sections don't need validation when None)

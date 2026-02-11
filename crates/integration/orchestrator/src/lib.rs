@@ -12,7 +12,7 @@
 //! - `toadstool-common::primal_sockets::discover_coordination_socket()` for discovery
 //! - Unix socket RPC for all primal-to-primal communication
 //!
-//! All methods in this crate return stub responses and log deprecation warnings.
+//! All methods return placeholder responses and log deprecation warnings.
 //! Remove usage from new code.
 #![deprecated(
     since = "0.2.0",
@@ -41,74 +41,79 @@ pub struct OrchestratorClient {
 }
 
 impl OrchestratorClient {
-    /// Discover and connect to an orchestrator via capability - STUB
+    /// Discover and connect to an orchestrator via capability
     ///
-    /// **DEPRECATED**: Use `SongbirdClient::discover()` instead
+    /// **DEPRECATED**: Use `SongbirdClient::discover()` instead. Returns placeholder client; no real discovery.
     pub async fn discover(discovery: &dyn CapabilityDiscovery) -> Result<Self, OrchestratorError> {
         warn!("OrchestratorClient::discover() is deprecated - use SongbirdClient instead");
 
-        // Stub implementation
         let _ = discovery;
         Ok(Self {
-            service_name: "orchestrator-stub".to_string(),
+            service_name: "orchestrator-deprecated".to_string(),
             timeout: Duration::from_secs(30),
         })
     }
 
-    /// Create client with explicit endpoint - STUB
+    /// Create client with explicit endpoint
     ///
-    /// **DEPRECATED**: Use Songbird integration
+    /// **DEPRECATED**: Use Songbird integration. Returns placeholder client; endpoint ignored.
     pub fn with_endpoint(endpoint: String) -> Self {
         warn!("OrchestratorClient::with_endpoint() is deprecated - use SongbirdClient");
         let _ = endpoint;
         Self {
-            service_name: "orchestrator-stub".to_string(),
+            service_name: "orchestrator-deprecated".to_string(),
             timeout: Duration::from_secs(30),
         }
     }
 
-    /// Register service - STUB
+    /// Register service
     ///
-    /// **DEPRECATED**: Use Songbird service registration
+    /// **DEPRECATED**: Use Songbird service registration. Returns placeholder success.
     pub async fn register(
         &self,
         registration: ServiceRegistration,
     ) -> Result<RegistrationResponse, OrchestratorError> {
         info!(
-            "Stub: register service {} - use Songbird",
+            "Deprecated: register service {} - use Songbird",
             registration.service_id
         );
         Ok(RegistrationResponse {
             service_id: registration.service_id,
-            status: "stub".to_string(),
+            status: "deprecated".to_string(),
             message: Some("Use Songbird for service registration".to_string()),
         })
     }
 
-    /// Report health - STUB
+    /// Report health
+    ///
+    /// **DEPRECATED**: Use Songbird. No-op; logs deprecation.
     pub async fn report_health(&self, health: HealthReport) -> Result<(), OrchestratorError> {
         info!(
-            "Stub: report health for {} - use Songbird",
+            "Deprecated: report health for {} - use Songbird",
             health.service_id
         );
         Ok(())
     }
 
-    /// Discover service - STUB
+    /// Discover service
+    ///
+    /// **DEPRECATED**: Use Songbird. Returns empty list; no real discovery.
     pub async fn discover_service(
         &self,
         capability: &str,
     ) -> Result<Vec<DiscoveredServiceInfo>, OrchestratorError> {
         info!(
-            "Stub: discover service with capability {} - use Songbird",
+            "Deprecated: discover service with capability {} - use Songbird",
             capability
         );
         Ok(vec![])
     }
 
-    /// Deregister service - STUB
+    /// Deregister service
+    ///
+    /// **DEPRECATED**: Use Songbird. No-op; logs deprecation.
     pub async fn deregister(&self, service_id: &str) -> Result<(), OrchestratorError> {
-        info!("Stub: deregister service {} - use Songbird", service_id);
+        info!("Deprecated: deregister service {} - use Songbird", service_id);
         Ok(())
     }
 }

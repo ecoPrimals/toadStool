@@ -7,7 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -17,7 +17,7 @@ pub struct Scatter {
     input: Tensor,
     dim: usize,
     indices: Vec<u32>,
-    _values: Tensor, // Reserved for future scatter operations
+    values: Tensor,
 }
 
 impl Scatter {
@@ -27,13 +27,13 @@ impl Scatter {
             input,
             dim,
             indices,
-            _values: values,
+            values,
         }
     }
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/scatter.wgsl")
+        include_str!("../shaders/tensor/scatter.wgsl")
     }
 
     /// Execute the scatter operation
@@ -62,8 +62,7 @@ impl Scatter {
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             });
 
-        let values_buffer = // NEEDS FIX: Input buffer should use .buffer() directly
-        self.input.buffer();
+        let values_buffer = self.values.buffer();
 
         let output_buffer = device.create_buffer_f32(size)?;
 
@@ -229,10 +228,9 @@ impl Scatter {
             });
             compute_pass.set_pipeline(&copy_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(size as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -244,10 +242,9 @@ impl Scatter {
             });
             compute_pass.set_pipeline(&scatter_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (values_size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(values_size as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -277,15 +274,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_scatter_1d() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let input = Tensor::new(data, vec![5], device.clone());
 
@@ -303,8 +300,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_scatter_2d() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let input = Tensor::new(data, vec![3, 2], device.clone());
 

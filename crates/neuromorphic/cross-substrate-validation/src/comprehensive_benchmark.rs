@@ -232,7 +232,7 @@ pub async fn run_comprehensive_benchmark(runtime: &UniversalRuntime) -> Vec<Benc
             ("CPU", cpu_time.unwrap_or(f64::MAX)),
             ("GPU AMD", gpu_amd_time.unwrap_or(f64::MAX)),
             ("GPU NVIDIA", gpu_nvidia_time.unwrap_or(f64::MAX)),
-            ("NPU", npu_time.unwrap_or(f64::MAX)),
+            ("NPU", f64::MAX),
         ];
 
         let (winner, best_time) = times

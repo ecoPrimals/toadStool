@@ -282,4 +282,144 @@ mod tests {
         let not_viable = viable.with_memory_dependencies();
         assert!(!not_viable.is_cpu_viable());
     }
+
+    #[test]
+    fn test_cuda_source_cpp_display() {
+        let source = CudaSource::CudaCpp {
+            source: "__global__ void add(...)".to_string(),
+            entry_point: "add".to_string(),
+        };
+        let disp = format!("{}", source);
+        assert!(disp.contains("CUDA C++"));
+        assert!(disp.contains("add"));
+    }
+
+    #[test]
+    fn test_cuda_source_ptx_display() {
+        let source = CudaSource::Ptx {
+            source: ".version 7.5".to_string(),
+            entry_point: "entry".to_string(),
+        };
+        let disp = format!("{}", source);
+        assert!(disp.contains("PTX"));
+        assert!(disp.contains("entry"));
+    }
+
+    #[test]
+    fn test_cuda_source_cubin_display() {
+        let source = CudaSource::CuBin {
+            binary: vec![0x7f, 0x45, 0x4c],
+            entry_point: "kernel_main".to_string(),
+        };
+        let disp = format!("{}", source);
+        assert!(disp.contains("CuBin"));
+        assert!(disp.contains("kernel_main"));
+    }
+
+    #[test]
+    fn test_cuda_source_file_display() {
+        let source = CudaSource::File {
+            path: std::path::PathBuf::from("/path/to/kernel.cu"),
+            entry_point: "main".to_string(),
+        };
+        let disp = format!("{}", source);
+        assert!(disp.contains("File"));
+        assert!(disp.contains("main"));
+        assert!(disp.contains("kernel.cu"));
+    }
+
+    #[test]
+    fn test_cuda_backend_default() {
+        let backend = CudaBackend::default();
+        assert_eq!(backend, CudaBackend::Automatic);
+    }
+
+    #[test]
+    fn test_cuda_backend_display() {
+        assert!(format!("{}", CudaBackend::NativeNvidia).contains("Native NVIDIA"));
+        assert!(format!("{}", CudaBackend::TranslatedGpu).contains("Translated"));
+        assert!(format!("{}", CudaBackend::CpuParallel).contains("CPU Parallel"));
+        assert!(format!("{}", CudaBackend::CpuSequential).contains("CPU Sequential"));
+        assert!(format!("{}", CudaBackend::Automatic).contains("Automatic"));
+    }
+
+    #[test]
+    fn test_launch_config_new() {
+        let config = CudaLaunchConfig::new((10, 20, 1), (256, 1, 1));
+        assert_eq!(config.grid_dim, (10, 20, 1));
+        assert_eq!(config.block_dim, (256, 1, 1));
+        assert_eq!(config.shared_mem_bytes, 0);
+    }
+
+    #[test]
+    fn test_launch_config_linear_roundup() {
+        let config = CudaLaunchConfig::linear(1000, 256);
+        assert_eq!(config.grid_dim, (4, 1, 1));
+        assert_eq!(config.total_threads(), 1024);
+    }
+
+    #[test]
+    fn test_launch_config_total_threads_3d() {
+        let config = CudaLaunchConfig::new((2, 3, 4), (5, 6, 7));
+        assert_eq!(config.total_blocks(), 24);
+        assert_eq!(config.total_threads(), 24 * 210);
+    }
+
+    #[test]
+    fn test_workload_constructor_defaults() {
+        let source = CudaSource::Ptx {
+            source: "ptx".to_string(),
+            entry_point: "ep".to_string(),
+        };
+        let launch = CudaLaunchConfig::linear(256, 256);
+        let w = CudaWorkload::new(source, launch);
+
+        assert!(w.compute_capability.is_none());
+        assert_eq!(w.preferred_backend, CudaBackend::Automatic);
+        assert!(w.estimated_flops.is_none());
+        assert!(!w.has_memory_dependencies);
+    }
+
+    #[test]
+    fn test_workload_with_memory_dependencies() {
+        let source = CudaSource::CudaCpp {
+            source: "...".to_string(),
+            entry_point: "k".to_string(),
+        };
+        let w = CudaWorkload::new(source, CudaLaunchConfig::linear(1000, 256))
+            .with_memory_dependencies();
+        assert!(w.has_memory_dependencies);
+    }
+
+    #[test]
+    fn test_cuda_source_equality() {
+        let s1 = CudaSource::CudaCpp {
+            source: "code".to_string(),
+            entry_point: "ep".to_string(),
+        };
+        let s2 = CudaSource::CudaCpp {
+            source: "code".to_string(),
+            entry_point: "ep".to_string(),
+        };
+        assert_eq!(s1, s2);
+    }
+
+    #[test]
+    fn test_cuda_workload_serialization_roundtrip() {
+        let source = CudaSource::CudaCpp {
+            source: "// comment".to_string(),
+            entry_point: "kernel".to_string(),
+        };
+        let workload = CudaWorkload::new(source, CudaLaunchConfig::linear(1024, 256))
+            .with_compute_capability("8.0")
+            .with_preferred_backend(CudaBackend::NativeNvidia)
+            .with_estimated_flops(1_000_000);
+
+        let json = serde_json::to_string(&workload).unwrap();
+        let deserialized: CudaWorkload = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(workload.compute_capability, deserialized.compute_capability);
+        assert_eq!(workload.preferred_backend, deserialized.preferred_backend);
+        assert_eq!(workload.estimated_flops, deserialized.estimated_flops);
+    }
 }

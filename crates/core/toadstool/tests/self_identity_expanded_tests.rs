@@ -18,8 +18,8 @@ fn test_resource_detection() {
     // Memory should be non-zero (system has some memory)
     assert!(identity.resources.memory_bytes > 0);
 
-    // GPU detection should return a boolean
-    assert!(identity.resources.gpu_available || !identity.resources.gpu_available);
+    // GPU detection should return a valid boolean (always true or false)
+    let _gpu = identity.resources.gpu_available; // type-checked, always valid
 }
 
 /// Test instance ID uniqueness
@@ -138,7 +138,7 @@ fn test_coordination_requirement() {
         .find(|r| r.capability == "coordination")
         .expect("Coordination requirement should exist");
 
-    assert_eq!(coord.required, false); // Optional
+    assert!(!coord.required); // Optional
     assert!(coord.features.contains(&"routing".to_string()));
     assert!(coord.features.contains(&"discovery".to_string()));
 }
@@ -154,7 +154,7 @@ fn test_storage_requirement() {
         .find(|r| r.capability == "storage")
         .expect("Storage requirement should exist");
 
-    assert_eq!(storage.required, false); // Optional - we can use local
+    assert!(!storage.required); // Optional - we can use local
     assert!(storage.features.contains(&"object-store".to_string()));
 }
 
@@ -169,7 +169,7 @@ fn test_security_requirement() {
         .find(|r| r.capability == "security")
         .expect("Security requirement should exist");
 
-    assert_eq!(security.required, false); // Optional - we have basic security
+    assert!(!security.required); // Optional - we have basic security
     assert!(security.features.contains(&"authentication".to_string()));
 }
 
@@ -184,7 +184,7 @@ fn test_ai_requirement() {
         .find(|r| r.capability == "ai")
         .expect("AI requirement should exist");
 
-    assert_eq!(ai.required, false); // Optional
+    assert!(!ai.required); // Optional
     assert!(ai.features.contains(&"orchestration".to_string()));
 }
 

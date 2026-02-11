@@ -4,7 +4,7 @@
 //! including prefix sum computation, mask conversion, and the main selection logic.
 
 use super::MaskedSelect;
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use std::sync::Arc;
@@ -146,11 +146,9 @@ pub(super) fn compute_prefix_sum_gpu(
         });
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        // Deep Debt Evolution: Capability-based dispatch
-        // Prefix sum is a reduction operation
+        // Dispatch using standard 1D shader workgroup size (256)
         let caps = DeviceCapabilities::from_device(device);
-        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-        let workgroups = (size as u32).div_ceil(optimal_wg_size);
+        let workgroups = caps.dispatch_1d(size as u32);
         pass.dispatch_workgroups(workgroups.max(1), 1, 1);
     }
 
@@ -279,10 +277,9 @@ pub(super) fn convert_mask_gpu(
         });
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        // Deep Debt Evolution: Capability-based dispatch
+        // Dispatch using standard 1D shader workgroup size (256)
         let caps = DeviceCapabilities::from_device(device);
-        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups = (size as u32).div_ceil(optimal_wg_size);
+        let workgroups = caps.dispatch_1d(size as u32);
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
@@ -357,11 +354,7 @@ pub(super) fn execute_masked_select(op: MaskedSelect) -> Result<Tensor> {
 
     // Handle zero-size output
     if output_size == 0 {
-        return Ok(Tensor::from_buffer(
-            device.create_buffer_f32(0)?,
-            vec![0],
-            device.clone(),
-        ));
+        return Ok(Tensor::new(vec![], vec![0], device.clone()));
     }
 
     // Access input buffer directly (zero-copy)
@@ -520,19 +513,14 @@ pub(super) fn execute_masked_select(op: MaskedSelect) -> Result<Tensor> {
         });
         compute_pass.set_pipeline(&compute_pipeline);
         compute_pass.set_bind_group(0, &bind_group, &[]);
-        // Deep Debt Evolution: Capability-based dispatch
+        // Dispatch using standard 1D shader workgroup size (256)
         let caps = DeviceCapabilities::from_device(device);
-        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups = (input_size as u32).div_ceil(optimal_wg_size);
+        let workgroups = caps.dispatch_1d(input_size as u32);
         compute_pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
     device.queue.submit(Some(encoder.finish()));
 
-    // Return tensor without reading back (zero-copy)
-    Ok(Tensor::from_buffer(
-        output_buffer,
-        vec![output_size],
-        device.clone(),
-    ))
+    let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+    Ok(Tensor::new(output_data, vec![output_size], device.clone()))
 }

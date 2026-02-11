@@ -45,12 +45,11 @@ fn test_lz4_empty_data() {
     let original = b"";
     let compressed = compress_lz4(original);
     // Empty data handling - discover actual behavior
-    match decompress_isolated(&compressed, CompressionAlgorithm::Lz4, None) {
-        Ok((region, _)) => assert_eq!(region.as_slice(), original),
-        Err(_) => {
-            // Empty data may not compress/decompress - that's okay!
-            // Discovered behavior: some compressors don't handle empty data
-        }
+    if let Ok((region, _)) = decompress_isolated(&compressed, CompressionAlgorithm::Lz4, None) {
+        assert_eq!(region.as_slice(), original);
+    } else {
+        // Empty data may not compress/decompress - that's okay!
+        // Discovered behavior: some compressors don't handle empty data
     }
 }
 
@@ -161,12 +160,11 @@ fn test_zstd_empty_data() {
     let original = b"";
     let compressed = compress_zstd(original);
     // Empty data handling - discover actual behavior
-    match decompress_isolated(&compressed, CompressionAlgorithm::Zstd, None) {
-        Ok((region, _)) => assert_eq!(region.as_slice(), original),
-        Err(_) => {
-            // Empty data may not compress/decompress - that's okay!
-            // Discovered behavior: some compressors don't handle empty data
-        }
+    if let Ok((region, _)) = decompress_isolated(&compressed, CompressionAlgorithm::Zstd, None) {
+        assert_eq!(region.as_slice(), original);
+    } else {
+        // Empty data may not compress/decompress - that's okay!
+        // Discovered behavior: some compressors don't handle empty data
     }
 }
 

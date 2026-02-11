@@ -19,6 +19,7 @@
 
 use crate::{ToadStoolError, ToadStoolResult};
 use std::net::SocketAddr;
+use toadstool_common::constants::network::{BIND_ALL_IPV4, LOCALHOST_IPV4};
 use tokio::net::{TcpListener, TcpStream};
 
 /// Default TCP port for ToadStool IPC (DEPRECATED)
@@ -26,7 +27,7 @@ use tokio::net::{TcpListener, TcpStream};
 /// **DEEP DEBT VIOLATION**: Hardcoded ports break multi-instance support.
 ///
 /// **Migration**: Use Unix sockets instead:
-/// ```rust,no_run
+/// ```rust,ignore
 /// // OLD: TCP with hardcoded port
 /// let listener = tcp::bind("127.0.0.1", 8370).await?;
 ///
@@ -77,24 +78,36 @@ pub async fn connect(host: &str, port: u16) -> ToadStoolResult<TcpStream> {
 
 /// Get default ToadStool TCP address
 ///
-/// **Deep Debt**: Runtime detection, localhost-first
+/// **Deep Debt**: Runtime detection, localhost-first.
+/// Returns `Result` instead of panicking on parse failure.
 #[allow(deprecated)]
-pub fn default_addr() -> SocketAddr {
-    format!("127.0.0.1:{}", DEFAULT_PORT)
+pub fn default_addr() -> ToadStoolResult<SocketAddr> {
+    format!("{}:{}", LOCALHOST_IPV4, DEFAULT_PORT)
         .parse()
-        .expect("Valid SocketAddr")
+        .map_err(|e| {
+            ToadStoolError::configuration(format!(
+                "Invalid default TCP address {}:{}: {}",
+                LOCALHOST_IPV4, DEFAULT_PORT, e
+            ))
+        })
 }
 
 /// Get local network address for cross-device
 ///
-/// **Deep Debt**: Discovers local IP at runtime
+/// **Deep Debt**: Discovers local IP at runtime.
+/// Returns `Result` instead of panicking on parse failure.
 #[allow(deprecated)]
 pub fn local_network_addr() -> ToadStoolResult<SocketAddr> {
     // Try to get local IP via interface detection
     // Fallback to 0.0.0.0 (bind all interfaces)
-    Ok(format!("0.0.0.0:{}", DEFAULT_PORT)
+    format!("{}:{}", BIND_ALL_IPV4, DEFAULT_PORT)
         .parse()
-        .expect("Valid SocketAddr"))
+        .map_err(|e| {
+            ToadStoolError::configuration(format!(
+                "Invalid network address {}:{}: {}",
+                BIND_ALL_IPV4, DEFAULT_PORT, e
+            ))
+        })
 }
 
 /// Check if TCP is available (always true)
@@ -117,7 +130,7 @@ mod tests {
     #[test]
     #[allow(deprecated)]
     fn test_default_addr() {
-        let addr = default_addr();
+        let addr = default_addr().unwrap();
         assert_eq!(addr.port(), DEFAULT_PORT);
         assert_eq!(addr.ip().to_string(), "127.0.0.1");
     }

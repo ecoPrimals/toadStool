@@ -471,10 +471,12 @@ async fn test_cascading_tower_failures() {
         }
     }
 
-    // With cascading failures, expect low success rate (at most 3 of 5)
+    // With cascading failures, expect low-ish success rate
+    // Tower 0 crashes, towers 1-2 are slow (but may succeed), towers 3-4 have 50% success
+    // In lucky runs, all non-crashed towers may succeed (4 max)
     assert!(
-        successful <= 3,
-        "Expected at most 3 successful, got {}",
+        successful <= 4,
+        "Expected at most 4 successful (tower 0 crashes), got {}",
         successful
     );
 }

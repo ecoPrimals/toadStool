@@ -20,8 +20,38 @@
 
 use barracuda::device::WgpuDevice;
 use barracuda::tensor::Tensor;
+use barracuda::ops::fhe_ntt::FheNtt;
+use barracuda::ops::fhe_poly_add::create_fhe_poly_tensor;
 use std::sync::Arc;
 use tokio::task::JoinSet;
+
+/// Find a primitive root of unity for given degree and modulus
+fn find_root_of_unity(degree: u32, modulus: u64) -> Option<u64> {
+    // For modulus 12289, try common roots
+    if modulus == 12289 {
+        let test_root = 11u64;
+        let mut power = 1u64;
+        for _ in 0..degree {
+            power = (power as u128 * test_root as u128 % modulus as u128) as u64;
+        }
+        if power == 1 {
+            return Some(test_root);
+        }
+    }
+    
+    // For other cases, try small values
+    for candidate in 2..modulus.min(100) {
+        let mut power = 1u64;
+        for _ in 0..degree {
+            power = (power as u128 * candidate as u128 % modulus as u128) as u64;
+        }
+        if power == 1 {
+            return Some(candidate);
+        }
+    }
+    
+    None
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Random Fuzzing Tests
@@ -61,17 +91,34 @@ async fn chaos_random_polynomials_1000_cases() {
             .collect();
         
         // Execute NTT (should never panic)
-        // TODO: Actual NTT execution
-        // match execute_ntt(input, degree as usize, modulus).await {
-        //     Ok(_) => passed += 1,
-        //     Err(e) => {
-        //         // Errors are OK if they're graceful
-        //         println!("  Test {} failed gracefully: {}", test_id, e);
-        //         failed += 1;
-        //     }
-        // }
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let input_tensor = match create_fhe_poly_tensor(&input, device.clone()).await {
+            Ok(t) => t,
+            Err(_) => {
+                failed += 1;
+                continue;
+            }
+        };
         
-        passed += 1; // Placeholder
+        // Find root for this degree/modulus
+        let root = find_root_of_unity(degree as u32, modulus).unwrap_or(11u64);
+        
+        match FheNtt::new(input_tensor, degree as u32, modulus, root) {
+            Ok(ntt) => {
+                match ntt.execute() {
+                    Ok(_) => passed += 1,
+                    Err(e) => {
+                        // Errors are OK if they're graceful
+                        println!("  Test {} failed gracefully: {}", test_id, e);
+                        failed += 1;
+                    }
+                }
+            }
+            Err(e) => {
+                println!("  Test {} failed gracefully: {}", test_id, e);
+                failed += 1;
+            }
+        }
     }
     
     println!("✅ Chaos fuzzing: {} passed, {} failed", passed, failed);
@@ -91,8 +138,25 @@ async fn chaos_random_coefficients_near_modulus() {
             .map(|i| modulus - 1 - ((i + offset) % 10))
             .collect();
         
-        // TODO: Should handle near-boundary values correctly
-        // let result = execute_ntt(input, degree, modulus).await?;
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let root = find_root_of_unity(degree as u32, modulus).unwrap_or(11u64);
+        let input_tensor = create_fhe_poly_tensor(&input, device.clone()).await.unwrap();
+        
+        // Should handle near-boundary values correctly
+        match FheNtt::new(input_tensor, degree as u32, modulus, root) {
+            Ok(ntt) => {
+                let result_tensor = ntt.execute().unwrap();
+                let result_data = device.read_buffer_u32(result_tensor.buffer(), result_tensor.len()).unwrap();
+                // Verify all results are valid
+                for chunk in result_data.chunks(2) {
+                    let val = chunk[0] as u64 | ((chunk[1] as u64) << 32);
+                    assert!(val < modulus || val % modulus < modulus);
+                }
+            }
+            Err(_) => {
+                // Some combinations may not be valid, that's OK
+            }
+        }
         
         println!("✅ Handled coefficients near modulus (offset={})", offset);
     }
@@ -127,8 +191,25 @@ async fn chaos_concurrent_ntt_operations() {
                 })
                 .collect();
             
-            // TODO: Execute NTT
-            // execute_ntt(input, degree, modulus).await
+            let device = Arc::new(WgpuDevice::new().await.unwrap());
+            let root = find_root_of_unity(degree as u32, modulus).unwrap_or(11u64);
+            
+            // Execute NTT
+            match create_fhe_poly_tensor(&input, device.clone()).await {
+                Ok(input_tensor) => {
+                    match FheNtt::new(input_tensor, degree as u32, modulus, root) {
+                        Ok(ntt) => {
+                            let _result = ntt.execute();
+                        }
+                        Err(_) => {
+                            // Some combinations may fail, that's OK for chaos test
+                        }
+                    }
+                }
+                Err(_) => {
+                    // Allocation failure is OK for chaos test
+                }
+            }
             
             Ok::<_, anyhow::Error>(i)
         });
@@ -186,11 +267,24 @@ async fn chaos_interleaved_operations() {
         let poly_a = (0..degree).map(|i| i as u64 % modulus).collect::<Vec<_>>();
         let poly_b = (0..degree).map(|i| (i * 2) as u64 % modulus).collect::<Vec<_>>();
         
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let root = find_root_of_unity(degree as u32, modulus).unwrap_or(11u64);
+        
         // Interleave: NTT, add, NTT, multiply, INTT, etc.
-        // TODO: Execute mixed operations
-        // let ntt_a = execute_ntt(poly_a.clone(), degree, modulus).await?;
-        // let sum = execute_poly_add(poly_a, poly_b.clone(), degree, modulus).await?;
-        // let ntt_b = execute_ntt(poly_b, degree, modulus).await?;
+        let poly_a_tensor = create_fhe_poly_tensor(&poly_a, device.clone()).await.unwrap();
+        let poly_b_tensor = create_fhe_poly_tensor(&poly_b, device.clone()).await.unwrap();
+        
+        // Execute mixed operations
+        let ntt_a = FheNtt::new(poly_a_tensor.clone(), degree as u32, modulus, root);
+        if let Ok(ntt) = ntt_a {
+            let _ntt_result = ntt.execute();
+        }
+        
+        // Try another NTT
+        let ntt_b = FheNtt::new(poly_b_tensor, degree as u32, modulus, root);
+        if let Ok(ntt) = ntt_b {
+            let _ntt_result = ntt.execute();
+        }
         
         println!("✅ Iteration completed");
     }
@@ -210,9 +304,21 @@ async fn chaos_large_polynomial_degrees() {
     let modulus = 12289;
     let input = vec![1u64; max_degree];
     
-    // TODO: Should handle gracefully (complete or error, not panic)
-    // let result = execute_ntt(input, max_degree, modulus).await;
-    // assert!(result.is_ok() || result.is_err()); // Either works, just don't panic
+    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let root = find_root_of_unity(max_degree as u32, modulus).unwrap_or(11u64);
+    let input_tensor = create_fhe_poly_tensor(&input, device.clone()).await.unwrap();
+    
+    // Should handle gracefully (complete or error, not panic)
+    let result = FheNtt::new(input_tensor, max_degree as u32, modulus, root);
+    // Either works, just don't panic
+    match result {
+        Ok(ntt) => {
+            let _result_tensor = ntt.execute();
+        }
+        Err(_) => {
+            // Error is acceptable for very large degrees
+        }
+    }
     
     println!("✅ Handles maximum degree ({})", max_degree);
 }

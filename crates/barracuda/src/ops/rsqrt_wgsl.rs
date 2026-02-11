@@ -25,7 +25,7 @@ impl Rsqrt {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/rsqrt.wgsl")
+        include_str!("../shaders/math/rsqrt.wgsl")
     }
 
     /// Execute the rsqrt operation

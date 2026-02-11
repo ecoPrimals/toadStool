@@ -15,7 +15,7 @@ impl Lt {
         Self { lhs, rhs }
     }
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/lt.wgsl")
+        include_str!("../shaders/misc/lt.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -139,13 +139,15 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<crate::device::WgpuDevice> {
-        Arc::new(crate::device::WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_lt_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let a = Tensor::from_vec_on(vec![1.0, 3.0, 2.0], vec![3], device.clone())
             .await
             .unwrap();
@@ -160,8 +162,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_lt_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // All less than
         let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
@@ -185,8 +188,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_lt_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Equal values
         let a = Tensor::from_vec_on(vec![2.0, 2.0, 2.0], vec![3], device.clone())
             .await
@@ -210,8 +214,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_lt_large_tensor() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 1000 elements
         let a_data: Vec<f32> = (0..1000).map(|i| i as f32).collect();
         let b_data: Vec<f32> = (0..1000).map(|i| (i + 500) as f32).collect();
@@ -227,8 +232,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_lt_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Mixed comparisons
         let a = Tensor::from_vec_on(vec![1.0, 5.0, 3.0], vec![3], device.clone())
             .await

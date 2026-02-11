@@ -118,6 +118,12 @@ pub mod ranges {
     pub const TEST_END: u16 = 65535;
 }
 
+/// Pure version: resolve port from an explicit env value
+#[must_use]
+pub fn resolve_port(env_value: Option<&str>, default: u16) -> u16 {
+    env_value.and_then(|s| s.parse().ok()).unwrap_or(default)
+}
+
 /// Get port with environment variable override
 ///
 /// **Phase 2 Evolution**: Environment variable support
@@ -127,10 +133,7 @@ pub mod ranges {
 /// TOADSTOOL_SERVER_PORT=9000 ./toadstool-server
 /// ```
 pub fn get_port_with_env(default: u16, env_var: &str) -> u16 {
-    std::env::var(env_var)
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(default)
+    resolve_port(std::env::var(env_var).ok().as_deref(), default)
 }
 
 /// Get ToadStool server port (with environment override)
@@ -271,16 +274,21 @@ mod tests {
 
     #[test]
     fn test_environment_override() {
-        std::env::set_var("TEST_PORT", "9999");
-        let port = get_port_with_env(8080, "TEST_PORT");
-        assert_eq!(port, 9999);
-        std::env::remove_var("TEST_PORT");
+        assert_eq!(resolve_port(Some("9999"), 8080), 9999);
     }
 
     #[test]
     fn test_default_when_no_env() {
-        std::env::remove_var("NONEXISTENT_PORT");
-        let port = get_port_with_env(8080, "NONEXISTENT_PORT");
-        assert_eq!(port, 8080);
+        assert_eq!(resolve_port(None, 8080), 8080);
+    }
+
+    #[test]
+    fn test_invalid_env_falls_back_to_default() {
+        assert_eq!(resolve_port(Some("not-a-number"), 8080), 8080);
+    }
+
+    #[test]
+    fn test_empty_env_falls_back_to_default() {
+        assert_eq!(resolve_port(Some(""), 8080), 8080);
     }
 }

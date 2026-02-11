@@ -148,12 +148,13 @@ impl ComplexLog {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_complex_log_one() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test log(1+0i) = 0+0i
         let data = vec![1.0f32, 0.0];
@@ -175,7 +176,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_complex_log_euler_base() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test log(e+0i) = 1+0i (approximately)
         let e = std::f32::consts::E;

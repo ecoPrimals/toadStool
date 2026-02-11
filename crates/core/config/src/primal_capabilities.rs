@@ -434,4 +434,184 @@ cache_ttl_seconds = 300
             .capabilities
             .contains(&"universal-compute".to_string()));
     }
+
+    #[test]
+    fn test_self_knowledge_returns_none_for_unknown_primal() {
+        let registry = create_test_registry();
+        // toadstool exists, so get_self_capabilities returns Some
+        let self_def = get_self_capabilities(&registry);
+        assert!(self_def.is_some());
+    }
+
+    #[test]
+    fn test_find_by_capabilities_all() {
+        let registry = create_test_registry();
+        // Beardog has both capabilities
+        let crypto_key =
+            registry.find_by_capabilities(&["cryptographic-operations", "key-management"]);
+        assert_eq!(crypto_key, vec!["beardog"]);
+        // No primal has both universal-compute and key-management
+        let none_match = registry.find_by_capabilities(&["universal-compute", "key-management"]);
+        assert!(none_match.is_empty());
+    }
+
+    #[test]
+    fn test_get_primal_returns_none_for_unknown() {
+        let registry = create_test_registry();
+        let primal = registry.get_primal("nonexistent");
+        assert!(primal.is_none());
+    }
+
+    #[test]
+    fn test_get_endpoint_primal_not_found_returns_error() {
+        let registry = create_test_registry();
+        let result = registry.get_endpoint("nonexistent", "localhost");
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            CapabilityError::PrimalNotFound(_)
+        ));
+    }
+
+    #[test]
+    fn test_get_endpoint_uses_https_when_no_http_protocol() {
+        let toml_content = r#"
+[primals.secure]
+name = "secure"
+primary_role = "security"
+capabilities = ["secure"]
+protocols = ["https"]
+default_port = 8443
+"#;
+        let registry: PrimalCapabilitiesRegistry = toml::from_str(toml_content).unwrap();
+        let endpoint = registry.get_endpoint("secure", "localhost").unwrap();
+        assert_eq!(endpoint, "https://localhost:8443");
+    }
+
+    #[test]
+    fn test_get_all_endpoints() {
+        let registry = create_test_registry();
+        let endpoints = registry.get_all_endpoints("192.168.1.1");
+        assert_eq!(endpoints.len(), 2);
+        assert_eq!(
+            endpoints.get("toadstool").unwrap(),
+            "http://192.168.1.1:8080"
+        );
+        assert_eq!(endpoints.get("beardog").unwrap(), "http://192.168.1.1:8081");
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_get_migration_fallback() {
+        let toml_content = r#"
+[primals.toadstool]
+name = "toadstool"
+primary_role = "compute"
+capabilities = ["compute"]
+default_port = 8080
+
+[migration.toadstool]
+capability = "compute"
+fallback_url = "http://fallback:8080"
+"#;
+        let registry: PrimalCapabilitiesRegistry = toml::from_str(toml_content).unwrap();
+        let fallback = registry.get_migration_fallback("toadstool");
+        assert_eq!(fallback, Some("http://fallback:8080"));
+        let no_fallback = registry.get_migration_fallback("beardog");
+        assert!(no_fallback.is_none());
+    }
+
+    #[test]
+    fn test_load_from_file_not_found() {
+        let result =
+            PrimalCapabilitiesRegistry::load_from_file("/nonexistent/path/capabilities.toml");
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            CapabilityError::LoadFailed(_)
+        ));
+    }
+
+    #[test]
+    fn test_load_from_file_parse_error() {
+        let temp = std::env::temp_dir().join("invalid_capabilities.toml");
+        std::fs::write(&temp, "invalid toml {{{").unwrap();
+        let result = PrimalCapabilitiesRegistry::load_from_file(&temp);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            CapabilityError::ParseFailed(_)
+        ));
+        let _ = std::fs::remove_file(&temp);
+    }
+
+    #[test]
+    fn test_load_from_file_success() {
+        let temp = std::env::temp_dir().join("valid_capabilities.toml");
+        let content = r#"
+[registry]
+version = "1.0"
+
+[primals.test]
+name = "test"
+primary_role = "compute"
+capabilities = ["test"]
+default_port = 9090
+"#;
+        std::fs::write(&temp, content).unwrap();
+        let result = PrimalCapabilitiesRegistry::load_from_file(&temp);
+        assert!(result.is_ok());
+        let registry = result.unwrap();
+        assert_eq!(registry.primals.len(), 1);
+        assert!(registry.primals.contains_key("test"));
+        let _ = std::fs::remove_file(&temp);
+    }
+
+    #[test]
+    fn test_load_default_via_env_var() {
+        let temp = std::env::temp_dir().join("primal_caps_env_test.toml");
+        let content = r#"
+[registry]
+version = "1.0"
+
+[primals.envtest]
+name = "envtest"
+primary_role = "compute"
+capabilities = ["test"]
+default_port = 7777
+"#;
+        std::fs::write(&temp, content).unwrap();
+        let original = std::env::var("PRIMAL_CAPABILITIES_PATH").ok();
+        std::env::set_var("PRIMAL_CAPABILITIES_PATH", temp.to_str().unwrap());
+        let result = PrimalCapabilitiesRegistry::load_default();
+        if let Some(v) = original {
+            std::env::set_var("PRIMAL_CAPABILITIES_PATH", v);
+        } else {
+            std::env::remove_var("PRIMAL_CAPABILITIES_PATH");
+        }
+        let _ = std::fs::remove_file(&temp);
+        assert!(result.is_ok());
+        let registry = result.unwrap();
+        assert!(registry.primals.contains_key("envtest"));
+    }
+
+    #[test]
+    fn test_registry_metadata_defaults() {
+        let toml_content = r#"
+[primals.minimal]
+name = "minimal"
+primary_role = "compute"
+default_port = 8000
+"#;
+        let registry: PrimalCapabilitiesRegistry = toml::from_str(toml_content).unwrap();
+        assert!(registry.registry.version.is_empty());
+        assert!(registry.registry.discovery_protocol.is_empty());
+    }
+
+    #[test]
+    fn test_find_by_role_empty() {
+        let registry = create_test_registry();
+        let result = registry.find_by_role("nonexistent-role");
+        assert!(result.is_empty());
+    }
 }

@@ -63,7 +63,7 @@ impl Upsample {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/upsample.wgsl")
+        include_str!("../shaders/misc/upsample.wgsl")
     }
 
     /// Execute the upsample operation
@@ -256,13 +256,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_upsample_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..12).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![1, 1, 3, 4], device.clone()).unwrap();
 
@@ -276,7 +278,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_upsample_scale_factor() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..8).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![1, 1, 2, 4], device.clone()).unwrap();
 
@@ -290,7 +294,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_upsample_invalid_shape() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
         assert!(Upsample::new(input, Some((10, 10)), None, UpsampleMode::Nearest, false,).is_err());
@@ -298,7 +304,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_upsample_no_params() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0; 12], vec![1, 1, 3, 4], device.clone()).unwrap();
 
         assert!(Upsample::new(input, None, None, UpsampleMode::Nearest, false,).is_err());
@@ -306,7 +314,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_upsample_large() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..256).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![1, 1, 16, 16], device.clone()).unwrap();
 

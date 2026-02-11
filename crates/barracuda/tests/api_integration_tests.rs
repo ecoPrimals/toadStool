@@ -3,7 +3,6 @@
 //! Tests that validate APIs work together seamlessly.
 //! Deep debt compliant - zero unsafe, production-ready.
 
-use barracuda::device::WgpuDevice;
 use barracuda::esn_v2::{ESNConfig, ESN};
 use barracuda::genomics::{SequenceAnalyzer, SequenceConfig};
 // NOTE: NeuralNetwork API was removed - use direct tensor ops instead
@@ -16,7 +15,10 @@ use barracuda::vision::{ImageBatch, Transform, VisionPipeline};
 /// Verify TimeSeries API can leverage ESN for temporal learning
 #[tokio::test]
 async fn test_esn_timeseries_integration() {
-    let device = WgpuDevice::new().await.unwrap();
+    let Some(device) = barracuda::device::test_pool::get_test_device_if_gpu_available().await
+    else {
+        return;
+    };
 
     // Historical time series data (simple sine wave)
     let history: Vec<f32> = (0..50).map(|i| (i as f32 * 0.1).sin()).collect();
@@ -53,7 +55,10 @@ async fn test_esn_timeseries_integration() {
 #[tokio::test]
 #[ignore]
 async fn test_nn_vision_integration() {
-    let device = WgpuDevice::new().await.unwrap();
+    let Some(device) = barracuda::device::test_pool::get_test_device_if_gpu_available().await
+    else {
+        return;
+    };
 
     // Step 1: Preprocess images with Vision API
     let pipeline = VisionPipeline::new(&device)
@@ -170,7 +175,10 @@ async fn test_genomics_workflow() {
 /// Complex integration across multiple APIs
 #[tokio::test]
 async fn test_multi_api_workflow() {
-    let device = WgpuDevice::new().await.unwrap();
+    let Some(device) = barracuda::device::test_pool::get_test_device_if_gpu_available().await
+    else {
+        return;
+    };
 
     // Scenario: Process image sequence and predict trends
 
@@ -216,7 +224,10 @@ async fn test_multi_api_workflow() {
 /// Verify all 6 APIs initialize on available hardware
 #[tokio::test]
 async fn test_all_apis_hardware_agnostic() {
-    let device = WgpuDevice::new().await.unwrap();
+    let Some(device) = barracuda::device::test_pool::get_test_device_if_gpu_available().await
+    else {
+        return;
+    };
 
     // 1. ESN (hardware-agnostic - async initialization!)
     let esn = ESN::new(ESNConfig {
@@ -239,7 +250,6 @@ async fn test_all_apis_hardware_agnostic() {
         parallel_batch: true,
     });
     // No async, no device - just works!
-    assert!(true, "Genomics created successfully");
 
     // 3. NN Training
     // NOTE: NeuralNetwork API was removed - use direct tensor ops instead
@@ -263,7 +273,6 @@ async fn test_all_apis_hardware_agnostic() {
             reset: 0.0,
         })
         .build();
-    assert!(true, "SNN created successfully");
 
     // 5. Vision
     let _vision = VisionPipeline::new(&device);
@@ -283,7 +292,10 @@ async fn test_all_apis_hardware_agnostic() {
 /// Verify graceful error handling across APIs
 #[tokio::test]
 async fn test_error_handling() {
-    let device = WgpuDevice::new().await.unwrap();
+    let Some(device) = barracuda::device::test_pool::get_test_device_if_gpu_available().await
+    else {
+        return;
+    };
 
     // Test 1: Empty history
     let mut analyzer = TimeSeriesAnalyzer::new(&device)
@@ -316,7 +328,10 @@ async fn test_error_handling() {
 /// Multiple APIs running simultaneously
 #[tokio::test]
 async fn test_concurrent_apis() {
-    let _device = WgpuDevice::new().await.unwrap();
+    let Some(_device) = barracuda::device::test_pool::get_test_device_if_gpu_available().await
+    else {
+        return;
+    };
 
     // Create multiple APIs (ESN is hardware-agnostic!)
     let mut esn = ESN::new(ESNConfig {

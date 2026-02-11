@@ -57,7 +57,7 @@ pub enum IpcTransport {
 ///
 /// ## Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use toadstool_display::{DisplayServer, WindowManager};
 ///
 /// # async fn example() -> anyhow::Result<()> {
@@ -380,7 +380,7 @@ impl DisplayServer {
         manager: &Arc<RwLock<WindowManager>>,
     ) -> JsonRpcResponse {
         // Parse request
-        let request: JsonRpcRequest = match serde_json::from_str(request_str) {
+        let request: JsonRpcRequest = match serde_json::from_slice(request_str.as_bytes()) {
             Ok(req) => req,
             Err(_) => {
                 return JsonRpcResponse::error(

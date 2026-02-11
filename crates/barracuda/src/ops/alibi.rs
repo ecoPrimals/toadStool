@@ -95,7 +95,7 @@ impl AlibiPosition {
 
     /// WGSL shader source
     fn shader() -> &'static str {
-        include_str!("../shaders/alibi_position.wgsl")
+        include_str!("../shaders/attention/alibi_position.wgsl")
     }
 
     /// Execute ALiBi (single GPU pass)
@@ -291,12 +291,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_alibi_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 1;
         let heads = 2;
         let seq = 4;
@@ -318,8 +319,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_alibi_single_token() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 1;
         let heads = 1;
         let seq = 1;
@@ -337,8 +339,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_alibi_bloom_dims() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // BLOOM-style dimensions
         let batch = 2;
         let heads = 8;
@@ -363,8 +366,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_alibi_diagonal_zero() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 1;
         let heads = 1;
         let seq = 4;
@@ -389,17 +393,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_alibi_shape_validation() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Valid: square attention matrix
-        let scores =
-            Tensor::from_vec_on(vec![1.0; 1 * 2 * 4 * 4], vec![1, 2, 4, 4], device.clone())
-                .await
-                .unwrap();
+        let scores = Tensor::from_vec_on(vec![1.0; 2 * 4 * 4], vec![1, 2, 4, 4], device.clone())
+            .await
+            .unwrap();
         assert!(scores.alibi_position().is_ok());
 
         // Invalid: non-square matrix
-        let scores = Tensor::from_vec_on(vec![1.0; 1 * 2 * 4 * 8], vec![1, 2, 4, 8], device)
+        let scores = Tensor::from_vec_on(vec![1.0; 2 * 4 * 8], vec![1, 2, 4, 8], device)
             .await
             .unwrap();
         assert!(scores.alibi_position().is_err());

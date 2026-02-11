@@ -14,8 +14,8 @@ use wgpu::util::DeviceExt;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct ChunkParams {
-    start_offset: u32,  // Start offset in the split dimension for this chunk
-    chunk_size: u32,    // Size of this chunk along split dimension
+    start_offset: u32, // Start offset in the split dimension for this chunk
+    chunk_size: u32,   // Size of this chunk along split dimension
     split_dim: u32,
     dim_size: u32,
     inner_size: u32,
@@ -54,14 +54,14 @@ impl Chunk {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/chunk.wgsl")
+        include_str!("../shaders/tensor/chunk.wgsl")
     }
 
     pub fn execute(self) -> Result<Vec<Tensor>> {
         let device = self.input.device();
         let shape = self.input.shape();
         let dim_size = shape[self.dim];
-        
+
         // PyTorch-style chunking: first (dim_size % chunks) chunks get +1 element
         let base_chunk_size = dim_size / self.chunks;
         let extra_chunks = dim_size % self.chunks;
@@ -80,7 +80,7 @@ impl Chunk {
             } else {
                 base_chunk_size
             };
-            
+
             let output_size = outer_size * chunk_size * inner_size;
 
             let params = ChunkParams {
@@ -93,7 +93,7 @@ impl Chunk {
                 output_size: output_size as u32,
                 _pad1: 0,
             };
-            
+
             start_offset += chunk_size;
 
             let params_buffer =
@@ -226,11 +226,13 @@ impl Chunk {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_chunk_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(
             (0..12).map(|i| i as f32).collect(),
             vec![3, 4],
@@ -249,7 +251,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_chunk_along_dim() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(
             (0..12).map(|i| i as f32).collect(),
             vec![2, 6],
@@ -265,7 +269,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_chunk_invalid() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();

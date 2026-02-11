@@ -18,7 +18,7 @@ pub mod auth;
 pub mod capability_discovery; // NEW: Pure infant discovery API (modern interface)
 pub mod capability_provider; // NEW: Deep Debt - Capability-based service provider abstraction
 pub mod config_bases;
-pub mod constants;
+pub mod constants; // Ecosystem constants: JSON-RPC codes, timeouts, network defaults
 pub mod discovery_defaults; // NEW: Fallback defaults for service discovery (infant pattern)
 pub mod error;
 pub mod error_codes;

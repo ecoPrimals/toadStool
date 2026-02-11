@@ -77,7 +77,7 @@ async fn main() -> Result<()> {
     let conv_workload = Workload {
         operation: OperationType::Conv,
         data_type: DataType::F32,
-        num_operations: 1 * 1 * 3 * 3 * 3 * 3, // batch * out_ch * out_h * out_w * kernel_h * kernel_w * in_ch
+        num_operations: 3 * 3 * 3 * 3, // batch * out_ch * out_h * out_w * kernel_h * kernel_w * in_ch
         required_memory: (input.len() + kernel.len() + 9) * std::mem::size_of::<f32>(),
         input: WorkloadData::F32Conv2D {
             input: input.clone(),
@@ -178,7 +178,7 @@ async fn main() -> Result<()> {
     let sobel_workload = Workload {
         operation: OperationType::Conv,
         data_type: DataType::F32,
-        num_operations: 1 * 1 * 3 * 3 * 3 * 3,
+        num_operations: 3 * 3 * 3 * 3,
         required_memory: (edge_input.len() + sobel_kernel.len() + 9) * std::mem::size_of::<f32>(),
         input: WorkloadData::F32Conv2D {
             input: edge_input.clone(),
@@ -273,7 +273,7 @@ async fn main() -> Result<()> {
     let stride_workload = Workload {
         operation: OperationType::Conv,
         data_type: DataType::F32,
-        num_operations: 1 * 1 * 2 * 2 * 2 * 2,
+        num_operations: 2 * 2 * 2 * 2,
         required_memory: (stride_input.len() + avg_kernel.len() + 4) * std::mem::size_of::<f32>(),
         input: WorkloadData::F32Conv2D {
             input: stride_input.clone(),
@@ -383,7 +383,7 @@ async fn main() -> Result<()> {
     let rgb_workload = Workload {
         operation: OperationType::Conv,
         data_type: DataType::F32,
-        num_operations: 1 * 2 * 2 * 2 * 3 * 2 * 2,
+        num_operations: 2 * 2 * 2 * 3 * 2 * 2,
         required_memory: (rgb_input.len() + rgb_kernel.len() + 8) * std::mem::size_of::<f32>(),
         input: WorkloadData::F32Conv2D {
             input: rgb_input.clone(),

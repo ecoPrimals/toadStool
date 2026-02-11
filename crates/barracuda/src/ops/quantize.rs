@@ -10,7 +10,7 @@
 //! Quantizes floating point values to low-precision integers.
 //! Used for model compression and efficient inference.
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
@@ -66,7 +66,7 @@ impl Quantize {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/quantize.wgsl")
+        include_str!("../shaders/misc/quantize.wgsl")
     }
 
     /// Execute quantize on tensor
@@ -201,10 +201,9 @@ impl Quantize {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(size as u32);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -216,21 +215,15 @@ impl Quantize {
             mapped_at_creation: false,
         });
 
-        // Copy output to staging buffer
-        let mut copy_encoder =
-            device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Quantize Copy Encoder"),
-                });
-        copy_encoder.copy_buffer_to_buffer(
+        // Copy output to staging buffer (must be same encoder - compute must run before copy)
+        encoder.copy_buffer_to_buffer(
             &output_buffer,
             0,
             &staging_buffer,
             0,
             (size * std::mem::size_of::<i32>()) as u64,
         );
-        device.queue.submit(Some(copy_encoder.finish()));
+        device.queue.submit(Some(encoder.finish()));
 
         // Read i32 data from staging buffer
         let buffer_slice = staging_buffer.slice(..);
@@ -258,11 +251,13 @@ impl Quantize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_quantize_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![-1.0, 0.0, 1.0], vec![3], device.clone())
             .await
             .unwrap();
@@ -279,8 +274,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_quantize_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test clamping at boundaries
         let input = Tensor::from_vec_on(vec![-1000.0, 1000.0, 0.0], vec![3], device.clone())
             .await
@@ -300,7 +296,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_quantize_int4() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![-10.0, 0.0, 10.0], vec![3], device.clone())
             .await
             .unwrap();

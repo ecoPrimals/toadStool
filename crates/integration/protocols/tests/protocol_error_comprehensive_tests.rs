@@ -161,7 +161,7 @@ fn test_protocol_result_and_then() {
 #[test]
 fn test_protocol_result_or_else() {
     let result: ProtocolResult<i32> = Err(ProtocolError::Internal("test".to_string()));
-    let recovered: ProtocolResult<i32> = result.or_else(|_| Ok(42));
+    let recovered: ProtocolResult<i32> = result.or(Ok(42));
     assert_eq!(recovered.unwrap(), 42);
 }
 

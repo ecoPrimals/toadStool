@@ -128,7 +128,7 @@ impl RMSprop {
 
     /// WGSL shader source
     pub(super) fn shader() -> &'static str {
-        include_str!("../../shaders/rmsprop.wgsl")
+        include_str!("../../shaders/optimizer/rmsprop.wgsl")
     }
 
     /// Get weights tensor

@@ -46,7 +46,7 @@ impl Renorm {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/renorm.wgsl")
+        include_str!("../shaders/norm/renorm.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -207,12 +207,13 @@ impl Renorm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_renorm_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![10.0, 20.0, 30.0, 40.0], vec![4], device.clone())
             .await
             .unwrap();
@@ -225,8 +226,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_renorm_2d() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0; 12], vec![3, 4], device.clone())
             .await
             .unwrap();

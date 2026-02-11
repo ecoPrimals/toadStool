@@ -29,7 +29,7 @@ impl Trace {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/trace.wgsl")
+        include_str!("../shaders/linalg/trace.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -161,7 +161,7 @@ impl Trace {
         // If multiple workgroups, reduce partial results in a second pass using reduce shader
         let final_buffer = if workgroups > 1 {
             // Second pass: reduce partial results using reduce.wgsl shader
-            let reduce_shader_source = include_str!("../shaders/reduce.wgsl");
+            let reduce_shader_source = include_str!("../shaders/misc/reduce.wgsl");
             let reduce_shader = device
                 .device
                 .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -314,11 +314,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_trace_2x2() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::from_vec_on(input_data, vec![2, 2], device)
             .await
@@ -335,7 +337,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_trace_3x3() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Matrix: [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
         // Diagonal: [1, 5, 9], trace = 15
         let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
@@ -352,7 +356,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_trace_large_matrix() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let n = 512; // Larger than workgroup size to test multi-workgroup reduction
         let mut input_data = vec![0.0; n * n];
 

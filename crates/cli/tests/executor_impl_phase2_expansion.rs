@@ -563,8 +563,8 @@ fn test_resource_storage_monitoring() {
     // Test: Storage usage monitoring
     // Covers: Storage tracking
 
-    let storage_bytes = 512 * 1024 * 1024; // 512 MB
-    assert!(storage_bytes >= 0);
+    let _storage_bytes = 512 * 1024 * 1024; // 512 MB
+                                            // storage_bytes is usize, so it's always >= 0
 }
 
 #[test]

@@ -34,12 +34,12 @@ impl Std {
 
     /// Get the WGSL shader source for global reduction
     pub(crate) fn wgsl_shader_reduce() -> &'static str {
-        include_str!("../../shaders/std_reduce.wgsl")
+        include_str!("../../shaders/reduce/std_reduce.wgsl")
     }
 
     /// Get the WGSL shader source for dimension-wise reduction
     pub(crate) fn wgsl_shader_dim() -> &'static str {
-        include_str!("../../shaders/std_dim.wgsl")
+        include_str!("../../shaders/reduce/std_dim.wgsl")
     }
 
     /// Execute the std operation

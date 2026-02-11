@@ -1,7 +1,6 @@
 //! Multi-board enumeration and topology example
 
 use akida_detection_demo::detect_all_boards;
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

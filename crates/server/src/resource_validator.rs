@@ -190,7 +190,9 @@ impl ResourceValidator {
         debug!("Querying system capabilities");
 
         // Query CPU
-        let total_cpu_cores = num_cpus::get() as u32;
+        let total_cpu_cores = std::thread::available_parallelism()
+            .map(|n| n.get() as u32)
+            .unwrap_or(4);
         // Assume 80% available (rough heuristic, in production would query actual usage)
         let available_cpu_cores = (total_cpu_cores as f32 * 0.8) as u32;
 
@@ -264,7 +266,8 @@ impl ResourceValidator {
 
     /// Discover GPUs using wgpu (vendor-agnostic, part of barraCUDA)
     #[cfg(feature = "gpu-discovery")]
-    async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, Box<dyn std::error::Error>> {
+    async fn discover_gpus_via_wgpu(
+    ) -> Result<Vec<GpuInfo>, Box<dyn std::error::Error + Send + Sync>> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
@@ -294,7 +297,8 @@ impl ResourceValidator {
 
     /// Fallback when GPU discovery not available
     #[cfg(not(feature = "gpu-discovery"))]
-    async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, Box<dyn std::error::Error>> {
+    async fn discover_gpus_via_wgpu(
+    ) -> Result<Vec<GpuInfo>, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Vec::new())
     }
 

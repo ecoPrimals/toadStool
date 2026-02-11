@@ -75,7 +75,7 @@ impl ISTFT {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/istft.wgsl")
+        include_str!("../shaders/audio/istft.wgsl")
     }
 
     /// Execute the ISTFT operation
@@ -276,14 +276,16 @@ impl ISTFT {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
     use crate::ops::window_function::{WindowFunction, WindowType};
     #[allow(unused_imports)]
     use std::sync::Arc;
 
     #[tokio::test]
     async fn test_istft_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Create complex STFT data: [real, imag, real, imag, ...]
         let bins_per_frame = 257;
         let num_frames = 5;

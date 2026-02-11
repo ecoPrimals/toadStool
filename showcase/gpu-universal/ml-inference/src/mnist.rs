@@ -130,13 +130,13 @@ impl MnistDataset {
 /// Download MNIST dataset if not present
 ///
 /// **Note**: reqwest was removed as part of Pure Rust evolution.
-/// Please download MNIST files manually from http://yann.lecun.com/exdb/mnist/
+/// Please download MNIST files manually from <http://yann.lecun.com/exdb/mnist/>
 /// Or use the download-mnist binary (requires adding reqwest to Cargo.toml).
 pub async fn download_mnist<P: AsRef<Path>>(_data_dir: P) -> Result<()> {
     anyhow::bail!(
         "download_mnist requires manual MNIST download.\n\
          \n\
-         Download files from: http://yann.lecun.com/exdb/mnist/\n\
+         Download files from: <http://yann.lecun.com/exdb/mnist/>\n\
          Files needed:\n\
          - train-images-idx3-ubyte.gz\n\
          - train-labels-idx1-ubyte.gz\n\

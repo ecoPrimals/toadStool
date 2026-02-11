@@ -30,7 +30,7 @@ impl Diag {
     }
     
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/diag.wgsl")
+        include_str!("../shaders/linalg/diag.wgsl")
     }
     
     pub fn execute(self) -> Result<Tensor> {
@@ -175,11 +175,11 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_diag_square_matrix() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else { return };
         // 3x3 matrix
         let input_data = vec![
             1.0, 2.0, 3.0,
@@ -196,7 +196,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_diag_rectangular() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else { return };
         // 2x3 matrix
         let input_data = vec![
             1.0, 2.0, 3.0,

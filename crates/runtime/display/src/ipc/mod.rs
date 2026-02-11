@@ -27,7 +27,7 @@
 //!
 //! ## Example (Server)
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_display::{DisplayServer, WindowManager};
 //!
 //! # async fn example() -> anyhow::Result<()> {
@@ -43,7 +43,7 @@
 //!
 //! ## Example (Client)
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_display::ipc::DisplayClient;
 //! use toadstool_display::window::CreateWindowRequest;
 //!

@@ -39,7 +39,7 @@ impl InstanceNorm {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/instancenorm.wgsl")
+        include_str!("../shaders/norm/instancenorm.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -164,14 +164,13 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_instancenorm_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else { return };
         // Create input [1, 2, 2, 2] - 1 batch, 2 channels, 2x2 spatial
         let input_data = vec![
             1.0f32, 2.0, 3.0, 4.0, // Channel 0
@@ -197,8 +196,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_instancenorm_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else { return };
         // Single spatial location (1x1)
         let input_data = vec![5.0f32, 10.0]; // [1, 2, 1, 1]
         let input = Tensor::from_data(&input_data, vec![1, 2, 1, 1], device.clone()).unwrap();
@@ -223,8 +221,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_instancenorm_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else { return };
         // Large spatial dimensions
         let input_data = vec![1.0; 1 * 3 * 32 * 32];
         let input = Tensor::from_data(&input_data, vec![1, 3, 32, 32], device.clone()).unwrap();
@@ -246,8 +243,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_instancenorm_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else { return };
         // Batch size 8
         let batch_size = 8;
         let input_data = vec![1.0; batch_size * 16 * 16 * 16];
@@ -262,8 +258,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_instancenorm_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else { return };
         // Test with gamma=2, beta=1 scaling
         let input_data = vec![1.0, 2.0, 3.0, 4.0]; // [1, 1, 2, 2]
         let input = Tensor::from_data(&input_data, vec![1, 1, 2, 2], device.clone()).unwrap();

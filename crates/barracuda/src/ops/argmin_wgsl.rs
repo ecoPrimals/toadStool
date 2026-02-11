@@ -31,12 +31,12 @@ impl Argmin {
 
     /// Get the WGSL shader source for global reduction
     fn wgsl_shader_reduce() -> &'static str {
-        include_str!("../shaders/argmin_reduce.wgsl")
+        include_str!("../shaders/math/argmin_reduce.wgsl")
     }
 
     /// Get the WGSL shader source for dimension-wise reduction
     fn wgsl_shader_dim() -> &'static str {
-        include_str!("../shaders/argmin.wgsl")
+        include_str!("../shaders/math/argmin.wgsl")
     }
 
     /// Execute the argmin operation
@@ -414,15 +414,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_argmin_1d() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![5.0, 1.0, 3.0, 2.0];
         let input = Tensor::new(data, vec![4], device.clone());
 
@@ -435,8 +435,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_argmin_2d_dim0() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![4.0, 6.0, 3.0, 2.0, 5.0, 1.0];
         let input = Tensor::new(data, vec![3, 2], device.clone());
 
@@ -450,8 +451,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_argmin_global() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![5.0, 1.0, 3.0, 2.0];
         let input = Tensor::new(data, vec![4], device.clone());
 
@@ -464,8 +466,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_argmin_dim_keepdim() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![4.0, 6.0, 3.0, 2.0, 5.0, 1.0];
         let input = Tensor::new(data, vec![3, 2], device.clone());
 

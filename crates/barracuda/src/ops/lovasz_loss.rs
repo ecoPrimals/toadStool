@@ -75,7 +75,7 @@ impl LovaszLoss {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/lovasz_loss.wgsl")
+        include_str!("../shaders/loss/lovasz_loss.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -268,12 +268,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_lovasz_loss_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let predictions = Tensor::from_vec_on(vec![0.9, 0.8, 0.7, 0.6], vec![4], device.clone())
             .await
             .unwrap();
@@ -291,8 +292,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_lovasz_loss_perfect_prediction() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Perfect prediction should have very low loss
         let predictions = Tensor::from_vec_on(vec![1.0, 1.0, 1.0, 1.0], vec![4], device.clone())
             .await
@@ -314,8 +316,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_lovasz_loss_poor_prediction() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Poor prediction should have higher loss
         let predictions = Tensor::from_vec_on(vec![0.1, 0.2, 0.3, 0.1], vec![4], device.clone())
             .await
@@ -332,8 +335,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_lovasz_loss_validation() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Shape mismatch
         let predictions = Tensor::from_vec_on(vec![0.5; 10], vec![10], device.clone())
             .await
@@ -347,8 +351,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_lovasz_loss_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 1000;
         let pred_data: Vec<f32> = (0..size).map(|i| (i as f32) / size as f32).collect();
         let target_data = vec![1.0; size];

@@ -19,7 +19,7 @@ impl MseLoss {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/mse_loss.wgsl")
+        include_str!("../shaders/loss/mse_loss.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -106,7 +106,7 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     fn mse_loss_cpu(predictions: &[f32], targets: &[f32]) -> f32 {
         let n = predictions.len() as f32;
@@ -120,8 +120,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_mse_loss_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Predictions: [1, 2, 3]
         let pred_data = vec![1.0f32, 2.0, 3.0];
         let predictions = Tensor::from_data(&pred_data, vec![3], device.clone()).unwrap();
@@ -140,8 +141,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_mse_loss_with_error() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Predictions: [2, 4, 6]
         let pred_data = vec![2.0f32, 4.0, 6.0];
         let predictions = Tensor::from_data(&pred_data, vec![3], device.clone()).unwrap();
@@ -160,8 +162,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_mse_loss_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test with zeros
         let pred_data = vec![0.0f32, 0.0, 0.0];
         let predictions = Tensor::from_data(&pred_data, vec![3], device.clone()).unwrap();
@@ -184,8 +187,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_mse_loss_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Single element
         let pred_data = vec![5.0f32];
         let predictions = Tensor::from_data(&pred_data, vec![1], device.clone()).unwrap();
@@ -209,8 +213,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_mse_loss_large_tensor() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 1000 elements
         let pred_data: Vec<f32> = (0..1000).map(|i| i as f32 * 0.1).collect();
         let target_data: Vec<f32> = (0..1000).map(|i| i as f32 * 0.1 + 0.5).collect();
@@ -228,8 +233,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_mse_loss_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test precision against CPU reference
         let pred_data = vec![1.234f32, 5.678, 9.012, 3.456, 7.890];
         let target_data = vec![1.111f32, 6.789, 8.901, 3.333, 8.000];

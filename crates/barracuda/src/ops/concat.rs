@@ -15,7 +15,7 @@ impl Concat {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/concat.wgsl")
+        include_str!("../shaders/tensor/concat.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {

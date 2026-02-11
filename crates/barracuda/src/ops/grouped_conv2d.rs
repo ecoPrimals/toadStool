@@ -103,7 +103,7 @@ impl GroupedConv2D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/grouped_conv2d.wgsl")
+        include_str!("../shaders/conv/grouped_conv2d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -343,12 +343,13 @@ impl GroupedConv2D {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_grouped_conv2d_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 1;
         let in_channels = 8;
         let in_height = 32;
@@ -386,8 +387,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_grouped_conv2d_no_bias() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 1;
         let in_channels = 4;
         let in_height = 16;

@@ -62,7 +62,7 @@ impl AffineGrid {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/affine_grid.wgsl")
+        include_str!("../shaders/misc/affine_grid.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -216,12 +216,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_affine_grid_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Identity transformation matrix [B=1, 2, 3]
         let theta_data = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
         let theta = Tensor::from_vec_on(theta_data, vec![1, 2, 3], device.clone())

@@ -168,7 +168,7 @@ impl AdamW {
 
     /// WGSL shader source
     pub(super) fn shader() -> &'static str {
-        include_str!("../../shaders/adamw.wgsl")
+        include_str!("../../shaders/optimizer/adamw.wgsl")
     }
 
     /// Get params tensor

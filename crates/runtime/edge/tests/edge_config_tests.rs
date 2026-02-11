@@ -11,12 +11,12 @@ use std::collections::HashMap;
 fn test_edge_runtime_config_default() {
     let config = EdgeRuntimeConfig::default();
     
-    assert_eq!(config.discovery_enabled, true);
+    assert!(config.discovery_enabled);
     assert_eq!(config.discovery_timeout_secs, 30);
     assert_eq!(config.max_devices, 100);
     assert_eq!(config.communication_timeout_ms, 5000);
     assert_eq!(config.cross_compile_cache_path, "/tmp/toadstool_edge_cache");
-    assert_eq!(config.auto_provisioning, true);
+    assert!(config.auto_provisioning);
 }
 
 #[test]
@@ -105,7 +105,7 @@ fn test_edge_security_level_clone() {
     let level2 = level1.clone();
     
     match (level1, level2) {
-        (EdgeSecurityLevel::High, EdgeSecurityLevel::High) => assert!(true),
+        (EdgeSecurityLevel::High, EdgeSecurityLevel::High) => {},
         _ => panic!("Clone failed"),
     }
 }
@@ -155,7 +155,7 @@ fn test_resource_allocation_clone() {
     let strategy2 = strategy1.clone();
     
     match (strategy1, strategy2) {
-        (ResourceAllocationStrategy::Adaptive, ResourceAllocationStrategy::Adaptive) => assert!(true),
+        (ResourceAllocationStrategy::Adaptive, ResourceAllocationStrategy::Adaptive) => {},
         _ => panic!("Clone failed"),
     }
 }

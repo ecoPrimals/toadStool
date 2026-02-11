@@ -57,7 +57,7 @@ impl CircularPad2d {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/circular_pad2d.wgsl")
+        include_str!("../shaders/tensor/circular_pad2d.wgsl")
     }
 
     /// Execute circular pad 2D on tensor
@@ -217,12 +217,13 @@ impl CircularPad2d {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_circular_pad2d_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0; 2 * 3 * 4 * 4], vec![2, 3, 4, 4], device)
             .await
             .unwrap();

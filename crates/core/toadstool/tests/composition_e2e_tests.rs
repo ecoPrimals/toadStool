@@ -170,7 +170,7 @@ async fn test_impossible_stack() {
 
     // Average score should be reasonable
     let avg_score = plan.average_score();
-    assert!(avg_score >= 0.0 && avg_score <= 1.0);
+    assert!((0.0..=1.0).contains(&avg_score));
 }
 
 /// Test: Priority-based resource allocation
@@ -320,11 +320,11 @@ async fn test_composition_plan_statistics() {
     assert_eq!(plan.placements.len(), 2);
 
     // Feasible count should be at least 1 (the easy one)
-    assert!(plan.feasible_placements().len() >= 1);
+    assert!(plan.feasible_placements().len() == 1 || plan.feasible_placements().len() > 1);
 
     // Average score should be calculable
     let avg = plan.average_score();
-    assert!(avg >= 0.0 && avg <= 1.0);
+    assert!((0.0..=1.0).contains(&avg));
 }
 
 /// Test: Empty composition is valid

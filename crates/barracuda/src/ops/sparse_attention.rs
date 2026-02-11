@@ -3,6 +3,8 @@
 //! Only attends to every k-th token (stride).
 //! Reduces complexity for long sequences.
 
+use crate::error::Result;
+
 pub async fn sparse_attention(
     _device: &wgpu::Device,
     _queue: &wgpu::Queue,
@@ -14,7 +16,7 @@ pub async fn sparse_attention(
     seq_len: usize,
     head_dim: usize,
     stride: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+) -> Result<Vec<f32>> {
     let mut output = vec![0.0f32; batch_size * num_heads * seq_len * head_dim];
     let scale = (head_dim as f32).sqrt();
 
@@ -86,14 +88,16 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_sparse_attention_basic() {
-        let dev = get_test_device().await;
-        let size = 1 * 2 * 8 * 4;
+        let Some(dev) = get_test_device().await else {
+            return;
+        };
+        let size = 2 * 8 * 4;
         let q = vec![0.5; size];
         let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 8, 4, 2)
             .await
@@ -104,10 +108,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_sparse_attention_edge_cases() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device().await else {
+            return;
+        };
         // Single head
-        let size = 1 * 1 * 4 * 4;
+        let size = 4 * 4;
         let q = vec![1.0; size];
         let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 1, 4, 4, 2)
             .await
@@ -115,7 +120,7 @@ mod tests {
         assert_eq!(output.len(), size);
 
         // Small sequence (stride 1 = full attention)
-        let size = 1 * 2 * 4 * 4;
+        let size = 2 * 4 * 4;
         let q = vec![0.5; size];
         let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 4, 4, 1)
             .await
@@ -125,10 +130,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_sparse_attention_boundary() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device().await else {
+            return;
+        };
         // Large stride
-        let size = 1 * 2 * 16 * 8;
+        let size = 2 * 16 * 8;
         let q = vec![0.5; size];
         let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 16, 8, 4)
             .await
@@ -136,7 +142,7 @@ mod tests {
         assert_eq!(output.len(), size);
 
         // Stride equals sequence length (attend to first token only)
-        let size = 1 * 1 * 8 * 4;
+        let size = 8 * 4;
         let q = vec![1.0; size];
         let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 1, 8, 4, 8)
             .await
@@ -146,8 +152,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sparse_attention_large_batch() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device().await else {
+            return;
+        };
         // Batch size 4
         let size = 4 * 4 * 16 * 8;
         let q = vec![0.5; size];
@@ -159,10 +166,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_sparse_attention_precision() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device().await else {
+            return;
+        };
         // Verify attention output properties
-        let size = 1 * 1 * 4 * 4;
+        let size = 4 * 4;
         let q = vec![1.0; size];
         let k = vec![0.5; size];
         let v = vec![2.0; size];

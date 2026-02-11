@@ -24,7 +24,7 @@ impl SILU {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/silu.wgsl")
+        include_str!("../shaders/activation/silu.wgsl")
     }
 
     /// Execute the silu operation

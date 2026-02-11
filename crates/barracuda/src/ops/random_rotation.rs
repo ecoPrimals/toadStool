@@ -54,7 +54,7 @@ impl RandomRotation {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/random_rotation.wgsl")
+        include_str!("../shaders/augmentation/random_rotation.wgsl")
     }
 
     /// Execute RandomRotation on tensor
@@ -248,12 +248,13 @@ impl RandomRotation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_random_rotation_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 2;
         let channels = 3;
         let height = 32;

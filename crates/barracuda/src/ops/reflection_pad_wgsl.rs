@@ -26,7 +26,7 @@ impl ReflectionPad {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/reflection_pad.wgsl")
+        include_str!("../shaders/tensor/reflection_pad.wgsl")
     }
 
     /// Execute the reflection pad operation
@@ -223,15 +223,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_reflection_pad_simple() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 1x1x2x2 input
         let data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::new(data, vec![1, 1, 2, 2], device.clone());
@@ -245,8 +245,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_reflection_pad_asymmetric() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 1x1x2x2 input
         let data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::new(data, vec![1, 1, 2, 2], device.clone());

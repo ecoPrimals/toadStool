@@ -61,7 +61,7 @@ impl TransposedConv2D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/transposed_conv2d.wgsl")
+        include_str!("../shaders/conv/transposed_conv2d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -217,11 +217,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_transposed_conv2d_basic() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Create input [1, 1, 2, 2] - simple upsampling test
         let input_data = vec![1.0f32, 2.0, 3.0, 4.0];

@@ -17,7 +17,9 @@ async fn create_test_tensor(
 
 #[tokio::test]
 async fn test_scaled_dot_product_attention_basic() {
-    let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    let Some(dev) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+        return;
+    };
 
     // Small example: 1 batch, 1 head, 2 seq, 2 dim
     let query = create_test_tensor(dev.clone(), vec![1, 1, 2, 2], 0.5)
@@ -37,7 +39,9 @@ async fn test_scaled_dot_product_attention_basic() {
 
 #[tokio::test]
 async fn test_scaled_dot_product_attention_multi_head() {
-    let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    let Some(dev) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+        return;
+    };
 
     // Multi-head: 2 batch, 4 heads, 8 seq, 16 dim
     let query = create_test_tensor(dev.clone(), vec![2, 4, 8, 16], 0.5)
@@ -57,7 +61,9 @@ async fn test_scaled_dot_product_attention_multi_head() {
 
 #[tokio::test]
 async fn test_scaled_dot_product_attention_shape_validation() {
-    let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    let Some(dev) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+        return;
+    };
 
     let query = create_test_tensor(dev.clone(), vec![1, 1, 4, 4], 0.5)
         .await

@@ -126,8 +126,9 @@ impl ReservoirGenerator {
     fn scale_spectral_radius(&self, w_res: &mut Array2<f32>) {
         debug!("Scaling to spectral radius {}", self.config.spectral_radius);
 
-        // For simplicity, we'll use Frobenius norm approximation
-        // TODO: Use proper eigenvalue computation for exact spectral radius
+        // For simplicity, we use Frobenius norm as a cheap approximation.
+        // Pending: Use barracuda::ops::linalg::Eigh for exact spectral radius when this
+        // crate adopts barracuda tensors; current ndarray-based code would need a migration.
         let frobenius_norm = w_res.iter().map(|&x| x * x).sum::<f32>().sqrt();
 
         let scaling_factor = self.config.spectral_radius / frobenius_norm;
@@ -240,6 +241,7 @@ mod tests {
         let (_w_in, w_res) = generator.generate_weights().unwrap();
 
         // Check that weights are non-zero and reasonably scaled
+        #[allow(clippy::cast_precision_loss)] // weight vector length is small (<1000)
         let mean_abs = w_res.iter().map(|&x| x.abs()).sum::<f32>() / (w_res.len() as f32);
         assert!(mean_abs > 0.0 && mean_abs < 1.0);
     }

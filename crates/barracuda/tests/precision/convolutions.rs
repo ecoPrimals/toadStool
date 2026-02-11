@@ -49,8 +49,7 @@ fn cpu_maxpool2d_reference(
 
 #[tokio::test]
 async fn test_maxpool2d_precision() {
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 2;
     let channels = 4;
     let height = 8;

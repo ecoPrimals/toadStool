@@ -7,7 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -26,7 +26,7 @@ impl CircularPad {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/circular_pad.wgsl")
+        include_str!("../shaders/tensor/circular_pad.wgsl")
     }
 
     /// Execute the circular pad operation
@@ -53,7 +53,9 @@ impl CircularPad {
         let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("CircularPad Output"),
             size: (output_size * std::mem::size_of::<f32>()) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
@@ -187,15 +189,15 @@ impl CircularPad {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 2D shader workgroup size (16, 16)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32).div_ceil(optimal_wg_size);
-            let workgroups_y = (out_height as u32).div_ceil(optimal_wg_size);
+            let (workgroups_x, workgroups_y) =
+                caps.dispatch_2d(out_width as u32, out_height as u32);
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
+        device.device.poll(wgpu::Maintain::Wait);
 
         // Read back results
         let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
@@ -223,15 +225,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_circular_pad_simple() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 1x1x2x2 input
         let data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::new(data, vec![1, 1, 2, 2], device.clone());
@@ -245,11 +247,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_circular_pad_wrapping() {
-        let device = get_test_device().await;
-
-        // 1x1x3x3 input
+        let Some(device) = get_test_device().await else {
+            return;
+        };
+        // 1x1x3x3 input (NCHW: row 0 = [1,2,3], row 1 = [4,5,6], row 2 = [7,8,9])
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
-        let input = Tensor::new(data, vec![1, 1, 3, 3], device.clone());
+        let input = Tensor::from_data(&data, vec![1, 1, 3, 3], device.clone()).unwrap();
 
         // Pad by 1 on left (should wrap from right edge)
         let output = input.circular_pad_wgsl((1, 0, 0, 0)).unwrap();

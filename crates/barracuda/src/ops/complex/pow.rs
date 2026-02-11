@@ -159,12 +159,13 @@ impl ComplexPow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_complex_pow_square() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test (2+0i)^2 = 4+0i
         let data = vec![2.0f32, 0.0];
@@ -186,7 +187,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_complex_pow_identity() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test z^1 = z
         let data = vec![3.0f32, 4.0];
@@ -208,7 +212,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_complex_pow_zero_exponent() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test z^0 = 1+0i
         let data = vec![5.0f32, 12.0];

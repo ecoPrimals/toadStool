@@ -266,4 +266,151 @@ mod tests {
         let config = ServiceAuthConfig::api_key("key");
         assert_eq!(config.auth_type, AuthType::ApiKey);
     }
+
+    #[test]
+    fn test_auth_credentials_new_empty() {
+        let creds = AuthCredentials::new();
+        assert!(creds.username.is_none());
+        assert!(creds.password.is_none());
+        assert!(creds.token.is_none());
+        assert!(creds.api_key.is_none());
+        assert!(creds.cert_path.is_none());
+        assert!(creds.key_path.is_none());
+        assert!(creds.ca_path.is_none());
+        assert!(creds.extra.is_empty());
+    }
+
+    #[test]
+    fn test_auth_credentials_api_key() {
+        let creds = AuthCredentials::api_key("my-api-key-123");
+        assert_eq!(creds.api_key, Some("my-api-key-123".to_string()));
+        assert!(creds.token.is_none());
+    }
+
+    #[test]
+    fn test_auth_credentials_mtls_without_ca() {
+        let creds = AuthCredentials::mtls("/cert.pem", "/key.pem", None);
+        assert_eq!(creds.cert_path, Some("/cert.pem".to_string()));
+        assert_eq!(creds.key_path, Some("/key.pem".to_string()));
+        assert!(creds.ca_path.is_none());
+    }
+
+    #[test]
+    fn test_auth_credentials_from_map_empty() {
+        let map: HashMap<String, String> = HashMap::new();
+        let creds = AuthCredentials::from_map(map);
+        assert!(creds.extra.is_empty());
+        assert!(creds.username.is_none());
+        assert!(creds.token.is_none());
+    }
+
+    #[test]
+    fn test_auth_credentials_from_map_with_extra() {
+        let mut map = HashMap::new();
+        map.insert("custom_key".to_string(), "custom_value".to_string());
+        let creds = AuthCredentials::from_map(map);
+        assert_eq!(
+            creds.extra.get("custom_key"),
+            Some(&"custom_value".to_string())
+        );
+    }
+
+    #[test]
+    fn test_auth_credentials_to_map_all_fields() {
+        let creds = AuthCredentials {
+            username: Some("u".to_string()),
+            password: Some("p".to_string()),
+            token: Some("t".to_string()),
+            api_key: Some("ak".to_string()),
+            cert_path: Some("/c".to_string()),
+            key_path: Some("/k".to_string()),
+            ca_path: Some("/ca".to_string()),
+            extra: {
+                let mut e = HashMap::new();
+                e.insert("x".to_string(), "y".to_string());
+                e
+            },
+        };
+        let map = creds.to_map();
+        assert_eq!(map.get("username"), Some(&"u".to_string()));
+        assert_eq!(map.get("password"), Some(&"p".to_string()));
+        assert_eq!(map.get("token"), Some(&"t".to_string()));
+        assert_eq!(map.get("api_key"), Some(&"ak".to_string()));
+        assert_eq!(map.get("cert_path"), Some(&"/c".to_string()));
+        assert_eq!(map.get("key_path"), Some(&"/k".to_string()));
+        assert_eq!(map.get("ca_path"), Some(&"/ca".to_string()));
+        assert_eq!(map.get("x"), Some(&"y".to_string()));
+    }
+
+    #[test]
+    fn test_auth_credentials_long_token() {
+        let long = "x".repeat(10000);
+        let creds = AuthCredentials::bearer(&long);
+        assert_eq!(creds.token.as_ref().map(|s| s.len()), Some(10000));
+    }
+
+    #[test]
+    fn test_auth_type_default() {
+        let t = AuthType::default();
+        assert!(matches!(t, AuthType::None));
+    }
+
+    #[test]
+    fn test_auth_type_variants_debug() {
+        let basic = AuthType::Basic;
+        let bearer = AuthType::Bearer;
+        let api = AuthType::ApiKey;
+        let oauth = AuthType::OAuth2;
+        let mtls = AuthType::MutualTLS;
+        let custom = AuthType::Custom("MyAuth".to_string());
+
+        assert!(format!("{basic:?}").contains("Basic"));
+        assert!(format!("{bearer:?}").contains("Bearer"));
+        assert!(format!("{api:?}").contains("ApiKey"));
+        assert!(format!("{oauth:?}").contains("OAuth2"));
+        assert!(format!("{mtls:?}").contains("MutualTLS"));
+        assert!(format!("{custom:?}").contains("Custom"));
+    }
+
+    #[test]
+    fn test_auth_type_equality() {
+        assert_eq!(AuthType::None, AuthType::None);
+        assert_eq!(AuthType::Bearer, AuthType::Bearer);
+        assert_eq!(
+            AuthType::Custom("x".to_string()),
+            AuthType::Custom("x".to_string())
+        );
+        assert_ne!(AuthType::Basic, AuthType::Bearer);
+    }
+
+    #[test]
+    fn test_service_auth_config_basic() {
+        let config = ServiceAuthConfig::basic("admin", "secret");
+        assert_eq!(config.auth_type, AuthType::Basic);
+        assert_eq!(config.credentials.username, Some("admin".to_string()));
+        assert_eq!(config.credentials.password, Some("secret".to_string()));
+    }
+
+    #[test]
+    fn test_service_auth_config_mtls() {
+        let config = ServiceAuthConfig::mtls("/cert.pem", "/key.pem", Some("/ca.pem".to_string()));
+        assert_eq!(config.auth_type, AuthType::MutualTLS);
+        assert_eq!(config.credentials.cert_path, Some("/cert.pem".to_string()));
+        assert_eq!(config.credentials.key_path, Some("/key.pem".to_string()));
+        assert_eq!(config.credentials.ca_path, Some("/ca.pem".to_string()));
+    }
+
+    #[test]
+    fn test_service_auth_config_default() {
+        let config = ServiceAuthConfig::default();
+        assert!(matches!(config.auth_type, AuthType::None));
+        assert!(config.credentials.username.is_none());
+    }
+
+    #[test]
+    fn test_auth_credentials_default() {
+        let creds = AuthCredentials::default();
+        assert!(creds.username.is_none());
+        assert!(creds.extra.is_empty());
+    }
 }

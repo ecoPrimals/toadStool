@@ -664,3 +664,609 @@ impl MemoryPressureCallback for DefaultMemoryPressureCallback {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use tokio::sync::RwLock;
+
+    // ========================================================================
+    // CircuitBreakerConfig tests
+    // ========================================================================
+
+    #[test]
+    fn circuit_breaker_config_defaults() {
+        let config = CircuitBreakerConfig::default();
+
+        assert_eq!(config.failure_threshold, 5);
+        assert_eq!(config.success_threshold, 3);
+        assert_eq!(config.timeout, Duration::from_secs(60));
+        assert_eq!(config.rolling_window, Duration::from_secs(60));
+        assert_eq!(config.half_open_max_requests, 3);
+    }
+
+    #[test]
+    fn circuit_breaker_config_construction() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 2,
+            success_threshold: 1,
+            timeout: Duration::from_millis(100),
+            rolling_window: Duration::from_secs(30),
+            half_open_max_requests: 5,
+        };
+
+        assert_eq!(config.failure_threshold, 2);
+        assert_eq!(config.success_threshold, 1);
+        assert_eq!(config.timeout.as_millis(), 100);
+        assert_eq!(config.half_open_max_requests, 5);
+    }
+
+    // ========================================================================
+    // CircuitBreaker state transition tests
+    // ========================================================================
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn circuit_breaker_closed_initial_state() {
+        let config = CircuitBreakerConfig::default();
+        let breaker = CircuitBreaker::new("test-svc", config);
+
+        assert_eq!(breaker.get_state().await, CircuitState::Closed);
+        assert_eq!(breaker.get_failure_count().await, 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn circuit_breaker_closed_to_open_after_failures() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 3,
+            ..CircuitBreakerConfig::default()
+        };
+        let breaker = CircuitBreaker::new("test-svc", config);
+
+        for _ in 0..3 {
+            let _ = breaker
+                .execute(async { Err::<(), _>(std::io::Error::other("fail")) })
+                .await;
+        }
+
+        assert_eq!(breaker.get_state().await, CircuitState::Open);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn circuit_breaker_rejects_when_open() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 2,
+            timeout: Duration::from_secs(60),
+            ..CircuitBreakerConfig::default()
+        };
+        let breaker = CircuitBreaker::new("test-svc", config);
+
+        for _ in 0..2 {
+            let _ = breaker
+                .execute(async { Err::<(), _>(std::io::Error::other("fail")) })
+                .await;
+        }
+
+        let result = breaker
+            .execute(async { Ok::<(), std::io::Error>(()) })
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(CircuitBreakerError::CircuitOpen { .. })
+        ));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn circuit_breaker_open_to_half_open_after_timeout() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 2,
+            success_threshold: 2,
+            timeout: Duration::from_millis(50),
+            ..CircuitBreakerConfig::default()
+        };
+        let breaker = CircuitBreaker::new("test-svc", config);
+
+        for _ in 0..2 {
+            let _ = breaker
+                .execute(async { Err::<(), _>(std::io::Error::other("fail")) })
+                .await;
+        }
+        assert_eq!(breaker.get_state().await, CircuitState::Open);
+
+        tokio::time::sleep(Duration::from_millis(60)).await;
+
+        let result = breaker
+            .execute(async { Ok::<(), std::io::Error>(()) })
+            .await;
+        assert!(result.is_ok());
+        assert_eq!(breaker.get_state().await, CircuitState::HalfOpen);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn circuit_breaker_half_open_to_closed_on_success_threshold() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 2,
+            success_threshold: 2,
+            timeout: Duration::from_millis(50),
+            ..CircuitBreakerConfig::default()
+        };
+        let breaker = CircuitBreaker::new("test-svc", config);
+
+        for _ in 0..2 {
+            let _ = breaker
+                .execute(async { Err::<(), _>(std::io::Error::other("fail")) })
+                .await;
+        }
+        tokio::time::sleep(Duration::from_millis(60)).await;
+
+        for _ in 0..2 {
+            let result = breaker
+                .execute(async { Ok::<(), std::io::Error>(()) })
+                .await;
+            assert!(result.is_ok());
+        }
+
+        assert_eq!(breaker.get_state().await, CircuitState::Closed);
+        assert_eq!(breaker.get_failure_count().await, 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn circuit_breaker_half_open_to_open_on_failure() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 2,
+            success_threshold: 3,
+            timeout: Duration::from_millis(50),
+            ..CircuitBreakerConfig::default()
+        };
+        let breaker = CircuitBreaker::new("test-svc", config);
+
+        for _ in 0..2 {
+            let _ = breaker
+                .execute(async { Err::<(), _>(std::io::Error::other("fail")) })
+                .await;
+        }
+        tokio::time::sleep(Duration::from_millis(60)).await;
+
+        let _ = breaker
+            .execute(async { Err::<(), _>(std::io::Error::other("fail again")) })
+            .await;
+
+        assert_eq!(breaker.get_state().await, CircuitState::Open);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn circuit_breaker_success_resets_failure_count_in_closed() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 5,
+            ..CircuitBreakerConfig::default()
+        };
+        let breaker = CircuitBreaker::new("test-svc", config);
+
+        for _ in 0..2 {
+            let _ = breaker
+                .execute(async { Err::<(), _>(std::io::Error::other("fail")) })
+                .await;
+        }
+        assert_eq!(breaker.get_failure_count().await, 2);
+
+        let _ = breaker
+            .execute(async { Ok::<(), std::io::Error>(()) })
+            .await;
+
+        assert_eq!(breaker.get_failure_count().await, 0);
+        assert_eq!(breaker.get_state().await, CircuitState::Closed);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn circuit_breaker_zero_failure_threshold_opens_immediately() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 0,
+            success_threshold: 1,
+            timeout: Duration::from_secs(60),
+            ..CircuitBreakerConfig::default()
+        };
+        let breaker = CircuitBreaker::new("test-svc", config);
+
+        let _ = breaker
+            .execute(async { Err::<(), _>(std::io::Error::other("fail")) })
+            .await;
+
+        assert_eq!(breaker.get_state().await, CircuitState::Open);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn circuit_breaker_successful_execution_returns_value() {
+        let breaker = CircuitBreaker::new("test-svc", CircuitBreakerConfig::default());
+
+        let result = breaker
+            .execute(async { Ok::<i32, std::io::Error>(42) })
+            .await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn circuit_breaker_service_failure_error() {
+        let breaker = CircuitBreaker::new("test-svc", CircuitBreakerConfig::default());
+
+        let result = breaker
+            .execute(async { Err::<(), _>(std::io::Error::other("service down")) })
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(CircuitBreakerError::ServiceFailure { ref error, .. }) if error.contains("service down")
+        ));
+    }
+
+    // ========================================================================
+    // CircuitState tests
+    // ========================================================================
+
+    #[test]
+    fn circuit_state_debug_clone_partial_eq() {
+        let states = [
+            CircuitState::Closed,
+            CircuitState::Open,
+            CircuitState::HalfOpen,
+        ];
+        for state in &states {
+            let cloned = state.clone();
+            assert_eq!(state, &cloned);
+            assert!(!format!("{:?}", state).is_empty());
+        }
+    }
+
+    // ========================================================================
+    // ResourceLeakDetector tests
+    // ========================================================================
+
+    fn make_allocation(id: Uuid, last_accessed: Instant) -> ResourceAllocation {
+        ResourceAllocation {
+            id,
+            resource_type: "test-resource".to_string(),
+            allocated_at: Instant::now(),
+            requirements: crate::resources::ResourceRequirements::default(),
+            owner: "test-owner".to_string(),
+            last_accessed,
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn resource_leak_detector_track_and_remove() {
+        let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
+        let id = Uuid::new_v4();
+        let allocation = make_allocation(id, Instant::now());
+
+        detector.track_allocation(allocation).await;
+        detector.remove_allocation(id).await;
+
+        let leaked = detector.cleanup_leaked_resources().await;
+        assert_eq!(leaked.len(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn resource_leak_detector_detects_leaked_resources() {
+        let detector =
+            ResourceLeakDetector::new(Duration::from_millis(10), Duration::from_secs(10));
+        let id = Uuid::new_v4();
+        let old_time = Instant::now() - Duration::from_secs(100);
+        let allocation = make_allocation(id, old_time);
+
+        detector.track_allocation(allocation).await;
+
+        tokio::time::sleep(Duration::from_millis(20)).await;
+
+        let leaked = detector.cleanup_leaked_resources().await;
+        assert_eq!(leaked.len(), 1);
+        assert_eq!(leaked[0].id, id);
+        assert_eq!(leaked[0].resource_type, "test-resource");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn resource_leak_detector_no_leaks_for_fresh_resources() {
+        let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
+        let allocation = make_allocation(Uuid::new_v4(), Instant::now());
+
+        detector.track_allocation(allocation).await;
+
+        let leaked = detector.cleanup_leaked_resources().await;
+        assert_eq!(leaked.len(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn resource_leak_detector_update_access_prevents_leak() {
+        let detector =
+            ResourceLeakDetector::new(Duration::from_millis(50), Duration::from_secs(10));
+        let id = Uuid::new_v4();
+        let allocation = make_allocation(id, Instant::now());
+
+        detector.track_allocation(allocation).await;
+        tokio::time::sleep(Duration::from_millis(25)).await;
+        detector.update_access(id).await;
+        tokio::time::sleep(Duration::from_millis(25)).await;
+
+        let leaked = detector.cleanup_leaked_resources().await;
+        assert_eq!(leaked.len(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn resource_leak_detector_empty_detector() {
+        let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
+
+        let leaked = detector.cleanup_leaked_resources().await;
+        assert_eq!(leaked.len(), 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn resource_leak_detector_remove_nonexistent_no_panic() {
+        let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
+
+        detector.remove_allocation(Uuid::new_v4()).await;
+    }
+
+    #[test]
+    fn resource_allocation_clone_debug() {
+        let allocation = ResourceAllocation {
+            id: Uuid::new_v4(),
+            resource_type: "gpu".to_string(),
+            allocated_at: Instant::now(),
+            requirements: crate::resources::ResourceRequirements::default(),
+            owner: "owner".to_string(),
+            last_accessed: Instant::now(),
+        };
+        let cloned = allocation.clone();
+        assert_eq!(allocation.id, cloned.id);
+        assert_eq!(allocation.resource_type, cloned.resource_type);
+        assert!(!format!("{:?}", allocation).is_empty());
+    }
+
+    // ========================================================================
+    // MemoryPressureHandler tests
+    // ========================================================================
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn memory_pressure_handler_update_triggers_callback() {
+        let config = MemoryPressureConfig {
+            warning_threshold: 50.0,
+            critical_threshold: 80.0,
+            emergency_threshold: 95.0,
+            check_interval: Duration::from_secs(10),
+        };
+        let handler = MemoryPressureHandler::new(config);
+
+        let callback_invoked = Arc::new(RwLock::new((None as Option<MemoryPressureLevel>, 0.0)));
+
+        struct TestCallback {
+            captured: Arc<RwLock<(Option<MemoryPressureLevel>, f64)>>,
+        }
+        #[async_trait::async_trait]
+        impl MemoryPressureCallback for TestCallback {
+            async fn handle_pressure(&self, level: MemoryPressureLevel, usage_percent: f64) {
+                let mut guard = self.captured.write().await;
+                *guard = (Some(level), usage_percent);
+            }
+        }
+
+        let test_cb = TestCallback {
+            captured: Arc::clone(&callback_invoked),
+        };
+        handler.register_callback(Box::new(test_cb)).await;
+
+        handler.update_memory_usage(100, 60).await;
+
+        let (level, pct) = *callback_invoked.read().await;
+        assert_eq!(level, Some(MemoryPressureLevel::Warning));
+        assert!((pct - 60.0).abs() < 0.01);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn memory_pressure_handler_normal_does_not_trigger_callback() {
+        let config = MemoryPressureConfig::default();
+        let handler = MemoryPressureHandler::new(config);
+
+        let callback_invoked = Arc::new(AtomicBool::new(false));
+        struct TestCallback {
+            invoked: Arc<AtomicBool>,
+        }
+        #[async_trait::async_trait]
+        impl MemoryPressureCallback for TestCallback {
+            async fn handle_pressure(&self, _level: MemoryPressureLevel, _usage_percent: f64) {
+                self.invoked.store(true, Ordering::SeqCst);
+            }
+        }
+
+        let test_cb = TestCallback {
+            invoked: Arc::clone(&callback_invoked),
+        };
+        handler.register_callback(Box::new(test_cb)).await;
+
+        handler.update_memory_usage(1000, 100).await;
+
+        assert!(!callback_invoked.load(Ordering::SeqCst));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn memory_pressure_handler_emergency_level() {
+        let config = MemoryPressureConfig::default();
+        let handler = MemoryPressureHandler::new(config);
+
+        let callback_invoked = Arc::new(RwLock::new(None as Option<MemoryPressureLevel>));
+        struct TestCallback {
+            captured: Arc<RwLock<Option<MemoryPressureLevel>>>,
+        }
+        #[async_trait::async_trait]
+        impl MemoryPressureCallback for TestCallback {
+            async fn handle_pressure(&self, level: MemoryPressureLevel, _usage_percent: f64) {
+                let mut guard = self.captured.write().await;
+                *guard = Some(level);
+            }
+        }
+
+        let test_cb = TestCallback {
+            captured: Arc::clone(&callback_invoked),
+        };
+        handler.register_callback(Box::new(test_cb)).await;
+
+        handler.update_memory_usage(100, 97).await;
+
+        let level = *callback_invoked.read().await;
+        assert_eq!(level, Some(MemoryPressureLevel::Emergency));
+    }
+
+    #[test]
+    fn memory_pressure_config_defaults() {
+        let config = MemoryPressureConfig::default();
+
+        assert!((config.warning_threshold - 70.0).abs() < 0.01);
+        assert!((config.critical_threshold - 85.0).abs() < 0.01);
+        assert!((config.emergency_threshold - 95.0).abs() < 0.01);
+        assert_eq!(config.check_interval, Duration::from_secs(10));
+    }
+
+    #[test]
+    fn memory_pressure_level_partial_eq_debug() {
+        assert_eq!(MemoryPressureLevel::Normal, MemoryPressureLevel::Normal);
+        assert_ne!(MemoryPressureLevel::Normal, MemoryPressureLevel::Warning);
+        assert_eq!(MemoryPressureLevel::Critical, MemoryPressureLevel::Critical);
+        assert!(!format!("{:?}", MemoryPressureLevel::Emergency).is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn default_memory_pressure_callback_no_panic() {
+        let cb = DefaultMemoryPressureCallback;
+        cb.handle_pressure(MemoryPressureLevel::Normal, 50.0).await;
+        cb.handle_pressure(MemoryPressureLevel::Warning, 75.0).await;
+        cb.handle_pressure(MemoryPressureLevel::Critical, 90.0)
+            .await;
+        cb.handle_pressure(MemoryPressureLevel::Emergency, 98.0)
+            .await;
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn memory_pressure_handler_get_pressure_level() {
+        let handler = MemoryPressureHandler::new(MemoryPressureConfig::default());
+        let level = handler.get_pressure_level().await;
+        assert_eq!(level, MemoryPressureLevel::Normal);
+    }
+
+    // ========================================================================
+    // Serialization round-trip tests
+    // ========================================================================
+
+    #[test]
+    fn circuit_state_serialization_roundtrip() {
+        let states = [
+            CircuitState::Closed,
+            CircuitState::Open,
+            CircuitState::HalfOpen,
+        ];
+        for state in &states {
+            let json = serde_json::to_string(state).unwrap();
+            let deserialized: CircuitState = serde_json::from_str(&json).unwrap();
+            assert_eq!(state, &deserialized);
+        }
+    }
+
+    #[test]
+    fn memory_pressure_level_serialization_roundtrip() {
+        let levels = [
+            MemoryPressureLevel::Normal,
+            MemoryPressureLevel::Warning,
+            MemoryPressureLevel::Critical,
+            MemoryPressureLevel::Emergency,
+        ];
+        for level in &levels {
+            let json = serde_json::to_string(level).unwrap();
+            let deserialized: MemoryPressureLevel = serde_json::from_str(&json).unwrap();
+            assert_eq!(level, &deserialized);
+        }
+    }
+
+    #[test]
+    fn circuit_breaker_config_serialization_roundtrip() {
+        let config = CircuitBreakerConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: CircuitBreakerConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.failure_threshold, deserialized.failure_threshold);
+        assert_eq!(config.success_threshold, deserialized.success_threshold);
+        assert_eq!(config.timeout, deserialized.timeout);
+        assert_eq!(config.rolling_window, deserialized.rolling_window);
+        assert_eq!(
+            config.half_open_max_requests,
+            deserialized.half_open_max_requests
+        );
+    }
+
+    #[test]
+    fn memory_pressure_config_serialization_roundtrip() {
+        let config = MemoryPressureConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: MemoryPressureConfig = serde_json::from_str(&json).unwrap();
+        assert!((config.warning_threshold - deserialized.warning_threshold).abs() < 0.01);
+        assert!((config.critical_threshold - deserialized.critical_threshold).abs() < 0.01);
+        assert!((config.emergency_threshold - deserialized.emergency_threshold).abs() < 0.01);
+        assert_eq!(config.check_interval, deserialized.check_interval);
+    }
+
+    #[test]
+    fn production_hardening_config_serialization_roundtrip() {
+        let config = ProductionHardeningConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: ProductionHardeningConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            config.enable_circuit_breakers,
+            deserialized.enable_circuit_breakers
+        );
+        assert_eq!(
+            config.enable_leak_detection,
+            deserialized.enable_leak_detection
+        );
+        assert_eq!(
+            config.enable_memory_pressure,
+            deserialized.enable_memory_pressure
+        );
+        assert_eq!(
+            config.leak_detection_threshold,
+            deserialized.leak_detection_threshold
+        );
+    }
+
+    // ========================================================================
+    // ProductionHardeningConfig and ProductionHardeningManager tests
+    // ========================================================================
+
+    #[test]
+    fn production_hardening_config_defaults() {
+        let config = ProductionHardeningConfig::default();
+
+        assert!(config.enable_circuit_breakers);
+        assert!(config.enable_leak_detection);
+        assert!(config.enable_memory_pressure);
+        assert_eq!(config.leak_detection_threshold, Duration::from_secs(300));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn production_hardening_manager_get_circuit_breaker() {
+        let manager = ProductionHardeningManager::new(ProductionHardeningConfig::default());
+
+        let breaker1 = manager.get_circuit_breaker("svc-a").await;
+        let breaker2 = manager.get_circuit_breaker("svc-a").await;
+
+        assert!(Arc::ptr_eq(&breaker1, &breaker2));
+
+        let breaker3 = manager.get_circuit_breaker("svc-b").await;
+        assert!(!Arc::ptr_eq(&breaker1, &breaker3));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn circuit_breaker_error_display() {
+        let err = CircuitBreakerError::CircuitOpen {
+            service: "my-service".to_string(),
+        };
+        assert!(err.to_string().contains("my-service"));
+        assert!(err.to_string().to_lowercase().contains("open"));
+    }
+}

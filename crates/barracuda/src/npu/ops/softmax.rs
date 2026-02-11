@@ -222,7 +222,7 @@ mod tests {
 
         // Check all probabilities in [0, 1]
         for &p in &probs {
-            assert!(p >= 0.0 && p <= 1.0, "Probability out of range: {}", p);
+            assert!((0.0..=1.0).contains(&p), "Probability out of range: {}", p);
         }
 
         // Largest logit should have highest probability

@@ -76,7 +76,7 @@ impl DiceLoss {
 
     /// WGSL shader source
     fn shader() -> &'static str {
-        include_str!("../shaders/dice_loss.wgsl")
+        include_str!("../shaders/loss/dice_loss.wgsl")
     }
 
     /// Execute Dice loss (GPU reduction)
@@ -283,12 +283,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_dice_loss_gpu_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 2;
         let h = 16;
         let w = 16;
@@ -313,8 +314,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_dice_loss_gpu_mismatch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 1;
         let size = 100;
 
@@ -336,8 +338,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_dice_loss_gpu_medical_scale() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Medical imaging scale: 128x128 slices
         let batch = 4;
         let h = 128;
@@ -356,6 +359,8 @@ mod tests {
 
         assert_eq!(loss.shape(), &[batch]);
         let data = loss.to_vec().unwrap();
-        assert!(data.iter().all(|&x| x.is_finite() && x >= 0.0 && x <= 1.0));
+        assert!(data
+            .iter()
+            .all(|&x| x.is_finite() && (0.0..=1.0).contains(&x)));
     }
 }

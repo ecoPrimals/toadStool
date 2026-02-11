@@ -118,7 +118,7 @@ impl RNNCell {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/rnn_cell.wgsl")
+        include_str!("../shaders/rnn/rnn_cell.wgsl")
     }
 
     /// Execute the RNN cell operation
@@ -378,11 +378,13 @@ impl RNNCell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_rnn_cell_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![0.5; 2 * 4], vec![2, 4], device.clone())
             .await
             .unwrap();
@@ -407,13 +409,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_rnn_cell_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Single batch
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 3], vec![1, 3], device.clone())
+        let input = Tensor::from_vec_on(vec![1.0; 3], vec![1, 3], device.clone())
             .await
             .unwrap();
-        let prev_hidden = Tensor::from_vec_on(vec![0.0; 1 * 4], vec![1, 4], device.clone())
+        let prev_hidden = Tensor::from_vec_on(vec![0.0; 4], vec![1, 4], device.clone())
             .await
             .unwrap();
         let weights = RNNWeights {
@@ -431,13 +434,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_rnn_cell_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Non-zero previous hidden state
-        let input = Tensor::from_vec_on(vec![0.5; 1 * 4], vec![1, 4], device.clone())
+        let input = Tensor::from_vec_on(vec![0.5; 4], vec![1, 4], device.clone())
             .await
             .unwrap();
-        let prev_hidden = Tensor::from_vec_on(vec![0.5; 1 * 8], vec![1, 8], device.clone())
+        let prev_hidden = Tensor::from_vec_on(vec![0.5; 8], vec![1, 8], device.clone())
             .await
             .unwrap();
         let weights = RNNWeights {

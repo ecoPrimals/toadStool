@@ -15,7 +15,7 @@ impl Gt {
         Self { lhs, rhs }
     }
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/gt.wgsl")
+        include_str!("../shaders/misc/gt.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {

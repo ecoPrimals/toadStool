@@ -139,7 +139,7 @@ impl AdaDelta {
 
     /// WGSL shader source
     pub(super) fn shader() -> &'static str {
-        include_str!("../../shaders/adadelta.wgsl")
+        include_str!("../../shaders/optimizer/adadelta.wgsl")
     }
 
     /// Get weights tensor

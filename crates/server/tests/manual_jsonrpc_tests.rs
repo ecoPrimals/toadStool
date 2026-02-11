@@ -9,7 +9,7 @@ use toadstool_server::StandaloneExecutor;
 /// Helper to create a test server
 fn create_test_server() -> ManualJsonRpcServer {
     let executor = Arc::new(StandaloneExecutor::new());
-    ManualJsonRpcServer::new(executor, "test-version".to_string())
+    ManualJsonRpcServer::new(executor, "test-version".to_string(), None)
 }
 
 /// Helper to create a JSON-RPC request
@@ -126,8 +126,11 @@ fn test_http_headers() {
 fn test_server_version() {
     let _server = create_test_server();
 
-    let _server2 =
-        ManualJsonRpcServer::new(Arc::new(StandaloneExecutor::new()), "1.2.3".to_string());
+    let _server2 = ManualJsonRpcServer::new(
+        Arc::new(StandaloneExecutor::new()),
+        "1.2.3".to_string(),
+        None,
+    );
     // Servers created with different versions
 }
 

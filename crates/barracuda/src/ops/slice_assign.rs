@@ -7,7 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -80,7 +80,7 @@ impl SliceAssign {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/slice_assign.wgsl")
+        include_str!("../shaders/math/slice_assign.wgsl")
     }
 
     /// Execute the slice assign operation (modifies input in-place)
@@ -217,17 +217,20 @@ impl SliceAssign {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (values_size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(values_size as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        // Return the input tensor (modified in-place)
-        Ok(self.input)
+        let output_data = crate::utils::read_buffer(device, input_buffer, input_size)?;
+        Ok(Tensor::new(
+            output_data,
+            self.input.shape().to_vec(),
+            device.clone(),
+        ))
     }
 }
 
@@ -247,28 +250,28 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_slice_assign_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::new(vec![1.0, 2.0, 3.0, 4.0, 5.0], vec![5], device.clone());
         let values = Tensor::new(vec![10.0, 20.0], vec![2], device.clone());
 
         let slice_range = SliceRange {
             start: 1,
-            end: 4,
+            end: 3,
             stride: 1,
         };
 
         let result = input.slice_assign(slice_range, values).unwrap();
         let output_data = result.to_vec().unwrap();
 
-        // Expected: [1, 10, 20, 4, 5]
+        // Expected: [1, 10, 20, 4, 5] (indices 1,2 assigned)
         assert_eq!(output_data[0], 1.0);
         assert_eq!(output_data[1], 10.0);
         assert_eq!(output_data[2], 20.0);
@@ -278,10 +281,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_slice_assign_strided() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::new(vec![1.0, 2.0, 3.0, 4.0, 5.0], vec![5], device.clone());
-        let values = Tensor::new(vec![10.0, 20.0], vec![2], device.clone());
+        // Stride 2 over [0..5] yields indices 0, 2, 4 → need 3 values
+        let values = Tensor::new(vec![10.0, 20.0, 30.0], vec![3], device.clone());
 
         let slice_range = SliceRange {
             start: 0,
@@ -292,11 +297,11 @@ mod tests {
         let result = input.slice_assign(slice_range, values).unwrap();
         let output_data = result.to_vec().unwrap();
 
-        // Expected: [10, 2, 20, 4, 5] (stride 2: indices 0, 2)
+        // Expected: [10, 2, 20, 4, 30] (stride 2: indices 0, 2, 4)
         assert_eq!(output_data[0], 10.0);
         assert_eq!(output_data[1], 2.0);
         assert_eq!(output_data[2], 20.0);
         assert_eq!(output_data[3], 4.0);
-        assert_eq!(output_data[4], 5.0);
+        assert_eq!(output_data[4], 30.0);
     }
 }

@@ -57,7 +57,7 @@ impl GraphNorm {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/graph_norm.wgsl")
+        include_str!("../shaders/norm/graph_norm.wgsl")
     }
 
     /// Execute the graph normalization operation
@@ -240,12 +240,13 @@ impl GraphNorm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_graph_norm_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let num_nodes = 3;
         let num_features = 4;
 

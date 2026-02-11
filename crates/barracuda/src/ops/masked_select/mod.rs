@@ -40,15 +40,15 @@ impl MaskedSelect {
 
     /// Get the WGSL shader source
     pub(super) fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/masked_select.wgsl")
+        include_str!("../../shaders/tensor/masked_select.wgsl")
     }
 
     pub(super) fn prefix_sum_shader() -> &'static str {
-        include_str!("../../shaders/prefix_sum.wgsl")
+        include_str!("../../shaders/misc/prefix_sum.wgsl")
     }
 
     pub(super) fn mask_convert_shader() -> &'static str {
-        include_str!("../../shaders/mask_convert.wgsl")
+        include_str!("../../shaders/misc/mask_convert.wgsl")
     }
 
     /// Get input tensor

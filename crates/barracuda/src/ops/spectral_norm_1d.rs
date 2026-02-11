@@ -55,7 +55,7 @@ impl SpectralNorm1D {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/spectral_norm_1d.wgsl")
+        include_str!("../shaders/norm/spectral_norm_1d.wgsl")
     }
 
     /// Execute the spectral norm 1D operation
@@ -256,11 +256,13 @@ impl SpectralNorm1D {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_spectral_norm_1d_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let weights = Tensor::from_vec_on(vec![1.0; 64 * 32 * 3], vec![64, 32, 3], device.clone())
             .await
             .unwrap();

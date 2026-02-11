@@ -8,14 +8,14 @@
 #[derive(Debug)]
 pub struct LoadBalancer {
     /// Balancing strategy
-    #[allow(dead_code)] // Used in future for multi-instance load balancing
-    strategy: BalancingStrategy,
+    // TODO: Will be used for multi-instance load balancing when dynamic balancing is implemented
+    _strategy: BalancingStrategy,
 }
 
 impl LoadBalancer {
     pub fn new() -> Self {
         Self {
-            strategy: BalancingStrategy::default(),
+            _strategy: BalancingStrategy::default(),
         }
     }
 }
@@ -47,6 +47,6 @@ mod tests {
     #[test]
     fn test_load_balancer_creation() {
         let balancer = LoadBalancer::new();
-        assert!(matches!(balancer.strategy, BalancingStrategy::Weighted));
+        assert!(matches!(balancer._strategy, BalancingStrategy::Weighted));
     }
 }

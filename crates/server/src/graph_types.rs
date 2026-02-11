@@ -234,6 +234,7 @@ pub struct GraphNode {
     /// Estimated execution duration (type-safe)
     /// Replaces duration_secs in metadata for better ergonomics
     #[serde(
+        default,
         skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_duration",
         deserialize_with = "deserialize_duration"
@@ -665,213 +666,607 @@ impl ExecutionGraphBuilder {
     }
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Unit Tests – Cover production code not reached by integration tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_valid_graph() {
-        let graph = ExecutionGraph {
-            id: "test-graph".to_string(),
-            nodes: vec![
-                GraphNode {
-                    id: "node-1".to_string(),
-                    primal: "toadstool".to_string(),
-                    operation: "cpu_compute".to_string(),
-                    duration: None,
-                    requirements: NodeResourceRequirements::default(),
-                    metadata: HashMap::new(),
-                },
-                GraphNode {
-                    id: "node-2".to_string(),
-                    primal: "toadstool".to_string(),
-                    operation: "gpu_compute".to_string(),
-                    duration: None,
-                    requirements: NodeResourceRequirements::default(),
-                    metadata: HashMap::new(),
-                },
-            ],
-            edges: vec![GraphEdge {
-                from: "node-1".to_string(),
-                to: "node-2".to_string(),
-                edge_type: EdgeType::DataFlow,
-                metadata: HashMap::new(),
-            }],
-            metadata: HashMap::new(),
-        };
-
-        assert!(graph.validate().is_ok());
-    }
+    // ───── Validation ───────────────────────────────────────────────────────
 
     #[test]
-    fn test_empty_graph() {
-        let graph = ExecutionGraph {
-            id: "test-graph".to_string(),
-            nodes: vec![],
-            edges: vec![],
-            metadata: HashMap::new(),
-        };
-
+    fn validate_empty_graph() {
+        let g = ExecutionGraph::simple("x");
         assert!(matches!(
-            graph.validate(),
+            g.validate(),
             Err(GraphValidationError::EmptyGraph)
         ));
     }
 
     #[test]
-    fn test_duplicate_node_id() {
-        let graph = ExecutionGraph {
-            id: "test-graph".to_string(),
-            nodes: vec![
-                GraphNode {
-                    id: "node-1".to_string(),
-                    primal: "toadstool".to_string(),
-                    operation: "cpu_compute".to_string(),
-                    duration: None,
-                    requirements: NodeResourceRequirements::default(),
-                    metadata: HashMap::new(),
-                },
-                GraphNode {
-                    id: "node-1".to_string(),
-                    primal: "toadstool".to_string(),
-                    operation: "gpu_compute".to_string(),
-                    duration: None,
-                    requirements: NodeResourceRequirements::default(),
-                    metadata: HashMap::new(),
-                },
-            ],
-            edges: vec![],
-            metadata: HashMap::new(),
-        };
-
+    fn validate_duplicate_node_id() {
+        let g = ExecutionGraph::builder("x")
+            .nodes([GraphNode::simple("a", "op"), GraphNode::simple("a", "op2")])
+            .build();
         assert!(matches!(
-            graph.validate(),
+            g.validate(),
             Err(GraphValidationError::DuplicateNodeId(_))
         ));
     }
 
     #[test]
-    fn test_cycle_detection() {
-        let graph = ExecutionGraph {
-            id: "test-graph".to_string(),
-            nodes: vec![
-                GraphNode {
-                    id: "node-1".to_string(),
-                    primal: "toadstool".to_string(),
-                    operation: "cpu_compute".to_string(),
-                    duration: None,
-                    requirements: NodeResourceRequirements::default(),
-                    metadata: HashMap::new(),
-                },
-                GraphNode {
-                    id: "node-2".to_string(),
-                    primal: "toadstool".to_string(),
-                    operation: "gpu_compute".to_string(),
-                    duration: None,
-                    requirements: NodeResourceRequirements::default(),
-                    metadata: HashMap::new(),
-                },
-            ],
-            edges: vec![
-                GraphEdge {
-                    from: "node-1".to_string(),
-                    to: "node-2".to_string(),
-                    edge_type: EdgeType::DataFlow,
-                    metadata: HashMap::new(),
-                },
-                GraphEdge {
-                    from: "node-2".to_string(),
-                    to: "node-1".to_string(),
-                    edge_type: EdgeType::DataFlow,
-                    metadata: HashMap::new(),
-                },
-            ],
-            metadata: HashMap::new(),
-        };
-
-        assert!(matches!(
-            graph.validate(),
-            Err(GraphValidationError::CycleDetected(_))
-        ));
+    fn validate_invalid_edge_source() {
+        let g = ExecutionGraph::builder("x")
+            .node(GraphNode::simple("b", "op"))
+            .connect("missing", "b")
+            .build();
+        let e = g.validate().unwrap_err();
+        match &e {
+            GraphValidationError::InvalidEdge { from, reason, .. } => {
+                assert_eq!(from, "missing");
+                assert!(reason.contains("Source node"));
+            }
+            _ => panic!("{:?}", e),
+        }
     }
 
     #[test]
-    fn test_self_edge() {
-        let graph = ExecutionGraph {
-            id: "test-graph".to_string(),
-            nodes: vec![GraphNode {
-                id: "node-1".to_string(),
-                primal: "toadstool".to_string(),
-                operation: "cpu_compute".to_string(),
-                duration: None,
-                requirements: NodeResourceRequirements::default(),
-                metadata: HashMap::new(),
-            }],
-            edges: vec![GraphEdge {
-                from: "node-1".to_string(),
-                to: "node-1".to_string(),
-                edge_type: EdgeType::DataFlow,
-                metadata: HashMap::new(),
-            }],
-            metadata: HashMap::new(),
-        };
+    fn validate_invalid_edge_target() {
+        let g = ExecutionGraph::builder("x")
+            .node(GraphNode::simple("a", "op"))
+            .connect("a", "missing")
+            .build();
+        let e = g.validate().unwrap_err();
+        match &e {
+            GraphValidationError::InvalidEdge { to, reason, .. } => {
+                assert_eq!(to, "missing");
+                assert!(reason.contains("Target node"));
+            }
+            _ => panic!("{:?}", e),
+        }
+    }
 
+    #[test]
+    fn validate_self_edge() {
+        let g = ExecutionGraph::builder("x")
+            .node(GraphNode::simple("a", "op"))
+            .connect("a", "a")
+            .build();
         assert!(matches!(
-            graph.validate(),
+            g.validate(),
             Err(GraphValidationError::SelfEdge(_))
         ));
     }
 
     #[test]
-    fn test_get_dependencies() {
-        let graph = ExecutionGraph {
-            id: "test-graph".to_string(),
-            nodes: vec![
-                GraphNode {
-                    id: "node-1".to_string(),
-                    primal: "toadstool".to_string(),
-                    operation: "cpu_compute".to_string(),
-                    duration: None,
-                    requirements: NodeResourceRequirements::default(),
-                    metadata: HashMap::new(),
-                },
-                GraphNode {
-                    id: "node-2".to_string(),
-                    primal: "toadstool".to_string(),
-                    operation: "gpu_compute".to_string(),
-                    duration: None,
-                    requirements: NodeResourceRequirements::default(),
-                    metadata: HashMap::new(),
-                },
-                GraphNode {
-                    id: "node-3".to_string(),
-                    primal: "toadstool".to_string(),
-                    operation: "storage".to_string(),
-                    duration: None,
-                    requirements: NodeResourceRequirements::default(),
-                    metadata: HashMap::new(),
-                },
-            ],
-            edges: vec![
-                GraphEdge {
-                    from: "node-1".to_string(),
-                    to: "node-3".to_string(),
-                    edge_type: EdgeType::DataFlow,
-                    metadata: HashMap::new(),
-                },
-                GraphEdge {
-                    from: "node-2".to_string(),
-                    to: "node-3".to_string(),
-                    edge_type: EdgeType::DataFlow,
-                    metadata: HashMap::new(),
-                },
-            ],
-            metadata: HashMap::new(),
-        };
+    fn validate_cycle_two_nodes() {
+        let g = ExecutionGraph::builder("x")
+            .nodes([GraphNode::simple("a", "op1"), GraphNode::simple("b", "op2")])
+            .connect("a", "b")
+            .connect("b", "a")
+            .build();
+        assert!(matches!(
+            g.validate(),
+            Err(GraphValidationError::CycleDetected(_))
+        ));
+    }
 
-        let deps = graph.get_dependencies("node-3");
+    #[test]
+    fn validate_cycle_three_nodes() {
+        let g = ExecutionGraph::builder("x")
+            .nodes([
+                GraphNode::simple("a", "op1"),
+                GraphNode::simple("b", "op2"),
+                GraphNode::simple("c", "op3"),
+            ])
+            .connect("a", "b")
+            .connect("b", "c")
+            .connect("c", "a")
+            .build();
+        let e = g.validate().unwrap_err();
+        match &e {
+            GraphValidationError::CycleDetected(p) => assert_eq!(p.len(), 2),
+            _ => panic!("{:?}", e),
+        }
+    }
+
+    #[test]
+    fn validate_valid_single_node() {
+        let g = ExecutionGraph::builder("x")
+            .node(GraphNode::simple("a", "op"))
+            .build();
+        assert!(g.validate().is_ok());
+    }
+
+    #[test]
+    fn validate_valid_dag_diamond() {
+        let g = ExecutionGraph::builder("x")
+            .nodes([
+                GraphNode::simple("a", "op1"),
+                GraphNode::simple("b", "op2"),
+                GraphNode::simple("c", "op3"),
+            ])
+            .connect("a", "b")
+            .connect("a", "c")
+            .connect("c", "b")
+            .build();
+        assert!(g.validate().is_ok(), "diamond with cross-edge is DAG");
+    }
+
+    #[test]
+    fn validate_node_without_neighbors_dfs() {
+        let g = ExecutionGraph::builder("x")
+            .node(GraphNode::simple("sink", "op"))
+            .build();
+        assert!(g.validate().is_ok());
+    }
+
+    // ───── ExecutionGraph methods ───────────────────────────────────────────
+
+    #[test]
+    fn get_node_found() {
+        let g = ExecutionGraph::builder("g")
+            .nodes([GraphNode::simple("a", "op1"), GraphNode::simple("b", "op2")])
+            .connect("a", "b")
+            .build();
+        let n = g.get_node("a").unwrap();
+        assert_eq!(n.id, "a");
+        assert_eq!(n.operation, "op1");
+    }
+
+    #[test]
+    fn get_node_not_found() {
+        let g = ExecutionGraph::builder("g")
+            .node(GraphNode::simple("a", "op"))
+            .build();
+        assert!(g.get_node("z").is_none());
+    }
+
+    #[test]
+    fn get_dependencies() {
+        let g = ExecutionGraph::builder("g")
+            .nodes([
+                GraphNode::simple("a", "op1"),
+                GraphNode::simple("b", "op2"),
+                GraphNode::simple("c", "op3"),
+            ])
+            .connect("a", "c")
+            .connect("b", "c")
+            .build();
+        let deps = g.get_dependencies("c");
         assert_eq!(deps.len(), 2);
-        assert!(deps.iter().any(|n| n.id == "node-1"));
-        assert!(deps.iter().any(|n| n.id == "node-2"));
+        let ids: Vec<&str> = deps.iter().map(|n| n.id.as_str()).collect();
+        assert!(ids.contains(&"a"));
+        assert!(ids.contains(&"b"));
+    }
+
+    #[test]
+    fn get_dependents() {
+        let g = ExecutionGraph::builder("g")
+            .nodes([
+                GraphNode::simple("a", "op1"),
+                GraphNode::simple("b", "op2"),
+                GraphNode::simple("c", "op3"),
+            ])
+            .connect("a", "b")
+            .connect("a", "c")
+            .build();
+        let dep = g.get_dependents("a");
+        assert_eq!(dep.len(), 2);
+        let ids: Vec<&str> = dep.iter().map(|n| n.id.as_str()).collect();
+        assert!(ids.contains(&"b"));
+        assert!(ids.contains(&"c"));
+    }
+
+    #[test]
+    fn get_dependents_empty() {
+        let g = ExecutionGraph::builder("g")
+            .nodes([GraphNode::simple("a", "op1"), GraphNode::simple("b", "op2")])
+            .connect("a", "b")
+            .build();
+        assert!(g.get_dependents("b").is_empty());
+    }
+
+    // ───── GraphNode constructors and builder ───────────────────────────────
+
+    #[test]
+    fn graph_node_simple() {
+        let n = GraphNode::simple("id", "op");
+        assert_eq!(n.id, "id");
+        assert_eq!(n.primal, "toadstool");
+        assert_eq!(n.operation, "op");
+        assert!(n.requirements.cpu.is_none());
+        assert!(n.duration.is_none());
+    }
+
+    #[test]
+    fn graph_node_builder_minimal() {
+        let n = GraphNode::builder("id", "op").build();
+        assert_eq!(n.id, "id");
+        assert_eq!(n.primal, "toadstool");
+        assert_eq!(n.operation, "op");
+    }
+
+    #[test]
+    fn graph_node_builder_primal() {
+        let n = GraphNode::builder("id", "op").primal("squirrel").build();
+        assert_eq!(n.primal, "squirrel");
+    }
+
+    #[test]
+    fn graph_node_builder_cpu() {
+        let n = GraphNode::builder("id", "op").cpu(4.0).build();
+        assert_eq!(n.requirements.cpu.as_ref().unwrap().min_cores, 4.0);
+    }
+
+    #[test]
+    fn graph_node_builder_memory() {
+        let n = GraphNode::builder("id", "op")
+            .memory(2 * 1024 * 1024 * 1024)
+            .build();
+        assert_eq!(
+            n.requirements.memory.as_ref().unwrap().min_bytes,
+            2_u64 << 30
+        );
+    }
+
+    #[test]
+    fn graph_node_builder_memory_gb() {
+        let n = GraphNode::builder("id", "op").memory_gb(8).build();
+        assert_eq!(
+            n.requirements.memory.as_ref().unwrap().min_bytes,
+            8 * 1024 * 1024 * 1024
+        );
+    }
+
+    #[test]
+    fn graph_node_builder_gpu_memory() {
+        let n = GraphNode::builder("id", "op")
+            .gpu_memory(16 * 1024 * 1024 * 1024)
+            .build();
+        assert_eq!(
+            n.requirements.gpu.as_ref().unwrap().min_memory_bytes,
+            Some(16 * 1024 * 1024 * 1024)
+        );
+    }
+
+    #[test]
+    fn graph_node_builder_gpu_memory_gb() {
+        let n = GraphNode::builder("id", "op").gpu_memory_gb(24).build();
+        assert_eq!(
+            n.requirements.gpu.as_ref().unwrap().min_memory_bytes,
+            Some(24 * 1024 * 1024 * 1024)
+        );
+    }
+
+    #[test]
+    fn graph_node_builder_storage() {
+        let n = GraphNode::builder("id", "op")
+            .storage(500 * 1024 * 1024)
+            .build();
+        assert_eq!(
+            n.requirements.storage.as_ref().unwrap().min_bytes,
+            500 * 1024 * 1024
+        );
+    }
+
+    #[test]
+    fn graph_node_builder_storage_gb() {
+        let n = GraphNode::builder("id", "op").storage_gb(100).build();
+        assert_eq!(
+            n.requirements.storage.as_ref().unwrap().min_bytes,
+            100 * 1024 * 1024 * 1024
+        );
+    }
+
+    #[test]
+    fn graph_node_builder_network_bandwidth() {
+        let n = GraphNode::builder("id", "op")
+            .network_bandwidth(1000)
+            .build();
+        assert_eq!(
+            n.requirements.network.as_ref().unwrap().min_bandwidth,
+            Some(1000 * 125000)
+        );
+    }
+
+    #[test]
+    fn graph_node_builder_duration() {
+        let n = GraphNode::builder("id", "op")
+            .duration(Duration::from_secs(90))
+            .build();
+        assert_eq!(n.duration, Some(Duration::from_secs(90)));
+    }
+
+    #[test]
+    fn graph_node_builder_duration_secs() {
+        let n = GraphNode::builder("id", "op").duration_secs(120).build();
+        assert_eq!(n.duration, Some(Duration::from_secs(120)));
+    }
+
+    #[test]
+    fn graph_node_builder_metadata() {
+        let n = GraphNode::builder("id", "op")
+            .metadata("k", "v")
+            .metadata("k2", "v2")
+            .build();
+        assert_eq!(n.metadata.get("k"), Some(&"v".to_string()));
+        assert_eq!(n.metadata.get("k2"), Some(&"v2".to_string()));
+    }
+
+    #[test]
+    fn graph_node_builder_full() {
+        let n = GraphNode::builder("n", "gpu_compute")
+            .primal("nestgate")
+            .cpu(8.0)
+            .memory_gb(32)
+            .gpu_memory_gb(80)
+            .storage_gb(500)
+            .network_bandwidth(10_000)
+            .duration_secs(3600)
+            .metadata("model", "llama")
+            .build();
+        assert_eq!(n.primal, "nestgate");
+        assert_eq!(n.requirements.cpu.as_ref().unwrap().min_cores, 8.0);
+        assert_eq!(
+            n.requirements.memory.as_ref().unwrap().min_bytes,
+            32 * 1024 * 1024 * 1024
+        );
+        assert_eq!(
+            n.requirements.gpu.as_ref().unwrap().min_memory_bytes,
+            Some(80 * 1024 * 1024 * 1024)
+        );
+        assert_eq!(
+            n.requirements.storage.as_ref().unwrap().min_bytes,
+            500 * 1024 * 1024 * 1024
+        );
+        assert_eq!(
+            n.requirements.network.as_ref().unwrap().min_bandwidth,
+            Some(10_000 * 125000)
+        );
+        assert_eq!(n.duration, Some(Duration::from_secs(3600)));
+        assert_eq!(n.metadata.get("model"), Some(&"llama".to_string()));
+    }
+
+    // ───── ExecutionGraph constructors and builder ──────────────────────────
+
+    #[test]
+    fn execution_graph_simple() {
+        let g = ExecutionGraph::simple("empty");
+        assert_eq!(g.id, "empty");
+        assert!(g.nodes.is_empty());
+        assert!(g.edges.is_empty());
+    }
+
+    #[test]
+    fn execution_graph_builder() {
+        let g = ExecutionGraph::builder("my-graph")
+            .node(GraphNode::simple("n1", "op1"))
+            .nodes([
+                GraphNode::simple("n2", "op2"),
+                GraphNode::simple("n3", "op3"),
+            ])
+            .connect("n1", "n2")
+            .edge(GraphEdge::data_flow("n2", "n3"))
+            .edges([GraphEdge::control("n1", "n3")])
+            .metadata("key", "value")
+            .build();
+        assert_eq!(g.id, "my-graph");
+        assert_eq!(g.nodes.len(), 3);
+        assert_eq!(g.edges.len(), 3);
+        assert_eq!(g.metadata.get("key"), Some(&"value".to_string()));
+        assert!(g.validate().is_ok());
+    }
+
+    // ───── GraphEdge constructors ──────────────────────────────────────────
+
+    #[test]
+    fn graph_edge_new() {
+        let e = GraphEdge::new("a", "b");
+        assert_eq!(e.from, "a");
+        assert_eq!(e.to, "b");
+        assert_eq!(e.edge_type, EdgeType::Dependency);
+    }
+
+    #[test]
+    fn graph_edge_data_flow() {
+        let e = GraphEdge::data_flow("x", "y");
+        assert_eq!(e.edge_type, EdgeType::DataFlow);
+    }
+
+    #[test]
+    fn graph_edge_control() {
+        let e = GraphEdge::control("x", "y");
+        assert_eq!(e.edge_type, EdgeType::Control);
+    }
+
+    #[test]
+    fn graph_edge_with_string() {
+        let e = GraphEdge::new(String::from("a"), String::from("b"));
+        assert_eq!(e.from, "a");
+        assert_eq!(e.to, "b");
+    }
+
+    // ───── EdgeType ────────────────────────────────────────────────────────
+
+    #[test]
+    fn edge_type_default() {
+        let et: EdgeType = Default::default();
+        assert_eq!(et, EdgeType::Dependency);
+    }
+
+    // ───── NodeResourceRequirements ────────────────────────────────────────
+
+    #[test]
+    fn node_resource_requirements_default() {
+        let r = NodeResourceRequirements::default();
+        assert!(r.cpu.is_none());
+        assert!(r.memory.is_none());
+        assert!(r.storage.is_none());
+        assert!(r.gpu.is_none());
+        assert!(r.network.is_none());
+    }
+
+    // ───── Serialization ───────────────────────────────────────────────────
+
+    #[test]
+    fn serialize_graph_roundtrip() {
+        let g = ExecutionGraph::builder("g")
+            .nodes([
+                GraphNode::builder("n1", "op").duration_secs(60).build(),
+                GraphNode::simple("n2", "op2"),
+            ])
+            .connect("n1", "n2")
+            .build();
+        let json = serde_json::to_string(&g).unwrap();
+        let r: ExecutionGraph = serde_json::from_str(&json).unwrap();
+        assert_eq!(g.id, r.id);
+        assert_eq!(g.nodes.len(), r.nodes.len());
+        assert_eq!(g.edges.len(), r.edges.len());
+    }
+
+    #[test]
+    fn serialize_node_duration_some() {
+        let n = GraphNode::builder("n", "op").duration_secs(300).build();
+        let json = serde_json::to_string(&n).unwrap();
+        assert!(json.contains("300"));
+        let r: GraphNode = serde_json::from_str(&json).unwrap();
+        assert_eq!(r.duration, Some(Duration::from_secs(300)));
+    }
+
+    #[test]
+    fn serialize_node_duration_none_omitted() {
+        let n = GraphNode::simple("n", "op");
+        let json = serde_json::to_string(&n).unwrap();
+        assert!(!json.contains("duration"));
+        let r: GraphNode = serde_json::from_str(&json).unwrap();
+        assert!(r.duration.is_none());
+    }
+
+    #[test]
+    fn deserialize_node_default_primal() {
+        let json = r#"{"id":"n","operation":"op"}"#;
+        let n: GraphNode = serde_json::from_str(json).unwrap();
+        assert_eq!(n.primal, "toadstool");
+    }
+
+    #[test]
+    fn deserialize_node_duration_null() {
+        let json = r#"{"id":"n","operation":"op","duration":null}"#;
+        let n: GraphNode = serde_json::from_str(json).unwrap();
+        assert!(n.duration.is_none());
+    }
+
+    #[test]
+    fn serialize_edge_roundtrip() {
+        let e = GraphEdge::data_flow("a", "b");
+        let json = serde_json::to_string(&e).unwrap();
+        assert!(json.contains("data_flow"));
+        let r: GraphEdge = serde_json::from_str(&json).unwrap();
+        assert_eq!(e.from, r.from);
+        assert_eq!(e.to, r.to);
+        assert_eq!(e.edge_type, r.edge_type);
+    }
+
+    #[test]
+    fn serialize_edge_type_snake_case() {
+        let json = serde_json::to_string(&EdgeType::DataFlow).unwrap();
+        assert_eq!(json, "\"data_flow\"");
+        let r: EdgeType = serde_json::from_str(&json).unwrap();
+        assert_eq!(r, EdgeType::DataFlow);
+    }
+
+    #[test]
+    fn serialize_execution_graph_missing_metadata_default() {
+        let json = r#"{"id":"g1","nodes":[],"edges":[]}"#;
+        let g: ExecutionGraph = serde_json::from_str(json).unwrap();
+        assert!(g.metadata.is_empty());
+    }
+
+    // ───── Display / Debug ─────────────────────────────────────────────────
+
+    #[test]
+    fn graph_validation_error_display() {
+        assert_eq!(
+            GraphValidationError::EmptyGraph.to_string(),
+            "Graph is empty (no nodes)"
+        );
+        assert!(GraphValidationError::DuplicateNodeId("x".into())
+            .to_string()
+            .contains("Duplicate node ID"));
+        assert!(GraphValidationError::SelfEdge("n".into())
+            .to_string()
+            .contains("Self-edge"));
+        assert!(GraphValidationError::InvalidEdge {
+            from: "a".into(),
+            to: "b".into(),
+            reason: "reason".into(),
+        }
+        .to_string()
+        .contains("Invalid edge"));
+        assert!(
+            GraphValidationError::CycleDetected(vec!["a".into(), "b".into()])
+                .to_string()
+                .contains("Cycle detected")
+        );
+    }
+
+    #[test]
+    fn graph_validation_error_debug() {
+        let _ = format!("{:?}", GraphValidationError::EmptyGraph);
+    }
+
+    #[test]
+    fn debug_execution_graph() {
+        let g = ExecutionGraph::simple("g");
+        let _ = format!("{:?}", g);
+    }
+
+    #[test]
+    fn debug_graph_node() {
+        let n = GraphNode::simple("n", "op");
+        let _ = format!("{:?}", n);
+    }
+
+    #[test]
+    fn debug_graph_edge() {
+        let e = GraphEdge::new("a", "b");
+        let _ = format!("{:?}", e);
+    }
+
+    #[test]
+    fn debug_node_resource_requirements() {
+        let r = NodeResourceRequirements::default();
+        let _ = format!("{:?}", r);
+    }
+
+    // ───── Clone ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn clone_execution_graph() {
+        let g = ExecutionGraph::builder("g")
+            .node(GraphNode::simple("a", "op"))
+            .build();
+        let c = g.clone();
+        assert_eq!(g.id, c.id);
+        assert_eq!(g.nodes.len(), c.nodes.len());
+    }
+
+    #[test]
+    fn clone_graph_node() {
+        let n = GraphNode::builder("n", "op").cpu(2.0).build();
+        let c = n.clone();
+        assert_eq!(n.id, c.id);
+        assert_eq!(c.requirements.cpu.as_ref().unwrap().min_cores, 2.0);
+    }
+
+    #[test]
+    fn clone_graph_edge() {
+        let e = GraphEdge::data_flow("a", "b");
+        let c = e.clone();
+        assert_eq!(e.from, c.from);
+        assert_eq!(e.edge_type, c.edge_type);
     }
 }

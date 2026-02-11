@@ -150,22 +150,185 @@ pub async fn discover_orchestration() -> ToadStoolResult<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
+    use toadstool_common::infant_discovery::{DiscoveryEngine, DiscoveryError, EndpointSource};
 
-    #[tokio::test]
-    async fn test_orchestration_discovery_pattern() {
-        let client = OrchestrationClient::new();
+    /// Mock source that returns different endpoints per capability
+    struct CapabilityAwareMockSource {
+        results: HashMap<String, Option<String>>,
+    }
 
-        // Pattern test - either succeeds or fails gracefully
-        let result = client.discover_any_orchestration().await;
+    impl EndpointSource for CapabilityAwareMockSource {
+        fn resolve(
+            &self,
+            capability: &str,
+        ) -> std::pin::Pin<
+            Box<
+                dyn std::future::Future<Output = Result<Option<String>, DiscoveryError>>
+                    + Send
+                    + '_,
+            >,
+        > {
+            let endpoint = self.results.get(capability).cloned().unwrap_or(None);
+            Box::pin(async move { Ok(endpoint) })
+        }
 
-        // The important part is the pattern, not the result
-        // In production, environment variables or config would provide the endpoint
-        assert!(result.is_ok() || result.is_err());
+        fn source_name(&self) -> &str {
+            "test_mock"
+        }
     }
 
     #[tokio::test]
     async fn test_default_construction() {
         let _client = OrchestrationClient::default();
-        // Should construct without error
+    }
+
+    #[tokio::test]
+    async fn test_with_discovery_uses_provided_engine() {
+        let mut results = HashMap::new();
+        results.insert(
+            "service-discovery".to_string(),
+            Some("http://orchestration:8080".to_string()),
+        );
+
+        let engine = DiscoveryEngine::with_config(
+            toadstool_common::infant_discovery::ServiceDiscoveryConfig::default(),
+        );
+        engine
+            .register_source(Box::new(CapabilityAwareMockSource { results }))
+            .await;
+
+        let client = OrchestrationClient::with_discovery(Arc::new(engine));
+        let endpoint = client.discover_service_discovery().await.unwrap();
+        assert_eq!(endpoint, "http://orchestration:8080");
+    }
+
+    #[tokio::test]
+    async fn test_discover_service_discovery_error_mapping() {
+        let engine = DiscoveryEngine::new();
+        let client = OrchestrationClient::with_discovery(Arc::new(engine));
+
+        let result = client.discover_service_discovery().await;
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("service-discovery") || err_msg.contains("discover"));
+    }
+
+    #[tokio::test]
+    async fn test_discover_load_balancing_error_mapping() {
+        let engine = DiscoveryEngine::new();
+        let client = OrchestrationClient::with_discovery(Arc::new(engine));
+
+        let result = client.discover_load_balancing().await;
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("load-balancing") || err_msg.contains("discover"));
+    }
+
+    #[tokio::test]
+    async fn test_discover_job_routing_error_mapping() {
+        let engine = DiscoveryEngine::new();
+        let client = OrchestrationClient::with_discovery(Arc::new(engine));
+
+        let result = client.discover_job_routing().await;
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("job-routing") || err_msg.contains("discover"));
+    }
+
+    #[tokio::test]
+    async fn test_discover_any_orchestration_priority_service_discovery_first() {
+        let mut results = HashMap::new();
+        results.insert(
+            "service-discovery".to_string(),
+            Some("http://primary:8080".to_string()),
+        );
+        results.insert(
+            "load-balancing".to_string(),
+            Some("http://secondary:8080".to_string()),
+        );
+
+        let engine = DiscoveryEngine::with_config(
+            toadstool_common::infant_discovery::ServiceDiscoveryConfig::default(),
+        );
+        engine
+            .register_source(Box::new(CapabilityAwareMockSource { results }))
+            .await;
+
+        let client = OrchestrationClient::with_discovery(Arc::new(engine));
+        let endpoint = client.discover_any_orchestration().await.unwrap();
+        assert_eq!(endpoint, "http://primary:8080");
+    }
+
+    #[tokio::test]
+    async fn test_discover_any_orchestration_priority_load_balancing_second() {
+        let mut results = HashMap::new();
+        results.insert("service-discovery".to_string(), None);
+        results.insert(
+            "load-balancing".to_string(),
+            Some("http://lb:9090".to_string()),
+        );
+
+        let engine = DiscoveryEngine::with_config(
+            toadstool_common::infant_discovery::ServiceDiscoveryConfig::default(),
+        );
+        engine
+            .register_source(Box::new(CapabilityAwareMockSource { results }))
+            .await;
+
+        let client = OrchestrationClient::with_discovery(Arc::new(engine));
+        let endpoint = client.discover_any_orchestration().await.unwrap();
+        assert_eq!(endpoint, "http://lb:9090");
+    }
+
+    #[tokio::test]
+    async fn test_discover_any_orchestration_priority_job_routing_third() {
+        let mut results = HashMap::new();
+        results.insert("service-discovery".to_string(), None);
+        results.insert("load-balancing".to_string(), None);
+        results.insert(
+            "job-routing".to_string(),
+            Some("http://routing:7070".to_string()),
+        );
+
+        let engine = DiscoveryEngine::with_config(
+            toadstool_common::infant_discovery::ServiceDiscoveryConfig::default(),
+        );
+        engine
+            .register_source(Box::new(CapabilityAwareMockSource { results }))
+            .await;
+
+        let client = OrchestrationClient::with_discovery(Arc::new(engine));
+        let endpoint = client.discover_any_orchestration().await.unwrap();
+        assert_eq!(endpoint, "http://routing:7070");
+    }
+
+    #[tokio::test]
+    async fn test_discover_any_orchestration_fails_when_all_missing() {
+        let engine = DiscoveryEngine::new();
+        let client = OrchestrationClient::with_discovery(Arc::new(engine));
+
+        let result = client.discover_any_orchestration().await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("service-discovery")
+                || err_msg.contains("load-balancing")
+                || err_msg.contains("job-routing")
+                || err_msg.contains("No orchestration")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_discover_orchestration_helper() {
+        let result = discover_orchestration().await;
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_orchestration_discovery_pattern() {
+        let client = OrchestrationClient::new();
+        let result = client.discover_any_orchestration().await;
+        assert!(result.is_ok() || result.is_err());
     }
 }

@@ -55,10 +55,10 @@ pub struct UnifiedBuffer {
 
     /// CPU-accessible pointer (DEEP DEBT EVOLUTION: NonNull for compile-time guarantee)
     ///
-    /// Using NonNull<u8> instead of *mut u8 provides:
+    /// Using `NonNull<u8>` instead of `*mut u8` provides:
     /// - Compile-time null safety (cannot be null by construction)
-    /// - Covariant over T (safer type system interactions)
-    /// - Niche optimization (Option<NonNull<T>> same size as *mut T)
+    /// - Covariant over `T` (safer type system interactions)
+    /// - Niche optimization (`Option<NonNull<T>>` same size as `*mut T`)
     ///
     /// This is a "Fast AND Safe" evolution - same performance, better safety
     cpu_ptr: NonNull<u8>,
@@ -147,10 +147,18 @@ impl UnifiedBuffer {
         // DEEP DEBT: Validate before every use!
         self.validate_cpu_ptr()?;
 
-        // SAFETY:
-        // - cpu_ptr validated above (NonNull guarantees non-null, validated for alignment and allocation)
-        // - size is validated at buffer creation and in validate_cpu_ptr()
-        // - We have exclusive &mut self (Rust borrow checker guarantees)
+        // SAFETY: from_raw_parts_mut requires:
+        // - ptr must be valid for reads and writes of size * mem::size_of::<T>() bytes
+        // - ptr must be properly aligned for T
+        // - The memory must be initialized (for reads)
+        // - The memory must not be accessed through other pointers during the lifetime
+        // Invariants that hold:
+        // - cpu_ptr is NonNull (compile-time guarantee of non-null)
+        // - cpu_ptr validated above (alignment checked, allocation exists, not in NULL page)
+        // - size is validated at buffer creation and in validate_cpu_ptr() (non-zero, reasonable)
+        // - We have exclusive &mut self (Rust borrow checker guarantees no concurrent access)
+        // - The pointer points to unified memory allocated by backend (valid for buffer lifetime)
+        // - T = u8, so alignment requirement is 1 (always satisfied)
         // DEEP DEBT: NonNull.as_ptr() is zero-cost - same performance, better safety
         Ok(unsafe { std::slice::from_raw_parts_mut(self.cpu_ptr.as_ptr(), self.size) })
     }
@@ -174,10 +182,18 @@ impl UnifiedBuffer {
         // DEEP DEBT: Validate before every use!
         self.validate_cpu_ptr()?;
 
-        // SAFETY:
-        // - cpu_ptr validated above (NonNull guarantees non-null, validated for alignment and allocation)
-        // - size is validated at buffer creation and in validate_cpu_ptr()
-        // - We have &self, Rust guarantees no concurrent mutation
+        // SAFETY: from_raw_parts requires:
+        // - ptr must be valid for reads of size * mem::size_of::<T>() bytes
+        // - ptr must be properly aligned for T
+        // - The memory must be initialized
+        // - The memory must not be mutated through other pointers during the lifetime
+        // Invariants that hold:
+        // - cpu_ptr is NonNull (compile-time guarantee of non-null)
+        // - cpu_ptr validated above (alignment checked, allocation exists, not in NULL page)
+        // - size is validated at buffer creation and in validate_cpu_ptr() (non-zero, reasonable)
+        // - We have &self, Rust guarantees no concurrent mutation (immutable borrow)
+        // - The pointer points to unified memory allocated by backend (valid for buffer lifetime)
+        // - T = u8, so alignment requirement is 1 (always satisfied)
         // DEEP DEBT: NonNull.as_ptr() is zero-cost - same performance, better safety
         Ok(unsafe { std::slice::from_raw_parts(self.cpu_ptr.as_ptr(), self.size) })
     }
@@ -215,7 +231,13 @@ impl UnifiedBuffer {
         );
         assert!(size > 0, "Buffer size cannot be zero");
 
-        // SAFETY: We've validated cpu_ptr is not null above
+        // SAFETY: NonNull::new_unchecked requires ptr != null.
+        // Invariants that hold:
+        // - cpu_ptr is not null (asserted above)
+        // - cpu_ptr is not in NULL page (asserted above, >= 4096)
+        // - cpu_ptr points to valid unified memory allocated by backend
+        // - The pointer will remain valid for the lifetime of the UnifiedBuffer
+        // Note: We use NonNull instead of *mut u8 for compile-time null safety
         let cpu_ptr_nonnull = unsafe { NonNull::new_unchecked(cpu_ptr) };
 
         Self {
@@ -583,10 +605,15 @@ impl Drop for UnifiedBuffer {
                     );
 
                     std::thread::spawn(move || {
-                        let rt = tokio::runtime::Builder::new_current_thread()
+                        let Ok(rt) = tokio::runtime::Builder::new_current_thread()
                             .enable_all()
                             .build()
-                            .expect("Failed to create runtime for cleanup");
+                        else {
+                            tracing::error!(
+                                "Failed to create runtime for buffer cleanup. Memory leaked."
+                            );
+                            return;
+                        };
 
                         rt.block_on(async {
                             if let Err(e) = backend.free_unified(allocation).await {
@@ -617,14 +644,37 @@ impl Drop for UnifiedBuffer {
     }
 }
 
-// SAFETY: UnifiedBuffer is Send because:
-// - All interior data is thread-safe (Arc, RwLock, DashMap)
-// - Raw pointers are only accessed through safe API
+// SAFETY: Send implementation is safe because:
+// - All interior data structures are thread-safe:
+//   - Arc<T> is Send when T: Send (all our Arc types are Send)
+//   - RwLock<T> is Send when T: Send (SyncState is Send)
+//   - DashMap is thread-safe and Send
+//   - AtomicU64 is Send
+// - Raw pointers (cpu_ptr, device_ptr) are only accessed through safe API methods
+// - The safe API enforces proper synchronization:
+//   - Mutable operations require &mut self (exclusive access)
+//   - Immutable operations use &self with interior mutability (RwLock, DashMap)
+// - Moving UnifiedBuffer between threads doesn't invalidate the underlying memory
+//   (unified memory is allocated by backend and remains valid across threads)
+// - No thread-local state that would be invalidated by moving
 unsafe impl Send for UnifiedBuffer {}
 
-// SAFETY: UnifiedBuffer is Sync because:
-// - All interior data is thread-safe
-// - Mutable operations require &mut self (exclusive access)
+// SAFETY: Sync implementation is safe because:
+// - All interior data structures are thread-safe and Sync:
+//   - Arc<T> is Sync when T: Sync + Send (all our Arc types meet this)
+//   - RwLock<T> is Sync when T: Send (SyncState is Send)
+//   - DashMap is thread-safe and Sync
+//   - AtomicU64 is Sync
+// - Concurrent access patterns are safe:
+//   - Multiple &self references can coexist (read-only operations)
+//   - Mutable operations require &mut self (exclusive access enforced by borrow checker)
+//   - Interior mutability (sync_state, allocations, metrics) uses proper synchronization
+// - Raw pointers (cpu_ptr, device_ptr) are only accessed through safe API:
+//   - Read operations use &self and validate before access
+//   - Write operations use &mut self (exclusive access)
+//   - Slice creation is bounds-checked and validated
+// - No data races: all shared mutable state is protected by RwLock or atomic operations
+// - The underlying unified memory is safe for concurrent reads (backend guarantees this)
 unsafe impl Sync for UnifiedBuffer {}
 
 #[cfg(test)]

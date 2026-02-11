@@ -157,7 +157,7 @@ fn main() -> Result<()> {
     println!("✅ Keys generated\n");
 
     // Define test configurations
-    let pipelines = vec![
+    let pipelines = [
         // Baselines
         PipelineConfig::SingleCpu,
         PipelineConfig::SingleGpu,
@@ -171,7 +171,7 @@ fn main() -> Result<()> {
         PipelineConfig::DualGpu,
     ];
 
-    let workloads = vec![
+    let workloads = [
         WorkloadType::UltraSparse,
         WorkloadType::HighSparse,
         WorkloadType::MediumSparse,
@@ -536,7 +536,7 @@ fn generate_matrix_report(results: &[BenchmarkResult]) -> Result<()> {
                 "    Chip Ordering: {}\n",
                 result.chip_ordering.join(" → ")
             ));
-            report.push_str("\n");
+            report.push('\n');
         }
     }
 

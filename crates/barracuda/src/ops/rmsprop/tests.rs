@@ -1,12 +1,13 @@
 //! Tests for RMSprop Optimizer
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 #[tokio::test]
 async fn test_rmsprop_basic() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
         .await
         .unwrap();
@@ -29,8 +30,9 @@ async fn test_rmsprop_basic() {
 
 #[tokio::test]
 async fn test_rmsprop_accumulation() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
         .await
         .unwrap();
@@ -59,8 +61,9 @@ async fn test_rmsprop_accumulation() {
 
 #[tokio::test]
 async fn test_rmsprop_different_alpha() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights1 = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
         .await
         .unwrap();
@@ -90,8 +93,9 @@ async fn test_rmsprop_different_alpha() {
 
 #[tokio::test]
 async fn test_rmsprop_validation() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())
         .await
         .unwrap();
@@ -131,8 +135,9 @@ async fn test_rmsprop_validation() {
 
 #[tokio::test]
 async fn test_rmsprop_large_batch() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let size = 128;
     let weights = Tensor::from_vec_on(vec![1.0; size], vec![size], device.clone())
         .await
@@ -155,8 +160,9 @@ async fn test_rmsprop_large_batch() {
 
 #[tokio::test]
 async fn test_rmsprop_multi_step() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![10.0, 20.0], vec![2], device.clone())
         .await
         .unwrap();

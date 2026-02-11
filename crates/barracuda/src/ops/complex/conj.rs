@@ -171,12 +171,13 @@ impl ComplexConj {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_complex_conj() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // conj(3+4i) = 3-4i
         let data = vec![3.0f32, 4.0];
@@ -192,7 +193,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_complex_conj_twice() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         // conj(conj(z)) = z
         let data = vec![3.0f32, 4.0];
         let tensor = Tensor::from_data(&data, vec![1, 2], device.clone()).unwrap();

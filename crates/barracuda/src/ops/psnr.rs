@@ -51,7 +51,7 @@ impl PSNR {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/psnr.wgsl")
+        include_str!("../shaders/misc/psnr.wgsl")
     }
 
     /// Execute the PSNR operation
@@ -242,14 +242,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_psnr_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let original = Tensor::new(vec![0.5; 1000], vec![1000], device.clone());
         let reconstructed = Tensor::new(vec![0.5; 1000], vec![1000], device.clone());
         let psnr_val = original.psnr(reconstructed, 1.0).unwrap();
@@ -258,8 +259,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_psnr_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Perfect reconstruction
         let original = Tensor::new(vec![0.1, 0.5, 0.9], vec![3], device.clone());
         let reconstructed = Tensor::new(vec![0.1, 0.5, 0.9], vec![3], device.clone());

@@ -29,6 +29,7 @@ mutex_atomic = "warn"
 [[bin]]
 name = "toadstool"
 path = "src/main.rs"
+doc = false  # Avoid doc collision with toadstool lib (target/doc/toadstool/index.html)
 
 # UNIBIN EVOLUTION (Jan 27, 2026):
 # Removed legacy binary aliases (toadstool-cli, toadstool-server).

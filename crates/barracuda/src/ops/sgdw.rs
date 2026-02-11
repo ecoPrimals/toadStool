@@ -76,7 +76,7 @@ impl SGDW {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/sgdw.wgsl")
+        include_str!("../shaders/optimizer/sgdw.wgsl")
     }
 
     pub fn execute(self) -> Result<(Tensor, Tensor)> {
@@ -301,12 +301,13 @@ impl SGDW {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_sgdw_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let params = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
             .await
             .unwrap();
@@ -323,8 +324,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sgdw_with_momentum() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let params = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
             .await
             .unwrap();
@@ -356,8 +358,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sgdw_nesterov() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let params = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
             .await
             .unwrap();
@@ -374,8 +377,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sgdw_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 128;
         let params = Tensor::from_vec_on(vec![1.0; size], vec![size], device.clone())
             .await

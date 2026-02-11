@@ -9,8 +9,7 @@ use barracuda::ops::*;
 #[tokio::test]
 async fn test_resnet_residual_block() {
     // ResNet residual block: Conv → BN → ReLU → Conv → BN → Add → ReLU
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 1;
     let channels = 64;
     let height = 32;
@@ -85,8 +84,7 @@ async fn test_resnet_residual_block() {
 #[tokio::test]
 async fn test_convnet_forward_pass() {
     // Simple ConvNet: Conv → ReLU → Pool → Conv → ReLU → Pool
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 1;
     let in_channels = 3;
     let out_channels = 16;
@@ -136,8 +134,7 @@ async fn test_convnet_forward_pass() {
 #[tokio::test]
 async fn test_yolo_detection_pipeline() {
     // YOLO-like detection: Conv backbone → Detection head
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 1;
     let channels = 256;
     let grid_h = 8;
@@ -172,8 +169,7 @@ async fn test_yolo_detection_pipeline() {
 #[tokio::test]
 async fn test_image_augmentation_pipeline() {
     // Augmentation: Normalize → RandomCrop → Flip
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 2;
     let channels = 3;
     let height = 224;

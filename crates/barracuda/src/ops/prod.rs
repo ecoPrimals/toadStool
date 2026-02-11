@@ -31,12 +31,12 @@ impl Prod {
 
     /// Get the WGSL shader source for global reduction
     fn wgsl_shader_reduce() -> &'static str {
-        include_str!("../shaders/prod_reduce.wgsl")
+        include_str!("../shaders/reduce/prod_reduce.wgsl")
     }
 
     /// Get the WGSL shader source for dimension-wise reduction
     fn wgsl_shader_dim() -> &'static str {
-        include_str!("../shaders/prod_dim.wgsl")
+        include_str!("../shaders/reduce/prod_dim.wgsl")
     }
 
     /// Execute the product operation
@@ -387,7 +387,7 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     fn prod_cpu(input: &[f32]) -> f32 {
         input.iter().product()
@@ -395,7 +395,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_prod_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![4], device)
             .await
@@ -413,8 +415,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_prod_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Contains zero (product = 0)
         let input_data = vec![1.0, 2.0, 0.0, 4.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![4], device.clone())
@@ -434,7 +437,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_prod_boundary() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Small values to avoid overflow
         let input_data = vec![1.1, 1.2, 1.3, 1.4, 1.5];
         let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)
@@ -449,7 +454,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_prod_large_tensor() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 10;
         let input_data: Vec<f32> = (1..=size).map(|i| 1.0 + (i as f32) * 0.01).collect();
         let input = Tensor::from_vec_on(input_data.clone(), vec![size], device)
@@ -464,7 +471,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_prod_precision() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![2.0, 3.0, 4.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![3], device)
             .await
@@ -478,7 +487,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_prod_dim() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test 2D tensor: [[1, 2, 3], [4, 5, 6]]
         let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![2, 3], device.clone())

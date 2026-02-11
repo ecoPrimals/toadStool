@@ -43,7 +43,7 @@ impl Tile {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/tile.wgsl")
+        include_str!("../shaders/tensor/tile.wgsl")
     }
 
     /// Execute the tile operation
@@ -325,13 +325,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_tile_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
         let tiled = Tile::new(input, vec![2]).unwrap().execute().unwrap();
@@ -340,7 +342,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tile_2d() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..6).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![2, 3], device.clone()).unwrap();
 
@@ -350,7 +354,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tile_invalid_length() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
 
         assert!(Tile::new(input, vec![2, 3]).is_err());
@@ -358,7 +364,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tile_zero_repeat() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
 
         assert!(Tile::new(input, vec![0]).is_err());
@@ -366,7 +374,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tile_multiple_dims() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..12).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![2, 3, 2], device.clone()).unwrap();
 

@@ -96,7 +96,7 @@ impl ElasticTransform {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/elastic_transform.wgsl")
+        include_str!("../shaders/augmentation/elastic_transform.wgsl")
     }
 
     /// Execute elastic transform on tensor
@@ -280,12 +280,13 @@ impl ElasticTransform {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_elastic_transform_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0; 2 * 3 * 4 * 4], vec![2, 3, 4, 4], device.clone())
             .await
             .unwrap();

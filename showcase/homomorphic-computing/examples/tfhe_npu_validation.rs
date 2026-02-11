@@ -304,8 +304,8 @@ fn print_three_way_comparison(cpu: &BenchResult, gpu: &BenchResult, npu: &BenchR
     println!("│ Substrate   │ Throughput │  Latency  │   Power    │  Ops/Joule   │");
     println!("├─────────────┼────────────┼───────────┼────────────┼──────────────┤");
 
-    print!(
-        "│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W │ {:>10.0}   │\n",
+    println!(
+        "│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W │ {:>10.0}   │",
         cpu.substrate,
         cpu.throughput,
         cpu.compute_time_us as f64 / (cpu.iterations as f64 * 1000.0),
@@ -313,8 +313,8 @@ fn print_three_way_comparison(cpu: &BenchResult, gpu: &BenchResult, npu: &BenchR
         cpu.ops_per_joule
     );
 
-    print!(
-        "│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W │ {:>10.0}   │\n",
+    println!(
+        "│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W │ {:>10.0}   │",
         gpu.substrate,
         gpu.throughput,
         gpu.compute_time_us as f64 / (gpu.iterations as f64 * 1000.0),
@@ -322,8 +322,8 @@ fn print_three_way_comparison(cpu: &BenchResult, gpu: &BenchResult, npu: &BenchR
         gpu.ops_per_joule
     );
 
-    print!(
-        "│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W ⚡│ {:>10.0} ⭐ │\n",
+    println!(
+        "│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W ⚡│ {:>10.0} ⭐ │",
         npu.substrate,
         npu.throughput,
         npu.compute_time_us as f64 / (npu.iterations as f64 * 1000.0),

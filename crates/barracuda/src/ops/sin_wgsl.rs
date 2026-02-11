@@ -26,7 +26,7 @@ impl Sin {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/sin.wgsl")
+        include_str!("../shaders/math/sin.wgsl")
     }
 
     /// Execute the sin operation

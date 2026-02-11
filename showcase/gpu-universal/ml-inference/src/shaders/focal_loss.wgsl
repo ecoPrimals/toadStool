@@ -17,15 +17,12 @@
 @group(0) @binding(3) var<uniform> params: Params;
 
 struct Params {
-    alpha: f32,           // Balancing factor, typically 0.25
-    gamma: f32,           // Focusing parameter, typically 2.0
-    epsilon: f32,         // Numerical stability
-    reduction_mode: u32,  // 0=mean, 1=sum, 2=none
+    alpha: f32,
+    gamma: f32,
+    epsilon: f32,
+    reduction_mode: u32,
     size: u32,
-    _pad1: vec3<u32>,     // 12 bytes
-    _pad2: vec4<u32>,     // 16 bytes  
-    _pad3: vec4<u32>,     // 16 bytes
-    _pad4: vec4<u32>,     // 16 bytes = Total 80 bytes
+    _pad: array<u32, 19>,
 }
 
 @compute @workgroup_size(256)

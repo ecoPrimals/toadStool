@@ -1,11 +1,11 @@
 use super::{Fft1D, Ifft1D};
-use crate::device::WgpuDevice;
 use crate::tensor::Tensor;
-use std::sync::Arc;
 
 #[tokio::test]
 async fn test_fft_ifft_inverse_property() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+        return;
+    };
 
     // Test FFT(IFFT(x)) = x property
     // Input: Random complex signal

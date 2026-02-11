@@ -316,12 +316,13 @@ impl PbcDistance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_pbc_distance_simple() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Two particles in 3D box
         let pos_a = vec![0.1, 0.2, 0.3, 0.8, 0.9, 0.7]; // 2 particles
@@ -343,7 +344,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_pbc_wrapping() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Particles near opposite edges (should wrap)
         let pos_a = vec![0.1, 0.5, 0.5]; // Near left edge
@@ -384,7 +388,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_pbc_multiple_particles() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // 4 particles
         let pos = vec![0.1, 0.1, 0.1, 0.5, 0.5, 0.5, 0.9, 0.9, 0.9, 0.2, 0.8, 0.3];

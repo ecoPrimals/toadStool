@@ -43,7 +43,7 @@ impl SpectralNorm {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/spectral_norm.wgsl")
+        include_str!("../shaders/norm/spectral_norm.wgsl")
     }
 
     /// Execute SpectralNorm on tensor (modifies weight in-place)
@@ -225,12 +225,13 @@ impl SpectralNorm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_spectral_norm_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let rows = 10;
         let cols = 8;
 

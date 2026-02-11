@@ -3,7 +3,7 @@
 //! Discovers available GPUs and provides capability-based selection.
 //! Modern, idiomatic Rust with proper error handling.
 
-#[cfg(any(feature = "vulkan"))]
+#[cfg(feature = "vulkan")]
 use anyhow::Context;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

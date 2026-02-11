@@ -9,6 +9,11 @@ use toadstool_common::error::{
     ConfigError, ExecutionError, NetworkError, ResourceError, SecurityError, SystemError,
 };
 
+/// Placeholder strings for error conversions (when specific context is unknown)
+const UNKNOWN: &str = "unknown";
+const SYSTEM_RESOURCE: &str = "system";
+const SERVER_OPERATION: &str = "server_operation";
+
 /// `ToadStool` server errors
 ///
 /// This is a server-specific error type that maps directly to ToadStoolError categories.
@@ -56,13 +61,13 @@ impl From<ServerError> for ToadStoolError {
             }
             ServerError::RuntimeEngine(msg) => {
                 ToadStoolError::Execution(ExecutionError::EngineUnavailable {
-                    engine: "unknown".to_string(),
+                    engine: UNKNOWN.to_string(),
                     reason: msg,
                 })
             }
             ServerError::ResourceExhaustion(msg) => {
                 ToadStoolError::Resource(ResourceError::AllocationFailure {
-                    resource: "system".to_string(),
+                    resource: SYSTEM_RESOURCE.to_string(),
                     reason: msg,
                 })
             }
@@ -71,7 +76,7 @@ impl From<ServerError> for ToadStoolError {
             }
             ServerError::Authorization(msg) => {
                 ToadStoolError::Security(SecurityError::PermissionDenied {
-                    operation: "server_operation".to_string(),
+                    operation: SERVER_OPERATION.to_string(),
                     reason: msg,
                 })
             }
@@ -79,12 +84,12 @@ impl From<ServerError> for ToadStoolError {
                 ToadStoolError::Configuration(ConfigError::ValidationError { reason: msg })
             }
             ServerError::Network(msg) => ToadStoolError::Network(NetworkError::ConnectionFailed {
-                endpoint: "unknown".to_string(),
+                endpoint: UNKNOWN.to_string(),
                 reason: msg,
             }),
             ServerError::Execution(msg) => {
                 ToadStoolError::Execution(ExecutionError::WorkloadFailure {
-                    workload_id: "unknown".to_string(),
+                    workload_id: UNKNOWN.to_string(),
                     reason: msg,
                 })
             }
@@ -381,8 +386,10 @@ mod tests {
     #[test]
     fn test_server_result_ok() {
         let result: ServerResult<i32> = Ok(42);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 42);
+        let Ok(value) = result else {
+            panic!("Expected Ok");
+        };
+        assert_eq!(value, 42);
     }
 
     #[test]

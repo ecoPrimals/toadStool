@@ -7,7 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -22,7 +22,7 @@ impl Lgamma {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/lgamma.wgsl")
+        include_str!("../shaders/math/lgamma.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -137,10 +137,9 @@ impl Lgamma {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(size as u32);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -164,15 +163,17 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_lgamma() {
-        let device = get_test_device().await;
-        let data = vec![0.0, 1.0, 2.0, 3.0, 4.0];
+        let Some(device) = get_test_device().await else {
+            return;
+        };
+        // lgamma has singularities at 0 and negative integers - use positive values only
+        let data = vec![0.5, 1.0, 2.0, 3.0, 4.0];
         let input = Tensor::new(data, vec![5], device.clone());
         let output = input.lgamma().unwrap();
         let result = output.to_vec().unwrap();

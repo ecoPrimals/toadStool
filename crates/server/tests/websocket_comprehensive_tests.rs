@@ -118,8 +118,8 @@ async fn test_websocket_invalid_upgrade() {
 async fn test_websocket_connection_timeout() {
     // Test connection timeout handling
     let result = timeout(Duration::from_millis(100), async {
-        // Simulate slow connection
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        // Future that never completes - timeout will fire without sleep
+        std::future::pending::<()>().await
     })
     .await;
 

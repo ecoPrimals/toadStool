@@ -307,8 +307,8 @@ impl DecisionMatrix {
 /// Device selector using validated performance data
 pub struct DeviceSelector {
     available_devices: Vec<ComputeDevice>,
-    #[allow(dead_code)] // Will be used for advanced selection in future
-    decision_matrix: DecisionMatrix,
+    // Pending: Use for Pareto-optimal selection (energy vs throughput vs latency trade-offs)
+    _decision_matrix: DecisionMatrix,
 }
 
 impl DeviceSelector {
@@ -318,7 +318,7 @@ impl DeviceSelector {
     pub fn new(available_devices: Vec<ComputeDevice>) -> Self {
         Self {
             available_devices,
-            decision_matrix: DecisionMatrix::from_validation_data(),
+            _decision_matrix: DecisionMatrix::from_validation_data(),
         }
     }
 

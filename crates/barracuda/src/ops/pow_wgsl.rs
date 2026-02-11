@@ -26,7 +26,7 @@ impl Pow {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/pow.wgsl")
+        include_str!("../shaders/math/pow.wgsl")
     }
 
     /// Execute the pow operation

@@ -151,5 +151,21 @@ fn main() -> Result<()> {
 }
 
 fn is_root() -> bool {
-    unsafe { libc::geteuid() == 0 }
+    // Pure Rust root detection — no unsafe, no libc dependency for this.
+    // Parse /proc/self/status to find the Uid line, which contains:
+    //   Uid: <real> <effective> <saved> <filesystem>
+    // We check the effective UID (index 1).
+    std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|contents| {
+            contents
+                .lines()
+                .find(|line| line.starts_with("Uid:"))
+                .and_then(|line| {
+                    line.split_whitespace()
+                        .nth(2) // effective UID (0=field name, 1=real, 2=effective)
+                        .and_then(|uid| uid.parse::<u32>().ok())
+                })
+        })
+        .map_or(false, |euid| euid == 0)
 }

@@ -212,7 +212,7 @@ mod tests {
         use std::sync::atomic::{AtomicUsize, Ordering};
 
         let attempts = Arc::new(AtomicUsize::new(0));
-        let attempts_clone = attempts.clone();
+        let attempts_clone = Arc::clone(&attempts);
 
         let result = retry_with_timeout(
             move || {

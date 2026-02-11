@@ -12,7 +12,7 @@ use std::sync::Arc;
 /// - Input size: d_input
 /// - Hidden size: d_hidden
 /// - Weights: W_ih [d_input, d_hidden], W_hh [d_hidden, d_hidden]
-/// - Biases: b_ih [d_hidden], b_hh [d_hidden]
+/// - Biases: b_ih `d_hidden`, b_hh `d_hidden`
 ///
 /// ## Performance
 ///
@@ -51,8 +51,8 @@ impl RNNCell {
     /// * `hidden` - Previous hidden state [batch, d_hidden]
     /// * `w_ih` - Input-hidden weights [d_input, d_hidden]
     /// * `w_hh` - Hidden-hidden weights [d_hidden, d_hidden]
-    /// * `b_ih` - Input-hidden bias [d_hidden]
-    /// * `b_hh` - Hidden-hidden bias [d_hidden]
+    /// * `b_ih` - Input-hidden bias `d_hidden`
+    /// * `b_hh` - Hidden-hidden bias `d_hidden`
     /// * `batch` - Batch size
     ///
     /// # Returns

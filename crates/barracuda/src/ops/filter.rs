@@ -17,11 +17,15 @@
 //! ## Usage
 //!
 //! ```no_run
-//! use barracuda::tensor::Tensor;
-//! use barracuda::ops::filter::FilterOperation;
-//!
-//! let input = Tensor::from_data(&vec![1.0, 5.0, 3.0, 7.0], vec![4], device)?;
-//! let filtered = input.filter(FilterOperation::GreaterThan, 4.0)?;
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # use barracuda::tensor::Tensor;
+//! # use barracuda::ops::filter::FilterOperation;
+//! # use barracuda::device::test_pool;
+//! # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! let input = Tensor::from_data(&[1.0f32, 5.0, 3.0, 7.0], vec![4], device)?;
+//! let _filtered = input.filter(FilterOperation::GreaterThan, 4.0)?;
+//! # Ok(())
+//! # }
 //! ```
 
 use crate::device::{DeviceCapabilities, WorkloadType};
@@ -64,7 +68,7 @@ impl FilterOperation {
 
 impl Filter {
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/filter.wgsl")
+        include_str!("../shaders/misc/filter.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -270,10 +274,16 @@ impl Tensor {
     /// ## Example
     ///
     /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use barracuda::tensor::Tensor;
     /// # use barracuda::ops::filter::FilterOperation;
-    /// # let input = todo!();
+    /// # use barracuda::device::test_pool;
+    /// # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let input = Tensor::from_data(&[1.0f32, 5.0, 3.0, 7.0], vec![4], device).unwrap();
     /// // Keep values > 4.0
-    /// let mask = input.filter(FilterOperation::GreaterThan, 4.0)?;
+    /// let _mask = input.filter(FilterOperation::GreaterThan, 4.0)?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn filter(self, operation: FilterOperation, threshold: f32) -> Result<Self> {
         let op = Filter {
@@ -288,12 +298,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_filter_basic() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         let input = Tensor::from_data(&vec![1.0, 5.0, 3.0, 7.0], vec![4], device.clone()).unwrap();
 
@@ -311,7 +322,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_filter_edge_cases() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // All values pass (LessThan 100)
         let all_pass =
@@ -339,7 +353,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_filter_boundary() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Single element
         let single = Tensor::from_data(&vec![10.0], vec![1], device.clone()).unwrap();
@@ -363,7 +380,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_filter_large_tensor() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Large tensor (1024 elements)
         let size = 1024;
@@ -384,7 +404,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_filter_precision() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test all filter operations
         let data = vec![0.5, 1.5, 2.5, 3.5, 4.5];

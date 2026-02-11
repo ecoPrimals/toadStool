@@ -30,7 +30,7 @@ impl WeightNorm {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/weight_norm.wgsl")
+        include_str!("../shaders/norm/weight_norm.wgsl")
     }
 
     /// Execute WeightNorm on tensor
@@ -197,12 +197,13 @@ impl WeightNorm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_weight_norm_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let num_weights = 20;
 
         let v = Tensor::from_vec_on(vec![1.0; num_weights], vec![num_weights], device.clone())

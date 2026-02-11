@@ -148,10 +148,7 @@ async fn test_e2e_large_data_transfer() {
     // Write in chunks
     let chunk_size = 1024 * 1024; // 1MB chunks
     for (i, chunk) in write_data.chunks(chunk_size).enumerate() {
-        buffer
-            .write_async(i * chunk_size as usize, chunk)
-            .await
-            .unwrap();
+        buffer.write_async(i * chunk_size, chunk).await.unwrap();
     }
 
     // Read back and verify

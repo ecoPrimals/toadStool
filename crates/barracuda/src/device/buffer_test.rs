@@ -3,7 +3,7 @@
 #[tokio::test]
 async fn test_direct_buffer_write_read() {
     use wgpu::util::DeviceExt;
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else { return };
     
     println!("\n=== Testing Direct Buffer Write/Read ===\n");
     

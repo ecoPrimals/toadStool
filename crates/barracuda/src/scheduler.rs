@@ -67,8 +67,9 @@ impl UnifiedScheduler {
             match TpuDevice::new().await {
                 Ok(tpu) => {
                     println!("  ✅ TPU: {}", tpu.name());
-                    // TODO: Wrap TPU in executor
-                    // executors.push(Arc::new(TpuExecutor::new(tpu)));
+                    // Pending: TpuExecutor must implement ComputeExecutor trait and wrap TpuDevice.
+                    // Dependency chain: TpuDevice -> TpuExecutor (new) -> executors.push().
+                    // Blocked until TpuExecutor exists and satisfies unified_hardware::ComputeExecutor.
                 }
                 Err(_) => {
                     println!("  ℹ️  No TPU available");
@@ -82,8 +83,9 @@ impl UnifiedScheduler {
             match detect_akida_boards() {
                 Ok(caps) if !caps.boards.is_empty() => {
                     println!("  ✅ NPU: {} Akida board(s)", caps.boards.len());
-                    // TODO: Wrap NPU in executor
-                    // executors.push(Arc::new(NpuExecutor::new(caps.boards[0].clone())));
+                    // Pending: NpuExecutor must implement ComputeExecutor and wrap Akida board handles.
+                    // Dependency chain: detect_akida_boards -> NpuExecutor (new) -> executors.push().
+                    // Blocked until NpuExecutor implements unified_hardware::ComputeExecutor.
                 }
                 _ => {
                     // NPU not available (okay, not all systems have it)
@@ -121,7 +123,8 @@ impl UnifiedScheduler {
         }
 
         // Score each candidate and pick the best
-        let best = candidates
+        // Invariant: candidates is non-empty (checked above with early return)
+        candidates
             .iter()
             .max_by(|a, b| {
                 let score_a = a.score_operation(op, inputs);
@@ -130,9 +133,8 @@ impl UnifiedScheduler {
                     .partial_cmp(&score_b)
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
-            .unwrap(); // Safe because candidates is non-empty
-
-        (*best).clone()
+            .map(|best| (*best).clone())
+            .unwrap_or_else(|| self.default_executor.clone())
     }
 
     /// Get all available executors

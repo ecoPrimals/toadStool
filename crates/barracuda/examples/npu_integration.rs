@@ -243,6 +243,5 @@ mod tests {
     fn test_examples_compile() {
         // Just ensure examples compile
         // Actual execution requires NPU hardware
-        assert!(true);
     }
 }

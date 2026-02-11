@@ -19,15 +19,11 @@ use std::time::Instant;
 /// Generate random polynomial with coefficients in [0, modulus)
 fn random_polynomial(degree: usize, modulus: u64) -> Vec<u64> {
     use std::collections::hash_map::RandomState;
-    use std::hash::{BuildHasher, Hash, Hasher};
+    use std::hash::BuildHasher;
 
     let hasher_builder = RandomState::new();
     (0..degree)
-        .map(|i| {
-            let mut hasher = hasher_builder.build_hasher();
-            i.hash(&mut hasher);
-            hasher.finish() % modulus
-        })
+        .map(|i| hasher_builder.hash_one(i) % modulus)
         .collect()
 }
 
@@ -36,10 +32,10 @@ fn naive_poly_multiply_cpu(a: &[u64], b: &[u64], modulus: u64) -> Vec<u64> {
     let degree = a.len();
     let mut result = vec![0u64; degree];
 
-    for i in 0..degree {
-        for j in 0..degree {
+    for (i, &a_val) in a.iter().enumerate() {
+        for (j, &b_val) in b.iter().enumerate() {
             let idx = (i + j) % degree;
-            let product = ((a[i] as u128) * (b[j] as u128)) % (modulus as u128);
+            let product = ((a_val as u128) * (b_val as u128)) % (modulus as u128);
             result[idx] = (result[idx] as u128 + product) as u64 % modulus;
         }
     }
@@ -101,9 +97,10 @@ async fn main() -> Result<()> {
         .flat_map(|&x| vec![(x & 0xFFFFFFFF) as u32, (x >> 32) as u32])
         .collect();
 
-    // Create tensor
+    // Create tensor -- reinterpret u32 as f32 for GPU transport (FHE convention)
+    let poly_f32: Vec<f32> = poly_u32.iter().map(|&x| f32::from_bits(x)).collect();
     let poly_tensor =
-        Tensor::from_data(&poly_u32, vec![degree_small as usize * 2], _device.clone())?;
+        Tensor::from_data(&poly_f32, vec![degree_small as usize * 2], _device.clone())?;
 
     // Forward NTT
     println!("\n⚡ Running NTT on GPU...");
@@ -203,7 +200,8 @@ async fn main() -> Result<()> {
         .flat_map(|&x| vec![(x & 0xFFFFFFFF) as u32, (x >> 32) as u32])
         .collect();
 
-    let tensor_a = Tensor::from_data(&a_u32, vec![degree_large * 2], _device.clone())?;
+    let a_f32: Vec<f32> = a_u32.iter().map(|&x| f32::from_bits(x)).collect();
+    let tensor_a = Tensor::from_data(&a_f32, vec![degree_large * 2], _device.clone())?;
 
     let start = Instant::now();
 

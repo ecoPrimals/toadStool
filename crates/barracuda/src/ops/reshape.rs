@@ -20,6 +20,8 @@
 //! data buffer itself is never modified or copied. This is the correct
 //! implementation pattern for reshape operations.
 
+use crate::error::{BarracudaError, Result};
+
 /// Reshape parameters
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -60,17 +62,18 @@ pub async fn reshape(
     _queue: &wgpu::Queue,
     input: &[f32],
     new_shape: &[usize],
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+) -> Result<Vec<f32>> {
     let num_elements = input.len();
     let new_total: usize = new_shape.iter().product();
 
     // Validate: total elements must match
     if num_elements != new_total {
-        return Err(format!(
-            "Cannot reshape: input has {} elements, new shape {:?} requires {}",
-            num_elements, new_shape, new_total
-        )
-        .into());
+        return Err(BarracudaError::InvalidInput {
+            message: format!(
+                "Cannot reshape: input has {} elements, new shape {:?} requires {}",
+                num_elements, new_shape, new_total
+            ),
+        });
     }
 
     // Create params
@@ -87,18 +90,18 @@ pub async fn reshape(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_reshape_2d_to_1d() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(dev) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
         let input = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]; // Shape: [2, 3]
 
-        let output = reshape(&device, &queue, &input, &[6]).await.unwrap();
+        let output = reshape(device, queue, &input, &[6]).await.unwrap();
 
         assert_eq!(output.len(), 6);
         assert_eq!(output, input); // Data unchanged
@@ -106,13 +109,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_reshape_1d_to_2d() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(dev) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
         let input = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]; // Shape: [6]
 
-        let output = reshape(&device, &queue, &input, &[2, 3]).await.unwrap();
+        let output = reshape(device, queue, &input, &[2, 3]).await.unwrap();
 
         assert_eq!(output.len(), 6);
         assert_eq!(output, input); // Data unchanged, shape is metadata
@@ -120,13 +125,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_reshape_3d() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(dev) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
         let input: Vec<f32> = (0..24).map(|i| i as f32).collect(); // 24 elements
 
-        let output = reshape(&device, &queue, &input, &[2, 3, 4]).await.unwrap();
+        let output = reshape(device, queue, &input, &[2, 3, 4]).await.unwrap();
 
         assert_eq!(output.len(), 24);
         assert_eq!(output, input);
@@ -134,13 +141,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_reshape_invalid_size() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(dev) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
         let input = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]; // 6 elements
 
-        let result = reshape(&device, &queue, &input, &[2, 4]).await; // Needs 8 elements
+        let result = reshape(device, queue, &input, &[2, 4]).await; // Needs 8 elements
 
         assert!(result.is_err());
     }

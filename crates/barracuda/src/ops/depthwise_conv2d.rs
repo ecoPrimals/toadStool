@@ -54,7 +54,7 @@ impl DepthwiseConv2D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/depthwise_conv2d.wgsl")
+        include_str!("../shaders/conv/depthwise_conv2d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -203,14 +203,15 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<crate::device::WgpuDevice> {
-        Arc::new(crate::device::WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_depthwise_conv2d_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Create input [1, 2, 3, 3] - 1 batch, 2 channels, 3x3 spatial
         let input_data = vec![
             1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, // Channel 0
@@ -240,8 +241,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_depthwise_conv2d_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Single channel, 1x1 kernel (identity operation)
         let input_data = vec![1.0, 2.0, 3.0, 4.0]; // [1, 1, 2, 2]
         let input = Tensor::from_data(&input_data, vec![1, 1, 2, 2], device.clone()).unwrap();
@@ -270,8 +272,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_depthwise_conv2d_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // With padding - output size preserved
         let input_data = vec![1.0, 2.0, 3.0, 4.0]; // [1, 1, 2, 2]
         let input = Tensor::from_data(&input_data, vec![1, 1, 2, 2], device.clone()).unwrap();
@@ -299,8 +302,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_depthwise_conv2d_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Batch size 8, 16 channels (MobileNet scale)
         let batch_size = 8;
         let channels = 16;
@@ -316,7 +320,7 @@ mod tests {
 
         // Depthwise 3x3 kernel
         let kernel_size = 3;
-        let weight_data = vec![1.0; channels * 1 * kernel_size * kernel_size];
+        let weight_data = vec![1.0; channels * kernel_size * kernel_size];
         let weight = Tensor::from_data(
             &weight_data,
             vec![channels, 1, kernel_size, kernel_size],
@@ -335,8 +339,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_depthwise_conv2d_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Precision test: Verify depthwise computation produces reasonable outputs
         let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]; // [1, 1, 3, 3]
         let input = Tensor::from_data(&input_data, vec![1, 1, 3, 3], device.clone()).unwrap();

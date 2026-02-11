@@ -166,7 +166,7 @@ impl Nadam {
 
     /// WGSL shader source
     pub(super) fn shader() -> &'static str {
-        include_str!("../../shaders/nadam.wgsl")
+        include_str!("../../shaders/optimizer/nadam.wgsl")
     }
 
     /// Get weights tensor

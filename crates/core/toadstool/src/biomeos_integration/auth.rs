@@ -229,7 +229,7 @@ impl AuthenticationManager {
     /// Create a new manager with in-memory test backend
     #[must_use]
     pub fn with_inmemory(config: AuthManagerConfig) -> Self {
-        let backend = super::auth_backend::InMemoryAuthBackend::new();
+        let backend = crate::biomeos_integration::InMemoryAuthBackend::new();
         Self {
             config,
             current_token: None,
@@ -366,6 +366,9 @@ impl AuthenticationManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
+
+    use crate::biomeos_integration::types::ToadStoolConfig;
 
     fn test_config() -> AuthManagerConfig {
         AuthManagerConfig {
@@ -375,6 +378,308 @@ mod tests {
             timestamp_window: Duration::from_secs(300),
             replay_protection: true,
         }
+    }
+
+    fn sample_token() -> AuthenticationToken {
+        let now = chrono::Utc::now();
+        let expires = now + chrono::Duration::hours(1);
+        AuthenticationToken {
+            id: "token-123".to_string(),
+            token_type: "Bearer".to_string(),
+            token: "encrypted-value".to_string(),
+            public_key: "pk-abc".to_string(),
+            expires_at: expires,
+            issued_at: now,
+            issuer: "beardog".to_string(),
+            audience: vec!["songbird".to_string(), "biomeos".to_string()],
+            scope: vec!["cross-primal".to_string()],
+            claims: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn test_auth_manager_config_construction() {
+        let config = test_config();
+        assert_eq!(config.beardog_endpoint, "http://localhost:9090");
+        assert_eq!(config.token_refresh_interval, Duration::from_secs(3600));
+        assert!(config.signature_validation);
+        assert!(config.replay_protection);
+    }
+
+    #[test]
+    fn test_auth_manager_config_serialization_roundtrip() {
+        let config = test_config();
+        let json = serde_json::to_string(&config).expect("serialize");
+        let restored: AuthManagerConfig = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(config.beardog_endpoint, restored.beardog_endpoint);
+        assert_eq!(config.signature_validation, restored.signature_validation);
+    }
+
+    #[test]
+    fn test_authentication_token_construction() {
+        let token = sample_token();
+        assert_eq!(token.id, "token-123");
+        assert_eq!(token.token_type, "Bearer");
+        assert_eq!(token.issuer, "beardog");
+        assert_eq!(token.audience.len(), 2);
+        assert!(token.expires_at > token.issued_at);
+    }
+
+    #[test]
+    fn test_authentication_token_serialization_roundtrip() {
+        let token = sample_token();
+        let json = serde_json::to_string(&token).expect("serialize");
+        let restored: AuthenticationToken = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(token.id, restored.id);
+        assert_eq!(token.issuer, restored.issuer);
+    }
+
+    #[test]
+    fn test_token_propagation_request_construction() {
+        let token = sample_token();
+        let now = chrono::Utc::now();
+        let req = TokenPropagationRequest {
+            token: token.clone(),
+            source_primal: "toadstool".to_string(),
+            target_primal: "songbird".to_string(),
+            timestamp: now,
+            signature: "sig-xyz".to_string(),
+        };
+        assert_eq!(req.source_primal, "toadstool");
+        assert_eq!(req.target_primal, "songbird");
+        assert_eq!(req.token.id, "token-123");
+    }
+
+    #[test]
+    fn test_token_propagation_request_serialization_roundtrip() {
+        let req = TokenPropagationRequest {
+            token: sample_token(),
+            source_primal: "toadstool".to_string(),
+            target_primal: "songbird".to_string(),
+            timestamp: chrono::Utc::now(),
+            signature: "sig".to_string(),
+        };
+        let json = serde_json::to_string(&req).expect("serialize");
+        let restored: TokenPropagationRequest = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(req.source_primal, restored.source_primal);
+        assert_eq!(req.target_primal, restored.target_primal);
+    }
+
+    #[test]
+    fn test_token_verification_request_construction() {
+        let now = chrono::Utc::now();
+        let req = TokenVerificationRequest {
+            primal_name: "songbird".to_string(),
+            timestamp: now,
+            signature: "verify-sig".to_string(),
+        };
+        assert_eq!(req.primal_name, "songbird");
+    }
+
+    #[test]
+    fn test_token_verification_request_serialization_roundtrip() {
+        let req = TokenVerificationRequest {
+            primal_name: "nestgate".to_string(),
+            timestamp: chrono::Utc::now(),
+            signature: "sig".to_string(),
+        };
+        let json = serde_json::to_string(&req).expect("serialize");
+        let restored: TokenVerificationRequest = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(req.primal_name, restored.primal_name);
+    }
+
+    #[test]
+    fn test_token_verification_response_construction() {
+        let resp = TokenVerificationResponse {
+            status: TokenVerificationStatus::Valid,
+            expires_at: Some(chrono::Utc::now() + chrono::Duration::hours(1)),
+            details: Some("all good".to_string()),
+        };
+        assert_eq!(resp.status, TokenVerificationStatus::Valid);
+        assert!(resp.expires_at.is_some());
+        assert_eq!(resp.details.as_deref(), Some("all good"));
+    }
+
+    #[test]
+    fn test_token_verification_response_serialization_roundtrip() {
+        let resp = TokenVerificationResponse {
+            status: TokenVerificationStatus::Expired,
+            expires_at: None,
+            details: None,
+        };
+        let json = serde_json::to_string(&resp).expect("serialize");
+        let restored: TokenVerificationResponse = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(resp.status, restored.status);
+    }
+
+    #[test]
+    fn test_token_verification_status_variants() {
+        assert_eq!(
+            TokenVerificationStatus::Valid,
+            TokenVerificationStatus::Valid
+        );
+        assert_eq!(
+            TokenVerificationStatus::Expired,
+            TokenVerificationStatus::Expired
+        );
+        assert_eq!(
+            TokenVerificationStatus::Invalid,
+            TokenVerificationStatus::Invalid
+        );
+        assert_eq!(
+            TokenVerificationStatus::NotFound,
+            TokenVerificationStatus::NotFound
+        );
+        let err = TokenVerificationStatus::Error("reason".to_string());
+        assert!(matches!(err, TokenVerificationStatus::Error(s) if s == "reason"));
+    }
+
+    #[test]
+    fn test_token_propagation_status_variants() {
+        assert_eq!(
+            TokenPropagationStatus::Success,
+            TokenPropagationStatus::Success
+        );
+        assert_eq!(
+            TokenPropagationStatus::Pending,
+            TokenPropagationStatus::Pending
+        );
+        assert!(matches!(
+            TokenPropagationStatus::Failed("msg".to_string()),
+            TokenPropagationStatus::Failed(s) if s == "msg"
+        ));
+        assert!(matches!(
+            TokenPropagationStatus::Skipped("reason".to_string()),
+            TokenPropagationStatus::Skipped(s) if s == "reason"
+        ));
+    }
+
+    #[test]
+    fn test_propagation_result_construction() {
+        let mut results = HashMap::new();
+        results.insert("songbird".to_string(), TokenPropagationStatus::Success);
+        results.insert("nestgate".to_string(), TokenPropagationStatus::Pending);
+
+        let res = PropagationResult {
+            total_primals: 2,
+            successful_propagations: 1,
+            results: results.clone(),
+            token_id: "token-1".to_string(),
+            propagation_time: chrono::Utc::now(),
+        };
+        assert_eq!(res.total_primals, 2);
+        assert_eq!(res.successful_propagations, 1);
+        assert_eq!(res.results.len(), 2);
+        assert_eq!(res.token_id, "token-1");
+    }
+
+    #[test]
+    fn test_propagation_result_serialization_roundtrip() {
+        let mut results = HashMap::new();
+        results.insert("p1".to_string(), TokenPropagationStatus::Success);
+        let res = PropagationResult {
+            total_primals: 1,
+            successful_propagations: 1,
+            results,
+            token_id: "t1".to_string(),
+            propagation_time: chrono::Utc::now(),
+        };
+        let json = serde_json::to_string(&res).expect("serialize");
+        let restored: PropagationResult = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(res.token_id, restored.token_id);
+    }
+
+    #[test]
+    fn test_verification_result_construction() {
+        let mut results = HashMap::new();
+        results.insert("songbird".to_string(), TokenVerificationStatus::Valid);
+
+        let res = VerificationResult {
+            total_primals: 1,
+            valid_tokens: 1,
+            results,
+            verification_time: chrono::Utc::now(),
+        };
+        assert_eq!(res.total_primals, 1);
+        assert_eq!(res.valid_tokens, 1);
+    }
+
+    #[test]
+    fn test_verification_result_serialization_roundtrip() {
+        let mut results = HashMap::new();
+        results.insert("p1".to_string(), TokenVerificationStatus::Invalid);
+        let res = VerificationResult {
+            total_primals: 1,
+            valid_tokens: 0,
+            results,
+            verification_time: chrono::Utc::now(),
+        };
+        let json = serde_json::to_string(&res).expect("serialize");
+        let restored: VerificationResult = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(res.valid_tokens, restored.valid_tokens);
+    }
+
+    #[test]
+    fn test_token_request_construction() {
+        let now = chrono::Utc::now();
+        let req = TokenRequest {
+            requesting_primal: "toadstool".to_string(),
+            scope: vec!["read".to_string(), "write".to_string()],
+            audience: vec!["songbird".to_string()],
+            timestamp: now,
+        };
+        assert_eq!(req.requesting_primal, "toadstool");
+        assert_eq!(req.scope.len(), 2);
+    }
+
+    #[test]
+    fn test_token_refresh_request_construction() {
+        let now = chrono::Utc::now();
+        let req = TokenRefreshRequest {
+            requesting_primal: "toadstool".to_string(),
+            timestamp: now,
+        };
+        assert_eq!(req.requesting_primal, "toadstool");
+    }
+
+    #[test]
+    fn test_primal_type_config_toadstool_variant() {
+        let toad_config = ToadStoolConfig {
+            enabled: true,
+            orchestrator: true,
+            resources: None,
+            runtime_engines: vec!["wgpu".to_string()],
+            execution_environments: vec!["container".to_string()],
+            substrates: vec!["linux".to_string()],
+            config: HashMap::new(),
+        };
+        let primal = PrimalTypeConfig::ToadStool(toad_config);
+        assert!(matches!(primal, PrimalTypeConfig::ToadStool(c) if c.enabled && c.orchestrator));
+    }
+
+    #[test]
+    fn test_primal_type_config_serialization_roundtrip() {
+        let config = ToadStoolConfig {
+            enabled: true,
+            orchestrator: false,
+            resources: None,
+            runtime_engines: vec![],
+            execution_environments: vec![],
+            substrates: vec![],
+            config: HashMap::new(),
+        };
+        let primal = PrimalTypeConfig::ToadStool(config);
+        let json = serde_json::to_string(&primal).expect("serialize");
+        let restored: PrimalTypeConfig = serde_json::from_str(&json).expect("deserialize");
+        assert!(matches!(restored, PrimalTypeConfig::ToadStool(c) if c.enabled));
+    }
+
+    #[test]
+    fn test_authentication_manager_new() {
+        let config = test_config();
+        let backend = crate::biomeos_integration::InMemoryAuthBackend::new();
+        let _manager = AuthenticationManager::new(config, Arc::new(backend));
+        // Manager constructed successfully; backend is used via get_current_token
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

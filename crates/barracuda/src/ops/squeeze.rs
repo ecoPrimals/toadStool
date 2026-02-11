@@ -15,7 +15,7 @@ impl Squeeze {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/squeeze.wgsl")
+        include_str!("../shaders/tensor/squeeze.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -143,14 +143,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_squeeze_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Shape [1, 3, 1] should become [3]
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![1, 3, 1], device)
             .await
@@ -164,8 +165,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_squeeze_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // All dimensions = 1 (scalar)
         let input = Tensor::from_vec_on(vec![5.0], vec![1, 1, 1], device.clone())
             .await
@@ -183,8 +185,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_squeeze_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Multiple singleton dimensions
         let input = Tensor::from_vec_on(vec![1.0; 10], vec![1, 1, 10, 1], device.clone())
             .await
@@ -202,8 +205,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_squeeze_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Large tensor with singleton dim
         let input = Tensor::from_vec_on(vec![1.0; 1000], vec![1, 1000], device)
             .await
@@ -215,8 +219,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_squeeze_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Verify data preservation
         let input_data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![1, 4, 1], device)

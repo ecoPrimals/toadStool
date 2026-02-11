@@ -3,7 +3,7 @@
 //! **Purpose**: Complex arithmetic for FFT and wave physics
 //!
 //! **Architecture**:
-//! - Complex numbers represented as vec2<f32> (real, imag)
+//! - Complex numbers represented as `vec2<f32>` (real, imag)
 //! - All math in WGSL shaders (universal GPU portability)
 //! - All orchestration in Rust (type safety, zero unsafe)
 //!
@@ -54,7 +54,7 @@
 //!
 //! ## Design Rationale
 //!
-//! ### Why vec2<f32>?
+//! ### Why `vec2<f32>`?
 //! - Native WGSL support (SIMD-friendly)
 //! - Direct GPU register mapping
 //! - Compatible with texture formats (RG32F)
@@ -67,7 +67,7 @@
 //!
 //! ### Future: ComplexF64
 //! - For high-precision physics (energy conservation)
-//! - Use u64_emu pattern (vec4<u32>)
+//! - Use u64_emu pattern (`vec4<u32>`)
 //! - Follows existing FHE precision model
 //!
 //! ## Mathematical Background

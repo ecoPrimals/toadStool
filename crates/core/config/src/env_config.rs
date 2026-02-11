@@ -292,17 +292,29 @@ impl NetworkEnvConfig {
         let external_loader = EnvConfigLoader::with_prefix(""); // No prefix for other primals
 
         Self {
-            // Other primals' ports - use unprefixed loader
-            songbird_port: external_loader.get_u16("SONGBIRD_PORT", 8080),
-            beardog_port: external_loader.get_u16("BEARDOG_PORT", 8081),
-            nestgate_port: external_loader.get_u16("NESTGATE_PORT", 8082),
-            squirrel_port: external_loader.get_u16("SQUIRREL_PORT", 8083),
-            // Our own config - use prefixed loader
-            toadstool_port: loader.get_u16("TOADSTOOL_PORT", 8084),
-            federation_port: loader.get_u16("FEDERATION_PORT", 7777),
-            metrics_port: loader.get_u16("METRICS_PORT", 9090),
-            health_port: loader.get_u16("HEALTH_PORT", 8085),
-            websocket_port: loader.get_u16("WEBSOCKET_PORT", 8086),
+            // Other primals' ports - use unprefixed loader with centralized fallback constants
+            songbird_port: external_loader.get_u16(
+                "SONGBIRD_PORT",
+                crate::defaults::network::COORDINATION_FALLBACK_PORT,
+            ),
+            beardog_port: external_loader.get_u16(
+                "BEARDOG_PORT",
+                crate::defaults::network::SECURITY_FALLBACK_PORT,
+            ),
+            nestgate_port: external_loader.get_u16(
+                "NESTGATE_PORT",
+                crate::defaults::network::STORAGE_FALLBACK_PORT,
+            ),
+            squirrel_port: external_loader
+                .get_u16("SQUIRREL_PORT", crate::defaults::network::AI_FALLBACK_PORT),
+            // Our own config - use prefixed loader with self-knowledge constants
+            toadstool_port: loader.get_u16("TOADSTOOL_PORT", crate::defaults::network::API_PORT),
+            federation_port: loader
+                .get_u16("FEDERATION_PORT", crate::defaults::network::FEDERATION_PORT),
+            metrics_port: loader.get_u16("METRICS_PORT", crate::defaults::network::METRICS_PORT),
+            health_port: loader.get_u16("HEALTH_PORT", crate::defaults::network::DISCOVERY_PORT),
+            websocket_port: loader
+                .get_u16("WEBSOCKET_PORT", crate::defaults::network::WEBSOCKET_PORT),
             bind_address: loader.get_string("BIND_ADDRESS", "127.0.0.1"),
             external_hostname: loader.get_string("EXTERNAL_HOSTNAME", "localhost"),
             tls_enabled: loader.get_bool("TLS_ENABLED", false),
@@ -437,7 +449,9 @@ impl ResourceEnvConfig {
             max_concurrent_executions: loader.get_u32("MAX_CONCURRENT_EXECUTIONS", 100),
             worker_threads: loader.get_u32(
                 "WORKER_THREADS",
-                u32::try_from(num_cpus::get()).unwrap_or(4),
+                std::thread::available_parallelism()
+                    .map(|n| n.get() as u32)
+                    .unwrap_or(4),
             ),
             queue_size: loader.get_u32("QUEUE_SIZE", 10000),
             batch_size: loader.get_u32("BATCH_SIZE", 1000),
@@ -705,6 +719,7 @@ pub(crate) mod tests {
     use super::*;
     use std::env;
     use std::sync::Mutex;
+    use std::time::Duration;
 
     // ✅ MODERN: Scoped lock for environment variable tests (shared across all config tests)
     static ENV_LOCK: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
@@ -795,5 +810,349 @@ pub(crate) mod tests {
             Some(val) => env::set_var("TOADSTOOL_DEBUG", val),
             None => env::remove_var("TOADSTOOL_DEBUG"),
         }
+    }
+
+    // =========================================================================
+    // EnvConfigLoader - empty prefix, Default, comprehensive getters
+    // =========================================================================
+
+    #[test]
+    fn test_env_config_loader_empty_prefix_get_string() {
+        let loader = EnvConfigLoader::with_prefix("");
+        let test_key = format!("EMPTY_PREFIX_STR_{}", std::process::id());
+        env::set_var(&test_key, "found");
+        let value = loader.get_string(&test_key, "default");
+        assert_eq!(value, "found");
+        env::remove_var(&test_key);
+    }
+
+    #[test]
+    fn test_env_config_loader_empty_prefix_get_u16() {
+        let loader = EnvConfigLoader::with_prefix("");
+        let test_key = format!("EMPTY_PREFIX_U16_{}", std::process::id());
+        env::set_var(&test_key, "9999");
+        let value = loader.get_u16(&test_key, 0);
+        assert_eq!(value, 9999);
+        env::remove_var(&test_key);
+    }
+
+    #[test]
+    fn test_env_config_loader_get_bool_yes_no_on_off() {
+        let loader = EnvConfigLoader::new();
+
+        env::set_var("TOADSTOOL_BOOL_YES", "yes");
+        assert!(loader.get_bool("BOOL_YES", false));
+        env::remove_var("TOADSTOOL_BOOL_YES");
+
+        env::set_var("TOADSTOOL_BOOL_NO", "no");
+        assert!(!loader.get_bool("BOOL_NO", true));
+        env::remove_var("TOADSTOOL_BOOL_NO");
+
+        env::set_var("TOADSTOOL_BOOL_ON", "on");
+        assert!(loader.get_bool("BOOL_ON", false));
+        env::remove_var("TOADSTOOL_BOOL_ON");
+
+        env::set_var("TOADSTOOL_BOOL_OFF", "off");
+        assert!(!loader.get_bool("BOOL_OFF", true));
+        env::remove_var("TOADSTOOL_BOOL_OFF");
+    }
+
+    #[test]
+    fn test_env_config_loader_default_impl() {
+        let loader = EnvConfigLoader::default();
+        assert_eq!(
+            loader.get_string("NONEXISTENT_DEFAULT", "fallback"),
+            "fallback"
+        );
+    }
+
+    // =========================================================================
+    // NetworkEnvConfig - accessor methods, serialization
+    // =========================================================================
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_network_env_config_toadstool_endpoint() {
+        let config = NetworkEnvConfig::from_env();
+        let ep = config.toadstool_endpoint();
+        assert!(ep.starts_with("http://"));
+        assert!(ep.contains(':'));
+        assert!(ep.contains(&config.external_hostname));
+        assert!(ep.contains(&config.toadstool_port.to_string()));
+    }
+
+    #[test]
+    fn test_network_env_config_federation_endpoint() {
+        let config = NetworkEnvConfig::from_env();
+        let ep = config.federation_endpoint();
+        assert!(ep.starts_with("http://"));
+        assert!(ep.contains(&config.federation_port.to_string()));
+    }
+
+    #[test]
+    fn test_network_env_config_metrics_endpoint() {
+        let config = NetworkEnvConfig::from_env();
+        let ep = config.metrics_endpoint();
+        assert!(ep.starts_with("http://"));
+        assert!(ep.contains(&config.metrics_port.to_string()));
+    }
+
+    #[test]
+    fn test_network_env_config_health_endpoint() {
+        let config = NetworkEnvConfig::from_env();
+        let ep = config.health_endpoint();
+        assert!(ep.starts_with("http://"));
+        assert!(ep.contains(&config.health_port.to_string()));
+    }
+
+    #[test]
+    fn test_network_env_config_serialization_roundtrip() {
+        let config = NetworkEnvConfig::from_env();
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: NetworkEnvConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.toadstool_port, parsed.toadstool_port);
+        assert_eq!(config.bind_address, parsed.bind_address);
+        assert_eq!(config.external_hostname, parsed.external_hostname);
+    }
+
+    // =========================================================================
+    // ResourceEnvConfig - from_env defaults
+    // =========================================================================
+
+    #[test]
+    fn test_resource_env_config_from_env() {
+        let config = ResourceEnvConfig::from_env();
+        assert!(config.max_cpu_percent > 0.0);
+        assert!(config.max_memory_bytes > 0);
+        assert!(config.max_storage_bytes > 0);
+        assert!(config.worker_threads > 0);
+        assert!(config.queue_size > 0);
+        assert!(config.batch_size > 0);
+    }
+
+    #[test]
+    fn test_resource_env_config_serialization_roundtrip() {
+        let config = ResourceEnvConfig::from_env();
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: ResourceEnvConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.max_cpu_percent, parsed.max_cpu_percent);
+        assert_eq!(config.max_memory_bytes, parsed.max_memory_bytes);
+    }
+
+    // =========================================================================
+    // MonitoringEnvConfig
+    // =========================================================================
+
+    #[test]
+    fn test_monitoring_env_config_from_env() {
+        let config = MonitoringEnvConfig::from_env();
+        assert!(!config.log_level.is_empty());
+        assert!(config.metrics_interval_secs > 0);
+        assert!(config.metrics_retention_days > 0);
+        assert!(config.health_check_interval_secs > 0);
+    }
+
+    #[test]
+    fn test_monitoring_env_config_serialization_roundtrip() {
+        let config = MonitoringEnvConfig::from_env();
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: MonitoringEnvConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.log_level, parsed.log_level);
+        assert_eq!(config.metrics_enabled, parsed.metrics_enabled);
+    }
+
+    // =========================================================================
+    // SecurityEnvConfig - CORS parsing
+    // =========================================================================
+
+    #[test]
+    fn test_security_env_config_from_env() {
+        let config = SecurityEnvConfig::from_env();
+        assert!(config.isolation_level.len() > 0);
+        assert!(config.rate_limit_rps > 0);
+        assert!(config.rate_limit_burst > 0);
+    }
+
+    #[test]
+    fn test_security_env_config_cors_comma_separated() {
+        let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let orig = env::var("TOADSTOOL_CORS_ALLOWED_ORIGINS").ok();
+        env::set_var(
+            "TOADSTOOL_CORS_ALLOWED_ORIGINS",
+            "https://a.com, https://b.com , https://c.com",
+        );
+
+        let config = SecurityEnvConfig::from_env();
+        assert_eq!(config.cors_allowed_origins.len(), 3);
+        assert!(config
+            .cors_allowed_origins
+            .contains(&"https://a.com".to_string()));
+        assert!(config
+            .cors_allowed_origins
+            .contains(&"https://b.com".to_string()));
+        assert!(config
+            .cors_allowed_origins
+            .contains(&"https://c.com".to_string()));
+
+        if let Some(v) = orig {
+            env::set_var("TOADSTOOL_CORS_ALLOWED_ORIGINS", v);
+        } else {
+            env::remove_var("TOADSTOOL_CORS_ALLOWED_ORIGINS");
+        }
+    }
+
+    #[test]
+    fn test_security_env_config_serialization_roundtrip() {
+        let config = SecurityEnvConfig::from_env();
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: SecurityEnvConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.auth_enabled, parsed.auth_enabled);
+        assert_eq!(config.cors_allowed_origins, parsed.cors_allowed_origins);
+    }
+
+    // =========================================================================
+    // EnvironmentConfig - apply_to_config, serialization
+    // =========================================================================
+
+    #[test]
+    fn test_environment_config_apply_to_config() {
+        let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut config = ToadStoolConfig::default();
+        let env_config = EnvironmentConfig::from_env();
+
+        env_config.apply_to_config(&mut config);
+
+        assert_eq!(config.app.environment, env_config.environment);
+        assert_eq!(
+            config.app.data_dir,
+            env_config.data_dir.to_string_lossy().to_string()
+        );
+        assert_eq!(
+            config.app.cache_dir,
+            env_config.cache_dir.to_string_lossy().to_string()
+        );
+        assert_eq!(
+            config.app.temp_dir,
+            env_config.temp_dir.to_string_lossy().to_string()
+        );
+        assert_eq!(
+            config.security.auth.enabled,
+            env_config.security.auth_enabled
+        );
+        assert_eq!(
+            config.security.sandbox.enabled,
+            env_config.security.sandboxing_enabled
+        );
+    }
+
+    #[test]
+    fn test_environment_config_serialization_roundtrip() {
+        let config = EnvironmentConfig::from_env();
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: EnvironmentConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.environment, parsed.environment);
+        assert_eq!(config.debug, parsed.debug);
+        assert_eq!(config.verbose, parsed.verbose);
+    }
+
+    // =========================================================================
+    // Module-level helper functions
+    // =========================================================================
+
+    #[test]
+    fn test_get_env_with_prefix() {
+        let suffix = std::process::id();
+        let key = format!("TEST_PREFIX_HELPER_{}", suffix);
+        env::set_var(&key, "helper_value");
+        let value = get_env_with_prefix("TEST", &format!("PREFIX_HELPER_{}", suffix), "default");
+        assert_eq!(value, "helper_value");
+        env::remove_var(&key);
+    }
+
+    #[test]
+    fn test_get_env_with_prefix_missing_returns_default() {
+        let key = format!("NONEXISTENT_PREFIX_{}", std::process::id());
+        env::remove_var(&key);
+        let value = get_env_with_prefix(
+            "NONEXISTENT",
+            &format!("PREFIX_{}", std::process::id()),
+            "my_default",
+        );
+        assert_eq!(value, "my_default");
+    }
+
+    #[test]
+    fn test_get_env_bool_true() {
+        let key = format!("TEST_BOOL_TRUE_{}", std::process::id());
+        env::set_var(&key, "true");
+        let value = get_env_bool(&key, false);
+        assert!(value);
+        env::remove_var(&key);
+    }
+
+    #[test]
+    fn test_get_env_bool_one() {
+        let key = format!("TEST_BOOL_ONE_{}", std::process::id());
+        env::set_var(&key, "1");
+        let value = get_env_bool(&key, false);
+        assert!(value);
+        env::remove_var(&key);
+    }
+
+    #[test]
+    fn test_get_env_bool_default() {
+        let key = format!("NONEXISTENT_BOOL_{}", std::process::id());
+        env::remove_var(&key);
+        assert!(!get_env_bool(&key, false));
+        assert!(get_env_bool(&key, true));
+    }
+
+    #[test]
+    fn test_get_env_number() {
+        let key = format!("TEST_NUMBER_{}", std::process::id());
+        env::set_var(&key, "42");
+        let value: u32 = get_env_number(&key, 0u32);
+        assert_eq!(value, 42);
+        env::remove_var(&key);
+    }
+
+    #[test]
+    fn test_get_env_number_default() {
+        let key = format!("NONEXISTENT_NUM_{}", std::process::id());
+        env::remove_var(&key);
+        let value: u32 = get_env_number(&key, 99u32);
+        assert_eq!(value, 99);
+    }
+
+    #[test]
+    fn test_get_env_duration() {
+        let key = format!("TEST_DURATION_{}", std::process::id());
+        env::set_var(&key, "120");
+        let value = get_env_duration(&key, Duration::from_secs(30));
+        assert_eq!(value, Duration::from_secs(120));
+        env::remove_var(&key);
+    }
+
+    #[test]
+    fn test_get_env_duration_default() {
+        let key = format!("NONEXISTENT_DUR_{}", std::process::id());
+        env::remove_var(&key);
+        let default = Duration::from_secs(60);
+        let value = get_env_duration(&key, default);
+        assert_eq!(value, default);
+    }
+
+    #[test]
+    fn test_load_global_env_config() {
+        let config = load_global_env_config();
+        assert!(!config.environment.is_empty());
+        assert!(!config.data_dir.as_os_str().is_empty());
+    }
+
+    #[test]
+    fn test_apply_env_config() {
+        let mut config = ToadStoolConfig::default();
+        apply_env_config(&mut config);
+        assert!(!config.app.environment.is_empty());
     }
 }

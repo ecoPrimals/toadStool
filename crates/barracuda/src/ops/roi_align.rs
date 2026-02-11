@@ -67,7 +67,7 @@ impl RoiAlign {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/roi_align.wgsl")
+        include_str!("../shaders/pooling/roi_align.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -252,12 +252,13 @@ impl RoiAlign {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_roi_align_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let channels = 64;
         let height = 32;
         let width = 32;

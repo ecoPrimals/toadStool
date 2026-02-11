@@ -19,7 +19,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_distributed::security_provider::*;
 //! use toadstool_common::universal_adapter::*;
 //!

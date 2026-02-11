@@ -17,7 +17,7 @@ impl Where {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/where_select.wgsl")
+        include_str!("../shaders/tensor/where_select.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {

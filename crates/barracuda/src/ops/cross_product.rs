@@ -61,7 +61,7 @@ impl CrossProduct {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/cross_product.wgsl")
+        include_str!("../shaders/misc/cross_product.wgsl")
     }
 
     /// Execute cross product on tensors
@@ -230,12 +230,13 @@ impl CrossProduct {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_cross_product_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test vectors: [1, 0, 0] × [0, 1, 0] = [0, 0, 1]
         let input_a = Tensor::from_vec_on(vec![1.0, 0.0, 0.0], vec![1, 3], device.clone())
             .await

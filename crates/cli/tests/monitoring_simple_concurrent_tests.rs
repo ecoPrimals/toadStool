@@ -178,8 +178,8 @@ async fn test_concurrent_mixed_monitoring_targets() -> Result<()> {
             0 => MonitoringTarget::Biome(format!("biome_{}", i)),
             1 => MonitoringTarget::System,
             2 => MonitoringTarget::Platform(format!("platform_{}", i)),
-            3 => MonitoringTarget::Federation,
-            _ => unreachable!(),
+            // i % 4 can only be 0..=3, so this arm covers 3
+            _ => MonitoringTarget::Federation,
         };
 
         handles.push(tokio::spawn(async move {

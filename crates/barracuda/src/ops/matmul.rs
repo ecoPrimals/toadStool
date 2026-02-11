@@ -24,7 +24,7 @@ impl MatMul {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/matmul.wgsl")
+        include_str!("../shaders/math/matmul.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -267,7 +267,7 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     fn matmul_cpu(a: &[f32], b: &[f32], m: usize, k: usize, n: usize) -> Vec<f32> {
         let mut result = vec![0.0; m * n];
@@ -285,8 +285,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_matmul_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 2x3 * 3x2 = 2x2
         let a_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let b_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
@@ -312,8 +313,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_matmul_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Identity matrix
         let a_data = vec![1.0, 0.0, 0.0, 1.0];
         let b_data = vec![5.0, 6.0, 7.0, 8.0];
@@ -354,8 +356,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_matmul_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 1x1 matrices
         let a_data = vec![5.0];
         let b_data = vec![3.0];
@@ -395,8 +398,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_matmul_large_tensor() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 64x32 * 32x64 = 64x64
         let m = 64;
         let k = 32;
@@ -425,8 +429,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_matmul_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test FP32 precision with typical values
         let a_data = vec![1.234, 2.345, 3.456, 4.567, 5.678, 6.789];
         let b_data = vec![0.111, 0.222, 0.333, 0.444, 0.555, 0.666];

@@ -201,4 +201,46 @@ mod tests {
         assert_eq!(config.max_services, 100);
         assert!(config.enable_ipv6);
     }
+
+    #[test]
+    fn test_discovered_service_socket_addr_valid() {
+        let service = DiscoveredService {
+            instance_id: Uuid::new_v4(),
+            primal_type: "test".to_string(),
+            version: "1.0.0".to_string(),
+            capabilities: vec![],
+            endpoint: "127.0.0.1:8080".to_string(),
+            protocols: vec!["http".to_string()],
+            discovered_at: chrono::Utc::now(),
+            last_seen: chrono::Utc::now(),
+            metadata: HashMap::new(),
+        };
+
+        let addr = service.socket_addr().unwrap();
+        assert_eq!(addr.ip().to_string(), "127.0.0.1");
+        assert_eq!(addr.port(), 8080);
+    }
+
+    #[test]
+    fn test_discovered_service_socket_addr_invalid() {
+        let service = DiscoveredService {
+            instance_id: Uuid::new_v4(),
+            primal_type: "test".to_string(),
+            version: "1.0.0".to_string(),
+            capabilities: vec![],
+            endpoint: "not-a-valid-address".to_string(),
+            protocols: vec![],
+            discovered_at: chrono::Utc::now(),
+            last_seen: chrono::Utc::now(),
+            metadata: HashMap::new(),
+        };
+
+        assert!(service.socket_addr().is_err());
+    }
+
+    #[test]
+    fn test_discovery_method_default() {
+        let method = DiscoveryMethod::default();
+        assert!(matches!(method, DiscoveryMethod::Mdns));
+    }
 }

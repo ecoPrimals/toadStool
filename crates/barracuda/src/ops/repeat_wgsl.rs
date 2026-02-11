@@ -7,7 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -26,7 +26,7 @@ impl Repeat {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/repeat.wgsl")
+        include_str!("../shaders/tensor/repeat.wgsl")
     }
 
     /// Execute the repeat operation
@@ -190,10 +190,9 @@ impl Repeat {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(output_size as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -221,17 +220,17 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_repeat_1d() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![1.0, 2.0, 3.0];
-        let input = Tensor::new(data, vec![3], device.clone());
+        let input = Tensor::from_data(&data, vec![3], device.clone()).unwrap();
 
         let output = input.repeat_wgsl(vec![2]).unwrap();
 
@@ -247,10 +246,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_repeat_2d() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![1.0, 2.0, 3.0, 4.0];
-        let input = Tensor::new(data, vec![2, 2], device.clone());
+        let input = Tensor::from_data(&data, vec![2, 2], device.clone()).unwrap();
 
         let output = input.repeat_wgsl(vec![2, 1]).unwrap();
 

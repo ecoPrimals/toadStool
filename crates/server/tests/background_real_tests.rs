@@ -15,7 +15,7 @@ use tokio::time::{interval, timeout, Duration};
 async fn test_background_task_creation() {
     // Test that we can spawn a background task
     let counter = Arc::new(AtomicUsize::new(0));
-    let counter_clone = counter.clone();
+    let counter_clone = Arc::clone(&counter);
 
     let handle = tokio::spawn(async move {
         counter_clone.fetch_add(1, Ordering::SeqCst);
@@ -29,9 +29,9 @@ async fn test_background_task_creation() {
 async fn test_background_task_periodic_execution() {
     // Test periodic task execution (event-driven with ticker)
     let counter = Arc::new(AtomicUsize::new(0));
-    let counter_clone = counter.clone();
+    let counter_clone = Arc::clone(&counter);
     let should_stop = Arc::new(AtomicBool::new(false));
-    let should_stop_clone = should_stop.clone();
+    let should_stop_clone = Arc::clone(&should_stop);
 
     let handle = tokio::spawn(async move {
         let mut ticker = interval(Duration::from_millis(10));
@@ -60,7 +60,7 @@ async fn test_background_task_periodic_execution() {
 async fn test_background_task_cancellation() {
     // Test that we can cancel a background task (event-driven)
     let running = Arc::new(AtomicBool::new(true));
-    let running_clone = running.clone();
+    let running_clone = Arc::clone(&running);
 
     let handle = tokio::spawn(async move {
         let mut ticker = interval(Duration::from_millis(10));
@@ -105,7 +105,7 @@ async fn test_background_task_timeout() {
 async fn test_background_task_error_recovery() {
     // Test that errors don't crash the background system
     let counter = Arc::new(AtomicUsize::new(0));
-    let counter_clone = counter.clone();
+    let counter_clone = Arc::clone(&counter);
 
     let handle = tokio::spawn(async move {
         for i in 0..5 {
@@ -153,7 +153,7 @@ async fn test_multiple_background_tasks() {
 
     let mut handles = vec![];
     for _ in 0..5 {
-        let counter_clone = counter.clone();
+        let counter_clone = Arc::clone(&counter);
         let handle = tokio::spawn(async move {
             // Event-driven work completion
             let work_ready = Arc::new(Notify::new());
@@ -182,7 +182,7 @@ async fn test_multiple_background_tasks() {
 async fn test_background_task_restart() {
     // Test restarting a failed task
     let attempt = Arc::new(AtomicUsize::new(0));
-    let attempt_clone = attempt.clone();
+    let attempt_clone = Arc::clone(&attempt);
 
     // First attempt
     let handle1 = tokio::spawn(async move {
@@ -194,7 +194,7 @@ async fn test_background_task_restart() {
     assert!(result1.is_err());
 
     // Restart (second attempt)
-    let attempt_clone2 = attempt.clone();
+    let attempt_clone2 = Arc::clone(&attempt);
     let handle2 = tokio::spawn(async move {
         attempt_clone2.fetch_add(1, Ordering::SeqCst);
         Ok::<(), String>(())
@@ -253,7 +253,7 @@ async fn test_background_task_priority_queue() {
 async fn test_background_health_check() {
     // Test background health check mechanism (event-driven)
     let healthy = Arc::new(AtomicBool::new(true));
-    let healthy_clone = healthy.clone();
+    let healthy_clone = Arc::clone(&healthy);
 
     let handle = tokio::spawn(async move {
         // Event-driven health check
@@ -282,8 +282,8 @@ async fn test_background_graceful_shutdown() {
     let mut handles = vec![];
 
     for _ in 0..3 {
-        let completed_clone = tasks_completed.clone();
-        let shutdown_clone = should_shutdown.clone();
+        let completed_clone = Arc::clone(&tasks_completed);
+        let shutdown_clone = Arc::clone(&should_shutdown);
 
         let handle = tokio::spawn(async move {
             let mut ticker = interval(Duration::from_millis(10));
@@ -324,29 +324,22 @@ async fn test_background_graceful_shutdown() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_background_task_statistics() {
-    // Test collecting task execution statistics
-    use std::time::Instant;
-
-    let start = Instant::now();
+    // Test collecting task execution statistics (event-driven completion)
+    let done = Arc::new(Notify::new());
+    let done_clone = Arc::clone(&done);
 
     let handle = tokio::spawn(async move {
-        // ✅ INTENTIONAL DELAY: Simulate task work for timing measurements
-        tokio::time::sleep(Duration::from_millis(25)).await;
+        // Event-driven work: yield to allow scheduling, then signal completion
+        tokio::task::yield_now().await;
+        done_clone.notify_one();
         "done"
     });
 
-    handle.await.unwrap();
-    let duration = start.elapsed();
+    // Wait for task to signal completion (bounded wait)
+    timeout(Duration::from_secs(5), done.notified())
+        .await
+        .expect("Task should complete within timeout");
 
-    assert!(
-        duration >= Duration::from_millis(20),
-        "Task should take at least 20ms, took {:?}",
-        duration
-    );
-    // Increased tolerance for CI/loaded systems (was 100ms, now 200ms)
-    assert!(
-        duration < Duration::from_millis(200),
-        "Task should complete quickly, took {:?}",
-        duration
-    );
+    let result = handle.await.unwrap();
+    assert_eq!(result, "done");
 }

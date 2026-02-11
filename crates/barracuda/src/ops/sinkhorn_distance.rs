@@ -60,7 +60,7 @@ impl SinkhornDistance {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/sinkhorn_distance.wgsl")
+        include_str!("../shaders/math/sinkhorn_distance.wgsl")
     }
 
     /// Execute the Sinkhorn distance operation
@@ -259,12 +259,13 @@ impl SinkhornDistance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_sinkhorn_distance_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 4;
 
         let dist1 = Tensor::from_vec_on(vec![0.25; size], vec![size], device.clone())

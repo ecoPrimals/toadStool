@@ -219,7 +219,7 @@ mod tests {
         let output = predictor.predict(&state).unwrap();
 
         assert_eq!(output.len(), 2);
-        assert_eq!(output[0], 6.0); // 1+2+3
-        assert_eq!(output[1], 15.0); // 4+5+6
+        assert!((output[0] - 6.0).abs() < f32::EPSILON); // 1+2+3
+        assert!((output[1] - 15.0).abs() < f32::EPSILON); // 4+5+6
     }
 }

@@ -360,7 +360,12 @@ impl SpikingNetwork {
                     });
                 }
 
-                let weights = state.weights.as_ref().unwrap();
+                let weights = state.weights.as_ref().ok_or(
+                    crate::error::BarracudaError::InvalidOperation {
+                        op: "SNN Dense layer".to_string(),
+                        reason: "Dense layer weights not initialized".to_string(),
+                    },
+                )?;
                 let mut output = vec![0.0; *output_size];
 
                 // Matrix multiply (sparse)
@@ -445,7 +450,7 @@ mod tests {
         let output = network.process_step(&input).unwrap();
 
         // Should have spikes (1.0) since input > threshold
-        assert!(output.iter().any(|&x| x == 1.0));
+        assert!(output.contains(&1.0));
     }
 
     #[test]

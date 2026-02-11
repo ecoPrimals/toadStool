@@ -16,7 +16,7 @@ impl Unsqueeze {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/unsqueeze.wgsl")
+        include_str!("../shaders/tensor/unsqueeze.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {

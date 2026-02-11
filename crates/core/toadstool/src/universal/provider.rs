@@ -133,3 +133,93 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
         context.security_level <= self.context.security_level
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::types::{NetworkLocation, PrimalContext, PrimalType, SecurityLevel};
+    use super::*;
+
+    fn make_context(security_level: SecurityLevel) -> PrimalContext {
+        PrimalContext {
+            user_id: "test-user".to_string(),
+            device_id: "test-device".to_string(),
+            session_id: "test-session".to_string(),
+            network_location: NetworkLocation {
+                ip_address: "127.0.0.1".to_string(),
+                subnet: None,
+                network_id: None,
+                geo_location: None,
+            },
+            security_level,
+            metadata: std::collections::HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn test_provider_new() {
+        let context = make_context(SecurityLevel::Standard);
+        let provider = ToadStoolPrimalProvider::new(context.clone());
+        assert_eq!(provider.context().user_id, "test-user");
+        assert_eq!(provider.context().security_level, SecurityLevel::Standard);
+    }
+
+    #[test]
+    fn test_primal_id() {
+        let context = make_context(SecurityLevel::Basic);
+        let provider = ToadStoolPrimalProvider::new(context);
+        assert_eq!(provider.primal_id(), "toadstool");
+    }
+
+    #[test]
+    fn test_instance_id() {
+        let context = make_context(SecurityLevel::Basic);
+        let provider = ToadStoolPrimalProvider::new(context);
+        assert_eq!(provider.instance_id(), "toadstool-main");
+    }
+
+    #[test]
+    fn test_primal_type() {
+        let context = make_context(SecurityLevel::Basic);
+        let provider = ToadStoolPrimalProvider::new(context);
+        assert_eq!(provider.primal_type(), PrimalType::Compute);
+    }
+
+    #[test]
+    fn test_capabilities_non_empty() {
+        let context = make_context(SecurityLevel::Basic);
+        let provider = ToadStoolPrimalProvider::new(context);
+        let caps = provider.capabilities();
+        assert!(!caps.is_empty());
+    }
+
+    #[test]
+    fn test_can_serve_context_same_level() {
+        let context = make_context(SecurityLevel::Standard);
+        let provider = ToadStoolPrimalProvider::new(context.clone());
+        assert!(provider.can_serve_context(&context));
+    }
+
+    #[test]
+    fn test_can_serve_context_request_lower() {
+        let provider_ctx = make_context(SecurityLevel::High);
+        let provider = ToadStoolPrimalProvider::new(provider_ctx);
+        let request_ctx = make_context(SecurityLevel::Basic);
+        assert!(provider.can_serve_context(&request_ctx));
+    }
+
+    #[test]
+    fn test_can_serve_context_request_higher() {
+        let provider_ctx = make_context(SecurityLevel::Basic);
+        let provider = ToadStoolPrimalProvider::new(provider_ctx);
+        let request_ctx = make_context(SecurityLevel::Maximum);
+        assert!(!provider.can_serve_context(&request_ctx));
+    }
+
+    #[test]
+    fn test_can_serve_context_maximum_provider() {
+        let provider_ctx = make_context(SecurityLevel::Maximum);
+        let provider = ToadStoolPrimalProvider::new(provider_ctx);
+        let request_ctx = make_context(SecurityLevel::Basic);
+        assert!(provider.can_serve_context(&request_ctx));
+    }
+}

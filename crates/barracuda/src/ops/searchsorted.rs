@@ -66,11 +66,11 @@ impl SearchSorted {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/searchsorted.wgsl")
+        include_str!("../shaders/misc/searchsorted.wgsl")
     }
 
     fn u32_to_f32_shader() -> &'static str {
-        include_str!("../shaders/u32_to_f32.wgsl")
+        include_str!("../shaders/misc/u32_to_f32.wgsl")
     }
 
     /// Read u32 buffer from GPU
@@ -396,11 +396,13 @@ impl SearchSorted {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_searchsorted_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let sorted = Tensor::from_vec_on(vec![1.0, 3.0, 5.0, 7.0], vec![4], device.clone())
             .await
             .unwrap();
@@ -419,7 +421,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_searchsorted_right() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let sorted = Tensor::from_vec_on(vec![1.0, 3.0, 5.0], vec![3], device.clone())
             .await
             .unwrap();

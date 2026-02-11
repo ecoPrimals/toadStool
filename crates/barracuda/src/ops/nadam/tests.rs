@@ -1,12 +1,13 @@
 //! Tests for NAdam Optimizer
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 #[tokio::test]
 async fn test_nadam_gpu_basic() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let size = 1000;
     let weights = Tensor::from_vec_on(vec![1.0; size], vec![size], device.clone())
         .await
@@ -46,8 +47,9 @@ async fn test_nadam_gpu_basic() {
 
 #[tokio::test]
 async fn test_nadam_gpu_convergence() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let size = 100;
     let mut weights = Tensor::from_vec_on(vec![5.0; size], vec![size], device.clone())
         .await
@@ -83,8 +85,9 @@ async fn test_nadam_gpu_convergence() {
 
 #[tokio::test]
 async fn test_nadam_gpu_weight_decay() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let size = 100;
     let weights = Tensor::from_vec_on(vec![10.0; size], vec![size], device.clone())
         .await
@@ -114,8 +117,9 @@ async fn test_nadam_gpu_weight_decay() {
 
 #[tokio::test]
 async fn test_nadam_gpu_shape_validation() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![1.0; 100], vec![100], device.clone())
         .await
         .unwrap();
@@ -139,8 +143,9 @@ async fn test_nadam_gpu_shape_validation() {
 
 #[tokio::test]
 async fn test_nadam_gpu_multidimensional() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // 2D weights (matrix)
     let weights = Tensor::from_vec_on(vec![1.0; 100], vec![10, 10], device.clone())
         .await

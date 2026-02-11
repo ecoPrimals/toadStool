@@ -118,8 +118,21 @@ impl Tensor {
         self.clone()
     }
 
-    /// Create tensor from data (for testing and initialization)
-    pub fn from_data<T: bytemuck::Pod>(
+    /// Create tensor from f32 data (primary API for testing and initialization)
+    ///
+    /// Accepts `&[f32]` explicitly to prevent accidental f64 type inference
+    /// when using bare float literals like `&[1.0, 2.0, 3.0]`.
+    pub fn from_data(data: &[f32], shape: Vec<usize>, device: Arc<WgpuDevice>) -> Result<Self> {
+        Self::from_data_pod(data, shape, device)
+    }
+
+    /// Create tensor from arbitrary Pod data (for FHE/u32 workloads)
+    ///
+    /// Use `from_data` for f32 tensors. This method exists for operations
+    /// that need non-f32 buffer data (e.g., FHE polynomial operations using u32).
+    ///
+    /// **Note**: `to_vec()` always reads back as f32. For u32 data, use `to_vec_u32()`.
+    pub fn from_data_pod<T: bytemuck::Pod>(
         data: &[T],
         shape: Vec<usize>,
         device: Arc<WgpuDevice>,
@@ -159,15 +172,27 @@ impl Tensor {
     pub fn new(data: Vec<f32>, shape: Vec<usize>, device: Arc<WgpuDevice>) -> Self {
         use wgpu::util::DeviceExt;
 
-        let buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Tensor"),
-                contents: bytemuck::cast_slice(&data),
+        // Handle empty data: create a minimum-size buffer for WebGPU compatibility
+        let buffer = if data.is_empty() {
+            device.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Tensor Empty"),
+                size: 4, // Minimum 4 bytes
                 usage: wgpu::BufferUsages::STORAGE
                     | wgpu::BufferUsages::COPY_SRC
                     | wgpu::BufferUsages::COPY_DST,
-            });
+                mapped_at_creation: false,
+            })
+        } else {
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Tensor"),
+                    contents: bytemuck::cast_slice(&data),
+                    usage: wgpu::BufferUsages::STORAGE
+                        | wgpu::BufferUsages::COPY_SRC
+                        | wgpu::BufferUsages::COPY_DST,
+                })
+        };
 
         Self {
             buffer: Arc::new(buffer),
@@ -667,7 +692,7 @@ mod tests {
         // Check values are in [0, 1)
         let data = tensor.to_vec().unwrap();
         for &val in &data {
-            assert!(val >= 0.0 && val < 1.0, "Value {} out of range", val);
+            assert!((0.0..1.0).contains(&val), "Value {} out of range", val);
         }
     }
 
@@ -678,7 +703,7 @@ mod tests {
 
         // Check all values in range
         for &val in &data {
-            assert!(val >= -5.0 && val < 5.0, "Value {} out of range", val);
+            assert!((-5.0..5.0).contains(&val), "Value {} out of range", val);
         }
 
         // Mean should be near 0
@@ -732,7 +757,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_3d_roundtrip_minimal() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         println!("\n=== Testing 3D Tensor Roundtrip ===\n");
 
@@ -785,7 +813,10 @@ mod tests {
     #[tokio::test]
     async fn test_tensor_laplacian_context_debug() {
         // EXACT COPY of test_tensor_3d_roundtrip_minimal
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         println!("\n=== Testing 3D Tensor Roundtrip (Laplacian Context) ===\n");
 

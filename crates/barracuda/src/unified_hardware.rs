@@ -14,10 +14,12 @@
 //! - ✅ Capability-based (matches workload to hardware)
 //! - ✅ Extensible (new hardware = implement trait)
 
+use crate::device::Device;
 use crate::error::Result;
 use crate::unified_math::{MathOp, TensorDescriptor};
 use async_trait::async_trait;
 use std::sync::Arc;
+use tracing::debug;
 
 /// Universal compute executor
 ///
@@ -326,18 +328,28 @@ impl HardwareDiscovery {
     }
 
     async fn discover_gpus() -> Result<Vec<Arc<dyn ComputeExecutor>>> {
-        // TODO: Implement GPU discovery via wgpu
+        // HardwareDiscovery path returns empty; GPU execution uses UnifiedScheduler/WgpuDevice.
+        let available = Device::GPU.is_available();
+        debug!(
+            "pending: GpuExecutor implementing ComputeExecutor; GPU available={}; use UnifiedScheduler/DeviceContext for GPU",
+            available
+        );
         Ok(Vec::new())
     }
 
     #[cfg(feature = "tpu")]
     async fn discover_tpus() -> Result<Vec<Arc<dyn ComputeExecutor>>> {
-        // TODO: Implement TPU discovery
+        // TpuExecutor must implement ComputeExecutor before this path can return results.
+        debug!("pending: TpuExecutor implementing ComputeExecutor; TPU discovery via TpuDevice not yet wired into HardwareDiscovery");
         Ok(Vec::new())
     }
 
     async fn discover_npus() -> Result<Vec<Arc<dyn ComputeExecutor>>> {
-        // TODO: Implement NPU discovery
+        let available = Device::NPU.is_available();
+        debug!(
+            "pending: NpuExecutor implementing ComputeExecutor; NPU available={} (Device::NPU.is_available); use DeviceContext::for_device(Device::NPU) for NPU",
+            available
+        );
         Ok(Vec::new())
     }
 }
@@ -357,7 +369,9 @@ impl CpuExecutor {
             capabilities: HardwareCapabilities {
                 hardware_type: HardwareType::CPU,
                 parallelism: ParallelismCapabilities {
-                    max_parallel_units: num_cpus::get(),
+                    max_parallel_units: std::thread::available_parallelism()
+                        .map(|n| n.get())
+                        .unwrap_or(4),
                     simd_width: 8, // AVX2
                     task_parallel: true,
                     data_parallel: true,

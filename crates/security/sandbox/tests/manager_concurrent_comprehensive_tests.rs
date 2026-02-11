@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)] // expect() is idiomatic in tests
 //! Comprehensive concurrent tests for SandboxManager
 //!
 //! ✅ MODERN CONCURRENT TESTING - Production-grade concurrent safety

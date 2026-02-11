@@ -34,12 +34,12 @@ impl Variance {
 
     /// Get the WGSL shader source for global reduction
     pub(super) fn wgsl_shader_reduce() -> &'static str {
-        include_str!("../../shaders/variance_reduce.wgsl")
+        include_str!("../../shaders/reduce/variance_reduce.wgsl")
     }
 
     /// Get the WGSL shader source for dimension-wise reduction
     pub(super) fn wgsl_shader_dim() -> &'static str {
-        include_str!("../../shaders/variance_dim.wgsl")
+        include_str!("../../shaders/reduce/variance_dim.wgsl")
     }
 
     /// Get input tensor

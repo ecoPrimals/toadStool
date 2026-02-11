@@ -36,7 +36,7 @@ impl Spectrogram {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/spectrogram.wgsl")
+        include_str!("../shaders/audio/spectrogram.wgsl")
     }
 
     /// Execute the spectrogram operation
@@ -196,7 +196,7 @@ impl Spectrogram {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
     use crate::tensor::Tensor;
     #[allow(unused_imports)]
     use std::sync::Arc;
@@ -204,7 +204,9 @@ mod tests {
     #[tokio::test]
     async fn test_spectrogram_basic() {
         // Create complex STFT data: [real, imag, real, imag, ...]
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let stft_data = vec![3.0, 4.0, 3.0, 4.0, 3.0, 4.0]; // 3 complex pairs, magnitude = 5.0
         let stft_tensor = Tensor::from_vec_on(stft_data, vec![3, 2], device.clone())
             .await
@@ -219,8 +221,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_spectrogram_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Single complex pair
         let stft_data = vec![1.0, 0.0];
         let stft_tensor = Tensor::from_vec_on(stft_data, vec![1, 2], device.clone())

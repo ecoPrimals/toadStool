@@ -120,7 +120,10 @@ impl StorageBackend {
             *provider_lock = Some(discovered);
         }
 
-        Ok(provider_lock.as_ref().unwrap().clone())
+        provider_lock
+            .as_ref()
+            .ok_or(StorageBackendError::NoStorageProvider)
+            .cloned()
     }
 
     /// Provision a new volume
@@ -281,6 +284,7 @@ impl Default for StorageBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[tokio::test]
     async fn test_storage_backend_creation() {
@@ -290,9 +294,66 @@ mod tests {
     }
 
     #[test]
+    fn test_storage_backend_default() {
+        let backend = StorageBackend::default();
+        assert_eq!(
+            std::mem::size_of_val(&backend),
+            std::mem::size_of::<StorageBackend>()
+        );
+    }
+
+    #[test]
     fn test_volume_status_enum() {
         assert_eq!(VolumeStatus::Ready, VolumeStatus::Ready);
         assert_ne!(VolumeStatus::Ready, VolumeStatus::Creating);
+    }
+
+    #[test]
+    fn test_volume_status_all_variants() {
+        let _ = VolumeStatus::Creating;
+        let _ = VolumeStatus::Ready;
+        let _ = VolumeStatus::Mounted;
+        let _ = VolumeStatus::Unmounted;
+        let _ = VolumeStatus::Deleting;
+        let _ = VolumeStatus::Error;
+    }
+
+    #[test]
+    fn test_volume_status_serialization() {
+        let status = VolumeStatus::Ready;
+        let json = serde_json::to_value(&status).unwrap();
+        assert_eq!(json, "ready");
+        let parsed: VolumeStatus = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, VolumeStatus::Ready);
+    }
+
+    #[test]
+    fn test_volume_info_constructor_and_serialization() {
+        let info = VolumeInfo {
+            id: "vol-1".to_string(),
+            name: "data-vol".to_string(),
+            size_bytes: 1_000_000_000,
+            mount_path: Some(PathBuf::from("/mnt/data")),
+            status: VolumeStatus::Ready,
+            persistent: true,
+        };
+        let json = serde_json::to_value(&info).unwrap();
+        assert_eq!(json["id"], "vol-1");
+        assert_eq!(json["size_bytes"], 1_000_000_000);
+        assert_eq!(json["persistent"], true);
+    }
+
+    #[test]
+    fn test_volume_request_constructor_and_serialization() {
+        let req = VolumeRequest {
+            name: "req-vol".to_string(),
+            size_bytes: 5_000_000_000,
+            persistent: false,
+            mount_path: None,
+        };
+        let json = serde_json::to_value(&req).unwrap();
+        assert_eq!(json["name"], "req-vol");
+        assert_eq!(json["size_bytes"].as_u64().unwrap(), 5_000_000_000);
     }
 
     #[test]
@@ -302,5 +363,31 @@ mod tests {
 
         let err = StorageBackendError::VolumeNotFound("test-vol".into());
         assert!(err.to_string().contains("test-vol"));
+
+        let err = StorageBackendError::ProvisioningFailed("fail".into());
+        assert!(err.to_string().contains("Volume provisioning failed"));
+
+        let err = StorageBackendError::MountFailed("m".into());
+        assert!(err.to_string().contains("Mount operation failed"));
+
+        let err = StorageBackendError::UnmountFailed("u".into());
+        assert!(err.to_string().contains("Unmount operation failed"));
+
+        let err = StorageBackendError::DeletionFailed("d".into());
+        assert!(err.to_string().contains("Volume deletion failed"));
+    }
+
+    #[test]
+    fn test_volume_info_clone() {
+        let info = VolumeInfo {
+            id: "x".to_string(),
+            name: "n".to_string(),
+            size_bytes: 100,
+            mount_path: None,
+            status: VolumeStatus::Creating,
+            persistent: false,
+        };
+        let cloned = info.clone();
+        assert_eq!(cloned.id, info.id);
     }
 }

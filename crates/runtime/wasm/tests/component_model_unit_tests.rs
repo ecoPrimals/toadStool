@@ -10,8 +10,7 @@ async fn test_component_model_load_valid_module() {
     // Test loading a valid WASM component
     let runtime = WasmComponentRuntime::new().await;
 
-    if runtime.is_ok() {
-        let rt = runtime.unwrap();
+    if let Ok(rt) = runtime {
         let bytes = create_minimal_wasm_module();
         let result = rt.load_component(&bytes).await;
 
@@ -24,8 +23,7 @@ async fn test_component_model_load_invalid_module() {
     // Test loading invalid WASM bytes
     let runtime = WasmComponentRuntime::new().await;
 
-    if runtime.is_ok() {
-        let rt = runtime.unwrap();
+    if let Ok(rt) = runtime {
         let invalid_bytes = vec![0x00, 0x01, 0x02, 0x03]; // Not valid WASM
         let result = rt.load_component(&invalid_bytes).await;
 
@@ -38,8 +36,7 @@ async fn test_component_model_instantiate() {
     // Test component instantiation
     let runtime = WasmComponentRuntime::new().await;
 
-    if runtime.is_ok() {
-        let rt = runtime.unwrap();
+    if let Ok(rt) = runtime {
         let bytes = create_minimal_wasm_module();
 
         if let Ok(component) = rt.load_component(&bytes).await {
@@ -54,8 +51,7 @@ async fn test_component_model_export_functions() {
     // Test listing exported functions
     let runtime = WasmComponentRuntime::new().await;
 
-    if runtime.is_ok() {
-        let rt = runtime.unwrap();
+    if let Ok(rt) = runtime {
         let bytes = create_wasm_with_exports();
 
         if let Ok(component) = rt.load_component(&bytes).await {
@@ -70,16 +66,15 @@ async fn test_component_model_call_exported_function() {
     // Test calling an exported function
     let runtime = WasmComponentRuntime::new().await;
 
-    if runtime.is_ok() {
-        let rt = runtime.unwrap();
+    if let Ok(rt) = runtime {
         let bytes = create_wasm_with_add_function();
 
         if let Ok(component) = rt.load_component(&bytes).await {
             if let Ok(instance) = rt.instantiate_component(component).await {
                 let result = rt.call_function(&instance, "add", &[1, 2]).await;
 
-                if result.is_ok() {
-                    assert_eq!(result.unwrap(), vec![3]);
+                if let Ok(value) = result {
+                    assert_eq!(value, vec![3]);
                 }
             }
         }
@@ -91,8 +86,7 @@ async fn test_component_model_memory_access() {
     // Test reading/writing component memory
     let runtime = WasmComponentRuntime::new().await;
 
-    if runtime.is_ok() {
-        let rt = runtime.unwrap();
+    if let Ok(rt) = runtime {
         let bytes = create_wasm_with_memory();
 
         if let Ok(component) = rt.load_component(&bytes).await {
@@ -104,8 +98,8 @@ async fn test_component_model_memory_access() {
 
                 // Read from memory
                 let read_result = rt.read_memory(&instance, 0, 4).await;
-                if read_result.is_ok() {
-                    assert_eq!(read_result.unwrap(), data);
+                if let Ok(result) = read_result {
+                    assert_eq!(result, data);
                 }
             }
         }
@@ -132,12 +126,12 @@ async fn test_component_model_concurrent_instances() {
 
     let runtime = WasmComponentRuntime::new().await;
 
-    if runtime.is_ok() {
-        let rt = std::sync::Arc::new(runtime.unwrap());
+    if let Ok(rt_value) = runtime {
+        let rt = std::sync::Arc::new(rt_value);
         let mut set = JoinSet::new();
 
         for _ in 0..5 {
-            let rt_clone = rt.clone();
+            let rt_clone = Arc::clone(&rt);
             set.spawn(async move {
                 let bytes = create_minimal_wasm_module();
                 let component = rt_clone.load_component(&bytes).await?;
@@ -145,14 +139,16 @@ async fn test_component_model_concurrent_instances() {
             });
         }
 
-        let mut success_count = 0;
+        let mut _success_count = 0;
         while let Some(result) = set.join_next().await {
-            if result.is_ok() && result.unwrap().is_ok() {
-                success_count += 1;
+            if let Ok(inner_result) = result {
+                if inner_result.is_ok() {
+                    _success_count += 1;
+                }
             }
         }
 
-        assert!(success_count >= 0); // At least some should succeed
+        // success_count is usize, so it's always >= 0
     }
 }
 
@@ -161,8 +157,7 @@ async fn test_component_model_import_resolution() {
     // Test resolving component imports
     let runtime = WasmComponentRuntime::new().await;
 
-    if runtime.is_ok() {
-        let rt = runtime.unwrap();
+    if let Ok(rt) = runtime {
         let bytes = create_wasm_with_imports();
 
         if let Ok(component) = rt.load_component(&bytes).await {
@@ -177,8 +172,7 @@ async fn test_component_model_error_handling_trap() {
     // Test handling WASM traps
     let runtime = WasmComponentRuntime::new().await;
 
-    if runtime.is_ok() {
-        let rt = runtime.unwrap();
+    if let Ok(rt) = runtime {
         let bytes = create_wasm_with_trap();
 
         if let Ok(component) = rt.load_component(&bytes).await {
@@ -195,15 +189,14 @@ async fn test_component_model_serialization() {
     // Test component serialization/deserialization
     let runtime = WasmComponentRuntime::new().await;
 
-    if runtime.is_ok() {
-        let rt = runtime.unwrap();
+    if let Ok(rt) = runtime {
         let bytes = create_minimal_wasm_module();
 
         if let Ok(component) = rt.load_component(&bytes).await {
             let serialized = rt.serialize_component(&component).await;
 
-            if serialized.is_ok() {
-                let deserialized = rt.deserialize_component(&serialized.unwrap()).await;
+            if let Ok(serialized_value) = serialized {
+                let deserialized = rt.deserialize_component(&serialized_value).await;
                 assert!(deserialized.is_ok());
             }
         }
@@ -215,8 +208,7 @@ async fn test_component_model_cleanup() {
     // Test proper cleanup of resources
     let runtime = WasmComponentRuntime::new().await;
 
-    if runtime.is_ok() {
-        let rt = runtime.unwrap();
+    if let Ok(rt) = runtime {
         let bytes = create_minimal_wasm_module();
 
         if let Ok(component) = rt.load_component(&bytes).await {

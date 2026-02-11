@@ -11,6 +11,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use crate::network;
+use toadstool_common::constants::network::{BIND_ALL_IPV4, DEV_HTTP_PORT, LOCALHOST_IPV4};
 
 /// Network configuration
 ///
@@ -41,15 +42,18 @@ impl Default for NetworkConfig {
         .parse()
         .unwrap_or_else(|e| {
             tracing::error!("Invalid default bind address, using fallback: {}", e);
-            // Fallback to 0.0.0.0:3000, which should always parse
-            match "0.0.0.0:3000".parse() {
+            // Fallback to BIND_ALL_IPV4:DEV_HTTP_PORT, which should always parse
+            let fallback = format!("{}:{}", BIND_ALL_IPV4, DEV_HTTP_PORT);
+            match fallback.parse() {
                 Ok(addr) => addr,
                 Err(_) => {
-                    // Last resort: 127.0.0.1:3000 is guaranteed valid by IP spec
+                    // Last resort: LOCALHOST_IPV4:DEV_HTTP_PORT is guaranteed valid by IP spec
                     // This expect is justified: it's a compile-time constant that must be valid
                     #[allow(clippy::expect_used)]
-                    "127.0.0.1:3000".parse().expect(
-                        "Hardcoded '127.0.0.1:3000' must parse - this is a language guarantee",
+                    format!("{}:{}", LOCALHOST_IPV4, DEV_HTTP_PORT)
+                        .parse()
+                        .expect(
+                        "Constants LOCALHOST_IPV4:DEV_HTTP_PORT must parse - language guarantee",
                     )
                 }
             }
@@ -137,14 +141,26 @@ impl Default for EndpointConfig {
 
         // ✅ DEEP DEBT EVOLUTION: Capability-based discovery instead of hardcoded endpoints
         // Check environment variables first, then fall back to localhost defaults
-        let songbird = std::env::var("TOADSTOOL_COORDINATION_SERVICE_URL")
-            .unwrap_or_else(|_| format!("http://{}:8080", config.network.bind_address));
-        let beardog = std::env::var("TOADSTOOL_CRYPTO_SERVICE_URL")
-            .unwrap_or_else(|_| format!("http://{}:8081", config.network.bind_address));
-        let nestgate = std::env::var("TOADSTOOL_STORAGE_SERVICE_URL")
-            .unwrap_or_else(|_| format!("http://{}:8082", config.network.bind_address));
-        let squirrel = std::env::var("TOADSTOOL_AI_SERVICE_URL")
-            .unwrap_or_else(|_| format!("http://{}:6000", config.network.bind_address));
+        let songbird = std::env::var("TOADSTOOL_COORDINATION_SERVICE_URL").unwrap_or_else(|_| {
+            #[allow(deprecated)]
+            let port = crate::ports::fallback::SONGBIRD;
+            format!("http://{}:{}", config.network.bind_address, port)
+        });
+        let beardog = std::env::var("TOADSTOOL_CRYPTO_SERVICE_URL").unwrap_or_else(|_| {
+            #[allow(deprecated)]
+            let port = crate::ports::fallback::BEARDOG;
+            format!("http://{}:{}", config.network.bind_address, port)
+        });
+        let nestgate = std::env::var("TOADSTOOL_STORAGE_SERVICE_URL").unwrap_or_else(|_| {
+            #[allow(deprecated)]
+            let port = crate::ports::fallback::NESTGATE;
+            format!("http://{}:{}", config.network.bind_address, port)
+        });
+        let squirrel = std::env::var("TOADSTOOL_AI_SERVICE_URL").unwrap_or_else(|_| {
+            // Squirrel uses port 6000 as its known default; discovered at runtime in production
+            // TODO(Phase 3): Replace with capability-based discovery via Songbird
+            format!("http://{}:6000", config.network.bind_address)
+        });
 
         Self {
             // Capability-based endpoints - discovered via environment

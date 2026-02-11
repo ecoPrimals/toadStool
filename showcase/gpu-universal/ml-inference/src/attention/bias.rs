@@ -159,7 +159,7 @@ impl AttentionBias {
 
     /// Generate ALiBi (Attention with Linear Biases)
     ///
-    /// ALiBi adds a linear bias based on distance: bias[i,j] = -slope * |i - j|
+    /// ALiBi adds a linear bias based on distance: bias`i,j` = -slope * |i - j|
     ///
     /// Reference: "Train Short, Test Long: Attention with Linear Biases"
     /// (Press et al., 2021)

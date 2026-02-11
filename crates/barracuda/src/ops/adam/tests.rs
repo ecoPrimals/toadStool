@@ -1,12 +1,13 @@
 //! Tests for Adam Optimizer
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 #[tokio::test]
 async fn test_adam_basic() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let params = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
         .await
         .unwrap();
@@ -27,8 +28,9 @@ async fn test_adam_basic() {
 
 #[tokio::test]
 async fn test_adam_with_state() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let params = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
         .await
         .unwrap();
@@ -58,8 +60,9 @@ async fn test_adam_with_state() {
 
 #[tokio::test]
 async fn test_adam_validation() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let params = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())
         .await
         .unwrap();
@@ -100,8 +103,9 @@ async fn test_adam_validation() {
 
 #[tokio::test]
 async fn test_adam_large_batch() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let size = 128;
     let params = Tensor::from_vec_on(vec![1.0; size], vec![size], device.clone())
         .await
@@ -127,8 +131,9 @@ async fn test_adam_large_batch() {
 
 #[tokio::test]
 async fn test_adam_multi_step() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let params = Tensor::from_vec_on(vec![10.0, 20.0], vec![2], device.clone())
         .await
         .unwrap();

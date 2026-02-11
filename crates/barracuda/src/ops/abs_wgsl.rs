@@ -26,7 +26,7 @@ impl Abs {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/abs.wgsl")
+        include_str!("../shaders/math/abs.wgsl")
     }
 
     /// Execute the abs operation

@@ -1,19 +1,31 @@
 # ToadStool + BarraCUDA
 
-**Sovereign Distributed Compute** | Pure Rust | February 2026
+**Sovereign Distributed Compute** | Pure Rust | ecoBin | February 2026
 
 ---
 
 ## What Is This?
 
-- **ToadStool** -- Hardware infrastructure layer. Discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. No scripts, no sudo. Manages distributed workload dispatch across machines.
-- **BarraCUDA** -- Universal compute engine. 400+ WGSL shaders running on any GPU via WGPU. Tensors, linear algebra, ML, physics, cryptography. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
+- **ToadStool** -- Hardware infrastructure primal. Discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. Ollama model lifecycle management. Distributed workload dispatch across machines. ecoBin compliant: single binary, pure Rust, cross-architecture, cross-platform.
+- **BarraCUDA** -- Universal math engine. 414 WGSL shaders running on any GPU via WGPU. Tensors, linear algebra, ML, physics, cryptography, special functions. **Scientific computing middleware** (linalg, numerical, special, optimize, surrogate, sample) — same math for physics, ML, graphics, and audio. Smart workload routing across GPU, NPU, and CPU with user override. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
 
 ---
 
-## Proven in Production (February 9, 2026)
+## Quality Gates (February 11, 2026)
 
-### Cross-Vendor Distributed GPU Compute
+| Gate | Status |
+|------|--------|
+| `cargo build --workspace` | Clean, 0 warnings |
+| `cargo fmt --all -- --check` | Clean |
+| `cargo clippy --workspace` | **0 warnings** (down from 453) |
+| `cargo test --workspace` | **15,490+ passed, 0 failed, 156 ignored** |
+| `unsafe` blocks | 100% documented with `// SAFETY:` comments |
+| File size | All production files appropriately structured |
+| Scientific middleware | 85 tests, 100% passing, 0 unsafe blocks |
+
+---
+
+## Cross-Vendor Distributed GPU Compute
 
 **Single binary, identical results across vendors and machines:**
 
@@ -32,100 +44,6 @@ TinyLlama-1.1B split across two machines over LAN TCP:
 - gate2 (RTX 3090): Layers 11-21 + head
 - **39.85 tok/s** with BearDog ChaCha20-Poly1305 encrypted tensor transport
 
-### BarraCUDA Shader Coverage (400+ WGSL files)
-
-| Category | Count | Status |
-|----------|-------|--------|
-| Activations | 19 | Complete |
-| Element-wise | 25+ | Complete |
-| Linear algebra | 16 | Complete (Cholesky, triangular solve, inverse, determinant) |
-| Convolutions | 9 | Complete (1D, 3D, dilated, grouped, separable, transposed) |
-| Pooling | 14 | Complete |
-| Normalization | 17 | Complete (batch, instance, group, layer, RMS, spectral) |
-| Attention | 15 | Complete (softmax, flash, GQA, RoPE, ALiBi) |
-| Reductions | 26 | Complete |
-| Shape ops | 18 | Complete |
-| Loss functions | 27 | Complete |
-| Optimizers | 14 | Complete (Adam, AdamW, SGD, LAMB, RAdam, NAdAM) |
-| RNN/LSTM/GRU | 4 | Complete |
-| Graph neural nets | 5 | Complete |
-| Audio/signal | 9 | Complete (STFT, MFCC, Griffin-Lim) |
-| Image processing | 14 | Complete |
-| FFT/IFFT | 2 | Complete |
-| FHE/NTT | 8 | Complete (homomorphic encryption primitives) |
-| Complex arithmetic | 10 | Complete |
-| MD simulation | 8 | Complete (Velocity-Verlet, RK4, LJ, Coulomb, Yukawa, Morse, PBC) |
-| RBF interpolation | 1 | Complete (7 kernel types) |
-| Quantize/Dequantize | 3 | Complete |
-| Embedding | 2 | Complete |
-| Misc | 40+ | Complete (dropout, topk, NMS, etc.) |
-
-All shaders execute on **any GPU via WGPU** -- NVIDIA, AMD, Intel, Apple.
-
----
-
-## Honest Status
-
-### What's Real and Working
-
-**BarraCUDA compute** -- 400+ WGSL shaders, proven cross-vendor (NVIDIA + AMD), proven cross-machine (LAN distributed inference). Single binary deployment.
-
-**ToadStool discovery** -- Pure Rust sysfs/PCIe scanning. Finds GPUs, NPUs, CPUs. Hot-plug rescan. No scripts, no sudo.
-
-**Scientific computing** -- Cholesky decomposition, triangular solve, RBF interpolation (7 kernels), 8 MD force/integrator shaders. All GPU-accelerated.
-
-**NPU drivers** -- Akida kernel-mode (DMA, interrupts) and userspace (mmap PCIe BARs) drivers. Inference-only.
-
-**Distributed inference** -- Pipeline-parallel LLM across machines, BearDog-encrypted tensor transport, Songbird TCP mesh.
-
-### What Needs Evolution
-
-**Model weight loading** -- BarraCUDA has all transformer ops but no safetensors/GGUF loader. Current distributed demo used PyTorch for weight loading (the dependency trap we're trying to escape).
-
-**Tensor serialization** -- Need efficient binary format for cross-gate transfer. Shape metadata + raw buffer, zero-copy where possible.
-
-**Multi-GPU orchestration** -- `WgpuDevice::new()` picks one device. gate2 has both RTX 3090 and RX 6950 XT -- both should participate. Need `DevicePool`.
-
-**Toadstool as RPC service** -- Currently a biome runner. Needs to become a JSON-RPC workload service (`toadstool.load_model_shard`, `toadstool.forward_shard`, `toadstool.gpu_capabilities`).
-
-**Quantization** -- f32 only. Need INT4/INT8 WGSL shaders for larger models.
-
-**NPU arbitrary math** -- Akida NPU runs pre-compiled SNN inference only, not general WGSL compute. For NPU math: either surrogate models or NPU-native workloads (sparse, event-driven).
-
-**CPU fallback** -- WGPU's software rasterizer works but is slow. No explicit pure Rust CPU implementations.
-
-### Known Shader TODOs (11 files)
-
-1. `pow_simple.wgsl` -- squares only, needs arbitrary powers
-2. `broadcast.wgsl` -- first element only
-3. `cast.wgsl` -- f32 identity only
-4. `determinant.wgsl` -- 2x2/3x3 only, needs LU for NxN
-5. `index_add.wgsl` -- needs atomic ops
-6. `scatter_nd.wgsl` -- needs multi-dim scatter
-7. `gather_nd.wgsl` -- needs partial gathering
-8. `edge_conv.wgsl` -- placeholder neighbor handling
-9. `spectral_norm_1d.wgsl` -- placeholder sigma
-10. `fhe_key_switch.wgsl` -- placeholder accumulation
-11. `u64_emu.wgsl` -- Barrett reduction optimization
-
----
-
-## Quick Start
-
-```bash
-# Build everything
-cargo build --release
-
-# Run RBF surrogate demo
-cd showcase/rbf-surrogate && ./demo.sh
-
-# Run NPU detection
-cd showcase/neuromorphic/01-akida-detection && ./demo.sh
-
-# Cross-vendor GPU test (runs on any GPU)
-cargo test -p barracuda --lib ops::linalg --release
-```
-
 ---
 
 ## Architecture
@@ -133,14 +51,17 @@ cargo test -p barracuda --lib ops::linalg --release
 ```
 Applications (hotSpring, NUCLEUS inference, etc.)
        |
-BarraCUDA: 400+ WGSL Shaders
-  Tensors, LinAlg, ML, Physics, Crypto, Audio
+BarraCUDA: 414 WGSL Shaders + Scientific Middleware
+  Tensors, LinAlg, ML, Physics, Crypto, Audio, Special Functions
+  Middleware: linalg, numerical, special, optimize, surrogate, sample (85 tests)
   Proven: identical results NVIDIA + AMD
        |
 ToadStool: Hardware Discovery + Orchestration
-  Pure Rust sysfs/PCIe scanning
-  GPU, NPU, CPU discovery
-  Distributed workload dispatch (evolving)
+  JSON-RPC 2.0 + tarpc IPC (Unix sockets)
+  GPU Job Queue + Cross-Gate Routing
+  Ollama Model Lifecycle (list/load/inference/unload)
+  Capability-based runtime discovery
+  Shared error tracking (AtomicU64)
        |
   +--------+---------+--------+
   |        |         |        |
@@ -152,6 +73,48 @@ ToadStool: Hardware Discovery + Orchestration
 
 **Key**: Same WGSL shader compiles to Vulkan (NVIDIA/AMD), Metal (Apple), DX12 (Windows) via WGPU. No vendor SDK required.
 
+**Routing**: `Device::select_for_workload(&hint)` auto-routes to the optimal device. `Device::select_with_preference(Some(Device::CPU), &hint)` lets callers override. Auto-routing is smart; user choice is sovereign.
+
+### IPC Architecture
+
+- **Unix sockets** for all primal-to-primal communication
+- **JSON-RPC 2.0** protocol with semantic method naming (`{domain}.{operation}[.{variant}]`)
+- **tarpc** for high-performance typed RPC
+- **Capability-based discovery** -- primals discover each other at runtime by capability, not name
+- **biomeOS socket standard**: `/run/user/$UID/biomeos/{primal}.sock`
+- **Multi-family support**: `--family-id` flag for `toadstool-{family_id}.sock`
+
+### JSON-RPC Methods (26 total)
+
+| Domain | Methods |
+|--------|---------|
+| `toadstool.*` | `health`, `version`, `query_capabilities` |
+| `toadstool.resources.*` | `estimate`, `validate_availability`, `suggest_optimizations` |
+| `compute.*` | `discover_capabilities`, `submit`, `status`, `result`, `cancel`, `list` |
+| `gpu.*` | `info`, `memory` |
+| `ollama.*` | `list_models`, `inference`, `load`, `unload` |
+| `gate.*` | `update`, `remove`, `list`, `route` |
+
+---
+
+## Quick Start
+
+```bash
+# Build everything
+cargo build --release
+
+# Run all quality gates
+cargo fmt --all -- --check
+cargo clippy --workspace
+cargo test --workspace
+
+# Run RBF surrogate demo
+cd showcase/rbf-surrogate && ./demo.sh
+
+# Cross-vendor GPU test (runs on any GPU)
+cargo test -p barracuda --lib ops::linalg --release
+```
+
 ---
 
 ## Project Structure
@@ -159,88 +122,77 @@ ToadStool: Hardware Discovery + Orchestration
 ```
 toadStool/
 +-- crates/
-|   +-- barracuda/             -- 400+ WGSL shaders, tensor ops
-|   |   +-- src/shaders/       -- All WGSL shader files
-|   |   +-- src/ops/           -- Rust operation wrappers
-|   |   +-- src/device/        -- WGPU device, hardware routing
-|   +-- core/                  -- ToadStool core runtime
+|   +-- barracuda/             -- 414 WGSL shaders, tensor ops
+|   +-- core/
+|   |   +-- common/            -- Shared types, constants, discovery
+|   |   +-- config/            -- Centralized configuration (env-aware)
+|   |   +-- toadstool/         -- Core runtime, IPC, scheduler
+|   +-- server/                -- JSON-RPC server, GPU job queue, Ollama, cross-gate router
+|   +-- api/                   -- REST API, middleware
+|   +-- cli/                   -- UniBin CLI (single binary)
+|   +-- integration/           -- Inter-primal protocols (beardog, nestgate, songbird)
+|   +-- distributed/           -- Multi-gate coordination, crypto
+|   +-- runtime/
+|   |   +-- gpu/               -- WGPU device management
+|   |   +-- universal/         -- Universal compute substrate (CPU backends implemented)
+|   |   +-- adaptive/          -- Adaptive optimization
+|   |   +-- display/           -- DRM/input backend
 |   +-- neuromorphic/          -- NPU drivers (Akida)
-|   +-- runtime/               -- Execution engines
-|   +-- distributed/           -- Inter-gate communication
-|   +-- security/              -- Crypto, enclaves
-|   +-- server/                -- RPC server
-|   +-- cli/                   -- CLI interface
-|   +-- ...
-+-- showcase/
-|   +-- rbf-surrogate/         -- RBF scientific computing demo
-|   +-- neuromorphic/          -- NPU showcases
-|   +-- barracuda-validation/  -- GPU validation
-|   +-- gpu-universal/         -- Cross-vendor GPU demos
-|   +-- homomorphic-computing/ -- FHE demos
-|   +-- ...
-+-- docs/
-|   +-- sessions/              -- Session archives (by date)
-|   +-- architecture/          -- Design documents
-|   +-- planning/              -- Roadmaps
-|   +-- guides/                -- Deployment guides
-|   +-- archive/               -- Historical documentation
+|   +-- security/              -- Sandbox, policies, monitoring
+|   +-- testing/               -- Chaos, fault, property testing
+|   +-- management/            -- Analytics, monitoring, resources
++-- showcase/                  -- Demos (RBF, neuromorphic, GPU, FHE)
++-- docs/                      -- Architecture, guides, audits
 +-- specs/                     -- Technical specifications
-+-- scripts/                   -- Helper scripts
++-- tests/                     -- Workspace-level integration tests
 ```
 
 ---
 
-## Building & Testing
+## Code Quality
 
-```bash
-# Build workspace
-cargo build --release
+### Deep Debt Principles
 
-# Test linear algebra
-cargo test -p barracuda --lib ops::linalg --release
+1. **Modern idiomatic Rust** -- parameter-based APIs, zero global state mutation
+2. **Fully concurrent** -- scoped mutex for env tests, event-driven async, no sleep-based sync
+3. **Zero-copy hot paths** -- `serde_json::from_slice`, `String::from`, pre-sized buffers
+4. **No hardcoding** -- runtime discovery, capability-based, named constants for ports
+5. **Mocks isolated to testing** -- production code is complete implementations
+6. **Honest documentation** -- no aspirational claims as facts
+7. **Vendor-agnostic** -- WGSL over CUDA/ROCm, any GPU works
+8. **Sovereign compute** -- no vendor lock-in, minimal C FFI (only kernel interfaces)
+9. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments
+10. **Shared error tracking** -- `AtomicU64` counter across all server transports
 
-# Test interpolation
-cargo test -p barracuda --lib ops::interpolation --release
+### Quality Metrics
 
-# Test NPU driver
-cargo test -p akida-driver --release
-
-# Test ToadStool core
-cargo test -p toadstool-core
-```
+| Metric | Value |
+|--------|-------|
+| Clippy warnings | 0 (from 453) |
+| Tests passing | 15,490+ |
+| Tests failing | 0 |
+| Build warnings | 0 |
+| Server line coverage | 81% (84% excl. integration-only; target 90%) |
+| Common line coverage | 81% |
+| Config line coverage | 83% (up from 73%) |
+| `unsafe` blocks | 35 blocks, 100% documented with `// SAFETY:` |
+| File size | All production files under 1000 lines |
+| Production `todo!()` | 0 |
+| Production mocks | 0 (TestExecutor in test-only code) |
+| `#[serial]` in tests | 0 (replaced with scoped Mutex) |
+| Sleep-based test sync | 0 in server tests (event-driven) |
 
 ---
 
-## Deep Debt Principles
+## What Needs Evolution
 
-1. Modern idiomatic Rust -- no `unsafe` in new code
-2. No external scripts -- pure Rust, self-evolving
-3. No hardcoding -- runtime discovery, capability-based
-4. Mocks isolated to testing -- production code is complete
-5. Honest documentation -- no aspirational claims as facts
-6. Vendor-agnostic -- WGSL over CUDA/ROCm, any GPU works
-7. Sovereign compute -- no vendor lock-in, no dependency traps
-
----
-
-## Evolution Roadmap
-
-### Immediate (distributed compute gaps)
-1. Safetensors/GGUF weight loader for BarraCUDA
-2. Tensor serialization format for cross-gate transfer
-3. Multi-GPU DevicePool (use all GPUs on a machine)
-4. Toadstool JSON-RPC workload service
-
-### Medium-term (production inference)
-1. INT4/INT8 quantization WGSL shaders
-2. Intelligent workload partitioning (VRAM-aware, compute-aware)
-3. Tensor parallelism (split layers across GPUs)
-4. Neighbor list construction for MD simulation
-
-### Long-term
-1. NPU surrogate inference path
-2. Full tensor parallelism + expert parallelism for MoE models
-3. Cross-hardware benchmarking suite
+- **Test coverage** -- server at 81%, common at 81%, config at 83%. Target 90%.
+- **VFIO NPU backend** -- eliminate C kernel module, pure Rust via `/dev/vfio/*` (3-4 weeks)
+- **NPU model pipeline** -- train/compile/deploy from Rust, replace Python cnn2snn
+- **Model weight loading** -- need safetensors/GGUF loader (eliminate PyTorch dependency)
+- **Multi-GPU orchestration** -- `WgpuDevice::new()` picks one device; need `DevicePool`
+- **INT4/INT8 quantization** -- f32 only; need quantized WGSL shaders
+- **Cross-gate mesh relay** -- gate.* routing defined, needs Songbird mesh transport
 
 ---
 
@@ -248,9 +200,9 @@ cargo test -p toadstool-core
 
 - **[STATUS.md](STATUS.md)** -- Current honest status
 - **[DOCUMENTATION.md](DOCUMENTATION.md)** -- Navigation hub
-- **[CHANGELOG.md](CHANGELOG.md)** -- Version history
-- **[docs/sessions/](docs/sessions/)** -- Session archives
+- **[QUICK_STATUS.md](QUICK_STATUS.md)** -- One-page summary
+- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** -- Commands and API reference
 
 ---
 
-**Last Updated**: February 9, 2026
+**Last Updated**: February 11, 2026

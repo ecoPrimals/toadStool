@@ -24,8 +24,7 @@ fn cpu_matmul_reference(a: &[f32], b: &[f32], m: usize, k: usize, n: usize) -> V
 #[tokio::test]
 async fn test_matmul_precision() {
     // Compare GPU matmul vs CPU reference
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let m = 32;
     let k = 32;
     let n = 32;
@@ -63,8 +62,7 @@ fn cpu_add_reference(a: &[f32], b: &[f32]) -> Vec<f32> {
 #[tokio::test]
 async fn test_add_precision() {
     // Compare GPU add vs CPU reference
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let size = 1000;
     let a: Vec<f32> = (0..size).map(|i| (i as f32) * 0.01).collect();
     let b: Vec<f32> = (0..size).map(|i| (i as f32) * 0.02).collect();
@@ -99,8 +97,7 @@ fn cpu_relu_reference(x: &[f32]) -> Vec<f32> {
 #[tokio::test]
 async fn test_relu_precision() {
     // ReLU should be exact (no numerical error)
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let size = 1000;
     let input: Vec<f32> = (0..size).map(|i| (i as f32) * 0.01 - 5.0).collect();
 
@@ -134,8 +131,7 @@ fn cpu_sum_reference(x: &[f32]) -> f32 {
 #[tokio::test]
 async fn test_sum_precision() {
     // Sum reduction accuracy
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let size = 1000;
     let input: Vec<f32> = (0..size).map(|i| (i as f32) * 0.001).collect();
 
@@ -186,8 +182,7 @@ fn cpu_softmax_reference(x: &[f32], batch: usize, classes: usize) -> Vec<f32> {
 #[tokio::test]
 async fn test_softmax_precision() {
     // Softmax numerical stability and precision
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 8;
     let classes = 10;
     let size = batch * classes;

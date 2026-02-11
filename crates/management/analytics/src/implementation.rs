@@ -1,4 +1,13 @@
 //! Intelligent Analytics Engine Implementation
+//!
+//! PURE RUST: In-memory analytics with statistical analysis and prediction.
+//! No external database dependencies -- all data stored in-memory.
+//!
+//! ## Evolution Path
+//!
+//! - Current: In-memory `VecDeque` buffer with statistical analysis
+//! - Future: Pure Rust embedded database (redb, sled) for persistence
+//! - Never: sqlx/ring/C-dependency databases
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
@@ -7,8 +16,6 @@ use std::time::Duration;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use ndarray::Array1;
-// PURE RUST: sqlx removed - in-memory analytics only
-// use sqlx::{Row, SqlitePool};
 use statrs::statistics::Statistics;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, error, info};
@@ -24,72 +31,30 @@ use crate::types::{
 };
 use crate::utils::{calculate_median, calculate_percentile};
 
+/// Maximum data points to retain in memory
+const MAX_BUFFER_SIZE: usize = 10_000;
+
 /// Intelligent analytics engine implementation
-/// 
-/// PURE RUST: Database persistence disabled - in-memory analytics only
-/// Future: Can add pure Rust database (sled, redb) for persistence
+///
+/// PURE RUST: In-memory analytics only -- zero C dependencies.
+/// Future: Can add pure Rust persistence (redb, sled) when needed.
 pub struct IntelligentAnalyticsEngine {
     config: AnalyticsConfig,
-    // database: SqlitePool,  // REMOVED: Brings ring via rustls
     data_buffer: Arc<RwLock<VecDeque<AnalyticsDataPoint>>>,
     alert_sender: broadcast::Sender<Alert>,
     dashboards: Arc<RwLock<HashMap<Uuid, Dashboard>>>,
 }
 
 impl IntelligentAnalyticsEngine {
-    /// Create a new intelligent analytics engine
+    /// Create a new intelligent analytics engine (pure Rust, in-memory)
     pub async fn new(config: AnalyticsConfig) -> ToadStoolResult<Self> {
-        info!("Initializing intelligent analytics engine");
+        info!("Initializing intelligent analytics engine (in-memory)");
 
-        // Initialize database
-        let database = SqlitePool::connect("sqlite::memory:")
-            .await
-            .map_err(|e| ToadStoolError::io(e.to_string()))?;
-
-        // Initialize database schema
-        sqlx::query(
-            r"
-            CREATE TABLE IF NOT EXISTS analytics_data (
-                id TEXT PRIMARY KEY,
-                timestamp TEXT NOT NULL,
-                metric_name TEXT NOT NULL,
-                value REAL NOT NULL,
-                runtime_type TEXT,
-                execution_id TEXT,
-                tags TEXT
-            )
-        ",
-        )
-        .execute(&database)
-        .await
-        .map_err(|e| ToadStoolError::io(e.to_string()))?;
-
-        sqlx::query(
-            r"
-            CREATE TABLE IF NOT EXISTS alerts (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                metric_name TEXT NOT NULL,
-                condition_type TEXT NOT NULL,
-                condition_data TEXT NOT NULL,
-                severity TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                last_triggered TEXT,
-                status TEXT NOT NULL
-            )
-        ",
-        )
-        .execute(&database)
-        .await
-        .map_err(|e| ToadStoolError::io(e.to_string()))?;
-
-        // Initialize broadcast channel for alerts
         let (alert_sender, _) = broadcast::channel(1000);
 
         let engine = Self {
             config,
-            database,
-            data_buffer: Arc::new(RwLock::new(VecDeque::new())),
+            data_buffer: Arc::new(RwLock::new(VecDeque::with_capacity(MAX_BUFFER_SIZE))),
             alert_sender,
             dashboards: Arc::new(RwLock::new(HashMap::new())),
         };
@@ -102,7 +67,6 @@ impl IntelligentAnalyticsEngine {
     pub async fn start_background_processing(self: Arc<Self>) -> ToadStoolResult<()> {
         info!("Starting background analytics processing");
 
-        // Start data collection task
         let collection_engine = self.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(
@@ -117,13 +81,13 @@ impl IntelligentAnalyticsEngine {
             }
         });
 
-        // Start alert evaluation task
+        let alert_engine = self;
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(60)); // Check every minute
+            let mut interval = tokio::time::interval(Duration::from_secs(60));
 
             loop {
                 interval.tick().await;
-                if let Err(e) = self.evaluate_alerts().await {
+                if let Err(e) = alert_engine.evaluate_alerts().await {
                     error!("Error evaluating alerts: {:?}", e);
                 }
             }
@@ -132,35 +96,32 @@ impl IntelligentAnalyticsEngine {
         Ok(())
     }
 
-    /// Process buffered analytics data
+    /// Process buffered analytics data (in-memory compaction)
     async fn process_buffered_data(&self) -> ToadStoolResult<()> {
-        let mut buffer = self.data_buffer.write().await;
-
-        while let Some(data_point) = buffer.pop_front() {
-            // Store in database
-            let tags_json = serde_json::to_string(&data_point.tags)
-                .map_err(|e| ToadStoolError::validation(e.to_string()))?;
-
-            sqlx::query(r"
-                INSERT INTO analytics_data (id, timestamp, metric_name, value, runtime_type, execution_id, tags)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ")
-            .bind(data_point.id.to_string())
-            .bind(data_point.timestamp.to_rfc3339())
-            .bind(&data_point.metric_name)
-            .bind(data_point.value)
-            .bind(data_point.runtime_type.as_ref().map(|rt| format!("{rt:?}")))
-            .bind(&data_point.execution_id)
-            .bind(tags_json)
-            .execute(&self.database).await
-                .map_err(|e| ToadStoolError::io(e.to_string()))?;
-        }
-
+        let buffer = self.data_buffer.read().await;
+        debug!(
+            "Processing buffered data: {} points in memory",
+            buffer.len()
+        );
+        // In-memory: data is already in buffer, nothing to persist.
+        // Future evolution: flush to redb/sled here.
         Ok(())
     }
 
+    /// Query data points by metric name and time range from in-memory buffer
+    fn query_data_points<'a>(
+        buffer: &'a VecDeque<AnalyticsDataPoint>,
+        metric_name: &str,
+        since: DateTime<Utc>,
+    ) -> Vec<&'a AnalyticsDataPoint> {
+        buffer
+            .iter()
+            .filter(|dp| dp.metric_name == metric_name && dp.timestamp >= since)
+            .collect()
+    }
+
     /// Perform statistical analysis on time series data
-    async fn perform_statistical_analysis(&self, data: &[f64]) -> TrendStatistics {
+    fn perform_statistical_analysis(data: &[f64]) -> TrendStatistics {
         let mean = data.mean();
         let median = calculate_median(data);
         let std_deviation = data.std_dev();
@@ -168,14 +129,13 @@ impl IntelligentAnalyticsEngine {
         let max = data.max();
         let percentile_95 = calculate_percentile(data, 0.95);
 
-        // Calculate correlation coefficient (simplified linear correlation)
         let correlation_coefficient = if data.len() > 1 {
             let x: Vec<f64> = (0..data.len()).map(|i| i as f64).collect();
             let x_array = Array1::from(x);
             let y_array = Array1::from(data.to_vec());
 
-            let x_mean = x_array.clone().mean();
-            let y_mean = y_array.clone().mean();
+            let x_mean = x_array.mean().unwrap_or(0.0);
+            let y_mean = y_array.mean().unwrap_or(0.0);
 
             let numerator: f64 = x_array
                 .iter()
@@ -207,54 +167,53 @@ impl IntelligentAnalyticsEngine {
     }
 
     /// Generate predictions using linear regression
-    async fn generate_predictions(&self, data: &[f64], hours_ahead: u32) -> Vec<PredictionPoint> {
-        let mut predictions = Vec::new();
-
+    fn generate_predictions(data: &[f64], hours_ahead: u32) -> Vec<PredictionPoint> {
         if data.len() < 2 {
-            return predictions;
+            return Vec::new();
         }
 
-        // Simple linear regression for prediction
         let x: Vec<f64> = (0..data.len()).map(|i| i as f64).collect();
-        let y = data;
-
         let n = data.len() as f64;
         let sum_x: f64 = x.iter().sum();
-        let sum_y: f64 = y.iter().sum();
-        let sum_xy: f64 = x.iter().zip(y.iter()).map(|(xi, yi)| xi * yi).sum();
+        let sum_y: f64 = data.iter().sum();
+        let sum_xy: f64 = x.iter().zip(data.iter()).map(|(xi, yi)| xi * yi).sum();
         let sum_x2: f64 = x.iter().map(|xi| xi * xi).sum();
 
-        let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
+        let denominator = n * sum_x2 - sum_x * sum_x;
+        if denominator.abs() < f64::EPSILON {
+            return Vec::new();
+        }
+
+        let slope = (n * sum_xy - sum_x * sum_y) / denominator;
         let intercept = (sum_y - slope * sum_x) / n;
 
         let current_time = Utc::now();
 
-        for i in 1..=hours_ahead {
-            let future_x = data.len() as f64 + f64::from(i);
-            let predicted_value = slope * future_x + intercept;
+        (1..=hours_ahead)
+            .map(|i| {
+                let future_x = data.len() as f64 + f64::from(i);
+                let predicted_value = slope * future_x + intercept;
 
-            // Calculate confidence interval (simplified)
-            let std_error = (y
-                .iter()
-                .map(|yi| yi - predicted_value)
-                .map(|diff| diff * diff)
-                .sum::<f64>()
-                / n)
-                .sqrt();
-            let confidence_interval = (
-                predicted_value - 1.96 * std_error,
-                predicted_value + 1.96 * std_error,
-            );
+                let std_error = (data
+                    .iter()
+                    .map(|yi| yi - predicted_value)
+                    .map(|diff| diff * diff)
+                    .sum::<f64>()
+                    / n)
+                    .sqrt();
+                let confidence_interval = (
+                    predicted_value - 1.96 * std_error,
+                    predicted_value + 1.96 * std_error,
+                );
 
-            predictions.push(PredictionPoint {
-                timestamp: current_time + chrono::Duration::hours(i64::from(i)),
-                predicted_value,
-                confidence_interval,
-                prediction_method: "linear_regression".to_string(),
-            });
-        }
-
-        predictions
+                PredictionPoint {
+                    timestamp: current_time + chrono::Duration::hours(i64::from(i)),
+                    predicted_value,
+                    confidence_interval,
+                    prediction_method: "linear_regression".to_string(),
+                }
+            })
+            .collect()
     }
 }
 
@@ -266,12 +225,11 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
             data_point.metric_name
         );
 
-        // Add to buffer for batch processing
         let mut buffer = self.data_buffer.write().await;
         buffer.push_back(data_point);
 
-        // Limit buffer size
-        if buffer.len() > 10000 {
+        // Evict oldest when buffer is full
+        if buffer.len() > MAX_BUFFER_SIZE {
             buffer.pop_front();
         }
 
@@ -286,43 +244,20 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         debug!("Analyzing trends for metric: {}", metric_name);
 
         let cutoff_time = Utc::now() - chrono::Duration::hours(i64::from(hours_back));
+        let buffer = self.data_buffer.read().await;
+        let matching = Self::query_data_points(&buffer, metric_name, cutoff_time);
 
-        // Query historical data
-        let rows = sqlx::query(
-            r"
-            SELECT timestamp, value FROM analytics_data 
-            WHERE metric_name = ? AND timestamp >= ?
-            ORDER BY timestamp ASC
-        ",
-        )
-        .bind(metric_name)
-        .bind(cutoff_time.to_rfc3339())
-        .fetch_all(&self.database)
-        .await
-        .map_err(|e| ToadStoolError::io(e.to_string()))?;
-
-        if rows.is_empty() {
+        if matching.is_empty() {
             return Err(ToadStoolError::not_found(format!(
                 "No data found for metric: {metric_name}"
             )));
         }
 
-        let values: Vec<f64> = rows.iter().map(|row| row.get::<f64, _>("value")).collect();
+        let values: Vec<f64> = matching.iter().map(|dp| dp.value).collect();
+        let timestamps: Vec<DateTime<Utc>> = matching.iter().map(|dp| dp.timestamp).collect();
 
-        let timestamps: Vec<DateTime<Utc>> = rows
-            .iter()
-            .map(|row| {
-                let timestamp_str: String = row.get("timestamp");
-                DateTime::parse_from_rfc3339(&timestamp_str)
-                    .unwrap_or_else(|_| Utc::now().into())
-                    .with_timezone(&Utc)
-            })
-            .collect();
+        let statistics = Self::perform_statistical_analysis(&values);
 
-        // Perform statistical analysis
-        let statistics = self.perform_statistical_analysis(&values).await;
-
-        // Determine trend direction
         let trend = if statistics.correlation_coefficient > 0.7 {
             TrendDirection::Increasing {
                 slope: statistics.correlation_coefficient,
@@ -331,7 +266,9 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
             TrendDirection::Decreasing {
                 slope: statistics.correlation_coefficient.abs(),
             }
-        } else if statistics.std_deviation / statistics.mean < 0.1 {
+        } else if statistics.mean.abs() > f64::EPSILON
+            && statistics.std_deviation / statistics.mean < 0.1
+        {
             TrendDirection::Stable {
                 variation: statistics.std_deviation,
             }
@@ -339,8 +276,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
             TrendDirection::Irregular
         };
 
-        // Generate predictions
-        let predictions = self.generate_predictions(&values, 24).await; // 24 hours ahead
+        let predictions = Self::generate_predictions(&values, 24);
 
         let confidence = if values.len() > 100 {
             0.9
@@ -368,66 +304,43 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
     ) -> ToadStoolResult<Vec<PredictionPoint>> {
         debug!("Predicting values for metric: {}", metric_name);
 
-        // Get recent data for prediction
         let cutoff_time = Utc::now() - chrono::Duration::hours(168); // Last week
+        let buffer = self.data_buffer.read().await;
+        let matching = Self::query_data_points(&buffer, metric_name, cutoff_time);
 
-        let rows = sqlx::query(
-            r"
-            SELECT value FROM analytics_data 
-            WHERE metric_name = ? AND timestamp >= ?
-            ORDER BY timestamp ASC
-        ",
-        )
-        .bind(metric_name)
-        .bind(cutoff_time.to_rfc3339())
-        .fetch_all(&self.database)
-        .await
-        .map_err(|e| ToadStoolError::io(e.to_string()))?;
-
-        if rows.is_empty() {
+        if matching.is_empty() {
             return Err(ToadStoolError::not_found(format!(
                 "No data found for metric: {metric_name}"
             )));
         }
 
-        let values: Vec<f64> = rows.iter().map(|row| row.get::<f64, _>("value")).collect();
-
-        Ok(self.generate_predictions(&values, hours_ahead).await)
+        let values: Vec<f64> = matching.iter().map(|dp| dp.value).collect();
+        Ok(Self::generate_predictions(&values, hours_ahead))
     }
 
     async fn evaluate_alerts(&self) -> ToadStoolResult<Vec<Alert>> {
         debug!("Evaluating alert conditions");
 
-        // This is a simplified implementation
-        // In a real scenario, you'd load alert definitions from database
-        // and evaluate them against current metrics
+        let recent_time = Utc::now() - chrono::Duration::minutes(5);
+        let buffer = self.data_buffer.read().await;
 
         let mut triggered_alerts = Vec::new();
 
-        // Example: Check if any recent metrics exceed thresholds
-        let recent_time = Utc::now() - chrono::Duration::minutes(5);
+        // Collect recent data points across all metrics
+        let recent_points: Vec<&AnalyticsDataPoint> = buffer
+            .iter()
+            .filter(|dp| dp.timestamp >= recent_time)
+            .collect();
 
-        let rows = sqlx::query(
-            r"
-            SELECT metric_name, value FROM analytics_data 
-            WHERE timestamp >= ?
-        ",
-        )
-        .bind(recent_time.to_rfc3339())
-        .fetch_all(&self.database)
-        .await
-        .map_err(|e| ToadStoolError::io(e.to_string()))?;
-
-        for row in rows {
-            let metric_name: String = row.get("metric_name");
-            let value: f64 = row.get("value");
-
+        for dp in recent_points {
             // Check CPU threshold
-            if metric_name.contains("cpu") && value > self.config.alert_thresholds.cpu_threshold {
+            if dp.metric_name.contains("cpu")
+                && dp.value > self.config.alert_thresholds.cpu_threshold
+            {
                 triggered_alerts.push(Alert {
                     id: Uuid::new_v4(),
-                    name: format!("High CPU Usage: {metric_name}"),
-                    metric_name: metric_name.clone(),
+                    name: format!("High CPU Usage: {}", dp.metric_name),
+                    metric_name: dp.metric_name.clone(),
                     condition: AlertCondition::Threshold {
                         operator: ">".to_string(),
                         value: self.config.alert_thresholds.cpu_threshold,
@@ -441,13 +354,13 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
             }
 
             // Check memory threshold
-            if metric_name.contains("memory")
-                && value > self.config.alert_thresholds.memory_threshold
+            if dp.metric_name.contains("memory")
+                && dp.value > self.config.alert_thresholds.memory_threshold
             {
                 triggered_alerts.push(Alert {
                     id: Uuid::new_v4(),
-                    name: format!("High Memory Usage: {metric_name}"),
-                    metric_name: metric_name.clone(),
+                    name: format!("High Memory Usage: {}", dp.metric_name),
+                    metric_name: dp.metric_name.clone(),
                     condition: AlertCondition::Threshold {
                         operator: ">".to_string(),
                         value: self.config.alert_thresholds.memory_threshold,
@@ -461,7 +374,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
             }
         }
 
-        // Send alerts via broadcast channel
+        // Broadcast triggered alerts
         for alert in &triggered_alerts {
             let _ = self.alert_sender.send(alert.clone());
         }
@@ -496,35 +409,25 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
             })?,
         );
 
-        // Fetch data for each panel
+        // Fetch data for each panel from in-memory buffer
+        let buffer = self.data_buffer.read().await;
         let mut panel_data = serde_json::Map::new();
 
         for panel in &dashboard.panels {
             let mut metrics_data = Vec::new();
 
             for metric_name in &panel.metrics {
-                let rows = sqlx::query(
-                    r"
-                    SELECT timestamp, value FROM analytics_data 
-                    WHERE metric_name = ? AND timestamp >= ? AND timestamp <= ?
-                    ORDER BY timestamp ASC
-                ",
-                )
-                .bind(metric_name)
-                .bind(panel.time_range.from.to_rfc3339())
-                .bind(panel.time_range.to.to_rfc3339())
-                .fetch_all(&self.database)
-                .await
-                .map_err(|e| ToadStoolError::io(e.to_string()))?;
-
-                let data_points: Vec<serde_json::Value> = rows
+                let data_points: Vec<serde_json::Value> = buffer
                     .iter()
-                    .map(|row| {
-                        let timestamp_str: String = row.get("timestamp");
-                        let value: f64 = row.get("value");
+                    .filter(|dp| {
+                        dp.metric_name == *metric_name
+                            && dp.timestamp >= panel.time_range.from
+                            && dp.timestamp <= panel.time_range.to
+                    })
+                    .map(|dp| {
                         serde_json::json!({
-                            "timestamp": timestamp_str,
-                            "value": value
+                            "timestamp": dp.timestamp.to_rfc3339(),
+                            "value": dp.value
                         })
                     })
                     .collect();
@@ -546,7 +449,6 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
     async fn export_metrics(&self) -> ToadStoolResult<()> {
         debug!("Exporting metrics to external systems");
 
-        // Export to configured webhooks
         for webhook in &self.config.external_integrations.webhooks {
             match self.export_to_webhook(webhook).await {
                 Ok(()) => info!("Successfully exported metrics to webhook: {}", webhook.name),
@@ -562,17 +464,16 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
 }
 
 impl IntelligentAnalyticsEngine {
-    /// Export metrics to a webhook endpoint - PURE RUST
+    /// Export metrics to a webhook endpoint
     ///
-    /// **EVOLUTION**: Use Songbird for external HTTP
+    /// **EVOLUTION**: Use Songbird for external HTTP when available.
+    /// Currently a no-op that logs the export intent.
     async fn export_to_webhook(&self, webhook: &WebhookConfig) -> ToadStoolResult<()> {
-        // PURE RUST: External HTTP disabled - use Songbird
-        tracing::info!("Webhook export to {} - use Songbird for external HTTP", webhook.url);
-        
-        // Would use Songbird RPC client here:
-        // let songbird = SongbirdClient::discover().await?;
-        // songbird.http_post(&webhook.url, payload).await?;
-        
+        // PURE RUST: External HTTP disabled -- use Songbird for external comms
+        tracing::info!(
+            "Webhook export to {} -- use Songbird for external HTTP",
+            webhook.url
+        );
         Ok(())
     }
 }

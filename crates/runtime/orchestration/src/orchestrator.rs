@@ -208,6 +208,7 @@ pub struct WorkloadRequest {
 }
 
 impl WorkloadRequest {
+    #[allow(clippy::new_ret_no_self)] // Builder pattern - returns builder, not Self
     pub fn new() -> WorkloadRequestBuilder {
         WorkloadRequestBuilder::default()
     }

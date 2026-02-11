@@ -3,6 +3,7 @@
 //! Shared server main logic for both toadstool and toadstool-server binaries
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use tokio::signal;
 use tracing::{error, info, warn};
@@ -25,21 +26,31 @@ use crate::{CoordinatorExecutor, ManualJsonRpcServer};
 ///
 /// This function enables the UniBin pattern by providing a shared
 /// implementation that can be called from multiple binary entry points.
-pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
+///
+/// ## Family ID Resolution
+///
+/// 1. If `family_id_override` (from `--family-id` CLI) is set, use it
+/// 2. Else fall back to env vars: TOADSTOOL_FAMILY_ID, TOADSTOOL_FAMILY, BIOMEOS_FAMILY_ID
+/// 3. If family ID is set and not "default", socket is `toadstool-{family_id}.sock`
+/// 4. If family ID is "default" or not set, socket is `toadstool.sock`
+pub async fn run_server_main(
+    family_id_override: Option<String>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     info!(
         "🍄 ToadStool Universal Compute Server v{}",
         env!("CARGO_PKG_VERSION")
     );
     info!("CPU, GPU, Neuromorphic - Different orders of the same architecture");
 
-    // Get configuration from environment (TRUE PRIMAL standard)
-    // Priority: TOADSTOOL_FAMILY_ID > TOADSTOOL_FAMILY > BIOMEOS_FAMILY_ID > default
-    let family_id = std::env::var("TOADSTOOL_FAMILY_ID")
-        .or_else(|_| std::env::var("TOADSTOOL_FAMILY"))
-        .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
-        .unwrap_or_else(|_| {
-            warn!("No family ID environment variables set, using 'default'");
-            warn!("For multi-instance support, set one of:");
+    // Get configuration: CLI override first, then env, then default
+    // Priority: --family-id > TOADSTOOL_FAMILY_ID > TOADSTOOL_FAMILY > BIOMEOS_FAMILY_ID > default
+    let family_id = family_id_override
+        .or_else(|| std::env::var("TOADSTOOL_FAMILY_ID").ok())
+        .or_else(|| std::env::var("TOADSTOOL_FAMILY").ok())
+        .or_else(|| std::env::var("BIOMEOS_FAMILY_ID").ok())
+        .unwrap_or_else(|| {
+            warn!("No family ID (CLI or env) set, using 'default'");
+            warn!("For multi-instance support, use --family-id=nat0 or set one of:");
             warn!("  export TOADSTOOL_FAMILY_ID=nat0 (primal-specific)");
             warn!("  export BIOMEOS_FAMILY_ID=nat0 (orchestrator-provided)");
             "default".to_string()
@@ -76,8 +87,15 @@ pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
     let executor = create_executor(&family_id).await?;
     let version = env!("CARGO_PKG_VERSION").to_string();
 
+    // Shared error counter for unified monitoring across tarpc and JSON-RPC
+    let error_count = Arc::new(AtomicU64::new(0));
+
     // Create tarpc server (PRIMARY protocol)
-    let server = ToadStoolTarpcServer::new(version.clone(), Arc::clone(&executor));
+    let server = ToadStoolTarpcServer::new(
+        version.clone(),
+        Arc::clone(&executor),
+        Some(Arc::clone(&error_count)),
+    );
 
     // EVOLVED: Service-based registration with Songbird (Deep Debt!)
     // Register with Songbird discovery service if available
@@ -99,7 +117,11 @@ pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
     info!("   Protocol: tarpc (PRIMARY) + JSON-RPC 2.0 (UNIVERSAL)");
 
     let jsonrpc_socket = socket_path.with_extension("jsonrpc.sock");
-    let jsonrpc_server = ManualJsonRpcServer::new(Arc::clone(&executor), version.clone());
+    let jsonrpc_server = ManualJsonRpcServer::new(
+        Arc::clone(&executor),
+        version.clone(),
+        Some(Arc::clone(&error_count)),
+    );
 
     // Clone for server startup
     let socket_path_for_server = socket_path.clone();
@@ -159,7 +181,9 @@ pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
 ///
 /// biomeOS socket standard: All sockets in /run/user/$UID/biomeos/ subdirectory
 /// This enables discovery, organization, and security
-fn ensure_biomeos_directory(runtime_dir: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
+fn ensure_biomeos_directory(
+    runtime_dir: &Path,
+) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
     let biomeos_dir = runtime_dir.join("biomeos");
 
     // Create directory if doesn't exist
@@ -177,6 +201,18 @@ fn ensure_biomeos_directory(runtime_dir: &Path) -> Result<PathBuf, Box<dyn std::
     Ok(biomeos_dir)
 }
 
+/// Get socket filename based on family ID
+///
+/// - If family ID is "default" or not set: `toadstool.sock`
+/// - If family ID is set and not "default": `toadstool-{family_id}.sock`
+fn socket_filename_for_family(family_id: &str) -> String {
+    if family_id.is_empty() || family_id == "default" {
+        "toadstool.sock".to_string()
+    } else {
+        format!("toadstool-{}.sock", family_id)
+    }
+}
+
 /// Get socket path following biomeOS-standardized fallback
 ///
 /// Deep debt principle: Agnostic, capability-based, runtime discovery
@@ -187,7 +223,10 @@ fn ensure_biomeos_directory(runtime_dir: &Path) -> Result<PathBuf, Box<dyn std::
 /// 3. BIOMEOS_SOCKET_PATH env var (orchestrator-provided generic path)
 /// 4. XDG runtime directory (/run/user/<uid>/biomeos/toadstool.sock) - **STANDARD**
 /// 5. /tmp fallback (/tmp/biomeos/toadstool.sock) - dev/testing only
-fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+fn get_socket_path(
+    family_id: &str,
+    _node_id: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
     // 1. HIGHEST PRIORITY: Check TOADSTOOL_SOCKET env var (primal-specific)
     if let Ok(socket) = std::env::var("TOADSTOOL_SOCKET") {
         info!("✅ Using socket path from TOADSTOOL_SOCKET: {}", socket);
@@ -255,7 +294,8 @@ fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn s
 
     if runtime_dir.exists() {
         let biomeos_dir = ensure_biomeos_directory(&runtime_dir)?;
-        let socket_path = biomeos_dir.join("toadstool.sock");
+        let socket_filename = socket_filename_for_family(family_id);
+        let socket_path = biomeos_dir.join(socket_filename);
 
         info!(
             "✅ Using biomeOS standard socket path: {}",
@@ -278,7 +318,8 @@ fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn s
         std::fs::set_permissions(&tmp_biomeos, perms)?;
     }
 
-    let tmp_path = tmp_biomeos.join("toadstool.sock");
+    let socket_filename = socket_filename_for_family(family_id);
+    let tmp_path = tmp_biomeos.join(socket_filename);
 
     info!("⚠️  Using /tmp fallback for dev/testing deployment");
     info!("   Socket path: {}", tmp_path.display());
@@ -293,7 +334,7 @@ fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn s
 /// Now uses DistributedCoordinator for isomorphic/fractal coordination
 async fn create_executor(
     family_id: &str,
-) -> Result<Arc<dyn WorkloadExecutor + Send + Sync>, Box<dyn std::error::Error>> {
+) -> Result<Arc<dyn WorkloadExecutor + Send + Sync>, Box<dyn std::error::Error + Send + Sync>> {
     info!("Creating executor with distributed coordinator (isomorphic/fractal)");
 
     // Check if we should use distributed mode (default) or standalone fallback
@@ -362,7 +403,9 @@ async fn query_local_capabilities() -> Vec<String> {
     let mut capabilities = vec!["compute".to_string(), "cpu".to_string()];
 
     // Detect CPU capabilities (pure Rust via sysinfo!)
-    let cpus = num_cpus::get();
+    let cpus = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4);
     if cpus >= 16 {
         capabilities.push("high-core-count".to_string());
         tracing::info!("✅ High core count detected: {} cores", cpus);
@@ -622,6 +665,122 @@ fn write_tcp_discovery_file(
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========== socket_filename_for_family ==========
+
+    #[test]
+    fn socket_filename_for_family_default() {
+        assert_eq!(socket_filename_for_family("default"), "toadstool.sock");
+    }
+
+    #[test]
+    fn socket_filename_for_family_empty() {
+        assert_eq!(socket_filename_for_family(""), "toadstool.sock");
+    }
+
+    #[test]
+    fn socket_filename_for_family_custom() {
+        assert_eq!(socket_filename_for_family("nat0"), "toadstool-nat0.sock");
+    }
+
+    #[test]
+    fn socket_filename_for_family_alphanumeric() {
+        assert_eq!(
+            socket_filename_for_family("family123"),
+            "toadstool-family123.sock"
+        );
+    }
+
+    #[test]
+    fn socket_filename_for_family_with_hyphens() {
+        assert_eq!(
+            socket_filename_for_family("my-family-id"),
+            "toadstool-my-family-id.sock"
+        );
+    }
+
+    #[test]
+    fn socket_filename_for_family_special_chars() {
+        assert_eq!(
+            socket_filename_for_family("dev_env"),
+            "toadstool-dev_env.sock"
+        );
+    }
+
+    #[test]
+    fn socket_filename_for_family_whitespace() {
+        // Non-empty string with spaces - not "default", so gets formatted
+        assert_eq!(
+            socket_filename_for_family(" default "),
+            "toadstool- default .sock"
+        );
+    }
+
+    // ========== is_platform_constraint_str ==========
+
+    #[test]
+    fn is_platform_constraint_str_unsupported() {
+        assert!(is_platform_constraint_str("Unsupported"));
+        assert!(is_platform_constraint_str("Unix sockets Unsupported"));
+        assert!(is_platform_constraint_str("Unsupported operation"));
+    }
+
+    #[test]
+    fn is_platform_constraint_str_not_supported() {
+        assert!(is_platform_constraint_str("not supported"));
+        assert!(is_platform_constraint_str("protocol not supported"));
+        assert!(is_platform_constraint_str(
+            "feature not supported on this platform"
+        ));
+    }
+
+    #[test]
+    fn is_platform_constraint_str_protocol_not_available() {
+        assert!(is_platform_constraint_str("protocol not available"));
+        assert!(is_platform_constraint_str("Error: protocol not available"));
+    }
+
+    #[test]
+    fn is_platform_constraint_str_non_matching() {
+        assert!(!is_platform_constraint_str("Connection refused"));
+        assert!(!is_platform_constraint_str("Connection reset by peer"));
+        assert!(!is_platform_constraint_str("timeout"));
+        assert!(!is_platform_constraint_str("No such file or directory"));
+        assert!(!is_platform_constraint_str("Address already in use"));
+        assert!(!is_platform_constraint_str(""));
+        assert!(!is_platform_constraint_str("generic error"));
+    }
+
+    #[test]
+    fn is_platform_constraint_str_permission_denied() {
+        // Permission denied / Operation not permitted only match when SELinux is enforcing.
+        // On most dev/CI systems, SELinux is not enforcing, so these return false.
+        // We verify the function doesn't panic and result matches SELinux state.
+        let result = is_platform_constraint_str("Permission denied (EACCES)");
+        assert_eq!(result, is_selinux_enforcing());
+    }
+
+    #[test]
+    fn is_platform_constraint_str_operation_not_permitted() {
+        let result = is_platform_constraint_str("Operation not permitted");
+        assert_eq!(result, is_selinux_enforcing());
+    }
+
+    // ========== is_selinux_enforcing ==========
+
+    #[test]
+    fn is_selinux_enforcing_returns_bool() {
+        // On most systems (no SELinux or not enforcing), returns false.
+        // If /sys/fs/selinux/enforce doesn't exist, returns false.
+        // We ensure it doesn't panic and returns a valid bool.
+        let result = is_selinux_enforcing();
+        assert!(result == true || result == false);
+    }
+}
+
 // DISABLED: HTTP-based ecosystem registration (legacy)
 // Evolution: Songbird discovers ToadStool via Unix socket paths
 //
@@ -651,7 +810,7 @@ fn write_tcp_discovery_file(
 //     socket_path: &PathBuf,
 //     family_id: &str,
 //     version: &str,
-// ) -> Result<(), Box<dyn std::error::Error>> {
+// ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 //     // Step 1: Discover Songbird (no hardcoding)
 //     let songbird = SongbirdClient::discover()
 //         .await

@@ -3,12 +3,13 @@
 //! Validates GPT-style autoregressive attention with causal masking.
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 #[tokio::test]
 async fn test_causal_attention_basic() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let batch = 1;
     let heads = 2;
     let seq = 8;
@@ -50,8 +51,9 @@ async fn test_causal_attention_basic() {
 
 #[tokio::test]
 async fn test_causal_attention_single_token() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let batch = 1;
     let heads = 1;
     let seq = 1; // Single token - no masking needed
@@ -76,8 +78,9 @@ async fn test_causal_attention_single_token() {
 
 #[tokio::test]
 async fn test_causal_attention_gpt_style() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // GPT-style dimensions
     let batch = 2;
     let heads = 8;

@@ -48,7 +48,7 @@ impl MarginRankingLoss {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/margin_ranking_loss.wgsl")
+        include_str!("../shaders/loss/margin_ranking_loss.wgsl")
     }
 
     /// Execute the margin ranking loss operation
@@ -229,12 +229,13 @@ impl MarginRankingLoss {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_margin_ranking_loss_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 10;
 
         let input1 = Tensor::from_vec_on(vec![2.0; size], vec![size], device.clone())

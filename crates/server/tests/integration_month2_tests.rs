@@ -140,7 +140,7 @@ async fn test_server_state_consistency() {
     // Concurrent updates
     let mut handles = vec![];
     for i in 0..10 {
-        let srv = server.clone();
+        let srv = Arc::clone(&server);
         let handle = tokio::spawn(async move { srv.update_state(&format!("key-{}", i), i).await });
         handles.push(handle);
     }
@@ -184,7 +184,7 @@ struct MockServer {
 
 impl MockServer {
     async fn connect_websocket(&self, id: &str) -> Result<MockClient, String> {
-        let client = MockClient::new(id.to_string(), self.clients.clone());
+        let client = MockClient::new(id.to_string(), Arc::clone(&self.clients));
         self.clients
             .write()
             .await

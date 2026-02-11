@@ -236,3 +236,191 @@ impl ToadStoolErrorExt for ToadStoolError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error_codes::codes;
+
+    #[test]
+    fn test_configuration_empty_message() {
+        let err = ToadStoolError::configuration("");
+        let s = err.to_string();
+        assert!(s.contains("Configuration error"));
+    }
+
+    #[test]
+    fn test_configuration_long_message() {
+        let msg = "x".repeat(1000);
+        let err = ToadStoolError::configuration(&msg);
+        assert!(err.to_string().contains("Configuration error"));
+    }
+
+    #[test]
+    fn test_runtime() {
+        let err = ToadStoolError::runtime("workload failed");
+        let s = err.to_string();
+        assert!(s.contains("Execution error"));
+        assert!(s.contains("workload failed"));
+    }
+
+    #[test]
+    fn test_security() {
+        let err = ToadStoolError::security("access denied");
+        assert!(err.to_string().contains("Security error"));
+        assert!(err.to_string().contains("access denied"));
+    }
+
+    #[test]
+    fn test_resource() {
+        let err = ToadStoolError::resource("memory allocation");
+        assert!(err.to_string().contains("Resource error"));
+        assert!(err.to_string().contains("memory allocation"));
+    }
+
+    #[test]
+    fn test_network() {
+        let err = ToadStoolError::network("connection refused");
+        assert!(err.to_string().contains("Network error"));
+        assert!(err.to_string().contains("connection refused"));
+    }
+
+    #[test]
+    fn test_io() {
+        let err = ToadStoolError::io("disk full");
+        assert!(err.to_string().contains("System error"));
+        assert!(err.to_string().contains("disk full"));
+    }
+
+    #[test]
+    fn test_validation() {
+        let err = ToadStoolError::validation("invalid port");
+        assert!(err.to_string().contains("Configuration error"));
+        assert!(err.to_string().contains("invalid port"));
+    }
+
+    #[test]
+    fn test_not_found() {
+        let err = ToadStoolError::not_found("resource-123");
+        assert!(err.to_string().contains("Resource error"));
+        assert!(err.to_string().contains("resource-123"));
+    }
+
+    #[test]
+    fn test_permission_denied() {
+        let err = ToadStoolError::permission_denied("write to /etc");
+        assert!(err.to_string().contains("Security error"));
+        assert!(err.to_string().contains("write to /etc"));
+    }
+
+    #[test]
+    fn test_not_supported() {
+        let err = ToadStoolError::not_supported("CUDA");
+        assert!(err.to_string().contains("System error"));
+        assert!(err.to_string().contains("CUDA"));
+    }
+
+    #[test]
+    fn test_timeout() {
+        let err = ToadStoolError::timeout("db query");
+        assert!(err.to_string().contains("Execution error"));
+        assert!(err.to_string().contains("db query"));
+    }
+
+    #[test]
+    fn test_parsing() {
+        let err = ToadStoolError::parsing("malformed JSON");
+        assert!(err.to_string().contains("System error"));
+        assert!(err.to_string().contains("malformed JSON"));
+    }
+
+    #[test]
+    fn test_ecosystem() {
+        let err = ToadStoolError::ecosystem("nestgate unavailable");
+        assert!(err.to_string().contains("Integration error"));
+        assert!(err.to_string().contains("nestgate unavailable"));
+    }
+
+    #[test]
+    fn test_biomeos() {
+        let err = ToadStoolError::biomeos("biomeos down");
+        assert!(err.to_string().contains("Integration error"));
+        assert!(err.to_string().contains("biomeos down"));
+    }
+
+    #[test]
+    fn test_os_layer() {
+        let err = ToadStoolError::os_layer("platform error");
+        assert!(err.to_string().contains("System error"));
+        assert!(err.to_string().contains("platform error"));
+    }
+
+    #[test]
+    fn test_execution() {
+        let err = ToadStoolError::execution("workload crash");
+        assert!(err.to_string().contains("Execution error"));
+        assert!(err.to_string().contains("workload crash"));
+    }
+
+    #[test]
+    fn test_other() {
+        let err = ToadStoolError::other("internal error");
+        assert!(err.to_string().contains("System error"));
+        assert!(err.to_string().contains("internal error"));
+    }
+
+    #[test]
+    fn test_integration() {
+        let err = ToadStoolError::integration("service unavailable");
+        assert!(err.to_string().contains("Integration error"));
+        assert!(err.to_string().contains("service unavailable"));
+    }
+
+    #[test]
+    fn test_deployment() {
+        let err = ToadStoolError::deployment("deploy failed");
+        assert!(err.to_string().contains("Execution error"));
+        assert!(err.to_string().contains("deploy failed"));
+    }
+
+    #[test]
+    fn test_error_debug_impl() {
+        let err = ToadStoolError::runtime("test");
+        let debug = format!("{err:?}");
+        assert!(debug.contains("Execution"));
+    }
+
+    #[test]
+    fn test_error_display_impl() {
+        let err = ToadStoolError::configuration("config error");
+        let display = err.to_string();
+        assert!(!display.is_empty());
+        assert!(display.contains("config error"));
+    }
+
+    #[test]
+    fn test_with_code_builder_pattern() {
+        let err = ToadStoolError::runtime("test").with_code(codes::EXEC_RUNTIME_001);
+        assert!(err.error_code().is_some());
+        assert_eq!(err.error_code_str(), Some("EXEC-RUNTIME-001"));
+    }
+
+    #[test]
+    fn test_with_code_empty_message() {
+        let err = ToadStoolError::configuration("").with_code(codes::CONFIG_PARSE_001);
+        assert!(err.error_code().is_some());
+    }
+
+    #[test]
+    fn test_convenience_accepts_string() {
+        let msg: String = "owned string".to_string();
+        let err = ToadStoolError::runtime(msg);
+        assert!(err.to_string().contains("owned string"));
+    }
+
+    #[test]
+    fn test_convenience_accepts_str() {
+        let err = ToadStoolError::runtime("borrowed str");
+        assert!(err.to_string().contains("borrowed str"));
+    }
+}

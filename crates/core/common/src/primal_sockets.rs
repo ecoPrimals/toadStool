@@ -2,6 +2,15 @@
 //!
 //! Pure Rust unix socket path resolution for primal-to-primal communication.
 //!
+//! ## Fallback Constants (Transition Period)
+//!
+//! The `resolve_*_socket_fallback` and `resolve_socket_path_for_service` functions
+//! use biomeOS standard socket filenames (e.g. `beardog.sock`, `songbird.sock`).
+//! These are **fallback constants** for the transition period until full
+//! capability-based discovery is deployed. Production systems should use
+//! `discover_socket_for_capability()` or `{PRIMAL}_SOCKET` env vars.
+//! Self-identification as `toadstool` is self-knowledge (allowed).
+//!
 //! ## TRUE PRIMAL Architecture
 //!
 //! - **No HTTP**: All primal communication via unix sockets
@@ -18,32 +27,222 @@
 
 use std::path::PathBuf;
 
+#[allow(deprecated)]
+use crate::interned_strings::primals;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Fallback Constants (Transition Period)
+// Pending: Remove once all primals register with capability discovery (Phase 3/4)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Used when capability discovery finds no service. Prefer `{PRIMAL}_SOCKET` env
+// or `discover_socket_for_capability()`. Self-knowledge: "toadstool" is OK.
+
+/// Fallback socket filename for crypto capability (env: BEARDOG_SOCKET overrides)
+const FALLBACK_CRYPTO_SOCKET: &str = "beardog.sock";
+/// Fallback socket filename for coordination capability (env: SONGBIRD_SOCKET overrides)
+const FALLBACK_COORDINATION_SOCKET: &str = "songbird.sock";
+/// Fallback socket filename for storage capability (env: NESTGATE_SOCKET overrides)
+const FALLBACK_STORAGE_SOCKET: &str = "nestgate.sock";
+/// Fallback socket filename for MCP capability (env: SQUIRREL_SOCKET overrides)
+const FALLBACK_MCP_SOCKET: &str = "squirrel.sock";
+/// Self-knowledge: ToadStool's own socket (env: TOADSTOOL_SOCKET overrides)
+const SELF_SOCKET: &str = "toadstool.sock";
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Environment Snapshot (Deep Fix for Concurrency)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Production code creates this via `SocketPathEnv::from_env()`.
+// Tests create this with explicit values - no env var mutation needed.
+// This eliminates the ENV_MUTEX anti-pattern.
+
+/// Environment snapshot for socket path resolution.
+///
+/// Production code creates this via `SocketPathEnv::from_env()`.
+/// Tests create this with explicit values - no env var mutation needed.
+#[derive(Debug, Clone, Default)]
+pub struct SocketPathEnv {
+    pub xdg_runtime_dir: Option<String>,
+    pub user: Option<String>,
+    pub biomeos_family_id: Option<String>,
+    pub beardog_socket: Option<String>,
+    pub songbird_socket: Option<String>,
+    pub nestgate_socket: Option<String>,
+    pub squirrel_socket: Option<String>,
+    pub toadstool_socket: Option<String>,
+    pub biomeos_socket_path: Option<String>,
+    pub nucleus_socket: Option<String>,
+}
+
+impl SocketPathEnv {
+    /// Capture current environment (production use)
+    #[must_use]
+    pub fn from_env() -> Self {
+        Self {
+            xdg_runtime_dir: std::env::var("XDG_RUNTIME_DIR").ok(),
+            user: std::env::var("USER").ok(),
+            biomeos_family_id: std::env::var("BIOMEOS_FAMILY_ID")
+                .or_else(|_| std::env::var("TOADSTOOL_FAMILY"))
+                .ok(),
+            beardog_socket: std::env::var("BEARDOG_SOCKET").ok(),
+            songbird_socket: std::env::var("SONGBIRD_SOCKET").ok(),
+            nestgate_socket: std::env::var("NESTGATE_SOCKET").ok(),
+            squirrel_socket: std::env::var("SQUIRREL_SOCKET").ok(),
+            toadstool_socket: std::env::var("TOADSTOOL_SOCKET").ok(),
+            biomeos_socket_path: std::env::var("BIOMEOS_SOCKET_PATH").ok(),
+            nucleus_socket: std::env::var("NUCLEUS_SOCKET").ok(),
+        }
+    }
+
+    /// Create for testing with a specific runtime dir
+    #[cfg(test)]
+    #[must_use]
+    pub fn with_runtime_dir(dir: &str) -> Self {
+        Self {
+            xdg_runtime_dir: Some(dir.to_string()),
+            ..Default::default()
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Pure resolution functions (no env access - inject SocketPathEnv)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Pure logic: resolve runtime dir from environment snapshot
+#[must_use]
+pub fn resolve_runtime_dir(env: &SocketPathEnv) -> String {
+    if let Some(ref xdg) = env.xdg_runtime_dir {
+        return xdg.clone();
+    }
+    // Try Linux standard path
+    if let Ok(uid) = crate::uid_detector::get_user_id() {
+        let linux_standard = format!("/run/user/{}", uid);
+        if std::path::Path::new(&linux_standard).exists() {
+            return linux_standard;
+        }
+    }
+    let username = env.user.as_deref().unwrap_or("default");
+    format!("/tmp/toadstool-runtime-{}", username)
+}
+
+/// Pure logic: resolve biomeos dir
+#[must_use]
+pub fn resolve_biomeos_dir(env: &SocketPathEnv) -> PathBuf {
+    PathBuf::from(resolve_runtime_dir(env)).join("biomeos")
+}
+
+/// Pure logic: resolve family ID from environment snapshot
+#[must_use]
+pub fn resolve_family_id(env: &SocketPathEnv) -> String {
+    env.biomeos_family_id
+        .clone()
+        .unwrap_or_else(|| "default".to_string())
+}
+
+/// Pure logic: resolve beardog socket fallback (non-discovery path)
+#[must_use]
+pub fn resolve_beardog_socket_fallback(env: &SocketPathEnv) -> PathBuf {
+    if let Some(ref socket) = env.beardog_socket {
+        return PathBuf::from(socket);
+    }
+    resolve_biomeos_dir(env).join(FALLBACK_CRYPTO_SOCKET)
+}
+
+/// Pure logic: resolve songbird socket fallback (non-discovery path)
+#[must_use]
+pub fn resolve_songbird_socket_fallback(env: &SocketPathEnv) -> PathBuf {
+    if let Some(ref socket) = env.songbird_socket {
+        return PathBuf::from(socket);
+    }
+    resolve_biomeos_dir(env).join(FALLBACK_COORDINATION_SOCKET)
+}
+
+/// Pure logic: resolve nestgate socket fallback (non-discovery path)
+#[must_use]
+pub fn resolve_nestgate_socket_fallback(env: &SocketPathEnv) -> PathBuf {
+    if let Some(ref socket) = env.nestgate_socket {
+        return PathBuf::from(socket);
+    }
+    resolve_biomeos_dir(env).join(FALLBACK_STORAGE_SOCKET)
+}
+
+/// Pure logic: resolve squirrel socket
+#[must_use]
+pub fn resolve_squirrel_socket(env: &SocketPathEnv) -> PathBuf {
+    if let Some(ref socket) = env.squirrel_socket {
+        return PathBuf::from(socket);
+    }
+    resolve_biomeos_dir(env).join(FALLBACK_MCP_SOCKET)
+}
+
+/// Pure logic: resolve nucleus socket
+#[must_use]
+pub fn resolve_nucleus_socket(env: &SocketPathEnv) -> PathBuf {
+    if let Some(ref socket) = env.nucleus_socket {
+        return PathBuf::from(socket);
+    }
+    if let Some(ref socket) = env.biomeos_socket_path {
+        return PathBuf::from(socket);
+    }
+    resolve_biomeos_dir(env).join("nucleus.sock")
+}
+
+/// Pure logic: resolve toadstool socket
+#[must_use]
+pub fn resolve_toadstool_socket(env: &SocketPathEnv) -> PathBuf {
+    if let Some(ref socket) = env.toadstool_socket {
+        return PathBuf::from(socket);
+    }
+    if let Some(ref socket) = env.biomeos_socket_path {
+        return PathBuf::from(socket);
+    }
+    resolve_biomeos_dir(env).join(SELF_SOCKET)
+}
+
+/// Pure logic: resolve socket path for any service by name
+///
+/// `service_socket_override` is for the generic `{SERVICE}_SOCKET` env var case;
+/// pass `Some(path)` when the wrapper found an override, `None` otherwise.
+#[must_use]
+#[allow(deprecated)] // primals::* constants used for transition-period fallback matching
+pub fn resolve_socket_path_for_service(
+    service_name: &str,
+    env: &SocketPathEnv,
+    service_socket_override: Option<PathBuf>,
+) -> PathBuf {
+    if let Some(path) = service_socket_override {
+        return path;
+    }
+    // Alias matching uses fallback constants (transition period - see module doc)
+    match service_name.to_lowercase().as_str() {
+        s if s == primals::BEARDOG || s == "bear-dog" => resolve_beardog_socket_fallback(env),
+        s if s == primals::SONGBIRD || s == "song-bird" => resolve_songbird_socket_fallback(env),
+        s if s == primals::NESTGATE || s == "nest-gate" => resolve_nestgate_socket_fallback(env),
+        s if s == primals::SQUIRREL => resolve_squirrel_socket(env),
+        s if s == primals::TOADSTOOL || s == "toad-stool" => resolve_toadstool_socket(env), // Self-knowledge OK
+        "nucleus" | "biomeos" => resolve_nucleus_socket(env),
+        _ => resolve_biomeos_dir(env).join(format!("{}.sock", service_name.to_lowercase())),
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Public API (thin wrappers - single env snapshot at call site)
+// ═══════════════════════════════════════════════════════════════════════════
+
 /// Get runtime directory for socket files
 ///
 /// Priority:
 /// 1. XDG_RUNTIME_DIR environment variable
-/// 2. /run/user/<uid> (Linux standard)
+/// 2. /run/user/`uid` (Linux standard)
 /// 3. /tmp with username fallback (dev/testing only)
 ///
 /// **TRUE PRIMAL**: Environment-based, no hardcoding
 ///
 /// **EVOLVED**: Pure Rust UID detection (no unsafe, no libc!)
 pub fn get_runtime_dir() -> String {
-    std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
-        // Try Linux standard path first - EVOLVED to pure Rust!
-        if let Ok(uid) = crate::uid_detector::get_user_id() {
-            let linux_standard = format!("/run/user/{}", uid);
-
-            // Check if Linux standard path exists
-            if std::path::Path::new(&linux_standard).exists() {
-                return linux_standard;
-            }
-        }
-
-        // Fallback to /tmp for dev/testing (containers, etc.)
-        let username = std::env::var("USER").unwrap_or_else(|_| "default".to_string());
-        format!("/tmp/toadstool-runtime-{}", username)
-    })
+    resolve_runtime_dir(&SocketPathEnv::from_env())
 }
 
 /// Get biomeos directory path (standard subdirectory for all primal sockets)
@@ -53,8 +252,7 @@ pub fn get_runtime_dir() -> String {
 /// - Security: Proper permissions (0700)
 /// - Integration: Predictable paths for all primals
 pub fn get_biomeos_dir() -> PathBuf {
-    let runtime_dir = get_runtime_dir();
-    PathBuf::from(runtime_dir).join("biomeos")
+    resolve_biomeos_dir(&SocketPathEnv::from_env())
 }
 
 /// Ensure biomeos directory exists with proper permissions
@@ -84,9 +282,7 @@ pub fn ensure_biomeos_dir() -> std::io::Result<PathBuf> {
 /// 2. TOADSTOOL_FAMILY (instance-specific)
 /// 3. "default" fallback
 pub fn get_family_id() -> String {
-    std::env::var("BIOMEOS_FAMILY_ID")
-        .or_else(|_| std::env::var("TOADSTOOL_FAMILY"))
-        .unwrap_or_else(|_| "default".to_string())
+    resolve_family_id(&SocketPathEnv::from_env())
 }
 
 /// Get BearDog unix socket path (biomeOS standard)
@@ -120,18 +316,20 @@ pub fn get_family_id() -> String {
 )]
 pub fn get_beardog_socket_path() -> PathBuf {
     // Try new capability discovery in sync context
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        if let Ok(path) = handle.block_on(discover_crypto_socket()) {
-            return path;
-        }
+    // Spawn a separate thread to avoid nested runtime panics
+    let discovery_result = std::thread::spawn(|| {
+        let rt = tokio::runtime::Runtime::new().ok()?;
+        rt.block_on(discover_crypto_socket()).ok()
+    })
+    .join()
+    .ok()
+    .flatten();
+
+    if let Some(path) = discovery_result {
+        return path;
     }
 
-    // Fallback to old behavior for backward compatibility
-    if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
-        return PathBuf::from(socket);
-    }
-
-    get_biomeos_dir().join("beardog.sock")
+    resolve_beardog_socket_fallback(&SocketPathEnv::from_env())
 }
 
 /// Get Songbird unix socket path (biomeOS standard)
@@ -165,18 +363,20 @@ pub fn get_beardog_socket_path() -> PathBuf {
 )]
 pub fn get_songbird_socket_path() -> PathBuf {
     // Try new capability discovery in sync context
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        if let Ok(path) = handle.block_on(discover_coordination_socket()) {
-            return path;
-        }
+    // Spawn a separate thread to avoid nested runtime panics
+    let discovery_result = std::thread::spawn(|| {
+        let rt = tokio::runtime::Runtime::new().ok()?;
+        rt.block_on(discover_coordination_socket()).ok()
+    })
+    .join()
+    .ok()
+    .flatten();
+
+    if let Some(path) = discovery_result {
+        return path;
     }
 
-    // Fallback to old behavior for backward compatibility
-    if let Ok(socket) = std::env::var("SONGBIRD_SOCKET") {
-        return PathBuf::from(socket);
-    }
-
-    get_biomeos_dir().join("songbird.sock")
+    resolve_songbird_socket_fallback(&SocketPathEnv::from_env())
 }
 
 /// Get NestGate unix socket path (biomeOS standard)
@@ -210,18 +410,20 @@ pub fn get_songbird_socket_path() -> PathBuf {
 )]
 pub fn get_nestgate_socket_path() -> PathBuf {
     // Try new capability discovery in sync context
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        if let Ok(path) = handle.block_on(discover_storage_socket()) {
-            return path;
-        }
+    // Spawn a separate thread to avoid nested runtime panics
+    let discovery_result = std::thread::spawn(|| {
+        let rt = tokio::runtime::Runtime::new().ok()?;
+        rt.block_on(discover_storage_socket()).ok()
+    })
+    .join()
+    .ok()
+    .flatten();
+
+    if let Some(path) = discovery_result {
+        return path;
     }
 
-    // Fallback to old behavior for backward compatibility
-    if let Ok(socket) = std::env::var("NESTGATE_SOCKET") {
-        return PathBuf::from(socket);
-    }
-
-    get_biomeos_dir().join("nestgate.sock")
+    resolve_nestgate_socket_fallback(&SocketPathEnv::from_env())
 }
 
 /// Get Squirrel unix socket path (biomeOS standard)
@@ -236,13 +438,7 @@ pub fn get_nestgate_socket_path() -> PathBuf {
 /// **biomeOS Socket Standard**: Waiting for Squirrel team implementation
 #[allow(deprecated)]
 pub fn get_squirrel_socket_path() -> PathBuf {
-    // Priority 1: Direct socket path (explicit override)
-    if let Ok(socket) = std::env::var("SQUIRREL_SOCKET") {
-        return PathBuf::from(socket);
-    }
-
-    // Priority 2: biomeOS standard path
-    get_biomeos_dir().join("squirrel.sock")
+    resolve_squirrel_socket(&SocketPathEnv::from_env())
 }
 
 /// Get BiomeOS NUCLEUS socket path (biomeOS standard)
@@ -254,18 +450,7 @@ pub fn get_squirrel_socket_path() -> PathBuf {
 ///
 /// **biomeOS Socket Standard**: NUCLEUS orchestrator socket
 pub fn get_nucleus_socket_path() -> PathBuf {
-    // Priority 1: NUCLEUS-specific socket (explicit override)
-    if let Ok(socket) = std::env::var("NUCLEUS_SOCKET") {
-        return PathBuf::from(socket);
-    }
-
-    // Priority 2: BiomeOS-provided socket path (orchestrator)
-    if let Ok(socket) = std::env::var("BIOMEOS_SOCKET_PATH") {
-        return PathBuf::from(socket);
-    }
-
-    // Priority 3: biomeOS standard path
-    get_biomeos_dir().join("nucleus.sock")
+    resolve_nucleus_socket(&SocketPathEnv::from_env())
 }
 
 /// Get ToadStool unix socket path (our own server) - biomeOS standard
@@ -277,18 +462,7 @@ pub fn get_nucleus_socket_path() -> PathBuf {
 ///
 /// **biomeOS Socket Standard**: Enables Node Atomic (Tower + Toadstool)
 pub fn get_toadstool_socket_path() -> PathBuf {
-    // Priority 1: ToadStool-specific socket (explicit override)
-    if let Ok(socket) = std::env::var("TOADSTOOL_SOCKET") {
-        return PathBuf::from(socket);
-    }
-
-    // Priority 2: BiomeOS-provided socket path (orchestrator)
-    if let Ok(socket) = std::env::var("BIOMEOS_SOCKET_PATH") {
-        return PathBuf::from(socket);
-    }
-
-    // Priority 3: biomeOS standard path
-    get_biomeos_dir().join("toadstool.sock")
+    resolve_toadstool_socket(&SocketPathEnv::from_env())
 }
 
 /// Get socket path for any service by name (biomeOS standard)
@@ -307,25 +481,20 @@ pub fn get_toadstool_socket_path() -> PathBuf {
 /// **biomeOS Socket Standard**: All sockets in `biomeos/` subdirectory
 #[allow(deprecated)] // Calls deprecated functions internally for backward compat
 pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
-    // Map known service names to specific socket paths (for environment variable support)
     match service_name.to_lowercase().as_str() {
-        "beardog" | "bear-dog" => get_beardog_socket_path(),
-        "songbird" | "song-bird" => get_songbird_socket_path(),
-        "nestgate" | "nest-gate" => get_nestgate_socket_path(),
-        "squirrel" => get_squirrel_socket_path(),
-        "toadstool" | "toad-stool" => get_toadstool_socket_path(),
+        s if s == primals::BEARDOG || s == "bear-dog" => get_beardog_socket_path(),
+        s if s == primals::SONGBIRD || s == "song-bird" => get_songbird_socket_path(),
+        s if s == primals::NESTGATE || s == "nest-gate" => get_nestgate_socket_path(),
+        s if s == primals::SQUIRREL => get_squirrel_socket_path(),
+        s if s == primals::TOADSTOOL || s == "toad-stool" => get_toadstool_socket_path(),
         "nucleus" | "biomeos" => get_nucleus_socket_path(),
 
         // Generic pattern for unknown services (TRUE PRIMAL - works with ANY service!)
         _ => {
-            // Try service-specific environment variable first
+            let env = SocketPathEnv::from_env();
             let env_var = format!("{}_SOCKET", service_name.to_uppercase().replace('-', "_"));
-            if let Ok(socket) = std::env::var(&env_var) {
-                return PathBuf::from(socket);
-            }
-
-            // Fall back to biomeOS standard pattern (simple, no family suffix)
-            get_biomeos_dir().join(format!("{}.sock", service_name.to_lowercase()))
+            let override_path = std::env::var(&env_var).ok().map(PathBuf::from);
+            resolve_socket_path_for_service(service_name, &env, override_path)
         }
     }
 }
@@ -501,18 +670,19 @@ pub async fn discover_coordination_socket() -> Result<PathBuf, SocketDiscoveryEr
 ///
 /// This is a transition helper that will be removed once all services
 /// properly register their capabilities with the discovery system.
+#[allow(deprecated)] // primals::* constants used for transition-period capability mapping
 fn capability_to_biomeos_fallback(
     capability: &crate::primal_identity::Capability,
 ) -> Result<PathBuf, SocketDiscoveryError> {
     use crate::primal_identity::Capability;
 
-    // Map capabilities to service names for biomeOS standard paths
-    // This is ONLY a fallback - eventually all services will register properly
+    // Map capabilities to service names for biomeOS standard paths.
+    // Fallback only; remove once all primals register with discovery (Phase 3/4)
     let service_name = match capability {
-        Capability::Crypto(_) => "beardog",
-        Capability::Storage(_) => "nestgate",
-        Capability::Coordination(_) => "songbird",
-        Capability::Compute(_) => "toadstool",
+        Capability::Crypto(_) => primals::BEARDOG, // FALLBACK_CRYPTO_SOCKET stem
+        Capability::Storage(_) => primals::NESTGATE, // FALLBACK_STORAGE_SOCKET stem
+        Capability::Coordination(_) => primals::SONGBIRD, // FALLBACK_COORDINATION_SOCKET stem
+        Capability::Compute(_) => primals::TOADSTOOL, // SELF_SOCKET - self-knowledge OK
         _ => {
             return Err(SocketDiscoveryError::NoSocketFound(format!(
                 "No fallback path for capability: {capability:?}"
@@ -520,125 +690,406 @@ fn capability_to_biomeos_fallback(
         }
     };
 
-    Ok(get_socket_path_for_service(service_name))
+    let env = SocketPathEnv::from_env();
+    Ok(resolve_socket_path_for_service(service_name, &env, None))
 }
 
 #[cfg(test)]
-#[allow(deprecated)] // Tests exercise both deprecated and new APIs for backward compat
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+
+    fn test_env() -> SocketPathEnv {
+        SocketPathEnv {
+            xdg_runtime_dir: Some("/run/user/1000".to_string()),
+            user: Some("testuser".to_string()),
+            biomeos_family_id: None,
+            beardog_socket: None,
+            songbird_socket: None,
+            nestgate_socket: None,
+            squirrel_socket: None,
+            toadstool_socket: None,
+            biomeos_socket_path: None,
+            nucleus_socket: None,
+        }
+    }
+
+    // ───── SocketPathEnv ─────────────────────────────────────────────────
 
     #[test]
-    fn test_runtime_dir_from_xdg() {
-        std::env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
-        assert_eq!(get_runtime_dir(), "/run/user/1000");
-        std::env::remove_var("XDG_RUNTIME_DIR");
+    fn socket_path_env_default_is_all_none() {
+        let env = SocketPathEnv::default();
+        assert!(env.xdg_runtime_dir.is_none());
+        assert!(env.user.is_none());
+        assert!(env.biomeos_family_id.is_none());
+        assert!(env.beardog_socket.is_none());
+        assert!(env.songbird_socket.is_none());
+        assert!(env.toadstool_socket.is_none());
     }
 
     #[test]
-    fn test_runtime_dir_fallback() {
-        std::env::remove_var("XDG_RUNTIME_DIR");
-        std::env::set_var("USER", "testuser");
-
-        // New behavior: Tries Linux standard /run/user/<uid> first
-        // If that doesn't exist, falls back to /tmp/toadstool-runtime-<username>
-        let runtime_dir = get_runtime_dir();
-
-        // Could be either /run/user/<uid> (if it exists) or /tmp fallback
-        assert!(
-            runtime_dir.starts_with("/run/user/")
-                || runtime_dir == "/tmp/toadstool-runtime-testuser",
-            "Expected /run/user/<uid> or /tmp fallback, got: {}",
-            runtime_dir
-        );
-
-        std::env::remove_var("USER");
+    fn socket_path_env_with_runtime_dir() {
+        let env = SocketPathEnv::with_runtime_dir("/tmp/test-runtime");
+        assert_eq!(env.xdg_runtime_dir, Some("/tmp/test-runtime".to_string()));
+        assert!(env.user.is_none());
     }
 
     #[test]
-    fn test_beardog_socket_from_env() {
-        std::env::set_var("BEARDOG_SOCKET", "/custom/beardog.sock");
+    fn socket_path_env_from_env_captures_vars() {
+        // Just verify it doesn't panic; actual values depend on environment
+        let env = SocketPathEnv::from_env();
+        let _ = format!("{:?}", env);
+    }
+
+    // ───── resolve_runtime_dir ───────────────────────────────────────────
+
+    #[test]
+    fn resolve_runtime_dir_uses_xdg_when_set() {
+        let env = test_env();
+        assert_eq!(resolve_runtime_dir(&env), "/run/user/1000");
+    }
+
+    #[test]
+    fn resolve_runtime_dir_falls_back_to_tmp_with_username() {
+        let env = SocketPathEnv {
+            xdg_runtime_dir: None,
+            user: Some("alice".to_string()),
+            ..Default::default()
+        };
+        let dir = resolve_runtime_dir(&env);
+        // Either /run/user/<uid> if it exists, or /tmp/toadstool-runtime-alice
+        assert!(dir.contains("alice") || dir.starts_with("/run/user/"));
+    }
+
+    #[test]
+    fn resolve_runtime_dir_falls_back_to_default_user() {
+        let env = SocketPathEnv::default();
+        let dir = resolve_runtime_dir(&env);
+        // Should produce some path, not panic
+        assert!(!dir.is_empty());
+    }
+
+    // ───── resolve_biomeos_dir ───────────────────────────────────────────
+
+    #[test]
+    fn resolve_biomeos_dir_appends_biomeos() {
+        let env = test_env();
+        let dir = resolve_biomeos_dir(&env);
+        assert_eq!(dir, PathBuf::from("/run/user/1000/biomeos"));
+    }
+
+    // ───── resolve_family_id ─────────────────────────────────────────────
+
+    #[test]
+    fn resolve_family_id_uses_env_value() {
+        let env = SocketPathEnv {
+            biomeos_family_id: Some("my-family".to_string()),
+            ..test_env()
+        };
+        assert_eq!(resolve_family_id(&env), "my-family");
+    }
+
+    #[test]
+    fn resolve_family_id_defaults_to_default() {
+        let env = test_env();
+        assert_eq!(resolve_family_id(&env), "default");
+    }
+
+    // ───── resolve_beardog_socket_fallback ────────────────────────────────
+
+    #[test]
+    fn resolve_beardog_socket_uses_env_override() {
+        let env = SocketPathEnv {
+            beardog_socket: Some("/custom/beardog.sock".to_string()),
+            ..test_env()
+        };
         assert_eq!(
-            get_beardog_socket_path(),
+            resolve_beardog_socket_fallback(&env),
             PathBuf::from("/custom/beardog.sock")
         );
-        std::env::remove_var("BEARDOG_SOCKET");
     }
 
     #[test]
-    fn test_beardog_socket_default() {
-        std::env::remove_var("BEARDOG_SOCKET");
-        std::env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
-        std::env::set_var("BIOMEOS_FAMILY_ID", "nat0");
+    fn resolve_beardog_socket_uses_biomeos_fallback() {
+        let env = test_env();
+        assert_eq!(
+            resolve_beardog_socket_fallback(&env),
+            PathBuf::from("/run/user/1000/biomeos/beardog.sock")
+        );
+    }
 
+    // ───── resolve_songbird_socket_fallback ───────────────────────────────
+
+    #[test]
+    fn resolve_songbird_socket_uses_env_override() {
+        let env = SocketPathEnv {
+            songbird_socket: Some("/custom/songbird.sock".to_string()),
+            ..test_env()
+        };
+        assert_eq!(
+            resolve_songbird_socket_fallback(&env),
+            PathBuf::from("/custom/songbird.sock")
+        );
+    }
+
+    #[test]
+    fn resolve_songbird_socket_uses_biomeos_fallback() {
+        let env = test_env();
+        assert_eq!(
+            resolve_songbird_socket_fallback(&env),
+            PathBuf::from("/run/user/1000/biomeos/songbird.sock")
+        );
+    }
+
+    // ───── resolve_nestgate_socket_fallback ───────────────────────────────
+
+    #[test]
+    fn resolve_nestgate_socket_uses_env_override() {
+        let env = SocketPathEnv {
+            nestgate_socket: Some("/custom/nestgate.sock".to_string()),
+            ..test_env()
+        };
+        assert_eq!(
+            resolve_nestgate_socket_fallback(&env),
+            PathBuf::from("/custom/nestgate.sock")
+        );
+    }
+
+    #[test]
+    fn resolve_nestgate_socket_uses_biomeos_fallback() {
+        let env = test_env();
+        assert_eq!(
+            resolve_nestgate_socket_fallback(&env),
+            PathBuf::from("/run/user/1000/biomeos/nestgate.sock")
+        );
+    }
+
+    // ───── resolve_squirrel_socket ───────────────────────────────────────
+
+    #[test]
+    fn resolve_squirrel_socket_uses_env_override() {
+        let env = SocketPathEnv {
+            squirrel_socket: Some("/custom/squirrel.sock".to_string()),
+            ..test_env()
+        };
+        assert_eq!(
+            resolve_squirrel_socket(&env),
+            PathBuf::from("/custom/squirrel.sock")
+        );
+    }
+
+    #[test]
+    fn resolve_squirrel_socket_uses_biomeos_fallback() {
+        let env = test_env();
+        assert_eq!(
+            resolve_squirrel_socket(&env),
+            PathBuf::from("/run/user/1000/biomeos/squirrel.sock")
+        );
+    }
+
+    // ───── resolve_nucleus_socket ────────────────────────────────────────
+
+    #[test]
+    fn resolve_nucleus_socket_uses_env_override() {
+        let env = SocketPathEnv {
+            nucleus_socket: Some("/custom/nucleus.sock".to_string()),
+            ..test_env()
+        };
+        assert_eq!(
+            resolve_nucleus_socket(&env),
+            PathBuf::from("/custom/nucleus.sock")
+        );
+    }
+
+    #[test]
+    fn resolve_nucleus_socket_uses_biomeos_socket_path() {
+        let env = SocketPathEnv {
+            biomeos_socket_path: Some("/var/run/biomeos.sock".to_string()),
+            ..test_env()
+        };
+        assert_eq!(
+            resolve_nucleus_socket(&env),
+            PathBuf::from("/var/run/biomeos.sock")
+        );
+    }
+
+    #[test]
+    fn resolve_nucleus_socket_uses_biomeos_fallback() {
+        let env = test_env();
+        assert_eq!(
+            resolve_nucleus_socket(&env),
+            PathBuf::from("/run/user/1000/biomeos/nucleus.sock")
+        );
+    }
+
+    // ───── resolve_toadstool_socket ──────────────────────────────────────
+
+    #[test]
+    fn resolve_toadstool_socket_uses_env_override() {
+        let env = SocketPathEnv {
+            toadstool_socket: Some("/custom/toadstool.sock".to_string()),
+            ..test_env()
+        };
+        assert_eq!(
+            resolve_toadstool_socket(&env),
+            PathBuf::from("/custom/toadstool.sock")
+        );
+    }
+
+    #[test]
+    fn resolve_toadstool_socket_uses_biomeos_socket_path() {
+        let env = SocketPathEnv {
+            biomeos_socket_path: Some("/var/run/toadstool.sock".to_string()),
+            ..test_env()
+        };
+        assert_eq!(
+            resolve_toadstool_socket(&env),
+            PathBuf::from("/var/run/toadstool.sock")
+        );
+    }
+
+    #[test]
+    fn resolve_toadstool_socket_uses_biomeos_fallback() {
+        let env = test_env();
+        assert_eq!(
+            resolve_toadstool_socket(&env),
+            PathBuf::from("/run/user/1000/biomeos/toadstool.sock")
+        );
+    }
+
+    // ───── resolve_socket_path_for_service ───────────────────────────────
+
+    #[test]
+    #[allow(deprecated)]
+    fn resolve_service_socket_override_takes_precedence() {
+        let env = test_env();
+        let override_path = PathBuf::from("/override/custom.sock");
+        let result = resolve_socket_path_for_service("beardog", &env, Some(override_path.clone()));
+        assert_eq!(result, override_path);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn resolve_service_socket_beardog() {
+        let env = test_env();
+        let result = resolve_socket_path_for_service("beardog", &env, None);
+        assert_eq!(result, PathBuf::from("/run/user/1000/biomeos/beardog.sock"));
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn resolve_service_socket_beardog_alias() {
+        let env = test_env();
+        let result = resolve_socket_path_for_service("bear-dog", &env, None);
+        assert_eq!(result, PathBuf::from("/run/user/1000/biomeos/beardog.sock"));
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn resolve_service_socket_songbird() {
+        let env = test_env();
+        let result = resolve_socket_path_for_service("songbird", &env, None);
+        assert_eq!(
+            result,
+            PathBuf::from("/run/user/1000/biomeos/songbird.sock")
+        );
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn resolve_service_socket_toadstool() {
+        let env = test_env();
+        let result = resolve_socket_path_for_service("toadstool", &env, None);
+        assert_eq!(
+            result,
+            PathBuf::from("/run/user/1000/biomeos/toadstool.sock")
+        );
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn resolve_service_socket_nucleus() {
+        let env = test_env();
+        let result = resolve_socket_path_for_service("nucleus", &env, None);
+        assert_eq!(result, PathBuf::from("/run/user/1000/biomeos/nucleus.sock"));
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn resolve_service_socket_unknown_falls_through() {
+        let env = test_env();
+        let result = resolve_socket_path_for_service("myservice", &env, None);
+        assert_eq!(
+            result,
+            PathBuf::from("/run/user/1000/biomeos/myservice.sock")
+        );
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn resolve_service_socket_case_insensitive() {
+        let env = test_env();
+        let result = resolve_socket_path_for_service("BearDog", &env, None);
+        assert_eq!(result, PathBuf::from("/run/user/1000/biomeos/beardog.sock"));
+    }
+
+    // ───── Public API wrappers ───────────────────────────────────────────
+
+    #[test]
+    fn get_runtime_dir_returns_valid_path() {
+        let dir = get_runtime_dir();
+        assert!(!dir.is_empty());
+    }
+
+    #[test]
+    fn get_biomeos_dir_contains_biomeos() {
+        let dir = get_biomeos_dir();
+        assert!(dir.to_string_lossy().contains("biomeos"));
+    }
+
+    #[test]
+    fn get_family_id_returns_string() {
+        let id = get_family_id();
+        assert!(!id.is_empty());
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn get_beardog_socket_path_is_path() {
         let path = get_beardog_socket_path();
-        // Updated for biomeOS socket standard
-        assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/beardog.sock"));
-
-        std::env::remove_var("XDG_RUNTIME_DIR");
-        std::env::remove_var("BIOMEOS_FAMILY_ID");
+        assert!(path.to_string_lossy().contains("beardog"));
     }
 
     #[test]
-    fn test_songbird_socket_biomeos_standard() {
-        std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
-
+    #[allow(deprecated)]
+    fn get_songbird_socket_path_is_path() {
         let path = get_songbird_socket_path();
-        // biomeOS standard: uses biomeos subdirectory
-        assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/songbird.sock"));
-
-        std::env::remove_var("XDG_RUNTIME_DIR");
+        assert!(path.to_string_lossy().contains("songbird"));
     }
 
     #[test]
-    fn test_toadstool_socket_biomeos_standard() {
-        std::env::remove_var("TOADSTOOL_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-        std::env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
+    #[allow(deprecated)]
+    fn get_nestgate_socket_path_is_path() {
+        let path = get_nestgate_socket_path();
+        assert!(path.to_string_lossy().contains("nestgate"));
+    }
 
+    #[test]
+    fn get_squirrel_socket_path_is_path() {
+        let path = get_squirrel_socket_path();
+        assert!(path.to_string_lossy().contains("squirrel"));
+    }
+
+    #[test]
+    fn get_toadstool_socket_path_is_path() {
         let path = get_toadstool_socket_path();
-        // biomeOS standard: uses biomeos subdirectory
-        assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/toadstool.sock"));
-
-        std::env::remove_var("XDG_RUNTIME_DIR");
+        assert!(path.to_string_lossy().contains("toadstool"));
     }
 
     #[test]
-    fn test_biomeos_directory_path() {
-        std::env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
-
-        let biomeos_dir = get_biomeos_dir();
-        assert_eq!(biomeos_dir, PathBuf::from("/run/user/1000/biomeos"));
-
-        std::env::remove_var("XDG_RUNTIME_DIR");
-    }
-
-    #[test]
-    fn test_all_primals_have_unique_paths() {
-        let beardog = get_beardog_socket_path();
-        let songbird = get_songbird_socket_path();
-        let nestgate = get_nestgate_socket_path();
-        let squirrel = get_squirrel_socket_path();
-        let toadstool = get_toadstool_socket_path();
-
-        // All should be different (different filenames)
-        assert_ne!(beardog, songbird);
-        assert_ne!(beardog, nestgate);
-        assert_ne!(beardog, squirrel);
-        assert_ne!(beardog, toadstool);
-        assert_ne!(songbird, nestgate);
-        assert_ne!(songbird, squirrel);
-        assert_ne!(songbird, toadstool);
-        assert_ne!(nestgate, squirrel);
-        assert_ne!(nestgate, toadstool);
-        assert_ne!(squirrel, toadstool);
-
-        // All should be in biomeos subdirectory
-        assert!(beardog.to_str().unwrap().contains("/biomeos/"));
-        assert!(songbird.to_str().unwrap().contains("/biomeos/"));
-        assert!(nestgate.to_str().unwrap().contains("/biomeos/"));
-        assert!(squirrel.to_str().unwrap().contains("/biomeos/"));
-        assert!(toadstool.to_str().unwrap().contains("/biomeos/"));
+    fn get_nucleus_socket_path_is_path() {
+        let path = get_nucleus_socket_path();
+        let s = path.to_string_lossy();
+        assert!(s.contains("nucleus") || s.contains("biomeos"));
     }
 }

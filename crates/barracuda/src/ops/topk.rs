@@ -83,7 +83,7 @@ impl TopK {
 
     /// WGSL shader source
     fn shader() -> &'static str {
-        include_str!("../shaders/topk.wgsl")
+        include_str!("../shaders/misc/topk.wgsl")
     }
 
     /// Execute TopK (GPU selection)
@@ -318,12 +318,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_topk_gpu_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![5.0, 1.0, 9.0, 3.0, 7.0], vec![5], device)
             .await
             .unwrap();
@@ -341,8 +342,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_topk_gpu_single() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device)
             .await
             .unwrap();
@@ -356,8 +358,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_topk_gpu_all() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![3.0, 1.0, 4.0, 1.0, 5.0], vec![5], device)
             .await
             .unwrap();
@@ -373,8 +376,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_topk_gpu_negative() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![-5.0, -1.0, -9.0, -3.0], vec![4], device)
             .await
             .unwrap();
@@ -389,8 +393,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_topk_gpu_validation() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device)
             .await
             .unwrap();
@@ -404,8 +409,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_topk_gpu_duplicates() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![2.0, 5.0, 5.0, 1.0], vec![4], device)
             .await
             .unwrap();
@@ -422,8 +428,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_topk_gpu_large() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Larger tensor (100 elements)
         let mut values = vec![0.0; 100];
         for (i, v) in values.iter_mut().enumerate() {

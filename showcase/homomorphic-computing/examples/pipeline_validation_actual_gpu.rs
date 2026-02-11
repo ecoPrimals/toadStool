@@ -230,7 +230,7 @@ async fn bench_gpu_polynomial_add(
         });
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        pass.dispatch_workgroups((degree as u32 + 255) / 256, 1, 1);
+        pass.dispatch_workgroups((degree as u32).div_ceil(256), 1, 1);
         drop(pass);
         device.queue().submit(Some(encoder.finish()));
         device.device().poll(wgpu::Maintain::Wait);
@@ -250,7 +250,7 @@ async fn bench_gpu_polynomial_add(
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((degree as u32 + 255) / 256, 1, 1);
+            pass.dispatch_workgroups((degree as u32).div_ceil(256), 1, 1);
         }
         device.queue().submit(Some(encoder.finish()));
     }

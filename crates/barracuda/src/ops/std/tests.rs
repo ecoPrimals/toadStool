@@ -1,7 +1,7 @@
 //! Tests for Standard Deviation operation
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 fn std_cpu(input: &[f32]) -> f32 {
     let mean: f32 = input.iter().sum::<f32>() / input.len() as f32;
@@ -11,7 +11,9 @@ fn std_cpu(input: &[f32]) -> f32 {
 
 #[tokio::test]
 async fn test_std_basic() {
-    let device = get_test_device().await;
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)
         .await
@@ -29,8 +31,9 @@ async fn test_std_basic() {
 
 #[tokio::test]
 async fn test_std_edge_cases() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // All same value (std = 0)
     let input_data = vec![5.0, 5.0, 5.0, 5.0];
     let input = Tensor::from_vec_on(input_data.clone(), vec![4], device.clone())
@@ -50,7 +53,9 @@ async fn test_std_edge_cases() {
 
 #[tokio::test]
 async fn test_std_boundary() {
-    let device = get_test_device().await;
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let input_data = vec![0.0, 10.0, 20.0, 30.0, 40.0];
     let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)
         .await
@@ -68,7 +73,9 @@ async fn test_std_boundary() {
 
 #[tokio::test]
 async fn test_std_large_tensor() {
-    let device = get_test_device().await;
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let size = 100;
     let input_data: Vec<f32> = (0..size).map(|i| (i as f32) * 0.5).collect();
     let input = Tensor::from_vec_on(input_data.clone(), vec![size], device)
@@ -83,7 +90,9 @@ async fn test_std_large_tensor() {
 
 #[tokio::test]
 async fn test_std_precision() {
-    let device = get_test_device().await;
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let input_data = vec![2.0, 4.0, 6.0, 8.0, 10.0, 12.0];
     let input = Tensor::from_vec_on(input_data.clone(), vec![6], device)
         .await
@@ -97,7 +106,9 @@ async fn test_std_precision() {
 
 #[tokio::test]
 async fn test_std_dim() {
-    let device = get_test_device().await;
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // Test 2D tensor: [[1, 2, 3], [4, 5, 6]]
     let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
     let input = Tensor::from_vec_on(input_data.clone(), vec![2, 3], device.clone())

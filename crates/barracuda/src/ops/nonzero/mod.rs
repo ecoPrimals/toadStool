@@ -59,22 +59,22 @@ impl NonZero {
 
     /// WGSL shader source for nonzero operation
     pub(super) fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/nonzero.wgsl")
+        include_str!("../../shaders/misc/nonzero.wgsl")
     }
 
     /// WGSL shader source for prefix sum
     pub(super) fn prefix_sum_shader() -> &'static str {
-        include_str!("../../shaders/prefix_sum.wgsl")
+        include_str!("../../shaders/misc/prefix_sum.wgsl")
     }
 
     /// WGSL shader source for mask conversion
     pub(super) fn mask_convert_shader() -> &'static str {
-        include_str!("../../shaders/mask_convert.wgsl")
+        include_str!("../../shaders/misc/mask_convert.wgsl")
     }
 
     /// WGSL shader source for u32 to f32 conversion
     pub(super) fn u32_to_f32_shader() -> &'static str {
-        include_str!("../../shaders/u32_to_f32.wgsl")
+        include_str!("../../shaders/misc/u32_to_f32.wgsl")
     }
 
     /// Get input tensor

@@ -12,6 +12,7 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::{types::ApiError, ApiState};
+use toadstool_common::constants::network::LOCALHOST_IPV4;
 
 // ============================================================================
 // Rate Limiting Constants
@@ -170,7 +171,6 @@ pub async fn rate_limit_middleware(
     // In production, this should use Redis or a proper distributed rate limiter
 
     // Simple check: if this is from localhost or a known safe IP, skip rate limiting
-    const LOCALHOST_IPV4: &str = "127.0.0.1";
     const LOCALHOST_NAME: &str = "localhost";
     if client_ip == LOCALHOST_IPV4 || client_ip == LOCALHOST_NAME {
         info!("Rate limit skipped for trusted client: {}", client_ip);

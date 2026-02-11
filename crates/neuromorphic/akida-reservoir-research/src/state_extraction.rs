@@ -202,8 +202,8 @@ mod tests {
         let result = concatenate_states(&[state1, state2]).unwrap();
 
         assert_eq!(result.len(), 5);
-        assert_eq!(result[0], 1.0);
-        assert_eq!(result[4], 5.0);
+        assert!((result[0] - 1.0).abs() < f32::EPSILON);
+        assert!((result[4] - 5.0).abs() < f32::EPSILON);
     }
 
     #[test]

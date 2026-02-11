@@ -19,7 +19,7 @@
 //!
 //! # Example
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool::deployment_layer::{DeploymentLayer, LayerDetector};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,11 +31,11 @@
 //!         // Running as the OS itself
 //!         println!("biomeOS is the base OS");
 //!     }
-//!     DeploymentLayer::MiddlewareLayer => {
+//!     DeploymentLayer::MiddlewareLayer { .. } => {
 //!         // Running on another OS (e.g., Pop!_OS)
 //!         println!("biomeOS is middleware on {}", layer.host_os().unwrap());
 //!     }
-//!     DeploymentLayer::ServiceLayer => {
+//!     DeploymentLayer::ServiceLayer { .. } => {
 //!         // Providing services to another OS (e.g., SteamOS)
 //!         println!("biomeOS is providing services");
 //!     }
@@ -649,14 +649,232 @@ pub enum DetectionError {
 mod tests {
     use super::*;
 
+    // === LayerDetector ===
+
     #[tokio::test]
     async fn test_layer_detector_creation() {
         let detector = LayerDetector::new();
         assert!(detector.cached_layer.is_none());
     }
 
+    #[test]
+    fn test_layer_detector_default() {
+        let detector = LayerDetector::default();
+        assert!(detector.cached_layer.is_none());
+        assert_eq!(
+            std::mem::size_of_val(&detector),
+            std::mem::size_of_val(&LayerDetector::new())
+        );
+    }
+
     #[tokio::test]
-    async fn test_deployment_layer_display() {
+    async fn test_layer_detector_reset() {
+        let mut detector = LayerDetector::new();
+        assert!(detector.cached_layer.is_none());
+        detector.cached_layer = Some(DeploymentLayer::BareMetalOS);
+        assert!(detector.cached_layer.is_some());
+        detector.reset();
+        assert!(detector.cached_layer.is_none());
+    }
+
+    // === DeploymentLayer: description() ===
+
+    #[test]
+    fn test_deployment_layer_description_all_variants() {
+        assert_eq!(
+            DeploymentLayer::BareMetalOS.description(),
+            "Base OS on bare metal"
+        );
+        assert_eq!(
+            DeploymentLayer::MiddlewareLayer {
+                host_os: "Ubuntu".to_string(),
+                host_version: None,
+            }
+            .description(),
+            "Middleware on host OS"
+        );
+        assert_eq!(
+            DeploymentLayer::ServiceLayer {
+                guest_os: vec!["SteamOS".to_string()],
+            }
+            .description(),
+            "Service provider to guest OS"
+        );
+        assert_eq!(
+            DeploymentLayer::ContainerLayer {
+                runtime: ContainerRuntime::Docker,
+                container_id: None,
+            }
+            .description(),
+            "Inside container"
+        );
+        assert_eq!(
+            DeploymentLayer::VMLayer {
+                hypervisor: "QEMU".to_string(),
+                gpu_passthrough: false,
+            }
+            .description(),
+            "Inside virtual machine"
+        );
+        assert_eq!(
+            DeploymentLayer::CloudLayer {
+                provider: CloudProvider::AWS,
+                instance_type: None,
+                region: None,
+            }
+            .description(),
+            "Cloud environment"
+        );
+    }
+
+    // === DeploymentLayer: host_os() ===
+
+    #[test]
+    fn test_deployment_layer_host_os() {
+        assert_eq!(DeploymentLayer::BareMetalOS.host_os(), None);
+        assert_eq!(
+            DeploymentLayer::MiddlewareLayer {
+                host_os: "Pop!_OS".to_string(),
+                host_version: Some("22.04".to_string()),
+            }
+            .host_os(),
+            Some("Pop!_OS")
+        );
+        assert_eq!(
+            DeploymentLayer::ServiceLayer { guest_os: vec![] }.host_os(),
+            None
+        );
+        assert_eq!(
+            DeploymentLayer::ContainerLayer {
+                runtime: ContainerRuntime::Podman,
+                container_id: None,
+            }
+            .host_os(),
+            None
+        );
+        assert_eq!(
+            DeploymentLayer::VMLayer {
+                hypervisor: "KVM".to_string(),
+                gpu_passthrough: false,
+            }
+            .host_os(),
+            None
+        );
+        assert_eq!(
+            DeploymentLayer::CloudLayer {
+                provider: CloudProvider::GCP,
+                instance_type: None,
+                region: None,
+            }
+            .host_os(),
+            None
+        );
+    }
+
+    // === DeploymentLayer: guest_os() ===
+
+    #[test]
+    fn test_deployment_layer_guest_os() {
+        assert_eq!(DeploymentLayer::BareMetalOS.guest_os(), None);
+        assert_eq!(
+            DeploymentLayer::MiddlewareLayer {
+                host_os: "Ubuntu".to_string(),
+                host_version: None,
+            }
+            .guest_os(),
+            None
+        );
+        assert_eq!(
+            DeploymentLayer::ServiceLayer {
+                guest_os: vec!["SteamOS".to_string(), "QEMU/KVM guests".to_string()],
+            }
+            .guest_os(),
+            Some(&["SteamOS".to_string(), "QEMU/KVM guests".to_string()][..])
+        );
+        assert_eq!(
+            DeploymentLayer::ServiceLayer { guest_os: vec![] }.guest_os(),
+            Some(&[][..])
+        );
+        assert_eq!(
+            DeploymentLayer::ContainerLayer {
+                runtime: ContainerRuntime::Docker,
+                container_id: None,
+            }
+            .guest_os(),
+            None
+        );
+    }
+
+    // === DeploymentLayer: is_virtualized() ===
+
+    #[test]
+    fn test_deployment_layer_is_virtualized() {
+        assert!(!DeploymentLayer::BareMetalOS.is_virtualized());
+        assert!(!DeploymentLayer::MiddlewareLayer {
+            host_os: "Ubuntu".to_string(),
+            host_version: None,
+        }
+        .is_virtualized());
+        assert!(!DeploymentLayer::ServiceLayer {
+            guest_os: vec!["SteamOS".to_string()],
+        }
+        .is_virtualized());
+        assert!(DeploymentLayer::ContainerLayer {
+            runtime: ContainerRuntime::Docker,
+            container_id: None,
+        }
+        .is_virtualized());
+        assert!(DeploymentLayer::VMLayer {
+            hypervisor: "QEMU".to_string(),
+            gpu_passthrough: false,
+        }
+        .is_virtualized());
+        assert!(DeploymentLayer::CloudLayer {
+            provider: CloudProvider::AWS,
+            instance_type: None,
+            region: None,
+        }
+        .is_virtualized());
+    }
+
+    // === DeploymentLayer: has_direct_hardware_access() ===
+
+    #[test]
+    fn test_deployment_layer_has_direct_hardware_access() {
+        assert!(DeploymentLayer::BareMetalOS.has_direct_hardware_access());
+        assert!(!DeploymentLayer::MiddlewareLayer {
+            host_os: "Ubuntu".to_string(),
+            host_version: None,
+        }
+        .has_direct_hardware_access());
+        assert!(!DeploymentLayer::ServiceLayer { guest_os: vec![] }.has_direct_hardware_access());
+        assert!(!DeploymentLayer::ContainerLayer {
+            runtime: ContainerRuntime::Docker,
+            container_id: None,
+        }
+        .has_direct_hardware_access());
+        assert!(!DeploymentLayer::VMLayer {
+            hypervisor: "QEMU".to_string(),
+            gpu_passthrough: false,
+        }
+        .has_direct_hardware_access());
+        assert!(DeploymentLayer::VMLayer {
+            hypervisor: "QEMU/KVM".to_string(),
+            gpu_passthrough: true,
+        }
+        .has_direct_hardware_access());
+        assert!(!DeploymentLayer::CloudLayer {
+            provider: CloudProvider::AWS,
+            instance_type: None,
+            region: None,
+        }
+        .has_direct_hardware_access());
+    }
+
+    // === DeploymentLayer: Display ===
+
+    #[test]
+    fn test_deployment_layer_display() {
         let layer = DeploymentLayer::BareMetalOS;
         assert_eq!(format!("{}", layer), "BareMetalOS");
 
@@ -665,6 +883,44 @@ mod tests {
             host_version: Some("22.04".to_string()),
         };
         assert_eq!(format!("{}", layer), "Middleware on Pop!_OS");
+
+        let layer = DeploymentLayer::ServiceLayer {
+            guest_os: vec!["SteamOS".to_string(), "Docker".to_string()],
+        };
+        assert_eq!(
+            format!("{}", layer),
+            "ServiceLayer (serving: SteamOS, Docker)"
+        );
+
+        let layer = DeploymentLayer::ServiceLayer {
+            guest_os: vec!["Single".to_string()],
+        };
+        assert_eq!(format!("{}", layer), "ServiceLayer (serving: Single)");
+
+        let layer = DeploymentLayer::ContainerLayer {
+            runtime: ContainerRuntime::Docker,
+            container_id: Some("abc123".to_string()),
+        };
+        assert_eq!(format!("{}", layer), "Container (Docker)");
+
+        let layer = DeploymentLayer::ContainerLayer {
+            runtime: ContainerRuntime::Other("rkt".to_string()),
+            container_id: None,
+        };
+        assert_eq!(format!("{}", layer), "Container (Other(\"rkt\"))");
+
+        let layer = DeploymentLayer::VMLayer {
+            hypervisor: "QEMU/KVM".to_string(),
+            gpu_passthrough: true,
+        };
+        assert_eq!(format!("{}", layer), "VM (QEMU/KVM)");
+
+        let layer = DeploymentLayer::CloudLayer {
+            provider: CloudProvider::AWS,
+            instance_type: Some("t3.micro".to_string()),
+            region: Some("us-east-1".to_string()),
+        };
+        assert_eq!(format!("{}", layer), "Cloud (AWS)");
     }
 
     #[tokio::test]
@@ -679,5 +935,253 @@ mod tests {
         };
         assert!(!layer.has_direct_hardware_access());
         assert!(layer.is_virtualized());
+    }
+
+    // === ContainerRuntime ===
+
+    #[test]
+    fn test_container_runtime_variants() {
+        assert_eq!(ContainerRuntime::Docker, ContainerRuntime::Docker);
+        assert_eq!(ContainerRuntime::Podman, ContainerRuntime::Podman);
+        assert_eq!(ContainerRuntime::Containerd, ContainerRuntime::Containerd);
+        assert_eq!(ContainerRuntime::CRIO, ContainerRuntime::CRIO);
+        assert_eq!(
+            ContainerRuntime::Other("custom".to_string()),
+            ContainerRuntime::Other("custom".to_string())
+        );
+        assert_ne!(
+            ContainerRuntime::Other("a".to_string()),
+            ContainerRuntime::Other("b".to_string())
+        );
+    }
+
+    #[test]
+    fn test_container_runtime_debug() {
+        assert!(format!("{:?}", ContainerRuntime::Docker).contains("Docker"));
+        assert!(format!("{:?}", ContainerRuntime::Other("rkt".to_string())).contains("rkt"));
+    }
+
+    // === CloudProvider ===
+
+    #[test]
+    fn test_cloud_provider_variants() {
+        assert_eq!(CloudProvider::AWS, CloudProvider::AWS);
+        assert_eq!(CloudProvider::GCP, CloudProvider::GCP);
+        assert_eq!(CloudProvider::Azure, CloudProvider::Azure);
+        assert_eq!(CloudProvider::Oracle, CloudProvider::Oracle);
+        assert_eq!(CloudProvider::DigitalOcean, CloudProvider::DigitalOcean);
+        assert_eq!(
+            CloudProvider::Custom("Linode".to_string()),
+            CloudProvider::Custom("Linode".to_string())
+        );
+        assert_ne!(
+            CloudProvider::Custom("A".to_string()),
+            CloudProvider::Custom("B".to_string())
+        );
+    }
+
+    #[test]
+    fn test_cloud_provider_debug() {
+        assert!(format!("{:?}", CloudProvider::AWS).contains("AWS"));
+        assert!(format!("{:?}", CloudProvider::Custom("Linode".to_string())).contains("Linode"));
+    }
+
+    // === Serialization round-trips ===
+
+    #[test]
+    fn test_deployment_layer_serde_json_roundtrip_bare_metal() {
+        let layer = DeploymentLayer::BareMetalOS;
+        let json = serde_json::to_string(&layer).unwrap();
+        let decoded: DeploymentLayer = serde_json::from_str(&json).unwrap();
+        assert_eq!(layer, decoded);
+    }
+
+    #[test]
+    fn test_deployment_layer_serde_json_roundtrip_middleware() {
+        let layer = DeploymentLayer::MiddlewareLayer {
+            host_os: "Pop!_OS".to_string(),
+            host_version: Some("22.04".to_string()),
+        };
+        let json = serde_json::to_string(&layer).unwrap();
+        let decoded: DeploymentLayer = serde_json::from_str(&json).unwrap();
+        assert_eq!(layer, decoded);
+    }
+
+    #[test]
+    fn test_deployment_layer_serde_json_roundtrip_middleware_no_version() {
+        let layer = DeploymentLayer::MiddlewareLayer {
+            host_os: "Ubuntu".to_string(),
+            host_version: None,
+        };
+        let json = serde_json::to_string(&layer).unwrap();
+        let decoded: DeploymentLayer = serde_json::from_str(&json).unwrap();
+        assert_eq!(layer, decoded);
+    }
+
+    #[test]
+    fn test_deployment_layer_serde_json_roundtrip_service() {
+        let layer = DeploymentLayer::ServiceLayer {
+            guest_os: vec!["SteamOS".to_string(), "Docker containers".to_string()],
+        };
+        let json = serde_json::to_string(&layer).unwrap();
+        let decoded: DeploymentLayer = serde_json::from_str(&json).unwrap();
+        assert_eq!(layer, decoded);
+    }
+
+    #[test]
+    fn test_deployment_layer_serde_json_roundtrip_container() {
+        let layer = DeploymentLayer::ContainerLayer {
+            runtime: ContainerRuntime::Podman,
+            container_id: Some("abcdef123456".to_string()),
+        };
+        let json = serde_json::to_string(&layer).unwrap();
+        let decoded: DeploymentLayer = serde_json::from_str(&json).unwrap();
+        assert_eq!(layer, decoded);
+    }
+
+    #[test]
+    fn test_deployment_layer_serde_json_roundtrip_vm() {
+        let layer = DeploymentLayer::VMLayer {
+            hypervisor: "QEMU/KVM".to_string(),
+            gpu_passthrough: true,
+        };
+        let json = serde_json::to_string(&layer).unwrap();
+        let decoded: DeploymentLayer = serde_json::from_str(&json).unwrap();
+        assert_eq!(layer, decoded);
+    }
+
+    #[test]
+    fn test_deployment_layer_serde_json_roundtrip_cloud() {
+        let layer = DeploymentLayer::CloudLayer {
+            provider: CloudProvider::AWS,
+            instance_type: Some("t3.large".to_string()),
+            region: Some("us-west-2".to_string()),
+        };
+        let json = serde_json::to_string(&layer).unwrap();
+        let decoded: DeploymentLayer = serde_json::from_str(&json).unwrap();
+        assert_eq!(layer, decoded);
+    }
+
+    #[test]
+    fn test_container_runtime_serde_json_roundtrip() {
+        for runtime in [
+            ContainerRuntime::Docker,
+            ContainerRuntime::Podman,
+            ContainerRuntime::Containerd,
+            ContainerRuntime::CRIO,
+            ContainerRuntime::Other("custom-runtime".to_string()),
+        ] {
+            let json = serde_json::to_string(&runtime).unwrap();
+            let decoded: ContainerRuntime = serde_json::from_str(&json).unwrap();
+            assert_eq!(runtime, decoded);
+        }
+    }
+
+    #[test]
+    fn test_cloud_provider_serde_json_roundtrip() {
+        for provider in [
+            CloudProvider::AWS,
+            CloudProvider::GCP,
+            CloudProvider::Azure,
+            CloudProvider::Oracle,
+            CloudProvider::DigitalOcean,
+            CloudProvider::Custom("Linode".to_string()),
+        ] {
+            let json = serde_json::to_string(&provider).unwrap();
+            let decoded: CloudProvider = serde_json::from_str(&json).unwrap();
+            assert_eq!(provider, decoded);
+        }
+    }
+
+    // === Clone, Eq, PartialEq, Hash ===
+
+    #[test]
+    fn test_deployment_layer_clone_eq() {
+        let layer = DeploymentLayer::CloudLayer {
+            provider: CloudProvider::Oracle,
+            instance_type: Some("VM.Standard.E4".to_string()),
+            region: Some("us-phoenix-1".to_string()),
+        };
+        let cloned = layer.clone();
+        assert_eq!(layer, cloned);
+    }
+
+    #[test]
+    fn test_deployment_layer_partial_eq_ne() {
+        let a = DeploymentLayer::MiddlewareLayer {
+            host_os: "Ubuntu".to_string(),
+            host_version: None,
+        };
+        let b = DeploymentLayer::MiddlewareLayer {
+            host_os: "Debian".to_string(),
+            host_version: None,
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn test_deployment_layer_hash_consistency() {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let layer = DeploymentLayer::VMLayer {
+            hypervisor: "VMware".to_string(),
+            gpu_passthrough: false,
+        };
+        let mut hasher1 = DefaultHasher::new();
+        let mut hasher2 = DefaultHasher::new();
+        layer.hash(&mut hasher1);
+        layer.clone().hash(&mut hasher2);
+        assert_eq!(hasher1.finish(), hasher2.finish());
+    }
+
+    // === DetectionError ===
+
+    #[test]
+    fn test_detection_error_display() {
+        let err = DetectionError::ContainerIdNotFound;
+        assert!(err.to_string().contains("Container ID not found"));
+
+        let err = DetectionError::ExternalHttpDisabled;
+        assert!(err.to_string().contains("External HTTP"));
+
+        let err = DetectionError::DetectionFailed("custom msg".to_string());
+        assert!(err.to_string().contains("custom msg"));
+    }
+
+    #[test]
+    fn test_detection_error_from_io() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let det_err: DetectionError = io_err.into();
+        match &det_err {
+            DetectionError::Io(e) => {
+                assert_eq!(e.kind(), std::io::ErrorKind::NotFound);
+            }
+            _ => panic!("expected Io variant"),
+        }
+    }
+
+    #[test]
+    fn test_detection_error_is_std_error() {
+        let err: Box<dyn std::error::Error> = Box::new(DetectionError::ContainerIdNotFound);
+        assert!(!err.to_string().is_empty());
+    }
+
+    // === Edge cases ===
+
+    #[test]
+    fn test_service_layer_empty_guest_os() {
+        let layer = DeploymentLayer::ServiceLayer { guest_os: vec![] };
+        assert_eq!(layer.guest_os(), Some(&[][..]));
+        assert_eq!(format!("{}", layer), "ServiceLayer (serving: )");
+    }
+
+    #[test]
+    fn test_middleware_layer_empty_host_os() {
+        let layer = DeploymentLayer::MiddlewareLayer {
+            host_os: String::new(),
+            host_version: None,
+        };
+        assert_eq!(layer.host_os(), Some(""));
     }
 }

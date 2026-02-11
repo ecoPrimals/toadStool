@@ -615,7 +615,7 @@ mod tests {
 
         // Average score should be between 0 and 1
         let avg_score = plan.average_score();
-        assert!(avg_score >= 0.0 && avg_score <= 1.0);
+        assert!((0.0..=1.0).contains(&avg_score));
 
         // Should have 2 feasible placements
         assert_eq!(plan.feasible_placements().len(), 2);

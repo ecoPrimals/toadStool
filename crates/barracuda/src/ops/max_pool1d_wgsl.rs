@@ -33,7 +33,7 @@ impl MaxPool1D {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/max_pool1d.wgsl")
+        include_str!("../shaders/pooling/max_pool1d.wgsl")
     }
 
     /// Execute the max pool 1D operation
@@ -233,15 +233,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_max_pool1d_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Input: [1, 1, 8] - single batch, single channel, 8 elements
         let data = vec![1.0, 3.0, 2.0, 4.0, 5.0, 1.0, 6.0, 2.0];
         let input = Tensor::new(data, vec![1, 1, 8], device.clone());
@@ -259,8 +259,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_max_pool1d_multi_channel() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Input: [1, 2, 4] - single batch, 2 channels, 4 elements each
         let data = vec![
             1.0, 2.0, 3.0, 4.0, // Channel 0
@@ -282,8 +283,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_max_pool1d_stride_one() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Input: [1, 1, 5] - overlapping windows
         let data = vec![1.0, 5.0, 2.0, 3.0, 4.0];
         let input = Tensor::new(data, vec![1, 1, 5], device.clone());

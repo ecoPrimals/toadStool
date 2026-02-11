@@ -151,10 +151,11 @@ impl UniversalRuntime {
     }
 
     /// Get units by type
-    pub fn units_by_type(&self, unit_type: ComputeUnitType) -> Vec<&Box<dyn ComputeUnit>> {
+    pub fn units_by_type(&self, unit_type: ComputeUnitType) -> Vec<&dyn ComputeUnit> {
         self.units
             .iter()
             .filter(|u| u.capabilities().unit_type == unit_type)
+            .map(|u| u.as_ref() as &dyn ComputeUnit)
             .collect()
     }
 

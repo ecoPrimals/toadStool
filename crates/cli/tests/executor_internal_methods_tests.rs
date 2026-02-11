@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)] // expect() is idiomatic in tests
 //! Internal Method Tests for CLI Executor
 //!
 //! **WEEK 1, DAY 3**: Deep dive into internal implementation
@@ -33,7 +34,7 @@ use toadstool_cli::{
 fn create_test_context() -> CliContext {
     CliContext {
         config_path: None,
-        working_dir: std::env::current_dir().unwrap(),
+        working_dir: std::env::current_dir().expect("working directory must be accessible"),
         verbose: false,
     }
 }
@@ -296,8 +297,8 @@ async fn test_concurrent_different_biome_operations() {
 
     // List operation
     {
-        let exec = executor.clone();
-        let b = barrier.clone();
+        let exec = Arc::clone(&executor);
+        let b = Arc::clone(&barrier);
         handles.push(tokio::spawn(async move {
             b.wait().await;
             exec.list_biomes(false, "json".to_string(), false, None)
@@ -307,8 +308,8 @@ async fn test_concurrent_different_biome_operations() {
 
     // Multiple down operations on different biomes
     for i in 0..5 {
-        let exec = executor.clone();
-        let b = barrier.clone();
+        let exec = Arc::clone(&executor);
+        let b = Arc::clone(&barrier);
         handles.push(tokio::spawn(async move {
             b.wait().await;
             exec.down_biome(format!("biome-{}", i), false, 30, false)
@@ -332,8 +333,8 @@ async fn test_list_biomes_all_output_formats_concurrent() {
     let handles: Vec<_> = formats
         .into_iter()
         .map(|fmt| {
-            let exec = executor.clone();
-            let b = barrier.clone();
+            let exec = Arc::clone(&executor);
+            let b = Arc::clone(&barrier);
 
             tokio::spawn(async move {
                 b.wait().await;
@@ -391,7 +392,7 @@ async fn test_resource_limit_combinations() {
         .into_iter()
         .enumerate()
         .map(|(i, (cpu, mem))| {
-            let exec = executor.clone();
+            let exec = Arc::clone(&executor);
 
             tokio::spawn(async move {
                 let manifest_path =
@@ -451,7 +452,7 @@ async fn test_show_logs_all_parameter_combinations() {
         .into_iter()
         .enumerate()
         .map(|(i, (follow, lines, timestamps, level, grep))| {
-            let exec = executor.clone();
+            let exec = Arc::clone(&executor);
 
             tokio::spawn(async move {
                 exec.show_logs(
@@ -485,7 +486,7 @@ async fn test_property_executor_methods_never_panic() {
 
     let handles: Vec<_> = (0..50)
         .map(|i| {
-            let exec = executor.clone();
+            let exec = Arc::clone(&executor);
 
             tokio::spawn(async move {
                 let _ctx = create_test_context();
@@ -523,8 +524,8 @@ async fn test_stress_list_biomes_different_parameters() {
 
     // Vary all parameters
     for i in 0..20 {
-        let exec = executor.clone();
-        let b = barrier.clone();
+        let exec = Arc::clone(&executor);
+        let b = Arc::clone(&barrier);
 
         handles.push(tokio::spawn(async move {
             b.wait().await;
@@ -574,7 +575,7 @@ async fn test_up_biome_detach_mode_variations() {
     let handles: Vec<_> = [true, false]
         .iter()
         .map(|&detach| {
-            let exec = executor.clone();
+            let exec = Arc::clone(&executor);
 
             tokio::spawn(async move {
                 let manifest_path =
@@ -624,7 +625,7 @@ async fn test_up_biome_different_health_intervals() {
     let handles: Vec<_> = health_intervals
         .into_iter()
         .map(|interval| {
-            let exec = executor.clone();
+            let exec = Arc::clone(&executor);
 
             tokio::spawn(async move {
                 let manifest_path =
@@ -666,8 +667,8 @@ async fn test_concurrent_list_operations_consistent_state() {
 
     let handles: Vec<_> = (0..10)
         .map(|_| {
-            let exec = executor.clone();
-            let b = barrier.clone();
+            let exec = Arc::clone(&executor);
+            let b = Arc::clone(&barrier);
 
             tokio::spawn(async move {
                 b.wait().await;
@@ -837,7 +838,7 @@ async fn test_stress_executor_creation_and_operations() {
 
     let handles: Vec<_> = (0..10)
         .map(|i| {
-            let b = barrier.clone();
+            let b = Arc::clone(&barrier);
 
             tokio::spawn(async move {
                 b.wait().await;

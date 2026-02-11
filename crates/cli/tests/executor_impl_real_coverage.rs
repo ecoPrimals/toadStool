@@ -517,7 +517,7 @@ async fn test_interrupt_signal_concept() {
     use std::sync::Arc;
 
     let interrupted = Arc::new(AtomicBool::new(false));
-    let interrupted_clone = interrupted.clone();
+    let interrupted_clone = Arc::clone(&interrupted);
 
     // Simulate interrupt
     tokio::spawn(async move {

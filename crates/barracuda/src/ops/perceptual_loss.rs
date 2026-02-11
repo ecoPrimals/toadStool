@@ -5,7 +5,7 @@
 //! Compares high-level features instead of pixels.
 //! Used in style transfer and super-resolution.
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -51,7 +51,7 @@ impl PerceptualLoss {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/perceptual_loss.wgsl")
+        include_str!("../shaders/loss/perceptual_loss.wgsl")
     }
 
     /// Execute the perceptual loss operation
@@ -59,9 +59,12 @@ impl PerceptualLoss {
         let device = self.features1.device();
         let size = self.features1.len();
 
-        // Create reduction buffer and output buffer
-        let loss_buffer = device.create_buffer_f32(1)?;
+        let num_workgroups = (size as u32).div_ceil(crate::device::capabilities::WORKGROUP_SIZE_1D);
+
+        // Create reduction buffer (one slot per workgroup) and output buffer
+        let loss_buffer = device.create_buffer_f32(num_workgroups as usize)?;
         let output_buffer = device.create_buffer_f32(1)?;
+        device.write_buffer_f32(&loss_buffer, &vec![0.0; num_workgroups as usize])?;
 
         // Determine if weights are provided and number of weight groups
         let has_weights = self.weights.is_some() as u32;
@@ -90,14 +93,14 @@ impl PerceptualLoss {
             size: u32,
             has_weights: u32,
             num_weights: u32,
-            _pad1: u32,
+            num_partials: u32,
         }
 
         let params = Params {
             size: size as u32,
             has_weights,
             num_weights,
-            _pad1: 0,
+            num_partials: num_workgroups,
         };
 
         let params_buffer = device
@@ -260,38 +263,34 @@ impl PerceptualLoss {
             // Pass 1: Compute weighted squared differences
             compute_pass.set_pipeline(&compute_pipeline_pass1);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(size as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
 
-            // Pass 2: Compute mean loss
+            // Pass 2: Sum partial results and compute mean (1 workgroup)
             compute_pass.set_pipeline(&compute_pipeline_pass2);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            // Pass 2 aggregates intermediate results (reduction)
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
-            compute_pass.dispatch_workgroups(workgroups.max(1), 1, 1);
+            compute_pass.dispatch_workgroups(1, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        // Output shape: scalar [1]
-        Ok(Tensor::from_buffer(output_buffer, vec![1], device.clone()))
+        let output_data = crate::utils::read_buffer(device, &output_buffer, 1)?;
+        Ok(Tensor::new(output_data, vec![1], device.clone()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_perceptual_loss() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let features1 = Tensor::from_vec_on(vec![0.5; 1000], vec![1000], device.clone())
             .await
             .unwrap();

@@ -1,3 +1,4 @@
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -73,7 +74,7 @@ impl DilatedConv2D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/dilated_conv2d.wgsl")
+        include_str!("../shaders/conv/dilated_conv2d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -270,16 +271,19 @@ impl DilatedConv2D {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups_x = (out_width as u32).div_ceil(8);
-            let workgroups_y = (out_height as u32).div_ceil(8);
+            // Dispatch using standard 2D shader workgroup size (16, 16)
+            let caps = DeviceCapabilities::from_device(device);
+            let (workgroups_x, workgroups_y) =
+                caps.dispatch_2d(out_width as u32, out_height as u32);
             let workgroups_z = batch_size as u32 * out_channels as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(
-            output_buffer,
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+        Ok(Tensor::new(
+            output_data,
             vec![batch_size, out_channels, out_height, out_width],
             device.clone(),
         ))
@@ -289,12 +293,13 @@ impl DilatedConv2D {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_dilated_conv2d_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 1;
         let in_channels = 3;
         let out_channels = 8;
@@ -338,6 +343,13 @@ mod tests {
         .execute()
         .unwrap();
 
-        assert_eq!(output.shape(), &[batch_size, out_channels, height, width]);
+        // With dilation=2, kernel 3x3: effective kernel = 5x5
+        // out_h = (32 + 2 - 2*2 - 1)/1 + 1 = 30, out_w = 30
+        let expected_h = (height + 2 * 1 - 2 * (kernel_size - 1) - 1) / 1 + 1;
+        let expected_w = (width + 2 * 1 - 2 * (kernel_size - 1) - 1) / 1 + 1;
+        assert_eq!(
+            output.shape(),
+            &[batch_size, out_channels, expected_h, expected_w]
+        );
     }
 }

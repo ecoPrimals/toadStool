@@ -83,17 +83,17 @@ impl CausalAttention {
 
     /// Pass 1 shader: Compute QK^T scores (REUSED from attention ✅)
     pub(super) fn shader_matmul() -> &'static str {
-        include_str!("../../shaders/attention_matmul.wgsl")
+        include_str!("../../shaders/math/attention_matmul.wgsl")
     }
 
     /// Pass 2 shader: Apply softmax with causal mask (NEW - only shader needed!)
     pub(super) fn shader_causal_softmax() -> &'static str {
-        include_str!("../../shaders/causal_attention_softmax.wgsl")
+        include_str!("../../shaders/activation/causal_attention_softmax.wgsl")
     }
 
     /// Pass 3 shader: Apply weights to values (REUSED from attention ✅)
     pub(super) fn shader_apply() -> &'static str {
-        include_str!("../../shaders/attention_apply.wgsl")
+        include_str!("../../shaders/attention/attention_apply.wgsl")
     }
 
     /// Get query tensor

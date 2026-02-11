@@ -225,10 +225,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_adaptive_sampling_high_load() {
-        let mut config = OptimizedMonitoringConfig::default();
-        config.adaptive_sampling = true;
-        config.base_sampling_interval = Duration::from_millis(100);
-        config.high_load_multiplier = 0.5;
+        let config = OptimizedMonitoringConfig {
+            adaptive_sampling: true,
+            base_sampling_interval: Duration::from_millis(100),
+            high_load_multiplier: 0.5,
+            ..Default::default()
+        };
 
         let monitor = OptimizedResourceMonitor::new(config);
 
@@ -302,8 +304,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_expiration() {
-        let mut config = CachingConfig::default();
-        config.default_ttl = Duration::from_secs(300); // Normal TTL
+        let config = CachingConfig {
+            default_ttl: Duration::from_secs(300), // Normal TTL
+            ..Default::default()
+        };
         let cache = IntelligentCache::new(config);
 
         // Put with very short custom TTL that will expire immediately
@@ -328,9 +332,6 @@ mod tests {
         let _batcher: AsyncBatcher<i32, i32> = AsyncBatcher::new(config, |items: Vec<i32>| {
             Box::pin(async move { items.into_iter().map(|x| x * 2).collect() })
         });
-
-        // Creation successful
-        assert!(true);
     }
 
     #[tokio::test]
@@ -355,9 +356,6 @@ mod tests {
     async fn test_manager_creation() {
         let config = PerformanceHardeningConfig::default();
         let _manager = PerformanceHardeningManager::new(config);
-
-        // Should create successfully
-        assert!(true);
     }
 
     #[tokio::test]
@@ -400,9 +398,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_manager_disabled_features() {
-        let mut config = PerformanceHardeningConfig::default();
-        config.enable_memory_pools = false;
-        config.enable_caching = false;
+        let config = PerformanceHardeningConfig {
+            enable_memory_pools: false,
+            enable_caching: false,
+            ..Default::default()
+        };
 
         let manager = PerformanceHardeningManager::new(config);
 
@@ -425,8 +425,5 @@ mod tests {
         let _cache_config = CachingConfig::default();
         let _async_config = AsyncOptimizationConfig::default();
         let _conn_config = PerformanceConnectionPoolConfig::default();
-
-        // All defaults should create successfully
-        assert!(true);
     }
 }

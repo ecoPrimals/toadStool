@@ -92,7 +92,7 @@ impl DilatedConv2D {
     ///
     /// * `input` - Input tensor [batch, in_channels, height, width]
     /// * `kernel` - Kernel weights [out_channels, in_channels, kernel_size, kernel_size]
-    /// * `bias` - Bias [out_channels]
+    /// * `bias` - Bias `out_channels`
     /// * `batch` - Batch size
     /// * `height` - Input height
     /// * `width` - Input width
@@ -388,8 +388,8 @@ impl SeparableConv2D {
     /// * `input` - Input tensor [batch, in_channels, height, width]
     /// * `kernel_dw` - Depthwise kernel [in_channels, 1, kernel_size, kernel_size]
     /// * `kernel_pw` - Pointwise kernel [out_channels, in_channels, 1, 1]
-    /// * `bias_dw` - Depthwise bias [in_channels]
-    /// * `bias_pw` - Pointwise bias [out_channels]
+    /// * `bias_dw` - Depthwise bias `in_channels`
+    /// * `bias_pw` - Pointwise bias `out_channels`
     /// * `batch` - Batch size
     /// * `height` - Input height
     /// * `width` - Input width

@@ -47,7 +47,11 @@ impl CoordinatorExecutor {
     /// # Errors
     ///
     /// Returns error if coordinator initialization fails
-    pub async fn new(config: DistributedConfig, service_id: String) -> Result<Self, String> {
+    pub async fn new(
+        config: DistributedConfig,
+        service_id: impl Into<String>,
+    ) -> Result<Self, String> {
+        let service_id = service_id.into();
         info!(
             "Initializing coordinator executor for service: {}",
             service_id
@@ -116,7 +120,9 @@ impl WorkloadExecutor for CoordinatorExecutor {
         // Query local capabilities only (not other instances)
         // The coordinator will report what THIS instance can do
 
-        let cpu_cores = num_cpus::get() as u32;
+        let cpu_cores = std::thread::available_parallelism()
+            .map(|n| n.get() as u32)
+            .unwrap_or(4);
 
         // Query memory - Pure Rust Evolution (Jan 17, 2026)
         use sysinfo::System;
@@ -238,6 +244,7 @@ fn parse_runtime_type(s: &str) -> RuntimeType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rpc_types::{ResourceRequirements, WorkloadPriority, WorkloadSubmission};
 
     #[test]
     fn test_runtime_type_parsing() {
@@ -248,5 +255,157 @@ mod tests {
             parse_runtime_type("cpu_compute"),
             RuntimeType::Native
         ));
+    }
+
+    #[test]
+    fn test_runtime_type_parsing_all_variants() {
+        assert!(matches!(parse_runtime_type("native"), RuntimeType::Native));
+        assert!(matches!(
+            parse_runtime_type("cpu_compute"),
+            RuntimeType::Native
+        ));
+        assert!(matches!(parse_runtime_type("wasm"), RuntimeType::Wasm));
+        assert!(matches!(
+            parse_runtime_type("wasm_runtime"),
+            RuntimeType::Wasm
+        ));
+        assert!(matches!(
+            parse_runtime_type("container"),
+            RuntimeType::Container
+        ));
+        assert!(matches!(
+            parse_runtime_type("container_runtime"),
+            RuntimeType::Container
+        ));
+        assert!(matches!(parse_runtime_type("python"), RuntimeType::Python));
+        assert!(matches!(parse_runtime_type("gpu"), RuntimeType::Gpu));
+        assert!(matches!(
+            parse_runtime_type("gpu_compute"),
+            RuntimeType::Gpu
+        ));
+    }
+
+    #[test]
+    fn test_runtime_type_parsing_unknown_defaults_to_native() {
+        assert!(matches!(
+            parse_runtime_type("neural_compute"),
+            RuntimeType::Native
+        ));
+        assert!(matches!(parse_runtime_type("unknown"), RuntimeType::Native));
+        assert!(matches!(parse_runtime_type(""), RuntimeType::Native));
+    }
+
+    #[test]
+    fn test_convert_submission_to_request() {
+        let submission = WorkloadSubmission {
+            workload_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            workload_type: "gpu_compute".to_string(),
+            data: vec![1, 2, 3, 4, 5],
+            metadata: HashMap::from([
+                ("key1".to_string(), "value1".to_string()),
+                ("key2".to_string(), "value2".to_string()),
+            ]),
+            priority: WorkloadPriority::High,
+            requirements: ResourceRequirements {
+                cpu_cores: Some(4),
+                memory_bytes: Some(1024 * 1024 * 1024),
+                gpu_memory_bytes: Some(8 * 1024 * 1024 * 1024),
+                timeout_secs: Some(300),
+            },
+        };
+
+        let request = convert_submission_to_request(submission).expect("Conversion should succeed");
+
+        assert_eq!(
+            request.execution_id.to_string(),
+            "550e8400-e29b-41d4-a716-446655440000"
+        );
+        assert!(matches!(request.runtime_hint, Some(RuntimeType::Gpu)));
+        assert!(request.timeout.is_some());
+        assert_eq!(request.timeout.unwrap(), Duration::from_secs(300));
+
+        if let toadstool::workload::WorkloadSpec::Native { env_vars, .. } = &request.workload {
+            assert_eq!(env_vars.get("key1"), Some(&"value1".to_string()));
+            assert_eq!(env_vars.get("key2"), Some(&"value2".to_string()));
+        } else {
+            panic!("Expected Native workload spec");
+        }
+    }
+
+    #[test]
+    fn test_convert_submission_invalid_uuid_uses_new_v4() {
+        let submission = WorkloadSubmission {
+            workload_id: "not-a-valid-uuid".to_string(),
+            workload_type: "cpu_compute".to_string(),
+            data: vec![],
+            metadata: HashMap::new(),
+            priority: WorkloadPriority::Normal,
+            requirements: ResourceRequirements {
+                cpu_cores: None,
+                memory_bytes: None,
+                gpu_memory_bytes: None,
+                timeout_secs: None,
+            },
+        };
+
+        let request = convert_submission_to_request(submission).expect("Conversion should succeed");
+
+        // Should not panic - invalid UUID gets replaced with new_v4
+        assert!(uuid::Uuid::parse_str(&request.execution_id.to_string()).is_ok());
+    }
+
+    #[test]
+    fn test_convert_submission_neural_compute_defaults_to_native() {
+        let submission = WorkloadSubmission {
+            workload_id: uuid::Uuid::new_v4().to_string(),
+            workload_type: "neural_compute".to_string(),
+            data: vec![1, 2, 3],
+            metadata: HashMap::new(),
+            priority: WorkloadPriority::Normal,
+            requirements: ResourceRequirements {
+                cpu_cores: None,
+                memory_bytes: None,
+                gpu_memory_bytes: None,
+                timeout_secs: None,
+            },
+        };
+
+        let request = convert_submission_to_request(submission).expect("Conversion should succeed");
+        assert!(matches!(request.runtime_hint, Some(RuntimeType::Native)));
+    }
+
+    #[test]
+    fn test_convert_submission_empty_metadata() {
+        let submission = WorkloadSubmission {
+            workload_id: uuid::Uuid::new_v4().to_string(),
+            workload_type: "wasm".to_string(),
+            data: vec![],
+            metadata: HashMap::new(),
+            priority: WorkloadPriority::Low,
+            requirements: ResourceRequirements {
+                cpu_cores: Some(1),
+                memory_bytes: None,
+                gpu_memory_bytes: None,
+                timeout_secs: None,
+            },
+        };
+
+        let request = convert_submission_to_request(submission).expect("Conversion should succeed");
+        assert!(matches!(request.runtime_hint, Some(RuntimeType::Wasm)));
+    }
+
+    #[tokio::test]
+    async fn test_coordinator_executor_new() {
+        let config = toadstool_distributed::DistributedConfig::default();
+        let result = CoordinatorExecutor::new(config, "test-executor".to_string()).await;
+        // May succeed in standalone mode or fail if distributed services unavailable
+        if let Ok(executor) = result {
+            let caps = executor
+                .query_capabilities()
+                .await
+                .expect("Capabilities failed");
+            assert_eq!(caps.service_id, "test-executor");
+            assert_eq!(caps.metadata.get("mode"), Some(&"distributed".to_string()));
+        }
     }
 }

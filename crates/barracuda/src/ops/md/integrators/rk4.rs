@@ -270,12 +270,13 @@ impl Rk4 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_rk4_constant_acceleration() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Single particle with constant acceleration
         let positions = vec![0.0, 0.0, 0.0];

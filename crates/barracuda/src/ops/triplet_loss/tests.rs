@@ -1,12 +1,13 @@
 //! Tests for Triplet Loss operation
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 #[tokio::test]
 async fn test_triplet_loss_gpu_basic() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let batch = 32;
     let embedding_dim = 128;
 
@@ -46,8 +47,9 @@ async fn test_triplet_loss_gpu_basic() {
 
 #[tokio::test]
 async fn test_triplet_loss_gpu_hard_negative() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let batch = 16;
     let embedding_dim = 64;
 
@@ -85,8 +87,9 @@ async fn test_triplet_loss_gpu_hard_negative() {
 
 #[tokio::test]
 async fn test_triplet_loss_gpu_easy_negative() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let batch = 8;
     let embedding_dim = 32;
 
@@ -123,8 +126,9 @@ async fn test_triplet_loss_gpu_easy_negative() {
 
 #[tokio::test]
 async fn test_triplet_loss_gpu_cosine_distance() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let batch = 16;
     let embedding_dim = 128;
 
@@ -163,8 +167,9 @@ async fn test_triplet_loss_gpu_cosine_distance() {
 
 #[tokio::test]
 async fn test_triplet_loss_gpu_margin_effect() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let batch = 8;
     let embedding_dim = 32;
 
@@ -210,8 +215,9 @@ async fn test_triplet_loss_gpu_margin_effect() {
 
 #[tokio::test]
 async fn test_triplet_loss_gpu_validation() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let anchors = Tensor::from_vec_on(vec![1.0; 100], vec![10, 10], device.clone())
         .await
         .unwrap();

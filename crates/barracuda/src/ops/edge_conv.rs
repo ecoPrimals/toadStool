@@ -1,7 +1,9 @@
 //! Edge Convolution for Graph Neural Networks
 //!
 //! **Pure WGSL**: Single implementation via WebGPU shader
-//! Learns edge features by aggregating neighbor information
+//! Learns edge features by aggregating neighbor information using CSR-format edges.
+//!
+//! Reference: "Dynamic Graph CNN for Learning on Point Clouds" by Wang et al. (2019)
 
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
@@ -14,45 +16,51 @@ struct EdgeConvParams {
     num_nodes: u32,
     feature_dim: u32,
     output_dim: u32,
-    k_neighbors: u32,
+    num_edges: u32,
 }
 
 pub struct EdgeConv {
     node_features: Tensor,
-    edge_index: Tensor,
+    /// CSR row offsets: [num_nodes + 1] entries
+    edge_offsets: Tensor,
+    /// CSR column indices: [num_edges] neighbor node indices
+    edge_targets: Tensor,
     mlp_weight: Tensor,
     mlp_bias: Tensor,
-    k_neighbors: u32,
+    num_edges: u32,
 }
 
 impl EdgeConv {
-    /// Create EdgeConv operation
+    /// Create EdgeConv operation with CSR-format edge storage
+    ///
+    /// # Arguments
+    /// * `node_features` - Node features [num_nodes, feature_dim]
+    /// * `edge_offsets` - CSR row offsets [num_nodes + 1] (stored as f32, cast to u32 in shader)
+    /// * `edge_targets` - CSR column indices [num_edges] (stored as f32, cast to u32 in shader)
+    /// * `mlp_weight` - MLP weight matrix [output_dim, 2 * feature_dim]
+    /// * `mlp_bias` - MLP bias vector [output_dim]
     pub fn new(
         node_features: Tensor,
-        edge_index: Tensor,
+        edge_offsets: Tensor,
+        edge_targets: Tensor,
         mlp_weight: Tensor,
         mlp_bias: Tensor,
-        k_neighbors: u32,
     ) -> Result<Self> {
-        if k_neighbors == 0 {
-            return Err(BarracudaError::invalid_op(
-                "EdgeConv",
-                "k_neighbors must be > 0",
-            ));
-        }
+        let num_edges = edge_targets.len() as u32;
 
         Ok(Self {
             node_features,
-            edge_index,
+            edge_offsets,
+            edge_targets,
             mlp_weight,
             mlp_bias,
-            k_neighbors,
+            num_edges,
         })
     }
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/edge_conv.wgsl")
+        include_str!("../shaders/gnn/edge_conv.wgsl")
     }
 
     /// Execute EdgeConv on tensor
@@ -82,7 +90,7 @@ impl EdgeConv {
             num_nodes: num_nodes as u32,
             feature_dim: feature_dim as u32,
             output_dim: output_dim as u32,
-            k_neighbors: self.k_neighbors,
+            num_edges: self.num_edges,
         };
 
         let params_buffer = device
@@ -93,13 +101,14 @@ impl EdgeConv {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        // Create bind group layout
+        // Create bind group layout (7 bindings to match evolved WGSL)
         let bind_group_layout =
             device
                 .device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                     label: Some("EdgeConv Bind Group Layout"),
                     entries: &[
+                        // binding 0: node_features (storage read)
                         wgpu::BindGroupLayoutEntry {
                             binding: 0,
                             visibility: wgpu::ShaderStages::COMPUTE,
@@ -110,6 +119,7 @@ impl EdgeConv {
                             },
                             count: None,
                         },
+                        // binding 1: edge_offsets (storage read)
                         wgpu::BindGroupLayoutEntry {
                             binding: 1,
                             visibility: wgpu::ShaderStages::COMPUTE,
@@ -120,6 +130,7 @@ impl EdgeConv {
                             },
                             count: None,
                         },
+                        // binding 2: edge_targets (storage read)
                         wgpu::BindGroupLayoutEntry {
                             binding: 2,
                             visibility: wgpu::ShaderStages::COMPUTE,
@@ -130,6 +141,7 @@ impl EdgeConv {
                             },
                             count: None,
                         },
+                        // binding 3: mlp_weight (storage read)
                         wgpu::BindGroupLayoutEntry {
                             binding: 3,
                             visibility: wgpu::ShaderStages::COMPUTE,
@@ -140,8 +152,20 @@ impl EdgeConv {
                             },
                             count: None,
                         },
+                        // binding 4: mlp_bias (storage read)
                         wgpu::BindGroupLayoutEntry {
                             binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // binding 5: output (storage read_write)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 5,
                             visibility: wgpu::ShaderStages::COMPUTE,
                             ty: wgpu::BindingType::Buffer {
                                 ty: wgpu::BufferBindingType::Storage { read_only: false },
@@ -150,8 +174,9 @@ impl EdgeConv {
                             },
                             count: None,
                         },
+                        // binding 6: params (uniform)
                         wgpu::BindGroupLayoutEntry {
-                            binding: 5,
+                            binding: 6,
                             visibility: wgpu::ShaderStages::COMPUTE,
                             ty: wgpu::BindingType::Buffer {
                                 ty: wgpu::BufferBindingType::Uniform,
@@ -174,22 +199,26 @@ impl EdgeConv {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: self.edge_index.buffer().as_entire_binding(),
+                    resource: self.edge_offsets.buffer().as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: self.mlp_weight.buffer().as_entire_binding(),
+                    resource: self.edge_targets.buffer().as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: self.mlp_bias.buffer().as_entire_binding(),
+                    resource: self.mlp_weight.buffer().as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: output_buffer.as_entire_binding(),
+                    resource: self.mlp_bias.buffer().as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
                     resource: params_buffer.as_entire_binding(),
                 },
             ],
@@ -254,12 +283,13 @@ impl EdgeConv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_edge_conv_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let num_nodes = 5;
         let feature_dim = 3;
         let output_dim = 4;
@@ -272,9 +302,20 @@ mod tests {
         .await
         .unwrap();
 
-        let edge_index = Tensor::from_vec_on(
-            vec![0.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0], // Simple chain graph
-            vec![4, 2],
+        // CSR format: chain graph 0→1→2→3→4
+        // edge_offsets: [0, 1, 2, 3, 4, 4] (node 4 has no outgoing edges)
+        // edge_targets: [1, 2, 3, 4]
+        let edge_offsets = Tensor::from_vec_on(
+            vec![0.0, 1.0, 2.0, 3.0, 4.0, 4.0], // num_nodes + 1 entries
+            vec![num_nodes + 1],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let edge_targets = Tensor::from_vec_on(
+            vec![1.0, 2.0, 3.0, 4.0], // 4 edges
+            vec![4],
             device.clone(),
         )
         .await
@@ -292,10 +333,16 @@ mod tests {
             .await
             .unwrap();
 
-        let result = EdgeConv::new(node_features, edge_index, mlp_weight, mlp_bias, 2)
-            .unwrap()
-            .execute()
-            .unwrap();
+        let result = EdgeConv::new(
+            node_features,
+            edge_offsets,
+            edge_targets,
+            mlp_weight,
+            mlp_bias,
+        )
+        .unwrap()
+        .execute()
+        .unwrap();
 
         assert_eq!(result.shape(), &[num_nodes, output_dim]);
     }

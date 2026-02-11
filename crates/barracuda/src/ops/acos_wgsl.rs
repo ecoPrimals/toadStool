@@ -8,7 +8,7 @@
 //! - Hardware-agnostic: Pure WGSL for universal compute
 //! - ✅ Capability-based dispatch (vendor-optimized workgroups)
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -23,7 +23,7 @@ impl Acos {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/acos.wgsl")
+        include_str!("../shaders/math/acos.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -138,10 +138,9 @@ impl Acos {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(size as u32);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -165,18 +164,23 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_acos() {
-        let device = get_test_device().await;
-        let data = vec![0.0, 1.0, 2.0, 3.0, 4.0];
+        let Some(device) = get_test_device().await else {
+            return;
+        };
+        // acos(x) is defined for x ∈ [-1, 1]
+        let data = vec![-1.0, -0.5, 0.0, 0.5, 1.0];
         let input = Tensor::new(data, vec![5], device.clone());
         let output = input.acos().unwrap();
         let result = output.to_vec().unwrap();
         assert!(result.iter().all(|&x| x.is_finite()));
+        // acos(0) ≈ π/2, acos(1) = 0, acos(-1) ≈ π
+        assert!((result[2] - std::f32::consts::FRAC_PI_2).abs() < 0.01);
+        assert!((result[4]).abs() < 0.01);
     }
 }

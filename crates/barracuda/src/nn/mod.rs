@@ -15,11 +15,11 @@
 //!
 //! # Module Structure
 //!
-//! - [`config`] - Network configuration and hardware preferences
-//! - [`layer`] - Layer types and definitions
-//! - [`optimizer`] - Optimization algorithms
-//! - [`loss`] - Loss function implementations
-//! - [`metrics`] - Training and evaluation metrics
+//! - `config` - Network configuration and hardware preferences
+//! - `layer` - Layer types and definitions
+//! - `optimizer` - Optimization algorithms
+//! - `loss` - Loss function implementations
+//! - `metrics` - Training and evaluation metrics
 //!
 //! # Example
 //!

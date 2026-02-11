@@ -1,6 +1,7 @@
 //! Unit tests for unified memory buffer operations
 //!
 //! These tests verify individual buffer operations with correct API usage.
+#![allow(clippy::expect_used)] // In tests, expect() gives clear failure messages for setup/assertions
 
 use toadstool_runtime_gpu::unified_memory::{
     BackendStrategy, BackendType, MemoryFlags, UniversalUnifiedMemory,

@@ -38,7 +38,9 @@ cudarc = { version = "0.11", optional = true }
 ocl = { version = "0.19", optional = true }
 ash = { version = "0.37", optional = true }
 # EVOLVED: Use workspace wgpu config (Pure Rust! No renderdoc-sys) ✅
-wgpu = { workspace = true }
+# ecoBin: Exclude vulkan-portability by default (pulls wayland-sys on Linux)
+# Use feature "native-display" for full Linux desktop with Wayland/X11
+wgpu = { workspace = true, default-features = false, features = ["wgsl", "dx12", "metal", "webgpu"] }
 pollster = "0.3"
 bytemuck = { version = "1.14", features = ["derive"] }
 futures-intrusive = "0.5"
@@ -52,6 +54,8 @@ reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], default-fea
 
 [features]
 default = []
+# Full Linux desktop: Vulkan surface creation (requires wayland-server.pc / wayland-client)
+native-display = ["wgpu/vulkan-portability"]
 # TEST HARNESS FEATURE: Enables MNIST download binary (includes C dependencies)
 # Production builds NEVER include this feature
 test-harness = []

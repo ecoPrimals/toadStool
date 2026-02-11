@@ -222,22 +222,25 @@ pub async fn create_fhe_bit_tensor(
     device: Arc<crate::device::WgpuDevice>,
 ) -> Result<Tensor> {
     let poly_u32: Vec<u32> = poly.iter().map(|&x| x as u32).collect();
-    Tensor::from_data(&poly_u32, vec![poly_u32.len()], device)
+    Tensor::from_data_pod(&poly_u32, vec![poly_u32.len()], device)
 }
 
 #[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use crate::device::WgpuDevice;
+
     use crate::ops::fhe_and::create_fhe_bit_tensor;
-    use std::sync::Arc;
+
     #[allow(unused_imports)]
     use wgpu::util::DeviceExt;
 
     #[tokio::test]
     async fn test_fhe_or_ones() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let poly_a_data = vec![1u64; 8];
         let poly_b_data = vec![1u64; 8];
 

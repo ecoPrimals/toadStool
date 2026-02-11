@@ -7,10 +7,9 @@
 //! 4. Pass 4: Compact results on GPU (parallel with atomics)
 
 use super::NMS;
-use crate::device::{DeviceCapabilities, WgpuDevice, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
-use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 impl NMS {
@@ -28,8 +27,11 @@ impl NMS {
             return Ok(vec![0]);
         }
 
-        // Create device (blocking for sync context)
-        let device = Arc::new(futures::executor::block_on(WgpuDevice::new())?);
+        // Create device (use test pool when available, skip when no GPU)
+        let device = futures::executor::block_on(
+            crate::device::test_pool::get_test_device_if_gpu_available(),
+        )
+        .ok_or_else(|| crate::error::BarracudaError::device("No GPU available for NMS"))?;
 
         // Convert boxes to tensor format [num_boxes, 5] where each box is [x1, y1, x2, y2, score]
         let mut box_data = Vec::with_capacity(num_boxes * 5);
@@ -171,13 +173,10 @@ impl NMS {
             });
             compute_pass.set_pipeline(&iou_pipeline);
             compute_pass.set_bind_group(0, &iou_bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            // IoU computation is element-wise per box pair
+            // Dispatch using standard 2D shader workgroup size (16, 16)
             let caps = DeviceCapabilities::from_device(&device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups_x = (num_boxes as u32).div_ceil(optimal_wg_size).max(1);
-            let workgroups_y = (num_boxes as u32).div_ceil(optimal_wg_size).max(1);
-            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
+            let (workgroups_x, workgroups_y) = caps.dispatch_2d(num_boxes as u32, num_boxes as u32);
+            compute_pass.dispatch_workgroups(workgroups_x.max(1), workgroups_y.max(1), 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
@@ -337,11 +336,9 @@ impl NMS {
             });
             compute_pass.set_pipeline(&suppress_pipeline);
             compute_pass.set_bind_group(0, &suppress_bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            use crate::device::{DeviceCapabilities, WorkloadType};
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(&device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (num_boxes as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(num_boxes as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -503,11 +500,9 @@ impl NMS {
             });
             compute_pass.set_pipeline(&compact_pipeline);
             compute_pass.set_bind_group(0, &compact_bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            use crate::device::{DeviceCapabilities, WorkloadType};
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(&device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (num_boxes as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(num_boxes as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

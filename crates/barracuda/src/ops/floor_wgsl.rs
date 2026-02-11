@@ -25,7 +25,7 @@ impl Floor {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/floor.wgsl")
+        include_str!("../shaders/math/floor.wgsl")
     }
 
     /// Execute the floor operation

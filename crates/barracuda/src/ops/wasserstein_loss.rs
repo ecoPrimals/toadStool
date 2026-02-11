@@ -7,7 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -33,7 +33,7 @@ impl WassersteinLoss {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/wasserstein_loss.wgsl")
+        include_str!("../shaders/loss/wasserstein_loss.wgsl")
     }
 
     /// Execute the Wasserstein loss operation
@@ -179,33 +179,29 @@ impl WassersteinLoss {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(size as u32);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        // Create output tensor (final reduction happens in shader, output is [1])
-        Ok(Tensor::from_buffer(
-            output_buffer,
-            vec![size],
-            device.clone(),
-        ))
+        let output_data = crate::utils::read_buffer(device, &output_buffer, size)?;
+        Ok(Tensor::new(output_data, vec![size], device.clone()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_wasserstein_loss_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 10;
 
         let pred = Tensor::from_vec_on(vec![0.1; size], vec![size], device.clone())

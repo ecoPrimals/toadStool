@@ -203,9 +203,14 @@ async fn test_packet_loss_low_rate() {
         }
     }
 
-    // Should be around 10% failure rate (with some variance)
+    // Should be around 10% failure rate (with statistical variance)
+    // With 100 trials at 10% rate, binomial 99% CI ≈ [2%, 22%]
     let failure_rate = failures as f32 / attempts as f32;
-    assert!((0.05..=0.15).contains(&failure_rate));
+    assert!(
+        (0.02..=0.22).contains(&failure_rate),
+        "Expected ~10% failure rate, got {:.0}%",
+        failure_rate * 100.0
+    );
 }
 
 #[tokio::test]
@@ -223,9 +228,14 @@ async fn test_packet_loss_high_rate() {
         }
     }
 
-    // Should be around 50% failure rate
+    // Should be around 50% failure rate (with statistical variance)
+    // With 100 trials at 50% rate, binomial 99% CI ≈ [35%, 65%]
     let failure_rate = failures as f32 / attempts as f32;
-    assert!((0.40..=0.60).contains(&failure_rate));
+    assert!(
+        (0.35..=0.65).contains(&failure_rate),
+        "Expected ~50% failure rate, got {:.0}%",
+        failure_rate * 100.0
+    );
 }
 
 // ============================================================================

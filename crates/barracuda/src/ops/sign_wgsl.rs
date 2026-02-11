@@ -25,7 +25,7 @@ impl Sign {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/sign.wgsl")
+        include_str!("../shaders/math/sign.wgsl")
     }
 
     /// Execute the sign operation

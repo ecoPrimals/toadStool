@@ -25,7 +25,7 @@ impl Softshrink {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/softshrink.wgsl")
+        include_str!("../shaders/activation/softshrink.wgsl")
     }
 
     /// Execute the softshrink operation

@@ -117,9 +117,9 @@ impl UnixJsonRpcClient {
 
         // Build JSON-RPC 2.0 request
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: String::from(crate::constants::jsonrpc::VERSION),
             id,
-            method: method.to_string(),
+            method: String::from(method),
             params,
         };
 
@@ -153,7 +153,7 @@ impl UnixJsonRpcClient {
             .map_err(|e| ToadStoolError::network(format!("Failed to read response: {}", e)))?;
 
         // Parse JSON-RPC response
-        let response: JsonRpcResponse = serde_json::from_str(&response_line)
+        let response: JsonRpcResponse = serde_json::from_slice(response_line.as_bytes())
             .map_err(|e| ToadStoolError::network(format!("Invalid JSON-RPC response: {}", e)))?;
 
         // Check for JSON-RPC error
@@ -225,7 +225,7 @@ mod tests {
     #[test]
     fn test_request_serialization() {
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
             id: 1,
             method: "test.method".to_string(),
             params: serde_json::json!({"key": "value"}),
@@ -265,7 +265,7 @@ mod tests {
     #[test]
     fn test_request_with_empty_params() {
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
             id: 42,
             method: "simple.method".to_string(),
             params: serde_json::json!(null),
@@ -279,7 +279,7 @@ mod tests {
     #[test]
     fn test_request_with_array_params() {
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
             id: 1,
             method: "test.array".to_string(),
             params: serde_json::json!([1, 2, 3]),
@@ -361,7 +361,7 @@ mod tests {
     #[test]
     fn test_jsonrpc_request_debug() {
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
             id: 1,
             method: "test".to_string(),
             params: serde_json::json!({}),
@@ -375,7 +375,7 @@ mod tests {
     #[test]
     fn test_jsonrpc_response_debug() {
         let response = JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
             id: 1,
             result: Some(serde_json::json!({"ok": true})),
             error: None,
@@ -402,7 +402,7 @@ mod tests {
     fn test_response_serialization_skips_none() {
         // Response with only result (no error)
         let response1 = JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
             id: 1,
             result: Some(serde_json::json!({"data": "value"})),
             error: None,
@@ -413,7 +413,7 @@ mod tests {
 
         // Response with only error (no result)
         let response2 = JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
             id: 2,
             result: None,
             error: Some(JsonRpcError {

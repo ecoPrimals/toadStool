@@ -80,7 +80,7 @@ impl GRUCell {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/gru_cell.wgsl")
+        include_str!("../shaders/rnn/gru_cell.wgsl")
     }
 
     /// Execute the GRU cell operation
@@ -305,12 +305,13 @@ impl GRUCell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_gru_cell_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 2;
         let input_size = 4;
         let hidden_size = 8;

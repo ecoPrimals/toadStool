@@ -89,7 +89,7 @@ impl Transpose {
 
     /// WGSL shader source (embedded at compile time)
     pub(super) fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/transpose.wgsl")
+        include_str!("../../shaders/tensor/transpose.wgsl")
     }
 
     /// Execute transpose on tensor

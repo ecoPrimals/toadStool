@@ -37,8 +37,8 @@
 //! ```
 //!
 //! # Reference
-//! - https://eprint.iacr.org/2016/421.pdf
-//! - https://github.com/zama-ai/concrete (Production Rust FHE library)
+//! - <https://eprint.iacr.org/2016/421.pdf>
+//! - <https://github.com/zama-ai/concrete> (Production Rust FHE library)
 
 #![allow(dead_code)]
 
@@ -172,9 +172,8 @@ impl HomomorphicScheme for CkksScheme {
         let mut plaintext = Vec::with_capacity(self.polynomial_degree);
 
         // Simplified decryption (structure only)
-        for i in 0..self.polynomial_degree {
-            let ct = ciphertext[i];
-            let pt = (ct / 100) % 10000;
+        for ct in ciphertext.iter().take(self.polynomial_degree) {
+            let pt = (*ct / 100) % 10000;
             plaintext.push(pt);
         }
 
@@ -235,7 +234,7 @@ mod tests {
     #[test]
     fn test_ckks_float_encoding() {
         let scheme = CkksScheme::new().unwrap();
-        let values = vec![3.14, 2.71, 1.41];
+        let values = vec![2.78, 1.62, 0.93];
 
         let encoded = scheme.encode_floats(&values);
         let decoded = scheme.decode_floats(&encoded);

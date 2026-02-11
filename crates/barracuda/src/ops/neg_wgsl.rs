@@ -26,7 +26,7 @@ impl Neg {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/neg.wgsl")
+        include_str!("../shaders/math/neg.wgsl")
     }
 
     /// Execute the neg operation

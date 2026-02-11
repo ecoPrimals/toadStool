@@ -39,7 +39,7 @@ impl MatrixRank {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/matrix_rank.wgsl")
+        include_str!("../shaders/linalg/matrix_rank.wgsl")
     }
 
     pub fn execute(self) -> Result<usize> {
@@ -293,11 +293,13 @@ impl MatrixRank {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_matrix_rank_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let matrix = Tensor::from_vec_on(vec![1.0, 2.0, 2.0, 4.0], vec![2, 2], device.clone())
             .await
             .unwrap();
@@ -308,7 +310,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_matrix_rank_full_rank() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let matrix = Tensor::from_vec_on(vec![1.0, 0.0, 0.0, 1.0], vec![2, 2], device.clone())
             .await
             .unwrap();
@@ -319,7 +323,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_matrix_rank_zero() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let matrix = Tensor::from_vec_on(vec![0.0, 0.0, 0.0, 0.0], vec![2, 2], device.clone())
             .await
             .unwrap();

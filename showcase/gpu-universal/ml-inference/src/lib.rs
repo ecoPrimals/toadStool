@@ -1,3 +1,13 @@
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::manual_clamp)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::manual_range_contains)]
+#![allow(clippy::wrong_self_convention)]
+#![allow(clippy::empty_line_after_doc_comments)]
+#![allow(clippy::len_without_is_empty)]
+#![allow(clippy::unnecessary_unwrap)]
+#![allow(clippy::redundant_static_lifetimes)]
 //! Real ML Inference Showcase - No Mocks
 //!
 //! Production-grade neural network inference with validation

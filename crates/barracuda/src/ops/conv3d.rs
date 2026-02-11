@@ -67,7 +67,7 @@ impl Conv3D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/conv3d.wgsl")
+        include_str!("../shaders/conv/conv3d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -236,11 +236,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_conv3d_basic() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Create input [1, 1, 2, 2, 2] - 1 batch, 1 channel, 2x2x2 volume
         let input_data = vec![1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
@@ -268,7 +270,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_conv3d_edge_cases() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Small 3D volume, kernel size 1 (no reduction)
         let input_data = vec![1.0f32; 8];
@@ -290,13 +295,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_conv3d_boundary() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test with stride > 1 (downsampling)
-        let input_data = vec![1.0f32; 1 * 1 * 4 * 4 * 4];
+        let input_data = vec![1.0f32; 4 * 4 * 4];
         let input = Tensor::from_data(&input_data, vec![1, 1, 4, 4, 4], device.clone()).unwrap();
 
-        let weight_data = vec![1.0f32; 1 * 1 * 2 * 2 * 2];
+        let weight_data = vec![1.0f32; 2 * 2 * 2];
         let weight = Tensor::from_data(&weight_data, vec![1, 1, 2, 2, 2], device.clone()).unwrap();
 
         let bias_data = vec![0.0f32];
@@ -312,7 +320,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_conv3d_large_batch() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Larger 3D volume
         let batch = 1;
@@ -354,7 +365,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_conv3d_precision() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Simple identity-like 3D convolution
         let input_data = vec![1.0f32; 8];

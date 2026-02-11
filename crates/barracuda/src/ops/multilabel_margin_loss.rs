@@ -45,7 +45,7 @@ impl MultiLabelMarginLoss {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/multilabel_margin_loss.wgsl")
+        include_str!("../shaders/math/multilabel_margin_loss.wgsl")
     }
 
     /// Execute the multi-label margin loss operation
@@ -213,12 +213,13 @@ impl MultiLabelMarginLoss {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_multilabel_margin_loss_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 2;
         let num_classes = 3;
 

@@ -26,7 +26,7 @@ impl Exp {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/exp.wgsl")
+        include_str!("../shaders/math/exp.wgsl")
     }
 
     /// Execute the exp operation

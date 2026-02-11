@@ -9,7 +9,7 @@
 //!
 //! NOTE: Uses atomic operations when accumulate=true
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -65,7 +65,7 @@ impl Put {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/put.wgsl")
+        include_str!("../shaders/tensor/put.wgsl")
     }
 
     /// Execute the put operation
@@ -75,9 +75,24 @@ impl Put {
         let output_size: usize = self.output.shape().iter().product();
         let num_values = self.values.shape().iter().product::<usize>();
 
+        // Create work buffer with initial output data (copy ensures correct format for GPU write)
+        // Ensure minimum 32 bytes for WebGPU storage buffer binding requirements
+        let output_data = self.output.to_vec()?;
+        let byte_size = (output_size * std::mem::size_of::<f32>()).max(32);
+        let mut work_contents = output_data.clone();
+        work_contents.resize(byte_size / std::mem::size_of::<f32>(), 0.0);
+        let work_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Put Work Buffer"),
+                contents: bytemuck::cast_slice(&work_contents),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            });
+
         // Access buffers directly (zero-copy)
         let values_buffer = self.values.buffer();
-        let output_buffer = self.output.buffer();
 
         // Create indices buffer
         let indices_buffer = device
@@ -185,7 +200,7 @@ impl Put {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: output_buffer.as_entire_binding(),
+                    resource: work_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -225,18 +240,21 @@ impl Put {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (num_values as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(num_values as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        // Return the output tensor (put modifies it in-place)
-        // The GPU has modified the buffer, so we return the original tensor
-        Ok(self.output)
+        // Read back via device (ensures GPU writes are visible)
+        let output_data = device.read_buffer_f32(&work_buffer, output_size)?;
+        Ok(Tensor::new(
+            output_data,
+            self.output.shape().to_vec(),
+            device.clone(),
+        ))
     }
 }
 
@@ -246,13 +264,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_put_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let output = Tensor::from_data(&[0.0, 0.0, 0.0, 0.0], vec![4], device.clone()).unwrap();
         let values = Tensor::from_data(&[10.0, 30.0], vec![2], device.clone()).unwrap();
 
@@ -270,7 +290,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_put_accumulate() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let output = Tensor::from_data(&[1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
         let values = Tensor::from_data(&[10.0, 20.0], vec![2], device.clone()).unwrap();
 
@@ -287,7 +309,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_put_invalid_index() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let output = Tensor::from_data(&[0.0, 0.0], vec![2], device.clone()).unwrap();
         let values = Tensor::from_data(&[1.0], vec![1], device.clone()).unwrap();
 
@@ -296,7 +320,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_put_length_mismatch() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let output = Tensor::from_data(&[0.0, 0.0], vec![2], device.clone()).unwrap();
         let values = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
@@ -305,16 +331,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_put_repeated_indices() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let output = Tensor::from_data(&[0.0, 0.0], vec![2], device.clone()).unwrap();
         let values = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
 
-        // Same index twice - last write wins if not accumulating
+        // Same index twice - race condition without atomics: either write can win
         let result = Put::new(output, vec![0, 0], values, false)
             .unwrap()
             .execute()
             .unwrap();
         let output_data = result.to_vec().unwrap();
-        assert_eq!(output_data[0], 2.0); // Last write wins
+        // GPU non-atomic writes to same location are non-deterministic; accept either
+        assert!(output_data[0] == 1.0 || output_data[0] == 2.0);
     }
 }

@@ -94,23 +94,47 @@ pub mod network {
     pub const LOCALHOST: &str = "127.0.0.1";
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // REMOVED: Deprecated primal port constants
+    // LEGACY FALLBACK PORT CONSTANTS
     // ═══════════════════════════════════════════════════════════════════════════
     //
-    // The following constants have been REMOVED to enforce pure infant discovery:
+    // These are last-resort fallback ports used when:
+    //   1. Environment variable is not set
+    //   2. Runtime discovery has not yet found the service
     //
-    // - SONGBIRD_PORT: Use BiomeOSClient::get_coordination_provider() or env var
-    // - BEARDOG_PORT: Use BiomeOSClient::get_security_provider() or env var
-    // - NESTGATE_PORT: Use BiomeOSClient::get_storage_provider() or env var
-    // - SQUIRREL_PORT: Use BiomeOSClient::get_ai_provider() or env var
+    // Production code should ALWAYS prefer capability-based discovery:
+    //   let coordinators = discovery.discover_capability(&Capability::Coordination).await?;
     //
-    // Migration:
-    //   OLD: let port = defaults::network::BEARDOG_PORT;
-    //   NEW: std::env::var("BEARDOG_PORT").ok().and_then(|p| p.parse().ok())
-    //        .unwrap_or_else(|| panic!("BEARDOG_PORT not set - use discovery!"))
-    //
-    // Philosophy: ToadStool knows ONLY itself. Other primals discovered at runtime.
+    // These constants exist solely to centralize magic numbers that were
+    // previously scattered as literals across config_utils.rs and env_config.rs.
     // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Legacy fallback port for coordination primals (e.g., Songbird)
+    ///
+    /// **Prefer**: `RuntimeDiscovery::discover_capability(&Capability::Coordination)`
+    #[deprecated(note = "Use capability-based discovery for coordination services")]
+    pub const COORDINATION_FALLBACK_PORT: u16 = 8080;
+
+    /// Legacy fallback port for security primals (e.g., BearDog)
+    ///
+    /// **Prefer**: `RuntimeDiscovery::discover_capability(&Capability::Crypto)`
+    #[deprecated(note = "Use capability-based discovery for security services")]
+    pub const SECURITY_FALLBACK_PORT: u16 = 8081;
+
+    /// Legacy fallback port for storage primals (e.g., NestGate)
+    ///
+    /// **Prefer**: `RuntimeDiscovery::discover_capability(&Capability::Storage)`
+    #[deprecated(note = "Use capability-based discovery for storage services")]
+    pub const STORAGE_FALLBACK_PORT: u16 = 8082;
+
+    /// Legacy fallback port for AI primals (e.g., Squirrel)
+    ///
+    /// **Prefer**: `RuntimeDiscovery::discover_capability(&Capability::AI)`
+    #[deprecated(note = "Use capability-based discovery for AI services")]
+    pub const AI_FALLBACK_PORT: u16 = 8083;
+
+    /// Default websocket port for ToadStool
+    /// ✅ Self-configuration
+    pub const WEBSOCKET_PORT: u16 = 8086;
 
     /// Default ToadStool API port
     /// ✅ Self-configuration - valid to use for our own port
@@ -355,9 +379,12 @@ pub mod endpoints {
     }
 
     /// Default cloud endpoint
-    /// **DEPRECATED**: Use service discovery instead of hardcoded cloud endpoint
+    ///
+    /// Uses the standard ToadStool API port. In production, prefer
+    /// capability-based discovery over this fallback endpoint.
+    #[deprecated(note = "Use capability-based discovery via discover_or_fallback() instead")]
     pub fn cloud() -> String {
-        "http://localhost:8080".to_string()
+        format!("http://localhost:{}", super::network::API_PORT)
     }
 }
 

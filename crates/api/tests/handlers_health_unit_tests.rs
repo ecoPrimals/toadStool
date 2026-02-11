@@ -125,8 +125,10 @@ async fn test_health_check_concurrent_requests() {
     // All should succeed
     let mut success_count = 0;
     while let Some(result) = set.join_next().await {
-        if result.is_ok() && result.unwrap().is_ok() {
-            success_count += 1;
+        if let Ok(inner_result) = result {
+            if inner_result.is_ok() {
+                success_count += 1;
+            }
         }
     }
 

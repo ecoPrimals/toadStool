@@ -85,7 +85,7 @@ impl GatedConv2D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/gated_conv2d.wgsl")
+        include_str!("../shaders/conv/gated_conv2d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -331,13 +331,14 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_gated_conv2d_basic() {
-        let device = get_test_device().await;
-
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        let input = Tensor::from_vec_on(vec![1.0; 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
             .await
             .unwrap();
         let weight_feature =

@@ -38,7 +38,7 @@ impl Triu {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/triu.wgsl")
+        include_str!("../shaders/linalg/triu.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -173,11 +173,13 @@ impl Triu {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_triu_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let matrix = Tensor::from_vec_on(
             vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
             vec![3, 3],

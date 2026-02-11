@@ -159,3 +159,95 @@ where
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::performance_hardening::types::AsyncOptimizationConfig;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn test_async_batcher_new() {
+        let config = AsyncOptimizationConfig {
+            batch_size: 1,
+            batch_timeout: Duration::from_millis(100),
+            concurrency_limit: 4,
+            queue_size_limit: 10,
+        };
+        let batcher = AsyncBatcher::new(config, |v: Vec<i32>| {
+            Box::pin(async move { v.into_iter().map(|x| x * 2).collect() })
+        });
+        let result = batcher.submit(21).await.unwrap();
+        assert_eq!(result, 42);
+    }
+
+    #[tokio::test]
+    async fn test_async_batcher_submit_batch() {
+        let config = AsyncOptimizationConfig {
+            batch_size: 2,
+            batch_timeout: Duration::from_millis(100),
+            concurrency_limit: 4,
+            queue_size_limit: 10,
+        };
+        let batcher = AsyncBatcher::new(config, |v: Vec<String>| {
+            Box::pin(async move { v.into_iter().map(|s| s.to_uppercase()).collect() })
+        });
+        let (r1, r2) = tokio::join!(
+            batcher.submit("hello".to_string()),
+            batcher.submit("world".to_string())
+        );
+        assert_eq!(r1.unwrap(), "HELLO");
+        assert_eq!(r2.unwrap(), "WORLD");
+    }
+
+    #[tokio::test]
+    async fn test_async_batcher_queue_full() {
+        let config = AsyncOptimizationConfig {
+            batch_size: 100,
+            batch_timeout: Duration::from_millis(100),
+            concurrency_limit: 2,
+            queue_size_limit: 1,
+        };
+        let batcher = Arc::new(AsyncBatcher::new(config, |v: Vec<i32>| {
+            Box::pin(async move { v.into_iter().map(|x| x + 1).collect() })
+        }));
+        let batcher2 = Arc::clone(&batcher);
+        let second_handle = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+            batcher2.submit(2).await
+        });
+        let first_handle = tokio::spawn(async move { batcher.submit(1).await });
+        let second_result = tokio::time::timeout(Duration::from_millis(200), second_handle)
+            .await
+            .unwrap()
+            .unwrap();
+        let first_result = tokio::time::timeout(Duration::from_millis(50), first_handle)
+            .await
+            .ok()
+            .and_then(|h| h.ok());
+        let first_err = first_result.as_ref().and_then(|r| match r {
+            Ok(_) => None,
+            Err(e) => Some(e.to_string()),
+        });
+        let has_queue_full = first_err.map(|s| s.contains("queue full")).unwrap_or(false)
+            || second_result
+                .err()
+                .map(|e| e.to_string().contains("queue full"))
+                .unwrap_or(false);
+        assert!(has_queue_full, "Expected at least one queue full error");
+    }
+
+    #[tokio::test]
+    async fn test_async_batcher_default_config() {
+        let config = AsyncOptimizationConfig {
+            batch_size: 1,
+            ..AsyncOptimizationConfig::default()
+        };
+        let batcher = AsyncBatcher::new(config, |v: Vec<u8>| {
+            Box::pin(async move { v.into_iter().map(|b| b.wrapping_add(1)).collect() })
+        });
+        let result = batcher.submit(0u8).await.unwrap();
+        assert_eq!(result, 1);
+    }
+}

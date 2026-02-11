@@ -70,7 +70,7 @@ impl PixelUnshuffle {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/pixel_unshuffle.wgsl")
+        include_str!("../shaders/misc/pixel_unshuffle.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -221,12 +221,11 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_pixel_unshuffle_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else { return };
         // [B=1, C=1, H=4, W=4] with r=2 → [B=1, C=4, H=2, W=2]
         let input_data = vec![1.0; 1 * 1 * 4 * 4];
         let input = Tensor::from_vec_on(input_data, vec![1, 1, 4, 4], device.clone())

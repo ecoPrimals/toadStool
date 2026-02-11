@@ -25,7 +25,7 @@ impl Trunc {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/trunc.wgsl")
+        include_str!("../shaders/math/trunc.wgsl")
     }
 
     /// Execute the trunc operation

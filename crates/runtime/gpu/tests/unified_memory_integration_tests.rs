@@ -1,6 +1,7 @@
 //! Integration tests for unified memory system
 //!
 //! These tests verify interactions between multiple components.
+#![allow(clippy::expect_used)] // In tests, expect() gives clear failure messages for setup/assertions
 
 use toadstool_runtime_gpu::unified_memory::{BackendStrategy, BackendType, UniversalUnifiedMemory};
 
@@ -413,8 +414,8 @@ async fn test_image_processing_simulation() {
         .expect("Read result");
 
     // Verify processing
-    for i in 0..100 {
-        assert_eq!(result[i], 255 - ((i % 256) as u8));
+    for (i, &value) in result.iter().enumerate().take(100) {
+        assert_eq!(value, 255 - ((i % 256) as u8));
     }
 }
 

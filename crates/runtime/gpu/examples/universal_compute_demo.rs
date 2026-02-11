@@ -29,7 +29,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Register CPU as compute resource
     let cpu_resource = Arc::new(CpuComputeResource::new()?);
-    scheduler.register_resource(cpu_resource.clone()).await;
+    scheduler
+        .register_resource(Arc::clone(&cpu_resource) as Arc<dyn UniversalComputeResource>)
+        .await;
 
     println!("\n✅ Registered compute resources:");
     for resource in scheduler.list_resources().await {

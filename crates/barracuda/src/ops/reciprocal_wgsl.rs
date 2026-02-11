@@ -25,7 +25,7 @@ impl Reciprocal {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/reciprocal.wgsl")
+        include_str!("../shaders/math/reciprocal.wgsl")
     }
 
     /// Execute the reciprocal operation

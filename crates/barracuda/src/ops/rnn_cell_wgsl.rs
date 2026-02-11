@@ -110,7 +110,7 @@ impl RNNCell {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/rnn_cell.wgsl")
+        include_str!("../shaders/rnn/rnn_cell.wgsl")
     }
 
     /// Execute the RNN cell operation
@@ -335,12 +335,13 @@ impl RNNCell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_rnn_cell_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 2;
         let input_size = 4;
         let hidden_size = 8;
@@ -398,7 +399,7 @@ mod tests {
         let output = h_next.to_vec().unwrap();
         for &val in &output {
             assert!(
-                val >= -1.0 && val <= 1.0,
+                (-1.0..=1.0).contains(&val),
                 "RNN output should be within tanh bounds"
             );
             assert!(val.is_finite(), "RNN output should be finite");
@@ -407,8 +408,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_rnn_cell_with_nonzero_hidden() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 1;
         let input_size = 3;
         let hidden_size = 4;
@@ -465,7 +467,7 @@ mod tests {
         // Verify output values are within tanh bounds
         let output = h_next.to_vec().unwrap();
         for &val in &output {
-            assert!(val >= -1.0 && val <= 1.0);
+            assert!((-1.0..=1.0).contains(&val));
             assert!(val.is_finite());
         }
     }

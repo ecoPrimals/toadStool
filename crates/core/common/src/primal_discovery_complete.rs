@@ -343,7 +343,9 @@ impl PrimalDiscoveryEngine {
                 let (host, port) = if let Some(idx) = host_port.find(':') {
                     (
                         &host_port[..idx],
-                        host_port[idx + 1..].parse::<u16>().unwrap_or(8080),
+                        host_port[idx + 1..]
+                            .parse::<u16>()
+                            .unwrap_or(crate::constants::network::DEFAULT_HTTP_PORT),
                     )
                 } else {
                     (host_port, if protocol == "https" { 443 } else { 80 })
@@ -361,13 +363,13 @@ impl PrimalDiscoveryEngine {
                 crate::primal_identity::ServiceEndpoint {
                     protocol: "http".to_string(),
                     address: "localhost".to_string(),
-                    port: 8080,
+                    port: crate::constants::network::DEFAULT_HTTP_PORT,
                     path: Some("/".to_string()),
                     metadata: HashMap::new(),
                 }
             }
         } else if let Ok(parsed_addr) = url.parse::<std::net::SocketAddr>() {
-            // Handle "localhost:8080" format
+            // Handle "localhost:PORT" format
             crate::primal_identity::ServiceEndpoint {
                 protocol: "http".to_string(),
                 address: parsed_addr.ip().to_string(),
@@ -380,7 +382,7 @@ impl PrimalDiscoveryEngine {
             crate::primal_identity::ServiceEndpoint {
                 protocol: "http".to_string(),
                 address: "localhost".to_string(),
-                port: 8080,
+                port: crate::constants::network::DEFAULT_HTTP_PORT,
                 path: Some("/".to_string()),
                 metadata: HashMap::new(),
             }
@@ -451,12 +453,17 @@ pub struct CacheStats {
 }
 
 #[cfg(test)]
+#[allow(clippy::await_holding_lock)]
 mod tests {
     use super::*;
-    use crate::primal_identity::CoordinationCapability;
+    use crate::primal_identity::{ComputeCapability, CoordinationCapability, StorageCapability};
+    use std::time::Duration;
+
+    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     #[tokio::test]
     async fn test_discovery_with_fallback() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
         let mut config = DiscoveryConfig::default();
         config.fallbacks.insert(
             "orchestration".to_string(),
@@ -479,6 +486,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_freshness() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
         let engine = PrimalDiscoveryEngine::new(None)
             .await
             .expect("Failed to create engine");
@@ -512,6 +520,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_stats() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
         let engine = PrimalDiscoveryEngine::new(None)
             .await
             .expect("Failed to create engine");
@@ -532,5 +541,292 @@ mod tests {
         let stats = engine.cache_stats().await;
         assert_eq!(stats.total_entries, 1, "Cache should have one entry");
         assert_eq!(stats.fresh_entries, 1, "Entry should be fresh");
+    }
+
+    #[tokio::test]
+    async fn test_with_config_require_mdns_no_client() {
+        let config = DiscoveryConfig {
+            require_mdns: true,
+            fallbacks: HashMap::new(),
+            ..Default::default()
+        };
+
+        let result = PrimalDiscoveryEngine::with_config(None, config).await;
+
+        assert!(result.is_err());
+        let err_msg = result.err().unwrap().to_string();
+        assert!(err_msg.contains("mDNS client required"));
+    }
+
+    #[tokio::test]
+    async fn test_discover_by_capability_not_found() {
+        let mut config = DiscoveryConfig::default();
+        config.fallbacks.clear();
+        config.enable_mdns = false;
+        config.require_mdns = false; // Prevent flaky failure from parallel env-var test
+
+        let engine = PrimalDiscoveryEngine::with_config(None, config)
+            .await
+            .expect("Failed to create engine");
+
+        let capability = Capability::Compute(ComputeCapability::NativeExecution);
+        let result = engine.discover_by_capability(&capability).await;
+
+        assert!(result.is_err());
+        let err_msg = result.err().unwrap().to_string();
+        assert!(err_msg.contains("No service found"));
+    }
+
+    #[tokio::test]
+    async fn test_clear_cache() {
+        let mut config = DiscoveryConfig::default();
+        config.fallbacks.insert(
+            "orchestration".to_string(),
+            "http://localhost:9998".to_string(),
+        );
+        config.enable_mdns = false;
+        config.require_mdns = false; // Prevent flaky failure from parallel env-var test
+
+        let engine = PrimalDiscoveryEngine::with_config(None, config)
+            .await
+            .expect("Failed to create engine");
+
+        let capability = Capability::Coordination(CoordinationCapability::ServiceDiscovery);
+        let _ = engine.discover_by_capability(&capability).await.unwrap();
+
+        let stats_before = engine.cache_stats().await;
+        assert_eq!(stats_before.total_entries, 1, "Should have cached entry");
+
+        engine.clear_cache().await;
+
+        let stats_after = engine.cache_stats().await;
+        assert_eq!(stats_after.total_entries, 0, "Cache should be empty");
+    }
+
+    #[tokio::test]
+    async fn test_create_fallback_service_https() {
+        let mut config = DiscoveryConfig::default();
+        config.fallbacks.insert(
+            "storage".to_string(),
+            "https://example.com:443/api".to_string(),
+        );
+        config.enable_mdns = false;
+        config.require_mdns = false; // Prevent flaky failure from parallel env-var test
+
+        let engine = PrimalDiscoveryEngine::with_config(None, config)
+            .await
+            .expect("Failed to create engine");
+
+        let capability = Capability::Storage(StorageCapability::ObjectStorage);
+        let services = engine
+            .discover_by_capability(&capability)
+            .await
+            .expect("Should find fallback");
+
+        assert_eq!(services[0].endpoints[0].protocol, "https");
+        assert_eq!(services[0].endpoints[0].address, "example.com");
+        assert_eq!(services[0].endpoints[0].port, 443);
+    }
+
+    #[tokio::test]
+    async fn test_create_fallback_service_socket_addr() {
+        let mut config = DiscoveryConfig::default();
+        config
+            .fallbacks
+            .insert("compute".to_string(), "127.0.0.1:9090".to_string());
+        config.enable_mdns = false;
+        config.require_mdns = false; // Prevent flaky failure from parallel env-var test
+
+        let engine = PrimalDiscoveryEngine::with_config(None, config)
+            .await
+            .expect("Failed to create engine");
+
+        let capability = Capability::Compute(ComputeCapability::NativeExecution);
+        let services = engine
+            .discover_by_capability(&capability)
+            .await
+            .expect("Should find fallback");
+
+        assert_eq!(services[0].endpoints[0].address, "127.0.0.1");
+        assert_eq!(services[0].endpoints[0].port, 9090);
+    }
+
+    #[tokio::test]
+    async fn test_discovery_config_default_with_env() {
+        let _guard = ENV_MUTEX.lock().unwrap();
+        std::env::set_var("TOADSTOOL_MDNS_ENABLE", "false");
+        std::env::set_var("TOADSTOOL_MDNS_REQUIRE", "true");
+
+        let config = DiscoveryConfig::default();
+
+        assert!(!config.enable_mdns);
+        assert!(config.require_mdns);
+
+        std::env::remove_var("TOADSTOOL_MDNS_ENABLE");
+        std::env::remove_var("TOADSTOOL_MDNS_REQUIRE");
+    }
+
+    #[tokio::test]
+    async fn test_cache_stats_stale_entries() {
+        let service = DiscoveredService {
+            id: Some("stale-service".to_string()),
+            capabilities: vec![],
+            endpoints: vec![],
+            healthy: true,
+            metadata: HashMap::new(),
+        };
+
+        let config = DiscoveryConfig {
+            cache_ttl: Duration::from_nanos(1),
+            ..Default::default()
+        };
+
+        let engine_with_short_ttl = PrimalDiscoveryEngine::with_config(None, config)
+            .await
+            .expect("Failed to create engine");
+        engine_with_short_ttl
+            .cache_service("stale_key", service.clone())
+            .await;
+
+        tokio::time::sleep(Duration::from_millis(2)).await;
+
+        let stats = engine_with_short_ttl.cache_stats().await;
+        assert_eq!(stats.total_entries, 1);
+        assert_eq!(stats.fresh_entries, 0, "Entry should be stale");
+        assert_eq!(stats.stale_entries, 1);
+    }
+
+    #[tokio::test]
+    async fn test_capability_to_string_variants() {
+        assert_eq!(
+            PrimalDiscoveryEngine::capability_to_string(&Capability::Coordination(
+                CoordinationCapability::ServiceDiscovery
+            )),
+            "orchestration"
+        );
+        assert_eq!(
+            PrimalDiscoveryEngine::capability_to_string(&Capability::Compute(
+                ComputeCapability::NativeExecution
+            )),
+            "compute"
+        );
+        assert_eq!(
+            PrimalDiscoveryEngine::capability_to_string(&Capability::Storage(
+                StorageCapability::ObjectStorage
+            )),
+            "storage"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_capability_to_string_crypto_auth_discovery_custom() {
+        use crate::primal_identity::{AuthCapability, CryptoCapability, DiscoveryCapability};
+
+        assert_eq!(
+            PrimalDiscoveryEngine::capability_to_string(&Capability::Crypto(
+                CryptoCapability::Encryption
+            )),
+            "crypto"
+        );
+        assert_eq!(
+            PrimalDiscoveryEngine::capability_to_string(&Capability::Authentication(
+                AuthCapability::UserAuth
+            )),
+            "authentication"
+        );
+        assert_eq!(
+            PrimalDiscoveryEngine::capability_to_string(&Capability::Discovery(
+                DiscoveryCapability::MdnsDiscovery
+            )),
+            "discovery"
+        );
+        assert_eq!(
+            PrimalDiscoveryEngine::capability_to_string(&Capability::Custom {
+                name: "custom-cap".to_string(),
+                version: "1.0".to_string(),
+            }),
+            "custom-cap"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_create_fallback_service_http() {
+        let mut config = DiscoveryConfig::default();
+        config
+            .fallbacks
+            .insert("test".to_string(), "http://127.0.0.1:8080".to_string());
+        config.enable_mdns = false;
+        config.require_mdns = false;
+
+        let engine = PrimalDiscoveryEngine::with_config(None, config)
+            .await
+            .expect("Failed to create engine");
+
+        let capability = Capability::Custom {
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+        };
+        let services = engine
+            .discover_by_capability(&capability)
+            .await
+            .expect("Should find fallback");
+
+        assert_eq!(services[0].endpoints[0].protocol, "http");
+        assert_eq!(services[0].endpoints[0].address, "127.0.0.1");
+        assert_eq!(services[0].endpoints[0].port, 8080);
+        assert!(services[0]
+            .metadata
+            .get("source")
+            .map(|s| s == "configuration")
+            .unwrap_or(false));
+    }
+
+    #[tokio::test]
+    async fn test_cache_stats_empty() {
+        let mut config = DiscoveryConfig::default();
+        config.fallbacks.clear();
+        config.enable_mdns = false;
+        config.require_mdns = false;
+
+        let engine = PrimalDiscoveryEngine::with_config(None, config)
+            .await
+            .expect("Failed to create engine");
+
+        let stats = engine.cache_stats().await;
+        assert_eq!(stats.total_entries, 0);
+        assert_eq!(stats.fresh_entries, 0);
+        assert_eq!(stats.stale_entries, 0);
+    }
+
+    #[tokio::test]
+    async fn test_discovery_config_default_fallbacks() {
+        let config = DiscoveryConfig::default();
+        assert!(config.cache_ttl.as_secs() > 0);
+        assert!(config.health_check_interval.as_secs() > 0);
+    }
+
+    #[tokio::test]
+    async fn test_cached_endpoint_is_fresh() {
+        let service = DiscoveredService {
+            id: Some("fresh".to_string()),
+            capabilities: vec![],
+            endpoints: vec![],
+            healthy: true,
+            metadata: HashMap::new(),
+        };
+
+        let mut config = DiscoveryConfig::default();
+        config.fallbacks.clear();
+        config.enable_mdns = false;
+        config.require_mdns = false;
+
+        let engine = PrimalDiscoveryEngine::with_config(None, config)
+            .await
+            .expect("Failed to create engine");
+
+        engine.cache_service("fresh_key", service).await;
+        let cached = engine.get_from_cache("fresh_key").await;
+        assert!(cached.is_some());
+        assert!(cached.unwrap().is_fresh(Duration::from_secs(300)));
     }
 }

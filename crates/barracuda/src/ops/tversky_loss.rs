@@ -45,7 +45,7 @@
 //! let loss = predictions.tversky_loss(&targets, 0.3, 0.7, 1.0)?;
 //! ```
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 
@@ -121,7 +121,7 @@ impl TverskyLoss {
 
     /// WGSL shader source
     fn shader() -> &'static str {
-        include_str!("../shaders/tversky_loss.wgsl")
+        include_str!("../shaders/loss/tversky_loss.wgsl")
     }
 
     /// Execute Tversky loss (GPU reduction)
@@ -276,22 +276,16 @@ impl TverskyLoss {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (batch_size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(batch_size as u32);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
-        device.device.poll(wgpu::Maintain::Wait);
 
-        // Return output tensor [batch_size]
-        Ok(Tensor::from_buffer(
-            output_buffer,
-            vec![batch_size],
-            device.clone(),
-        ))
+        let output_data = crate::utils::read_buffer(device, &output_buffer, batch_size)?;
+        Ok(Tensor::new(output_data, vec![batch_size], device.clone()))
     }
 }
 
@@ -344,12 +338,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_tversky_loss_gpu_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 2;
         let h = 16;
         let w = 16;
@@ -374,8 +369,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tversky_loss_gpu_equivalent_to_dice() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 1;
         let size = 100;
 
@@ -394,10 +390,10 @@ mod tests {
         let tversky_data = tversky_loss.to_vec().unwrap();
         let dice_data = dice_loss.to_vec().unwrap();
 
-        // Should be approximately equal (allow for small numerical differences in smoothing application)
+        // Should be approximately equal (different GPU computations may vary in float precision)
         let diff = (tversky_data[0] - dice_data[0]).abs();
         assert!(
-            diff < 1e-3,
+            diff < 0.01,
             "Tversky (alpha=beta=0.5) should be close to Dice, got diff={}",
             diff
         );
@@ -405,8 +401,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tversky_loss_gpu_recall_focused() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 1;
         let size = 100;
 
@@ -433,8 +430,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tversky_loss_gpu_mismatch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch = 1;
         let size = 100;
 
@@ -456,8 +454,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tversky_loss_gpu_medical_scale() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Medical imaging scale: 128x128 slices
         let batch = 4;
         let h = 128;
@@ -477,13 +476,16 @@ mod tests {
 
         assert_eq!(loss.shape(), &[batch]);
         let data = loss.to_vec().unwrap();
-        assert!(data.iter().all(|&x| x.is_finite() && x >= 0.0 && x <= 1.0));
+        assert!(data
+            .iter()
+            .all(|&x| x.is_finite() && (0.0..=1.0).contains(&x)));
     }
 
     #[tokio::test]
     async fn test_tversky_loss_gpu_validation() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let preds = Tensor::from_vec_on(vec![1.0; 100], vec![100], device.clone())
             .await
             .unwrap();

@@ -31,12 +31,12 @@ impl Sum {
 
     /// Get the WGSL shader source for global reduction
     fn wgsl_shader_reduce() -> &'static str {
-        include_str!("../shaders/sum_reduce.wgsl")
+        include_str!("../shaders/reduce/sum_reduce.wgsl")
     }
 
     /// Get the WGSL shader source for dimension-wise reduction
     fn wgsl_shader_dim() -> &'static str {
-        include_str!("../shaders/sum_dim.wgsl")
+        include_str!("../shaders/reduce/sum_dim.wgsl")
     }
 
     /// Execute the sum operation
@@ -395,7 +395,7 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     fn sum_cpu(input: &[f32]) -> f32 {
         input.iter().sum()
@@ -403,7 +403,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sum_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)
             .await
@@ -421,8 +423,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sum_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // All zeros
         let input_data = vec![0.0, 0.0, 0.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone())
@@ -443,7 +446,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sum_boundary() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![1e6, 1e-6, -1e6, 1e-6];
         let input = Tensor::from_vec_on(input_data.clone(), vec![4], device)
             .await
@@ -468,7 +473,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sum_large_tensor() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 1000;
         let input_data: Vec<f32> = (0..size).map(|i| i as f32).collect();
         let input = Tensor::from_vec_on(input_data.clone(), vec![size], device)
@@ -483,7 +490,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sum_precision() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![1.5, 2.5, 3.5, 4.5, 5.5];
         let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)
             .await
@@ -497,7 +506,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sum_dim() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test 2D tensor: [[1, 2, 3], [4, 5, 6]]
         let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![2, 3], device.clone())

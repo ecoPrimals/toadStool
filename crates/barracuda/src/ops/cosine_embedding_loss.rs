@@ -55,7 +55,7 @@ impl CosineEmbeddingLoss {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/cosine_embedding_loss.wgsl")
+        include_str!("../shaders/loss/cosine_embedding_loss.wgsl")
     }
 
     /// Execute cosine embedding loss on tensors
@@ -226,12 +226,13 @@ impl CosineEmbeddingLoss {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_cosine_embedding_loss_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input1 = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();

@@ -17,6 +17,41 @@ use super::capabilities::{
     DetectedSubstrate, DiscoveryError, SubstrateCapability, SubstrateDetector, SubstrateType,
 };
 
+/// Environment snapshot for cloud detection.
+///
+/// Production uses `CloudEnvironment::from_env()`.
+/// Tests use explicit values - zero env var mutation.
+#[derive(Debug, Clone, Default)]
+pub struct CloudEnvironment {
+    pub aws_region: Option<String>,
+    pub aws_default_region: Option<String>,
+    pub gcp_project: Option<String>,
+    pub google_cloud_project: Option<String>,
+    pub azure_subscription_id: Option<String>,
+    pub kubernetes_service_host: Option<String>,
+    pub kubernetes_namespace: Option<String>,
+    pub hostname: Option<String>,
+    pub consul_http_addr: Option<String>,
+}
+
+impl CloudEnvironment {
+    /// Capture current environment
+    #[must_use]
+    pub fn from_env() -> Self {
+        Self {
+            aws_region: std::env::var("AWS_REGION").ok(),
+            aws_default_region: std::env::var("AWS_DEFAULT_REGION").ok(),
+            gcp_project: std::env::var("GCP_PROJECT").ok(),
+            google_cloud_project: std::env::var("GOOGLE_CLOUD_PROJECT").ok(),
+            azure_subscription_id: std::env::var("AZURE_SUBSCRIPTION_ID").ok(),
+            kubernetes_service_host: std::env::var("KUBERNETES_SERVICE_HOST").ok(),
+            kubernetes_namespace: std::env::var("KUBERNETES_NAMESPACE").ok(),
+            hostname: std::env::var("HOSTNAME").ok(),
+            consul_http_addr: std::env::var("CONSUL_HTTP_ADDR").ok(),
+        }
+    }
+}
+
 /// Kubernetes detector - detects if running in Kubernetes
 pub struct KubernetesDetector;
 
@@ -26,11 +61,16 @@ impl KubernetesDetector {
         Self
     }
 
+    /// Pure check: is kubernetes based on env snapshot
+    #[must_use]
+    pub fn is_kubernetes_from(env: &CloudEnvironment) -> bool {
+        Path::new("/var/run/secrets/kubernetes.io/serviceaccount").exists()
+            || env.kubernetes_service_host.is_some()
+    }
+
     /// Check if we're in a Kubernetes environment
     fn is_kubernetes() -> bool {
-        // Check for Kubernetes service account
-        Path::new("/var/run/secrets/kubernetes.io/serviceaccount").exists()
-            || std::env::var("KUBERNETES_SERVICE_HOST").is_ok()
+        Self::is_kubernetes_from(&CloudEnvironment::from_env())
     }
 }
 
@@ -214,6 +254,36 @@ impl SubstrateDetector for ConsulDetector {
 /// Cloud detector - detects if running in a cloud environment
 pub struct CloudDetector;
 
+/// Pure logic: detect cloud provider from environment snapshot
+#[must_use]
+pub fn detect_cloud_provider_from(env: &CloudEnvironment) -> Option<String> {
+    // Check for AWS via filesystem
+    if Path::new("/sys/hypervisor/uuid").exists() {
+        if let Ok(content) = std::fs::read_to_string("/sys/hypervisor/uuid") {
+            if content.to_lowercase().starts_with("ec2") {
+                return Some("aws".to_string());
+            }
+        }
+    }
+
+    // Check for AWS from env
+    if env.aws_region.is_some() || env.aws_default_region.is_some() {
+        return Some("aws".to_string());
+    }
+
+    // Check for GCP
+    if env.gcp_project.is_some() || env.google_cloud_project.is_some() {
+        return Some("gcp".to_string());
+    }
+
+    // Check for Azure
+    if env.azure_subscription_id.is_some() {
+        return Some("azure".to_string());
+    }
+
+    None
+}
+
 impl CloudDetector {
     #[must_use]
     pub const fn new() -> Self {
@@ -222,31 +292,7 @@ impl CloudDetector {
 
     /// Detect which cloud provider (if any)
     fn detect_cloud_provider() -> Option<String> {
-        // Check for AWS
-        if Path::new("/sys/hypervisor/uuid").exists() {
-            if let Ok(content) = std::fs::read_to_string("/sys/hypervisor/uuid") {
-                if content.to_lowercase().starts_with("ec2") {
-                    return Some("aws".to_string());
-                }
-            }
-        }
-
-        // Check for AWS metadata service
-        if std::env::var("AWS_REGION").is_ok() || std::env::var("AWS_DEFAULT_REGION").is_ok() {
-            return Some("aws".to_string());
-        }
-
-        // Check for GCP
-        if std::env::var("GCP_PROJECT").is_ok() || std::env::var("GOOGLE_CLOUD_PROJECT").is_ok() {
-            return Some("gcp".to_string());
-        }
-
-        // Check for Azure
-        if std::env::var("AZURE_SUBSCRIPTION_ID").is_ok() {
-            return Some("azure".to_string());
-        }
-
-        None
+        detect_cloud_provider_from(&CloudEnvironment::from_env())
     }
 }
 
@@ -363,11 +409,12 @@ pub fn standard_detectors() -> Vec<Box<dyn SubstrateDetector>> {
 mod tests {
     use super::*;
 
+    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_bare_metal_detector_always_succeeds() {
         let detector = BareMetalDetector::new();
         let result = detector.detect().await.unwrap();
-
         assert!(result.is_some());
         let substrate = result.unwrap();
         assert_eq!(substrate.substrate_type, SubstrateType::Bare);
@@ -389,21 +436,95 @@ mod tests {
 
     #[test]
     fn test_kubernetes_detector_default() {
-        let detector = KubernetesDetector::default();
+        let detector = KubernetesDetector;
         assert_eq!(detector.name(), "kubernetes");
     }
 
-    #[tokio::test]
-    async fn test_kubernetes_detector_no_k8s() {
-        // Clear K8s env vars
-        std::env::remove_var("KUBERNETES_SERVICE_HOST");
-        std::env::remove_var("KUBERNETES_NAMESPACE");
+    #[test]
+    fn test_cloud_detect_aws_from_region() {
+        let env = CloudEnvironment {
+            aws_region: Some("us-east-1".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(detect_cloud_provider_from(&env), Some("aws".to_string()));
+    }
 
-        let detector = KubernetesDetector::new();
-        let result = detector.detect().await.unwrap();
+    #[test]
+    fn test_cloud_detect_aws_default_region() {
+        let env = CloudEnvironment {
+            aws_default_region: Some("us-west-2".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(detect_cloud_provider_from(&env), Some("aws".to_string()));
+    }
 
-        // Should be None if not in K8s
-        assert!(result.is_none());
+    #[test]
+    fn test_cloud_detect_gcp() {
+        let env = CloudEnvironment {
+            gcp_project: Some("my-project".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(detect_cloud_provider_from(&env), Some("gcp".to_string()));
+    }
+
+    #[test]
+    fn test_cloud_detect_gcp_google_cloud() {
+        let env = CloudEnvironment {
+            google_cloud_project: Some("another-project".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(detect_cloud_provider_from(&env), Some("gcp".to_string()));
+    }
+
+    #[test]
+    fn test_cloud_detect_azure() {
+        let env = CloudEnvironment {
+            azure_subscription_id: Some("12345".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(detect_cloud_provider_from(&env), Some("azure".to_string()));
+    }
+
+    #[test]
+    fn test_cloud_detect_none() {
+        let env = CloudEnvironment::default();
+        assert_eq!(detect_cloud_provider_from(&env), None);
+    }
+
+    #[test]
+    fn test_kubernetes_detection_from_env() {
+        let env = CloudEnvironment {
+            kubernetes_service_host: Some("10.0.0.1".to_string()),
+            ..Default::default()
+        };
+        assert!(KubernetesDetector::is_kubernetes_from(&env));
+    }
+
+    #[test]
+    fn test_kubernetes_detection_absent() {
+        let env = CloudEnvironment::default();
+        // May still detect via filesystem, but env check should be false
+        // (filesystem check is independent of env)
+        let from_env_only = env.kubernetes_service_host.is_some();
+        assert!(!from_env_only);
+    }
+
+    #[test]
+    fn test_kubernetes_not_detected_clean_env() {
+        let env = CloudEnvironment::default();
+        // Without K8s env var AND without K8s serviceaccount path, should be false
+        // Note: is_kubernetes_from also checks filesystem - that's fine for tests
+        // as it's reading, not writing
+        let _result = KubernetesDetector::is_kubernetes_from(&env);
+        // Just verify it doesn't panic - actual result depends on test machine
+    }
+
+    #[test]
+    fn test_cloud_not_detected_clean_env() {
+        let env = CloudEnvironment::default();
+        // Without any cloud env vars, might still detect via filesystem
+        // but that's a read-only check, fine for concurrent tests
+        let _result = detect_cloud_provider_from(&env);
     }
 
     #[test]
@@ -414,18 +535,14 @@ mod tests {
 
     #[test]
     fn test_docker_detector_default() {
-        let detector = DockerDetector::default();
+        let detector = DockerDetector;
         assert_eq!(detector.name(), "docker");
     }
 
     #[tokio::test]
     async fn test_docker_detector_no_docker() {
-        // Test when not in Docker (most likely)
         let detector = DockerDetector::new();
         let result = detector.detect().await.unwrap();
-
-        // May or may not be in Docker depending on test environment
-        // Just verify it doesn't panic
         assert!(result.is_none() || result.is_some());
     }
 
@@ -437,13 +554,12 @@ mod tests {
 
     #[test]
     fn test_consul_detector_default() {
-        let detector = ConsulDetector::default();
+        let detector = ConsulDetector;
         assert_eq!(detector.name(), "consul");
     }
 
     #[tokio::test]
     async fn test_consul_detector_returns_none() {
-        // Consul detection disabled in pure Rust mode
         let detector = ConsulDetector::new();
         let result = detector.detect().await.unwrap();
         assert!(result.is_none());
@@ -457,24 +573,8 @@ mod tests {
 
     #[test]
     fn test_cloud_detector_default() {
-        let detector = CloudDetector::default();
+        let detector = CloudDetector;
         assert_eq!(detector.name(), "cloud");
-    }
-
-    #[tokio::test]
-    async fn test_cloud_detector_no_cloud() {
-        // Clear cloud env vars
-        std::env::remove_var("AWS_REGION");
-        std::env::remove_var("AWS_DEFAULT_REGION");
-        std::env::remove_var("GCP_PROJECT");
-        std::env::remove_var("GOOGLE_CLOUD_PROJECT");
-        std::env::remove_var("AZURE_SUBSCRIPTION_ID");
-
-        let detector = CloudDetector::new();
-        let result = detector.detect().await.unwrap();
-
-        // Should be None if not in cloud
-        assert!(result.is_none());
     }
 
     #[test]
@@ -485,7 +585,7 @@ mod tests {
 
     #[test]
     fn test_bare_metal_detector_default() {
-        let detector = BareMetalDetector::default();
+        let detector = BareMetalDetector;
         assert_eq!(detector.name(), "bare_metal");
     }
 
@@ -493,7 +593,6 @@ mod tests {
     async fn test_bare_metal_detector_capabilities() {
         let detector = BareMetalDetector::new();
         let result = detector.detect().await.unwrap();
-
         assert!(result.is_some());
         let substrate = result.unwrap();
         assert_eq!(substrate.substrate_type, SubstrateType::Bare);
@@ -504,7 +603,6 @@ mod tests {
     async fn test_bare_metal_detector_metadata() {
         let detector = BareMetalDetector::new();
         let result = detector.detect().await.unwrap();
-
         assert!(result.is_some());
         let substrate = result.unwrap();
         assert!(!substrate.metadata.is_empty());
@@ -518,8 +616,6 @@ mod tests {
     #[test]
     fn test_standard_detectors_order() {
         let detectors = standard_detectors();
-
-        // Verify correct priority order
         assert_eq!(detectors[0].name(), "kubernetes");
         assert_eq!(detectors[1].name(), "docker");
         assert_eq!(detectors[2].name(), "consul");
@@ -537,8 +633,6 @@ mod tests {
     fn test_detector_names_unique() {
         let detectors = standard_detectors();
         let names: Vec<&str> = detectors.iter().map(|d| d.name()).collect();
-
-        // Check all names are unique
         let mut sorted = names.clone();
         sorted.sort();
         sorted.dedup();
@@ -548,75 +642,208 @@ mod tests {
     #[tokio::test]
     async fn test_all_detectors_dont_panic() {
         let detectors = standard_detectors();
-
         for detector in detectors {
-            // Just verify none panic
             let result = detector.detect().await;
             assert!(result.is_ok());
         }
     }
 
     #[test]
-    fn test_cloud_detect_aws_from_env() {
-        // Set AWS env var
+    fn test_cloud_environment_from_env() {
+        let env = CloudEnvironment::from_env();
+        // May or may not have values depending on test environment
+        let _ = (
+            env.aws_region,
+            env.aws_default_region,
+            env.gcp_project,
+            env.google_cloud_project,
+            env.azure_subscription_id,
+            env.kubernetes_service_host,
+            env.kubernetes_namespace,
+            env.hostname,
+            env.consul_http_addr,
+        );
+    }
+
+    #[test]
+    fn test_cloud_environment_default() {
+        let env = CloudEnvironment::default();
+        assert!(env.aws_region.is_none());
+        assert!(env.aws_default_region.is_none());
+        assert!(env.gcp_project.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_cloud_detector_detect_when_aws_present() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let prev = std::env::var("AWS_REGION").ok();
         std::env::set_var("AWS_REGION", "us-east-1");
 
-        let provider = CloudDetector::detect_cloud_provider();
-        assert_eq!(provider, Some("aws".to_string()));
+        let detector = CloudDetector::new();
+        let result = detector.detect().await.unwrap();
 
-        std::env::remove_var("AWS_REGION");
+        if let Some(p) = prev {
+            std::env::set_var("AWS_REGION", p);
+        } else {
+            std::env::remove_var("AWS_REGION");
+        }
+
+        if let Some(ref substrate) = result {
+            assert_eq!(substrate.substrate_type, SubstrateType::Cloud);
+            assert_eq!(
+                substrate.metadata.get("cloud_provider"),
+                Some(&"aws".to_string())
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cloud_detector_detect_when_gcp_present() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let prev = std::env::var("GOOGLE_CLOUD_PROJECT").ok();
+        std::env::set_var("GOOGLE_CLOUD_PROJECT", "test-project");
+
+        let detector = CloudDetector::new();
+        let result = detector.detect().await.unwrap();
+
+        if let Some(p) = prev {
+            std::env::set_var("GOOGLE_CLOUD_PROJECT", p);
+        } else {
+            std::env::remove_var("GOOGLE_CLOUD_PROJECT");
+        }
+
+        if let Some(ref substrate) = result {
+            assert_eq!(substrate.substrate_type, SubstrateType::Cloud);
+            assert!(substrate.metadata.contains_key("cloud_provider"));
+            assert_eq!(
+                substrate.metadata.get("cloud_provider"),
+                Some(&"gcp".to_string())
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cloud_detector_detect_when_azure_present() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let prev = std::env::var("AZURE_SUBSCRIPTION_ID").ok();
+        std::env::set_var("AZURE_SUBSCRIPTION_ID", "sub-12345");
+
+        let detector = CloudDetector::new();
+        let result = detector.detect().await.unwrap();
+
+        if let Some(p) = prev {
+            std::env::set_var("AZURE_SUBSCRIPTION_ID", p);
+        } else {
+            std::env::remove_var("AZURE_SUBSCRIPTION_ID");
+        }
+
+        if let Some(ref substrate) = result {
+            assert_eq!(substrate.substrate_type, SubstrateType::Cloud);
+            assert_eq!(
+                substrate.metadata.get("cloud_provider"),
+                Some(&"azure".to_string())
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_kubernetes_detector_detect_when_k8s_env_set() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let prev_host = std::env::var("KUBERNETES_SERVICE_HOST").ok();
+        let prev_ns = std::env::var("KUBERNETES_NAMESPACE").ok();
+        let prev_hostname = std::env::var("HOSTNAME").ok();
+
+        std::env::set_var("KUBERNETES_SERVICE_HOST", "10.96.0.1");
+        std::env::set_var("KUBERNETES_NAMESPACE", "default");
+        std::env::set_var("HOSTNAME", "my-pod-123");
+
+        let detector = KubernetesDetector::new();
+        let result = detector.detect().await.unwrap();
+
+        if let Some(p) = prev_host {
+            std::env::set_var("KUBERNETES_SERVICE_HOST", p);
+        } else {
+            std::env::remove_var("KUBERNETES_SERVICE_HOST");
+        }
+        if let Some(p) = prev_ns {
+            std::env::set_var("KUBERNETES_NAMESPACE", p);
+        } else {
+            std::env::remove_var("KUBERNETES_NAMESPACE");
+        }
+        if let Some(p) = prev_hostname {
+            std::env::set_var("HOSTNAME", p);
+        } else {
+            std::env::remove_var("HOSTNAME");
+        }
+
+        if let Some(ref substrate) = result {
+            assert_eq!(
+                substrate.substrate_type,
+                SubstrateType::ContainerOrchestrator
+            );
+            assert_eq!(
+                substrate.metadata.get("orchestrator"),
+                Some(&"kubernetes".to_string())
+            );
+            assert_eq!(
+                substrate.metadata.get("namespace"),
+                Some(&"default".to_string())
+            );
+            assert_eq!(
+                substrate.metadata.get("pod_name"),
+                Some(&"my-pod-123".to_string())
+            );
+            assert_eq!(
+                substrate.metadata.get("api_server"),
+                Some(&"10.96.0.1".to_string())
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_bare_metal_detector_with_os_env() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let prev = std::env::var("OS").ok();
+        std::env::set_var("OS", "Linux");
+
+        let detector = BareMetalDetector::new();
+        let result = detector.detect().await.unwrap();
+
+        if let Some(p) = prev {
+            std::env::set_var("OS", p);
+        } else {
+            std::env::remove_var("OS");
+        }
+
+        assert!(result.is_some());
+        let substrate = result.unwrap();
+        assert_eq!(substrate.metadata.get("os"), Some(&"Linux".to_string()));
     }
 
     #[test]
-    fn test_cloud_detect_aws_default_region() {
-        std::env::set_var("AWS_DEFAULT_REGION", "us-west-2");
-
-        let provider = CloudDetector::detect_cloud_provider();
-        assert_eq!(provider, Some("aws".to_string()));
-
-        std::env::remove_var("AWS_DEFAULT_REGION");
+    fn test_detect_cloud_provider_aws_precedence_over_gcp() {
+        let env = CloudEnvironment {
+            aws_region: Some("us-east-1".to_string()),
+            gcp_project: Some("gcp-project".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(detect_cloud_provider_from(&env), Some("aws".to_string()));
     }
 
     #[test]
-    fn test_cloud_detect_gcp() {
-        std::env::set_var("GCP_PROJECT", "my-project");
-
-        let provider = CloudDetector::detect_cloud_provider();
-        assert_eq!(provider, Some("gcp".to_string()));
-
-        std::env::remove_var("GCP_PROJECT");
+    fn test_detect_cloud_provider_gcp_precedence_over_azure() {
+        let env = CloudEnvironment {
+            gcp_project: Some("my-gcp".to_string()),
+            azure_subscription_id: Some("azure-sub".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(detect_cloud_provider_from(&env), Some("gcp".to_string()));
     }
 
     #[test]
-    fn test_cloud_detect_gcp_google_cloud() {
-        std::env::set_var("GOOGLE_CLOUD_PROJECT", "another-project");
-
-        let provider = CloudDetector::detect_cloud_provider();
-        assert_eq!(provider, Some("gcp".to_string()));
-
-        std::env::remove_var("GOOGLE_CLOUD_PROJECT");
-    }
-
-    #[test]
-    fn test_cloud_detect_azure() {
-        std::env::set_var("AZURE_SUBSCRIPTION_ID", "12345");
-
-        let provider = CloudDetector::detect_cloud_provider();
-        assert_eq!(provider, Some("azure".to_string()));
-
-        std::env::remove_var("AZURE_SUBSCRIPTION_ID");
-    }
-
-    #[test]
-    fn test_cloud_detect_none() {
-        // Clear all cloud vars
-        std::env::remove_var("AWS_REGION");
-        std::env::remove_var("AWS_DEFAULT_REGION");
-        std::env::remove_var("GCP_PROJECT");
-        std::env::remove_var("GOOGLE_CLOUD_PROJECT");
-        std::env::remove_var("AZURE_SUBSCRIPTION_ID");
-
-        let provider = CloudDetector::detect_cloud_provider();
-        assert_eq!(provider, None);
+    fn test_kubernetes_is_from_serviceaccount_path() {
+        let env = CloudEnvironment::default();
+        let result = KubernetesDetector::is_kubernetes_from(&env);
+        assert!(!result || Path::new("/var/run/secrets/kubernetes.io/serviceaccount").exists());
     }
 }

@@ -17,7 +17,7 @@
 //! let matrix = vector.diag_create()?; // Returns 3x3 matrix with diagonal [1, 2, 3]
 //! ```
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -26,8 +26,9 @@ use wgpu::util::DeviceExt;
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct DiagParams {
     size: u32,
-    mode: u32, // 0 = extract, 1 = create
-    _padding: [u32; 2],
+    output_size: u32, // elements to process: size for extract, size*size for create
+    mode: u32,        // 0 = extract, 1 = create
+    _pad: u32,
 }
 
 pub struct Diag {
@@ -78,7 +79,7 @@ impl Diag {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/diag.wgsl")
+        include_str!("../shaders/linalg/diag.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -100,11 +101,12 @@ impl Diag {
 
         let params = DiagParams {
             size: size as u32,
+            output_size: output_size as u32,
             mode: match self.mode {
                 DiagMode::Extract => 0,
                 DiagMode::Create => 1,
             },
-            _padding: [0, 0],
+            _pad: 0,
         };
 
         let params_buffer = device
@@ -216,31 +218,29 @@ impl Diag {
                 DiagMode::Extract => size,
                 DiagMode::Create => output_size,
             };
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (dispatch_size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(dispatch_size as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(
-            output_buffer,
-            output_shape,
-            device.clone(),
-        ))
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+        Ok(Tensor::new(output_data, output_shape, device.clone()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_diag_extract() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Matrix: [[1, 2], [3, 4]]
         let matrix = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], device)
             .await
@@ -257,7 +257,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_diag_create() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let vector = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device)
             .await
             .unwrap();
@@ -277,7 +279,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_diag_extract_3x3() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let matrix = Tensor::from_vec_on(
             vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
             vec![3, 3],

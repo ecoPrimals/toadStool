@@ -269,14 +269,21 @@ pub struct MockSecurityProvider {
 }
 
 #[cfg(test)]
-impl MockSecurityProvider {
-    pub fn new() -> Self {
+impl Default for MockSecurityProvider {
+    fn default() -> Self {
         Self {
             capabilities: vec![
                 SecurityCapability::SymmetricEncryption,
                 SecurityCapability::DigitalSignatures,
             ],
         }
+    }
+}
+
+#[cfg(test)]
+impl MockSecurityProvider {
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 

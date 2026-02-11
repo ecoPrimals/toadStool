@@ -84,17 +84,17 @@ impl Attention {
 
     /// Pass 1 shader: Compute QK^T scores
     pub(crate) fn shader_matmul() -> &'static str {
-        include_str!("../../shaders/attention_matmul.wgsl")
+        include_str!("../../shaders/math/attention_matmul.wgsl")
     }
 
     /// Pass 2 shader: Apply softmax
     pub(crate) fn shader_softmax() -> &'static str {
-        include_str!("../../shaders/attention_softmax.wgsl")
+        include_str!("../../shaders/activation/attention_softmax.wgsl")
     }
 
     /// Pass 3 shader: Apply weights to values
     pub(crate) fn shader_apply() -> &'static str {
-        include_str!("../../shaders/attention_apply.wgsl")
+        include_str!("../../shaders/attention/attention_apply.wgsl")
     }
 
     /// Get query tensor

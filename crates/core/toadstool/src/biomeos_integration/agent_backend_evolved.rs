@@ -148,7 +148,10 @@ impl AgentBackend {
             *provider_lock = Some(discovered);
         }
 
-        Ok(provider_lock.as_ref().unwrap().clone())
+        provider_lock
+            .as_ref()
+            .ok_or(AgentBackendError::NoAgentProvider)
+            .cloned()
     }
 
     /// Deploy an AI agent
@@ -388,9 +391,110 @@ mod tests {
     }
 
     #[test]
+    fn test_agent_backend_default() {
+        let backend = AgentBackend::default();
+        assert_eq!(
+            std::mem::size_of_val(&backend),
+            std::mem::size_of::<AgentBackend>()
+        );
+    }
+
+    #[test]
     fn test_agent_status_enum() {
         assert_eq!(AgentStatus::Running, AgentStatus::Running);
         assert_ne!(AgentStatus::Running, AgentStatus::Stopped);
+    }
+
+    #[test]
+    fn test_agent_status_all_variants() {
+        let _ = AgentStatus::Deploying;
+        let _ = AgentStatus::Running;
+        let _ = AgentStatus::Scaling;
+        let _ = AgentStatus::Stopped;
+        let _ = AgentStatus::Failed;
+    }
+
+    #[test]
+    fn test_agent_status_serialization() {
+        let status = AgentStatus::Running;
+        let json = serde_json::to_value(&status).unwrap();
+        assert_eq!(json, "running");
+        let parsed: AgentStatus = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, AgentStatus::Running);
+    }
+
+    #[test]
+    fn test_model_status_all_variants() {
+        let _ = ModelStatus::Loading;
+        let _ = ModelStatus::Ready;
+        let _ = ModelStatus::Unloading;
+        let _ = ModelStatus::Error;
+    }
+
+    #[test]
+    fn test_model_status_serialization() {
+        let status = ModelStatus::Ready;
+        let json = serde_json::to_value(&status).unwrap();
+        assert_eq!(json, "ready");
+    }
+
+    #[test]
+    fn test_agent_info_constructor_and_serialization() {
+        let info = AgentInfo {
+            id: "agent-1".to_string(),
+            name: "test-agent".to_string(),
+            model: "gpt-4".to_string(),
+            status: AgentStatus::Running,
+            replicas: 2,
+            capabilities: vec!["inference".to_string(), "embedding".to_string()],
+        };
+        let json = serde_json::to_value(&info).unwrap();
+        assert_eq!(json["id"], "agent-1");
+        assert_eq!(json["name"], "test-agent");
+        assert_eq!(json["model"], "gpt-4");
+        assert_eq!(json["replicas"], 2);
+        let deserialized: AgentInfo = serde_json::from_value(json).unwrap();
+        assert_eq!(deserialized.id, info.id);
+        assert_eq!(deserialized.replicas, 2);
+    }
+
+    #[test]
+    fn test_model_info_constructor_and_serialization() {
+        let info = ModelInfo {
+            id: "model-1".to_string(),
+            name: "gpt-4".to_string(),
+            model_type: "transformer".to_string(),
+            size_bytes: 1_000_000_000,
+            status: ModelStatus::Ready,
+        };
+        let json = serde_json::to_value(&info).unwrap();
+        assert_eq!(json["id"], "model-1");
+        assert_eq!(json["size_bytes"], 1_000_000_000);
+    }
+
+    #[test]
+    fn test_deploy_agent_request_constructor_and_serialization() {
+        let req = DeployAgentRequest {
+            name: "deploy-test".to_string(),
+            model: "gpt-4".to_string(),
+            replicas: 3,
+            capabilities: vec!["inference".to_string()],
+        };
+        let json = serde_json::to_value(&req).unwrap();
+        assert_eq!(json["name"], "deploy-test");
+        assert_eq!(json["replicas"], 3);
+    }
+
+    #[test]
+    fn test_load_model_request_constructor_and_serialization() {
+        let req = LoadModelRequest {
+            name: "gpt-4".to_string(),
+            model_type: "transformer".to_string(),
+            source: "s3://models/gpt4".to_string(),
+        };
+        let json = serde_json::to_value(&req).unwrap();
+        assert_eq!(json["name"], "gpt-4");
+        assert_eq!(json["source"], "s3://models/gpt4");
     }
 
     #[test]
@@ -400,5 +504,47 @@ mod tests {
 
         let err = AgentBackendError::AgentNotFound("test-agent".into());
         assert!(err.to_string().contains("test-agent"));
+
+        let err = AgentBackendError::DeploymentFailed("failed".into());
+        assert!(err.to_string().contains("Agent deployment failed"));
+
+        let err = AgentBackendError::ModelLoadFailed("load err".into());
+        assert!(err.to_string().contains("Model loading failed"));
+
+        let err = AgentBackendError::ScalingFailed("scale err".into());
+        assert!(err.to_string().contains("Agent scaling failed"));
+
+        let err = AgentBackendError::ModelNotFound("m1".into());
+        assert!(err.to_string().contains("Model not found"));
+
+        let err = AgentBackendError::TerminationFailed("term err".into());
+        assert!(err.to_string().contains("Agent termination failed"));
+    }
+
+    #[test]
+    fn test_agent_info_clone() {
+        let info = AgentInfo {
+            id: "x".to_string(),
+            name: "n".to_string(),
+            model: "m".to_string(),
+            status: AgentStatus::Stopped,
+            replicas: 1,
+            capabilities: vec![],
+        };
+        let cloned = info.clone();
+        assert_eq!(cloned.id, info.id);
+    }
+
+    #[test]
+    fn test_model_info_clone() {
+        let info = ModelInfo {
+            id: "m1".to_string(),
+            name: "n".to_string(),
+            model_type: "t".to_string(),
+            size_bytes: 100,
+            status: ModelStatus::Error,
+        };
+        let cloned = info.clone();
+        assert_eq!(cloned.id, info.id);
     }
 }

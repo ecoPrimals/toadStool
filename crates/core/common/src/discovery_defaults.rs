@@ -1,5 +1,8 @@
 //! Service Discovery Fallback Defaults
 //!
+//! **TODO(Phase 3/4)**: Localhost fallbacks violate self-knowledge principle.
+//! Full migration to capability-based discovery will remove this module.
+//!
 //! This module provides fallback configuration for service discovery.
 //! These values are ONLY used when:
 //! 1. Automatic discovery fails
@@ -21,6 +24,9 @@
 //! Even fallback URLs now use runtime port discovery instead of hardcoded ports.
 //! This ensures no port conflicts even in development environments.
 
+use crate::constants::network::DEFAULT_HTTP_PORT;
+#[allow(deprecated)]
+use crate::interned_strings::primals;
 use crate::runtime_ports;
 use std::env;
 use std::time::Duration;
@@ -100,8 +106,11 @@ impl DiscoveryConfig {
 
 /// Localhost fallback defaults for development
 ///
-/// These are NOT used in production. They exist only for local development
-/// where services may be running on known localhost ports.
+/// **DEPRECATED (Phase 3/4)**: These violate self-knowledge by assuming
+/// localhost endpoints. Production MUST use capability-based discovery.
+/// TODO(Phase 3/4): Remove once mDNS/DNS-SD discovery is fully deployed.
+///
+/// Use `#[allow(deprecated)]` when migrating. Prefer capability-based discovery.
 #[derive(Debug, Clone)]
 pub struct LocalhostFallbacks {
     /// Enable fallbacks (should be false in production)
@@ -135,12 +144,15 @@ impl LocalhostFallbacks {
             return Some(url);
         }
 
+        // TODO(Phase 3/4): Replace with capability discovery. Localhost fallback violates self-knowledge.
         // Deep Debt: Use runtime port discovery with preferred defaults
         // If preferred port unavailable, finds alternative automatically
+        #[allow(deprecated)]
         match service_type {
-            "toadstool" => {
-                // Prefer 8080, but discover if unavailable
-                let port = runtime_ports::discover_port_with_preference(8080).unwrap_or(8080); // Fallback to preferred if discovery fails
+            s if s == primals::TOADSTOOL => {
+                // Prefer default HTTP port, but discover if unavailable
+                let port = runtime_ports::discover_port_with_preference(DEFAULT_HTTP_PORT)
+                    .unwrap_or(DEFAULT_HTTP_PORT); // Fallback to preferred if discovery fails
                 Some(format!("http://localhost:{}", port))
             }
             "redis" => {
@@ -196,6 +208,8 @@ impl Default for DiscoveryErrorStrategy {
 mod tests {
     use super::*;
 
+    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn test_discovery_config_default() {
         let config = DiscoveryConfig::default();
@@ -237,16 +251,25 @@ mod tests {
     fn test_localhost_fallback_urls() {
         let fallbacks = LocalhostFallbacks { enabled: true };
 
-        // NOTE: These are FALLBACK values for when discovery fails
-        // Production uses capability-based discovery (no hardcoding)
-        assert_eq!(
-            fallbacks.get_fallback_url("toadstool"),
-            Some("http://localhost:8080".to_string())
+        // NOTE: These are FALLBACK values for when discovery fails.
+        // Port may vary based on runtime availability (discover_port_with_preference),
+        // so we check the URL format and protocol, not the exact port.
+        let toadstool_url = fallbacks.get_fallback_url("toadstool");
+        assert!(
+            toadstool_url
+                .as_ref()
+                .is_some_and(|u| u.starts_with("http://localhost:")),
+            "Expected http://localhost:<port>, got {toadstool_url:?}"
         );
-        assert_eq!(
-            fallbacks.get_fallback_url("redis"),
-            Some("redis://localhost:6379".to_string())
+
+        let redis_url = fallbacks.get_fallback_url("redis");
+        assert!(
+            redis_url
+                .as_ref()
+                .is_some_and(|u| u.starts_with("redis://localhost:")),
+            "Expected redis://localhost:<port>, got {redis_url:?}"
         );
+
         assert_eq!(fallbacks.get_fallback_url("unknown"), None);
     }
 
@@ -264,5 +287,249 @@ mod tests {
         let strategy = DiscoveryErrorStrategy::default();
         // Should try fallback in non-production (default)
         assert_eq!(strategy, DiscoveryErrorStrategy::TryFallback);
+    }
+
+    #[test]
+    fn test_discovery_config_default_production_mode() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+        let prev = env::var("TOADSTOOL_ENV").ok();
+        env::set_var("TOADSTOOL_ENV", "production");
+
+        let config = DiscoveryConfig::default();
+        assert!(!config.enable_localhost_fallback);
+        assert!(!config.allow_insecure);
+
+        if let Some(p) = prev {
+            env::set_var("TOADSTOOL_ENV", p);
+        } else {
+            env::remove_var("TOADSTOOL_ENV");
+        }
+    }
+
+    #[test]
+    fn test_localhost_fallbacks_default_production_mode() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+        let prev = env::var("TOADSTOOL_ENV").ok();
+        env::set_var("TOADSTOOL_ENV", "production");
+
+        let fallbacks = LocalhostFallbacks::default();
+        assert!(!fallbacks.enabled);
+
+        if let Some(p) = prev {
+            env::set_var("TOADSTOOL_ENV", p);
+        } else {
+            env::remove_var("TOADSTOOL_ENV");
+        }
+    }
+
+    #[test]
+    fn test_discovery_error_strategy_default_production_mode() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+        let prev = env::var("TOADSTOOL_ENV").ok();
+        env::set_var("TOADSTOOL_ENV", "production");
+
+        let strategy = DiscoveryErrorStrategy::default();
+        assert_eq!(strategy, DiscoveryErrorStrategy::FailFast);
+
+        if let Some(p) = prev {
+            env::set_var("TOADSTOOL_ENV", p);
+        } else {
+            env::remove_var("TOADSTOOL_ENV");
+        }
+    }
+
+    #[test]
+    fn test_get_fallback_url_env_override() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+        let prev = env::var("REDIS_URL").ok();
+        env::set_var("REDIS_URL", "redis://custom.example.com:6380");
+
+        let fallbacks = LocalhostFallbacks { enabled: true };
+        let url = fallbacks.get_fallback_url("redis");
+        assert_eq!(url.as_deref(), Some("redis://custom.example.com:6380"));
+
+        if let Some(p) = prev {
+            env::set_var("REDIS_URL", p);
+        } else {
+            env::remove_var("REDIS_URL");
+        }
+    }
+
+    #[test]
+    fn test_get_fallback_url_toadstool_env_override() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+        let prev = env::var("TOADSTOOL_URL").ok();
+        env::set_var("TOADSTOOL_URL", "http://toadstool.local:9999");
+
+        let fallbacks = LocalhostFallbacks { enabled: true };
+        let url = fallbacks.get_fallback_url("toadstool");
+        assert_eq!(url.as_deref(), Some("http://toadstool.local:9999"));
+
+        if let Some(p) = prev {
+            env::set_var("TOADSTOOL_URL", p);
+        } else {
+            env::remove_var("TOADSTOOL_URL");
+        }
+    }
+
+    #[test]
+    fn test_get_fallback_url_postgres_env_override() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+        let prev = env::var("POSTGRES_URL").ok();
+        env::set_var("POSTGRES_URL", "postgresql://db.example.com:5433");
+
+        let fallbacks = LocalhostFallbacks { enabled: true };
+        let url = fallbacks.get_fallback_url("postgres");
+        assert_eq!(url.as_deref(), Some("postgresql://db.example.com:5433"));
+
+        if let Some(p) = prev {
+            env::set_var("POSTGRES_URL", p);
+        } else {
+            env::remove_var("POSTGRES_URL");
+        }
+    }
+
+    #[test]
+    fn test_get_fallback_url_mongodb_env_override() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+        let prev = env::var("MONGODB_URL").ok();
+        env::set_var("MONGODB_URL", "mongodb://mongo.example.com:27018");
+
+        let fallbacks = LocalhostFallbacks { enabled: true };
+        let url = fallbacks.get_fallback_url("mongodb");
+        assert_eq!(url.as_deref(), Some("mongodb://mongo.example.com:27018"));
+
+        if let Some(p) = prev {
+            env::set_var("MONGODB_URL", p);
+        } else {
+            env::remove_var("MONGODB_URL");
+        }
+    }
+
+    #[test]
+    fn test_discovery_config_timeouts() {
+        let config = DiscoveryConfig::production();
+        assert_eq!(config.timeout, Duration::from_secs(10));
+        assert_eq!(config.max_retries, 5);
+        assert_eq!(config.cache_ttl, Duration::from_secs(300));
+
+        let config = DiscoveryConfig::development();
+        assert_eq!(config.timeout, Duration::from_secs(2));
+        assert_eq!(config.max_retries, 1);
+        assert_eq!(config.cache_ttl, Duration::from_secs(10));
+
+        let config = DiscoveryConfig::test();
+        assert_eq!(config.timeout, Duration::from_millis(100));
+        assert_eq!(config.max_retries, 0);
+        assert_eq!(config.cache_ttl, Duration::from_secs(1));
+    }
+
+    #[test]
+    fn test_should_use_fallback_when_enabled() {
+        let fallbacks = LocalhostFallbacks { enabled: true };
+        assert!(fallbacks.should_use_fallback());
+    }
+
+    #[test]
+    fn test_discovery_error_strategy_variants() {
+        assert_eq!(
+            DiscoveryErrorStrategy::FailFast,
+            DiscoveryErrorStrategy::FailFast
+        );
+        assert_eq!(
+            DiscoveryErrorStrategy::TryFallback,
+            DiscoveryErrorStrategy::TryFallback
+        );
+        assert_eq!(
+            DiscoveryErrorStrategy::SilentFallback,
+            DiscoveryErrorStrategy::SilentFallback
+        );
+        assert_ne!(
+            DiscoveryErrorStrategy::FailFast,
+            DiscoveryErrorStrategy::TryFallback
+        );
+    }
+
+    #[test]
+    fn test_discovery_config_default_staging_env() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+        let prev = env::var("TOADSTOOL_ENV").ok();
+        env::set_var("TOADSTOOL_ENV", "staging");
+
+        let config = DiscoveryConfig::default();
+        assert!(config.enable_localhost_fallback);
+        assert!(config.allow_insecure);
+
+        if let Some(p) = prev {
+            env::set_var("TOADSTOOL_ENV", p);
+        } else {
+            env::remove_var("TOADSTOOL_ENV");
+        }
+    }
+
+    #[test]
+    fn test_discovery_config_default_empty_env() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+        let prev = env::var("TOADSTOOL_ENV").ok();
+        env::remove_var("TOADSTOOL_ENV");
+
+        let config = DiscoveryConfig::default();
+        assert!(config.enable_localhost_fallback);
+
+        if let Some(p) = prev {
+            env::set_var("TOADSTOOL_ENV", p);
+        } else {
+            env::remove_var("TOADSTOOL_ENV");
+        }
+    }
+
+    #[test]
+    fn test_get_fallback_url_service_type_case_insensitive() {
+        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+        let prev = env::var("REDIS_URL").ok();
+        env::set_var("REDIS_URL", "redis://custom:6379");
+
+        let fallbacks = LocalhostFallbacks { enabled: true };
+        assert_eq!(
+            fallbacks.get_fallback_url("redis").as_deref(),
+            Some("redis://custom:6379")
+        );
+        assert_eq!(
+            fallbacks.get_fallback_url("Redis").as_deref(),
+            Some("redis://custom:6379")
+        );
+
+        if let Some(p) = prev {
+            env::set_var("REDIS_URL", p);
+        } else {
+            env::remove_var("REDIS_URL");
+        }
+    }
+
+    #[test]
+    fn test_discovery_config_debug() {
+        let config = DiscoveryConfig::production();
+        let debug_str = format!("{:?}", config);
+        assert!(debug_str.contains("DiscoveryConfig"));
+        assert!(debug_str.contains("enable_localhost_fallback"));
+    }
+
+    #[test]
+    fn test_localhost_fallbacks_debug() {
+        let fallbacks = LocalhostFallbacks { enabled: true };
+        let debug_str = format!("{:?}", fallbacks);
+        assert!(debug_str.contains("LocalhostFallbacks"));
+        assert!(debug_str.contains("enabled"));
+    }
+
+    #[test]
+    fn test_discovery_config_clone() {
+        let config = DiscoveryConfig::production();
+        let cloned = config.clone();
+        assert_eq!(
+            config.enable_localhost_fallback,
+            cloned.enable_localhost_fallback
+        );
+        assert_eq!(config.timeout, cloned.timeout);
     }
 }

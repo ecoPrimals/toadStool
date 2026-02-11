@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)] // expect() is idiomatic in tests
 //! Evolution Polish E2E Tests
 //!
 //! End-to-end tests verifying the complete removal of hardcoded primal clients
@@ -17,7 +18,7 @@ use toadstool_cli::CliContext;
 fn create_test_context() -> CliContext {
     CliContext {
         config_path: None,
-        working_dir: std::env::current_dir().unwrap(),
+        working_dir: std::env::current_dir().expect("working directory must be accessible"),
         verbose: false,
     }
 }
@@ -133,13 +134,13 @@ async fn test_e2e_concurrent_biome_operations_standalone() {
 
     // Spawn 5 concurrent operations
     for i in 0..5 {
-        let exec = executor.clone();
+        let exec = Arc::clone(&executor);
         let ctx_clone = CliContext {
             config_path: ctx.config_path.clone(),
             working_dir: ctx.working_dir.clone(),
             verbose: ctx.verbose,
         };
-        let b = barrier.clone();
+        let b = Arc::clone(&barrier);
 
         handles.push(tokio::spawn(async move {
             b.wait().await;
@@ -319,7 +320,7 @@ async fn test_e2e_multi_format_output_standalone() {
     let mut handles = vec![];
 
     for format in formats {
-        let exec = executor.clone();
+        let exec = Arc::clone(&executor);
         handles.push(tokio::spawn(async move {
             exec.list_biomes(false, format.to_string(), false, None)
                 .await
@@ -398,8 +399,8 @@ async fn test_e2e_stress_many_operations_standalone() {
     let mut handles = vec![];
 
     for i in 0..20 {
-        let exec = executor.clone();
-        let b = barrier.clone();
+        let exec = Arc::clone(&executor);
+        let b = Arc::clone(&barrier);
 
         handles.push(tokio::spawn(async move {
             b.wait().await;

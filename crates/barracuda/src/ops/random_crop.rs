@@ -57,7 +57,7 @@ impl RandomCrop {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/random_crop.wgsl")
+        include_str!("../shaders/augmentation/random_crop.wgsl")
     }
 
     /// Execute RandomCrop on tensor
@@ -248,12 +248,13 @@ impl RandomCrop {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_random_crop_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 2;
         let channels = 3;
         let in_height = 32;

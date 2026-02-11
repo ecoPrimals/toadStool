@@ -86,7 +86,7 @@ impl MaxPool3D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/maxpool3d.wgsl")
+        include_str!("../shaders/pooling/maxpool3d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -267,13 +267,14 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_maxpool3d_basic() {
-        let device = get_test_device().await;
-
-        let input_data = vec![1.0; 1 * 2 * 4 * 4 * 4];
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        let input_data = vec![1.0; 2 * 4 * 4 * 4];
         let input = Tensor::from_vec_on(input_data, vec![1, 2, 4, 4, 4], device.clone())
             .await
             .unwrap();
@@ -288,8 +289,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_maxpool3d_validation() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Invalid shape (not 5D)
         let input = Tensor::from_vec_on(vec![1.0; 16], vec![4, 4], device.clone())
             .await

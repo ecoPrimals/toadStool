@@ -344,4 +344,199 @@ mod tests {
         assert!(SecurityLevel::Standard < SecurityLevel::Enhanced);
         assert!(SecurityLevel::Enhanced < SecurityLevel::HardwareSecured);
     }
+
+    #[test]
+    fn test_builder_key_id() {
+        let ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+            .key_id("my-key-123")
+            .build();
+        // Key ID is stored in config; context doesn't expose it directly, but build succeeds
+        assert!(!ctx.is_available());
+    }
+
+    #[test]
+    fn test_builder_algorithms() {
+        let algorithms = vec!["aes-256-gcm".to_string(), "xsalsa20".to_string()];
+        let ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+            .algorithms(algorithms)
+            .build();
+        assert!(!ctx.is_available());
+    }
+
+    #[test]
+    fn test_builder_all_options() {
+        let ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+            .required(true)
+            .encrypt_results(true)
+            .security_level(SecurityLevel::HardwareSecured)
+            .key_id("full-config-key")
+            .algorithms(vec!["aes-256-gcm".to_string()])
+            .build();
+        assert!(ctx.is_required());
+        assert!(!ctx.is_available());
+    }
+
+    #[test]
+    fn test_encryption_context_new() {
+        let config = EncryptionConfig {
+            required: true,
+            preferred_algorithms: vec!["test-alg".to_string()],
+            key_id: Some("new-key".to_string()),
+            encrypt_results: true,
+            min_security_level: SecurityLevel::Enhanced,
+        };
+        let ctx = EncryptionContext::new(Uuid::new_v4(), config);
+        assert!(ctx.is_required());
+        assert!(!ctx.is_available());
+    }
+
+    #[test]
+    fn test_context_not_available_without_provider() {
+        let ctx = EncryptionContextBuilder::new(Uuid::new_v4()).build();
+        assert!(!ctx.is_available());
+    }
+
+    #[test]
+    fn test_context_required_reflects_config() {
+        let ctx_required = EncryptionContextBuilder::new(Uuid::new_v4())
+            .required(true)
+            .build();
+        let ctx_optional = EncryptionContextBuilder::new(Uuid::new_v4())
+            .required(false)
+            .build();
+        assert!(ctx_required.is_required());
+        assert!(!ctx_optional.is_required());
+    }
+
+    #[test]
+    fn test_security_level_equality() {
+        assert_eq!(SecurityLevel::Standard, SecurityLevel::Standard);
+        assert_eq!(SecurityLevel::Enhanced, SecurityLevel::Enhanced);
+        assert_eq!(
+            SecurityLevel::HardwareSecured,
+            SecurityLevel::HardwareSecured
+        );
+    }
+
+    #[test]
+    fn test_security_level_all_orderings() {
+        use std::cmp::Ordering;
+        assert_eq!(
+            SecurityLevel::Standard.cmp(&SecurityLevel::Enhanced),
+            Ordering::Less
+        );
+        assert_eq!(
+            SecurityLevel::Standard.cmp(&SecurityLevel::HardwareSecured),
+            Ordering::Less
+        );
+        assert_eq!(
+            SecurityLevel::Enhanced.cmp(&SecurityLevel::HardwareSecured),
+            Ordering::Less
+        );
+        assert_eq!(
+            SecurityLevel::Enhanced.cmp(&SecurityLevel::Standard),
+            Ordering::Greater
+        );
+        assert_eq!(
+            SecurityLevel::HardwareSecured.cmp(&SecurityLevel::Standard),
+            Ordering::Greater
+        );
+        assert_eq!(
+            SecurityLevel::HardwareSecured.cmp(&SecurityLevel::Enhanced),
+            Ordering::Greater
+        );
+    }
+
+    #[test]
+    fn test_default_config_algorithms() {
+        let config = EncryptionConfig::default();
+        assert_eq!(
+            config.preferred_algorithms,
+            vec!["chacha20poly1305".to_string(), "aes-256-gcm".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_default_config_key_id_is_none() {
+        let config = EncryptionConfig::default();
+        assert!(config.key_id.is_none());
+    }
+
+    #[test]
+    fn test_encryption_context_debug() {
+        let ctx = EncryptionContextBuilder::new(Uuid::new_v4()).build();
+        let _ = format!("{:?}", ctx);
+    }
+
+    #[test]
+    fn test_encrypted_input_serialization() {
+        let input = EncryptedInput {
+            payload: EncryptedPayload::new(vec![1, 2, 3, 4, 5]),
+            key_id: "test-key".to_string(),
+            metadata: EncryptionMetadata {
+                algorithm: "chacha20poly1305".to_string(),
+                nonce: vec![10, 20, 30],
+                aad: None,
+                kdf_info: None,
+                encrypted_at: 1234567890,
+            },
+            security_level: SecurityLevel::Standard,
+        };
+        let json = serde_json::to_string(&input).unwrap();
+        let deserialized: EncryptedInput = serde_json::from_str(&json).unwrap();
+        assert_eq!(input.payload.ciphertext, deserialized.payload.ciphertext);
+        assert_eq!(input.key_id, deserialized.key_id);
+        assert_eq!(input.metadata.algorithm, deserialized.metadata.algorithm);
+        assert_eq!(input.security_level, deserialized.security_level);
+    }
+
+    #[test]
+    fn test_encrypted_output_serialization() {
+        let output = EncryptedOutput {
+            payload: EncryptedPayload::new(vec![6, 7, 8, 9, 10]),
+            key_id: "output-key".to_string(),
+            metadata: EncryptionMetadata {
+                algorithm: "aes-256-gcm".to_string(),
+                nonce: vec![1, 2, 3],
+                aad: Some(vec![4, 5, 6]),
+                kdf_info: None,
+                encrypted_at: 9876543210,
+            },
+            security_level: SecurityLevel::Enhanced,
+        };
+        let json = serde_json::to_string(&output).unwrap();
+        let deserialized: EncryptedOutput = serde_json::from_str(&json).unwrap();
+        assert_eq!(output.payload.ciphertext, deserialized.payload.ciphertext);
+        assert_eq!(output.key_id, deserialized.key_id);
+        assert_eq!(output.metadata.algorithm, deserialized.metadata.algorithm);
+        assert_eq!(output.security_level, deserialized.security_level);
+    }
+
+    #[test]
+    fn test_ecosystem_config_serialization() {
+        let config = EncryptionConfig {
+            required: true,
+            preferred_algorithms: vec!["aes-256-gcm".to_string()],
+            key_id: Some("serial-key".to_string()),
+            encrypt_results: true,
+            min_security_level: SecurityLevel::HardwareSecured,
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: EncryptionConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.required, deserialized.required);
+        assert_eq!(
+            config.preferred_algorithms,
+            deserialized.preferred_algorithms
+        );
+        assert_eq!(config.key_id, deserialized.key_id);
+        assert_eq!(config.encrypt_results, deserialized.encrypt_results);
+        assert_eq!(config.min_security_level, deserialized.min_security_level);
+    }
+
+    #[test]
+    fn test_builder_default_values() {
+        let ctx = EncryptionContextBuilder::new(Uuid::new_v4()).build();
+        assert!(!ctx.is_required());
+        assert!(!ctx.is_available());
+    }
 }

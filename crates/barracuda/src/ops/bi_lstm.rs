@@ -60,7 +60,7 @@ impl BiLSTM {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/bi_lstm.wgsl")
+        include_str!("../shaders/rnn/bi_lstm.wgsl")
     }
 
     /// Execute BiLSTM on tensor
@@ -323,12 +323,13 @@ impl BiLSTM {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_bi_lstm_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Create test tensors: [seq_len=2, batch=1, input_size=3]
         let input = Tensor::from_vec_on(
             vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],

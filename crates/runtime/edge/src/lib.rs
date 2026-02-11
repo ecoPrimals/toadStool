@@ -9,6 +9,9 @@ pub mod toolchain;
 pub mod communication;
 pub mod deployment;
 
+#[cfg(target_os = "linux")]
+pub mod udev_pure;
+
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -386,10 +389,10 @@ mod tests {
     #[test]
     fn test_edge_runtime_config_default() {
         let config = EdgeRuntimeConfig::default();
-        assert_eq!(config.discovery_enabled, true);
+        assert!(config.discovery_enabled);
         assert_eq!(config.discovery_timeout_secs, 30);
         assert_eq!(config.max_devices, 100);
-        assert_eq!(config.auto_provisioning, true);
+        assert!(config.auto_provisioning);
     }
 
     #[test]
@@ -405,7 +408,7 @@ mod tests {
             resource_strategy: ResourceAllocationStrategy::Conservative,
         };
 
-        assert_eq!(config.discovery_enabled, false);
+        assert!(!config.discovery_enabled);
         assert_eq!(config.max_devices, 50);
         assert_eq!(config.cross_compile_cache_path, "/custom/cache");
     }

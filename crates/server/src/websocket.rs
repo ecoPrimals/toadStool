@@ -120,8 +120,8 @@ pub async fn handle_client_message(
     message: &str,
     tx: &mpsc::UnboundedSender<axum::extract::ws::Message>,
     state: &ServerState,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let request: serde_json::Value = serde_json::from_str(message)?;
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let request: serde_json::Value = serde_json::from_slice(message.as_bytes())?;
 
     match request.get("type").and_then(|t| t.as_str()) {
         Some("ping") => {

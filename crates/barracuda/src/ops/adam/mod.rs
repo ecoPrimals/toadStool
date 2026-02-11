@@ -170,7 +170,7 @@ impl Adam {
 
     /// WGSL shader source
     pub(super) fn shader() -> &'static str {
-        include_str!("../../shaders/adam.wgsl")
+        include_str!("../../shaders/optimizer/adam.wgsl")
     }
 
     /// Get params tensor

@@ -13,8 +13,7 @@ fn cpu_sigmoid_reference(x: &[f32]) -> Vec<f32> {
 
 #[tokio::test]
 async fn test_sigmoid_precision() {
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let size = 1000;
     let input: Vec<f32> = (0..size).map(|i| (i as f32) * 0.01 - 5.0).collect();
 
@@ -44,8 +43,7 @@ fn cpu_tanh_reference(x: &[f32]) -> Vec<f32> {
 
 #[tokio::test]
 async fn test_tanh_precision() {
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let size = 1000;
     let input: Vec<f32> = (0..size).map(|i| (i as f32) * 0.01 - 5.0).collect();
 
@@ -81,8 +79,7 @@ fn cpu_gelu_reference(x: &[f32]) -> Vec<f32> {
 
 #[tokio::test]
 async fn test_gelu_precision() {
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let size = 1000;
     let input: Vec<f32> = (0..size).map(|i| (i as f32) * 0.01 - 5.0).collect();
 

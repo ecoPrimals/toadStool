@@ -250,22 +250,25 @@ pub async fn create_fhe_poly_tensor(
         .iter()
         .flat_map(|&val| vec![val as u32, (val >> 32) as u32])
         .collect();
-    Tensor::from_data(&poly_u32, vec![poly_u32.len()], device)
+    Tensor::from_data_pod(&poly_u32, vec![poly_u32.len()], device)
 }
 
 #[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use crate::device::WgpuDevice;
+
     use crate::ops::fhe_poly_add::create_fhe_poly_tensor;
-    use std::sync::Arc;
+
     #[allow(unused_imports)]
     use wgpu::util::DeviceExt;
 
     #[tokio::test]
     async fn test_fhe_poly_mul_basic() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let degree = 8;
         let modulus = 97;
 

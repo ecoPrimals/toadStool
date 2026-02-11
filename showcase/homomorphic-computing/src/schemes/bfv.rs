@@ -38,8 +38,8 @@
 //! seamless evolution from PoC to production.
 //!
 //! # Reference
-//! - https://eprint.iacr.org/2012/144.pdf
-//! - https://github.com/zama-ai/concrete (Production Rust FHE library)
+//! - <https://eprint.iacr.org/2012/144.pdf>
+//! - <https://github.com/zama-ai/concrete> (Production Rust FHE library)
 
 #![allow(dead_code)]
 
@@ -155,10 +155,9 @@ impl HomomorphicScheme for BfvScheme {
         let mut plaintext = Vec::with_capacity(self.polynomial_degree);
 
         // Simplified decryption (NOT secure, just for structure)
-        for i in 0..self.polynomial_degree {
-            let ct = ciphertext[i];
+        for ct in ciphertext.iter().take(self.polynomial_degree) {
             // Remove noise and reduce modulo plaintext modulus (simplified)
-            let pt = (ct / 10) % self.plaintext_modulus;
+            let pt = (*ct / 10) % self.plaintext_modulus;
             plaintext.push(pt);
         }
 

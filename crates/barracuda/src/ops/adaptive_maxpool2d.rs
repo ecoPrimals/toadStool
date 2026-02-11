@@ -17,14 +17,19 @@
 //! ## Usage
 //!
 //! ```no_run
-//! use barracuda::tensor::Tensor;
-//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # use barracuda::tensor::Tensor;
+//! # use barracuda::device::test_pool;
+//! # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! # let input = Tensor::from_data(&[1.0f32; 196], vec![1, 1, 14, 14], device).unwrap();
 //! // Input: [batch, channels, 14, 14]
 //! // Output: [batch, channels, 7, 7] (adaptive to target size)
-//! let pooled = input.adaptive_maxpool2d((7, 7))?;
+//! let _pooled = input.adaptive_maxpool2d((7, 7))?;
+//! # Ok(())
+//! # }
 //! ```
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -47,7 +52,7 @@ pub struct AdaptiveMaxPool2D {
 
 impl AdaptiveMaxPool2D {
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/adaptive_maxpool2d.wgsl")
+        include_str!("../shaders/pooling/adaptive_maxpool2d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -190,19 +195,20 @@ impl AdaptiveMaxPool2D {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 2D shader workgroup size (16, 16)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32).div_ceil(optimal_wg_size);
-            let workgroups_y = (out_height as u32).div_ceil(optimal_wg_size);
+            let (workgroups_x, workgroups_y) =
+                caps.dispatch_2d(out_width as u32, out_height as u32);
             let workgroups_z = (batch * channels) as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(
-            output_buffer,
+        let output_elem_count = output_shape.iter().product::<usize>();
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_elem_count)?;
+        Ok(Tensor::new(
+            output_data,
             output_shape.to_vec(),
             device.clone(),
         ))
@@ -232,9 +238,15 @@ impl Tensor {
     /// ## Example
     ///
     /// ```no_run
-    /// # let input = todo!();
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use barracuda::tensor::Tensor;
+    /// # use barracuda::device::test_pool;
+    /// # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let input = Tensor::from_data(&[1.0f32; 49], vec![1, 1, 7, 7], device).unwrap();
     /// // Adaptive max pool to 7x7 (regardless of input size)
-    /// let pooled = input.adaptive_maxpool2d((7, 7))?;
+    /// let _pooled = input.adaptive_maxpool2d((7, 7))?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn adaptive_maxpool2d(self, output_size: (usize, usize)) -> Result<Self> {
         let op = AdaptiveMaxPool2D {
@@ -248,12 +260,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_adaptive_maxpool2d() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test case: 4x4 input -> 2x2 output
         let input = Tensor::from_data(
@@ -286,7 +299,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_adaptive_maxpool2d_1x1_output() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test global max pooling (adaptive pool to 1x1)
         let input =

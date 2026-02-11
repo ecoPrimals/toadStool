@@ -30,14 +30,15 @@ pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};
 pub use capabilities::{DeviceCapabilities, WorkloadType};
 pub use substrate::{Substrate, SubstrateType};
 pub use toadstool_integration::{
-    discover_devices, has_gpu, has_npu, select_best_device, select_device_prefer,
-    hardware_report, DeviceSelection, HardwareReport, HardwareWorkload,
+    discover_devices, hardware_report, has_gpu, has_npu, select_best_device, select_device_prefer,
+    DeviceSelection, HardwareReport, HardwareWorkload,
 };
 pub use tpu::{TpuDevice, TpuGeneration, TpuInfo};
 pub use unified::{Capability, Device, DeviceContext, DeviceInfo, WorkloadHint};
 pub use wgpu_device::WgpuDevice;
 
-#[cfg(test)]
+/// Device pool for GPU operations (used by NMS and tests).
+/// Always compiled so NMS can acquire a GPU device at runtime.
 pub mod test_pool;
 
 /// Auto device discovery via wgpu

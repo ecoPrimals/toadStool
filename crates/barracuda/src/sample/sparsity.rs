@@ -1,0 +1,581 @@
+//! Sparsity-based iterative surrogate sampling
+//!
+//! Implements the SparsitySampler algorithm from Diaw et al. (2024):
+//! an iterative workflow that alternates between optimization (evaluation gathering)
+//! and surrogate model training to achieve both exploitation and exploration.
+//!
+//! # Algorithm
+//!
+//! ```text
+//! 1. Generate initial samples via maximin LHS
+//! 2. Evaluate objective at initial samples
+//! 3. LOOP until budget exhausted:
+//!    a. Train RBF surrogate on ALL evaluations
+//!    b. Use surrogate to identify promising regions (minimize predicted value)
+//!    c. Run multi-start NM on the SURROGATE to find candidate points
+//!    d. Evaluate TRUE objective at candidate points
+//!    e. Add evaluations to cache
+//! ```
+//!
+//! This produces space-filling evaluations that are simultaneously:
+//! - **Exploitative**: concentrated near optima (from NM convergence)
+//! - **Exploratory**: spread across space (from LHS starts + NM initial phases)
+//!
+//! The key insight from Diaw et al.: training surrogates on ALL evaluations
+//! (not just the best) provides dramatically better approximation quality.
+//!
+//! # Cross-Domain Applications
+//!
+//! - **Nuclear physics**: EOS parameter fitting with expensive nuclear simulations
+//! - **ML**: Bayesian-style hyperparameter optimization without GP overhead
+//! - **Materials science**: Force-field calibration with DFT evaluations
+//! - **Engineering**: Design optimization with expensive CFD/FEA simulations
+//!
+//! # References
+//!
+//! - Diaw, A. et al. (2024). "Efficient learning of accurate surrogates for
+//!   simulations of complex systems." Nature Machine Intelligence.
+//! - hotSpring: `control/surrogate/scripts/full_iterative_workflow.py`
+
+use crate::error::{BarracudaError, Result};
+use crate::optimize::eval_record::EvaluationCache;
+use crate::optimize::multi_start::SolverResult;
+use crate::sample::latin_hypercube;
+use crate::surrogate::{RBFKernel, RBFSurrogate};
+
+/// Configuration for the SparsitySampler.
+#[derive(Debug, Clone)]
+pub struct SparsitySamplerConfig {
+    /// Number of initial samples via LHS (default: 10 × n_dims)
+    pub n_initial: usize,
+    /// Number of NM solvers per iteration (default: 8)
+    pub n_solvers: usize,
+    /// Max evaluations per NM solver per iteration (default: 50)
+    pub max_eval_per_solver: usize,
+    /// Number of surrogate refinement iterations (default: 5)
+    pub n_iterations: usize,
+    /// NM convergence tolerance (default: 1e-6)
+    pub tol: f64,
+    /// RBF kernel for surrogate (default: ThinPlateSpline)
+    pub kernel: RBFKernel,
+    /// RBF smoothing parameter (default: 1e-12)
+    pub smoothing: f64,
+    /// Random seed
+    pub seed: u64,
+}
+
+impl SparsitySamplerConfig {
+    /// Create a default configuration scaled to the problem dimension.
+    pub fn new(n_dims: usize, seed: u64) -> Self {
+        Self {
+            n_initial: 10 * n_dims,
+            n_solvers: 8,
+            max_eval_per_solver: 50,
+            n_iterations: 5,
+            tol: 1e-6,
+            kernel: RBFKernel::ThinPlateSpline,
+            smoothing: 1e-12,
+            seed,
+        }
+    }
+
+    /// Set number of initial LHS samples.
+    pub fn with_initial_samples(mut self, n: usize) -> Self {
+        self.n_initial = n;
+        self
+    }
+
+    /// Set number of NM solvers per iteration.
+    pub fn with_solvers(mut self, n: usize) -> Self {
+        self.n_solvers = n;
+        self
+    }
+
+    /// Set max evaluations per solver.
+    pub fn with_eval_budget(mut self, n: usize) -> Self {
+        self.max_eval_per_solver = n;
+        self
+    }
+
+    /// Set number of refinement iterations.
+    pub fn with_iterations(mut self, n: usize) -> Self {
+        self.n_iterations = n;
+        self
+    }
+
+    /// Set RBF kernel type.
+    pub fn with_kernel(mut self, kernel: RBFKernel) -> Self {
+        self.kernel = kernel;
+        self
+    }
+
+    /// Total evaluation budget (approximate).
+    pub fn total_budget(&self) -> usize {
+        self.n_initial + self.n_iterations * self.n_solvers * self.max_eval_per_solver
+    }
+}
+
+/// Result of SparsitySampler optimization.
+#[derive(Debug)]
+pub struct SparsitySamplerResult {
+    /// Best point found
+    pub x_best: Vec<f64>,
+    /// Best function value
+    pub f_best: f64,
+    /// All evaluations (for surrogate training)
+    pub cache: EvaluationCache,
+    /// Final trained surrogate (if training succeeded)
+    pub surrogate: Option<RBFSurrogate>,
+    /// Results per iteration
+    pub iteration_results: Vec<IterationResult>,
+}
+
+/// Diagnostics for a single SparsitySampler iteration.
+#[derive(Debug, Clone)]
+pub struct IterationResult {
+    /// Iteration number (0-indexed)
+    pub iteration: usize,
+    /// Best f found by NM solvers in this iteration
+    pub best_f: f64,
+    /// Number of new evaluations in this iteration
+    pub n_new_evals: usize,
+    /// Total evaluations accumulated
+    pub total_evals: usize,
+    /// Surrogate training error (leave-one-out or None if not computed)
+    pub surrogate_error: Option<f64>,
+}
+
+/// Run the SparsitySampler algorithm.
+///
+/// Alternates between multi-start NM optimization and RBF surrogate training
+/// to efficiently explore parameter space with a limited evaluation budget.
+///
+/// # Arguments
+///
+/// * `f` - Expensive objective function to minimize
+/// * `bounds` - Box bounds `[(min, max), ...]` for each dimension
+/// * `config` - Sampler configuration
+///
+/// # Returns
+///
+/// [`SparsitySamplerResult`] with the best solution, all evaluations, and the
+/// final surrogate model.
+///
+/// # Examples
+///
+/// ```
+/// use barracuda::sample::sparsity::{sparsity_sampler, SparsitySamplerConfig};
+///
+/// // Expensive function (simulated)
+/// let rosenbrock = |x: &[f64]| {
+///     (1.0 - x[0]).powi(2) + 100.0 * (x[1] - x[0].powi(2)).powi(2)
+/// };
+///
+/// let bounds = vec![(-5.0, 5.0), (-5.0, 5.0)];
+/// let config = SparsitySamplerConfig::new(2, 42)
+///     .with_initial_samples(20)
+///     .with_solvers(4)
+///     .with_eval_budget(30)
+///     .with_iterations(3);
+///
+/// let result = sparsity_sampler(rosenbrock, &bounds, &config)?;
+///
+/// println!("Best: f={:.4} at {:?}", result.f_best, result.x_best);
+/// println!("Total evaluations: {}", result.cache.len());
+/// assert!(result.f_best < 10.0); // Should find a reasonable solution
+/// # Ok::<(), barracuda::error::BarracudaError>(())
+/// ```
+pub fn sparsity_sampler<F>(
+    f: F,
+    bounds: &[(f64, f64)],
+    config: &SparsitySamplerConfig,
+) -> Result<SparsitySamplerResult>
+where
+    F: Fn(&[f64]) -> f64,
+{
+    if bounds.is_empty() {
+        return Err(BarracudaError::InvalidInput {
+            message: "bounds must be non-empty".to_string(),
+        });
+    }
+
+    if config.n_initial < 2 {
+        return Err(BarracudaError::InvalidInput {
+            message: "n_initial must be >= 2 for surrogate training".to_string(),
+        });
+    }
+
+    let _n_dims = bounds.len();
+    let mut cache = EvaluationCache::with_capacity(config.total_budget());
+    let mut iteration_results = Vec::with_capacity(config.n_iterations);
+
+    // Phase 1: Initial sampling via LHS
+    let initial_points = latin_hypercube(config.n_initial, bounds, config.seed)?;
+
+    for point in &initial_points {
+        let val = f(point);
+        cache.record(point.clone(), val);
+    }
+
+    // Iterative refinement loop
+    let mut last_surrogate = None;
+
+    for iter in 0..config.n_iterations {
+        let iter_start_evals = cache.len();
+
+        // Train surrogate on ALL evaluations so far
+        let (x_data, y_data) = cache.training_data();
+
+        let surrogate = match RBFSurrogate::train(&x_data, &y_data, config.kernel, config.smoothing)
+        {
+            Ok(s) => s,
+            Err(_) => {
+                // If surrogate training fails (e.g., singular matrix), fall back
+                // to direct multi-start NM on the true objective
+                let nm_result = run_nm_batch(&f, bounds, config, iter, &mut cache)?;
+                iteration_results.push(IterationResult {
+                    iteration: iter,
+                    best_f: nm_result.f_best,
+                    n_new_evals: cache.len() - iter_start_evals,
+                    total_evals: cache.len(),
+                    surrogate_error: None,
+                });
+                continue;
+            }
+        };
+
+        // Compute surrogate quality metric (optional: leave-one-out RMSE approximation)
+        let surrogate_error = compute_surrogate_rmse(&surrogate, &x_data, &y_data);
+
+        // Use surrogate to find promising regions:
+        // Run multi-start NM on the SURROGATE (cheap evaluations!)
+        let surrogate_ref = &surrogate;
+        let surrogate_objective = |x: &[f64]| {
+            surrogate_ref
+                .predict(&[x.to_vec()])
+                .map(|v| v[0])
+                .unwrap_or(f64::INFINITY)
+        };
+
+        let iter_seed = config.seed.wrapping_add((iter as u64 + 1) * 10007);
+        let candidate_points = latin_hypercube(config.n_solvers, bounds, iter_seed)?;
+
+        // Run NM from each candidate on the surrogate, then evaluate true objective
+        // at the best points found
+        let mut iter_best_f = f64::INFINITY;
+
+        for x0 in &candidate_points {
+            // Quick NM on surrogate to find promising point
+            let (x_star, _, _) = crate::optimize::nelder_mead(
+                surrogate_objective,
+                x0,
+                bounds,
+                config.max_eval_per_solver,
+                config.tol,
+            )?;
+
+            // Evaluate TRUE objective at surrogate-suggested point
+            let f_true = f(&x_star);
+            cache.record(x_star, f_true);
+
+            if f_true < iter_best_f {
+                iter_best_f = f_true;
+            }
+        }
+
+        // Also sample a few direct points for exploration (prevents surrogate tunnel vision)
+        let explore_seed = iter_seed.wrapping_add(99991);
+        let n_explore = (config.n_solvers / 4).max(1);
+        let explore_points = latin_hypercube(n_explore, bounds, explore_seed)?;
+        for point in &explore_points {
+            let val = f(point);
+            cache.record(point.clone(), val);
+            if val < iter_best_f {
+                iter_best_f = val;
+            }
+        }
+
+        iteration_results.push(IterationResult {
+            iteration: iter,
+            best_f: iter_best_f,
+            n_new_evals: cache.len() - iter_start_evals,
+            total_evals: cache.len(),
+            surrogate_error: Some(surrogate_error),
+        });
+
+        last_surrogate = Some(surrogate);
+    }
+
+    // Extract best overall result
+    let (x_best, f_best) = match cache.best() {
+        Some(record) => (record.x.clone(), record.f),
+        None => {
+            return Err(BarracudaError::Internal(
+                "No evaluations recorded".to_string(),
+            ))
+        }
+    };
+
+    Ok(SparsitySamplerResult {
+        x_best,
+        f_best,
+        cache,
+        surrogate: last_surrogate,
+        iteration_results,
+    })
+}
+
+/// Run a batch of NM solvers on the true objective (fallback when surrogate fails).
+fn run_nm_batch<F>(
+    f: &F,
+    bounds: &[(f64, f64)],
+    config: &SparsitySamplerConfig,
+    iter: usize,
+    cache: &mut EvaluationCache,
+) -> Result<SolverResult>
+where
+    F: Fn(&[f64]) -> f64,
+{
+    let seed = config.seed.wrapping_add((iter as u64 + 1) * 10007);
+    let points = latin_hypercube(config.n_solvers, bounds, seed)?;
+
+    let mut best_x = vec![0.0; bounds.len()];
+    let mut best_f = f64::INFINITY;
+
+    for x0 in &points {
+        let (x_star, f_star, _) =
+            crate::optimize::nelder_mead(f, x0, bounds, config.max_eval_per_solver, config.tol)?;
+        cache.record(x_star.clone(), f_star);
+        if f_star < best_f {
+            best_f = f_star;
+            best_x = x_star;
+        }
+    }
+
+    Ok(SolverResult {
+        x_best: best_x,
+        f_best: best_f,
+        n_evals: config.n_solvers * config.max_eval_per_solver,
+        converged: false,
+    })
+}
+
+/// Compute RMSE of surrogate predictions at training points.
+///
+/// This isn't true leave-one-out CV, but gives a quick measure of
+/// surrogate quality. Low RMSE indicates good interpolation.
+fn compute_surrogate_rmse(surrogate: &RBFSurrogate, x_data: &[Vec<f64>], y_data: &[f64]) -> f64 {
+    match surrogate.predict(x_data) {
+        Ok(y_pred) => {
+            let mse = y_pred
+                .iter()
+                .zip(y_data.iter())
+                .map(|(p, t)| (p - t).powi(2))
+                .sum::<f64>()
+                / y_data.len() as f64;
+            mse.sqrt()
+        }
+        Err(_) => f64::INFINITY,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sparsity_sampler_quadratic() {
+        let f = |x: &[f64]| (x[0] - 2.0).powi(2) + (x[1] - 3.0).powi(2);
+        let bounds = vec![(-10.0, 10.0), (-10.0, 10.0)];
+
+        let config = SparsitySamplerConfig::new(2, 42)
+            .with_initial_samples(20)
+            .with_solvers(4)
+            .with_eval_budget(30)
+            .with_iterations(3);
+
+        let result = sparsity_sampler(f, &bounds, &config).unwrap();
+
+        assert!((result.x_best[0] - 2.0).abs() < 2.0);
+        assert!((result.x_best[1] - 3.0).abs() < 2.0);
+        assert!(result.f_best < 5.0);
+        assert!(result.cache.len() > 20); // More than initial samples
+        assert_eq!(result.iteration_results.len(), 3);
+    }
+
+    #[test]
+    fn test_sparsity_sampler_rosenbrock() {
+        let rosenbrock = |x: &[f64]| (1.0 - x[0]).powi(2) + 100.0 * (x[1] - x[0].powi(2)).powi(2);
+        let bounds = vec![(-5.0, 5.0), (-5.0, 5.0)];
+
+        let config = SparsitySamplerConfig::new(2, 42)
+            .with_initial_samples(30)
+            .with_solvers(8)
+            .with_eval_budget(50)
+            .with_iterations(5);
+
+        let result = sparsity_sampler(rosenbrock, &bounds, &config).unwrap();
+
+        // Should find a reasonable solution (not necessarily global optimum)
+        assert!(
+            result.f_best < 50.0,
+            "Should find reasonable Rosenbrock solution, got f={}",
+            result.f_best
+        );
+
+        // Should have surrogate from last iteration
+        assert!(result.surrogate.is_some());
+    }
+
+    #[test]
+    fn test_sparsity_sampler_captures_all_evals() {
+        let f = |x: &[f64]| x[0].powi(2) + x[1].powi(2);
+        let bounds = vec![(-5.0, 5.0), (-5.0, 5.0)];
+
+        let config = SparsitySamplerConfig::new(2, 42)
+            .with_initial_samples(10)
+            .with_solvers(3)
+            .with_iterations(2);
+
+        let result = sparsity_sampler(f, &bounds, &config).unwrap();
+
+        // Cache should have at least initial + iteration evaluations
+        assert!(
+            result.cache.len() >= 10,
+            "Should have at least initial samples, got {}",
+            result.cache.len()
+        );
+
+        // Training data should match cache
+        let (x_data, y_data) = result.cache.training_data();
+        assert_eq!(x_data.len(), y_data.len());
+    }
+
+    #[test]
+    fn test_sparsity_sampler_iteration_diagnostics() {
+        let f = |x: &[f64]| x[0].powi(2);
+        let bounds = vec![(-5.0, 5.0)];
+
+        let config = SparsitySamplerConfig::new(1, 42)
+            .with_initial_samples(10)
+            .with_solvers(3)
+            .with_eval_budget(20)
+            .with_iterations(3);
+
+        let result = sparsity_sampler(f, &bounds, &config).unwrap();
+
+        assert_eq!(result.iteration_results.len(), 3);
+
+        for (i, ir) in result.iteration_results.iter().enumerate() {
+            assert_eq!(ir.iteration, i);
+            assert!(ir.n_new_evals > 0);
+            assert!(ir.total_evals > 0);
+        }
+
+        // Total evals should increase monotonically
+        for i in 1..result.iteration_results.len() {
+            assert!(
+                result.iteration_results[i].total_evals
+                    >= result.iteration_results[i - 1].total_evals
+            );
+        }
+    }
+
+    #[test]
+    fn test_sparsity_config_builder() {
+        let config = SparsitySamplerConfig::new(3, 42)
+            .with_initial_samples(50)
+            .with_solvers(16)
+            .with_eval_budget(100)
+            .with_iterations(10)
+            .with_kernel(RBFKernel::Gaussian { epsilon: 1.0 });
+
+        assert_eq!(config.n_initial, 50);
+        assert_eq!(config.n_solvers, 16);
+        assert_eq!(config.max_eval_per_solver, 100);
+        assert_eq!(config.n_iterations, 10);
+        assert_eq!(config.seed, 42);
+    }
+
+    #[test]
+    fn test_sparsity_sampler_total_budget() {
+        let config = SparsitySamplerConfig::new(2, 42)
+            .with_initial_samples(20)
+            .with_solvers(4)
+            .with_eval_budget(50)
+            .with_iterations(5);
+
+        // Budget = 20 + 5 * 4 * 50 = 1020
+        assert_eq!(config.total_budget(), 1020);
+    }
+
+    #[test]
+    fn test_sparsity_sampler_errors() {
+        let f = |x: &[f64]| x[0].powi(2);
+
+        // Empty bounds
+        let config = SparsitySamplerConfig::new(1, 42);
+        assert!(sparsity_sampler(&f, &[], &config).is_err());
+
+        // Too few initial samples
+        let bounds = vec![(0.0, 1.0)];
+        let config = SparsitySamplerConfig::new(1, 42).with_initial_samples(1);
+        assert!(sparsity_sampler(&f, &bounds, &config).is_err());
+    }
+
+    #[test]
+    fn test_sparsity_sampler_1d() {
+        // Simple 1D function with clear minimum
+        let f = |x: &[f64]| (x[0] - 3.0).powi(2) + 1.0;
+        let bounds = vec![(-10.0, 10.0)];
+
+        let config = SparsitySamplerConfig::new(1, 42)
+            .with_initial_samples(10)
+            .with_solvers(4)
+            .with_eval_budget(30)
+            .with_iterations(3);
+
+        let result = sparsity_sampler(f, &bounds, &config).unwrap();
+
+        assert!(
+            (result.x_best[0] - 3.0).abs() < 2.0,
+            "Should find x near 3.0, got {}",
+            result.x_best[0]
+        );
+        assert!(result.f_best < 5.0);
+    }
+
+    #[test]
+    fn test_sparsity_sampler_with_gaussian_kernel() {
+        let f = |x: &[f64]| x[0].powi(2) + x[1].powi(2);
+        let bounds = vec![(-5.0, 5.0), (-5.0, 5.0)];
+
+        let config = SparsitySamplerConfig::new(2, 42)
+            .with_initial_samples(15)
+            .with_solvers(3)
+            .with_iterations(2)
+            .with_kernel(RBFKernel::Gaussian { epsilon: 0.5 });
+
+        let result = sparsity_sampler(f, &bounds, &config).unwrap();
+
+        assert!(result.f_best < 10.0);
+        assert!(result.surrogate.is_some());
+    }
+
+    #[test]
+    fn test_surrogate_rmse() {
+        // Train on y = x^2 and check RMSE is very small (exact interpolation)
+        let x_train = vec![vec![0.0], vec![1.0], vec![2.0], vec![3.0]];
+        let y_train = vec![0.0, 1.0, 4.0, 9.0];
+
+        let surrogate =
+            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12).unwrap();
+
+        let rmse = compute_surrogate_rmse(&surrogate, &x_train, &y_train);
+        assert!(
+            rmse < 1e-6,
+            "Surrogate should interpolate training data exactly, RMSE={}",
+            rmse
+        );
+    }
+}

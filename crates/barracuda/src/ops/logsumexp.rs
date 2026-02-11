@@ -28,7 +28,7 @@ impl LogSumExp {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/logsumexp.wgsl")
+        include_str!("../shaders/math/logsumexp.wgsl")
     }
 
     /// Execute the logsumexp operation
@@ -181,11 +181,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_logsumexp_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device)
             .await
             .unwrap();
@@ -200,8 +202,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_logsumexp_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Single element
         let input = Tensor::from_vec_on(vec![5.0], vec![1], device.clone())
             .await
@@ -223,8 +226,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_logsumexp_large_values() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Large values (test numerical stability)
         let input = Tensor::from_vec_on(vec![100.0, 101.0, 102.0], vec![3], device)
             .await

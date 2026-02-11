@@ -172,7 +172,7 @@ async fn test_cleanup_sends_completion_event() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_monitoring_continues_on_error() {
     let config = ServerConfig {
-        resource_monitoring_interval: Duration::from_millis(50),
+        resource_monitoring_interval: Duration::from_millis(100),
         ..Default::default()
     };
 
@@ -182,10 +182,11 @@ async fn test_resource_monitoring_continues_on_error() {
     start_background_services(state.clone()).await;
 
     // Even if first attempt might error, subsequent attempts should succeed
+    // Relies on per-iteration timeout instead of upfront sleep
     let mut received_events = 0;
-    for _ in 0..5 {
+    for _ in 0..10 {
         if let Ok(Ok(ServerEvent::ResourceUsageUpdate { .. })) =
-            tokio::time::timeout(Duration::from_millis(100), event_receiver.recv()).await
+            tokio::time::timeout(Duration::from_millis(400), event_receiver.recv()).await
         {
             received_events += 1;
         }

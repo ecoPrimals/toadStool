@@ -27,9 +27,10 @@ impl MdnsAdapter {
 
     /// Discover services via mDNS
     ///
+    /// mDNS discovery pending mdns-sd crate integration (network access required).
     /// TODO: Wire up to config crate's MdnsDiscoveryClient
     pub async fn discover(&self, _capability: &str) -> Result<Vec<PrimalEndpoint>, DiscoveryError> {
-        // Placeholder - will integrate with config::mdns_discovery::MdnsDiscoveryClient
+        tracing::debug!("mDNS discovery pending mdns-sd integration; returning empty");
         Ok(Vec::new())
     }
 }

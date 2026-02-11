@@ -25,7 +25,7 @@ impl GeluApproximate {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/gelu_approximate.wgsl")
+        include_str!("../shaders/activation/gelu_approximate.wgsl")
     }
 
     /// Execute the gelu_approximate operation

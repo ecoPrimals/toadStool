@@ -26,7 +26,7 @@ impl Mish {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/mish.wgsl")
+        include_str!("../shaders/activation/mish.wgsl")
     }
 
     /// Execute the mish operation

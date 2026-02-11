@@ -674,18 +674,12 @@ fn test_team_network_config_clone() {
 #[test]
 fn test_byob_executor_config_default() {
     let _config = ByobExecutorConfig::default();
-
-    // Should create with sensible defaults
-    assert!(true, "ByobExecutorConfig created with defaults");
 }
 
 #[test]
 fn test_byob_executor_config_clone() {
     let config = ByobExecutorConfig::default();
     let _cloned = config.clone();
-
-    // Should clone successfully
-    assert!(true, "ByobExecutorConfig cloned");
 }
 
 // ============================================================================

@@ -25,7 +25,7 @@ impl Frac {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/frac.wgsl")
+        include_str!("../shaders/math/frac.wgsl")
     }
 
     /// Execute the frac operation

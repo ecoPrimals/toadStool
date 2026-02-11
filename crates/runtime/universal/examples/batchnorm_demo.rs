@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
 
         // Verify: Feature 0 should be [-1.225, 0, 1.225] (approximately)
         // std = sqrt((1^2 + 0^2 + 1^2) / 3) = sqrt(2/3) = 0.816, so 1/0.816 = 1.225
-        let expected_0 = vec![-1.225, 0.0, 1.225];
+        let expected_0 = &[-1.225, 0.0, 1.225];
         let feature_0: Vec<f32> = (0..*rows).map(|i| normalized[i * cols]).collect();
         let match_0 = feature_0
             .iter()
@@ -107,7 +107,7 @@ async fn main() -> Result<()> {
         );
 
         // Verify: Feature 1 should be [-1.225, 0, 1.225] (approximately)
-        let expected_1 = vec![-1.225, 0.0, 1.225];
+        let expected_1 = &[-1.225, 0.0, 1.225];
         let feature_1: Vec<f32> = (0..*rows).map(|i| normalized[i * cols + 1]).collect();
         let match_1 = feature_1
             .iter()

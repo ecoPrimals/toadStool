@@ -26,7 +26,7 @@ impl SELU {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/selu.wgsl")
+        include_str!("../shaders/activation/selu.wgsl")
     }
 
     /// Execute the selu operation

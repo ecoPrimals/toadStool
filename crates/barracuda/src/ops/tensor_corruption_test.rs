@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 #[tokio::test]
 async fn test_tensor_3d_roundtrip_minimal() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else { return };
     
     println!("\n=== Testing 3D Tensor Roundtrip ===\n");
     
@@ -56,7 +56,7 @@ async fn test_tensor_3d_roundtrip_minimal() {
 
 #[tokio::test]
 async fn test_tensor_3d_pattern() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else { return };
     
     println!("\n=== Testing 3D Tensor with Pattern ===\n");
     
@@ -93,7 +93,7 @@ async fn test_tensor_3d_pattern() {
 
 #[tokio::test]
 async fn test_tensor_2d_vs_3d() {
-    let device = Arc::new(WgpuDevice::new().await.unwrap());
+    let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else { return };
     
     println!("\n=== Comparing 2D vs 3D Tensors ===\n");
     

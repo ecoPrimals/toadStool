@@ -3,12 +3,13 @@
 //! Validates projection, attention, and cross-attention functionality.
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 #[tokio::test]
 async fn test_mha_basic() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let batch = 2;
     let seq_len = 8;
     let d_model = 64;
@@ -58,8 +59,9 @@ async fn test_mha_basic() {
 
 #[tokio::test]
 async fn test_mha_shape_validation() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let batch = 2;
     let seq_len = 8;
     let d_model = 64;
@@ -99,8 +101,9 @@ async fn test_mha_shape_validation() {
 
 #[tokio::test]
 async fn test_mha_cross_attention() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let batch = 2;
     let q_seq = 8;
     let kv_seq = 16; // Different sequence length for cross-attention

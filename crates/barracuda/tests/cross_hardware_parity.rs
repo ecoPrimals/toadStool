@@ -291,7 +291,8 @@ async fn test_toadstool_guided_device_selection() {
     }
 
     // ToadStool recommends device for tensor ops
-    let selection = select_best_device(HardwareWorkload::TensorOps).expect("Device selection failed");
+    let selection =
+        select_best_device(HardwareWorkload::TensorOps).expect("Device selection failed");
     println!("ToadStool recommends: {:?} for TensorOps", selection);
 
     // BarraCUDA creates device from recommendation

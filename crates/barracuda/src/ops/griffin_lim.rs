@@ -61,7 +61,7 @@ impl GriffinLim {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/griffin_lim.wgsl")
+        include_str!("../shaders/audio/griffin_lim.wgsl")
     }
 
     /// Execute the Griffin-Lim operation
@@ -250,11 +250,13 @@ impl GriffinLim {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_griffin_lim_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let magnitude = Tensor::from_vec_on(vec![1.0; 100 * 257], vec![100, 257], device.clone())
             .await
             .unwrap();

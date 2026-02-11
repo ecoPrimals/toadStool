@@ -44,7 +44,7 @@ impl ChamferDistance {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/chamfer_distance.wgsl")
+        include_str!("../shaders/loss/chamfer_distance.wgsl")
     }
 
     /// Execute ChamferDistance on tensor
@@ -243,12 +243,13 @@ impl ChamferDistance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_chamfer_distance_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let num_points_x = 5;
         let num_points_y = 7;
         let point_dim = 3;

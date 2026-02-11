@@ -57,7 +57,8 @@ impl CpuBackend {
             .map_err(|e| ToadStoolError::runtime(format!("Failed to create layout: {}", e)))?;
 
         // Allocate
-        // SAFETY: Layout is valid (checked above)
+        // SAFETY: Layout is valid (from_size_align checked size and power-of-2 align above).
+        // alloc returns null on OOM (we check); otherwise valid for layout.size() bytes.
         let ptr = unsafe { alloc(layout) };
 
         if ptr.is_null() {
@@ -77,8 +78,10 @@ impl CpuBackend {
     /// - ptr is not used after this call
     unsafe fn free_aligned(ptr: *mut u8, size: usize, align: usize) {
         if !ptr.is_null() {
-            let layout = Layout::from_size_align_unchecked(size, align);
-            dealloc(ptr, layout);
+            // SAFETY: Caller guarantees ptr/size/align from allocate_aligned; layout is valid.
+            let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
+            // SAFETY: ptr from alloc, layout matches; freed exactly once.
+            unsafe { dealloc(ptr, layout) };
         }
     }
 }
@@ -124,7 +127,7 @@ impl UnifiedMemoryBackend for CpuBackend {
         );
 
         // Zero the memory for safety
-        // SAFETY: ptr is valid and size bytes are allocated
+        // SAFETY: ptr from allocate_aligned; size matches allocation; valid for write.
         unsafe {
             std::ptr::write_bytes(ptr, 0, size);
         }
@@ -137,7 +140,8 @@ impl UnifiedMemoryBackend for CpuBackend {
     async fn free_unified(&self, allocation: BackendAllocation) -> ToadStoolResult<()> {
         match allocation {
             BackendAllocation::Cpu(alloc) => {
-                // SAFETY: We allocated this memory, size and alignment are correct
+                // SAFETY: alloc from our allocate_unified; ptr/size/align match original allocation.
+                // free_aligned requires matching layout (documented in its Safety section).
                 unsafe {
                     Self::free_aligned(
                         alloc.ptr,
@@ -220,11 +224,13 @@ mod tests {
         assert_eq!(cpu_ptr as *const u8, device_ptr); // Same pointer!
 
         // Write some data
+        // SAFETY: cpu_ptr from allocate_unified(4096); verified non-null; 4096 bytes valid.
         unsafe {
             std::ptr::write_bytes(cpu_ptr, 42, 4096);
         }
 
         // Read it back
+        // SAFETY: cpu_ptr valid; memory initialized by write_bytes above; single byte read.
         unsafe {
             let first_byte = *cpu_ptr;
             assert_eq!(first_byte, 42);

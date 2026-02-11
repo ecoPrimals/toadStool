@@ -47,7 +47,7 @@ impl Histc {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/histc.wgsl")
+        include_str!("../shaders/misc/histc.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -223,12 +223,13 @@ impl Histc {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_histc_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input =
             Tensor::from_vec_on(vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0], vec![6], device.clone())
                 .await
@@ -242,8 +243,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_histc_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 1000;
         let input = Tensor::from_vec_on(vec![1.0; size], vec![size], device.clone())
             .await

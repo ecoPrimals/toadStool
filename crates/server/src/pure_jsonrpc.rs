@@ -21,20 +21,21 @@
 //! That's it! No complicated middleware, no heavy abstractions.
 
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tracing::{error, info};
 
 // Re-use existing types
-#[allow(unused_imports)] // Some types used only in methods, not in signatures
 use crate::rpc_types::{
-    ComputeCapabilities, HealthStatus, ResourceRequirements, WorkloadPriority,
+    HealthStatus, ResourceRequirements, WorkloadPriority,
     WorkloadSubmission as TarpcWorkloadSubmission,
 };
 
 /// JSON-RPC 2.0 Request
 ///
-/// Standard compliant: https://www.jsonrpc.org/specification
+/// Standard compliant: <https://www.jsonrpc.org/specification>
 #[derive(Debug, Clone, Deserialize)]
 pub struct JsonRpcRequest {
     /// Protocol version (must be "2.0")
@@ -51,13 +52,16 @@ pub struct JsonRpcRequest {
     pub id: Option<serde_json::Value>,
 }
 
+/// Zero-copy JSON-RPC version for responses
+const JSONRPC_VERSION: &str = toadstool_common::constants::jsonrpc::VERSION;
+
 /// JSON-RPC 2.0 Response
 ///
 /// Either contains `result` (success) or `error` (failure), never both.
 #[derive(Debug, Clone, Serialize)]
 pub struct JsonRpcResponse {
     /// Protocol version ("2.0")
-    pub jsonrpc: String,
+    pub jsonrpc: Cow<'static, str>,
 
     /// Success result (present on success)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -73,7 +77,7 @@ pub struct JsonRpcResponse {
 
 /// JSON-RPC 2.0 Error Object
 ///
-/// Standard error codes: https://www.jsonrpc.org/specification#error_object
+/// Standard error codes: <https://www.jsonrpc.org/specification#error_object>
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonRpcError {
     /// Error code (standard or application-defined)
@@ -88,12 +92,16 @@ pub struct JsonRpcError {
 }
 
 impl JsonRpcError {
-    // Standard JSON-RPC 2.0 error codes
-    pub const PARSE_ERROR: i32 = -32700;
-    pub const INVALID_REQUEST: i32 = -32600;
-    pub const METHOD_NOT_FOUND: i32 = -32601;
-    pub const INVALID_PARAMS: i32 = -32602;
-    pub const INTERNAL_ERROR: i32 = -32603;
+    // Standard JSON-RPC 2.0 error codes -- from shared ecosystem constants
+    pub const PARSE_ERROR: i32 = toadstool_common::constants::jsonrpc::error_codes::PARSE_ERROR;
+    pub const INVALID_REQUEST: i32 =
+        toadstool_common::constants::jsonrpc::error_codes::INVALID_REQUEST;
+    pub const METHOD_NOT_FOUND: i32 =
+        toadstool_common::constants::jsonrpc::error_codes::METHOD_NOT_FOUND;
+    pub const INVALID_PARAMS: i32 =
+        toadstool_common::constants::jsonrpc::error_codes::INVALID_PARAMS;
+    pub const INTERNAL_ERROR: i32 =
+        toadstool_common::constants::jsonrpc::error_codes::INTERNAL_ERROR;
 
     /// Create parse error
     pub fn parse_error(msg: impl Into<String>) -> Self {
@@ -154,8 +162,8 @@ pub struct JsonWorkloadSubmission {
 }
 
 impl JsonWorkloadSubmission {
-    /// Convert to tarpc submission (decode base64)
-    fn to_tarpc(&self) -> Result<TarpcWorkloadSubmission, String> {
+    /// Convert into tarpc submission (decode base64, consumes self)
+    fn into_tarpc(self) -> Result<TarpcWorkloadSubmission, String> {
         use base64::{engine::general_purpose::STANDARD, Engine as _};
 
         let data = STANDARD
@@ -163,12 +171,12 @@ impl JsonWorkloadSubmission {
             .map_err(|e| format!("Invalid base64 data: {}", e))?;
 
         Ok(TarpcWorkloadSubmission {
-            workload_id: self.workload_id.clone(),
-            workload_type: self.workload_type.clone(),
+            workload_id: self.workload_id,
+            workload_type: self.workload_type,
             data,
-            metadata: self.metadata.clone(),
+            metadata: self.metadata,
             priority: self.priority,
-            requirements: self.requirements.clone(),
+            requirements: self.requirements,
         })
     }
 }
@@ -180,18 +188,27 @@ pub struct JsonRpcHandler {
     executor: Arc<dyn super::tarpc_server::WorkloadExecutor + Send + Sync>,
     version: String,
     start_time: std::time::Instant,
+    job_queue: crate::gpu_job_queue::GpuJobQueue,
+    error_count: Arc<AtomicU64>,
 }
 
 impl JsonRpcHandler {
     /// Create new handler with executor
+    ///
+    /// Pass `error_count` to share the counter with other servers for unified monitoring.
     pub fn new(
         executor: Arc<dyn super::tarpc_server::WorkloadExecutor + Send + Sync>,
         version: String,
+        error_count: Option<Arc<AtomicU64>>,
     ) -> Self {
         Self {
             executor,
             version,
             start_time: std::time::Instant::now(),
+            job_queue: crate::gpu_job_queue::GpuJobQueue::new(
+                crate::gpu_job_queue::JobQueueConfig::default(),
+            ),
+            error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
         }
     }
 
@@ -200,9 +217,10 @@ impl JsonRpcHandler {
     /// This is BearDog's proven pattern: parse → validate → route → execute → respond
     pub async fn handle_request(&self, request: &JsonRpcRequest) -> JsonRpcResponse {
         // Validate JSON-RPC version
-        if request.jsonrpc != "2.0" {
+        if request.jsonrpc != JSONRPC_VERSION {
+            self.error_count.fetch_add(1, Ordering::Relaxed);
             return JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
+                jsonrpc: Cow::Borrowed(JSONRPC_VERSION),
                 result: None,
                 error: Some(JsonRpcError::invalid_request(
                     "Invalid JSON-RPC version (must be '2.0')",
@@ -219,15 +237,16 @@ impl JsonRpcHandler {
             .await
         {
             Ok(result) => JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
+                jsonrpc: Cow::Borrowed(JSONRPC_VERSION),
                 result: Some(result),
                 error: None,
                 id: request.id.clone().unwrap_or(serde_json::Value::Null),
             },
             Err(err) => {
+                self.error_count.fetch_add(1, Ordering::Relaxed);
                 error!("JSON-RPC error for {}: {}", request.method, err.message);
                 JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
+                    jsonrpc: Cow::Borrowed(JSONRPC_VERSION),
                     result: None,
                     error: Some(err),
                     id: request.id.clone().unwrap_or(serde_json::Value::Null),
@@ -266,6 +285,13 @@ impl JsonRpcHandler {
             // Version info
             "toadstool.version" => self.version_info().await,
 
+            // GPU Compute Job Queue methods
+            "compute.submit" => self.compute_submit(params).await,
+            "compute.status" => self.compute_status(params).await,
+            "compute.result" => self.compute_result(params).await,
+            "compute.cancel" => self.compute_cancel(params).await,
+            "compute.list" => self.compute_list(params).await,
+
             // Unknown method
             _ => Err(JsonRpcError::method_not_found(method)),
         }
@@ -284,7 +310,7 @@ impl JsonRpcHandler {
         info!("Submitting workload: {}", submission.workload_id);
 
         let tarpc_submission = submission
-            .to_tarpc()
+            .into_tarpc()
             .map_err(JsonRpcError::invalid_params)?;
 
         let result = self
@@ -309,12 +335,15 @@ impl JsonRpcHandler {
 
         info!("Querying status: {}", workload_id);
 
-        // TODO: Implement actual status query
-        Err(JsonRpcError {
-            code: -32601,
-            message: "Not yet implemented".to_string(),
-            data: None,
-        })
+        // Parse as UUID for job queue lookup
+        let job_id = uuid::Uuid::parse_str(&workload_id)
+            .map_err(|_| JsonRpcError::invalid_params("Invalid job ID format"))?;
+
+        match self.job_queue.status(job_id).await {
+            Ok(job) => serde_json::to_value(job)
+                .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {e}"))),
+            Err(e) => Err(JsonRpcError::internal_error(e.to_string())),
+        }
     }
 
     /// Cancel workload
@@ -344,8 +373,13 @@ impl JsonRpcHandler {
     ) -> Result<serde_json::Value, JsonRpcError> {
         info!("Listing workloads");
 
-        // TODO: Implement actual workload listing
-        Ok(serde_json::json!([]))
+        let jobs = self.job_queue.list(None).await;
+        let counts = self.job_queue.counts().await;
+
+        Ok(serde_json::json!({
+            "jobs": jobs,
+            "counts": counts,
+        }))
     }
 
     /// Query capabilities (SELF-KNOWLEDGE!)
@@ -372,7 +406,7 @@ impl JsonRpcHandler {
             uptime_secs: uptime.as_secs(),
             active_workloads: 0,
             queued_workloads: 0,
-            error_count: 0,
+            error_count: self.error_count.load(Ordering::Relaxed) as usize,
             resource_utilization: 0.0,
         };
 
@@ -393,11 +427,105 @@ impl JsonRpcHandler {
 
         Ok(serde_json::json!(info))
     }
+
+    // ---- GPU Compute Job Queue (compute.*) ----
+
+    async fn compute_submit(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
+
+        let job_type: crate::gpu_job_queue::JobType = serde_json::from_value(params.clone())
+            .map_err(|e| JsonRpcError::invalid_params(format!("Invalid job type: {e}")))?;
+
+        let priority = params.get("priority").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+
+        match self.job_queue.submit(job_type, priority).await {
+            Ok(job_id) => Ok(serde_json::json!({"job_id": job_id})),
+            Err(e) => Err(JsonRpcError::internal_error(e.to_string())),
+        }
+    }
+
+    async fn compute_status(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let job_id = self.extract_job_id(params)?;
+        match self.job_queue.status(job_id).await {
+            Ok(job) => serde_json::to_value(job)
+                .map_err(|e| JsonRpcError::internal_error(format!("Serialization: {e}"))),
+            Err(e) => Err(JsonRpcError::internal_error(e.to_string())),
+        }
+    }
+
+    async fn compute_result(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let job_id = self.extract_job_id(params)?;
+        self.job_queue
+            .result(job_id)
+            .await
+            .map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    }
+
+    async fn compute_cancel(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let job_id = self.extract_job_id(params)?;
+        self.job_queue
+            .cancel(job_id)
+            .await
+            .map(|()| serde_json::json!({"cancelled": true}))
+            .map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    }
+
+    async fn compute_list(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let state_filter = params
+            .and_then(|p| p.get("state"))
+            .and_then(|v| serde_json::from_value(v.clone()).ok());
+        let jobs = self.job_queue.list(state_filter).await;
+        let counts = self.job_queue.counts().await;
+        Ok(serde_json::json!({"jobs": jobs, "counts": counts}))
+    }
+
+    fn extract_job_id(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<uuid::Uuid, JsonRpcError> {
+        let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
+        let id_str = params
+            .get("job_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'job_id'"))?;
+        uuid::Uuid::parse_str(id_str)
+            .map_err(|_| JsonRpcError::invalid_params("Invalid job_id UUID"))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
+
+    fn test_handler() -> JsonRpcHandler {
+        let executor = Arc::new(crate::tarpc_server::StandaloneExecutor::new());
+        JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
+    }
+
+    fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest {
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: method.to_string(),
+            params,
+            id: Some(serde_json::json!(id)),
+        }
+    }
 
     #[test]
     fn test_parse_request() {
@@ -440,7 +568,408 @@ mod tests {
             },
         };
 
-        let tarpc = submission.to_tarpc().expect("Conversion failed");
+        let tarpc = submission.into_tarpc().expect("Conversion failed");
         assert_eq!(tarpc.data, vec![1, 2, 3, 4]);
+    }
+
+    #[tokio::test]
+    async fn test_health_via_handle_request() {
+        let handler = test_handler();
+        let request = mk_request("toadstool.health", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result["healthy"].as_bool().unwrap());
+        assert_eq!(result["version"], "test-1.0.0");
+    }
+
+    #[tokio::test]
+    async fn test_handle_method_dispatch_version() {
+        let handler = test_handler();
+        let request = mk_request("toadstool.version", None, 2);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["version"], "test-1.0.0");
+        assert_eq!(result["protocol"], "JSON-RPC 2.0");
+    }
+
+    #[tokio::test]
+    async fn test_handle_method_dispatch_unknown() {
+        let handler = test_handler();
+        let request = mk_request("unknown.method", None, 99);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::METHOD_NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_invalid_jsonrpc_version() {
+        let handler = test_handler();
+        let request = JsonRpcRequest {
+            jsonrpc: "3.0".to_string(),
+            method: "toadstool.health".to_string(),
+            params: None,
+            id: Some(serde_json::json!(1)),
+        };
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_compute_submit() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "inference": {
+                "model": "tinyllama",
+                "prompt": "Hello",
+                "params": {}
+            }
+        });
+        let request = mk_request("compute.submit", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result["job_id"].as_str().is_some());
+    }
+
+    #[tokio::test]
+    async fn test_compute_list() {
+        let handler = test_handler();
+        let request = mk_request("compute.list", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result["jobs"].is_array());
+        assert!(result["counts"].is_object());
+    }
+
+    #[tokio::test]
+    async fn test_compute_status_missing_job_id() {
+        let handler = test_handler();
+        let request = mk_request("compute.status", Some(serde_json::json!({})), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn test_query_capabilities() {
+        let handler = test_handler();
+        let request = mk_request("toadstool.query_capabilities", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result["service_id"].as_str().is_some());
+        assert!(result["compute_units"].is_array());
+    }
+
+    #[test]
+    fn test_jsonrpc_error_constructors() {
+        let err = JsonRpcError::parse_error("bad json");
+        assert_eq!(err.code, JsonRpcError::PARSE_ERROR);
+        assert!(err.message.contains("bad json"));
+
+        let err = JsonRpcError::invalid_request("wrong version");
+        assert_eq!(err.code, JsonRpcError::INVALID_REQUEST);
+
+        let err = JsonRpcError::invalid_params("missing field");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+
+        let err = JsonRpcError::internal_error("panic");
+        assert_eq!(err.code, JsonRpcError::INTERNAL_ERROR);
+    }
+
+    #[test]
+    fn test_json_workload_submission_invalid_base64() {
+        let submission = JsonWorkloadSubmission {
+            workload_id: "work-1".to_string(),
+            workload_type: "gpu_compute".to_string(),
+            data: "!!!not-valid-base64!!!".to_string(),
+            metadata: HashMap::new(),
+            priority: WorkloadPriority::Normal,
+            requirements: ResourceRequirements {
+                cpu_cores: Some(4),
+                memory_bytes: Some(1024 * 1024 * 1024),
+                gpu_memory_bytes: None,
+                timeout_secs: Some(300),
+            },
+        };
+        let result = submission.into_tarpc();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid base64"));
+    }
+
+    #[tokio::test]
+    async fn test_submit_workload_missing_params() {
+        let handler = test_handler();
+        let request = mk_request("toadstool.submit_workload", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn test_submit_workload_success() {
+        use base64::{engine::general_purpose::STANDARD, Engine as _};
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "workload_id": "work-submit-1",
+            "workload_type": "cpu_compute",
+            "data": STANDARD.encode([1u8, 2, 3, 4]),
+            "metadata": {},
+            "priority": "Normal",
+            "requirements": {
+                "cpu_cores": 2,
+                "memory_bytes": 1024,
+                "timeout_secs": 60
+            }
+        });
+        let request = mk_request("toadstool.submit_workload", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["workload_id"], "work-submit-1");
+        assert!(result["status"].as_str().is_some());
+    }
+
+    #[tokio::test]
+    async fn test_submit_workload_invalid_base64() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "workload_id": "work-1",
+            "workload_type": "cpu_compute",
+            "data": "!!!invalid!!!",
+            "metadata": {},
+            "priority": "Normal",
+            "requirements": {}
+        });
+        let request = mk_request("toadstool.submit_workload", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn test_query_status_invalid_uuid() {
+        let handler = test_handler();
+        let params = serde_json::json!("not-a-uuid");
+        let request = mk_request("toadstool.query_status", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn test_query_status_job_not_found() {
+        let handler = test_handler();
+        let job_id = uuid::Uuid::new_v4();
+        let params = serde_json::json!(job_id.to_string());
+        let request = mk_request("toadstool.query_status", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INTERNAL_ERROR);
+    }
+
+    #[tokio::test]
+    async fn test_cancel_workload_missing_params() {
+        let handler = test_handler();
+        let request = mk_request("toadstool.cancel_workload", None, 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn test_cancel_workload_success() {
+        let handler = test_handler();
+        let params = serde_json::json!("some-workload-id");
+        let request = mk_request("toadstool.cancel_workload", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert_eq!(result["success"], true);
+    }
+
+    #[tokio::test]
+    async fn test_compute_result_missing_job_id() {
+        let handler = test_handler();
+        let request = mk_request("compute.result", Some(serde_json::json!({})), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn test_compute_result_job_not_found() {
+        let handler = test_handler();
+        let job_id = uuid::Uuid::new_v4();
+        let params = serde_json::json!({ "job_id": job_id.to_string() });
+        let request = mk_request("compute.result", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INTERNAL_ERROR);
+    }
+
+    #[tokio::test]
+    async fn test_compute_cancel_missing_job_id() {
+        let handler = test_handler();
+        let request = mk_request("compute.cancel", Some(serde_json::json!({})), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn test_compute_list_with_state_filter() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "state": "pending" });
+        let request = mk_request("compute.list", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result["jobs"].is_array());
+        assert!(result["counts"].is_object());
+    }
+
+    #[tokio::test]
+    async fn test_health_error_count_incremented() {
+        let error_count = Arc::new(std::sync::atomic::AtomicU64::new(0));
+        let executor = Arc::new(crate::tarpc_server::StandaloneExecutor::new());
+        let handler = JsonRpcHandler::new(executor, "1.0".to_string(), Some(error_count));
+
+        let bad_request = mk_request("unknown.method", None, 1);
+        let _ = handler.handle_request(&bad_request).await;
+
+        let health_request = mk_request("toadstool.health", None, 2);
+        let response = handler.handle_request(&health_request).await;
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result["error_count"].as_u64().unwrap_or(0) >= 1);
+    }
+
+    #[tokio::test]
+    async fn test_request_id_null_when_missing() {
+        let handler = test_handler();
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "toadstool.health".to_string(),
+            params: None,
+            id: None,
+        };
+        let response = handler.handle_request(&request).await;
+        assert_eq!(response.id, serde_json::Value::Null);
+    }
+
+    #[tokio::test]
+    async fn test_compute_submit_invalid_params() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "invalid": "job_type" });
+        let request = mk_request("compute.submit", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn test_submit_workload_invalid_params_structure() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "workload_type": "cpu_compute",
+            "data": ""
+        });
+        let request = mk_request("toadstool.submit_workload", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn test_compute_cancel_success() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "inference": { "model": "test", "prompt": "x", "params": {} }
+        });
+        let submit_req = mk_request("compute.submit", Some(params.clone()), 1);
+        let submit_resp = handler.handle_request(&submit_req).await;
+        let job_id = submit_resp
+            .result
+            .as_ref()
+            .and_then(|r| r.get("job_id"))
+            .and_then(|v| v.as_str())
+            .expect("submit should return job_id");
+
+        let cancel_params = serde_json::json!({ "job_id": job_id });
+        let cancel_req = mk_request("compute.cancel", Some(cancel_params), 2);
+        let cancel_resp = handler.handle_request(&cancel_req).await;
+
+        assert!(cancel_resp.error.is_none());
+        let result = cancel_resp.result.expect("result present");
+        assert_eq!(result["cancelled"], true);
+    }
+
+    #[test]
+    fn test_jsonrpc_response_serialization() {
+        let success = JsonRpcResponse {
+            jsonrpc: std::borrow::Cow::Borrowed("2.0"),
+            result: Some(serde_json::json!({"ok": true})),
+            error: None,
+            id: serde_json::json!(1),
+        };
+        let json = serde_json::to_string(&success).expect("Serialize failed");
+        assert!(json.contains("\"result\""));
+        assert!(json.contains("\"ok\""));
+        assert!(!json.contains("\"error\""));
+
+        let failure = JsonRpcResponse {
+            jsonrpc: std::borrow::Cow::Borrowed("2.0"),
+            result: None,
+            error: Some(JsonRpcError::method_not_found("foo")),
+            id: serde_json::json!(2),
+        };
+        let json_err = serde_json::to_string(&failure).expect("Serialize failed");
+        assert!(json_err.contains("\"error\""));
+    }
+
+    #[test]
+    fn test_jsonrpc_request_with_params_array() {
+        let json = r#"{"jsonrpc":"2.0","method":"foo","params":[1,2],"id":1}"#;
+        let req: JsonRpcRequest = serde_json::from_str(json).expect("Parse failed");
+        assert!(req.params.is_some());
     }
 }

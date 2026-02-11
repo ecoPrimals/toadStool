@@ -23,7 +23,7 @@ impl ReLU {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/relu.wgsl")
+        include_str!("../shaders/activation/relu.wgsl")
     }
 
     /// Execute ReLU on tensor
@@ -173,12 +173,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_relu_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test data: [-2, -1, 0, 1, 2]
         let input = Tensor::from_vec_on(vec![-2.0, -1.0, 0.0, 1.0, 2.0], vec![5], device)
             .await
@@ -198,8 +199,9 @@ mod tests {
     #[tokio::test]
     async fn test_relu_edge_cases() {
         // Edge cases: very small values near zero
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(vec![-1e-6, -1e-10, 0.0, 1e-10, 1e-6], vec![5], device)
             .await
             .unwrap();
@@ -217,8 +219,9 @@ mod tests {
     #[tokio::test]
     async fn test_relu_boundary() {
         // Boundary: infinities and large values
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input = Tensor::from_vec_on(
             vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY],
             vec![5],
@@ -240,8 +243,9 @@ mod tests {
     #[tokio::test]
     async fn test_relu_large_tensor() {
         // Stress test: 1000 elements
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 1000;
         let input_data: Vec<f32> = (0..size).map(|i| (i as f32) - 500.0).collect();
 
@@ -262,8 +266,9 @@ mod tests {
     #[tokio::test]
     async fn test_relu_precision() {
         // Precision: GPU vs CPU reference
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![-5.0, -2.5, -1.0, -0.5, 0.0, 0.5, 1.0, 2.5, 5.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![9], device)
             .await

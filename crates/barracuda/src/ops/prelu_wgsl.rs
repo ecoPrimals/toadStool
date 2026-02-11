@@ -27,7 +27,7 @@ impl PReLU {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/prelu.wgsl")
+        include_str!("../shaders/activation/prelu.wgsl")
     }
 
     /// Execute the PReLU operation
@@ -193,15 +193,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_prelu_positive() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![1.0, 2.0, 3.0];
         let input = Tensor::new(data, vec![3], device.clone());
 
@@ -215,8 +215,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_prelu_negative() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![-1.0, -2.0, -3.0];
         let input = Tensor::new(data, vec![3], device.clone());
 
@@ -230,8 +231,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_prelu_mixed() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![-2.0, 0.0, 2.0];
         let input = Tensor::new(data, vec![3], device.clone());
 

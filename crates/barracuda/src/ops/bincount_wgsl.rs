@@ -15,7 +15,7 @@
 //! ```
 //! Uses atomic operations for thread-safe GPU counting.
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 
@@ -30,7 +30,7 @@ impl Bincount {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/bincount.wgsl")
+        include_str!("../shaders/misc/bincount.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -143,10 +143,9 @@ impl Bincount {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (input_size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(input_size as u32);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -169,11 +168,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_bincount_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![0u32, 1, 1, 2, 2, 2];
         // Convert u32 to f32 for Tensor
         let input_f32: Vec<f32> = input_data.iter().map(|&x| x as f32).collect();
@@ -195,7 +196,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_bincount_sparse() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![0u32, 0, 5, 5, 5];
         // Convert u32 to f32 for Tensor
         let input_f32: Vec<f32> = input_data.iter().map(|&x| x as f32).collect();

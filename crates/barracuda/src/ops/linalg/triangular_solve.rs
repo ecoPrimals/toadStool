@@ -75,7 +75,7 @@ impl TriangularSolve {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/triangular_solve.wgsl")
+        include_str!("../../shaders/linalg/triangular_solve.wgsl")
     }
 
     /// Execute triangular solve on GPU
@@ -247,12 +247,8 @@ impl TriangularSolve {
 
         device.queue.submit(Some(encoder.finish()));
 
-        // Return solution vector x
-        Ok(Tensor::from_buffer(
-            solution_buffer,
-            vec![n],
-            device.clone(),
-        ))
+        let output_data = crate::utils::read_buffer(device, &solution_buffer, n)?;
+        Ok(Tensor::new(output_data, vec![n], device.clone()))
     }
 }
 
@@ -299,12 +295,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_forward_substitution_2x2() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Lower triangular matrix L = [[2, 0], [3, 4]]
         // Solve L·x = b where b = [6, 17]
         // Expected: x = [3, 2]
@@ -336,8 +333,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_backward_substitution_2x2() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Upper triangular matrix U = [[2, 3], [0, 4]]
         // Solve U·x = b where b = [12, 8]
         // Expected: x = [3, 2]
@@ -368,8 +366,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cholesky_solve_pipeline() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test complete pipeline: A·x = b
         // A = [[4, 2], [2, 3]] (SPD)
         // b = [6, 5]
@@ -397,11 +396,12 @@ mod tests {
 
         let _solution = x.to_vec().unwrap();
 
-        // Verify A·x ≈ b by reconstructing A from data
+        // Verify A·x ≈ b by reconstructing A from data (matmul expects 2D: [2,2] @ [2,1])
         let a_verify = Tensor::from_vec_on(a_data, vec![2, 2], device)
             .await
             .unwrap();
-        let ax = a_verify.matmul(&x).unwrap();
+        let x_2d = x.unsqueeze(1).unwrap();
+        let ax = a_verify.matmul(&x_2d).unwrap().squeeze().unwrap();
         let ax_data = ax.to_vec().unwrap();
 
         for (i, (&expected, &actual)) in b_expected.iter().zip(ax_data.iter()).enumerate() {

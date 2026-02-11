@@ -290,7 +290,7 @@ mod tests {
 
         let config = ComponentModelConfig::default();
         let registry = Arc::new(ComponentRegistry::new(config.clone()));
-        let linker = ComponentLinker::new(config, registry.clone());
+        let linker = ComponentLinker::new(config, Arc::clone(&registry));
 
         // Test empty composition
         let result = linker.validate_composition(&[]).await;

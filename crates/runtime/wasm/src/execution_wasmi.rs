@@ -178,9 +178,6 @@ mod tests {
         let config = WasmRuntimeConfig::default();
         let engine = Engine::default();
         let _executor = ModuleExecutor::new(engine, config);
-
-        // Just verify it constructs without panicking
-        assert!(true);
     }
 
     #[tokio::test]
@@ -208,6 +205,5 @@ mod tests {
         // For this simple test, we'd need to call "add" with parameters
         // This would require a more complex setup with typed function calls
         // For now, just verify the module loads
-        assert!(true);
     }
 }

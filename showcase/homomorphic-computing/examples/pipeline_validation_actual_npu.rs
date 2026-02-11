@@ -19,8 +19,6 @@ use anyhow::Result;
 use std::time::Instant;
 use tfhe::shortint::parameters::PARAM_MESSAGE_2_CARRY_2_KS_PBS;
 use tfhe::shortint::{ClientKey, ServerKey};
-use tracing;
-use tracing_subscriber;
 
 /// Actual benchmark result from hardware
 #[derive(Debug, Clone)]

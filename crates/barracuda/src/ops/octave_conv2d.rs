@@ -12,7 +12,7 @@
 //!
 //! Reference: "Drop an Octave: Reducing Spatial Redundancy in CNNs with Octave Convolution" by Chen et al. (2019)
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -109,7 +109,7 @@ impl OctaveConv2D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/octave_conv2d.wgsl")
+        include_str!("../shaders/conv/octave_conv2d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -414,19 +414,19 @@ impl OctaveConv2D {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 2D shader workgroup size (16, 16)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32).div_ceil(optimal_wg_size);
-            let workgroups_y = (out_height as u32).div_ceil(optimal_wg_size);
+            let (workgroups_x, workgroups_y) =
+                caps.dispatch_2d(out_width as u32, out_height as u32);
             let workgroups_z = batch_size * out_channels;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z as u32);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(
-            output_buffer,
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+        Ok(Tensor::new(
+            output_data,
             vec![batch_size, out_channels, out_height, out_width],
             device.clone(),
         ))
@@ -473,14 +473,15 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_octave_conv2d_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_high =
-            Tensor::from_vec_on(vec![1.0; 1 * 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
+            Tensor::from_vec_on(vec![1.0; 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
                 .await
                 .unwrap();
         let weight =

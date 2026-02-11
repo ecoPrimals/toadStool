@@ -171,6 +171,54 @@ impl MockRuntimeEngine {
         mock
     }
 
+    /// Create a mock runtime engine that fails get_metrics (for health check testing)
+    #[must_use]
+    pub fn new_metrics_failure() -> Self {
+        let mut mock = MockRuntimeEngine::new();
+
+        mock.expect_initialize()
+            .returning(|_| Box::pin(async { Ok(()) }));
+
+        mock.expect_execute().returning(|request| {
+            Box::pin(async move {
+                Ok(ExecutionResponse {
+                    execution_id: request.execution_id,
+                    status: ExecutionStatus::Success,
+                    output: create_test_execution_output(),
+                    metrics: create_test_runtime_metrics(),
+                    duration: Duration::from_secs(1),
+                    runtime_used: RuntimeType::Native,
+                    warnings: vec![],
+                })
+            })
+        });
+
+        mock.expect_get_capabilities()
+            .returning(|| RuntimeCapabilities {
+                supported_workloads: vec![WorkloadType::Native],
+                max_concurrent_executions: Some(1),
+                supported_architectures: vec!["x86_64".to_string()],
+                platform_features: std::collections::HashMap::new(),
+                version: "1.0.0-test-metrics-fail".to_string(),
+            });
+
+        mock.expect_supports_workload()
+            .returning(|workload_type| matches!(workload_type, WorkloadType::Native));
+
+        mock.expect_get_metrics().returning(|| {
+            Box::pin(async move {
+                Err(toadstool::error::ToadStoolError::resource(
+                    "Health check: failed to get engine metrics",
+                ))
+            })
+        });
+
+        mock.expect_shutdown()
+            .returning(|| Box::pin(async { Ok(()) }));
+
+        mock
+    }
+
     /// Create a mock runtime engine that times out
     #[must_use]
     pub fn new_timeout() -> Self {

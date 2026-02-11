@@ -7,7 +7,7 @@
 //! 4. Pass 4: Compact unique values (parallel)
 
 use super::Unique;
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use std::sync::Arc;
@@ -149,11 +149,9 @@ fn compute_prefix_sum_gpu(
         });
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        // Deep Debt Evolution: Capability-based dispatch
-        // Prefix sum is a reduction operation
+        // Dispatch using standard 1D shader workgroup size (256)
         let caps = DeviceCapabilities::from_device(device);
-        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-        let workgroups = (size as u32).div_ceil(optimal_wg_size);
+        let workgroups = caps.dispatch_1d(size as u32);
         pass.dispatch_workgroups(workgroups.max(1), 1, 1);
     }
 
@@ -216,8 +214,8 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
     let device = unique.input().device();
     let input_size: usize = unique.input().len();
 
-    // Use hash table size ~2x input for good distribution
-    let num_buckets = (input_size * 2).next_power_of_two().min(65536);
+    // Use hash table size - large minimum to avoid collisions (hash stores only occupancy, not value)
+    let num_buckets = (input_size * 32).next_power_of_two().clamp(8192, 65536);
 
     // Create hash table (atomic u32)
     let hash_table_buffer = device.create_buffer_u32(num_buckets)?;
@@ -356,10 +354,9 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
         });
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        // Deep Debt Evolution: Capability-based dispatch
+        // Dispatch using standard 1D shader workgroup size (256)
         let caps = DeviceCapabilities::from_device(device);
-        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups = (input_size as u32).div_ceil(optimal_wg_size);
+        let workgroups = caps.dispatch_1d(input_size as u32);
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
@@ -372,11 +369,7 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
     let unique_count = read_buffer_u32_last(device, &prefix_sum_buffer, input_size)? as usize;
 
     if unique_count == 0 {
-        return Ok(Tensor::from_buffer(
-            device.create_buffer_f32(0)?,
-            vec![0],
-            device.clone(),
-        ));
+        return Ok(Tensor::new(vec![], vec![0], device.clone()));
     }
 
     // Step 4: Compact unique values using GPU shader
@@ -518,18 +511,14 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
         });
         pass.set_pipeline(&compact_pipeline);
         pass.set_bind_group(0, &compact_bind_group, &[]);
-        // Deep Debt Evolution: Capability-based dispatch
+        // Dispatch using standard 1D shader workgroup size (256)
         let caps = DeviceCapabilities::from_device(device);
-        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups = (input_size as u32).div_ceil(optimal_wg_size);
+        let workgroups = caps.dispatch_1d(input_size as u32);
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
     device.queue.submit(Some(compact_encoder.finish()));
 
-    Ok(Tensor::from_buffer(
-        output_buffer,
-        vec![unique_count],
-        device.clone(),
-    ))
+    let output_data = crate::utils::read_buffer(device, &output_buffer, unique_count)?;
+    Ok(Tensor::new(output_data, vec![unique_count], device.clone()))
 }

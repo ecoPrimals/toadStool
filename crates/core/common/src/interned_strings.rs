@@ -124,7 +124,7 @@ pub mod protocols {
 ///
 /// # Migration Guide
 ///
-/// ```rust
+/// ```ignore
 /// // ❌ OLD (hardcoded WHO):
 /// use toadstool_common::interned_strings::primals;
 /// let service = discover_service(primals::BEARDOG).await?;

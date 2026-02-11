@@ -9,8 +9,7 @@ use barracuda::ops::*;
 #[tokio::test]
 async fn test_large_matmul() {
     // Large matrix multiplication (1024 x 1024)
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let m = 1024;
     let n = 1024;
     let k = 1024;
@@ -30,8 +29,7 @@ async fn test_large_matmul() {
 #[tokio::test]
 async fn test_large_batch_normalization() {
     // Large batch norm (1000 samples, 512 features)
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 1000;
     let channels = 512;
     let spatial = 1;
@@ -63,8 +61,7 @@ async fn test_large_batch_normalization() {
 #[tokio::test]
 async fn test_many_small_operations() {
     // Run 1000 small operations in sequence
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let size = 100;
     let num_ops = 1000;
 
@@ -94,8 +91,7 @@ async fn test_many_small_operations() {
 #[tokio::test]
 async fn test_deep_network_stack() {
     // Simulate deep network (100 layers)
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 4;
     let dim = 256;
     let num_layers = 100;
@@ -121,8 +117,7 @@ async fn test_deep_network_stack() {
 #[tokio::test]
 async fn test_memory_intensive_concatenation() {
     // Concatenate many large tensors
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 16;
     let dim1 = 512;
     let dim2 = 512;

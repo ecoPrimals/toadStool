@@ -305,13 +305,47 @@ pub(crate) fn compute_twiddle_factors(degree: u32, modulus: u64, root: u64) -> V
 /// Compute primitive N-th root of unity in Z_q
 ///
 /// For q ≡ 1 (mod 2N), we can find ω such that ω^N ≡ 1 (mod q).
-/// This is a placeholder - real implementation needs proper root finding.
-pub fn compute_primitive_root(_degree: u32, _modulus: u64) -> u64 {
-    // TODO: Implement proper primitive root computation
-    // For now, return a placeholder value
-    // Real implementation would use:
-    // 1. Find generator g of Z_q*
-    // 2. Compute ω = g^((q-1)/2N) mod q
-    // 3. Verify ω^N ≡ 1 (mod q)
-    3 // Placeholder
+/// Algorithm: find generator g of Z_q*, then ω = g^((q-1)/N) mod q.
+fn mod_pow(mut base: u64, mut exp: u64, modulus: u64) -> u64 {
+    if modulus == 1 {
+        return 0;
+    }
+    let mut result = 1u64;
+    base %= modulus;
+    while exp > 0 {
+        if exp % 2 == 1 {
+            result = (result as u128 * base as u128 % modulus as u128) as u64;
+        }
+        exp /= 2;
+        base = (base as u128 * base as u128 % modulus as u128) as u64;
+    }
+    result
+}
+
+pub fn compute_primitive_root(degree: u32, modulus: u64) -> u64 {
+    let n = degree as u64;
+    if modulus < 2 || n == 0 {
+        return 1;
+    }
+    // Require q ≡ 1 (mod 2N) so (q-1) is divisible by N
+    let q_minus_1 = modulus - 1;
+    if !q_minus_1.is_multiple_of(n) {
+        return 3; // Fallback: caller should use validated (degree, modulus) pairs
+    }
+    let exponent = q_minus_1 / n;
+    // Try small candidates as potential generators of Z_q*
+    for &g in &[2u64, 3, 5, 7, 11, 13] {
+        if g >= modulus {
+            continue;
+        }
+        let omega = mod_pow(g, exponent, modulus);
+        if omega == 1 {
+            continue;
+        }
+        // Verify ω^N ≡ 1 (mod q)
+        if mod_pow(omega, n, modulus) == 1 {
+            return omega;
+        }
+    }
+    3 // Fallback when no small generator works (e.g. large/special moduli)
 }

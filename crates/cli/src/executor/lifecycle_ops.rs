@@ -471,7 +471,6 @@ impl BiomeExecutor {
     }
 
     #[allow(dead_code)]
-
     fn send_signal_to_process(&self, pid: u32, signal: &str) -> Result<()> {
         use std::process::Command;
 

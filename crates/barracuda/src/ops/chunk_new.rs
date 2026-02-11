@@ -30,7 +30,7 @@ impl Chunk {
     }
     
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/chunk.wgsl")
+        include_str!("../shaders/tensor/chunk.wgsl")
     }
     
     pub fn execute(self) -> Result<Vec<Tensor>> {
@@ -187,11 +187,11 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_chunk_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else { return };
         let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let input = Tensor::from_vec_on(input_data, vec![6], device)
             .await
@@ -209,7 +209,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_chunk_three_way() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else { return };
         let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
         let input = Tensor::from_vec_on(input_data, vec![9], device)
             .await

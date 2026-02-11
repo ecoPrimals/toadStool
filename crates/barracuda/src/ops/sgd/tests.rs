@@ -1,12 +1,13 @@
 //! Tests for SGD Optimizer
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 #[tokio::test]
 async fn test_sgd_basic() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
         .await
         .unwrap();
@@ -26,8 +27,9 @@ async fn test_sgd_basic() {
 
 #[tokio::test]
 async fn test_sgd_with_momentum() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
         .await
         .unwrap();
@@ -55,8 +57,9 @@ async fn test_sgd_with_momentum() {
 
 #[tokio::test]
 async fn test_sgd_with_weight_decay() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
         .await
         .unwrap();
@@ -76,8 +79,9 @@ async fn test_sgd_with_weight_decay() {
 
 #[tokio::test]
 async fn test_sgd_validation() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())
         .await
         .unwrap();
@@ -122,8 +126,9 @@ async fn test_sgd_validation() {
 
 #[tokio::test]
 async fn test_sgd_large_batch() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let size = 128;
     let weights = Tensor::from_vec_on(vec![1.0; size], vec![size], device.clone())
         .await
@@ -142,8 +147,9 @@ async fn test_sgd_large_batch() {
 
 #[tokio::test]
 async fn test_sgd_multi_step() {
-    let device = get_test_device().await;
-
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     let weights = Tensor::from_vec_on(vec![10.0, 20.0], vec![2], device.clone())
         .await
         .unwrap();

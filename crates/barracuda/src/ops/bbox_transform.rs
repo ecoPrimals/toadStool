@@ -48,7 +48,7 @@ impl BBoxTransform {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/bbox_transform.wgsl")
+        include_str!("../shaders/detection/bbox_transform.wgsl")
     }
 
     /// Execute the bbox transform operation
@@ -233,11 +233,13 @@ mod tests {
     #[allow(unused_imports)]
     use super::*;
     // No longer needed - using Tensor method API
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_bbox_transform_basic() {
-        let dev = get_test_device().await;
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let anchors_data = vec![0.0, 0.0, 10.0, 10.0];
         let deltas_data = vec![0.0, 0.0, 0.0, 0.0]; // Identity transform
         let anchors = Tensor::new(anchors_data, vec![1, 4], dev.clone());
@@ -253,8 +255,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_bbox_transform_edge_cases() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test with single anchor at origin
         let anchors = Tensor::new(vec![0.0, 0.0, 1.0, 1.0], vec![1, 4], dev.clone());
         let deltas = Tensor::new(vec![0.0, 0.0, 0.0, 0.0], vec![1, 4], dev.clone());
@@ -272,8 +275,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_bbox_transform_boundary() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test with scaling (exponential deltas)
         let anchors = Tensor::new(vec![0.0, 0.0, 10.0, 10.0], vec![1, 4], dev.clone());
         let deltas = Tensor::new(vec![0.0, 0.0, 0.693, 0.693], vec![1, 4], dev.clone()); // exp(0.693) ≈ 2.0
@@ -298,8 +302,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_bbox_transform_large_batch() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Multiple anchors
         let num_boxes = 100;
         let mut anchors_data = Vec::new();
@@ -322,8 +327,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_bbox_transform_precision() {
-        let dev = get_test_device().await;
-
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test with known values
         // Anchor: [0, 0, 10, 10] → center (5, 5), size (10, 10)
         // Deltas: [0.1, 0.2, 0, 0] → shift center by (1, 2)

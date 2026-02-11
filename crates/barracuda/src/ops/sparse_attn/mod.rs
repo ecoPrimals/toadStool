@@ -101,17 +101,17 @@ impl SparseAttention {
 
     /// Pass 1 shader: Compute QK^T scores (REUSED from attention ✅)
     pub(super) fn shader_matmul() -> &'static str {
-        include_str!("../../shaders/attention_matmul.wgsl")
+        include_str!("../../shaders/math/attention_matmul.wgsl")
     }
 
     /// Pass 2 shader: Apply softmax with sparse mask (NEW - only shader needed!)
     pub(super) fn shader_sparse_softmax() -> &'static str {
-        include_str!("../../shaders/sparse_attention_softmax.wgsl")
+        include_str!("../../shaders/activation/sparse_attention_softmax.wgsl")
     }
 
     /// Pass 3 shader: Apply weights to values (REUSED from attention ✅)
     pub(super) fn shader_apply() -> &'static str {
-        include_str!("../../shaders/attention_apply.wgsl")
+        include_str!("../../shaders/attention/attention_apply.wgsl")
     }
 
     /// Get query tensor

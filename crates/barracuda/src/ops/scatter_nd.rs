@@ -7,7 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -85,7 +85,7 @@ impl ScatterNd {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/scatter_nd.wgsl")
+        include_str!("../shaders/tensor/scatter_nd.wgsl")
     }
 
     /// Execute the scatter ND operation (modifies input in-place)
@@ -335,17 +335,20 @@ impl ScatterNd {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (values_size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(values_size as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        // Return the input tensor (modified in-place)
-        Ok(self.input)
+        let output_data = crate::utils::read_buffer(device, input_buffer, input_size)?;
+        Ok(Tensor::new(
+            output_data,
+            input_shape.to_vec(),
+            device.clone(),
+        ))
     }
 }
 
@@ -365,15 +368,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_scatter_nd_2d() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Input: 3x3 matrix initialized to zeros
         let input = Tensor::new(vec![0.0; 9], vec![3, 3], device.clone());
 
@@ -381,8 +384,8 @@ mod tests {
         let indices_data: Vec<f32> = vec![0.0, 0.0, 2.0, 1.0];
         let indices = Tensor::new(indices_data, vec![2, 2], device.clone());
 
-        // Values: [10.0, 20.0]
-        let values = Tensor::new(vec![10.0, 20.0], vec![2], device.clone());
+        // Values: shape [1, 2] to match expected (batch_size=1, num_indices=2)
+        let values = Tensor::new(vec![10.0, 20.0], vec![1, 2], device.clone());
 
         let result = input.scatter_nd(indices, values).unwrap();
         let output_data = result.to_vec().unwrap();

@@ -136,17 +136,17 @@ impl GroupedQueryAttention {
 
     /// Get WGSL shader for GQA attention matrix multiplication (Pass 1)
     pub(super) fn wgsl_shader_matmul() -> &'static str {
-        include_str!("../../shaders/gqa_matmul.wgsl")
+        include_str!("../../shaders/math/gqa_matmul.wgsl")
     }
 
     /// Get WGSL shader for GQA attention softmax (Pass 2)
     pub(super) fn wgsl_shader_softmax() -> &'static str {
-        include_str!("../../shaders/gqa_softmax.wgsl")
+        include_str!("../../shaders/activation/gqa_softmax.wgsl")
     }
 
     /// Get WGSL shader for GQA attention apply (Pass 3)
     pub(super) fn wgsl_shader_apply() -> &'static str {
-        include_str!("../../shaders/gqa_apply.wgsl")
+        include_str!("../../shaders/attention/gqa_apply.wgsl")
     }
 
     /// Get query tensor

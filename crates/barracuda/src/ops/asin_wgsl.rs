@@ -24,7 +24,7 @@ impl Asin {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/asin.wgsl")
+        include_str!("../shaders/math/asin.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -172,19 +172,20 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_asin() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![0.0, 0.5, -0.5, 1.0, -1.0];
         let input = Tensor::new(data, vec![5], device.clone());
         let output = input.asin().unwrap();
         let result = output.to_vec().unwrap();
         assert!((result[0] - 0.0).abs() < 1e-5);
-        assert!((result[1] - 0.5236).abs() < 1e-3);
+        assert!((result[1] - std::f64::consts::FRAC_PI_6 as f32).abs() < 1e-3);
     }
 }

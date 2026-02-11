@@ -23,9 +23,9 @@ pub struct TowerManager {
 
 impl TowerManager {
     /// Create new tower manager
-    pub fn new(tower_id: String) -> Self {
+    pub fn new(tower_id: impl Into<String>) -> Self {
         Self {
-            tower_id,
+            tower_id: tower_id.into(),
             remote_towers: Arc::new(RwLock::new(Vec::new())),
         }
     }

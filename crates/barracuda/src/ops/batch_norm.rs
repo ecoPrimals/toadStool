@@ -26,7 +26,7 @@ impl BatchNorm {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/batch_norm.wgsl")
+        include_str!("../shaders/norm/batch_norm.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -166,7 +166,7 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     fn batch_norm_cpu(input: &[f32], epsilon: f32) -> Vec<f32> {
         let n = input.len() as f32;
@@ -178,8 +178,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_norm_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![4], device)
             .await
@@ -197,8 +198,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_norm_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // All same values (zero variance)
         let input_data = vec![5.0, 5.0, 5.0, 5.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![4], device.clone())
@@ -226,8 +228,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_norm_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Single element
         let input_data = vec![5.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![1], device.clone())
@@ -252,8 +255,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_norm_large_tensor() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 1000 elements
         let input_data: Vec<f32> = (0..1000).map(|i| i as f32 * 0.1).collect();
         let input = Tensor::from_vec_on(input_data.clone(), vec![1000], device)
@@ -271,8 +275,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_norm_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test FP32 precision
         let input_data = vec![1.234, 5.678, 9.012, 3.456, 7.890];
         let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)

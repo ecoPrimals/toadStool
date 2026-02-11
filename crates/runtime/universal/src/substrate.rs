@@ -21,7 +21,7 @@
 //!
 //! # Example
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_runtime_universal::substrate::*;
 //!
 //! struct MyGpuSubstrate {
@@ -409,8 +409,8 @@ impl<S: ComputeSubstrate> ComputeUnit for SubstrateAdapter<S> {
     }
 
     async fn execute(&self, workload: Workload) -> Result<Output, ComputeError> {
-        // Convert Workload → BufferOperation
-        let buffer_op = self.convert_workload(&workload)?;
+        // Convert Workload → BufferOperation (consumes workload for zero-copy)
+        let buffer_op = self.convert_workload(workload)?;
 
         // Execute on substrate
         let start = std::time::Instant::now();
@@ -435,17 +435,28 @@ impl<S: ComputeSubstrate> ComputeUnit for SubstrateAdapter<S> {
 }
 
 impl<S: ComputeSubstrate> SubstrateAdapter<S> {
-    fn convert_workload(&self, workload: &Workload) -> Result<BufferOperation, ComputeError> {
-        // Simple conversion for common operations
-        match &workload.input {
-            WorkloadData::Custom(data) => Ok(BufferOperation::Custom {
-                name: format!("{:?}", workload.operation),
-                data: data.clone(),
-                metadata: serde_json::json!({}),
-            }),
+    /// Reinterpret `Vec<f32>` as `Vec<u8>` without copying (zero-copy).
+    ///
+    /// Uses `bytemuck::allocation::cast_vec` which is safe and zero-copy.
+    /// Falls back to byte-level copy if the cast fails (shouldn't happen
+    /// for f32 → u8 on any platform, but we handle it for correctness).
+    fn vec_f32_to_u8(v: Vec<f32>) -> Vec<u8> {
+        bytemuck::allocation::cast_vec(v)
+    }
+
+    fn convert_workload(&self, workload: Workload) -> Result<BufferOperation, ComputeError> {
+        // Consume workload for zero-copy: move data instead of cloning
+        match workload.input {
+            WorkloadData::Custom(data) => {
+                // API requires owned Vec<u8>; we move it directly (no clone)
+                Ok(BufferOperation::Custom {
+                    name: format!("{:?}", workload.operation),
+                    data,
+                    metadata: serde_json::json!({}),
+                })
+            }
             WorkloadData::F32VecPair(a, b) => {
-                let a_bytes = bytemuck::cast_slice(a).to_vec();
-                let b_bytes = bytemuck::cast_slice(b).to_vec();
+                let (a_bytes, b_bytes) = (Self::vec_f32_to_u8(a), Self::vec_f32_to_u8(b));
 
                 match workload.operation {
                     OperationType::ElementwiseBinary => Ok(BufferOperation::Add {

@@ -25,7 +25,7 @@ impl Ceil {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/ceil.wgsl")
+        include_str!("../shaders/math/ceil.wgsl")
     }
 
     /// Execute the ceil operation

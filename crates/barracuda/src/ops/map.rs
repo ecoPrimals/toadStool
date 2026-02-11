@@ -17,11 +17,15 @@
 //! ## Usage
 //!
 //! ```no_run
-//! use barracuda::tensor::Tensor;
-//! use barracuda::ops::map::MapOperation;
-//!
-//! let input = Tensor::from_data(&vec![1.0, 2.0, 3.0], vec![3], device)?;
-//! let squared = input.map(MapOperation::Square)?;
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # use barracuda::tensor::Tensor;
+//! # use barracuda::ops::map::MapOperation;
+//! # use barracuda::device::test_pool;
+//! # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! let input = Tensor::from_data(&[1.0f32, 2.0, 3.0], vec![3], device)?;
+//! let _squared = input.map(MapOperation::Square)?;
+//! # Ok(())
+//! # }
 //! ```
 
 use crate::device::{DeviceCapabilities, WorkloadType};
@@ -64,7 +68,7 @@ impl MapOperation {
 
 impl Map {
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/map.wgsl")
+        include_str!("../shaders/misc/map.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -221,13 +225,19 @@ impl Tensor {
     /// ## Example
     ///
     /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use barracuda::tensor::Tensor;
     /// # use barracuda::ops::map::MapOperation;
-    /// # let input = todo!();
+    /// # use barracuda::device::test_pool;
+    /// # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let input = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device).unwrap();
     /// // Square all elements
-    /// let squared = input.map(MapOperation::Square)?;
+    /// let _squared = input.clone().map(MapOperation::Square)?;
     ///
     /// // Take square root
-    /// let sqrt = input.map(MapOperation::Sqrt)?;
+    /// let _sqrt = input.map(MapOperation::Sqrt)?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn map(self, operation: MapOperation) -> Result<Self> {
         let op = Map {
@@ -244,14 +254,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_map_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
 
         let result = input.map(MapOperation::Square).unwrap();
@@ -263,8 +274,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_map_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Single element
         let input = Tensor::from_data(&vec![5.0], vec![1], device.clone()).unwrap();
         let result = input.map(MapOperation::Square).unwrap();
@@ -282,8 +294,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_map_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Sqrt with various values
         let input = Tensor::from_data(&vec![4.0, 9.0, 16.0], vec![3], device.clone()).unwrap();
         let result = input.map(MapOperation::Sqrt).unwrap();
@@ -299,8 +312,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_map_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 1000 elements
         let input_data: Vec<f32> = (1..=1000).map(|i| i as f32).collect();
         let input = Tensor::from_data(&input_data, vec![1000], device).unwrap();
@@ -313,8 +327,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_map_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Test square operation
         let input = Tensor::from_data(&vec![2.0, 3.0], vec![2], device).unwrap();
         let result = input.map(MapOperation::Square).unwrap();

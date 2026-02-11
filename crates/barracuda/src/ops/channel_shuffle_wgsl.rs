@@ -32,7 +32,7 @@ impl ChannelShuffle {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/channel_shuffle.wgsl")
+        include_str!("../shaders/tensor/channel_shuffle.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -193,11 +193,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_channel_shuffle_simple() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Shape: [1, 4, 2, 2] with 2 groups
         // Channels 0,1 in group 0, channels 2,3 in group 1
         let input_data = vec![

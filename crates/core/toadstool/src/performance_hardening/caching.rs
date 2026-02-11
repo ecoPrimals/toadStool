@@ -184,3 +184,143 @@ where
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn test_cache_construction() {
+        let config = CachingConfig::default();
+        let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
+
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.current_size, 0);
+        assert_eq!(stats.hits, 0);
+        assert_eq!(stats.misses, 0);
+        assert_eq!(stats.evictions, 0);
+    }
+
+    #[tokio::test]
+    async fn test_cache_insert_and_get() {
+        let config = CachingConfig::default();
+        let cache = IntelligentCache::new(config);
+
+        let _ = cache.put("key1".to_string(), 42).await;
+        let value = cache.get(&"key1".to_string()).await;
+        assert_eq!(value, Some(42));
+
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.hits, 1);
+        assert_eq!(stats.misses, 0);
+        assert_eq!(stats.current_size, 1);
+    }
+
+    #[tokio::test]
+    async fn test_cache_miss_behavior() {
+        let config = CachingConfig::default();
+        let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
+
+        let value = cache.get(&"nonexistent".to_string()).await;
+        assert_eq!(value, None);
+
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.hits, 0);
+        assert_eq!(stats.misses, 1);
+    }
+
+    #[tokio::test]
+    async fn test_cache_ttl_expiration() {
+        let config = CachingConfig {
+            default_ttl: Duration::from_secs(300),
+            ..Default::default()
+        };
+        let cache = IntelligentCache::new(config);
+
+        let _ = cache
+            .put_with_ttl("key1".to_string(), 42, Duration::from_nanos(1))
+            .await;
+
+        let value = cache.get(&"key1".to_string()).await;
+        assert_eq!(value, None);
+
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.misses, 1);
+    }
+
+    #[tokio::test]
+    async fn test_cache_capacity_lru_eviction() {
+        let config = CachingConfig {
+            max_size: 3,
+            ..Default::default()
+        };
+        let cache = IntelligentCache::new(config);
+
+        let _ = cache.put("k1".to_string(), 1).await;
+        let _ = cache.put("k2".to_string(), 2).await;
+        let _ = cache.put("k3".to_string(), 3).await;
+
+        assert_eq!(cache.get(&"k1".to_string()).await, Some(1));
+        assert_eq!(cache.get(&"k2".to_string()).await, Some(2));
+        assert_eq!(cache.get(&"k3".to_string()).await, Some(3));
+
+        let _ = cache.put("k4".to_string(), 4).await;
+
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.evictions, 1);
+        assert_eq!(stats.current_size, 3);
+
+        assert_eq!(cache.get(&"k1".to_string()).await, None);
+        assert_eq!(cache.get(&"k2".to_string()).await, Some(2));
+        assert_eq!(cache.get(&"k3".to_string()).await, Some(3));
+        assert_eq!(cache.get(&"k4".to_string()).await, Some(4));
+    }
+
+    #[tokio::test]
+    async fn test_cache_put_with_default_ttl() {
+        let config = CachingConfig {
+            default_ttl: Duration::from_secs(60),
+            ..Default::default()
+        };
+        let cache = IntelligentCache::new(config);
+
+        let _ = cache.put("key".to_string(), 100).await;
+        let value = cache.get(&"key".to_string()).await;
+        assert_eq!(value, Some(100));
+    }
+
+    #[tokio::test]
+    async fn test_cache_hit_rate_calculation() {
+        let config = CachingConfig::default();
+        let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
+
+        let _ = cache.put("key".to_string(), 1).await;
+        let _ = cache.get(&"key".to_string()).await;
+        let _ = cache.get(&"key".to_string()).await;
+        let _ = cache.get(&"missing".to_string()).await;
+
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.hits, 2);
+        assert_eq!(stats.misses, 1);
+        assert!((stats.hit_rate - 2.0 / 3.0).abs() < 1e-10);
+    }
+
+    #[tokio::test]
+    async fn test_cache_multiple_evictions() {
+        let config = CachingConfig {
+            max_size: 2,
+            ..Default::default()
+        };
+        let cache = IntelligentCache::new(config);
+
+        let _ = cache.put("a".to_string(), 1).await;
+        let _ = cache.put("b".to_string(), 2).await;
+        let _ = cache.put("c".to_string(), 3).await;
+        let _ = cache.put("d".to_string(), 4).await;
+
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.evictions, 2);
+        assert_eq!(stats.current_size, 2);
+    }
+}

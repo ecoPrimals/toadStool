@@ -188,12 +188,13 @@ impl ComplexDiv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_complex_div() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         // (1+0i) / (2+0i) = 0.5+0i
         let a = vec![1.0f32, 0.0];
         let b = vec![2.0f32, 0.0];

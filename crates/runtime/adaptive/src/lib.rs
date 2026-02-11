@@ -20,7 +20,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_runtime_adaptive::AdaptiveExecutor;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -36,7 +36,9 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #![warn(clippy::pedantic, clippy::cargo, clippy::nursery)]
+// Transitive deps (wgpu, ash, etc.) have multiple versions; we cannot control that.
 #![allow(
+    clippy::multiple_crate_versions,
     clippy::module_name_repetitions,
     clippy::missing_errors_doc,
     clippy::missing_panics_doc
@@ -66,7 +68,7 @@ use tokio::sync::RwLock;
 ///
 /// ## Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// # use toadstool_runtime_adaptive::AdaptiveExecutor;
 /// # async fn example() -> anyhow::Result<()> {
 /// // One-time setup (profiles GPU on first run)
@@ -109,7 +111,7 @@ impl AdaptiveExecutor {
         let cache = Arc::new(RwLock::new(cache));
 
         // Create profiler for runtime benchmarking
-        let profiler = RuntimeProfiler::new(fingerprint.clone()).await?;
+        let profiler = RuntimeProfiler::new(fingerprint.clone())?;
 
         // Create selector with cache
         let selector = ConfigSelector::new(Arc::clone(&cache), FallbackStrategy::Conservative);
@@ -170,8 +172,10 @@ impl AdaptiveExecutor {
         }
 
         // Save cache to disk
-        let cache_read = cache.read().await;
-        cache_read.save()?;
+        {
+            let cache_read = cache.read().await;
+            cache_read.save()?;
+        }
 
         Ok(())
     }

@@ -298,12 +298,64 @@ mod tests {
     }
 
     #[test]
+    fn test_launch_config_default_env_empty() {
+        let config = LaunchConfig::default();
+        assert!(config.env.is_empty());
+    }
+
+    #[test]
+    fn test_launch_config_default_health_check_interval() {
+        let config = LaunchConfig::default();
+        assert_eq!(config.health_check_interval, Duration::from_secs(5));
+    }
+
+    #[test]
+    fn test_launch_config_custom() {
+        let config = LaunchConfig {
+            binary_path: PathBuf::from("/usr/bin/toadstool"),
+            args: vec!["daemon".to_string(), "--debug".to_string()],
+            env: vec![("FOO".to_string(), "bar".to_string())],
+            startup_timeout: Duration::from_secs(30),
+            health_check_interval: Duration::from_secs(10),
+        };
+        assert_eq!(config.binary_path, PathBuf::from("/usr/bin/toadstool"));
+        assert_eq!(config.args.len(), 2);
+        assert_eq!(config.env[0].0, "FOO");
+        assert_eq!(config.env[0].1, "bar");
+        assert_eq!(config.startup_timeout, Duration::from_secs(30));
+    }
+
+    #[test]
+    fn test_launch_config_clone() {
+        let config = LaunchConfig::default();
+        let cloned = config.clone();
+        assert_eq!(config.binary_path, cloned.binary_path);
+        assert_eq!(config.args, cloned.args);
+    }
+
+    #[test]
     fn test_endpoint_display() {
         let unix = Endpoint::Unix(PathBuf::from("/tmp/test.sock"));
         assert!(unix.to_string().contains("unix:"));
+        assert!(unix.to_string().contains("/tmp/test.sock"));
 
         let tcp = Endpoint::Tcp("127.0.0.1:8080".parse().unwrap());
         assert!(tcp.to_string().contains("tcp:"));
+        assert!(tcp.to_string().contains("127.0.0.1"));
+    }
+
+    #[test]
+    fn test_endpoint_unix_clone() {
+        let unix = Endpoint::Unix(PathBuf::from("/var/run/toadstool.sock"));
+        let cloned = unix.clone();
+        assert_eq!(unix.to_string(), cloned.to_string());
+    }
+
+    #[test]
+    fn test_endpoint_tcp_clone() {
+        let tcp = Endpoint::Tcp("192.168.1.1:9000".parse().unwrap());
+        let cloned = tcp.clone();
+        assert_eq!(tcp.to_string(), cloned.to_string());
     }
 
     #[test]
@@ -315,10 +367,24 @@ mod tests {
     }
 
     #[test]
+    fn test_get_socket_paths_count() {
+        let paths = get_toadstool_socket_paths();
+        // Minimum: /tmp paths (2) + optionally XDG + HOME paths
+        assert!(paths.len() >= 2);
+    }
+
+    #[test]
     fn test_get_discovery_file_paths() {
         let paths = get_tcp_discovery_file_paths();
         assert!(!paths.is_empty());
         // Should include at least /tmp fallback
         assert!(paths.iter().any(|p| p.starts_with("/tmp")));
+    }
+
+    #[test]
+    fn test_get_discovery_file_paths_tmp_path() {
+        let paths = get_tcp_discovery_file_paths();
+        let tmp_path = PathBuf::from("/tmp/toadstool-ipc-port");
+        assert!(paths.contains(&tmp_path));
     }
 }

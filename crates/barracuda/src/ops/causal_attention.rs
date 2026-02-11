@@ -16,6 +16,8 @@
 //!
 //! Use: GPT, decoder-only transformers, autoregressive generation
 
+use crate::error::{BarracudaError, Result};
+
 /// Causal attention with masking
 ///
 /// ## Usage
@@ -51,10 +53,12 @@ pub async fn causal_attention(
     num_heads: usize,
     seq_len: usize,
     head_dim: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+) -> Result<Vec<f32>> {
     let expected_size = batch_size * num_heads * seq_len * head_dim;
     if query.len() != expected_size {
-        return Err("Dimension mismatch".into());
+        return Err(BarracudaError::InvalidInput {
+            message: "Dimension mismatch".to_string(),
+        });
     }
 
     let mut output = vec![0.0f32; expected_size];
@@ -128,11 +132,13 @@ pub async fn causal_attention(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_causal_attention_basic() {
-        let dev = get_test_device().await;
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
@@ -155,7 +161,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_causal_attention_edge_cases() {
-        let dev = get_test_device().await;
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
@@ -179,7 +187,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_causal_attention_boundary() {
-        let dev = get_test_device().await;
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
@@ -203,7 +213,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_causal_attention_large_batch() {
-        let dev = get_test_device().await;
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
@@ -227,7 +239,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_causal_attention_precision() {
-        let dev = get_test_device().await;
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 

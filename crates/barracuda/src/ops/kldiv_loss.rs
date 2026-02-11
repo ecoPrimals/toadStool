@@ -45,7 +45,7 @@ impl KLDivLoss {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/kldiv_loss.wgsl")
+        include_str!("../shaders/loss/kldiv_loss.wgsl")
     }
 
     /// Execute the KL divergence loss operation
@@ -226,12 +226,13 @@ impl KLDivLoss {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_kldiv_loss_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 10;
 
         let input = Tensor::from_vec_on(vec![-1.0; size], vec![size], device.clone())

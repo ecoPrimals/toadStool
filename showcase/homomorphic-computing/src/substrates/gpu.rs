@@ -13,7 +13,7 @@
 //!
 //! # Homomorphic Operations on GPU
 //!
-//! Homomorphic encryption involves polynomial arithmetic in ring Z[X]/(X^N + 1):
+//! Homomorphic encryption involves polynomial arithmetic in ring Z`X`/(X^N + 1):
 //! - Addition: Component-wise (trivially parallel)
 //! - Multiplication: NTT (Number Theoretic Transform) for O(N log N)
 //!
@@ -25,7 +25,7 @@
 //! # barraCUDA Evolution Insights Discovered
 //!
 //! Through this implementation, we discovered barraCUDA needs:
-//! - **u64 arithmetic support** (WGSL has it, need better Rust mapping)
+//! - **u64 arithmetic support** (WGSL lacks native u64; use u32 with modular arithmetic)
 //! - **Modular arithmetic primitives** (Barrett reduction, Montgomery form)
 //! - **NTT kernel patterns** (butterfly operations for O(n log n) multiplication)
 //! - **Multi-buffer operations** (not just 2-input ops like add/mul)
@@ -74,17 +74,21 @@ impl GpuHomomorphic {
     async fn gpu_polynomial_add(&self, a: &[u64], b: &[u64]) -> Result<Vec<u64>> {
         let size = a.len();
 
+        // Convert u64 to u32 for GPU (WGSL lacks native u64 support)
+        let a_u32: Vec<u32> = a.iter().map(|&v| v as u32).collect();
+        let b_u32: Vec<u32> = b.iter().map(|&v| v as u32).collect();
+
         // ✅ Use barraCUDA's buffer creation helpers!
         let input_a = self
             .device
-            .create_storage_buffer("poly_a", bytemuck::cast_slice(a));
+            .create_storage_buffer("poly_a", bytemuck::cast_slice(&a_u32));
 
         let input_b = self
             .device
-            .create_storage_buffer("poly_b", bytemuck::cast_slice(b));
+            .create_storage_buffer("poly_b", bytemuck::cast_slice(&b_u32));
 
-        // Create output buffer
-        let output_size = std::mem::size_of_val(a) as u64;
+        // Create output buffer (u32 per element)
+        let output_size = (size * std::mem::size_of::<u32>()) as u64;
         let output = self.device.device().create_buffer(&wgpu::BufferDescriptor {
             label: Some("poly_output"),
             size: output_size,
@@ -94,14 +98,14 @@ impl GpuHomomorphic {
             mapped_at_creation: false,
         });
 
-        // WGSL shader for modular addition
+        // WGSL shader for modular addition (u32 — WGSL lacks native u64)
         let shader = r#"
-            @group(0) @binding(0) var<storage, read> a: array<u64>;
-            @group(0) @binding(1) var<storage, read> b: array<u64>;
-            @group(0) @binding(2) var<storage, read_write> output: array<u64>;
+            @group(0) @binding(0) var<storage, read> a: array<u32>;
+            @group(0) @binding(1) var<storage, read> b: array<u32>;
+            @group(0) @binding(2) var<storage, read_write> output: array<u32>;
             
-            // Modulus: 2^60 (safe for u64 arithmetic)
-            const MODULUS: u64 = 1152921504606846976u;
+            // NTT-friendly prime modulus that fits in u32
+            const MODULUS: u32 = 1073741789u;
             
             @compute @workgroup_size(256)
             fn main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -251,7 +255,9 @@ impl GpuHomomorphic {
         receiver.await??;
 
         let data = buffer_slice.get_mapped_range();
-        let result: Vec<u64> = bytemuck::cast_slice(&data).to_vec();
+        // Convert u32 GPU results back to u64
+        let u32_result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
+        let result: Vec<u64> = u32_result.iter().map(|&v| v as u64).collect();
 
         drop(data);
         staging_buffer.unmap();
@@ -269,17 +275,21 @@ impl GpuHomomorphic {
     async fn gpu_polynomial_multiply(&self, a: &[u64], b: &[u64]) -> Result<Vec<u64>> {
         let size = a.len();
 
+        // Convert u64 to u32 for GPU (WGSL lacks native u64 support)
+        let a_u32: Vec<u32> = a.iter().map(|&v| v as u32).collect();
+        let b_u32: Vec<u32> = b.iter().map(|&v| v as u32).collect();
+
         // ✅ Use barraCUDA's buffer creation helpers!
         let input_a = self
             .device
-            .create_storage_buffer("poly_a_mul", bytemuck::cast_slice(a));
+            .create_storage_buffer("poly_a_mul", bytemuck::cast_slice(&a_u32));
 
         let input_b = self
             .device
-            .create_storage_buffer("poly_b_mul", bytemuck::cast_slice(b));
+            .create_storage_buffer("poly_b_mul", bytemuck::cast_slice(&b_u32));
 
-        // Create output buffer
-        let output_size = std::mem::size_of_val(a) as u64;
+        // Create output buffer (u32 per element)
+        let output_size = (size * std::mem::size_of::<u32>()) as u64;
         let output = self.device.device().create_buffer(&wgpu::BufferDescriptor {
             label: Some("poly_output_mul"),
             size: output_size,
@@ -289,14 +299,14 @@ impl GpuHomomorphic {
             mapped_at_creation: false,
         });
 
-        // WGSL shader for modular multiplication
+        // WGSL shader for modular multiplication (u32 — WGSL lacks native u64)
         let shader = r#"
-            @group(0) @binding(0) var<storage, read> a: array<u64>;
-            @group(0) @binding(1) var<storage, read> b: array<u64>;
-            @group(0) @binding(2) var<storage, read_write> output: array<u64>;
+            @group(0) @binding(0) var<storage, read> a: array<u32>;
+            @group(0) @binding(1) var<storage, read> b: array<u32>;
+            @group(0) @binding(2) var<storage, read_write> output: array<u32>;
             
-            // Modulus: 2^60 (safe for u64 arithmetic)
-            const MODULUS: u64 = 1152921504606846976u;
+            // NTT-friendly prime modulus that fits in u32
+            const MODULUS: u32 = 1073741789u;
             
             @compute @workgroup_size(256)
             fn main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -306,7 +316,7 @@ impl GpuHomomorphic {
                 }
                 
                 // Element-wise modular multiplication
-                // Note: For large values, this may overflow u64
+                // Note: For large values, this may overflow u32
                 // Production FHE would use Barrett reduction or Montgomery form
                 let product = a[idx] * b[idx];
                 output[idx] = product % MODULUS;
@@ -445,7 +455,9 @@ impl GpuHomomorphic {
         receiver.await??;
 
         let data = buffer_slice.get_mapped_range();
-        let result: Vec<u64> = bytemuck::cast_slice(&data).to_vec();
+        // Convert u32 GPU results back to u64
+        let u32_result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
+        let result: Vec<u64> = u32_result.iter().map(|&v| v as u64).collect();
 
         drop(data);
         staging_buffer.unmap();

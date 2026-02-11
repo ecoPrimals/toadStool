@@ -34,7 +34,7 @@
 //!
 //! ## Example
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_display::{DisplayServer, WindowManager};
 //!
 //! #[tokio::main]

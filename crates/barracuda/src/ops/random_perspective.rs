@@ -10,7 +10,7 @@
 //! - Runtime device discovery
 //! - Zero CPU fallbacks in execution
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -42,7 +42,7 @@ impl RandomPerspective {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/random_perspective.wgsl")
+        include_str!("../shaders/augmentation/random_perspective.wgsl")
     }
 
     /// Execute the random perspective operation
@@ -108,6 +108,7 @@ impl RandomPerspective {
             channels: u32,
             height: u32,
             width: u32,
+            _pad: u32,
             dst_corner0: [f32; 2],
             dst_corner1: [f32; 2],
             dst_corner2: [f32; 2],
@@ -118,6 +119,7 @@ impl RandomPerspective {
             channels: channels as u32,
             height: height as u32,
             width: width as u32,
+            _pad: 0,
             dst_corner0: [dst_corners[0].0, dst_corners[0].1],
             dst_corner1: [dst_corners[1].0, dst_corners[1].1],
             dst_corner2: [dst_corners[2].0, dst_corners[2].1],
@@ -230,11 +232,9 @@ impl RandomPerspective {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 2D shader workgroup size (16, 16)
             let caps = DeviceCapabilities::from_device(device);
-            let (wg_x, wg_y) = caps.optimal_workgroup_size_2d(WorkloadType::Convolution);
-            let workgroups_x = (width as u32).div_ceil(wg_x);
-            let workgroups_y = (height as u32).div_ceil(wg_y);
+            let (workgroups_x, workgroups_y) = caps.dispatch_2d(width as u32, height as u32);
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
@@ -265,13 +265,16 @@ impl Tensor {
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
     use super::*;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_random_perspective() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let image_data = vec![1.0; 3 * 100 * 100];
-        let tensor = Tensor::from_vec(image_data.clone(), vec![3, 100, 100])
+        let tensor = Tensor::from_vec_on(image_data.clone(), vec![3, 100, 100], device)
             .await
             .unwrap();
         let transformed_tensor = tensor.random_perspective(0.2, 33333).unwrap();

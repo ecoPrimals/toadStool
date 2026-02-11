@@ -25,7 +25,7 @@ impl Hardshrink {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/hardshrink.wgsl")
+        include_str!("../shaders/activation/hardshrink.wgsl")
     }
 
     /// Execute the hardshrink operation

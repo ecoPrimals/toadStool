@@ -185,4 +185,203 @@ mod tests {
         let score = provided.match_score(&required);
         assert!(score > 100); // Should have high score
     }
+
+    #[test]
+    fn test_capability_no_match_hardware_backed() {
+        let provided = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string()],
+            security_level: SecurityLevel::Enhanced,
+            hardware_backed: false,
+        };
+
+        let required = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: true,
+        };
+
+        assert!(!provided.matches(&required));
+    }
+
+    #[test]
+    fn test_capability_no_match_algorithm() {
+        let provided = CryptoCapability {
+            algorithms: vec!["aes-256-gcm".to_string()],
+            security_level: SecurityLevel::Enhanced,
+            hardware_backed: false,
+        };
+
+        let required = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        };
+
+        assert!(!provided.matches(&required));
+    }
+
+    #[test]
+    fn test_capability_match_multiple_algorithms() {
+        let provided = CryptoCapability {
+            algorithms: vec![
+                "chacha20poly1305".to_string(),
+                "aes-256-gcm".to_string(),
+                "xsalsa20".to_string(),
+            ],
+            security_level: SecurityLevel::HardwareSecured,
+            hardware_backed: true,
+        };
+
+        let required = CryptoCapability {
+            algorithms: vec!["xsalsa20".to_string(), "unknown".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        };
+
+        assert!(provided.matches(&required));
+    }
+
+    #[test]
+    fn test_capability_match_score_exact_security() {
+        let provided = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        };
+
+        let required = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        };
+
+        let score = provided.match_score(&required);
+        assert!(score >= 100, "Exact security match should add 100");
+    }
+
+    #[test]
+    fn test_capability_match_score_better_security() {
+        let provided = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string()],
+            security_level: SecurityLevel::Enhanced,
+            hardware_backed: false,
+        };
+
+        let required = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        };
+
+        let score = provided.match_score(&required);
+        assert!(score >= 50, "Better security should add 50");
+    }
+
+    #[test]
+    fn test_capability_match_score_algorithm_count() {
+        let provided = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string(), "aes-256-gcm".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        };
+
+        let required = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string(), "aes-256-gcm".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        };
+
+        let score = provided.match_score(&required);
+        assert!(score >= 20, "Two algorithm matches should add 20");
+    }
+
+    #[test]
+    fn test_crypto_service_query_for_capability() {
+        let cap = CryptoCapability {
+            algorithms: vec!["aes-256-gcm".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        };
+        let query = CryptoServiceQuery::for_capability(cap.clone());
+
+        assert_eq!(query.capability.algorithms, cap.algorithms);
+        assert!(query.preferred_location.is_none());
+        assert!(query.max_latency_ms.is_none());
+    }
+
+    #[test]
+    fn test_crypto_service_query_prefer_local() {
+        let cap = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        };
+        let query = CryptoServiceQuery::for_capability(cap).prefer_local();
+
+        assert_eq!(query.preferred_location, Some(ServiceLocation::Local));
+    }
+
+    #[test]
+    fn test_crypto_service_query_prefer_network() {
+        let cap = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        };
+        let query = CryptoServiceQuery::for_capability(cap).prefer_network();
+
+        assert_eq!(query.preferred_location, Some(ServiceLocation::Network));
+    }
+
+    #[test]
+    fn test_crypto_service_query_max_latency() {
+        let cap = CryptoCapability {
+            algorithms: vec!["aes-256-gcm".to_string()],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        };
+        let query = CryptoServiceQuery::for_capability(cap).max_latency(100);
+
+        assert_eq!(query.max_latency_ms, Some(100));
+    }
+
+    #[test]
+    fn test_crypto_service_query_builder_chain() {
+        let cap = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string()],
+            security_level: SecurityLevel::Enhanced,
+            hardware_backed: true,
+        };
+        let query = CryptoServiceQuery::for_capability(cap)
+            .prefer_local()
+            .max_latency(50);
+
+        assert_eq!(query.preferred_location, Some(ServiceLocation::Local));
+        assert_eq!(query.max_latency_ms, Some(50));
+    }
+
+    #[test]
+    fn test_service_location_variants() {
+        assert_eq!(ServiceLocation::Local, ServiceLocation::Local);
+        assert_eq!(ServiceLocation::Network, ServiceLocation::Network);
+        assert_eq!(ServiceLocation::Internet, ServiceLocation::Internet);
+        assert_ne!(ServiceLocation::Local, ServiceLocation::Network);
+        assert_ne!(ServiceLocation::Local, ServiceLocation::Internet);
+    }
+
+    #[test]
+    fn test_crypto_capability_serialization_roundtrip() {
+        let cap = CryptoCapability {
+            algorithms: vec!["chacha20poly1305".to_string(), "aes-256-gcm".to_string()],
+            security_level: SecurityLevel::Enhanced,
+            hardware_backed: true,
+        };
+
+        let json = serde_json::to_string(&cap).unwrap();
+        let deserialized: CryptoCapability = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(cap.algorithms, deserialized.algorithms);
+        assert_eq!(cap.security_level, deserialized.security_level);
+        assert_eq!(cap.hardware_backed, deserialized.hardware_backed);
+    }
 }

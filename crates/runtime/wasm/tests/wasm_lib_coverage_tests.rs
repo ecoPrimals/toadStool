@@ -117,7 +117,7 @@ fn test_security_level_maximum() {
 #[test]
 fn test_security_level_clone() {
     let level1 = SecurityLevel::Strict;
-    let level2 = level1.clone();
+    let level2 = level1;
     assert!(format!("{:?}", level1) == format!("{:?}", level2));
 }
 

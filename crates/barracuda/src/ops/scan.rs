@@ -17,10 +17,14 @@
 //! ## Usage
 //!
 //! ```no_run
-//! use barracuda::tensor::Tensor;
-//!
-//! let input = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device)?;
-//! let cumsum = input.scan(false)?;  // Inclusive scan
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # use barracuda::tensor::Tensor;
+//! # use barracuda::device::test_pool;
+//! # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! let input = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device)?;
+//! let _cumsum = input.scan(false)?;  // Inclusive scan
+//! # Ok(())
+//! # }
 //! ```
 
 use crate::device::{DeviceCapabilities, WorkloadType};
@@ -43,7 +47,7 @@ pub struct Scan {
 
 impl Scan {
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/scan.wgsl")
+        include_str!("../shaders/misc/scan.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -202,12 +206,18 @@ impl Tensor {
     /// ## Example
     ///
     /// ```no_run
-    /// # let input = todo!();
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use barracuda::tensor::Tensor;
+    /// # use barracuda::device::test_pool;
+    /// # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let input = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device).unwrap();
     /// // Inclusive scan: [1, 2, 3, 4] → [1, 3, 6, 10]
-    /// let cumsum = input.scan(false)?;
+    /// let cumsum = input.clone().scan(false)?;
     ///
     /// // Exclusive scan: [1, 2, 3, 4] → [0, 1, 3, 6]
-    /// let exclusive = input.scan(true)?;
+    /// let _exclusive = input.scan(true)?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn scan(self, exclusive: bool) -> Result<Self> {
         let op = Scan {
@@ -221,12 +231,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_scan_inclusive() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         let input = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
 

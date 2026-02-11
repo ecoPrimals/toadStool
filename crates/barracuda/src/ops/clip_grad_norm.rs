@@ -11,7 +11,7 @@
 //! 1. Compute total norm (parallel reduction)
 //! 2. Clip gradients based on computed norm
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -38,7 +38,7 @@ impl ClipGradNorm {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/clip_grad_norm.wgsl")
+        include_str!("../shaders/gradient/clip_grad_norm.wgsl")
     }
 
     /// Execute the clip gradient by norm operation (2-pass)
@@ -49,14 +49,12 @@ impl ClipGradNorm {
         // Access input buffer directly (zero-copy)
         let input_buffer = self.gradients.buffer();
 
-        // Create norm buffer (for intermediate result)
-        let norm_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("ClipGradNorm Norm Buffer"),
-                contents: bytemuck::cast_slice(&[0.0f32]),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            });
+        // Norm buffer: stores per-workgroup partial sums, then final norm in [0]
+        // Size must be >= num_workgroups for pass 1, and has element [0] for clip pass
+        let caps = DeviceCapabilities::from_device(device);
+        let num_workgroups = caps.dispatch_1d(size as u32);
+        let norm_buffer_size = num_workgroups.max(1) as usize;
+        let norm_buffer = device.create_buffer_f32(norm_buffer_size)?;
 
         // Create output buffer
         let output_buffer = device.create_buffer_f32(size)?;
@@ -183,6 +181,16 @@ impl ClipGradNorm {
                     entry_point: "compute_norm",
                 });
 
+        let compute_pipeline_norm_final =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("ClipGradNorm Norm Final Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "compute_norm_final",
+                });
+
         let compute_pipeline_clip =
             device
                 .device
@@ -193,14 +201,14 @@ impl ClipGradNorm {
                     entry_point: "clip_gradients",
                 });
 
-        // Execute compute shaders (2 passes)
+        // Execute compute shaders
         let mut encoder = device
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("ClipGradNorm Encoder"),
             });
 
-        // Pass 1: Compute norm
+        // Pass 1: Compute per-workgroup sum of squares (workgroup tree reduction)
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("ClipGradNorm Norm Pass"),
@@ -208,15 +216,21 @@ impl ClipGradNorm {
             });
             compute_pass.set_pipeline(&compute_pipeline_norm);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-
-            // Deep Debt Evolution: Capability-based dispatch (reduction for norm)
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
+            compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
         }
 
-        // Pass 2: Clip gradients
+        // Pass 2: Reduce partial sums to norm_buffer[0] (when multiple workgroups)
+        if num_workgroups > 1 {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("ClipGradNorm Norm Final Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline_norm_final);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups(1, 1, 1);
+        }
+
+        // Pass 3: Clip gradients based on computed norm
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("ClipGradNorm Clip Pass"),
@@ -224,11 +238,7 @@ impl ClipGradNorm {
             });
             compute_pass.set_pipeline(&compute_pipeline_clip);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-
-            // Deep Debt Evolution: Capability-based dispatch (element-wise clipping)
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(size as u32);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

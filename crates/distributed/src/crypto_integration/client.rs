@@ -119,9 +119,9 @@ impl CryptoServiceDiscovery {
 /// **Design**: Works with ANY crypto provider via unix sockets (pure Rust!)
 pub struct CryptoServiceClient {
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
-    #[allow(dead_code)] // Stored for diagnostics
-    service_endpoint: ServiceEndpoint,
-    #[allow(dead_code)] // May be used for timeout configuration
+    /// Service endpoint information (stored for diagnostics and future use)
+    _service_endpoint: ServiceEndpoint,
+    /// Request timeout for RPC calls
     timeout: Duration,
 }
 
@@ -144,7 +144,7 @@ impl CryptoServiceClient {
 
         Ok(Self {
             rpc_client,
-            service_endpoint: endpoint.clone(),
+            _service_endpoint: endpoint.clone(),
             timeout: Duration::from_secs(30),
         })
     }
@@ -166,14 +166,21 @@ impl CryptoServiceClient {
             })
         })?;
 
-        self.rpc_client
-            .call_typed("crypto.encrypt", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: format!("Crypto encrypt failed: {e}"),
-                })
+        tokio::time::timeout(
+            self.timeout,
+            self.rpc_client.call_typed("crypto.encrypt", params),
+        )
+        .await
+        .map_err(|_| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Crypto encrypt timed out after {:?}", self.timeout),
             })
+        })?
+        .map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Crypto encrypt failed: {e}"),
+            })
+        })
     }
 
     /// Decrypt data via unix socket
@@ -186,14 +193,21 @@ impl CryptoServiceClient {
             })
         })?;
 
-        self.rpc_client
-            .call_typed("crypto.decrypt", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: format!("Crypto decrypt failed: {e}"),
-                })
+        tokio::time::timeout(
+            self.timeout,
+            self.rpc_client.call_typed("crypto.decrypt", params),
+        )
+        .await
+        .map_err(|_| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Crypto decrypt timed out after {:?}", self.timeout),
             })
+        })?
+        .map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Crypto decrypt failed: {e}"),
+            })
+        })
     }
 
     /// Manage keys (generate, rotate, delete) via unix socket
@@ -209,29 +223,42 @@ impl CryptoServiceClient {
             })
         })?;
 
-        self.rpc_client
-            .call_typed("crypto.manage_key", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: format!("Key management failed: {e}"),
-                })
+        tokio::time::timeout(
+            self.timeout,
+            self.rpc_client.call_typed("crypto.manage_key", params),
+        )
+        .await
+        .map_err(|_| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Key management timed out after {:?}", self.timeout),
             })
+        })?
+        .map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Key management failed: {e}"),
+            })
+        })
     }
 
     /// Health check via unix socket
     ///
     /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn health_check(&self) -> ToadStoolResult<bool> {
-        let result: serde_json::Value = self
-            .rpc_client
-            .call("crypto.health", serde_json::json!({}))
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: format!("Health check failed: {e}"),
-                })
-            })?;
+        let result: serde_json::Value = tokio::time::timeout(
+            self.timeout,
+            self.rpc_client.call("crypto.health", serde_json::json!({})),
+        )
+        .await
+        .map_err(|_| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Health check timed out after {:?}", self.timeout),
+            })
+        })?
+        .map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Health check failed: {e}"),
+            })
+        })?;
 
         Ok(result
             .get("healthy")

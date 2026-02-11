@@ -47,7 +47,7 @@ impl TensorSplit {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/tensor_split.wgsl")
+        include_str!("../shaders/tensor/tensor_split.wgsl")
     }
 
     /// Execute the tensor split operation
@@ -244,13 +244,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_tensor_split_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..12).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![3, 4], device.clone()).unwrap();
 
@@ -266,7 +268,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_split_single() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..20).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![4, 5], device.clone()).unwrap();
 
@@ -281,7 +285,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_split_invalid_dim() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
         assert!(TensorSplit::new(input, vec![1], 10).is_err());
@@ -289,7 +295,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_split_invalid_index() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
         assert!(TensorSplit::new(input, vec![5], 0).is_err());
@@ -297,7 +305,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_split_empty() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..10).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![5, 2], device.clone()).unwrap();
 

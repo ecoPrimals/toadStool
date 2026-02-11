@@ -10,8 +10,7 @@ use futures::future::join_all;
 #[tokio::test]
 async fn test_concurrent_matmul() {
     // Run 50 matmuls concurrently
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let handles: Vec<_> = (0..50)
         .map(|i| {
             let dev = dev.clone();
@@ -45,8 +44,7 @@ async fn test_concurrent_matmul() {
 #[tokio::test]
 async fn test_concurrent_mixed_operations() {
     // Run different operations concurrently
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let handles: Vec<_> = (0..100)
         .map(|i| {
             let dev = dev.clone();
@@ -68,19 +66,22 @@ async fn test_concurrent_mixed_operations() {
     let results = join_all(handles).await;
 
     for (i, result) in results.into_iter().enumerate() {
-        assert!(
-            result.is_ok() && result.unwrap().is_ok(),
-            "Concurrent operation {} should succeed",
-            i
-        );
+        if let Ok(inner_result) = result {
+            assert!(
+                inner_result.is_ok(),
+                "Concurrent operation {} should succeed",
+                i
+            );
+        } else {
+            panic!("Concurrent operation {} failed", i);
+        }
     }
 }
 
 #[tokio::test]
 async fn test_concurrent_training_steps() {
     // Multiple training steps running in parallel
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let handles: Vec<_> = (0..20)
         .map(|_| {
             let dev = dev.clone();
@@ -95,19 +96,22 @@ async fn test_concurrent_training_steps() {
     let results = join_all(handles).await;
 
     for (i, result) in results.into_iter().enumerate() {
-        assert!(
-            result.is_ok() && result.unwrap().is_ok(),
-            "Concurrent SGD step {} should succeed",
-            i
-        );
+        if let Ok(inner_result) = result {
+            assert!(
+                inner_result.is_ok(),
+                "Concurrent SGD step {} should succeed",
+                i
+            );
+        } else {
+            panic!("Concurrent SGD step {} failed", i);
+        }
     }
 }
 
 #[tokio::test]
 async fn test_device_sharing_safety() {
     // Verify Arc<Device> is safe to share across tasks
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     // Clone device handle 100 times
     let devices: Vec<_> = (0..100).map(|_| dev.clone()).collect();
 

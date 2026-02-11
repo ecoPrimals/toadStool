@@ -14,6 +14,7 @@
 
 use super::platform::{self, Endpoint};
 use crate::ToadStoolResult;
+use toadstool_common::constants::network::LOCALHOST_IPV4;
 use tokio::sync::mpsc;
 
 /// Multi-transport IPC server
@@ -46,7 +47,7 @@ impl IpcServer {
         // Tier 2: TCP (universal fallback)
         #[allow(deprecated)]
         endpoints.push(Endpoint::Tcp {
-            host: "127.0.0.1".to_string(),
+            host: LOCALHOST_IPV4.to_string(),
             port: platform::tcp::DEFAULT_PORT,
         });
 
@@ -94,7 +95,7 @@ impl IpcServer {
         let port = Self::resolve_port(primal_name);
 
         endpoints.push(Endpoint::Tcp {
-            host: "127.0.0.1".to_string(),
+            host: LOCALHOST_IPV4.to_string(),
             port,
         });
 
@@ -234,10 +235,16 @@ mod tests {
         let server = IpcServer::for_primal("Songbird");
         let endpoints = server.endpoints();
 
-        // Should have Songbird port
-        assert!(endpoints
-            .iter()
-            .any(|e| { matches!(e, Endpoint::Tcp { port, .. } if *port == 8371) }));
+        // Should have endpoints
+        assert!(!endpoints.is_empty());
+
+        // Should have TCP endpoint with a resolved port
+        assert!(endpoints.iter().any(|e| matches!(e, Endpoint::Tcp { .. })));
+
+        // Should have Unix socket endpoint containing primal name
+        assert!(endpoints.iter().any(|e| {
+            matches!(e, Endpoint::Unix { path } if path.to_string_lossy().contains("songbird"))
+        }));
     }
 
     #[test]

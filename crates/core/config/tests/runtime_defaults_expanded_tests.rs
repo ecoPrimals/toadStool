@@ -2,11 +2,16 @@
 //!
 //! Coverage expansion: runtime_defaults.rs needs expanded coverage
 //! Testing environment detection, file loading, JSON export, etc.
+//!
+//! ✅ MODERNIZED: Uses scoped Mutex instead of #[serial] for concurrent execution
 
-use serial_test::serial;
 use std::fs;
+use std::sync::Mutex;
 use tempfile::TempDir;
 use toadstool_config::ToadStoolConfig;
+
+// Scoped lock for environment variable tests - allows concurrent execution with non-env tests
+static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Test development environment preset
 #[test]
@@ -14,8 +19,8 @@ fn test_development_preset() {
     let config = ToadStoolConfig::development();
 
     assert_eq!(config.app.environment, "development");
-    // Development should have debug features
-    assert!(config.features.enable_debug || !config.features.enable_debug);
+    // Development preset should produce a valid config
+    assert!(!config.app.environment.is_empty());
 }
 
 /// Test production environment preset
@@ -36,8 +41,8 @@ fn test_testing_preset() {
 
 /// Test for_current_environment with TOADSTOOL_ENVIRONMENT
 #[test]
-#[serial]
 fn test_for_current_environment_toadstool_environment() {
+    let _guard = ENV_LOCK.lock().unwrap();
     std::env::remove_var("TOADSTOOL_ENVIRONMENT");
     std::env::remove_var("TOADSTOOL_ENV");
     std::env::remove_var("ENVIRONMENT");
@@ -53,8 +58,8 @@ fn test_for_current_environment_toadstool_environment() {
 
 /// Test for_current_environment with TOADSTOOL_ENV fallback
 #[test]
-#[serial]
 fn test_for_current_environment_toadstool_env() {
+    let _guard = ENV_LOCK.lock().unwrap();
     std::env::remove_var("TOADSTOOL_ENVIRONMENT");
     std::env::remove_var("TOADSTOOL_ENV");
     std::env::remove_var("ENVIRONMENT");
@@ -70,8 +75,8 @@ fn test_for_current_environment_toadstool_env() {
 
 /// Test for_current_environment with ENVIRONMENT fallback
 #[test]
-#[serial]
 fn test_for_current_environment_environment() {
+    let _guard = ENV_LOCK.lock().unwrap();
     std::env::remove_var("TOADSTOOL_ENVIRONMENT");
     std::env::remove_var("TOADSTOOL_ENV");
     std::env::remove_var("ENVIRONMENT");
@@ -87,8 +92,8 @@ fn test_for_current_environment_environment() {
 
 /// Test for_current_environment with ENV fallback
 #[test]
-#[serial]
 fn test_for_current_environment_env() {
+    let _guard = ENV_LOCK.lock().unwrap();
     std::env::remove_var("TOADSTOOL_ENVIRONMENT");
     std::env::remove_var("TOADSTOOL_ENV");
     std::env::remove_var("ENVIRONMENT");
@@ -104,8 +109,8 @@ fn test_for_current_environment_env() {
 
 /// Test for_current_environment defaults to development
 #[test]
-#[serial]
 fn test_for_current_environment_default() {
+    let _guard = ENV_LOCK.lock().unwrap();
     std::env::remove_var("TOADSTOOL_ENVIRONMENT");
     std::env::remove_var("TOADSTOOL_ENV");
     std::env::remove_var("ENVIRONMENT");
@@ -118,11 +123,10 @@ fn test_for_current_environment_default() {
 /// Test environment variable priority (tested implicitly by individual tests)
 /// Note: Priority is TOADSTOOL_ENVIRONMENT > TOADSTOOL_ENV > ENVIRONMENT > ENV > default
 /// This is verified by the individual environment variable tests above
-
 /// Test load_from_env_only
 #[test]
-#[serial]
 fn test_load_from_env_only() {
+    let _guard = ENV_LOCK.lock().unwrap();
     std::env::remove_var("TOADSTOOL_ENV");
     std::env::set_var("TOADSTOOL_ENV", "test");
     std::env::set_var("TOADSTOOL_WORKER_THREADS", "8");
@@ -175,8 +179,8 @@ fn test_load_nonexistent_file() {
 
 /// Test load with overrides applies both file and env
 #[test]
-#[serial]
 fn test_load_with_overrides() {
+    let _guard = ENV_LOCK.lock().unwrap();
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let config_path = temp_dir.path().join("config.toml");
 
@@ -200,8 +204,8 @@ fn test_load_with_overrides() {
 
 /// Test load with overrides validates config
 #[test]
-#[serial]
 fn test_load_with_overrides_validates() {
+    let _guard = ENV_LOCK.lock().unwrap();
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let config_path = temp_dir.path().join("config.toml");
 

@@ -13,7 +13,9 @@ use crate::security_provider::EncryptionOptions;
 
 /// Convert generic PermissionRequest to BearDog-specific request
 pub fn to_beardog_permission_request(_request: &PermissionRequest) -> KeyManagementRequest {
-    // TODO: Implement actual conversion when beardog_integration supports it
+    // Pending: Full conversion when beardog_integration KeyManagementRequest supports
+    // PermissionRequest fields (target, scope, operations). Currently KeyOperation::Generate
+    // and SecurityLevel are the only mappable parts.
     KeyManagementRequest {
         request_id: uuid::Uuid::new_v4(),
         operation: KeyOperation::Generate,

@@ -1,10 +1,15 @@
 //! Comprehensive tests for environment variable configuration overrides
 //!
 //! Coverage expansion: env_overrides.rs had ZERO test coverage
+//!
+//! ✅ MODERNIZED: Uses scoped Mutex instead of #[serial] for concurrent execution
 
-use serial_test::serial;
+use std::sync::Mutex;
 use std::time::Duration;
 use toadstool_config::{BackendCacheConfig, MetricsConfig, ToadStoolConfig};
+
+// Scoped lock for environment variable tests - allows concurrent execution with non-env tests
+static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Helper to clear all TOADSTOOL_* environment variables
 fn clear_toadstool_env_vars() {
@@ -17,8 +22,8 @@ fn clear_toadstool_env_vars() {
 
 /// Test basic application environment overrides
 #[test]
-#[serial]
 fn test_env_override_app_environment() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -32,8 +37,8 @@ fn test_env_override_app_environment() {
 
 /// Test debug flag override
 #[test]
-#[serial]
 fn test_env_override_debug_flag() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -61,8 +66,8 @@ fn test_env_override_debug_flag() {
 
 /// Test verbose logging override
 #[test]
-#[serial]
 fn test_env_override_verbose() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -83,8 +88,8 @@ fn test_env_override_verbose() {
 
 /// Test network bind address override
 #[test]
-#[serial]
 fn test_env_override_bind_address() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -99,8 +104,8 @@ fn test_env_override_bind_address() {
 
 /// Test invalid bind address returns error
 #[test]
-#[serial]
 fn test_env_override_bind_address_invalid() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -119,8 +124,8 @@ fn test_env_override_bind_address_invalid() {
 
 /// Test port override
 #[test]
-#[serial]
 fn test_env_override_port() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -136,8 +141,8 @@ fn test_env_override_port() {
 
 /// Test invalid port returns error
 #[test]
-#[serial]
 fn test_env_override_port_invalid() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -153,8 +158,8 @@ fn test_env_override_port_invalid() {
 
 /// Test primal endpoint overrides (NOTE: Most endpoints deprecated)
 #[test]
-#[serial]
 fn test_env_override_primal_endpoints() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -173,8 +178,8 @@ fn test_env_override_primal_endpoints() {
 
 /// Test resource limit overrides
 #[test]
-#[serial]
 fn test_env_override_resource_limits() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -193,8 +198,8 @@ fn test_env_override_resource_limits() {
 
 /// Test invalid resource limits return errors
 #[test]
-#[serial]
 fn test_env_override_resource_limits_invalid() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -219,8 +224,8 @@ fn test_env_override_resource_limits_invalid() {
 
 /// Test log level override
 #[test]
-#[serial]
 fn test_env_override_log_level() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -235,8 +240,8 @@ fn test_env_override_log_level() {
 
 /// Test data and cache directory overrides
 #[test]
-#[serial]
 fn test_env_override_directories() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -254,8 +259,8 @@ fn test_env_override_directories() {
 
 /// Test worker threads override
 #[test]
-#[serial]
 fn test_env_override_worker_threads() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -270,8 +275,8 @@ fn test_env_override_worker_threads() {
 
 /// Test max concurrent executions override
 #[test]
-#[serial]
 fn test_env_override_max_concurrent() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -286,8 +291,8 @@ fn test_env_override_max_concurrent() {
 
 /// Test timeout overrides
 #[test]
-#[serial]
 fn test_env_override_timeouts() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -308,12 +313,14 @@ fn test_env_override_timeouts() {
 
 /// Test metrics enable/disable
 #[test]
-#[serial]
 fn test_env_override_metrics() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
-    let mut config = ToadStoolConfig::default();
-    config.metrics = None;
+    let mut config = ToadStoolConfig {
+        metrics: None,
+        ..Default::default()
+    };
 
     std::env::set_var("TOADSTOOL_ENABLE_METRICS", "true");
     config.apply_env_overrides().unwrap();
@@ -321,8 +328,10 @@ fn test_env_override_metrics() {
     assert!(config.metrics.is_some());
 
     // Test disable
-    let mut config2 = ToadStoolConfig::default();
-    config2.metrics = Some(MetricsConfig::default());
+    let mut config2 = ToadStoolConfig {
+        metrics: Some(MetricsConfig::default()),
+        ..Default::default()
+    };
 
     std::env::set_var("TOADSTOOL_ENABLE_METRICS", "false");
     config2.apply_env_overrides().unwrap();
@@ -334,12 +343,14 @@ fn test_env_override_metrics() {
 
 /// Test cache enable/disable
 #[test]
-#[serial]
 fn test_env_override_cache() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
-    let mut config = ToadStoolConfig::default();
-    config.cache = None;
+    let mut config = ToadStoolConfig {
+        cache: None,
+        ..Default::default()
+    };
 
     std::env::set_var("TOADSTOOL_ENABLE_CACHE", "true");
     config.apply_env_overrides().unwrap();
@@ -347,8 +358,10 @@ fn test_env_override_cache() {
     assert!(config.cache.is_some());
 
     // Test disable
-    let mut config2 = ToadStoolConfig::default();
-    config2.cache = Some(BackendCacheConfig::default());
+    let mut config2 = ToadStoolConfig {
+        cache: Some(BackendCacheConfig::default()),
+        ..Default::default()
+    };
 
     std::env::set_var("TOADSTOOL_ENABLE_CACHE", "false");
     config2.apply_env_overrides().unwrap();
@@ -360,8 +373,8 @@ fn test_env_override_cache() {
 
 /// Test security feature overrides
 #[test]
-#[serial]
 fn test_env_override_security_features() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -381,8 +394,8 @@ fn test_env_override_security_features() {
 
 /// Test feature flags (websocket, federation, etc.)
 #[test]
-#[serial]
 fn test_env_override_feature_flags() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -408,8 +421,8 @@ fn test_env_override_feature_flags() {
 
 /// Test experimental/beta/profiling feature flags
 #[test]
-#[serial]
 fn test_env_override_experimental_flags() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -435,8 +448,8 @@ fn test_env_override_experimental_flags() {
 
 /// Test API protocol feature flags
 #[test]
-#[serial]
 fn test_env_override_api_protocols() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -459,8 +472,8 @@ fn test_env_override_api_protocols() {
 
 /// Test container runtime configuration
 #[test]
-#[serial]
 fn test_env_override_container_config() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -480,8 +493,8 @@ fn test_env_override_container_config() {
 
 /// Test WASM configuration overrides
 #[test]
-#[serial]
 fn test_env_override_wasm_config() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -502,8 +515,8 @@ fn test_env_override_wasm_config() {
 
 /// Test Python runtime configuration
 #[test]
-#[serial]
 fn test_env_override_python_config() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -528,8 +541,8 @@ fn test_env_override_python_config() {
 
 /// Test JWT authentication configuration
 #[test]
-#[serial]
 fn test_env_override_jwt_config() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -561,8 +574,8 @@ fn test_env_override_jwt_config() {
 
 /// Test encryption configuration
 #[test]
-#[serial]
 fn test_env_override_encryption_config() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -583,8 +596,8 @@ fn test_env_override_encryption_config() {
 
 /// Test audit logging configuration
 #[test]
-#[serial]
 fn test_env_override_audit_config() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -608,8 +621,8 @@ fn test_env_override_audit_config() {
 
 /// Test sandbox configuration
 #[test]
-#[serial]
 fn test_env_override_sandbox_config() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -631,8 +644,8 @@ fn test_env_override_sandbox_config() {
 
 /// Test logging configuration overrides
 #[test]
-#[serial]
 fn test_env_override_logging_config() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -659,8 +672,8 @@ fn test_env_override_logging_config() {
 
 /// Test advanced logging configuration
 #[test]
-#[serial]
 fn test_env_override_logging_advanced() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -687,8 +700,8 @@ fn test_env_override_logging_advanced() {
 
 /// Test multiple overrides at once (integration)
 #[test]
-#[serial]
 fn test_env_override_multiple_integration() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
@@ -717,8 +730,8 @@ fn test_env_override_multiple_integration() {
 
 /// Test that missing environment variables don't affect config
 #[test]
-#[serial]
 fn test_env_override_no_change_when_vars_missing() {
+    let _guard = ENV_LOCK.lock().unwrap();
     clear_toadstool_env_vars();
 
     let original_config = ToadStoolConfig::default();

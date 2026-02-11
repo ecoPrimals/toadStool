@@ -214,12 +214,13 @@ impl ComplexMul {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_complex_mul_correctness() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // (3+4i) * (1+2i) = (3-8) + (6+4)i = -5+10i
         let data_a = vec![3.0f32, 4.0];
@@ -238,7 +239,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_complex_mul_identity() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // z * 1 = z
         let data_z = vec![3.0f32, 4.0];

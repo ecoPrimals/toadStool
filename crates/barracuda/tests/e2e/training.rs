@@ -9,8 +9,7 @@ use barracuda::ops::*;
 #[tokio::test]
 async fn test_simple_training_step() {
     // Training step: Forward → Loss → Update (simplified)
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 4;
     let input_dim = 10;
     let output_dim = 2;
@@ -42,8 +41,7 @@ async fn test_simple_training_step() {
 #[tokio::test]
 async fn test_optimizer_update() {
     // Optimizer update: SGD, Adam
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let param_count = 100;
     let learning_rate = 0.01;
 
@@ -67,8 +65,7 @@ async fn test_optimizer_update() {
 #[tokio::test]
 async fn test_adam_optimizer_with_state() {
     // Adam optimizer with momentum and adaptive lr
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let param_count = 50;
     let learning_rate = 0.001;
     let beta1 = 0.9;
@@ -106,8 +103,7 @@ async fn test_adam_optimizer_with_state() {
 #[tokio::test]
 async fn test_multi_step_training() {
     // Multiple training steps in sequence
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 2;
     let dim = 10;
     let num_steps = 5;
@@ -143,8 +139,7 @@ async fn test_multi_step_training() {
 #[tokio::test]
 async fn test_loss_functions_comparison() {
     // Compare different loss functions on same input
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 4;
     let dim = 10;
 

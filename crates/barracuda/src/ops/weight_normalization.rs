@@ -47,7 +47,7 @@ impl WeightNormalization {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/weight_norm.wgsl")
+        include_str!("../shaders/norm/weight_norm.wgsl")
     }
 
     /// Execute the weight normalization operation
@@ -216,12 +216,13 @@ impl WeightNormalization {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_weight_normalization() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // 2 filters, 3 weights each
         let v = Tensor::from_vec_on(
             vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],

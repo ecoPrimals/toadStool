@@ -33,7 +33,7 @@ impl L1Loss {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/l1_loss.wgsl")
+        include_str!("../shaders/loss/l1_loss.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -188,11 +188,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_l1_loss() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let pred_data = vec![1.0, 2.0, 3.0, 4.0];
         let target_data = vec![1.5, 2.5, 2.0, 5.0];
 

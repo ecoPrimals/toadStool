@@ -1,9 +1,18 @@
-//! Broadcast operation - Expand tensor dimensions
+//! Broadcast operation - Expand tensor dimensions with full NumPy-style broadcasting
 //! Pure WGSL implementation
 
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct BroadcastParams {
+    output_total: u32,
+    ndim: u32,
+    _padding: [u32; 2],
+}
 
 pub struct Broadcast {
     input: Tensor,
@@ -19,15 +28,83 @@ impl Broadcast {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/broadcast.wgsl")
+        include_str!("../shaders/tensor/broadcast.wgsl")
+    }
+
+    /// Compute input strides for broadcasting.
+    /// A stride of 0 means the dimension is broadcast (size-1 dim).
+    fn compute_input_strides(input_shape: &[usize], target_shape: &[usize]) -> Vec<u32> {
+        let ndim = target_shape.len();
+        let input_ndim = input_shape.len();
+
+        // Pad input shape with leading 1s to match target ndim
+        let mut padded_input: Vec<usize> = vec![1; ndim.saturating_sub(input_ndim)];
+        padded_input.extend_from_slice(input_shape);
+
+        // Compute regular strides for the input
+        let mut strides = vec![0u32; ndim];
+        let mut stride: u32 = 1;
+        for d in (0..ndim).rev() {
+            if padded_input[d] == 1 && target_shape[d] > 1 {
+                // This dimension is broadcast: stride = 0
+                strides[d] = 0;
+            } else {
+                strides[d] = stride;
+            }
+            // Only advance stride for non-broadcast dims
+            if padded_input[d] > 1 {
+                stride *= padded_input[d] as u32;
+            }
+        }
+
+        strides
     }
 
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let output_size: usize = self.target_shape.iter().product();
+        let ndim = self.target_shape.len();
+
+        // Compute broadcast strides
+        let input_strides = Self::compute_input_strides(self.input.shape(), &self.target_shape);
 
         // Create output buffer
         let output_buffer = device.create_buffer_f32(output_size)?;
+
+        // Create params uniform
+        let params = BroadcastParams {
+            output_total: output_size as u32,
+            ndim: ndim as u32,
+            _padding: [0; 2],
+        };
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Broadcast Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        // Create output_shape buffer
+        let output_shape_u32: Vec<u32> = self.target_shape.iter().map(|&s| s as u32).collect();
+        let output_shape_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Broadcast Output Shape"),
+                    contents: bytemuck::cast_slice(&output_shape_u32),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
+
+        // Create input_strides buffer
+        let strides_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Broadcast Input Strides"),
+                contents: bytemuck::cast_slice(&input_strides),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         // Create shader module
         let shader = device
@@ -60,6 +137,18 @@ impl Broadcast {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_shape_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: strides_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -94,7 +183,8 @@ impl Broadcast {
 }
 
 impl Tensor {
-    /// Broadcast tensor to target shape
+    /// Broadcast tensor to target shape using NumPy-style broadcasting rules.
+    /// Dimensions of size 1 in the input are broadcast to match the target.
     /// # Arguments
     /// * `target_shape` - Target shape to broadcast to
     pub fn broadcast(self, target_shape: Vec<usize>) -> Result<Self> {
@@ -105,12 +195,41 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
+
+    #[test]
+    fn test_compute_input_strides_scalar_broadcast() {
+        // [1] → [10]: stride 0 (broadcast)
+        let strides = Broadcast::compute_input_strides(&[1], &[10]);
+        assert_eq!(strides, vec![0]);
+    }
+
+    #[test]
+    fn test_compute_input_strides_2d_broadcast() {
+        // [3, 1] → [3, 4]: dim 0 normal, dim 1 broadcast
+        let strides = Broadcast::compute_input_strides(&[3, 1], &[3, 4]);
+        assert_eq!(strides, vec![1, 0]);
+    }
+
+    #[test]
+    fn test_compute_input_strides_no_broadcast() {
+        // [3, 4] → [3, 4]: no broadcast, normal strides
+        let strides = Broadcast::compute_input_strides(&[3, 4], &[3, 4]);
+        assert_eq!(strides, vec![4, 1]);
+    }
+
+    #[test]
+    fn test_compute_input_strides_rank_expansion() {
+        // [4] → [3, 4]: new dim 0 is broadcast, dim 1 is normal
+        let strides = Broadcast::compute_input_strides(&[4], &[3, 4]);
+        assert_eq!(strides, vec![0, 1]);
+    }
 
     #[tokio::test]
     async fn test_broadcast_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Create scalar [5.0]
         let input_data = vec![5.0f32];
         let input = Tensor::from_data(&input_data, vec![1], device.clone()).unwrap();
@@ -128,8 +247,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_broadcast_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Broadcast single element to multiple
         let input_data = vec![9.0f32];
         let input = Tensor::from_data(&input_data, vec![1], device.clone()).unwrap();
@@ -143,8 +263,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_broadcast_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Small to large broadcast
         let input_data = vec![7.0f32];
         let input = Tensor::from_data(&input_data, vec![1], device.clone()).unwrap();
@@ -158,23 +279,25 @@ mod tests {
 
     #[tokio::test]
     async fn test_broadcast_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Broadcast to large size
-        let input_data = vec![3.14f32];
+        let input_data = vec![2.78f32];
         let input = Tensor::from_data(&input_data, vec![1], device.clone()).unwrap();
 
         let result = input.broadcast(vec![1000]).unwrap();
         let output = result.to_vec().unwrap();
 
         assert_eq!(output.len(), 1000);
-        assert!(output.iter().all(|&x| (x - 3.14).abs() < 1e-6));
+        assert!(output.iter().all(|&x| (x - 2.78).abs() < 1e-6));
     }
 
     #[tokio::test]
     async fn test_broadcast_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test determinism
         let input_data = vec![2.5f32];
 

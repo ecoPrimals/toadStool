@@ -27,7 +27,6 @@ serde_yaml = "0.9"
 
 # Performance monitoring and profiling
 sysinfo = "0.30"
-psutil = "3.2"
 
 # Statistics and machine learning
 statrs = "0.16"

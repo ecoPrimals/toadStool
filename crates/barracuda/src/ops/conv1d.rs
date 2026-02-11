@@ -55,7 +55,7 @@ impl Conv1D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/conv1d.wgsl")
+        include_str!("../shaders/conv/conv1d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -201,11 +201,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_conv1d_basic() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Create input [1, 2, 4] - 1 batch, 2 channels, length 4
         let input_data = vec![
@@ -237,7 +239,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_conv1d_edge_cases() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Single channel, kernel size 1 (no reduction)
         let input_data = vec![1.0f32, 2.0, 3.0];
@@ -256,7 +261,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_conv1d_boundary() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test with padding
         let input_data = vec![1.0f32, 2.0, 3.0, 4.0];
@@ -276,7 +284,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_conv1d_large_batch() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Larger sequence
         let batch = 2;
@@ -312,7 +323,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_conv1d_precision() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Simple identity-like convolution
         let input_data = vec![1.0f32, 2.0, 3.0];

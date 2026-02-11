@@ -1,11 +1,13 @@
 //! Tests for Expand operation
 
 use super::*;
-use crate::device::test_pool::get_test_device;
+use crate::device::test_pool::get_test_device_if_gpu_available;
 
 #[tokio::test]
 async fn test_expand_basic() {
-    let device = get_test_device().await;
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // Broadcast from [3] to [9] (repeat 3 times)
     let input_data = vec![1.0, 2.0, 3.0];
     let input = Tensor::from_vec_on(input_data.clone(), vec![3], device)
@@ -23,7 +25,9 @@ async fn test_expand_basic() {
 
 #[tokio::test]
 async fn test_expand_single_element() {
-    let device = get_test_device().await;
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // Broadcast single value to multiple
     let input_data = vec![5.0];
     let input = Tensor::from_vec_on(input_data, vec![1], device)
@@ -37,7 +41,9 @@ async fn test_expand_single_element() {
 
 #[tokio::test]
 async fn test_expand_no_change() {
-    let device = get_test_device().await;
+    let Some(device) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // No expansion needed (already target size)
     let input_data = vec![1.0, 2.0, 3.0];
     let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone())
@@ -50,10 +56,12 @@ async fn test_expand_no_change() {
 
 #[tokio::test]
 async fn test_expand_boundary() {
-    let dev = get_test_device().await;
+    let Some(dev) = get_test_device_if_gpu_available().await else {
+        return;
+    };
 
     // Large expansion factor
-    let input = vec![3.14];
+    let input = vec![2.78];
     let output = Tensor::from_vec_on(input, vec![1], dev.clone())
         .await
         .unwrap()
@@ -62,7 +70,7 @@ async fn test_expand_boundary() {
         .to_vec()
         .unwrap();
     assert_eq!(output.len(), 1000);
-    assert!(output.iter().all(|&x| (x - 3.14).abs() < 1e-5));
+    assert!(output.iter().all(|&x| (x - 2.78).abs() < 1e-5));
 
     // Smaller expansion
     let input = vec![99.0];
@@ -79,7 +87,9 @@ async fn test_expand_boundary() {
 
 #[tokio::test]
 async fn test_expand_large_batch() {
-    let dev = get_test_device().await;
+    let Some(dev) = get_test_device_if_gpu_available().await else {
+        return;
+    };
 
     // Single value to large tensor
     let input = vec![42.0];
@@ -96,7 +106,9 @@ async fn test_expand_large_batch() {
 
 #[tokio::test]
 async fn test_expand_precision() {
-    let dev = get_test_device().await;
+    let Some(dev) = get_test_device_if_gpu_available().await else {
+        return;
+    };
 
     // Verify exact value preserved during broadcast
     let input = vec![1.23456];
@@ -117,7 +129,9 @@ async fn test_expand_precision() {
 
 #[tokio::test]
 async fn test_expand_2d_broadcast_second_dim() {
-    let dev = get_test_device().await;
+    let Some(dev) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // (3, 1) → (3, 5): broadcast second dim
     let input_data: Vec<f32> = vec![1.0, 2.0, 3.0];
     let input = Tensor::from_vec_on(input_data, vec![3, 1], dev.clone())
@@ -146,7 +160,9 @@ async fn test_expand_2d_broadcast_second_dim() {
 
 #[tokio::test]
 async fn test_expand_2d_broadcast_first_dim() {
-    let dev = get_test_device().await;
+    let Some(dev) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // (1, 5) → (4, 5): broadcast first dim
     let input_data: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     let input = Tensor::from_vec_on(input_data.clone(), vec![1, 5], dev.clone())
@@ -174,7 +190,9 @@ async fn test_expand_2d_broadcast_first_dim() {
 
 #[tokio::test]
 async fn test_expand_add_dimension() {
-    let dev = get_test_device().await;
+    let Some(dev) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // (3,) → (3, 5): add dimension then broadcast
     let input_data: Vec<f32> = vec![1.0, 2.0, 3.0];
     let input = Tensor::from_vec_on(input_data.clone(), vec![3], dev.clone())
@@ -203,7 +221,9 @@ async fn test_expand_add_dimension() {
 
 #[tokio::test]
 async fn test_expand_3d_broadcast_middle_dim() {
-    let dev = get_test_device().await;
+    let Some(dev) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // (3, 1, 5) → (3, 4, 5): broadcast middle dim
     let input_data: Vec<f32> = (0..15).map(|i| i as f32).collect(); // 3*1*5 = 15
     let input = Tensor::from_vec_on(input_data, vec![3, 1, 5], dev.clone())
@@ -238,7 +258,9 @@ async fn test_expand_3d_broadcast_middle_dim() {
 
 #[tokio::test]
 async fn test_expand_scalar_to_tensor() {
-    let dev = get_test_device().await;
+    let Some(dev) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // Scalar (1,) → (2, 3, 4)
     let input_data = vec![42.0];
     let input = Tensor::from_vec_on(input_data, vec![1], dev.clone())
@@ -254,7 +276,9 @@ async fn test_expand_scalar_to_tensor() {
 
 #[tokio::test]
 async fn test_expand_incompatible_shapes() {
-    let dev = get_test_device().await;
+    let Some(dev) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // (3, 4) cannot broadcast to (3, 5) - both dims are > 1 and different
     let input_data: Vec<f32> = (0..12).map(|i| i as f32).collect();
     let input = Tensor::from_vec_on(input_data, vec![3, 4], dev.clone())
@@ -266,7 +290,9 @@ async fn test_expand_incompatible_shapes() {
 
 #[tokio::test]
 async fn test_expand_4d_broadcast() {
-    let dev = get_test_device().await;
+    let Some(dev) = get_test_device_if_gpu_available().await else {
+        return;
+    };
     // (1, 3, 1, 5) → (2, 3, 4, 5): broadcast first and third dims
     let input_data: Vec<f32> = (0..15).map(|i| i as f32).collect(); // 1*3*1*5 = 15
     let input = Tensor::from_vec_on(input_data, vec![1, 3, 1, 5], dev.clone())

@@ -115,15 +115,15 @@ impl CrossAttention {
 
     /// Shader references
     pub(super) fn shader_matmul() -> &'static str {
-        include_str!("../../shaders/cross_attention_matmul.wgsl")
+        include_str!("../../shaders/math/cross_attention_matmul.wgsl")
     }
 
     pub(super) fn shader_softmax() -> &'static str {
-        include_str!("../../shaders/cross_attention_softmax.wgsl")
+        include_str!("../../shaders/activation/cross_attention_softmax.wgsl")
     }
 
     pub(super) fn shader_apply() -> &'static str {
-        include_str!("../../shaders/cross_attention_apply.wgsl")
+        include_str!("../../shaders/attention/cross_attention_apply.wgsl")
     }
 
     /// Get query tensor

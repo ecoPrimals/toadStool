@@ -42,7 +42,7 @@ impl ColorJitter {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/color_jitter.wgsl")
+        include_str!("../shaders/augmentation/color_jitter.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -215,11 +215,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_color_jitter_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Small 1x3x2x2 image (1 batch, 3 channels RGB, 2x2 pixels)
         let input_data = vec![
             // R channel
@@ -238,7 +240,7 @@ mod tests {
         // and values are in valid range [0, 1]
         assert_eq!(output.len(), 12);
         for &val in &output {
-            assert!(val >= 0.0 && val <= 1.0);
+            assert!((0.0..=1.0).contains(&val));
         }
         // At least one value should be different due to jitter
         let all_same = output.iter().all(|&x| (x - 0.5).abs() < 0.01);

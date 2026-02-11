@@ -15,6 +15,8 @@
 //! Key difference: Q has different seq_len than K/V
 //! Use: T5, BART, encoder-decoder transformers
 
+use crate::error::{BarracudaError, Result};
+
 /// Cross attention between encoder and decoder
 ///
 /// ## Usage
@@ -54,12 +56,14 @@ pub async fn cross_attention(
     decoder_len: usize,
     encoder_len: usize,
     head_dim: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+) -> Result<Vec<f32>> {
     let q_size = batch_size * num_heads * decoder_len * head_dim;
     let kv_size = batch_size * num_heads * encoder_len * head_dim;
 
     if query.len() != q_size || key.len() != kv_size || value.len() != kv_size {
-        return Err("Dimension mismatch".into());
+        return Err(BarracudaError::InvalidInput {
+            message: "Dimension mismatch".to_string(),
+        });
     }
 
     let mut output = vec![0.0f32; q_size];
@@ -124,11 +128,13 @@ pub async fn cross_attention(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_cross_attention_basic() {
-        let dev = get_test_device().await;
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
@@ -156,7 +162,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cross_attention_edge_cases() {
-        let dev = get_test_device().await;
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
@@ -187,7 +195,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cross_attention_boundary() {
-        let dev = get_test_device().await;
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
@@ -217,7 +227,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cross_attention_large_batch() {
-        let dev = get_test_device().await;
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
@@ -247,7 +259,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cross_attention_precision() {
-        let dev = get_test_device().await;
+        let Some(dev) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let device = &dev.device;
         let queue = &dev.queue;
 
@@ -274,6 +288,6 @@ mod tests {
         assert_eq!(output.len(), q_size);
         assert!(output.iter().all(|&x| x.is_finite()));
         // Output should be a weighted combination of encoder values
-        assert!(output.iter().all(|&x| x >= 0.0 && x <= 3.0));
+        assert!(output.iter().all(|&x| (0.0..=3.0).contains(&x)));
     }
 }

@@ -16,7 +16,7 @@ impl Eq {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/eq.wgsl")
+        include_str!("../shaders/misc/eq.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -142,14 +142,15 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<crate::device::WgpuDevice> {
-        Arc::new(crate::device::Auto::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_eq_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();
@@ -165,8 +166,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_eq_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // All equal
         let a = Tensor::from_vec_on(vec![5.0, 5.0, 5.0], vec![3], device.clone())
             .await
@@ -190,8 +192,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_eq_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Negative values
         let a = Tensor::from_vec_on(vec![-1.0, -2.0, -3.0], vec![3], device.clone())
             .await
@@ -215,8 +218,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_eq_large_tensor() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 1000 elements
         let a_data: Vec<f32> = (0..1000).map(|i| i as f32).collect();
         let b_data: Vec<f32> = (0..1000).map(|i| i as f32).collect();
@@ -235,8 +239,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_eq_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Test exact equality with known values
         let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await

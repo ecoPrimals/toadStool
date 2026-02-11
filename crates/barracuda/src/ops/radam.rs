@@ -108,7 +108,7 @@ impl RAdam {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/radam.wgsl")
+        include_str!("../shaders/optimizer/radam.wgsl")
     }
 
     pub fn execute(self) -> Result<(Tensor, Tensor, Tensor)> {
@@ -358,12 +358,13 @@ impl RAdam {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_radam_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let params = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
             .await
             .unwrap();
@@ -380,8 +381,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_radam_with_state() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let params = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
             .await
             .unwrap();
@@ -414,8 +416,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_radam_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 128;
         let params = Tensor::from_vec_on(vec![1.0; size], vec![size], device.clone())
             .await

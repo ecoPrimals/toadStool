@@ -54,7 +54,7 @@ impl Fold {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/fold.wgsl")
+        include_str!("../shaders/tensor/fold.wgsl")
     }
 
     /// Execute the fold operation
@@ -262,13 +262,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_fold_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Input shape: [B, C*K*K, L] where K=3, so C*9
         let data: Vec<f32> = (0..324).map(|i| i as f32).collect();
         let input = Tensor::from_data(
@@ -287,7 +289,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_fold_invalid_shape() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
         assert!(Fold::new(input, (4, 4), (3, 3), 1, 0, 1).is_err());
@@ -295,7 +299,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_fold_with_padding() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..576).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![1, 9, 64], device.clone()).unwrap();
 

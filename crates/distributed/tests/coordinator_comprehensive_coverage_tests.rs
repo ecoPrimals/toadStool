@@ -30,8 +30,10 @@ async fn test_coordinator_initialization_default() {
 /// Test coordinator initialization with standalone mode
 #[tokio::test]
 async fn test_coordinator_standalone_mode() {
-    let mut config = DistributedConfig::default();
-    config.songbird_integration = None; // Force standalone
+    let config = DistributedConfig {
+        songbird_integration: None, // Force standalone
+        ..Default::default()
+    };
 
     let coordinator = DistributedCoordinator::new(config).await;
     assert!(coordinator.is_ok(), "Standalone mode should work");
@@ -47,8 +49,10 @@ async fn test_coordinator_custom_standalone_config() {
         max_queue_size: 500,
     };
 
-    let mut config = DistributedConfig::default();
-    config.standalone = standalone;
+    let config = DistributedConfig {
+        standalone,
+        ..Default::default()
+    };
 
     let coordinator = DistributedCoordinator::new(config).await;
     assert!(coordinator.is_ok(), "Custom standalone config should work");
@@ -75,12 +79,14 @@ async fn test_concurrent_coordinator_creation() {
 /// Test coordinator handles missing coordination service gracefully
 #[tokio::test]
 async fn test_coordination_service_unavailable() {
-    let mut config = DistributedConfig::default();
-    config.songbird_integration = Some(SongbirdConfig {
-        endpoint: "http://nonexistent.local:9999".to_string(),
-        auth_token: None,
-        health_reporting_interval_secs: 60,
-    });
+    let config = DistributedConfig {
+        songbird_integration: Some(SongbirdConfig {
+            endpoint: "http://nonexistent.local:9999".to_string(),
+            auth_token: None,
+            health_reporting_interval_secs: 60,
+        }),
+        ..Default::default()
+    };
 
     // Should fallback to standalone mode if discovery fails
     let coordinator = DistributedCoordinator::new(config).await;
@@ -448,8 +454,10 @@ async fn test_songbird_without_auth() {
 #[tokio::test]
 async fn test_long_instance_id() {
     let long_id = "instance-".to_string() + &"a".repeat(500);
-    let mut config = DistributedConfig::default();
-    config.instance_id = long_id;
+    let config = DistributedConfig {
+        instance_id: long_id,
+        ..Default::default()
+    };
 
     let result = DistributedCoordinator::new(config).await;
     assert!(result.is_ok(), "Long instance ID should be handled");
@@ -459,8 +467,10 @@ async fn test_long_instance_id() {
 #[tokio::test]
 async fn test_special_characters_instance_id() {
     let special_id = "instance-特殊文字-émojis-🚀".to_string();
-    let mut config = DistributedConfig::default();
-    config.instance_id = special_id;
+    let config = DistributedConfig {
+        instance_id: special_id,
+        ..Default::default()
+    };
 
     let result = DistributedCoordinator::new(config).await;
     assert!(result.is_ok(), "UTF-8 instance ID should be handled");

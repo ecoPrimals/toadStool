@@ -31,12 +31,12 @@ impl Max {
 
     /// Get the WGSL shader source for global reduction
     fn wgsl_shader_reduce() -> &'static str {
-        include_str!("../shaders/max_reduce.wgsl")
+        include_str!("../shaders/math/max_reduce.wgsl")
     }
 
     /// Get the WGSL shader source for dimension-wise reduction
     fn wgsl_shader_dim() -> &'static str {
-        include_str!("../shaders/max_dim.wgsl")
+        include_str!("../shaders/math/max_dim.wgsl")
     }
 
     /// Execute the max operation

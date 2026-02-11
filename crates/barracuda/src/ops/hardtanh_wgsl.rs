@@ -26,7 +26,7 @@ impl Hardtanh {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/hardtanh.wgsl")
+        include_str!("../shaders/activation/hardtanh.wgsl")
     }
 
     /// Execute the hardtanh operation

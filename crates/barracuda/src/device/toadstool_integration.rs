@@ -327,6 +327,9 @@ mod tests {
         let report = hardware_report().unwrap();
         println!("{}", report);
         assert!(report.toadstool_devices > 0, "Should find at least CPU");
-        assert!(report.wgpu_adapters > 0, "Should find at least one WGPU adapter");
+        assert!(
+            report.wgpu_adapters > 0,
+            "Should find at least one WGPU adapter"
+        );
     }
 }

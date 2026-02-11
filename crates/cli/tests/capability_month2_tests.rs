@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)] // expect() is idiomatic in tests
 //! Capability system tests - Month 2 Week 2 Day 4
 //!
 //! Tier 1 tests: Coverage-measured capability tests
@@ -335,8 +336,11 @@ impl CapabilityResolver {
                 return Err(format!("No providers registered for capability: {}", name));
             }
 
-            // Get highest priority provider
-            let best_provider = provider_list.iter().max_by_key(|p| p.priority).unwrap();
+            // Get highest priority provider (list verified non-empty above)
+            let best_provider = provider_list
+                .iter()
+                .max_by_key(|p| p.priority)
+                .expect("provider_list confirmed non-empty");
 
             Ok(Capability {
                 name: name.to_string(),

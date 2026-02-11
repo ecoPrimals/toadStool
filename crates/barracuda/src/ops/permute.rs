@@ -53,7 +53,7 @@ impl Permute {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/permute.wgsl")
+        include_str!("../shaders/tensor/permute.wgsl")
     }
 
     /// Execute the permute operation
@@ -339,13 +339,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_permute_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..24).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![2, 3, 4], device.clone()).unwrap();
 
@@ -358,7 +360,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_permute_identity() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data: Vec<f32> = (0..12).map(|i| i as f32).collect();
         let input = Tensor::from_data(&data, vec![2, 3, 2], device.clone()).unwrap();
 
@@ -371,7 +375,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_permute_invalid_length() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
         assert!(Permute::new(input, vec![0, 1, 2, 3]).is_err());
@@ -379,7 +385,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_permute_invalid_index() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
 
         assert!(Permute::new(input, vec![5]).is_err());
@@ -387,7 +395,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_permute_duplicate() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0, 4.0], vec![2, 2], device.clone()).unwrap();
 
         assert!(Permute::new(input, vec![0, 0]).is_err());

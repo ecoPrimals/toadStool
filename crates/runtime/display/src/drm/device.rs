@@ -2,7 +2,6 @@
 //!
 //! Safe wrappers around DRM device operations using drm crate (Pure Rust! ARM64 compatible!).
 
-#[allow(unused_imports)]
 use crate::{DisplayError, Result};
 use drm::Device as DrmDeviceTrait;
 use rustix::fd::OwnedFd;
@@ -41,7 +40,6 @@ use std::sync::Arc;
 /// # Ok(())
 /// # }
 /// ```
-#[allow(dead_code)]
 pub struct Device {
     path: PathBuf,
     fd: Arc<OwnedFd>, // ✅ Safe wrapper with automatic cleanup!
@@ -103,13 +101,19 @@ impl Device {
         })?;
 
         let fd = Arc::new(fd);
+        let device = Self { path, fd };
 
-        tracing::debug!("✅ Opened DRM device: {} (Pure Rust!)", path.display());
+        // Verify it's actually a DRM device - get_driver() fails on non-DRM fds
+        device.get_driver().map_err(|e| {
+            tracing::error!("Not a DRM device {}: {}", device.path.display(), e);
+            DisplayError::IoctlFailed(format!("Not a DRM device: {e}"))
+        })?;
 
-        // TODO: Verify it's actually a DRM device using drm crate
-        // (DRM_IOCTL_VERSION check)
-
-        Ok(Self { path, fd })
+        tracing::debug!(
+            "✅ Opened DRM device: {} (Pure Rust!)",
+            device.path.display()
+        );
+        Ok(device)
     }
 
     /// Query device capabilities

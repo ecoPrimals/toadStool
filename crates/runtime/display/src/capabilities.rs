@@ -153,7 +153,8 @@ impl DisplayCapabilities {
         tracing::info!("  Found {} DRM device(s)", drm_devices.len());
 
         // Convert to display info
-        // TODO: Query actual display properties (resolution, refresh rate)
+        // Pending: Open each DRM device, use drm::control::Device to get connectors/modes,
+        // then extract resolution and refresh rate per display. Currently uses fallback defaults.
         let displays: Vec<DisplayInfo> = drm_devices
             .iter()
             .map(|path| {
@@ -165,8 +166,9 @@ impl DisplayCapabilities {
 
                 DisplayInfo {
                     name,
-                    width: 1920, // TODO: Query actual mode
-                    height: 1080,
+                    // Fallback defaults until DRM mode query is implemented
+                    width: toadstool_common::constants::display::FALLBACK_WIDTH,
+                    height: toadstool_common::constants::display::FALLBACK_HEIGHT,
                     refresh_rate: 60.0,
                     connected: true,
                 }
@@ -372,9 +374,9 @@ impl DisplayCapabilities {
 //
 // Public API: 100% SAFE
 
-// TODO: Future Enhancements:
+// Pending enhancements:
 //
-// 1. Query actual display modes from DRM
+// 1. Query actual display modes from DRM (get_connectors, get_modes) for resolution/refresh
 // 2. Add display hotplug detection
 // 3. Add input device hotplug detection
 // 4. Add capability versioning

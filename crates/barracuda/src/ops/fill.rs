@@ -30,7 +30,7 @@ impl Fill {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/fill.wgsl")
+        include_str!("../shaders/misc/fill.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -143,14 +143,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_fill_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Fill [3, 4] tensor with 7.5
         let result = Tensor::fill(vec![3, 4], 7.5, device).unwrap();
         let output = result.to_vec().unwrap();
@@ -164,8 +165,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_fill_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Single element
         let result = Tensor::fill(vec![1], 99.0, device.clone()).unwrap();
         let output = result.to_vec().unwrap();
@@ -186,8 +188,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_fill_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Very small value
         let result = Tensor::fill(vec![4], 1e-10, device.clone()).unwrap();
         let output = result.to_vec().unwrap();
@@ -199,16 +202,17 @@ mod tests {
         assert!(output.iter().all(|&x| (x - 1e10).abs() < 1e5));
 
         // Different shapes
-        let result = Tensor::fill(vec![2, 3, 4], 3.14, device).unwrap();
+        let result = Tensor::fill(vec![2, 3, 4], 2.78, device).unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 24);
-        assert!(output.iter().all(|&x| (x - 3.14).abs() < 1e-6));
+        assert!(output.iter().all(|&x| (x - 2.78).abs() < 1e-6));
     }
 
     #[tokio::test]
     async fn test_fill_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Large tensor
         let result = Tensor::fill(vec![100, 100], 42.0, device).unwrap();
         let output = result.to_vec().unwrap();
@@ -218,8 +222,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_fill_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Fractional value with exact FP32 representation
         let result = Tensor::fill(vec![10], 2.5, device.clone()).unwrap();
         let output = result.to_vec().unwrap();

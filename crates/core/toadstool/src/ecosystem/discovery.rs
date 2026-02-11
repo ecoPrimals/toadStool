@@ -268,4 +268,118 @@ mod tests {
         let cached = manager.get_all_cached().await;
         assert_eq!(cached.len(), 0);
     }
+
+    fn make_test_service(id: &str, name: &str) -> DiscoveredService {
+        use std::collections::HashMap;
+        use std::time::SystemTime;
+
+        DiscoveredService {
+            id: id.to_string(),
+            name: name.to_string(),
+            version: "1.0".to_string(),
+            endpoints: vec![],
+            capabilities: vec![],
+            metadata: HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_cached_service_not_found() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Environment)
+            .await
+            .expect("Failed to create discovery client");
+        let manager = DiscoveryManager::new(Arc::new(discovery));
+
+        let result = manager.get_cached_service("unknown-id").await;
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_add_to_cache_and_retrieve() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Environment)
+            .await
+            .expect("Failed to create discovery client");
+        let manager = DiscoveryManager::new(Arc::new(discovery));
+
+        let service = make_test_service("test-id", "test-service");
+        manager.add_to_cache(service.clone(), None).await;
+
+        let retrieved = manager.get_cached_service("test-id").await;
+        assert!(retrieved.is_some());
+        let retrieved = retrieved.unwrap();
+        assert_eq!(retrieved.id, "test-id");
+        assert_eq!(retrieved.name, "test-service");
+    }
+
+    #[tokio::test]
+    async fn test_remove_from_cache() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Environment)
+            .await
+            .expect("Failed to create discovery client");
+        let manager = DiscoveryManager::new(Arc::new(discovery));
+
+        let service = make_test_service("to-remove", "remove-me");
+        manager.add_to_cache(service.clone(), None).await;
+        assert!(manager.get_cached_service("to-remove").await.is_some());
+
+        manager.remove_from_cache("to-remove").await;
+        assert!(manager.get_cached_service("to-remove").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_clear_cache_clears_all() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Environment)
+            .await
+            .expect("Failed to create discovery client");
+        let manager = DiscoveryManager::new(Arc::new(discovery));
+
+        manager
+            .add_to_cache(make_test_service("id1", "svc1"), None)
+            .await;
+        manager
+            .add_to_cache(make_test_service("id2", "svc2"), None)
+            .await;
+        manager
+            .add_to_cache(make_test_service("id3", "svc3"), None)
+            .await;
+
+        assert_eq!(manager.get_all_cached().await.len(), 3);
+
+        manager.clear_cache().await;
+        let cached = manager.get_all_cached().await;
+        assert!(cached.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_refresh_service_returns_error() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Environment)
+            .await
+            .expect("Failed to create discovery client");
+        let manager = DiscoveryManager::new(Arc::new(discovery));
+
+        let service = make_test_service("refresh-me", "refreshable");
+        manager.add_to_cache(service.clone(), None).await;
+
+        let result = manager.refresh_service("refresh-me").await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Service refresh requires capability-based rediscovery"));
+    }
+
+    #[tokio::test]
+    async fn test_discover_all_required_empty_config() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Environment)
+            .await
+            .expect("Failed to create discovery client");
+        let manager = DiscoveryManager::new(Arc::new(discovery));
+
+        let config = crate::EcosystemConfig::default();
+        let services = manager.discover_all_required(&config).await.unwrap();
+        assert!(services.is_empty());
+    }
 }

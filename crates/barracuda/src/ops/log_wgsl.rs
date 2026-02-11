@@ -26,7 +26,7 @@ impl Log {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/log.wgsl")
+        include_str!("../shaders/math/log.wgsl")
     }
 
     /// Execute the log operation

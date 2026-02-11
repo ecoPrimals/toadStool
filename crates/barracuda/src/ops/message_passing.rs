@@ -67,7 +67,7 @@ impl MessagePassing {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/message_passing.wgsl")
+        include_str!("../shaders/math/message_passing.wgsl")
     }
 
     /// Execute the message passing operation
@@ -304,12 +304,13 @@ impl MessagePassing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_message_passing_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let num_nodes = 4;
         let num_edges = 3;
         let node_feat_dim = 8;

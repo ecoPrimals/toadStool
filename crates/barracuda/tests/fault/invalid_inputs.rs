@@ -9,8 +9,7 @@ use barracuda::ops::*;
 #[tokio::test]
 async fn test_matmul_dimension_mismatch() {
     // Matmul with incompatible dimensions should return error
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let a = vec![0.5f32; 10 * 20]; // 10 x 20
     let b = vec![0.3f32; 30 * 40]; // 30 x 40 (incompatible: k != 30)
 
@@ -26,8 +25,7 @@ async fn test_matmul_dimension_mismatch() {
 #[tokio::test]
 async fn test_softmax_zero_classes() {
     // Softmax with 0 classes should error
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let input = vec![0.5f32; 10];
     let result = softmax(&dev.device, &dev.queue, &input, 10, 0).await;
 
@@ -40,8 +38,7 @@ async fn test_softmax_zero_classes() {
 #[tokio::test]
 async fn test_batch_norm_invalid_shapes() {
     // Batch norm with mismatched scale/bias dimensions
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 4;
     let channels = 64;
     let spatial = 10;
@@ -77,8 +74,7 @@ async fn test_batch_norm_invalid_shapes() {
 #[tokio::test]
 async fn test_conv2d_zero_kernel() {
     // Conv2D with kernel size 0 should error
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let batch = 1;
     let in_channels = 3;
     let out_channels = 16;
@@ -118,8 +114,7 @@ async fn test_conv2d_zero_kernel() {
 #[tokio::test]
 async fn test_add_mismatched_sizes() {
     // Element-wise add with different sizes should error
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let a = vec![0.5f32; 100];
     let b = vec![0.3f32; 200]; // Different size!
 
@@ -135,8 +130,7 @@ async fn test_add_mismatched_sizes() {
 #[tokio::test]
 async fn test_embedding_out_of_bounds_index() {
     // Embedding with index >= vocab_size should error
-    let dev = get_test_device().await;
-
+    let Some(dev) = get_test_device_if_gpu_available().await else { return };
     let vocab_size = 1000;
     let embed_dim = 128;
     let weights = vec![0.1f32; vocab_size * embed_dim];

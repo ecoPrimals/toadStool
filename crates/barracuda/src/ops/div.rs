@@ -27,7 +27,7 @@ impl Div {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/elementwise_div.wgsl")
+        include_str!("../shaders/math/elementwise_div.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -151,12 +151,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_div_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let lhs = Tensor::from_vec_on(vec![10.0, 20.0, 30.0], vec![3], device.clone())
             .await
             .unwrap();
@@ -172,8 +173,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_div_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Small values, reciprocals
         let lhs = Tensor::from_vec_on(vec![1.0, 1e-6, 1.0, 0.0], vec![4], device.clone())
             .await
@@ -191,8 +193,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_div_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Infinities and large values
         let lhs = Tensor::from_vec_on(vec![f32::INFINITY, 1e10, 1.0], vec![3], device.clone())
             .await
@@ -209,8 +212,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_div_large_tensor() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 1000;
         let lhs_data: Vec<f32> = (1..=size).map(|i| (i as f32) * 100.0).collect();
         let rhs_data = vec![10.0; size];
@@ -230,8 +234,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_div_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let lhs_data = vec![10.0, 5.0, 2.5, 1.0, 0.5];
         let rhs_data = vec![2.0, 2.0, 2.0, 2.0, 2.0];
 

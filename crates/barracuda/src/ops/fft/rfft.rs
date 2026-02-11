@@ -107,12 +107,13 @@ impl Rfft {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_rfft_simple() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Real sine wave: sin(2πk/N) for k=0..7
         let n = 8;
@@ -132,7 +133,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_rfft_dc_component() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Constant signal (DC component only)
         let n = 16;
@@ -159,7 +163,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_rfft_conjugate_symmetry() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Mixed frequency signal
         let n = 32;
@@ -191,7 +198,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_rfft_performance_benefit() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Large real signal
         let n = 4096;
@@ -207,6 +217,7 @@ mod tests {
         println!("✅ RFFT {} points: {:?}", n, elapsed);
 
         // Should complete in reasonable time (benefit from symmetry exploitation)
-        assert!(elapsed.as_secs() < 5, "RFFT completes efficiently");
+        // Software rasterizer (llvmpipe) is much slower than real GPU; allow generous timeout
+        assert!(elapsed.as_secs() < 30, "RFFT completes efficiently");
     }
 }

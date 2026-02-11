@@ -32,7 +32,7 @@ impl Split {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/split.wgsl")
+        include_str!("../shaders/tensor/split.wgsl")
     }
 
     pub fn execute(self) -> Result<(Tensor, Tensor)> {
@@ -165,14 +165,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_split_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Simple 1D split
         let input_data = vec![1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0];
         let input = Tensor::from_data(&input_data, vec![6], device.clone()).unwrap();
@@ -191,8 +192,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_split_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Split at start
         let input_data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::from_data(&input_data, vec![4], device.clone()).unwrap();
@@ -210,8 +212,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_split_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Equal split
         let input_data = vec![1.0; 100];
         let input = Tensor::from_data(&input_data, vec![100], device.clone()).unwrap();
@@ -229,8 +232,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_split_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 10000 elements
         let input_data = vec![1.0; 10000];
         let input = Tensor::from_data(&input_data, vec![10000], device.clone()).unwrap();
@@ -241,8 +245,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_split_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Verify data preservation
         let input_data: Vec<f32> = (0..10).map(|i| i as f32).collect();
         let input = Tensor::from_data(&input_data, vec![10], device.clone()).unwrap();

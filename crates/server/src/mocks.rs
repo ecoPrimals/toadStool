@@ -91,3 +91,99 @@ impl Default for MockSystemResourcesWithUsage {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use toadstool::ResourceMonitor;
+
+    #[test]
+    fn mock_resource_monitor_new() {
+        let monitor = MockResourceMonitor::new();
+        assert_eq!(
+            std::mem::size_of_val(&monitor),
+            std::mem::size_of::<MockResourceMonitor>()
+        );
+    }
+
+    #[test]
+    fn mock_resource_monitor_default() {
+        let monitor = MockResourceMonitor::new();
+        assert_eq!(
+            std::mem::size_of_val(&monitor),
+            std::mem::size_of::<MockResourceMonitor>()
+        );
+    }
+
+    #[test]
+    fn mock_resource_monitor_start_monitoring() {
+        let monitor = MockResourceMonitor::new();
+        let result = monitor.start_monitoring("workload-1");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn mock_resource_monitor_stop_monitoring() {
+        let monitor = MockResourceMonitor::new();
+        let result = monitor.stop_monitoring("workload-1");
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn mock_resource_monitor_get_metrics() {
+        let monitor = MockResourceMonitor::new();
+        let result = monitor.get_metrics("workload-1").await;
+        assert!(result.is_ok());
+        let metrics = result.unwrap();
+        assert_eq!(
+            std::mem::size_of_val(&metrics),
+            std::mem::size_of::<toadstool::RuntimeMetrics>()
+        );
+    }
+
+    #[tokio::test]
+    async fn mock_resource_monitor_get_system_resources() {
+        let monitor = MockResourceMonitor::new();
+        let result = monitor.get_system_resources().await;
+        assert!(result.is_ok());
+        let resources = result.unwrap();
+        assert_eq!(resources.available_cpu_cores, 4.0);
+        assert_eq!(resources.available_memory_bytes, 8_000_000_000);
+        assert_eq!(resources.available_storage_bytes, 100_000_000_000);
+        assert_eq!(resources.available_network_bandwidth, Some(1_000_000_000));
+        assert_eq!(resources.available_gpu_units, 1);
+    }
+
+    #[test]
+    fn mock_system_resources_with_usage_default() {
+        let resources = MockSystemResourcesWithUsage::default();
+        assert_eq!(resources.cpu_usage_percent, 45.2);
+        assert_eq!(resources.memory_usage_percent, 62.8);
+        assert_eq!(resources.available_memory_bytes, 4_000_000_000);
+        assert_eq!(resources.total_memory_bytes, 8_000_000_000);
+        assert_eq!(resources.disk_usage_percent, 25.0);
+        assert_eq!(resources.network_bytes_sent, 1_000_000);
+        assert_eq!(resources.network_bytes_received, 2_000_000);
+        assert_eq!(resources.load_average, [0.5, 0.7, 0.9]);
+        assert_eq!(resources.uptime_seconds, 86400);
+    }
+
+    #[test]
+    fn mock_system_resources_with_usage_custom() {
+        let resources = MockSystemResourcesWithUsage {
+            cpu_usage_percent: 80.0,
+            memory_usage_percent: 90.0,
+            available_memory_bytes: 1_000_000_000,
+            total_memory_bytes: 16_000_000_000,
+            disk_usage_percent: 50.0,
+            network_bytes_sent: 5_000_000,
+            network_bytes_received: 10_000_000,
+            load_average: [1.0, 2.0, 3.0],
+            uptime_seconds: 172800,
+        };
+        assert_eq!(resources.cpu_usage_percent, 80.0);
+        assert_eq!(resources.memory_usage_percent, 90.0);
+        assert_eq!(resources.uptime_seconds, 172800);
+        assert_eq!(resources.load_average[0], 1.0);
+    }
+}

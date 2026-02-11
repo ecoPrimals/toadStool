@@ -58,7 +58,7 @@ impl MFCC {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/mfcc.wgsl")
+        include_str!("../shaders/audio/mfcc.wgsl")
     }
 
     /// Execute the MFCC operation
@@ -217,11 +217,13 @@ impl MFCC {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_mfcc_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let mel_spec = Tensor::from_vec_on(vec![1.0; 100 * 80], vec![100, 80], device.clone())
             .await
             .unwrap();

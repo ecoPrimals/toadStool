@@ -18,7 +18,12 @@
 //! use toadstool_integration_nestgate::{NestGateClient, ArtifactType};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let client = NestGateClient::connect("http://nestgate:8080").await?;
+//! // Prefer: NestGateClient::discover().await? (capability-based)
+//! // Or set NESTGATE_ENDPOINT / TOADSTOOL_STORAGE_ENDPOINT env var
+//! let client = NestGateClient::connect(
+//!     std::env::var("NESTGATE_ENDPOINT")
+//!         .unwrap_or_else(|_| "http://localhost:8082".to_string())
+//! ).await?;
 //!
 //! // Store an artifact
 //! let metadata = client.store_artifact(

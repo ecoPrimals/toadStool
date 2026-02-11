@@ -26,7 +26,7 @@ impl Cos {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/cos.wgsl")
+        include_str!("../shaders/math/cos.wgsl")
     }
 
     /// Execute the cos operation

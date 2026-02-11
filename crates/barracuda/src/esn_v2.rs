@@ -524,7 +524,13 @@ impl ESN {
         let state = self.update(&input_tensor).await?;
 
         // Output: W_out * state
-        let w_out = self.w_out.as_ref().unwrap();
+        let w_out =
+            self.w_out
+                .as_ref()
+                .ok_or_else(|| crate::error::BarracudaError::InvalidOperation {
+                    op: "ESN::predict".to_string(),
+                    reason: "ESN has not been trained yet — call train() first".to_string(),
+                })?;
         let output = w_out.transpose()?.matmul(&state)?;
 
         output.to_vec()
@@ -571,8 +577,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_esn_invalid_config() {
-        let mut config = ESNConfig::default();
-        config.input_size = 0;
+        let config = ESNConfig {
+            input_size: 0,
+            ..Default::default()
+        };
         assert!(ESN::new(config).await.is_err());
     }
 

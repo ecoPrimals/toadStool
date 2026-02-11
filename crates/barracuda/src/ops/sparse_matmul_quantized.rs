@@ -336,11 +336,13 @@ pub async fn sparse_matmul_quantized(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
 
     #[tokio::test]
     async fn test_sparse_matmul_quantized_basic() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let values = vec![127, -64, 32];
         let rows = vec![0, 1, 2];
         let cols = vec![0, 0, 1];
@@ -365,7 +367,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_sparse_matmul_quantized_edge_cases() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let values = vec![0];
         let rows = vec![0];
         let cols = vec![0];
@@ -387,7 +392,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_sparse_matmul_quantized_boundary() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let empty: Vec<i8> = vec![];
         assert!(sparse_matmul_quantized(
             &device.device,
@@ -405,7 +413,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_sparse_matmul_quantized_large_tensor() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let values: Vec<i8> = (0..1000).map(|i| (i % 128) as i8).collect();
         let rows: Vec<u32> = (0..1000).map(|i| i % 100).collect();
         let cols: Vec<u32> = (0..1000).map(|i| i % 50).collect();
@@ -428,7 +439,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_sparse_matmul_quantized_precision() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let values = vec![127, 127];
         let rows = vec![0, 0];
         let cols = vec![0, 1];

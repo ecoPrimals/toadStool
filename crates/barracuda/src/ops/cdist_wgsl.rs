@@ -44,7 +44,7 @@ impl Cdist {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/cdist.wgsl")
+        include_str!("../shaders/misc/cdist.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -212,11 +212,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_cdist_euclidean() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Two 2D points: (0,0) and (3,4)
         let a_data = vec![0.0, 0.0];
         let b_data = vec![3.0, 4.0];
@@ -237,7 +239,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cdist_manhattan() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let a_data = vec![0.0, 0.0];
         let b_data = vec![3.0, 4.0];
 

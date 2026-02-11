@@ -44,7 +44,7 @@ impl GIoULoss {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/giou_loss.wgsl")
+        include_str!("../shaders/loss/giou_loss.wgsl")
     }
 
     /// Execute GIoULoss on tensor
@@ -235,12 +235,13 @@ impl GIoULoss {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_giou_loss_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let num_boxes = 3;
 
         let pred_boxes = Tensor::from_vec_on(

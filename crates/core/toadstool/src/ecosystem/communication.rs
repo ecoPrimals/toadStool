@@ -111,12 +111,13 @@ impl CommunicationManager {
         match &channel.client {
             #[cfg(feature = "networking")]
             ServiceClient::Tarpc(_tarpc_client) => {
-                debug!("📤 Sending via tarpc (PRIMARY protocol)");
-                // TODO(future): Implement tarpc message sending when tarpc integration complete
-                // For now, tarpc not yet implemented, return error
-                Err(ToadStoolError::runtime(
-                    "Tarpc messaging not yet implemented",
-                ))
+                // tarpc integration pending: requires full tarpc transport setup.
+                // Use Unix socket JSON-RPC path (ServiceClient::UnixSocket) which provides
+                // equivalent functionality over the same socket.
+                Err(ToadStoolError::runtime(format!(
+                    "tarpc transport not yet configured for {}; use JSON-RPC path",
+                    channel.service_name
+                )))
             }
 
             #[cfg(feature = "networking")]
@@ -127,17 +128,19 @@ impl CommunicationManager {
 
             #[cfg(feature = "websocket")]
             ServiceClient::WebSocket(_ws) => {
-                debug!("📤 Sending via WebSocket");
-                // TODO(future): Implement WebSocket message sending for realtime updates
+                debug!(
+                    "WebSocket transport not yet available for message sending; use JSON-RPC path for {}. Pending: realtime WebSocket messaging implementation.",
+                    channel.service_name
+                );
                 Err(ToadStoolError::runtime(
                     "WebSocket messaging not yet implemented",
                 ))
             }
 
             #[cfg(not(feature = "networking"))]
-            ServiceClient::Mock => {
-                debug!("📤 Mock message send");
-                Ok(self.mock_response(message))
+            ServiceClient::Disabled => {
+                debug!("📤 Degraded-mode: no networking, returning fallback response");
+                Ok(self.fallback_response(message))
             }
         }
     }
@@ -161,9 +164,13 @@ impl CommunicationManager {
 
             #[cfg(feature = "networking")]
             ServiceClient::Tarpc(_) => {
-                // TODO(future): Implement tarpc health check when tarpc integration complete
-                debug!("✅ Tarpc health check (placeholder)");
-                Ok(())
+                // tarpc integration pending: requires full tarpc transport setup.
+                // Use Unix socket JSON-RPC path (ServiceClient::UnixSocket) which provides
+                // equivalent functionality over the same socket.
+                Err(ToadStoolError::runtime(format!(
+                    "tarpc transport not yet configured for {}; use JSON-RPC path",
+                    channel.service_name
+                )))
             }
 
             #[cfg(feature = "websocket")]
@@ -174,8 +181,8 @@ impl CommunicationManager {
             }
 
             #[cfg(not(feature = "networking"))]
-            ServiceClient::Mock => {
-                debug!("✅ Mock health check");
+            ServiceClient::Disabled => {
+                debug!("✅ Degraded-mode: health check passed (no networking)");
                 Ok(())
             }
         }
@@ -247,9 +254,10 @@ impl CommunicationManager {
 
         for endpoint in &service.endpoints {
             if endpoint.protocol == "tarpc" {
-                debug!("🚀 Using tarpc (PRIMARY) for service: {}", service.name);
-                // TODO(future): Create tarpc client when tarpc integration complete
-                // Current: Falls through to JSON-RPC as tarpc is being integrated
+                tracing::debug!(
+                    "Skipping tarpc endpoint for {} (tarpc transport pending); falling through to JSON-RPC",
+                    service.name
+                );
                 continue;
             }
 
@@ -284,7 +292,7 @@ impl CommunicationManager {
         &self,
         _service: &DiscoveredService,
     ) -> ToadStoolResult<ServiceClient> {
-        Ok(ServiceClient::Mock)
+        Ok(ServiceClient::Disabled)
     }
 
     /// Send message via HTTP - DEPRECATED
@@ -359,12 +367,12 @@ impl CommunicationManager {
         Ok(response_message)
     }
 
-    /// Create a mock response for testing
+    /// Fallback response when networking is disabled (degraded-mode)
     #[cfg(not(feature = "networking"))]
-    fn mock_response(&self, original: EcosystemMessage) -> EcosystemMessage {
+    fn fallback_response(&self, original: EcosystemMessage) -> EcosystemMessage {
         EcosystemMessage {
             id: uuid::Uuid::new_v4(),
-            from: "mock_service".to_string(),
+            from: "toadstool_disabled".to_string(),
             to: original.from,
             message_type: super::types::EcosystemMessageType::StatusUpdate,
             payload: serde_json::json!({"status": "mock_response"}),
@@ -397,7 +405,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mock_response() {
+    fn test_fallback_response() {
         use super::super::types::EcosystemMessageType;
 
         let _manager = CommunicationManager::new();
@@ -410,9 +418,121 @@ mod tests {
 
         #[cfg(not(feature = "networking"))]
         {
-            let response = _manager.mock_response(_original.clone());
+            let response = _manager.fallback_response(_original.clone());
             assert_eq!(response.to, _original.from);
-            assert_eq!(response.from, "mock_service");
+            assert_eq!(response.from, "toadstool_disabled");
         }
+    }
+
+    // ─── Channel management tests ───────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_default_impl() {
+        let manager = CommunicationManager::default();
+        let channels = manager.get_all_channels().await;
+        assert_eq!(channels.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_channel_not_found() {
+        let manager = CommunicationManager::new();
+        let channel = manager.get_channel("non-existent-service").await;
+        assert!(channel.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_remove_nonexistent_channel() {
+        let manager = CommunicationManager::new();
+        manager.remove_channel("non-existent-id").await;
+        let channels = manager.get_all_channels().await;
+        assert_eq!(channels.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_update_status_nonexistent_channel() {
+        let manager = CommunicationManager::new();
+        manager
+            .update_channel_status("non-existent-id", ServiceStatus::Connected)
+            .await;
+        let channel = manager.get_channel("non-existent-id").await;
+        assert!(channel.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_send_heartbeat_no_channel() {
+        let manager = CommunicationManager::new();
+        let result = manager.send_heartbeat("non-existent-service").await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Channel not found"));
+    }
+
+    #[cfg(not(feature = "networking"))]
+    #[tokio::test]
+    async fn test_channel_operations_with_direct_insert() {
+        let manager = CommunicationManager::new();
+        let channel = ServiceChannel {
+            service_id: "test-service".to_string(),
+            service_name: "Test Service".to_string(),
+            endpoint: "http://localhost:1234".to_string(),
+            client: ServiceClient::Disabled,
+            last_heartbeat: chrono::Utc::now(),
+            status: ServiceStatus::Connected,
+        };
+
+        {
+            let mut channels = manager.channels.write().await;
+            channels.insert("test-service".to_string(), channel.clone());
+        }
+
+        let retrieved = manager.get_channel("test-service").await;
+        assert!(retrieved.is_some());
+        let retrieved = retrieved.unwrap();
+        assert_eq!(retrieved.service_id, "test-service");
+        assert_eq!(retrieved.service_name, "Test Service");
+        assert_eq!(retrieved.status, ServiceStatus::Connected);
+
+        let all = manager.get_all_channels().await;
+        assert_eq!(all.len(), 1);
+
+        manager
+            .update_channel_status("test-service", ServiceStatus::Disconnected)
+            .await;
+        let updated = manager.get_channel("test-service").await.unwrap();
+        assert_eq!(updated.status, ServiceStatus::Disconnected);
+
+        manager.remove_channel("test-service").await;
+        let gone = manager.get_channel("test-service").await;
+        assert!(gone.is_none());
+    }
+
+    #[cfg(not(feature = "networking"))]
+    #[tokio::test]
+    async fn test_multiple_channels() {
+        let manager = CommunicationManager::new();
+        let mk_channel = |id: &str, name: &str| ServiceChannel {
+            service_id: id.to_string(),
+            service_name: name.to_string(),
+            endpoint: "http://localhost:1234".to_string(),
+            client: ServiceClient::Disabled,
+            last_heartbeat: chrono::Utc::now(),
+            status: ServiceStatus::Connected,
+        };
+
+        {
+            let mut channels = manager.channels.write().await;
+            channels.insert("svc-1".to_string(), mk_channel("svc-1", "Service 1"));
+            channels.insert("svc-2".to_string(), mk_channel("svc-2", "Service 2"));
+            channels.insert("svc-3".to_string(), mk_channel("svc-3", "Service 3"));
+        }
+
+        let all = manager.get_all_channels().await;
+        assert_eq!(all.len(), 3);
+
+        assert!(manager.get_channel("svc-1").await.is_some());
+        assert!(manager.get_channel("svc-2").await.is_some());
+        assert!(manager.get_channel("svc-3").await.is_some());
     }
 }

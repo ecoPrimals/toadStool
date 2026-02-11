@@ -66,7 +66,7 @@ pub struct FocalLoss {
 
 impl FocalLoss {
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/focal_loss.wgsl")
+        include_str!("../shaders/loss/focal_loss.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -298,14 +298,15 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_focal_loss_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let predictions =
             Tensor::from_data(&vec![0.9, 0.1, 0.8, 0.2], vec![4], device.clone()).unwrap();
 
@@ -317,13 +318,14 @@ mod tests {
 
         assert_eq!(loss.len(), 4);
         // Verify operation completed successfully
-        assert!(loss.len() > 0);
+        assert!(!loss.is_empty());
     }
 
     #[tokio::test]
     async fn test_focal_loss_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Perfect predictions
         let predictions = Tensor::from_data(&vec![1.0, 0.0, 1.0], vec![3], device.clone()).unwrap();
         let targets = Tensor::from_data(&vec![1.0, 0.0, 1.0], vec![3], device.clone()).unwrap();
@@ -341,8 +343,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_focal_loss_boundary() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Different alpha values
         let predictions = Tensor::from_data(&vec![0.6, 0.4], vec![2], device.clone()).unwrap();
         let targets = Tensor::from_data(&vec![1.0, 0.0], vec![2], device.clone()).unwrap();
@@ -359,8 +362,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_focal_loss_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // 100 elements
         let mut preds = Vec::with_capacity(100);
         let mut tgts = Vec::with_capacity(100);
@@ -380,8 +384,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_focal_loss_precision() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         // Gamma parameter effect
         let predictions = Tensor::from_data(&vec![0.5, 0.9], vec![2], device.clone()).unwrap();
         let targets = Tensor::from_data(&vec![1.0, 1.0], vec![2], device.clone()).unwrap();

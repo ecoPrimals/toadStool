@@ -130,9 +130,6 @@ async fn test_concurrent_health_check_events() {
     // Start background services
     start_background_services(state.clone()).await;
 
-    // ✅ INTENTIONAL DELAY: Give background services time to emit events
-    tokio::time::sleep(Duration::from_millis(150)).await;
-
     let barrier = Arc::new(Barrier::new(15));
     let mut tasks = vec![];
 

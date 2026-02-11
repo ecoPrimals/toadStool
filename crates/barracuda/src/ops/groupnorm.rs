@@ -49,7 +49,7 @@ impl GroupNorm {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/groupnorm.wgsl")
+        include_str!("../shaders/norm/groupnorm.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -262,7 +262,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_groupnorm_basic() {
-        let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await else {
+            return;
+        };
 
         // Create input [1, 4, 2, 2] - 1 batch, 4 channels, 2x2 spatial
         let input_data = vec![

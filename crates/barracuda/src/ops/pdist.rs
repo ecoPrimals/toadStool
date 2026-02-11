@@ -39,7 +39,7 @@ impl Pdist {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/pdist.wgsl")
+        include_str!("../shaders/misc/pdist.wgsl")
     }
 
     /// Execute the pdist operation
@@ -199,12 +199,13 @@ impl Pdist {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_pdist_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let num_vectors = 3;
         let dim = 2;
 

@@ -13,7 +13,6 @@
 use std::time::Duration;
 use toadstool::discovery::{DiscoveredService, MdnsDiscoveryService};
 use toadstool::self_identity::{Capability, SelfIdentity};
-use tokio::time::sleep;
 
 #[tokio::test]
 async fn test_mdns_service_lifecycle() {
@@ -67,13 +66,30 @@ async fn test_capability_based_discovery() {
         return;
     }
 
-    // Allow time for advertisement
-    sleep(Duration::from_millis(100)).await;
-
-    // Try to discover by capability
-    let result = mdns
-        .discover_by_capability("storage", Duration::from_secs(2))
-        .await;
+    // Retry discovery until mDNS advertisement propagates (bounded loop instead of fixed sleep)
+    let mut result = None;
+    for _attempt in 0..5 {
+        match tokio::time::timeout(
+            Duration::from_millis(100),
+            mdns.discover_by_capability("storage", Duration::from_millis(50)),
+        )
+        .await
+        {
+            Ok(Ok(found)) => {
+                result = Some(Ok(found));
+                break;
+            }
+            _ => continue, // retry on timeout or transient failure
+        }
+    }
+    let result = match result {
+        Some(r) => r,
+        None => {
+            // Fallback: final attempt with full timeout if retries exhausted
+            mdns.discover_by_capability("storage", Duration::from_secs(2))
+                .await
+        }
+    };
 
     // Clean up
     let _ = mdns.shutdown();

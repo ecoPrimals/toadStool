@@ -128,38 +128,57 @@ impl HealthMonitor for ByobHealthMonitor {
         service_name: &str,
         health_check: &HealthCheck,
     ) -> ToadStoolResult<bool> {
-        debug!("🔍 Performing health check for service: {}", service_name);
+        debug!("Performing health check for service: {}", service_name);
 
-        // ✅ CAPABILITY-BASED: Check if health check is configured
         if health_check.command.is_empty() {
             return Ok(true); // No command means always healthy
         }
 
-        // Validate health check command format
-        let command = &health_check.command[0];
+        let command = health_check.command[0].clone();
+        let args: Vec<String> = health_check.command[1..].to_vec();
+        let timeout_secs = health_check.timeout.clamp(1, 60);
+        let timeout = std::time::Duration::from_secs(timeout_secs);
 
-        // ✅ ZERO HARDCODING: Support any health check command
-        match command.as_str() {
-            "curl" | "wget" | "nc" | "ping" => {
-                // HTTP/network health checks
-                debug!("✅ Valid network health check command: {}", command);
-                Ok(true) // Simulated success
+        let (tx, rx) = std::sync::mpsc::channel();
+        let _ = std::thread::spawn(move || {
+            let result = std::process::Command::new(&command)
+                .args(&args)
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status();
+            let _ = tx.send(result);
+        });
+
+        match rx.recv_timeout(timeout) {
+            Ok(Ok(status)) => {
+                let healthy = status.success();
+                if healthy {
+                    debug!("Health check passed for {}", service_name);
+                } else {
+                    warn!(
+                        "Health check failed for {} (exit: {:?})",
+                        service_name,
+                        status.code()
+                    );
+                }
+                Ok(healthy)
             }
-            "test" | "sh" | "bash" => {
-                // Script-based health checks
-                debug!("✅ Valid script health check command: {}", command);
-                Ok(true) // Simulated success
+            Ok(Err(e)) => {
+                warn!("Health check command failed for {}: {}", service_name, e);
+                Ok(false)
             }
-            _ => {
-                // Unknown command, assume valid for extensibility
-                debug!("⚠️ Unknown health check command: {}", command);
-                Ok(true) // Fail-open for compatibility
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                warn!(
+                    "Health check timeout for {} ({}s)",
+                    service_name, timeout_secs
+                );
+                Ok(false)
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                warn!("Health check thread panicked for {}", service_name);
+                Ok(false)
             }
         }
-
-        // NOTE: Full implementation would use tokio::process::Command
-        // to execute health check scripts and parse exit codes.
-        // For now, we validate configuration correctness.
     }
 }
 
@@ -295,12 +314,10 @@ mod tests {
         let deployments = Arc::new(RwLock::new(HashMap::new()));
         let monitor = ByobHealthMonitor::new(deployments);
 
+        // Use `true` (always exits 0) since health checks now actually execute commands.
+        // curl would fail in test env without a server.
         let health_check = HealthCheck {
-            command: vec![
-                "curl".to_string(),
-                "-f".to_string(),
-                "http://localhost:8080/health".to_string(),
-            ],
+            command: vec!["true".to_string()],
             interval: 30,
             timeout: 5,
             retries: 3,

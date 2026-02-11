@@ -38,7 +38,7 @@ use anyhow::Result;
 ///
 /// ```text
 /// For each output position (i, j):
-///   output[i,j] = max(input[i*stride:i*stride+kernel, j*stride:j*stride+kernel])
+///   output`i,j` = max(input[i*stride:i*stride+kernel, j*stride:j*stride+kernel])
 /// ```
 ///
 /// ## Use Cases
@@ -149,7 +149,7 @@ impl MaxPool2D {
 ///
 /// ```text
 /// For each output position (i, j):
-///   output[i,j] = mean(input[i*stride:i*stride+kernel, j*stride:j*stride+kernel])
+///   output`i,j` = mean(input[i*stride:i*stride+kernel, j*stride:j*stride+kernel])
 /// ```
 ///
 /// ## Use Cases
@@ -387,7 +387,7 @@ impl GELU {
 /// Loss = -mean(sum(y_true * log(y_pred)))
 /// ```
 ///
-/// For single-label: Loss = -log(y_pred[true_class])
+/// For single-label: Loss = -log(y_pred`true_class`)
 ///
 /// ## Use Cases
 ///
@@ -403,7 +403,7 @@ impl CrossEntropyLoss {
     /// # Arguments
     ///
     /// * `predictions` - Model predictions (logits) [batch_size, num_classes]
-    /// * `targets` - True class indices [batch_size]
+    /// * `targets` - True class indices `batch_size`
     /// * `batch_size` - Batch size
     /// * `num_classes` - Number of classes
     ///

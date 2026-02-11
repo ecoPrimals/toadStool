@@ -26,7 +26,7 @@ impl LayerNorm {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/layer_norm.wgsl")
+        include_str!("../shaders/norm/layer_norm.wgsl")
     }
 
     /// Execute the layer normalization operation
@@ -196,15 +196,15 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
-        use crate::device::test_pool::get_test_device;
-        get_test_device().await
+    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_gpu_available().await
     }
 
     #[tokio::test]
     async fn test_layer_norm_1d() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::new(data, vec![1, 4], device.clone());
 
@@ -220,8 +220,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_layer_norm_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let input = Tensor::new(data, vec![2, 3], device.clone());
 

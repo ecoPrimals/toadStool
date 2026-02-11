@@ -125,9 +125,9 @@ impl CoordinationDiscovery {
 /// **Design**: Works with ANY coordination provider via unix sockets (pure Rust!)
 pub struct CoordinationClient {
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
-    #[allow(dead_code)] // Stored for diagnostics and future use
-    service_endpoint: ServiceEndpoint,
-    #[allow(dead_code)] // May be used for timeout configuration in future
+    /// Service endpoint information (stored for diagnostics and future use)
+    _service_endpoint: ServiceEndpoint,
+    /// Request timeout for RPC calls
     timeout: Duration,
 }
 
@@ -151,7 +151,7 @@ impl CoordinationClient {
 
         Ok(Self {
             rpc_client,
-            service_endpoint: endpoint.clone(),
+            _service_endpoint: endpoint.clone(),
             timeout: Duration::from_secs(30),
         })
     }
@@ -179,14 +179,22 @@ impl CoordinationClient {
             })
         })?;
 
-        self.rpc_client
-            .call_typed("coordination.register_service", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: format!("Service registration failed: {e}"),
-                })
+        tokio::time::timeout(
+            self.timeout,
+            self.rpc_client
+                .call_typed("coordination.register_service", params),
+        )
+        .await
+        .map_err(|_| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Service registration timed out after {:?}", self.timeout),
             })
+        })?
+        .map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Service registration failed: {e}"),
+            })
+        })
     }
 
     /// Discover services by capability via unix socket
@@ -195,14 +203,22 @@ impl CoordinationClient {
     pub async fn discover_services(&self, capability: &str) -> ToadStoolResult<Vec<NodeInfo>> {
         let params = serde_json::json!({"capability": capability});
 
-        self.rpc_client
-            .call_typed("coordination.discover_services", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: format!("Service discovery failed: {e}"),
-                })
+        tokio::time::timeout(
+            self.timeout,
+            self.rpc_client
+                .call_typed("coordination.discover_services", params),
+        )
+        .await
+        .map_err(|_| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Service discovery timed out after {:?}", self.timeout),
             })
+        })?
+        .map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Service discovery failed: {e}"),
+            })
+        })
     }
 
     /// Report health status via unix socket
@@ -218,14 +234,22 @@ impl CoordinationClient {
             })
         })?;
 
-        self.rpc_client
-            .call_typed("coordination.report_health", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: format!("Health report failed: {e}"),
-                })
+        tokio::time::timeout(
+            self.timeout,
+            self.rpc_client
+                .call_typed("coordination.report_health", params),
+        )
+        .await
+        .map_err(|_| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Health report timed out after {:?}", self.timeout),
             })
+        })?
+        .map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Health report failed: {e}"),
+            })
+        })
     }
 
     /// Get load balancing advice via unix socket
@@ -241,29 +265,44 @@ impl CoordinationClient {
             })
         })?;
 
-        self.rpc_client
-            .call_typed("coordination.get_load_balancing", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: format!("Load balancing request failed: {e}"),
-                })
+        tokio::time::timeout(
+            self.timeout,
+            self.rpc_client
+                .call_typed("coordination.get_load_balancing", params),
+        )
+        .await
+        .map_err(|_| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Load balancing timed out after {:?}", self.timeout),
             })
+        })?
+        .map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Load balancing request failed: {e}"),
+            })
+        })
     }
 
     /// Health check via unix socket
     ///
     /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn health_check(&self) -> ToadStoolResult<bool> {
-        let result: serde_json::Value = self
-            .rpc_client
-            .call("coordination.health", serde_json::json!({}))
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: format!("Health check failed: {e}"),
-                })
-            })?;
+        let result: serde_json::Value = tokio::time::timeout(
+            self.timeout,
+            self.rpc_client
+                .call("coordination.health", serde_json::json!({})),
+        )
+        .await
+        .map_err(|_| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Health check timed out after {:?}", self.timeout),
+            })
+        })?
+        .map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Health check failed: {e}"),
+            })
+        })?;
 
         Ok(result
             .get("healthy")
@@ -284,14 +323,21 @@ impl CoordinationClient {
             })
         })?;
 
-        self.rpc_client
-            .call_typed("coordination.execute", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: format!("Coordination request failed: {e}"),
-                })
+        tokio::time::timeout(
+            self.timeout,
+            self.rpc_client.call_typed("coordination.execute", params),
+        )
+        .await
+        .map_err(|_| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Coordination request timed out after {:?}", self.timeout),
             })
+        })?
+        .map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Coordination request failed: {e}"),
+            })
+        })
     }
 }
 

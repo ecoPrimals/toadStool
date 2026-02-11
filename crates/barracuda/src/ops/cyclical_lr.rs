@@ -88,7 +88,7 @@ impl CyclicalLr {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/cyclical_lr.wgsl")
+        include_str!("../shaders/optimizer/cyclical_lr.wgsl")
     }
 
     /// Execute cyclical learning rate computation

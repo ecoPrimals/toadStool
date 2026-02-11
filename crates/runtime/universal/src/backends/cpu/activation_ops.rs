@@ -215,8 +215,8 @@ pub(super) fn execute_softmax(workload: Workload) -> Result<WorkloadData, Comput
 /// **Formula**:
 /// - Training: `f(x) = x * mask / (1 - p)` where mask ~ Bernoulli(1 - p)
 /// - Inference: `f(x) = x` (identity)
-/// **Properties**:
-/// - Prevents co-adaptation of neurons
+///   **Properties**:
+///   - Prevents co-adaptation of neurons
 /// - Ensemble effect
 /// - Different behavior training vs inference
 #[inline]

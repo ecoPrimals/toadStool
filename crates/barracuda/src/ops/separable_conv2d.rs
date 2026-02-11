@@ -12,7 +12,7 @@
 //!
 //! Reduces parameters from C_in*C_out*K*K to C_in*K*K + C_in*C_out
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -87,7 +87,7 @@ impl SeparableConv2D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/separable_conv2d.wgsl")
+        include_str!("../shaders/conv/separable_conv2d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -259,19 +259,19 @@ impl SeparableConv2D {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 2D shader workgroup size (16, 16)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32).div_ceil(optimal_wg_size);
-            let workgroups_y = (out_height as u32).div_ceil(optimal_wg_size);
+            let (workgroups_x, workgroups_y) =
+                caps.dispatch_2d(out_width as u32, out_height as u32);
             let workgroups_z = batch_size * out_channels;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z as u32);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(
-            output_buffer,
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+        Ok(Tensor::new(
+            output_data,
             vec![batch_size, out_channels, out_height, out_width],
             device.clone(),
         ))
@@ -304,16 +304,18 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_separable_conv2d_basic() {
-        let device = get_test_device().await;
-
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        let input = Tensor::from_vec_on(vec![1.0; 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
             .await
             .unwrap();
-        let weight = Tensor::from_vec_on(vec![0.1; 3 * 3 * 3], vec![3, 3, 3, 3], device.clone())
+        // Depthwise weight: [C, 1, K, K] = [3, 1, 3, 3] = 27 elements
+        let weight = Tensor::from_vec_on(vec![0.1; 3 * 3 * 3], vec![3, 1, 3, 3], device.clone())
             .await
             .unwrap();
         let bias = Tensor::from_vec_on(vec![0.0; 3], vec![3], device.clone())

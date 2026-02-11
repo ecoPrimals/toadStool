@@ -33,12 +33,12 @@ impl Norm {
 
     /// Get the WGSL shader source for global reduction
     fn wgsl_shader_reduce() -> &'static str {
-        include_str!("../shaders/norm_reduce.wgsl")
+        include_str!("../shaders/reduce/norm_reduce.wgsl")
     }
 
     /// Get the WGSL shader source for dimension-wise reduction
     fn wgsl_shader_dim() -> &'static str {
-        include_str!("../shaders/norm_dim.wgsl")
+        include_str!("../shaders/reduce/norm_dim.wgsl")
     }
 
     /// Execute the norm operation
@@ -396,7 +396,7 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     fn norm_cpu(input: &[f32], p: f32) -> f32 {
         let sum_power: f32 = input.iter().map(|&x| x.abs().powf(p)).sum();
@@ -405,7 +405,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_norm_basic() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![3.0, 4.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![2], device)
             .await
@@ -423,8 +425,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_norm_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // All zeros (norm = 0)
         let input_data = vec![0.0, 0.0, 0.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone())
@@ -445,7 +448,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_norm_boundary() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![1e5, 1e-5, -1e5, 1e-5];
         let input = Tensor::from_vec_on(input_data.clone(), vec![4], device)
             .await
@@ -465,7 +470,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_norm_large_tensor() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let size = 100;
         let input_data: Vec<f32> = (1..=size).map(|i| i as f32).collect();
         let input = Tensor::from_vec_on(input_data.clone(), vec![size], device)
@@ -480,7 +487,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_norm_precision() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)
             .await
@@ -494,7 +503,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_norm_dim() {
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test 2D tensor: [[3, 4], [5, 12]] (3-4-5 and 5-12-13 triangles)
         let input_data = vec![3.0, 4.0, 5.0, 12.0];
         let input = Tensor::from_vec_on(input_data.clone(), vec![2, 2], device.clone())

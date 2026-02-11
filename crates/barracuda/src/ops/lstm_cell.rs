@@ -7,7 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -92,7 +92,7 @@ impl LSTMCell {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/lstm_cell.wgsl")
+        include_str!("../shaders/rnn/lstm_cell.wgsl")
     }
 
     /// Execute the LSTM cell operation
@@ -133,6 +133,22 @@ impl LSTMCell {
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("LSTMCell Shader"));
+
+        // Combine bias_ih and bias_hh into single buffer [bias_ih..., bias_hh...]
+        let bias_ih_data = self.bias_ih.to_vec().unwrap();
+        let bias_hh_data = self.bias_hh.to_vec().unwrap();
+        let mut bias_combined: Vec<f32> =
+            Vec::with_capacity(bias_ih_data.len() + bias_hh_data.len());
+        bias_combined.extend_from_slice(&bias_ih_data);
+        bias_combined.extend_from_slice(&bias_hh_data);
+
+        let bias_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("LSTMCell Bias Combined"),
+                contents: bytemuck::cast_slice(&bias_combined),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -185,7 +201,7 @@ impl LSTMCell {
                             binding: 4,
                             visibility: wgpu::ShaderStages::COMPUTE,
                             ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
                                 has_dynamic_offset: false,
                                 min_binding_size: None,
                             },
@@ -225,16 +241,6 @@ impl LSTMCell {
                             binding: 8,
                             visibility: wgpu::ShaderStages::COMPUTE,
                             ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 9,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
                                 ty: wgpu::BufferBindingType::Uniform,
                                 has_dynamic_offset: false,
                                 min_binding_size: None,
@@ -263,30 +269,26 @@ impl LSTMCell {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: self.bias_ih.buffer().as_entire_binding(),
+                    resource: bias_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: self.bias_hh.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
                     resource: self.h_prev.buffer().as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 6,
+                    binding: 5,
                     resource: self.c_prev.buffer().as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 7,
+                    binding: 6,
                     resource: h_next_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 8,
+                    binding: 7,
                     resource: c_next_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 9,
+                    binding: 8,
                     resource: params_buffer.as_entire_binding(),
                 },
             ],
@@ -327,24 +329,25 @@ impl LSTMCell {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 1D shader workgroup size (256)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            let workgroups = (self.batch_size as u32).div_ceil(optimal_wg_size);
+            let workgroups = caps.dispatch_1d(self.batch_size as u32);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        // Create output tensors
-        let h_next = Tensor::from_buffer(
-            h_next_buffer,
+        let h_size = self.batch_size * self.hidden_size;
+        let h_data = crate::utils::read_buffer(device, &h_next_buffer, h_size)?;
+        let c_data = crate::utils::read_buffer(device, &c_next_buffer, h_size)?;
+
+        let h_next = Tensor::new(
+            h_data,
             vec![self.batch_size, self.hidden_size],
             device.clone(),
         );
-
-        let c_next = Tensor::from_buffer(
-            c_next_buffer,
+        let c_next = Tensor::new(
+            c_data,
             vec![self.batch_size, self.hidden_size],
             device.clone(),
         );
@@ -356,12 +359,13 @@ impl LSTMCell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_lstm_cell_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batch_size = 2;
         let input_size = 4;
         let hidden_size = 8;

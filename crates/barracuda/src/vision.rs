@@ -296,7 +296,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_pipeline_creation() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let pipeline = VisionPipeline::new(&device).build();
         assert_eq!(pipeline.transforms.len(), 0);
         assert!(pipeline.built);
@@ -304,7 +307,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_transforms() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let pipeline = VisionPipeline::new(&device)
             .add_transform(Transform::Normalize {
                 mean: [0.5, 0.5, 0.5],
@@ -323,7 +329,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_image_flip() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let pipeline = VisionPipeline::new(&device)
             .add_transform(Transform::RandomFlip)
             .build();
@@ -344,7 +353,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_batch() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let pipeline = VisionPipeline::new(&device)
             .add_transform(Transform::RandomFlip)
             .build();
@@ -390,7 +402,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_crop_transform() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let pipeline = VisionPipeline::new(&device)
             .add_transform(Transform::RandomCrop { size: 2 })
             .build();

@@ -17,11 +17,15 @@
 //! ## Usage
 //!
 //! ```no_run
-//! use barracuda::tensor::Tensor;
-//!
-//! let a = Tensor::from_data(&vec![1.0, 2.0, 3.0], vec![3], device)?;
-//! let b = Tensor::from_data(&vec![4.0, 5.0, 6.0], vec![3], device)?;
-//! let partial_sums = a.dotproduct(&b)?;
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # use barracuda::tensor::Tensor;
+//! # use barracuda::device::test_pool;
+//! # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! let a = Tensor::from_data(&[1.0f32, 2.0, 3.0], vec![3], device.clone())?;
+//! let b = Tensor::from_data(&[4.0f32, 5.0, 6.0], vec![3], device)?;
+//! let _partial_sums = a.dotproduct(&b)?;
+//! # Ok(())
+//! # }
 //! ```
 
 use crate::device::{DeviceCapabilities, WorkloadType};
@@ -42,7 +46,7 @@ pub struct DotProduct {
 
 impl DotProduct {
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/dotproduct.wgsl")
+        include_str!("../shaders/misc/dotproduct.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -215,11 +219,17 @@ impl Tensor {
     /// ## Example
     ///
     /// ```no_run
-    /// # let a = todo!();
-    /// # let b = todo!();
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use barracuda::tensor::Tensor;
+    /// # use barracuda::device::test_pool;
+    /// # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let a = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+    /// # let b = Tensor::from_data(&[1.0f32, 1.0, 1.0, 1.0], vec![4], device).unwrap();
     /// // Compute a · b
     /// let partial_sums = a.dotproduct(&b)?;
-    /// let result: f32 = partial_sums.to_vec()?.iter().sum();
+    /// let _result: f32 = partial_sums.to_vec()?.iter().sum();
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn dotproduct(self, b: &Self) -> Result<Self> {
         let op = DotProduct {
@@ -233,12 +243,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_dotproduct_basic() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         let a = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
 
@@ -263,7 +274,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_dotproduct_edge_cases() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Zero vectors
         let zero_a = Tensor::from_data(&vec![0.0; 8], vec![8], device.clone()).unwrap();
@@ -284,7 +298,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_dotproduct_boundary() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Single element
         let single_a = Tensor::from_data(&vec![5.0], vec![1], device.clone()).unwrap();
@@ -308,7 +325,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_dotproduct_large_tensor() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Large vectors (1024 elements)
         let size = 1024;
@@ -331,7 +351,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_dotproduct_precision() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
 
         // Test with fractional values
         let a = Tensor::from_data(&vec![0.1, 0.2, 0.3, 0.4, 0.5], vec![5], device.clone()).unwrap();

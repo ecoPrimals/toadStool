@@ -103,7 +103,10 @@ impl AuthBackend {
             *provider_lock = Some(discovered);
         }
 
-        Ok(provider_lock.as_ref().unwrap().clone())
+        provider_lock
+            .as_ref()
+            .ok_or(AuthBackendError::NoSecurityProvider)
+            .cloned()
     }
 
     /// Request a new token
@@ -214,6 +217,28 @@ mod tests {
     }
 
     #[test]
+    fn test_auth_backend_default() {
+        let backend = AuthBackend::default();
+        assert_eq!(
+            std::mem::size_of_val(&backend),
+            std::mem::size_of::<AuthBackend>()
+        );
+    }
+
+    #[test]
+    fn test_token_constructor() {
+        let token = Token {
+            token: "jwt-xxx".to_string(),
+            token_type: "Bearer".to_string(),
+            expires_in: 7200,
+            issuer: "beardog".to_string(),
+            audience: vec!["api".to_string(), "storage".to_string()],
+        };
+        assert_eq!(token.token_type, "Bearer");
+        assert_eq!(token.audience.len(), 2);
+    }
+
+    #[test]
     fn test_token_serialization() {
         let token = Token {
             token: "test-token".to_string(),
@@ -229,11 +254,71 @@ mod tests {
     }
 
     #[test]
+    fn test_token_serialization_round_trip() {
+        let token = Token {
+            token: "jwt-abc".to_string(),
+            token_type: "Bearer".to_string(),
+            expires_in: 1800,
+            issuer: "issuer".to_string(),
+            audience: vec!["aud1".to_string()],
+        };
+        let json = serde_json::to_value(&token).unwrap();
+        let deserialized: Token = serde_json::from_value(json).unwrap();
+        assert_eq!(deserialized.token, token.token);
+        assert_eq!(deserialized.expires_in, token.expires_in);
+    }
+
+    #[test]
+    fn test_token_request_constructor_and_serialization() {
+        let req = TokenRequest {
+            subject: "user-123".to_string(),
+            audience: vec!["api".to_string()],
+            scopes: vec!["read".to_string(), "write".to_string()],
+            expires_in: Some(3600),
+        };
+        let json = serde_json::to_value(&req).unwrap();
+        assert_eq!(json["subject"], "user-123");
+        assert_eq!(json["expires_in"], 3600);
+    }
+
+    #[test]
+    fn test_token_request_optional_expires_in() {
+        let req = TokenRequest {
+            subject: "s".to_string(),
+            audience: vec![],
+            scopes: vec![],
+            expires_in: None,
+        };
+        let json = serde_json::to_value(&req).unwrap();
+        assert_eq!(json["subject"], "s");
+        assert!(json["expires_in"].is_null());
+    }
+
+    #[test]
     fn test_error_types() {
         let err = AuthBackendError::NoSecurityProvider;
         assert!(err.to_string().contains("Security provider not found"));
 
         let err = AuthBackendError::TokenRequestFailed("test".into());
         assert!(err.to_string().contains("Token request failed"));
+
+        let err = AuthBackendError::ValidationFailed("invalid".into());
+        assert!(err.to_string().contains("Token validation failed"));
+
+        let err = AuthBackendError::RefreshFailed("expired".into());
+        assert!(err.to_string().contains("Token refresh failed"));
+    }
+
+    #[test]
+    fn test_token_clone() {
+        let token = Token {
+            token: "x".to_string(),
+            token_type: "Bearer".to_string(),
+            expires_in: 0,
+            issuer: "i".to_string(),
+            audience: vec![],
+        };
+        let cloned = token.clone();
+        assert_eq!(cloned.token, token.token);
     }
 }

@@ -45,7 +45,7 @@ impl Dequantize {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/dequantize.wgsl")
+        include_str!("../shaders/misc/dequantize.wgsl")
     }
 
     /// Execute dequantize on tensor
@@ -198,12 +198,13 @@ impl Dequantize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_dequantize_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Simulate quantized values (as f32, will be cast to i32)
         let input = Tensor::from_vec_on(vec![100.0, 150.0, 200.0, 250.0], vec![4], device)
             .await

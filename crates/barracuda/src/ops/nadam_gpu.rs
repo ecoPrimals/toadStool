@@ -85,7 +85,7 @@ impl NAdam {
 
     /// WGSL shader source
     fn shader() -> &'static str {
-        include_str!("../shaders/nadam.wgsl")
+        include_str!("../shaders/optimizer/nadam.wgsl")
     }
 
     /// Execute NAdam step (returns updated params, m, v)
@@ -388,12 +388,11 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_nadam_gpu_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else { return };
         let params = Tensor::from_vec_on(vec![1.0; 100], vec![100], device.clone())
             .await
             .unwrap();
@@ -415,8 +414,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_nadam_gpu_with_state() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else { return };
         let params = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())
             .await
             .unwrap();
@@ -436,8 +434,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_nadam_gpu_convergence() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else { return };
         let mut params = Tensor::from_vec_on(vec![10.0; 50], vec![50], device.clone())
             .await
             .unwrap();

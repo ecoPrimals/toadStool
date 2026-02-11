@@ -337,3 +337,337 @@ impl ToadStoolConfig {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::env_config::tests::get_env_lock;
+    use crate::ToadStoolConfig;
+    use std::env;
+
+    fn clear_toadstool_env() {
+        let keys: Vec<String> = env::vars()
+            .filter(|(k, _)| k.starts_with("TOADSTOOL_"))
+            .map(|(k, _)| k)
+            .collect();
+        for k in keys {
+            env::remove_var(&k);
+        }
+    }
+
+    #[test]
+    fn apply_env_overrides_sets_environment() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_ENV", "staging");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.app.environment, "staging");
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_debug_true() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_DEBUG", "true");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert!(c.features.enable_debug);
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_verbose_sets_debug_level() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_VERBOSE", "true");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.logging.level, "debug");
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_bind_address() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_BIND_ADDRESS", "0.0.0.0:9000");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.network.bind_address.port(), 9000);
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_invalid_bind_address_returns_error() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_BIND_ADDRESS", "not-valid");
+        let mut c = ToadStoolConfig::default();
+        let r = c.apply_env_overrides();
+        assert!(r.is_err());
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_port() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_PORT", "7777");
+        let mut c = ToadStoolConfig::default();
+        c.network.bind_address = "127.0.0.1:3000".parse().unwrap();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.network.bind_address.port(), 7777);
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_invalid_port_returns_error() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_PORT", "abc");
+        let mut c = ToadStoolConfig::default();
+        let r = c.apply_env_overrides();
+        assert!(r.is_err());
+        clear_toadstool_env();
+    }
+
+    #[allow(deprecated)]
+    #[test]
+    fn apply_env_overrides_legacy_endpoints() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_SONGBIRD_ENDPOINT", "http://sb:8000");
+        env::set_var("TOADSTOOL_BEARDOG_ENDPOINT", "http://bd:8001");
+        env::set_var("TOADSTOOL_NESTGATE_ENDPOINT", "http://ng:8002");
+        env::set_var("TOADSTOOL_SQUIRREL_ENDPOINT", "http://sq:8003");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.network.endpoints.songbird, "http://sb:8000");
+        assert_eq!(c.network.endpoints.beardog, "http://bd:8001");
+        assert_eq!(c.network.endpoints.nestgate, "http://ng:8002");
+        assert_eq!(c.network.endpoints.squirrel, "http://sq:8003");
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_resource_limits() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_MAX_CPU", "75.0");
+        env::set_var("TOADSTOOL_MAX_MEMORY", "2147483648");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert!((c.runtime.resource_limits.max_cpu_usage - 75.0).abs() < 0.01);
+        assert!((c.runtime.resource_limits.max_memory_usage - 2_147_483_648.0).abs() < 1.0);
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_invalid_max_cpu_returns_error() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_MAX_CPU", "not-a-float");
+        let mut c = ToadStoolConfig::default();
+        let r = c.apply_env_overrides();
+        assert!(r.is_err());
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_data_cache_dirs() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_DATA_DIR", "/data");
+        env::set_var("TOADSTOOL_CACHE_DIR", "/cache");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.app.data_dir, "/data");
+        assert_eq!(c.app.cache_dir, "/cache");
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_worker_threads() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_WORKER_THREADS", "32");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.app.worker_threads, 32);
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_execution_timeout() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_EXECUTION_TIMEOUT", "120");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(
+            c.runtime.execution_timeout,
+            std::time::Duration::from_secs(120)
+        );
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_enable_metrics_true() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_ENABLE_METRICS", "true");
+        let mut c = ToadStoolConfig::default();
+        c.metrics = None;
+        c.apply_env_overrides().unwrap();
+        assert!(c.metrics.is_some());
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_enable_cache_true() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_ENABLE_CACHE", "true");
+        let mut c = ToadStoolConfig::default();
+        c.cache = None;
+        c.apply_env_overrides().unwrap();
+        assert!(c.cache.is_some());
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_feature_flags() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_ENABLE_WEBSOCKET", "true");
+        env::set_var("TOADSTOOL_ENABLE_FEDERATION", "true");
+        env::set_var("TOADSTOOL_ENABLE_GRPC", "true");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert!(c.features.enable_websocket);
+        assert!(c.features.enable_federation);
+        assert!(c.features.enable_grpc);
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_container_runtime() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_CONTAINER_RUNTIME", "containerd");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.runtime.container.runtime, "containerd");
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_wasm_settings() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_WASM_ENGINE", "wasmtime");
+        env::set_var("TOADSTOOL_WASM_MAX_MEMORY", "128");
+        env::set_var("TOADSTOOL_WASM_ENABLE_WASI", "true");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.runtime.wasm.engine, "wasmtime");
+        assert_eq!(c.runtime.wasm.max_memory, 128);
+        assert!(c.runtime.wasm.enable_wasi);
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_python_settings() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_PYTHON_EXECUTABLE", "/usr/bin/python3");
+        env::set_var("TOADSTOOL_PYTHON_VENV_PATH", "/venv");
+        env::set_var("TOADSTOOL_PYTHON_INDEX_URL", "https://pypi.org/simple");
+        env::set_var("TOADSTOOL_PYTHON_MAX_MEMORY", "512");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.runtime.python.executable, "/usr/bin/python3");
+        assert_eq!(c.runtime.python.venv_path, Some("/venv".to_string()));
+        assert_eq!(c.runtime.python.index_url, "https://pypi.org/simple");
+        assert_eq!(c.runtime.python.max_memory, 512);
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_security_auth() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_JWT_SECRET", "secret123");
+        env::set_var("TOADSTOOL_SESSION_TIMEOUT", "600");
+        env::set_var("TOADSTOOL_MAX_LOGIN_ATTEMPTS", "5");
+        env::set_var("TOADSTOOL_LOCKOUT_DURATION", "300");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.security.auth.jwt_secret, Some("secret123".to_string()));
+        assert_eq!(
+            c.security.auth.session_timeout,
+            std::time::Duration::from_secs(600)
+        );
+        assert_eq!(c.security.auth.max_login_attempts, 5);
+        assert_eq!(
+            c.security.auth.lockout_duration,
+            std::time::Duration::from_secs(300)
+        );
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_encryption() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_ENCRYPTION_ENABLED", "true");
+        env::set_var("TOADSTOOL_ENCRYPTION_ALGORITHM", "AES-256-GCM");
+        env::set_var("TOADSTOOL_ENCRYPTION_KEY_LENGTH", "256");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert!(c.security.encryption.enabled);
+        assert_eq!(c.security.encryption.algorithm, "AES-256-GCM");
+        assert_eq!(c.security.encryption.key_length, 256);
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_logging() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_LOG_FORMAT", "json");
+        env::set_var("TOADSTOOL_LOG_COLORS", "true");
+        env::set_var("TOADSTOOL_LOG_MAX_SIZE", "50");
+        env::set_var("TOADSTOOL_LOG_MAX_FILES", "10");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.logging.format, "json");
+        assert!(c.logging.enable_colors);
+        assert_eq!(c.logging.max_log_size, 50);
+        assert_eq!(c.logging.max_log_files, 10);
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_invalid_worker_threads_returns_error() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_WORKER_THREADS", "xyz");
+        let mut c = ToadStoolConfig::default();
+        let r = c.apply_env_overrides();
+        assert!(r.is_err());
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_invalid_execution_timeout_returns_error() {
+        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_EXECUTION_TIMEOUT", "abc");
+        let mut c = ToadStoolConfig::default();
+        let r = c.apply_env_overrides();
+        assert!(r.is_err());
+        clear_toadstool_env();
+    }
+}

@@ -68,7 +68,7 @@ impl BCELoss {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/bce_loss.wgsl")
+        include_str!("../shaders/loss/bce_loss.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -263,12 +263,13 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_bce_loss_basic() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Perfect predictions (p=1 for t=1, p=0 for t=0)
         let predictions = Tensor::from_vec_on(vec![0.9, 0.1, 0.9, 0.1], vec![4], device.clone())
             .await
@@ -287,8 +288,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_bce_loss_validation() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Shape mismatch should fail
         let predictions = Tensor::from_vec_on(vec![0.5; 10], vec![10], device.clone())
             .await
@@ -302,8 +304,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_bce_loss_perfect_prediction() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Nearly perfect predictions
         let predictions = Tensor::from_vec_on(vec![0.99, 0.01], vec![2], device.clone())
             .await
@@ -321,8 +324,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_bce_loss_worst_prediction() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Worst predictions (completely wrong)
         let predictions = Tensor::from_vec_on(vec![0.01, 0.99], vec![2], device.clone())
             .await
@@ -340,8 +344,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_bce_loss_large_batch() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Large batch
         let predictions: Vec<f32> = (0..1000)
             .map(|i| if i % 2 == 0 { 0.8 } else { 0.2 })

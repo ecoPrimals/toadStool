@@ -233,8 +233,7 @@ impl TpuDevice {
             TpuBackend::CloudTpu { .. } => {
                 #[cfg(feature = "cloud-tpu")]
                 {
-                    // Production implementation via libtpu
-                    // TODO: Call libtpu FFI (when hardware is available)
+                    // Scaffolded: Cloud TPU not yet wired. FFI to libtpu pending hardware.
                     Err(BarracudaError::UnsupportedOperation {
                         op: "Cloud TPU matmul".to_string(),
                         device: "TPU".to_string(),
@@ -254,8 +253,7 @@ impl TpuDevice {
             TpuBackend::CoralEdge { .. } => {
                 #[cfg(feature = "coral-tpu")]
                 {
-                    // Production implementation via Coral API
-                    // TODO: Call libedgetpu (when hardware is available)
+                    // Scaffolded: Coral Edge TPU not yet wired. FFI to libedgetpu pending hardware.
                     Err(BarracudaError::UnsupportedOperation {
                         op: "Coral Edge TPU matmul".to_string(),
                         device: "TPU".to_string(),

@@ -478,7 +478,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_analyzer_creation() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let analyzer = TimeSeriesAnalyzer::new(&device)
             .add_model(TimeSeriesModel::MovingAverage { window: 3 })
             .build()
@@ -492,7 +495,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_moving_average_forecast() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let mut analyzer = TimeSeriesAnalyzer::new(&device)
             .add_model(TimeSeriesModel::MovingAverage { window: 3 })
             .build()
@@ -513,7 +519,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_exponential_smoothing_forecast() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let mut analyzer = TimeSeriesAnalyzer::new(&device)
             .add_model(TimeSeriesModel::ExponentialSmoothing { alpha: 0.5 })
             .build()
@@ -530,7 +539,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_anomaly_detection() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let mut analyzer = TimeSeriesAnalyzer::new(&device)
             .add_model(TimeSeriesModel::MovingAverage { window: 3 })
             .build()
@@ -553,7 +565,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_decomposition() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let analyzer = TimeSeriesAnalyzer::new(&device)
             .add_model(TimeSeriesModel::MovingAverage { window: 3 })
             .build()
@@ -574,7 +589,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_esn_forecast() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let mut analyzer = TimeSeriesAnalyzer::new(&device)
             .add_model(TimeSeriesModel::ESN {
                 reservoir_size: 50,
@@ -599,7 +617,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_weighted_moving_average() {
-        let device = WgpuDevice::new().await.unwrap();
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
         let mut analyzer = TimeSeriesAnalyzer::new(&device)
             .add_model(TimeSeriesModel::WeightedMovingAverage {
                 weights: vec![0.5, 0.3, 0.2],

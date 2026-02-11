@@ -478,20 +478,19 @@ impl ZeroConfigDeployment {
         endpoint: &str,
         service_name: &str,
     ) -> Result<ServiceEndpoint> {
-        // PURE RUST: External HTTP removed - stub for backward compatibility
+        // PURE RUST: External HTTP removed - backward-compatible placeholder until Unix socket migration.
         tracing::warn!(
             "HTTP service check deprecated for {} at {} - use Unix socket discovery instead",
             service_name,
             endpoint
         );
 
-        // Return mock success for now - real impl should use Unix socket RPC
-        // TODO: Migrate to capability-based discovery via Unix sockets
+        // Return placeholder success; real impl uses capability-based discovery via Unix sockets.
         Ok(ServiceEndpoint {
             name: service_name.to_string(),
             endpoint: endpoint.to_string(),
             version: "1.0.0".to_string(),
-            status: "stub".to_string(), // Indicate this is a stub
+            status: "deprecated: use Unix socket discovery".to_string(),
             auth_required: false,
             discovered_at: Utc::now(),
         })

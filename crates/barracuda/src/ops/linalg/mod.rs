@@ -10,6 +10,8 @@
 //! ## Operations
 //!
 //! - `cholesky` - Cholesky decomposition (A = L·Lᵀ)
+//! - `eigh` - Eigenvalue decomposition (A = V·D·Vᵀ for symmetric A)
+//! - `linsolve` - Linear system solve (A·x = b)
 //! - `triangular_solve` - Forward/backward substitution (L·x = b)
 //!
 //! ## Design Principles
@@ -21,7 +23,11 @@
 //! - ✅ Composable operations
 
 pub mod cholesky;
+pub mod eigh;
+pub mod linsolve;
 pub mod triangular_solve;
 
 pub use cholesky::Cholesky;
+pub use eigh::Eigh;
+pub use linsolve::LinSolve;
 pub use triangular_solve::TriangularSolve;

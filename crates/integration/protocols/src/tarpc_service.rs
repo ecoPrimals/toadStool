@@ -62,7 +62,7 @@ pub enum WorkloadPriority {
 }
 
 /// Resource requirements for workload execution
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ResourceRequirements {
     /// CPU cores required
     pub cpu_cores: Option<u32>,
@@ -164,6 +164,88 @@ pub struct AvailableResources {
     pub total_gpu_memory_bytes: Option<u64>,
     /// Available GPU memory (bytes)
     pub available_gpu_memory_bytes: Option<u64>,
+    /// Current CPU utilization (0.0-1.0)
+    pub cpu_utilization: f32,
+    /// Current memory utilization (0.0-1.0)
+    pub memory_utilization: f32,
+    /// Current GPU utilization (0.0-1.0)
+    pub gpu_utilization: Option<f32>,
+}
+
+/// Semantic method name mapping for ToadStool tarpc service
+///
+/// Maps Rust method names (required by tarpc) to semantic method names
+/// following wateringHole SEMANTIC_METHOD_NAMING_STANDARD.md format:
+/// `{domain}.{operation}[.{variant}]`
+///
+/// Domain: `toadstool` (ToadStool compute service)
+pub mod semantic_methods {
+    /// Get semantic method name for a Rust method name
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use toadstool_integration_protocols::tarpc_service::semantic_methods::get_semantic_name;
+    ///
+    /// assert_eq!(get_semantic_name("submit_workload"), Some("toadstool.submit_workload"));
+    /// assert_eq!(get_semantic_name("health_check"), Some("toadstool.health"));
+    /// ```
+    pub fn get_semantic_name(rust_method: &str) -> Option<&'static str> {
+        METHOD_MAPPING
+            .iter()
+            .find(|(rust, _)| *rust == rust_method)
+            .map(|(_, semantic)| *semantic)
+    }
+
+    /// Get Rust method name for a semantic method name
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use toadstool_integration_protocols::tarpc_service::semantic_methods::get_rust_method;
+    ///
+    /// assert_eq!(get_rust_method("toadstool.submit_workload"), Some("submit_workload"));
+    /// assert_eq!(get_rust_method("toadstool.health"), Some("health_check"));
+    /// ```
+    pub fn get_rust_method(semantic_method: &str) -> Option<&'static str> {
+        REVERSE_MAPPING
+            .iter()
+            .find(|(semantic, _)| *semantic == semantic_method)
+            .map(|(_, rust)| *rust)
+    }
+
+    /// Check if a method name is a semantic method name
+    pub fn is_semantic_method(method: &str) -> bool {
+        method.contains('.') && get_rust_method(method).is_some()
+    }
+
+    /// Get all semantic method names
+    pub fn all_semantic_methods() -> Vec<&'static str> {
+        REVERSE_MAPPING
+            .iter()
+            .map(|(semantic, _)| *semantic)
+            .collect()
+    }
+
+    /// Mapping: Rust method name → Semantic method name
+    const METHOD_MAPPING: &[(&str, &str)] = &[
+        ("submit_workload", "toadstool.submit_workload"),
+        ("query_status", "toadstool.query_status"),
+        ("cancel_workload", "toadstool.cancel_workload"),
+        ("list_workloads", "toadstool.list_workloads"),
+        ("query_capabilities", "toadstool.query_capabilities"),
+        ("health_check", "toadstool.health"),
+    ];
+
+    /// Reverse mapping: Semantic method name → Rust method name
+    const REVERSE_MAPPING: &[(&str, &str)] = &[
+        ("toadstool.submit_workload", "submit_workload"),
+        ("toadstool.query_status", "query_status"),
+        ("toadstool.cancel_workload", "cancel_workload"),
+        ("toadstool.list_workloads", "list_workloads"),
+        ("toadstool.query_capabilities", "query_capabilities"),
+        ("toadstool.health", "health_check"),
+    ];
 }
 
 /// tarpc service definition for ToadStool compute operations
@@ -173,9 +255,28 @@ pub struct AvailableResources {
 /// - Type-safe at compile time
 /// - Async throughout
 /// - Self-describing (capabilities query)
+///
+/// ## Semantic Method Names
+///
+/// Each method has a corresponding semantic name following wateringHole
+/// SEMANTIC_METHOD_NAMING_STANDARD.md format: `{domain}.{operation}[.{variant}]`
+///
+/// | Rust Method | Semantic Name |
+/// |-------------|---------------|
+/// | `submit_workload` | `toadstool.submit_workload` |
+/// | `query_status` | `toadstool.query_status` |
+/// | `cancel_workload` | `toadstool.cancel_workload` |
+/// | `list_workloads` | `toadstool.list_workloads` |
+/// | `query_capabilities` | `toadstool.query_capabilities` |
+/// | `health_check` | `toadstool.health` |
+///
+/// Use `semantic_methods::get_semantic_name()` to convert Rust method names
+/// to semantic names for JSON-RPC interop.
 #[tarpc::service]
 pub trait ToadStoolComputeRpc {
     /// Submit workload for execution
+    ///
+    /// **Semantic Name**: `toadstool.submit_workload`
     ///
     /// # Arguments
     /// * `submission` - Workload submission details
@@ -186,6 +287,8 @@ pub trait ToadStoolComputeRpc {
 
     /// Query workload execution status
     ///
+    /// **Semantic Name**: `toadstool.query_status`
+    ///
     /// # Arguments
     /// * `workload_id` - Workload identifier
     ///
@@ -195,6 +298,8 @@ pub trait ToadStoolComputeRpc {
 
     /// Cancel running workload
     ///
+    /// **Semantic Name**: `toadstool.cancel_workload`
+    ///
     /// # Arguments
     /// * `workload_id` - Workload identifier
     ///
@@ -203,6 +308,8 @@ pub trait ToadStoolComputeRpc {
     async fn cancel_workload(workload_id: String) -> Result<(), String>;
 
     /// List all workloads for a given filter
+    ///
+    /// **Semantic Name**: `toadstool.list_workloads`
     ///
     /// # Arguments
     /// * `filter` - Optional filter (status, type, etc.)
@@ -215,6 +322,8 @@ pub trait ToadStoolComputeRpc {
 
     /// Query compute capabilities (self-knowledge pattern)
     ///
+    /// **Semantic Name**: `toadstool.query_capabilities`
+    ///
     /// This follows the "primal only knows itself" principle:
     /// - Returns only this primal's capabilities
     /// - No knowledge of other primals
@@ -225,6 +334,8 @@ pub trait ToadStoolComputeRpc {
     async fn query_capabilities() -> Result<ComputeCapabilities, String>;
 
     /// Health check endpoint
+    ///
+    /// **Semantic Name**: `toadstool.health`
     ///
     /// # Returns
     /// * Service health status
@@ -240,10 +351,14 @@ pub struct HealthStatus {
     pub version: String,
     /// Uptime (seconds)
     pub uptime_secs: u64,
-    /// Active workloads count
-    pub active_workloads: u32,
-    /// Resource utilization
+    /// Current resource utilization (0.0-1.0)
     pub resource_utilization: f32,
+    /// Active workloads count
+    pub active_workloads: usize,
+    /// Queued workloads count
+    pub queued_workloads: usize,
+    /// Error count since startup
+    pub error_count: usize,
 }
 
 #[cfg(test)]
@@ -299,6 +414,9 @@ mod tests {
                 available_memory_bytes: 200 * 1024 * 1024 * 1024,
                 total_gpu_memory_bytes: Some(40 * 1024 * 1024 * 1024),
                 available_gpu_memory_bytes: Some(30 * 1024 * 1024 * 1024),
+                cpu_utilization: 0.25,
+                memory_utilization: 0.26,
+                gpu_utilization: Some(0.15),
             },
             metadata: HashMap::new(),
         };

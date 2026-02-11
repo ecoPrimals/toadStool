@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)] // expect() is idiomatic in tests
 //! Integration tests for BiomeExecutor - Coverage Expansion
 //!
 //! Goal: Increase CLI executor coverage from 1.81% to 30%+

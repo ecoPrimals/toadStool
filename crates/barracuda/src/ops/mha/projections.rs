@@ -10,12 +10,12 @@ use crate::tensor::Tensor;
 impl MultiHeadAttention {
     /// Projection shader: [B,S,D] + [D,D] → [B,H,S,D/H]
     pub(super) fn shader_projection() -> &'static str {
-        include_str!("../../shaders/mha_projection.wgsl")
+        include_str!("../../shaders/attention/mha_projection.wgsl")
     }
 
     /// Output shader: [B,H,S,D/H] + [D,D] → [B,S,D]
     pub(super) fn shader_output() -> &'static str {
-        include_str!("../../shaders/mha_output.wgsl")
+        include_str!("../../shaders/tensor/mha_output.wgsl")
     }
 
     /// Project input through weight with head splitting

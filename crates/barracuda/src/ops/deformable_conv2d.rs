@@ -88,7 +88,7 @@ impl DeformableConv2D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/deformable_conv2d.wgsl")
+        include_str!("../shaders/conv/deformable_conv2d.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -329,19 +329,19 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_deformable_conv2d_basic() {
-        let device = get_test_device().await;
-
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        let input = Tensor::from_vec_on(vec![1.0; 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
             .await
             .unwrap();
-        let offset =
-            Tensor::from_vec_on(vec![0.0; 1 * 18 * 2 * 2], vec![1, 18, 2, 2], device.clone())
-                .await
-                .unwrap();
+        let offset = Tensor::from_vec_on(vec![0.0; 18 * 2 * 2], vec![1, 18, 2, 2], device.clone())
+            .await
+            .unwrap();
         let weight =
             Tensor::from_vec_on(vec![0.1; 4 * 3 * 3 * 3], vec![4, 3, 3, 3], device.clone())
                 .await

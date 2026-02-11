@@ -58,8 +58,8 @@ impl LSTMCell {
     /// * `cell` - Previous cell state [batch, d_hidden]
     /// * `w_ih` - Input-hidden weights [d_input, 4*d_hidden] (concat: f,i,g,o)
     /// * `w_hh` - Hidden-hidden weights [d_hidden, 4*d_hidden] (concat: f,i,g,o)
-    /// * `b_ih` - Input-hidden bias [4*d_hidden]
-    /// * `b_hh` - Hidden-hidden bias [4*d_hidden]
+    /// * `b_ih` - Input-hidden bias `4*d_hidden`
+    /// * `b_hh` - Hidden-hidden bias `4*d_hidden`
     /// * `batch` - Batch size
     ///
     /// # Returns

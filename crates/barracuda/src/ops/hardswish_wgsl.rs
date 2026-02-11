@@ -26,7 +26,7 @@ impl Hardswish {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/hardswish.wgsl")
+        include_str!("../shaders/activation/hardswish.wgsl")
     }
 
     /// Execute the hardswish operation

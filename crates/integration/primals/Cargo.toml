@@ -30,7 +30,6 @@ tracing = "0.1"
 toadstool-config = { path = "../../core/config" }
 toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
-toadstool-integration-orchestrator = { path = "../orchestrator" }
 toadstool-integration-nestgate = { path = "../nestgate" }
 
 [dev-dependencies]

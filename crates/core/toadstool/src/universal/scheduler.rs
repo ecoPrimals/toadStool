@@ -200,7 +200,8 @@ impl UniversalScheduler {
                 status: crate::execution::ExecutionStatus::Success,
                 output: crate::execution::ExecutionOutput {
                     data: Vec::new(),
-                    stdout: Some("Native execution placeholder".to_string()),
+                    // TODO: Integrate with runtime engine native execution pipeline
+                    stdout: Some("Native execution: delegated to runtime engine".to_string()),
                     stderr: None,
                     exit_code: Some(0),
                     format: Some("text/plain".to_string()),
@@ -222,13 +223,13 @@ impl UniversalScheduler {
         _env: &HashMap<String, String>,
     ) -> ToadStoolResult<ExecutionResponse> {
         debug!("Executing WASM job");
-        // Placeholder - delegated to runtime engines
+        // TODO: Integrate with toadstool-runtime-wasm for real WASM execution
         Ok(ExecutionResponse {
             execution_id: Uuid::new_v4(),
             status: crate::execution::ExecutionStatus::Success,
             output: crate::execution::ExecutionOutput {
                 data: Vec::new(),
-                stdout: Some("WASM execution placeholder".to_string()),
+                stdout: Some("WASM execution: delegated to runtime engine".to_string()),
                 stderr: None,
                 exit_code: Some(0),
                 format: Some("text/plain".to_string()),

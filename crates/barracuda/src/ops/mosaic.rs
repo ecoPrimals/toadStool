@@ -10,7 +10,7 @@
 //! - Runtime device discovery
 //! - Zero CPU fallbacks in execution
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -47,7 +47,7 @@ impl Mosaic {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/mosaic.wgsl")
+        include_str!("../shaders/augmentation/mosaic.wgsl")
     }
 
     /// Execute the mosaic operation
@@ -244,11 +244,9 @@ impl Mosaic {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
+            // Dispatch using standard 2D shader workgroup size (16, 16)
             let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (width as u32).div_ceil(optimal_wg_size);
-            let workgroups_y = (height as u32).div_ceil(optimal_wg_size);
+            let (workgroups_x, workgroups_y) = caps.dispatch_2d(width as u32, height as u32);
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
@@ -267,21 +265,24 @@ impl Mosaic {
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
     use super::*;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_mosaic_basic() {
-        let t1 = Tensor::from_vec(vec![1.0; 3 * 640 * 640], vec![3, 640, 640])
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        let t1 = Tensor::from_vec_on(vec![1.0; 3 * 640 * 640], vec![3, 640, 640], device.clone())
             .await
             .unwrap();
-        let t2 = Tensor::from_vec(vec![0.8; 3 * 640 * 640], vec![3, 640, 640])
+        let t2 = Tensor::from_vec_on(vec![0.8; 3 * 640 * 640], vec![3, 640, 640], device.clone())
             .await
             .unwrap();
-        let t3 = Tensor::from_vec(vec![0.6; 3 * 640 * 640], vec![3, 640, 640])
+        let t3 = Tensor::from_vec_on(vec![0.6; 3 * 640 * 640], vec![3, 640, 640], device.clone())
             .await
             .unwrap();
-        let t4 = Tensor::from_vec(vec![0.4; 3 * 640 * 640], vec![3, 640, 640])
+        let t4 = Tensor::from_vec_on(vec![0.4; 3 * 640 * 640], vec![3, 640, 640], device)
             .await
             .unwrap();
         let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 77777)
@@ -295,17 +296,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_mosaic_edge_cases() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Small images
-        let t1 = Tensor::from_vec(vec![1.0; 3 * 32 * 32], vec![3, 32, 32])
+        let t1 = Tensor::from_vec_on(vec![1.0; 3 * 32 * 32], vec![3, 32, 32], device.clone())
             .await
             .unwrap();
-        let t2 = Tensor::from_vec(vec![2.0; 3 * 32 * 32], vec![3, 32, 32])
+        let t2 = Tensor::from_vec_on(vec![2.0; 3 * 32 * 32], vec![3, 32, 32], device.clone())
             .await
             .unwrap();
-        let t3 = Tensor::from_vec(vec![3.0; 3 * 32 * 32], vec![3, 32, 32])
+        let t3 = Tensor::from_vec_on(vec![3.0; 3 * 32 * 32], vec![3, 32, 32], device.clone())
             .await
             .unwrap();
-        let t4 = Tensor::from_vec(vec![4.0; 3 * 32 * 32], vec![3, 32, 32])
+        let t4 = Tensor::from_vec_on(vec![4.0; 3 * 32 * 32], vec![3, 32, 32], device.clone())
             .await
             .unwrap();
         let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 12345)
@@ -316,16 +320,16 @@ mod tests {
         assert_eq!(mosaic_img.len(), 3 * 32 * 32);
 
         // Single channel (grayscale)
-        let t1 = Tensor::from_vec(vec![1.0; 1 * 64 * 64], vec![1, 64, 64])
+        let t1 = Tensor::from_vec_on(vec![1.0; 64 * 64], vec![1, 64, 64], device.clone())
             .await
             .unwrap();
-        let t2 = Tensor::from_vec(vec![2.0; 1 * 64 * 64], vec![1, 64, 64])
+        let t2 = Tensor::from_vec_on(vec![2.0; 64 * 64], vec![1, 64, 64], device.clone())
             .await
             .unwrap();
-        let t3 = Tensor::from_vec(vec![3.0; 1 * 64 * 64], vec![1, 64, 64])
+        let t3 = Tensor::from_vec_on(vec![3.0; 64 * 64], vec![1, 64, 64], device.clone())
             .await
             .unwrap();
-        let t4 = Tensor::from_vec(vec![4.0; 1 * 64 * 64], vec![1, 64, 64])
+        let t4 = Tensor::from_vec_on(vec![4.0; 64 * 64], vec![1, 64, 64], device)
             .await
             .unwrap();
         let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 99999)
@@ -333,22 +337,25 @@ mod tests {
             .execute()
             .unwrap();
         let mosaic_img = mosaic_tensor.to_vec().unwrap();
-        assert_eq!(mosaic_img.len(), 1 * 64 * 64);
+        assert_eq!(mosaic_img.len(), 64 * 64);
     }
 
     #[tokio::test]
     async fn test_mosaic_boundary() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Different seeds produce different mosaics
-        let t1 = Tensor::from_vec(vec![1.0; 3 * 128 * 128], vec![3, 128, 128])
+        let t1 = Tensor::from_vec_on(vec![1.0; 3 * 128 * 128], vec![3, 128, 128], device.clone())
             .await
             .unwrap();
-        let t2 = Tensor::from_vec(vec![2.0; 3 * 128 * 128], vec![3, 128, 128])
+        let t2 = Tensor::from_vec_on(vec![2.0; 3 * 128 * 128], vec![3, 128, 128], device.clone())
             .await
             .unwrap();
-        let t3 = Tensor::from_vec(vec![3.0; 3 * 128 * 128], vec![3, 128, 128])
+        let t3 = Tensor::from_vec_on(vec![3.0; 3 * 128 * 128], vec![3, 128, 128], device.clone())
             .await
             .unwrap();
-        let t4 = Tensor::from_vec(vec![4.0; 3 * 128 * 128], vec![3, 128, 128])
+        let t4 = Tensor::from_vec_on(vec![4.0; 3 * 128 * 128], vec![3, 128, 128], device)
             .await
             .unwrap();
         let mosaic_tensor1 = Mosaic::new([t1.clone(), t2.clone(), t3.clone(), t4.clone()], 111)
@@ -367,17 +374,32 @@ mod tests {
 
     #[tokio::test]
     async fn test_mosaic_large_images() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // HD images
-        let t1 = Tensor::from_vec(vec![1.0; 3 * 1024 * 1024], vec![3, 1024, 1024])
-            .await
-            .unwrap();
-        let t2 = Tensor::from_vec(vec![0.5; 3 * 1024 * 1024], vec![3, 1024, 1024])
-            .await
-            .unwrap();
-        let t3 = Tensor::from_vec(vec![0.25; 3 * 1024 * 1024], vec![3, 1024, 1024])
-            .await
-            .unwrap();
-        let t4 = Tensor::from_vec(vec![0.0; 3 * 1024 * 1024], vec![3, 1024, 1024])
+        let t1 = Tensor::from_vec_on(
+            vec![1.0; 3 * 1024 * 1024],
+            vec![3, 1024, 1024],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let t2 = Tensor::from_vec_on(
+            vec![0.5; 3 * 1024 * 1024],
+            vec![3, 1024, 1024],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let t3 = Tensor::from_vec_on(
+            vec![0.25; 3 * 1024 * 1024],
+            vec![3, 1024, 1024],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let t4 = Tensor::from_vec_on(vec![0.0; 3 * 1024 * 1024], vec![3, 1024, 1024], device)
             .await
             .unwrap();
         let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 42)
@@ -390,17 +412,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_mosaic_precision() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Test that all 4 quadrants are represented
-        let t1 = Tensor::from_vec(vec![1.0; 3 * 100 * 100], vec![3, 100, 100])
+        let t1 = Tensor::from_vec_on(vec![1.0; 3 * 100 * 100], vec![3, 100, 100], device.clone())
             .await
             .unwrap();
-        let t2 = Tensor::from_vec(vec![2.0; 3 * 100 * 100], vec![3, 100, 100])
+        let t2 = Tensor::from_vec_on(vec![2.0; 3 * 100 * 100], vec![3, 100, 100], device.clone())
             .await
             .unwrap();
-        let t3 = Tensor::from_vec(vec![3.0; 3 * 100 * 100], vec![3, 100, 100])
+        let t3 = Tensor::from_vec_on(vec![3.0; 3 * 100 * 100], vec![3, 100, 100], device.clone())
             .await
             .unwrap();
-        let t4 = Tensor::from_vec(vec![4.0; 3 * 100 * 100], vec![3, 100, 100])
+        let t4 = Tensor::from_vec_on(vec![4.0; 3 * 100 * 100], vec![3, 100, 100], device)
             .await
             .unwrap();
         let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 50505)
@@ -411,6 +436,6 @@ mod tests {
 
         // Should contain values from all 4 images
         assert_eq!(mosaic_img.len(), 3 * 100 * 100);
-        assert!(mosaic_img.iter().all(|&x| x >= 1.0 && x <= 4.0));
+        assert!(mosaic_img.iter().all(|&x| (1.0..=4.0).contains(&x)));
     }
 }

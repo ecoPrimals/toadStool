@@ -64,14 +64,14 @@ impl ToadStoolTarpcClient {
     /// use toadstool_client::ToadStoolTarpcClient;
     /// use toadstool_common::primal_sockets;
     ///
-    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     /// // Discover ToadStool socket via capability discovery
     /// let socket_path = primal_sockets::get_toadstool_socket_path();
     /// let client = ToadStoolTarpcClient::connect_unix(&socket_path).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn connect_unix(socket_path: impl AsRef<Path>) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn connect_unix(socket_path: impl AsRef<Path>) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let socket_path = socket_path.as_ref();
         info!("Connecting to ToadStool compute service at Unix socket: {:?}", socket_path);
 
@@ -115,7 +115,7 @@ impl ToadStoolTarpcClient {
     /// use toadstool_client::ToadStoolTarpcClient;
     /// use toadstool_common::primal_sockets;
     ///
-    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     /// // OLD (TCP - Deep Debt violation)
     /// // let client = ToadStoolTarpcClient::connect("127.0.0.1:50051".parse()?).await?;
     ///
@@ -129,7 +129,7 @@ impl ToadStoolTarpcClient {
         since = "0.2.0",
         note = "Use connect_unix() for production. TCP hardcoding violates Deep Debt principles."
     )]
-    pub async fn connect(addr: SocketAddr) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn connect(addr: SocketAddr) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         warn!("⚠️  TCP mode is DEPRECATED - violates Deep Debt principles");
         warn!("⚠️  Use connect_unix() for production");
         info!("Connecting to ToadStool compute service at TCP: {}", addr);
@@ -171,7 +171,7 @@ impl ToadStoolTarpcClient {
     /// ```rust,no_run
     /// use toadstool_client::ToadStoolTarpcClient;
     ///
-    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     /// // Discovers ANY compute service providing ToadStool capabilities
     /// let client = ToadStoolTarpcClient::discover().await?;
     /// let caps = client.query_capabilities().await?;
@@ -179,7 +179,7 @@ impl ToadStoolTarpcClient {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn discover() -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn discover() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Use capability-based discovery to find compute service
         // Falls back to standard ToadStool socket if discovery unavailable
         let socket_path = toadstool_common::primal_sockets::get_toadstool_socket_path();
@@ -191,7 +191,7 @@ impl ToadStoolTarpcClient {
     pub async fn submit_workload(
         &self,
         submission: WorkloadSubmission,
-    ) -> Result<WorkloadResult, Box<dyn std::error::Error>> {
+    ) -> Result<WorkloadResult, Box<dyn std::error::Error + Send + Sync>> {
         let result = self.client
             .submit_workload(context::current(), submission)
             .await??;
@@ -203,7 +203,7 @@ impl ToadStoolTarpcClient {
     pub async fn query_status(
         &self,
         workload_id: String,
-    ) -> Result<WorkloadResult, Box<dyn std::error::Error>> {
+    ) -> Result<WorkloadResult, Box<dyn std::error::Error + Send + Sync>> {
         let result = self.client
             .query_status(context::current(), workload_id)
             .await??;
@@ -215,7 +215,7 @@ impl ToadStoolTarpcClient {
     pub async fn cancel_workload(
         &self,
         workload_id: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         self.client
             .cancel_workload(context::current(), workload_id)
             .await??;
@@ -227,7 +227,7 @@ impl ToadStoolTarpcClient {
     pub async fn list_workloads(
         &self,
         filter: Option<std::collections::HashMap<String, String>>,
-    ) -> Result<Vec<WorkloadResult>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<WorkloadResult>, Box<dyn std::error::Error + Send + Sync>> {
         let results = self.client
             .list_workloads(context::current(), filter)
             .await??;
@@ -240,7 +240,7 @@ impl ToadStoolTarpcClient {
     /// This is how we discover what a primal can do - NO hardcoded knowledge!
     pub async fn query_capabilities(
         &self,
-    ) -> Result<ComputeCapabilities, Box<dyn std::error::Error>> {
+    ) -> Result<ComputeCapabilities, Box<dyn std::error::Error + Send + Sync>> {
         let caps = self.client
             .query_capabilities(context::current())
             .await??;
@@ -251,7 +251,7 @@ impl ToadStoolTarpcClient {
     /// Health check
     pub async fn health_check(
         &self,
-    ) -> Result<HealthStatus, Box<dyn std::error::Error>> {
+    ) -> Result<HealthStatus, Box<dyn std::error::Error + Send + Sync>> {
         let health = self.client
             .health_check(context::current())
             .await??;

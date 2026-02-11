@@ -50,7 +50,7 @@ impl RotaryEmbedding {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/rotary_embedding.wgsl")
+        include_str!("../shaders/attention/rotary_embedding.wgsl")
     }
 
     /// Execute the rotary embedding operation
@@ -222,12 +222,14 @@ impl RotaryEmbedding {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_rotary_embedding_basic() {
-        let device = get_test_device().await;
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 4 * 2 * 8], vec![1, 4, 2, 8], device)
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        let input = Tensor::from_vec_on(vec![1.0; 4 * 2 * 8], vec![1, 4, 2, 8], device)
             .await
             .unwrap();
 
@@ -239,24 +241,25 @@ mod tests {
 
     #[tokio::test]
     async fn test_rotary_embedding_edge_cases() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Single position
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 1 * 2 * 8], vec![1, 1, 2, 8], device.clone())
+        let input = Tensor::from_vec_on(vec![1.0; 2 * 8], vec![1, 1, 2, 8], device.clone())
             .await
             .unwrap();
         let output = input.rotary_embedding().unwrap();
         assert_eq!(output.shape(), &[1, 1, 2, 8]);
 
         // Single head
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 4 * 1 * 8], vec![1, 4, 1, 8], device.clone())
+        let input = Tensor::from_vec_on(vec![1.0; 4 * 8], vec![1, 4, 1, 8], device.clone())
             .await
             .unwrap();
         let output = input.rotary_embedding().unwrap();
         assert_eq!(output.shape(), &[1, 4, 1, 8]);
 
         // Small head dimension
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 2 * 2 * 4], vec![1, 2, 2, 4], device)
+        let input = Tensor::from_vec_on(vec![1.0; 2 * 2 * 4], vec![1, 2, 2, 4], device)
             .await
             .unwrap();
         let output = input.rotary_embedding().unwrap();
@@ -265,16 +268,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_rotary_embedding_shape_validation() {
-        let device = get_test_device().await;
-
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
         // Valid: even head_dim
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 4 * 2 * 8], vec![1, 4, 2, 8], device.clone())
+        let input = Tensor::from_vec_on(vec![1.0; 4 * 2 * 8], vec![1, 4, 2, 8], device.clone())
             .await
             .unwrap();
         assert!(input.rotary_embedding().is_ok());
 
         // Invalid: odd head_dim
-        let input = Tensor::from_vec_on(vec![1.0; 1 * 4 * 2 * 7], vec![1, 4, 2, 7], device)
+        let input = Tensor::from_vec_on(vec![1.0; 4 * 2 * 7], vec![1, 4, 2, 7], device)
             .await
             .unwrap();
         assert!(input.rotary_embedding().is_err());
