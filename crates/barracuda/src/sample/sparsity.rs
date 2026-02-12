@@ -24,6 +24,15 @@
 //! The key insight from Diaw et al.: training surrogates on ALL evaluations
 //! (not just the best) provides dramatically better approximation quality.
 //!
+//! # Hybrid Evaluation Strategy
+//!
+//! For large datasets (n > 100), the distance matrix computation becomes expensive
+//! (O(n²)). The hybrid mode uses GPU acceleration via `cdist.wgsl` for:
+//! - Distance matrix computation (via [`train_adaptive_gpu`])
+//! - Batch surrogate prediction
+//!
+//! Enable with `SparsitySamplerConfig::with_gpu(device)`.
+//!
 //! # Cross-Domain Applications
 //!
 //! - **Nuclear physics**: EOS parameter fitting with expensive nuclear simulations
@@ -37,14 +46,17 @@
 //!   simulations of complex systems." Nature Machine Intelligence.
 //! - hotSpring: `control/surrogate/scripts/full_iterative_workflow.py`
 
+use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use crate::optimize::eval_record::EvaluationCache;
 use crate::optimize::multi_start::SolverResult;
 use crate::sample::latin_hypercube;
+use crate::surrogate::adaptive::train_adaptive_gpu;
 use crate::surrogate::{RBFKernel, RBFSurrogate};
+use std::sync::Arc;
 
 /// Configuration for the SparsitySampler.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SparsitySamplerConfig {
     /// Number of initial samples via LHS (default: 10 × n_dims)
     pub n_initial: usize,
@@ -62,6 +74,27 @@ pub struct SparsitySamplerConfig {
     pub smoothing: f64,
     /// Random seed
     pub seed: u64,
+    /// GPU device for hybrid evaluation (None = CPU only)
+    pub gpu_device: Option<Arc<WgpuDevice>>,
+    /// Minimum dataset size to trigger GPU acceleration (default: 100)
+    pub gpu_threshold: usize,
+}
+
+impl std::fmt::Debug for SparsitySamplerConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SparsitySamplerConfig")
+            .field("n_initial", &self.n_initial)
+            .field("n_solvers", &self.n_solvers)
+            .field("max_eval_per_solver", &self.max_eval_per_solver)
+            .field("n_iterations", &self.n_iterations)
+            .field("tol", &self.tol)
+            .field("kernel", &self.kernel)
+            .field("smoothing", &self.smoothing)
+            .field("seed", &self.seed)
+            .field("gpu_device", &self.gpu_device.as_ref().map(|_| "Some(WgpuDevice)"))
+            .field("gpu_threshold", &self.gpu_threshold)
+            .finish()
+    }
 }
 
 impl SparsitySamplerConfig {
@@ -76,6 +109,8 @@ impl SparsitySamplerConfig {
             kernel: RBFKernel::ThinPlateSpline,
             smoothing: 1e-12,
             seed,
+            gpu_device: None,
+            gpu_threshold: 100,
         }
     }
 
@@ -109,9 +144,50 @@ impl SparsitySamplerConfig {
         self
     }
 
+    /// Enable GPU-accelerated surrogate training.
+    ///
+    /// When enabled and dataset size exceeds `gpu_threshold`, the distance
+    /// matrix computation uses `cdist.wgsl` on the GPU for O(n²) speedup.
+    ///
+    /// # Arguments
+    ///
+    /// * `device` - Shared WGPU device handle
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use barracuda::device::WgpuDevice;
+    /// use barracuda::sample::sparsity::SparsitySamplerConfig;
+    /// use std::sync::Arc;
+    ///
+    /// # async fn example() {
+    /// let device = Arc::new(WgpuDevice::new().await.unwrap());
+    /// let config = SparsitySamplerConfig::new(5, 42)
+    ///     .with_gpu(device)
+    ///     .with_gpu_threshold(50);
+    /// # }
+    /// ```
+    pub fn with_gpu(mut self, device: Arc<WgpuDevice>) -> Self {
+        self.gpu_device = Some(device);
+        self
+    }
+
+    /// Set minimum dataset size to trigger GPU acceleration (default: 100).
+    ///
+    /// Below this threshold, CPU training is faster due to GPU dispatch overhead.
+    pub fn with_gpu_threshold(mut self, n: usize) -> Self {
+        self.gpu_threshold = n;
+        self
+    }
+
     /// Total evaluation budget (approximate).
     pub fn total_budget(&self) -> usize {
         self.n_initial + self.n_iterations * self.n_solvers * self.max_eval_per_solver
+    }
+
+    /// Check if GPU acceleration is configured and applicable.
+    pub fn should_use_gpu(&self, dataset_size: usize) -> bool {
+        self.gpu_device.is_some() && dataset_size >= self.gpu_threshold
     }
 }
 
@@ -143,6 +219,8 @@ pub struct IterationResult {
     pub total_evals: usize,
     /// Surrogate training error (leave-one-out or None if not computed)
     pub surrogate_error: Option<f64>,
+    /// Whether GPU was used for surrogate training in this iteration
+    pub used_gpu: bool,
 }
 
 /// Run the SparsitySampler algorithm.
@@ -239,6 +317,7 @@ where
                     n_new_evals: cache.len() - iter_start_evals,
                     total_evals: cache.len(),
                     surrogate_error: None,
+                    used_gpu: false,
                 });
                 continue;
             }
@@ -301,6 +380,207 @@ where
             n_new_evals: cache.len() - iter_start_evals,
             total_evals: cache.len(),
             surrogate_error: Some(surrogate_error),
+            used_gpu: false, // CPU-only path
+        });
+
+        last_surrogate = Some(surrogate);
+    }
+
+    // Extract best overall result
+    let (x_best, f_best) = match cache.best() {
+        Some(record) => (record.x.clone(), record.f),
+        None => {
+            return Err(BarracudaError::Internal(
+                "No evaluations recorded".to_string(),
+            ))
+        }
+    };
+
+    Ok(SparsitySamplerResult {
+        x_best,
+        f_best,
+        cache,
+        surrogate: last_surrogate,
+        iteration_results,
+    })
+}
+
+/// Run the SparsitySampler algorithm with GPU-accelerated surrogate training.
+///
+/// When the dataset exceeds `config.gpu_threshold`, uses GPU for distance matrix
+/// computation via `cdist.wgsl`. Falls back to CPU when GPU unavailable or
+/// dataset is small.
+///
+/// # Requirements
+///
+/// - Config must have `gpu_device` set via [`SparsitySamplerConfig::with_gpu`]
+/// - Async runtime (tokio or similar)
+///
+/// # Examples
+///
+/// ```no_run
+/// use barracuda::device::WgpuDevice;
+/// use barracuda::sample::sparsity::{sparsity_sampler_gpu, SparsitySamplerConfig};
+/// use std::sync::Arc;
+///
+/// # async fn example() -> barracuda::error::Result<()> {
+/// let device = Arc::new(WgpuDevice::new().await?);
+///
+/// let f = |x: &[f64]| x[0].powi(2) + x[1].powi(2);
+/// let bounds = vec![(-5.0, 5.0), (-5.0, 5.0)];
+///
+/// let config = SparsitySamplerConfig::new(2, 42)
+///     .with_gpu(device)
+///     .with_gpu_threshold(50)
+///     .with_initial_samples(100)
+///     .with_iterations(5);
+///
+/// let result = sparsity_sampler_gpu(f, &bounds, &config).await?;
+/// println!("Best: f={:.4}", result.f_best);
+/// # Ok(())
+/// # }
+/// ```
+pub async fn sparsity_sampler_gpu<F>(
+    f: F,
+    bounds: &[(f64, f64)],
+    config: &SparsitySamplerConfig,
+) -> Result<SparsitySamplerResult>
+where
+    F: Fn(&[f64]) -> f64,
+{
+    if bounds.is_empty() {
+        return Err(BarracudaError::InvalidInput {
+            message: "bounds must be non-empty".to_string(),
+        });
+    }
+
+    if config.n_initial < 2 {
+        return Err(BarracudaError::InvalidInput {
+            message: "n_initial must be >= 2 for surrogate training".to_string(),
+        });
+    }
+
+    let _n_dims = bounds.len();
+    let mut cache = EvaluationCache::with_capacity(config.total_budget());
+    let mut iteration_results = Vec::with_capacity(config.n_iterations);
+
+    // Phase 1: Initial sampling via LHS
+    let initial_points = latin_hypercube(config.n_initial, bounds, config.seed)?;
+
+    for point in &initial_points {
+        let val = f(point);
+        cache.record(point.clone(), val);
+    }
+
+    // Iterative refinement loop
+    let mut last_surrogate = None;
+
+    for iter in 0..config.n_iterations {
+        let iter_start_evals = cache.len();
+
+        // Train surrogate on ALL evaluations so far
+        let (x_data, y_data) = cache.training_data();
+
+        // Decide: GPU or CPU path?
+        let (surrogate, used_gpu) = if config.should_use_gpu(x_data.len()) {
+            // GPU path: use cdist.wgsl for distance computation
+            let device = config.gpu_device.as_ref().unwrap().clone();
+            match train_adaptive_gpu(&x_data, &y_data, config.kernel, config.smoothing, device).await
+            {
+                Ok((s, _diag)) => (s, true),
+                Err(_) => {
+                    // GPU failed, fall back to CPU
+                    match RBFSurrogate::train(&x_data, &y_data, config.kernel, config.smoothing) {
+                        Ok(s) => (s, false),
+                        Err(_) => {
+                            // Both failed, fall back to direct NM
+                            let nm_result = run_nm_batch(&f, bounds, config, iter, &mut cache)?;
+                            iteration_results.push(IterationResult {
+                                iteration: iter,
+                                best_f: nm_result.f_best,
+                                n_new_evals: cache.len() - iter_start_evals,
+                                total_evals: cache.len(),
+                                surrogate_error: None,
+                                used_gpu: false,
+                            });
+                            continue;
+                        }
+                    }
+                }
+            }
+        } else {
+            // CPU path (dataset too small for GPU benefit)
+            match RBFSurrogate::train(&x_data, &y_data, config.kernel, config.smoothing) {
+                Ok(s) => (s, false),
+                Err(_) => {
+                    // Fall back to direct NM
+                    let nm_result = run_nm_batch(&f, bounds, config, iter, &mut cache)?;
+                    iteration_results.push(IterationResult {
+                        iteration: iter,
+                        best_f: nm_result.f_best,
+                        n_new_evals: cache.len() - iter_start_evals,
+                        total_evals: cache.len(),
+                        surrogate_error: None,
+                        used_gpu: false,
+                    });
+                    continue;
+                }
+            }
+        };
+
+        // Compute surrogate quality metric
+        let surrogate_error = compute_surrogate_rmse(&surrogate, &x_data, &y_data);
+
+        // Use surrogate to find promising regions
+        let surrogate_ref = &surrogate;
+        let surrogate_objective = |x: &[f64]| {
+            surrogate_ref
+                .predict(&[x.to_vec()])
+                .map(|v| v[0])
+                .unwrap_or(f64::INFINITY)
+        };
+
+        let iter_seed = config.seed.wrapping_add((iter as u64 + 1) * 10007);
+        let candidate_points = latin_hypercube(config.n_solvers, bounds, iter_seed)?;
+
+        let mut iter_best_f = f64::INFINITY;
+
+        for x0 in &candidate_points {
+            let (x_star, _, _) = crate::optimize::nelder_mead(
+                surrogate_objective,
+                x0,
+                bounds,
+                config.max_eval_per_solver,
+                config.tol,
+            )?;
+
+            let f_true = f(&x_star);
+            cache.record(x_star, f_true);
+
+            if f_true < iter_best_f {
+                iter_best_f = f_true;
+            }
+        }
+
+        // Exploration points
+        let explore_seed = iter_seed.wrapping_add(99991);
+        let n_explore = (config.n_solvers / 4).max(1);
+        let explore_points = latin_hypercube(n_explore, bounds, explore_seed)?;
+        for point in &explore_points {
+            let val = f(point);
+            cache.record(point.clone(), val);
+            if val < iter_best_f {
+                iter_best_f = val;
+            }
+        }
+
+        iteration_results.push(IterationResult {
+            iteration: iter,
+            best_f: iter_best_f,
+            n_new_evals: cache.len() - iter_start_evals,
+            total_evals: cache.len(),
+            surrogate_error: Some(surrogate_error),
+            used_gpu,
         });
 
         last_surrogate = Some(surrogate);
