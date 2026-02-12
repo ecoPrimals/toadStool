@@ -124,6 +124,8 @@ pub mod min_wgsl;
 pub mod norm;
 pub mod prng_xoshiro_wgsl;
 pub mod prod;
+pub mod random_uniform_wgsl;
+pub mod sobol_wgsl;
 pub mod rsqrt_wgsl;
 pub mod sparse_matvec_wgsl;
 pub mod spherical_harmonics_wgsl;
