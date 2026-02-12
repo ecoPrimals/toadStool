@@ -28,7 +28,7 @@
 
 - **0 clippy warnings** (down from 453)
 - **15,600+ tests passing**, 0 failing
-- **391 WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
+- **396 WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
 - **Shader-first**: ALL math is WGSL primary, ToadStool dispatches to GPU/CPU
 - 18 special function shaders, 3 sampling shaders, 5 statistics shaders
 - **Scientific middleware** (8 modules: linalg, numerical, special, stats, optimize, surrogate, sample, pde — 200+ tests, 0 unsafe)

@@ -32,7 +32,7 @@ ToadStool (Hardware Infrastructure Primal)
   Hardware-agnostic workload routing (GPU / NPU / CPU)
 
 BarraCUDA (Universal Compute Engine — SHADER-FIRST)
-  391 WGSL shaders, proven cross-vendor
+  396 WGSL shaders, proven cross-vendor
   **Shader-first architecture**: ALL math is WGSL primary
   ToadStool dispatches to GPU/CPU based on hardware
   When fp64 GPUs available, seamless transition
@@ -96,7 +96,7 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 | Build warnings | 0 |
 | Tests passing | 15,490+ (3,688 core) |
 | Tests failing | 0 |
-| WGSL shaders | 391 |
+| WGSL shaders | 396 |
 | Server line coverage | ~85% |
 | Common line coverage | ~84% |
 | Config line coverage | ~85% |
@@ -109,7 +109,7 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 
 ## What Works
 
-- 391 WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
+- 396 WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
 - **Shader-first architecture**: ALL math is WGSL, ToadStool dispatches
 - Distributed LLM inference across machines (LAN TCP, BearDog encrypted)
 - Hardware discovery (GPUs, NPUs, CPUs) -- pure Rust, no scripts

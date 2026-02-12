@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Verification
 
 - 143 WGSL wrapper tests passing
-- 391 total WGSL shaders in library
+- 396 total WGSL shaders in library (including PDE and optimizer shaders)
 - All quality gates pass
 
 ---

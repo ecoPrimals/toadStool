@@ -7,7 +7,7 @@
 ## What Is This?
 
 - **ToadStool** -- Hardware infrastructure primal. Discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. Ollama model lifecycle management. Distributed workload dispatch across machines. ecoBin compliant: single binary, pure Rust, cross-architecture, cross-platform.
-- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: 391 WGSL shaders as the primary math implementation. ToadStool dispatches to GPU or CPU based on hardware. When fp64 GPUs are available, seamless transition. 18 special function shaders (Hermite, Legendre, Laguerre, Bessel, etc.), 3 sampling shaders (Sobol, LHS, random_uniform). **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde) — same math for physics, ML, graphics, and audio. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
+- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: 396 WGSL shaders as the primary math implementation. ToadStool dispatches to GPU or CPU based on hardware. When fp64 GPUs are available, seamless transition. 18 special function shaders (Hermite, Legendre, Laguerre, Bessel, etc.), 3 sampling shaders (Sobol, LHS, random_uniform). **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde) — same math for physics, ML, graphics, and audio. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
 
 ---
 
@@ -51,7 +51,7 @@ TinyLlama-1.1B split across two machines over LAN TCP:
 ```
 Applications (hotSpring, NUCLEUS inference, etc.)
        |
-BarraCUDA: 391 WGSL Shaders (SHADER-FIRST)
+BarraCUDA: 396 WGSL Shaders (SHADER-FIRST)
   ALL math is WGSL primary — ToadStool dispatches to GPU/CPU
   18 special function shaders, 3 sampling shaders
   Middleware: linalg, numerical, special, stats, optimize, surrogate, sample, pde (200+ tests)
@@ -123,7 +123,7 @@ cargo test -p barracuda --lib ops::linalg --release
 ```
 toadStool/
 +-- crates/
-|   +-- barracuda/             -- 391 WGSL shaders, tensor ops
+|   +-- barracuda/             -- 396 WGSL shaders, tensor ops
 |   +-- core/
 |   |   +-- common/            -- Shared types, constants, discovery
 |   |   +-- config/            -- Centralized configuration (env-aware)

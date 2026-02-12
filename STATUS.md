@@ -223,7 +223,7 @@ All HIGH and MEDIUM priority items from the hotSpring science gaps audit have be
 
 ---
 
-## BarraCUDA Shaders: 414 WGSL Files (Reorganized Feb 11, 2026)
+## BarraCUDA Shaders: 396 WGSL Files (Shader-First Architecture)
 
 **Organization**: Categorized directory structure for discoverability
 
@@ -256,7 +256,7 @@ All HIGH and MEDIUM priority items from the hotSpring science gaps audit have be
 | MD Forces | 5 | `ops/md/forces/` | Complete (Coulomb, Lennard-Jones, Yukawa, Morse, Born-Mayer) |
 | MD Integrators | 3 | `ops/md/integrators/` | Complete (Velocity-Verlet, RK4, Laplacian) |
 | MD PBC | 1 | `ops/md/` | Complete (Periodic boundary conditions) |
-| **Total** | **414** | **21 + 4 categories** | **100% organized** |
+| **Total** | **396** | **21 + 4 categories** | **100% organized** |
 
 **Documentation**: See `crates/barracuda/src/shaders/README.md` and `CATEGORIES.md` for detailed index.
 

@@ -1,6 +1,6 @@
 # BarraCUDA WGSL Shader Library
 
-**414 Production WGSL Shaders** | Categorized for Discovery | Cross-Vendor Compatible
+**396 Production WGSL Shaders** | Categorized for Discovery | Cross-Vendor Compatible
 
 ---
 
@@ -338,7 +338,7 @@ cargo test -p barracuda --lib --release
 
 ---
 
-**Last Updated**: February 11, 2026  
-**Shader Count**: 414  
+**Last Updated**: February 12, 2026  
+**Shader Count**: 396  
 **Categories**: 21 + 4 specialized  
 **Status**: Production

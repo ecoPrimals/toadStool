@@ -89,7 +89,7 @@ TOTAL                      60      ✅
 - ✅ **docs**: Comprehensive with examples
 
 ### Shader-First Architecture ✅
-- ✅ **391 WGSL shaders**: ALL parallelizable math is shader-primary
+- ✅ **396 WGSL shaders**: ALL parallelizable math is shader-primary
 - ✅ **18 special function shaders**: Hermite, Legendre, Laguerre, Digamma, Beta, Normal CDF/PPF
 - ✅ **3 sampling shaders**: Sobol, Latin Hypercube, Uniform Random
 - ✅ **5 statistics shaders**: Correlation, Covariance, Variance

@@ -12,7 +12,7 @@ The hotSpring team's gap analysis identified many items as "missing" that **alre
 This audit corrects the record and identifies the **actual gaps** that need work.
 
 **Key Corrections**:
-- Shader count: **391** (updated Feb 12)
+- Shader count: **396** (updated Feb 12)
 - Many "missing" Rust wrappers already exist
 - FFT suite is complete (fft_1d, fft_2d, fft_3d, ifft, rfft)
 - RK4 ODE solver exists in `md/integrators/`
@@ -28,7 +28,7 @@ This audit corrects the record and identifies the **actual gaps** that need work
 
 ## Corrections: What Already Exists
 
-### ✅ Shaders (391 total)
+### ✅ Shaders (396 total)
 
 The hotSpring inventory undercounted by 36 shaders.
 
