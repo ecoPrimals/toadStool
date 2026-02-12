@@ -110,9 +110,11 @@ pub mod digamma_wgsl;
 pub mod erf_wgsl;
 pub mod erfc_wgsl;
 pub mod hermite_wgsl;
+pub mod laguerre_wgsl;
 pub mod legendre_wgsl;
 pub mod lgamma_wgsl;
 pub mod norm_cdf_wgsl;
+pub mod norm_ppf_wgsl;
 
 // Reduction operations
 pub mod loo_cv_wgsl;
