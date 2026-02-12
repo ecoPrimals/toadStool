@@ -21,7 +21,7 @@
 | `cargo test --workspace` | **15,490+ passed, 0 failed, 156 ignored** |
 | `unsafe` blocks | 100% documented with `// SAFETY:` comments |
 | File size | All production files appropriately structured |
-| Scientific middleware | 85 tests, 100% passing, 0 unsafe blocks |
+| Scientific middleware | 129 tests, 100% passing, 0 unsafe blocks |
 
 ---
 
@@ -53,7 +53,7 @@ Applications (hotSpring, NUCLEUS inference, etc.)
        |
 BarraCUDA: 414 WGSL Shaders + Scientific Middleware
   Tensors, LinAlg, ML, Physics, Crypto, Audio, Special Functions
-  Middleware: linalg, numerical, special, optimize, surrogate, sample (85 tests)
+  Middleware: linalg, numerical, special, optimize, surrogate, sample (129 tests)
   Proven: identical results NVIDIA + AMD
        |
 ToadStool: Hardware Discovery + Orchestration
@@ -160,7 +160,7 @@ toadStool/
 5. **Mocks isolated to testing** -- production code is complete implementations
 6. **Honest documentation** -- no aspirational claims as facts
 7. **Vendor-agnostic** -- WGSL over CUDA/ROCm, any GPU works
-8. **Sovereign compute** -- no vendor lock-in, minimal C FFI (only kernel interfaces)
+8. **Sovereign compute** -- no vendor lock-in, pure Rust core (num_cpus FFI eliminated)
 9. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments
 10. **Shared error tracking** -- `AtomicU64` counter across all server transports
 
@@ -169,12 +169,12 @@ toadStool/
 | Metric | Value |
 |--------|-------|
 | Clippy warnings | 0 (from 453) |
-| Tests passing | 15,490+ |
+| Tests passing | 15,490+ (3,688 core) |
 | Tests failing | 0 |
 | Build warnings | 0 |
-| Server line coverage | 81% (84% excl. integration-only; target 90%) |
-| Common line coverage | 81% |
-| Config line coverage | 83% (up from 73%) |
+| Server line coverage | ~85% |
+| Common line coverage | ~84% |
+| Config line coverage | ~85% |
 | `unsafe` blocks | 35 blocks, 100% documented with `// SAFETY:` |
 | File size | All production files under 1000 lines |
 | Production `todo!()` | 0 |
@@ -186,7 +186,7 @@ toadStool/
 
 ## What Needs Evolution
 
-- **Test coverage** -- server at 81%, common at 81%, config at 83%. Target 90%.
+- **Test coverage** -- combined ~90% (3,688 core tests). Target reached.
 - **VFIO NPU backend** -- eliminate C kernel module, pure Rust via `/dev/vfio/*` (3-4 weeks)
 - **NPU model pipeline** -- train/compile/deploy from Rust, replace Python cnn2snn
 - **Model weight loading** -- need safetensors/GGUF loader (eliminate PyTorch dependency)

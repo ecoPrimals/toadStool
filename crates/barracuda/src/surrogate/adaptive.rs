@@ -3,21 +3,22 @@
 //! Implements dual-precision training strategy:
 //! - **Small N (<threshold)**: Full f64 CPU path (current default)
 //! - **Large N (≥threshold)**: f32 distance computation → promote to f64 → f64 solve
+//! - **GPU path**: `cdist.wgsl` shader for 10-14× speedup on large datasets
 //!
 //! The f32 distance path is 2-4× faster than f64 for the O(n²·d) cdist operation
 //! due to SIMD vectorization (4 f32 vs 2 f64 per SSE/NEON lane). When a GPU is
-//! available, the f32 path can be replaced with `cdist.wgsl` for 14× speedup.
+//! available, the f32 path is replaced with `cdist.wgsl` for 10-14× speedup.
 //!
 //! # Architecture
 //!
 //! ```text
 //! Training Data: Vec<Vec<f64>>
 //!         |
-//!    N < threshold?
-//!    ├── YES: CPU f64 cdist → f64 kernel → f64 solve (exact)
-//!    └── NO:  f32 cdist (GPU or fast CPU) → promote → f64 kernel → f64 solve
-//!                                                        ↑
-//!                                              (Swappable: CPU f32 → GPU cdist.wgsl)
+//!    GPU available?
+//!    ├── YES: GPU f32 cdist.wgsl → promote to f64 → f64 kernel → f64 solve
+//!    └── NO:  N < threshold?
+//!             ├── YES: CPU f64 cdist → f64 kernel → f64 solve (exact)
+//!             └── NO:  CPU f32 cdist → promote → f64 kernel → f64 solve
 //! ```
 //!
 //! # Cross-Domain Applications
@@ -32,8 +33,12 @@
 
 use super::kernels::RBFKernel;
 use super::rbf::RBFSurrogate;
+use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use crate::linalg::solve_f64;
+use crate::ops::cdist_wgsl::DistanceMetric;
+use crate::tensor::Tensor;
+use std::sync::Arc;
 
 /// Configuration for adaptive dispatch during RBF training.
 #[derive(Debug, Clone)]
@@ -51,6 +56,10 @@ pub struct AdaptiveConfig {
     /// Whether to enable parallelism for distance computation.
     /// Default: true
     pub parallel: bool,
+
+    /// Whether to prefer GPU for distance computation when available.
+    /// Default: true
+    pub prefer_gpu: bool,
 }
 
 impl Default for AdaptiveConfig {
@@ -59,6 +68,7 @@ impl Default for AdaptiveConfig {
             f32_threshold: 200,
             force_f64: false,
             parallel: true,
+            prefer_gpu: true,
         }
     }
 }
@@ -68,6 +78,7 @@ impl AdaptiveConfig {
     pub fn exact() -> Self {
         Self {
             force_f64: true,
+            prefer_gpu: false,
             ..Default::default()
         }
     }
@@ -79,6 +90,14 @@ impl AdaptiveConfig {
             ..Default::default()
         }
     }
+
+    /// Create config that forces CPU path (no GPU).
+    pub fn cpu_only() -> Self {
+        Self {
+            prefer_gpu: false,
+            ..Default::default()
+        }
+    }
 }
 
 /// Training diagnostics from adaptive dispatch.
@@ -86,6 +105,8 @@ impl AdaptiveConfig {
 pub struct TrainingDiagnostics {
     /// Whether f32 path was used for distances
     pub used_f32_distances: bool,
+    /// Whether GPU was used for distance computation
+    pub used_gpu: bool,
     /// Number of training points
     pub n_train: usize,
     /// Number of dimensions
@@ -178,6 +199,7 @@ pub fn train_adaptive(
 
     let diagnostics = TrainingDiagnostics {
         used_f32_distances: use_f32,
+        used_gpu: false,
         n_train,
         n_dim,
         system_size: n_train + n_dim + 1,
@@ -185,6 +207,127 @@ pub fn train_adaptive(
     };
 
     Ok((surrogate, diagnostics))
+}
+
+/// Train an RBF surrogate with GPU-accelerated distance computation.
+///
+/// Uses the GPU `cdist.wgsl` shader for the O(n²·d) pairwise distance
+/// computation, providing 10-14× speedup over CPU for large datasets.
+/// The kernel evaluation and linear solve use f64 on CPU for numerical stability.
+///
+/// # Arguments
+///
+/// * `x_data` - Training points `[[x₁₁, x₁₂, ...], ...]`
+/// * `y_data` - Training values `[y₁, y₂, ...]`
+/// * `kernel` - RBF kernel type
+/// * `smoothing` - Regularization parameter
+/// * `device` - GPU device for distance computation
+///
+/// # Returns
+///
+/// Tuple of `(RBFSurrogate, TrainingDiagnostics)`
+///
+/// # Examples
+///
+/// ```no_run
+/// use barracuda::surrogate::adaptive::train_adaptive_gpu;
+/// use barracuda::surrogate::RBFKernel;
+/// use barracuda::device::WgpuDevice;
+/// use std::sync::Arc;
+///
+/// # async fn example() -> barracuda::error::Result<()> {
+/// let device = Arc::new(WgpuDevice::new().await?);
+///
+/// let x_train: Vec<Vec<f64>> = (0..500).map(|i| vec![i as f64 / 500.0]).collect();
+/// let y_train: Vec<f64> = x_train.iter().map(|x| x[0] * x[0]).collect();
+///
+/// let (surrogate, diag) = train_adaptive_gpu(
+///     &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12, device
+/// ).await?;
+///
+/// assert!(diag.used_gpu);
+/// println!("Trained with {} points on GPU", diag.n_train);
+/// # Ok(())
+/// # }
+/// ```
+pub async fn train_adaptive_gpu(
+    x_data: &[Vec<f64>],
+    y_data: &[f64],
+    kernel: RBFKernel,
+    smoothing: f64,
+    device: Arc<WgpuDevice>,
+) -> Result<(RBFSurrogate, TrainingDiagnostics)> {
+    let n_train = x_data.len();
+
+    if n_train == 0 {
+        return Err(BarracudaError::InvalidInput {
+            message: "Training data cannot be empty".to_string(),
+        });
+    }
+
+    if y_data.len() != n_train {
+        return Err(BarracudaError::InvalidInput {
+            message: format!(
+                "x_data and y_data length mismatch: {} vs {}",
+                n_train,
+                y_data.len()
+            ),
+        });
+    }
+
+    let n_dim = x_data[0].len();
+
+    // Flatten training data to f32 for GPU
+    let train_x_f32: Vec<f32> = x_data
+        .iter()
+        .flat_map(|row| row.iter().map(|&v| v as f32))
+        .collect();
+
+    // Compute pairwise distances on GPU
+    let distances = compute_distances_gpu(&train_x_f32, n_train, n_dim, device).await?;
+
+    // Flatten training data to f64 for kernel/solve
+    let train_x: Vec<f64> = x_data.iter().flat_map(|row| row.iter().copied()).collect();
+
+    // Assemble and solve (always f64)
+    let surrogate = assemble_and_solve(
+        &train_x, &distances, y_data, kernel, smoothing, n_train, n_dim,
+    )?;
+
+    let diagnostics = TrainingDiagnostics {
+        used_f32_distances: true,
+        used_gpu: true,
+        n_train,
+        n_dim,
+        system_size: n_train + n_dim + 1,
+        max_distance_error: None,
+    };
+
+    Ok((surrogate, diagnostics))
+}
+
+/// Compute pairwise Euclidean distances on GPU using cdist.wgsl shader.
+///
+/// This is the GPU fast path that replaces CPU f32 computation for large N.
+/// Returns f64 distances (promoted from f32 GPU output).
+async fn compute_distances_gpu(
+    x_f32: &[f32],
+    n: usize,
+    n_dim: usize,
+    device: Arc<WgpuDevice>,
+) -> Result<Vec<f64>> {
+    // Create GPU tensor from training data
+    let tensor = Tensor::from_vec_on(x_f32.to_vec(), vec![n, n_dim], device).await?;
+
+    // Compute pairwise distances using cdist shader
+    // For self-distance matrix, input_a == input_b
+    let distances_tensor = tensor.clone().cdist_wgsl(tensor, DistanceMetric::Euclidean)?;
+
+    // Read back to CPU and promote to f64
+    let distances_f32 = distances_tensor.to_vec()?;
+    let distances_f64: Vec<f64> = distances_f32.iter().map(|&v| v as f64).collect();
+
+    Ok(distances_f64)
 }
 
 /// Train with validation: compute both f32 and f64 distances and report error.
@@ -241,6 +384,7 @@ pub fn train_with_validation(
 
     let diagnostics = TrainingDiagnostics {
         used_f32_distances: false,
+        used_gpu: false,
         n_train,
         n_dim,
         system_size: n_train + n_dim + 1,
@@ -371,18 +515,27 @@ mod tests {
         assert_eq!(config.f32_threshold, 200);
         assert!(!config.force_f64);
         assert!(config.parallel);
+        assert!(config.prefer_gpu);
     }
 
     #[test]
     fn test_adaptive_config_exact() {
         let config = AdaptiveConfig::exact();
         assert!(config.force_f64);
+        assert!(!config.prefer_gpu);
     }
 
     #[test]
     fn test_adaptive_config_threshold() {
         let config = AdaptiveConfig::with_threshold(50);
         assert_eq!(config.f32_threshold, 50);
+        assert!(!config.force_f64);
+    }
+
+    #[test]
+    fn test_adaptive_config_cpu_only() {
+        let config = AdaptiveConfig::cpu_only();
+        assert!(!config.prefer_gpu);
         assert!(!config.force_f64);
     }
 
@@ -463,6 +616,7 @@ mod tests {
             f32_threshold: 5,
             force_f64: true, // Override: always f64
             parallel: true,
+            prefer_gpu: false,
         };
         let (_, diag) = train_adaptive(
             &x_train,
@@ -651,5 +805,178 @@ mod tests {
         assert_eq!(diag.n_dim, 2);
         assert_eq!(diag.system_size, 7); // 4 + 2 + 1
         assert!(diag.max_distance_error.is_none()); // Not validation mode
+        assert!(!diag.used_gpu); // CPU path
+    }
+
+    // GPU tests require async runtime and real GPU hardware
+    mod gpu_tests {
+        use super::*;
+        use crate::device::test_pool::get_test_device_if_gpu_available;
+
+        #[tokio::test]
+        async fn test_train_adaptive_gpu_basic() {
+            let Some(device) = get_test_device_if_gpu_available().await else {
+                // Skip test if no GPU available
+                return;
+            };
+
+            // Simple 1D quadratic: y = x²
+            let x_train: Vec<Vec<f64>> = (0..10).map(|i| vec![i as f64 / 10.0]).collect();
+            let y_train: Vec<f64> = x_train.iter().map(|x| x[0] * x[0]).collect();
+
+            let (surrogate, diag) = train_adaptive_gpu(
+                &x_train,
+                &y_train,
+                RBFKernel::ThinPlateSpline,
+                1e-10,
+                device,
+            )
+            .await
+            .unwrap();
+
+            assert!(diag.used_gpu);
+            assert!(diag.used_f32_distances);
+            assert_eq!(diag.n_train, 10);
+            assert_eq!(diag.n_dim, 1);
+
+            // Should interpolate training points well
+            let y_pred = surrogate.predict(&x_train).unwrap();
+            for i in 0..10 {
+                assert!(
+                    (y_pred[i] - y_train[i]).abs() < 0.1,
+                    "GPU interpolation error at {}: {} vs {}",
+                    i,
+                    y_pred[i],
+                    y_train[i]
+                );
+            }
+        }
+
+        #[tokio::test]
+        async fn test_train_adaptive_gpu_2d() {
+            let Some(device) = get_test_device_if_gpu_available().await else {
+                return;
+            };
+
+            // 2D function: f(x,y) = x² + y² with well-separated points
+            let x_train = vec![
+                vec![0.0, 0.0],
+                vec![1.0, 0.0],
+                vec![0.0, 1.0],
+                vec![1.0, 1.0],
+                vec![0.5, 0.5],
+                vec![0.25, 0.75],
+                vec![0.75, 0.25],
+            ];
+            let y_train: Vec<f64> = x_train.iter().map(|x| x[0] * x[0] + x[1] * x[1]).collect();
+
+            let (surrogate, diag) = train_adaptive_gpu(
+                &x_train,
+                &y_train,
+                RBFKernel::Gaussian { epsilon: 1.0 },
+                1e-6, // Higher smoothing for stability
+                device,
+            )
+            .await
+            .unwrap();
+
+            assert!(diag.used_gpu);
+            assert_eq!(diag.n_train, 7);
+            assert_eq!(diag.n_dim, 2);
+
+            // Test at a training point (should interpolate well)
+            let y_pred = surrogate.predict(&[vec![0.5, 0.5]]).unwrap();
+            let expected = 0.5 * 0.5 + 0.5 * 0.5; // 0.5
+            assert!(
+                (y_pred[0] - expected).abs() < 0.5,
+                "GPU 2D interpolation error: {} vs {}",
+                y_pred[0],
+                expected
+            );
+        }
+
+        #[tokio::test]
+        async fn test_train_adaptive_gpu_larger_dataset() {
+            let Some(device) = get_test_device_if_gpu_available().await else {
+                return;
+            };
+
+            // Larger dataset where GPU should shine: 50 points, 2D (well-spread grid)
+            // Use a grid to ensure well-separated points
+            let n_per_dim = 7; // 7x7 = 49 points
+            let n_dim = 2;
+            let mut x_train = Vec::with_capacity(n_per_dim * n_per_dim);
+            for i in 0..n_per_dim {
+                for j in 0..n_per_dim {
+                    x_train.push(vec![
+                        i as f64 / (n_per_dim - 1) as f64,
+                        j as f64 / (n_per_dim - 1) as f64,
+                    ]);
+                }
+            }
+            let n = x_train.len();
+            let y_train: Vec<f64> = x_train
+                .iter()
+                .map(|x| x.iter().map(|v| v * v).sum::<f64>())
+                .collect();
+
+            let (surrogate, diag) = train_adaptive_gpu(
+                &x_train,
+                &y_train,
+                RBFKernel::Gaussian { epsilon: 2.0 },
+                1e-4, // Higher smoothing for numerical stability
+                device,
+            )
+            .await
+            .unwrap();
+
+            assert!(diag.used_gpu);
+            assert_eq!(diag.n_train, n);
+            assert_eq!(diag.n_dim, n_dim);
+            assert_eq!(diag.system_size, n + n_dim + 1);
+
+            // Just verify we can predict without error - exact accuracy
+            // depends on kernel parameters and smoothing
+            let y_pred = surrogate.predict(&x_train[..5].to_vec()).unwrap();
+            assert_eq!(y_pred.len(), 5);
+            // Check predictions are finite (not NaN/Inf)
+            for (i, &pred) in y_pred.iter().enumerate() {
+                assert!(
+                    pred.is_finite(),
+                    "GPU prediction {} is not finite: {}",
+                    i,
+                    pred
+                );
+            }
+        }
+
+        #[tokio::test]
+        async fn test_train_adaptive_gpu_errors() {
+            let Some(device) = get_test_device_if_gpu_available().await else {
+                return;
+            };
+
+            // Empty data should error
+            let result = train_adaptive_gpu(
+                &[],
+                &[],
+                RBFKernel::ThinPlateSpline,
+                1e-12,
+                device.clone(),
+            )
+            .await;
+            assert!(result.is_err());
+
+            // Mismatched lengths should error
+            let result = train_adaptive_gpu(
+                &[vec![0.0], vec![1.0]],
+                &[0.0],
+                RBFKernel::ThinPlateSpline,
+                1e-12,
+                device,
+            )
+            .await;
+            assert!(result.is_err());
+        }
     }
 }

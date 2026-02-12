@@ -379,17 +379,6 @@ constants::timeouts::*               // Connection, request, etc.
 | [STATUS.md](STATUS.md) | Detailed technical status |
 | [DOCUMENTATION.md](DOCUMENTATION.md) | Navigation hub |
 | [QUICK_STATUS.md](QUICK_STATUS.md) | One-page summary |
-
----
-
-## Documentation
-
-| File | What |
-|------|------|
-| [README.md](README.md) | Overview, architecture, status |
-| [STATUS.md](STATUS.md) | Detailed technical status |
-| [DOCUMENTATION.md](DOCUMENTATION.md) | Navigation hub |
-| [QUICK_STATUS.md](QUICK_STATUS.md) | One-page summary |
 | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | This file (API reference) |
 
 ### Scientific Middleware Docs

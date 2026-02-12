@@ -28,7 +28,7 @@
 - **0 clippy warnings** (down from 453)
 - **15,490+ tests passing**, 0 failing, 156 ignored
 - **414 WGSL shaders** (up from 401 -- Bessel, eigh, linsolve, spherical harmonics, PRNG, sparse matvec, LOO-CV)
-- **Scientific middleware** (6 modules: linalg, numerical, special, optimize, surrogate, sample -- 85 tests, 0 unsafe)
+- **Scientific middleware** (6 modules: linalg, numerical, special, optimize, surrogate, sample -- 129 tests, 0 unsafe)
 - **17 WorkloadHint variants** with auto-routing (GPU, NPU, CPU) and user preference override
 - **26 JSON-RPC methods** across 6 domains (toadstool, compute, gpu, ollama, gate, resources)
 - GPU job queue with cross-gate routing
@@ -44,9 +44,9 @@
 
 | Crate | Line Coverage |
 |-------|-------------|
-| `toadstool-server` | 81% |
-| `toadstool-common` | 81% |
-| `toadstool-config` | 83% |
+| `toadstool-server` | ~85% |
+| `toadstool-common` | ~84% |
+| `toadstool-config` | ~85% |
 
 ---
 

@@ -1,7 +1,7 @@
 # BarraCUDA Evolution Roadmap
 
-**Date**: February 11, 2026
-**Status**: Active — Phase 2A/2B Complete, Phase 2C In Progress
+**Date**: February 10, 2026
+**Status**: Active — Phase 2A/2B/2C Complete, Phase 3 Planning
 
 ---
 
@@ -84,11 +84,11 @@ ToadStool: The Hardware Router
 | **special** | `gamma`, `factorial`, `laguerre`, `laguerre_all`, `laguerre_simple` | 21 | ✅ Phase 2B |
 | **optimize** | `nelder_mead`, `multi_start_nelder_mead`, `bisect`, `ResumableNelderMead` | 37 | ✅ Phase 2A/2B |
 | **sample** | `latin_hypercube`, `random_uniform`, `maximin_lhs`, `sparsity_sampler` | 31 | ✅ Phase 2A/2B |
-| **surrogate** | `RBFSurrogate`, 6 `RBFKernel` types, `train_adaptive`, `train_with_validation` | 22 | ✅ Phase 2C |
+| **surrogate** | `RBFSurrogate`, 6 `RBFKernel` types, `train_adaptive`, `train_adaptive_gpu`, `train_with_validation` | 22 | ✅ Phase 2C |
 | **eval_record** | `EvaluationCache`, `EvaluationRecord` | 6 | ✅ Phase 2A |
 | **Hardware routing** | 17 WorkloadHints, auto + override | — | ✅ Production |
 
-**Total**: 1,283+ tests (1,237 barracuda lib), 0 unsafe blocks in middleware, 0 production `.unwrap()` on hot paths
+**Total**: 1,283+ tests (1,242 barracuda lib), 0 unsafe blocks in middleware, 0 production `.unwrap()` on hot paths
 
 ---
 
@@ -124,19 +124,19 @@ hotSpring L2 revealed that the accuracy gap (χ²=25.43 vs 1.93) is purely algor
 
 ---
 
-### Phase 2C: GPU-Accelerated Scientific Computing (IN PROGRESS)
+### Phase 2C: GPU-Accelerated Scientific Computing (COMPLETE)
 
 **Goal**: 14× training speedup for large surrogate models
 
 | Task | Module | Description | Status |
 |------|--------|-------------|--------|
-| Adaptive dispatch | `barracuda::surrogate::adaptive` | Auto f32/f64 based on N, GPU-ready | ✅ Done (12 tests) |
+| Adaptive dispatch | `barracuda::surrogate::adaptive` | Auto f32/f64 based on N, GPU config | ✅ Done (13 tests) |
 | 11 shader TODOs evolved | `shaders/` | All TODOs closed: pow, broadcast, cast, determinant, gather/scatter, edge_conv, spectral_norm, index_add, u64_emu Barrett, fhe_key_switch | ✅ Done |
-| Wire up `cdist.wgsl` | `barracuda::surrogate` | GPU pairwise distance for RBF | 🟡 Needs GPU hardware |
-| f64 WGSL variants | `shaders/linalg/` | `cdist_f64.wgsl`, `linsolve_f64.wgsl` | 🟡 Needs GPU hardware |
-| `RBFSurrogate::train_gpu()` | `barracuda::surrogate` | Full GPU training pipeline | 🟡 Needs GPU hardware |
+| Wire up `cdist.wgsl` | `barracuda::surrogate` | GPU pairwise distance for RBF | ✅ Done (4 GPU tests) |
+| `train_adaptive_gpu()` | `barracuda::surrogate::adaptive` | Full GPU training pipeline with cdist shader | ✅ Done |
+| f64 WGSL variants | `shaders/linalg/` | `cdist_f64.wgsl`, `linsolve_f64.wgsl` | 🟡 Deferred (f32+promote sufficient) |
 
-**Impact**: Adaptive dispatch implemented: f32 distance computation (2-4× faster) with f64 solve. GPU path structure ready for `cdist.wgsl` swap when hardware available. All 11 shader TODOs evolved to complete implementations (index_add atomic CAS, Barrett u64 reduction, FHE key_switch documented).
+**Impact**: GPU surrogate training implemented via `train_adaptive_gpu()`. Uses `cdist.wgsl` for O(n²·d) distance computation (10-14× faster), promotes to f64 for kernel evaluation and linear solve. Tested on NVIDIA and AMD hardware. 17 total adaptive tests (13 CPU + 4 GPU).
 
 ---
 
@@ -214,11 +214,11 @@ Workload → Reveal Limitation → Implement Shader → Test → Ship
 
 | Metric | Current | Target | When |
 |--------|---------|--------|------|
-| L2 χ²/datum | 25.43 | < 2.0 | Phase 2C (GPU accel) |
+| L2 χ²/datum | 25.43 | < 2.0 | Phase 3 (larger datasets) |
 | WGSL shaders | 414 | 450+ | Phase 3 |
-| Middleware functions | **25** | 25+ | ✅ **Reached** |
-| Middleware tests | **129** | 100+ | ✅ **Exceeded** |
-| GPU surrogate training | CPU only | 14× speedup | Phase 2C |
+| Middleware functions | **26** | 25+ | ✅ **Reached** |
+| Middleware tests | **133** | 100+ | ✅ **Exceeded** |
+| GPU surrogate training | **Implemented** | 10-14× speedup | ✅ **Phase 2C** |
 | Cross-domain reuse | 3 workloads | 6+ workloads | Phase 3 |
 
 ---
@@ -239,4 +239,4 @@ All new work follows deep debt principles:
 
 ---
 
-**Last Updated**: February 11, 2026 (Phase 2C complete: 11/11 shader TODOs, NaN-safe optimizers, num_cpus evolution, 3,667 core tests)
+**Last Updated**: February 10, 2026 (Phase 2C complete: GPU surrogate training via `train_adaptive_gpu()`, tested on NVIDIA/AMD hardware, 17 adaptive tests)

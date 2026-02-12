@@ -2,7 +2,7 @@
 //!
 //! CrossEntropy, MSE, MAE, Huber, BCE, Focal, Dice - GPU-accelerated.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use super::super::{executor::WgpuExecutor, types::*};

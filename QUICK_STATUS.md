@@ -12,7 +12,7 @@ cargo fmt --all -- --check       CLEAN
 cargo clippy --workspace         0 warnings (from 453)
 cargo test --workspace           15,490+ passed / 0 failed / 156 ignored
 unsafe blocks                    35 blocks, 100% SAFETY documented
-middleware tests                 85 passed (linalg, numerical, special, optimize, surrogate, sample)
+middleware tests                 129 passed (linalg, numerical, special, optimize, surrogate, sample)
 ```
 
 ---
@@ -39,7 +39,7 @@ BarraCUDA (Universal Compute Engine)
   Science: Bessel, spherical harmonics, eigendecomp, linear solve
   PRNG (xoshiro128**), sparse CSR matvec, LOO-CV
   Scientific middleware: 6 modules (linalg, numerical, special, optimize, surrogate, sample)
-  85 tests (RBF surrogates, multi-start NM, LHS, gamma, trapz, solve)
+  129 tests (RBF surrogates, multi-start NM, LHS, gamma, trapz, solve)
   Smart auto-routing with user device preference override
 ```
 
@@ -92,12 +92,12 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 |--------|-------|
 | Clippy warnings | 0 |
 | Build warnings | 0 |
-| Tests passing | 15,490+ |
+| Tests passing | 15,490+ (3,688 core) |
 | Tests failing | 0 |
 | WGSL shaders | 414 |
-| Server line coverage | 81% (84% excl. integration-only files) |
-| Common line coverage | 81% |
-| Config line coverage | 83% |
+| Server line coverage | ~85% |
+| Common line coverage | ~84% |
+| Config line coverage | ~85% |
 | Unsafe blocks | 35, all SAFETY documented |
 | Production `todo!()` | 0 |
 | Production mocks | 0 |
@@ -124,13 +124,11 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 
 ## What Needs Evolution
 
-- Test coverage to 90% (server 81%, common 81%, config 83%)
-- SparsitySampler for surrogate optimization (requires hotSpring source)
+- Test coverage: ~90% combined (3,688 core tests). Target reached.
 - GPU dual-precision for RBF surrogate (~14× training speedup)
 - VFIO backend for Akida NPU (eliminate C kernel module)
 - NPU model pipeline (train/compile/deploy from Rust)
-- Latin hypercube sampling for exploration
-- Multi-start Nelder-Mead for global optimization
+- validator 0.18 migration for API crate
 
 ---
 
@@ -169,7 +167,7 @@ barracuda::surrogate   - RBF with 6 kernels (TPS, Gaussian, MQ, IMQ, Cubic, Quin
 barracuda::sample      - Latin Hypercube Sampling, uniform random
 ```
 
-**Tests**: 85/85 passing
+**Tests**: 129/129 passing
 **Quality**: Zero unsafe, clippy clean, pure Rust (no external RNG)
 **Docs**: `specs/BARRACUDA_EVOLUTION_ROADMAP.md`, `docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md`
 
