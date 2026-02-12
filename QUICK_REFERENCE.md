@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**February 11, 2026**
+**February 12, 2026**
 
 ---
 
@@ -226,17 +226,35 @@ Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
 
 ```rust
 use barracuda::linalg::solve_f64;
+use barracuda::ops::linalg::{lu_decompose, qr_decompose, svd_decompose};
 
 // Solve Ax = b (Gauss-Jordan with partial pivoting)
 let a = vec![2.0, 1.0, 1.0, 3.0];  // Row-major 2×2
 let b = vec![5.0, 8.0];
 let x = solve_f64(&a, &b, 2)?;
+
+// LU decomposition with pivoting (PA = LU)
+let lu = lu_decompose(&a, 2)?;
+let det = lu.det();           // Determinant
+let inv = lu.inverse()?;      // Matrix inverse
+let x = lu.solve(&b)?;        // Solve system
+
+// QR decomposition (A = QR, Householder)
+let qr = qr_decompose(&a, 2, 2)?;
+let x = qr.solve_least_squares(&b)?;  // Least squares
+
+// SVD decomposition (A = UΣVᵀ)
+let svd = svd_decompose(&a, 2, 2)?;
+let pinv = svd.pseudoinverse(1e-10);  // Moore-Penrose inverse
+let rank = svd.rank(1e-10);           // Numerical rank
+let cond = svd.condition_number();    // Condition number
 ```
 
 ### Numerical Methods
 
 ```rust
 use barracuda::numerical::{gradient_1d, trapz};
+use barracuda::numerical::rk45::{rk45, Rk45Config};
 
 // Finite-difference gradient (3-point stencil)
 let y = vec![0.0, 1.0, 4.0, 9.0, 16.0];  // y = x²
@@ -245,48 +263,104 @@ let dy_dx = gradient_1d(&y, 1.0);  // dy/dx ≈ 2x
 // Trapezoidal integration
 let x = vec![0.0, 1.0, 2.0, 3.0, 4.0];
 let integral = trapz(&y, &x)?;  // ∫ x² dx
+
+// Adaptive RK45 ODE solver (dy/dt = f(t, y))
+let f = |t: f64, y: &[f64]| vec![-0.5 * y[0]];  // Exponential decay
+let config = Rk45Config::default();
+let result = rk45(&f, 0.0, 10.0, &[1.0], &config)?;
+```
+
+### PDE Solvers
+
+```rust
+use barracuda::pde::crank_nicolson::{CrankNicolsonSolver, CrankNicolsonConfig, BoundaryCondition};
+
+// 1D heat equation: ∂u/∂t = α ∂²u/∂x²
+let config = CrankNicolsonConfig {
+    nx: 100,
+    dx: 0.01,
+    dt: 0.0001,
+    alpha: 0.01,
+    theta: 0.5,  // Crank-Nicolson (0.5 = implicit/explicit blend)
+    left_bc: BoundaryCondition::Dirichlet(0.0),
+    right_bc: BoundaryCondition::Dirichlet(0.0),
+};
+let mut solver = CrankNicolsonSolver::new(config)?;
+solver.step()?;  // Advance one timestep
 ```
 
 ### Special Functions
 
 ```rust
-use barracuda::special::{gamma, factorial};
+use barracuda::special::{gamma, lgamma, digamma, beta, factorial};
+use barracuda::special::{erf, erfc, bessel_j0, bessel_i0};
+use barracuda::special::{hermite, legendre, assoc_legendre};
 
-// Gamma function (Lanczos approximation, 15 digits)
-let g = gamma(5.0);  // Γ(5) = 4! = 24
+// Gamma and related
+let g = gamma(5.0);       // Γ(5) = 24
+let lg = lgamma(100.0);   // log Γ(100) (avoids overflow)
+let psi = digamma(2.0);   // ψ(2) = 1 - γ ≈ 0.4227
+let b = beta(2.0, 3.0);   // B(2,3) = Γ(2)Γ(3)/Γ(5)
 
-// Factorial (exact + Stirling)
-let f = factorial(10);  // 10! = 3628800
+// Error functions
+let e = erf(1.0);         // erf(1) ≈ 0.8427
+let ec = erfc(2.0);       // erfc(2) ≈ 0.0047
+
+// Bessel functions
+let j0 = bessel_j0(1.0);  // J₀(1) ≈ 0.7652
+let i0 = bessel_i0(1.0);  // I₀(1) ≈ 1.2661
+
+// Orthogonal polynomials
+let h5 = hermite(5, 1.0);           // H₅(1) = 41
+let p3 = legendre(3, 0.5);          // P₃(0.5)
+let p32 = assoc_legendre(3, 2, 0.5); // P₃²(0.5)
+```
+
+### Statistics
+
+```rust
+use barracuda::stats::{norm_cdf, norm_pdf, norm_ppf};
+use barracuda::stats::{pearson_correlation, covariance, correlation_matrix};
+
+// Normal distribution (standard N(0,1))
+let p = norm_cdf(1.96);     // Φ(1.96) ≈ 0.975
+let phi = norm_pdf(0.0);    // φ(0) ≈ 0.3989
+let z = norm_ppf(0.975);    // Φ⁻¹(0.975) ≈ 1.96
+
+// Correlation and covariance
+let x = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+let y = vec![2.0, 4.0, 6.0, 8.0, 10.0];
+let r = pearson_correlation(&x, &y)?;  // r = 1.0 (perfect)
+let cov = covariance(&x, &y)?;         // Cov(X,Y) = 5.0
+
+// Correlation matrix (p×p for p variables)
+let data = vec![
+    vec![1.0, 2.0], vec![2.0, 4.0], vec![3.0, 6.0],
+];
+let corr = correlation_matrix(&data)?;  // 2×2 flattened
 ```
 
 ### Optimization
 
 ```rust
 use barracuda::optimize::{nelder_mead, multi_start_nelder_mead, bisect};
+use barracuda::optimize::bfgs::{bfgs, BfgsConfig};
 
 // Local: Nelder-Mead simplex
 let f = |x: &[f64]| (x[0] - 2.0).powi(2) + (x[1] - 3.0).powi(2);
 let (x_best, f_best, n_evals) = nelder_mead(
-    f,
-    &[0.0, 0.0],
-    &[(-10.0, 10.0), (-10.0, 10.0)],
-    1000,
-    1e-8,
+    f, &[0.0, 0.0], &[(-10.0, 10.0), (-10.0, 10.0)], 1000, 1e-8,
 )?;
 
-// Global: Multi-start NM (like SparsitySampler)
-// Returns best + ALL evaluations (for surrogate training)
+// BFGS quasi-Newton (with gradient)
+let grad = |x: &[f64]| vec![2.0 * (x[0] - 2.0), 2.0 * (x[1] - 3.0)];
+let config = BfgsConfig::default();
+let result = bfgs(&f, &grad, &[0.0, 0.0], &config)?;
+
+// Global: Multi-start NM
 let (best, cache, all_results) = multi_start_nelder_mead(
-    f,
-    &[(-10.0, 10.0), (-10.0, 10.0)],
-    16,    // n_starts (LHS initial guesses)
-    1000,  // max_iter per start
-    1e-8,  // tolerance
-    42,    // seed
+    f, &[(-10.0, 10.0), (-10.0, 10.0)], 16, 1000, 1e-8, 42,
 )?;
-
-// Use evaluation cache for RBF surrogate training
-let (x_data, y_data) = cache.training_data();
 
 // Root-finding: bisection
 let root = bisect(|x| x * x - 2.0, 0.0, 2.0, 1e-10, 100)?;
@@ -302,10 +376,7 @@ let x_train = vec![vec![0.0], vec![1.0], vec![2.0]];
 let y_train = vec![0.0, 1.0, 4.0];
 
 let surrogate = RBFSurrogate::train(
-    &x_train,
-    &y_train,
-    RBFKernel::ThinPlateSpline,
-    1e-12,  // smoothing
+    &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12,
 )?;
 
 // Predict at new points
@@ -316,10 +387,14 @@ let y_pred = surrogate.predict(&[vec![1.5]])?;
 
 ```rust
 use barracuda::sample::{latin_hypercube, random_uniform};
+use barracuda::sample::sobol::sobol_sequence;
 
 // Latin Hypercube: space-filling, one sample per interval
 let bounds = vec![(-5.0, 5.0), (-5.0, 5.0)];
 let lhs_points = latin_hypercube(1000, &bounds, 42)?;
+
+// Sobol quasi-random: low-discrepancy sequence
+let sobol_points = sobol_sequence(1000, 2)?;  // 1000 points in 2D
 
 // Uniform random: simple baseline
 let rng_points = random_uniform(1000, &bounds, 42);
@@ -392,4 +467,4 @@ constants::timeouts::*               // Connection, request, etc.
 
 ---
 
-**Last Updated**: February 11, 2026
+**Last Updated**: February 12, 2026

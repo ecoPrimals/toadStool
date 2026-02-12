@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 11, 2026
+**Last Updated**: February 12, 2026
 
 ---
 
@@ -20,15 +20,17 @@
 | Deploy NPU drivers | [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md) |
 | Understand NPU driver design | [specs/NPU_DRIVER_ARCHITECTURE.md](specs/NPU_DRIVER_ARCHITECTURE.md) |
 | Multi-tenant security | [specs/MULTITENANT_COMPUTE_ARCHITECTURE.md](specs/MULTITENANT_COMPUTE_ARCHITECTURE.md) |
+| Review hotSpring audit | [specs/BARRACUDA_SCIENCE_GAPS_AUDIT_FEB12_2026.md](specs/BARRACUDA_SCIENCE_GAPS_AUDIT_FEB12_2026.md) |
 
 ---
 
-## Current State (February 11, 2026)
+## Current State (February 12, 2026)
 
 - **0 clippy warnings** (down from 453)
-- **15,490+ tests passing**, 0 failing, 156 ignored
-- **414 WGSL shaders** (up from 401 -- Bessel, eigh, linsolve, spherical harmonics, PRNG, sparse matvec, LOO-CV)
-- **Scientific middleware** (6 modules: linalg, numerical, special, optimize, surrogate, sample -- 129 tests, 0 unsafe)
+- **15,600+ tests passing**, 0 failing
+- **414 WGSL shaders** (Bessel, eigh, linsolve, spherical harmonics, PRNG, sparse matvec, LOO-CV)
+- **Scientific middleware** (8 modules: linalg, numerical, special, stats, optimize, surrogate, sample, pde — 200+ tests, 0 unsafe)
+- **hotSpring audit complete** — all HIGH/MEDIUM priority gaps resolved
 - **17 WorkloadHint variants** with auto-routing (GPU, NPU, CPU) and user preference override
 - **26 JSON-RPC methods** across 6 domains (toadstool, compute, gpu, ollama, gate, resources)
 - GPU job queue with cross-gate routing
@@ -94,6 +96,8 @@
 
 **[docs/audits/](docs/audits/)** -- Dependency audits, unsafe code audits, deep debt audits.
 
+**[specs/BARRACUDA_SCIENCE_GAPS_AUDIT_FEB12_2026.md](specs/BARRACUDA_SCIENCE_GAPS_AUDIT_FEB12_2026.md)** -- hotSpring audit response (all items resolved).
+
 ---
 
 ## By Role
@@ -129,4 +133,4 @@ specs/                     -- Technical specifications
 
 ---
 
-**Last Updated**: February 11, 2026
+**Last Updated**: February 12, 2026

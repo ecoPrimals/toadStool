@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 11, 2026
+**Date**: February 12, 2026
 
 ---
 
@@ -10,9 +10,9 @@
 cargo build --workspace          0 warnings
 cargo fmt --all -- --check       CLEAN
 cargo clippy --workspace         0 warnings (from 453)
-cargo test --workspace           15,490+ passed / 0 failed / 156 ignored
+cargo test --workspace           15,600+ passed / 0 failed
 unsafe blocks                    35 blocks, 100% SAFETY documented
-middleware tests                 129 passed (linalg, numerical, special, optimize, surrogate, sample)
+middleware tests                 200+ passed (linalg, numerical, special, stats, optimize, surrogate, sample, pde)
 ```
 
 ---
@@ -38,8 +38,8 @@ BarraCUDA (Universal Compute Engine)
   CPU backends (LayerNorm, BatchNorm, MatMul, Conv2d, etc.)
   Science: Bessel, spherical harmonics, eigendecomp, linear solve
   PRNG (xoshiro128**), sparse CSR matvec, LOO-CV
-  Scientific middleware: 6 modules (linalg, numerical, special, optimize, surrogate, sample)
-  129 tests (RBF surrogates, multi-start NM, LHS, gamma, trapz, solve)
+  Scientific middleware: 8 modules (linalg, numerical, special, stats, optimize, surrogate, sample, pde)
+  200+ tests (RBF, LU/QR/SVD, RK45, Crank-Nicolson, BFGS, Sobol, correlation)
   Smart auto-routing with user device preference override
 ```
 
@@ -115,20 +115,23 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 - GPU job queue with priority and cross-gate routing
 - Ollama model management (list, inference, load, unload)
 - Cross-gate compute delegation (route by model locality, VRAM, queue depth)
-- Science computing (Cholesky, eigh, linsolve, triangular solve, RBF, MD forces)
-- Special functions (Bessel J0/J1/I0/K0, spherical harmonics, lgamma, erf)
-- PRNG (xoshiro128**), sparse CSR matvec, LOO cross-validation
+- Matrix decompositions (LU, QR, SVD, Cholesky, eigh, tridiagonal)
+- ODE/PDE solvers (RK45 adaptive, Crank-Nicolson heat equation)
+- Special functions (Bessel, Hermite, Legendre, erf, gamma, digamma, beta)
+- Statistics (Normal distribution, correlation, covariance matrices)
+- Optimization (Nelder-Mead, BFGS, bisection)
+- Sampling (LHS, Sobol quasi-random, maximin)
+- RBF surrogates with GPU-accelerated training
 - FHE acceleration (21.1x speedup on RTX 3090)
 - Smart auto-routing with user preference override
 - CPU compute backends as universal fallback
 
 ## What Needs Evolution
 
-- Test coverage: ~90% combined (3,688 core tests). Target reached.
-- GPU dual-precision for RBF surrogate (~14× training speedup)
 - VFIO backend for Akida NPU (eliminate C kernel module)
 - NPU model pipeline (train/compile/deploy from Rust)
-- validator 0.18 migration for API crate
+- Safetensors/GGUF weight loader
+- Multi-GPU DevicePool
 
 ---
 
@@ -156,21 +159,24 @@ cargo llvm-cov -p toadstool-server --lib
 
 ## Scientific Middleware
 
-**6 production-grade modules** — same math, any domain (physics, ML, graphics, audio):
+**8 production-grade modules** — same math, any domain (physics, ML, graphics, audio):
 
 ```
-barracuda::linalg      - Gauss-Jordan solver (f64)
-barracuda::numerical   - Gradient, trapezoidal integration
-barracuda::special     - Lanczos gamma, factorial
-barracuda::optimize    - Nelder-Mead, multi-start global, bisection, eval cache
-barracuda::surrogate   - RBF with 6 kernels (TPS, Gaussian, MQ, IMQ, Cubic, Quintic)
-barracuda::sample      - Latin Hypercube Sampling, uniform random
+barracuda::linalg      - Gauss-Jordan, LU, QR, SVD, tridiagonal (Thomas algorithm)
+barracuda::numerical   - Gradient, trapz, RK45 adaptive ODE solver
+barracuda::special     - Gamma, digamma, beta, erf, Bessel, Hermite, Legendre
+barracuda::stats       - Normal CDF/PDF/PPF, Pearson/Spearman correlation, covariance
+barracuda::optimize    - Nelder-Mead, BFGS, bisection, eval cache
+barracuda::surrogate   - RBF with 6 kernels, GPU-accelerated training
+barracuda::sample      - LHS, Sobol quasi-random, uniform
+barracuda::pde         - Crank-Nicolson heat equation solver
 ```
 
-**Tests**: 129/129 passing
-**Quality**: Zero unsafe, clippy clean, pure Rust (no external RNG)
+**Tests**: 200+ passing
+**Quality**: Zero unsafe, clippy clean, pure Rust
+**Audit**: All hotSpring HIGH/MEDIUM gaps resolved (Feb 12)
 **Docs**: `specs/BARRACUDA_EVOLUTION_ROADMAP.md`, `docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md`
 
 ---
 
-**Last Updated**: February 11, 2026
+**Last Updated**: February 12, 2026

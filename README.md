@@ -7,21 +7,21 @@
 ## What Is This?
 
 - **ToadStool** -- Hardware infrastructure primal. Discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. Ollama model lifecycle management. Distributed workload dispatch across machines. ecoBin compliant: single binary, pure Rust, cross-architecture, cross-platform.
-- **BarraCUDA** -- Universal math engine. 414 WGSL shaders running on any GPU via WGPU. Tensors, linear algebra, ML, physics, cryptography, special functions. **Scientific computing middleware** (linalg, numerical, special, optimize, surrogate, sample) — same math for physics, ML, graphics, and audio. Smart workload routing across GPU, NPU, and CPU with user override. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
+- **BarraCUDA** -- Universal math engine. 414 WGSL shaders running on any GPU via WGPU. Tensors, linear algebra, ML, physics, cryptography, special functions. **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde) — same math for physics, ML, graphics, and audio. Smart workload routing across GPU, NPU, and CPU with user override. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
 
 ---
 
-## Quality Gates (February 11, 2026)
+## Quality Gates (February 12, 2026)
 
 | Gate | Status |
 |------|--------|
 | `cargo build --workspace` | Clean, 0 warnings |
 | `cargo fmt --all -- --check` | Clean |
 | `cargo clippy --workspace` | **0 warnings** (down from 453) |
-| `cargo test --workspace` | **15,490+ passed, 0 failed, 156 ignored** |
+| `cargo test --workspace` | **15,600+ passed, 0 failed** |
 | `unsafe` blocks | 100% documented with `// SAFETY:` comments |
 | File size | All production files appropriately structured |
-| Scientific middleware | 129 tests, 100% passing, 0 unsafe blocks |
+| Scientific middleware | 200+ tests, 100% passing, 0 unsafe blocks |
 
 ---
 
@@ -53,7 +53,7 @@ Applications (hotSpring, NUCLEUS inference, etc.)
        |
 BarraCUDA: 414 WGSL Shaders + Scientific Middleware
   Tensors, LinAlg, ML, Physics, Crypto, Audio, Special Functions
-  Middleware: linalg, numerical, special, optimize, surrogate, sample (129 tests)
+  Middleware: linalg, numerical, special, stats, optimize, surrogate, sample, pde (200+ tests)
   Proven: identical results NVIDIA + AMD
        |
 ToadStool: Hardware Discovery + Orchestration
@@ -205,4 +205,4 @@ toadStool/
 
 ---
 
-**Last Updated**: February 11, 2026
+**Last Updated**: February 12, 2026

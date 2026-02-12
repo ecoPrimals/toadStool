@@ -1,4 +1,4 @@
-# Status -- February 11, 2026
+# Status -- February 12, 2026
 
 ## Quality Gates
 
@@ -7,9 +7,9 @@
 | `cargo build --workspace` | PASS | 0 warnings (3 intentional deprecation warnings in config) |
 | `cargo fmt --all -- --check` | PASS | Clean |
 | `cargo clippy --workspace` | PASS | **0 warnings** (down from 453) |
-| `cargo test --workspace --lib` | PASS | **3,688 core tests passed** (1,040 toadstool + 421 server + 674 common + 316 config + 1,242 barracuda) |
+| `cargo test --workspace --lib` | PASS | **3,800+ core tests passed** (1,040 toadstool + 421 server + 674 common + 316 config + 1,400+ barracuda) |
 
-Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). Full workspace lib total: 4,200+ tests.
+Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). Full workspace lib total: 4,400+ tests.
 
 ---
 
@@ -33,7 +33,53 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 
 ---
 
-## New Features (Feb 11, 2026)
+## New Features (Feb 12, 2026)
+
+### Deep Debt Resolution — hotSpring Audit Complete
+
+All HIGH and MEDIUM priority items from the hotSpring science gaps audit have been implemented:
+
+**Statistics Module** (`barracuda::stats`):
+- `normal.rs` — Normal distribution CDF, PDF, inverse CDF (Acklam algorithm, |ε| < 1.15e-9)
+- `correlation.rs` — Pearson/Spearman correlation, covariance, correlation/covariance matrices
+- 27 tests covering critical values, symmetry, ties
+
+**Matrix Decompositions** (`barracuda::ops::linalg`):
+- `lu.rs` — LU decomposition with partial pivoting (Doolittle), determinant, inverse, solve
+- `qr.rs` — QR decomposition (Householder reflections), least squares solver
+- `svd.rs` — Singular Value Decomposition, pseudoinverse, rank, condition number, low-rank approximation
+- 23 tests covering 2x2, 3x3, overdetermined, rank-deficient matrices
+
+**Numerical Methods** (`barracuda::numerical`):
+- `rk45.rs` — Adaptive Runge-Kutta-Fehlberg ODE solver with step size control (Cash-Karp coefficients)
+- 8 tests: exponential decay/growth, harmonic oscillator, Lotka-Volterra
+
+**PDE Solvers** (`barracuda::pde`):
+- `crank_nicolson.rs` — Crank-Nicolson 1D heat equation solver (θ-method, boundary conditions)
+- 7 tests including conservation verification, steady state
+
+**Optimization** (`barracuda::optimize`):
+- `bfgs.rs` — BFGS quasi-Newton optimizer with backtracking line search
+- 7 tests including Rosenbrock function
+
+**Sampling** (`barracuda::sample`):
+- `sobol.rs` — Sobol quasi-random sequences (40 dimensions, Gray code generation)
+- 11 tests for uniformity, scaling, high dimensions
+
+**Special Functions** (`barracuda::special`):
+- `hermite.rs` — Physicist's Hermite polynomials Hₙ(x) via recurrence
+- `legendre.rs` — Legendre polynomials Pₙ(x) and associated Legendre Pₙᵐ(x)
+- `gamma.rs` — Extended with digamma ψ(x) and beta B(a,b) functions
+- `erf.rs`, `bessel.rs` — CPU f64 implementations (erf, erfc, J0, J1, I0, K0)
+
+**GPU Acceleration**:
+- SparsitySampler hybrid evaluation strategy with GPU-accelerated RBF surrogate training
+
+**Total new tests**: 90+ (all passing)
+
+---
+
+## Previous Features (Feb 11, 2026)
 
 ### BarraCUDA Scientific Computing Middleware
 
@@ -347,4 +393,4 @@ parallelism. Always accepts any workload as universal fallback.
 
 ---
 
-**Last Updated**: February 11, 2026
+**Last Updated**: February 12, 2026
