@@ -31,13 +31,15 @@ ToadStool (Hardware Infrastructure Primal)
   Shared error tracking across all transports
   Hardware-agnostic workload routing (GPU / NPU / CPU)
 
-BarraCUDA (Universal Compute Engine)
-  414 WGSL shaders, proven cross-vendor
+BarraCUDA (Universal Compute Engine — SHADER-FIRST)
+  391 WGSL shaders, proven cross-vendor
+  **Shader-first architecture**: ALL math is WGSL primary
+  ToadStool dispatches to GPU/CPU based on hardware
+  When fp64 GPUs available, seamless transition
   Bit-identical results: RTX 4070 = RTX 3090 = RX 6950 XT
   39.85 tok/s distributed LLM inference
-  CPU backends (LayerNorm, BatchNorm, MatMul, Conv2d, etc.)
-  Science: Bessel, spherical harmonics, eigendecomp, linear solve
-  PRNG (xoshiro128**), sparse CSR matvec, LOO-CV
+  18 special function shaders (Hermite, Legendre, Laguerre, Bessel, etc.)
+  3 sampling shaders (Sobol, LHS, random_uniform)
   Scientific middleware: 8 modules (linalg, numerical, special, stats, optimize, surrogate, sample, pde)
   200+ tests (RBF, LU/QR/SVD, RK45, Crank-Nicolson, BFGS, Sobol, correlation)
   Smart auto-routing with user device preference override
@@ -94,7 +96,7 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 | Build warnings | 0 |
 | Tests passing | 15,490+ (3,688 core) |
 | Tests failing | 0 |
-| WGSL shaders | 414 |
+| WGSL shaders | 391 |
 | Server line coverage | ~85% |
 | Common line coverage | ~84% |
 | Config line coverage | ~85% |
@@ -107,7 +109,8 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 
 ## What Works
 
-- 414 WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
+- 391 WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
+- **Shader-first architecture**: ALL math is WGSL, ToadStool dispatches
 - Distributed LLM inference across machines (LAN TCP, BearDog encrypted)
 - Hardware discovery (GPUs, NPUs, CPUs) -- pure Rust, no scripts
 - NPU detection via /dev/akida* and IOMMU/VFIO sysfs
@@ -157,23 +160,24 @@ cargo llvm-cov -p toadstool-server --lib
 
 ---
 
-## Scientific Middleware
+## Scientific Middleware (Shader-First)
 
-**8 production-grade modules** — same math, any domain (physics, ML, graphics, audio):
+**8 production-grade modules** — WGSL shaders primary, ToadStool dispatches:
 
 ```
 barracuda::linalg      - Gauss-Jordan, LU, QR, SVD, tridiagonal (Thomas algorithm)
 barracuda::numerical   - Gradient, trapz, RK45 adaptive ODE solver
-barracuda::special     - Gamma, digamma, beta, erf, Bessel, Hermite, Legendre
-barracuda::stats       - Normal CDF/PDF/PPF, Pearson/Spearman correlation, covariance
-barracuda::optimize    - Nelder-Mead, BFGS, bisection, eval cache
+barracuda::special     - 18 shaders: Hermite, Legendre, Laguerre, digamma, beta, erf, Bessel, etc.
+barracuda::stats       - Shaders: norm_cdf, norm_ppf, correlation, covariance, variance
+barracuda::optimize    - Nelder-Mead, BFGS, bisection (CPU — inherently iterative)
 barracuda::surrogate   - RBF with 6 kernels, GPU-accelerated training
-barracuda::sample      - LHS, Sobol quasi-random, uniform
+barracuda::sample      - 3 shaders: Sobol, LHS, random_uniform
 barracuda::pde         - Crank-Nicolson heat equation solver
 ```
 
 **Tests**: 200+ passing
 **Quality**: Zero unsafe, clippy clean, pure Rust
+**Architecture**: Shader-first — ALL math runs on GPU when fp64 available
 **Audit**: All hotSpring HIGH/MEDIUM gaps resolved (Feb 12)
 **Docs**: `specs/BARRACUDA_EVOLUTION_ROADMAP.md`, `docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md`
 

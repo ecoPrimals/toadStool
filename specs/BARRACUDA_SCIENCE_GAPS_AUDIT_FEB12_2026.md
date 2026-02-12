@@ -12,17 +12,23 @@ The hotSpring team's gap analysis identified many items as "missing" that **alre
 This audit corrects the record and identifies the **actual gaps** that need work.
 
 **Key Corrections**:
-- Shader count: **414** (not 378)
+- Shader count: **391** (updated Feb 12)
 - Many "missing" Rust wrappers already exist
 - FFT suite is complete (fft_1d, fft_2d, fft_3d, ifft, rfft)
 - RK4 ODE solver exists in `md/integrators/`
 - All Bessel wrappers exist (j0, j1, i0, k0)
 
+**Shader-First Architecture** (Feb 12, 2026):
+- ALL math is now shader-first (WGSL primary)
+- ToadStool dispatches to GPU/CPU based on hardware
+- When fp64 GPUs available, seamless transition
+- 18 special function shaders, 3 sampling shaders
+
 ---
 
 ## Corrections: What Already Exists
 
-### ✅ Shaders (414 total, not 378)
+### ✅ Shaders (391 total)
 
 The hotSpring inventory undercounted by 36 shaders.
 
