@@ -100,14 +100,21 @@ pub mod frac_wgsl;
 pub mod round_wgsl;
 pub mod trunc_wgsl;
 
-// Reduction operations
+// Special functions (mathematical physics, statistics)
 pub mod bessel_i0_wgsl;
 pub mod bessel_j0_wgsl;
 pub mod bessel_j1_wgsl;
 pub mod bessel_k0_wgsl;
+pub mod beta_wgsl;
+pub mod digamma_wgsl;
 pub mod erf_wgsl;
 pub mod erfc_wgsl;
+pub mod hermite_wgsl;
+pub mod legendre_wgsl;
 pub mod lgamma_wgsl;
+pub mod norm_cdf_wgsl;
+
+// Reduction operations
 pub mod loo_cv_wgsl;
 pub mod max_wgsl;
 pub mod mean;
