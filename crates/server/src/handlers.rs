@@ -32,10 +32,38 @@ pub async fn health_check_handler(State(state): State<ServerState>) -> impl Into
         }
     };
 
-    // For now, we'll use simplified health metrics
-    // In a real implementation, we'd track usage over time
-    let cpu_usage_percent = 50.0; // Placeholder
-    let memory_usage_percent = 45.0; // Placeholder
+    // Calculate real CPU and memory usage using sysinfo (pure Rust, cross-platform)
+    use sysinfo::System;
+
+    let mut sys = System::new();
+    sys.refresh_memory();
+    sys.refresh_cpu_usage();
+
+    // Memory usage calculation
+    let total_memory = sys.total_memory();
+    let used_memory = total_memory.saturating_sub(sys.available_memory());
+    let memory_usage_percent = if total_memory > 0 {
+        ((used_memory as f64 / total_memory as f64) * 100.0).clamp(0.0, 100.0)
+    } else {
+        45.0 // Fallback if detection fails
+    };
+
+    // CPU usage - use global CPU usage from sysinfo
+    // Note: First call may return 0, as it needs time to measure
+    let cpu_usage_percent = sys.global_cpu_usage() as f64;
+    let cpu_usage_percent = if cpu_usage_percent > 0.0 {
+        cpu_usage_percent.clamp(0.0, 100.0)
+    } else {
+        // Estimate from available cores if global_cpu_usage returns 0
+        let total_cores = sys.cpus().len() as f64;
+        let available_cores = system_resources.available_cpu_cores as f64;
+        if total_cores > 0.0 && available_cores <= total_cores {
+            ((1.0 - (available_cores / total_cores)) * 100.0).clamp(0.0, 100.0)
+        } else {
+            50.0 // Final fallback
+        }
+    };
+
     let healthy = cpu_usage_percent < 90.0 && memory_usage_percent < 90.0;
 
     let response = json!({

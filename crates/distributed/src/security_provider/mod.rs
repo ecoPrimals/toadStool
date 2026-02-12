@@ -45,6 +45,7 @@
 pub mod factory;
 pub mod provider;
 pub mod types;
+pub mod unix_socket_provider;
 
 // BearDog implementation (ONE of many possible implementations)
 pub mod beardog_impl;

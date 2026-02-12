@@ -10,10 +10,10 @@ use clap::Parser;
 pub enum NpuCommand {
     /// Setup NPU kernel driver and devices
     Setup(SetupCommand),
-    
+
     /// Show NPU status
     Status,
-    
+
     /// List available NPUs
     List,
 }
@@ -46,41 +46,41 @@ impl SetupCommand {
             print!("Continue? [y/N] ");
             use std::io::{self, Write};
             io::stdout().flush()?;
-            
+
             let mut input = String::new();
             io::stdin().read_line(&mut input)?;
-            
+
             if !input.trim().eq_ignore_ascii_case("y") {
                 println!("Aborted.");
                 return Ok(());
             }
         }
-        
+
         // Run pure Rust setup (no scripts!)
         let mut setup = NpuSetup::new();
         setup.run()?;
-        
+
         println!();
         println!("✅ NPU setup complete!");
         println!();
         println!("Next steps:");
         println!("  toadstool npu list    # List available NPUs");
         println!("  toadstool npu status  # Show detailed status");
-        
+
         Ok(())
     }
 }
 
 fn show_status() -> Result<()> {
     use akida_driver::DeviceManager;
-    
+
     println!("🧠 Akida NPU Status\n");
-    
+
     // Try to discover devices
     match DeviceManager::discover() {
         Ok(manager) => {
             println!("✅ {} device(s) operational\n", manager.device_count());
-            
+
             for device in manager.devices() {
                 let caps = device.capabilities();
                 println!("Device {}: {}", device.index(), device.pcie_address());
@@ -97,18 +97,19 @@ fn show_status() -> Result<()> {
             println!("Try running: toadstool npu setup");
         }
     }
-    
+
     Ok(())
 }
 
 fn list_devices() -> Result<()> {
     use akida_driver::DeviceManager;
-    
+
     match DeviceManager::discover() {
         Ok(manager) => {
             println!("Available NPUs:");
             for device in manager.devices() {
-                println!("  {} - {} @ {}", 
+                println!(
+                    "  {} - {} @ {}",
                     device.index(),
                     device.capabilities().chip_version.to_string(),
                     device.pcie_address()
@@ -120,6 +121,6 @@ fn list_devices() -> Result<()> {
             std::process::exit(1);
         }
     }
-    
+
     Ok(())
 }

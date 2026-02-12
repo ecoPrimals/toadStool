@@ -72,6 +72,7 @@ impl LuDecomposition {
     /// Compute the determinant of the original matrix.
     ///
     /// det(A) = (-1)^swaps × ∏ U[i,i]
+    #[allow(clippy::manual_is_multiple_of)] // is_multiple_of is nightly-only
     pub fn det(&self) -> f64 {
         let mut det = if self.num_swaps % 2 == 0 { 1.0 } else { -1.0 };
         for i in 0..self.n {
@@ -264,10 +265,7 @@ mod tests {
 
     #[test]
     fn test_lu_2x2() {
-        let a = vec![
-            4.0, 3.0,
-            6.0, 3.0,
-        ];
+        let a = vec![4.0, 3.0, 6.0, 3.0];
         let lu = lu_decompose(&a, 2).unwrap();
 
         // Check determinant: det = 4*3 - 3*6 = -6
@@ -276,10 +274,7 @@ mod tests {
 
     #[test]
     fn test_lu_solve_2x2() {
-        let a = vec![
-            4.0, 3.0,
-            6.0, 3.0,
-        ];
+        let a = vec![4.0, 3.0, 6.0, 3.0];
         let b = vec![10.0, 12.0];
         let x = lu_solve(&a, 2, &b).unwrap();
 
@@ -292,11 +287,7 @@ mod tests {
 
     #[test]
     fn test_lu_solve_3x3() {
-        let a = vec![
-            2.0, -1.0, 0.0,
-            -1.0, 2.0, -1.0,
-            0.0, -1.0, 2.0,
-        ];
+        let a = vec![2.0, -1.0, 0.0, -1.0, 2.0, -1.0, 0.0, -1.0, 2.0];
         let b = vec![1.0, 0.0, 1.0];
         let x = lu_solve(&a, 3, &b).unwrap();
 
@@ -312,11 +303,7 @@ mod tests {
 
     #[test]
     fn test_lu_det_3x3() {
-        let a = vec![
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-            7.0, 8.0, 10.0,
-        ];
+        let a = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0];
         let det = lu_det(&a, 3).unwrap();
 
         // det = 1*(5*10 - 6*8) - 2*(4*10 - 6*7) + 3*(4*8 - 5*7)
@@ -327,10 +314,7 @@ mod tests {
 
     #[test]
     fn test_lu_inverse_2x2() {
-        let a = vec![
-            4.0, 7.0,
-            2.0, 6.0,
-        ];
+        let a = vec![4.0, 7.0, 2.0, 6.0];
         let inv = lu_inverse(&a, 2).unwrap();
 
         // A * A^(-1) should be identity
@@ -347,11 +331,7 @@ mod tests {
 
     #[test]
     fn test_lu_identity() {
-        let a = vec![
-            1.0, 0.0, 0.0,
-            0.0, 1.0, 0.0,
-            0.0, 0.0, 1.0,
-        ];
+        let a = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
         let lu = lu_decompose(&a, 3).unwrap();
 
         assert!(approx_eq(lu.det(), 1.0, 1e-10));
@@ -379,10 +359,7 @@ mod tests {
     #[test]
     fn test_lu_needs_pivoting() {
         // Matrix where first pivot is zero
-        let a = vec![
-            0.0, 1.0,
-            1.0, 1.0,
-        ];
+        let a = vec![0.0, 1.0, 1.0, 1.0];
         let lu = lu_decompose(&a, 2).unwrap();
 
         // Should still work with pivoting

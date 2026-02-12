@@ -61,29 +61,29 @@
 //! - DLMF: Digital Library of Mathematical Functions (<https://dlmf.nist.gov>)
 
 // Core special functions (CPU f64)
+pub mod bessel;
+pub mod erf;
 pub mod factorial;
 pub mod gamma;
-pub mod laguerre;
-pub mod erf;
-pub mod bessel;
 pub mod hermite;
+pub mod laguerre;
 pub mod legendre;
 
 // Re-export CPU functions
-pub use factorial::factorial;
-pub use gamma::{gamma, lgamma, digamma, beta};
-pub use laguerre::{laguerre, laguerre_all, laguerre_simple};
+pub use bessel::{bessel_i0, bessel_j0, bessel_j1, bessel_k0};
 pub use erf::{erf, erfc};
-pub use bessel::{bessel_j0, bessel_j1, bessel_i0, bessel_k0};
+pub use factorial::factorial;
+pub use gamma::{beta, digamma, gamma, lgamma};
 pub use hermite::hermite;
-pub use legendre::{legendre, assoc_legendre};
+pub use laguerre::{laguerre, laguerre_all, laguerre_simple};
+pub use legendre::{assoc_legendre, legendre};
 
 // Re-export GPU ops for batch processing
-pub use crate::ops::erf_wgsl::Erf as ErfGpu;
-pub use crate::ops::erfc_wgsl::Erfc as ErfcGpu;
+pub use crate::ops::bessel_i0_wgsl::BesselI0 as BesselI0Gpu;
 pub use crate::ops::bessel_j0_wgsl::BesselJ0 as BesselJ0Gpu;
 pub use crate::ops::bessel_j1_wgsl::BesselJ1 as BesselJ1Gpu;
-pub use crate::ops::bessel_i0_wgsl::BesselI0 as BesselI0Gpu;
 pub use crate::ops::bessel_k0_wgsl::BesselK0 as BesselK0Gpu;
+pub use crate::ops::erf_wgsl::Erf as ErfGpu;
+pub use crate::ops::erfc_wgsl::Erfc as ErfcGpu;
 pub use crate::ops::lgamma_wgsl::Lgamma as LgammaGpu;
 pub use crate::ops::spherical_harmonics_wgsl::SphericalHarmonics as SphericalHarmonicsGpu;

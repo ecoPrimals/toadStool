@@ -597,19 +597,51 @@ impl LayerCapabilityAdapter {
     }
 
     /// Get available disk space (bytes)
+    ///
+    /// Uses sysinfo for cross-platform disk detection (pure Rust).
+    /// Returns the available space on the root/primary disk.
     fn get_available_disk() -> Option<u64> {
-        // Platform-specific disk space detection
-        #[cfg(target_os = "linux")]
-        {
-            use std::fs;
-            if let Ok(_statfs) = fs::read_to_string("/proc/filesystems") {
-                // Simplified - real implementation would use statvfs
-                // For now, return a placeholder
-                return Some(100_000_000_000); // 100 GB placeholder
+        use sysinfo::Disks;
+
+        let disks = Disks::new_with_refreshed_list();
+
+        // Find the root filesystem or largest available disk
+        let mut root_disk_space: Option<u64> = None;
+        let mut largest_disk_space: u64 = 0;
+
+        for disk in disks.list() {
+            let available = disk.available_space();
+
+            // Check if this is the root filesystem
+            #[cfg(unix)]
+            {
+                let mount_point = disk.mount_point();
+                if mount_point.as_os_str() == "/" {
+                    root_disk_space = Some(available);
+                }
+            }
+
+            #[cfg(windows)]
+            {
+                // On Windows, prefer C: drive
+                let mount_point = disk.mount_point().to_string_lossy();
+                if mount_point.starts_with("C:") {
+                    root_disk_space = Some(available);
+                }
+            }
+
+            // Track largest disk as fallback
+            if available > largest_disk_space {
+                largest_disk_space = available;
             }
         }
 
-        None
+        // Return root disk space if found, otherwise largest disk
+        root_disk_space.or(if largest_disk_space > 0 {
+            Some(largest_disk_space)
+        } else {
+            None
+        })
     }
 
     /// Detect storage read bandwidth (bytes/sec) via runtime heuristics

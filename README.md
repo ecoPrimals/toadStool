@@ -187,13 +187,33 @@ toadStool/
 
 ## What Needs Evolution
 
-- **Test coverage** -- combined ~90% (3,688 core tests). Target reached.
-- **VFIO NPU backend** -- eliminate C kernel module, pure Rust via `/dev/vfio/*` (3-4 weeks)
+- **VFIO NPU backend** -- eliminate C kernel module, pure Rust via `/dev/vfio/*`
 - **NPU model pipeline** -- train/compile/deploy from Rust, replace Python cnn2snn
 - **Model weight loading** -- need safetensors/GGUF loader (eliminate PyTorch dependency)
 - **Multi-GPU orchestration** -- `WgpuDevice::new()` picks one device; need `DevicePool`
 - **INT4/INT8 quantization** -- f32 only; need quantized WGSL shaders
 - **Cross-gate mesh relay** -- gate.* routing defined, needs Songbird mesh transport
+
+---
+
+## Recent Evolutions (Feb 2026)
+
+- **CPU Tensor Ops** -- tiled matmul, conv2d, pooling with proper cache-blocking
+- **CUDA Backend** -- real PTX kernel execution for matmul, reduction ops
+- **Unified Memory** -- OpenCL/Vulkan backends now use wgpu fallback (pure Rust)
+- **Security Providers** -- Unix socket IPC with JSON-RPC 2.0 for inter-primal security
+- **Clippy Clean** -- all barracuda warnings resolved (is_multiple_of, approx_constant)
+
+## Phase 3 Direction (from hotSpring)
+
+BarraCUDA validated against scipy/numpy: **121/121 tests passed** for special functions, linalg, optimizers, and MD forces. Evolution shifts from breadth to depth:
+
+1. **f64 Linalg Bridge** -- expose CPU f64 versions of all GPU ops (eigh, cholesky, LU, QR, SVD)
+2. **Auto-Dispatch** -- intelligent CPU/GPU routing based on input size (single-point GPU dispatch causes 90× slowdown)
+3. **Cache Persistence** -- save/load EvaluationCache for warm-starting across runs
+4. **Heterogeneous Pipelines** -- declarative multi-tier compute (filter cascades saved 91.9% of expensive HFB evaluations)
+
+See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 

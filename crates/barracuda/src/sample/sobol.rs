@@ -405,7 +405,11 @@ mod tests {
         }
 
         // First point is typically 0 or close to 0
-        assert!(points[0][0] < 0.1, "First point should be near 0, got {}", points[0][0]);
+        assert!(
+            points[0][0] < 0.1,
+            "First point should be near 0, got {}",
+            points[0][0]
+        );
     }
 
     #[test]
@@ -476,12 +480,7 @@ mod tests {
         let p2 = gen2.next_point();
 
         for (a, b) in p1.iter().zip(p2.iter()) {
-            assert!(
-                (a - b).abs() < 1e-10,
-                "Mismatch after skip: {} vs {}",
-                a,
-                b
-            );
+            assert!((a - b).abs() < 1e-10, "Mismatch after skip: {} vs {}", a, b);
         }
     }
 

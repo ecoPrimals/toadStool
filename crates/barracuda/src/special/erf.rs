@@ -176,7 +176,9 @@ mod tests {
         let expected = 2.209049699858544e-5;
         assert!(
             (computed - expected).abs() / expected < 1e-3,
-            "erfc(3) = {}, expected ~{}", computed, expected
+            "erfc(3) = {}, expected ~{}",
+            computed,
+            expected
         );
     }
 

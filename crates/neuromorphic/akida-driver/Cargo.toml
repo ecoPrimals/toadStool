@@ -27,10 +27,11 @@ glob = "0.3"  # For hwmon power discovery
 # Async runtime (optional)
 tokio = { version = "1", features = ["fs", "io-util"], optional = true }
 
-# Unix-specific
+# Unix-specific - Pure Rust Evolution (Feb 12, 2026)
+# OLD: libc + nix (C bindings)
+# NEW: rustix (safe Rust syscall wrappers)
 [target.'cfg(unix)'.dependencies]
-libc = "0.2"
-nix = { version = "0.27", features = ["fs", "ioctl"] }
+rustix = { version = "1.0", features = ["fs", "mm"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }

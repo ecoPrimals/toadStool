@@ -380,6 +380,25 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             )
             .await?;
         }
+
+        Commands::Doctor {
+            all,
+            hardware,
+            ecosystem,
+            config,
+            format,
+            fix,
+        } => {
+            info!("🩺 Running system diagnostics");
+            toadstool_cli::commands::doctor::run_doctor(
+                *all || *hardware,
+                *all || *ecosystem,
+                *all || *config,
+                format,
+                *fix,
+            )
+            .await?;
+        }
     }
 
     Ok(())

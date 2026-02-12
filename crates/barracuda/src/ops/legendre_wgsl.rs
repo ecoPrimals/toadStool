@@ -227,7 +227,13 @@ mod tests {
         let result = output.to_vec().unwrap();
         // P₁(x) = x
         for (i, &v) in result.iter().enumerate() {
-            assert!((v - data[i]).abs() < 1e-5, "P₁({}) = {}, expected {}", data[i], v, data[i]);
+            assert!(
+                (v - data[i]).abs() < 1e-5,
+                "P₁({}) = {}, expected {}",
+                data[i],
+                v,
+                data[i]
+            );
         }
     }
 
@@ -244,7 +250,13 @@ mod tests {
         for (i, &v) in result.iter().enumerate() {
             let x = data[i];
             let expected = (3.0 * x * x - 1.0) / 2.0;
-            assert!((v - expected).abs() < 1e-4, "P₂({}) = {}, expected {}", x, v, expected);
+            assert!(
+                (v - expected).abs() < 1e-4,
+                "P₂({}) = {}, expected {}",
+                x,
+                v,
+                expected
+            );
         }
     }
 
@@ -261,7 +273,13 @@ mod tests {
         for (i, &v) in result.iter().enumerate() {
             let x = data[i];
             let expected = -(1.0 - x * x).sqrt();
-            assert!((v - expected).abs() < 1e-4, "P₁¹({}) = {}, expected {}", x, v, expected);
+            assert!(
+                (v - expected).abs() < 1e-4,
+                "P₁¹({}) = {}, expected {}",
+                x,
+                v,
+                expected
+            );
         }
     }
 }

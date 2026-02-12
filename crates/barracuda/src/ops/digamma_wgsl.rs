@@ -179,7 +179,12 @@ mod tests {
         let output = input.digamma().unwrap();
         let result = output.to_vec().unwrap();
         let expected = -0.5772156649;
-        assert!((result[0] - expected).abs() < 0.001, "ψ(1) = {}, expected {}", result[0], expected);
+        assert!(
+            (result[0] - expected).abs() < 0.001,
+            "ψ(1) = {}, expected {}",
+            result[0],
+            expected
+        );
     }
 
     #[tokio::test]
@@ -192,7 +197,12 @@ mod tests {
         let output = input.digamma().unwrap();
         let result = output.to_vec().unwrap();
         let expected = 0.4227843351;
-        assert!((result[0] - expected).abs() < 0.001, "ψ(2) = {}, expected {}", result[0], expected);
+        assert!(
+            (result[0] - expected).abs() < 0.001,
+            "ψ(2) = {}, expected {}",
+            result[0],
+            expected
+        );
     }
 
     #[tokio::test]
@@ -205,6 +215,11 @@ mod tests {
         let output = input.digamma().unwrap();
         let result = output.to_vec().unwrap();
         let expected = 100.0_f32.ln() - 0.5 / 100.0;
-        assert!((result[0] - expected).abs() < 0.01, "ψ(100) = {}, expected ~{}", result[0], expected);
+        assert!(
+            (result[0] - expected).abs() < 0.01,
+            "ψ(100) = {}, expected ~{}",
+            result[0],
+            expected
+        );
     }
 }

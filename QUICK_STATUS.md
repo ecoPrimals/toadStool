@@ -127,14 +127,28 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 - RBF surrogates with GPU-accelerated training
 - FHE acceleration (21.1x speedup on RTX 3090)
 - Smart auto-routing with user preference override
-- CPU compute backends as universal fallback
+- CPU compute backends (matmul, conv2d, pooling) as universal fallback
+- CUDA PTX kernel execution via cudarc
+- Unified memory with wgpu fallback (OpenCL/Vulkan)
+- Unix socket security providers (JSON-RPC 2.0)
 
 ## What Needs Evolution
+
+### Phase 3 Priorities (from hotSpring validation)
+
+- **f64 linalg bridges** -- expose eigh_f64, cholesky_f64, lu_f64, qr_f64, svd_f64 (3-5 days)
+- **Auto-dispatch system** -- CPU/GPU routing by size; single-point GPU = 90× slowdown (2-3 days)
+- **EvaluationCache persistence** -- save/load for warm-start across runs (1 day)
+- **LOO-CV wiring** -- loo_cv.wgsl exists, needs Rust wrapper (1 day)
+
+### Infrastructure
 
 - VFIO backend for Akida NPU (eliminate C kernel module)
 - NPU model pipeline (train/compile/deploy from Rust)
 - Safetensors/GGUF weight loader
-- Multi-GPU DevicePool
+- Multi-GPU DevicePool (awaiting Titan V)
+- mDNS/K8s discovery (env vars work, others pending)
+- f64 WGSL shaders (when Titan V arrives)
 
 ---
 

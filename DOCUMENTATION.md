@@ -21,6 +21,7 @@
 | Understand NPU driver design | [specs/NPU_DRIVER_ARCHITECTURE.md](specs/NPU_DRIVER_ARCHITECTURE.md) |
 | Multi-tenant security | [specs/MULTITENANT_COMPUTE_ARCHITECTURE.md](specs/MULTITENANT_COMPUTE_ARCHITECTURE.md) |
 | Review hotSpring audit | [specs/BARRACUDA_SCIENCE_GAPS_AUDIT_FEB12_2026.md](specs/BARRACUDA_SCIENCE_GAPS_AUDIT_FEB12_2026.md) |
+| Phase 3 evolution roadmap | [specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md](specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md) |
 
 ---
 

@@ -3,9 +3,15 @@
 //! Handles direct read/write operations to device files with proper
 //! error handling and tracing.
 //!
-//! Deep Debt: Minimal unsafe, well-documented, using nix for safe wrappers.
+//! Deep Debt: Minimal unsafe, well-documented.
+//!
+//! # Evolution (Feb 12, 2026)
+//!
+//! Evolved from `nix` to `rustix` for pure Rust syscall wrappers.
 
 use crate::error::{AkidaError, Result};
+use rustix::fd::BorrowedFd;
+use rustix::io::{read, write};
 use std::os::unix::io::RawFd;
 
 /// I/O operations handler
@@ -30,8 +36,9 @@ impl IoHandle {
     ///
     /// Returns error if read operation fails.
     pub fn read(&self, buffer: &mut [u8]) -> Result<usize> {
-        nix::unistd::read(self.fd, buffer)
-            .map_err(|e| AkidaError::transfer_failed(format!("Read failed: {e}")))
+        // SAFETY: fd is valid for the lifetime of this IoHandle (caller's responsibility)
+        let borrowed = unsafe { BorrowedFd::borrow_raw(self.fd) };
+        read(borrowed, buffer).map_err(|e| AkidaError::transfer_failed(format!("Read failed: {e}")))
     }
 
     /// Write data to device
@@ -40,7 +47,8 @@ impl IoHandle {
     ///
     /// Returns error if write operation fails.
     pub fn write(&self, data: &[u8]) -> Result<usize> {
-        nix::unistd::write(self.fd, data)
-            .map_err(|e| AkidaError::transfer_failed(format!("Write failed: {e}")))
+        // SAFETY: fd is valid for the lifetime of this IoHandle (caller's responsibility)
+        let borrowed = unsafe { BorrowedFd::borrow_raw(self.fd) };
+        write(borrowed, data).map_err(|e| AkidaError::transfer_failed(format!("Write failed: {e}")))
     }
 }

@@ -201,7 +201,11 @@ mod tests {
         let input = Tensor::new(vec![0.5], vec![1], device.clone());
         let output = input.norm_ppf().unwrap();
         let result = output.to_vec().unwrap();
-        assert!(result[0].abs() < 0.001, "Φ⁻¹(0.5) = {}, expected 0", result[0]);
+        assert!(
+            result[0].abs() < 0.001,
+            "Φ⁻¹(0.5) = {}, expected 0",
+            result[0]
+        );
     }
 
     #[tokio::test]
@@ -213,8 +217,16 @@ mod tests {
         let input = Tensor::new(vec![0.25, 0.75], vec![2], device.clone());
         let output = input.norm_ppf().unwrap();
         let result = output.to_vec().unwrap();
-        assert!((result[0] - (-0.6745)).abs() < 0.01, "Φ⁻¹(0.25) = {}, expected -0.6745", result[0]);
-        assert!((result[1] - 0.6745).abs() < 0.01, "Φ⁻¹(0.75) = {}, expected 0.6745", result[1]);
+        assert!(
+            (result[0] - (-0.6745)).abs() < 0.01,
+            "Φ⁻¹(0.25) = {}, expected -0.6745",
+            result[0]
+        );
+        assert!(
+            (result[1] - 0.6745).abs() < 0.01,
+            "Φ⁻¹(0.75) = {}, expected 0.6745",
+            result[1]
+        );
     }
 
     #[tokio::test]
@@ -226,8 +238,16 @@ mod tests {
         let input = Tensor::new(vec![0.025, 0.975], vec![2], device.clone());
         let output = input.norm_ppf().unwrap();
         let result = output.to_vec().unwrap();
-        assert!((result[0] - (-1.96)).abs() < 0.02, "Φ⁻¹(0.025) = {}, expected -1.96", result[0]);
-        assert!((result[1] - 1.96).abs() < 0.02, "Φ⁻¹(0.975) = {}, expected 1.96", result[1]);
+        assert!(
+            (result[0] - (-1.96)).abs() < 0.02,
+            "Φ⁻¹(0.025) = {}, expected -1.96",
+            result[0]
+        );
+        assert!(
+            (result[1] - 1.96).abs() < 0.02,
+            "Φ⁻¹(0.975) = {}, expected 1.96",
+            result[1]
+        );
     }
 
     #[tokio::test]
@@ -239,6 +259,10 @@ mod tests {
         let input = Tensor::new(vec![0.5], vec![1], device.clone());
         let output = input.norm_ppf_params(10.0, 2.0).unwrap();
         let result = output.to_vec().unwrap();
-        assert!((result[0] - 10.0).abs() < 0.01, "Φ⁻¹(0.5; 10, 2) = {}, expected 10", result[0]);
+        assert!(
+            (result[0] - 10.0).abs() < 0.01,
+            "Φ⁻¹(0.5; 10, 2) = {}, expected 10",
+            result[0]
+        );
     }
 }

@@ -156,7 +156,7 @@ pub struct ProviderMetadata {
 }
 
 /// Encryption result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptionResult {
     /// Encrypted data
     pub ciphertext: Vec<u8>,
@@ -185,7 +185,7 @@ pub struct EncryptionMetadata {
 }
 
 /// Decryption result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecryptionResult {
     /// Decrypted plaintext
     pub plaintext: Vec<u8>,
@@ -195,7 +195,7 @@ pub struct DecryptionResult {
 }
 
 /// Decryption metadata
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecryptionMetadata {
     /// Key used
     pub key_id: String,
@@ -205,7 +205,7 @@ pub struct DecryptionMetadata {
 }
 
 /// Signature result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignatureResult {
     /// Signature bytes
     pub signature: Vec<u8>,
@@ -221,7 +221,7 @@ pub struct SignatureResult {
 }
 
 /// Verification result
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VerificationResult {
     Valid,
     Invalid,

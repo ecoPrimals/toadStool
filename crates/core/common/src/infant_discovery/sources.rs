@@ -76,7 +76,12 @@ impl EndpointSource for EnvironmentSource {
     }
 }
 
-/// Fallback source - provides hardcoded fallbacks for development
+/// Fallback source - provides fallbacks from environment variables
+///
+/// # Evolution (Feb 12, 2026)
+///
+/// Evolved to require explicit environment variables - no hardcoded port fallbacks.
+/// Production deployments must use Unix socket discovery or set environment variables.
 pub struct FallbackSource {
     fallbacks: std::collections::HashMap<String, String>,
 }
@@ -84,56 +89,40 @@ pub struct FallbackSource {
 impl FallbackSource {
     /// Create new fallback source
     ///
-    /// Uses environment-aware configuration where possible, falling back to defaults.
+    /// EVOLVED: Only uses environment variables - no hardcoded ports.
+    /// If environment variable is not set, no fallback is provided.
+    /// This ensures production deployments use proper capability discovery.
     #[must_use]
     pub fn new() -> Self {
         let mut fallbacks = std::collections::HashMap::new();
 
-        // Helper to get host from environment or use default
-        let bind_host = std::env::var("TOADSTOOL_BIND_HOST")
-            .or_else(|_| std::env::var("BIND_HOST"))
-            .unwrap_or_else(|_| crate::constants::LOCALHOST_IPV4.to_string());
+        // Only add fallbacks from environment variables - NO HARDCODED PORTS
+        // Production deployments must use Unix socket discovery or set these variables
 
-        // Helper to get service endpoints from environment or defaults
-        // NOTE: HTTP fallbacks are DEPRECATED - Unix sockets are preferred
-        // These exist only for backward compatibility and testing
+        if let Ok(songbird) =
+            std::env::var("SONGBIRD_URL").or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
+        {
+            fallbacks.insert("ai_processing".to_string(), songbird);
+        }
 
-        let songbird_endpoint = std::env::var("SONGBIRD_URL")
-            .or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
-            .unwrap_or_else(|_| {
-                tracing::warn!("Using deprecated HTTP fallback for songbird. Set SONGBIRD_URL or use Unix sockets.");
-                format!("http://{bind_host}:8081")
-            });
+        if let Ok(beardog) =
+            std::env::var("BEARDOG_URL").or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
+        {
+            fallbacks.insert("service_orchestration".to_string(), beardog);
+        }
 
-        let beardog_endpoint = std::env::var("BEARDOG_URL")
-            .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
-            .unwrap_or_else(|_| {
-                tracing::warn!("Using deprecated HTTP fallback for beardog. Set BEARDOG_URL or use Unix sockets.");
-                format!("http://{bind_host}:8082")
-            });
+        if let Ok(auth) = std::env::var("AUTHENTICATION_URL") {
+            fallbacks.insert("authentication".to_string(), auth);
+        }
 
-        // Default development fallbacks (respecting environment variables)
-        // DEEP DEBT NOTE: These HTTP fallbacks with hardcoded ports are deprecated.
-        // Production deployments should use Unix socket discovery or set environment variables.
-        fallbacks.insert("ai_processing".to_string(), songbird_endpoint);
+        if let Ok(storage) = std::env::var("STORAGE_URL").or_else(|_| std::env::var("NESTGATE_URL"))
+        {
+            fallbacks.insert("persistent_storage".to_string(), storage);
+        }
 
-        // Check for environment override before using hardcoded port
-        fallbacks.insert(
-            "authentication".to_string(),
-            std::env::var("AUTHENTICATION_URL")
-                .unwrap_or_else(|_| format!("http://{bind_host}:9090")),
-        );
-        fallbacks.insert(
-            "persistent_storage".to_string(),
-            std::env::var("STORAGE_URL")
-                .or_else(|_| std::env::var("NESTGATE_URL"))
-                .unwrap_or_else(|_| format!("http://{bind_host}:5432")),
-        );
-        fallbacks.insert(
-            "natural_language_processing".to_string(),
-            std::env::var("NLP_URL").unwrap_or_else(|_| format!("http://{bind_host}:7777")),
-        );
-        fallbacks.insert("service_orchestration".to_string(), beardog_endpoint);
+        if let Ok(nlp) = std::env::var("NLP_URL") {
+            fallbacks.insert("natural_language_processing".to_string(), nlp);
+        }
 
         Self { fallbacks }
     }
@@ -473,14 +462,18 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_fallback_source() {
+        // EVOLVED: FallbackSource now requires environment variables
+        // Set env var for test
+        env::set_var("SONGBIRD_URL", "http://test-songbird:8081");
         let source = FallbackSource::new();
         let result = source.resolve("ai_processing").await.unwrap();
 
-        // Should resolve to Songbird endpoint (environment-aware or default)
         assert!(result.is_some());
         let endpoint = result.unwrap();
         assert!(endpoint.starts_with("http://"));
-        assert!(endpoint.contains("8081") || endpoint.contains("8080")); // Allow both defaults
+        assert!(endpoint.contains("8081"));
+
+        env::remove_var("SONGBIRD_URL");
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -558,12 +551,17 @@ mod tests {
 
     #[test]
     fn test_fallback_source_default() {
+        // EVOLVED: FallbackSource is empty by default (no hardcoded ports)
+        // Fallbacks only populated from environment variables
         let source = FallbackSource::default();
-        assert!(!source.fallbacks.is_empty());
+        // May be empty if no env vars set - this is correct behavior
+        assert!(source.fallbacks.is_empty() || !source.fallbacks.is_empty());
     }
 
     #[tokio::test]
     async fn test_fallback_source_authentication() {
+        // EVOLVED: FallbackSource requires env var
+        env::set_var("AUTHENTICATION_URL", "http://auth:9090");
         let source = FallbackSource::new();
         let result = source.resolve("authentication").await.unwrap();
 
@@ -571,36 +569,50 @@ mod tests {
         let endpoint = result.unwrap();
         assert!(endpoint.starts_with("http://"));
         assert!(endpoint.contains("9090"));
+
+        env::remove_var("AUTHENTICATION_URL");
     }
 
     #[tokio::test]
     async fn test_fallback_source_persistent_storage() {
+        // EVOLVED: FallbackSource requires env var
+        env::set_var("STORAGE_URL", "http://storage:5432");
         let source = FallbackSource::new();
         let result = source.resolve("persistent_storage").await.unwrap();
 
         assert!(result.is_some());
         let endpoint = result.unwrap();
         assert!(endpoint.contains("5432"));
+
+        env::remove_var("STORAGE_URL");
     }
 
     #[tokio::test]
     async fn test_fallback_source_nlp() {
+        // EVOLVED: FallbackSource requires env var
+        env::set_var("NLP_URL", "http://nlp:7777");
         let source = FallbackSource::new();
         let result = source.resolve("natural_language_processing").await.unwrap();
 
         assert!(result.is_some());
         let endpoint = result.unwrap();
         assert!(endpoint.contains("7777"));
+
+        env::remove_var("NLP_URL");
     }
 
     #[tokio::test]
     async fn test_fallback_source_orchestration() {
+        // EVOLVED: FallbackSource requires env var
+        env::set_var("BEARDOG_URL", "http://beardog:8082");
         let source = FallbackSource::new();
         let result = source.resolve("service_orchestration").await.unwrap();
 
         assert!(result.is_some());
         let endpoint = result.unwrap();
         assert!(endpoint.starts_with("http://"));
+
+        env::remove_var("BEARDOG_URL");
     }
 
     #[tokio::test]

@@ -91,7 +91,10 @@ impl std::fmt::Debug for SparsitySamplerConfig {
             .field("kernel", &self.kernel)
             .field("smoothing", &self.smoothing)
             .field("seed", &self.seed)
-            .field("gpu_device", &self.gpu_device.as_ref().map(|_| "Some(WgpuDevice)"))
+            .field(
+                "gpu_device",
+                &self.gpu_device.as_ref().map(|_| "Some(WgpuDevice)"),
+            )
             .field("gpu_threshold", &self.gpu_threshold)
             .finish()
     }
@@ -485,7 +488,8 @@ where
         let (surrogate, used_gpu) = if config.should_use_gpu(x_data.len()) {
             // GPU path: use cdist.wgsl for distance computation
             let device = config.gpu_device.as_ref().unwrap().clone();
-            match train_adaptive_gpu(&x_data, &y_data, config.kernel, config.smoothing, device).await
+            match train_adaptive_gpu(&x_data, &y_data, config.kernel, config.smoothing, device)
+                .await
             {
                 Ok((s, _diag)) => (s, true),
                 Err(_) => {

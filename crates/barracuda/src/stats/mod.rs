@@ -18,8 +18,8 @@
 //! - Abramowitz & Stegun §26 (Normal distribution)
 //! - Moro (1995) inverse normal approximation
 
-pub mod normal;
 pub mod correlation;
+pub mod normal;
 
-pub use normal::{norm_cdf, norm_pdf, norm_ppf, norm_cdf_batch, norm_pdf_batch};
-pub use correlation::{pearson_correlation, covariance, correlation_matrix, covariance_matrix};
+pub use correlation::{correlation_matrix, covariance, covariance_matrix, pearson_correlation};
+pub use normal::{norm_cdf, norm_cdf_batch, norm_pdf, norm_pdf_batch, norm_ppf};

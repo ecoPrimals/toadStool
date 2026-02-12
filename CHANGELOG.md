@@ -7,6 +7,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-12] - Runtime Backend Evolution and ecoBin Compliance
+
+**Impact**: CPU tensor ops, CUDA PTX execution, unified memory wgpu fallbacks, and Unix socket security providers all implemented. Full ecoBin compliance for GPU backends.
+
+#### Added
+
+- **CPU Tensor Operations** (`crates/runtime/universal/src/backends/cpu/tensor_ops.rs`):
+  - Tiled matrix multiplication with 32x32 cache-blocking
+  - Direct 2D convolution with padding, stride, and bias support
+  - Max pooling and average pooling with sliding window implementation
+  - Comprehensive unit tests for dimension validation
+
+- **CUDA Backend Execution** (`crates/runtime/gpu/src/backends/cuda_impl.rs`):
+  - Full `execute()` implementation for `CudaComputeContext`
+  - PTX kernel loading and execution via `cudarc`
+  - Embedded matmul and reduction PTX kernels
+  - Grid/block dimension calculation from workload size
+
+- **Unified Memory wgpu Fallbacks**:
+  - `crates/runtime/gpu/src/unified_memory/backends/vulkan.rs` — wgpu-based allocation
+  - `crates/runtime/gpu/src/unified_memory/backends/opencl.rs` — wgpu-based allocation
+  - Direct Vulkan/OpenCL available when specific extensions required
+  - ecoBin-compliant: pure Rust via WebGPU abstractions
+
+- **Unix Socket Security Provider** (`crates/distributed/src/security_provider/unix_socket_provider.rs`):
+  - JSON-RPC 2.0 over Unix domain sockets
+  - Full `SecurityProvider` trait implementation
+  - Async tokio I/O with configurable timeout
+  - Factory integration preferring Unix sockets over HTTP/TCP
+
+#### Changed
+
+- **Security Provider Types**: Added `Serialize`/`Deserialize` derives to `SecurityCapability`, `EncryptionOptions`, `SigningOptions`, `PermissionValidationResult`, `ProviderHealth`, `EncryptionResult`, `DecryptionResult`, `SignatureResult`, `VerificationResult`
+- **Security Factory**: HTTP and TCP providers return informative errors recommending Unix sockets
+
+#### Fixed
+
+- **Clippy Compliance** (barracuda crate):
+  - `legendre.rs` — `#[allow(clippy::manual_is_multiple_of)]` (nightly-only feature)
+  - `lu.rs` — `#[allow(clippy::manual_is_multiple_of)]`
+  - `normal.rs` — `#[allow(clippy::excessive_precision)]` (intentional for Acklam's algorithm)
+  - `bessel.rs` — replaced `0.636619772` with `std::f64::consts::FRAC_2_PI`
+
+#### Verification
+
+- All modified crates compile clean
+- Unit tests pass for tensor_ops, cuda_impl, vulkan, opencl
+- `cargo fmt --check` clean
+- `cargo clippy -p toadstool-runtime-universal -p toadstool-runtime-gpu -p toadstool-distributed` clean
+
+---
+
+### [2026-02-12] - Phase 3 Evolution Roadmap (hotSpring Handoff)
+
+**Impact**: BarraCUDA validated against scipy/numpy (121/121 tests). Evolution shifts from breadth to depth.
+
+#### Added
+
+- `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` — Full roadmap from hotSpring team
+
+#### Roadmap Summary
+
+**Phase A — Bridge & Polish (1-2 weeks)**:
+- f64 linalg bridges (eigh, cholesky, LU, QR, SVD) — 3-5 days
+- Auto-dispatch benchmarks + thresholds — 2-3 days
+- EvaluationCache serialization (save/load/merge) — 1 day
+- LOO-CV wiring for RBFSurrogate — 1 day
+
+**Phase B — Scientific Depth (2-3 weeks)**:
+- Incomplete gamma + chi-squared distribution — 1-2 days
+- Newton-Raphson + Brent root-finding — 1-2 days
+- Cubic spline interpolation — 2 days
+- Generalized eigenvalue Ax = λBx — 3-4 days
+
+**Phase C — Hardware Exploitation (when Titan V arrives)**:
+- f64 Tensor type — 1-2 weeks
+- f64 WGSL shader variants — 2-3 weeks
+- Multi-GPU DevicePool (RTX 4070 f32, Titan V f64) — 1-2 weeks
+
+#### Key Lessons
+
+1. GPU dispatch overhead matters — single-point predictions must use CPU
+2. Surrogate accuracy gap is algorithmic — 121/121 tests pass
+3. Pre-screening cascades are powerful — 91.9% rejection before expensive HFB
+4. f64 vs f32 trade-offs are workload-specific
+5. NMP-aware surrogates improve pass rates 10× (8.1% vs 0.8%)
+
+---
+
 ### [2026-02-12] - Shader-First Architecture for BarraCUDA Math Library
 
 **Impact**: ALL parallelizable math is now WGSL shader-first. ToadStool dispatches to GPU (default) or CPU (fallback). Seamless fp64 GPU transition when available.

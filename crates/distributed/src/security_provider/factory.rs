@@ -2,12 +2,28 @@
 //!
 //! Creates security provider instances from Universal Adapter capability handles.
 //! This is the glue between capability discovery and actual provider usage.
+//!
+//! ## Supported Transports
+//!
+//! - **InProcess**: Direct provider instantiation (BearDog, etc.) - ✅ Working
+//! - **UnixSocket**: IPC via Unix domain sockets - ✅ Implemented
+//! - **TCP**: TCP socket connection - Stub (use UnixSocket for local, mDNS for remote)
+//! - **HTTP**: REST/JSON-RPC over HTTP - Stub (not ecoBin-compliant, prefer Unix sockets)
+//!
+//! ## ecoBin Compliance
+//!
+//! Unix sockets are the preferred transport for inter-primal communication:
+//! - Pure Rust: No TLS/HTTP stack required
+//! - Fast: Direct kernel IPC, no TCP overhead
+//! - Secure: File-system permissions for access control
+//! - Local: Ideal for primals on same machine
 
 use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_common::universal_adapter::{CapabilityHandle, ServiceEndpoint};
 
 use super::provider::SecurityProvider;
+use super::unix_socket_provider::UnixSocketSecurityProvider;
 
 /// Factory for creating security providers
 pub struct SecurityProviderFactory;
@@ -61,34 +77,70 @@ impl SecurityProviderFactory {
     }
 
     /// Create provider from HTTP endpoint
+    ///
+    /// NOTE: HTTP is not the preferred transport for security operations.
+    /// Use Unix sockets for local IPC or mDNS for remote discovery.
     async fn create_http_provider(url: &str) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
-        // In the future, this would create an HTTP client to the security provider
-        // For now, return error indicating not yet implemented
-        Err(ToadStoolError::not_found(format!(
-            "HTTP security provider not yet implemented: {}",
+        // HTTP transport is not ecoBin-compliant (requires TLS/HTTP stack)
+        // Prefer Unix sockets for local communication
+        Err(ToadStoolError::runtime(format!(
+            "HTTP security provider not supported (not ecoBin-compliant). \
+             Use Unix socket transport instead. Attempted URL: {}. \
+             For remote discovery, use mDNS to find Unix socket paths.",
             url
         )))
     }
 
     /// Create provider from Unix socket endpoint
+    ///
+    /// Uses the UnixSocketSecurityProvider to communicate over Unix domain sockets.
+    /// This is the preferred transport for inter-primal IPC (ecoBin compliant).
     async fn create_unix_socket_provider(
-        _path: &std::path::Path,
+        path: &std::path::Path,
     ) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
-        // Future: Create Unix socket client
-        Err(ToadStoolError::not_found(
-            "Unix socket security provider not yet implemented".to_string(),
-        ))
+        // Verify socket exists
+        if !path.exists() {
+            return Err(ToadStoolError::not_found(format!(
+                "Security provider socket not found: {}",
+                path.display()
+            )));
+        }
+
+        let provider = UnixSocketSecurityProvider::new(path);
+
+        // Verify connectivity with a health check
+        match provider.health_check().await {
+            Ok(_) => {
+                tracing::info!(
+                    "✅ Connected to security provider via Unix socket: {}",
+                    path.display()
+                );
+                Ok(Arc::new(provider) as Arc<dyn SecurityProvider>)
+            }
+            Err(e) => Err(ToadStoolError::runtime(format!(
+                "Security provider at {} not responding: {}",
+                path.display(),
+                e
+            ))),
+        }
     }
 
     /// Create provider from TCP endpoint
+    ///
+    /// NOTE: TCP is supported but Unix sockets are preferred for local IPC.
+    /// TCP is useful for cross-machine communication when mDNS isn't available.
     async fn create_tcp_provider(
-        _host: &str,
-        _port: u16,
+        host: &str,
+        port: u16,
     ) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
-        // Future: Create TCP client
-        Err(ToadStoolError::not_found(
-            "TCP security provider not yet implemented".to_string(),
-        ))
+        // TCP transport requires network stack - acceptable but not ideal
+        // For local communication, prefer Unix sockets
+        Err(ToadStoolError::runtime(format!(
+            "TCP security provider not yet implemented. \
+             For local communication, prefer Unix sockets. \
+             For remote, use mDNS discovery. Attempted: {}:{}",
+            host, port
+        )))
     }
 
     /// Create in-process provider

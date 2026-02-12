@@ -39,11 +39,7 @@ use crate::error::{BarracudaError, Result};
 pub fn pearson_correlation(x: &[f64], y: &[f64]) -> Result<f64> {
     if x.len() != y.len() {
         return Err(BarracudaError::InvalidInput {
-            message: format!(
-                "Vectors must have same length: {} vs {}",
-                x.len(),
-                y.len()
-            ),
+            message: format!("Vectors must have same length: {} vs {}", x.len(), y.len()),
         });
     }
 
@@ -103,11 +99,7 @@ pub fn pearson_correlation(x: &[f64], y: &[f64]) -> Result<f64> {
 pub fn covariance(x: &[f64], y: &[f64]) -> Result<f64> {
     if x.len() != y.len() {
         return Err(BarracudaError::InvalidInput {
-            message: format!(
-                "Vectors must have same length: {} vs {}",
-                x.len(),
-                y.len()
-            ),
+            message: format!("Vectors must have same length: {} vs {}", x.len(), y.len()),
         });
     }
 
@@ -303,11 +295,7 @@ pub fn covariance_matrix(data: &[Vec<f64>]) -> Result<Vec<f64>> {
 pub fn spearman_correlation(x: &[f64], y: &[f64]) -> Result<f64> {
     if x.len() != y.len() {
         return Err(BarracudaError::InvalidInput {
-            message: format!(
-                "Vectors must have same length: {} vs {}",
-                x.len(),
-                y.len()
-            ),
+            message: format!("Vectors must have same length: {} vs {}", x.len(), y.len()),
         });
     }
 
@@ -435,9 +423,9 @@ mod tests {
         let cov = covariance_matrix(&data).unwrap();
 
         // Var(X) = 2.5, Var(Y) = 10.0, Cov(X,Y) = 5.0
-        assert!((cov[0] - 2.5).abs() < 1e-10);  // [0,0]
-        assert!((cov[1] - 5.0).abs() < 1e-10);  // [0,1]
-        assert!((cov[2] - 5.0).abs() < 1e-10);  // [1,0]
+        assert!((cov[0] - 2.5).abs() < 1e-10); // [0,0]
+        assert!((cov[1] - 5.0).abs() < 1e-10); // [0,1]
+        assert!((cov[2] - 5.0).abs() < 1e-10); // [1,0]
         assert!((cov[3] - 10.0).abs() < 1e-10); // [1,1]
     }
 

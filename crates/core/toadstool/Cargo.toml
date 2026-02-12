@@ -54,6 +54,7 @@ base64 = "0.22"
 
 # Security
 zeroize = { version = "1.7", features = ["derive"] }
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 
 # Networking for ecosystem integration (now standard - ToadStool is distributed)
 tokio-tungstenite = { version = "0.23", optional = true }

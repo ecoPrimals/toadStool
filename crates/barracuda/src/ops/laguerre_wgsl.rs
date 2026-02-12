@@ -215,7 +215,13 @@ mod tests {
         // L_1(x) = 1 - x
         let expected = [1.0, 0.0, -2.0];
         for (i, &v) in result.iter().enumerate() {
-            assert!((v - expected[i]).abs() < 1e-5, "L_1({}) = {}, expected {}", data[i], v, expected[i]);
+            assert!(
+                (v - expected[i]).abs() < 1e-5,
+                "L_1({}) = {}, expected {}",
+                data[i],
+                v,
+                expected[i]
+            );
         }
     }
 
@@ -232,7 +238,13 @@ mod tests {
         for (i, &v) in result.iter().enumerate() {
             let x = data[i];
             let expected = (x * x - 4.0 * x + 2.0) / 2.0;
-            assert!((v - expected).abs() < 1e-4, "L_2({}) = {}, expected {}", x, v, expected);
+            assert!(
+                (v - expected).abs() < 1e-4,
+                "L_2({}) = {}, expected {}",
+                x,
+                v,
+                expected
+            );
         }
     }
 
@@ -246,7 +258,15 @@ mod tests {
         let input = Tensor::new(data.clone(), vec![2], device.clone());
         let output = input.laguerre(1, 1.0).unwrap();
         let result = output.to_vec().unwrap();
-        assert!((result[0] - 2.0).abs() < 1e-5, "L_1^(1)(0) = {}, expected 2", result[0]);
-        assert!((result[1] - 0.0).abs() < 1e-5, "L_1^(1)(2) = {}, expected 0", result[1]);
+        assert!(
+            (result[0] - 2.0).abs() < 1e-5,
+            "L_1^(1)(0) = {}, expected 2",
+            result[0]
+        );
+        assert!(
+            (result[1] - 0.0).abs() < 1e-5,
+            "L_1^(1)(2) = {}, expected 0",
+            result[1]
+        );
     }
 }

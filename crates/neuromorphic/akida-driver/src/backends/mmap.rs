@@ -5,10 +5,17 @@
 //! - Runtime validation (bounds checking)
 //! - Safe public API
 //! - Comprehensive error handling
+//!
+//! # Evolution (Feb 12, 2026)
+//!
+//! Evolved from `libc` raw C bindings to `rustix` safe Rust wrappers.
+//! This provides better error handling and type safety while maintaining
+//! identical functionality.
 
 use crate::error::{AkidaError, Result};
+use rustix::mm::{mmap, munmap, MapFlags, ProtFlags};
 use std::fs::{File, OpenOptions};
-use std::os::unix::io::AsRawFd;
+use std::os::unix::io::AsFd;
 use std::ptr::NonNull;
 
 /// Memory-mapped PCIe BAR region
@@ -75,30 +82,24 @@ impl MmapRegion {
         // - Size is non-zero (checked above, prevents zero-sized mapping)
         // - Flags are valid: PROT_READ|PROT_WRITE for MMIO access, MAP_SHARED for device memory
         // - Offset is 0 (start of BAR)
-        // - We check for MAP_FAILED and return error if mapping fails
+        // - rustix returns Result, so we handle errors properly
         // - We store file in struct to keep fd open for lifetime of mapping
         // - We unmap in Drop impl to prevent memory leak
         // - The mapped memory is process-private (no other references exist)
+        //
+        // EVOLVED: Using rustix instead of libc (better error handling, type safety)
         let ptr = unsafe {
-            let addr = libc::mmap(
+            let addr = mmap(
                 std::ptr::null_mut(),
                 size,
-                libc::PROT_READ | libc::PROT_WRITE,
-                libc::MAP_SHARED,
-                file.as_raw_fd(),
+                ProtFlags::READ | ProtFlags::WRITE,
+                MapFlags::SHARED,
+                file.as_fd(),
                 0,
-            );
+            )
+            .map_err(|e| AkidaError::capability_query_failed(format!("mmap failed: {e}")))?;
 
-            if addr == libc::MAP_FAILED {
-                let err = std::io::Error::last_os_error();
-                return Err(AkidaError::capability_query_failed(format!(
-                    "mmap failed: {err}"
-                )));
-            }
-
-            // SAFETY: We just checked addr != MAP_FAILED, so addr is a valid pointer.
-            // NonNull::new_unchecked is safe because:
-            // - mmap returns either MAP_FAILED (checked) or a valid pointer
+            // SAFETY: rustix mmap returns a valid pointer on success (no MAP_FAILED check needed)
             // - The pointer points to mapped memory of at least `size` bytes
             // - The cast to *mut u8 is valid (byte-aligned memory)
             NonNull::new_unchecked(addr.cast::<u8>())
@@ -278,15 +279,18 @@ impl Drop for MmapRegion {
         );
 
         // SAFETY: munmap requires:
-        // - addr must be a pointer returned by mmap (or MAP_FAILED, but we check that)
+        // - addr must be a pointer returned by mmap
         // - length must match the length passed to mmap
         // Invariants that hold:
-        // - self.ptr was created from successful mmap (checked MAP_FAILED in new())
+        // - self.ptr was created from successful mmap in new()
         // - self.size matches the size passed to mmap in new()
         // - The mapping is still valid (we're in Drop, so no use-after-free)
-        // - Cast to *mut c_void is valid (mmap returns void*, munmap expects void*)
+        //
+        // EVOLVED: Using rustix instead of libc (better error handling)
         unsafe {
-            libc::munmap(self.ptr.as_ptr().cast(), self.size);
+            if let Err(e) = munmap(self.ptr.as_ptr().cast(), self.size) {
+                tracing::error!("munmap failed during drop: {e}");
+            }
         }
     }
 }

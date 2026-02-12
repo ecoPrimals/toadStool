@@ -4,6 +4,7 @@
 //! BearDog, HSM, KMS, local keyring - all implement this same trait.
 
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use toadstool::error::ToadStoolResult;
 
 use super::types::*;
@@ -177,7 +178,7 @@ pub trait SecurityProvider: Send + Sync {
 }
 
 /// Security capabilities a provider can offer
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SecurityCapability {
     /// Symmetric encryption (AES, etc.)
     SymmetricEncryption,
@@ -208,7 +209,7 @@ pub enum SecurityCapability {
 }
 
 /// Encryption options
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptionOptions {
     /// Encryption algorithm to use
     pub algorithm: Option<String>,
@@ -221,7 +222,7 @@ pub struct EncryptionOptions {
 }
 
 /// Signing options
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SigningOptions {
     /// Signature algorithm to use
     pub algorithm: Option<SignatureAlgorithm>,
@@ -231,7 +232,7 @@ pub struct SigningOptions {
 }
 
 /// Permission validation result
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PermissionValidationResult {
     /// Permission is valid
     Valid,
@@ -250,7 +251,7 @@ pub enum PermissionValidationResult {
 }
 
 /// Provider health status
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProviderHealth {
     /// Provider is healthy and operational
     Healthy,

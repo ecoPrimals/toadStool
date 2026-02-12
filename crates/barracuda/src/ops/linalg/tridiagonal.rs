@@ -338,7 +338,11 @@ mod tests {
         let b = vec![4.0, 4.0, 4.0];
         let c = vec![1.0, 1.0];
 
-        let rhs = vec![vec![1.0, 2.0, 1.0], vec![2.0, 4.0, 2.0], vec![0.0, 1.0, 0.0]];
+        let rhs = vec![
+            vec![1.0, 2.0, 1.0],
+            vec![2.0, 4.0, 2.0],
+            vec![0.0, 1.0, 0.0],
+        ];
 
         let solutions = tridiagonal_solve_batch(&a, &b, &c, &rhs).unwrap();
         assert_eq!(solutions.len(), 3);

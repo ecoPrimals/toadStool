@@ -331,6 +331,37 @@ pub enum Commands {
         family_id: Option<String>,
     },
 
+    /// System health check and diagnostics
+    ///
+    /// **UniBin Standard Compliant**: Diagnose ToadStool installation, runtime,
+    /// and ecosystem connectivity. Checks hardware detection, primal discovery,
+    /// socket availability, and configuration validity.
+    Doctor {
+        /// Run all diagnostic checks
+        #[arg(long)]
+        all: bool,
+
+        /// Check hardware detection (GPU, NPU, CPU capabilities)
+        #[arg(long)]
+        hardware: bool,
+
+        /// Check ecosystem connectivity (Songbird, BearDog, NestGate)
+        #[arg(long)]
+        ecosystem: bool,
+
+        /// Check configuration validity
+        #[arg(long)]
+        config: bool,
+
+        /// Output format (text, json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+
+        /// Attempt to fix detected issues
+        #[arg(long)]
+        fix: bool,
+    },
+
     // UNIBIN PHASE 1: ZeroConfig temporarily disabled (has HTTP dependencies)
     // Will be re-enabled in Phase 2 after full HTTP cleanup
     // /// Zero-configuration rapid deployment
@@ -797,6 +828,7 @@ pub fn validate_manifest(manifest: &BiomeManifest) -> Result<Vec<String>> {
     Ok(warnings)
 }
 
+pub mod commands;
 pub mod daemon;
 pub mod ecosystem;
 pub mod executor;

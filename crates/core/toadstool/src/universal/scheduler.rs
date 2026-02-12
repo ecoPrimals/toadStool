@@ -1,16 +1,35 @@
 //! Universal Scheduler for cross-platform job execution
+//!
+//! The scheduler routes jobs to appropriate execution backends:
+//! 1. **Primal Registry**: Discovers remote primals with capabilities
+//! 2. **Runtime Engines**: Local engines for direct execution (WASM, Native)
+//!
+//! ## Execution Flow
+//!
+//! ```text
+//! Job → Try Primal Registry → Found? → Execute via Primal
+//!                            ↓ Not Found
+//!                     Try Runtime Engine → Found? → Execute Locally
+//!                            ↓ Not Found
+//!                     Return Fallback/Error
+//! ```
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::sync::RwLock;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use toadstool_config::defaults;
 
-use crate::{execution::ExecutionResponse, ToadStoolResult};
+use crate::execution::{
+    ExecutionInput, ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType,
+};
+use crate::resources::ResourceRequirements;
+use crate::workload::{ExecutableSource, WasiConfig, WasmModuleSource};
+use crate::{SecurityContext, ToadStoolResult, WorkloadSpec};
 
 use super::jobs::{UniversalJob, UniversalJobType};
 use super::registry::UniversalPrimalRegistry;
@@ -26,6 +45,8 @@ pub struct UniversalScheduler {
     resource_coordinator: Arc<ResourceCoordinator>,
     /// Active jobs
     active_jobs: Arc<RwLock<HashMap<Uuid, UniversalJob>>>,
+    /// Runtime engines for local execution (optional)
+    runtime_engines: Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
 }
 
 impl UniversalScheduler {
@@ -39,7 +60,53 @@ impl UniversalScheduler {
             primal_registry,
             resource_coordinator: Arc::new(ResourceCoordinator::new().await?),
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
+            runtime_engines: Arc::new(RwLock::new(HashMap::new())),
         })
+    }
+
+    /// Create scheduler with runtime engines for local execution
+    ///
+    /// # Arguments
+    /// * `primal_registry` - Registry for discovering remote primals
+    /// * `runtime_engines` - Map of runtime type to engine for local execution
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if resource coordinator initialization fails.
+    pub async fn with_runtime_engines(
+        primal_registry: Arc<UniversalPrimalRegistry>,
+        runtime_engines: HashMap<RuntimeType, Box<dyn RuntimeEngine>>,
+    ) -> ToadStoolResult<Self> {
+        info!(
+            "Creating scheduler with {} runtime engines: {:?}",
+            runtime_engines.len(),
+            runtime_engines.keys().collect::<Vec<_>>()
+        );
+        Ok(Self {
+            primal_registry,
+            resource_coordinator: Arc::new(ResourceCoordinator::new().await?),
+            active_jobs: Arc::new(RwLock::new(HashMap::new())),
+            runtime_engines: Arc::new(RwLock::new(runtime_engines)),
+        })
+    }
+
+    /// Register a runtime engine for local execution
+    ///
+    /// Allows adding runtime engines after scheduler creation.
+    pub async fn register_runtime_engine(
+        &self,
+        runtime_type: RuntimeType,
+        engine: Box<dyn RuntimeEngine>,
+    ) {
+        info!("Registering runtime engine: {:?}", runtime_type);
+        self.runtime_engines
+            .write()
+            .await
+            .insert(runtime_type, engine);
+    }
+
+    /// Get available runtime types
+    pub async fn available_runtimes(&self) -> Vec<RuntimeType> {
+        self.runtime_engines.read().await.keys().cloned().collect()
     }
 
     /// Schedule a job
@@ -194,14 +261,47 @@ impl UniversalScheduler {
                 warnings: Vec::new(),
             })
         } else {
-            // Fallback - return a placeholder response
+            // No primal found - try local native runtime engine
+            let engines = self.runtime_engines.read().await;
+            if let Some(native_engine) = engines.get(&RuntimeType::Native) {
+                info!("Using local native runtime engine for execution");
+
+                // Build execution request
+                let request = ExecutionRequest {
+                    execution_id: Uuid::new_v4(),
+                    workload: WorkloadSpec::Native {
+                        executable: ExecutableSource::File {
+                            path: std::path::PathBuf::from(executable),
+                        },
+                        args: Some(args.to_vec()),
+                        working_dir: None,
+                        env_vars: env.clone(),
+                        user: None,
+                    },
+                    runtime_hint: Some(RuntimeType::Native),
+                    resources: ResourceRequirements::default(),
+                    security_context: SecurityContext::default(),
+                    timeout: Some(Duration::from_secs(300)),
+                    environment: env.clone(),
+                    input_data: ExecutionInput::default(),
+                    callback_config: None,
+                    encryption_config: None,
+                };
+
+                return native_engine.execute(request).await;
+            }
+
+            // No primal and no native engine - return placeholder
+            warn!(
+                "No primal or native runtime engine available for: {}",
+                executable
+            );
             Ok(ExecutionResponse {
                 execution_id: Uuid::new_v4(),
                 status: crate::execution::ExecutionStatus::Success,
                 output: crate::execution::ExecutionOutput {
                     data: Vec::new(),
-                    // TODO: Integrate with runtime engine native execution pipeline
-                    stdout: Some("Native execution: delegated to runtime engine".to_string()),
+                    stdout: Some("Native execution: no runtime engine registered".to_string()),
                     stderr: None,
                     exit_code: Some(0),
                     format: Some("text/plain".to_string()),
@@ -211,25 +311,63 @@ impl UniversalScheduler {
                 metrics: crate::RuntimeMetrics::default(),
                 duration: Duration::from_millis(100),
                 runtime_used: crate::execution::RuntimeType::Native,
-                warnings: Vec::new(),
+                warnings: vec!["No native runtime engine registered".to_string()],
             })
         }
     }
 
     async fn execute_wasm(
         &self,
-        _module: &[u8],
-        _args: &[String],
-        _env: &HashMap<String, String>,
+        module: &[u8],
+        args: &[String],
+        env: &HashMap<String, String>,
     ) -> ToadStoolResult<ExecutionResponse> {
-        debug!("Executing WASM job");
-        // TODO: Integrate with toadstool-runtime-wasm for real WASM execution
+        debug!("Executing WASM job ({} bytes)", module.len());
+
+        // Check if we have a WASM runtime engine registered
+        let engines = self.runtime_engines.read().await;
+        if let Some(wasm_engine) = engines.get(&RuntimeType::Wasm) {
+            info!("Using registered WASM runtime engine for execution");
+
+            // Build execution request
+            let request = ExecutionRequest {
+                execution_id: Uuid::new_v4(),
+                workload: WorkloadSpec::Wasm {
+                    module: WasmModuleSource::Bytes {
+                        data: module.to_vec(),
+                    },
+                    args: Some(args.to_vec()),
+                    wasi_config: Some(WasiConfig {
+                        inherit_env: true,
+                        inherit_stdio: true,
+                        allowed_dirs: Vec::new(),
+                        preopened_dirs: Vec::new(),
+                        args: args.to_vec(),
+                    }),
+                    env_vars: env.clone(),
+                },
+                runtime_hint: Some(RuntimeType::Wasm),
+                resources: ResourceRequirements::default(),
+                security_context: SecurityContext::default(),
+                timeout: Some(Duration::from_secs(300)),
+                environment: env.clone(),
+                input_data: ExecutionInput::default(),
+                callback_config: None,
+                encryption_config: None,
+            };
+
+            // Execute via the WASM runtime engine
+            return wasm_engine.execute(request).await;
+        }
+
+        // No WASM engine registered - return placeholder
+        warn!("No WASM runtime engine registered, returning placeholder response");
         Ok(ExecutionResponse {
             execution_id: Uuid::new_v4(),
             status: crate::execution::ExecutionStatus::Success,
             output: crate::execution::ExecutionOutput {
                 data: Vec::new(),
-                stdout: Some("WASM execution: delegated to runtime engine".to_string()),
+                stdout: Some("WASM execution: no runtime engine registered".to_string()),
                 stderr: None,
                 exit_code: Some(0),
                 format: Some("text/plain".to_string()),
@@ -239,7 +377,7 @@ impl UniversalScheduler {
             metrics: crate::RuntimeMetrics::default(),
             duration: Duration::from_millis(100),
             runtime_used: crate::execution::RuntimeType::Wasm,
-            warnings: Vec::new(),
+            warnings: vec!["No WASM runtime engine registered".to_string()],
         })
     }
 

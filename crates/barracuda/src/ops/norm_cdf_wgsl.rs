@@ -77,7 +77,7 @@ impl NormCdf {
             size: u32,
             mu: f32,
             sigma: f32,
-            mode: u32,  // 0 = CDF, 1 = PDF
+            mode: u32, // 0 = CDF, 1 = PDF
         }
 
         let params = Params {
@@ -240,7 +240,11 @@ mod tests {
         let input = Tensor::new(vec![0.0], vec![1], device.clone());
         let output = input.norm_cdf().unwrap();
         let result = output.to_vec().unwrap();
-        assert!((result[0] - 0.5).abs() < 0.001, "Φ(0) = {}, expected 0.5", result[0]);
+        assert!(
+            (result[0] - 0.5).abs() < 0.001,
+            "Φ(0) = {}, expected 0.5",
+            result[0]
+        );
     }
 
     #[tokio::test]
@@ -252,8 +256,16 @@ mod tests {
         let input = Tensor::new(vec![-1.96, 1.96], vec![2], device.clone());
         let output = input.norm_cdf().unwrap();
         let result = output.to_vec().unwrap();
-        assert!((result[0] - 0.025).abs() < 0.01, "Φ(-1.96) = {}, expected ~0.025", result[0]);
-        assert!((result[1] - 0.975).abs() < 0.01, "Φ(1.96) = {}, expected ~0.975", result[1]);
+        assert!(
+            (result[0] - 0.025).abs() < 0.01,
+            "Φ(-1.96) = {}, expected ~0.025",
+            result[0]
+        );
+        assert!(
+            (result[1] - 0.975).abs() < 0.01,
+            "Φ(1.96) = {}, expected ~0.975",
+            result[1]
+        );
     }
 
     #[tokio::test]
@@ -266,7 +278,12 @@ mod tests {
         let output = input.norm_pdf().unwrap();
         let result = output.to_vec().unwrap();
         let expected = 1.0 / (2.0 * std::f32::consts::PI).sqrt();
-        assert!((result[0] - expected).abs() < 0.001, "φ(0) = {}, expected {}", result[0], expected);
+        assert!(
+            (result[0] - expected).abs() < 0.001,
+            "φ(0) = {}, expected {}",
+            result[0],
+            expected
+        );
     }
 
     #[tokio::test]
@@ -278,6 +295,10 @@ mod tests {
         let input = Tensor::new(vec![5.0], vec![1], device.clone());
         let output = input.norm_cdf_params(5.0, 2.0).unwrap();
         let result = output.to_vec().unwrap();
-        assert!((result[0] - 0.5).abs() < 0.001, "Φ(5; 5, 2) = {}, expected 0.5", result[0]);
+        assert!(
+            (result[0] - 0.5).abs() < 0.001,
+            "Φ(5; 5, 2) = {}, expected 0.5",
+            result[0]
+        );
     }
 }

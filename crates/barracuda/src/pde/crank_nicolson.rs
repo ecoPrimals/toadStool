@@ -396,8 +396,8 @@ mod tests {
     #[test]
     fn test_heat_equation_steady_state() {
         // Steady state with constant boundaries: linear profile
-        let config = CrankNicolsonConfig::new(1.0, 0.1, 0.01, 11)
-            .with_boundary_conditions(0.0, 1.0);
+        let config =
+            CrankNicolsonConfig::new(1.0, 0.1, 0.01, 11).with_boundary_conditions(0.0, 1.0);
 
         // Start with initial condition
         let initial = vec![0.0; 11];
@@ -411,7 +411,7 @@ mod tests {
         let grid = solver.grid();
         for (i, (x, u)) in grid.iter().zip(sol.iter()).enumerate() {
             let expected = x / 1.0; // Linear from 0 to 1
-            // Allow some error from finite time
+                                    // Allow some error from finite time
             if i > 0 && i < 10 {
                 assert!(
                     (u - expected).abs() < 0.1,
@@ -433,8 +433,7 @@ mod tests {
         let dt = 0.0001;
         let alpha = 1.0;
 
-        let config = CrankNicolsonConfig::new(alpha, dx, dt, nx)
-            .with_boundary_conditions(0.0, 0.0);
+        let config = CrankNicolsonConfig::new(alpha, dx, dt, nx).with_boundary_conditions(0.0, 0.0);
 
         let initial: Vec<f64> = (0..nx)
             .map(|i| (PI * i as f64 / (nx - 1) as f64).sin())
@@ -473,8 +472,8 @@ mod tests {
 
     #[test]
     fn test_solver_with_source() {
-        let config = CrankNicolsonConfig::new(1.0, 0.1, 0.01, 11)
-            .with_boundary_conditions(0.0, 0.0);
+        let config =
+            CrankNicolsonConfig::new(1.0, 0.1, 0.01, 11).with_boundary_conditions(0.0, 0.0);
 
         let initial = vec![0.0; 11];
         let mut solver = CrankNicolson1D::new(config, &initial).unwrap();
@@ -491,8 +490,8 @@ mod tests {
         // With zero Dirichlet BCs and no initial gradient,
         // total "heat" should decrease
         let nx = 11;
-        let config = CrankNicolsonConfig::new(1.0, 0.1, 0.01, nx)
-            .with_boundary_conditions(0.0, 0.0);
+        let config =
+            CrankNicolsonConfig::new(1.0, 0.1, 0.01, nx).with_boundary_conditions(0.0, 0.0);
 
         let initial: Vec<f64> = (0..nx)
             .map(|i| if i == nx / 2 { 1.0 } else { 0.0 })

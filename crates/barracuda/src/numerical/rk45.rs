@@ -290,10 +290,7 @@ where
 
             if h <= config.h_min {
                 return Err(BarracudaError::Numerical {
-                    message: format!(
-                        "Step size {} below minimum {} at t={}",
-                        h, config.h_min, t
-                    ),
+                    message: format!("Step size {} below minimum {} at t={}", h, config.h_min, t),
                 });
             }
         }
@@ -317,7 +314,13 @@ where
 }
 
 /// Solve to a specific time, returning only the final value.
-pub fn rk45_at<F>(f: &F, t_start: f64, t_end: f64, y0: &[f64], config: &Rk45Config) -> Result<Vec<f64>>
+pub fn rk45_at<F>(
+    f: &F,
+    t_start: f64,
+    t_end: f64,
+    y0: &[f64],
+    config: &Rk45Config,
+) -> Result<Vec<f64>>
 where
     F: Fn(f64, &[f64]) -> Vec<f64>,
 {

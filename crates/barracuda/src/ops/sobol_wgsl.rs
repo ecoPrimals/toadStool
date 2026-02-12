@@ -10,8 +10,8 @@
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
-use wgpu::util::DeviceExt;
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
 
 /// Sobol quasi-random sequence generator (GPU accelerated)
 pub struct SobolGpu {
@@ -247,6 +247,9 @@ mod tests {
         let data = result.to_vec().unwrap();
 
         // With skip=8, first point won't be 0
-        assert!(data[0].abs() > 1e-6, "First point after skip shouldn't be 0");
+        assert!(
+            data[0].abs() > 1e-6,
+            "First point after skip shouldn't be 0"
+        );
     }
 }

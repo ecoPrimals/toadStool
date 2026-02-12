@@ -232,10 +232,7 @@ mod tests {
 
     #[test]
     fn test_qr_2x2() {
-        let a = vec![
-            3.0, 4.0,
-            4.0, 3.0,
-        ];
+        let a = vec![3.0, 4.0, 4.0, 3.0];
         let qr = qr_decompose(&a, 2, 2).unwrap();
 
         // Verify Q is orthogonal: Q^T Q = I
@@ -246,7 +243,13 @@ mod tests {
                     dot += qr.q[k * 2 + i] * qr.q[k * 2 + j];
                 }
                 let expected = if i == j { 1.0 } else { 0.0 };
-                assert!(approx_eq(dot, expected, 1e-10), "Q^TQ[{},{}] = {}", i, j, dot);
+                assert!(
+                    approx_eq(dot, expected, 1e-10),
+                    "Q^TQ[{},{}] = {}",
+                    i,
+                    j,
+                    dot
+                );
             }
         }
 
@@ -257,7 +260,14 @@ mod tests {
                 for k in 0..2 {
                     val += qr.q[i * 2 + k] * qr.r[k * 2 + j];
                 }
-                assert!(approx_eq(val, a[i * 2 + j], 1e-10), "QR[{},{}] = {}, A = {}", i, j, val, a[i*2+j]);
+                assert!(
+                    approx_eq(val, a[i * 2 + j], 1e-10),
+                    "QR[{},{}] = {}, A = {}",
+                    i,
+                    j,
+                    val,
+                    a[i * 2 + j]
+                );
             }
         }
     }
@@ -265,11 +275,7 @@ mod tests {
     #[test]
     fn test_qr_3x2_least_squares() {
         // Overdetermined system: 3 equations, 2 unknowns
-        let a = vec![
-            1.0, 1.0,
-            1.0, 2.0,
-            1.0, 3.0,
-        ];
+        let a = vec![1.0, 1.0, 1.0, 2.0, 1.0, 3.0];
         let b = vec![1.0, 2.0, 2.0];
 
         let x = qr_least_squares(&a, 3, 2, &b).unwrap();
@@ -286,16 +292,23 @@ mod tests {
         let lhs0 = ata[0] * x[0] + ata[1] * x[1];
         let lhs1 = ata[2] * x[0] + ata[3] * x[1];
 
-        assert!(approx_eq(lhs0, atb[0], 1e-10), "normal eq 0: {} vs {}", lhs0, atb[0]);
-        assert!(approx_eq(lhs1, atb[1], 1e-10), "normal eq 1: {} vs {}", lhs1, atb[1]);
+        assert!(
+            approx_eq(lhs0, atb[0], 1e-10),
+            "normal eq 0: {} vs {}",
+            lhs0,
+            atb[0]
+        );
+        assert!(
+            approx_eq(lhs1, atb[1], 1e-10),
+            "normal eq 1: {} vs {}",
+            lhs1,
+            atb[1]
+        );
     }
 
     #[test]
     fn test_qr_identity() {
-        let a = vec![
-            1.0, 0.0,
-            0.0, 1.0,
-        ];
+        let a = vec![1.0, 0.0, 0.0, 1.0];
         let qr = qr_decompose(&a, 2, 2).unwrap();
 
         // Q should be identity (possibly with sign flips)
@@ -315,11 +328,7 @@ mod tests {
 
     #[test]
     fn test_qr_tall_matrix() {
-        let a = vec![
-            1.0,
-            2.0,
-            3.0,
-        ];
+        let a = vec![1.0, 2.0, 3.0];
         let qr = qr_decompose(&a, 3, 1).unwrap();
 
         // R should be 3×1 with only R[0,0] non-zero
@@ -342,10 +351,7 @@ mod tests {
 
     #[test]
     fn test_qr_solve_square() {
-        let a = vec![
-            2.0, 1.0,
-            1.0, 3.0,
-        ];
+        let a = vec![2.0, 1.0, 1.0, 3.0];
         let b = vec![5.0, 7.0];
         let x = qr_least_squares(&a, 2, 2, &b).unwrap();
 

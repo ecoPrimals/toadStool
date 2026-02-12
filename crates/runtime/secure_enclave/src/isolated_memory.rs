@@ -8,10 +8,23 @@
 //!
 //! This is a **deep solution** implementing true memory isolation,
 //! not just a wrapper around `Vec<u8>`.
+//!
+//! # Evolution (Feb 12, 2026)
+//!
+//! Evolved from `libc` raw C bindings to `rustix` safe Rust wrappers.
+//! This eliminates unsafe libc FFI while maintaining identical functionality.
 
 use crate::error::{Error, Result};
 use std::alloc::{alloc, dealloc, Layout};
 use std::ptr::NonNull;
+
+#[cfg(target_family = "unix")]
+use rustix::mm::{mlock, munlock};
+
+#[cfg(target_os = "linux")]
+use rustix::mm::{madvise, Advice};
+
+use std::ffi::c_void;
 
 /// Size of a memory page (4KB on most systems)
 const PAGE_SIZE: usize = 4096;
@@ -115,39 +128,36 @@ impl IsolatedMemoryRegion {
         let ptr = unsafe { NonNull::new_unchecked(ptr) };
 
         // Lock memory to prevent swapping
-        // SAFETY:
+        // EVOLVED: Using rustix instead of raw libc (better error handling)
         // - ptr is valid (just allocated)
         // - aligned_size is the actual allocated size
         // - Memory will be unlocked in Drop before deallocation
         #[cfg(target_family = "unix")]
-        unsafe {
-            if libc::mlock(ptr.as_ptr() as *const libc::c_void, aligned_size) != 0 {
+        {
+            // SAFETY: ptr is valid and points to allocated memory of aligned_size bytes
+            let result = unsafe { mlock(ptr.as_ptr().cast::<c_void>(), aligned_size) };
+            if let Err(e) = result {
                 // Cleanup on failure
-                dealloc(ptr.as_ptr(), layout);
-                return Err(Error::memory_lock(format!(
-                    "mlock failed: {}",
-                    std::io::Error::last_os_error()
-                )));
+                // SAFETY: ptr was allocated with this layout
+                unsafe { dealloc(ptr.as_ptr(), layout) };
+                return Err(Error::memory_lock(format!("mlock failed: {e}")));
             }
         }
 
         // Prevent memory from appearing in core dumps
-        // SAFETY:
-        // - ptr is valid and locked
-        // - MADV_DONTDUMP is a valid flag
-        // - Does not invalidate the memory
+        // EVOLVED: Using rustix with Advice::LinuxDontDump
         #[cfg(target_os = "linux")]
-        unsafe {
-            if libc::madvise(
-                ptr.as_ptr().cast::<libc::c_void>(),
-                aligned_size,
-                libc::MADV_DONTDUMP,
-            ) != 0
-            {
-                tracing::warn!(
-                    "madvise(MADV_DONTDUMP) failed: {}",
-                    std::io::Error::last_os_error()
-                );
+        {
+            // SAFETY: ptr is valid and points to locked memory
+            let result = unsafe {
+                madvise(
+                    ptr.as_ptr().cast::<c_void>(),
+                    aligned_size,
+                    Advice::LinuxDontDump,
+                )
+            };
+            if let Err(e) = result {
+                tracing::warn!("madvise(MADV_DONTDUMP) failed: {e}");
                 // Non-fatal: continue but log warning
             }
         }
@@ -249,16 +259,13 @@ impl Drop for IsolatedMemoryRegion {
         std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
 
         // Step 2: Unlock memory (reverse of mlock)
-        // SAFETY: ptr valid; physical_size matches mlock in new(); munlock is idempotent-safe.
+        // EVOLVED: Using rustix instead of raw libc (better error handling)
         #[cfg(target_family = "unix")]
-        unsafe {
-            let result =
-                libc::munlock(self.ptr.as_ptr() as *const libc::c_void, self.physical_size);
-            if result != 0 {
-                tracing::error!(
-                    "munlock failed during drop: {}",
-                    std::io::Error::last_os_error()
-                );
+        {
+            // SAFETY: ptr is valid and was previously mlocked with this size
+            let result = unsafe { munlock(self.ptr.as_ptr().cast::<c_void>(), self.physical_size) };
+            if let Err(e) = result {
+                tracing::error!("munlock failed during drop: {e}");
             }
         }
 

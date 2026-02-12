@@ -14,7 +14,7 @@ use wgpu::util::DeviceExt;
 
 /// Beta function B(a,b) = Γ(a)Γ(b)/Γ(a+b)
 pub struct Beta {
-    input: Tensor,  // Interleaved pairs [a₀, b₀, a₁, b₁, ...]
+    input: Tensor, // Interleaved pairs [a₀, b₀, a₁, b₁, ...]
 }
 
 impl Beta {
@@ -31,7 +31,7 @@ impl Beta {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let input_size: usize = self.input.shape().iter().product();
-        let output_size = input_size / 2;  // Output is half the input size
+        let output_size = input_size / 2; // Output is half the input size
 
         let output_buffer = device.create_buffer_f32(output_size)?;
 
@@ -41,7 +41,9 @@ impl Beta {
             size: u32,
         }
 
-        let params = Params { size: output_size as u32 };
+        let params = Params {
+            size: output_size as u32,
+        };
         let params_buffer = device
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -183,7 +185,11 @@ mod tests {
         let input = Tensor::new(vec![1.0, 1.0], vec![2], device.clone());
         let output = input.beta().unwrap();
         let result = output.to_vec().unwrap();
-        assert!((result[0] - 1.0).abs() < 0.01, "B(1,1) = {}, expected 1", result[0]);
+        assert!(
+            (result[0] - 1.0).abs() < 0.01,
+            "B(1,1) = {}, expected 1",
+            result[0]
+        );
     }
 
     #[tokio::test]
@@ -196,7 +202,12 @@ mod tests {
         let output = input.beta().unwrap();
         let result = output.to_vec().unwrap();
         let expected = 1.0 / 6.0;
-        assert!((result[0] - expected).abs() < 0.01, "B(2,2) = {}, expected {}", result[0], expected);
+        assert!(
+            (result[0] - expected).abs() < 0.01,
+            "B(2,2) = {}, expected {}",
+            result[0],
+            expected
+        );
     }
 
     #[tokio::test]
@@ -208,9 +219,23 @@ mod tests {
         let input = Tensor::new(vec![1.0, 2.0, 2.0, 3.0, 3.0, 4.0], vec![6], device.clone());
         let output = input.beta().unwrap();
         let result = output.to_vec().unwrap();
-        
-        assert!((result[0] - 0.5).abs() < 0.01, "B(1,2) = {}, expected 0.5", result[0]);
-        assert!((result[1] - 1.0/12.0).abs() < 0.01, "B(2,3) = {}, expected {}", result[1], 1.0/12.0);
-        assert!((result[2] - 1.0/60.0).abs() < 0.01, "B(3,4) = {}, expected {}", result[2], 1.0/60.0);
+
+        assert!(
+            (result[0] - 0.5).abs() < 0.01,
+            "B(1,2) = {}, expected 0.5",
+            result[0]
+        );
+        assert!(
+            (result[1] - 1.0 / 12.0).abs() < 0.01,
+            "B(2,3) = {}, expected {}",
+            result[1],
+            1.0 / 12.0
+        );
+        assert!(
+            (result[2] - 1.0 / 60.0).abs() < 0.01,
+            "B(3,4) = {}, expected {}",
+            result[2],
+            1.0 / 60.0
+        );
     }
 }

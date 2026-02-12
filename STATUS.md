@@ -35,6 +35,37 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 
 ## New Features (Feb 12, 2026)
 
+### Runtime Evolution — Backend Implementations
+
+**CPU Tensor Operations** (`crates/runtime/universal/src/backends/cpu/tensor_ops.rs`):
+- Tiled matrix multiplication with 32x32 cache-blocking
+- Direct 2D convolution with padding/stride/bias support
+- Max/average pooling with sliding window implementation
+- Comprehensive unit tests for dimension validation
+
+**CUDA Backend** (`crates/runtime/gpu/src/backends/cuda_impl.rs`):
+- Real PTX kernel execution via `cudarc`
+- Matrix multiplication and reduction kernels embedded
+- Proper grid/block dimension calculation
+- Source kernel validation and dispatch
+
+**Unified Memory Backends** (`crates/runtime/gpu/src/unified_memory/backends/`):
+- OpenCL and Vulkan backends now use `wgpu` fallback (ecoBin-compliant)
+- Pure Rust memory allocation via WebGPU abstractions
+- Direct Vulkan/OpenCL available when specific extensions needed
+- Full `BackendInitializer` trait implementation
+
+**Security Providers** (`crates/distributed/src/security_provider/`):
+- `UnixSocketSecurityProvider` for JSON-RPC 2.0 over Unix sockets
+- Full `SecurityProvider` trait implementation (encrypt, decrypt, sign, verify)
+- Factory updated to prefer Unix sockets over HTTP/TCP
+- All RPC types derive `Serialize`/`Deserialize` for JSON transport
+
+**Clippy Compliance** (barracuda crate):
+- `legendre.rs`, `lu.rs` — `#[allow(clippy::manual_is_multiple_of)]` (nightly feature)
+- `normal.rs` — `#[allow(clippy::excessive_precision)]` (intentional for Acklam's algorithm)
+- `bessel.rs` — replaced approximate constant with `std::f64::consts::FRAC_2_PI`
+
 ### Deep Debt Resolution — hotSpring Audit Complete
 
 All HIGH and MEDIUM priority items from the hotSpring science gaps audit have been implemented:
@@ -316,12 +347,13 @@ All shader TODOs resolved:
 
 ### Remaining
 
-- Test coverage ~90% target (3,688 core tests). Target reached.
 - `unibin.rs` 18% coverage (socket helpers tested, server startup requires running server)
 - `manual_jsonrpc.rs` 27% coverage (async I/O requires integration tests)
 - `websocket.rs` needs integration tests (live WebSocket connections)
 - PyTorch dependency for distributed LLM demo (solving with safetensors loader)
-- ~21 TODO comments in core crates (12 future work Phase 3/4, 4 documentation, 4 actionable, 1 stale-fixed)
+- mDNS/K8s/Docker Compose discovery (env vars work, other sources pending)
+- FPGA discovery implementation
+- TPU backend support
 
 ---
 
@@ -375,17 +407,61 @@ parallelism. Always accepts any workload as universal fallback.
 
 ## Evolution Gaps
 
+### Phase 3 Priorities (from hotSpring validation)
+
+| Gap | Priority | Status | Effort |
+|-----|----------|--------|--------|
+| f64 linalg bridges (eigh, cholesky, LU, QR, SVD) | 🔴 HIGH | ops/linalg has f32 GPU; need f64 CPU API | 3-5 days |
+| Auto-dispatch system (CPU/GPU routing) | 🔴 HIGH | Manual routing causes 90× slowdown | 2-3 days |
+| EvaluationCache persistence (save/load) | 🔴 HIGH | In-memory only; warm-start blocked | 1 day |
+| LOO-CV wiring for RBFSurrogate | 🟡 MEDIUM | loo_cv.wgsl exists; needs Rust wrapper | 1 day |
+| Incomplete gamma γ(a,x) | 🟡 MEDIUM | Needed for chi-squared CDF | 1-2 days |
+| Newton-Raphson + Brent root-finding | 🟡 MEDIUM | Faster than bisection | 1-2 days |
+| Cubic spline interpolation | 🟡 MEDIUM | Needed for EOS tables | 2 days |
+| Generalized eigenvalue Ax = λBx | 🟡 MEDIUM | Needed for L3 HFB overlap | 3-4 days |
+
+### Infrastructure Gaps
+
 | Gap | Priority | Status |
 |-----|----------|--------|
-| Test coverage to 90% | HIGH | Combined ~90% (3,688 core tests). Target reached. BYOB types, jobs, requests, auth, agents, graph_types, capabilities tested. |
 | Safetensors/GGUF weight loader | HIGH | Not started |
-| Multi-GPU DevicePool | HIGH | Not started |
+| Multi-GPU DevicePool | HIGH | Not started (awaiting Titan V) |
+| mDNS/K8s/Docker discovery | HIGH | Env vars work, other sources pending |
 | Cross-gate mesh relay | MEDIUM | Types defined, needs Songbird transport |
-| INT4/INT8 WGSL quantization | MEDIUM | Not started |
-| Intelligent workload partitioning | MEDIUM | Not started |
-| mDNS discovery | MEDIUM | Pending mdns-sd crate integration |
-| Tensor parallelism | LOW | Not started |
-| NPU surrogate inference | LOW | Not started |
+| f64 WGSL shaders (native Titan V) | MEDIUM | Awaiting hardware |
+| Generic precision support (f16/bf16/fp8) | MEDIUM | See ADR below |
+
+### Generic Precision Evolution (Investigation)
+
+The hotSpring team raised a key question: can we evolve to "any fp" instead of hardcoded f32/f64?
+
+**Current State:**
+- CPU code: hardcoded `f64` for precision-critical paths
+- GPU WGSL: hardcoded `f32` (with f64 emulation in `matmul_fp64.wgsl`)
+- No `num-traits` or generic `Float` abstraction
+
+**Recommended Approach:**
+1. Use `num-traits::Float` for CPU algorithms (supports f32/f64)
+2. Keep WGSL shaders at f32 (hardware limitation)
+3. Add `PrecisionMode` enum for runtime selection
+4. Wait for Titan V hardware for native f64 GPU
+
+**Why Not Full Generic:**
+- WGSL fundamentally doesn't support generic types
+- f16/bf16/fp8 have different numerical stability requirements
+- Algorithms need precision-specific tolerances (e.g., 1e-14 for f64 vs 1e-6 for f32)
+
+**Future Path:**
+```rust
+pub enum PrecisionMode {
+    F32,                    // Standard GPU
+    F64Emulated,            // Split hi/lo f32 pairs
+    F64Native,              // Titan V / datacenter GPUs
+    Mixed { threshold },    // f64 CPU small, f32 GPU large
+}
+```
+
+See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 

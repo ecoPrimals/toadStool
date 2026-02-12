@@ -109,28 +109,25 @@ impl EntropyClient {
             return Ok(url);
         }
 
-        // Try Unix socket discovery (preferred - no port conflicts)
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("beardog");
+        // Try Unix socket discovery (preferred - capability-based, no port conflicts)
+        // EVOLVED (Feb 12, 2026): Removed deprecated HTTP fallbacks - pure capability-based discovery
+        let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
+            .await
+            .unwrap_or_else(|_| {
+                toadstool_common::primal_sockets::get_socket_path_for_service("beardog")
+            });
+
         if tokio::fs::metadata(&socket_path).await.is_ok() {
-            tracing::debug!("Found bearDog via Unix socket: {:?}", socket_path);
+            tracing::debug!("Found crypto service via Unix socket: {:?}", socket_path);
             return Ok(format!("unix://{}", socket_path.display()));
         }
 
-        // DEPRECATED: HTTP fallback with hardcoded ports (for testing/development only)
-        // These will be removed in future versions
-        tracing::warn!("Using deprecated HTTP fallback for bearDog discovery. Set BEARDOG_URL or ensure Unix socket exists.");
-        let candidate_urls = vec![
-            "http://localhost:8081", // DEPRECATED: Common bearDog port
-            "http://localhost:3000", // DEPRECATED: Alternative
-        ];
-
-        for url in candidate_urls {
-            if Self::probe_service(url).await.is_ok() {
-                return Ok(url.to_string());
-            }
-        }
-
-        anyhow::bail!("No bearDog service found via capability discovery")
+        // No HTTP fallbacks - capability-based discovery only
+        // Users must ensure Unix socket exists or set BEARDOG_URL environment variable
+        anyhow::bail!(
+            "No crypto service found via capability discovery. \
+             Ensure bearDog is running or set BEARDOG_URL environment variable."
+        )
     }
 
     /// Probe unix socket to check if bearDog service is available

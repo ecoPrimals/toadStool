@@ -237,8 +237,8 @@ pub async fn run_comprehensive_benchmark(runtime: &UniversalRuntime) -> Vec<Benc
 
         let (winner, best_time) = times
             .iter()
-            .filter(|(_, t)| *t < f64::MAX)
-            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .filter(|(_, t)| *t < f64::MAX && !t.is_nan())
+            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(n, t)| (n.to_string(), *t))
             .unwrap_or(("None".to_string(), 0.0));
 

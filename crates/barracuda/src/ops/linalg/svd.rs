@@ -48,7 +48,8 @@ impl SvdDecomposition {
         let k = self.s.len();
 
         // Compute Σ⁺
-        let s_inv: Vec<f64> = self.s
+        let s_inv: Vec<f64> = self
+            .s
             .iter()
             .map(|&s| if s > tol { 1.0 / s } else { 0.0 })
             .collect();
@@ -122,7 +123,8 @@ impl SvdDecomposition {
             let sigma = self.s[r];
             for i in 0..self.m {
                 for j in 0..self.n {
-                    approx[i * self.n + j] += sigma * self.u[i * self.m + r] * self.vt[r * self.n + j];
+                    approx[i * self.n + j] +=
+                        sigma * self.u[i * self.m + r] * self.vt[r * self.n + j];
                 }
             }
         }
@@ -371,10 +373,7 @@ mod tests {
 
     #[test]
     fn test_svd_2x2() {
-        let a = vec![
-            3.0, 2.0,
-            2.0, 3.0,
-        ];
+        let a = vec![3.0, 2.0, 2.0, 3.0];
         let svd = svd_decompose(&a, 2, 2).unwrap();
 
         // Singular values of [[3,2],[2,3]] are 5 and 1
@@ -388,7 +387,14 @@ mod tests {
                 for k in 0..2 {
                     val += svd.u[i * 2 + k] * svd.s[k] * svd.vt[k * 2 + j];
                 }
-                assert!(approx_eq(val, a[i * 2 + j], 1e-10), "UΣV^T[{},{}] = {}, A = {}", i, j, val, a[i*2+j]);
+                assert!(
+                    approx_eq(val, a[i * 2 + j], 1e-10),
+                    "UΣV^T[{},{}] = {}, A = {}",
+                    i,
+                    j,
+                    val,
+                    a[i * 2 + j]
+                );
             }
         }
     }
@@ -396,10 +402,7 @@ mod tests {
     #[test]
     fn test_svd_rank_deficient() {
         // Rank-1 matrix
-        let a = vec![
-            1.0, 2.0,
-            2.0, 4.0,
-        ];
+        let a = vec![1.0, 2.0, 2.0, 4.0];
         let svd = svd_decompose(&a, 2, 2).unwrap();
 
         // One singular value should be ~0
@@ -411,11 +414,7 @@ mod tests {
 
     #[test]
     fn test_svd_3x2() {
-        let a = vec![
-            1.0, 0.0,
-            0.0, 1.0,
-            1.0, 1.0,
-        ];
+        let a = vec![1.0, 0.0, 0.0, 1.0, 1.0, 1.0];
         let svd = svd_decompose(&a, 3, 2).unwrap();
 
         // Should have 2 non-zero singular values
@@ -426,16 +425,19 @@ mod tests {
         // Verify reconstruction
         let approx = svd.low_rank_approx(2);
         for i in 0..6 {
-            assert!(approx_eq(approx[i], a[i], 1e-10), "approx[{}] = {}, a = {}", i, approx[i], a[i]);
+            assert!(
+                approx_eq(approx[i], a[i], 1e-10),
+                "approx[{}] = {}, a = {}",
+                i,
+                approx[i],
+                a[i]
+            );
         }
     }
 
     #[test]
     fn test_svd_pseudoinverse() {
-        let a = vec![
-            1.0, 2.0,
-            3.0, 4.0,
-        ];
+        let a = vec![1.0, 2.0, 3.0, 4.0];
         let svd = svd_decompose(&a, 2, 2).unwrap();
         let pinv = svd.pseudoinverse(1e-10);
 
@@ -461,25 +463,25 @@ mod tests {
         }
 
         for i in 0..4 {
-            assert!(approx_eq(result[i], a[i], 1e-10), "A*A⁺*A[{}] = {}, A = {}", i, result[i], a[i]);
+            assert!(
+                approx_eq(result[i], a[i], 1e-10),
+                "A*A⁺*A[{}] = {}, A = {}",
+                i,
+                result[i],
+                a[i]
+            );
         }
     }
 
     #[test]
     fn test_svd_condition_number() {
         // Well-conditioned matrix
-        let a = vec![
-            1.0, 0.0,
-            0.0, 1.0,
-        ];
+        let a = vec![1.0, 0.0, 0.0, 1.0];
         let svd = svd_decompose(&a, 2, 2).unwrap();
         assert!(approx_eq(svd.condition_number(), 1.0, 1e-10));
 
         // Ill-conditioned matrix
-        let b = vec![
-            1.0, 0.0,
-            0.0, 1e-10,
-        ];
+        let b = vec![1.0, 0.0, 0.0, 1e-10];
         let svd_b = svd_decompose(&b, 2, 2).unwrap();
         assert!(svd_b.condition_number() > 1e9);
     }
@@ -487,11 +489,7 @@ mod tests {
     #[test]
     fn test_svd_low_rank_approx() {
         // 3x3 matrix with rank 2
-        let a = vec![
-            1.0, 2.0, 3.0,
-            2.0, 4.0, 6.0,
-            3.0, 6.0, 9.0,
-        ];
+        let a = vec![1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 3.0, 6.0, 9.0];
         let svd = svd_decompose(&a, 3, 3).unwrap();
 
         // Rank-1 approximation
@@ -499,17 +497,19 @@ mod tests {
 
         // Should be close to original since matrix is rank-1
         for i in 0..9 {
-            assert!(approx_eq(approx1[i], a[i], 1e-10), "approx1[{}] = {}, a = {}", i, approx1[i], a[i]);
+            assert!(
+                approx_eq(approx1[i], a[i], 1e-10),
+                "approx1[{}] = {}, a = {}",
+                i,
+                approx1[i],
+                a[i]
+            );
         }
     }
 
     #[test]
     fn test_svd_solve() {
-        let a = vec![
-            1.0, 2.0,
-            3.0, 4.0,
-            5.0, 6.0,
-        ];
+        let a = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let b = vec![1.0, 2.0, 3.0];
         let svd = svd_decompose(&a, 3, 2).unwrap();
         let x = svd.solve(&b, 1e-10).unwrap();

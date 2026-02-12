@@ -180,7 +180,11 @@ where
         }
 
         // Update position: x_new = x + α·d
-        let x_new: Vec<f64> = x.iter().zip(d.iter()).map(|(xi, di)| xi + alpha * di).collect();
+        let x_new: Vec<f64> = x
+            .iter()
+            .zip(d.iter())
+            .map(|(xi, di)| xi + alpha * di)
+            .collect();
 
         // Compute step and gradient difference
         let s: Vec<f64> = x_new.iter().zip(x.iter()).map(|(xn, xo)| xn - xo).collect();
@@ -260,7 +264,11 @@ where
     let rho = 0.5; // backtracking factor
 
     for _ in 0..config.max_linesearch {
-        let x_new: Vec<f64> = x.iter().zip(d.iter()).map(|(xi, di)| xi + alpha * di).collect();
+        let x_new: Vec<f64> = x
+            .iter()
+            .zip(d.iter())
+            .map(|(xi, di)| xi + alpha * di)
+            .collect();
         let fx_new = f(&x_new);
         n_evals += 1;
 
@@ -273,7 +281,11 @@ where
     }
 
     // Return best found even if line search didn't fully succeed
-    let x_final: Vec<f64> = x.iter().zip(d.iter()).map(|(xi, di)| xi + alpha * di).collect();
+    let x_final: Vec<f64> = x
+        .iter()
+        .zip(d.iter())
+        .map(|(xi, di)| xi + alpha * di)
+        .collect();
     Ok((alpha, f(&x_final), n_evals + 1))
 }
 
@@ -395,16 +407,8 @@ mod tests {
         let result = bfgs(&f, &grad, &[0.0, 0.0], &config).unwrap();
 
         assert!(result.converged, "Failed to converge: {}", result.message);
-        assert!(
-            (result.x[0] - 1.0).abs() < 1e-4,
-            "x[0] = {}",
-            result.x[0]
-        );
-        assert!(
-            (result.x[1] - 1.0).abs() < 1e-4,
-            "x[1] = {}",
-            result.x[1]
-        );
+        assert!((result.x[0] - 1.0).abs() < 1e-4, "x[0] = {}", result.x[0]);
+        assert!((result.x[1] - 1.0).abs() < 1e-4, "x[1] = {}", result.x[1]);
     }
 
     #[test]
@@ -459,12 +463,7 @@ mod tests {
 
         assert!(result.converged);
         for (i, xi) in result.x.iter().enumerate() {
-            assert!(
-                xi.abs() < 1e-5,
-                "x[{}] = {}, expected ~0",
-                i,
-                xi
-            );
+            assert!(xi.abs() < 1e-5, "x[{}] = {}, expected ~0", i, xi);
         }
     }
 

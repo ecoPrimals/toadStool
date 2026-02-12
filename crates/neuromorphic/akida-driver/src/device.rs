@@ -1,5 +1,10 @@
 //! Akida device handle and operations
+//!
+//! # Evolution (Feb 12, 2026)
+//!
+//! Evolved from `libc` constants to `rustix::fs::OFlags` for pure Rust.
 
+use rustix::fs::OFlags;
 use std::fs::{File, OpenOptions};
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -106,10 +111,14 @@ impl DeviceHandle {
             return Err(AkidaError::device_not_found(path));
         }
 
+        // SAFETY: OFlags::NONBLOCK.bits() is always a valid i32 value (flag bits are small positive values)
+        #[allow(clippy::cast_possible_wrap)]
+        let nonblock_flag = OFlags::NONBLOCK.bits() as i32;
+
         let file = OpenOptions::new()
             .read(true)
             .write(true)
-            .custom_flags(libc::O_NONBLOCK) // Match Python SDK behavior
+            .custom_flags(nonblock_flag) // Match Python SDK behavior, using rustix
             .open(path)?;
 
         Ok(Self { file })

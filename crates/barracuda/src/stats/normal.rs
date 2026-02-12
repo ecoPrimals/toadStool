@@ -15,8 +15,8 @@
 //! - Abramowitz & Stegun §26.2
 //! - Moro, B. (1995) "The Full Monte"
 
-use std::f64::consts::SQRT_2;
 use crate::special::erf;
+use std::f64::consts::SQRT_2;
 
 /// Standard normal CDF: Φ(x) = (1 + erf(x/√2)) / 2
 ///
@@ -72,6 +72,7 @@ pub fn norm_pdf(x: f64) -> f64 {
 /// assert!((norm_ppf(0.5) - 0.0).abs() < 1e-10);
 /// assert!((norm_ppf(0.975) - 1.96).abs() < 1e-2);
 /// ```
+#[allow(clippy::excessive_precision)] // Acklam's algorithm coefficients - precision is intentional
 pub fn norm_ppf(p: f64) -> f64 {
     if p <= 0.0 {
         return f64::NEG_INFINITY;
@@ -86,18 +87,18 @@ pub fn norm_ppf(p: f64) -> f64 {
     // Coefficients for rational approximation
     const A: [f64; 6] = [
         -3.969683028665376e+01,
-         2.209460984245205e+02,
+        2.209460984245205e+02,
         -2.759285104469687e+02,
-         1.383577518672690e+02,
+        1.383577518672690e+02,
         -3.066479806614716e+01,
-         2.506628277459239e+00,
+        2.506628277459239e+00,
     ];
 
     const B: [f64; 5] = [
         -5.447609879822406e+01,
-         1.615858368580409e+02,
+        1.615858368580409e+02,
         -1.556989798598866e+02,
-         6.680131188771972e+01,
+        6.680131188771972e+01,
         -1.328068155288572e+01,
     ];
 
@@ -106,15 +107,15 @@ pub fn norm_ppf(p: f64) -> f64 {
         -3.223964580411365e-01,
         -2.400758277161838e+00,
         -2.549732539343734e+00,
-         4.374664141464968e+00,
-         2.938163982698783e+00,
+        4.374664141464968e+00,
+        2.938163982698783e+00,
     ];
 
     const D: [f64; 4] = [
-         7.784695709041462e-03,
-         3.224671290700398e-01,
-         2.445134137142996e+00,
-         3.754408661907416e+00,
+        7.784695709041462e-03,
+        3.224671290700398e-01,
+        2.445134137142996e+00,
+        3.754408661907416e+00,
     ];
 
     // Break-points for regions
@@ -238,9 +239,21 @@ mod tests {
     fn test_norm_ppf_critical_values() {
         // Inverse of common critical values
         // Moro algorithm has ~3e-9 precision in central region, but may be less at tails
-        assert!((norm_ppf(0.95) - 1.6448536269514722).abs() < 1e-2, "ppf(0.95) = {}", norm_ppf(0.95));
-        assert!((norm_ppf(0.975) - 1.9599639845400545).abs() < 1e-2, "ppf(0.975) = {}", norm_ppf(0.975));
-        assert!((norm_ppf(0.995) - 2.5758293035489004).abs() < 1e-2, "ppf(0.995) = {}", norm_ppf(0.995));
+        assert!(
+            (norm_ppf(0.95) - 1.6448536269514722).abs() < 1e-2,
+            "ppf(0.95) = {}",
+            norm_ppf(0.95)
+        );
+        assert!(
+            (norm_ppf(0.975) - 1.9599639845400545).abs() < 1e-2,
+            "ppf(0.975) = {}",
+            norm_ppf(0.975)
+        );
+        assert!(
+            (norm_ppf(0.995) - 2.5758293035489004).abs() < 1e-2,
+            "ppf(0.995) = {}",
+            norm_ppf(0.995)
+        );
     }
 
     #[test]
@@ -259,7 +272,12 @@ mod tests {
         // different approximation, so round-trip error can accumulate.
         for x in [-1.0, 0.0, 1.0] {
             let roundtrip = norm_ppf(norm_cdf(x));
-            assert!((roundtrip - x).abs() < 0.1, "ppf(cdf({})) = {}", x, roundtrip);
+            assert!(
+                (roundtrip - x).abs() < 0.1,
+                "ppf(cdf({})) = {}",
+                x,
+                roundtrip
+            );
         }
     }
 

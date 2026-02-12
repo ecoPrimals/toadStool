@@ -202,7 +202,13 @@ mod tests {
         // H₁(x) = 2x
         for (i, &v) in result.iter().enumerate() {
             let expected = 2.0 * data[i];
-            assert!((v - expected).abs() < 1e-5, "H₁({}) = {}, expected {}", data[i], v, expected);
+            assert!(
+                (v - expected).abs() < 1e-5,
+                "H₁({}) = {}, expected {}",
+                data[i],
+                v,
+                expected
+            );
         }
     }
 
@@ -219,7 +225,13 @@ mod tests {
         for (i, &v) in result.iter().enumerate() {
             let x = data[i];
             let expected = 4.0 * x * x - 2.0;
-            assert!((v - expected).abs() < 1e-4, "H₂({}) = {}, expected {}", x, v, expected);
+            assert!(
+                (v - expected).abs() < 1e-4,
+                "H₂({}) = {}, expected {}",
+                x,
+                v,
+                expected
+            );
         }
     }
 }

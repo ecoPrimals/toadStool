@@ -321,7 +321,9 @@ async fn compute_distances_gpu(
 
     // Compute pairwise distances using cdist shader
     // For self-distance matrix, input_a == input_b
-    let distances_tensor = tensor.clone().cdist_wgsl(tensor, DistanceMetric::Euclidean)?;
+    let distances_tensor = tensor
+        .clone()
+        .cdist_wgsl(tensor, DistanceMetric::Euclidean)?;
 
     // Read back to CPU and promote to f64
     let distances_f32 = distances_tensor.to_vec()?;
@@ -957,14 +959,9 @@ mod tests {
             };
 
             // Empty data should error
-            let result = train_adaptive_gpu(
-                &[],
-                &[],
-                RBFKernel::ThinPlateSpline,
-                1e-12,
-                device.clone(),
-            )
-            .await;
+            let result =
+                train_adaptive_gpu(&[], &[], RBFKernel::ThinPlateSpline, 1e-12, device.clone())
+                    .await;
             assert!(result.is_err());
 
             // Mismatched lengths should error

@@ -10,14 +10,14 @@
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
-use wgpu::util::DeviceExt;
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
 
 /// Uniform random sampling (GPU accelerated)
 pub struct RandomUniformGpu {
     device: Arc<crate::device::WgpuDevice>,
     n_samples: u32,
-    bounds: Vec<f32>,  // Interleaved [lo0, hi0, lo1, hi1, ...]
+    bounds: Vec<f32>, // Interleaved [lo0, hi0, lo1, hi1, ...]
     seed: u32,
 }
 
@@ -234,10 +234,10 @@ mod tests {
             return;
         };
         let bounds = vec![(0.0, 1.0)];
-        
+
         let r1 = random_uniform_gpu(device.clone(), 10, &bounds, 42).unwrap();
         let r2 = random_uniform_gpu(device, 10, &bounds, 99).unwrap();
-        
+
         let d1 = r1.to_vec().unwrap();
         let d2 = r2.to_vec().unwrap();
 

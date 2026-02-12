@@ -149,8 +149,8 @@ pub fn hermite_batch(n: usize, x: &[f64]) -> Vec<f64> {
 /// assert!((psi0 - std::f64::consts::PI.powf(-0.25)).abs() < 1e-14);
 /// ```
 pub fn hermite_normalized(n: usize, x: f64) -> f64 {
-    use std::f64::consts::PI;
     use crate::special::factorial::factorial;
+    use std::f64::consts::PI;
 
     let norm = (2.0_f64.powi(n as i32) * factorial(n) * PI.sqrt()).sqrt();
     hermite(n, x) * (-x * x / 2.0).exp() / norm
@@ -215,9 +215,9 @@ mod tests {
     fn test_hermite_all() {
         let h = hermite_all(4, 1.0);
         assert_eq!(h.len(), 5);
-        assert!((h[0] - 1.0).abs() < 1e-14);   // H₀
-        assert!((h[1] - 2.0).abs() < 1e-14);   // H₁
-        assert!((h[2] - 2.0).abs() < 1e-14);   // H₂
+        assert!((h[0] - 1.0).abs() < 1e-14); // H₀
+        assert!((h[1] - 2.0).abs() < 1e-14); // H₁
+        assert!((h[2] - 2.0).abs() < 1e-14); // H₂
         assert!((h[3] - (-4.0)).abs() < 1e-14); // H₃
         assert!((h[4] - (-20.0)).abs() < 1e-14); // H₄
     }
