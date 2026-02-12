@@ -81,20 +81,20 @@ The hotSpring inventory undercounted by 36 shaders.
 
 ### 🔴 Special Functions (Actually Missing)
 
-| Function | Shader | Rust | Priority |
-|----------|--------|------|----------|
-| Digamma ψ(x) | ❌ | ❌ | HIGH — Bayesian methods |
-| Beta B(a,b) | ❌ | ❌ | HIGH — Statistics |
-| Incomplete gamma γ(a,x) | ❌ | ❌ | MEDIUM — Chi² CDF |
-| Bessel Jₙ (arbitrary n) | ❌ | ❌ | MEDIUM — Nuclear |
-| Modified Bessel Iₙ, Kₙ | ❌ | ❌ | MEDIUM — Nuclear |
-| Spherical Bessel jₙ, yₙ | ❌ | ❌ | LOW — Scattering |
-| Hermite Hₙ(x) | ❌ | ❌ | HIGH — HO wavefunctions |
-| Legendre Pₙ(x) | ❌ | ❌ | HIGH — Angular momentum |
-| Associated Legendre Pₙᵐ | ❌ | ❌ | HIGH — Full Y_lm |
-| Airy Ai, Bi | ❌ | ❌ | LOW — Tunneling |
-| Hypergeometric ₁F₁, ₂F₁ | ❌ | ❌ | LOW — Coulomb |
-| Elliptic K, E | ❌ | ❌ | LOW — Deformed shapes |
+| Function | Shader | Rust | Priority | Status |
+|----------|--------|------|----------|--------|
+| Digamma ψ(x) | ❌ | ✅ | HIGH — Bayesian methods | **DONE Feb 12** |
+| Beta B(a,b) | ❌ | ✅ | HIGH — Statistics | **DONE Feb 12** |
+| Incomplete gamma γ(a,x) | ❌ | ❌ | MEDIUM — Chi² CDF | |
+| Bessel Jₙ (arbitrary n) | ❌ | ❌ | MEDIUM — Nuclear | |
+| Modified Bessel Iₙ, Kₙ | ❌ | ❌ | MEDIUM — Nuclear | |
+| Spherical Bessel jₙ, yₙ | ❌ | ❌ | LOW — Scattering | |
+| Hermite Hₙ(x) | ❌ | ✅ | HIGH — HO wavefunctions | **DONE Feb 12** |
+| Legendre Pₙ(x) | ❌ | ✅ | HIGH — Angular momentum | **DONE Feb 12** |
+| Associated Legendre Pₙᵐ | ❌ | ✅ | HIGH — Full Y_lm | **DONE Feb 12** |
+| Airy Ai, Bi | ❌ | ❌ | LOW — Tunneling | |
+| Hypergeometric ₁F₁, ₂F₁ | ❌ | ❌ | LOW — Coulomb | |
+| Elliptic K, E | ❌ | ❌ | LOW — Deformed shapes | |
 
 ### 🔴 Linear Algebra (Actually Missing)
 
@@ -160,11 +160,11 @@ Based on corrected gaps:
 
 | # | Task | Priority | Status |
 |---|------|----------|--------|
-| 1 | **SparsitySampler hybrid eval** | 🔴 CRITICAL | Unchanged |
+| 1 | ~~SparsitySampler hybrid eval~~ | ~~🔴 CRITICAL~~ | ✅ **DONE Feb 12** |
 | 2 | ~~Bridge linalg shaders~~ | ~~HIGH~~ | ✅ Already done |
-| 3 | ~~Bridge special shaders~~ | ~~HIGH~~ | ✅ Already done |
-| 4 | **New: Hermite, Legendre polynomials** | 🔴 HIGH | Actual gap |
-| 5 | **New: Digamma, Beta functions** | 🔴 HIGH | Actual gap |
+| 3 | ~~Bridge special shaders~~ | ~~HIGH~~ | ✅ **DONE Feb 12** — Re-exported GPU ops |
+| 4 | ~~Hermite, Legendre polynomials~~ | ~~🔴 HIGH~~ | ✅ **DONE Feb 12** |
+| 5 | ~~Digamma, Beta functions~~ | ~~🔴 HIGH~~ | ✅ **DONE Feb 12** |
 | 6 | **New: Band-diagonal solver** | 🔴 HIGH | Actual gap (TTM) |
 | 7 | **New: Crank-Nicolson PDE** | 🔴 HIGH | Actual gap (TTM) |
 | 8 | **New: BFGS optimizer** | 🟡 MEDIUM | Actual gap |
@@ -191,11 +191,11 @@ files so they're discoverable via `use barracuda::*`.
 
 ## Recommended Immediate Actions
 
-1. **Document existing wrappers** — Create a comprehensive API reference
-2. **Re-export missing modules** — Make bessel, erf, spherical_harmonics, etc. visible
-3. **SparsitySampler hybrid eval** — #1 accuracy priority (unchanged)
-4. **Hermite/Legendre polynomials** — Actual gap for L3
-5. **Band-diagonal + Crank-Nicolson** — Actual gap for TTM
+1. ~~Document existing wrappers~~ — ✅ **DONE**: `barracuda::special` expanded
+2. ~~Re-export missing modules~~ — ✅ **DONE**: GPU ops re-exported (ErfGpu, BesselJ0Gpu, etc.)
+3. ~~SparsitySampler hybrid eval~~ — ✅ **DONE**: `sparsity_sampler_gpu()` with cdist.wgsl
+4. ~~Hermite/Legendre polynomials~~ — ✅ **DONE**: `hermite()`, `legendre()`, `assoc_legendre()`
+5. **Band-diagonal + Crank-Nicolson** — Actual gap for TTM (next priority)
 
 ---
 
