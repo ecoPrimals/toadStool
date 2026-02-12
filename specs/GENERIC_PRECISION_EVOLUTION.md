@@ -1,7 +1,7 @@
 # Generic Precision Evolution — Investigation
 
-**Date**: February 12, 2026  
-**Status**: INVESTIGATION — Architectural decision pending
+**Date**: February 12, 2026 (Updated)  
+**Status**: PHASE 1 COMPLETE — Auto-dispatch implemented
 
 ---
 
@@ -13,12 +13,13 @@ Could embedded systems use fp8/bf16/f16 while still using the same algorithms?
 
 ---
 
-## Current State
+## Current State (Post Phase 1)
 
 ### CPU Code
-- Hardcoded `f64` for precision-critical paths (linalg, special functions)
+- ✅ f64 bridges for all linalg operations (cholesky, eigh, gen_eigh, LU, QR, SVD, tridiagonal)
+- ✅ Auto-dispatch system with per-operation thresholds (`dispatch` module)
 - Hardcoded `f32` for GPU tensor operations
-- No generic `Float` trait abstraction
+- No generic `Float` trait abstraction (deferred to Phase 2)
 
 ### GPU WGSL
 - Hardcoded `f32` (WGSL spec limitation)
@@ -26,7 +27,7 @@ Could embedded systems use fp8/bf16/f16 while still using the same algorithms?
 - No native f64 on consumer GPUs (1/32 rate vs f32)
 
 ### Dependencies
-- No `num-traits` crate currently used
+- No `num-traits` crate currently used (deferred to Phase 2)
 - `nalgebra` used downstream (has generic precision)
 
 ---
@@ -132,32 +133,31 @@ pub enum PrecisionMode {
 
 ## Recommended Approach
 
-### Phase 1: Auto-Dispatch (Now)
+### Phase 1: Auto-Dispatch ✅ COMPLETE
+
+Implemented in `barracuda::dispatch` module:
 
 ```rust
-pub struct DispatchConfig {
-    pub cpu_threshold: usize,      // Size below which CPU is used
-    pub gpu_available: bool,       // Hardware detection
-    pub force_cpu: bool,           // User override for precision
-    pub precision: PrecisionMode,  // F32, F64, Mixed, Auto
+use barracuda::dispatch::{dispatch_for, DispatchConfig, DispatchTarget};
+
+// Automatic routing based on input size and hardware
+let target = dispatch_for("matmul", input_size);
+match target {
+    DispatchTarget::Cpu => matmul_cpu_f64(a, b),
+    DispatchTarget::Gpu => matmul_gpu_f32(a, b, device),
 }
+
+// Custom configuration
+let config = DispatchConfig::new()
+    .with_threshold("erf", 512)
+    .force_cpu();  // Override for precision-critical workloads
 ```
 
-Each function follows the pattern:
-
-```rust
-pub fn erf(x: &[f64]) -> Vec<f64> {
-    erf_cpu_f64(x)  // Always CPU for scalar/small + precision
-}
-
-pub fn erf_batch(x: &[f32], device: &WgpuDevice) -> Vec<f32> {
-    if x.len() < ERF_GPU_THRESHOLD {
-        x.iter().map(|&v| erf_cpu_f64(&[v as f64])[0] as f32).collect()
-    } else {
-        erf_gpu(x, device)  // WGSL shader
-    }
-}
-```
+**Per-operation thresholds** (empirically determined):
+- Special functions (erf, bessel): 512-1024
+- Linear algebra (matmul, solve): 4096
+- Convolution: 8192
+- Surrogate/RBF: 100-200
 
 ### Phase 2: Generic CPU (When Titan V Arrives)
 
@@ -204,13 +204,15 @@ barracuda/
 
 ## Decision
 
-**Adopt the Mixed/Auto approach from Option 3** as the immediate path forward.
+**Adopted the Mixed/Auto approach from Option 3** — Phase 1 Complete.
 
-1. Add `PrecisionMode` enum to `barracuda::config`
-2. Add auto-dispatch with size thresholds to each function
-3. Keep WGSL at f32, add f64 CPU bridges
-4. Defer generic `num-traits` until Titan V validates the pattern
-5. Keep fp8/bf16/f16 as separate specializations (not generic)
+| Step | Status | Implementation |
+|------|--------|----------------|
+| 1. Auto-dispatch with size thresholds | ✅ DONE | `barracuda::dispatch` module |
+| 2. f64 CPU bridges for linalg | ✅ DONE | `linalg::cholesky_f64`, `eigh_f64`, `gen_eigh_f64`, etc. |
+| 3. Keep WGSL at f32 | ✅ DONE | Shader infrastructure unchanged |
+| 4. Generic `num-traits` | ⏳ DEFERRED | Awaiting Titan V hardware validation |
+| 5. fp8/bf16/f16 specialization | ⏳ DEFERRED | Separate modules when needed |
 
 This matches hotSpring's validated dual-precision architecture and doesn't require
 rewriting the shader infrastructure.

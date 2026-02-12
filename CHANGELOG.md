@@ -7,6 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-12] - Phase 3 Evolution Complete (Phases A & B)
+
+**Impact**: All high and medium priority items from hotSpring handoff implemented. BarraCUDA now has complete f64 linalg bridges, auto-dispatch, scientific functions, and surrogate quality metrics.
+
+#### Added
+
+- **Linear Algebra f64 Bridges** (`barracuda::linalg`):
+  - `cholesky.rs` — Cholesky-Banachiewicz decomposition for SPD matrices
+  - `eigh.rs` — Symmetric eigenvalue decomposition via Jacobi algorithm
+  - `gen_eigh.rs` — Generalized eigenvalue problem Ax = λBx via Cholesky reduction
+  - Public re-exports unifying f64 API across all decompositions
+
+- **Auto-Dispatch System** (`barracuda::dispatch`):
+  - `DispatchConfig` — Per-operation thresholds with GPU availability detection
+  - `DispatchTarget` enum — CPU/GPU routing decision
+  - `dispatch_for()` — Query optimal target for operation + size
+  - Default thresholds: erf (512), matmul (4096), convolution (8192), surrogate (200)
+
+- **Root-Finding Algorithms** (`barracuda::optimize`):
+  - `newton.rs` — Newton-Raphson with analytical or numerical derivatives
+  - `newton.rs` — Secant method
+  - `brent.rs` — Brent's method for robust root-finding
+  - `brent.rs` — Brent's method for 1D minimization
+
+- **Chi-Squared Distribution** (`barracuda::special::chi_squared`):
+  - PDF, CDF, survival function, quantile (inverse CDF)
+  - Mean, variance, mode
+  - Chi-squared statistic and goodness-of-fit test
+
+- **Incomplete Gamma Functions** (`barracuda::special::gamma`):
+  - `lower_incomplete_gamma()`, `upper_incomplete_gamma()`
+  - `regularized_gamma_p()`, `regularized_gamma_q()`
+
+- **Cubic Spline Interpolation** (`barracuda::interpolate`):
+  - New `interpolate` module
+  - `CubicSpline` with natural, clamped, and not-a-knot boundary conditions
+  - Evaluation, derivatives, and integration methods
+  - Thomas algorithm (O(n)) for tridiagonal solve
+
+- **LOO-CV for Surrogates** (`barracuda::surrogate::rbf`):
+  - `loo_cv_rmse()` — Leave-one-out cross-validation RMSE
+  - `loo_cv_errors()` — Per-point residuals
+  - `n_train()`, `n_dim()` accessors
+
+- **EvaluationCache Persistence** (`barracuda::optimize::eval_record`):
+  - `save()` / `load()` — JSON serialization via serde
+  - `load_or_new()` — Graceful fallback for missing files
+  - `from_training_data()` — Create cache from existing x/y data
+
+#### Changed
+
+- `RBFSurrogate` now stores `train_y` for LOO-CV computation
+- `dispatch` module uses `futures::executor::block_on` for GPU detection
+
+#### Verified
+
+- ✅ No unsafe code in linalg modules (all pure safe Rust)
+- ✅ Mocks isolated via feature flags or test modules
+- ✅ 96 new tests across all new modules (all passing)
+
+---
+
+### [2026-02-12] - Deep Debt Resolution
+
+**Impact**: Production safety improvements - mock isolation, hardcoded path removal, and shared constants.
+
+#### Fixed
+
+- **Mock Signature in Production** (`crates/core/toadstool/src/biomeos_integration/auth.rs`):
+  - Mock signature path was reachable in production when no signing key configured
+  - Now feature-gated: `#[cfg(any(test, feature = "dev-mock-auth"))]`
+  - Production builds require real signing key or return configuration error
+
+- **Akida Driver Hardcoded Paths** (`crates/neuromorphic/akida-driver/`):
+  - Removed developer-specific driver path from search locations
+  - Added `AKIDA_DRIVER_PATH` environment variable for custom locations
+  - Standard search paths: `/lib/modules/{kver}/extra/`, `/usr/local/lib/akida/`
+
+- **Clippy Compliance** (barracuda):
+  - Fixed excessive_precision warnings with proper allow directives
+  - Applied idiomatic Rust patterns (derive Default, compound assignment operators)
+
+#### Added
+
+- `dev-mock-auth` feature flag in `toadstool` crate for development builds
+- `pcie_ids` module in `akida-driver` with shared vendor/device constants
+- `lspci_filter()` function for consistent PCIe device filtering
+
+#### Verified
+
+- Primal self-knowledge architecture already properly designed
+- `discover_socket_for_capability()` available for capability-based discovery
+- Deprecated constants maintained for backward compatibility during transition
+
+---
+
 ### [2026-02-12] - Runtime Backend Evolution and ecoBin Compliance
 
 **Impact**: CPU tensor ops, CUDA PTX execution, unified memory wgpu fallbacks, and Unix socket security providers all implemented. Full ecoBin compliance for GPU backends.

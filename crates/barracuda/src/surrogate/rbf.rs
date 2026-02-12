@@ -17,10 +17,24 @@ use crate::linalg::solve_f64;
 /// # Dual-Precision Architecture (Future)
 ///
 /// Currently CPU f64 only. Future enhancement: GPU f32 cdist → promote → CPU f64 solve.
+///
+/// # Leave-One-Out Cross-Validation
+///
+/// LOO-CV provides a measure of surrogate quality without needing a separate
+/// validation set:
+///
+/// ```ignore
+/// let surrogate = RBFSurrogate::train(&x_data, &y_data, kernel, 1e-12)?;
+/// let loo_rmse = surrogate.loo_cv_rmse()?;
+/// println!("LOO-CV RMSE: {:.6}", loo_rmse);
+/// ```
 #[derive(Debug)]
 pub struct RBFSurrogate {
     /// Training points (flattened: [n_train × n_dim])
     train_x: Vec<f64>,
+
+    /// Training targets
+    train_y: Vec<f64>,
 
     /// RBF weights (length n_train)
     weights: Vec<f64>,
@@ -38,7 +52,6 @@ pub struct RBFSurrogate {
     kernel: RBFKernel,
 
     /// Smoothing parameter (regularization)
-    #[allow(dead_code)]
     smoothing: f64,
 }
 
@@ -47,6 +60,7 @@ impl RBFSurrogate {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn from_parts(
         train_x: Vec<f64>,
+        train_y: Vec<f64>,
         weights: Vec<f64>,
         poly_coeffs: Vec<f64>,
         n_train: usize,
@@ -56,6 +70,7 @@ impl RBFSurrogate {
     ) -> Self {
         Self {
             train_x,
+            train_y,
             weights,
             poly_coeffs,
             n_train,
@@ -182,6 +197,7 @@ impl RBFSurrogate {
 
         Ok(Self {
             train_x,
+            train_y: y_data.to_vec(),
             weights,
             poly_coeffs,
             n_train,
@@ -246,6 +262,149 @@ impl RBFSurrogate {
         }
 
         Ok(predictions)
+    }
+
+    // === Leave-One-Out Cross-Validation ===
+
+    /// Compute leave-one-out cross-validation RMSE.
+    ///
+    /// LOO-CV provides an unbiased estimate of prediction error without
+    /// requiring a separate validation set. For RBF interpolation with
+    /// smoothing λ > 0, the LOO residual is:
+    ///
+    /// LOO_i = (y_i - ŷ_i) / (1 - H_ii)
+    ///
+    /// where H is the hat matrix H = K(K + λI)⁻¹.
+    ///
+    /// # Returns
+    ///
+    /// Root mean square of LOO residuals
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let surrogate = RBFSurrogate::train(&x_data, &y_data, kernel, 1e-6)?;
+    /// let rmse = surrogate.loo_cv_rmse()?;
+    /// println!("LOO-CV RMSE: {:.6}", rmse);
+    /// ```
+    ///
+    /// # Notes
+    ///
+    /// - For exact interpolation (smoothing ≈ 0), H_ii ≈ 1 and LOO residuals
+    ///   are undefined. Use smoothing > 1e-10 for meaningful LOO-CV.
+    /// - This is O(n³) due to hat matrix computation.
+    pub fn loo_cv_rmse(&self) -> Result<f64> {
+        let loo_residuals = self.loo_cv_errors()?;
+        let mse = loo_residuals.iter().map(|r| r * r).sum::<f64>() / self.n_train as f64;
+        Ok(mse.sqrt())
+    }
+
+    /// Compute per-point LOO-CV errors.
+    ///
+    /// Returns LOO_i = (y_i - ŷ_i) / (1 - H_ii) for each training point.
+    /// Useful for identifying outliers or poorly-fit regions.
+    ///
+    /// # Returns
+    ///
+    /// Vector of LOO residuals (length n_train)
+    pub fn loo_cv_errors(&self) -> Result<Vec<f64>> {
+        if self.n_train == 0 {
+            return Ok(Vec::new());
+        }
+
+        // Compute predictions at training points
+        let train_points: Vec<Vec<f64>> = (0..self.n_train)
+            .map(|i| {
+                let start = i * self.n_dim;
+                self.train_x[start..start + self.n_dim].to_vec()
+            })
+            .collect();
+        let predictions = self.predict(&train_points)?;
+
+        // Compute hat matrix diagonal
+        let h_diag = self.compute_hat_diagonal()?;
+
+        // Compute LOO residuals
+        let mut loo_residuals = Vec::with_capacity(self.n_train);
+        for i in 0..self.n_train {
+            let residual = self.train_y[i] - predictions[i];
+            let denom = 1.0 - h_diag[i];
+
+            // Avoid division by zero (H_ii ≈ 1 means exact interpolation)
+            let loo = if denom.abs() < 1e-10 {
+                0.0 // Edge case: point has full influence
+            } else {
+                residual / denom
+            };
+            loo_residuals.push(loo);
+        }
+
+        Ok(loo_residuals)
+    }
+
+    /// Compute diagonal of the hat matrix H = K(K + λI)⁻¹.
+    ///
+    /// For RBF interpolation, the hat matrix relates predictions to targets:
+    /// ŷ = H·y
+    ///
+    /// H_ii measures how much influence point i has on its own prediction.
+    fn compute_hat_diagonal(&self) -> Result<Vec<f64>> {
+        // Compute kernel matrix K
+        let distances = compute_distances(
+            &self.train_x,
+            &self.train_x,
+            self.n_train,
+            self.n_train,
+            self.n_dim,
+        );
+
+        let mut k = vec![0.0; self.n_train * self.n_train];
+        for i in 0..self.n_train {
+            for j in 0..self.n_train {
+                let k_ij = self.kernel.eval(distances[i * self.n_train + j]);
+                let smooth = if i == j { self.smoothing } else { 0.0 };
+                k[i * self.n_train + j] = k_ij + smooth;
+            }
+        }
+
+        // Compute H = K·(K + λI)⁻¹ by solving (K + λI)·H = K
+        // Actually, we need H = K·inv(K + λI), which is K·solve(K+λI, I)
+        // But for the diagonal, we can solve column by column
+
+        // Simpler approach: H_ii = e_i^T · K · inv(K + λI) · e_i
+        // where e_i is the i-th standard basis vector
+
+        // Actually, for RBF with augmentation, this is more complex.
+        // For simplicity, we'll compute the full hat matrix and extract diagonal.
+
+        // For the kernel-only case (no polynomial augmentation in hat):
+        // H = K · (K + λI)^{-1}
+        // We solve (K + λI) · X = K for X = (K + λI)^{-1} · K^T = H^T
+        // Then H_ii = X_ii
+
+        // Since K is symmetric, H = H^T, so we just need the diagonal of X.
+
+        let mut h_diag = Vec::with_capacity(self.n_train);
+
+        for i in 0..self.n_train {
+            // Solve (K + λI) · x = K[:,i] for x
+            // Then H_ii = x[i] = ((K+λI)^{-1} K)_ii
+            let k_col: Vec<f64> = (0..self.n_train).map(|j| k[j * self.n_train + i]).collect();
+            let x = solve_f64(&k, &k_col, self.n_train)?;
+            h_diag.push(x[i]);
+        }
+
+        Ok(h_diag)
+    }
+
+    /// Get the number of training points.
+    pub fn n_train(&self) -> usize {
+        self.n_train
+    }
+
+    /// Get the input dimension.
+    pub fn n_dim(&self) -> usize {
+        self.n_dim
     }
 }
 
@@ -381,5 +540,86 @@ mod tests {
 
         let result = RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_loo_cv_rmse() {
+        // With smoothing, LOO-CV should give meaningful results
+        let x_train = vec![
+            vec![0.0],
+            vec![0.5],
+            vec![1.0],
+            vec![1.5],
+            vec![2.0],
+        ];
+        // Noisy linear function: y ≈ 2x
+        let y_train = vec![0.1, 1.1, 1.9, 3.1, 3.9];
+
+        // Use moderate smoothing so LOO-CV is defined
+        let surrogate =
+            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-6).unwrap();
+
+        let loo_rmse = surrogate.loo_cv_rmse().unwrap();
+
+        // Should be non-negative
+        assert!(loo_rmse >= 0.0);
+
+        // Should be small since data is nearly linear
+        assert!(
+            loo_rmse < 1.0,
+            "LOO-CV RMSE too large: {}",
+            loo_rmse
+        );
+    }
+
+    #[test]
+    fn test_loo_cv_errors() {
+        let x_train = vec![vec![0.0], vec![1.0], vec![2.0]];
+        let y_train = vec![0.0, 1.0, 4.0];
+
+        let surrogate =
+            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-4).unwrap();
+
+        let errors = surrogate.loo_cv_errors().unwrap();
+
+        // Should have one error per training point
+        assert_eq!(errors.len(), 3);
+
+        // Errors should be finite
+        for e in &errors {
+            assert!(e.is_finite(), "Non-finite LOO error: {}", e);
+        }
+    }
+
+    #[test]
+    fn test_loo_cv_with_exact_interpolation() {
+        // With very small smoothing (exact interpolation), LOO residuals
+        // may be near zero or undefined (H_ii ≈ 1)
+        let x_train = vec![vec![0.0], vec![1.0], vec![2.0]];
+        let y_train = vec![0.0, 1.0, 4.0];
+
+        let surrogate =
+            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12).unwrap();
+
+        // Should not panic
+        let _ = surrogate.loo_cv_rmse();
+    }
+
+    #[test]
+    fn test_rbf_accessors() {
+        // Need at least n_dim + 1 points for polynomial augmentation
+        let x_train = vec![
+            vec![0.0, 0.0],
+            vec![1.0, 0.0],
+            vec![0.0, 1.0],
+            vec![1.0, 1.0],
+        ];
+        let y_train = vec![0.0, 1.0, 1.0, 2.0];
+
+        let surrogate =
+            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12).unwrap();
+
+        assert_eq!(surrogate.n_train(), 4);
+        assert_eq!(surrogate.n_dim(), 2);
     }
 }

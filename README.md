@@ -198,20 +198,33 @@ toadStool/
 
 ## Recent Evolutions (Feb 2026)
 
+- **Phase 3 Complete** -- f64 linalg bridges, auto-dispatch, scientific functions (see below)
+- **Deep Debt Resolved** -- mock isolation, hardcoded path removal, primal self-knowledge verified
 - **CPU Tensor Ops** -- tiled matmul, conv2d, pooling with proper cache-blocking
 - **CUDA Backend** -- real PTX kernel execution for matmul, reduction ops
 - **Unified Memory** -- OpenCL/Vulkan backends now use wgpu fallback (pure Rust)
 - **Security Providers** -- Unix socket IPC with JSON-RPC 2.0 for inter-primal security
-- **Clippy Clean** -- all barracuda warnings resolved (is_multiple_of, approx_constant)
+- **Clippy Clean** -- 0 warnings across barracuda and core crates
 
-## Phase 3 Direction (from hotSpring)
+## Phase 3 Status (February 12, 2026)
 
-BarraCUDA validated against scipy/numpy: **121/121 tests passed** for special functions, linalg, optimizers, and MD forces. Evolution shifts from breadth to depth:
+**Phase A & B COMPLETE** — Phase C awaiting Titan V hardware.
 
-1. **f64 Linalg Bridge** -- expose CPU f64 versions of all GPU ops (eigh, cholesky, LU, QR, SVD)
-2. **Auto-Dispatch** -- intelligent CPU/GPU routing based on input size (single-point GPU dispatch causes 90× slowdown)
-3. **Cache Persistence** -- save/load EvaluationCache for warm-starting across runs
-4. **Heterogeneous Pipelines** -- declarative multi-tier compute (filter cascades saved 91.9% of expensive HFB evaluations)
+### Completed
+- ✅ **f64 Linalg Bridges** -- `cholesky_f64`, `eigh_f64`, `gen_eigh_f64`, LU/QR/SVD/tridiagonal re-exports
+- ✅ **Auto-Dispatch System** -- `dispatch` module with per-operation CPU/GPU thresholds
+- ✅ **Cache Persistence** -- `EvaluationCache::save/load/load_or_new` via serde_json
+- ✅ **LOO-CV Wiring** -- `RBFSurrogate::loo_cv_rmse()`, `loo_cv_errors()`
+- ✅ **Root-Finding** -- Newton-Raphson, Secant, Brent methods
+- ✅ **Chi-Squared Distribution** -- CDF, PDF, quantile, goodness-of-fit test
+- ✅ **Cubic Spline** -- Natural/clamped/not-a-knot with derivatives and integration
+- ✅ **Generalized Eigenvalue** -- `gen_eigh_f64` via Cholesky reduction
+- ✅ **Deep Debt** -- Mock isolation, hardcoded path removal, clippy clean
+
+### Awaiting Hardware (Phase C)
+- f64 WGSL shader variants (when WebGPU adds f64 extensions)
+- Multi-GPU DevicePool (when Titan V arrives)
+- f64 Tensor type
 
 See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 

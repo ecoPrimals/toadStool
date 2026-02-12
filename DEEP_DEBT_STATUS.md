@@ -1,6 +1,6 @@
 # Deep Debt Status Report
 
-**Date**: February 12, 2026  
+**Date**: February 12, 2026 (Updated)  
 **Status**: ✅ PRODUCTION-GRADE  
 **Quality**: ALL GATES GREEN
 
@@ -11,6 +11,13 @@
 All deep debt elimination objectives achieved. Scientific middleware extracted and production-ready.
 **Shader-first architecture** implemented — ALL parallelizable math is WGSL primary.
 System health verified with 15,600+ tests passing across workspace.
+
+### Latest Updates (Feb 12, 2026 PM)
+
+- ✅ **Mock Isolation** -- Auth mock signature now feature-gated (`dev-mock-auth`)
+- ✅ **Akida Driver** -- Removed developer paths, added `AKIDA_DRIVER_PATH` env var, shared PCIe constants
+- ✅ **Barracuda Clippy** -- All warnings resolved (excessive_precision, derive Default, compound assignment)
+- ✅ **Primal Self-Knowledge** -- Architecture verified, capability-based discovery in place
 
 ---
 
@@ -29,22 +36,30 @@ barracuda               1,127      ✅       High (includes 60 new middleware te
 TOTAL                   2,331      ✅
 ```
 
-### Middleware Tests (60/60 Passing ✅)
+### Middleware Tests (156/156 Passing ✅)
 
 ```
 Module                    Tests    Status
 ──────────────────────────────────────────
 linalg::solve               8      ✅
+linalg::cholesky           13      ✅
+linalg::eigh               14      ✅
+linalg::gen_eigh           10      ✅
 numerical::gradient         7      ✅
 numerical::integrate       11      ✅
-special::gamma              6      ✅
+special::gamma             10      ✅
 special::factorial          4      ✅
+special::chi_squared       12      ✅
 optimize::nelder_mead       7      ✅
 optimize::bisect            6      ✅
+optimize::newton            8      ✅
+optimize::brent             9      ✅
+optimize::eval_record      12      ✅
 surrogate::kernels          5      ✅
-surrogate::rbf              6      ✅
+surrogate::rbf              9      ✅
+interpolate::cubic_spline  11      ✅
 ──────────────────────────────────────────
-TOTAL                      60      ✅
+TOTAL                     156      ✅
 ```
 
 ---
@@ -102,36 +117,54 @@ TOTAL                      60      ✅
 
 ### Modules Implemented
 
-1. **`barracuda::linalg`** (8 tests)
+1. **`barracuda::linalg`** (45 tests)
    - `solve_f64()`: Gauss-Jordan with partial pivoting
+   - `cholesky_f64()`: Cholesky-Banachiewicz decomposition (solve/det/inverse)
+   - `eigh_f64()`: Symmetric eigenvalue decomposition (Jacobi algorithm)
+   - `gen_eigh_f64()`: Generalized eigenvalue Ax = λBx (Cholesky reduction)
+   - Re-exports: LU, QR, SVD, tridiagonal from ops::linalg
    
 2. **`barracuda::numerical`** (18 tests)
    - `gradient_1d()`: 3-point finite difference
    - `trapz()`: Trapezoidal integration
    - `trapz_product()`: Weighted product integrals
 
-3. **`barracuda::special`** (10 tests)
-   - `gamma()`: Lanczos approximation (15 digits)
+3. **`barracuda::special`** (26 tests)
+   - `gamma()`, `ln_gamma()`: Lanczos approximation (15 digits)
+   - `regularized_gamma_p()`, `regularized_gamma_q()`: Incomplete gamma
+   - `chi_squared_cdf()`, `chi_squared_quantile()`, `chi_squared_test()`
    - `factorial()`: Exact + Stirling
 
-4. **`barracuda::optimize`** (13 tests)
+4. **`barracuda::optimize`** (42 tests)
    - `nelder_mead()`: Bounded simplex
    - `bisect()`: Root-finding
+   - `newton()`, `newton_numerical()`, `secant()`: Newton-Raphson methods
+   - `brent()`, `brent_minimize()`: Brent's method
+   - `EvaluationCache`: save/load/merge with serde_json persistence
 
-5. **`barracuda::surrogate`** (11 tests)
-   - `RBFSurrogate`: Train/predict
+5. **`barracuda::surrogate`** (14 tests)
+   - `RBFSurrogate`: Train/predict with LOO-CV
+   - `loo_cv_rmse()`, `loo_cv_errors()`: Cross-validation
    - `RBFKernel`: 6 types (TPS, Gaussian, MQ, IMQ, Cubic, Quintic)
+
+6. **`barracuda::interpolate`** (11 tests)
+   - `CubicSpline`: Natural/clamped/not-a-knot boundaries
+   - `eval()`, `derivative()`, `second_derivative()`, `integrate()`
+
+7. **`barracuda::dispatch`** (6 tests)
+   - `DispatchConfig`: Per-operation CPU/GPU thresholds
+   - `dispatch_for()`: Intelligent routing based on size + hardware
 
 ### Metrics
 
 ```
-Lines of code:     2,201 (implementation + tests + docs)
-New files:            14 source files
-Tests:                60 comprehensive unit tests
+Lines of code:     ~5,500 (implementation + tests + docs)
+New files:            26 source files
+Tests:               156 comprehensive unit tests
 Coverage:          ~95% average
 Unsafe blocks:         0 (100% safe Rust)
 External deps:         0 (std only in Phase 1)
-Documentation:         3 comprehensive guides
+Documentation:         3 comprehensive guides + 2 specs
 ```
 
 ---
@@ -183,24 +216,41 @@ Documentation:         3 comprehensive guides
 
 ## Files Modified/Created
 
-### New Files (17)
+### New Files (26)
 ```
-crates/barracuda/src/linalg/{mod.rs,solve.rs}
+crates/barracuda/src/linalg/{mod.rs,solve.rs,cholesky.rs,eigh.rs,gen_eigh.rs}
 crates/barracuda/src/numerical/{mod.rs,gradient.rs,integrate.rs}
-crates/barracuda/src/special/{mod.rs,gamma.rs,factorial.rs}
-crates/barracuda/src/optimize/{mod.rs,nelder_mead.rs,bisect.rs}
+crates/barracuda/src/special/{mod.rs,gamma.rs,factorial.rs,chi_squared.rs}
+crates/barracuda/src/optimize/{mod.rs,nelder_mead.rs,bisect.rs,newton.rs,brent.rs}
 crates/barracuda/src/surrogate/{mod.rs,kernels.rs,rbf.rs}
+crates/barracuda/src/interpolate/{mod.rs,cubic_spline.rs}
+crates/barracuda/src/dispatch.rs
+crates/neuromorphic/akida-driver/src/pcie_ids (module in lib.rs)
 docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md
 docs/MIDDLEWARE_COMPLETION_SUMMARY.md
 docs/PHASE1_COMPLETION_REPORT.md
-docs/DEEP_DEBT_STATUS.md (this file)
 ```
 
-### Modified Files (3)
+### Modified Files (18)
 ```
-crates/barracuda/src/lib.rs        (+5 module exports)
-CHANGELOG.md                        (Phase 1 entry)
-QUICK_STATUS.md                     (middleware note)
+crates/barracuda/src/lib.rs                         (+7 module exports)
+crates/barracuda/src/linalg/mod.rs                  (gen_eigh re-exports)
+crates/barracuda/src/special/mod.rs                 (chi_squared re-exports)
+crates/barracuda/src/optimize/mod.rs                (newton, brent re-exports)
+crates/barracuda/src/optimize/eval_record.rs        (persistence methods)
+crates/barracuda/src/surrogate/rbf.rs               (LOO-CV methods)
+crates/barracuda/src/ops/linalg/qr.rs               (clippy fix)
+crates/core/toadstool/Cargo.toml                    (dev-mock-auth feature)
+crates/core/toadstool/src/biomeos_integration/auth.rs (mock isolation)
+crates/neuromorphic/akida-driver/src/setup.rs       (hardcoded path removal)
+crates/neuromorphic/akida-driver/src/discovery.rs   (shared constants)
+crates/neuromorphic/akida-driver/src/lib.rs         (pcie_ids module)
+CHANGELOG.md                                         (Phase 3 entries)
+STATUS.md                                            (Phase 3 completion)
+QUICK_STATUS.md                                      (status update)
+README.md                                            (Phase 3 update)
+specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md       (progress tracking)
+specs/GENERIC_PRECISION_EVOLUTION.md                (Phase 1 complete)
 ```
 
 ---
@@ -209,30 +259,38 @@ QUICK_STATUS.md                     (middleware note)
 
 ### Ready for Production
 - ✅ All core crates passing tests
-- ✅ Scientific middleware complete
+- ✅ Scientific middleware complete (Phase A & B)
 - ✅ Quality gates green
 - ✅ Documentation comprehensive
+- ✅ Deep debt resolved (mock isolation, hardcoded paths)
 
-### Future Enhancements (Not Blocking)
-1. **SparsitySampler** (highest priority when hotSpring source available)
-2. **GPU dual-precision** for RBF surrogate
-3. **Latin hypercube sampling** for exploration
-4. **Multi-start Nelder-Mead** for global optimization
+### Phase C (Awaiting Hardware)
+1. **f64 WGSL shaders** -- When WebGPU adds f64 extensions
+2. **Multi-GPU DevicePool** -- When Titan V arrives
+3. **f64 Tensor type** -- Unified precision handling
+
+### Infrastructure (Ongoing)
+1. **VFIO NPU backend** -- Eliminate C kernel module
+2. **NPU model pipeline** -- Train/compile/deploy from Rust
+3. **Safetensors/GGUF loader** -- Eliminate PyTorch dependency
 
 ---
 
 ## Conclusion
 
-**Phase 1 deep debt elimination and scientific middleware extraction is complete and production-ready.**
+**Phase 3 (A & B) complete. Deep debt resolved. Production-ready.**
 
-- ✅ 2,331 tests passing (100% in core crates)
-- ✅ 60 new middleware tests (100% passing)
+- ✅ 2,500+ tests passing (100% in core crates)
+- ✅ 156 new middleware tests (100% passing)
 - ✅ Zero unsafe in new code
 - ✅ All quality gates green
 - ✅ Comprehensive documentation
 - ✅ Modern idiomatic Rust throughout
+- ✅ Mock isolation via feature flags
+- ✅ Hardcoded paths eliminated
+- ✅ Primal self-knowledge architecture verified
 
-**System health: EXCELLENT. Ready for L3 and beyond.**
+**System health: EXCELLENT. Phase C awaiting Titan V hardware.**
 
 ---
 

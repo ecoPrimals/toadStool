@@ -27,13 +27,15 @@
 
 ## Current State (February 12, 2026)
 
+- **Phase 3 (A & B) Complete** — Phase C awaiting Titan V hardware
 - **0 clippy warnings** (down from 453)
-- **15,600+ tests passing**, 0 failing
+- **15,700+ tests passing**, 0 failing (156 new middleware tests)
 - **396 WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
 - **Shader-first**: ALL math is WGSL primary, ToadStool dispatches to GPU/CPU
 - 18 special function shaders, 3 sampling shaders, 5 statistics shaders
-- **Scientific middleware** (8 modules: linalg, numerical, special, stats, optimize, surrogate, sample, pde — 200+ tests, 0 unsafe)
+- **Scientific middleware** (10 modules: linalg, numerical, special, stats, optimize, surrogate, sample, pde, interpolate, dispatch — 300+ tests, 0 unsafe)
 - **hotSpring audit complete** — all HIGH/MEDIUM priority gaps resolved
+- **Auto-dispatch system** — CPU/GPU routing with per-operation thresholds
 - **17 WorkloadHint variants** with auto-routing (GPU, NPU, CPU) and user preference override
 - **26 JSON-RPC methods** across 6 domains (toadstool, compute, gpu, ollama, gate, resources)
 - GPU job queue with cross-gate routing
@@ -42,6 +44,7 @@
 - Shared error tracking across all server transports
 - 100% `unsafe` block documentation (35 blocks, all with `// SAFETY:`)
 - Zero production `todo!()`, zero production mocks
+- **Mocks feature-gated** — `dev-mock-auth` for development, errors in production
 - Cross-vendor distributed GPU compute validated (NVIDIA + AMD, bit-identical)
 - 39.85 tok/s distributed LLM inference with encrypted tensor transport
 

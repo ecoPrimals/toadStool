@@ -440,6 +440,7 @@ fn assemble_and_solve(
 
     Ok(RBFSurrogate::from_parts(
         train_x.to_vec(),
+        y_data.to_vec(),
         weights,
         poly_coeffs,
         n_train,

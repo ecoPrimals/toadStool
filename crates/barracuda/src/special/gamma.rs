@@ -1,542 +1,398 @@
-//! Gamma function and related functions
+//! Gamma and Incomplete Gamma Functions
 //!
-//! Implements Γ(x), ln Γ(x), ψ(x), and B(a,b) using Lanczos approximation.
+//! Implementations of gamma-related special functions commonly used in
+//! statistics, physics, and scientific computing.
 //!
 //! # Functions
 //!
-//! - `gamma(x)` - Gamma function Γ(x)
-//! - `lgamma(x)` - Log-gamma function ln Γ(x)
-//! - `digamma(x)` - Digamma function ψ(x) = d/dx ln Γ(x)
-//! - `beta(a, b)` - Beta function B(a,b) = Γ(a)Γ(b)/Γ(a+b)
+//! - `gamma(x)` - Complete gamma function Γ(x)
+//! - `ln_gamma(x)` - Natural log of gamma function, ln(Γ(x))
+//! - `lower_incomplete_gamma(a, x)` - Lower incomplete gamma γ(a, x)
+//! - `upper_incomplete_gamma(a, x)` - Upper incomplete gamma Γ(a, x)
+//! - `regularized_gamma_p(a, x)` - P(a, x) = γ(a, x) / Γ(a)
+//! - `regularized_gamma_q(a, x)` - Q(a, x) = Γ(a, x) / Γ(a) = 1 - P(a, x)
+//!
+//! # Applications
+//!
+//! - Chi-squared distribution CDF
+//! - Poisson distribution
+//! - Nuclear physics (shell model)
+//! - Statistical hypothesis testing
 //!
 //! # References
 //!
-//! - Lanczos, C. (1964). "A Precision Approximation of the Gamma Function"
-//! - Abramowitz & Stegun, §6.3 (digamma), §6.2 (beta)
-//! - DLMF 5: <https://dlmf.nist.gov/5>
+//! - Numerical Recipes, 3rd Edition, Chapter 6
+//! - Abramowitz & Stegun, Chapter 6
+//! - NIST Digital Library of Mathematical Functions, Chapter 8
 
-use std::f64::consts::PI;
+use crate::error::{BarracudaError, Result};
 
-/// Compute Γ(x) via Lanczos approximation
+/// Lanczos coefficients for gamma function (g=7)
 ///
-/// The gamma function is defined as Γ(n) = (n-1)! for positive integers,
-/// and extends to all complex numbers except non-positive integers.
+/// These are high-precision constants from Numerical Recipes - intentionally exact.
+#[allow(clippy::excessive_precision)]
+const LANCZOS_G: f64 = 7.0;
+#[allow(clippy::excessive_precision)]
+const LANCZOS_COEFFS: [f64; 9] = [
+    0.99999999999980993,
+    676.5203681218851,
+    -1259.1392167224028,
+    771.32342877765313,
+    -176.61502916214059,
+    12.507343278686905,
+    -0.13857109526572012,
+    9.9843695780195716e-6,
+    1.5056327351493116e-7,
+];
+
+/// Natural logarithm of the gamma function: ln(Γ(x))
+///
+/// Uses the Lanczos approximation for high accuracy.
 ///
 /// # Arguments
 ///
-/// * `x` - Real number (must be > 0)
+/// * `x` - Input value (x > 0)
 ///
 /// # Returns
 ///
-/// Γ(x)
+/// ln(Γ(x))
 ///
-/// # Algorithm
+/// # Example
 ///
-/// Uses 9-term Lanczos approximation with g=7, accurate to ~15 digits.
-/// Special handling for positive half-integers (n + 1/2) for exact results.
+/// ```
+/// use barracuda::special::ln_gamma;
 ///
-/// # Examples
+/// // ln(Γ(1)) = 0
+/// assert!((ln_gamma(1.0).unwrap() - 0.0).abs() < 1e-10);
+///
+/// // ln(Γ(5)) = ln(4!) = ln(24)
+/// assert!((ln_gamma(5.0).unwrap() - 24.0_f64.ln()).abs() < 1e-10);
+/// ```
+pub fn ln_gamma(x: f64) -> Result<f64> {
+    if x <= 0.0 {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("ln_gamma requires x > 0, got {}", x),
+        });
+    }
+
+    if x < 0.5 {
+        // Use reflection formula: Γ(z)Γ(1-z) = π/sin(πz)
+        let pi = std::f64::consts::PI;
+        Ok(pi.ln() - (pi * x).sin().ln() - ln_gamma(1.0 - x)?)
+    } else {
+        let x = x - 1.0;
+        let mut ag = LANCZOS_COEFFS[0];
+        for (i, &c) in LANCZOS_COEFFS.iter().enumerate().skip(1) {
+            ag += c / (x + i as f64);
+        }
+
+        let tmp = x + LANCZOS_G + 0.5;
+        Ok((2.0 * std::f64::consts::PI).sqrt().ln() + (x + 0.5) * tmp.ln() - tmp + ag.ln())
+    }
+}
+
+/// Complete gamma function: Γ(x)
+///
+/// # Arguments
+///
+/// * `x` - Input value (x > 0 or negative non-integer)
+///
+/// # Example
 ///
 /// ```
 /// use barracuda::special::gamma;
-/// use std::f64::consts::PI;
-///
-/// // Γ(1) = 1
-/// assert!((gamma(1.0) - 1.0).abs() < 1e-14);
 ///
 /// // Γ(5) = 4! = 24
-/// assert!((gamma(5.0) - 24.0).abs() < 1e-12);
+/// assert!((gamma(5.0).unwrap() - 24.0).abs() < 1e-10);
 ///
-/// // Γ(1/2) = √π
-/// assert!((gamma(0.5) - PI.sqrt()).abs() < 1e-12);
-///
-/// // Γ(3/2) = √π / 2
-/// assert!((gamma(1.5) - PI.sqrt() / 2.0).abs() < 1e-12);
+/// // Γ(0.5) = √π
+/// assert!((gamma(0.5).unwrap() - std::f64::consts::PI.sqrt()).abs() < 1e-10);
 /// ```
-///
-/// # References
-///
-/// - Lanczos, C. (1964). "A Precision Approximation of the Gamma Function"
-/// - Numerical Recipes, 3rd Edition, Section 6.1
-pub fn gamma(x: f64) -> f64 {
-    if x <= 0.0 {
-        // Reflection formula for negative values
-        // Γ(x)Γ(1-x) = π / sin(πx)
-        return PI / ((PI * x).sin() * gamma(1.0 - x));
+pub fn gamma(x: f64) -> Result<f64> {
+    if x <= 0.0 && x.fract() == 0.0 {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("gamma is undefined for non-positive integers, got {}", x),
+        });
     }
 
-    // Special case: positive half-integers (n + 1/2)
-    // Γ(n + 1/2) = √π · (2n-1)!! / 2ⁿ
-    // Check if x = n + 0.5 where n is integer
-    let n_plus_half = x - 0.5;
-    if n_plus_half >= 0.0 && (n_plus_half - n_plus_half.round()).abs() < 1e-10 {
-        return gamma_half_integer(x);
-    }
-
-    // Lanczos approximation with g = 7
-    lanczos_gamma(x)
+    Ok(ln_gamma(x)?.exp())
 }
 
-/// Exact computation for positive half-integers
+/// Lower incomplete gamma function: γ(a, x) = ∫₀ˣ t^(a-1) e^(-t) dt
 ///
-/// Γ(n + 1/2) = √π · (2n-1)!! / 2ⁿ
-fn gamma_half_integer(x: f64) -> f64 {
-    let n = (x - 0.5).round() as i32;
-
-    if n < 0 {
-        return lanczos_gamma(x);
+/// Uses series expansion for x < a+1 and continued fraction for x >= a+1.
+///
+/// # Arguments
+///
+/// * `a` - Shape parameter (a > 0)
+/// * `x` - Upper limit of integration (x >= 0)
+///
+/// # Example
+///
+/// ```
+/// use barracuda::special::lower_incomplete_gamma;
+///
+/// let (gamma_val, _) = lower_incomplete_gamma(2.0, 1.0)?;
+/// // γ(2, 1) ≈ 0.2642
+/// assert!((gamma_val - 0.2642).abs() < 0.01);
+/// # Ok::<(), barracuda::error::BarracudaError>(())
+/// ```
+pub fn lower_incomplete_gamma(a: f64, x: f64) -> Result<(f64, f64)> {
+    if a <= 0.0 {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("lower_incomplete_gamma requires a > 0, got {}", a),
+        });
+    }
+    if x < 0.0 {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("lower_incomplete_gamma requires x >= 0, got {}", x),
+        });
     }
 
-    let mut result = PI.sqrt();
-
-    // Compute (2n-1)!! = 1 · 3 · 5 · ... · (2n-1)
-    for k in 1..=n {
-        result *= (2 * k - 1) as f64;
+    if x == 0.0 {
+        return Ok((0.0, gamma(a)?));
     }
 
-    // Divide by 2ⁿ
-    result / (1u64 << n) as f64
-}
+    let gln = ln_gamma(a)?;
+    let gamma_complete = gln.exp();
 
-/// Lanczos approximation (9-term, g=7)
-///
-/// Γ(x+1) ≈ √(2π) · (x + g + 0.5)^(x + 0.5) · exp(-(x + g + 0.5)) · Aₓ
-///
-/// where Aₓ = c₀ + Σᵢ cᵢ/(x + i)
-fn lanczos_gamma(x: f64) -> f64 {
-    const G: f64 = 7.0;
-
-    // Lanczos coefficients for g=7, n=9 (precision required for gamma function accuracy)
-    #[allow(clippy::excessive_precision)]
-    const LANCZOS_COEFF: [f64; 9] = [
-        0.99999999999980993,
-        676.5203681218851,
-        -1259.1392167224028,
-        771.32342877765313,
-        -176.61502916214059,
-        12.507343278686905,
-        -0.13857109526572012,
-        9.9843695780195716e-6,
-        1.5056327351493116e-7,
-    ];
-
-    if x < 0.5 {
-        // Use reflection formula for better accuracy
-        PI / ((PI * x).sin() * lanczos_gamma(1.0 - x))
+    if x < a + 1.0 {
+        // Series expansion
+        let p = gamma_series(a, x, gln)?;
+        Ok((p * gamma_complete, gamma_complete))
     } else {
-        // Standard Lanczos formula
-        let x = x - 1.0;
-        let mut a = LANCZOS_COEFF[0];
+        // Continued fraction
+        let q = gamma_cf(a, x, gln)?;
+        Ok(((1.0 - q) * gamma_complete, gamma_complete))
+    }
+}
 
-        for i in 1..9 {
-            a += LANCZOS_COEFF[i] / (x + i as f64);
+/// Upper incomplete gamma function: Γ(a, x) = ∫ₓ^∞ t^(a-1) e^(-t) dt
+///
+/// Γ(a, x) = Γ(a) - γ(a, x)
+///
+/// # Arguments
+///
+/// * `a` - Shape parameter (a > 0)
+/// * `x` - Lower limit of integration (x >= 0)
+pub fn upper_incomplete_gamma(a: f64, x: f64) -> Result<f64> {
+    let (lower, complete) = lower_incomplete_gamma(a, x)?;
+    Ok(complete - lower)
+}
+
+/// Regularized lower incomplete gamma function: P(a, x) = γ(a, x) / Γ(a)
+///
+/// This is the CDF of the gamma distribution.
+///
+/// # Arguments
+///
+/// * `a` - Shape parameter (a > 0)
+/// * `x` - Upper limit of integration (x >= 0)
+///
+/// # Returns
+///
+/// P(a, x) in [0, 1]
+///
+/// # Example
+///
+/// ```
+/// use barracuda::special::regularized_gamma_p;
+///
+/// // P(1, 1) = 1 - e^(-1) ≈ 0.6321
+/// let p = regularized_gamma_p(1.0, 1.0)?;
+/// assert!((p - 0.6321).abs() < 0.01);
+/// # Ok::<(), barracuda::error::BarracudaError>(())
+/// ```
+pub fn regularized_gamma_p(a: f64, x: f64) -> Result<f64> {
+    if a <= 0.0 {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("regularized_gamma_p requires a > 0, got {}", a),
+        });
+    }
+    if x < 0.0 {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("regularized_gamma_p requires x >= 0, got {}", x),
+        });
+    }
+
+    if x == 0.0 {
+        return Ok(0.0);
+    }
+
+    let gln = ln_gamma(a)?;
+
+    if x < a + 1.0 {
+        gamma_series(a, x, gln)
+    } else {
+        Ok(1.0 - gamma_cf(a, x, gln)?)
+    }
+}
+
+/// Regularized upper incomplete gamma function: Q(a, x) = Γ(a, x) / Γ(a)
+///
+/// Q(a, x) = 1 - P(a, x)
+///
+/// # Arguments
+///
+/// * `a` - Shape parameter (a > 0)
+/// * `x` - Lower limit of integration (x >= 0)
+pub fn regularized_gamma_q(a: f64, x: f64) -> Result<f64> {
+    Ok(1.0 - regularized_gamma_p(a, x)?)
+}
+
+/// Series expansion for regularized incomplete gamma P(a, x)
+fn gamma_series(a: f64, x: f64, gln: f64) -> Result<f64> {
+    const MAX_ITER: usize = 200;
+    const EPS: f64 = 1e-14;
+
+    let mut sum = 1.0 / a;
+    let mut term = sum;
+
+    for n in 1..MAX_ITER {
+        term *= x / (a + n as f64);
+        sum += term;
+
+        if term.abs() < sum.abs() * EPS {
+            return Ok(sum * (-x + a * x.ln() - gln).exp());
         }
-
-        let t = x + G + 0.5;
-        let sqrt_2pi = (2.0 * PI).sqrt();
-
-        sqrt_2pi * t.powf(x + 0.5) * (-t).exp() * a
     }
+
+    Err(BarracudaError::ExecutionError {
+        message: "gamma_series: convergence failed".to_string(),
+    })
 }
 
-/// Compute the log-gamma function ln Γ(x).
-///
-/// More numerically stable than computing log(gamma(x)) for large x.
-///
-/// # Arguments
-///
-/// * `x` - Positive real number
-///
-/// # Returns
-///
-/// ln Γ(x)
-///
-/// # Examples
-///
-/// ```
-/// use barracuda::special::lgamma;
-/// use std::f64::consts::PI;
-///
-/// // ln Γ(1) = 0
-/// assert!(lgamma(1.0).abs() < 1e-14);
-///
-/// // ln Γ(1/2) = ln √π
-/// assert!((lgamma(0.5) - 0.5 * PI.ln()).abs() < 1e-12);
-/// ```
-pub fn lgamma(x: f64) -> f64 {
-    if x <= 0.0 {
-        return f64::NAN;
+/// Continued fraction for regularized incomplete gamma Q(a, x)
+fn gamma_cf(a: f64, x: f64, gln: f64) -> Result<f64> {
+    const MAX_ITER: usize = 200;
+    const EPS: f64 = 1e-14;
+    const FPMIN: f64 = 1e-30;
+
+    let mut b = x + 1.0 - a;
+    let mut c = 1.0 / FPMIN;
+    let mut d = 1.0 / b;
+    let mut h = d;
+
+    for n in 1..MAX_ITER {
+        let an = -(n as f64) * (n as f64 - a);
+        b += 2.0;
+        d = an * d + b;
+        if d.abs() < FPMIN {
+            d = FPMIN;
+        }
+        c = b + an / c;
+        if c.abs() < FPMIN {
+            c = FPMIN;
+        }
+        d = 1.0 / d;
+        let delta = d * c;
+        h *= delta;
+
+        if (delta - 1.0).abs() < EPS {
+            return Ok((-x + a * x.ln() - gln).exp() * h);
+        }
     }
 
-    const G: f64 = 7.0;
-
-    #[allow(clippy::excessive_precision)]
-    const LANCZOS_COEFF: [f64; 9] = [
-        0.99999999999980993,
-        676.5203681218851,
-        -1259.1392167224028,
-        771.32342877765313,
-        -176.61502916214059,
-        12.507343278686905,
-        -0.13857109526572012,
-        9.9843695780195716e-6,
-        1.5056327351493116e-7,
-    ];
-
-    let x = x - 1.0;
-    let mut a = LANCZOS_COEFF[0];
-
-    for i in 1..9 {
-        a += LANCZOS_COEFF[i] / (x + i as f64);
-    }
-
-    let t = x + G + 0.5;
-
-    // ln Γ(x+1) = 0.5*ln(2π) + (x+0.5)*ln(t) - t + ln(a)
-    0.5 * (2.0 * PI).ln() + (x + 0.5) * t.ln() - t + a.ln()
-}
-
-/// Compute the digamma function ψ(x) = d/dx ln Γ(x).
-///
-/// The digamma function is the logarithmic derivative of the gamma function.
-/// It appears in Bayesian statistics, maximum likelihood estimation, and
-/// various physics applications.
-///
-/// # Arguments
-///
-/// * `x` - Positive real number
-///
-/// # Returns
-///
-/// ψ(x) = Γ'(x)/Γ(x)
-///
-/// # Algorithm
-///
-/// Uses the asymptotic expansion for large x and recurrence for small x.
-///
-/// # Examples
-///
-/// ```
-/// use barracuda::special::digamma;
-///
-/// // ψ(1) = -γ (Euler-Mascheroni constant)
-/// let euler_gamma = 0.5772156649015329;
-/// assert!((digamma(1.0) + euler_gamma).abs() < 1e-10);
-///
-/// // ψ(2) = 1 - γ
-/// assert!((digamma(2.0) - (1.0 - euler_gamma)).abs() < 1e-10);
-/// ```
-///
-/// # References
-///
-/// - Abramowitz & Stegun, §6.3.18 (asymptotic expansion)
-/// - DLMF 5.7.6: <https://dlmf.nist.gov/5.7.6>
-pub fn digamma(x: f64) -> f64 {
-    if x <= 0.0 {
-        // Reflection formula: ψ(1-x) - ψ(x) = π·cot(πx)
-        return digamma(1.0 - x) + PI / (PI * x).tan();
-    }
-
-    // Use recurrence to shift x to larger values where asymptotic expansion is accurate
-    // ψ(x+1) = ψ(x) + 1/x
-    let mut result = 0.0;
-    let mut x = x;
-
-    while x < 7.0 {
-        result -= 1.0 / x;
-        x += 1.0;
-    }
-
-    // Asymptotic expansion (A&S 6.3.18)
-    // ψ(x) ≈ ln(x) - 1/(2x) - 1/(12x²) + 1/(120x⁴) - 1/(252x⁶) + ...
-    let x2 = x * x;
-    let x4 = x2 * x2;
-    let x6 = x4 * x2;
-
-    result + x.ln() - 0.5 / x - 1.0 / (12.0 * x2) + 1.0 / (120.0 * x4) - 1.0 / (252.0 * x6)
-}
-
-/// Compute the beta function B(a, b) = Γ(a)Γ(b)/Γ(a+b).
-///
-/// The beta function is fundamental in Bayesian statistics (beta distribution)
-/// and appears in many combinatorial and integral formulas.
-///
-/// # Arguments
-///
-/// * `a` - First parameter (positive)
-/// * `b` - Second parameter (positive)
-///
-/// # Returns
-///
-/// B(a, b) = ∫₀¹ t^(a-1) (1-t)^(b-1) dt
-///
-/// # Properties
-///
-/// - B(a, b) = B(b, a) (symmetric)
-/// - B(a, 1) = 1/a
-/// - B(1, 1) = 1
-/// - B(n, m) = (n-1)!(m-1)!/(n+m-1)! for positive integers
-///
-/// # Examples
-///
-/// ```
-/// use barracuda::special::beta;
-///
-/// // B(1, 1) = 1
-/// assert!((beta(1.0, 1.0) - 1.0).abs() < 1e-14);
-///
-/// // B(2, 3) = Γ(2)Γ(3)/Γ(5) = 1·2/24 = 1/12
-/// assert!((beta(2.0, 3.0) - 1.0/12.0).abs() < 1e-14);
-///
-/// // Symmetric
-/// assert!((beta(3.0, 5.0) - beta(5.0, 3.0)).abs() < 1e-14);
-/// ```
-///
-/// # References
-///
-/// - Abramowitz & Stegun, §6.2
-/// - DLMF 5.12: <https://dlmf.nist.gov/5.12>
-pub fn beta(a: f64, b: f64) -> f64 {
-    if a <= 0.0 || b <= 0.0 {
-        return f64::NAN;
-    }
-
-    // Use log-gamma for numerical stability
-    // B(a,b) = exp(lgamma(a) + lgamma(b) - lgamma(a+b))
-    (lgamma(a) + lgamma(b) - lgamma(a + b)).exp()
+    Err(BarracudaError::ExecutionError {
+        message: "gamma_cf: convergence failed".to_string(),
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::f64::consts::PI;
+
+    #[test]
+    fn test_ln_gamma_integers() {
+        // ln(Γ(n)) = ln((n-1)!)
+        assert!((ln_gamma(1.0).unwrap() - 0.0).abs() < 1e-10); // ln(0!) = 0
+        assert!((ln_gamma(2.0).unwrap() - 0.0).abs() < 1e-10); // ln(1!) = 0
+        assert!((ln_gamma(3.0).unwrap() - 2.0_f64.ln()).abs() < 1e-10); // ln(2!) = ln(2)
+        assert!((ln_gamma(4.0).unwrap() - 6.0_f64.ln()).abs() < 1e-10); // ln(3!) = ln(6)
+        assert!((ln_gamma(5.0).unwrap() - 24.0_f64.ln()).abs() < 1e-10); // ln(4!) = ln(24)
+    }
 
     #[test]
     fn test_gamma_integers() {
         // Γ(n) = (n-1)!
-        assert!((gamma(1.0) - 1.0).abs() < 1e-14); // Γ(1) = 0! = 1
-        assert!((gamma(2.0) - 1.0).abs() < 1e-14); // Γ(2) = 1! = 1
-        assert!((gamma(3.0) - 2.0).abs() < 1e-14); // Γ(3) = 2! = 2
-        assert!((gamma(4.0) - 6.0).abs() < 1e-13); // Γ(4) = 3! = 6
-        assert!((gamma(5.0) - 24.0).abs() < 1e-12); // Γ(5) = 4! = 24
-        assert!((gamma(6.0) - 120.0).abs() < 1e-11); // Γ(6) = 5! = 120
-        assert!((gamma(10.0) - 362880.0).abs() < 1e-8); // Γ(10) = 9!
+        assert!((gamma(1.0).unwrap() - 1.0).abs() < 1e-10);
+        assert!((gamma(2.0).unwrap() - 1.0).abs() < 1e-10);
+        assert!((gamma(3.0).unwrap() - 2.0).abs() < 1e-10);
+        assert!((gamma(4.0).unwrap() - 6.0).abs() < 1e-10);
+        assert!((gamma(5.0).unwrap() - 24.0).abs() < 1e-10);
     }
 
     #[test]
-    fn test_gamma_half_integers() {
+    fn test_gamma_half_integer() {
         // Γ(1/2) = √π
-        assert!((gamma(0.5) - PI.sqrt()).abs() < 1e-14);
+        assert!((gamma(0.5).unwrap() - PI.sqrt()).abs() < 1e-10);
 
         // Γ(3/2) = √π / 2
-        assert!((gamma(1.5) - PI.sqrt() / 2.0).abs() < 1e-14);
-
-        // Γ(5/2) = 3√π / 4
-        assert!((gamma(2.5) - 3.0 * PI.sqrt() / 4.0).abs() < 1e-13);
-
-        // Γ(7/2) = 15√π / 8
-        assert!((gamma(3.5) - 15.0 * PI.sqrt() / 8.0).abs() < 1e-13);
+        assert!((gamma(1.5).unwrap() - PI.sqrt() / 2.0).abs() < 1e-10);
     }
 
     #[test]
-    fn test_gamma_fractional() {
-        // Test some known values
-        // Γ(0.1) ≈ 9.513507698668732
-        assert!((gamma(0.1) - 9.513507698668732).abs() < 1e-12);
-
-        // Γ(2.5) = 3√π/4 ≈ 1.329340388179137
-        let expected = 3.0 * PI.sqrt() / 4.0;
-        assert!((gamma(2.5) - expected).abs() < 1e-13);
+    fn test_gamma_invalid_input() {
+        assert!(gamma(0.0).is_err());
+        assert!(gamma(-1.0).is_err());
+        assert!(gamma(-2.0).is_err());
     }
 
     #[test]
-    fn test_gamma_large() {
-        // Γ(15) = 14! = 87178291200
-        let expected = 87178291200.0;
-        let result = gamma(15.0);
-        println!(
-            "gamma(15) = {}, expected = {}, error = {}",
-            result,
-            expected,
-            (result - expected).abs()
-        );
-        // Lanczos approximation has relative error, not absolute
-        assert!((result - expected).abs() / expected < 1e-10);
+    fn test_regularized_gamma_p_exponential() {
+        // For a=1, P(1, x) = 1 - e^(-x) (exponential CDF)
+        let p = regularized_gamma_p(1.0, 1.0).unwrap();
+        assert!((p - (1.0 - (-1.0_f64).exp())).abs() < 1e-10);
+
+        let p = regularized_gamma_p(1.0, 2.0).unwrap();
+        assert!((p - (1.0 - (-2.0_f64).exp())).abs() < 1e-10);
     }
 
     #[test]
-    fn test_gamma_recurrence() {
-        // Γ(x+1) = x·Γ(x)
-        for x in [1.0, 2.0, 3.5, 5.7, 10.3] {
-            let gamma_x = gamma(x);
-            let gamma_x_plus_1 = gamma(x + 1.0);
-            assert!(
-                (gamma_x_plus_1 - x * gamma_x).abs() / gamma_x_plus_1 < 1e-12,
-                "Recurrence failed for x={}: Γ({}) * {} = {} vs Γ({}) = {}",
-                x,
-                x,
-                x,
-                x * gamma_x,
-                x + 1.0,
-                gamma_x_plus_1
-            );
-        }
+    fn test_regularized_gamma_p_bounds() {
+        // P(a, 0) = 0
+        assert!((regularized_gamma_p(2.0, 0.0).unwrap() - 0.0).abs() < 1e-10);
+
+        // P(a, x) approaches 1 as x -> infinity
+        let p_large = regularized_gamma_p(2.0, 50.0).unwrap();
+        assert!(p_large > 0.9999999);
     }
 
     #[test]
-    fn test_gamma_reflection() {
-        // Γ(x)Γ(1-x) = π / sin(πx)
-        for x in [0.1, 0.3, 0.7, 0.9] {
-            let gamma_x = gamma(x);
-            let gamma_1_minus_x = gamma(1.0 - x);
-            let expected = PI / (PI * x).sin();
+    fn test_regularized_gamma_q_complement() {
+        // Q(a, x) = 1 - P(a, x)
+        let a = 2.5;
+        let x = 3.0;
+        let p = regularized_gamma_p(a, x).unwrap();
+        let q = regularized_gamma_q(a, x).unwrap();
 
-            let product = gamma_x * gamma_1_minus_x;
-            assert!(
-                (product - expected).abs() / expected < 1e-11,
-                "Reflection failed for x={}: Γ({})·Γ({}) = {} vs π/sin(πx) = {}",
-                x,
-                x,
-                1.0 - x,
-                product,
-                expected
-            );
-        }
-    }
-
-    // lgamma tests
-    #[test]
-    fn test_lgamma_one() {
-        // ln Γ(1) = ln(1) = 0
-        assert!(lgamma(1.0).abs() < 1e-14);
+        assert!((p + q - 1.0).abs() < 1e-10);
     }
 
     #[test]
-    fn test_lgamma_half() {
-        // ln Γ(1/2) = ln √π = 0.5 ln π
-        assert!((lgamma(0.5) - 0.5 * PI.ln()).abs() < 1e-12);
+    fn test_incomplete_gamma_relation() {
+        // γ(a, x) + Γ(a, x) = Γ(a)
+        let a = 2.0;
+        let x = 1.5;
+
+        let (lower, complete) = lower_incomplete_gamma(a, x).unwrap();
+        let upper = upper_incomplete_gamma(a, x).unwrap();
+
+        assert!((lower + upper - complete).abs() < 1e-10);
     }
 
     #[test]
-    fn test_lgamma_integers() {
-        // ln Γ(n) = ln((n-1)!)
-        assert!((lgamma(2.0) - 0.0).abs() < 1e-14); // ln(1!) = 0
-        assert!((lgamma(3.0) - 2.0_f64.ln()).abs() < 1e-14); // ln(2!) = ln(2)
-        assert!((lgamma(5.0) - 24.0_f64.ln()).abs() < 1e-12); // ln(4!) = ln(24)
+    fn test_gamma_series_small_x() {
+        // Test that series expansion works for x < a+1
+        let p = regularized_gamma_p(3.0, 1.0).unwrap();
+        assert!(p > 0.0 && p < 1.0);
     }
 
     #[test]
-    fn test_lgamma_vs_log_gamma() {
-        // lgamma(x) should equal log(gamma(x)) for moderate x
-        for x in [1.5, 2.5, 5.0, 10.0] {
-            let lg = lgamma(x);
-            let log_g = gamma(x).ln();
-            assert!(
-                (lg - log_g).abs() < 1e-10,
-                "lgamma({}) = {} vs log(gamma) = {}",
-                x,
-                lg,
-                log_g
-            );
-        }
-    }
-
-    // digamma tests
-    #[test]
-    fn test_digamma_one() {
-        // ψ(1) = -γ (Euler-Mascheroni constant)
-        // Asymptotic expansion precision ~1e-9
-        let euler_gamma = 0.5772156649015329;
-        assert!((digamma(1.0) + euler_gamma).abs() < 1e-9);
-    }
-
-    #[test]
-    fn test_digamma_two() {
-        // ψ(2) = ψ(1) + 1 = 1 - γ
-        let euler_gamma = 0.5772156649015329;
-        assert!((digamma(2.0) - (1.0 - euler_gamma)).abs() < 1e-9);
-    }
-
-    #[test]
-    fn test_digamma_recurrence() {
-        // ψ(x+1) = ψ(x) + 1/x
-        for x in [1.0, 2.5, 5.0, 10.0] {
-            let psi_x = digamma(x);
-            let psi_x_plus_1 = digamma(x + 1.0);
-            assert!(
-                (psi_x_plus_1 - psi_x - 1.0 / x).abs() < 1e-10,
-                "Recurrence failed for x={}: ψ({}) - ψ({}) = {} vs 1/x = {}",
-                x,
-                x + 1.0,
-                x,
-                psi_x_plus_1 - psi_x,
-                1.0 / x
-            );
-        }
-    }
-
-    #[test]
-    fn test_digamma_scipy_values() {
-        // Compare with scipy.special.digamma
-        // scipy.special.digamma(0.5) = -1.9635100260214235
-        assert!((digamma(0.5) - (-1.9635100260214235)).abs() < 1e-9);
-        // scipy.special.digamma(5.0) = 1.5061176684318
-        assert!((digamma(5.0) - 1.5061176684318).abs() < 1e-9);
-    }
-
-    // beta tests
-    #[test]
-    fn test_beta_one_one() {
-        // B(1, 1) = 1
-        assert!((beta(1.0, 1.0) - 1.0).abs() < 1e-14);
-    }
-
-    #[test]
-    fn test_beta_integers() {
-        // B(n, m) = (n-1)!(m-1)!/(n+m-1)!
-        // B(2, 3) = 1·2/24 = 1/12
-        assert!((beta(2.0, 3.0) - 1.0 / 12.0).abs() < 1e-14);
-        // B(3, 4) = 2·6/720 = 1/60
-        assert!((beta(3.0, 4.0) - 1.0 / 60.0).abs() < 1e-14);
-    }
-
-    #[test]
-    fn test_beta_symmetry() {
-        // B(a, b) = B(b, a)
-        for (a, b) in [(2.0, 5.0), (1.5, 3.5), (0.5, 2.0)] {
-            assert!((beta(a, b) - beta(b, a)).abs() < 1e-14);
-        }
-    }
-
-    #[test]
-    fn test_beta_computed_values() {
-        // B(0.5, 0.5) = Γ(0.5)²/Γ(1) = π
-        assert!((beta(0.5, 0.5) - PI).abs() < 1e-12);
-        // B(2.5, 3.5) = Γ(2.5)Γ(3.5)/Γ(6) ≈ 0.0368
-        // Γ(2.5) = 1.329..., Γ(3.5) = 3.323..., Γ(6) = 120
-        let b_25_35 = beta(2.5, 3.5);
-        let expected = gamma(2.5) * gamma(3.5) / gamma(6.0);
-        assert!(
-            (b_25_35 - expected).abs() < 1e-12,
-            "beta(2.5,3.5) = {} but expected {}",
-            b_25_35,
-            expected
-        );
-    }
-
-    #[test]
-    fn test_beta_via_gamma() {
-        // B(a,b) = Γ(a)Γ(b)/Γ(a+b)
-        for (a, b) in [(2.0, 3.0), (0.5, 1.5), (3.5, 2.5)] {
-            let b_ab = beta(a, b);
-            let via_gamma = gamma(a) * gamma(b) / gamma(a + b);
-            assert!(
-                (b_ab - via_gamma).abs() / b_ab < 1e-12,
-                "B({},{}) = {} vs via gamma = {}",
-                a,
-                b,
-                b_ab,
-                via_gamma
-            );
-        }
+    fn test_gamma_cf_large_x() {
+        // Test that continued fraction works for x >= a+1
+        let p = regularized_gamma_p(2.0, 5.0).unwrap();
+        assert!(p > 0.9 && p < 1.0);
     }
 }

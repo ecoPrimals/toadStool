@@ -132,23 +132,32 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 - Unified memory with wgpu fallback (OpenCL/Vulkan)
 - Unix socket security providers (JSON-RPC 2.0)
 
-## What Needs Evolution
+## Phase 3 Status
 
-### Phase 3 Priorities (from hotSpring validation)
+### ✅ Completed (Feb 12, 2026)
 
-- **f64 linalg bridges** -- expose eigh_f64, cholesky_f64, lu_f64, qr_f64, svd_f64 (3-5 days)
-- **Auto-dispatch system** -- CPU/GPU routing by size; single-point GPU = 90× slowdown (2-3 days)
-- **EvaluationCache persistence** -- save/load for warm-start across runs (1 day)
-- **LOO-CV wiring** -- loo_cv.wgsl exists, needs Rust wrapper (1 day)
+- **f64 linalg bridges** -- `cholesky_f64`, `eigh_f64`, `gen_eigh_f64`, LU/QR/SVD/tridiagonal
+- **Auto-dispatch system** -- `dispatch` module with per-operation CPU/GPU thresholds
+- **EvaluationCache persistence** -- `save/load/load_or_new` via serde_json
+- **LOO-CV wiring** -- `loo_cv_rmse()`, `loo_cv_errors()` on RBFSurrogate
+- **Root-finding** -- Newton-Raphson, Secant, Brent methods
+- **Chi-squared distribution** -- CDF, PDF, quantile, goodness-of-fit test
+- **Cubic spline** -- Natural/clamped/not-a-knot boundaries
+- **Generalized eigenvalue** -- `gen_eigh_f64` via Cholesky reduction
+- **Deep debt** -- Mock isolation (feature-gated), hardcoded path removal
 
-### Infrastructure
+### Awaiting Hardware (Phase C)
+
+- Multi-GPU DevicePool (awaiting Titan V)
+- f64 WGSL shaders (when WebGPU adds f64 extensions)
+- f64 Tensor type
+
+### Infrastructure (Ongoing)
 
 - VFIO backend for Akida NPU (eliminate C kernel module)
 - NPU model pipeline (train/compile/deploy from Rust)
 - Safetensors/GGUF weight loader
-- Multi-GPU DevicePool (awaiting Titan V)
 - mDNS/K8s discovery (env vars work, others pending)
-- f64 WGSL shaders (when Titan V arrives)
 
 ---
 
@@ -176,24 +185,26 @@ cargo llvm-cov -p toadstool-server --lib
 
 ## Scientific Middleware (Shader-First)
 
-**8 production-grade modules** — WGSL shaders primary, ToadStool dispatches:
+**10 production-grade modules** — WGSL shaders primary, ToadStool dispatches:
 
 ```
-barracuda::linalg      - Gauss-Jordan, LU, QR, SVD, tridiagonal (Thomas algorithm)
+barracuda::linalg      - solve, cholesky, eigh, gen_eigh, LU, QR, SVD, tridiagonal
 barracuda::numerical   - Gradient, trapz, RK45 adaptive ODE solver
-barracuda::special     - 18 shaders: Hermite, Legendre, Laguerre, digamma, beta, erf, Bessel, etc.
-barracuda::stats       - Shaders: norm_cdf, norm_ppf, correlation, covariance, variance
-barracuda::optimize    - Nelder-Mead, BFGS, bisection (CPU — inherently iterative)
-barracuda::surrogate   - RBF with 6 kernels, GPU-accelerated training
-barracuda::sample      - 3 shaders: Sobol, LHS, random_uniform
+barracuda::special     - gamma, chi_squared, Hermite, Legendre, Laguerre, digamma, beta, erf, Bessel
+barracuda::stats       - norm_cdf, norm_ppf, correlation, covariance, variance
+barracuda::optimize    - Nelder-Mead, BFGS, bisection, Newton, Brent + EvaluationCache persistence
+barracuda::surrogate   - RBF with 6 kernels, GPU-accelerated training, LOO-CV
+barracuda::sample      - Sobol, LHS, random_uniform
 barracuda::pde         - Crank-Nicolson heat equation solver
+barracuda::interpolate - Cubic spline (natural/clamped/not-a-knot) with derivatives
+barracuda::dispatch    - Auto CPU/GPU routing with per-operation thresholds
 ```
 
-**Tests**: 200+ passing
+**Tests**: 300+ passing (156 new in Phase 3)
 **Quality**: Zero unsafe, clippy clean, pure Rust
 **Architecture**: Shader-first — ALL math runs on GPU when fp64 available
 **Audit**: All hotSpring HIGH/MEDIUM gaps resolved (Feb 12)
-**Docs**: `specs/BARRACUDA_EVOLUTION_ROADMAP.md`, `docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md`
+**Docs**: `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md`, `docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md`
 
 ---
 

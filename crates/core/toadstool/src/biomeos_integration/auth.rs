@@ -354,13 +354,23 @@ impl AuthenticationManager {
                 general_purpose::STANDARD.encode(signature.to_bytes())
             ))
         } else {
-            // No signing key configured - return mock signature for development
-            // This allows the system to function without crypto setup
-            tracing::debug!("No signing key configured, using mock signature");
-            Ok(format!(
-                "ed25519:mock:{}",
-                general_purpose::STANDARD.encode(payload.as_bytes())
-            ))
+            // No signing key configured
+            #[cfg(any(test, feature = "dev-mock-auth"))]
+            {
+                // Development/test mode: return mock signature
+                tracing::warn!("No signing key configured, using mock signature (dev mode only)");
+                Ok(format!(
+                    "ed25519:mock:{}",
+                    general_purpose::STANDARD.encode(payload.as_bytes())
+                ))
+            }
+            #[cfg(not(any(test, feature = "dev-mock-auth")))]
+            {
+                // Production mode: require real signing key
+                Err(crate::ToadStoolError::configuration(
+                    "No signing key configured. Set TOADSTOOL_SIGNING_KEY_SEED or configure signing_key_seed in auth config."
+                ))
+            }
         }
     }
 

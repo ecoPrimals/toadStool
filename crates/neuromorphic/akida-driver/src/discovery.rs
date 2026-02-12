@@ -154,8 +154,7 @@ impl DeviceManager {
     ///
     /// Scans `/sys/bus/pci/devices/*/` for matching Akida vendor/device IDs
     fn find_pcie_address(device_index: usize) -> Result<String> {
-        const BRAINCHIP_VENDOR_ID: u16 = 0x1E7C;
-        const AKIDA_DEVICE_IDS: &[u16] = &[0xBCA1, 0xBCA2]; // AKD1000, AKD1500
+        use crate::pcie_ids::{AKIDA_DEVICE_IDS, BRAINCHIP_VENDOR_ID};
 
         let pci_devices_path = Path::new("/sys/bus/pci/devices");
 

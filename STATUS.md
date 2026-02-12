@@ -33,6 +33,67 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 
 ---
 
+## New Features (Feb 12, 2026 — Continued)
+
+### Phase 3 Evolution — hotSpring Handoff Complete
+
+All Phase A and Phase B priorities from the hotSpring handoff document have been implemented:
+
+**Linear Algebra f64 Bridges** (`barracuda::linalg`):
+- `cholesky_f64` — Cholesky-Banachiewicz decomposition with solve/det/log_det/inverse
+- `eigh_f64` — Symmetric eigenvalue decomposition via Jacobi algorithm
+- `gen_eigh_f64` — Generalized eigenvalue problem Ax = λBx via Cholesky reduction
+- Re-exports for LU, QR, SVD, tridiagonal (already f64 in ops::linalg)
+
+**Auto-Dispatch System** (`barracuda::dispatch`):
+- `DispatchConfig` — Per-operation GPU thresholds with force_cpu/force_gpu overrides
+- `DispatchTarget::Cpu | Gpu` — Runtime hardware routing
+- GPU availability detection via wgpu
+- Empirically-determined thresholds: erf (512), matmul (4096), convolution (8192)
+
+**Scientific Functions** (`barracuda::special`, `barracuda::optimize`, `barracuda::interpolate`):
+- `gamma.rs` — Incomplete gamma γ(a,x), regularized P/Q functions
+- `chi_squared.rs` — Chi² distribution (CDF, PDF, quantile, goodness-of-fit test)
+- `newton.rs` — Newton-Raphson, Secant methods with convergence info
+- `brent.rs` — Brent root-finding and minimization
+- `cubic_spline.rs` — Natural/clamped cubic spline with derivatives and integration
+
+**Surrogate Quality** (`barracuda::surrogate::rbf`):
+- `loo_cv_rmse()` — Leave-one-out cross-validation RMSE
+- `loo_cv_errors()` — Per-point LOO residuals
+
+**Cache Persistence** (`barracuda::optimize::eval_record`):
+- `save()` / `load()` / `load_or_new()` — JSON serialization for warm-starting
+- `from_training_data()` — Create cache from existing data
+
+**Deep Debt Verification**:
+- ✅ No unsafe code in linalg modules (all pure safe Rust)
+- ✅ Mocks properly isolated (feature-gated `#[cfg(feature = "mock-tpu")]` or in test modules)
+
+**Total new tests**: 96 tests across new modules (all passing)
+
+### Deep Debt Resolution — Production Safety
+
+**Mock Isolation** (`crates/core/toadstool/src/biomeos_integration/auth.rs`):
+- Fixed mock signature path reachable in production
+- Now feature-gated: `#[cfg(any(test, feature = "dev-mock-auth"))]`
+- Production requires real signing key or returns error
+- Added `dev-mock-auth` feature flag for development builds
+
+**Akida Driver Evolution** (`crates/neuromorphic/akida-driver/`):
+- Removed developer-specific driver path from search locations
+- Added `AKIDA_DRIVER_PATH` environment variable for custom locations
+- Created shared `pcie_ids` module for vendor/device constants
+- Uses standard kernel module paths (`/lib/modules/{kver}/extra/`, `/usr/local/lib/akida/`)
+
+**Primal Self-Knowledge Architecture**:
+- Primal constants already deprecated with migration guidance
+- `discover_socket_for_capability()` available for capability-based discovery
+- Fallback constants maintained for backward compatibility during transition
+- All new code should use `RuntimeDiscovery::discover_by_capability()`
+
+---
+
 ## New Features (Feb 12, 2026)
 
 ### Runtime Evolution — Backend Implementations

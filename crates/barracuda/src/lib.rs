@@ -96,7 +96,9 @@ pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0:
 pub mod auto_tensor;
 pub mod benchmarks;
 pub mod cpu_executor;
+pub mod dispatch; // Auto-dispatch for CPU/GPU routing
 pub mod gpu_executor;
+pub mod interpolate; // Interpolation methods (cubic spline, etc.)
 pub mod linalg;
 pub mod numerical;
 pub mod optimize;
@@ -134,4 +136,7 @@ pub mod prelude {
         ComputeDevice, DeviceHint, DeviceSelector, Priority, SparsityAnalyzer, WorkloadClassifier,
         WorkloadType,
     };
+
+    // Auto-dispatch for CPU/GPU routing
+    pub use crate::dispatch::{dispatch_for, DispatchConfig, DispatchTarget};
 }

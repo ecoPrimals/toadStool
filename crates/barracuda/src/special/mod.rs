@@ -15,6 +15,12 @@
 //! | Function | CPU | GPU | Reference |
 //! |----------|-----|-----|-----------|
 //! | `gamma(x)` | ✅ | — | Lanczos approximation |
+//! | `ln_gamma(x)` | ✅ | ✅ | Log-gamma |
+//! | `regularized_gamma_p(a, x)` | ✅ | — | P(a,x) = γ(a,x)/Γ(a) |
+//! | `regularized_gamma_q(a, x)` | ✅ | — | Q(a,x) = 1 - P(a,x) |
+//! | `chi_squared_cdf(x, k)` | ✅ | — | Chi² CDF via gamma |
+//! | `chi_squared_quantile(p, k)` | ✅ | — | Chi² inverse CDF |
+//! | `chi_squared_test(obs, exp)` | ✅ | — | Goodness-of-fit test |
 //! | `factorial(n)` | ✅ | — | Stirling for large n |
 //! | `laguerre(n, α, x)` | ✅ | — | Recurrence relation |
 //! | `erf(x)` | ✅ | ✅ | A&S 7.1.26 |
@@ -23,9 +29,6 @@
 //! | `bessel_j1(x)` | ✅ | ✅ | A&S 9.4.4-9.4.6 |
 //! | `bessel_i0(x)` | ✅ | ✅ | A&S 9.8.1-9.8.2 |
 //! | `bessel_k0(x)` | ✅ | ✅ | A&S 9.8.5-9.8.6 |
-//! | `lgamma(x)` | ✅ | ✅ | Log-gamma |
-//! | `digamma(x)` | ✅ | — | ψ(x) = d/dx ln Γ(x) |
-//! | `beta(a, b)` | ✅ | — | B(a,b) = Γ(a)Γ(b)/Γ(a+b) |
 //! | `hermite(n, x)` | ✅ | ✅ | Physicist's Hermite Hₙ(x) |
 //! | `legendre(n, x)` | ✅ | ✅ | Legendre Pₙ(x) |
 //! | `assoc_legendre(n, m, x)` | ✅ | — | Associated Pₙᵐ(x) |
@@ -62,6 +65,7 @@
 
 // Core special functions (CPU f64)
 pub mod bessel;
+pub mod chi_squared;
 pub mod erf;
 pub mod factorial;
 pub mod gamma;
@@ -71,9 +75,17 @@ pub mod legendre;
 
 // Re-export CPU functions
 pub use bessel::{bessel_i0, bessel_j0, bessel_j1, bessel_k0};
+pub use chi_squared::{
+    chi_squared_cdf, chi_squared_mean, chi_squared_mode, chi_squared_pdf,
+    chi_squared_quantile, chi_squared_sf, chi_squared_statistic, chi_squared_test,
+    chi_squared_variance,
+};
 pub use erf::{erf, erfc};
 pub use factorial::factorial;
-pub use gamma::{beta, digamma, gamma, lgamma};
+pub use gamma::{
+    gamma, ln_gamma, lower_incomplete_gamma, regularized_gamma_p, regularized_gamma_q,
+    upper_incomplete_gamma,
+};
 pub use hermite::hermite;
 pub use laguerre::{laguerre, laguerre_all, laguerre_simple};
 pub use legendre::{assoc_legendre, legendre};

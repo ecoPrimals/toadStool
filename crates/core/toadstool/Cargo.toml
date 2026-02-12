@@ -84,3 +84,6 @@ websocket = ["tokio-tungstenite"]
 # Full ecosystem features
 full-ecosystem = ["websocket"] 
 wgpu = ["dep:wgpu", "dep:pollster"]
+# Development mock auth - allows mock signatures when no signing key configured
+# WARNING: Do not enable in production builds
+dev-mock-auth = []

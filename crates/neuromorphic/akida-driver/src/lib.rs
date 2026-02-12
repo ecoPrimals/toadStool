@@ -55,6 +55,24 @@ mod loading;
 /// NPU hardware setup and initialization
 pub mod setup;
 
+/// Hardware identification constants
+pub mod pcie_ids {
+    /// BrainChip vendor ID (0x1E7C)
+    pub const BRAINCHIP_VENDOR_ID: u16 = 0x1E7C;
+
+    /// Supported Akida device IDs
+    pub const AKIDA_DEVICE_IDS: &[u16] = &[
+        0xBCA1, // AKD1000
+        0xBCA2, // AKD1500
+    ];
+
+    /// Format vendor:device string for lspci
+    pub fn lspci_filter() -> String {
+        // Use first device ID for basic filtering (lspci doesn't support multiple)
+        format!("{:04x}:{:04x}", BRAINCHIP_VENDOR_ID, AKIDA_DEVICE_IDS[0])
+    }
+}
+
 pub use backend::{select_backend, BackendSelection, BackendType, ModelHandle, NpuBackend};
 pub use backends::UserspaceBackend;
 pub use capabilities::{Capabilities, ChipVersion, PcieConfig};

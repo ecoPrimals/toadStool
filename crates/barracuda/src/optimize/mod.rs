@@ -5,10 +5,21 @@
 //!
 //! # Algorithms
 //!
+//! ## Optimization
+//!
 //! - **Nelder-Mead**: Simplex method for gradient-free local optimization
 //! - **Multi-start Nelder-Mead**: Global optimization with LHS initial guesses
 //! - **BFGS**: Quasi-Newton method with gradient information
-//! - **Bisection**: Root-finding for 1D problems
+//!
+//! ## Root-Finding
+//!
+//! - **Bisection**: Reliable but slow O(n) convergence
+//! - **Newton-Raphson**: Fast O(n²) convergence with derivatives
+//! - **Brent's Method**: Best of both worlds - reliable and fast
+//! - **Secant Method**: Newton-like without analytical derivatives
+//!
+//! ## Utilities
+//!
 //! - **Evaluation Cache**: Record all evaluations for surrogate training
 //!
 //! # Cross-Domain Applications
@@ -57,14 +68,18 @@
 
 pub mod bfgs;
 pub mod bisect;
+pub mod brent;
 pub mod eval_record;
 pub mod multi_start;
 pub mod nelder_mead;
+pub mod newton;
 pub mod solver_state;
 
 pub use bfgs::{bfgs, bfgs_numerical, numerical_gradient, BfgsConfig, BfgsResult};
 pub use bisect::bisect;
+pub use brent::{brent, brent_minimize, BrentResult};
 pub use eval_record::{EvaluationCache, EvaluationRecord};
 pub use multi_start::{multi_start_nelder_mead, SolverResult};
 pub use nelder_mead::nelder_mead;
+pub use newton::{newton, newton_numerical, secant, NewtonResult};
 pub use solver_state::{ResumableNelderMead, SolverStatus};

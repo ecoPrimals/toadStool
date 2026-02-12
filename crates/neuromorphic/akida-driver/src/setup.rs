@@ -66,14 +66,38 @@ impl NpuSetup {
             return Ok(());
         }
 
-        // Search for module file
-        let search_paths = vec![
-            PathBuf::from(std::env::var("HOME").unwrap_or_default())
-                .join("Development/ecoPrimals/akida_dw_edma/akida-pcie.ko"),
-            PathBuf::from("/lib/modules")
-                .join(kernel_version()?)
-                .join("extra/akida-pcie.ko"),
-        ];
+        // Build search paths - check environment variable first, then standard locations
+        let mut search_paths = Vec::new();
+
+        // 1. Check AKIDA_DRIVER_PATH environment variable (highest priority)
+        if let Ok(custom_path) = std::env::var("AKIDA_DRIVER_PATH") {
+            search_paths.push(PathBuf::from(custom_path));
+        }
+
+        // 2. Standard kernel module locations
+        if let Ok(kver) = kernel_version() {
+            // Standard extra modules location
+            search_paths.push(
+                PathBuf::from("/lib/modules")
+                    .join(&kver)
+                    .join("extra/akida-pcie.ko"),
+            );
+            // Updates location
+            search_paths.push(
+                PathBuf::from("/lib/modules")
+                    .join(&kver)
+                    .join("updates/akida-pcie.ko"),
+            );
+            // Kernel tree location
+            search_paths.push(
+                PathBuf::from("/lib/modules")
+                    .join(&kver)
+                    .join("kernel/drivers/misc/akida-pcie.ko"),
+            );
+        }
+
+        // 3. System-wide location
+        search_paths.push(PathBuf::from("/usr/local/lib/akida/akida-pcie.ko"));
 
         for path in search_paths {
             if path.exists() {
@@ -83,15 +107,19 @@ impl NpuSetup {
             }
         }
 
-        bail!("Akida kernel module not found. Please compile the driver.");
+        bail!(
+            "Akida kernel module not found. Set AKIDA_DRIVER_PATH environment variable \
+            or install the driver to /lib/modules/$(uname -r)/extra/akida-pcie.ko"
+        );
     }
 
     /// Enable PCIe devices
     fn enable_pcie_devices(&self) -> Result<()> {
         info!("Enabling PCIe devices...");
 
-        // Find Akida PCIe addresses
-        let output = Command::new("lspci").arg("-d").arg("1e7c:bca1").output()?;
+        // Find Akida PCIe addresses using shared constants
+        let filter = crate::pcie_ids::lspci_filter();
+        let output = Command::new("lspci").arg("-d").arg(&filter).output()?;
 
         let devices = String::from_utf8_lossy(&output.stdout);
 
@@ -223,10 +251,14 @@ impl Default for NpuSetup {
 fn check_hardware() -> Result<()> {
     info!("Checking for Akida hardware...");
 
-    let output = Command::new("lspci").arg("-d").arg("1e7c:bca1").output()?;
+    let filter = crate::pcie_ids::lspci_filter();
+    let output = Command::new("lspci").arg("-d").arg(&filter).output()?;
 
     if !output.status.success() || output.stdout.is_empty() {
-        bail!("No Akida NPU hardware detected. Run 'lspci -d 1e7c:bca1' to verify.");
+        bail!(
+            "No Akida NPU hardware detected. Run 'lspci -d {}' to verify.",
+            filter
+        );
     }
 
     let devices = String::from_utf8_lossy(&output.stdout);
