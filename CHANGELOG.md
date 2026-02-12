@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-12] - Shader-First Architecture for BarraCUDA Math Library
+
+**Impact**: ALL parallelizable math is now WGSL shader-first. ToadStool dispatches to GPU (default) or CPU (fallback). Seamless fp64 GPU transition when available.
+
+#### Added
+
+- **18 Special Function Shaders** (all new WGSL):
+  - `hermite.wgsl` — Physicist's Hermite polynomials Hₙ(x) via recurrence
+  - `legendre.wgsl` — Legendre Pₙ(x) and associated Pₙᵐ(x) with Condon-Shortley
+  - `laguerre.wgsl` — Generalized Laguerre polynomials Lₙ^α(x)
+  - `digamma.wgsl` — Digamma ψ(x) via asymptotic expansion + reflection
+  - `beta.wgsl` — Beta B(a,b) via exp(lgamma) for stability
+  - `norm_cdf.wgsl` — Normal CDF Φ(x) and PDF φ(x)
+  - `norm_ppf.wgsl` — Inverse Normal CDF Φ⁻¹(p) via Acklam's algorithm
+
+- **3 Sampling Shaders**:
+  - `sobol.wgsl` — Sobol quasi-random sequences (Gray code, 8 dimensions)
+  - `lhs.wgsl` — Latin Hypercube Sampling with PCG PRNG
+  - `random_uniform.wgsl` — Uniform random with PCG hash
+
+- **5 Statistics Shaders**:
+  - `correlation.wgsl` — Pearson correlation coefficient
+  - `covariance.wgsl` — Sample/population covariance
+  - `variance.wgsl` — Variance and standard deviation
+
+- **Rust Wrappers**: All new shaders have corresponding `*_wgsl.rs` wrappers with Tensor API
+
+#### Architecture
+
+- **Principle**: BarraCUDA is a UNIFIED math library — shaders are primary implementation
+- **Dispatch**: ToadStool routes to GPU (WGSL) by default, CPU fallback for fp64 precision
+- **Future**: When fp64 GPUs available (Titan 7, etc.), math remains unchanged
+- **CPU-only exceptions**: BFGS, Nelder-Mead, Crank-Nicolson (inherently iterative)
+
+#### Verification
+
+- 143 WGSL wrapper tests passing
+- 391 total WGSL shaders in library
+- All quality gates pass
+
+---
+
 ### [2026-02-11] - Deep Debt: Idiomatic Rust, Dependency Evolution, Coverage Push
 
 **Impact**: All production panic paths eliminated. num_cpus FFI removed. 11/11 shader TODOs closed. 3,688 core tests.

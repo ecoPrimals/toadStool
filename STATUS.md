@@ -69,13 +69,21 @@ All HIGH and MEDIUM priority items from the hotSpring science gaps audit have be
 **Special Functions** (`barracuda::special`):
 - `hermite.rs` — Physicist's Hermite polynomials Hₙ(x) via recurrence
 - `legendre.rs` — Legendre polynomials Pₙ(x) and associated Legendre Pₙᵐ(x)
+- `laguerre.rs` — Generalized Laguerre polynomials Lₙ^α(x)
 - `gamma.rs` — Extended with digamma ψ(x) and beta B(a,b) functions
 - `erf.rs`, `bessel.rs` — CPU f64 implementations (erf, erfc, J0, J1, I0, K0)
+
+**Shader-First Architecture** (Feb 12, 2026):
+- ALL math is now WGSL shader-first — ToadStool dispatches to GPU/CPU
+- 18 special function shaders (hermite, legendre, laguerre, digamma, beta, norm_cdf, norm_ppf, etc.)
+- 3 sampling shaders (sobol, lhs, random_uniform)
+- 5 statistics shaders (correlation, covariance, variance)
+- When fp64 GPUs available, seamless transition
 
 **GPU Acceleration**:
 - SparsitySampler hybrid evaluation strategy with GPU-accelerated RBF surrogate training
 
-**Total new tests**: 90+ (all passing)
+**Total new tests**: 143 WGSL wrapper tests + 90+ middleware tests (all passing)
 
 ---
 

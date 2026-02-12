@@ -222,6 +222,8 @@ Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
 
 ## Scientific Computing Middleware API
 
+> **Shader-First Architecture**: All parallelizable math is implemented as WGSL shaders. ToadStool dispatches to GPU (default) or CPU (fallback/fp64). When fp64 GPUs become available, transition is seamless.
+
 ### Linear Algebra
 
 ```rust
@@ -294,7 +296,7 @@ solver.step()?;  // Advance one timestep
 ```rust
 use barracuda::special::{gamma, lgamma, digamma, beta, factorial};
 use barracuda::special::{erf, erfc, bessel_j0, bessel_i0};
-use barracuda::special::{hermite, legendre, assoc_legendre};
+use barracuda::special::{hermite, legendre, assoc_legendre, laguerre};
 
 // Gamma and related
 let g = gamma(5.0);       // Γ(5) = 24
@@ -310,10 +312,12 @@ let ec = erfc(2.0);       // erfc(2) ≈ 0.0047
 let j0 = bessel_j0(1.0);  // J₀(1) ≈ 0.7652
 let i0 = bessel_i0(1.0);  // I₀(1) ≈ 1.2661
 
-// Orthogonal polynomials
+// Orthogonal polynomials (all WGSL shader-first)
 let h5 = hermite(5, 1.0);           // H₅(1) = 41
 let p3 = legendre(3, 0.5);          // P₃(0.5)
 let p32 = assoc_legendre(3, 2, 0.5); // P₃²(0.5)
+let l3 = laguerre(3, 0.0, 2.0);     // L₃(2) simple Laguerre
+let l3a = laguerre(3, 0.5, 2.0);    // L₃^0.5(2) generalized
 ```
 
 ### Statistics

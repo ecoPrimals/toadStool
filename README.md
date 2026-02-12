@@ -123,7 +123,7 @@ cargo test -p barracuda --lib ops::linalg --release
 ```
 toadStool/
 +-- crates/
-|   +-- barracuda/             -- 414 WGSL shaders, tensor ops
+|   +-- barracuda/             -- 391 WGSL shaders, tensor ops
 |   +-- core/
 |   |   +-- common/            -- Shared types, constants, discovery
 |   |   +-- config/            -- Centralized configuration (env-aware)
