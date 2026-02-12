@@ -168,12 +168,12 @@ Based on corrected gaps:
 | 6 | ~~Band-diagonal solver~~ | ~~🔴 HIGH~~ | ✅ **DONE Feb 12** — tridiagonal.rs |
 | 7 | ~~Crank-Nicolson PDE~~ | ~~🔴 HIGH~~ | ✅ **DONE Feb 12** — crank_nicolson.rs |
 | 8 | ~~BFGS optimizer~~ | ~~🟡 MEDIUM~~ | ✅ **DONE Feb 12** — bfgs.rs |
-| 9 | **New: Normal CDF, correlation** | 🟡 MEDIUM | Actual gap |
+| 9 | ~~Normal CDF, correlation~~ | ~~🟡 MEDIUM~~ | ✅ **DONE Feb 12** — stats/ module |
 | 10 | ~~New: FFT~~ | ~~MEDIUM~~ | ✅ Already complete |
 | 11 | ~~New: RK4~~ | ~~MEDIUM~~ | ✅ Already exists |
 | 12 | ~~Adaptive RK45~~ | ~~🟡 MEDIUM~~ | ✅ **DONE Feb 12** — rk45.rs |
 | 13 | ~~Sobol sequences~~ | ~~🟡 MEDIUM~~ | ✅ **DONE Feb 12** — sobol.rs |
-| 14 | **New: LU, QR, SVD** | 🟡 MEDIUM | Actual gap |
+| 14 | ~~LU, QR, SVD~~ | ~~🟡 MEDIUM~~ | ✅ **DONE Feb 12** — lu.rs, qr.rs, svd.rs |
 
 ---
 

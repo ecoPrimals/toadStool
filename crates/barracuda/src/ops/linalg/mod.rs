@@ -9,10 +9,19 @@
 //!
 //! ## Operations
 //!
+//! ### Decompositions
+//!
 //! - `cholesky` - Cholesky decomposition (A = L·Lᵀ)
+//! - `lu` - LU decomposition with pivoting (PA = L·U)
+//! - `qr` - QR decomposition (A = Q·R)
+//! - `svd` - Singular value decomposition (A = U·Σ·Vᵀ)
 //! - `eigh` - Eigenvalue decomposition (A = V·D·Vᵀ for symmetric A)
+//!
+//! ### Solvers
+//!
 //! - `linsolve` - Linear system solve (A·x = b)
 //! - `triangular_solve` - Forward/backward substitution (L·x = b)
+//! - `tridiagonal` - Thomas algorithm for tridiagonal systems
 //!
 //! ## Design Principles
 //!
@@ -25,11 +34,17 @@
 pub mod cholesky;
 pub mod eigh;
 pub mod linsolve;
+pub mod lu;
+pub mod qr;
+pub mod svd;
 pub mod triangular_solve;
 pub mod tridiagonal;
 
 pub use cholesky::Cholesky;
 pub use eigh::Eigh;
 pub use linsolve::LinSolve;
+pub use lu::{lu_decompose, lu_solve, lu_det, lu_inverse, LuDecomposition};
+pub use qr::{qr_decompose, qr_least_squares, QrDecomposition};
+pub use svd::{svd_decompose, svd_values, svd_pinv, SvdDecomposition};
 pub use triangular_solve::TriangularSolve;
 pub use tridiagonal::{tridiagonal_solve, tridiagonal_solve_batch, tridiagonal_solve_f32};

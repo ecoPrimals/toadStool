@@ -104,6 +104,7 @@ pub mod pde;
 pub mod sample;
 pub mod scheduler;
 pub mod special;
+pub mod stats;
 pub mod surrogate;
 pub mod unified_hardware;
 pub mod unified_math;
