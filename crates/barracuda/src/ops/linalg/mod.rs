@@ -26,8 +26,10 @@ pub mod cholesky;
 pub mod eigh;
 pub mod linsolve;
 pub mod triangular_solve;
+pub mod tridiagonal;
 
 pub use cholesky::Cholesky;
 pub use eigh::Eigh;
 pub use linsolve::LinSolve;
 pub use triangular_solve::TriangularSolve;
+pub use tridiagonal::{tridiagonal_solve, tridiagonal_solve_batch, tridiagonal_solve_f32};

@@ -12,6 +12,7 @@
 //! - [`random_uniform`] — Uniform random sampling within bounds
 //! - [`maximin::maximin_lhs`] — Maximin-optimized LHS (maximize min pairwise distance)
 //! - [`sparsity::sparsity_sampler`] — Iterative surrogate-directed sampling (Diaw et al. 2024)
+//! - [`sobol::sobol_sequence`] — Low-discrepancy quasi-random sequences
 //!
 //! # Examples
 //!
@@ -30,9 +31,19 @@
 //! assert_eq!(rng_points.len(), 100);
 //! # Ok::<(), barracuda::error::BarracudaError>(())
 //! ```
+//!
+//! ```
+//! use barracuda::sample::sobol::sobol_scaled;
+//!
+//! let bounds = vec![(0.0, 1.0), (0.0, 1.0)];
+//! let points = sobol_scaled(100, &bounds).unwrap();
+//! // Points are more uniformly distributed than pseudo-random
+//! ```
 
 pub mod lhs;
 pub mod maximin;
+pub mod sobol;
 pub mod sparsity;
 
 pub use lhs::{latin_hypercube, random_uniform};
+pub use sobol::{sobol_scaled, sobol_sequence, SobolGenerator};

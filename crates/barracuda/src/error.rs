@@ -52,6 +52,9 @@ pub enum BarracudaError {
 
     #[error("Internal error: {0}")]
     Internal(String),
+
+    #[error("Numerical error: {message}")]
+    Numerical { message: String },
 }
 
 impl BarracudaError {
