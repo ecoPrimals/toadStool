@@ -79,19 +79,21 @@ The hotSpring inventory undercounted by 36 shaders.
 
 ## Actual Gaps — What's Really Missing
 
-### 🔴 Special Functions (Actually Missing)
+### ✅ Special Functions (HIGH Priority Complete)
 
 | Function | Shader | Rust | Priority | Status |
 |----------|--------|------|----------|--------|
-| Digamma ψ(x) | ❌ | ✅ | HIGH — Bayesian methods | **DONE Feb 12** |
-| Beta B(a,b) | ❌ | ✅ | HIGH — Statistics | **DONE Feb 12** |
+| Digamma ψ(x) | ✅ | ✅ | HIGH — Bayesian methods | **SHADER Feb 12** |
+| Beta B(a,b) | ✅ | ✅ | HIGH — Statistics | **SHADER Feb 12** |
+| Hermite Hₙ(x) | ✅ | ✅ | HIGH — HO wavefunctions | **SHADER Feb 12** |
+| Legendre Pₙ(x) | ✅ | ✅ | HIGH — Angular momentum | **SHADER Feb 12** |
+| Associated Legendre Pₙᵐ | ✅ | ✅ | HIGH — Full Y_lm | **SHADER Feb 12** |
+| Normal CDF Φ(x) | ✅ | ✅ | HIGH — Statistics | **SHADER Feb 12** |
+| Normal PDF φ(x) | ✅ | ✅ | HIGH — Statistics | **SHADER Feb 12** |
 | Incomplete gamma γ(a,x) | ❌ | ❌ | MEDIUM — Chi² CDF | |
 | Bessel Jₙ (arbitrary n) | ❌ | ❌ | MEDIUM — Nuclear | |
 | Modified Bessel Iₙ, Kₙ | ❌ | ❌ | MEDIUM — Nuclear | |
 | Spherical Bessel jₙ, yₙ | ❌ | ❌ | LOW — Scattering | |
-| Hermite Hₙ(x) | ❌ | ✅ | HIGH — HO wavefunctions | **DONE Feb 12** |
-| Legendre Pₙ(x) | ❌ | ✅ | HIGH — Angular momentum | **DONE Feb 12** |
-| Associated Legendre Pₙᵐ | ❌ | ✅ | HIGH — Full Y_lm | **DONE Feb 12** |
 | Airy Ai, Bi | ❌ | ❌ | LOW — Tunneling | |
 | Hypergeometric ₁F₁, ₂F₁ | ❌ | ❌ | LOW — Coulomb | |
 | Elliptic K, E | ❌ | ❌ | LOW — Deformed shapes | |
@@ -130,18 +132,19 @@ The hotSpring inventory undercounted by 36 shaders.
 | Differential evolution | MEDIUM |
 | Simulated annealing | LOW |
 
-### 🔴 Sampling/Stats (Actually Missing)
+### 🟢 Sampling/Stats (HIGH Priority Complete)
 
-| Method | Priority |
-|--------|----------|
-| xoshiro Rust wrapper | LOW |
-| Sobol sequences | MEDIUM |
-| Halton sequences | LOW |
-| Normal distribution CDF | HIGH |
-| Chi² test | MEDIUM |
-| KDE | LOW |
-| Correlation matrix | MEDIUM |
-| Covariance matrix | MEDIUM |
+| Method | Priority | Status |
+|--------|----------|--------|
+| Normal distribution CDF | HIGH | ✅ **SHADER Feb 12** |
+| Normal distribution PDF | HIGH | ✅ **SHADER Feb 12** |
+| Sobol sequences | MEDIUM | ✅ DONE Feb 12 |
+| Correlation matrix | MEDIUM | ✅ DONE Feb 12 |
+| Covariance matrix | MEDIUM | ✅ DONE Feb 12 |
+| xoshiro Rust wrapper | LOW | |
+| Halton sequences | LOW | |
+| Chi² test | MEDIUM | |
+| KDE | LOW | |
 
 ### 🔴 Transforms (Actually Missing)
 
@@ -195,7 +198,32 @@ files so they're discoverable via `use barracuda::*`.
 2. ~~Re-export missing modules~~ — ✅ **DONE**: GPU ops re-exported (ErfGpu, BesselJ0Gpu, etc.)
 3. ~~SparsitySampler hybrid eval~~ — ✅ **DONE**: `sparsity_sampler_gpu()` with cdist.wgsl
 4. ~~Hermite/Legendre polynomials~~ — ✅ **DONE**: `hermite()`, `legendre()`, `assoc_legendre()`
-5. **Band-diagonal + Crank-Nicolson** — Actual gap for TTM (next priority)
+5. ~~Band-diagonal + Crank-Nicolson~~ — ✅ **DONE**: tridiagonal.rs, crank_nicolson.rs
+6. ~~WGSL Shaders for special functions~~ — ✅ **DONE Feb 12**: Shader-first architecture
+
+---
+
+## Shader-First Architecture (Feb 12, 2026)
+
+BarraCUDA follows **shader-first** principles:
+- WGSL shaders are the primary implementation
+- ToadStool dispatches to GPU or CPU based on hardware
+- All math must be runnable anywhere (GPU, CPU, NPU)
+
+### Special Function Shaders (10 total)
+
+| Shader | File | Operations |
+|--------|------|------------|
+| bessel_j0.wgsl | shaders/special/ | J₀(x) |
+| bessel_j1.wgsl | shaders/special/ | J₁(x) |
+| bessel_i0.wgsl | shaders/special/ | I₀(x) |
+| bessel_k0.wgsl | shaders/special/ | K₀(x) |
+| spherical_harmonics.wgsl | shaders/special/ | Yₗᵐ(θ,φ) |
+| **hermite.wgsl** | shaders/special/ | Hₙ(x) — **NEW** |
+| **legendre.wgsl** | shaders/special/ | Pₙ(x), Pₙᵐ(x) — **NEW** |
+| **digamma.wgsl** | shaders/special/ | ψ(x) — **NEW** |
+| **beta.wgsl** | shaders/special/ | B(a,b) — **NEW** |
+| **norm_cdf.wgsl** | shaders/special/ | Φ(x), φ(x) — **NEW** |
 
 ---
 
@@ -205,10 +233,10 @@ files so they're discoverable via `use barracuda::*`.
 |----------|--------------------------|------------------|
 | Linalg wrappers | 6 | 0 |
 | Special wrappers | 8 | 0 |
+| Special shaders | 5 | 0 ✅ **All HIGH done** |
 | FFT | 2 | 0 |
 | ODE solver | 1 | 0 (RK4 exists) |
 | **Total "bridge" items** | **17** | **0** |
 
-The "bridge gap" is largely a **visibility/documentation gap**, not an implementation gap.
-The actual implementation gaps are in advanced special functions (Hermite, Legendre,
-Digamma, Beta) and PDE solvers (band-diagonal, Crank-Nicolson).
+**All HIGH priority hotSpring gaps resolved.** Remaining gaps are MEDIUM/LOW priority
+(incomplete gamma, arbitrary-order Bessel, Airy, hypergeometric, etc.).
