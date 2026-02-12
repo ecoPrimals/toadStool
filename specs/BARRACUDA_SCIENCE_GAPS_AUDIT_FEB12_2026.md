@@ -165,14 +165,14 @@ Based on corrected gaps:
 | 3 | ~~Bridge special shaders~~ | ~~HIGH~~ | ✅ **DONE Feb 12** — Re-exported GPU ops |
 | 4 | ~~Hermite, Legendre polynomials~~ | ~~🔴 HIGH~~ | ✅ **DONE Feb 12** |
 | 5 | ~~Digamma, Beta functions~~ | ~~🔴 HIGH~~ | ✅ **DONE Feb 12** |
-| 6 | **New: Band-diagonal solver** | 🔴 HIGH | Actual gap (TTM) |
-| 7 | **New: Crank-Nicolson PDE** | 🔴 HIGH | Actual gap (TTM) |
-| 8 | **New: BFGS optimizer** | 🟡 MEDIUM | Actual gap |
+| 6 | ~~Band-diagonal solver~~ | ~~🔴 HIGH~~ | ✅ **DONE Feb 12** — tridiagonal.rs |
+| 7 | ~~Crank-Nicolson PDE~~ | ~~🔴 HIGH~~ | ✅ **DONE Feb 12** — crank_nicolson.rs |
+| 8 | ~~BFGS optimizer~~ | ~~🟡 MEDIUM~~ | ✅ **DONE Feb 12** — bfgs.rs |
 | 9 | **New: Normal CDF, correlation** | 🟡 MEDIUM | Actual gap |
 | 10 | ~~New: FFT~~ | ~~MEDIUM~~ | ✅ Already complete |
 | 11 | ~~New: RK4~~ | ~~MEDIUM~~ | ✅ Already exists |
-| 12 | **New: Adaptive RK45** | 🟡 MEDIUM | Actual gap |
-| 13 | **New: Sobol sequences** | 🟡 MEDIUM | Actual gap |
+| 12 | ~~Adaptive RK45~~ | ~~🟡 MEDIUM~~ | ✅ **DONE Feb 12** — rk45.rs |
+| 13 | ~~Sobol sequences~~ | ~~🟡 MEDIUM~~ | ✅ **DONE Feb 12** — sobol.rs |
 | 14 | **New: LU, QR, SVD** | 🟡 MEDIUM | Actual gap |
 
 ---
