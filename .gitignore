@@ -48,3 +48,6 @@ pipeline_validation_actual_hardware.*
 actual_gpu_validation.*
 benchmark_output.txt
 test_results.txt
+# Downloaded ML models (too large for git)
+models/huggingface/
+models/akida/
