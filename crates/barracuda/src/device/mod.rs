@@ -25,10 +25,14 @@ pub mod substrate;
 pub mod toadstool_integration; // NEW: ToadStool hardware layer integration
 pub mod tpu;
 pub mod unified;
+pub mod warmup;
 pub mod wgpu_device;
 
 // Re-export auto-tuning types
 pub use autotune::{AutoTuner, GpuCalibration, GLOBAL_TUNER};
+
+// Re-export warmup (mise en place)
+pub use warmup::{warmup_device, warmup_pool, WarmupConfig, WarmupOp, WarmupResult, WarmupWorkloadHint};
 
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};
 pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};

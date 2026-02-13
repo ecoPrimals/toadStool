@@ -69,6 +69,10 @@ path = "src/cache_validation.rs"
 name = "multi_gpu_debug"
 path = "src/multi_gpu_debug.rs"
 
+[[bin]]
+name = "warmup_demo"
+path = "src/warmup_demo.rs"
+
 [features]
 default = []
 cuda = ["cudarc"]
