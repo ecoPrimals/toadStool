@@ -81,6 +81,7 @@ pub enum RecordedOp {
 pub struct ComputeGraph {
     device: Arc<wgpu::Device>,
     queue: Arc<wgpu::Queue>,
+    #[allow(dead_code)] // Reserved for future debug logging
     device_name: String,
     ops: Vec<RecordedOp>,
     optimal_workgroup_size: u32,

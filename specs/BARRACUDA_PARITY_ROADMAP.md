@@ -421,6 +421,8 @@ cargo run --bin validate_hfb -- --backend barracuda
 │     └── Buffer pool + bind group cache framework                   │
 │  ✅ Phase 4: PooledBuffer with auto-return on Drop                  │
 │     └── 100% buffer reuse, zero allocation steady state            │
+│  ✅ Phase 5: Comprehensive test coverage                            │
+│     └── 25+ tests: unit, E2E, chaos, fault, correctness            │
 │                                                                     │
 │  ARCHITECTURE ADDED:                                                │
 │  ├── PooledBuffer - auto-returns to pool on Drop                   │

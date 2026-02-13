@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA Specifications
 
-## Current Status (February 11, 2026)
+## Current Status (February 13, 2026)
 
 **For current status, read these first**:
 1. **`../STATUS.md`** — Detailed technical status
@@ -8,15 +8,20 @@
 3. **`../README.md`** — Project overview and architecture
 
 **Key Numbers**:
-- **15,460+ tests passing**, 0 failing
-- **414 WGSL shaders** (reorganized into categories)
+- **15,700+ tests passing**, 0 failing
+- **396 WGSL shaders** (optimized and categorized)
 - **5 scientific middleware modules** (linalg, numerical, special, optimize, surrogate)
 - **0 clippy warnings**, 0 build warnings
 - **0 unsafe blocks** in middleware
 - Cross-vendor GPU compute validated (NVIDIA + AMD, bit-identical)
 - 39.85 tok/s distributed LLM inference with encrypted transport
 
-**Active Work**: Phase 2A — Sampling & Global Optimization (Latin Hypercube, Multi-start Nelder-Mead)
+**Performance Parity Status** (NEW):
+- **AMD RX 6950 XT**: 97.2% of theoretical bandwidth — **PARITY ACHIEVED**
+- **NVIDIA RTX 3090**: 73.4% of theoretical bandwidth — Near parity
+- Zero-allocation steady state with automatic buffer pooling
+
+**Active Work**: Performance evolution complete. Testing and documentation consolidation.
 
 ---
 
@@ -80,8 +85,10 @@ Toadstool-Compute serves as the **universal compute platform** that:
 
 ## Specifications Index
 
-### Active Roadmap
-- **[BARRACUDA_EVOLUTION_ROADMAP.md](./BARRACUDA_EVOLUTION_ROADMAP.md)** ⭐ **Active** — Evolution roadmap, remaining work, cross-domain vision
+### Active Roadmaps
+- **[BARRACUDA_PARITY_ROADMAP.md](./BARRACUDA_PARITY_ROADMAP.md)** ⭐ **COMPLETE** — Performance parity achieved (AMD at 97%, NVIDIA at 73%)
+- **[BARRACUDA_EVOLUTION_ROADMAP.md](./BARRACUDA_EVOLUTION_ROADMAP.md)** — Evolution roadmap, remaining work, cross-domain vision
+- **[CROSS_PLATFORM_WORKLOADS.md](./CROSS_PLATFORM_WORKLOADS.md)** — Benchmark suite specifications
 
 ### BarraCUDA Compute
 
@@ -152,15 +159,18 @@ Toadstool-Compute serves as the **universal compute platform** that:
 - [x] Capability-based discovery
 - [x] Self-knowledge architecture
 
-### In Progress
-- [ ] Phase 2A: Latin Hypercube Sampling + Multi-start Nelder-Mead
-- [ ] Test coverage expansion (81% → 90%)
-- [ ] hotSpring L2 accuracy parity (χ²/datum < 2)
+### Performance Evolution ✅ COMPLETE
+- [x] Pipeline caching (8.9-16x speedup)
+- [x] Shader warmup ("Mise en Place")
+- [x] Buffer pooling with auto-return (100% reuse, zero allocation)
+- [x] Comprehensive test coverage (25+ tests)
+- [x] AMD parity achieved (97.2% theoretical)
+- [x] NVIDIA near-parity (73.4% theoretical)
 
 ### Remaining Work (see [BARRACUDA_EVOLUTION_ROADMAP.md](./BARRACUDA_EVOLUTION_ROADMAP.md))
-- [ ] Phase 2B: Full SparsitySampler (if Phase 2A insufficient)
-- [ ] Phase 2C: GPU-accelerated RBF surrogate training (14× speedup)
-- [ ] Phase 3: Cross-domain shader evolution (ray tracing, audio, neural)
+- [ ] Bind group caching (reduce ~50-100μs per op)
+- [ ] Timeline semaphores for async submit
+- [ ] Fused kernels (a*b+c as single dispatch)
 - [ ] Phase 4: VFIO NPU driver, multi-GPU DevicePool, quantization
 
 ## Contributing

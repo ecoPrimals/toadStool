@@ -79,6 +79,7 @@
 
 pub mod device;
 pub mod error;
+pub mod shaders; // Generic precision shader templates (f16/f32/f64)
 // pub mod esn;  // DEPRECATED: Superseded by esn_v2 (hardware-agnostic)
 pub mod esn_v2; // High-level Echo State Network API
 pub mod genomics; // High-level Bioinformatics/Genomics API

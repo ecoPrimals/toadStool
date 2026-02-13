@@ -93,6 +93,22 @@ path = "src/pooling_benchmark.rs"
 name = "evolution_benchmark"
 path = "src/evolution_benchmark.rs"
 
+[[bin]]
+name = "check_caps"
+path = "src/check_caps.rs"
+
+[[bin]]
+name = "fp64_benchmark"
+path = "src/fp64_benchmark.rs"
+
+[[bin]]
+name = "fp64_validation"
+path = "src/fp64_validation.rs"
+
+[[bin]]
+name = "generic_precision_demo"
+path = "src/generic_precision_demo.rs"
+
 [features]
 default = []
 cuda = ["cudarc"]

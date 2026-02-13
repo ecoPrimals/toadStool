@@ -557,19 +557,27 @@ pub fn high_capacity_limits() -> wgpu::Limits {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_buffer_pool() {
+    async fn create_test_device() -> Arc<wgpu::Device> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions::default())
             .await
-            .unwrap();
+            .expect("No adapter found");
         let (device, _) = adapter
             .request_device(&wgpu::DeviceDescriptor::default(), None)
             .await
-            .unwrap();
+            .expect("Failed to create device");
+        Arc::new(device)
+    }
 
-        let pool = BufferPool::new(Arc::new(device));
+    // ========================================================================
+    // BufferPool Unit Tests
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_buffer_pool_basic_acquire_release() {
+        let device = create_test_device().await;
+        let pool = BufferPool::new(device);
 
         // First allocation
         let buf1 = pool.acquire(1024);
@@ -586,5 +594,213 @@ mod tests {
         let (allocs, reuses) = pool.stats();
         assert_eq!(allocs, 1);
         assert_eq!(reuses, 1);
+    }
+
+    #[tokio::test]
+    async fn test_buffer_pool_power_of_two_bucketing() {
+        let device = create_test_device().await;
+        let pool = BufferPool::new(device);
+
+        // Request 1000 bytes, should get 1024 (next power of 2)
+        let buf = pool.acquire(1000);
+        assert_eq!(buf.size(), 1024);
+
+        // Request 1025 bytes, should get 2048
+        let buf2 = pool.acquire(1025);
+        assert_eq!(buf2.size(), 2048);
+
+        // Request 256 bytes (minimum bucket)
+        let buf3 = pool.acquire(100);
+        assert_eq!(buf3.size(), 256); // Minimum bucket size
+    }
+
+    #[tokio::test]
+    async fn test_buffer_pool_multiple_buckets() {
+        let device = create_test_device().await;
+        let pool = BufferPool::new(device);
+
+        // Allocate different sizes
+        let buf_256 = pool.acquire(256);
+        let buf_1024 = pool.acquire(1024);
+        let buf_4096 = pool.acquire(4096);
+
+        // Release all
+        pool.release(buf_256);
+        pool.release(buf_1024);
+        pool.release(buf_4096);
+
+        // Acquire again - should reuse from correct buckets
+        let buf_256_reuse = pool.acquire(200);
+        let buf_1024_reuse = pool.acquire(1000);
+        let buf_4096_reuse = pool.acquire(4000);
+
+        assert_eq!(buf_256_reuse.size(), 256);
+        assert_eq!(buf_1024_reuse.size(), 1024);
+        assert_eq!(buf_4096_reuse.size(), 4096);
+
+        let (allocs, reuses) = pool.stats();
+        assert_eq!(allocs, 3);
+        assert_eq!(reuses, 3);
+    }
+
+    // ========================================================================
+    // PooledBuffer Unit Tests
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_pooled_buffer_auto_return() {
+        let device = create_test_device().await;
+        let pool = BufferPool::new(device);
+
+        let (allocs_before, reuses_before) = pool.stats();
+
+        // Acquire pooled buffer
+        {
+            let _pooled = pool.acquire_pooled(1024);
+            // Buffer is in use
+        }
+        // PooledBuffer dropped here - should return to pool
+
+        // Acquire again - should be a reuse
+        let _pooled2 = pool.acquire_pooled(1024);
+
+        let (allocs_after, reuses_after) = pool.stats();
+        assert_eq!(allocs_after - allocs_before, 1); // Only 1 allocation
+        assert_eq!(reuses_after - reuses_before, 1); // 1 reuse from auto-return
+    }
+
+    #[tokio::test]
+    async fn test_pooled_buffer_deref() {
+        let device = create_test_device().await;
+        let pool = BufferPool::new(device);
+
+        let pooled = pool.acquire_pooled(1024);
+        
+        // Test Deref
+        let _size: u64 = pooled.size();
+        
+        // Test buffer() method
+        let _buf_ref: &wgpu::Buffer = pooled.buffer();
+    }
+
+    #[tokio::test]
+    async fn test_pooled_buffer_into_buffer() {
+        let device = create_test_device().await;
+        let pool = BufferPool::new(device);
+
+        let pooled = pool.acquire_pooled(1024);
+        
+        // Convert to owned buffer (removes from pool management)
+        let owned = pooled.into_buffer();
+        assert!(owned.size() >= 1024);
+        
+        // Dropping owned buffer won't return to pool
+        drop(owned);
+        
+        // Next acquire should allocate new
+        let _new = pool.acquire_pooled(1024);
+        let (allocs, _) = pool.stats();
+        assert_eq!(allocs, 2); // Two allocations, no reuse
+    }
+
+    // ========================================================================
+    // TensorContext Unit Tests
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_tensor_context_acquire_pooled() {
+        let wgpu_device = crate::device::WgpuDevice::new().await.unwrap();
+        let device = Arc::new(wgpu_device);
+        let ctx = TensorContext::new(device);
+
+        let pooled = ctx.acquire_pooled_output(1000); // 1000 f32s = 4000 bytes
+        assert!(pooled.size() >= 4000);
+    }
+
+    #[tokio::test]
+    async fn test_tensor_context_batching_mode() {
+        let wgpu_device = crate::device::WgpuDevice::new().await.unwrap();
+        let device = Arc::new(wgpu_device);
+        let ctx = TensorContext::new(device);
+
+        // Not batching by default
+        assert!(!ctx.is_batching());
+
+        // Begin batch
+        ctx.begin_batch();
+        assert!(ctx.is_batching());
+
+        // End batch
+        ctx.end_batch().unwrap();
+        assert!(!ctx.is_batching());
+    }
+
+    #[tokio::test]
+    async fn test_tensor_context_stats() {
+        let wgpu_device = crate::device::WgpuDevice::new().await.unwrap();
+        let device = Arc::new(wgpu_device);
+        let ctx = TensorContext::new(device);
+
+        let stats = ctx.stats();
+        assert_eq!(stats.buffer_allocations, 0);
+        assert_eq!(stats.buffer_reuses, 0);
+        assert_eq!(stats.ops_executed, 0);
+        assert_eq!(stats.ops_batched, 0);
+    }
+
+    #[tokio::test]
+    async fn test_tensor_context_stats_display() {
+        let stats = TensorContextStats {
+            buffer_allocations: 10,
+            buffer_reuses: 90,
+            bind_group_cache_hits: 50,
+            bind_group_cache_misses: 50,
+            ops_executed: 100,
+            ops_batched: 50,
+        };
+
+        let display = format!("{}", stats);
+        assert!(display.contains("90.0% reuse"));
+        assert!(display.contains("50.0% hit rate"));
+    }
+
+    // ========================================================================
+    // Global Context Tests
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_global_context_registry() {
+        clear_global_contexts();
+
+        let wgpu_device = crate::device::WgpuDevice::new().await.unwrap();
+        let device = Arc::new(wgpu_device);
+
+        // Get context twice - should be same instance
+        let ctx1 = get_device_context(&device);
+        let ctx2 = get_device_context(&device);
+
+        // Acquire from ctx1
+        let _buf1 = ctx1.acquire_pooled_output(1000);
+        
+        // Stats should be visible from ctx2 (same context)
+        let stats = ctx2.stats();
+        assert!(stats.buffer_allocations > 0);
+
+        clear_global_contexts();
+    }
+
+    // ========================================================================
+    // High Capacity Limits Tests
+    // ========================================================================
+
+    #[test]
+    fn test_high_capacity_limits() {
+        let limits = high_capacity_limits();
+        
+        // 1GB max binding
+        assert_eq!(limits.max_storage_buffer_binding_size, 1 << 30);
+        
+        // 2GB max buffer
+        assert_eq!(limits.max_buffer_size, 1 << 31);
     }
 }

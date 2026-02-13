@@ -202,8 +202,8 @@ impl PipelineCache {
 
     /// Get or compile a shader module
     ///
-    /// Uses adapter_info to create a device fingerprint that's unique per physical GPU
-    /// (even across different wgpu instances).
+    /// Uses device + adapter_info to create a fingerprint unique per device instance.
+    /// This ensures layouts/pipelines from different wgpu::Device instances don't collide.
     pub fn get_or_compile_shader(
         &self,
         device: &Device,
@@ -211,7 +211,7 @@ impl PipelineCache {
         source: &str,
         label: Option<&str>,
     ) -> Arc<ShaderModule> {
-        let fingerprint = DeviceFingerprint::from_adapter_info(adapter_info);
+        let fingerprint = DeviceFingerprint::from_device_info(device, adapter_info);
         let key = ShaderKey::new(source, fingerprint);
         
         self.shaders
@@ -228,7 +228,7 @@ impl PipelineCache {
 
     /// Get or create a bind group layout
     ///
-    /// Uses adapter_info to create a device fingerprint that's unique per physical GPU.
+    /// Uses device + adapter_info to create a fingerprint unique per device instance.
     pub fn get_or_create_layout(
         &self,
         device: &Device,
@@ -236,7 +236,7 @@ impl PipelineCache {
         signature: BindGroupLayoutSignature,
         label: Option<&str>,
     ) -> Arc<BindGroupLayout> {
-        let fingerprint = DeviceFingerprint::from_adapter_info(adapter_info);
+        let fingerprint = DeviceFingerprint::from_device_info(device, adapter_info);
         let key = BindGroupLayoutKey::new(signature, fingerprint);
         
         self.layouts
@@ -311,7 +311,7 @@ impl PipelineCache {
         entry_point: &str,
         label: Option<&str>,
     ) -> Arc<ComputePipeline> {
-        let fingerprint = DeviceFingerprint::from_adapter_info(adapter_info);
+        let fingerprint = DeviceFingerprint::from_device_info(device, adapter_info);
         let key = PipelineKey::new(shader_source, layout_signature, entry_point, fingerprint);
 
         self.pipelines
@@ -373,6 +373,14 @@ pub struct CacheStats {
 /// Global pipeline cache (singleton per device)
 lazy_static::lazy_static! {
     pub static ref GLOBAL_CACHE: PipelineCache = PipelineCache::new();
+}
+
+/// Clear the global pipeline cache (for testing only)
+///
+/// This clears all cached shaders, layouts, and pipelines.
+/// Should only be used in tests to ensure isolation.
+pub fn clear_global_cache() {
+    GLOBAL_CACHE.clear();
 }
 
 #[cfg(test)]

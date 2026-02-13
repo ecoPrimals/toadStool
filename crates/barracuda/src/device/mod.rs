@@ -35,6 +35,9 @@ pub use autotune::{AutoTuner, GpuCalibration, GLOBAL_TUNER};
 // Re-export warmup (mise en place)
 pub use warmup::{warmup_device, warmup_pool, WarmupConfig, WarmupOp, WarmupResult, WarmupWorkloadHint};
 
+// Re-export pipeline cache (for testing cache clearing)
+pub use pipeline_cache::clear_global_cache;
+
 // Re-export tensor context (zero-overhead Tensor operations)
 pub use tensor_context::{
     get_device_context, clear_global_contexts,
