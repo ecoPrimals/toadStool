@@ -77,6 +77,14 @@ path = "src/warmup_demo.rs"
 name = "full_stack_benchmark"
 path = "src/full_stack_benchmark.rs"
 
+[[bin]]
+name = "scale_benchmark"
+path = "src/scale_benchmark.rs"
+
+[[bin]]
+name = "nvidia_analysis"
+path = "src/nvidia_analysis.rs"
+
 [features]
 default = []
 cuda = ["cudarc"]
