@@ -19,6 +19,7 @@ use crate::error::Result;
 pub mod akida;
 pub mod akida_executor;
 pub mod capabilities;
+pub mod pipeline_cache;
 pub mod substrate;
 pub mod toadstool_integration; // NEW: ToadStool hardware layer integration
 pub mod tpu;

@@ -12,14 +12,23 @@
 
 | Backend | Device | Add (μs) | Mul (μs) | Bandwidth (GB/s) | Gap vs CUDA |
 |---------|--------|----------|----------|------------------|-------------|
-| **CUDA (native)** | RTX 3090 | 252 | 232 | 763-828 | Baseline |
-| BarraCUDA (wgpu) | RTX 3090 | 3077 | 2715 | 62-71 | **12x slower** |
-| BarraCUDA (wgpu) | RX 6950 XT | 1379 | 1029 | 139-187 | **5x slower** |
+| **CUDA (native)** | RTX 3090 | 232 | 229 | 826-839 | Baseline |
+| BarraCUDA (wgpu) | RTX 3090 | 3097 | 2767 | 62-69 | **13x slower** |
+| BarraCUDA (wgpu) | RX 6950 XT | 1449 | 812 | 132-236 | **4-6x slower** |
+
+### Size-Dependent Scaling (validated Feb 13, 2026)
+
+| Size | CUDA | BC/NVIDIA | BC/AMD | NVIDIA Gap | AMD Gap |
+|------|------|-----------|--------|------------|---------|
+| 1M | 16μs | 421μs | 230μs | 27x | 14x |
+| 4M | 60μs | 438μs | 273μs | 7.3x | 4.5x |
+| 16M | 232μs | 3097μs | 1449μs | 13x | 6.2x |
 
 ### Key Insight
-AMD RX 6950 XT performs **2x better** than NVIDIA RTX 3090 via wgpu/Vulkan!
+AMD RX 6950 XT performs **2-3x better** than NVIDIA RTX 3090 via wgpu/Vulkan!
 - RADV (Mesa) driver has lower Vulkan compute overhead
 - NVIDIA proprietary driver optimized for CUDA, not Vulkan compute
+- At 16M mul: AMD achieves 236 GB/s vs NVIDIA's 69 GB/s via wgpu
 
 ---
 
@@ -56,16 +65,27 @@ wgpu/Vulkan workflow:
 
 ### Tier 1: Quick Wins (Expected: 3-5x improvement)
 
-#### 1.1 Pre-compiled Pipeline Cache
+#### 1.1 Pre-compiled Pipeline Cache [IN PROGRESS]
+
+**Status**: Infrastructure created (`device/pipeline_cache.rs`), needs per-device isolation fix.
+
+The challenge: wgpu objects (BindGroupLayout, Pipeline) are tied to specific Device instances.
+A global cache must key by device ID, but concurrent multi-device usage caused validation errors.
+
 ```rust
 // Current: Pipeline compiled per dispatch
 let pipeline = device.create_compute_pipeline(&desc);
 
-// Optimized: Cache and reuse
-lazy_static! {
-    static ref PIPELINE_CACHE: DashMap<PipelineKey, ComputePipeline> = DashMap::new();
+// Target: Per-device pipeline cache
+impl WgpuDevice {
+    fn get_or_create_pipeline(&self, key: PipelineKey) -> Arc<ComputePipeline>;
 }
 ```
+
+**Next steps**:
+1. Move pipeline cache into `WgpuDevice` struct (not global)
+2. Pre-compile common pipelines at device creation
+3. Warm cache on first use of each shader
 
 #### 1.2 Persistent Command Buffers
 ```rust
