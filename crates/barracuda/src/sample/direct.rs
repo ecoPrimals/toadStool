@@ -148,6 +148,26 @@ pub struct DirectSamplerResult {
     pub early_stopped: bool,
 }
 
+impl DirectSamplerResult {
+    /// Extract top-k points as warm-start seeds for subsequent optimization.
+    ///
+    /// Returns the k points with lowest function values, suitable for seeding
+    /// another optimization round.
+    pub fn top_k_seeds(&self, k: usize) -> Vec<Vec<f64>> {
+        let mut records: Vec<_> = self.cache.records().to_vec();
+        records.sort_by(|a, b| a.f.partial_cmp(&b.f).unwrap_or(std::cmp::Ordering::Equal));
+        records.into_iter()
+            .take(k)
+            .map(|r| r.x)
+            .collect()
+    }
+
+    /// Get total number of true objective evaluations.
+    pub fn total_evals(&self) -> usize {
+        self.cache.len()
+    }
+}
+
 /// Run direct round-based optimization.
 ///
 /// Alternates between multi-start NM optimization and surrogate monitoring,
