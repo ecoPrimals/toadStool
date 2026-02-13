@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-13] - Akida NPU — VFIO Backend (Pure Rust with DMA)
+
+**Impact**: Pure Rust NPU driver with DMA support, eliminating need for C kernel module.
+
+#### Added
+
+- **VFIO Backend** (`akida-driver::backends::vfio`):
+  - `VfioBackend` — Pure Rust NPU access via Linux VFIO/IOMMU
+  - `DmaBuffer` — Pinned, IOMMU-mapped memory for fast bulk transfers
+  - IOMMU group discovery and device binding
+  - DMA mapping/unmapping for input, output, and model buffers
+  - No C kernel module dependency (pure Rust implementation)
+  - Integrates with existing `NpuBackend` trait and `select_backend()` API
+
+- **Backend Selection** (`akida-driver::backend`):
+  - New `BackendType::Vfio` variant
+  - New `BackendSelection::Vfio` for explicit VFIO selection
+  - Auto-selection now tries: Kernel → VFIO → Userspace
+
+#### Requirements (VFIO)
+
+- IOMMU enabled in BIOS and kernel (`intel_iommu=on` or `amd_iommu=on`)
+- Device unbound from native driver and bound to `vfio-pci`
+- User in `vfio` group or root permissions
+
+---
+
 ### [2026-02-13] - Phase 5 Evolution — Tier 3 Architecture (Complete)
 
 **Impact**: Auto-dispatch benchmark suite, pipeline orchestration API, and sparse linear algebra for large-scale problems.

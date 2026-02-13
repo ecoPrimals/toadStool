@@ -98,6 +98,9 @@ pub enum BackendType {
 
     /// Userspace driver (mmap PCIe BARs)
     Userspace,
+
+    /// VFIO driver (pure Rust with DMA)
+    Vfio,
 }
 
 impl std::fmt::Display for BackendType {
@@ -105,6 +108,7 @@ impl std::fmt::Display for BackendType {
         match self {
             Self::Kernel => write!(f, "Kernel"),
             Self::Userspace => write!(f, "Userspace"),
+            Self::Vfio => write!(f, "VFIO"),
         }
     }
 }
@@ -120,6 +124,9 @@ pub enum BackendSelection {
 
     /// Force userspace driver
     Userspace,
+
+    /// Force VFIO driver (pure Rust with DMA)
+    Vfio,
 }
 
 /// Select appropriate backend based on availability and requirements
@@ -132,17 +139,24 @@ pub enum BackendSelection {
 pub fn select_backend(selection: BackendSelection, device_id: &str) -> Result<Box<dyn NpuBackend>> {
     use crate::backends::kernel::KernelBackend;
     use crate::backends::userspace::UserspaceBackend;
+    use crate::backends::vfio::VfioBackend;
 
     match selection {
         BackendSelection::Auto => {
-            // Try kernel first (better performance)
+            // Try kernel first (best performance with C module)
             if let Ok(backend) = KernelBackend::init(device_id) {
                 tracing::info!("Using kernel backend for {device_id}");
                 return Ok(Box::new(backend));
             }
 
-            // Fall back to userspace
-            tracing::info!("Kernel backend unavailable, using userspace for {device_id}");
+            // Try VFIO second (pure Rust with DMA)
+            if let Ok(backend) = VfioBackend::init(device_id) {
+                tracing::info!("Using VFIO backend for {device_id}");
+                return Ok(Box::new(backend));
+            }
+
+            // Fall back to userspace (pure Rust, no DMA)
+            tracing::info!("Kernel/VFIO unavailable, using userspace for {device_id}");
             UserspaceBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
         }
 
@@ -152,6 +166,10 @@ pub fn select_backend(selection: BackendSelection, device_id: &str) -> Result<Bo
 
         BackendSelection::Userspace => {
             UserspaceBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
+        }
+
+        BackendSelection::Vfio => {
+            VfioBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
         }
     }
 }

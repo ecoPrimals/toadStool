@@ -333,6 +333,33 @@ impl Capabilities {
         None
     }
 
+    /// Query capabilities from sysfs only (no device file)
+    ///
+    /// Used by VFIO backend when /dev/akida* is not available.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if sysfs files cannot be read or parsed.
+    pub fn from_sysfs(pcie_address: &str) -> Result<Self> {
+        tracing::debug!("Querying capabilities from sysfs for {pcie_address}");
+
+        let chip_version = Self::read_chip_version(pcie_address)?;
+        let pcie = PcieConfig::from_sysfs(pcie_address)?;
+        let npu_count = Self::query_npu_count(pcie_address, chip_version);
+        let memory_mb = chip_version.typical_memory_mb();
+        let power_mw = Self::query_power_consumption(pcie_address);
+        let temperature_c = Self::query_temperature(pcie_address);
+
+        Ok(Self {
+            chip_version,
+            npu_count,
+            memory_mb,
+            pcie,
+            power_mw,
+            temperature_c,
+        })
+    }
+
     /// Read chip version from device ID in sysfs
     ///
     /// # Errors

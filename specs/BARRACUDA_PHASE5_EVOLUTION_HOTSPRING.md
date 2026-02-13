@@ -323,7 +323,7 @@ let result = bicgstab_solve(&a, &b, 1e-10, 500)?;
 |------|--------|-------|
 | f64 WGSL shader variants | PENDING | Full GPU f64 |
 | Multi-GPU DevicePool | PENDING | f32→RTX, f64→Titan V routing |
-| VFIO NPU driver | PENDING | Pure Rust Akida |
+| VFIO NPU driver | STARTED | Pure Rust backend implemented; awaiting hardware validation |
 
 ---
 

@@ -32,6 +32,7 @@ tokio = { version = "1", features = ["fs", "io-util"], optional = true }
 # NEW: rustix (safe Rust syscall wrappers)
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1.0", features = ["fs", "mm"] }
+libc = "0.2"  # For VFIO ioctls (minimal C interface)
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
