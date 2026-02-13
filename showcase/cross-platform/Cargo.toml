@@ -57,6 +57,18 @@ path = "src/autotune_bench.rs"
 name = "session_benchmark"
 path = "src/session_benchmark.rs"
 
+[[bin]]
+name = "latency_breakdown"
+path = "src/latency_breakdown.rs"
+
+[[bin]]
+name = "cache_validation"
+path = "src/cache_validation.rs"
+
+[[bin]]
+name = "multi_gpu_debug"
+path = "src/multi_gpu_debug.rs"
+
 [features]
 default = []
 cuda = ["cudarc"]

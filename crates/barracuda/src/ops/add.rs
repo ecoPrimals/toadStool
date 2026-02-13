@@ -4,10 +4,11 @@
 //! - ✅ Pure WGSL implementation (universal compute)
 //! - ✅ Capability-based dispatch (vendor-optimized)
 //! - ✅ Vendor-specific workgroup sizes (NVIDIA: 64, AMD: 128)
+//! - ✅ Pipeline caching (compile once, dispatch many)
 //!
 //! Formula: C = A + B (element-wise)
 
-// Vendor-optimized shaders discovered via runtime calibration
+use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 
@@ -78,6 +79,9 @@ impl Add {
     }
 
     /// Execute addition on tensors
+    ///
+    /// Uses cached shader and pipeline for fast repeated calls.
+    /// First call compiles/caches, subsequent calls reuse.
     pub fn execute(self) -> Result<Tensor> {
         let device = self.lhs.device();
         let size = self.lhs.len();
@@ -86,50 +90,20 @@ impl Add {
         let device_name = device.name();
         let (shader_source, workgroup_size) = Self::wgsl_shader(device_name, size);
 
-        // Create output buffer
+        // Create output buffer (must be per-call)
         let output_buffer = device.create_buffer_f32(size)?;
 
-        // Create bind group layout (3 buffers: lhs, rhs, output)
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Add Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+        // Get cached bind group layout (using adapter info for proper multi-GPU keying)
+        let layout_sig = BindGroupLayoutSignature::elementwise_binary();
+        let adapter_info = device.adapter_info();
+        let bind_group_layout = GLOBAL_CACHE.get_or_create_layout(
+            device.device(),
+            adapter_info,
+            layout_sig,
+            Some("Add Layout"),
+        );
 
-        // Create bind group
+        // Create bind group (must be per-call - references specific buffers)
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Add Bind Group"),
             layout: &bind_group_layout,
@@ -149,27 +123,15 @@ impl Add {
             ],
         });
 
-        // Compile vendor-optimized shader
-        let shader = device.compile_shader(shader_source, Some("Add"));
-
-        // Create pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Add Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Add Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-            });
+        // Get cached pipeline (compiles shader on first call, reuses after)
+        let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
+            device.device(),
+            adapter_info,
+            shader_source,
+            layout_sig,
+            "main",
+            Some("Add Pipeline"),
+        );
 
         // Encode and execute
         let mut encoder = device

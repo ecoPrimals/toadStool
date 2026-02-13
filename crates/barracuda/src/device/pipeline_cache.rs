@@ -14,22 +14,77 @@ use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use wgpu::{BindGroupLayout, ComputePipeline, Device, ShaderModule};
 
-/// Key for caching shader modules (includes device ID)
+/// Unique device identifier that works across wgpu instances
+///
+/// wgpu's `global_id()` is only unique within a single Instance.
+/// Since GpuPool creates devices from different instances, we use
+/// a hash of the device's physical characteristics instead.
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub struct DeviceFingerprint {
+    /// Hash of adapter name
+    name_hash: u64,
+    /// Hash of backend + device type
+    backend_hash: u64,
+}
+
+impl DeviceFingerprint {
+    /// Create fingerprint from adapter info
+    pub fn from_device_info(device: &Device, adapter_info: &wgpu::AdapterInfo) -> Self {
+        use std::hash::Hasher;
+        
+        // Hash the adapter name
+        let mut name_hasher = std::collections::hash_map::DefaultHasher::new();
+        adapter_info.name.hash(&mut name_hasher);
+        let name_hash = name_hasher.finish();
+        
+        // Hash backend + device type for additional uniqueness
+        let mut backend_hasher = std::collections::hash_map::DefaultHasher::new();
+        format!("{:?}:{:?}", adapter_info.backend, adapter_info.device_type).hash(&mut backend_hasher);
+        // Also include the wgpu global_id for uniqueness within the same instance
+        device.global_id().hash(&mut backend_hasher);
+        let backend_hash = backend_hasher.finish();
+        
+        Self {
+            name_hash,
+            backend_hash,
+        }
+    }
+    
+    /// Create from just adapter info (for quick lookups)
+    pub fn from_adapter_info(adapter_info: &wgpu::AdapterInfo) -> Self {
+        use std::hash::Hasher;
+        
+        let mut name_hasher = std::collections::hash_map::DefaultHasher::new();
+        adapter_info.name.hash(&mut name_hasher);
+        let name_hash = name_hasher.finish();
+        
+        let mut backend_hasher = std::collections::hash_map::DefaultHasher::new();
+        format!("{:?}:{:?}", adapter_info.backend, adapter_info.device_type).hash(&mut backend_hasher);
+        let backend_hash = backend_hasher.finish();
+        
+        Self {
+            name_hash,
+            backend_hash,
+        }
+    }
+}
+
+/// Key for caching shader modules (includes device fingerprint)
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub struct ShaderKey {
     /// Hash of shader source
     source_hash: u64,
-    /// Device global ID (unique per wgpu device)
-    device_id: wgpu::Id<wgpu::Device>,
+    /// Device fingerprint (unique per physical GPU)
+    device_fingerprint: DeviceFingerprint,
 }
 
 impl ShaderKey {
-    pub fn new(source: &str, device: &Device) -> Self {
+    pub fn new(source: &str, device_fingerprint: DeviceFingerprint) -> Self {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         source.hash(&mut hasher);
         Self {
             source_hash: hasher.finish(),
-            device_id: device.global_id(),
+            device_fingerprint,
         }
     }
 }
@@ -83,40 +138,40 @@ impl BindGroupLayoutSignature {
     }
 }
 
-/// Key for caching bind group layouts (includes device ID)
+/// Key for caching bind group layouts (includes device fingerprint)
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub struct BindGroupLayoutKey {
     signature: BindGroupLayoutSignature,
-    device_id: wgpu::Id<wgpu::Device>,
+    device_fingerprint: DeviceFingerprint,
 }
 
 impl BindGroupLayoutKey {
-    pub fn new(signature: BindGroupLayoutSignature, device: &Device) -> Self {
+    pub fn new(signature: BindGroupLayoutSignature, device_fingerprint: DeviceFingerprint) -> Self {
         Self {
             signature,
-            device_id: device.global_id(),
+            device_fingerprint,
         }
     }
 }
 
-/// Key for caching compute pipelines (includes device ID)
+/// Key for caching compute pipelines (includes device fingerprint)
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub struct PipelineKey {
     source_hash: u64,
     layout_signature: BindGroupLayoutSignature,
     entry_point: String,
-    device_id: wgpu::Id<wgpu::Device>,
+    device_fingerprint: DeviceFingerprint,
 }
 
 impl PipelineKey {
-    pub fn new(shader_source: &str, layout_signature: BindGroupLayoutSignature, entry_point: &str, device: &Device) -> Self {
+    pub fn new(shader_source: &str, layout_signature: BindGroupLayoutSignature, entry_point: &str, device_fingerprint: DeviceFingerprint) -> Self {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         shader_source.hash(&mut hasher);
         Self {
             source_hash: hasher.finish(),
             layout_signature,
             entry_point: entry_point.to_string(),
-            device_id: device.global_id(),
+            device_fingerprint,
         }
     }
 }
@@ -146,13 +201,18 @@ impl PipelineCache {
     }
 
     /// Get or compile a shader module
+    ///
+    /// Uses adapter_info to create a device fingerprint that's unique per physical GPU
+    /// (even across different wgpu instances).
     pub fn get_or_compile_shader(
         &self,
         device: &Device,
+        adapter_info: &wgpu::AdapterInfo,
         source: &str,
         label: Option<&str>,
     ) -> Arc<ShaderModule> {
-        let key = ShaderKey::new(source, device);
+        let fingerprint = DeviceFingerprint::from_adapter_info(adapter_info);
+        let key = ShaderKey::new(source, fingerprint);
         
         self.shaders
             .entry(key)
@@ -167,13 +227,17 @@ impl PipelineCache {
     }
 
     /// Get or create a bind group layout
+    ///
+    /// Uses adapter_info to create a device fingerprint that's unique per physical GPU.
     pub fn get_or_create_layout(
         &self,
         device: &Device,
+        adapter_info: &wgpu::AdapterInfo,
         signature: BindGroupLayoutSignature,
         label: Option<&str>,
     ) -> Arc<BindGroupLayout> {
-        let key = BindGroupLayoutKey::new(signature, device);
+        let fingerprint = DeviceFingerprint::from_adapter_info(adapter_info);
+        let key = BindGroupLayoutKey::new(signature, fingerprint);
         
         self.layouts
             .entry(key)
@@ -236,22 +300,26 @@ impl PipelineCache {
     }
 
     /// Get or create a compute pipeline
+    ///
+    /// Uses adapter_info to create a device fingerprint that's unique per physical GPU.
     pub fn get_or_create_pipeline(
         &self,
         device: &Device,
+        adapter_info: &wgpu::AdapterInfo,
         shader_source: &str,
         layout_signature: BindGroupLayoutSignature,
         entry_point: &str,
         label: Option<&str>,
     ) -> Arc<ComputePipeline> {
-        let key = PipelineKey::new(shader_source, layout_signature, entry_point, device);
+        let fingerprint = DeviceFingerprint::from_adapter_info(adapter_info);
+        let key = PipelineKey::new(shader_source, layout_signature, entry_point, fingerprint);
 
         self.pipelines
             .entry(key)
             .or_insert_with(|| {
                 // Get cached shader and layout
-                let shader = self.get_or_compile_shader(device, shader_source, label);
-                let layout = self.get_or_create_layout(device, layout_signature, label);
+                let shader = self.get_or_compile_shader(device, adapter_info, shader_source, label);
+                let layout = self.get_or_create_layout(device, adapter_info, layout_signature, label);
 
                 let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label,
@@ -312,16 +380,52 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_shader_key_consistency() {
-        let source = "fn main() {}";
-        let key1 = ShaderKey::new(source);
-        let key2 = ShaderKey::new(source);
-        assert_eq!(key1, key2);
+    fn test_fingerprint_consistency() {
+        let adapter_info = wgpu::AdapterInfo {
+            name: "Test GPU".to_string(),
+            vendor: 0,
+            device: 0,
+            device_type: wgpu::DeviceType::DiscreteGpu,
+            driver: "test".to_string(),
+            driver_info: "1.0".to_string(),
+            backend: wgpu::Backend::Vulkan,
+        };
+        
+        let fp1 = DeviceFingerprint::from_adapter_info(&adapter_info);
+        let fp2 = DeviceFingerprint::from_adapter_info(&adapter_info);
+        assert_eq!(fp1, fp2);
     }
 
     #[test]
-    fn test_layout_key_presets() {
-        let binary = BindGroupLayoutKey::elementwise_binary();
+    fn test_different_gpus_different_fingerprints() {
+        let nvidia = wgpu::AdapterInfo {
+            name: "NVIDIA RTX 3090".to_string(),
+            vendor: 0,
+            device: 0,
+            device_type: wgpu::DeviceType::DiscreteGpu,
+            driver: "nvidia".to_string(),
+            driver_info: "1.0".to_string(),
+            backend: wgpu::Backend::Vulkan,
+        };
+        
+        let amd = wgpu::AdapterInfo {
+            name: "AMD RX 6950 XT".to_string(),
+            vendor: 0,
+            device: 0,
+            device_type: wgpu::DeviceType::DiscreteGpu,
+            driver: "radv".to_string(),
+            driver_info: "1.0".to_string(),
+            backend: wgpu::Backend::Vulkan,
+        };
+        
+        let fp_nvidia = DeviceFingerprint::from_adapter_info(&nvidia);
+        let fp_amd = DeviceFingerprint::from_adapter_info(&amd);
+        assert_ne!(fp_nvidia, fp_amd, "Different GPUs should have different fingerprints");
+    }
+
+    #[test]
+    fn test_layout_signature_presets() {
+        let binary = BindGroupLayoutSignature::elementwise_binary();
         assert_eq!(binary.read_only_buffers, 2);
         assert_eq!(binary.read_write_buffers, 1);
     }

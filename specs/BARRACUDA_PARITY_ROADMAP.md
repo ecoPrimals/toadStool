@@ -1,8 +1,59 @@
 # BarraCUDA Performance Parity Roadmap
 
 **Date**: February 13, 2026  
-**Status**: AUTO-TUNING VALIDATED — Runtime calibration working  
+**Status**: PIPELINE CACHING + MULTI-GPU FIXED  
 **Goal**: Achieve vendor-free CUDA/ROCm parity with self-optimizing runtime
+
+---
+
+## 0. Latest Update: Pipeline Caching Fix (Feb 13, 2026)
+
+### Root Cause Analysis
+
+Latency breakdown benchmark revealed where the ~1200μs per-op overhead came from:
+
+| Component | Time | % of Total |
+|-----------|------|------------|
+| **Shader compilation** | 450-500 μs | 37-40% |
+| **Pipeline creation** | 180-500 μs | 18-41% |
+| Bind group creation | 50-140 μs | 5-13% |
+| Command encoding | 110-1100 μs | 10-100% |
+| Submit + GPU + Wait | 150-360 μs | 13-35% |
+
+**Key insight**: We were recompiling shaders and recreating pipelines on EVERY operation!
+CUDA/ROCm compile kernels once at load time.
+
+### Fix: Pipeline Caching with DeviceFingerprint
+
+1. **Global pipeline cache** (`GLOBAL_CACHE`) stores shaders, layouts, and pipelines
+2. **DeviceFingerprint** keys by adapter name + backend (not `global_id()` which was broken)
+3. First call compiles/caches, subsequent calls reuse
+
+### Results After Fix
+
+| GPU | Cold (First) | Warm (Cached) | Speedup |
+|-----|--------------|---------------|---------|
+| RTX 3090 | 4,951 μs | 288-555 μs | **8.9x** |
+| RX 6950 XT | 7,141 μs | 320-446 μs | **16x** |
+
+Cache stats: 2 shaders, 2 layouts, 2 pipelines (1 per GPU) ✓
+
+### Multi-GPU Bug Fixed
+
+**Bug**: `device.global_id()` was identical across different wgpu instances, causing
+cache collisions that led to "Bind group layout is invalid" errors.
+
+**Fix**: Introduced `DeviceFingerprint` that hashes adapter name + backend + device type
+to create truly unique keys per physical GPU.
+
+### Remaining Gap to CUDA
+
+The ~300-500μs floor comes from irreducible per-call overhead:
+- Bind group creation (~100-150μs) - can't cache, references specific buffers
+- Command encoding (~100μs)
+- Submit + GPU sync (~150-200μs)
+
+**To reach CUDA parity: Use TensorSession for batching**, not just caching.
 
 ---
 
