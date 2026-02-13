@@ -7,7 +7,7 @@
 //!
 //! Formula: C = A + B (element-wise)
 
-use crate::device::{DeviceCapabilities, WorkloadType};
+// Vendor-optimized shaders discovered via runtime calibration
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 

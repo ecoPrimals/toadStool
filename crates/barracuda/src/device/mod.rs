@@ -18,6 +18,7 @@ use crate::error::Result;
 
 pub mod akida;
 pub mod akida_executor;
+pub mod autotune;
 pub mod capabilities;
 pub mod pipeline_cache;
 pub mod substrate;
@@ -25,6 +26,9 @@ pub mod toadstool_integration; // NEW: ToadStool hardware layer integration
 pub mod tpu;
 pub mod unified;
 pub mod wgpu_device;
+
+// Re-export auto-tuning types
+pub use autotune::{AutoTuner, GpuCalibration, GLOBAL_TUNER};
 
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};
 pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};

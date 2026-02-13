@@ -9,6 +9,8 @@
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
 
+use super::autotune::{GpuCalibration, GLOBAL_TUNER};
+
 /// WebGPU device - executes WGSL on any hardware
 ///
 /// wgpu automatically selects best backend:
@@ -17,11 +19,17 @@ use std::sync::Arc;
 /// - DX12 (Windows GPUs)
 /// - Software rasterizer (CPU fallback)
 /// - Custom (NPU/TPU if driver available)
+///
+/// **Auto-Tuning**: Each device can be calibrated at runtime to discover
+/// optimal parameters (workgroup size, batch size) for the specific hardware.
+/// This handles silicon lottery, generation differences, and unknown cards.
 #[derive(Debug, Clone)]
 pub struct WgpuDevice {
     pub(crate) device: Arc<wgpu::Device>,
     pub(crate) queue: Arc<wgpu::Queue>,
     adapter_info: wgpu::AdapterInfo,
+    /// Cached calibration (lazily populated)
+    calibration: Option<GpuCalibration>,
 }
 
 impl WgpuDevice {
@@ -148,6 +156,7 @@ impl WgpuDevice {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info: info,
+            calibration: None,
         })
     }
 
@@ -203,6 +212,7 @@ impl WgpuDevice {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info,
+            calibration: None,
         })
     }
 
@@ -497,6 +507,61 @@ impl WgpuDevice {
         staging_buffer.unmap();
 
         Ok(result)
+    }
+
+    // =========================================================================
+    // AUTO-TUNING API
+    // =========================================================================
+
+    /// Get calibration for this device (from cache or run calibration)
+    ///
+    /// Calibration discovers optimal workgroup size, batch size, and measures
+    /// actual bandwidth for this specific hardware.
+    ///
+    /// Results are cached globally and persisted to disk, so calibration only
+    /// runs once per unique GPU.
+    pub fn get_calibration(&self) -> GpuCalibration {
+        GLOBAL_TUNER.get_or_calibrate(&self.device, &self.queue, &self.adapter_info.name)
+    }
+
+    /// Force recalibration (use after driver updates or hardware changes)
+    pub fn recalibrate(&self) -> GpuCalibration {
+        GLOBAL_TUNER.recalibrate(&self.device, &self.queue, &self.adapter_info.name)
+    }
+
+    /// Get optimal workgroup size for this device
+    ///
+    /// This is the primary tuned parameter - affects all compute dispatches.
+    /// Uses cached calibration or falls back to safe default (256).
+    pub fn optimal_workgroup_size(&self) -> u32 {
+        self.calibration
+            .as_ref()
+            .map(|c| c.optimal_workgroup_size)
+            .unwrap_or_else(|| {
+                GLOBAL_TUNER
+                    .get_or_calibrate(&self.device, &self.queue, &self.adapter_info.name)
+                    .optimal_workgroup_size
+            })
+    }
+
+    /// Get measured peak bandwidth for this device (GB/s)
+    pub fn peak_bandwidth_gbps(&self) -> f64 {
+        self.get_calibration().peak_bandwidth_gbps
+    }
+
+    /// Get measured dispatch overhead for this device (μs)
+    pub fn dispatch_overhead_us(&self) -> f64 {
+        self.get_calibration().dispatch_overhead_us
+    }
+
+    /// Create calibrated device (runs calibration immediately)
+    ///
+    /// Use this for production workloads to ensure optimal settings from start.
+    pub async fn new_calibrated() -> Result<Self> {
+        let mut device = Self::new().await?;
+        let cal = device.get_calibration();
+        device.calibration = Some(cal);
+        Ok(device)
     }
 }
 

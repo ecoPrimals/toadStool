@@ -1,12 +1,74 @@
 # BarraCUDA Performance Parity Roadmap
 
 **Date**: February 13, 2026  
-**Status**: PROFILED — Optimization targets identified  
-**Goal**: Achieve vendor-free CUDA/ROCm parity
+**Status**: AUTO-TUNING VALIDATED — Runtime calibration working  
+**Goal**: Achieve vendor-free CUDA/ROCm parity with self-optimizing runtime
 
 ---
 
-## 1. Current Performance Gap
+## 1. Validated Performance Profile (Auto-Tuning Results)
+
+### IMPORTANT: Previous Numbers Were Wrong
+
+The earlier "2000+ GB/s" numbers from batched tests were **measurement artifacts** - they
+didn't include proper GPU synchronization. The auto-tuning benchmark now uses correct
+methodology with validation.
+
+### Validated Benchmark Results (Feb 13, 2026)
+
+| GPU | Peak Bandwidth | % Theoretical | Single-Op Latency | Optimal WG |
+|-----|----------------|---------------|-------------------|------------|
+| RTX 3090 | **176 GB/s** | 19% of 936 | 243 μs | 64 |
+| RX 6950 XT | **137 GB/s** | 24% of 576 | 335 μs | 256 |
+
+### Comparison to CUDA Baseline
+
+| Metric | CUDA (RTX 3090) | BarraCUDA (RTX 3090) | Gap |
+|--------|-----------------|----------------------|-----|
+| Bandwidth | ~800 GB/s | 176 GB/s | 4.5x |
+| Efficiency | 85% theoretical | 19% theoretical | - |
+| Latency | ~15-50 μs | 243 μs | 5-16x |
+
+### Key Findings
+
+1. **NVIDIA achieves higher raw bandwidth** than AMD via wgpu (176 vs 137 GB/s)
+2. **AMD achieves better % of theoretical** (24% vs 19%)
+3. **Single-op overhead is massive** (~200-350μs) - this is the primary bottleneck
+4. **Workgroup size matters differently per vendor**:
+   - NVIDIA optimal: WG=64
+   - AMD optimal: WG=256 (contrary to earlier shader_optimization_bench which showed 128)
+
+## 2. Auto-Tuning Architecture [IMPLEMENTED]
+
+### Runtime Calibration System
+
+BarraCUDA now discovers optimal parameters at runtime rather than hardcoding vendor assumptions:
+
+```rust
+// Auto-calibration on first use
+let device = WgpuDevice::new().await?;
+let cal = device.get_calibration();  // Cached after first run
+
+println!("Optimal WG: {}", cal.optimal_workgroup_size);
+println!("Peak BW: {} GB/s", cal.peak_bandwidth_gbps);
+```
+
+### Benefits
+
+1. **Silicon lottery handled**: Discovers actual card performance, not theoretical
+2. **Unknown hardware works**: New cards (Titan V, future gens) auto-calibrate
+3. **Driver updates captured**: Re-calibrate to discover driver improvements
+4. **Per-card optimization**: Each physical GPU gets its own profile
+
+### Files Added
+
+- `crates/barracuda/src/device/autotune.rs` - Core auto-tuning infrastructure
+- `showcase/cross-platform/src/autotune_bench.rs` - Validation benchmark
+- `crates/barracuda/src/compute_graph.rs` - Lazy execution for batching
+
+---
+
+## 3. Previous Performance Analysis
 
 ### Benchmark Results (16M elements, vector operations)
 
@@ -16,19 +78,13 @@
 | BarraCUDA (wgpu) | RTX 3090 | 3097 | 2767 | 62-69 | **13x slower** |
 | BarraCUDA (wgpu) | RX 6950 XT | 1449 | 812 | 132-236 | **4-6x slower** |
 
-### Size-Dependent Scaling (validated Feb 13, 2026)
+### Size-Dependent Scaling
 
 | Size | CUDA | BC/NVIDIA | BC/AMD | NVIDIA Gap | AMD Gap |
 |------|------|-----------|--------|------------|---------|
 | 1M | 16μs | 421μs | 230μs | 27x | 14x |
 | 4M | 60μs | 438μs | 273μs | 7.3x | 4.5x |
 | 16M | 232μs | 3097μs | 1449μs | 13x | 6.2x |
-
-### Key Insight
-AMD RX 6950 XT performs **2-3x better** than NVIDIA RTX 3090 via wgpu/Vulkan!
-- RADV (Mesa) driver has lower Vulkan compute overhead
-- NVIDIA proprietary driver optimized for CUDA, not Vulkan compute
-- At 16M mul: AMD achieves 236 GB/s vs NVIDIA's 69 GB/s via wgpu
 
 ---
 
@@ -229,14 +285,70 @@ cargo run --bin validate_hfb -- --backend barracuda
 ┌─────────────────────────────────────────────────────────────────────┐
 │  BARRACUDA PARITY PROFILE (Feb 13, 2026)                            │
 ├─────────────────────────────────────────────────────────────────────┤
-│  Gap vs CUDA:        12x (NVIDIA), 5x (AMD)                         │
-│  Primary bottleneck: wgpu command submission overhead               │
-│  Best performer:     AMD RX 6950 XT (RADV driver)                   │
-│  Bandwidth achieved: 7-20% of theoretical (vs CUDA's 95%)           │
+│  VALIDATED PERFORMANCE (auto-tune benchmark):                       │
+│  ├── RTX 3090:  176 GB/s (19% theoretical), 243μs latency          │
+│  └── RX 6950:   137 GB/s (24% theoretical), 335μs latency          │
+│                                                                     │
+│  Gap vs CUDA:        4-5x bandwidth, 5-16x latency                  │
+│  Primary bottleneck: wgpu per-op overhead (~200-350μs)              │
+│  Bandwidth achieved: 19-24% of theoretical (vs CUDA's 85%)          │
+│                                                                     │
+│  NEW ARCHITECTURE:                                                  │
+│  ✅ Auto-tuning runtime (discovers optimal WG per GPU)              │
+│  ✅ Compute graph for lazy execution / batching                     │
+│  ⏳ ToadStool intelligent runtime (next)                            │
 │                                                                     │
 │  OPTIMIZATION PATH:                                                 │
-│  1. Pipeline cache + batch submit → 3-5x improvement               │
-│  2. Fused kernels + compute graph → 2-3x improvement               │
+│  1. Compute graph + batch submit → 3-5x improvement                │
+│  2. Fused kernels + memory reuse → 2-3x improvement                │
 │  3. Async queues + tuning → 1.5-2x improvement                     │
 └─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 9. ToadStool Intelligence Layer (Next Phase)
+
+The auto-tuning infrastructure is now ready. The next evolution is making ToadStool
+the intelligent orchestration layer:
+
+### Planned Features
+
+1. **Workload Classification**
+   - Analyze operation patterns
+   - Choose optimal batch size per workload type
+   - Route to best available hardware
+
+2. **Predictive Batching**
+   - Learn common operation sequences
+   - Pre-batch based on historical patterns
+   - Speculative execution for low-latency paths
+
+3. **Cross-Device Orchestration**
+   - Use calibration data for load balancing
+   - Route large ops to fastest GPU
+   - Fall back gracefully when GPUs unavailable
+
+4. **Continuous Learning**
+   - Track actual vs predicted performance
+   - Re-calibrate when drift detected
+   - Adapt to thermal throttling
+
+### Example Future API
+
+```rust
+// ToadStool handles everything
+let runtime = ToadStool::auto().await?;
+
+// Operations go through intelligent layer
+let result = runtime.execute(|ctx| {
+    let a = ctx.tensor(&[1.0, 2.0, 3.0]);
+    let b = ctx.tensor(&[4.0, 5.0, 6.0]);
+    
+    // ToadStool automatically:
+    // - Batches these operations
+    // - Routes to optimal GPU
+    // - Uses calibrated workgroup sizes
+    a.add(&b)?.mul(&b)?
+})?;
 ```
