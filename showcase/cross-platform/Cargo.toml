@@ -73,6 +73,10 @@ path = "src/multi_gpu_debug.rs"
 name = "warmup_demo"
 path = "src/warmup_demo.rs"
 
+[[bin]]
+name = "full_stack_benchmark"
+path = "src/full_stack_benchmark.rs"
+
 [features]
 default = []
 cuda = ["cudarc"]
