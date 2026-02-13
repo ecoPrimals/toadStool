@@ -25,6 +25,14 @@ path = "src/npu_test.rs"
 name = "multi_gpu_bench"
 path = "src/multi_gpu_bench.rs"
 
+[[bin]]
+name = "heterogeneous_ensemble"
+path = "src/heterogeneous_ensemble.rs"
+
+[[bin]]
+name = "streaming_pipeline"
+path = "src/streaming_pipeline.rs"
+
 [dependencies]
 # BarraCUDA for GPU compute
 barracuda = { path = "../../crates/barracuda" }
