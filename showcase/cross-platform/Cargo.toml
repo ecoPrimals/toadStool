@@ -53,6 +53,10 @@ path = "src/shader_optimization_bench.rs"
 name = "autotune_bench"
 path = "src/autotune_bench.rs"
 
+[[bin]]
+name = "session_benchmark"
+path = "src/session_benchmark.rs"
+
 [features]
 default = []
 cuda = ["cudarc"]

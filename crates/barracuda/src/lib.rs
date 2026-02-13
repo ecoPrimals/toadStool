@@ -93,6 +93,7 @@ pub mod vision; // High-level Computer Vision API
 pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0: NPU backend for event-driven ML
 pub mod multi_gpu; // NEW: Multi-GPU workload distribution
 pub mod compute_graph; // NEW: Lazy execution for operation batching
+pub mod session; // NEW: TensorSession for automatic batching
 
 // Unified architecture modules (v0.2.0)
 pub mod auto_tensor;
@@ -124,6 +125,7 @@ pub mod prelude {
         GpuCalibration, WgpuDevice, WorkloadHint, GLOBAL_TUNER,
     };
     pub use crate::compute_graph::ComputeGraph;
+    pub use crate::session::{TensorSession, SessionTensor};
     pub use crate::error::{BarracudaError, Result};
     // pub use crate::esn::{ESNConfig, ESN};  // DEPRECATED: Use esn_v2
     pub use crate::esn_v2::{ESNConfig, ESN};
