@@ -2,7 +2,7 @@
 
 **Date**: February 13, 2026  
 **Status**: PHASE 4 VALIDATED — All hardware operational  
-**Hardware**: Dual EPYC (128 threads) + 2× RTX 3090 + RX 6950 XT + 2× AKD1000
+**Hardware**: Dual EPYC (128 threads) + RTX 3090 + RX 6950 XT + 2× AKD1000
 
 ---
 
@@ -219,8 +219,9 @@ From hotSpring's validation framework:
 ### Phase 2: HuggingFace Integration (COMPLETE)
 - [x] Add Burn framework (wgpu backend)
 - [x] burn-inference crate with safetensors loader
-- [x] Multi-GPU pool (2x RTX 3090 + 1x RX 6950 XT)
+- [x] Multi-GPU pool (RTX 3090 + RX 6950 XT)
 - [x] Cross-vendor parity verified (NVIDIA = AMD with same WGSL)
+- [x] Software renderer detection fixed (filters SSE2/SwiftShader)
 
 ### Phase 3: NPU Benchmarks (IN PROGRESS)
 - [x] VFIO backend working with real hardware (2× AKD1000)
@@ -232,7 +233,7 @@ From hotSpring's validation framework:
 
 ### Phase 4: End-to-End Pipelines (VALIDATED)
 - [x] Cascade: GPU preprocess → NPU inference → CPU postprocess
-- [x] Heterogeneous ensemble: All silicon active (3 GPU + 2 NPU + 128 CPU)
+- [x] Heterogeneous ensemble: All silicon active (2 GPU + 2 NPU + 128 CPU)
 - [x] Streaming pipeline: 85 ops/sec continuous throughput
 - [x] Multi-GPU: Load balance between NVIDIA and AMD (same WGSL)
 
@@ -275,12 +276,13 @@ From hotSpring's validation framework:
 
 | Device | Workload | Latency | Notes |
 |--------|----------|---------|-------|
-| AMD RX 6950 XT | 1024×512 tensor add | 11.13ms | **Fastest GPU** |
-| NVIDIA RTX 3090 #1 | 1024×512 tensor add | 64.66ms | PCIe primary |
-| NVIDIA RTX 3090 #2 | 1024×512 tensor add | 90.67ms | SSE2 fallback? |
+| NVIDIA RTX 3090 | 1024×1024 tensor add | 21.51ms | Vulkan via wgpu |
+| AMD RX 6950 XT | 1024×1024 tensor add | ~11ms | RADV NAVI21 |
 | Akida AKD1000 #1 | VFIO inference | 0.39ms | 80 NPUs |
 | Akida AKD1000 #2 | VFIO inference | 0.27ms | 80 NPUs |
 | EPYC ×2 | Sparse CG (80×80) | 0.44ms | 128 threads |
+
+**Note**: Software renderer "RTX 3090/PCIe/SSE2" was incorrectly detected as GPU, now filtered.
 
 **Streaming Pipeline**: 85.4 ops/sec, 5.58ms avg latency
 

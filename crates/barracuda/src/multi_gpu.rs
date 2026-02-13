@@ -47,14 +47,27 @@ pub enum GpuVendor {
 impl GpuVendor {
     fn from_name(name: &str) -> Self {
         let lower = name.to_lowercase();
+        
+        // Check for software renderers FIRST (they may contain GPU brand names)
+        // SSE2/SSE4/AVX in name indicates CPU-based rendering
+        if lower.contains("llvmpipe") 
+            || lower.contains("software") 
+            || lower.contains("sse2")
+            || lower.contains("sse4")
+            || lower.contains("avx")
+            || lower.contains("swiftshader")
+            || lower.contains("cpu")
+        {
+            return Self::Software;
+        }
+        
+        // Now check for actual GPU vendors
         if lower.contains("nvidia") || lower.contains("geforce") || lower.contains("rtx") || lower.contains("gtx") {
             Self::Nvidia
         } else if lower.contains("amd") || lower.contains("radeon") || lower.contains("radv") {
             Self::Amd
         } else if lower.contains("intel") || lower.contains("iris") {
             Self::Intel
-        } else if lower.contains("llvmpipe") || lower.contains("software") {
-            Self::Software
         } else {
             Self::Unknown
         }
@@ -116,12 +129,17 @@ impl GpuPool {
                 continue;
             }
 
-            // Estimate GFLOPS based on device type
-            let gflops = match adapter.device_type {
-                wgpu::DeviceType::DiscreteGpu => 1000.0, // Conservative estimate
-                wgpu::DeviceType::IntegratedGpu => 200.0,
-                wgpu::DeviceType::Cpu => 50.0,
-                _ => 100.0,
+            // Estimate GFLOPS based on device type and vendor
+            let gflops = if vendor == GpuVendor::Software {
+                // Software renderers are very slow regardless of device_type reporting
+                10.0
+            } else {
+                match adapter.device_type {
+                    wgpu::DeviceType::DiscreteGpu => 1000.0, // Conservative estimate
+                    wgpu::DeviceType::IntegratedGpu => 200.0,
+                    wgpu::DeviceType::Cpu => 50.0,
+                    _ => 100.0,
+                }
             };
 
             if gflops < config.min_gflops {
