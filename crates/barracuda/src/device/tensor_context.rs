@@ -12,18 +12,61 @@
 //! - Batch operations into single encoder/submit
 //!
 //! **Result**: Tensor API stays clean, internal execution matches raw wgpu speed.
+//!
+//! ## Usage
+//!
+//! ### Automatic (Global Context)
+//! ```rust,ignore
+//! // Tensor ops automatically use the global context
+//! let a = Tensor::from_data(&[1.0, 2.0], vec![2], device)?;
+//! let b = Tensor::from_data(&[3.0, 4.0], vec![2], device)?;
+//! let c = a.add(&b)?;  // Uses pooled buffer automatically
+//! ```
+//!
+//! ### Explicit Batching
+//! ```rust,ignore
+//! // For maximum control, use explicit context
+//! let ctx = device.context();
+//! ctx.begin_batch();
+//! let c = a.add(&b)?;
+//! let d = c.mul(&a)?;
+//! ctx.end_batch()?;  // Single GPU submission
+//! ```
 
-use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
+use crate::device::pipeline_cache::{BindGroupLayoutSignature, DeviceFingerprint, GLOBAL_CACHE};
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use dashmap::DashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use once_cell::sync::Lazy;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
+
+/// Global context registry - one TensorContext per device
+static GLOBAL_CONTEXTS: Lazy<DashMap<DeviceFingerprint, Arc<TensorContext>>> =
+    Lazy::new(DashMap::new);
+
+/// Get or create the global TensorContext for a device
+pub fn get_device_context(device: &Arc<WgpuDevice>) -> Arc<TensorContext> {
+    let fingerprint = DeviceFingerprint::from_adapter_info(device.adapter_info());
+    
+    GLOBAL_CONTEXTS
+        .entry(fingerprint)
+        .or_insert_with(|| Arc::new(TensorContext::new(device.clone())))
+        .clone()
+}
+
+/// Clear all global contexts (for testing/benchmarking)
+pub fn clear_global_contexts() {
+    GLOBAL_CONTEXTS.clear();
+}
 
 /// Memory pool for buffer reuse
 /// 
 /// Instead of allocating new buffers per operation, we pool and reuse them.
 /// This eliminates the ~20μs allocation overhead per op.
+///
+/// Note: For automatic pooling to work, tensors need to be explicitly released
+/// back to the pool, or use TensorSession which handles this automatically.
 pub struct BufferPool {
     /// Available buffers by size bucket (powers of 2)
     pools: DashMap<usize, Vec<wgpu::Buffer>>,
@@ -125,9 +168,13 @@ pub struct TensorContext {
     bind_group_cache: DashMap<BindGroupKey, wgpu::BindGroup>,
     /// Pending operations (batched before submit)
     pending_ops: std::sync::Mutex<Vec<Box<dyn FnOnce(&mut wgpu::CommandEncoder) + Send>>>,
+    /// Whether we're in batching mode (deferred execution)
+    batching: AtomicBool,
     /// Statistics
     cache_hits: AtomicUsize,
     cache_misses: AtomicUsize,
+    ops_executed: AtomicUsize,
+    ops_batched: AtomicUsize,
 }
 
 impl TensorContext {
@@ -140,8 +187,65 @@ impl TensorContext {
             device,
             bind_group_cache: DashMap::new(),
             pending_ops: std::sync::Mutex::new(Vec::new()),
+            batching: AtomicBool::new(false),
             cache_hits: AtomicUsize::new(0),
             cache_misses: AtomicUsize::new(0),
+            ops_executed: AtomicUsize::new(0),
+            ops_batched: AtomicUsize::new(0),
+        }
+    }
+
+    /// Begin batching mode - operations are deferred until end_batch()
+    ///
+    /// In batching mode, GPU operations are recorded but not submitted.
+    /// Call `end_batch()` to execute all operations in a single GPU submission.
+    pub fn begin_batch(&self) {
+        self.batching.store(true, Ordering::SeqCst);
+    }
+
+    /// End batching mode and execute all pending operations
+    pub fn end_batch(&self) -> Result<()> {
+        self.batching.store(false, Ordering::SeqCst);
+        self.sync()
+    }
+
+    /// Check if in batching mode
+    pub fn is_batching(&self) -> bool {
+        self.batching.load(Ordering::SeqCst)
+    }
+
+    /// Acquire a buffer from the pool for tensor output
+    ///
+    /// This is the key optimization - instead of allocating a new buffer
+    /// for each operation output, we reuse buffers from the pool.
+    pub fn acquire_output_buffer(&self, size_elements: usize) -> wgpu::Buffer {
+        self.buffer_pool.acquire(size_elements * std::mem::size_of::<f32>())
+    }
+
+    /// Record an operation for execution
+    ///
+    /// If batching is enabled, the operation is queued.
+    /// Otherwise, it executes immediately.
+    pub fn record_operation<F>(&self, op: F) -> Result<()>
+    where
+        F: FnOnce(&mut wgpu::CommandEncoder) + Send + 'static,
+    {
+        if self.is_batching() {
+            // Queue for batch execution
+            self.pending_ops.lock().unwrap().push(Box::new(op));
+            self.ops_batched.fetch_add(1, Ordering::Relaxed);
+            Ok(())
+        } else {
+            // Execute immediately
+            let mut encoder = self.device.device().create_command_encoder(
+                &wgpu::CommandEncoderDescriptor {
+                    label: Some("TensorContext Immediate"),
+                },
+            );
+            op(&mut encoder);
+            self.device.queue().submit(Some(encoder.finish()));
+            self.ops_executed.fetch_add(1, Ordering::Relaxed);
+            Ok(())
         }
     }
 
@@ -267,6 +371,8 @@ impl TensorContext {
             buffer_reuses: reuses,
             bind_group_cache_hits: self.cache_hits.load(Ordering::Relaxed),
             bind_group_cache_misses: self.cache_misses.load(Ordering::Relaxed),
+            ops_executed: self.ops_executed.load(Ordering::Relaxed),
+            ops_batched: self.ops_batched.load(Ordering::Relaxed),
         }
     }
 }
@@ -278,6 +384,8 @@ pub struct TensorContextStats {
     pub buffer_reuses: usize,
     pub bind_group_cache_hits: usize,
     pub bind_group_cache_misses: usize,
+    pub ops_executed: usize,
+    pub ops_batched: usize,
 }
 
 impl std::fmt::Display for TensorContextStats {
@@ -298,13 +406,16 @@ impl std::fmt::Display for TensorContextStats {
         write!(
             f,
             "Buffers: {} allocs, {} reuses ({:.1}% reuse)\n\
-             BindGroups: {} hits, {} misses ({:.1}% hit rate)",
+             BindGroups: {} hits, {} misses ({:.1}% hit rate)\n\
+             Operations: {} executed, {} batched",
             self.buffer_allocations,
             self.buffer_reuses,
             buffer_hit_rate,
             self.bind_group_cache_hits,
             self.bind_group_cache_misses,
-            bg_hit_rate
+            bg_hit_rate,
+            self.ops_executed,
+            self.ops_batched
         )
     }
 }

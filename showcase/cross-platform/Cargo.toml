@@ -85,6 +85,14 @@ path = "src/scale_benchmark.rs"
 name = "nvidia_analysis"
 path = "src/nvidia_analysis.rs"
 
+[[bin]]
+name = "pooling_benchmark"
+path = "src/pooling_benchmark.rs"
+
+[[bin]]
+name = "evolution_benchmark"
+path = "src/evolution_benchmark.rs"
+
 [features]
 default = []
 cuda = ["cudarc"]

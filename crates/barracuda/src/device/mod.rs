@@ -36,7 +36,10 @@ pub use autotune::{AutoTuner, GpuCalibration, GLOBAL_TUNER};
 pub use warmup::{warmup_device, warmup_pool, WarmupConfig, WarmupOp, WarmupResult, WarmupWorkloadHint};
 
 // Re-export tensor context (zero-overhead Tensor operations)
-pub use tensor_context::{BufferPool, TensorContext, TensorContextStats, high_capacity_limits};
+pub use tensor_context::{
+    get_device_context, clear_global_contexts,
+    BufferPool, TensorContext, TensorContextStats, high_capacity_limits
+};
 
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};
 pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};

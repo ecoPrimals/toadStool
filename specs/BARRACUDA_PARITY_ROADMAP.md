@@ -394,49 +394,51 @@ cargo run --bin validate_hfb -- --backend barracuda
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  BARRACUDA PARITY PROFILE (Feb 13, 2026)                            │
+│  BARRACUDA EVOLUTION STATUS (Feb 13, 2026)                          │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  SCALE ANALYSIS BREAKTHROUGH:                                       │
+│  EVOLUTION BENCHMARK RESULTS (1M elements):                         │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │ AMD RX 6950 XT: 77% of theoretical peak = NEAR PARITY!      │    │
-│  │ NVIDIA RTX 3090: 74% in raw wgpu, 8% with Tensor overhead   │    │
+│  │ NVIDIA RTX 3090:                                            │    │
+│  │   - Sustained: 15,835 ops/sec → 190 GB/s (20% theoretical) │    │
+│  │   - Batched (100 ops): 99.7 GB/s (10.7% theoretical)       │    │
+│  │                                                             │    │
+│  │ AMD RX 6950 XT:                                             │    │
+│  │   - Sustained: 16,525 ops/sec → 198 GB/s (34% theoretical) │    │
+│  │   - Batched (100 ops): 146 GB/s (25% theoretical)          │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
-│  The "10x gap" is CONSTANT OVERHEAD (~30-300μs), not a multiplier! │
-│  At scale (10M+ elements), GPU compute dominates and we hit ~77%.  │
+│  COMPLETED OPTIMIZATIONS:                                           │
+│  ✅ Phase 1: Pipeline caching (compile once, reuse forever)         │
+│     └── 8.9-16x speedup for repeated operations                    │
+│  ✅ Phase 2: Shader warmup ("Mise en Place")                        │
+│     └── 42 pipelines warmed in 95ms                                │
+│  ✅ Phase 3: TensorContext infrastructure                           │
+│     └── Buffer pool + bind group cache framework                   │
+│  ✅ Phase 4: TensorSession batching                                 │
+│     └── 1.6x speedup with 100-op batches                          │
 │                                                                     │
-│  NVIDIA BOTTLENECK IDENTIFIED:                                      │
-│  └── Queue submit = 65% of overhead (151μs of 233μs total)         │
+│  ARCHITECTURE ADDED:                                                │
+│  ├── TensorContext (buffer pool, bind group cache, op batching)    │
+│  ├── get_device_context() - global per-device contexts             │
+│  ├── high_capacity_limits() - 1GB bindings, 2GB buffers            │
+│  ├── WgpuDevice::new_high_capacity() - easy large buffer support   │
+│  └── WgpuDevice::new_with_limits() - custom wgpu limits            │
 │                                                                     │
-│  VALIDATED RAW WGPU PERFORMANCE:                                    │
-│  ├── RTX 3090:  690 GB/s (74% theoretical) - bypassing Tensor      │
-│  └── RX 6950:   899 GB/s (156%*) - cache effects inflate           │
+│  KNOWN LIMITATIONS:                                                 │
+│  ⚠️ Buffer pooling allocates but doesn't reuse (needs Drop fix)    │
+│  ⚠️ Bind group caching not yet integrated into ops                 │
 │                                                                     │
-│  SESSION BATCHING RESULTS (session_benchmark):                      │
-│  ├── 10 ops:  1.2-1.4x speedup                                     │
-│  ├── 50 ops:  1.6-2.1x speedup                                     │
-│  └── 100 ops: 1.9-2.4x speedup                                     │
+│  NEXT EVOLUTION STEPS:                                              │
+│  1. ⏳ Tensor Drop → return buffer to pool                         │
+│  2. ⏳ Integrate bind group caching into ops                       │
+│  3. ⏳ Timeline semaphores for async submit                        │
+│  4. ⏳ Fused kernels (a*b+c as single dispatch)                    │
+│  5. ⏳ ToadStool intelligent runtime                               │
 │                                                                     │
-│  NEW ARCHITECTURE:                                                  │
-│  ✅ Auto-tuning runtime (discovers optimal WG per GPU)              │
-│  ✅ Compute graph for lazy execution / batching                     │
-│  ✅ TensorSession for automatic operation batching                  │
-│  ✅ Pipeline caching with DeviceFingerprint (multi-GPU fixed)       │
-│  ✅ Shader warmup system ("Mise en Place")                          │
-│  ⏳ ToadStool intelligent runtime (next)                            │
-│                                                                     │
-│  OPTIMIZATION PATH:                                                 │
-│  1. ✅ Pipeline caching + warmup → 8.9-16x cold start improvement  │
-│  2. ✅ Batching via TensorSession → 1.2-2.4x improvement           │
-│  3. ⏳ Reduce Tensor layer overhead → target NVIDIA 74% efficiency │
-│  4. ⏳ Async/timeline semaphores → eliminate queue submit wait     │
-│  5. ⏳ Fused kernels + memory reuse → 2-3x improvement             │
-│                                                                     │
-│  CONCLUSIONS:                                                       │
-│  ✅ AMD: Already at near-parity (77% theoretical via RADV)         │
-│  ⚠️ NVIDIA: Needs Tensor layer optimization (74% raw, 8% via API)  │
-│  ✅ Overhead is fixed, not multiplicative - scale wins!            │
+│  TPU/NPU READINESS:                                                 │
+│  ├── Path A: Automatic via wgpu backend (if driver exists)         │
+│  └── Path B: Native interop via Device enum + ToadStool            │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 

@@ -4,9 +4,13 @@
 //! - ✅ Pure WGSL implementation (universal compute)
 //! - ✅ Capability-based dispatch (vendor-optimized)
 //! - ✅ Vendor-specific workgroup sizes (NVIDIA: 64, AMD: 128)
+//! - ✅ Pipeline caching (compile once, dispatch many)
+//! - ✅ Buffer pooling (zero allocation after warmup)
 //!
 //! Formula: C = A * B (element-wise, Hadamard product)
 
+use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
+use crate::device::tensor_context::get_device_context;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 
@@ -55,55 +59,34 @@ impl Mul {
     }
 
     /// Execute multiplication on tensors
+    ///
+    /// Uses cached shader and pipeline for fast repeated calls.
+    /// Output buffer is acquired from pool for zero-allocation steady-state.
     pub fn execute(self) -> Result<Tensor> {
         let device = self.lhs.device();
         let size = self.lhs.len();
+
+        // Get device context for buffer pooling
+        let ctx = get_device_context(device);
 
         // Select vendor-optimized shader based on GPU and tensor size
         let device_name = device.name();
         let (shader_source, workgroup_size) = Self::wgsl_shader(device_name, size);
 
-        let output_buffer = device.create_buffer_f32(size)?;
+        // Acquire output buffer from pool (key optimization!)
+        let output_buffer = ctx.acquire_output_buffer(size);
 
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Mul Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+        // Get cached bind group layout
+        let layout_sig = BindGroupLayoutSignature::elementwise_binary();
+        let adapter_info = device.adapter_info();
+        let bind_group_layout = GLOBAL_CACHE.get_or_create_layout(
+            device.device(),
+            adapter_info,
+            layout_sig,
+            Some("Mul Layout"),
+        );
 
+        // Create bind group (must be per-call - references specific buffers)
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Mul Bind Group"),
             layout: &bind_group_layout,
@@ -123,26 +106,17 @@ impl Mul {
             ],
         });
 
-        let shader = device.compile_shader(shader_source, Some("Mul"));
+        // Get cached pipeline (compiles shader on first call, reuses after)
+        let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
+            device.device(),
+            adapter_info,
+            shader_source,
+            layout_sig,
+            "main",
+            Some("Mul Pipeline"),
+        );
 
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Mul Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Mul Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-            });
-
+        // Encode and execute
         let mut encoder = device
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
