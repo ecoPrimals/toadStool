@@ -37,6 +37,14 @@ path = "src/streaming_pipeline.rs"
 name = "vendor_benchmark"
 path = "src/vendor_benchmark.rs"
 
+[[bin]]
+name = "cuda_vs_barracuda"
+path = "src/cuda_vs_barracuda.rs"
+
+[features]
+default = []
+cuda = ["cudarc"]
+
 [dependencies]
 # BarraCUDA for GPU compute
 barracuda = { path = "../../crates/barracuda" }
@@ -69,3 +77,6 @@ std-time = { package = "chrono", version = "0.4" }
 
 # Parallel CPU baseline
 rayon = "1.8"
+
+# Optional: Native CUDA comparison (NVIDIA only)
+cudarc = { version = "0.11", optional = true, features = ["cuda-12050"] }
