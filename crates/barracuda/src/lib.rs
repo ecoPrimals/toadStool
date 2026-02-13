@@ -91,6 +91,7 @@ pub mod timeseries; // High-level Time Series API
 pub mod utils; // Utility functions for operations
 pub mod vision; // High-level Computer Vision API
 pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0: NPU backend for event-driven ML
+pub mod multi_gpu; // NEW: Multi-GPU workload distribution
 
 // Unified architecture modules (v0.2.0)
 pub mod auto_tensor;

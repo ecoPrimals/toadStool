@@ -51,6 +51,7 @@ mod error;
 mod inference;
 mod io;
 mod loading;
+pub mod mmio;
 
 /// NPU hardware setup and initialization
 pub mod setup;

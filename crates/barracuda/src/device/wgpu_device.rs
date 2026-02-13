@@ -104,6 +104,53 @@ impl WgpuDevice {
         Self::new_with_filter(backends, |_| true).await
     }
 
+    /// Create device from a specific adapter index
+    ///
+    /// Uses the index from `enumerate_adapters()` to select a specific GPU.
+    /// Useful for multi-GPU setups where you want explicit control.
+    pub async fn from_adapter_index(index: usize) -> Result<Self> {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
+        let adapters: Vec<wgpu::Adapter> = instance.enumerate_adapters(wgpu::Backends::all());
+
+        if index >= adapters.len() {
+            return Err(BarracudaError::device(format!(
+                "Adapter index {index} out of bounds (only {} adapters available)",
+                adapters.len()
+            )));
+        }
+
+        let adapter = &adapters[index];
+        let info = adapter.get_info();
+
+        log::info!(
+            "Selecting adapter {index}: {} ({:?})",
+            info.name,
+            info.device_type
+        );
+
+        let (device, queue): (wgpu::Device, wgpu::Queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: Some("BarraCUDA device"),
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::default(),
+                },
+                None,
+            )
+            .await
+            .map_err(|e| BarracudaError::device(format!("Failed to create device: {e}")))?;
+
+        Ok(Self {
+            device: Arc::new(device),
+            queue: Arc::new(queue),
+            adapter_info: info,
+        })
+    }
+
     /// Create with custom filter (for specific GPU selection)
     pub async fn new_with_filter<F>(backends: wgpu::Backends, filter: F) -> Result<Self>
     where

@@ -16,6 +16,7 @@
 pub mod device;
 pub mod engine;
 pub mod models;
+pub mod loaders;
 
 pub use device::{BurnDevice, DeviceInfo};
 pub use engine::InferenceEngine;

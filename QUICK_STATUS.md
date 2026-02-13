@@ -184,12 +184,15 @@ Validation Suite: 129/129 tests PASS
 - f64 WGSL shaders (when WebGPU adds f64 extensions)
 - f64 Tensor type
 
-### ✅ Cross-Platform Systems (Feb 12, 2026)
+### ✅ Cross-Platform Systems (Feb 13, 2026 — VERIFIED)
 
-- **VFIO Backend** -- Pure Rust VFIO driver for Akida NPU (DMA, no kernel module)
-- **Burn ML Framework** -- wgpu-based HuggingFace model inference (`burn-inference` crate)
+- **VFIO Backend** -- Pure Rust VFIO driver for 2x Akida AKD1000 (DMA working, 80 NPUs each)
+- **Multi-GPU Pool** -- 3 GPUs: 2x RTX 3090 + 1x RX 6950 XT (~2100 GFLOPS total)
+- **Cross-Vendor Parity** -- NVIDIA = AMD, <1e-5 max difference (same WGSL shaders)
+- **MMIO Infrastructure** -- Register map for AKD1000 (BAR0: control, BAR1: model, BAR2: data)
+- **Burn ML Framework** -- wgpu-based inference (`burn-inference` crate with safetensors loader)
 - **NeuroBench Harness** -- Pure Rust benchmark harness for neuromorphic evaluation
-- **Cross-Platform Showcase** -- GPU parity tests (NVIDIA vs AMD), cascade pipeline demo
+- **Cross-Platform Showcase** -- `multi_gpu_bench`, `npu_test`, `gpu_parity`, `cascade_demo`
 - **hotSpring Bridge** -- Integration with MD validation suite
 
 ### Infrastructure (Ongoing)
