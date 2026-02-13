@@ -293,15 +293,21 @@ cargo run --bin validate_hfb -- --backend barracuda
 │  Primary bottleneck: wgpu per-op overhead (~200-350μs)              │
 │  Bandwidth achieved: 19-24% of theoretical (vs CUDA's 85%)          │
 │                                                                     │
+│  SESSION BATCHING RESULTS (session_benchmark):                      │
+│  ├── 10 ops:  1.2-1.4x speedup                                     │
+│  ├── 50 ops:  1.6-2.1x speedup                                     │
+│  └── 100 ops: 1.9-2.4x speedup                                     │
+│                                                                     │
 │  NEW ARCHITECTURE:                                                  │
 │  ✅ Auto-tuning runtime (discovers optimal WG per GPU)              │
 │  ✅ Compute graph for lazy execution / batching                     │
+│  ✅ TensorSession for automatic operation batching                  │
 │  ⏳ ToadStool intelligent runtime (next)                            │
 │                                                                     │
 │  OPTIMIZATION PATH:                                                 │
-│  1. Compute graph + batch submit → 3-5x improvement                │
-│  2. Fused kernels + memory reuse → 2-3x improvement                │
-│  3. Async queues + tuning → 1.5-2x improvement                     │
+│  1. ✅ Compute graph + batch submit → 1.2-2.4x improvement         │
+│  2. ⏳ Fused kernels + memory reuse → 2-3x improvement             │
+│  3. ⏳ Async queues + tuning → 1.5-2x improvement                  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
