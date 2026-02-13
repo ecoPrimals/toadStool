@@ -272,7 +272,40 @@ From hotSpring's validation framework:
 | scipy parity | <1e-6 for f64 operations | *Pending hotSpring* |
 | BarraCUDA vs CUDA | >90% performance parity | *Pending hotSpring* |
 
-### Benchmark Findings (Feb 13, 2026)
+### CUDA Parity Benchmark Results (Feb 13, 2026)
+
+### Three-Way Performance Comparison (16M Elements)
+
+| Backend | Device | vector_add | vector_mul | Bandwidth | Gap |
+|---------|--------|------------|------------|-----------|-----|
+| **CUDA (native)** | RTX 3090 | 229μs | 230μs | 837 GB/s | Baseline |
+| **ROCm (native)** | RX 6950 XT | TBD | TBD | TBD | Pending |
+| BarraCUDA (wgpu) | RTX 3090 | 3067μs | 2725μs | 70 GB/s | **13x** |
+| BarraCUDA (wgpu) | RX 6950 XT | 1260μs | 913μs | 180 GB/s | **5x** |
+
+### Key Insight: AMD Wins via Vulkan
+
+The AMD RX 6950 XT with RADV (Mesa) driver performs **2.5x better** than
+NVIDIA RTX 3090 via wgpu/Vulkan compute:
+
+- AMD: 180 GB/s bandwidth via Vulkan
+- NVIDIA: 70 GB/s bandwidth via Vulkan (but 837 GB/s via CUDA!)
+
+NVIDIA's proprietary driver is optimized for CUDA, not Vulkan compute.
+This makes AMD the better platform for vendor-agnostic wgpu workloads.
+
+### Optimization Roadmap
+
+| Phase | Target Gap | Strategy |
+|-------|------------|----------|
+| Current | 13x (NVIDIA), 5x (AMD) | Baseline |
+| Phase 1 | 5x | Pipeline cache + batch submit |
+| Phase 2 | 2x | Fused kernels + compute graph |
+| Phase 3 | 1.5x | Async queues + memory optimization |
+
+See `BARRACUDA_PARITY_ROADMAP.md` for detailed optimization plan.
+
+## Benchmark Findings (Feb 13, 2026)
 
 | Device | Workload | Latency | Notes |
 |--------|----------|---------|-------|
