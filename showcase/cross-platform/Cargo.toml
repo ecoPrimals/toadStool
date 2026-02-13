@@ -48,6 +48,7 @@ path = "src/parity_benchmark.rs"
 [features]
 default = []
 cuda = ["cudarc"]
+rocm = []  # Uses system hipcc, no Rust crate needed
 
 [dependencies]
 # BarraCUDA for GPU compute

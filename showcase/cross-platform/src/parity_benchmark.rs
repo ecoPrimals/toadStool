@@ -188,6 +188,132 @@ extern "C" __global__ void reduce_sum(float* input, float* output, int n) {
 }
 
 // ============================================================================
+// ROCm/HIP Benchmarks (AMD only)
+// ============================================================================
+
+#[cfg(feature = "rocm")]
+mod rocm_bench {
+    use super::*;
+    use std::process::Command;
+    use std::fs;
+
+    /// Run ROCm benchmarks by compiling and executing HIP kernels
+    pub fn run_rocm_benchmarks(sizes: &[usize], iterations: usize) -> Result<Vec<BenchResult>> {
+        let mut results = Vec::new();
+
+        // Create temporary HIP source file
+        let hip_source = r#"
+#include <hip/hip_runtime.h>
+#include <chrono>
+#include <stdio.h>
+
+__global__ void vector_add(float* a, float* b, float* c, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) c[idx] = a[idx] + b[idx];
+}
+
+__global__ void vector_mul(float* a, float* b, float* c, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) c[idx] = a[idx] * b[idx];
+}
+
+int main(int argc, char** argv) {
+    if (argc < 3) return 1;
+    int size = atoi(argv[1]);
+    int iters = atoi(argv[2]);
+
+    float *h_a = new float[size];
+    float *h_b = new float[size];
+    for (int i = 0; i < size; i++) {
+        h_a[i] = (i % 1000) * 0.001f;
+        h_b[i] = ((i + 500) % 1000) * 0.001f;
+    }
+
+    float *d_a, *d_b, *d_c;
+    hipMalloc(&d_a, size * sizeof(float));
+    hipMalloc(&d_b, size * sizeof(float));
+    hipMalloc(&d_c, size * sizeof(float));
+    hipMemcpy(d_a, h_a, size * sizeof(float), hipMemcpyHostToDevice);
+    hipMemcpy(d_b, h_b, size * sizeof(float), hipMemcpyHostToDevice);
+
+    int block = 256;
+    int grid = (size + block - 1) / block;
+
+    // Warmup
+    vector_add<<<grid, block>>>(d_a, d_b, d_c, size);
+    hipDeviceSynchronize();
+
+    // Add benchmark
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < iters; i++) {
+        vector_add<<<grid, block>>>(d_a, d_b, d_c, size);
+    }
+    hipDeviceSynchronize();
+    auto end = std::chrono::high_resolution_clock::now();
+    double add_us = std::chrono::duration<double, std::micro>(end - start).count() / iters;
+
+    // Mul benchmark
+    start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < iters; i++) {
+        vector_mul<<<grid, block>>>(d_a, d_b, d_c, size);
+    }
+    hipDeviceSynchronize();
+    end = std::chrono::high_resolution_clock::now();
+    double mul_us = std::chrono::duration<double, std::micro>(end - start).count() / iters;
+
+    printf("%.2f,%.2f\n", add_us, mul_us);
+
+    hipFree(d_a); hipFree(d_b); hipFree(d_c);
+    delete[] h_a; delete[] h_b;
+    return 0;
+}
+"#;
+
+        // Write source to temp file
+        let temp_dir = std::env::temp_dir();
+        let src_path = temp_dir.join("rocm_bench.cpp");
+        let bin_path = temp_dir.join("rocm_bench");
+        fs::write(&src_path, hip_source)?;
+
+        // Compile with hipcc
+        let compile = Command::new("hipcc")
+            .args(["-O3", "-o", bin_path.to_str().unwrap(), src_path.to_str().unwrap()])
+            .output()?;
+
+        if !compile.status.success() {
+            anyhow::bail!("hipcc compilation failed: {}", String::from_utf8_lossy(&compile.stderr));
+        }
+
+        for &size in sizes {
+            let size_str = format_size(size);
+            
+            let output = Command::new(&bin_path)
+                .args([&size.to_string(), &iterations.to_string()])
+                .output()?;
+
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let parts: Vec<&str> = stdout.trim().split(',').collect();
+                if parts.len() == 2 {
+                    let add_us: f64 = parts[0].parse().unwrap_or(0.0);
+                    let mul_us: f64 = parts[1].parse().unwrap_or(0.0);
+                    let bytes = size * 3 * 4;
+
+                    results.push(BenchResult::new("ROCm", "RX 6950 XT", "vector_add", &size_str, add_us, bytes, size));
+                    results.push(BenchResult::new("ROCm", "RX 6950 XT", "vector_mul", &size_str, mul_us, bytes, size));
+                }
+            }
+        }
+
+        // Cleanup
+        let _ = fs::remove_file(&src_path);
+        let _ = fs::remove_file(&bin_path);
+
+        Ok(results)
+    }
+}
+
+// ============================================================================
 // BarraCUDA Benchmarks (Any GPU via wgpu)
 // ============================================================================
 
@@ -383,6 +509,21 @@ async fn main() -> Result<()> {
     #[cfg(not(feature = "cuda"))]
     {
         println!("Native CUDA not enabled (compile with --features cuda)");
+    }
+
+    // Native ROCm benchmarks (AMD only)
+    #[cfg(feature = "rocm")]
+    {
+        println!("Running Native ROCm benchmarks (AMD RX 6950 XT)...");
+        match rocm_bench::run_rocm_benchmarks(&sizes, iterations) {
+            Ok(results) => all_results.extend(results),
+            Err(e) => eprintln!("  ROCm benchmark failed: {}", e),
+        }
+    }
+    
+    #[cfg(not(feature = "rocm"))]
+    {
+        println!("Native ROCm not enabled (compile with --features rocm)");
     }
 
     // BarraCUDA benchmarks (all GPUs)
