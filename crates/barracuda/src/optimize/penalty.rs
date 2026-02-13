@@ -113,10 +113,7 @@ impl AdaptivePenalty {
 /// # Reference
 ///
 /// hotSpring validation: `surrogate.rs::adaptive_penalty()`
-pub fn adaptive_penalty(
-    feasible_values: &[f64],
-    config: PenaltyConfig,
-) -> Result<AdaptivePenalty> {
+pub fn adaptive_penalty(feasible_values: &[f64], config: PenaltyConfig) -> Result<AdaptivePenalty> {
     if feasible_values.is_empty() {
         // No feasible points - use minimum penalty
         let raw_penalty = config.min_penalty;
@@ -222,7 +219,7 @@ pub fn adaptive_penalty_mad(
     // Compute median
     valid.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let n = valid.len();
-    let median = if n % 2 == 0 {
+    let median = if n.is_multiple_of(2) {
         (valid[n / 2 - 1] + valid[n / 2]) / 2.0
     } else {
         valid[n / 2]
@@ -231,7 +228,7 @@ pub fn adaptive_penalty_mad(
     // Compute MAD
     let mut deviations: Vec<f64> = valid.iter().map(|v| (v - median).abs()).collect();
     deviations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let mad = if n % 2 == 0 {
+    let mad = if n.is_multiple_of(2) {
         (deviations[n / 2 - 1] + deviations[n / 2]) / 2.0
     } else {
         deviations[n / 2]
@@ -350,9 +347,7 @@ mod tests {
 
     #[test]
     fn test_penalty_config() {
-        let config = PenaltyConfig::default()
-            .with_min(1e4)
-            .with_margin(5.0);
+        let config = PenaltyConfig::default().with_min(1e4).with_margin(5.0);
 
         assert!((config.min_penalty - 1e4).abs() < 1e-10);
         assert!((config.safety_margin - 5.0).abs() < 1e-10);

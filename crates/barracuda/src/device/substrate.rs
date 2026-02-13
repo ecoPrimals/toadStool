@@ -11,6 +11,7 @@
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// Compute substrate type (hardware target)
 ///
@@ -153,9 +154,15 @@ impl Substrate {
     /// Create WgpuDevice on this specific substrate
     ///
     /// **Deep Debt**: Explicit selection, no implicit behavior
+    ///
+    /// Multi-device support: When multiple devices of the same type exist,
+    /// selects the device at the specified index within that type.
     pub async fn create_device(&self) -> Result<WgpuDevice> {
         let substrate_type = self.substrate_type;
-        let _target_index = self.index; // Reserved for future multi-device support
+        let target_index = self.index;
+
+        // Counter to track which device of this type we're on
+        let device_counter = AtomicUsize::new(0);
 
         WgpuDevice::new_with_filter(wgpu::Backends::all(), move |info| {
             let detected_type = Self::classify_substrate(info);
@@ -163,9 +170,9 @@ impl Substrate {
                 return false;
             }
 
-            // TODO: Match specific index for multi-device setups
-            // For now, we match first device of this type
-            true
+            // Multi-device index matching: select Nth device of this type
+            let current_index = device_counter.fetch_add(1, Ordering::SeqCst);
+            current_index == target_index
         })
         .await
     }

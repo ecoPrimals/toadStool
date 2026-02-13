@@ -19,6 +19,7 @@ fn test_auth_manager_config_creation() {
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
         replay_protection: true,
+        signing_key_seed: None,
     };
 
     assert_eq!(config.beardog_endpoint, "http://localhost:6000");
@@ -33,6 +34,7 @@ fn test_auth_manager_config_short_refresh() {
         signature_validation: true,
         timestamp_window: Duration::from_secs(30),
         replay_protection: true,
+        signing_key_seed: None,
     };
 
     assert_eq!(config.token_refresh_interval, Duration::from_secs(60));
@@ -46,6 +48,7 @@ fn test_auth_manager_config_no_replay_protection() {
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
         replay_protection: false,
+        signing_key_seed: None,
     };
 
     assert!(!config.replay_protection);
@@ -59,6 +62,7 @@ fn test_auth_manager_config_no_signature_validation() {
         signature_validation: false,
         timestamp_window: Duration::from_secs(60),
         replay_protection: true,
+        signing_key_seed: None,
     };
 
     assert!(!config.signature_validation);
@@ -72,6 +76,7 @@ fn test_auth_manager_config_serialization() {
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
         replay_protection: true,
+        signing_key_seed: None,
     };
 
     let json = serde_json::to_string(&config).unwrap();

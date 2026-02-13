@@ -5,7 +5,6 @@
 use anyhow::Result;
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use barracuda::prelude::*;
-use std::sync::Arc;
 use std::time::Instant;
 
 #[tokio::main]
@@ -25,22 +24,28 @@ async fn main() -> Result<()> {
         min_gflops: 100.0,
         ..Default::default()
     };
-    
+
     let pool = GpuPool::with_config(config).await?;
-    
-    let size = 1_000_000usize;  // 1M elements
+
+    let size = 1_000_000usize; // 1M elements
     let iterations = 20;
 
     // Test all GPUs with fingerprint-based caching
     for idx in 0..pool.devices().len() {
-        let wgpu_device = pool.device(idx).ok_or_else(|| anyhow::anyhow!("No device"))?;
+        let wgpu_device = pool
+            .device(idx)
+            .ok_or_else(|| anyhow::anyhow!("No device"))?;
         // Use the device directly from the pool - don't clone/rewrap
         let device_arc = wgpu_device.clone();
         let name = wgpu_device.name();
-        
-        println!("\n══════════════════════════════════════════════════════════════════════════════");
+
+        println!(
+            "\n══════════════════════════════════════════════════════════════════════════════"
+        );
         println!("  {}", name);
-        println!("══════════════════════════════════════════════════════════════════════════════\n");
+        println!(
+            "══════════════════════════════════════════════════════════════════════════════\n"
+        );
 
         // Create test data
         let data: Vec<f32> = (0..size).map(|i| (i % 1000) as f32 * 0.001).collect();
@@ -73,8 +78,11 @@ async fn main() -> Result<()> {
 
         // Speedup
         let speedup = warmup_time as f64 / avg;
-        println!("  Cache effectiveness: {:.1}x faster after caching", speedup);
-        
+        println!(
+            "  Cache effectiveness: {:.1}x faster after caching",
+            speedup
+        );
+
         // Compare to targets
         println!("\n  ──────────────────────────────────────────────────────────────");
         println!("  Comparison:");
@@ -83,9 +91,12 @@ async fn main() -> Result<()> {
         println!("    CUDA reference:            ~15-50 μs");
         println!("    ROCm reference:            ~20-60 μs");
         println!("  ──────────────────────────────────────────────────────────────");
-        
+
         if avg < 400.0 {
-            println!("  ✅ CACHING IS WORKING! ({:.0}μs is much less than ~1200μs)", avg);
+            println!(
+                "  ✅ CACHING IS WORKING! ({:.0}μs is much less than ~1200μs)",
+                avg
+            );
         } else {
             println!("  ❌ CACHING MAY NOT BE WORKING ({:.0}μs is too high)", avg);
         }

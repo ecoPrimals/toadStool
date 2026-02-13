@@ -220,31 +220,187 @@ impl BenchmarkSuite {
     }
 
     async fn discover_hardware(&self) -> Result<Vec<String>> {
-        // TODO: Implement hardware discovery
-        Ok(vec!["CPU".to_string()])
+        use crate::device::WgpuDevice;
+
+        let mut hardware = vec!["CPU".to_string()];
+
+        // Try to discover GPU via wgpu
+        match WgpuDevice::new().await {
+            Ok(device) => {
+                let info = device.adapter_info();
+                hardware.push(format!("{} ({:?})", info.name, info.device_type));
+            }
+            Err(_) => {
+                // No GPU available, CPU-only mode
+            }
+        }
+
+        Ok(hardware)
     }
 
     async fn benchmark_matrix_operations(&mut self) -> Result<()> {
         println!("📐 Matrix Operations");
-        // TODO: Implement matrix benchmarks
+
+        // Small sizes that complete quickly for CI/testing
+        let quick_sizes: &[(usize, usize, usize)] =
+            &[(128, 128, 128), (256, 256, 256), (512, 512, 512)];
+
+        for &(m, n, k) in quick_sizes {
+            let (barracuda, cuda) = operations::benchmark_matmul(&self.config, m, n, k).await?;
+            self.results.push(ComparisonResult::new(barracuda, cuda));
+        }
+
         Ok(())
     }
 
     async fn benchmark_activations(&mut self) -> Result<()> {
         println!("⚡ Activation Functions");
-        // TODO: Implement activation benchmarks
+
+        let activation_ops = ["ReLU", "GELU", "SiLU", "Sigmoid", "Tanh"];
+        let sizes = [10_000, 100_000, 1_000_000];
+
+        for op in &activation_ops {
+            for &size in &sizes {
+                let result = operations::benchmark_activation(&self.config, op, size).await?;
+                // No CUDA comparison for activations yet
+                self.results.push(ComparisonResult::new(result, None));
+            }
+        }
+
         Ok(())
     }
 
     async fn benchmark_reductions(&mut self) -> Result<()> {
         println!("📉 Reduction Operations");
-        // TODO: Implement reduction benchmarks
+
+        // Reduction benchmark using sum operation
+        let sizes = [10_000usize, 100_000, 1_000_000, 10_000_000];
+
+        for &size in &sizes {
+            let mut times = Vec::new();
+            let data: Vec<f32> = (0..size).map(|i| (i % 1000) as f32 * 0.001).collect();
+
+            // Warmup
+            for _ in 0..self.config.warmup_iterations {
+                let _: f32 = data.iter().sum();
+            }
+
+            // Measurement
+            for _ in 0..self.config.measurement_iterations {
+                let start = std::time::Instant::now();
+                let _sum: f32 = data.iter().sum();
+                times.push(start.elapsed());
+            }
+
+            times.sort();
+            let median_time = times[times.len() / 2];
+            let min_time = times[0];
+            let max_time = times[times.len() - 1];
+            let sum: Duration = times.iter().sum();
+            let mean_time = sum / times.len() as u32;
+
+            let mean_nanos = mean_time.as_nanos() as f64;
+            let variance: f64 = times
+                .iter()
+                .map(|t| {
+                    let diff = t.as_nanos() as f64 - mean_nanos;
+                    diff * diff
+                })
+                .sum::<f64>()
+                / times.len() as f64;
+            let std_dev = Duration::from_nanos(variance.sqrt() as u64);
+
+            let throughput = size as f64 / median_time.as_secs_f64();
+            let bandwidth_gbps = (size as f64 * 4.0) / median_time.as_secs_f64() / 1e9;
+
+            let result = BenchmarkResult {
+                operation: format!("Sum [size={}]", size),
+                hardware: "CPU".to_string(),
+                framework: Framework::BarraCUDA,
+                median_time,
+                min_time,
+                max_time,
+                mean_time,
+                std_dev,
+                throughput,
+                bandwidth_gbps,
+                tflops: throughput / 1e12,
+            };
+
+            self.results.push(ComparisonResult::new(result, None));
+        }
+
         Ok(())
     }
 
     async fn benchmark_convolutions(&mut self) -> Result<()> {
         println!("🔲 Convolution Operations");
-        // TODO: Implement convolution benchmarks
+
+        // Basic 1D convolution benchmark
+        let input_sizes = [1024usize, 4096, 16384];
+        let kernel_size = 7;
+
+        for &input_size in &input_sizes {
+            let mut times = Vec::new();
+            let input: Vec<f32> = (0..input_size).map(|i| (i % 256) as f32 / 256.0).collect();
+            let kernel: Vec<f32> = (0..kernel_size)
+                .map(|i| i as f32 / kernel_size as f32)
+                .collect();
+
+            // Warmup
+            for _ in 0..self.config.warmup_iterations {
+                let _ = cpu_conv1d(&input, &kernel);
+            }
+
+            // Measurement
+            for _ in 0..self.config.measurement_iterations {
+                let start = std::time::Instant::now();
+                let _ = cpu_conv1d(&input, &kernel);
+                times.push(start.elapsed());
+            }
+
+            times.sort();
+            let median_time = times[times.len() / 2];
+            let min_time = times[0];
+            let max_time = times[times.len() - 1];
+            let sum: Duration = times.iter().sum();
+            let mean_time = sum / times.len() as u32;
+
+            let mean_nanos = mean_time.as_nanos() as f64;
+            let variance: f64 = times
+                .iter()
+                .map(|t| {
+                    let diff = t.as_nanos() as f64 - mean_nanos;
+                    diff * diff
+                })
+                .sum::<f64>()
+                / times.len() as f64;
+            let std_dev = Duration::from_nanos(variance.sqrt() as u64);
+
+            let output_size = input_size - kernel_size + 1;
+            let flops = (output_size * kernel_size) as f64; // MACs
+            let throughput = flops / median_time.as_secs_f64();
+            let bandwidth_gbps = ((input_size + kernel_size + output_size) as f64 * 4.0)
+                / median_time.as_secs_f64()
+                / 1e9;
+
+            let result = BenchmarkResult {
+                operation: format!("Conv1D [in={}, k={}]", input_size, kernel_size),
+                hardware: "CPU".to_string(),
+                framework: Framework::BarraCUDA,
+                median_time,
+                min_time,
+                max_time,
+                mean_time,
+                std_dev,
+                throughput,
+                bandwidth_gbps,
+                tflops: throughput / 1e12,
+            };
+
+            self.results.push(ComparisonResult::new(result, None));
+        }
+
         Ok(())
     }
 
@@ -324,6 +480,29 @@ impl std::fmt::Display for BenchmarkSummary {
         writeln!(f, "Mean Parity: {:.2}%", self.mean_parity_percent)?;
         Ok(())
     }
+}
+
+/// CPU 1D convolution for benchmarking
+#[inline(never)]
+fn cpu_conv1d(input: &[f32], kernel: &[f32]) -> Vec<f32> {
+    let n = input.len();
+    let k = kernel.len();
+    if k > n {
+        return vec![];
+    }
+
+    let output_size = n - k + 1;
+    let mut output = vec![0.0f32; output_size];
+
+    for i in 0..output_size {
+        let mut sum = 0.0f32;
+        for j in 0..k {
+            sum += input[i + j] * kernel[j];
+        }
+        output[i] = sum;
+    }
+
+    output
 }
 
 #[cfg(test)]

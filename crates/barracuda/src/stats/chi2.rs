@@ -80,10 +80,7 @@ impl Chi2Decomposed {
             self.p_value,
             verdict,
             self.n_data,
-            self.pulls
-                .iter()
-                .map(|p| p.abs())
-                .fold(0.0, f64::max)
+            self.pulls.iter().map(|p| p.abs()).fold(0.0, f64::max)
         )
     }
 }

@@ -114,11 +114,7 @@ impl CubicSpline {
 
         if n != y.len() {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "x and y must have same length: {} vs {}",
-                    n,
-                    y.len()
-                ),
+                message: format!("x and y must have same length: {} vs {}", n, y.len()),
             });
         }
 
@@ -192,8 +188,7 @@ impl CubicSpline {
         let a = (self.x[i + 1] - x_eval) / h;
         let b = (x_eval - self.x[i]) / h;
 
-        let dy = (self.y[i + 1] - self.y[i]) / h
-            - (3.0 * a * a - 1.0) * h * self.y2[i] / 6.0
+        let dy = (self.y[i + 1] - self.y[i]) / h - (3.0 * a * a - 1.0) * h * self.y2[i] / 6.0
             + (3.0 * b * b - 1.0) * h * self.y2[i + 1] / 6.0;
 
         Ok(dy)
@@ -359,12 +354,7 @@ fn compute_second_derivatives(x: &[f64], y: &[f64], boundary: SplineBoundary) ->
 }
 
 /// Thomas algorithm for tridiagonal system
-fn solve_tridiagonal(
-    lower: &[f64],
-    diag: &[f64],
-    upper: &[f64],
-    rhs: &[f64],
-) -> Result<Vec<f64>> {
+fn solve_tridiagonal(lower: &[f64], diag: &[f64], upper: &[f64], rhs: &[f64]) -> Result<Vec<f64>> {
     let n = diag.len();
     let mut c_prime = vec![0.0; n];
     let mut d_prime = vec![0.0; n];
@@ -459,7 +449,10 @@ mod tests {
 
         // Second derivatives should be zero
         for y2i in spline.second_derivatives() {
-            assert!(y2i.abs() < 1e-10, "Second derivatives should be zero for linear data");
+            assert!(
+                y2i.abs() < 1e-10,
+                "Second derivatives should be zero for linear data"
+            );
         }
     }
 

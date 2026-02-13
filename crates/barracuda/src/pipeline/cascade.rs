@@ -27,6 +27,12 @@
 use crate::error::Result;
 use std::time::{Duration, Instant};
 
+/// Type alias for filter predicates
+type FilterPredicate<T> = Box<dyn Fn(&T) -> bool + Send + Sync>;
+
+/// Type alias for transformation functions
+type TransformFn<T, U> = Box<dyn Fn(&T) -> Result<U> + Send + Sync>;
+
 /// Result of filtering at a cascade stage
 #[derive(Debug, Clone)]
 pub struct FilterResult<T> {
@@ -99,7 +105,10 @@ impl<T, U> CascadeResult<T, U> {
             self.total_evaluated,
             self.overall_rejection_rate() * 100.0
         ));
-        lines.push(format!("Total time: {:.3}s", self.total_duration.as_secs_f64()));
+        lines.push(format!(
+            "Total time: {:.3}s",
+            self.total_duration.as_secs_f64()
+        ));
         lines.push(String::new());
 
         for (i, stage) in self.stages.iter().enumerate() {
@@ -135,11 +144,11 @@ pub struct CascadeStageStats {
 /// Builder for cascade pipelines
 pub struct CascadeBuilder<T, U> {
     /// Filter stages (applied before final transform)
-    filters: Vec<Box<dyn Fn(&T) -> bool + Send + Sync>>,
+    filters: Vec<FilterPredicate<T>>,
     /// Filter names
     filter_names: Vec<String>,
     /// Final transform function
-    transform: Option<Box<dyn Fn(&T) -> Result<U> + Send + Sync>>,
+    transform: Option<TransformFn<T, U>>,
     /// Transform name
     transform_name: String,
 }
@@ -203,11 +212,11 @@ where
 /// A cascade filtering pipeline
 pub struct Cascade<T, U> {
     /// Filter stages
-    filters: Vec<Box<dyn Fn(&T) -> bool + Send + Sync>>,
+    filters: Vec<FilterPredicate<T>>,
     /// Filter names
     filter_names: Vec<String>,
     /// Final transform
-    transform: Option<Box<dyn Fn(&T) -> Result<U> + Send + Sync>>,
+    transform: Option<TransformFn<T, U>>,
     /// Transform name
     transform_name: String,
 }
@@ -244,7 +253,11 @@ where
             };
 
             stages.push(CascadeStageStats {
-                name: self.filter_names.get(i).cloned().unwrap_or_else(|| format!("filter_{}", i)),
+                name: self
+                    .filter_names
+                    .get(i)
+                    .cloned()
+                    .unwrap_or_else(|| format!("filter_{}", i)),
                 input_count,
                 output_count,
                 rejection_rate,
@@ -309,11 +322,7 @@ where
             let stage_start = Instant::now();
             let input_count = current.len();
 
-            let passed: Vec<T> = current
-                .par_iter()
-                .filter(|x| filter(x))
-                .cloned()
-                .collect();
+            let passed: Vec<T> = current.par_iter().filter(|x| filter(x)).cloned().collect();
 
             let output_count = passed.len();
             let rejection_rate = if input_count == 0 {
@@ -323,7 +332,11 @@ where
             };
 
             stages.push(CascadeStageStats {
-                name: self.filter_names.get(i).cloned().unwrap_or_else(|| format!("filter_{}", i)),
+                name: self
+                    .filter_names
+                    .get(i)
+                    .cloned()
+                    .unwrap_or_else(|| format!("filter_{}", i)),
                 input_count,
                 output_count,
                 rejection_rate,
@@ -340,9 +353,7 @@ where
         let results: Vec<(T, U)> = if let Some(ref transform) = self.transform {
             current
                 .par_iter()
-                .filter_map(|item| {
-                    transform(item).ok().map(|output| (item.clone(), output))
-                })
+                .filter_map(|item| transform(item).ok().map(|output| (item.clone(), output)))
                 .collect()
         } else {
             Vec::new()

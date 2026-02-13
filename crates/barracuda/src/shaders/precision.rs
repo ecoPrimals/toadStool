@@ -151,6 +151,274 @@ impl ShaderTemplate {
     pub fn reduce_sum(precision: Precision) -> String {
         Self::new(TEMPLATE_REDUCE_SUM).render(precision)
     }
+
+    // =========================================================================
+    // F64 Math Library (Pure-GPU transcendental functions)
+    // =========================================================================
+
+    /// Returns the complete math_f64.wgsl library as a string.
+    /// This library implements transcendental functions (sqrt, exp, log, pow, sin, cos, etc.)
+    /// using only f64 arithmetic operations.
+    ///
+    /// # Usage
+    /// ```rust
+    /// let math_lib = ShaderTemplate::math_f64_preamble();
+    /// let full_shader = format!("{}\n\n{}", math_lib, user_shader_body);
+    /// ```
+    pub fn math_f64_preamble() -> String {
+        include_str!("math/math_f64.wgsl").to_string()
+    }
+
+    /// Prepends the math_f64 library to a user shader body.
+    /// This is the preferred way to use f64 transcendental functions in GPU shaders.
+    ///
+    /// # Example
+    /// ```rust
+    /// let user_shader = r#"
+    /// @group(0) @binding(0) var<storage, read> input: array<f64>;
+    /// @group(0) @binding(1) var<storage, read_write> output: array<f64>;
+    ///
+    /// @compute @workgroup_size(256)
+    /// fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    ///     let idx = id.x;
+    ///     if (idx >= arrayLength(&output)) { return; }
+    ///     
+    ///     // Use math_f64 functions directly
+    ///     output[idx] = sqrt_f64(input[idx]);
+    /// }
+    /// "#;
+    ///
+    /// let full_shader = ShaderTemplate::with_math_f64(user_shader);
+    /// ```
+    pub fn with_math_f64(shader_body: &str) -> String {
+        format!(
+            "{}\n\n// User shader:\n{}",
+            Self::math_f64_preamble(),
+            shader_body
+        )
+    }
+
+    /// Returns a minimal subset of math_f64 functions based on what's needed.
+    /// This reduces shader compilation time by only including used functions.
+    ///
+    /// # Arguments
+    /// * `functions` - List of function names needed (e.g., ["sqrt_f64", "pow_f64"])
+    ///
+    /// # Note
+    /// Dependencies are automatically included (e.g., pow_f64 includes exp_f64, log_f64)
+    pub fn math_f64_subset(functions: &[&str]) -> String {
+        use std::collections::HashSet;
+
+        // Build dependency graph
+        let deps = F64_FUNCTION_DEPS;
+
+        // Collect all needed functions via transitive closure
+        let mut needed: HashSet<&str> = HashSet::new();
+
+        fn add_with_deps<'a>(
+            name: &'a str,
+            needed: &mut HashSet<&'a str>,
+            deps: &'a [(&'a str, &'a [&'a str])],
+        ) {
+            if needed.contains(name) {
+                return;
+            }
+            needed.insert(name);
+
+            // Find dependencies for this function
+            for (func, func_deps) in deps {
+                if *func == name {
+                    for dep in func_deps.iter().copied() {
+                        add_with_deps(dep, needed, deps);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Add requested functions and their dependencies
+        for func in functions {
+            add_with_deps(func, &mut needed, deps);
+        }
+
+        // If no functions requested, return empty preamble
+        if needed.is_empty() {
+            return String::new();
+        }
+
+        // Build output in dependency order (constants first, then base functions)
+        let full_lib = Self::math_f64_preamble();
+        let mut output = String::new();
+
+        // Always include header comment and f64_const helper
+        output.push_str(
+            "// math_f64 subset - auto-generated\n\
+             // Helper: construct f64 constant from AbstractFloat\n\
+             fn f64_const(x: f64, c: f32) -> f64 {\n    \
+                 return x - x + f64(c);\n\
+             }\n\n",
+        );
+
+        // Extract and include each needed function from the full library
+        for func_name in F64_FUNCTION_ORDER {
+            if needed.contains(*func_name) {
+                if let Some(func_code) = extract_wgsl_function(&full_lib, func_name) {
+                    output.push_str(&func_code);
+                    output.push_str("\n\n");
+                }
+            }
+        }
+
+        output
+    }
+}
+
+/// Function dependency map for math_f64.wgsl
+/// Each entry: (function_name, [dependencies])
+const F64_FUNCTION_DEPS: &[(&str, &[&str])] = &[
+    // Basic functions
+    ("abs_f64", &[]),
+    ("sign_f64", &[]),
+    ("floor_f64", &[]),
+    ("ceil_f64", &[]),
+    ("round_f64", &["floor_f64"]),
+    ("fract_f64", &["floor_f64"]),
+    ("min_f64", &[]),
+    ("max_f64", &[]),
+    ("clamp_f64", &["min_f64", "max_f64"]),
+    // Power functions
+    ("sqrt_f64", &[]),
+    ("cbrt_f64", &["abs_f64"]),
+    ("ipow_f64", &[]),
+    ("pow_one_third", &["cbrt_f64"]),
+    ("pow_one_half", &["sqrt_f64"]),
+    ("pow_two_thirds", &["cbrt_f64"]),
+    // Transcendentals
+    ("exp_f64", &["abs_f64", "round_f64"]),
+    ("log_f64", &[]),
+    (
+        "pow_f64",
+        &[
+            "round_f64",
+            "abs_f64",
+            "sqrt_f64",
+            "cbrt_f64",
+            "pow_two_thirds",
+            "exp_f64",
+            "log_f64",
+            "ipow_f64",
+        ],
+    ),
+    // Trig
+    ("sin_f64", &[]),
+    ("cos_f64", &["sin_f64"]),
+    ("tan_f64", &["sin_f64", "cos_f64"]),
+    // Hyperbolic
+    ("sinh_f64", &["exp_f64"]),
+    ("cosh_f64", &["exp_f64"]),
+    ("tanh_f64", &["exp_f64"]),
+    // Special functions
+    ("gamma_f64", &["sin_f64", "abs_f64", "pow_f64", "exp_f64"]),
+    ("erf_f64", &["sign_f64", "abs_f64", "exp_f64"]),
+    (
+        "bessel_j0_f64",
+        &["abs_f64", "sqrt_f64", "cos_f64", "sin_f64"],
+    ),
+];
+
+/// Ordered list of functions for correct emission order (dependencies first)
+const F64_FUNCTION_ORDER: &[&str] = &[
+    // Basic - no deps
+    "abs_f64",
+    "sign_f64",
+    "floor_f64",
+    "ceil_f64",
+    "min_f64",
+    "max_f64",
+    // Basic - with deps
+    "round_f64",
+    "fract_f64",
+    "clamp_f64",
+    // Power - no deps
+    "sqrt_f64",
+    "ipow_f64",
+    // Power - with deps
+    "cbrt_f64",
+    "pow_one_third",
+    "pow_one_half",
+    "pow_two_thirds",
+    // Transcendentals
+    "exp_f64",
+    "log_f64",
+    "pow_f64",
+    // Trig
+    "sin_f64",
+    "cos_f64",
+    "tan_f64",
+    // Hyperbolic
+    "sinh_f64",
+    "cosh_f64",
+    "tanh_f64",
+    // Special
+    "gamma_f64",
+    "erf_f64",
+    "bessel_j0_f64",
+];
+
+/// Extract a WGSL function from source by name
+fn extract_wgsl_function(source: &str, name: &str) -> Option<String> {
+    // Look for function definition: `fn name(` or `fn name (`
+    let fn_pattern = format!("fn {name}(");
+    let fn_pattern_space = format!("fn {name} (");
+
+    let start_idx = source
+        .find(&fn_pattern)
+        .or_else(|| source.find(&fn_pattern_space))?;
+
+    // Find the opening brace
+    let brace_idx = source[start_idx..].find('{')?;
+    let fn_start = start_idx;
+
+    // Count braces to find matching closing brace
+    let mut brace_count = 0;
+    let mut fn_end = fn_start + brace_idx;
+
+    for (i, c) in source[fn_start + brace_idx..].char_indices() {
+        match c {
+            '{' => brace_count += 1,
+            '}' => {
+                brace_count -= 1;
+                if brace_count == 0 {
+                    fn_end = fn_start + brace_idx + i + 1;
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Include any doc comment above the function
+    let mut doc_start = fn_start;
+    let before = &source[..fn_start];
+    if let Some(last_newline) = before.rfind('\n') {
+        // Check if preceding lines are comments
+        let prev_lines: Vec<&str> = before[..last_newline + 1].lines().rev().take(5).collect();
+        for (i, line) in prev_lines.iter().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("///") || trimmed.starts_with("//") || trimmed.is_empty() {
+                // Include this line
+                if i == 0 {
+                    if let Some(pos) = before.rfind(line) {
+                        doc_start = pos;
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    Some(source[doc_start..fn_end].trim().to_string())
 }
 
 /// Remove a conditional block from the template

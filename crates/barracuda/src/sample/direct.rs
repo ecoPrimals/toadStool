@@ -156,10 +156,7 @@ impl DirectSamplerResult {
     pub fn top_k_seeds(&self, k: usize) -> Vec<Vec<f64>> {
         let mut records: Vec<_> = self.cache.records().to_vec();
         records.sort_by(|a, b| a.f.partial_cmp(&b.f).unwrap_or(std::cmp::Ordering::Equal));
-        records.into_iter()
-            .take(k)
-            .map(|r| r.x)
-            .collect()
+        records.into_iter().take(k).map(|r| r.x).collect()
     }
 
     /// Get total number of true objective evaluations.
@@ -343,7 +340,11 @@ mod tests {
         let result = direct_sampler(sphere, &bounds, &config).unwrap();
 
         // Should find near-zero minimum
-        assert!(result.f_best < 0.01, "Failed to minimize: {}", result.f_best);
+        assert!(
+            result.f_best < 0.01,
+            "Failed to minimize: {}",
+            result.f_best
+        );
         assert_eq!(result.x_best.len(), 2);
     }
 
@@ -386,9 +387,7 @@ mod tests {
         let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum();
         let bounds = vec![(-5.0, 5.0)];
 
-        let config = DirectSamplerConfig::new(42)
-            .with_rounds(3)
-            .with_solvers(2);
+        let config = DirectSamplerConfig::new(42).with_rounds(3).with_solvers(2);
 
         let result = direct_sampler(sphere, &bounds, &config).unwrap();
 

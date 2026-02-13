@@ -1,7 +1,7 @@
 //! Auto-Tuning Runtime Benchmark
 //!
 //! Validates true throughput and implements self-optimizing calibration.
-//! 
+//!
 //! Design principles:
 //! 1. Don't assume vendor capabilities - discover ground truth
 //! 2. Calibrate on first run, cache results per GPU
@@ -9,9 +9,8 @@
 //! 4. Work seamlessly with unknown/new hardware
 
 use anyhow::Result;
-use barracuda::multi_gpu::{GpuPool, GpuVendor, WorkloadConfig};
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
+use std::time::Instant;
 use wgpu::util::DeviceExt;
 
 /// Calibration result for a specific GPU
@@ -35,7 +34,8 @@ pub struct GpuCalibration {
 
 /// Generate test shader with configurable workgroup size
 fn generate_test_shader(workgroup_size: u32) -> String {
-    format!(r#"
+    format!(
+        r#"
 @group(0) @binding(0) var<storage, read> a: array<f32>;
 @group(0) @binding(1) var<storage, read> b: array<f32>;
 @group(0) @binding(2) var<storage, read_write> output: array<f32>;
@@ -48,11 +48,13 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     }}
     output[idx] = a[idx] + b[idx];
 }}
-"#, workgroup_size)
+"#,
+        workgroup_size
+    )
 }
 
 /// Properly validated throughput measurement
-/// 
+///
 /// Key insight: We must measure ACTUAL data movement, not just kernel dispatch time.
 /// True validation includes:
 /// 1. Data upload to GPU
@@ -64,31 +66,34 @@ async fn measure_true_throughput(
     shader_source: &str,
     workgroup_size: u32,
     size: usize,
-) -> Result<(f64, f64)> {  // Returns (latency_us, bandwidth_gbps)
+) -> Result<(f64, f64)> {
+    // Returns (latency_us, bandwidth_gbps)
     // Create test data
     let data_a: Vec<f32> = (0..size).map(|i| (i % 1000) as f32 * 0.001).collect();
-    let data_b: Vec<f32> = (0..size).map(|i| ((i + 500) % 1000) as f32 * 0.001).collect();
-    
+    let data_b: Vec<f32> = (0..size)
+        .map(|i| ((i + 500) % 1000) as f32 * 0.001)
+        .collect();
+
     // Create GPU buffers
     let buf_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("A"),
         contents: bytemuck::cast_slice(&data_a),
         usage: wgpu::BufferUsages::STORAGE,
     });
-    
+
     let buf_b = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("B"),
         contents: bytemuck::cast_slice(&data_b),
         usage: wgpu::BufferUsages::STORAGE,
     });
-    
+
     let buf_out = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Out"),
         size: (size * 4) as u64,
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         mapped_at_creation: false,
     });
-    
+
     // Staging buffer for readback (validates we actually did work)
     let staging = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Staging"),
@@ -96,13 +101,13 @@ async fn measure_true_throughput(
         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
-    
+
     // Compile shader
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Test"),
         source: wgpu::ShaderSource::Wgsl(shader_source.into()),
     });
-    
+
     // Create bind group layout
     let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("BGL"),
@@ -139,32 +144,41 @@ async fn measure_true_throughput(
             },
         ],
     });
-    
+
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("BG"),
         layout: &bgl,
         entries: &[
-            wgpu::BindGroupEntry { binding: 0, resource: buf_a.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 1, resource: buf_b.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 2, resource: buf_out.as_entire_binding() },
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buf_a.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: buf_b.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: buf_out.as_entire_binding(),
+            },
         ],
     });
-    
+
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("PL"),
         bind_group_layouts: &[&bgl],
         push_constant_ranges: &[],
     });
-    
+
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: Some("Pipeline"),
         layout: Some(&pipeline_layout),
         module: &shader,
         entry_point: "main",
     });
-    
+
     let workgroups = (size as u32).div_ceil(workgroup_size).min(65535);
-    
+
     // Warmup run
     {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
@@ -177,11 +191,11 @@ async fn measure_true_throughput(
         queue.submit(Some(encoder.finish()));
         device.poll(wgpu::Maintain::Wait);
     }
-    
+
     // PROPERLY TIMED benchmark with sync
     let iterations = 10;
     let start = Instant::now();
-    
+
     for _ in 0..iterations {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         {
@@ -193,18 +207,18 @@ async fn measure_true_throughput(
         // Copy first element to staging for validation
         encoder.copy_buffer_to_buffer(&buf_out, 0, &staging, 0, 4);
         queue.submit(Some(encoder.finish()));
-        
+
         // CRITICAL: Wait for GPU to actually complete
         device.poll(wgpu::Maintain::Wait);
     }
-    
+
     let elapsed = start.elapsed();
     let latency_us = elapsed.as_secs_f64() * 1e6 / iterations as f64;
-    
+
     // Calculate true bandwidth: (read A + read B + write C) = 3 * size * 4 bytes
     let bytes_per_op = size * 3 * 4;
     let bandwidth_gbps = (bytes_per_op as f64) / (latency_us * 1000.0);
-    
+
     // Verify we got correct results
     {
         let slice = staging.slice(..);
@@ -214,13 +228,18 @@ async fn measure_true_throughput(
         });
         device.poll(wgpu::Maintain::Wait);
         rx.await??;
-        
+
         let data = slice.get_mapped_range();
         let result: f32 = bytemuck::cast_slice(&data)[0];
         let expected = data_a[0] + data_b[0];
-        assert!((result - expected).abs() < 1e-5, "Validation failed: {} != {}", result, expected);
+        assert!(
+            (result - expected).abs() < 1e-5,
+            "Validation failed: {} != {}",
+            result,
+            expected
+        );
     }
-    
+
     Ok((latency_us, bandwidth_gbps))
 }
 
@@ -231,18 +250,21 @@ async fn autotune_workgroup_size(
     device_name: &str,
 ) -> Result<(u32, f64)> {
     println!("  Auto-tuning workgroup size for {}...", device_name);
-    
+
     let test_size = 4_000_000; // 4M elements (fits in dispatch limits for all WG sizes)
     let wg_sizes = [32, 64, 128, 256];
-    
+
     let mut best_wg = 256u32;
     let mut best_bw = 0.0f64;
-    
+
     for wg_size in wg_sizes {
         let shader = generate_test_shader(wg_size);
         match measure_true_throughput(device, queue, &shader, wg_size, test_size).await {
             Ok((latency, bandwidth)) => {
-                println!("    WG={:>3}: {:>8.1}μs, {:>6.1} GB/s", wg_size, latency, bandwidth);
+                println!(
+                    "    WG={:>3}: {:>8.1}μs, {:>6.1} GB/s",
+                    wg_size, latency, bandwidth
+                );
                 if bandwidth > best_bw {
                     best_bw = bandwidth;
                     best_wg = wg_size;
@@ -251,7 +273,7 @@ async fn autotune_workgroup_size(
             Err(e) => println!("    WG={}: ERROR - {}", wg_size, e),
         }
     }
-    
+
     println!("  → Optimal: WG={} ({:.1} GB/s)", best_wg, best_bw);
     Ok((best_wg, best_bw))
 }
@@ -263,12 +285,12 @@ async fn autotune_batch_size(
     workgroup_size: u32,
 ) -> Result<usize> {
     println!("  Auto-tuning batch size...");
-    
+
     let test_size = 1_000_000;
     let batch_sizes = [1, 5, 10, 20, 50];
-    
+
     let shader = generate_test_shader(workgroup_size);
-    
+
     // Pre-create resources
     let data: Vec<f32> = (0..test_size).map(|i| i as f32 * 0.001).collect();
     let buf_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -287,12 +309,12 @@ async fn autotune_batch_size(
         usage: wgpu::BufferUsages::STORAGE,
         mapped_at_creation: false,
     });
-    
+
     let shader_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: None,
         source: wgpu::ShaderSource::Wgsl(shader.into()),
     });
-    
+
     let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: None,
         entries: &[
@@ -328,39 +350,49 @@ async fn autotune_batch_size(
             },
         ],
     });
-    
+
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: None,
         layout: &bgl,
         entries: &[
-            wgpu::BindGroupEntry { binding: 0, resource: buf_a.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 1, resource: buf_b.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 2, resource: buf_out.as_entire_binding() },
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buf_a.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: buf_b.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: buf_out.as_entire_binding(),
+            },
         ],
     });
-    
+
     let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: None,
         bind_group_layouts: &[&bgl],
         push_constant_ranges: &[],
     });
-    
+
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: None,
         layout: Some(&pl),
         module: &shader_mod,
         entry_point: "main",
     });
-    
+
     let workgroups = (test_size as u32).div_ceil(workgroup_size);
-    
+
     let mut best_batch = 1usize;
     let mut best_throughput = 0.0f64;
-    
+
     for batch_size in batch_sizes {
         // Warmup
         for _ in 0..batch_size {
-            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            let mut encoder =
+                device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
                 pass.set_pipeline(&pipeline);
@@ -370,16 +402,18 @@ async fn autotune_batch_size(
             queue.submit(Some(encoder.finish()));
         }
         device.poll(wgpu::Maintain::Wait);
-        
+
         // Measure
         let iterations = 5;
         let start = Instant::now();
-        
+
         for _ in 0..iterations {
             for _ in 0..batch_size {
-                let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+                let mut encoder =
+                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
                 {
-                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+                    let mut pass =
+                        encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
                     pass.set_pipeline(&pipeline);
                     pass.set_bind_group(0, &bind_group, &[]);
                     pass.dispatch_workgroups(workgroups, 1, 1);
@@ -388,19 +422,22 @@ async fn autotune_batch_size(
             }
             device.poll(wgpu::Maintain::Wait);
         }
-        
+
         let elapsed = start.elapsed();
         let ops_per_sec = (iterations * batch_size) as f64 / elapsed.as_secs_f64();
         let throughput = ops_per_sec * test_size as f64 * 3.0 * 4.0 / 1e9; // GB/s
-        
-        println!("    Batch={:>2}: {:.0} ops/s, effective {:.1} GB/s", batch_size, ops_per_sec, throughput);
-        
+
+        println!(
+            "    Batch={:>2}: {:.0} ops/s, effective {:.1} GB/s",
+            batch_size, ops_per_sec, throughput
+        );
+
         if throughput > best_throughput {
             best_throughput = throughput;
             best_batch = batch_size;
         }
     }
-    
+
     println!("  → Optimal batch: {}", best_batch);
     Ok(best_batch)
 }
@@ -414,17 +451,18 @@ pub async fn calibrate_gpu(
     println!("\n╔══════════════════════════════════════════════════════════════════════════════╗");
     println!("║  CALIBRATING: {:<60} ║", device_name);
     println!("╚══════════════════════════════════════════════════════════════════════════════╝\n");
-    
+
     // Step 1: Find optimal workgroup size
     let (optimal_wg, peak_bw) = autotune_workgroup_size(device, queue, device_name).await?;
-    
+
     // Step 2: Find optimal batch size
     let optimal_batch = autotune_batch_size(device, queue, optimal_wg).await?;
-    
+
     // Step 3: Measure single-op latency
     let shader = generate_test_shader(optimal_wg);
-    let (single_op_latency, _) = measure_true_throughput(device, queue, &shader, optimal_wg, 1_000_000).await?;
-    
+    let (single_op_latency, _) =
+        measure_true_throughput(device, queue, &shader, optimal_wg, 1_000_000).await?;
+
     let calibration = GpuCalibration {
         device_id: format!("{:?}", device.global_id()),
         device_name: device_name.to_string(),
@@ -434,15 +472,24 @@ pub async fn calibrate_gpu(
         single_op_latency_us: single_op_latency,
         calibrated_at: chrono::Utc::now().to_rfc3339(),
     };
-    
+
     println!("\n  ══════════════════════════════════════════");
     println!("  CALIBRATION COMPLETE");
     println!("  ══════════════════════════════════════════");
-    println!("  Optimal WG size:    {}", calibration.optimal_workgroup_size);
+    println!(
+        "  Optimal WG size:    {}",
+        calibration.optimal_workgroup_size
+    );
     println!("  Optimal batch:      {}", calibration.optimal_batch_size);
-    println!("  Peak bandwidth:     {:.1} GB/s", calibration.peak_bandwidth_gbps);
-    println!("  Single-op latency:  {:.1} μs", calibration.single_op_latency_us);
-    
+    println!(
+        "  Peak bandwidth:     {:.1} GB/s",
+        calibration.peak_bandwidth_gbps
+    );
+    println!(
+        "  Single-op latency:  {:.1} μs",
+        calibration.single_op_latency_us
+    );
+
     Ok(calibration)
 }
 
@@ -463,60 +510,67 @@ async fn main() -> Result<()> {
         min_gflops: 100.0,
         ..Default::default()
     };
-    
+
     let pool = GpuPool::with_config(config).await?;
     let mut calibrations = Vec::new();
-    
+
     // Calibrate each GPU
-    for (idx, gpu_info) in pool.devices().iter().enumerate() {
-        let wgpu_device = pool.device(idx).ok_or_else(|| anyhow::anyhow!("No device"))?;
+    for (idx, _gpu_info) in pool.devices().iter().enumerate() {
+        let wgpu_device = pool
+            .device(idx)
+            .ok_or_else(|| anyhow::anyhow!("No device"))?;
         let device = wgpu_device.device();
         let queue = wgpu_device.queue();
         let name = wgpu_device.name();
-        
+
         let cal = calibrate_gpu(device, queue, name).await?;
         calibrations.push(cal);
     }
-    
+
     // Summary
     println!("\n╔══════════════════════════════════════════════════════════════════════════════╗");
     println!("║     CALIBRATION SUMMARY                                                        ║");
     println!("╚══════════════════════════════════════════════════════════════════════════════╝\n");
-    
+
     println!("┌────────────────────────────┬────────┬─────────┬──────────────┬─────────────┐");
     println!("│ Device                     │ WG     │ Batch   │ Peak BW      │ Latency     │");
     println!("├────────────────────────────┼────────┼─────────┼──────────────┼─────────────┤");
-    
+
     for cal in &calibrations {
         let short_name = if cal.device_name.len() > 26 {
             &cal.device_name[..26]
         } else {
             &cal.device_name
         };
-        println!("│ {:26} │ {:>6} │ {:>7} │ {:>9.1} GB/s │ {:>8.1} μs │",
-            short_name, cal.optimal_workgroup_size, cal.optimal_batch_size,
-            cal.peak_bandwidth_gbps, cal.single_op_latency_us);
+        println!(
+            "│ {:26} │ {:>6} │ {:>7} │ {:>9.1} GB/s │ {:>8.1} μs │",
+            short_name,
+            cal.optimal_workgroup_size,
+            cal.optimal_batch_size,
+            cal.peak_bandwidth_gbps,
+            cal.single_op_latency_us
+        );
     }
     println!("└────────────────────────────┴────────┴─────────┴──────────────┴─────────────┘");
-    
+
     // Theoretical comparison
     println!("\n═══ THEORETICAL LIMITS (for reference) ═══\n");
     println!("  RTX 3090:     936 GB/s (GDDR6X @ 19.5 Gbps × 384-bit)");
     println!("  RX 6950 XT:   576 GB/s (GDDR6 @ 18 Gbps × 256-bit)");
     println!("\n  If measured > theoretical: measurement includes caching effects");
     println!("  If measured < theoretical: room for optimization or overhead");
-    
+
     // Save calibrations to file
     let cal_path = std::env::temp_dir().join("barracuda_calibrations.json");
     let json = serde_json::to_string_pretty(&calibrations)?;
     std::fs::write(&cal_path, &json)?;
     println!("\n  Calibrations saved to: {}", cal_path.display());
-    
+
     println!("\n═══ NEXT STEPS ═══\n");
     println!("  1. Integrate calibrations into ToadStool runtime");
     println!("  2. Use optimal settings per-GPU automatically");
     println!("  3. Re-calibrate when new hardware detected");
     println!("  4. Build compute graph to leverage batching");
-    
+
     Ok(())
 }

@@ -320,11 +320,7 @@ mod tests {
         // Tridiagonal matrix with known eigenvalues
         // [[2, -1, 0], [-1, 2, -1], [0, -1, 2]]
         // Eigenvalues: 2 - √2, 2, 2 + √2
-        let a = vec![
-            2.0, -1.0, 0.0,
-            -1.0, 2.0, -1.0,
-            0.0, -1.0, 2.0,
-        ];
+        let a = vec![2.0, -1.0, 0.0, -1.0, 2.0, -1.0, 0.0, -1.0, 2.0];
         let eig = eigh_f64(&a, 3).unwrap();
 
         let expected = [

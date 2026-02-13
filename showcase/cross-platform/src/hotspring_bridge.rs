@@ -50,8 +50,14 @@ async fn main() -> Result<()> {
     // Available validation binaries in hotSpring
     let validations = [
         ("validate_md", "Molecular Dynamics forces & integrators"),
-        ("validate_linalg", "Linear algebra (Cholesky, eigendecomposition)"),
-        ("validate_special_functions", "Bessel, gamma, incomplete beta"),
+        (
+            "validate_linalg",
+            "Linear algebra (Cholesky, eigendecomposition)",
+        ),
+        (
+            "validate_special_functions",
+            "Bessel, gamma, incomplete beta",
+        ),
         ("validate_optimizers", "Nelder-Mead, Levenberg-Marquardt"),
         ("nuclear_eos_l1", "Nuclear EOS surrogate (L1)"),
         ("nuclear_eos_l2", "Nuclear EOS surrogate (L2)"),
@@ -63,7 +69,10 @@ async fn main() -> Result<()> {
     for (name, description) in &validations {
         println!("  • {}", name);
         println!("    {}", description);
-        println!("    Run: cd {}/barracuda && cargo run --bin {}", HOTSPRING_PATH, name);
+        println!(
+            "    Run: cd {}/barracuda && cargo run --bin {}",
+            HOTSPRING_PATH, name
+        );
         println!();
     }
 
@@ -78,17 +87,16 @@ async fn main() -> Result<()> {
     println!("═══ Quick Health Check ═══");
     println!();
     println!("  Testing BarraCUDA tensor creation...");
-    
+
     let test_data: Vec<f32> = (0..100).map(|i| i as f32).collect();
-    let tensor = barracuda::tensor::Tensor::from_data(
-        &test_data, 
-        vec![10, 10], 
-        device.clone()
-    )?;
-    
+    let tensor = barracuda::tensor::Tensor::from_data(&test_data, vec![10, 10], device.clone())?;
+
     let retrieved = tensor.to_vec()?;
-    let matches = test_data.iter().zip(retrieved.iter()).all(|(a, b)| (a - b).abs() < 1e-6);
-    
+    let matches = test_data
+        .iter()
+        .zip(retrieved.iter())
+        .all(|(a, b)| (a - b).abs() < 1e-6);
+
     if matches {
         println!("  ✅ Tensor round-trip: PASS");
     } else {

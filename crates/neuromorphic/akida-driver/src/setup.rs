@@ -255,10 +255,7 @@ fn check_hardware() -> Result<()> {
     let output = Command::new("lspci").arg("-d").arg(&filter).output()?;
 
     if !output.status.success() || output.stdout.is_empty() {
-        bail!(
-            "No Akida NPU hardware detected. Run 'lspci -d {}' to verify.",
-            filter
-        );
+        bail!("No Akida NPU hardware detected. Run 'lspci -d {filter}' to verify.");
     }
 
     let devices = String::from_utf8_lossy(&output.stdout);

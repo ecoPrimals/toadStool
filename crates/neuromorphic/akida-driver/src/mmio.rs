@@ -3,6 +3,14 @@
 //! Provides safe abstractions for accessing Akida hardware registers.
 //! Based on VFIO region mapping.
 
+// Hardware register access requires exact type casts for mmap/ioctl APIs
+// MMIO registers are naturally aligned by hardware, so pointer casts are safe
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::ptr_as_ptr)]
+#![allow(clippy::cast_ptr_alignment)]
+#![allow(clippy::items_after_statements)] // VFIO ioctl constants near usage
+
 use crate::error::{AkidaError, Result};
 use std::fs::File;
 use std::os::unix::io::AsRawFd;
@@ -61,18 +69,25 @@ pub mod regs {
     /// Inference status
     pub const INFER_STATUS: usize = 0x0404;
 
-    /// Status bits
+    /// Status register bit definitions
     pub mod status {
+        /// Device is ready to accept commands
         pub const READY: u32 = 1 << 0;
+        /// Device is currently processing
         pub const BUSY: u32 = 1 << 1;
+        /// An error occurred during last operation
         pub const ERROR: u32 = 1 << 2;
+        /// A model has been successfully loaded
         pub const MODEL_LOADED: u32 = 1 << 3;
     }
 
-    /// Control bits
+    /// Control register bit definitions
     pub mod control {
+        /// Trigger a soft reset of the device
         pub const RESET: u32 = 1 << 0;
+        /// Enable device operation
         pub const ENABLE: u32 = 1 << 1;
+        /// Enable power-saving mode
         pub const POWER_SAVE: u32 = 1 << 2;
     }
 }
@@ -81,11 +96,17 @@ pub mod regs {
 #[repr(C)]
 #[derive(Debug, Default)]
 pub struct VfioRegionInfo {
+    /// Size of this structure (for versioning)
     pub argsz: u32,
+    /// Region flags (capabilities, permissions)
     pub flags: u32,
+    /// Region index (BAR number)
     pub index: u32,
+    /// Offset to extended capabilities
     pub cap_offset: u32,
+    /// Size of the region in bytes
     pub size: u64,
+    /// Offset from mmap base
     pub offset: u64,
 }
 
@@ -105,6 +126,12 @@ unsafe impl Sync for MappedRegion {}
 
 impl MappedRegion {
     /// Map a BAR region via VFIO
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The VFIO ioctl to get region info fails
+    /// - Memory mapping the BAR region fails
     pub fn map(device_fd: &File, bar: Bar) -> Result<Self> {
         // Query region info
         #[allow(clippy::cast_possible_truncation)]
@@ -122,7 +149,7 @@ impl MappedRegion {
             libc::ioctl(
                 device_fd.as_raw_fd(),
                 VFIO_DEVICE_GET_REGION_INFO,
-                &mut region_info as *mut _,
+                &raw mut region_info,
             )
         };
 
@@ -163,7 +190,12 @@ impl MappedRegion {
             )));
         }
 
-        tracing::info!("Mapped BAR{} at {:p}, size={:#x}", bar as u32, ptr, region_info.size);
+        tracing::info!(
+            "Mapped BAR{} at {:p}, size={:#x}",
+            bar as u32,
+            ptr,
+            region_info.size
+        );
 
         Ok(Self {
             ptr: ptr.cast(),
@@ -173,15 +205,21 @@ impl MappedRegion {
     }
 
     /// Read a 32-bit register
+    ///
+    /// # Panics
+    ///
+    /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn read32(&self, offset: usize) -> u32 {
         assert!(offset + 4 <= self.size, "Register offset out of bounds");
         // SAFETY: Offset is within bounds, ptr is valid
-        unsafe {
-            std::ptr::read_volatile(self.ptr.add(offset).cast::<u32>())
-        }
+        unsafe { std::ptr::read_volatile(self.ptr.add(offset).cast::<u32>()) }
     }
 
     /// Write a 32-bit register
+    ///
+    /// # Panics
+    ///
+    /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn write32(&self, offset: usize, value: u32) {
         assert!(offset + 4 <= self.size, "Register offset out of bounds");
         // SAFETY: Offset is within bounds, ptr is valid
@@ -191,15 +229,21 @@ impl MappedRegion {
     }
 
     /// Read a 64-bit register
+    ///
+    /// # Panics
+    ///
+    /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn read64(&self, offset: usize) -> u64 {
         assert!(offset + 8 <= self.size, "Register offset out of bounds");
         // SAFETY: Offset is within bounds, ptr is valid
-        unsafe {
-            std::ptr::read_volatile(self.ptr.add(offset).cast::<u64>())
-        }
+        unsafe { std::ptr::read_volatile(self.ptr.add(offset).cast::<u64>()) }
     }
 
     /// Write a 64-bit register
+    ///
+    /// # Panics
+    ///
+    /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn write64(&self, offset: usize, value: u64) {
         assert!(offset + 8 <= self.size, "Register offset out of bounds");
         // SAFETY: Offset is within bounds, ptr is valid

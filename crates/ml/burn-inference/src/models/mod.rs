@@ -4,8 +4,8 @@
 //! from HuggingFace Hub or local files.
 
 pub mod bert;
-pub mod whisper;
 pub mod vision;
+pub mod whisper;
 
 use crate::Result;
 
@@ -15,13 +15,13 @@ pub trait Model {
     type Input;
     /// Model output type
     type Output;
-    
+
     /// Run inference
     fn forward(&self, input: &Self::Input) -> Result<Self::Output>;
-    
+
     /// Get model name
     fn name(&self) -> &str;
-    
+
     /// Get number of parameters
     fn num_parameters(&self) -> usize;
 }

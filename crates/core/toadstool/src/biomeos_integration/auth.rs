@@ -31,9 +31,30 @@ pub struct AuthenticationManager {
 }
 
 /// Configuration for authentication manager
+///
+/// # Evolution Note (Feb 2026)
+///
+/// The `beardog_endpoint` field is deprecated for new code. Use capability-based
+/// discovery instead:
+///
+/// ```rust,ignore
+/// // OLD: Hardcoded endpoint
+/// let config = AuthManagerConfig {
+///     beardog_endpoint: "http://localhost:9090".into(),
+///     ..Default::default()
+/// };
+///
+/// // NEW: Capability-based discovery  
+/// let manager = AuthenticationManager::discover().await?;
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthManagerConfig {
     /// BearDog endpoint URL
+    ///
+    /// **DEPRECATED**: Use `AuthenticationManager::discover()` for runtime discovery.
+    /// This field is kept for backward compatibility and env var overrides.
+    /// When empty, the manager will discover BearDog via capability lookup.
+    #[serde(default)]
     pub beardog_endpoint: String,
     /// Token refresh interval
     pub token_refresh_interval: Duration,
@@ -47,6 +68,19 @@ pub struct AuthManagerConfig {
     /// When set, enables real Ed25519 signatures instead of mock signatures
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signing_key_seed: Option<String>,
+}
+
+impl Default for AuthManagerConfig {
+    fn default() -> Self {
+        Self {
+            beardog_endpoint: String::new(), // Empty = use runtime discovery
+            token_refresh_interval: Duration::from_secs(3600),
+            signature_validation: true,
+            timestamp_window: Duration::from_secs(300),
+            replay_protection: true,
+            signing_key_seed: None,
+        }
+    }
 }
 
 /// Authentication token structure
@@ -218,7 +252,75 @@ impl AuthenticationManager {
         }
     }
 
+    /// Discover and create authentication manager via capability-based discovery
+    ///
+    /// This is the preferred method for creating an AuthenticationManager.
+    /// It discovers BearDog (or another security provider) at runtime using
+    /// capability-based discovery rather than hardcoded endpoints.
+    ///
+    /// # Discovery Order
+    ///
+    /// 1. Environment variable: `BEARDOG_ENDPOINT` or `TOADSTOOL_SECURITY_ENDPOINT`
+    /// 2. mDNS/local network discovery for "security" or "identity" capability
+    /// 3. Unix socket discovery at standard paths
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// // Capability-based discovery (recommended)
+    /// let manager = AuthenticationManager::discover().await?;
+    ///
+    /// // With custom config
+    /// let config = AuthManagerConfig::default();
+    /// let manager = AuthenticationManager::discover_with_config(config).await?;
+    /// ```
+    pub async fn discover() -> crate::ToadStoolResult<Self> {
+        Self::discover_with_config(AuthManagerConfig::default()).await
+    }
+
+    /// Discover security provider with custom configuration
+    pub async fn discover_with_config(config: AuthManagerConfig) -> crate::ToadStoolResult<Self> {
+        // Priority 1: Check if endpoint is already configured (env var override)
+        if !config.beardog_endpoint.is_empty() {
+            tracing::debug!(
+                "Using configured BearDog endpoint: {}",
+                config.beardog_endpoint
+            );
+            return Ok(Self::with_beardog(config));
+        }
+
+        // Priority 2: Check environment variables
+        if let Ok(endpoint) = std::env::var("BEARDOG_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_SECURITY_ENDPOINT"))
+        {
+            tracing::info!("Discovered BearDog via environment: {}", endpoint);
+            let mut config = config;
+            config.beardog_endpoint = endpoint;
+            return Ok(Self::with_beardog(config));
+        }
+
+        // Priority 3: Capability-based discovery via ipc_helpers
+        match crate::ipc_helpers::resolve_primal("beardog").await {
+            Ok(endpoint) => {
+                tracing::info!("Discovered BearDog via capability lookup: {}", endpoint);
+                let mut config = config;
+                config.beardog_endpoint = endpoint;
+                Ok(Self::with_beardog(config))
+            }
+            Err(_) => {
+                // Priority 4: Fall back to in-memory backend for development
+                tracing::warn!(
+                    "No security provider discovered, using in-memory backend. \
+                     Set BEARDOG_ENDPOINT for production use."
+                );
+                Ok(Self::with_inmemory(config))
+            }
+        }
+    }
+
     /// Create a new manager with BearDog production backend
+    ///
+    /// **Note**: Prefer `discover()` for new code to use capability-based discovery.
     #[must_use]
     pub fn with_beardog(config: AuthManagerConfig) -> Self {
         let backend = super::auth_backend::BearDogBackend::new(config.beardog_endpoint.clone());

@@ -37,7 +37,7 @@ use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 /// Handle to a tensor within a session
-/// 
+///
 /// This is a lightweight reference that tracks tensors created/computed
 /// within a session. The actual data lives in GPU buffers.
 #[derive(Debug, Clone)]
@@ -69,7 +69,7 @@ impl SessionTensor {
     }
 
     /// Convert to regular Tensor (after session.run())
-    /// 
+    ///
     /// Note: This creates a deep copy of the data for safety.
     pub fn to_tensor(&self) -> Result<Tensor> {
         // Just read the data and create a new tensor
@@ -79,9 +79,10 @@ impl SessionTensor {
 
     /// Read data back to CPU (after session.run())
     pub fn to_vec(&self) -> Result<Vec<f32>> {
-        let buffer = self.buffer.as_ref()
-            .ok_or_else(|| BarracudaError::execution_failed("Session not executed yet - call session.run() first"))?;
-        
+        let buffer = self.buffer.as_ref().ok_or_else(|| {
+            BarracudaError::execution_failed("Session not executed yet - call session.run() first")
+        })?;
+
         self.device.read_buffer_f32(buffer, self.len())
     }
 }
@@ -177,11 +178,14 @@ impl TensorSession {
             ));
         }
 
-        let buffer = self.device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Session Input"),
-            contents: bytemuck::cast_slice(data),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-        });
+        let buffer = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Session Input"),
+                contents: bytemuck::cast_slice(data),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            });
 
         let buffer_id = self.buffers.len();
         self.buffers.push(Arc::new(buffer));
@@ -268,7 +272,12 @@ impl TensorSession {
     }
 
     /// Record fused multiply-add: output = a * b + c
-    pub fn fma(&mut self, a: &SessionTensor, b: &SessionTensor, c: &SessionTensor) -> Result<SessionTensor> {
+    pub fn fma(
+        &mut self,
+        a: &SessionTensor,
+        b: &SessionTensor,
+        c: &SessionTensor,
+    ) -> Result<SessionTensor> {
         if a.shape() != b.shape() {
             return Err(BarracudaError::shape_mismatch(
                 a.shape().to_vec(),
@@ -336,16 +345,21 @@ impl TensorSession {
         let scale_shader = self.compile_shader("scale");
 
         // Create single command encoder for all operations
-        let mut encoder = self.device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
-                label: Some("TensorSession Batch"),
-            },
-        );
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("TensorSession Batch"),
+                });
 
         // Encode all operations
         for op in &self.ops {
             match op {
-                SessionOp::Add { input_a, input_b, output } => {
+                SessionOp::Add {
+                    input_a,
+                    input_b,
+                    output,
+                } => {
                     let size = self.shapes[*output].iter().product::<usize>();
                     self.encode_binary_op(
                         &mut encoder,
@@ -356,7 +370,11 @@ impl TensorSession {
                         size,
                     );
                 }
-                SessionOp::Mul { input_a, input_b, output } => {
+                SessionOp::Mul {
+                    input_a,
+                    input_b,
+                    output,
+                } => {
                     let size = self.shapes[*output].iter().product::<usize>();
                     self.encode_binary_op(
                         &mut encoder,
@@ -367,7 +385,12 @@ impl TensorSession {
                         size,
                     );
                 }
-                SessionOp::Fma { input_a, input_b, input_c, output } => {
+                SessionOp::Fma {
+                    input_a,
+                    input_b,
+                    input_c,
+                    output,
+                } => {
                     let size = self.shapes[*output].iter().product::<usize>();
                     self.encode_ternary_op(
                         &mut encoder,
@@ -379,7 +402,11 @@ impl TensorSession {
                         size,
                     );
                 }
-                SessionOp::Scale { input, scalar, output } => {
+                SessionOp::Scale {
+                    input,
+                    scalar,
+                    output,
+                } => {
                     let size = self.shapes[*output].iter().product::<usize>();
                     self.encode_scale_op(
                         &mut encoder,
@@ -411,7 +438,8 @@ impl TensorSession {
 
     fn compile_shader(&self, op_type: &str) -> wgpu::ShaderModule {
         let source = match op_type {
-            "add" => format!(r#"
+            "add" => format!(
+                r#"
 @group(0) @binding(0) var<storage, read> a: array<f32>;
 @group(0) @binding(1) var<storage, read> b: array<f32>;
 @group(0) @binding(2) var<storage, read_write> output: array<f32>;
@@ -422,8 +450,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     if (idx >= arrayLength(&output)) {{ return; }}
     output[idx] = a[idx] + b[idx];
 }}
-"#, self.workgroup_size),
-            "mul" => format!(r#"
+"#,
+                self.workgroup_size
+            ),
+            "mul" => format!(
+                r#"
 @group(0) @binding(0) var<storage, read> a: array<f32>;
 @group(0) @binding(1) var<storage, read> b: array<f32>;
 @group(0) @binding(2) var<storage, read_write> output: array<f32>;
@@ -434,8 +465,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     if (idx >= arrayLength(&output)) {{ return; }}
     output[idx] = a[idx] * b[idx];
 }}
-"#, self.workgroup_size),
-            "fma" => format!(r#"
+"#,
+                self.workgroup_size
+            ),
+            "fma" => format!(
+                r#"
 @group(0) @binding(0) var<storage, read> a: array<f32>;
 @group(0) @binding(1) var<storage, read> b: array<f32>;
 @group(0) @binding(2) var<storage, read> c: array<f32>;
@@ -447,8 +481,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     if (idx >= arrayLength(&output)) {{ return; }}
     output[idx] = fma(a[idx], b[idx], c[idx]);
 }}
-"#, self.workgroup_size),
-            "scale" => format!(r#"
+"#,
+                self.workgroup_size
+            ),
+            "scale" => format!(
+                r#"
 struct Params {{ scalar: f32 }}
 @group(0) @binding(0) var<storage, read> a: array<f32>;
 @group(0) @binding(1) var<uniform> params: Params;
@@ -460,14 +497,18 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     if (idx >= arrayLength(&output)) {{ return; }}
     output[idx] = a[idx] * params.scalar;
 }}
-"#, self.workgroup_size),
+"#,
+                self.workgroup_size
+            ),
             _ => panic!("Unknown op type: {}", op_type),
         };
 
-        self.device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some(op_type),
-            source: wgpu::ShaderSource::Wgsl(source.into()),
-        })
+        self.device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some(op_type),
+                source: wgpu::ShaderSource::Wgsl(source.into()),
+            })
     }
 
     fn encode_binary_op(
@@ -479,64 +520,85 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
         output: &wgpu::Buffer,
         size: usize,
     ) {
-        let bgl = self.device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bgl = self
+            .device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
-        let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: input_a.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: input_b.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: output.as_entire_binding() },
-            ],
-        });
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: input_a.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: input_b.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: output.as_entire_binding(),
+                    },
+                ],
+            });
 
-        let pipeline_layout = self.device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            self.device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: None,
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = self.device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: None,
-            layout: Some(&pipeline_layout),
-            module: shader,
-            entry_point: "main",
-        });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: None,
+                    layout: Some(&pipeline_layout),
+                    module: shader,
+                    entry_point: "main",
+                });
 
         let workgroups = (size as u32).div_ceil(self.workgroup_size).min(65535);
 
@@ -558,75 +620,99 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
         output: &wgpu::Buffer,
         size: usize,
     ) {
-        let bgl = self.device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bgl = self
+            .device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
-        let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: input_a.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: input_b.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: input_c.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: output.as_entire_binding() },
-            ],
-        });
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: input_a.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: input_b.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: input_c.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: output.as_entire_binding(),
+                    },
+                ],
+            });
 
-        let pipeline_layout = self.device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            self.device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: None,
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = self.device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: None,
-            layout: Some(&pipeline_layout),
-            module: shader,
-            entry_point: "main",
-        });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: None,
+                    layout: Some(&pipeline_layout),
+                    module: shader,
+                    entry_point: "main",
+                });
 
         let workgroups = (size as u32).div_ceil(self.workgroup_size).min(65535);
 
@@ -650,64 +736,85 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
         // Create uniform buffer for scalar
         let scalar_buffer = self.device.create_uniform_buffer("scalar", &scalar);
 
-        let bgl = self.device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bgl = self
+            .device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
-        let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: input.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: scalar_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: output.as_entire_binding() },
-            ],
-        });
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: input.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: scalar_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: output.as_entire_binding(),
+                    },
+                ],
+            });
 
-        let pipeline_layout = self.device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            self.device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: None,
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = self.device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: None,
-            layout: Some(&pipeline_layout),
-            module: shader,
-            entry_point: "main",
-        });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: None,
+                    layout: Some(&pipeline_layout),
+                    module: shader,
+                    entry_point: "main",
+                });
 
         let workgroups = (size as u32).div_ceil(self.workgroup_size).min(65535);
 
@@ -732,15 +839,15 @@ mod tests {
         };
 
         let mut session = TensorSession::new(&device);
-        
+
         let a = session.tensor(&[1.0, 2.0, 3.0, 4.0]).unwrap();
         let b = session.tensor(&[5.0, 6.0, 7.0, 8.0]).unwrap();
         let c = session.add(&a, &b).unwrap();
-        
+
         assert_eq!(session.num_ops(), 1);
-        
+
         session.run().unwrap();
-        
+
         let result = c.to_vec().unwrap();
         assert_eq!(result, vec![6.0, 8.0, 10.0, 12.0]);
     }
@@ -752,18 +859,18 @@ mod tests {
         };
 
         let mut session = TensorSession::new(&device);
-        
+
         let a = session.tensor(&[1.0, 2.0, 3.0, 4.0]).unwrap();
         let b = session.tensor(&[2.0, 2.0, 2.0, 2.0]).unwrap();
-        
+
         // Chain: (a + b) * b = [3, 4, 5, 6] * [2, 2, 2, 2] = [6, 8, 10, 12]
         let c = session.add(&a, &b).unwrap();
         let d = session.mul(&c, &b).unwrap();
-        
+
         assert_eq!(session.num_ops(), 2);
-        
+
         session.run().unwrap();
-        
+
         let result = d.to_vec().unwrap();
         assert_eq!(result, vec![6.0, 8.0, 10.0, 12.0]);
     }
@@ -775,17 +882,17 @@ mod tests {
         };
 
         let mut session = TensorSession::new(&device);
-        
+
         let a = session.tensor(&[1.0, 2.0, 3.0, 4.0]).unwrap();
         let b = session.tensor(&[2.0, 2.0, 2.0, 2.0]).unwrap();
         let c = session.tensor(&[10.0, 10.0, 10.0, 10.0]).unwrap();
-        
+
         // FMA: a * b + c = [1, 2, 3, 4] * [2, 2, 2, 2] + [10, 10, 10, 10]
         //                = [2, 4, 6, 8] + [10, 10, 10, 10] = [12, 14, 16, 18]
         let d = session.fma(&a, &b, &c).unwrap();
-        
+
         session.run().unwrap();
-        
+
         let result = d.to_vec().unwrap();
         assert_eq!(result, vec![12.0, 14.0, 16.0, 18.0]);
     }

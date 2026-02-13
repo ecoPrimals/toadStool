@@ -44,7 +44,7 @@ impl BurnDevice {
             }
         }
     }
-    
+
     /// Try to create a wgpu device
     fn try_wgpu() -> Option<Self> {
         // Use default wgpu device selection
@@ -52,18 +52,18 @@ impl BurnDevice {
         info!("Using wgpu device: {:?}", device);
         Some(Self::Wgpu(device))
     }
-    
+
     /// Create a specific wgpu device by index
     pub fn wgpu(index: usize) -> Self {
         let device = WgpuDevice::DiscreteGpu(index);
         Self::Wgpu(device)
     }
-    
+
     /// Create a CPU device
     pub fn cpu() -> Self {
         Self::Cpu
     }
-    
+
     /// Get device info
     pub fn info(&self) -> DeviceInfo {
         match self {
@@ -83,7 +83,7 @@ impl BurnDevice {
             },
         }
     }
-    
+
     /// Check if this is a GPU device
     pub fn is_gpu(&self) -> bool {
         matches!(self, Self::Wgpu(_))
@@ -92,37 +92,36 @@ impl BurnDevice {
 
 /// Enumerate all available devices
 pub fn enumerate_devices() -> Vec<DeviceInfo> {
-    let mut devices = Vec::new();
-    
-    // Always have CPU available
-    devices.push(DeviceInfo {
-        name: "CPU (ndarray)".to_string(),
-        device_type: DeviceType::Cpu,
-        memory_bytes: None,
-    });
-    
-    // Check for GPUs via wgpu
-    // In a full implementation, we'd query wgpu::Instance for adapters
-    devices.push(DeviceInfo {
-        name: "wgpu (auto)".to_string(),
-        device_type: DeviceType::DiscreteGpu,
-        memory_bytes: None,
-    });
-    
-    devices
+    // Always have CPU available, plus wgpu GPU target
+    vec![
+        DeviceInfo {
+            name: "CPU (ndarray)".to_string(),
+            device_type: DeviceType::Cpu,
+            memory_bytes: None,
+        },
+        // In a full implementation, we'd query wgpu::Instance for adapters
+        DeviceInfo {
+            name: "wgpu (auto)".to_string(),
+            device_type: DeviceType::DiscreteGpu,
+            memory_bytes: None,
+        },
+    ]
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_auto_select() {
         let device = BurnDevice::auto_select();
         let info = device.info();
-        println!("Auto-selected device: {} ({:?})", info.name, info.device_type);
+        println!(
+            "Auto-selected device: {} ({:?})",
+            info.name, info.device_type
+        );
     }
-    
+
     #[test]
     fn test_enumerate_devices() {
         let devices = enumerate_devices();

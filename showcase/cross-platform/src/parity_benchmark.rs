@@ -15,10 +15,8 @@
 //! - BarraCUDA (wgpu/Vulkan) on both
 
 use anyhow::Result;
-use barracuda::device::WgpuDevice;
 use barracuda::multi_gpu::{GpuPool, GpuVendor, WorkloadConfig};
 use barracuda::tensor::Tensor;
-use std::sync::Arc;
 use std::time::Instant;
 
 /// Benchmark result
@@ -34,8 +32,15 @@ struct BenchResult {
 }
 
 impl BenchResult {
-    fn new(backend: &str, device: &str, op: &str, size: &str, 
-           time_us: f64, bytes: usize, flops: usize) -> Self {
+    fn new(
+        backend: &str,
+        device: &str,
+        op: &str,
+        size: &str,
+        time_us: f64,
+        bytes: usize,
+        flops: usize,
+    ) -> Self {
         let throughput_gbps = (bytes as f64) / (time_us * 1000.0); // GB/s
         let gflops = (flops as f64) / (time_us * 1000.0); // GFLOPS
         Self {
@@ -115,72 +120,120 @@ extern "C" __global__ void reduce_sum(float* input, float* output, int n) {
 
         for &size in sizes {
             let size_str = format_size(size);
-            
+
             // Allocate
             let a: Vec<f32> = (0..size).map(|i| (i % 1000) as f32 * 0.001).collect();
-            let b: Vec<f32> = (0..size).map(|i| ((i + 500) % 1000) as f32 * 0.001).collect();
+            let b: Vec<f32> = (0..size)
+                .map(|i| ((i + 500) % 1000) as f32 * 0.001)
+                .collect();
             let d_a = device.htod_copy(a)?;
             let d_b = device.htod_copy(b)?;
             let mut d_c: CudaSlice<f32> = device.alloc_zeros(size)?;
 
             let block = 256u32;
             let grid = ((size as u32 + block - 1) / block, 1, 1);
-            let cfg = LaunchConfig { grid_dim: grid, block_dim: (block, 1, 1), shared_mem_bytes: 0 };
+            let cfg = LaunchConfig {
+                grid_dim: grid,
+                block_dim: (block, 1, 1),
+                shared_mem_bytes: 0,
+            };
 
             // Vector Add
             let f = device.get_func("vector_add", "vector_add").unwrap();
-            unsafe { f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?; }
+            unsafe {
+                f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?;
+            }
             device.synchronize()?;
-            
+
             let start = Instant::now();
             for _ in 0..iterations {
                 let f = device.get_func("vector_add", "vector_add").unwrap();
-                unsafe { f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?; }
+                unsafe {
+                    f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?;
+                }
             }
             device.synchronize()?;
             let time_us = start.elapsed().as_secs_f64() * 1e6 / iterations as f64;
             let bytes = size * 3 * 4; // 2 read + 1 write
             let flops = size;
-            results.push(BenchResult::new("CUDA", "RTX 3090", "vector_add", &size_str, time_us, bytes, flops));
+            results.push(BenchResult::new(
+                "CUDA",
+                "RTX 3090",
+                "vector_add",
+                &size_str,
+                time_us,
+                bytes,
+                flops,
+            ));
 
             // Vector Mul
             let start = Instant::now();
             for _ in 0..iterations {
                 let f = device.get_func("vector_mul", "vector_mul").unwrap();
-                unsafe { f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?; }
+                unsafe {
+                    f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?;
+                }
             }
             device.synchronize()?;
             let time_us = start.elapsed().as_secs_f64() * 1e6 / iterations as f64;
-            results.push(BenchResult::new("CUDA", "RTX 3090", "vector_mul", &size_str, time_us, bytes, flops));
+            results.push(BenchResult::new(
+                "CUDA",
+                "RTX 3090",
+                "vector_mul",
+                &size_str,
+                time_us,
+                bytes,
+                flops,
+            ));
 
             // Vector FMA
             let start = Instant::now();
             for _ in 0..iterations {
                 let f = device.get_func("vector_fma", "vector_fma").unwrap();
-                unsafe { f.launch(cfg, (&d_a, &d_b, &mut d_c, 2.0f32, size as i32))?; }
+                unsafe {
+                    f.launch(cfg, (&d_a, &d_b, &mut d_c, 2.0f32, size as i32))?;
+                }
             }
             device.synchronize()?;
             let time_us = start.elapsed().as_secs_f64() * 1e6 / iterations as f64;
             let flops_fma = size * 2; // multiply + add
-            results.push(BenchResult::new("CUDA", "RTX 3090", "vector_fma", &size_str, time_us, bytes, flops_fma));
+            results.push(BenchResult::new(
+                "CUDA",
+                "RTX 3090",
+                "vector_fma",
+                &size_str,
+                time_us,
+                bytes,
+                flops_fma,
+            ));
 
             // Reduction
             let mut d_out: CudaSlice<f32> = device.alloc_zeros(1)?;
-            let reduce_cfg = LaunchConfig { 
-                grid_dim: grid, 
-                block_dim: (block, 1, 1), 
-                shared_mem_bytes: block as u32 * 4 
+            let reduce_cfg = LaunchConfig {
+                grid_dim: grid,
+                block_dim: (block, 1, 1),
+                shared_mem_bytes: block as u32 * 4,
             };
-            
+
             let start = Instant::now();
             for _ in 0..iterations {
                 let f = device.get_func("reduce_sum", "reduce_sum").unwrap();
-                unsafe { f.launch(reduce_cfg, (&d_a, &mut d_out, size as i32))?; }
+                unsafe {
+                    f.launch(reduce_cfg, (&d_a, &mut d_out, size as i32))?;
+                }
             }
             device.synchronize()?;
             let time_us = start.elapsed().as_secs_f64() * 1e6 / iterations as f64;
             let bytes_reduce = size * 4; // read only
-            results.push(BenchResult::new("CUDA", "RTX 3090", "reduction", &size_str, time_us, bytes_reduce, size));
+            results.push(BenchResult::new(
+                "CUDA",
+                "RTX 3090",
+                "reduction",
+                &size_str,
+                time_us,
+                bytes_reduce,
+                size,
+            ));
         }
 
         Ok(results)
@@ -194,8 +247,8 @@ extern "C" __global__ void reduce_sum(float* input, float* output, int n) {
 #[cfg(feature = "rocm")]
 mod rocm_bench {
     use super::*;
-    use std::process::Command;
     use std::fs;
+    use std::process::Command;
 
     /// Run ROCm benchmarks by compiling and executing HIP kernels
     pub fn run_rocm_benchmarks(sizes: &[usize], iterations: usize) -> Result<Vec<BenchResult>> {
@@ -277,16 +330,24 @@ int main(int argc, char** argv) {
 
         // Compile with hipcc
         let compile = Command::new("hipcc")
-            .args(["-O3", "-o", bin_path.to_str().unwrap(), src_path.to_str().unwrap()])
+            .args([
+                "-O3",
+                "-o",
+                bin_path.to_str().unwrap(),
+                src_path.to_str().unwrap(),
+            ])
             .output()?;
 
         if !compile.status.success() {
-            anyhow::bail!("hipcc compilation failed: {}", String::from_utf8_lossy(&compile.stderr));
+            anyhow::bail!(
+                "hipcc compilation failed: {}",
+                String::from_utf8_lossy(&compile.stderr)
+            );
         }
 
         for &size in sizes {
             let size_str = format_size(size);
-            
+
             let output = Command::new(&bin_path)
                 .args([&size.to_string(), &iterations.to_string()])
                 .output()?;
@@ -299,8 +360,24 @@ int main(int argc, char** argv) {
                     let mul_us: f64 = parts[1].parse().unwrap_or(0.0);
                     let bytes = size * 3 * 4;
 
-                    results.push(BenchResult::new("ROCm", "RX 6950 XT", "vector_add", &size_str, add_us, bytes, size));
-                    results.push(BenchResult::new("ROCm", "RX 6950 XT", "vector_mul", &size_str, mul_us, bytes, size));
+                    results.push(BenchResult::new(
+                        "ROCm",
+                        "RX 6950 XT",
+                        "vector_add",
+                        &size_str,
+                        add_us,
+                        bytes,
+                        size,
+                    ));
+                    results.push(BenchResult::new(
+                        "ROCm",
+                        "RX 6950 XT",
+                        "vector_mul",
+                        &size_str,
+                        mul_us,
+                        bytes,
+                        size,
+                    ));
                 }
             }
         }
@@ -320,19 +397,24 @@ int main(int argc, char** argv) {
 mod barracuda_bench {
     use super::*;
 
-    pub async fn run_barracuda_benchmarks(sizes: &[usize], iterations: usize) -> Result<Vec<BenchResult>> {
+    pub async fn run_barracuda_benchmarks(
+        sizes: &[usize],
+        iterations: usize,
+    ) -> Result<Vec<BenchResult>> {
         let config = WorkloadConfig {
             exclude_software: true,
             min_gflops: 100.0,
             ..Default::default()
         };
-        
+
         let pool = GpuPool::with_config(config).await?;
         let mut results = Vec::new();
 
         // Test on each GPU
         for (idx, gpu_info) in pool.devices().iter().enumerate() {
-            let device = pool.device(idx).ok_or_else(|| anyhow::anyhow!("No device"))?;
+            let device = pool
+                .device(idx)
+                .ok_or_else(|| anyhow::anyhow!("No device"))?;
             let device_name = match gpu_info.vendor {
                 GpuVendor::Nvidia => "RTX 3090",
                 GpuVendor::Amd => "RX 6950 XT",
@@ -341,11 +423,13 @@ mod barracuda_bench {
 
             for &size in sizes {
                 let size_str = format_size(size);
-                
+
                 // Create test data
                 let data_a: Vec<f32> = (0..size).map(|i| (i % 1000) as f32 * 0.001).collect();
-                let data_b: Vec<f32> = (0..size).map(|i| ((i + 500) % 1000) as f32 * 0.001).collect();
-                
+                let data_b: Vec<f32> = (0..size)
+                    .map(|i| ((i + 500) % 1000) as f32 * 0.001)
+                    .collect();
+
                 let tensor_a = Tensor::from_data(&data_a, vec![size], device.clone())?;
                 let tensor_b = Tensor::from_data(&data_b, vec![size], device.clone())?;
 
@@ -359,7 +443,15 @@ mod barracuda_bench {
                 }
                 let time_us = start.elapsed().as_secs_f64() * 1e6 / iterations as f64;
                 let bytes = size * 3 * 4;
-                results.push(BenchResult::new("BarraCUDA", device_name, "vector_add", &size_str, time_us, bytes, size));
+                results.push(BenchResult::new(
+                    "BarraCUDA",
+                    device_name,
+                    "vector_add",
+                    &size_str,
+                    time_us,
+                    bytes,
+                    size,
+                ));
 
                 // Vector Mul
                 let start = Instant::now();
@@ -367,7 +459,15 @@ mod barracuda_bench {
                     let _ = tensor_a.mul(&tensor_b)?;
                 }
                 let time_us = start.elapsed().as_secs_f64() * 1e6 / iterations as f64;
-                results.push(BenchResult::new("BarraCUDA", device_name, "vector_mul", &size_str, time_us, bytes, size));
+                results.push(BenchResult::new(
+                    "BarraCUDA",
+                    device_name,
+                    "vector_mul",
+                    &size_str,
+                    time_us,
+                    bytes,
+                    size,
+                ));
 
                 // Note: FMA and reduction need dedicated kernels in BarraCUDA
                 // For now, skip to show where we need to add them
@@ -394,48 +494,69 @@ fn format_size(n: usize) -> String {
 
 fn print_results_table(results: &[BenchResult]) {
     println!("\n┌────────────┬─────────────┬─────────────┬────────┬────────────┬────────────┬──────────┐");
-    println!("│ Backend    │ Device      │ Operation   │ Size   │ Time (μs)  │ BW (GB/s)  │ GFLOPS   │");
-    println!("├────────────┼─────────────┼─────────────┼────────┼────────────┼────────────┼──────────┤");
-    
+    println!(
+        "│ Backend    │ Device      │ Operation   │ Size   │ Time (μs)  │ BW (GB/s)  │ GFLOPS   │"
+    );
+    println!(
+        "├────────────┼─────────────┼─────────────┼────────┼────────────┼────────────┼──────────┤"
+    );
+
     for r in results {
-        println!("│ {:10} │ {:11} │ {:11} │ {:>6} │ {:>10.2} │ {:>10.2} │ {:>8.2} │",
-            r.backend, r.device, r.operation, r.size, r.time_us, r.throughput_gbps, r.gflops);
+        println!(
+            "│ {:10} │ {:11} │ {:11} │ {:>6} │ {:>10.2} │ {:>10.2} │ {:>8.2} │",
+            r.backend, r.device, r.operation, r.size, r.time_us, r.throughput_gbps, r.gflops
+        );
     }
-    println!("└────────────┴─────────────┴─────────────┴────────┴────────────┴────────────┴──────────┘");
+    println!(
+        "└────────────┴─────────────┴─────────────┴────────┴────────────┴────────────┴──────────┘"
+    );
 }
 
 fn print_parity_analysis(results: &[BenchResult]) {
     println!("\n═══ PARITY ANALYSIS ═══\n");
-    
+
     let operations = ["vector_add", "vector_mul"];
     let sizes = ["1M", "4M", "16M"];
-    
+
     for op in operations {
         println!("{}:", op);
         for size in sizes {
             // Find CUDA baseline
-            let cuda = results.iter()
+            let cuda = results
+                .iter()
                 .find(|r| r.backend == "CUDA" && r.operation == op && r.size == size);
-            
+
             // Find BarraCUDA on both devices
-            let bc_nvidia = results.iter()
-                .find(|r| r.backend == "BarraCUDA" && r.device == "RTX 3090" && r.operation == op && r.size == size);
-            let bc_amd = results.iter()
-                .find(|r| r.backend == "BarraCUDA" && r.device == "RX 6950 XT" && r.operation == op && r.size == size);
-            
+            let bc_nvidia = results.iter().find(|r| {
+                r.backend == "BarraCUDA"
+                    && r.device == "RTX 3090"
+                    && r.operation == op
+                    && r.size == size
+            });
+            let bc_amd = results.iter().find(|r| {
+                r.backend == "BarraCUDA"
+                    && r.device == "RX 6950 XT"
+                    && r.operation == op
+                    && r.size == size
+            });
+
             if let Some(cuda) = cuda {
                 print!("  {:>4}: CUDA {:>8.1}μs", size, cuda.time_us);
-                
+
                 if let Some(bc) = bc_nvidia {
                     let ratio = bc.time_us / cuda.time_us;
-                    let gap = if ratio > 1.0 { format!("{:.1}x slower", ratio) } else { format!("{:.1}x faster", 1.0/ratio) };
+                    let gap = if ratio > 1.0 {
+                        format!("{:.1}x slower", ratio)
+                    } else {
+                        format!("{:.1}x faster", 1.0 / ratio)
+                    };
                     print!(" | BC/NVIDIA {:>8.1}μs ({:>12})", bc.time_us, gap);
                 }
-                
+
                 if let Some(bc) = bc_amd {
                     print!(" | BC/AMD {:>8.1}μs", bc.time_us);
                 }
-                
+
                 println!();
             }
         }
@@ -445,23 +566,28 @@ fn print_parity_analysis(results: &[BenchResult]) {
 
 fn print_optimization_targets(results: &[BenchResult]) {
     println!("═══ OPTIMIZATION TARGETS ═══\n");
-    
+
     // Calculate average gap
-    let cuda_times: Vec<f64> = results.iter()
+    let cuda_times: Vec<f64> = results
+        .iter()
         .filter(|r| r.backend == "CUDA")
         .map(|r| r.time_us)
         .collect();
-    
-    let bc_nvidia_times: Vec<f64> = results.iter()
+
+    let bc_nvidia_times: Vec<f64> = results
+        .iter()
         .filter(|r| r.backend == "BarraCUDA" && r.device == "RTX 3090")
         .map(|r| r.time_us)
         .collect();
-    
+
     if !cuda_times.is_empty() && !bc_nvidia_times.is_empty() {
-        let avg_gap: f64 = bc_nvidia_times.iter().zip(&cuda_times)
+        let avg_gap: f64 = bc_nvidia_times
+            .iter()
+            .zip(&cuda_times)
             .map(|(bc, cuda)| bc / cuda)
-            .sum::<f64>() / cuda_times.len() as f64;
-        
+            .sum::<f64>()
+            / cuda_times.len() as f64;
+
         println!("Current average gap (BarraCUDA vs CUDA): {:.1}x", avg_gap);
         println!();
         println!("Identified bottlenecks:");
@@ -505,7 +631,7 @@ async fn main() -> Result<()> {
             Err(e) => eprintln!("  CUDA benchmark failed: {}", e),
         }
     }
-    
+
     #[cfg(not(feature = "cuda"))]
     {
         println!("Native CUDA not enabled (compile with --features cuda)");
@@ -520,7 +646,7 @@ async fn main() -> Result<()> {
             Err(e) => eprintln!("  ROCm benchmark failed: {}", e),
         }
     }
-    
+
     #[cfg(not(feature = "rocm"))]
     {
         println!("Native ROCm not enabled (compile with --features rocm)");

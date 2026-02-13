@@ -9,6 +9,12 @@
 use crate::error::Result;
 use std::time::{Duration, Instant};
 
+/// Type alias for stage filter predicates
+type StageFilter<T> = Box<dyn Fn(&T) -> bool + Send + Sync>;
+
+/// Type alias for stage transformation functions
+type StageTransform<T, U> = Box<dyn Fn(&T) -> Result<U> + Send + Sync>;
+
 /// Compute target for a stage
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Target {
@@ -143,9 +149,9 @@ pub struct Stage<T, U> {
     /// Stage configuration
     config: StageConfig,
     /// Optional filter function (returns true to pass)
-    filter: Option<Box<dyn Fn(&T) -> bool + Send + Sync>>,
+    filter: Option<StageFilter<T>>,
     /// Optional transform function
-    transform: Option<Box<dyn Fn(&T) -> Result<U> + Send + Sync>>,
+    transform: Option<StageTransform<T, U>>,
 }
 
 impl<T, U> Stage<T, U>
@@ -317,8 +323,7 @@ mod tests {
 
     #[test]
     fn test_filter_stage() {
-        let stage = Stage::<i32, i32>::new("even_filter")
-            .filter(|x: &i32| x % 2 == 0);
+        let stage = Stage::<i32, i32>::new("even_filter").filter(|x: &i32| x % 2 == 0);
 
         let items = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let result = stage.run_filter(&items);
@@ -331,8 +336,7 @@ mod tests {
 
     #[test]
     fn test_transform_stage() {
-        let stage = Stage::<i32, i32>::new("square")
-            .transform(|x: &i32| Ok(x * x));
+        let stage = Stage::<i32, i32>::new("square").transform(|x: &i32| Ok(x * x));
 
         let items = vec![1, 2, 3, 4, 5];
         let result = stage.run(&items);

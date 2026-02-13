@@ -42,6 +42,9 @@ use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Weak};
 
+/// Type alias for pending GPU operations (executed on sync)
+type PendingOp = Box<dyn FnOnce(&mut wgpu::CommandEncoder) + Send>;
+
 /// Global context registry - one TensorContext per device
 static GLOBAL_CONTEXTS: Lazy<DashMap<DeviceFingerprint, Arc<TensorContext>>> =
     Lazy::new(DashMap::new);
@@ -136,7 +139,7 @@ impl BufferPoolInner {
 /// Get or create the global TensorContext for a device
 pub fn get_device_context(device: &Arc<WgpuDevice>) -> Arc<TensorContext> {
     let fingerprint = DeviceFingerprint::from_adapter_info(device.adapter_info());
-    
+
     GLOBAL_CONTEXTS
         .entry(fingerprint)
         .or_insert_with(|| Arc::new(TensorContext::new(device.clone())))
@@ -149,7 +152,7 @@ pub fn clear_global_contexts() {
 }
 
 /// Memory pool for buffer reuse
-/// 
+///
 /// Instead of allocating new buffers per operation, we pool and reuse them.
 /// This eliminates the ~20μs allocation overhead per op.
 ///
@@ -186,7 +189,7 @@ impl BufferPool {
     /// This is the preferred method for tensor operations.
     pub fn acquire_pooled(&self, size_bytes: usize) -> PooledBuffer {
         let bucket = Self::bucket_size(size_bytes);
-        
+
         // Try to reuse from pool
         let buffer = if let Some(mut pool) = self.inner.pools.get_mut(&bucket) {
             if let Some(buffer) = pool.pop() {
@@ -205,7 +208,7 @@ impl BufferPool {
     /// Acquire a raw buffer (caller responsible for returning)
     pub fn acquire(&self, size_bytes: usize) -> wgpu::Buffer {
         let bucket = Self::bucket_size(size_bytes);
-        
+
         // Try to reuse from pool
         if let Some(mut pool) = self.inner.pools.get_mut(&bucket) {
             if let Some(buffer) = pool.pop() {
@@ -273,10 +276,10 @@ pub struct TensorContext {
     device: Arc<WgpuDevice>,
     /// Buffer pool for output reuse
     buffer_pool: BufferPool,
-    /// Cached bind groups
-    bind_group_cache: DashMap<BindGroupKey, wgpu::BindGroup>,
+    /// Cached bind groups (Arc for cheap cloning on cache hit)
+    bind_group_cache: DashMap<BindGroupKey, Arc<wgpu::BindGroup>>,
     /// Pending operations (batched before submit)
-    pending_ops: std::sync::Mutex<Vec<Box<dyn FnOnce(&mut wgpu::CommandEncoder) + Send>>>,
+    pending_ops: std::sync::Mutex<Vec<PendingOp>>,
     /// Whether we're in batching mode (deferred execution)
     batching: AtomicBool,
     /// Statistics
@@ -328,7 +331,8 @@ impl TensorContext {
     /// This returns a raw wgpu::Buffer. Caller is responsible for
     /// returning it to the pool or it will be dropped normally.
     pub fn acquire_output_buffer(&self, size_elements: usize) -> wgpu::Buffer {
-        self.buffer_pool.acquire(size_elements * std::mem::size_of::<f32>())
+        self.buffer_pool
+            .acquire(size_elements * std::mem::size_of::<f32>())
     }
 
     /// Acquire a pooled buffer for tensor output
@@ -340,7 +344,8 @@ impl TensorContext {
     /// Use this with `Tensor::from_pooled_buffer()` for zero-allocation
     /// steady state.
     pub fn acquire_pooled_output(&self, size_elements: usize) -> PooledBuffer {
-        self.buffer_pool.acquire_pooled(size_elements * std::mem::size_of::<f32>())
+        self.buffer_pool
+            .acquire_pooled(size_elements * std::mem::size_of::<f32>())
     }
 
     /// Record an operation for execution
@@ -358,11 +363,12 @@ impl TensorContext {
             Ok(())
         } else {
             // Execute immediately
-            let mut encoder = self.device.device().create_command_encoder(
-                &wgpu::CommandEncoderDescriptor {
-                    label: Some("TensorContext Immediate"),
-                },
-            );
+            let mut encoder =
+                self.device
+                    .device()
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("TensorContext Immediate"),
+                    });
             op(&mut encoder);
             self.device.queue().submit(Some(encoder.finish()));
             self.ops_executed.fetch_add(1, Ordering::Relaxed);
@@ -371,6 +377,10 @@ impl TensorContext {
     }
 
     /// Get or create bind group (cached by buffer combination)
+    ///
+    /// This is a key optimization: bind group creation is expensive (~100μs on NVIDIA).
+    /// By caching bind groups keyed by (layout, buffer_ids), we can reuse them
+    /// across operations, saving significant latency.
     pub fn get_or_create_bind_group(
         &self,
         layout_sig: BindGroupLayoutSignature,
@@ -383,13 +393,13 @@ impl TensorContext {
             buffer_ids,
         };
 
-        // Check cache
+        // Check cache - on hit, just clone the Arc (very cheap)
         if let Some(bg) = self.bind_group_cache.get(&key) {
             self.cache_hits.fetch_add(1, Ordering::Relaxed);
-            return Arc::new(self.create_bind_group_internal(layout_sig, buffers, label));
+            return bg.clone(); // Arc clone is cheap
         }
 
-        // Cache miss - create and cache
+        // Cache miss - create new bind group
         self.cache_misses.fetch_add(1, Ordering::Relaxed);
         let layout = GLOBAL_CACHE.get_or_create_layout(
             self.device.device(),
@@ -407,47 +417,24 @@ impl TensorContext {
             })
             .collect();
 
-        let bind_group = self.device.device().create_bind_group(&wgpu::BindGroupDescriptor {
-            label,
-            layout: &layout,
-            entries: &entries,
-        });
+        let bind_group = Arc::new(self.device.device().create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                label,
+                layout: &layout,
+                entries: &entries,
+            },
+        ));
 
-        Arc::new(bind_group)
-    }
+        // Insert into cache for future reuse
+        self.bind_group_cache.insert(key, bind_group.clone());
 
-    fn create_bind_group_internal(
-        &self,
-        layout_sig: BindGroupLayoutSignature,
-        buffers: &[&wgpu::Buffer],
-        label: Option<&str>,
-    ) -> wgpu::BindGroup {
-        let layout = GLOBAL_CACHE.get_or_create_layout(
-            self.device.device(),
-            self.device.adapter_info(),
-            layout_sig,
-            label,
-        );
-
-        let entries: Vec<wgpu::BindGroupEntry> = buffers
-            .iter()
-            .enumerate()
-            .map(|(i, buf)| wgpu::BindGroupEntry {
-                binding: i as u32,
-                resource: buf.as_entire_binding(),
-            })
-            .collect();
-
-        self.device.device().create_bind_group(&wgpu::BindGroupDescriptor {
-            label,
-            layout: &layout,
-            entries: &entries,
-        })
+        bind_group
     }
 
     /// Acquire output buffer from pool
     pub fn acquire_buffer(&self, size_elements: usize) -> wgpu::Buffer {
-        self.buffer_pool.acquire(size_elements * std::mem::size_of::<f32>())
+        self.buffer_pool
+            .acquire(size_elements * std::mem::size_of::<f32>())
     }
 
     /// Release buffer back to pool
@@ -458,16 +445,17 @@ impl TensorContext {
     /// Execute all pending operations in a single batch
     pub fn sync(&self) -> Result<()> {
         let mut pending = self.pending_ops.lock().unwrap();
-        
+
         if pending.is_empty() {
             return Ok(());
         }
 
-        let mut encoder = self.device.device().create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
-                label: Some("TensorContext Batch Encoder"),
-            },
-        );
+        let mut encoder =
+            self.device
+                .device()
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("TensorContext Batch Encoder"),
+                });
 
         // Execute all pending operations
         for op in pending.drain(..) {
@@ -475,7 +463,7 @@ impl TensorContext {
         }
 
         self.device.queue().submit(Some(encoder.finish()));
-        
+
         Ok(())
     }
 
@@ -512,7 +500,8 @@ pub struct TensorContextStats {
 impl std::fmt::Display for TensorContextStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let buffer_hit_rate = if self.buffer_allocations + self.buffer_reuses > 0 {
-            self.buffer_reuses as f64 / (self.buffer_allocations + self.buffer_reuses) as f64 * 100.0
+            self.buffer_reuses as f64 / (self.buffer_allocations + self.buffer_reuses) as f64
+                * 100.0
         } else {
             0.0
         };
@@ -675,10 +664,10 @@ mod tests {
         let pool = BufferPool::new(device);
 
         let pooled = pool.acquire_pooled(1024);
-        
+
         // Test Deref
         let _size: u64 = pooled.size();
-        
+
         // Test buffer() method
         let _buf_ref: &wgpu::Buffer = pooled.buffer();
     }
@@ -689,14 +678,14 @@ mod tests {
         let pool = BufferPool::new(device);
 
         let pooled = pool.acquire_pooled(1024);
-        
+
         // Convert to owned buffer (removes from pool management)
         let owned = pooled.into_buffer();
         assert!(owned.size() >= 1024);
-        
+
         // Dropping owned buffer won't return to pool
         drop(owned);
-        
+
         // Next acquire should allocate new
         let _new = pool.acquire_pooled(1024);
         let (allocs, _) = pool.stats();
@@ -781,7 +770,7 @@ mod tests {
 
         // Acquire from ctx1
         let _buf1 = ctx1.acquire_pooled_output(1000);
-        
+
         // Stats should be visible from ctx2 (same context)
         let stats = ctx2.stats();
         assert!(stats.buffer_allocations > 0);
@@ -796,10 +785,10 @@ mod tests {
     #[test]
     fn test_high_capacity_limits() {
         let limits = high_capacity_limits();
-        
+
         // 1GB max binding
         assert_eq!(limits.max_storage_buffer_binding_size, 1 << 30);
-        
+
         // 2GB max buffer
         assert_eq!(limits.max_buffer_size, 1 << 31);
     }

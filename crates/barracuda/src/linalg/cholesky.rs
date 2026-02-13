@@ -245,11 +245,7 @@ mod tests {
     #[test]
     fn test_cholesky_3x3() {
         // 3×3 SPD matrix
-        let a = vec![
-            4.0, 2.0, 1.0,
-            2.0, 3.0, 1.0,
-            1.0, 1.0, 3.0,
-        ];
+        let a = vec![4.0, 2.0, 1.0, 2.0, 3.0, 1.0, 1.0, 1.0, 3.0];
         let chol = cholesky_f64(&a, 3).unwrap();
 
         // Verify L·Lᵀ = A
@@ -263,7 +259,13 @@ mod tests {
         }
 
         for i in 0..9 {
-            assert!(approx_eq(llt[i], a[i], 1e-10), "L·Lᵀ[{}] = {}, A = {}", i, llt[i], a[i]);
+            assert!(
+                approx_eq(llt[i], a[i], 1e-10),
+                "L·Lᵀ[{}] = {}, A = {}",
+                i,
+                llt[i],
+                a[i]
+            );
         }
     }
 

@@ -3,7 +3,11 @@ name = "cross-platform-showcase"
 version = "0.1.0"
 edition = "2021"
 description = "Cross-platform compute showcase: GPU, NPU, and CPU pipelines"
-license = "MIT"
+license = "AGPL-3.0"
+repository = "https://github.com/ecoPrimals/toadStool"
+readme = "README.md"
+keywords = ["gpu", "npu", "compute", "benchmark", "cross-platform"]
+categories = ["science", "hardware-support"]
 
 [[bin]]
 name = "gpu_parity"
@@ -109,10 +113,27 @@ path = "src/fp64_validation.rs"
 name = "generic_precision_demo"
 path = "src/generic_precision_demo.rs"
 
+[[bin]]
+name = "fma_benchmark"
+path = "src/fma_benchmark.rs"
+
+[[bin]]
+name = "bandwidth_validation"
+path = "src/bandwidth_validation.rs"
+
+[[bin]]
+name = "math_f64_validation"
+path = "src/math_f64_validation.rs"
+
+[[bin]]
+name = "cache_awareness_demo"
+path = "src/cache_awareness_demo.rs"
+
 [features]
 default = []
 cuda = ["cudarc"]
 rocm = []  # Uses system hipcc, no Rust crate needed
+cuda-comparison = ["cuda"]  # Enable CUDA performance comparison benchmarks
 
 [dependencies]
 # BarraCUDA for GPU compute

@@ -64,7 +64,7 @@ pub fn gradient_1d(f: &[f64], dx: f64) -> Vec<f64> {
     }
 
     // n >= 3: Use 2nd-order stencils at boundaries (matches numpy.gradient)
-    
+
     // 2nd-order forward difference at start
     // Derived from Taylor expansion: f'(x) ≈ (-3f(x) + 4f(x+h) - f(x+2h)) / (2h)
     grad[0] = (-3.0 * f[0] + 4.0 * f[1] - f[2]) / (2.0 * dx);
@@ -93,10 +93,7 @@ mod tests {
         let grad = gradient_1d(&y, 1.0);
 
         for (i, &g) in grad.iter().enumerate() {
-            assert!(
-                (g - 2.0).abs() < 1e-10,
-                "grad[{i}] = {g}, expected 2.0"
-            );
+            assert!((g - 2.0).abs() < 1e-10, "grad[{i}] = {g}, expected 2.0");
         }
     }
 
@@ -110,10 +107,7 @@ mod tests {
         let expected = vec![0.0, 2.0, 4.0, 6.0, 8.0];
 
         for (i, (&g, &e)) in grad.iter().zip(expected.iter()).enumerate() {
-            assert!(
-                (g - e).abs() < 1e-10,
-                "grad[{i}] = {g}, expected {e}"
-            );
+            assert!((g - e).abs() < 1e-10, "grad[{i}] = {g}, expected {e}");
         }
     }
 
@@ -136,10 +130,7 @@ mod tests {
         let expected = vec![-2.0, 4.0, 13.0, 28.0, 46.0];
 
         for (i, (&g, &e)) in grad.iter().zip(expected.iter()).enumerate() {
-            assert!(
-                (g - e).abs() < 1e-10,
-                "grad[{i}] = {g}, expected {e}"
-            );
+            assert!((g - e).abs() < 1e-10, "grad[{i}] = {g}, expected {e}");
         }
     }
 
@@ -183,10 +174,7 @@ mod tests {
         let expected = vec![0.0, 2.0, 4.0, 6.0, 8.0];
 
         for (i, (&g, &e)) in grad.iter().zip(expected.iter()).enumerate() {
-            assert!(
-                (g - e).abs() < 1e-10,
-                "grad[{i}] = {g}, expected {e}"
-            );
+            assert!((g - e).abs() < 1e-10, "grad[{i}] = {g}, expected {e}");
         }
     }
 
@@ -194,14 +182,16 @@ mod tests {
     fn test_gradient_1d_boundary_accuracy() {
         // Verify 2nd-order boundary stencil formulas
         // For quadratic functions (where 2nd-order is exact), we verify correctness
-        
+
         // y = x² at x = [0, 0.1, 0.2, ..., 1.0]
         let n = 11;
         let dx = 0.1;
-        let y: Vec<f64> = (0..n).map(|i| {
-            let x = i as f64 * dx;
-            x * x
-        }).collect();
+        let y: Vec<f64> = (0..n)
+            .map(|i| {
+                let x = i as f64 * dx;
+                x * x
+            })
+            .collect();
         let grad = gradient_1d(&y, dx);
 
         // True derivative: dy/dx = 2x
@@ -213,9 +203,10 @@ mod tests {
             grad[0]
         );
         assert!(
-            (grad[n-1] - 2.0).abs() < 1e-10,
+            (grad[n - 1] - 2.0).abs() < 1e-10,
             "grad[{}] = {}, expected 2.0 (2nd-order exact for quadratic)",
-            n-1, grad[n-1]
+            n - 1,
+            grad[n - 1]
         );
     }
 }

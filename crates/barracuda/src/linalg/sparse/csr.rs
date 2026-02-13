@@ -501,7 +501,8 @@ mod tests {
 
     #[test]
     fn test_csr_to_dense() {
-        let csr = CsrMatrix::from_triplets(2, 2, &[(0, 0, 1.0), (0, 1, 2.0), (1, 0, 3.0), (1, 1, 4.0)]);
+        let csr =
+            CsrMatrix::from_triplets(2, 2, &[(0, 0, 1.0), (0, 1, 2.0), (1, 0, 3.0), (1, 1, 4.0)]);
 
         let dense = csr.to_dense();
         assert_eq!(dense, vec![1.0, 2.0, 3.0, 4.0]);

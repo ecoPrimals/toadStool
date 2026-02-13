@@ -13,9 +13,9 @@
 //! ```
 
 use crate::device::WgpuDevice;
+use crate::error::Result;
 #[allow(unused_imports)]
 use crate::tensor::Tensor;
-use crate::error::Result;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
@@ -47,11 +47,11 @@ pub enum GpuVendor {
 impl GpuVendor {
     fn from_name(name: &str) -> Self {
         let lower = name.to_lowercase();
-        
+
         // Check for software renderers FIRST (they may contain GPU brand names)
         // SSE2/SSE4/AVX in name indicates CPU-based rendering
-        if lower.contains("llvmpipe") 
-            || lower.contains("software") 
+        if lower.contains("llvmpipe")
+            || lower.contains("software")
             || lower.contains("sse2")
             || lower.contains("sse4")
             || lower.contains("avx")
@@ -60,9 +60,13 @@ impl GpuVendor {
         {
             return Self::Software;
         }
-        
+
         // Now check for actual GPU vendors
-        if lower.contains("nvidia") || lower.contains("geforce") || lower.contains("rtx") || lower.contains("gtx") {
+        if lower.contains("nvidia")
+            || lower.contains("geforce")
+            || lower.contains("rtx")
+            || lower.contains("gtx")
+        {
             Self::Nvidia
         } else if lower.contains("amd") || lower.contains("radeon") || lower.contains("radv") {
             Self::Amd
@@ -117,13 +121,13 @@ impl GpuPool {
     /// Create with specific configuration
     pub async fn with_config(config: WorkloadConfig) -> Result<Self> {
         let adapters = WgpuDevice::enumerate_adapters();
-        
+
         let mut devices = Vec::new();
         let mut info = Vec::new();
 
         for (idx, adapter) in adapters.iter().enumerate() {
             let vendor = GpuVendor::from_name(&adapter.name);
-            
+
             // Skip software renderer if configured
             if config.exclude_software && vendor == GpuVendor::Software {
                 continue;
@@ -162,7 +166,10 @@ impl GpuPool {
         // Sort by GFLOPS (highest first)
         let mut indices: Vec<usize> = (0..devices.len()).collect();
         indices.sort_by(|&a, &b| {
-            info[b].gflops.partial_cmp(&info[a].gflops).unwrap_or(std::cmp::Ordering::Equal)
+            info[b]
+                .gflops
+                .partial_cmp(&info[a].gflops)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         let sorted_devices: Vec<_> = indices.iter().map(|&i| devices[i].clone()).collect();
@@ -170,11 +177,16 @@ impl GpuPool {
 
         tracing::info!("GPU pool initialized with {} devices", sorted_devices.len());
         for gi in &sorted_info {
-            tracing::info!("  - {} ({:?}, ~{:.0} GFLOPS)", gi.name, gi.vendor, gi.gflops);
+            tracing::info!(
+                "  - {} ({:?}, ~{:.0} GFLOPS)",
+                gi.name,
+                gi.vendor,
+                gi.gflops
+            );
         }
 
         let max_parallel = config.max_parallel.min(sorted_devices.len()).max(1);
-        
+
         Ok(Self {
             devices: sorted_devices,
             info: sorted_info,
@@ -203,14 +215,16 @@ impl GpuPool {
         F: FnOnce(Arc<WgpuDevice>) -> Result<T> + Send + 'static,
         T: Send + 'static,
     {
-        let _permit = self.semaphore.acquire().await.map_err(|e| {
-            crate::error::BarracudaError::device(format!("Semaphore error: {e}"))
-        })?;
+        let _permit =
+            self.semaphore.acquire().await.map_err(|e| {
+                crate::error::BarracudaError::device(format!("Semaphore error: {e}"))
+            })?;
 
         // Use first available device (already sorted by performance)
-        let device = self.devices.first().cloned().ok_or_else(|| {
-            crate::error::BarracudaError::device_not_found("No GPU available")
-        })?;
+        let device =
+            self.devices.first().cloned().ok_or_else(|| {
+                crate::error::BarracudaError::device_not_found("No GPU available")
+            })?;
 
         // Execute in blocking task for CPU-bound work
         tokio::task::spawn_blocking(move || f(device))
@@ -228,7 +242,7 @@ impl GpuPool {
         use futures::future::join_all;
 
         let num_devices = self.devices.len().max(1);
-        let _chunk_size = (data.len() + num_devices - 1) / num_devices;
+        let _chunk_size = data.len().div_ceil(num_devices);
 
         let mut handles = Vec::new();
 
@@ -246,14 +260,22 @@ impl GpuPool {
         }
 
         let results: Vec<_> = join_all(handles).await;
-        
+
         let mut output = Vec::new();
         for result in results {
             match result {
                 Ok(Ok(Ok(value))) => output.push(value),
                 Ok(Ok(Err(e))) => return Err(e),
-                Ok(Err(e)) => return Err(crate::error::BarracudaError::device(format!("Task error: {e}"))),
-                Err(e) => return Err(crate::error::BarracudaError::device(format!("Join error: {e}"))),
+                Ok(Err(e)) => {
+                    return Err(crate::error::BarracudaError::device(format!(
+                        "Task error: {e}"
+                    )))
+                }
+                Err(e) => {
+                    return Err(crate::error::BarracudaError::device(format!(
+                        "Join error: {e}"
+                    )))
+                }
             }
         }
 
@@ -263,8 +285,16 @@ impl GpuPool {
     /// Get summary of pool capabilities
     pub fn summary(&self) -> String {
         let total_gflops: f64 = self.info.iter().map(|g| g.gflops).sum();
-        let nvidia_count = self.info.iter().filter(|g| g.vendor == GpuVendor::Nvidia).count();
-        let amd_count = self.info.iter().filter(|g| g.vendor == GpuVendor::Amd).count();
+        let nvidia_count = self
+            .info
+            .iter()
+            .filter(|g| g.vendor == GpuVendor::Nvidia)
+            .count();
+        let amd_count = self
+            .info
+            .iter()
+            .filter(|g| g.vendor == GpuVendor::Amd)
+            .count();
 
         format!(
             "{} GPUs ({} NVIDIA, {} AMD), ~{:.0} GFLOPS total",
@@ -293,8 +323,14 @@ mod tests {
 
     #[test]
     fn test_vendor_detection() {
-        assert_eq!(GpuVendor::from_name("NVIDIA GeForce RTX 3090"), GpuVendor::Nvidia);
-        assert_eq!(GpuVendor::from_name("AMD Radeon RX 6950 XT (RADV NAVI21)"), GpuVendor::Amd);
+        assert_eq!(
+            GpuVendor::from_name("NVIDIA GeForce RTX 3090"),
+            GpuVendor::Nvidia
+        );
+        assert_eq!(
+            GpuVendor::from_name("AMD Radeon RX 6950 XT (RADV NAVI21)"),
+            GpuVendor::Amd
+        );
         assert_eq!(GpuVendor::from_name("llvmpipe"), GpuVendor::Software);
     }
 }

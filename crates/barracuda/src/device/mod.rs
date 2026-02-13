@@ -19,6 +19,7 @@ use crate::error::Result;
 pub mod akida;
 pub mod akida_executor;
 pub mod autotune;
+pub mod cache_hierarchy;
 pub mod capabilities;
 pub mod pipeline_cache;
 pub mod substrate;
@@ -33,19 +34,24 @@ pub mod wgpu_device;
 pub use autotune::{AutoTuner, GpuCalibration, GLOBAL_TUNER};
 
 // Re-export warmup (mise en place)
-pub use warmup::{warmup_device, warmup_pool, WarmupConfig, WarmupOp, WarmupResult, WarmupWorkloadHint};
+pub use warmup::{
+    warmup_device, warmup_pool, WarmupConfig, WarmupOp, WarmupResult, WarmupWorkloadHint,
+};
 
 // Re-export pipeline cache (for testing cache clearing)
 pub use pipeline_cache::clear_global_cache;
 
 // Re-export tensor context (zero-overhead Tensor operations)
 pub use tensor_context::{
-    get_device_context, clear_global_contexts,
-    BufferPool, PooledBuffer, TensorContext, TensorContextStats, high_capacity_limits
+    clear_global_contexts, get_device_context, high_capacity_limits, BufferPool, PooledBuffer,
+    TensorContext, TensorContextStats,
 };
 
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};
 pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};
+pub use cache_hierarchy::{
+    CacheAwareTiler, CacheLevel, CacheResidency, MainMemory, SubstrateMemoryHierarchy, TileConfig,
+};
 pub use capabilities::{DeviceCapabilities, WorkloadType};
 pub use substrate::{Substrate, SubstrateType};
 pub use toadstool_integration::{

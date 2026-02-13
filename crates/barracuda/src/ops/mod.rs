@@ -65,6 +65,7 @@ pub mod add;
 pub mod clamp_wgsl;
 pub mod div;
 pub mod exp_wgsl;
+pub mod fma; // Fused multiply-add: d = a * b + c
 pub mod log_wgsl;
 pub mod mul;
 pub mod neg_wgsl;

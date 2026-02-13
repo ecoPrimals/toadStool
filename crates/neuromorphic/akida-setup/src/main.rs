@@ -167,5 +167,5 @@ fn is_root() -> bool {
                         .and_then(|uid| uid.parse::<u32>().ok())
                 })
         })
-        .map_or(false, |euid| euid == 0)
+        == Some(0)
 }

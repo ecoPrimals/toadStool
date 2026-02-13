@@ -80,21 +80,21 @@
 pub mod device;
 pub mod error;
 pub mod shaders; // Generic precision shader templates (f16/f32/f64)
-// pub mod esn;  // DEPRECATED: Superseded by esn_v2 (hardware-agnostic)
+                 // pub mod esn;  // DEPRECATED: Superseded by esn_v2 (hardware-agnostic)
+pub mod compute_graph; // NEW: Lazy execution for operation batching
 pub mod esn_v2; // High-level Echo State Network API
 pub mod genomics; // High-level Bioinformatics/Genomics API
+pub mod multi_gpu; // NEW: Multi-GPU workload distribution
 pub mod nn; // High-level Neural Network Training API
 pub mod npu;
 pub mod ops;
+pub mod session;
 pub mod snn; // High-level Spiking Neural Network API
 pub mod tensor;
 pub mod timeseries; // High-level Time Series API
 pub mod utils; // Utility functions for operations
 pub mod vision; // High-level Computer Vision API
-pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0: NPU backend for event-driven ML
-pub mod multi_gpu; // NEW: Multi-GPU workload distribution
-pub mod compute_graph; // NEW: Lazy execution for operation batching
-pub mod session; // NEW: TensorSession for automatic batching
+pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0: NPU backend for event-driven ML // NEW: TensorSession for automatic batching
 
 // Unified architecture modules (v0.2.0)
 pub mod auto_tensor;
@@ -121,13 +121,13 @@ pub use ops::sparse_matmul_quantized::sparse_matmul_quantized;
 
 /// Prelude: Common imports for using barracuda
 pub mod prelude {
+    pub use crate::compute_graph::ComputeGraph;
     pub use crate::device::{
         Auto, AutoTuner, Capability, Device, DeviceCapabilities, DeviceContext, DeviceInfo,
         GpuCalibration, WgpuDevice, WorkloadHint, GLOBAL_TUNER,
     };
-    pub use crate::compute_graph::ComputeGraph;
-    pub use crate::session::{TensorSession, SessionTensor};
     pub use crate::error::{BarracudaError, Result};
+    pub use crate::session::{SessionTensor, TensorSession};
     // pub use crate::esn::{ESNConfig, ESN};  // DEPRECATED: Use esn_v2
     pub use crate::esn_v2::{ESNConfig, ESN};
     pub use crate::genomics::{

@@ -1,6 +1,9 @@
 //! VFIO NPU backend — Pure Rust with DMA support
 //!
 //! This backend uses Linux VFIO (Virtual Function I/O) to provide:
+//!
+// FFI/ioctl casts are intentional - VFIO API requires specific types
+#![allow(clippy::cast_possible_truncation)]
 //! - DMA transfers (fast bulk data movement)
 //! - Interrupt support (no polling)
 //! - IOMMU isolation (security)
@@ -217,30 +220,35 @@ impl DmaBuffer {
 
         tracing::debug!(
             "DMA map attempt: vaddr={:#x}, iova={:#x}, size={:#x}, flags={:#x}",
-            dma_map.vaddr, dma_map.iova, dma_map.size, dma_map.flags
+            dma_map.vaddr,
+            dma_map.iova,
+            dma_map.size,
+            dma_map.flags
         );
 
         // SAFETY: VFIO ioctl with valid structure
-        let ret =
-            unsafe { libc::ioctl(container_fd, ioctls::VFIO_IOMMU_MAP_DMA as _, &dma_map as *const _) };
+        let ret = unsafe {
+            libc::ioctl(
+                container_fd,
+                ioctls::VFIO_IOMMU_MAP_DMA as _,
+                &raw const dma_map,
+            )
+        };
 
         if ret < 0 {
             let err = std::io::Error::last_os_error();
             tracing::warn!("DMA map failed: {} (ret={})", err, ret);
             // Clean up allocated memory on failure
-            unsafe { 
+            unsafe {
                 libc::munlock(vaddr.cast(), size);
                 std::alloc::dealloc(vaddr, layout);
             };
             return Err(AkidaError::transfer_failed(format!(
-                "Failed to map DMA: {}",
-                err
+                "Failed to map DMA: {err}"
             )));
         }
 
-        tracing::debug!(
-            "Created DMA buffer: vaddr={vaddr:p}, iova={iova:#x}, size={size:#x}"
-        );
+        tracing::debug!("Created DMA buffer: vaddr={vaddr:p}, iova={iova:#x}, size={size:#x}");
 
         Ok(Self {
             vaddr,
@@ -292,7 +300,7 @@ impl Drop for DmaBuffer {
             libc::ioctl(
                 self.container_fd,
                 ioctls::VFIO_IOMMU_UNMAP_DMA as _,
-                &dma_unmap as *const _,
+                &raw const dma_unmap,
             );
         }
 
@@ -359,10 +367,14 @@ impl VfioBackend {
     }
 
     /// Allocate a DMA buffer
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if DMA buffer allocation or IOMMU mapping fails.
     pub fn alloc_dma(&mut self, size: usize) -> Result<DmaBuffer> {
         let iova = self.next_iova;
         // Align size to 4KB page boundary (VFIO requires page-aligned mappings)
-        let aligned_size = ((size + 4095) / 4096) * 4096;
+        let aligned_size = size.div_ceil(4096) * 4096;
         self.next_iova += aligned_size as u64;
 
         DmaBuffer::new(self.container.as_raw_fd(), aligned_size, iova)
@@ -434,7 +446,7 @@ impl NpuBackend for VfioBackend {
             libc::ioctl(
                 group.as_raw_fd(),
                 ioctls::VFIO_GROUP_GET_STATUS as _,
-                &mut group_status as *mut _,
+                &raw mut group_status,
             )
         };
 
@@ -450,7 +462,7 @@ impl NpuBackend for VfioBackend {
             libc::ioctl(
                 group.as_raw_fd(),
                 ioctls::VFIO_GROUP_SET_CONTAINER as _,
-                &container.as_raw_fd() as *const _,
+                std::ptr::from_ref(&container.as_raw_fd()),
             )
         };
 
@@ -479,10 +491,9 @@ impl NpuBackend for VfioBackend {
         }
 
         // Get device fd
-        let pcie_address_cstr =
-            std::ffi::CString::new(pcie_address).map_err(|e| {
-                AkidaError::capability_query_failed(format!("Invalid PCIe address: {e}"))
-            })?;
+        let pcie_address_cstr = std::ffi::CString::new(pcie_address).map_err(|e| {
+            AkidaError::capability_query_failed(format!("Invalid PCIe address: {e}"))
+        })?;
 
         // SAFETY: VFIO ioctl with C string argument
         let device_fd = unsafe {
@@ -514,7 +525,7 @@ impl NpuBackend for VfioBackend {
             libc::ioctl(
                 device.as_raw_fd(),
                 ioctls::VFIO_DEVICE_GET_INFO as _,
-                &mut device_info as *mut _,
+                &raw mut device_info,
             )
         };
 
@@ -599,15 +610,14 @@ impl NpuBackend for VfioBackend {
         let input_bytes = bytemuck::cast_slice::<f32, u8>(input);
 
         // Allocate input buffer if needed
-        if self.input_buffer.is_none() || self.input_buffer.as_ref().unwrap().size() < input_bytes.len() {
+        if self.input_buffer.is_none()
+            || self.input_buffer.as_ref().unwrap().size() < input_bytes.len()
+        {
             self.input_buffer = Some(self.alloc_dma(input_bytes.len().max(4096))?);
         }
 
         // Copy input to DMA buffer
-        self.input_buffer
-            .as_mut()
-            .unwrap()
-            .as_mut_slice()[..input_bytes.len()]
+        self.input_buffer.as_mut().unwrap().as_mut_slice()[..input_bytes.len()]
             .copy_from_slice(input_bytes);
 
         // TODO: Trigger inference via MMIO registers and wait for interrupt
@@ -615,7 +625,8 @@ impl NpuBackend for VfioBackend {
         let output_size = 10 * std::mem::size_of::<f32>(); // 10 floats placeholder
 
         // Allocate output buffer if needed
-        if self.output_buffer.is_none() || self.output_buffer.as_ref().unwrap().size() < output_size {
+        if self.output_buffer.is_none() || self.output_buffer.as_ref().unwrap().size() < output_size
+        {
             self.output_buffer = Some(self.alloc_dma(output_size)?);
         }
 

@@ -5,7 +5,6 @@
 
 use anyhow::Result;
 use barracuda::device::{warmup_pool, WarmupConfig};
-use barracuda::device::pipeline_cache::GLOBAL_CACHE;
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
 use barracuda::prelude::*;
 use std::sync::Arc;
@@ -32,21 +31,21 @@ extern "C" __global__ void add_kernel(const float* a, const float* b, float* out
 
     pub fn benchmark_cuda(size: usize, iterations: usize) -> anyhow::Result<(f64, f64)> {
         let dev = CudaDevice::new(0)?;
-        
+
         // Compile kernel
         let ptx = compile_ptx(CUDA_ADD)?;
         dev.load_ptx(ptx, "add_module", &["add_kernel"])?;
-        
+
         // Allocate
         let a_host: Vec<f32> = (0..size).map(|i| i as f32 * 0.001).collect();
         let b_host: Vec<f32> = (0..size).map(|i| i as f32 * 0.002).collect();
-        
+
         let a_dev = dev.htod_sync_copy(&a_host)?;
         let b_dev = dev.htod_sync_copy(&b_host)?;
         let mut out_dev = dev.alloc_zeros::<f32>(size)?;
-        
+
         let add_kernel = dev.get_func("add_module", "add_kernel").unwrap();
-        
+
         let block_size = 256u32;
         let grid_size = ((size as u32) + block_size - 1) / block_size;
         let cfg = LaunchConfig {
@@ -54,7 +53,7 @@ extern "C" __global__ void add_kernel(const float* a, const float* b, float* out
             block_dim: (block_size, 1, 1),
             shared_mem_bytes: 0,
         };
-        
+
         // Warmup
         for _ in 0..5 {
             unsafe {
@@ -62,32 +61,40 @@ extern "C" __global__ void add_kernel(const float* a, const float* b, float* out
             }
         }
         dev.synchronize()?;
-        
+
         // Single op latency
-        let single_times: Vec<f64> = (0..iterations).map(|_| {
-            let start = Instant::now();
-            unsafe {
-                add_kernel.launch(cfg, (&a_dev, &b_dev, &mut out_dev, size as i32)).unwrap();
-            }
-            dev.synchronize().unwrap();
-            start.elapsed().as_secs_f64() * 1e6
-        }).collect();
+        let single_times: Vec<f64> = (0..iterations)
+            .map(|_| {
+                let start = Instant::now();
+                unsafe {
+                    add_kernel
+                        .launch(cfg, (&a_dev, &b_dev, &mut out_dev, size as i32))
+                        .unwrap();
+                }
+                dev.synchronize().unwrap();
+                start.elapsed().as_secs_f64() * 1e6
+            })
+            .collect();
         let single_avg = single_times.iter().sum::<f64>() / iterations as f64;
-        
+
         // Batched (10 ops, single sync)
         let batch_size = 10;
-        let batch_times: Vec<f64> = (0..iterations).map(|_| {
-            let start = Instant::now();
-            for _ in 0..batch_size {
-                unsafe {
-                    add_kernel.launch(cfg, (&a_dev, &b_dev, &mut out_dev, size as i32)).unwrap();
+        let batch_times: Vec<f64> = (0..iterations)
+            .map(|_| {
+                let start = Instant::now();
+                for _ in 0..batch_size {
+                    unsafe {
+                        add_kernel
+                            .launch(cfg, (&a_dev, &b_dev, &mut out_dev, size as i32))
+                            .unwrap();
+                    }
                 }
-            }
-            dev.synchronize().unwrap();
-            start.elapsed().as_secs_f64() * 1e6 / batch_size as f64
-        }).collect();
+                dev.synchronize().unwrap();
+                start.elapsed().as_secs_f64() * 1e6 / batch_size as f64
+            })
+            .collect();
         let batched_avg = batch_times.iter().sum::<f64>() / iterations as f64;
-        
+
         Ok((single_avg, batched_avg))
     }
 }
@@ -98,13 +105,14 @@ extern "C" __global__ void add_kernel(const float* a, const float* b, float* out
 
 #[cfg(feature = "rocm")]
 mod rocm_bench {
+    use std::fs;
+    use std::io::Write;
     use std::process::Command;
     use std::time::Instant;
-    use std::io::Write;
-    use std::fs;
-    
+
     pub fn benchmark_rocm(size: usize, iterations: usize) -> anyhow::Result<(f64, f64)> {
-        let hip_code = format!(r#"
+        let hip_code = format!(
+            r#"
 #include <hip/hip_runtime.h>
 #include <stdio.h>
 #include <chrono>
@@ -176,26 +184,34 @@ int main() {{
     delete[] b_h;
     return 0;
 }}
-"#);
+"#
+        );
 
         let tmp_dir = std::env::temp_dir();
         let src_path = tmp_dir.join("rocm_bench.cpp");
         let exe_path = tmp_dir.join("rocm_bench");
-        
+
         fs::write(&src_path, hip_code)?;
-        
+
         let compile = Command::new("hipcc")
-            .args(["-O3", "-o", exe_path.to_str().unwrap(), src_path.to_str().unwrap()])
+            .args([
+                "-O3",
+                "-o",
+                exe_path.to_str().unwrap(),
+                src_path.to_str().unwrap(),
+            ])
             .output()?;
-            
+
         if !compile.status.success() {
-            return Err(anyhow::anyhow!("hipcc compilation failed: {}", 
-                String::from_utf8_lossy(&compile.stderr)));
+            return Err(anyhow::anyhow!(
+                "hipcc compilation failed: {}",
+                String::from_utf8_lossy(&compile.stderr)
+            ));
         }
-        
+
         let run = Command::new(&exe_path).output()?;
         let output = String::from_utf8_lossy(&run.stdout);
-        
+
         for line in output.lines() {
             if line.starts_with("RESULT:") {
                 let parts: Vec<&str> = line[7..].split(':').collect();
@@ -204,7 +220,7 @@ int main() {{
                 return Ok((single, batched));
             }
         }
-        
+
         Err(anyhow::anyhow!("Failed to parse ROCm output"))
     }
 }
@@ -214,19 +230,19 @@ int main() {{
 // ═══════════════════════════════════════════════════════════════════════════
 
 async fn benchmark_barracuda_single(
-    device: &Arc<WgpuDevice>, 
-    size: usize, 
-    iterations: usize
+    device: &Arc<WgpuDevice>,
+    size: usize,
+    iterations: usize,
 ) -> Result<f64> {
     let data: Vec<f32> = (0..size).map(|i| i as f32 * 0.001).collect();
     let a = Tensor::from_data(&data, vec![size], device.clone())?;
     let b = Tensor::from_data(&data, vec![size], device.clone())?;
-    
+
     // Warmup
     for _ in 0..5 {
         let _ = a.add(&b)?;
     }
-    
+
     let mut times = Vec::with_capacity(iterations);
     for _ in 0..iterations {
         let start = Instant::now();
@@ -234,7 +250,7 @@ async fn benchmark_barracuda_single(
         device.device().poll(wgpu::Maintain::Wait);
         times.push(start.elapsed().as_secs_f64() * 1e6);
     }
-    
+
     Ok(times.iter().sum::<f64>() / iterations as f64)
 }
 
@@ -245,28 +261,28 @@ async fn benchmark_barracuda_batched(
     batch_size: usize,
 ) -> Result<f64> {
     let data: Vec<f32> = (0..size).map(|i| i as f32 * 0.001).collect();
-    
+
     // Use TensorSession for batching
     let mut times = Vec::with_capacity(iterations);
-    
+
     for _ in 0..iterations {
         let mut session = TensorSession::with_device(device.clone());
-        
+
         // Import initial tensors
         let a = session.tensor(&data)?;
         let b = session.tensor(&data)?;
-        
+
         // Record batch of operations
         let mut result = session.add(&a, &b)?;
         for _ in 1..batch_size {
             result = session.add(&result, &b)?;
         }
-        
+
         let start = Instant::now();
         session.run()?;
         times.push(start.elapsed().as_secs_f64() * 1e6 / batch_size as f64);
     }
-    
+
     Ok(times.iter().sum::<f64>() / iterations as f64)
 }
 
@@ -278,20 +294,21 @@ fn profile_wgpu_stack(device: &Arc<WgpuDevice>) -> Result<()> {
     println!("\n  ═══════════════════════════════════════════════════════════════");
     println!("  Software Stack Profile: {}", device.name());
     println!("  ═══════════════════════════════════════════════════════════════\n");
-    
+
     let adapter_info = device.adapter_info();
-    
+
     println!("  Backend:      {:?}", adapter_info.backend);
     println!("  Driver:       {}", adapter_info.driver);
     println!("  Driver Info:  {}", adapter_info.driver_info);
     println!("  Device Type:  {:?}", adapter_info.device_type);
-    
+
     // Identify open vs closed components
     let backend_open = match adapter_info.backend {
         wgpu::Backend::Vulkan => {
-            if adapter_info.driver.to_lowercase().contains("radv") ||
-               adapter_info.driver.to_lowercase().contains("anv") ||
-               adapter_info.driver.to_lowercase().contains("mesa") {
+            if adapter_info.driver.to_lowercase().contains("radv")
+                || adapter_info.driver.to_lowercase().contains("anv")
+                || adapter_info.driver.to_lowercase().contains("mesa")
+            {
                 true
             } else {
                 false // NVIDIA proprietary
@@ -301,7 +318,7 @@ fn profile_wgpu_stack(device: &Arc<WgpuDevice>) -> Result<()> {
         wgpu::Backend::Dx12 => false,  // Microsoft proprietary
         _ => false,
     };
-    
+
     println!("\n  Stack Analysis:");
     println!("  ┌──────────────────┬────────────┬─────────────────────────────┐");
     println!("  │ Layer            │ Open/Closed│ Optimization Potential       │");
@@ -317,10 +334,10 @@ fn profile_wgpu_stack(device: &Arc<WgpuDevice>) -> Result<()> {
     }
     println!("  │ GPU Hardware     │ CLOSED     │ ❌ Silicon is what it is     │");
     println!("  └──────────────────┴────────────┴─────────────────────────────┘");
-    
+
     // Specific optimization opportunities
     println!("\n  Optimization Opportunities:");
-    
+
     if backend_open {
         println!("  ✅ RADV/ANV source available at:");
         println!("     https://gitlab.freedesktop.org/mesa/mesa");
@@ -336,7 +353,7 @@ fn profile_wgpu_stack(device: &Arc<WgpuDevice>) -> Result<()> {
         println!("     We can optimize wgpu-side, but driver is a black box.");
         println!("     NVAPI/CUDA interop might offer paths.");
     }
-    
+
     Ok(())
 }
 
@@ -361,12 +378,12 @@ async fn main() -> Result<()> {
         min_gflops: 100.0,
         ..Default::default()
     };
-    
+
     let pool = GpuPool::with_config(config).await?;
     let devices: Vec<_> = (0..pool.device_count())
         .filter_map(|i| pool.device(i))
         .collect();
-    
+
     if devices.is_empty() {
         println!("No GPUs found!");
         return Ok(());
@@ -375,54 +392,62 @@ async fn main() -> Result<()> {
     // ═══════════════════════════════════════════════════════════════════════
     // Phase 1: Warmup
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     println!("Phase 1: Mise en Place (Shader Warmup)");
     println!("══════════════════════════════════════════════════════════════════════════════\n");
-    
+
     let warmup_start = Instant::now();
     let mut warmup_config = WarmupConfig::full();
     warmup_config.verbose = true;
     warmup_pool(&devices, &warmup_config)?;
     let warmup_time = warmup_start.elapsed();
-    
-    println!("  Warmup complete in {:.1}ms\n", warmup_time.as_secs_f64() * 1000.0);
-    
+
+    println!(
+        "  Warmup complete in {:.1}ms\n",
+        warmup_time.as_secs_f64() * 1000.0
+    );
+
     // ═══════════════════════════════════════════════════════════════════════
     // Phase 2: Stack Analysis
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     println!("\nPhase 2: Software Stack Analysis");
     println!("══════════════════════════════════════════════════════════════════════════════");
-    
+
     for device in &devices {
         profile_wgpu_stack(device)?;
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════
     // Phase 3: Benchmark
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     println!("\n\nPhase 3: Performance Comparison");
     println!("══════════════════════════════════════════════════════════════════════════════\n");
-    
+
     let size = 1_000_000;
     let iterations = 20;
     let batch_size = 10;
-    
-    println!("  Config: {} elements, {} iterations, batch size {}\n", size, iterations, batch_size);
-    
+
+    println!(
+        "  Config: {} elements, {} iterations, batch size {}\n",
+        size, iterations, batch_size
+    );
+
     // Header
     println!("  ┌────────────────────────────────────┬────────────┬────────────┬─────────┐");
     println!("  │ Implementation                     │ Single-Op  │ Batched    │ Gap     │");
     println!("  ├────────────────────────────────────┼────────────┼────────────┼─────────┤");
-    
+
     // CUDA baseline (if available)
     #[cfg(feature = "cuda")]
     {
         match cuda_bench::benchmark_cuda(size, iterations) {
             Ok((single, batched)) => {
-                println!("  │ CUDA (RTX 3090)                    │ {:>7.1} μs │ {:>7.1} μs │   -     │", 
-                    single, batched);
+                println!(
+                    "  │ CUDA (RTX 3090)                    │ {:>7.1} μs │ {:>7.1} μs │   -     │",
+                    single, batched
+                );
             }
             Err(e) => {
                 println!("  │ CUDA: Error - {}                   │", e);
@@ -433,14 +458,16 @@ async fn main() -> Result<()> {
     {
         println!("  │ CUDA (not compiled)                │     -      │     -      │   -     │");
     }
-    
+
     // ROCm baseline (if available)
     #[cfg(feature = "rocm")]
     {
         match rocm_bench::benchmark_rocm(size, iterations) {
             Ok((single, batched)) => {
-                println!("  │ ROCm/HIP (RX 6950 XT)              │ {:>7.1} μs │ {:>7.1} μs │   -     │", 
-                    single, batched);
+                println!(
+                    "  │ ROCm/HIP (RX 6950 XT)              │ {:>7.1} μs │ {:>7.1} μs │   -     │",
+                    single, batched
+                );
             }
             Err(e) => {
                 println!("  │ ROCm: Error - {}                   │", e);
@@ -451,39 +478,42 @@ async fn main() -> Result<()> {
     {
         println!("  │ ROCm (not compiled)                │     -      │     -      │   -     │");
     }
-    
+
     println!("  ├────────────────────────────────────┼────────────┼────────────┼─────────┤");
-    
+
     // BarraCUDA on each GPU
     for device in &devices {
         let name = device.name();
         let single = benchmark_barracuda_single(device, size, iterations).await?;
         let batched = benchmark_barracuda_batched(device, size, iterations, batch_size).await?;
-        
+
         // Calculate gap vs expected CUDA/ROCm
-        let is_nvidia = name.to_lowercase().contains("nvidia") || name.to_lowercase().contains("rtx");
+        let is_nvidia =
+            name.to_lowercase().contains("nvidia") || name.to_lowercase().contains("rtx");
         let reference = if is_nvidia { 30.0 } else { 40.0 }; // Approximate CUDA/ROCm single-op
         let gap = single / reference;
-        
+
         let short_name = if name.len() > 36 {
             format!("{}...", &name[..33])
         } else {
             name.to_string()
         };
-        
-        println!("  │ BarraCUDA {:25}│ {:>7.1} μs │ {:>7.1} μs │ {:>5.1}x  │", 
-            short_name, single, batched, gap);
+
+        println!(
+            "  │ BarraCUDA {:25}│ {:>7.1} μs │ {:>7.1} μs │ {:>5.1}x  │",
+            short_name, single, batched, gap
+        );
     }
-    
+
     println!("  └────────────────────────────────────┴────────────┴────────────┴─────────┘");
-    
+
     // ═══════════════════════════════════════════════════════════════════════
     // Phase 4: Where Time Goes
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     println!("\n\nPhase 4: Where Does Time Go? (Latency Breakdown)");
     println!("══════════════════════════════════════════════════════════════════════════════\n");
-    
+
     println!("  CUDA path (reference):");
     println!("  ┌─────────────────────────────────┬────────────┐");
     println!("  │ Component                       │ Time       │");
@@ -494,7 +524,7 @@ async fn main() -> Result<()> {
     println!("  ├─────────────────────────────────┼────────────┤");
     println!("  │ Total                           │ ~20-40 μs  │");
     println!("  └─────────────────────────────────┴────────────┘");
-    
+
     println!("\n  BarraCUDA path (current):");
     println!("  ┌─────────────────────────────────┬────────────┬─────────────────────────┐");
     println!("  │ Component                       │ Time       │ Notes                   │");
@@ -508,14 +538,14 @@ async fn main() -> Result<()> {
     println!("  ├─────────────────────────────────┼────────────┼─────────────────────────┤");
     println!("  │ Total                           │ ~250-500 μs│ Gap is API overhead     │");
     println!("  └─────────────────────────────────┴────────────┴─────────────────────────┘");
-    
+
     // ═══════════════════════════════════════════════════════════════════════
     // Phase 5: Optimization Roadmap
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     println!("\n\nPhase 5: Optimization Roadmap");
     println!("══════════════════════════════════════════════════════════════════════════════\n");
-    
+
     println!("  ┌─────────────────────────────────────────────────────────────────────────┐");
     println!("  │ OPTIMIZATION TARGETS (in order of impact)                               │");
     println!("  ├─────────────────────────────────────────────────────────────────────────┤");
@@ -541,7 +571,7 @@ async fn main() -> Result<()> {
     println!("  │    Trade-off: Vendor lock-in vs performance                            │");
     println!("  │                                                                          │");
     println!("  └─────────────────────────────────────────────────────────────────────────┘");
-    
+
     println!("\n  Open Source Stack We Can Optimize:");
     println!("  ┌─────────────────────────────────────────────────────────────────────────┐");
     println!("  │ Component  │ Language │ Repository                                      │");
@@ -552,7 +582,7 @@ async fn main() -> Result<()> {
     println!("  │ RADV (AMD) │ C        │ https://gitlab.freedesktop.org/mesa/mesa        │");
     println!("  │ ANV (Intel)│ C        │ https://gitlab.freedesktop.org/mesa/mesa        │");
     println!("  └────────────┴──────────┴─────────────────────────────────────────────────┘");
-    
+
     println!("\n  The Gap to CUDA Is Primarily API Overhead, Not GPU Performance.");
     println!("  GPU kernel execution is essentially the same - it's the submission path.");
 

@@ -23,32 +23,32 @@
 //! ```
 
 pub mod benchmarks;
+pub mod data;
 pub mod harness;
 pub mod metrics;
-pub mod data;
 
-pub use harness::{Harness, HarnessConfig};
 pub use benchmarks::{Benchmark, BenchmarkConfig, BenchmarkResult};
-pub use metrics::{Metrics, PowerMetrics, LatencyMetrics};
+pub use harness::{Harness, HarnessConfig};
+pub use metrics::{LatencyMetrics, Metrics, PowerMetrics};
 
 /// Crate-level error type
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Hardware initialization failed: {0}")]
     HardwareInit(String),
-    
+
     #[error("Benchmark failed: {0}")]
     BenchmarkFailed(String),
-    
+
     #[error("Data loading failed: {0}")]
     DataLoad(String),
-    
+
     #[error("Model loading failed: {0}")]
     ModelLoad(String),
-    
+
     #[error("NPU error: {0}")]
     Npu(#[from] akida_driver::AkidaError),
-    
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }

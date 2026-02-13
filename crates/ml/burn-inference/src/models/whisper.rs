@@ -27,7 +27,7 @@ impl WhisperConfig {
             vocab_size: 51865,
         }
     }
-    
+
     /// Whisper-base configuration
     pub fn base() -> Self {
         Self {
@@ -57,23 +57,23 @@ impl Whisper {
     pub fn new(config: WhisperConfig) -> Self {
         Self { config }
     }
-    
+
     /// Load from HuggingFace Hub (placeholder)
     pub fn from_pretrained(_model_id: &str) -> Result<Self> {
         Ok(Self::new(WhisperConfig::default()))
     }
-    
+
     /// Transcribe audio (placeholder)
     pub fn transcribe(&self, _audio: &[f32], _sample_rate: u32) -> Result<String> {
         // Placeholder
         Ok("Placeholder transcription".to_string())
     }
-    
+
     /// Get number of parameters
     pub fn num_parameters(&self) -> usize {
         match self.config.d_model {
-            384 => 39_000_000,  // tiny
-            512 => 74_000_000,  // base
+            384 => 39_000_000, // tiny
+            512 => 74_000_000, // base
             _ => 0,
         }
     }

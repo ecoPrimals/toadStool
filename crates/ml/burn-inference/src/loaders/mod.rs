@@ -10,22 +10,22 @@ use std::path::Path;
 /// Load model weights from a directory
 pub fn load_weights<P: AsRef<Path>>(path: P) -> Result<ModelWeights> {
     let path = path.as_ref();
-    
+
     // Check for safetensors (preferred)
     let safetensors_path = path.join("model.safetensors");
     if safetensors_path.exists() {
         return safetensors::load(&safetensors_path);
     }
-    
+
     // Check for pytorch bin
     let pytorch_path = path.join("pytorch_model.bin");
     if pytorch_path.exists() {
         tracing::warn!("pytorch_model.bin requires conversion - use safetensors format");
         return Err(crate::Error::UnsupportedModel(
-            "pytorch_model.bin not yet supported, convert to safetensors".to_string()
+            "pytorch_model.bin not yet supported, convert to safetensors".to_string(),
         ));
     }
-    
+
     Err(crate::Error::ModelLoad(format!(
         "No supported weights found in {}",
         path.display()
@@ -69,7 +69,7 @@ impl WeightTensor {
     pub fn numel(&self) -> usize {
         self.shape.iter().product()
     }
-    
+
     /// Get data as f32 slice (for F32 tensors)
     pub fn as_f32(&self) -> Option<&[f32]> {
         if matches!(self.dtype, DataType::F32) {

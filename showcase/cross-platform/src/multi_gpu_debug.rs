@@ -5,7 +5,6 @@
 use anyhow::Result;
 use barracuda::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
 use barracuda::multi_gpu::{GpuPool, WorkloadConfig};
-use barracuda::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -23,26 +22,29 @@ async fn main() -> Result<()> {
         min_gflops: 100.0,
         ..Default::default()
     };
-    
+
     let pool = GpuPool::with_config(config).await?;
-    
+
     println!("Found {} GPUs:\n", pool.devices().len());
-    
+
     for idx in 0..pool.devices().len() {
-        let device = pool.device(idx).ok_or_else(|| anyhow::anyhow!("No device"))?;
+        let device = pool
+            .device(idx)
+            .ok_or_else(|| anyhow::anyhow!("No device"))?;
         let wgpu_device = device.device();
         let device_id = wgpu_device.global_id();
-        
+
         println!("  GPU {}: {}", idx, device.name());
         println!("    Device ID: {:?}", device_id);
-        
-        // Create a layout for this device  
+
+        // Create a layout for this device
         let layout_sig = BindGroupLayoutSignature::elementwise_binary();
         let adapter_info = device.adapter_info();
         println!("    Creating/getting bind group layout...");
-        let layout = GLOBAL_CACHE.get_or_create_layout(wgpu_device, adapter_info, layout_sig, Some("Test"));
+        let layout =
+            GLOBAL_CACHE.get_or_create_layout(wgpu_device, adapter_info, layout_sig, Some("Test"));
         println!("    Layout created successfully");
-        
+
         // Try to create a bind group with this layout
         println!("    Creating bind group...");
         let test_buffer = wgpu_device.create_buffer(&wgpu::BufferDescriptor {
@@ -51,7 +53,7 @@ async fn main() -> Result<()> {
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
-        
+
         let bind_group_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             wgpu_device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Test"),
@@ -72,19 +74,19 @@ async fn main() -> Result<()> {
                 ],
             })
         }));
-        
+
         match bind_group_result {
             Ok(_) => println!("    ✅ Bind group created successfully\n"),
             Err(_) => println!("    ❌ Bind group creation FAILED\n"),
         }
     }
-    
+
     println!("Cache stats:");
     let stats = GLOBAL_CACHE.stats();
     println!("  Shaders:   {}", stats.shaders);
     println!("  Layouts:   {}", stats.layouts);
     println!("  Pipelines: {}", stats.pipelines);
-    
+
     println!("\nExpected layouts: {} (one per GPU)", pool.devices().len());
     if stats.layouts == pool.devices().len() {
         println!("✅ Each GPU has its own layout (device ID keying works)");

@@ -52,18 +52,18 @@ impl Yolo {
     pub fn new(config: YoloConfig) -> Self {
         Self { config }
     }
-    
+
     /// Load from pretrained (placeholder)
     pub fn from_pretrained(_model_id: &str) -> Result<Self> {
         Ok(Self::new(YoloConfig::default()))
     }
-    
+
     /// Detect objects in image (placeholder)
     pub fn detect(&self, _image: &[u8], _width: usize, _height: usize) -> Result<Vec<Detection>> {
         // Placeholder - returns empty detections
         Ok(Vec::new())
     }
-    
+
     /// Get number of parameters
     pub fn num_parameters(&self) -> usize {
         match self.config.version {
@@ -95,13 +95,13 @@ impl ResNet {
     pub fn new(variant: ResNetVariant) -> Self {
         Self { variant }
     }
-    
+
     /// Classify image (placeholder)
     pub fn classify(&self, _image: &[u8]) -> Result<Vec<(usize, f32)>> {
         // Placeholder - returns empty classifications
         Ok(Vec::new())
     }
-    
+
     /// Get number of parameters
     pub fn num_parameters(&self) -> usize {
         match self.variant {

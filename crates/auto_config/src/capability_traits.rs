@@ -57,11 +57,13 @@ impl EcosystemServiceDiscoverer for crate::ecosystem::EcosystemDiscoverer {
 ///
 /// Returns pre-configured capabilities instantly without any I/O.
 /// Perfect for fast unit and integration tests.
+#[cfg(any(test, feature = "test-mocks"))]
 pub struct MockHardwareDetector {
     /// Pre-configured capabilities to return
     pub capabilities: SystemCapabilities,
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 impl MockHardwareDetector {
     /// Create a mock detector with default test capabilities
     #[must_use]
@@ -90,12 +92,14 @@ impl MockHardwareDetector {
     }
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 impl Default for MockHardwareDetector {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 #[async_trait]
 impl HardwareCapabilityDetector for MockHardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
@@ -108,11 +112,13 @@ impl HardwareCapabilityDetector for MockHardwareDetector {
 ///
 /// Returns empty service list instantly without any network I/O.
 /// Perfect for fast unit and integration tests.
+#[cfg(any(test, feature = "test-mocks"))]
 pub struct MockEcosystemDiscoverer {
     /// Pre-configured services to return
     pub services: DiscoveredServices,
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 impl MockEcosystemDiscoverer {
     /// Create a mock discoverer with no services
     #[must_use]
@@ -138,12 +144,14 @@ impl MockEcosystemDiscoverer {
     }
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 impl Default for MockEcosystemDiscoverer {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 #[async_trait]
 impl EcosystemServiceDiscoverer for MockEcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {

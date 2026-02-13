@@ -29,9 +29,28 @@ pub struct AgentDeploymentManager {
 }
 
 /// Configuration for agent deployment manager
+///
+/// # Evolution Note (Feb 2026)
+///
+/// The `squirrel_endpoint` field is deprecated. Use capability-based discovery:
+///
+/// ```rust,ignore
+/// // OLD: Hardcoded endpoint
+/// let config = AgentDeploymentConfig {
+///     squirrel_endpoint: "http://localhost:8080".into(),
+///     ..Default::default()
+/// };
+///
+/// // NEW: Capability-based discovery
+/// let manager = AgentDeploymentManager::discover().await?;
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentDeploymentConfig {
     /// Squirrel endpoint URL
+    ///
+    /// **DEPRECATED**: Use `AgentDeploymentManager::discover()` for runtime discovery.
+    /// When empty, the manager discovers Squirrel via capability lookup.
+    #[serde(default)]
     pub squirrel_endpoint: String,
     /// Model registry type (local, huggingface, custom)
     pub model_registry: String,
@@ -41,6 +60,18 @@ pub struct AgentDeploymentConfig {
     pub mcp_enabled: bool,
     /// Resource limits configuration
     pub resource_limits: serde_json::Map<String, serde_json::Value>,
+}
+
+impl Default for AgentDeploymentConfig {
+    fn default() -> Self {
+        Self {
+            squirrel_endpoint: String::new(), // Empty = use runtime discovery
+            model_registry: "local".to_string(),
+            agent_runtime: "container".to_string(),
+            mcp_enabled: false,
+            resource_limits: serde_json::Map::new(),
+        }
+    }
 }
 
 impl AgentDeploymentManager {
@@ -53,7 +84,71 @@ impl AgentDeploymentManager {
         }
     }
 
+    /// Discover and create agent manager via capability-based discovery
+    ///
+    /// This is the preferred method for creating an AgentDeploymentManager.
+    /// It discovers Squirrel (or another AI provider) at runtime.
+    ///
+    /// # Discovery Order
+    ///
+    /// 1. Environment variable: `SQUIRREL_ENDPOINT` or `TOADSTOOL_AI_ENDPOINT`
+    /// 2. mDNS/local network discovery for "ai-orchestration" or "storage" capability
+    /// 3. Unix socket discovery at standard paths
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let manager = AgentDeploymentManager::discover().await?;
+    /// ```
+    pub async fn discover() -> crate::ToadStoolResult<Self> {
+        Self::discover_with_config(AgentDeploymentConfig::default()).await
+    }
+
+    /// Discover AI provider with custom configuration
+    pub async fn discover_with_config(
+        config: AgentDeploymentConfig,
+    ) -> crate::ToadStoolResult<Self> {
+        // Priority 1: Check if endpoint is already configured
+        if !config.squirrel_endpoint.is_empty() {
+            tracing::debug!(
+                "Using configured Squirrel endpoint: {}",
+                config.squirrel_endpoint
+            );
+            return Ok(Self::with_squirrel(config));
+        }
+
+        // Priority 2: Check environment variables
+        if let Ok(endpoint) =
+            std::env::var("SQUIRREL_ENDPOINT").or_else(|_| std::env::var("TOADSTOOL_AI_ENDPOINT"))
+        {
+            tracing::info!("Discovered Squirrel via environment: {}", endpoint);
+            let mut config = config;
+            config.squirrel_endpoint = endpoint;
+            return Ok(Self::with_squirrel(config));
+        }
+
+        // Priority 3: Capability-based discovery
+        match crate::ipc_helpers::resolve_primal("squirrel").await {
+            Ok(endpoint) => {
+                tracing::info!("Discovered Squirrel via capability lookup: {}", endpoint);
+                let mut config = config;
+                config.squirrel_endpoint = endpoint;
+                Ok(Self::with_squirrel(config))
+            }
+            Err(_) => {
+                // Priority 4: Fall back to in-memory backend for development
+                tracing::warn!(
+                    "No AI provider discovered, using in-memory backend. \
+                     Set SQUIRREL_ENDPOINT for production use."
+                );
+                Ok(Self::with_inmemory(config))
+            }
+        }
+    }
+
     /// Create a new manager with Squirrel production backend
+    ///
+    /// **Note**: Prefer `discover()` for new code to use capability-based discovery.
     #[must_use]
     pub fn with_squirrel(config: AgentDeploymentConfig) -> Self {
         let backend = super::agent_backend::SquirrelBackend::new(

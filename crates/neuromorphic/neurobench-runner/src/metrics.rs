@@ -43,35 +43,37 @@ impl LatencyMetrics {
         if samples.is_empty() {
             return Self::default();
         }
-        
-        let mut sorted: Vec<_> = samples.iter().copied().collect();
+
+        let mut sorted: Vec<_> = samples.to_vec();
         sorted.sort();
-        
+
         let n = sorted.len();
         let min = sorted[0];
         let max = sorted[n - 1];
         let median = sorted[n / 2];
-        
+
         // Mean
         let total_nanos: u128 = sorted.iter().map(|d| d.as_nanos()).sum();
         let mean_nanos = total_nanos / n as u128;
         let mean = Duration::from_nanos(mean_nanos as u64);
-        
+
         // Standard deviation
-        let variance: f64 = sorted.iter()
+        let variance: f64 = sorted
+            .iter()
             .map(|d| {
                 let diff = d.as_nanos() as f64 - mean_nanos as f64;
                 diff * diff
             })
-            .sum::<f64>() / n as f64;
+            .sum::<f64>()
+            / n as f64;
         let std_dev_nanos = variance.sqrt() as u64;
-        
+
         // Percentiles
         let percentile = |p: f64| -> Duration {
             let idx = ((n as f64 * p) as usize).min(n - 1);
             sorted[idx]
         };
-        
+
         Self {
             samples,
             min,
@@ -111,11 +113,11 @@ impl PowerMetrics {
         if samples.is_empty() {
             return Self::default();
         }
-        
+
         let min_w = samples.iter().cloned().fold(f64::INFINITY, f64::min);
         let max_w = samples.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
         let mean_w = samples.iter().sum::<f64>() / samples.len() as f64;
-        
+
         Self {
             samples,
             min_w,
@@ -125,7 +127,7 @@ impl PowerMetrics {
             energy_per_inference_uj: None,
         }
     }
-    
+
     /// Calculate energy per inference given latency
     pub fn with_latency(&mut self, mean_latency: Duration) {
         let latency_us = mean_latency.as_micros() as f64;
@@ -172,25 +174,25 @@ impl AccuracyMetrics {
             ..Default::default()
         }
     }
-    
+
     /// Record a prediction
     pub fn record(&mut self, predicted: usize, actual: usize) {
         if predicted < self.num_classes && actual < self.num_classes {
             self.confusion_matrix[actual * self.num_classes + predicted] += 1;
         }
     }
-    
+
     /// Finalize accuracy calculations
     pub fn finalize(&mut self) {
         let mut total_correct = 0;
         let mut total_samples = 0;
-        
+
         for class in 0..self.num_classes {
             let class_total: usize = self.confusion_matrix
                 [class * self.num_classes..(class + 1) * self.num_classes]
                 .iter()
                 .sum();
-            
+
             if class_total > 0 {
                 let class_correct = self.confusion_matrix[class * self.num_classes + class];
                 self.per_class_accuracy[class] = class_correct as f64 / class_total as f64;
@@ -198,7 +200,7 @@ impl AccuracyMetrics {
                 total_samples += class_total;
             }
         }
-        
+
         if total_samples > 0 {
             self.top1 = total_correct as f64 / total_samples as f64;
         }
@@ -208,34 +210,32 @@ impl AccuracyMetrics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_latency_metrics() {
-        let samples: Vec<Duration> = (1..=100)
-            .map(|i| Duration::from_micros(i * 10))
-            .collect();
-        
+        let samples: Vec<Duration> = (1..=100).map(|i| Duration::from_micros(i * 10)).collect();
+
         let metrics = LatencyMetrics::from_samples(samples);
-        
+
         assert_eq!(metrics.min, Duration::from_micros(10));
         assert_eq!(metrics.max, Duration::from_micros(1000));
         println!("Mean latency: {:?}", metrics.mean);
         println!("P99 latency: {:?}", metrics.p99);
     }
-    
+
     #[test]
     fn test_accuracy_metrics() {
         let mut metrics = AccuracyMetrics::new(3);
-        
+
         // Record predictions
         metrics.record(0, 0); // correct
         metrics.record(0, 0); // correct
         metrics.record(1, 0); // wrong
         metrics.record(1, 1); // correct
         metrics.record(2, 2); // correct
-        
+
         metrics.finalize();
-        
+
         assert_eq!(metrics.top1, 4.0 / 5.0);
         println!("Top-1 accuracy: {:.2}%", metrics.top1 * 100.0);
     }

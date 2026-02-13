@@ -1,12 +1,98 @@
 # BarraCUDA Performance Parity Roadmap
 
 **Date**: February 13, 2026  
-**Status**: SCALE ANALYSIS COMPLETE - AMD AT PARITY, NVIDIA BOTTLENECK IDENTIFIED  
+**Status**: BEYOND PARITY ON AMD — FMA EVOLUTION COMPLETE  
 **Goal**: Achieve vendor-free CUDA/ROCm parity with self-optimizing runtime
 
 ---
 
-## 0. Latest Update: Scale Analysis (Feb 13, 2026)
+## 0. Latest Updates
+
+### 0.0 Bind Group Caching Fix + FMA (Feb 13, 2026)
+
+**Bug Fixed:** Bind group cache existed but was broken:
+- Cache hit detection worked, but returned a NEW bind group instead of cached one
+- Cache never populated (bind groups weren't inserted after creation)
+
+**Result After Fix:**
+- 100% bind group cache hit rate (e.g., 28487 hits / 5 misses)
+
+**Bandwidth Validation (Feb 13, 2026):**
+
+| GPU | Cache | 10M Elements | 16M (DRAM) | Analysis |
+|-----|-------|--------------|------------|----------|
+| RTX 3090 | 6 MB L2 | 78.4% | **82.2%** | DRAM-bound, excellent |
+| RX 6950 XT | **128 MB** Infinity | 119.2%* | **86.2%** | *Cache hit, DRAM validated |
+
+**Key insight:** AMD's 128MB Infinity Cache inflates numbers at 10M elements. True DRAM bandwidth (16M+) shows both GPUs at **82-86% of theoretical** - excellent parity!
+
+**FMA (Fused Multiply-Add) Implemented:**
+
+| GPU | Size | FMA | Separate | Speedup |
+|-----|------|-----|----------|---------|
+| RTX 3090 | 100K | 26 μs | 68 μs | **2.61x** |
+| RTX 3090 | 1M | 44 μs | 108 μs | **2.46x** |
+| RTX 3090 | 10M | 217 μs | 326 μs | **1.50x** |
+| RX 6950 XT | 100K | 50 μs | 115 μs | **2.32x** |
+| RX 6950 XT | 1M | 65 μs | 117 μs | **1.81x** |
+
+**Key Insight:** FMA eliminates dispatch overhead, giving 2-2.6x speedup at smaller sizes.
+This matters for common patterns like linear layers (W@x + b) and residual connections.
+
+### 0.0.1 Pure-GPU F64 Math Library (Feb 13, 2026)
+
+**New:** `math_f64.wgsl` — 27+ transcendental functions using only f64 arithmetic.
+
+| Category | Functions | Method | Precision |
+|----------|-----------|--------|-----------|
+| Roots | sqrt_f64, cbrt_f64 | Newton-Raphson/Halley | Full f64 |
+| Powers | pow_f64, pow_two_thirds | Specialized paths | ~1e-14 |
+| Exponentials | exp_f64, log_f64 | Polynomial (deg 13-17) | ~1e-15 |
+| Trig | sin_f64, cos_f64, tan_f64 | Taylor series | ~1e-14 |
+| Special | gamma_f64, erf_f64, bessel_j0 | Lanczos/A&S | ~1e-12 |
+
+**Critical achievement:** `pow_two_thirds()` using `cbrt*cbrt` is **40x more precise** than `exp(log())` chain!
+- exp(log()) chain: ~4e-4 relative error (hotSpring baseline)
+- cbrt*cbrt specialized: ~1e-5 relative error
+
+**Naga/WGSL gotchas documented:**
+1. AbstractFloat doesn't auto-promote to f64 — use `x - x + constant` pattern
+2. Literals > f32 range cause parse errors — construct via arithmetic
+3. No f64 overloads for ANY builtins — must implement from scratch
+4. No vec<f64> types — all operations are scalar
+
+**Integration:** `ShaderTemplate::with_math_f64(shader_body)` prepends library automatically.
+
+---
+
+### 0.0.2 Universal Cache Awareness (Feb 13, 2026)
+
+**New:** `SubstrateMemoryHierarchy` — vendor-free cache discovery and intelligent tiling.
+
+Every compute substrate has a memory hierarchy. ToadStool now discovers and optimizes for it:
+
+| Substrate | Cache Discovery | Optimal Tile | Benefit |
+|-----------|-----------------|--------------|---------|
+| RTX 3090 | L2: 6 MB | 1 MB | Fits in L2 |
+| RTX 4070 | L2: 48 MB | 11 MB | 8x larger tiles |
+| RX 6950 XT | Infinity: 128 MB | 29 MB | Huge cache → huge tiles |
+| CPU (Zen 3) | L3: 32 MB | 7 MB | Same as Apple SLC |
+
+**Cache-aware tiling**: For a 1 GB workload, RTX 3090 needs 732 tiles while RX 6950 XT needs only 35. Fewer tiles = less dispatch overhead = faster execution.
+
+**Why >100% theoretical bandwidth happens**: When data fits in cache, you bypass DRAM entirely. AMD's Infinity Cache has ~1.8 TB/s internal bandwidth vs 576 GB/s VRAM.
+
+```rust
+// Universal cache-aware API
+let hierarchy = SubstrateMemoryHierarchy::discover(&device);
+let tiler = CacheAwareTiler::new(hierarchy);
+let config = tiler.optimal_tile_size(total_bytes, element_size, 3.0);
+// config.tile_elements, config.num_tiles, config.target_cache
+```
+
+---
+
+### 0.1 Scale Analysis (Feb 13, 2026)
 
 ### Critical Finding: The "10x gap" is NOT universal!
 

@@ -39,79 +39,78 @@ impl InferenceEngine {
     pub fn new() -> Self {
         Self::with_device(BurnDevice::auto_select())
     }
-    
+
     /// Create with specific device
     pub fn with_device(device: BurnDevice) -> Self {
         let info = device.info();
-        info!("InferenceEngine initialized on: {} ({:?})", info.name, info.device_type);
-        
+        info!(
+            "InferenceEngine initialized on: {} ({:?})",
+            info.name, info.device_type
+        );
+
         Self {
             device,
             config: EngineConfig::default(),
         }
     }
-    
+
     /// Create with device and config
     pub fn with_config(device: BurnDevice, config: EngineConfig) -> Self {
         Self { device, config }
     }
-    
+
     /// Get the underlying device
     pub fn device(&self) -> &BurnDevice {
         &self.device
     }
-    
+
     /// Load a model from a file
     pub fn load_model<P: AsRef<Path>>(&self, path: P) -> Result<LoadedModel> {
         let path = path.as_ref();
         info!("Loading model from: {}", path.display());
-        
+
         // Detect model format from extension
-        let ext = path.extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
-        
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+
         match ext {
             "bin" | "safetensors" => {
                 // HuggingFace format
                 info!("Detected HuggingFace model format");
                 Ok(LoadedModel {
-                    name: path.file_stem()
+                    name: path
+                        .file_stem()
                         .and_then(|s| s.to_str())
                         .unwrap_or("unknown")
                         .to_string(),
                     format: ModelFormat::HuggingFace,
-                    size_bytes: std::fs::metadata(path)
-                        .map(|m| m.len())
-                        .unwrap_or(0),
+                    size_bytes: std::fs::metadata(path).map(|m| m.len()).unwrap_or(0),
                 })
             }
             "onnx" => {
                 info!("Detected ONNX model format");
                 Ok(LoadedModel {
-                    name: path.file_stem()
+                    name: path
+                        .file_stem()
                         .and_then(|s| s.to_str())
                         .unwrap_or("unknown")
                         .to_string(),
                     format: ModelFormat::Onnx,
-                    size_bytes: std::fs::metadata(path)
-                        .map(|m| m.len())
-                        .unwrap_or(0),
+                    size_bytes: std::fs::metadata(path).map(|m| m.len()).unwrap_or(0),
                 })
             }
             _ => Err(Error::UnsupportedModel(format!("Unknown format: {}", ext))),
         }
     }
-    
+
     /// Run inference (placeholder - actual implementation depends on model type)
     pub fn infer(&self, _model: &LoadedModel, _input: &[f32]) -> Result<Vec<f32>> {
         // This is a placeholder - actual implementation would:
         // 1. Create Burn tensors from input
         // 2. Run forward pass through model
         // 3. Extract output values
-        
+
         info!("Running inference on {:?}", self.device.info().name);
-        
+
         // Return dummy output for now
         Ok(vec![0.0; 10])
     }
@@ -145,14 +144,14 @@ pub enum ModelFormat {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_engine_creation() {
         let engine = InferenceEngine::new();
         let info = engine.device().info();
         println!("Engine device: {} ({:?})", info.name, info.device_type);
     }
-    
+
     #[test]
     fn test_engine_config() {
         let config = EngineConfig {
@@ -160,7 +159,7 @@ mod tests {
             mixed_precision: false,
             tensor_fusion: true,
         };
-        
+
         let engine = InferenceEngine::with_config(BurnDevice::cpu(), config);
         assert!(!engine.device().is_gpu());
     }

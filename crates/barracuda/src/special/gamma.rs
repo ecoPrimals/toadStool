@@ -357,8 +357,7 @@ pub fn digamma(x: f64) -> Result<f64> {
     let inv_x2 = inv_x * inv_x;
 
     // ψ(x) ≈ ln(x) - 1/(2x) - 1/(12x²) + 1/(120x⁴) - 1/(252x⁶)
-    val += xx.ln() - 0.5 * inv_x
-        - inv_x2 * (1.0 / 12.0 - inv_x2 * (1.0 / 120.0 - inv_x2 / 252.0));
+    val += xx.ln() - 0.5 * inv_x - inv_x2 * (1.0 / 12.0 - inv_x2 * (1.0 / 120.0 - inv_x2 / 252.0));
 
     Ok(val)
 }

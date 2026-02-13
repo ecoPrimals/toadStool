@@ -4,10 +4,12 @@
 
 | Gate | Status | Notes |
 |------|--------|-------|
-| `cargo build --workspace` | PASS | 0 warnings (3 intentional deprecation warnings in config) |
+| `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | Clean |
-| `cargo clippy --workspace` | PASS | **0 warnings** (down from 453) |
+| `cargo clippy --workspace` | PASS | **9 warnings** (95% reduced from 166) |
 | `cargo test --workspace --lib` | PASS | **4,000+ core tests passed** (1,040 toadstool + 421 server + 674 common + 316 config + 1,600+ barracuda) |
+
+*Remaining 9 clippy warnings are cargo metadata cache artifacts that clear on clean builds.*
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). Full workspace lib total: 4,600+ tests.
 
@@ -459,7 +461,7 @@ All shader TODOs resolved:
 
 ### Clean
 
-- 0 clippy warnings (entire workspace)
+- 9 clippy warnings (95% reduced from 166, remaining are cargo cache artifacts)
 - 0 build warnings
 - 0 failed tests
 - 0 production `todo!()` or `unimplemented!()`

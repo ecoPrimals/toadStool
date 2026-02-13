@@ -2,184 +2,107 @@
 
 ## Current Status (February 13, 2026)
 
-**For current status, read these first**:
-1. **`../STATUS.md`** — Detailed technical status
-2. **`../QUICK_STATUS.md`** — One-page summary
-3. **`../README.md`** — Project overview and architecture
+**Quick Start:**
+- **`../README.md`** — Project overview, architecture, key achievements
+- **`BARRACUDA_PARITY_ROADMAP.md`** — Performance evolution and validation results
 
-**Key Numbers**:
+**Key Numbers:**
 - **15,700+ tests passing**, 0 failing
-- **396 WGSL shaders** (optimized and categorized)
-- **5 scientific middleware modules** (linalg, numerical, special, optimize, surrogate)
-- **0 clippy warnings**, 0 build warnings
-- **0 unsafe blocks** in middleware
-- Cross-vendor GPU compute validated (NVIDIA + AMD, bit-identical)
-- 39.85 tok/s distributed LLM inference with encrypted transport
-
-**Performance Parity Status** (NEW):
-- **AMD RX 6950 XT**: 97.2% of theoretical bandwidth — **PARITY ACHIEVED**
-- **NVIDIA RTX 3090**: 73.4% of theoretical bandwidth — Near parity
-- Zero-allocation steady state with automatic buffer pooling
-
-**Active Work**: Performance evolution complete. Testing and documentation consolidation.
+- **396 WGSL shaders** (shader-first architecture)
+- **82-86% theoretical bandwidth** on both NVIDIA and AMD
+- Pure-GPU f64 math library with 27+ transcendental functions
+- Runtime cache discovery for intelligent workload tiling
 
 ---
 
-## Overview
+## Active Specifications
 
-**Toadstool-Compute** is the dedicated compute and environment management platform for the ecosystem. It provides secure, cross-platform execution environments for plugins, AI agents, and compute workloads.
+### Performance & Evolution
 
-## Project Mission
+| Document | Purpose |
+|----------|---------|
+| **[BARRACUDA_PARITY_ROADMAP.md](./BARRACUDA_PARITY_ROADMAP.md)** | Performance evolution, benchmarks, validated results |
+| **[FP64_GPU_EVOLUTION.md](./FP64_GPU_EVOLUTION.md)** | Pure-GPU f64 math, Naga/WGSL gotchas, precision validation |
+| **[CROSS_PLATFORM_WORKLOADS.md](./CROSS_PLATFORM_WORKLOADS.md)** | Cross-vendor benchmark specifications |
+| **[CROSS_VENDOR_BENCHMARK_SPEC.md](./CROSS_VENDOR_BENCHMARK_SPEC.md)** | Benchmark methodology and validation |
 
-Toadstool-Compute serves as the **universal compute platform** that:
-- Provides secure execution environments (Container, WASM, Native)
-- Manages compute resources (CPU, memory, GPU)
-- Implements cross-platform sandboxing and security
-- Integrates with Songbird for capability discovery and request routing
+### Architecture & Infrastructure
 
-## Core Responsibilities
+| Document | Purpose |
+|----------|---------|
+| **[BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md](./BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md)** | Universal tensor ops (CPU, GPU, NPU) |
+| **[BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md](./BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md)** | FFT, complex arithmetic, physics primitives |
+| **[NPU_DRIVER_ARCHITECTURE.md](./NPU_DRIVER_ARCHITECTURE.md)** | NPU driver design |
+| **[NPU_MULTI_TENANT_ARCHITECTURE.md](./NPU_MULTI_TENANT_ARCHITECTURE.md)** | Multi-tenant NPU |
+| **[MULTITENANT_COMPUTE_ARCHITECTURE.md](./MULTITENANT_COMPUTE_ARCHITECTURE.md)** | Compute multi-tenancy |
 
-### 🏗️ Execution Environments
-- **Container Runtime**: Docker and containerd integration
-- **WASM Runtime**: WebAssembly execution with Wasmtime
-- **Native Runtime**: Secure native code execution
-- **GPU Compute**: CUDA and OpenCL support
+### Platform & Integration
 
-### 🔒 Security & Sandboxing
-- **Cross-Platform Isolation**: Windows, macOS, Linux sandboxing
-- **Resource Limits**: CPU, memory, network, filesystem controls
-- **Permission System**: Fine-grained capability controls
-- **Security Monitoring**: Real-time security event tracking
+| Document | Purpose |
+|----------|---------|
+| [PRIMAL_CAPABILITY_SYSTEM.md](./PRIMAL_CAPABILITY_SYSTEM.md) | Capability-based discovery |
+| [UNIVERSAL_COMPUTE_PLATFORM.md](./UNIVERSAL_COMPUTE_PLATFORM.md) | Platform architecture |
+| [UNIVERSAL_UNIFIED_MEMORY.md](./UNIVERSAL_UNIFIED_MEMORY.md) | Unified memory model |
+| [SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md](./SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md) | Quality standards |
+| [RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md) | Neuromorphic extensions |
 
-### 📊 Resource Management
-- **Dynamic Allocation**: Intelligent resource allocation
-- **Performance Monitoring**: Real-time performance metrics
-- **Capacity Planning**: Resource usage prediction
-- **Load Balancing**: Distribute workloads across instances
+### Other
 
-### 🔌 Ecosystem Integration
-- **Songbird Integration**: Register capabilities, receive requests
-- **Plugin Execution**: Execute plugins from Squirrel MCP platform
-- **Storage Integration**: Coordinate with NestGate for data access
-- **AI Workloads**: Execute AI agent computations
+| Document | Purpose |
+|----------|---------|
+| [TOADSTOOL_CORE_IMPLEMENTATION_SPEC.md](./TOADSTOOL_CORE_IMPLEMENTATION_SPEC.md) | Core implementation |
+| [TOADSTOOL_LOCAL_SHOWCASE_SPEC.md](./TOADSTOOL_LOCAL_SHOWCASE_SPEC.md) | Local showcase demos |
+| [UNIVERSAL_COMPUTE_ORCHESTRATOR.md](./UNIVERSAL_COMPUTE_ORCHESTRATOR.md) | Orchestration |
+| [DISPLAY_BACKEND_SPEC.md](./DISPLAY_BACKEND_SPEC.md) | Display backend |
+| [CRYPTO_LOCK_ARCHITECTURE.md](./CRYPTO_LOCK_ARCHITECTURE.md) | Security |
+| [PHASE2_CONFIGURATION_MANAGEMENT_COMPLETE.md](./PHASE2_CONFIGURATION_MANAGEMENT_COMPLETE.md) | Phase 2 config |
 
-## Architecture Principles
+---
 
-### 🎯 Focused Responsibility
-- **Pure Compute Platform**: Only handles execution and resource management
-- **No Direct Communication**: All ecosystem communication via Songbird
-- **Stateless Design**: Execution environments are ephemeral
-- **Horizontal Scaling**: Multiple Toadstool instances for scale
+## Archive
 
-### 🚀 Performance First
-- **Rust Performance**: Zero-cost abstractions and memory safety
-- **Efficient Scheduling**: Optimal workload scheduling
-- **Resource Optimization**: Minimize overhead and maximize throughput
-- **Hot Path Optimization**: Optimize critical execution paths
+Historical documents preserved for context are in `archive/`:
+- Evolution phase documents (superseded by PARITY_ROADMAP)
+- Science gap audits (completed)
+- Old optimization plans (implemented)
+- Fractal composition specs (different focus)
 
-### 🔐 Security by Design
-- **Principle of Least Privilege**: Minimal permissions by default
-- **Defense in Depth**: Multiple security layers
-- **Audit Trail**: Complete execution audit logs
-- **Vulnerability Management**: Proactive security monitoring
+---
 
-## Specifications Index
+## Design Principles
 
-### Active Roadmaps
-- **[BARRACUDA_PARITY_ROADMAP.md](./BARRACUDA_PARITY_ROADMAP.md)** ⭐ **COMPLETE** — Performance parity achieved (AMD at 97%, NVIDIA at 73%)
-- **[BARRACUDA_EVOLUTION_ROADMAP.md](./BARRACUDA_EVOLUTION_ROADMAP.md)** — Evolution roadmap, remaining work, cross-domain vision
-- **[CROSS_PLATFORM_WORKLOADS.md](./CROSS_PLATFORM_WORKLOADS.md)** — Benchmark suite specifications
+### Runtime Discovery, Not Hardcoding
 
-### BarraCUDA Compute
+**WRONG:**
+```rust
+let cache_size = if vendor == "AMD" { 128_MB } else { 6_MB };
+```
 
-- **[BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md](./BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md)** — Universal tensor operations (CPU, GPU, NPU)
-- [BARRACUDA_PURE_RUST_TENSOR_OPS.md](./BARRACUDA_PURE_RUST_TENSOR_OPS.md) — Pure Rust tensor ops (v1.x, GPU focus)
-- [BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md](./BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md) — Complex arithmetic, FFT, physics primitives
-- [BARRACUDA_UNIVERSAL_COMPUTE_EVOLUTION.md](./BARRACUDA_UNIVERSAL_COMPUTE_EVOLUTION.md) — Operation coverage tracker
-- [RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md) — Neuromorphic extensions
+**RIGHT:**
+```rust
+let hierarchy = SubstrateMemoryHierarchy::probe(&device).await;
+// The silicon tells us what it can do
+```
 
-### Platform & Architecture
-- [PRIMAL_CAPABILITY_SYSTEM.md](./PRIMAL_CAPABILITY_SYSTEM.md) - Capability system (implemented)
-- [UNIVERSAL_COMPUTE_PLATFORM.md](./UNIVERSAL_COMPUTE_PLATFORM.md) - Platform architecture
-- [UNIVERSAL_UNIFIED_MEMORY.md](./UNIVERSAL_UNIFIED_MEMORY.md) - Unified memory architecture (Jan 2026)
-- [SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md](./SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md) - Quality standards
+### Shader-First Architecture
 
-### Core Specifications (Historical - Preserved for Context)
-- [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) - Project overview and architecture
-- [EXECUTION_ENVIRONMENTS.md](./EXECUTION_ENVIRONMENTS.md) - Execution environment specifications
-- [SECURITY_SANDBOXING.md](./SECURITY_SANDBOXING.md) - Security and sandboxing implementation
-- [RESOURCE_MANAGEMENT.md](./RESOURCE_MANAGEMENT.md) - Resource allocation and management
+All math is WGSL primary. ToadStool dispatches to GPU or CPU based on hardware:
+- 396 WGSL shaders
+- Same shader → Vulkan (NVIDIA/AMD), Metal (Apple), DX12 (Windows)
+- CPU fallback via wgpu software rasterizer
 
-### Integration Specifications
-- [SONGBIRD_INTEGRATION.md](./SONGBIRD_INTEGRATION.md) - Songbird discovery and routing integration
-- [ECOSYSTEM_COMMUNICATION.md](./ECOSYSTEM_COMMUNICATION.md) - Cross-project communication patterns
-- [PLUGIN_EXECUTION.md](./PLUGIN_EXECUTION.md) - Plugin execution from Squirrel MCP
+### Vendor-Agnostic Results
 
-### Implementation Guides
-- [DEVELOPMENT_SETUP.md](./DEVELOPMENT_SETUP.md) - Development environment setup
-- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) - Production deployment guide
-- [PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md) - Performance optimization guide
+Same binary, identical results:
+- RTX 3090 (NVIDIA) → checksum **5.128010**
+- RX 6950 XT (AMD) → checksum **5.128010**
+- Zero CUDA, Zero ROCm
 
-### Project Management
-- [ROADMAP.md](./ROADMAP.md) - Development roadmap and milestones
-- [MIGRATION_PLAN.md](./MIGRATION_PLAN.md) - Migration from Squirrel compute infrastructure
+---
 
-## Quick Start
+## Quick Links
 
-### For Developers
-1. **Setup**: See [DEVELOPMENT_SETUP.md](./DEVELOPMENT_SETUP.md)
-2. **Architecture**: Read [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md)
-3. **Integration**: Review [SONGBIRD_INTEGRATION.md](./SONGBIRD_INTEGRATION.md)
-
-### For Operations
-1. **Deployment**: See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
-2. **Monitoring**: Review resource management specifications
-3. **Security**: Read security and sandboxing guides
-
-### For Ecosystem Integration
-1. **Communication**: See [ECOSYSTEM_COMMUNICATION.md](./ECOSYSTEM_COMMUNICATION.md)
-2. **Plugin Execution**: Review [PLUGIN_EXECUTION.md](./PLUGIN_EXECUTION.md)
-3. **Capability Broadcasting**: See Songbird integration specs
-
-## Project Status
-
-### Current Phase: Production Ready ✅
-- [x] Project structure and specifications
-- [x] Core execution environment implementation
-- [x] Songbird integration framework (Phase 3 complete)
-- [x] Migration planning from Squirrel
-
-### Completed Implementation ✅
-- [x] Container runtime integration
-- [x] WASM runtime implementation
-- [x] Cross-platform sandboxing
-- [x] Resource management system
-- [x] GPU compute support (CUDA, OpenCL, WebGPU)
-- [x] Advanced security features
-- [x] Capability-based discovery
-- [x] Self-knowledge architecture
-
-### Performance Evolution ✅ COMPLETE
-- [x] Pipeline caching (8.9-16x speedup)
-- [x] Shader warmup ("Mise en Place")
-- [x] Buffer pooling with auto-return (100% reuse, zero allocation)
-- [x] Comprehensive test coverage (25+ tests)
-- [x] AMD parity achieved (97.2% theoretical)
-- [x] NVIDIA near-parity (73.4% theoretical)
-
-### Remaining Work (see [BARRACUDA_EVOLUTION_ROADMAP.md](./BARRACUDA_EVOLUTION_ROADMAP.md))
-- [ ] Bind group caching (reduce ~50-100μs per op)
-- [ ] Timeline semaphores for async submit
-- [ ] Fused kernels (a*b+c as single dispatch)
-- [ ] Phase 4: VFIO NPU driver, multi-GPU DevicePool, quantization
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines.
-
-## Support
-
-For questions and support:
-- **Architecture**: Ecosystem integration team
-- **Implementation**: Toadstool development team
-- **Integration**: Songbird and Squirrel teams
+- **Benchmarks:** `showcase/cross-platform/`
+- **Shaders:** `crates/barracuda/src/shaders/`
+- **Device layer:** `crates/barracuda/src/device/`
+- **Tests:** `cargo test -p barracuda`

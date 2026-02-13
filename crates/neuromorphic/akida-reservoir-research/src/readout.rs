@@ -3,6 +3,9 @@
 //! Trains a simple linear layer to map reservoir states to target outputs.
 //! Uses ridge regression (fast, no backpropagation needed!).
 
+// Mathematical notation (n, l, etc.) is standard in linear algebra
+#![allow(clippy::many_single_char_names)]
+
 use anyhow::Result;
 use ndarray::{Array1, Array2};
 use tracing::{debug, info};
@@ -120,6 +123,7 @@ impl ReadoutTrainer {
     /// 3. Solve L^T W = Y by backward substitution
     ///
     /// This is numerically stable for symmetric positive definite matrices.
+    #[allow(clippy::needless_pass_by_value)] // Ownership needed for error fallback
     fn solve_ridge(xt_x_reg: Array2<f64>, xt_y: Array2<f64>) -> Array2<f64> {
         let n = xt_x_reg.nrows();
         let n_rhs = xt_y.ncols();
@@ -181,7 +185,7 @@ fn cholesky_decompose(a: &Array2<f64>) -> Result<Array2<f64>> {
                 }
                 let diag = a[[j, j]] - sum;
                 if diag <= 0.0 {
-                    anyhow::bail!("Matrix is not positive definite at diagonal element {}", j);
+                    anyhow::bail!("Matrix is not positive definite at diagonal element {j}");
                 }
                 l[[j, j]] = diag.sqrt();
             } else {

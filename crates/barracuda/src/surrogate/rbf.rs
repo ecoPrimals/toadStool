@@ -365,13 +365,7 @@ impl RBFSurrogate {
         let n = self.n_train;
 
         // Compute distance matrix
-        let distances = compute_distances(
-            &self.train_x,
-            &self.train_x,
-            n,
-            n,
-            self.n_dim,
-        );
+        let distances = compute_distances(&self.train_x, &self.train_x, n, n, self.n_dim);
 
         // Build K_raw (kernel matrix WITHOUT smoothing)
         let mut k_raw = vec![0.0; n * n];
@@ -469,9 +463,7 @@ pub fn loo_cv_optimal_smoothing(
     smoothing_grid: Option<&[f64]>,
 ) -> Result<LooSmoothing> {
     // Default grid: logarithmically spaced from 1e-10 to 1.0
-    let default_grid: Vec<f64> = (-10..=0)
-        .map(|i| 10.0_f64.powi(i))
-        .collect();
+    let default_grid: Vec<f64> = (-10..=0).map(|i| 10.0_f64.powi(i)).collect();
     let grid = smoothing_grid.unwrap_or(&default_grid);
 
     if grid.is_empty() {
@@ -655,13 +647,7 @@ mod tests {
     #[test]
     fn test_loo_cv_rmse() {
         // With smoothing, LOO-CV should give meaningful results
-        let x_train = vec![
-            vec![0.0],
-            vec![0.5],
-            vec![1.0],
-            vec![1.5],
-            vec![2.0],
-        ];
+        let x_train = vec![vec![0.0], vec![0.5], vec![1.0], vec![1.5], vec![2.0]];
         // Noisy linear function: y ≈ 2x
         let y_train = vec![0.1, 1.1, 1.9, 3.1, 3.9];
 
@@ -675,11 +661,7 @@ mod tests {
         assert!(loo_rmse >= 0.0);
 
         // Should be small since data is nearly linear
-        assert!(
-            loo_rmse < 1.0,
-            "LOO-CV RMSE too large: {}",
-            loo_rmse
-        );
+        assert!(loo_rmse < 1.0, "LOO-CV RMSE too large: {}", loo_rmse);
     }
 
     #[test]
@@ -751,10 +733,12 @@ mod tests {
 
         // Use significant smoothing with Gaussian kernel
         let surrogate = RBFSurrogate::train(
-            &x_train, &y_train,
+            &x_train,
+            &y_train,
             RBFKernel::Gaussian { epsilon: 1.0 },
-            0.5  // High smoothing to force underfitting
-        ).unwrap();
+            0.5, // High smoothing to force underfitting
+        )
+        .unwrap();
 
         let errors = surrogate.loo_cv_errors().unwrap();
 
@@ -765,7 +749,8 @@ mod tests {
         // First verify we have some residuals (smoothed predictions differ from targets)
         let train_points: Vec<Vec<f64>> = x_train.clone();
         let predictions = surrogate.predict(&train_points).unwrap();
-        let max_residual: f64 = predictions.iter()
+        let max_residual: f64 = predictions
+            .iter()
             .zip(y_train.iter())
             .map(|(p, y)| (p - y).abs())
             .fold(0.0, f64::max);
@@ -790,9 +775,7 @@ mod tests {
     fn test_loo_cv_smoothing_effect() {
         // More smoothing should generally increase LOO-CV RMSE (underfitting)
         // Less smoothing should decrease LOO-CV RMSE (better fit, but risk overfitting)
-        let x_train: Vec<Vec<f64>> = (0..10)
-            .map(|i| vec![i as f64 * 0.1])
-            .collect();
+        let x_train: Vec<Vec<f64>> = (0..10).map(|i| vec![i as f64 * 0.1]).collect();
         let y_train: Vec<f64> = x_train
             .iter()
             .map(|x| 2.0 * x[0] + 0.1 * (x[0] * 10.0).sin())
@@ -800,12 +783,8 @@ mod tests {
 
         let kernel = RBFKernel::Gaussian { epsilon: 1.0 };
 
-        let surrogate_low = RBFSurrogate::train(
-            &x_train, &y_train, kernel, 1e-4
-        ).unwrap();
-        let surrogate_high = RBFSurrogate::train(
-            &x_train, &y_train, kernel, 0.5
-        ).unwrap();
+        let surrogate_low = RBFSurrogate::train(&x_train, &y_train, kernel, 1e-4).unwrap();
+        let surrogate_high = RBFSurrogate::train(&x_train, &y_train, kernel, 0.5).unwrap();
 
         let rmse_low = surrogate_low.loo_cv_rmse().unwrap();
         let rmse_high = surrogate_high.loo_cv_rmse().unwrap();
@@ -819,7 +798,8 @@ mod tests {
         assert!(
             (rmse_low - rmse_high).abs() > 1e-6,
             "LOO-CV should be sensitive to smoothing. low={}, high={}",
-            rmse_low, rmse_high
+            rmse_low,
+            rmse_high
         );
     }
 }

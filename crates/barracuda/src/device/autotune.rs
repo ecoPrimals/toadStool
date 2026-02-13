@@ -1,7 +1,7 @@
 //! Auto-Tuning Runtime for BarraCUDA
 //!
 //! Discovers optimal GPU parameters at runtime through calibration.
-//! 
+//!
 //! Philosophy:
 //! - Don't assume vendor capabilities - discover ground truth
 //! - Handle silicon lottery and generation differences
@@ -67,9 +67,9 @@ impl AutoTuner {
     pub fn with_cache(cache_path: PathBuf) -> Self {
         let mut tuner = Self::new();
         tuner.cache_path = Some(cache_path.clone());
-        
+
         // Try to load existing calibrations
-        if let Ok(contents) = std::fs::read_to_string(&cache_path) {
+        if let Ok(_contents) = std::fs::read_to_string(&cache_path) {
             #[cfg(feature = "serde")]
             if let Ok(cals) = serde_json::from_str::<Vec<GpuCalibration>>(&contents) {
                 let mut map = tuner.calibrations.write().unwrap();
@@ -78,7 +78,7 @@ impl AutoTuner {
                 }
             }
         }
-        
+
         tuner
     }
 
@@ -99,7 +99,7 @@ impl AutoTuner {
 
         // Need to calibrate
         let cal = self.calibrate_device(device, queue, device_name);
-        
+
         // Cache it
         {
             let mut cals = self.calibrations.write().unwrap();
@@ -122,10 +122,10 @@ impl AutoTuner {
         // Test workgroup sizes
         let wg_sizes = [32, 64, 128, 256];
         let test_size = 4_000_000usize;
-        
+
         let mut best_wg = 256u32;
         let mut best_bw = 0.0f64;
-        
+
         for &wg_size in &wg_sizes {
             if let Some(bw) = self.measure_bandwidth(device, queue, wg_size, test_size) {
                 if bw > best_bw {
@@ -134,10 +134,10 @@ impl AutoTuner {
                 }
             }
         }
-        
+
         // Measure dispatch overhead with optimal WG
         let overhead = self.measure_overhead(device, queue, best_wg);
-        
+
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
@@ -161,7 +161,8 @@ impl AutoTuner {
         workgroup_size: u32,
         size: usize,
     ) -> Option<f64> {
-        let shader_src = format!(r#"
+        let shader_src = format!(
+            r#"
 @group(0) @binding(0) var<storage, read> a: array<f32>;
 @group(0) @binding(1) var<storage, read> b: array<f32>;
 @group(0) @binding(2) var<storage, read_write> output: array<f32>;
@@ -174,34 +175,36 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     }}
     output[idx] = a[idx] + b[idx];
 }}
-"#, workgroup_size);
+"#,
+            workgroup_size
+        );
 
         let data: Vec<f32> = (0..size).map(|i| i as f32 * 0.001).collect();
-        
+
         let buf_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("A"),
             contents: bytemuck::cast_slice(&data),
             usage: wgpu::BufferUsages::STORAGE,
         });
-        
+
         let buf_b = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("B"),
             contents: bytemuck::cast_slice(&data),
             usage: wgpu::BufferUsages::STORAGE,
         });
-        
+
         let buf_out = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Out"),
             size: (size * 4) as u64,
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
-        
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(shader_src.into()),
         });
-        
+
         let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: None,
             entries: &[
@@ -237,35 +240,45 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
                 },
             ],
         });
-        
+
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: &bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: buf_a.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: buf_b.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: buf_out.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buf_a.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: buf_b.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: buf_out.as_entire_binding(),
+                },
             ],
         });
-        
+
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             bind_group_layouts: &[&bgl],
             push_constant_ranges: &[],
         });
-        
+
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: None,
             layout: Some(&pl),
             module: &shader,
             entry_point: "main",
         });
-        
+
         let workgroups = (size as u32).div_ceil(workgroup_size).min(65535);
-        
+
         // Warmup
         for _ in 0..3 {
-            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            let mut encoder =
+                device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
                 pass.set_pipeline(&pipeline);
@@ -275,13 +288,14 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
             queue.submit(Some(encoder.finish()));
         }
         device.poll(wgpu::Maintain::Wait);
-        
+
         // Measure
         let iterations = 10;
         let start = Instant::now();
-        
+
         for _ in 0..iterations {
-            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            let mut encoder =
+                device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
                 pass.set_pipeline(&pipeline);
@@ -291,14 +305,14 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
             queue.submit(Some(encoder.finish()));
             device.poll(wgpu::Maintain::Wait);
         }
-        
+
         let elapsed = start.elapsed();
         let time_per_op = elapsed.as_secs_f64() / iterations as f64;
-        
+
         // Bandwidth: (read A + read B + write C) = 3 * size * 4 bytes
         let bytes = size * 3 * 4;
         let bandwidth_gbps = bytes as f64 / time_per_op / 1e9;
-        
+
         Some(bandwidth_gbps)
     }
 
@@ -311,8 +325,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     ) -> f64 {
         // Use tiny workload to measure pure overhead
         let size = 1024usize;
-        
-        let shader_src = format!(r#"
+
+        let shader_src = format!(
+            r#"
 @group(0) @binding(0) var<storage, read_write> data: array<f32>;
 
 @compute @workgroup_size({})
@@ -322,21 +337,23 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
         data[idx] = data[idx] + 1.0;
     }}
 }}
-"#, workgroup_size);
+"#,
+            workgroup_size
+        );
 
         let data: Vec<f32> = vec![0.0; size];
-        
+
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Data"),
             contents: bytemuck::cast_slice(&data),
             usage: wgpu::BufferUsages::STORAGE,
         });
-        
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(shader_src.into()),
         });
-        
+
         let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: None,
             entries: &[wgpu::BindGroupLayoutEntry {
@@ -350,31 +367,35 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
                 count: None,
             }],
         });
-        
+
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: &bgl,
-            entries: &[wgpu::BindGroupEntry { binding: 0, resource: buffer.as_entire_binding() }],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
         });
-        
+
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             bind_group_layouts: &[&bgl],
             push_constant_ranges: &[],
         });
-        
+
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: None,
             layout: Some(&pl),
             module: &shader,
             entry_point: "main",
         });
-        
+
         let workgroups = (size as u32).div_ceil(workgroup_size);
-        
+
         // Warmup
         for _ in 0..10 {
-            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            let mut encoder =
+                device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
                 pass.set_pipeline(&pipeline);
@@ -384,13 +405,14 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
             queue.submit(Some(encoder.finish()));
         }
         device.poll(wgpu::Maintain::Wait);
-        
+
         // Measure many iterations
         let iterations = 100;
         let start = Instant::now();
-        
+
         for _ in 0..iterations {
-            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            let mut encoder =
+                device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
                 pass.set_pipeline(&pipeline);
@@ -400,7 +422,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
             queue.submit(Some(encoder.finish()));
             device.poll(wgpu::Maintain::Wait);
         }
-        
+
         let elapsed = start.elapsed();
         elapsed.as_secs_f64() * 1e6 / iterations as f64
     }
@@ -430,7 +452,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
         device_name: &str,
     ) -> GpuCalibration {
         let cal = self.calibrate_device(device, queue, device_name);
-        
+
         {
             let mut cals = self.calibrations.write().unwrap();
             cals.insert(device_name.to_string(), cal.clone());
@@ -447,7 +469,7 @@ impl Default for AutoTuner {
     }
 }
 
-/// Global auto-tuner instance
+// Global auto-tuner instance (singleton pattern via lazy_static)
 lazy_static::lazy_static! {
     pub static ref GLOBAL_TUNER: AutoTuner = {
         // Try to use a standard cache location
@@ -458,14 +480,14 @@ lazy_static::lazy_static! {
                     .map(|h| PathBuf::from(h).join(".cache"))
                     .unwrap_or_else(|_| std::env::temp_dir())
             });
-        
+
         let cache_path = cache_dir.join("barracuda").join("gpu_calibrations.json");
-        
+
         // Ensure directory exists
         if let Some(parent) = cache_path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        
+
         AutoTuner::with_cache(cache_path)
     };
 }

@@ -39,23 +39,23 @@ impl Bert {
     pub fn new(config: BertConfig) -> Self {
         Self { config }
     }
-    
+
     /// Load from HuggingFace Hub (placeholder)
     pub fn from_pretrained(_model_id: &str) -> Result<Self> {
         // In full implementation:
         // 1. Download from HuggingFace Hub
         // 2. Load weights into Burn tensors
         // 3. Initialize model
-        
+
         Ok(Self::new(BertConfig::default()))
     }
-    
+
     /// Get number of parameters
     pub fn num_parameters(&self) -> usize {
         // Approximate BERT-base parameters
         110_000_000
     }
-    
+
     /// Run inference (placeholder)
     pub fn forward(&self, _input_ids: &[u32]) -> Result<Vec<f32>> {
         // Placeholder output

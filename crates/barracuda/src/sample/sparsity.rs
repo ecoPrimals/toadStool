@@ -190,7 +190,7 @@ impl SparsitySamplerConfig {
             n_iterations: 5,
             tol: 1e-6,
             kernel: RBFKernel::ThinPlateSpline,
-            smoothing: 1e-3, // Reasonable default if auto_smoothing fails
+            smoothing: 1e-3,      // Reasonable default if auto_smoothing fails
             auto_smoothing: true, // CHANGED: prevent overfitting (hotSpring L2 fix)
             penalty_filter: PenaltyFilter::None,
             warm_start_seeds: Vec::new(),
@@ -425,10 +425,7 @@ impl SparsitySamplerResult {
     pub fn top_k_seeds(&self, k: usize) -> Vec<Vec<f64>> {
         let mut records: Vec<_> = self.cache.records().to_vec();
         records.sort_by(|a, b| a.f.partial_cmp(&b.f).unwrap_or(std::cmp::Ordering::Equal));
-        records.into_iter()
-            .take(k)
-            .map(|r| r.x)
-            .collect()
+        records.into_iter().take(k).map(|r| r.x).collect()
     }
 
     /// Get total number of true objective evaluations.
@@ -438,7 +435,8 @@ impl SparsitySamplerResult {
 
     /// Get evaluations per iteration.
     pub fn evals_per_iteration(&self) -> Vec<usize> {
-        self.iteration_results.iter()
+        self.iteration_results
+            .iter()
             .map(|r| r.n_new_evals)
             .collect()
     }
@@ -501,7 +499,7 @@ fn filter_training_data(
             // Compute median
             let mut sorted: Vec<f64> = y_data.to_vec();
             sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            let median = if sorted.len() % 2 == 0 {
+            let median = if sorted.len().is_multiple_of(2) {
                 (sorted[sorted.len() / 2 - 1] + sorted[sorted.len() / 2]) / 2.0
             } else {
                 sorted[sorted.len() / 2]
@@ -510,7 +508,7 @@ fn filter_training_data(
             // Compute MAD (median absolute deviation)
             let mut deviations: Vec<f64> = y_data.iter().map(|&y| (y - median).abs()).collect();
             deviations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            let mad = if deviations.len() % 2 == 0 {
+            let mad = if deviations.len().is_multiple_of(2) {
                 (deviations[deviations.len() / 2 - 1] + deviations[deviations.len() / 2]) / 2.0
             } else {
                 deviations[deviations.len() / 2]
@@ -660,29 +658,29 @@ where
             }
         }
 
-        let surrogate = match RBFSurrogate::train(&x_data, &y_data, config.kernel, current_smoothing)
-        {
-            Ok(s) => s,
-            Err(_) => {
-                // If surrogate training fails (e.g., singular matrix), fall back
-                // to direct multi-start NM on the true objective
-                let nm_result = run_nm_batch(&f, bounds, config, iter, &mut cache)?;
-                iteration_results.push(IterationResult {
-                    iteration: iter,
-                    best_f: nm_result.f_best,
-                    n_new_evals: cache.len() - iter_start_evals,
-                    total_evals: cache.len(),
-                    surrogate_error: None,
-                    used_gpu: false,
-                });
-                continue;
-            }
-        };
+        let surrogate =
+            match RBFSurrogate::train(&x_data, &y_data, config.kernel, current_smoothing) {
+                Ok(s) => s,
+                Err(_) => {
+                    // If surrogate training fails (e.g., singular matrix), fall back
+                    // to direct multi-start NM on the true objective
+                    let nm_result = run_nm_batch(&f, bounds, config, iter, &mut cache)?;
+                    iteration_results.push(IterationResult {
+                        iteration: iter,
+                        best_f: nm_result.f_best,
+                        n_new_evals: cache.len() - iter_start_evals,
+                        total_evals: cache.len(),
+                        surrogate_error: None,
+                        used_gpu: false,
+                    });
+                    continue;
+                }
+            };
 
         // Compute surrogate quality metric (LOO-CV RMSE if available, else train error)
-        let surrogate_error = surrogate.loo_cv_rmse().unwrap_or_else(|_| {
-            compute_surrogate_rmse(&surrogate, &x_data, &y_data)
-        });
+        let surrogate_error = surrogate
+            .loo_cv_rmse()
+            .unwrap_or_else(|_| compute_surrogate_rmse(&surrogate, &x_data, &y_data));
 
         // Use surrogate to find promising regions:
         // Run multi-start NM on the SURROGATE (cheap evaluations!)

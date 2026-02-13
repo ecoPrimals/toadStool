@@ -123,9 +123,7 @@ pub struct OperationBenchmark {
 impl OperationBenchmark {
     /// Find the crossover point where GPU becomes faster
     pub fn crossover_index(&self, min_speedup: f64) -> Option<usize> {
-        self.speedups
-            .iter()
-            .position(|&s| s >= min_speedup)
+        self.speedups.iter().position(|&s| s >= min_speedup)
     }
 
     /// Get the crossover size
@@ -159,7 +157,9 @@ impl OperationBenchmark {
             "{:<15} threshold: {:>6}  crossover: {:>6}  max_speedup: {:.2}x  gpu: {}",
             self.operation,
             threshold,
-            crossover.map(|s| s.to_string()).unwrap_or_else(|| "N/A".to_string()),
+            crossover
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "N/A".to_string()),
             max_speedup,
             if self.gpu_available { "yes" } else { "no" }
         )
@@ -200,7 +200,8 @@ impl BenchmarkResult {
         let mut thresholds = HashMap::new();
 
         for (name, bench) in &self.operations {
-            let threshold = bench.optimal_threshold(self.config.min_speedup, self.config.safety_margin);
+            let threshold =
+                bench.optimal_threshold(self.config.min_speedup, self.config.safety_margin);
             // Note: We need 'static str for DispatchConfig, so we leak the string
             // This is acceptable for threshold configuration which lives for program duration
             let name_static: &'static str = Box::leak(name.clone().into_boxed_str());
@@ -215,7 +216,8 @@ impl BenchmarkResult {
         self.operations
             .iter()
             .map(|(name, bench)| {
-                let threshold = bench.optimal_threshold(self.config.min_speedup, self.config.safety_margin);
+                let threshold =
+                    bench.optimal_threshold(self.config.min_speedup, self.config.safety_margin);
                 let crossover = bench.crossover_size(self.config.min_speedup);
                 let max_speedup = bench.max_speedup();
 
@@ -247,9 +249,13 @@ impl BenchmarkResult {
     pub fn summary(&self) -> String {
         let mut lines = Vec::new();
 
-        lines.push("═══════════════════════════════════════════════════════════════════".to_string());
+        lines.push(
+            "═══════════════════════════════════════════════════════════════════".to_string(),
+        );
         lines.push("                    DISPATCH BENCHMARK RESULTS".to_string());
-        lines.push("═══════════════════════════════════════════════════════════════════".to_string());
+        lines.push(
+            "═══════════════════════════════════════════════════════════════════".to_string(),
+        );
 
         if let Some(gpu) = &self.gpu_name {
             lines.push(format!("GPU: {}", gpu));
@@ -260,12 +266,16 @@ impl BenchmarkResult {
         lines.push(format!("Sizes tested: {:?}", self.config.sizes));
         lines.push(String::new());
 
-        lines.push("─────────────────────────────────────────────────────────────────────".to_string());
+        lines.push(
+            "─────────────────────────────────────────────────────────────────────".to_string(),
+        );
         lines.push(format!(
             "{:<15} {:>10} {:>10} {:>12} {:>6}",
             "Operation", "Threshold", "Crossover", "Max Speedup", "GPU"
         ));
-        lines.push("─────────────────────────────────────────────────────────────────────".to_string());
+        lines.push(
+            "─────────────────────────────────────────────────────────────────────".to_string(),
+        );
 
         let mut results: Vec<_> = self.threshold_results();
         results.sort_by(|a, b| a.operation.cmp(&b.operation));
@@ -275,13 +285,22 @@ impl BenchmarkResult {
                 "{:<15} {:>10} {:>10} {:>11.2}x {:>6}",
                 result.operation,
                 result.threshold,
-                result.crossover_size.map(|s| s.to_string()).unwrap_or_else(|| "N/A".to_string()),
+                result
+                    .crossover_size
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "N/A".to_string()),
                 result.max_speedup,
-                if result.confidence > 0.5 { "high" } else { "low" }
+                if result.confidence > 0.5 {
+                    "high"
+                } else {
+                    "low"
+                }
             ));
         }
 
-        lines.push("═══════════════════════════════════════════════════════════════════".to_string());
+        lines.push(
+            "═══════════════════════════════════════════════════════════════════".to_string(),
+        );
 
         lines.join("\n")
     }
@@ -405,9 +424,7 @@ impl BenchmarkSuite {
 
     /// Run benchmarks for common operations
     pub fn run_common(&self) -> Result<BenchmarkResult> {
-        let operations = vec![
-            "matmul", "erf", "exp", "sum", "cdist",
-        ];
+        let operations = vec!["matmul", "erf", "exp", "sum", "cdist"];
 
         self.run_operations(&operations)
     }
@@ -441,15 +458,28 @@ impl BenchmarkSuite {
     pub fn run_all(&self) -> Result<BenchmarkResult> {
         let operations = vec![
             // Special functions
-            "erf", "gamma", "bessel_j0",
+            "erf",
+            "gamma",
+            "bessel_j0",
             // Linear algebra
-            "matmul", "cholesky", "eigh", "lu", "qr", "svd", "solve",
+            "matmul",
+            "cholesky",
+            "eigh",
+            "lu",
+            "qr",
+            "svd",
+            "solve",
             // Distance
             "cdist",
             // Element-wise
-            "exp", "log", "sqrt", "sin", "cos",
+            "exp",
+            "log",
+            "sqrt",
+            "sin",
+            "cos",
             // Reductions
-            "sum", "max",
+            "sum",
+            "max",
             // Surrogate
             "rbf_kernel",
         ];
@@ -510,7 +540,7 @@ fn generate_test_data(operation: &str, size: usize) -> TestData {
                 "erf" | "erfc" => x.sin(), // [-1, 1]
                 "gamma" | "lgamma" | "digamma" => 1.0 + (x.sin() * 0.5 + 0.5) * 10.0, // [1, 11]
                 "bessel_j0" | "bessel_j1" => x * 10.0, // [0, 10π]
-                "exp" => x.sin() * 2.0, // [-2, 2] to avoid overflow
+                "exp" => x.sin() * 2.0,    // [-2, 2] to avoid overflow
                 "log" | "sqrt" => 1.0 + x.sin().abs() * 10.0, // [1, 11]
                 "cholesky" => {
                     // Generate positive definite matrix
@@ -682,21 +712,21 @@ fn run_gpu_operation(operation: &str, test_data: &TestData) -> Result<()> {
     let elements = match operation {
         "matmul" | "cholesky" | "eigh" | "lu" | "qr" | "svd" | "solve" => size * size * size, // O(N³)
         "cdist" | "rbf_kernel" => size * size * 10, // O(N² × D)
-        _ => size, // O(N)
+        _ => size,                                  // O(N)
     };
 
     // Scale by GPU parallelism advantage (simulated)
     let gpu_speedup = match operation {
-        "matmul" => 50.0, // Highly parallel
-        "exp" | "log" | "sqrt" | "sin" | "cos" => 100.0, // Embarrassingly parallel
-        "sum" | "max" => 20.0, // Reduction (less parallel)
+        "matmul" => 50.0,                                            // Highly parallel
+        "exp" | "log" | "sqrt" | "sin" | "cos" => 100.0,             // Embarrassingly parallel
+        "sum" | "max" => 20.0,                                       // Reduction (less parallel)
         "cholesky" | "lu" | "qr" | "svd" | "eigh" | "solve" => 10.0, // Sequential dependencies
-        "cdist" | "rbf_kernel" => 30.0, // Parallel but memory-bound
+        "cdist" | "rbf_kernel" => 30.0,                              // Parallel but memory-bound
         _ => 20.0,
     };
 
-    let simulated_time = dispatch_overhead
-        + per_element_time.mul_f64((elements as f64) / gpu_speedup);
+    let simulated_time =
+        dispatch_overhead + per_element_time.mul_f64((elements as f64) / gpu_speedup);
 
     // Actually wait to simulate real timing
     std::thread::sleep(simulated_time.min(std::time::Duration::from_millis(10)));
@@ -736,7 +766,7 @@ mod tests {
             gpu_times: vec![
                 Duration::from_micros(100), // GPU slower at small size
                 Duration::from_micros(100),
-                Duration::from_micros(50),  // Crossover around here
+                Duration::from_micros(50), // Crossover around here
                 Duration::from_micros(30),
                 Duration::from_micros(20),
             ],

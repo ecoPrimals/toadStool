@@ -406,7 +406,11 @@ mod tests {
 
         // Brent should converge faster than 50 iterations
         let result = brent(f, 1.0, 2.0, 1e-12, 100).unwrap();
-        assert!(result.iterations < 15, "Brent took {} iterations", result.iterations);
+        assert!(
+            result.iterations < 15,
+            "Brent took {} iterations",
+            result.iterations
+        );
     }
 
     #[test]

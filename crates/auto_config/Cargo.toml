@@ -61,4 +61,5 @@ tempfile = { workspace = true }
 default = []
 gpu = []
 ml-optimization = []
-enterprise-features = [] 
+enterprise-features = []
+test-mocks = []  # Enable mock implementations for testing 

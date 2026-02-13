@@ -90,9 +90,7 @@ impl GenEighDecomposition {
             let lambda = self.eigenvalues[i];
 
             // Extract eigenvector i (column i in row-major format)
-            let x: Vec<f64> = (0..n)
-                .map(|row| self.eigenvectors[row * n + i])
-                .collect();
+            let x: Vec<f64> = (0..n).map(|row| self.eigenvectors[row * n + i]).collect();
 
             // Compute Ax
             let mut ax = vec![0.0; n];
@@ -431,11 +429,7 @@ mod tests {
         let result = gen_eigh_f64(&a, &b, 2).unwrap();
 
         let residual = result.verify(&a, &b);
-        assert!(
-            residual < 1e-10,
-            "Residual too large: {}",
-            residual
-        );
+        assert!(residual < 1e-10, "Residual too large: {}", residual);
     }
 
     #[test]
@@ -458,11 +452,7 @@ mod tests {
 
         // Verify all eigenpairs
         let residual = result.verify(&a, &b);
-        assert!(
-            residual < 1e-9,
-            "Residual too large: {}",
-            residual
-        );
+        assert!(residual < 1e-9, "Residual too large: {}", residual);
     }
 
     #[test]
@@ -553,10 +543,6 @@ mod tests {
         let result = gen_eigh_f64(&a, &b, n).unwrap();
 
         let residual = result.verify(&a, &b);
-        assert!(
-            residual < 1e-8,
-            "Residual too large for 5×5: {}",
-            residual
-        );
+        assert!(residual < 1e-8, "Residual too large for 5×5: {}", residual);
     }
 }

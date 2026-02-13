@@ -291,12 +291,7 @@ pub fn cg_solve_with_config(
 ///
 /// assert!(result.converged);
 /// ```
-pub fn bicgstab_solve(
-    a: &CsrMatrix,
-    b: &[f64],
-    tol: f64,
-    max_iter: usize,
-) -> Result<SolverResult> {
+pub fn bicgstab_solve(a: &CsrMatrix, b: &[f64], tol: f64, max_iter: usize) -> Result<SolverResult> {
     let config = SolverConfig::default()
         .with_tolerance(tol)
         .with_max_iterations(max_iter);
@@ -602,7 +597,11 @@ mod tests {
         let result = cg_solve(&a, &b, 1e-10, 500).unwrap();
 
         assert!(result.converged);
-        assert!(result.iterations < 200, "Too many iterations: {}", result.iterations);
+        assert!(
+            result.iterations < 200,
+            "Too many iterations: {}",
+            result.iterations
+        );
     }
 
     #[test]

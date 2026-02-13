@@ -99,10 +99,10 @@ pub use ai_mcp_interface::{
     AiMcpInterface, AiPreferences, AiSession, ConfigurationSummary, ExecutionIntent, McpRequest,
     McpRequestType, McpResponse, PerformanceExpectations, ResourceHints, SessionInfo,
 };
-pub use capability_traits::{
-    EcosystemServiceDiscoverer, HardwareCapabilityDetector, MockEcosystemDiscoverer,
-    MockHardwareDetector,
-};
+pub use capability_traits::{EcosystemServiceDiscoverer, HardwareCapabilityDetector};
+
+#[cfg(any(test, feature = "test-mocks"))]
+pub use capability_traits::{MockEcosystemDiscoverer, MockHardwareDetector};
 pub use ecosystem::{DiscoveredServices, EcosystemDiscoverer, ServiceInfo, ServiceType};
 pub use hardware::{
     CpuInfo, GpuInfo, HardwareDetector, MemoryInfo, PerformanceClass, StorageInfo, StorageType,

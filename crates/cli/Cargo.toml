@@ -151,5 +151,8 @@ gpu = ["toadstool-runtime-gpu"]  # WebGPU by default (pure Rust, universal)
 gpu-ai = ["gpu", "toadstool-runtime-gpu/ai-ml"]  # Add CUDA for Python AI
 gpu-full = ["gpu", "toadstool-runtime-gpu/all-backends"]  # Maximum compatibility
 
+# NPU FEATURES: Neuromorphic accelerator support
+npu = []  # Enables Akida NPU commands
+
 # PURE RUST: Build without C dependencies (no WASM, minimal features)
 pure-rust = ["ecosystem", "universal", "monitoring"]

@@ -15,8 +15,8 @@
 
 pub mod device;
 pub mod engine;
-pub mod models;
 pub mod loaders;
+pub mod models;
 
 pub use device::{BurnDevice, DeviceInfo};
 pub use engine::InferenceEngine;
@@ -26,16 +26,16 @@ pub use engine::InferenceEngine;
 pub enum Error {
     #[error("Device initialization failed: {0}")]
     DeviceInit(String),
-    
+
     #[error("Model loading failed: {0}")]
     ModelLoad(String),
-    
+
     #[error("Inference failed: {0}")]
     Inference(String),
-    
+
     #[error("Unsupported model type: {0}")]
     UnsupportedModel(String),
-    
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }

@@ -34,11 +34,17 @@ async fn main() -> Result<()> {
 
     // Find NVIDIA and AMD GPUs
     let nvidia_idx = adapters.iter().position(|a| a.name.contains("NVIDIA"));
-    let amd_idx = adapters.iter().position(|a| a.name.contains("AMD") || a.name.contains("RADV"));
+    let amd_idx = adapters
+        .iter()
+        .position(|a| a.name.contains("AMD") || a.name.contains("RADV"));
 
     if nvidia_idx.is_none() || amd_idx.is_none() {
         println!("⚠️  Need both NVIDIA and AMD GPUs for parity test");
-        println!("   Found: NVIDIA={}, AMD={}", nvidia_idx.is_some(), amd_idx.is_some());
+        println!(
+            "   Found: NVIDIA={}, AMD={}",
+            nvidia_idx.is_some(),
+            amd_idx.is_some()
+        );
         return Ok(());
     }
 
@@ -68,28 +74,40 @@ async fn main() -> Result<()> {
 
     // Test round-trip
     let a_retrieved = a_tensor.to_vec()?;
-    let matches = a_data.iter().zip(a_retrieved.iter())
+    let matches = a_data
+        .iter()
+        .zip(a_retrieved.iter())
         .all(|(orig, ret)| (orig - ret).abs() < 1e-6);
 
-    println!("  Tensor creation: {}", if matches { "✅ PASS" } else { "❌ FAIL" });
+    println!(
+        "  Tensor creation: {}",
+        if matches { "✅ PASS" } else { "❌ FAIL" }
+    );
 
     // Test element-wise add (if available)
     let c_tensor = a_tensor.add(&b_tensor)?;
     let c_result = c_tensor.to_vec()?;
-    
-    let expected_sum = a_data.iter().zip(b_data.iter())
+
+    let expected_sum = a_data
+        .iter()
+        .zip(b_data.iter())
         .map(|(a, b)| a + b)
         .collect::<Vec<f32>>();
-    
-    let add_matches = c_result.iter().zip(expected_sum.iter())
+
+    let add_matches = c_result
+        .iter()
+        .zip(expected_sum.iter())
         .all(|(got, exp)| (got - exp).abs() < 1e-5);
-    
-    println!("  Element-wise add: {}", if add_matches { "✅ PASS" } else { "❌ FAIL" });
+
+    println!(
+        "  Element-wise add: {}",
+        if add_matches { "✅ PASS" } else { "❌ FAIL" }
+    );
     println!();
 
     println!("═══ Test 2: Shape Operations ═══");
     println!();
-    
+
     println!("  a_tensor shape: {:?}", a_tensor.shape());
     println!("  b_tensor shape: {:?}", b_tensor.shape());
     println!("  c_tensor shape: {:?}", c_tensor.shape());

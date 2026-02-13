@@ -20,7 +20,11 @@ static TEST_DEVICE: OnceCell<Arc<WgpuDevice>> = OnceCell::const_new();
 async fn get_test_device() -> Arc<WgpuDevice> {
     TEST_DEVICE
         .get_or_init(|| async {
-            Arc::new(WgpuDevice::new().await.expect("Failed to create test device"))
+            Arc::new(
+                WgpuDevice::new()
+                    .await
+                    .expect("Failed to create test device"),
+            )
         })
         .await
         .clone()
@@ -43,7 +47,7 @@ async fn e2e_tensor_add_uses_pooling() {
 
     // Perform add operation (output uses pooled buffer)
     let c = a.add(&b).unwrap();
-    
+
     // Verify result
     let result = c.to_vec().unwrap();
     assert_eq!(result, vec![6.0, 8.0, 10.0, 12.0]);
@@ -67,7 +71,7 @@ async fn e2e_tensor_mul_uses_pooling() {
     let b = Tensor::from_data(&[2.0, 3.0, 4.0, 5.0], vec![4], device.clone()).unwrap();
 
     let c = a.mul(&b).unwrap();
-    
+
     let result = c.to_vec().unwrap();
     assert_eq!(result, vec![2.0, 6.0, 12.0, 20.0]);
     assert!(c.is_pooled());
@@ -84,18 +88,20 @@ async fn e2e_chained_operations_reuse_pool() {
     // Chain of operations with explicit drops to return buffers
     let c = a.add(&b).unwrap();
     let _result1 = c.to_vec().unwrap();
-    drop(c);  // Returns buffer to pool
-    
+    drop(c); // Returns buffer to pool
+
     let d = a.add(&b).unwrap();
-    
+
     // Verify the result is correct
     let result = d.to_vec().unwrap();
     assert_eq!(result, vec![2.0, 3.0, 4.0, 5.0]);
 
     // Check reuse happened
     let stats = ctx.stats();
-    assert!(stats.buffer_reuses > 0 || stats.buffer_allocations > 0,
-        "Expected some buffer activity");
+    assert!(
+        stats.buffer_reuses > 0 || stats.buffer_allocations > 0,
+        "Expected some buffer activity"
+    );
 }
 
 #[tokio::test]
@@ -123,10 +129,14 @@ async fn e2e_multiple_operations_steady_state() {
     }
 
     let stats_after = ctx.stats();
-    
+
     // Verify buffer reuse is happening
     let new_reuses = stats_after.buffer_reuses - stats_before.buffer_reuses;
-    assert!(new_reuses > 0, "Expected buffer reuses in steady state, got {}", new_reuses);
+    assert!(
+        new_reuses > 0,
+        "Expected buffer reuses in steady state, got {}",
+        new_reuses
+    );
 }
 
 // ============================================================================
@@ -146,8 +156,8 @@ async fn chaos_concurrent_tensor_operations() {
         let result = a.add(&b).unwrap();
         let vec = result.to_vec().unwrap();
         assert_eq!(vec.len(), 100);
-        assert_eq!(vec[0], 0.0);  // 0 + 0 = 0
-        assert_eq!(vec[99], 198.0);  // 99 + 99 = 198
+        assert_eq!(vec[0], 0.0); // 0 + 0 = 0
+        assert_eq!(vec[99], 198.0); // 99 + 99 = 198
     }
 }
 
@@ -165,17 +175,24 @@ async fn chaos_rapid_acquire_release() {
     }
 
     let stats_after = ctx.stats();
-    
+
     // Should have buffer reuses after the first allocation
     let total_activity = (stats_after.buffer_allocations - stats_before.buffer_allocations)
         + (stats_after.buffer_reuses - stats_before.buffer_reuses);
-    
-    assert!(total_activity >= 100, "Expected at least 100 buffer operations");
-    
+
+    assert!(
+        total_activity >= 100,
+        "Expected at least 100 buffer operations"
+    );
+
     // Check reuse rate (allowing for initial allocation)
     if total_activity > 1 {
         let reuses = stats_after.buffer_reuses - stats_before.buffer_reuses;
-        assert!(reuses >= 90, "Expected high reuse rate, got {} reuses", reuses);
+        assert!(
+            reuses >= 90,
+            "Expected high reuse rate, got {} reuses",
+            reuses
+        );
     }
 }
 
@@ -186,9 +203,9 @@ async fn chaos_mixed_sizes_stress() {
 
     // Mix of different tensor sizes
     let sizes = [10, 100, 1000, 10000, 100, 10, 1000, 100];
-    
+
     let stats_before = ctx.stats();
-    
+
     for &size in &sizes {
         let data: Vec<f32> = (0..size).map(|i| i as f32).collect();
         let a = Tensor::from_data(&data, vec![size], device.clone()).unwrap();
@@ -224,11 +241,11 @@ async fn chaos_mixed_sizes_stress() {
 #[tokio::test]
 async fn fault_small_tensor_operations() {
     let device = get_test_device().await;
-    
+
     // Create small tensors (edge case)
     let a = Tensor::from_data(&[1.0], vec![1], device.clone()).unwrap();
     let b = Tensor::from_data(&[2.0], vec![1], device.clone()).unwrap();
-    
+
     let c = a.add(&b).unwrap();
     let result = c.to_vec().unwrap();
     assert_eq!(result, vec![3.0]);
@@ -249,11 +266,11 @@ async fn fault_pool_survives_device_poll() {
     // Buffers should still be valid
     assert!(buf1.size() >= 4000);
     assert!(buf2.size() >= 8000);
-    
+
     // Release and reacquire
     drop(buf1);
     drop(buf2);
-    
+
     let buf3 = ctx.acquire_pooled_output(1000);
     assert!(buf3.size() >= 4000);
 }
@@ -264,7 +281,10 @@ async fn fault_tensor_is_pooled_check() {
 
     // User-created tensor is NOT pooled
     let owned = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
-    assert!(!owned.is_pooled(), "User-created tensor should not be pooled");
+    assert!(
+        !owned.is_pooled(),
+        "User-created tensor should not be pooled"
+    );
 
     // Operation output IS pooled
     let a = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
@@ -283,12 +303,12 @@ async fn fault_large_tensor_allocation() {
     // Allocate a moderately large buffer (1M elements = 4MB)
     let buf = ctx.acquire_pooled_output(1_000_000);
     assert!(buf.size() >= 4_000_000);
-    
+
     // Return and reacquire
     drop(buf);
     let buf2 = ctx.acquire_pooled_output(1_000_000);
     assert!(buf2.size() >= 4_000_000);
-    
+
     let stats_after = ctx.stats();
     // Should have at least one reuse (from the second acquire)
     assert!(
@@ -307,7 +327,7 @@ async fn correctness_pooled_results_accurate() {
 
     let a_data: Vec<f32> = (0..1000).map(|i| i as f32).collect();
     let b_data: Vec<f32> = (0..1000).map(|i| (i * 2) as f32).collect();
-    
+
     let a = Tensor::from_data(&a_data, vec![1000], device.clone()).unwrap();
     let b = Tensor::from_data(&b_data, vec![1000], device.clone()).unwrap();
 
@@ -315,13 +335,21 @@ async fn correctness_pooled_results_accurate() {
     for iteration in 0..10 {
         let c = a.add(&b).unwrap();
         let result = c.to_vec().unwrap();
-        
+
         // Verify sample elements
         assert_eq!(result[0], 0.0, "Iteration {}: element 0 wrong", iteration);
-        assert_eq!(result[500], 1500.0, "Iteration {}: element 500 wrong", iteration);  // 500 + 1000
-        assert_eq!(result[999], 2997.0, "Iteration {}: element 999 wrong", iteration);  // 999 + 1998
-        
-        drop(c);  // Return buffer to pool
+        assert_eq!(
+            result[500], 1500.0,
+            "Iteration {}: element 500 wrong",
+            iteration
+        ); // 500 + 1000
+        assert_eq!(
+            result[999], 2997.0,
+            "Iteration {}: element 999 wrong",
+            iteration
+        ); // 999 + 1998
+
+        drop(c); // Return buffer to pool
     }
 }
 
@@ -334,18 +362,22 @@ async fn correctness_reused_buffer_no_stale_data() {
     let b1 = Tensor::from_data(&[1.0; 100], vec![100], device.clone()).unwrap();
     let c1 = a1.add(&b1).unwrap();
     let result1 = c1.to_vec().unwrap();
-    assert!(result1.iter().all(|&x| x == 2.0), "First operation should be 2.0");
-    drop(c1);  // Return buffer to pool
+    assert!(
+        result1.iter().all(|&x| x == 2.0),
+        "First operation should be 2.0"
+    );
+    drop(c1); // Return buffer to pool
 
     // Second operation: 10+10=20 (same size, should reuse buffer)
     let a2 = Tensor::from_data(&[10.0; 100], vec![100], device.clone()).unwrap();
     let b2 = Tensor::from_data(&[10.0; 100], vec![100], device.clone()).unwrap();
     let c2 = a2.add(&b2).unwrap();
     let result2 = c2.to_vec().unwrap();
-    
+
     // Must be 20, not 2 (no stale data)
     assert!(
         result2.iter().all(|&x| x == 20.0),
-        "Buffer reuse must not contain stale data: got {:?}", &result2[..5]
+        "Buffer reuse must not contain stale data: got {:?}",
+        &result2[..5]
     );
 }

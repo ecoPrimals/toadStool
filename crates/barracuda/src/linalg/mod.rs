@@ -79,19 +79,13 @@ pub mod sparse;
 pub use solve::solve_f64;
 
 // Re-export LU decomposition from ops/linalg (already f64)
-pub use crate::ops::linalg::{
-    lu_decompose, lu_det, lu_inverse, lu_solve, LuDecomposition,
-};
+pub use crate::ops::linalg::{lu_decompose, lu_det, lu_inverse, lu_solve, LuDecomposition};
 
 // Re-export QR decomposition from ops/linalg (already f64)
-pub use crate::ops::linalg::{
-    qr_decompose, qr_least_squares, QrDecomposition,
-};
+pub use crate::ops::linalg::{qr_decompose, qr_least_squares, QrDecomposition};
 
 // Re-export SVD decomposition from ops/linalg (already f64)
-pub use crate::ops::linalg::{
-    svd_decompose, svd_pinv, svd_values, SvdDecomposition,
-};
+pub use crate::ops::linalg::{svd_decompose, svd_pinv, svd_values, SvdDecomposition};
 
 // Re-export tridiagonal solver from ops/linalg
 pub use crate::ops::linalg::tridiagonal_solve;

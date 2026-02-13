@@ -115,10 +115,7 @@ pub fn convergence_diagnostics(
     }
 
     // Find best value
-    let best_f = history
-        .iter()
-        .cloned()
-        .fold(f64::INFINITY, f64::min);
+    let best_f = history.iter().cloned().fold(f64::INFINITY, f64::min);
     let current_f = history[n - 1];
 
     // Relative gap from best
@@ -171,7 +168,9 @@ pub fn convergence_diagnostics(
         ConvergenceState::Improving
     } else if improvement_rate > improvement_threshold {
         ConvergenceState::Diverging
-    } else if std_dev > improvement_threshold * 10.0 && improvement_rate.abs() < improvement_threshold {
+    } else if std_dev > improvement_threshold * 10.0
+        && improvement_rate.abs() < improvement_threshold
+    {
         ConvergenceState::Oscillating
     } else if stagnant_count >= patience {
         ConvergenceState::Stagnant
@@ -245,11 +244,7 @@ fn linear_slope(values: &[f64]) -> f64 {
 /// let improving = vec![100.0, 50.0, 25.0, 12.0];
 /// assert!(!should_stop_early(&improving, 0.1, 3));
 /// ```
-pub fn should_stop_early(
-    history: &[f64],
-    improvement_threshold: f64,
-    patience: usize,
-) -> bool {
+pub fn should_stop_early(history: &[f64], improvement_threshold: f64, patience: usize) -> bool {
     if history.len() < patience + 1 {
         return false;
     }

@@ -46,13 +46,25 @@ impl Mul {
         let lower = device_name.to_lowercase();
         let max_dispatch = 65535u32;
         let (nvidia_wg, amd_wg) = (64u32, 128u32);
-        
-        if lower.contains("nvidia") || lower.contains("geforce") || lower.contains("rtx") || lower.contains("gtx") {
+
+        if lower.contains("nvidia")
+            || lower.contains("geforce")
+            || lower.contains("rtx")
+            || lower.contains("gtx")
+        {
             let needed = (size as u32).div_ceil(nvidia_wg);
-            if needed <= max_dispatch { (SHADER_WG64, nvidia_wg) } else { (SHADER_DEFAULT, 256) }
+            if needed <= max_dispatch {
+                (SHADER_WG64, nvidia_wg)
+            } else {
+                (SHADER_DEFAULT, 256)
+            }
         } else if lower.contains("amd") || lower.contains("radeon") || lower.contains("radv") {
             let needed = (size as u32).div_ceil(amd_wg);
-            if needed <= max_dispatch { (SHADER_WG128, amd_wg) } else { (SHADER_DEFAULT, 256) }
+            if needed <= max_dispatch {
+                (SHADER_WG128, amd_wg)
+            } else {
+                (SHADER_DEFAULT, 256)
+            }
         } else {
             (SHADER_DEFAULT, 256)
         }
@@ -79,32 +91,15 @@ impl Mul {
         // Get cached bind group layout
         let layout_sig = BindGroupLayoutSignature::elementwise_binary();
         let adapter_info = device.adapter_info();
-        let bind_group_layout = GLOBAL_CACHE.get_or_create_layout(
-            device.device(),
-            adapter_info,
-            layout_sig,
-            Some("Mul Layout"),
-        );
 
-        // Create bind group (must be per-call - references specific buffers)
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Mul Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.lhs.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.rhs.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: output_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        // Create bind group using TensorContext's cache
+        // This is a key optimization: bind group creation is ~100μs on NVIDIA
+        // Caching by (layout, buffer_ids) allows reuse when same tensors are used repeatedly
+        let bind_group = ctx.get_or_create_bind_group(
+            layout_sig,
+            &[self.lhs.buffer(), self.rhs.buffer(), &output_buffer],
+            Some("Mul Bind Group"),
+        );
 
         // Get cached pipeline (compiles shader on first call, reuses after)
         let pipeline = GLOBAL_CACHE.get_or_create_pipeline(

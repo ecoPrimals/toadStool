@@ -31,37 +31,39 @@ impl DeviceFingerprint {
     /// Create fingerprint from adapter info
     pub fn from_device_info(device: &Device, adapter_info: &wgpu::AdapterInfo) -> Self {
         use std::hash::Hasher;
-        
+
         // Hash the adapter name
         let mut name_hasher = std::collections::hash_map::DefaultHasher::new();
         adapter_info.name.hash(&mut name_hasher);
         let name_hash = name_hasher.finish();
-        
+
         // Hash backend + device type for additional uniqueness
         let mut backend_hasher = std::collections::hash_map::DefaultHasher::new();
-        format!("{:?}:{:?}", adapter_info.backend, adapter_info.device_type).hash(&mut backend_hasher);
+        format!("{:?}:{:?}", adapter_info.backend, adapter_info.device_type)
+            .hash(&mut backend_hasher);
         // Also include the wgpu global_id for uniqueness within the same instance
         device.global_id().hash(&mut backend_hasher);
         let backend_hash = backend_hasher.finish();
-        
+
         Self {
             name_hash,
             backend_hash,
         }
     }
-    
+
     /// Create from just adapter info (for quick lookups)
     pub fn from_adapter_info(adapter_info: &wgpu::AdapterInfo) -> Self {
         use std::hash::Hasher;
-        
+
         let mut name_hasher = std::collections::hash_map::DefaultHasher::new();
         adapter_info.name.hash(&mut name_hasher);
         let name_hash = name_hasher.finish();
-        
+
         let mut backend_hasher = std::collections::hash_map::DefaultHasher::new();
-        format!("{:?}:{:?}", adapter_info.backend, adapter_info.device_type).hash(&mut backend_hasher);
+        format!("{:?}:{:?}", adapter_info.backend, adapter_info.device_type)
+            .hash(&mut backend_hasher);
         let backend_hash = backend_hasher.finish();
-        
+
         Self {
             name_hash,
             backend_hash,
@@ -136,6 +138,15 @@ impl BindGroupLayoutSignature {
             uniform_buffers: 1,
         }
     }
+
+    /// Ternary op like FMA: d = a * b + c (3 read, 1 write)
+    pub fn elementwise_ternary() -> Self {
+        Self {
+            read_only_buffers: 3,
+            read_write_buffers: 1,
+            uniform_buffers: 0,
+        }
+    }
 }
 
 /// Key for caching bind group layouts (includes device fingerprint)
@@ -164,7 +175,12 @@ pub struct PipelineKey {
 }
 
 impl PipelineKey {
-    pub fn new(shader_source: &str, layout_signature: BindGroupLayoutSignature, entry_point: &str, device_fingerprint: DeviceFingerprint) -> Self {
+    pub fn new(
+        shader_source: &str,
+        layout_signature: BindGroupLayoutSignature,
+        entry_point: &str,
+        device_fingerprint: DeviceFingerprint,
+    ) -> Self {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         shader_source.hash(&mut hasher);
         Self {
@@ -177,16 +193,16 @@ impl PipelineKey {
 }
 
 /// Thread-safe pipeline cache
-/// 
+///
 /// Note: Keys include device ID to ensure GPU objects are only used
 /// with the device that created them.
 pub struct PipelineCache {
     /// Cached shader modules (keyed by source hash + device)
     shaders: DashMap<ShaderKey, Arc<ShaderModule>>,
-    
+
     /// Cached bind group layouts (keyed by signature + device)
     layouts: DashMap<BindGroupLayoutKey, Arc<BindGroupLayout>>,
-    
+
     /// Cached compute pipelines (keyed by shader + layout + entry + device)
     pipelines: DashMap<PipelineKey, Arc<ComputePipeline>>,
 }
@@ -213,7 +229,7 @@ impl PipelineCache {
     ) -> Arc<ShaderModule> {
         let fingerprint = DeviceFingerprint::from_device_info(device, adapter_info);
         let key = ShaderKey::new(source, fingerprint);
-        
+
         self.shaders
             .entry(key)
             .or_insert_with(|| {
@@ -238,7 +254,7 @@ impl PipelineCache {
     ) -> Arc<BindGroupLayout> {
         let fingerprint = DeviceFingerprint::from_device_info(device, adapter_info);
         let key = BindGroupLayoutKey::new(signature, fingerprint);
-        
+
         self.layouts
             .entry(key)
             .or_insert_with(|| {
@@ -319,13 +335,15 @@ impl PipelineCache {
             .or_insert_with(|| {
                 // Get cached shader and layout
                 let shader = self.get_or_compile_shader(device, adapter_info, shader_source, label);
-                let layout = self.get_or_create_layout(device, adapter_info, layout_signature, label);
+                let layout =
+                    self.get_or_create_layout(device, adapter_info, layout_signature, label);
 
-                let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label,
-                    bind_group_layouts: &[&layout],
-                    push_constant_ranges: &[],
-                });
+                let pipeline_layout =
+                    device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                        label,
+                        bind_group_layouts: &[&layout],
+                        push_constant_ranges: &[],
+                    });
 
                 let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label,
@@ -370,7 +388,7 @@ pub struct CacheStats {
     pub pipelines: usize,
 }
 
-/// Global pipeline cache (singleton per device)
+// Global pipeline cache (singleton pattern via lazy_static)
 lazy_static::lazy_static! {
     pub static ref GLOBAL_CACHE: PipelineCache = PipelineCache::new();
 }
@@ -398,7 +416,7 @@ mod tests {
             driver_info: "1.0".to_string(),
             backend: wgpu::Backend::Vulkan,
         };
-        
+
         let fp1 = DeviceFingerprint::from_adapter_info(&adapter_info);
         let fp2 = DeviceFingerprint::from_adapter_info(&adapter_info);
         assert_eq!(fp1, fp2);
@@ -415,7 +433,7 @@ mod tests {
             driver_info: "1.0".to_string(),
             backend: wgpu::Backend::Vulkan,
         };
-        
+
         let amd = wgpu::AdapterInfo {
             name: "AMD RX 6950 XT".to_string(),
             vendor: 0,
@@ -425,10 +443,13 @@ mod tests {
             driver_info: "1.0".to_string(),
             backend: wgpu::Backend::Vulkan,
         };
-        
+
         let fp_nvidia = DeviceFingerprint::from_adapter_info(&nvidia);
         let fp_amd = DeviceFingerprint::from_adapter_info(&amd);
-        assert_ne!(fp_nvidia, fp_amd, "Different GPUs should have different fingerprints");
+        assert_ne!(
+            fp_nvidia, fp_amd,
+            "Different GPUs should have different fingerprints"
+        );
     }
 
     #[test]

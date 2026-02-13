@@ -8,7 +8,6 @@
 //! - Consumer AMD (RX 6950 XT): ~1:16
 //! - Workstation (Titan V): ~1:2
 
-use std::sync::Arc;
 use std::time::Instant;
 use wgpu::util::DeviceExt;
 
@@ -43,6 +42,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 }
 "#;
 
+// Reserved for future multiplication benchmark
+#[allow(dead_code)]
 const SHADER_MUL_F32: &str = r#"
 @group(0) @binding(0) var<storage, read> a: array<f32>;
 @group(0) @binding(1) var<storage, read> b: array<f32>;
@@ -58,6 +59,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 }
 "#;
 
+// Reserved for future multiplication benchmark
+#[allow(dead_code)]
 const SHADER_MUL_F64: &str = r#"
 // f64 is automatically available when SHADER_F64 feature is enabled on device
 @group(0) @binding(0) var<storage, read> a: array<f64>;
@@ -86,14 +89,14 @@ impl GpuContext {
         let info = adapter.get_info();
         let features = adapter.features();
         let has_f64 = features.contains(wgpu::Features::SHADER_F64);
-        
+
         // Request f64 feature if available
         let required_features = if has_f64 {
             wgpu::Features::SHADER_F64
         } else {
             wgpu::Features::empty()
         };
-        
+
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -105,7 +108,7 @@ impl GpuContext {
             )
             .await
             .ok()?;
-        
+
         Some(Self {
             device,
             queue,
@@ -119,82 +122,94 @@ fn run_f32_benchmark(ctx: &GpuContext, size: usize, iterations: usize) -> (f64, 
     // Create data
     let a_data: Vec<f32> = (0..size).map(|i| i as f32).collect();
     let b_data: Vec<f32> = (0..size).map(|i| (i * 2) as f32).collect();
-    
+
     // Create buffers
-    let a_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("a_f32"),
-        contents: bytemuck::cast_slice(&a_data),
-        usage: wgpu::BufferUsages::STORAGE,
-    });
-    
-    let b_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("b_f32"),
-        contents: bytemuck::cast_slice(&b_data),
-        usage: wgpu::BufferUsages::STORAGE,
-    });
-    
+    let a_buffer = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("a_f32"),
+            contents: bytemuck::cast_slice(&a_data),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+
+    let b_buffer = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("b_f32"),
+            contents: bytemuck::cast_slice(&b_data),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+
     let output_buffer = ctx.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("output_f32"),
         size: (size * std::mem::size_of::<f32>()) as u64,
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         mapped_at_creation: false,
     });
-    
+
     // Create pipeline for add
-    let add_module = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("add_f32"),
-        source: wgpu::ShaderSource::Wgsl(SHADER_ADD_F32.into()),
-    });
-    
-    let bind_group_layout = ctx.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("f32_layout"),
-        entries: &[
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+    let add_module = ctx
+        .device
+        .create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("add_f32"),
+            source: wgpu::ShaderSource::Wgsl(SHADER_ADD_F32.into()),
+        });
+
+    let bind_group_layout = ctx
+        .device
+        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("f32_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 2,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            },
-        ],
-    });
-    
-    let pipeline_layout = ctx.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("f32_pipeline_layout"),
-        bind_group_layouts: &[&bind_group_layout],
-        push_constant_ranges: &[],
-    });
-    
-    let add_pipeline = ctx.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("add_f32_pipeline"),
-        layout: Some(&pipeline_layout),
-        module: &add_module,
-        entry_point: "main",
-    });
-    
+            ],
+        });
+
+    let pipeline_layout = ctx
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("f32_pipeline_layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+    let add_pipeline = ctx
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("add_f32_pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &add_module,
+            entry_point: "main",
+        });
+
     let bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("f32_bind_group"),
         layout: &bind_group_layout,
@@ -213,39 +228,43 @@ fn run_f32_benchmark(ctx: &GpuContext, size: usize, iterations: usize) -> (f64, 
             },
         ],
     });
-    
+
     // Warmup
     for _ in 0..5 {
-        let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
             pass.set_pipeline(&add_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            pass.dispatch_workgroups((size as u32).div_ceil(256), 1, 1);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
     ctx.device.poll(wgpu::Maintain::Wait);
-    
+
     // Benchmark
     let start = Instant::now();
     for _ in 0..iterations {
-        let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
             pass.set_pipeline(&add_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            pass.dispatch_workgroups((size as u32).div_ceil(256), 1, 1);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
     ctx.device.poll(wgpu::Maintain::Wait);
     let elapsed = start.elapsed();
-    
+
     let time_per_op = elapsed.as_secs_f64() / iterations as f64;
     let bytes = size * std::mem::size_of::<f32>() * 3; // 2 reads + 1 write
     let bandwidth = (bytes as f64 / time_per_op) / 1e9;
-    
+
     (time_per_op * 1e6, bandwidth) // Return (μs, GB/s)
 }
 
@@ -253,86 +272,98 @@ fn run_f64_benchmark(ctx: &GpuContext, size: usize, iterations: usize) -> Option
     if !ctx.has_f64 {
         return None;
     }
-    
+
     // Create data
     let a_data: Vec<f64> = (0..size).map(|i| i as f64).collect();
     let b_data: Vec<f64> = (0..size).map(|i| (i * 2) as f64).collect();
-    
+
     // Create buffers
-    let a_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("a_f64"),
-        contents: bytemuck::cast_slice(&a_data),
-        usage: wgpu::BufferUsages::STORAGE,
-    });
-    
-    let b_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("b_f64"),
-        contents: bytemuck::cast_slice(&b_data),
-        usage: wgpu::BufferUsages::STORAGE,
-    });
-    
+    let a_buffer = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("a_f64"),
+            contents: bytemuck::cast_slice(&a_data),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+
+    let b_buffer = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("b_f64"),
+            contents: bytemuck::cast_slice(&b_data),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+
     let output_buffer = ctx.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("output_f64"),
         size: (size * std::mem::size_of::<f64>()) as u64,
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         mapped_at_creation: false,
     });
-    
+
     // Create pipeline for add
-    let add_module = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("add_f64"),
-        source: wgpu::ShaderSource::Wgsl(SHADER_ADD_F64.into()),
-    });
-    
-    let bind_group_layout = ctx.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("f64_layout"),
-        entries: &[
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+    let add_module = ctx
+        .device
+        .create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("add_f64"),
+            source: wgpu::ShaderSource::Wgsl(SHADER_ADD_F64.into()),
+        });
+
+    let bind_group_layout = ctx
+        .device
+        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("f64_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 2,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            },
-        ],
-    });
-    
-    let pipeline_layout = ctx.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("f64_pipeline_layout"),
-        bind_group_layouts: &[&bind_group_layout],
-        push_constant_ranges: &[],
-    });
-    
-    let add_pipeline = ctx.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("add_f64_pipeline"),
-        layout: Some(&pipeline_layout),
-        module: &add_module,
-        entry_point: "main",
-    });
-    
+            ],
+        });
+
+    let pipeline_layout = ctx
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("f64_pipeline_layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+    let add_pipeline = ctx
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("add_f64_pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &add_module,
+            entry_point: "main",
+        });
+
     let bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("f64_bind_group"),
         layout: &bind_group_layout,
@@ -351,39 +382,43 @@ fn run_f64_benchmark(ctx: &GpuContext, size: usize, iterations: usize) -> Option
             },
         ],
     });
-    
+
     // Warmup
     for _ in 0..5 {
-        let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
             pass.set_pipeline(&add_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            pass.dispatch_workgroups((size as u32).div_ceil(256), 1, 1);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
     ctx.device.poll(wgpu::Maintain::Wait);
-    
+
     // Benchmark
     let start = Instant::now();
     for _ in 0..iterations {
-        let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
             pass.set_pipeline(&add_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            pass.dispatch_workgroups((size as u32).div_ceil(256), 1, 1);
         }
         ctx.queue.submit(Some(encoder.finish()));
     }
     ctx.device.poll(wgpu::Maintain::Wait);
     let elapsed = start.elapsed();
-    
+
     let time_per_op = elapsed.as_secs_f64() / iterations as f64;
     let bytes = size * std::mem::size_of::<f64>() * 3; // 2 reads + 1 write
     let bandwidth = (bytes as f64 / time_per_op) / 1e9;
-    
+
     Some((time_per_op * 1e6, bandwidth)) // Return (μs, GB/s)
 }
 
@@ -393,9 +428,9 @@ async fn main() {
     println!("║  FP64 vs FP32 PRECISION BENCHMARK                            ║");
     println!("║  Comparing double precision performance across vendors        ║");
     println!("╚══════════════════════════════════════════════════════════════╝\n");
-    
+
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
-    
+
     // Collect Vulkan adapters only (they support SHADER_F64)
     let mut contexts: Vec<GpuContext> = Vec::new();
     for adapter in instance.enumerate_adapters(wgpu::Backends::VULKAN) {
@@ -406,34 +441,47 @@ async fn main() {
             }
         }
     }
-    
+
     if contexts.is_empty() {
         println!("No discrete GPUs with Vulkan support found!");
         return;
     }
-    
+
     let sizes = [100_000, 1_000_000, 10_000_000];
     let iterations = 100;
-    
+
     for ctx in &contexts {
         println!("══════════════════════════════════════════════════════════════");
         println!("  {}", ctx.name);
-        println!("  SHADER_F64: {}", if ctx.has_f64 { "✅ Supported" } else { "❌ Not available" });
+        println!(
+            "  SHADER_F64: {}",
+            if ctx.has_f64 {
+                "✅ Supported"
+            } else {
+                "❌ Not available"
+            }
+        );
         println!("══════════════════════════════════════════════════════════════\n");
-        
-        println!("  ┌────────────┬──────────────────────────┬──────────────────────────┬──────────┐");
-        println!("  │ Size       │ FP32 (time / bandwidth)  │ FP64 (time / bandwidth)  │ Ratio    │");
-        println!("  ├────────────┼──────────────────────────┼──────────────────────────┼──────────┤");
-        
+
+        println!(
+            "  ┌────────────┬──────────────────────────┬──────────────────────────┬──────────┐"
+        );
+        println!(
+            "  │ Size       │ FP32 (time / bandwidth)  │ FP64 (time / bandwidth)  │ Ratio    │"
+        );
+        println!(
+            "  ├────────────┼──────────────────────────┼──────────────────────────┼──────────┤"
+        );
+
         for &size in &sizes {
             let (f32_time, f32_bw) = run_f32_benchmark(ctx, size, iterations);
-            
+
             let size_str = if size >= 1_000_000 {
                 format!("{}M", size / 1_000_000)
             } else {
                 format!("{}K", size / 1_000)
             };
-            
+
             if let Some((f64_time, f64_bw)) = run_f64_benchmark(ctx, size, iterations) {
                 let ratio = f64_time / f32_time;
                 println!(
@@ -447,10 +495,12 @@ async fn main() {
                 );
             }
         }
-        
-        println!("  └────────────┴──────────────────────────┴──────────────────────────┴──────────┘\n");
+
+        println!(
+            "  └────────────┴──────────────────────────┴──────────────────────────┴──────────┘\n"
+        );
     }
-    
+
     println!("══════════════════════════════════════════════════════════════");
     println!("  ANALYSIS");
     println!("══════════════════════════════════════════════════════════════");

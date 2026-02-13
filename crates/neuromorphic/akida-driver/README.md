@@ -2,7 +2,7 @@
 
 **Pure Rust driver for BrainChip Akida neuromorphic processors**
 
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
 ## Overview
 
@@ -109,9 +109,6 @@ See [PURE_RUST_AKIDA_MIGRATION_PLAN.md](../../showcase/neuromorphic/PURE_RUST_AK
 
 ## License
 
-Licensed under either of:
+Licensed under AGPL-3.0-or-later. See [LICENSE](../../../LICENSE) for details.
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](../../../LICENSE-APACHE))
-- MIT license ([LICENSE-MIT](../../../LICENSE-MIT))
-
-at your option.
+This copyleft license ensures all derivative works remain open source, preventing corporate extend-and-extinguish tactics.
