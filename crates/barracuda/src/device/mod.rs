@@ -22,6 +22,7 @@ pub mod autotune;
 pub mod capabilities;
 pub mod pipeline_cache;
 pub mod substrate;
+pub mod tensor_context;
 pub mod toadstool_integration; // NEW: ToadStool hardware layer integration
 pub mod tpu;
 pub mod unified;
@@ -33,6 +34,9 @@ pub use autotune::{AutoTuner, GpuCalibration, GLOBAL_TUNER};
 
 // Re-export warmup (mise en place)
 pub use warmup::{warmup_device, warmup_pool, WarmupConfig, WarmupOp, WarmupResult, WarmupWorkloadHint};
+
+// Re-export tensor context (zero-overhead Tensor operations)
+pub use tensor_context::{BufferPool, TensorContext, TensorContextStats, high_capacity_limits};
 
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};
 pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};

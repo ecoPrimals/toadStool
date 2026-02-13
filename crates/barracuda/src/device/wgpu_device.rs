@@ -69,6 +69,78 @@ impl WgpuDevice {
         .map_err(|_| BarracudaError::device("No CPU software rasterizer available"))
     }
 
+    /// Create device with high-capacity limits (1GB+ buffers)
+    ///
+    /// Default wgpu limits cap buffer bindings at 128MB and total buffer at 256MB.
+    /// This creates a device with 1GB binding / 2GB buffer limits for large tensors.
+    ///
+    /// Note: Actual limits depend on hardware - the adapter may support less.
+    /// wgpu will negotiate the best available limits.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // For tensors larger than 32M elements (128MB at f32)
+    /// let device = WgpuDevice::new_high_capacity().await?;
+    /// let huge_tensor = Tensor::zeros_on(vec![100_000_000], device).await?;
+    /// ```
+    pub async fn new_high_capacity() -> Result<Self> {
+        Self::new_with_limits(super::tensor_context::high_capacity_limits()).await
+    }
+
+    /// Create device with custom limits
+    ///
+    /// Allows requesting specific wgpu limits for your workload.
+    /// The adapter will negotiate actual limits based on hardware support.
+    pub async fn new_with_limits(limits: wgpu::Limits) -> Result<Self> {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: None,
+                force_fallback_adapter: false,
+            })
+            .await
+            .ok_or_else(|| BarracudaError::device("No WGPU adapter found"))?;
+
+        let info = adapter.get_info();
+        log::info!(
+            "BarraCUDA (high-capacity): {} ({:?})",
+            info.name,
+            info.device_type
+        );
+
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: Some("BarraCUDA high-capacity device"),
+                    required_features: wgpu::Features::empty(),
+                    required_limits: limits,
+                },
+                None,
+            )
+            .await
+            .map_err(|e| BarracudaError::device(format!("Failed to create device: {e}")))?;
+
+        // Log actual limits achieved
+        let actual_limits = device.limits();
+        log::info!(
+            "Limits: max_binding={}MB, max_buffer={}MB",
+            actual_limits.max_storage_buffer_binding_size / (1 << 20),
+            actual_limits.max_buffer_size / (1 << 20),
+        );
+
+        Ok(Self {
+            device: Arc::new(device),
+            queue: Arc::new(queue),
+            adapter_info: info,
+            calibration: None,
+        })
+    }
+
     /// Create device from ToadStool hardware selection
     ///
     /// ToadStool discovers hardware, BarraCUDA creates the right device.
@@ -241,6 +313,14 @@ impl WgpuDevice {
     /// Use `queue()` for command submission.
     pub fn device(&self) -> &wgpu::Device {
         &self.device
+    }
+
+    /// Get Arc-wrapped device (for shared ownership in TensorContext)
+    ///
+    /// Returns a clone of the internal `Arc<wgpu::Device>` for use cases
+    /// that need shared ownership, like buffer pools and tensor contexts.
+    pub fn device_arc(&self) -> Arc<wgpu::Device> {
+        self.device.clone()
     }
 
     /// Get adapter info (for capability detection)
