@@ -41,6 +41,10 @@ path = "src/vendor_benchmark.rs"
 name = "cuda_vs_barracuda"
 path = "src/cuda_vs_barracuda.rs"
 
+[[bin]]
+name = "parity_benchmark"
+path = "src/parity_benchmark.rs"
+
 [features]
 default = []
 cuda = ["cudarc"]
