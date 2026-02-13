@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 13, 2026 (Phase 5 Evolution — Tier 3 Complete)
+**Date**: February 13, 2026 (L2 Evolution — Tier 1-2 Complete)
 
 ---
 
@@ -132,15 +132,32 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 - Unified memory with wgpu fallback (OpenCL/Vulkan)
 - Unix socket security providers (JSON-RPC 2.0)
 
-## Phase 5 Status (hotSpring Validation Response)
+## L2 Evolution Status (hotSpring Validation Response)
 
-### ✅ Completed (Feb 13, 2026) — Tier 3 Architecture (ALL COMPLETE)
+### ✅ Completed (Feb 13, 2026) — L2 Evolution Tier 1 Critical Fixes
+
+- **gradient_1d 2nd-order boundaries** -- Matches numpy.gradient; exact for polynomials ≤ degree 2
+  - Expected impact: ~40 MeV reduction in HFB SCF offset
+- **auto_smoothing = true default** -- Prevents SparsitySampler overfitting (was false)
+- **smoothing = 1e-3 default** -- Reasonable fallback (was 1e-12)
+
+### ✅ Completed (Feb 13, 2026) — L2 Evolution Tier 2 Algorithm Improvements
+
+- **Hybrid evaluation mode** -- `n_direct_solvers` field in SparsitySamplerConfig
+  - Direct solvers run NM on TRUE objective (exploration)
+  - Surrogate solvers run NM on surrogate (exploitation)
+  - Closes evaluation density gap vs Python's mystic
+- **Warm-start cascade** -- `top_k_seeds()` on SparsitySamplerResult and DirectSamplerResult
+  - Enables SparsitySampler → DirectSampler cascade optimization
+  - L1 seeds flow to L2 optimization
+
+### ✅ Completed (Feb 13, 2026) — Phase 5 Tier 3 Architecture
 
 - **Dispatch Benchmark Suite** -- `BenchmarkSuite` for empirical CPU/GPU threshold determination
 - **Pipeline Orchestration** -- `Cascade` API for hotSpring-validated multi-stage filtering
 - **Sparse Linear Algebra** -- `CsrMatrix`, `cg_solve`, `bicgstab_solve` for large HFB basis sets
 
-### ✅ Completed (Feb 13, 2026) — Tier 2 New Algorithms
+### ✅ Completed (Feb 13, 2026) — Phase 5 Tier 2 New Algorithms
 
 - **Direct Sampler** -- `direct_sampler()` round-based NM on true objective (achieved χ²/datum = 1.19)
 - **Chi² Decomposition** -- `chi2_decomposed()` with per-datum residuals, pulls, worst-N
@@ -148,7 +165,7 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 - **Convergence Diagnostics** -- `convergence_diagnostics()` detecting stagnation/oscillation/divergence
 - **Adaptive Penalty** -- `adaptive_penalty()` data-driven penalty from feasible values
 
-### ✅ Completed (Feb 13, 2026) — Tier 1 Critical Fixes
+### ✅ Completed (Feb 13, 2026) — Phase 5 Tier 1 Critical Fixes
 
 - **LOO-CV hat matrix bug fixed** -- K_raw for RHS, K_smooth for system (was H_ii = 1.0 always)
 - **Auto-smoothing** -- `SparsitySamplerConfig::auto_smoothing`, `loo_cv_optimal_smoothing()`
