@@ -33,6 +33,10 @@ path = "src/heterogeneous_ensemble.rs"
 name = "streaming_pipeline"
 path = "src/streaming_pipeline.rs"
 
+[[bin]]
+name = "vendor_benchmark"
+path = "src/vendor_benchmark.rs"
+
 [dependencies]
 # BarraCUDA for GPU compute
 barracuda = { path = "../../crates/barracuda" }
@@ -62,3 +66,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Timing
 std-time = { package = "chrono", version = "0.4" }
+
+# Parallel CPU baseline
+rayon = "1.8"
