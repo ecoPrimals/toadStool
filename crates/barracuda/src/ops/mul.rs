@@ -3,12 +3,21 @@
 //! **Deep Debt Principles**:
 //! - ✅ Pure WGSL implementation (universal compute)
 //! - ✅ Capability-based dispatch (vendor-optimized)
+//! - ✅ Vendor-specific workgroup sizes (NVIDIA: 64, AMD: 128)
 //!
 //! Formula: C = A * B (element-wise, Hadamard product)
 
-use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
+
+/// Shader source optimized for NVIDIA GPUs (WG=64)
+const SHADER_WG64: &str = include_str!("../shaders/math/elementwise_mul_wg64.wgsl");
+
+/// Shader source optimized for AMD GPUs (WG=128)  
+const SHADER_WG128: &str = include_str!("../shaders/math/elementwise_mul_wg128.wgsl");
+
+/// Default shader (WG=256, fallback)
+const SHADER_DEFAULT: &str = include_str!("../shaders/math/elementwise_mul.wgsl");
 
 /// Element-wise multiplication operation
 pub struct Mul {
@@ -28,15 +37,31 @@ impl Mul {
         Ok(Self { lhs, rhs })
     }
 
-    /// WGSL shader source (embedded at compile time)
-    fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/math/elementwise_mul.wgsl")
+    /// Select vendor-optimized shader based on GPU and tensor size
+    fn wgsl_shader(device_name: &str, size: usize) -> (&'static str, u32) {
+        let lower = device_name.to_lowercase();
+        let max_dispatch = 65535u32;
+        let (nvidia_wg, amd_wg) = (64u32, 128u32);
+        
+        if lower.contains("nvidia") || lower.contains("geforce") || lower.contains("rtx") || lower.contains("gtx") {
+            let needed = (size as u32).div_ceil(nvidia_wg);
+            if needed <= max_dispatch { (SHADER_WG64, nvidia_wg) } else { (SHADER_DEFAULT, 256) }
+        } else if lower.contains("amd") || lower.contains("radeon") || lower.contains("radv") {
+            let needed = (size as u32).div_ceil(amd_wg);
+            if needed <= max_dispatch { (SHADER_WG128, amd_wg) } else { (SHADER_DEFAULT, 256) }
+        } else {
+            (SHADER_DEFAULT, 256)
+        }
     }
 
     /// Execute multiplication on tensors
     pub fn execute(self) -> Result<Tensor> {
         let device = self.lhs.device();
         let size = self.lhs.len();
+
+        // Select vendor-optimized shader based on GPU and tensor size
+        let device_name = device.name();
+        let (shader_source, workgroup_size) = Self::wgsl_shader(device_name, size);
 
         let output_buffer = device.create_buffer_f32(size)?;
 
@@ -98,7 +123,7 @@ impl Mul {
             ],
         });
 
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("Mul"));
+        let shader = device.compile_shader(shader_source, Some("Mul"));
 
         let pipeline_layout =
             device
@@ -133,10 +158,8 @@ impl Mul {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
+            // Use vendor-optimized workgroup size
+            let workgroups = (size as u32).div_ceil(workgroup_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

@@ -45,6 +45,10 @@ path = "src/cuda_vs_barracuda.rs"
 name = "parity_benchmark"
 path = "src/parity_benchmark.rs"
 
+[[bin]]
+name = "shader_optimization_bench"
+path = "src/shader_optimization_bench.rs"
+
 [features]
 default = []
 cuda = ["cudarc"]
@@ -82,6 +86,10 @@ std-time = { package = "chrono", version = "0.4" }
 
 # Parallel CPU baseline
 rayon = "1.8"
+
+# Direct wgpu access for shader optimization benchmarks
+wgpu = { version = "0.19", features = ["wgsl"] }
+bytemuck = { version = "1.14", features = ["derive"] }
 
 # Optional: Native CUDA comparison (NVIDIA only)
 cudarc = { version = "0.11", optional = true, features = ["cuda-12050"] }
