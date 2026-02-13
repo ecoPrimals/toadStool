@@ -5,10 +5,42 @@
 //! - Self-knowledge: Tensor knows its device
 //! - Automatic operations dispatch based on device
 //! - Zero duplication across backends
+//! - Buffer pooling for zero-allocation steady state
 
+use crate::device::tensor_context::PooledBuffer;
 use crate::device::{Auto, Device, WgpuDevice, WorkloadHint};
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
+
+/// Buffer storage for Tensor - either owned or pooled
+///
+/// Pooled buffers automatically return to their pool when dropped,
+/// enabling zero-allocation steady state for tensor operations.
+pub(crate) enum TensorBuffer {
+    /// Owned buffer - dropped normally
+    Owned(Arc<wgpu::Buffer>),
+    /// Pooled buffer - returns to pool on drop
+    Pooled(Arc<PooledBuffer>),
+}
+
+impl TensorBuffer {
+    /// Get reference to the underlying wgpu buffer
+    pub fn as_ref(&self) -> &wgpu::Buffer {
+        match self {
+            TensorBuffer::Owned(buf) => buf.as_ref(),
+            TensorBuffer::Pooled(buf) => buf.buffer(),
+        }
+    }
+}
+
+impl Clone for TensorBuffer {
+    fn clone(&self) -> Self {
+        match self {
+            TensorBuffer::Owned(buf) => TensorBuffer::Owned(Arc::clone(buf)),
+            TensorBuffer::Pooled(buf) => TensorBuffer::Pooled(Arc::clone(buf)),
+        }
+    }
+}
 
 /// Tensor - hardware-agnostic tensor via WGSL/WebGPU
 ///
@@ -22,6 +54,7 @@ use std::sync::Arc;
 /// - Zero-copy reshape via `Arc<Buffer>` sharing
 /// - Safe Rust (no unsafe needed)
 /// - Fast (metadata-only operations)
+/// - Pooled buffers for zero-allocation steady state
 ///
 /// ## Examples
 ///
@@ -38,9 +71,9 @@ use std::sync::Arc;
 /// println!("Executed on: {}", x.device().name());
 /// ```
 pub struct Tensor {
-    /// GPU buffer wrapped in Arc for zero-copy operations
-    /// (wgpu handles CPU/GPU/NPU/TPU automatically!)
-    buffer: Arc<wgpu::Buffer>,
+    /// GPU buffer - either owned or pooled
+    /// (pooled buffers automatically return to pool on drop)
+    buffer: TensorBuffer,
 
     /// Tensor shape (dimensions)
     shape: Vec<usize>,
@@ -60,7 +93,24 @@ impl Tensor {
         device: Arc<WgpuDevice>,
     ) -> Self {
         Self {
-            buffer: Arc::new(buffer),
+            buffer: TensorBuffer::Owned(Arc::new(buffer)),
+            shape,
+            device,
+            name: None,
+        }
+    }
+
+    /// Create tensor from pooled buffer (internal use)
+    ///
+    /// Pooled buffers automatically return to their pool when the
+    /// tensor is dropped, enabling zero-allocation steady state.
+    pub(crate) fn from_pooled_buffer(
+        buffer: PooledBuffer,
+        shape: Vec<usize>,
+        device: Arc<WgpuDevice>,
+    ) -> Self {
+        Self {
+            buffer: TensorBuffer::Pooled(Arc::new(buffer)),
             shape,
             device,
             name: None,
@@ -69,7 +119,12 @@ impl Tensor {
 
     /// Get reference to buffer (internal use)
     pub(crate) fn buffer(&self) -> &wgpu::Buffer {
-        &self.buffer
+        self.buffer.as_ref()
+    }
+
+    /// Check if this tensor uses a pooled buffer
+    pub fn is_pooled(&self) -> bool {
+        matches!(self.buffer, TensorBuffer::Pooled(_))
     }
 
     /// Query which unified Device type this tensor is conceptually on
@@ -159,7 +214,7 @@ impl Tensor {
             });
 
         Ok(Self {
-            buffer: Arc::new(buffer),
+            buffer: TensorBuffer::Owned(Arc::new(buffer)),
             shape,
             device,
             name: None,
@@ -195,7 +250,7 @@ impl Tensor {
         };
 
         Self {
-            buffer: Arc::new(buffer),
+            buffer: TensorBuffer::Owned(Arc::new(buffer)),
             shape,
             device,
             name: None,
@@ -234,7 +289,7 @@ impl Tensor {
                 });
 
         encoder.copy_buffer_to_buffer(
-            &self.buffer,
+            self.buffer(),
             0,
             &new_buffer,
             0,
@@ -244,7 +299,7 @@ impl Tensor {
         self.device.queue.submit(Some(encoder.finish()));
 
         Ok(Self {
-            buffer: Arc::new(new_buffer),
+            buffer: TensorBuffer::Owned(Arc::new(new_buffer)),
             shape: self.shape.clone(),
             device: self.device.clone(),
             name: self.name.clone(),
@@ -279,7 +334,7 @@ impl Tensor {
         device.write_buffer_f32(&buffer, &data)?;
 
         Ok(Self {
-            buffer: Arc::new(buffer),
+            buffer: TensorBuffer::Owned(Arc::new(buffer)),
             shape,
             device,
             name: None,
@@ -345,12 +400,12 @@ impl Tensor {
 
     /// Read tensor data to host memory
     pub fn to_vec(&self) -> Result<Vec<f32>> {
-        self.device.read_buffer_f32(&self.buffer, self.len())
+        self.device.read_buffer_f32(self.buffer(), self.len())
     }
 
     /// Read tensor data as u32 (for FHE operations using u64 as u32 pairs)
     pub fn to_vec_u32(&self) -> Result<Vec<u32>> {
-        self.device.read_buffer_u32(&self.buffer, self.len())
+        self.device.read_buffer_u32(self.buffer(), self.len())
     }
 
     /// Transfer tensor to another device

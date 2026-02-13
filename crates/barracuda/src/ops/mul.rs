@@ -73,8 +73,8 @@ impl Mul {
         let device_name = device.name();
         let (shader_source, workgroup_size) = Self::wgsl_shader(device_name, size);
 
-        // Acquire output buffer from pool (key optimization!)
-        let output_buffer = ctx.acquire_output_buffer(size);
+        // Acquire pooled output buffer (returns to pool when tensor dropped!)
+        let output_buffer = ctx.acquire_pooled_output(size);
 
         // Get cached bind group layout
         let layout_sig = BindGroupLayoutSignature::elementwise_binary();
@@ -139,7 +139,8 @@ impl Mul {
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(
+        // Create output tensor with pooled buffer (auto-returns to pool on drop!)
+        Ok(Tensor::from_pooled_buffer(
             output_buffer,
             self.lhs.shape().to_vec(),
             device.clone(),

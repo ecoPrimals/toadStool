@@ -38,7 +38,7 @@ pub use warmup::{warmup_device, warmup_pool, WarmupConfig, WarmupOp, WarmupResul
 // Re-export tensor context (zero-overhead Tensor operations)
 pub use tensor_context::{
     get_device_context, clear_global_contexts,
-    BufferPool, TensorContext, TensorContextStats, high_capacity_limits
+    BufferPool, PooledBuffer, TensorContext, TensorContextStats, high_capacity_limits
 };
 
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};

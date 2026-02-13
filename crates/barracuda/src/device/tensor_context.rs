@@ -38,12 +38,100 @@ use crate::device::WgpuDevice;
 use crate::error::Result;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
+use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 /// Global context registry - one TensorContext per device
 static GLOBAL_CONTEXTS: Lazy<DashMap<DeviceFingerprint, Arc<TensorContext>>> =
     Lazy::new(DashMap::new);
+
+// ============================================================================
+// PooledBuffer - Auto-returning buffer wrapper
+// ============================================================================
+
+/// A buffer that automatically returns to its pool when dropped.
+///
+/// This is the key to zero-allocation steady state. When a PooledBuffer
+/// goes out of scope, it returns itself to the pool instead of being freed.
+///
+/// # Example
+/// ```rust,ignore
+/// let ctx = get_device_context(&device);
+/// let buffer = ctx.acquire_pooled_buffer(1024);  // From pool
+/// // ... use buffer ...
+/// drop(buffer);  // Automatically returned to pool!
+/// ```
+pub struct PooledBuffer {
+    /// The underlying wgpu buffer (Option to allow take on drop)
+    buffer: Option<wgpu::Buffer>,
+    /// Weak reference to the pool for return
+    pool: Weak<BufferPoolInner>,
+    /// Size bucket for returning to correct pool
+    bucket: usize,
+}
+
+impl PooledBuffer {
+    /// Create a new pooled buffer
+    fn new(buffer: wgpu::Buffer, pool: Weak<BufferPoolInner>, bucket: usize) -> Self {
+        Self {
+            buffer: Some(buffer),
+            pool,
+            bucket,
+        }
+    }
+
+    /// Get the underlying wgpu buffer
+    pub fn buffer(&self) -> &wgpu::Buffer {
+        self.buffer.as_ref().expect("Buffer already taken")
+    }
+
+    /// Get the buffer size in bytes
+    pub fn size(&self) -> u64 {
+        self.buffer().size()
+    }
+
+    /// Convert to a regular wgpu::Buffer (removes from pool management)
+    /// Use this when you need to pass ownership elsewhere.
+    pub fn into_buffer(mut self) -> wgpu::Buffer {
+        self.buffer.take().expect("Buffer already taken")
+    }
+}
+
+impl Deref for PooledBuffer {
+    type Target = wgpu::Buffer;
+
+    fn deref(&self) -> &Self::Target {
+        self.buffer()
+    }
+}
+
+impl Drop for PooledBuffer {
+    fn drop(&mut self) {
+        if let Some(buffer) = self.buffer.take() {
+            // Try to return to pool
+            if let Some(pool) = self.pool.upgrade() {
+                pool.return_buffer(buffer, self.bucket);
+            }
+            // If pool is gone, buffer is dropped normally
+        }
+    }
+}
+
+/// Inner pool structure (separate to allow Weak references)
+struct BufferPoolInner {
+    pools: DashMap<usize, Vec<wgpu::Buffer>>,
+    device: Arc<wgpu::Device>,
+    allocations: AtomicUsize,
+    reuses: AtomicUsize,
+}
+
+impl BufferPoolInner {
+    fn return_buffer(&self, buffer: wgpu::Buffer, bucket: usize) {
+        self.pools.entry(bucket).or_default().push(buffer);
+        self.reuses.fetch_add(1, Ordering::Relaxed);
+    }
+}
 
 /// Get or create the global TensorContext for a device
 pub fn get_device_context(device: &Arc<WgpuDevice>) -> Arc<TensorContext> {
@@ -65,26 +153,23 @@ pub fn clear_global_contexts() {
 /// Instead of allocating new buffers per operation, we pool and reuse them.
 /// This eliminates the ~20μs allocation overhead per op.
 ///
-/// Note: For automatic pooling to work, tensors need to be explicitly released
-/// back to the pool, or use TensorSession which handles this automatically.
+/// Buffers acquired via `acquire_pooled()` automatically return to the pool
+/// when dropped. This enables zero-allocation steady state.
 pub struct BufferPool {
-    /// Available buffers by size bucket (powers of 2)
-    pools: DashMap<usize, Vec<wgpu::Buffer>>,
-    /// Device for creating new buffers
-    device: Arc<wgpu::Device>,
-    /// Statistics
-    allocations: AtomicUsize,
-    reuses: AtomicUsize,
+    /// Inner pool (Arc to allow Weak references from PooledBuffer)
+    inner: Arc<BufferPoolInner>,
 }
 
 impl BufferPool {
     /// Create new buffer pool
     pub fn new(device: Arc<wgpu::Device>) -> Self {
         Self {
-            pools: DashMap::new(),
-            device,
-            allocations: AtomicUsize::new(0),
-            reuses: AtomicUsize::new(0),
+            inner: Arc::new(BufferPoolInner {
+                pools: DashMap::new(),
+                device,
+                allocations: AtomicUsize::new(0),
+                reuses: AtomicUsize::new(0),
+            }),
         }
     }
 
@@ -96,21 +181,45 @@ impl BufferPool {
         size.next_power_of_two()
     }
 
-    /// Acquire a buffer of at least `size` bytes
+    /// Acquire a buffer that automatically returns to pool on drop
+    ///
+    /// This is the preferred method for tensor operations.
+    pub fn acquire_pooled(&self, size_bytes: usize) -> PooledBuffer {
+        let bucket = Self::bucket_size(size_bytes);
+        
+        // Try to reuse from pool
+        let buffer = if let Some(mut pool) = self.inner.pools.get_mut(&bucket) {
+            if let Some(buffer) = pool.pop() {
+                // Don't count as reuse yet - count when returned
+                buffer
+            } else {
+                self.allocate_new(bucket)
+            }
+        } else {
+            self.allocate_new(bucket)
+        };
+
+        PooledBuffer::new(buffer, Arc::downgrade(&self.inner), bucket)
+    }
+
+    /// Acquire a raw buffer (caller responsible for returning)
     pub fn acquire(&self, size_bytes: usize) -> wgpu::Buffer {
         let bucket = Self::bucket_size(size_bytes);
         
         // Try to reuse from pool
-        if let Some(mut pool) = self.pools.get_mut(&bucket) {
+        if let Some(mut pool) = self.inner.pools.get_mut(&bucket) {
             if let Some(buffer) = pool.pop() {
-                self.reuses.fetch_add(1, Ordering::Relaxed);
+                self.inner.reuses.fetch_add(1, Ordering::Relaxed);
                 return buffer;
             }
         }
 
-        // Allocate new
-        self.allocations.fetch_add(1, Ordering::Relaxed);
-        self.device.create_buffer(&wgpu::BufferDescriptor {
+        self.allocate_new(bucket)
+    }
+
+    fn allocate_new(&self, bucket: usize) -> wgpu::Buffer {
+        self.inner.allocations.fetch_add(1, Ordering::Relaxed);
+        self.inner.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Pooled Buffer"),
             size: bucket as u64,
             usage: wgpu::BufferUsages::STORAGE
@@ -124,14 +233,14 @@ impl BufferPool {
     pub fn release(&self, buffer: wgpu::Buffer) {
         let size = buffer.size() as usize;
         let bucket = Self::bucket_size(size);
-        self.pools.entry(bucket).or_default().push(buffer);
+        self.inner.pools.entry(bucket).or_default().push(buffer);
     }
 
     /// Get pool statistics
     pub fn stats(&self) -> (usize, usize) {
         (
-            self.allocations.load(Ordering::Relaxed),
-            self.reuses.load(Ordering::Relaxed),
+            self.inner.allocations.load(Ordering::Relaxed),
+            self.inner.reuses.load(Ordering::Relaxed),
         )
     }
 }
@@ -214,12 +323,24 @@ impl TensorContext {
         self.batching.load(Ordering::SeqCst)
     }
 
-    /// Acquire a buffer from the pool for tensor output
+    /// Acquire a buffer from the pool for tensor output (raw buffer)
     ///
-    /// This is the key optimization - instead of allocating a new buffer
-    /// for each operation output, we reuse buffers from the pool.
+    /// This returns a raw wgpu::Buffer. Caller is responsible for
+    /// returning it to the pool or it will be dropped normally.
     pub fn acquire_output_buffer(&self, size_elements: usize) -> wgpu::Buffer {
         self.buffer_pool.acquire(size_elements * std::mem::size_of::<f32>())
+    }
+
+    /// Acquire a pooled buffer for tensor output
+    ///
+    /// This is the key optimization - instead of allocating a new buffer
+    /// for each operation output, we get one from the pool. When the
+    /// PooledBuffer is dropped, it automatically returns to the pool.
+    ///
+    /// Use this with `Tensor::from_pooled_buffer()` for zero-allocation
+    /// steady state.
+    pub fn acquire_pooled_output(&self, size_elements: usize) -> PooledBuffer {
+        self.buffer_pool.acquire_pooled(size_elements * std::mem::size_of::<f32>())
     }
 
     /// Record an operation for execution
