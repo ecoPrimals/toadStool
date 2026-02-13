@@ -193,6 +193,17 @@ impl DmaBuffer {
             return Err(AkidaError::transfer_failed("Failed to allocate DMA buffer"));
         }
 
+        // Lock the memory in RAM (required for VFIO DMA)
+        // SAFETY: vaddr points to valid, allocated memory of `size` bytes
+        let mlock_ret = unsafe { libc::mlock(vaddr.cast(), size) };
+        if mlock_ret < 0 {
+            unsafe { std::alloc::dealloc(vaddr, layout) };
+            return Err(AkidaError::transfer_failed(format!(
+                "Failed to lock DMA memory: {}",
+                std::io::Error::last_os_error()
+            )));
+        }
+
         // Map the buffer for DMA
         // Truncation safe: struct sizes fit in u32
         #[allow(clippy::cast_possible_truncation)]
@@ -204,16 +215,26 @@ impl DmaBuffer {
             size: size as u64,
         };
 
+        tracing::debug!(
+            "DMA map attempt: vaddr={:#x}, iova={:#x}, size={:#x}, flags={:#x}",
+            dma_map.vaddr, dma_map.iova, dma_map.size, dma_map.flags
+        );
+
         // SAFETY: VFIO ioctl with valid structure
         let ret =
             unsafe { libc::ioctl(container_fd, ioctls::VFIO_IOMMU_MAP_DMA as _, &dma_map as *const _) };
 
         if ret < 0 {
+            let err = std::io::Error::last_os_error();
+            tracing::warn!("DMA map failed: {} (ret={})", err, ret);
             // Clean up allocated memory on failure
-            unsafe { std::alloc::dealloc(vaddr, layout) };
+            unsafe { 
+                libc::munlock(vaddr.cast(), size);
+                std::alloc::dealloc(vaddr, layout);
+            };
             return Err(AkidaError::transfer_failed(format!(
                 "Failed to map DMA: {}",
-                std::io::Error::last_os_error()
+                err
             )));
         }
 
@@ -254,6 +275,10 @@ impl DmaBuffer {
 
 impl Drop for DmaBuffer {
     fn drop(&mut self) {
+        // Unlock memory
+        // SAFETY: vaddr was locked in new()
+        unsafe { libc::munlock(self.vaddr.cast(), self.size) };
+
         // Unmap DMA
         let dma_unmap = VfioDmaUnmap {
             argsz: std::mem::size_of::<VfioDmaUnmap>() as u32,
@@ -336,10 +361,11 @@ impl VfioBackend {
     /// Allocate a DMA buffer
     pub fn alloc_dma(&mut self, size: usize) -> Result<DmaBuffer> {
         let iova = self.next_iova;
-        // Align to 4KB page boundary
-        self.next_iova += ((size + 4095) / 4096) as u64 * 4096;
+        // Align size to 4KB page boundary (VFIO requires page-aligned mappings)
+        let aligned_size = ((size + 4095) / 4096) * 4096;
+        self.next_iova += aligned_size as u64;
 
-        DmaBuffer::new(self.container.as_raw_fd(), size, iova)
+        DmaBuffer::new(self.container.as_raw_fd(), aligned_size, iova)
     }
 }
 

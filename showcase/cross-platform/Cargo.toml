@@ -17,6 +17,10 @@ path = "src/cascade_demo.rs"
 name = "hotspring_bridge"
 path = "src/hotspring_bridge.rs"
 
+[[bin]]
+name = "npu_test"
+path = "src/npu_test.rs"
+
 [dependencies]
 # BarraCUDA for GPU compute
 barracuda = { path = "../../crates/barracuda" }
