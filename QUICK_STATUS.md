@@ -184,9 +184,16 @@ Validation Suite: 129/129 tests PASS
 - f64 WGSL shaders (when WebGPU adds f64 extensions)
 - f64 Tensor type
 
+### ✅ Cross-Platform Systems (Feb 12, 2026)
+
+- **VFIO Backend** -- Pure Rust VFIO driver for Akida NPU (DMA, no kernel module)
+- **Burn ML Framework** -- wgpu-based HuggingFace model inference (`burn-inference` crate)
+- **NeuroBench Harness** -- Pure Rust benchmark harness for neuromorphic evaluation
+- **Cross-Platform Showcase** -- GPU parity tests (NVIDIA vs AMD), cascade pipeline demo
+- **hotSpring Bridge** -- Integration with MD validation suite
+
 ### Infrastructure (Ongoing)
 
-- VFIO backend for Akida NPU (eliminate C kernel module)
 - NPU model pipeline (train/compile/deploy from Rust)
 - Safetensors/GGUF weight loader
 - mDNS/K8s discovery (env vars work, others pending)
@@ -232,9 +239,11 @@ barracuda::pde            - Crank-Nicolson heat equation solver
 barracuda::interpolate    - Cubic spline (natural/clamped/not-a-knot) with derivatives
 barracuda::dispatch       - Auto CPU/GPU routing with benchmark suite
 barracuda::pipeline       - Cascade multi-stage filtering, Stage with Target devices
+burn-inference            - HuggingFace models via Burn (wgpu backend)
+neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 ```
 
-**Tests**: 330+ passing (156 Phase 3 + 62 Phase 5 Tiers 1-3)
+**Tests**: 340+ passing (156 Phase 3 + 62 Phase 5 + 25 cross-platform)
 **Quality**: Zero unsafe, clippy clean, pure Rust
 **Architecture**: Shader-first — ALL math runs on GPU when fp64 available
 **Audit**: All hotSpring Tiers 1-3 complete (Feb 13)

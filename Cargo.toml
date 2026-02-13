@@ -37,9 +37,13 @@ members = [
     # Neuromorphic hardware
     "crates/neuromorphic/akida-driver",  # NEW: Pure Rust Akida driver (Jan 29, 2026) 🧠
     "crates/neuromorphic/akida-models",  # NEW: Model parser (Jan 29, 2026) 🧠
+    
+    # ML inference
+    "crates/ml/burn-inference",  # NEW: Burn-based ML inference (Feb 12, 2026) 🔥
     "crates/neuromorphic/akida-reservoir-research",  # NEW: Reservoir computing research (Jan 29, 2026) 🔬
     "crates/neuromorphic/akida-setup",  # NEW: Rust binary for NPU setup (Feb 8, 2026)
     "crates/neuromorphic/cross-substrate-validation",  # NEW: Cross-substrate benchmark (Jan 29, 2026) 🧠
+    "crates/neuromorphic/neurobench-runner",  # NEW: Pure Rust NeuroBench harness (Feb 12, 2026) 📊
     
     "crates/security/monitoring",
     "crates/security/policies",
@@ -52,6 +56,7 @@ members = [
     "showcase/neuromorphic/04-raytracing-comparison",  # NPU vs GPU raytracing (Feb 8, 2026)
     "showcase/rbf-surrogate",  # RBF surrogate learning (Feb 8, 2026)
     "showcase/gpu-universal/ml-inference",  # BarraCUDA ML inference showcase
+    "showcase/cross-platform",  # NEW: Cross-platform compute showcase (Feb 12, 2026) 🌐
     "showcase/homomorphic-computing",  # NPU-accelerated homomorphic encryption (Jan 31, 2026)
 ]
 

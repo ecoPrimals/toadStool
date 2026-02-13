@@ -1,0 +1,48 @@
+[package]
+name = "burn-inference"
+version = "0.1.0"
+edition = "2021"
+authors = ["ToadStool Team <team@toadstool.bio>"]
+description = "HuggingFace model inference via Burn (wgpu backend)"
+license = "MIT"
+readme = "README.md"
+keywords = ["ml", "inference", "burn", "wgpu", "huggingface"]
+categories = ["science", "machine-learning"]
+
+[dependencies]
+# Burn ML framework with wgpu backend (GPU) and ndarray backend (CPU)
+burn = { version = "0.16", features = ["default"] }
+burn-ndarray = "0.16"
+burn-wgpu = "0.16"
+burn-tch = { version = "0.16", optional = true }
+
+# For model loading
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Tokenizers for NLP models
+tokenizers = { version = "0.20", optional = true, default-features = false }
+
+# Image processing for vision models
+image = { version = "0.25", optional = true }
+
+# Async runtime
+tokio = { version = "1.35", features = ["rt-multi-thread", "macros"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+
+[features]
+default = ["wgpu"]
+wgpu = []
+tch = ["burn-tch"]
+nlp = ["tokenizers"]
+vision = ["image"]
+
+[dev-dependencies]
+tokio = { version = "1.35", features = ["full"] }
+approx = "0.5"

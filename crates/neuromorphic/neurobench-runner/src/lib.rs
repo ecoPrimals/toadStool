@@ -1,0 +1,56 @@
+//! Pure Rust NeuroBench Harness
+//!
+//! This crate provides a Rust implementation of NeuroBench benchmark suites
+//! for neuromorphic hardware evaluation. It interfaces with the Akida NPU
+//! through the akida-driver crate.
+//!
+//! # Supported Benchmarks
+//!
+//! - **DVS Gesture**: Dynamic Vision Sensor gesture recognition
+//! - **Keyword FSCIL**: Few-shot keyword spotting
+//! - **Chaotic Function**: Chaotic time series prediction (ESN workload)
+//! - **NHP Motor**: Neural prosthetics motor prediction
+//!
+//! # Example
+//!
+//! ```ignore
+//! use neurobench_runner::{Harness, BenchmarkConfig, Benchmark};
+//!
+//! let harness = Harness::new("0000:a1:00.0")?;
+//! let config = BenchmarkConfig::default();
+//! let result = harness.run(Benchmark::DvsGesture, &config)?;
+//! println!("Accuracy: {:.2}%", result.accuracy * 100.0);
+//! ```
+
+pub mod benchmarks;
+pub mod harness;
+pub mod metrics;
+pub mod data;
+
+pub use harness::{Harness, HarnessConfig};
+pub use benchmarks::{Benchmark, BenchmarkConfig, BenchmarkResult};
+pub use metrics::{Metrics, PowerMetrics, LatencyMetrics};
+
+/// Crate-level error type
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Hardware initialization failed: {0}")]
+    HardwareInit(String),
+    
+    #[error("Benchmark failed: {0}")]
+    BenchmarkFailed(String),
+    
+    #[error("Data loading failed: {0}")]
+    DataLoad(String),
+    
+    #[error("Model loading failed: {0}")]
+    ModelLoad(String),
+    
+    #[error("NPU error: {0}")]
+    Npu(#[from] akida_driver::AkidaError),
+    
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
