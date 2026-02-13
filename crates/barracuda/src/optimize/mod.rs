@@ -18,9 +18,11 @@
 //! - **Brent's Method**: Best of both worlds - reliable and fast
 //! - **Secant Method**: Newton-like without analytical derivatives
 //!
-//! ## Utilities
+//! ## Diagnostics & Utilities
 //!
 //! - **Evaluation Cache**: Record all evaluations for surrogate training
+//! - **Convergence Diagnostics**: Detect stagnation, oscillation, divergence
+//! - **Adaptive Penalty**: Data-driven penalty for constrained optimization
 //!
 //! # Cross-Domain Applications
 //!
@@ -69,17 +71,23 @@
 pub mod bfgs;
 pub mod bisect;
 pub mod brent;
+pub mod diagnostics;
 pub mod eval_record;
 pub mod multi_start;
 pub mod nelder_mead;
 pub mod newton;
+pub mod penalty;
 pub mod solver_state;
 
 pub use bfgs::{bfgs, bfgs_numerical, numerical_gradient, BfgsConfig, BfgsResult};
 pub use bisect::bisect;
 pub use brent::{brent, brent_minimize, BrentResult};
+pub use diagnostics::{
+    convergence_diagnostics, should_stop_early, ConvergenceDiagnostics, ConvergenceState,
+};
 pub use eval_record::{EvaluationCache, EvaluationRecord};
 pub use multi_start::{multi_start_nelder_mead, SolverResult};
 pub use nelder_mead::nelder_mead;
 pub use newton::{newton, newton_numerical, secant, NewtonResult};
+pub use penalty::{adaptive_penalty, adaptive_penalty_mad, AdaptivePenalty, PenaltyConfig};
 pub use solver_state::{ResumableNelderMead, SolverStatus};

@@ -12,6 +12,7 @@
 //! - [`random_uniform`] — Uniform random sampling within bounds
 //! - [`maximin::maximin_lhs`] — Maximin-optimized LHS (maximize min pairwise distance)
 //! - [`sparsity::sparsity_sampler`] — Iterative surrogate-directed sampling (Diaw et al. 2024)
+//! - [`direct::direct_sampler`] — Round-based direct NM on true objective (hotSpring)
 //! - [`sobol::sobol_sequence`] — Low-discrepancy quasi-random sequences
 //!
 //! # Examples
@@ -40,10 +41,13 @@
 //! // Points are more uniformly distributed than pseudo-random
 //! ```
 
+pub mod direct;
 pub mod lhs;
 pub mod maximin;
 pub mod sobol;
 pub mod sparsity;
 
+pub use direct::{direct_sampler, DirectSamplerConfig, DirectSamplerResult};
 pub use lhs::{latin_hypercube, random_uniform};
 pub use sobol::{sobol_scaled, sobol_sequence, SobolGenerator};
+pub use sparsity::{PenaltyFilter, SparsitySamplerConfig};

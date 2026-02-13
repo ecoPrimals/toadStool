@@ -47,4 +47,4 @@ pub mod kernels;
 pub mod rbf;
 
 pub use kernels::RBFKernel;
-pub use rbf::RBFSurrogate;
+pub use rbf::{loo_cv_optimal_smoothing, LooSmoothing, RBFSurrogate};

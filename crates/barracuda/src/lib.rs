@@ -103,6 +103,7 @@ pub mod linalg;
 pub mod numerical;
 pub mod optimize;
 pub mod pde;
+pub mod pipeline; // Heterogeneous compute pipeline orchestration
 pub mod sample;
 pub mod scheduler;
 pub mod special;

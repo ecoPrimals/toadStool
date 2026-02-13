@@ -16,6 +16,9 @@
 //! |----------|-----|-----|-----------|
 //! | `gamma(x)` | ✅ | — | Lanczos approximation |
 //! | `ln_gamma(x)` | ✅ | ✅ | Log-gamma |
+//! | `digamma(x)` | ✅ | — | ψ(x) = Γ'(x)/Γ(x) |
+//! | `beta(a, b)` | ✅ | — | B(a,b) = Γ(a)Γ(b)/Γ(a+b) |
+//! | `ln_beta(a, b)` | ✅ | — | ln(B(a,b)) |
 //! | `regularized_gamma_p(a, x)` | ✅ | — | P(a,x) = γ(a,x)/Γ(a) |
 //! | `regularized_gamma_q(a, x)` | ✅ | — | Q(a,x) = 1 - P(a,x) |
 //! | `chi_squared_cdf(x, k)` | ✅ | — | Chi² CDF via gamma |
@@ -83,8 +86,8 @@ pub use chi_squared::{
 pub use erf::{erf, erfc};
 pub use factorial::factorial;
 pub use gamma::{
-    gamma, ln_gamma, lower_incomplete_gamma, regularized_gamma_p, regularized_gamma_q,
-    upper_incomplete_gamma,
+    beta, digamma, gamma, ln_beta, ln_gamma, lower_incomplete_gamma, regularized_gamma_p,
+    regularized_gamma_q, upper_incomplete_gamma,
 };
 pub use hermite::hermite;
 pub use laguerre::{laguerre, laguerre_all, laguerre_simple};

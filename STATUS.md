@@ -1,4 +1,4 @@
-# Status -- February 12, 2026
+# Status -- February 13, 2026 (Phase 5 Tiers 1-3 Complete)
 
 ## Quality Gates
 
@@ -7,9 +7,9 @@
 | `cargo build --workspace` | PASS | 0 warnings (3 intentional deprecation warnings in config) |
 | `cargo fmt --all -- --check` | PASS | Clean |
 | `cargo clippy --workspace` | PASS | **0 warnings** (down from 453) |
-| `cargo test --workspace --lib` | PASS | **3,800+ core tests passed** (1,040 toadstool + 421 server + 674 common + 316 config + 1,400+ barracuda) |
+| `cargo test --workspace --lib` | PASS | **4,000+ core tests passed** (1,040 toadstool + 421 server + 674 common + 316 config + 1,600+ barracuda) |
 
-Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). Full workspace lib total: 4,400+ tests.
+Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). Full workspace lib total: 4,600+ tests.
 
 ---
 
@@ -33,7 +33,78 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 
 ---
 
-## New Features (Feb 12, 2026 — Continued)
+## New Features (Feb 13, 2026)
+
+### Phase 5 Evolution — TIERS 1-3 COMPLETE
+
+In response to hotSpring validation (129/129 tests passing, L1 χ²/datum = 1.19 — 82% better than scipy), all three tiers have been implemented.
+
+#### Tier 3: Architecture ✅
+
+**Sparse Linear Algebra** (`barracuda::linalg::sparse`):
+- `CsrMatrix` — Compressed Sparse Row format with O(nnz) SpMV
+- `CooMatrix` — Coordinate format for easy construction
+- `cg_solve()` — Preconditioned Conjugate Gradient for SPD matrices
+- `bicgstab_solve()` — BiCGSTAB for general non-symmetric matrices
+- `jacobi_solve()` — Jacobi iteration for diagonally dominant systems
+- Factory methods: `identity()`, `from_diagonal()`, `tridiagonal()`
+
+**Pipeline Orchestration** (`barracuda::pipeline`):
+- `Cascade` — Multi-stage filtering pipeline following hotSpring cascade pattern
+- `Stage` — Filter and/or transform with target device selection
+- `Target::Cpu`, `CpuParallel`, `Gpu`, `Npu`, `Auto`
+- Per-stage statistics and overall savings metrics
+
+**Benchmark Suite** (`barracuda::dispatch::benchmark`):
+- `BenchmarkSuite` — Run benchmarks for all operations
+- `BenchmarkConfig::quick()` / `default()` / `thorough()` presets
+- Crossover detection with configurable speedup threshold
+- Safety margin for threshold recommendations
+
+#### Tier 2: New Algorithms ✅
+
+**Direct Sampler** (`barracuda::sample::direct`):
+- `direct_sampler()` — Round-based Nelder-Mead on true objective
+- Warm-start from seeds or LHS
+- Early stopping via convergence diagnostics
+
+**Statistics** (`barracuda::stats`):
+- `chi2_decomposed()` — Per-datum residuals, pulls, worst-N analysis
+- `bootstrap_ci()` — Non-parametric confidence intervals for any statistic
+- `bootstrap_mean()`, `bootstrap_median()`, `bootstrap_std()` convenience functions
+
+**Optimization** (`barracuda::optimize`):
+- `convergence_diagnostics()` — Detect improving/stagnant/oscillating/diverging states
+- `should_stop_early()` — Simple early stopping predicate
+- `adaptive_penalty()` — Data-driven penalty from feasible values
+- `adaptive_penalty_mad()` — MAD-based robust variant
+
+#### Tier 1: Critical Fixes ✅
+
+**LOO-CV Hat Matrix Bug Fixed** (`barracuda::surrogate::rbf`):
+- Bug: `compute_hat_diagonal()` used K_smooth for both system and RHS, giving H_ii = 1.0 always
+- Fix: Use K_raw for RHS, K_smooth for system matrix
+
+**Auto-Smoothing** (`barracuda::sample::sparsity`):
+- `SparsitySamplerConfig::auto_smoothing` — Enable LOO-CV grid search per iteration
+- `loo_cv_optimal_smoothing()` — Standalone function for finding optimal smoothing
+
+**Penalty Filtering** (`barracuda::sample::sparsity`):
+- `PenaltyFilter` enum — None, Threshold, Quantile, AdaptiveMAD
+- `SparsitySamplerConfig::with_penalty_filter()` — Remove outliers before training
+
+**Warm-Start Seeds** (`barracuda::sample::sparsity`):
+- `SparsitySamplerConfig::with_warm_start()` — Pre-computed starting points
+- Enables L1→L2 seeding pattern (2× better than random starts)
+
+**Missing Special Functions** (`barracuda::special::gamma`):
+- `digamma(x)`, `beta(a, b)`, `ln_beta(a, b)`
+
+**New tests**: 62 additional tests for Phase 5 (all passing)
+
+---
+
+## New Features (Feb 12, 2026)
 
 ### Phase 3 Evolution — hotSpring Handoff Complete
 
@@ -468,20 +539,35 @@ parallelism. Always accepts any workload as universal fallback.
 
 ## Evolution Gaps
 
-### Phase 3 Priorities (from hotSpring validation)
+### Phase 5 Completed ✅ (Feb 13, 2026)
 
-| Gap | Priority | Status | Effort |
-|-----|----------|--------|--------|
-| f64 linalg bridges (eigh, cholesky, LU, QR, SVD) | 🔴 HIGH | ops/linalg has f32 GPU; need f64 CPU API | 3-5 days |
-| Auto-dispatch system (CPU/GPU routing) | 🔴 HIGH | Manual routing causes 90× slowdown | 2-3 days |
-| EvaluationCache persistence (save/load) | 🔴 HIGH | In-memory only; warm-start blocked | 1 day |
-| LOO-CV wiring for RBFSurrogate | 🟡 MEDIUM | loo_cv.wgsl exists; needs Rust wrapper | 1 day |
-| Incomplete gamma γ(a,x) | 🟡 MEDIUM | Needed for chi-squared CDF | 1-2 days |
-| Newton-Raphson + Brent root-finding | 🟡 MEDIUM | Faster than bisection | 1-2 days |
-| Cubic spline interpolation | 🟡 MEDIUM | Needed for EOS tables | 2 days |
-| Generalized eigenvalue Ax = λBx | 🟡 MEDIUM | Needed for L3 HFB overlap | 3-4 days |
+All hotSpring validation items from Tiers 1-3 have been implemented:
+- ✅ LOO-CV hat matrix bug fixed
+- ✅ Auto-smoothing via LOO-CV grid search
+- ✅ Penalty filtering (Threshold, Quantile, AdaptiveMAD)
+- ✅ Warm-start seeds for L1→L2 seeding
+- ✅ digamma, beta, ln_beta special functions
+- ✅ Direct sampler (round-based NM)
+- ✅ Chi² decomposition with per-datum analysis
+- ✅ Bootstrap confidence intervals
+- ✅ Convergence diagnostics
+- ✅ Adaptive penalty functions
+- ✅ Sparse linear algebra (CSR, CG, BiCGSTAB, Jacobi)
+- ✅ Pipeline orchestration (Cascade, Stage)
+- ✅ Benchmark suite for auto-dispatch thresholds
 
-### Infrastructure Gaps
+### Phase 3 Completed ✅ (Feb 12, 2026)
+
+- ✅ f64 linalg bridges (cholesky_f64, eigh_f64, gen_eigh_f64)
+- ✅ Auto-dispatch system (CPU/GPU routing)
+- ✅ EvaluationCache persistence (save/load/load_or_new)
+- ✅ LOO-CV wiring for RBFSurrogate
+- ✅ Incomplete gamma, chi-squared distribution
+- ✅ Newton-Raphson, Brent root-finding
+- ✅ Cubic spline interpolation
+- ✅ Generalized eigenvalue problem
+
+### Infrastructure Gaps (Remaining)
 
 | Gap | Priority | Status |
 |-----|----------|--------|
@@ -489,8 +575,8 @@ parallelism. Always accepts any workload as universal fallback.
 | Multi-GPU DevicePool | HIGH | Not started (awaiting Titan V) |
 | mDNS/K8s/Docker discovery | HIGH | Env vars work, other sources pending |
 | Cross-gate mesh relay | MEDIUM | Types defined, needs Songbird transport |
-| f64 WGSL shaders (native Titan V) | MEDIUM | Awaiting hardware |
-| Generic precision support (f16/bf16/fp8) | MEDIUM | See ADR below |
+| f64 WGSL shaders (native Titan V) | MEDIUM | Awaiting hardware (Phase 5 Tier 4) |
+| Generic precision support (f16/bf16/fp8) | MEDIUM | See specs/GENERIC_PRECISION_EVOLUTION.md |
 
 ### Generic Precision Evolution (Investigation)
 
@@ -538,4 +624,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 12, 2026
+**Last Updated**: February 13, 2026

@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 12, 2026
+**Last Updated**: February 13, 2026
 
 ---
 
@@ -20,22 +20,24 @@
 | Deploy NPU drivers | [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md) |
 | Understand NPU driver design | [specs/NPU_DRIVER_ARCHITECTURE.md](specs/NPU_DRIVER_ARCHITECTURE.md) |
 | Multi-tenant security | [specs/MULTITENANT_COMPUTE_ARCHITECTURE.md](specs/MULTITENANT_COMPUTE_ARCHITECTURE.md) |
-| Review hotSpring audit | [specs/BARRACUDA_SCIENCE_GAPS_AUDIT_FEB12_2026.md](specs/BARRACUDA_SCIENCE_GAPS_AUDIT_FEB12_2026.md) |
+| Phase 5 evolution (current) | [specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md](specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md) |
 | Phase 3 evolution roadmap | [specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md](specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md) |
 
 ---
 
-## Current State (February 12, 2026)
+## Current State (February 13, 2026)
 
-- **Phase 3 (A & B) Complete** — Phase C awaiting Titan V hardware
+- **Phase 5 Tiers 1-3 Complete** — Tier 4 awaiting Titan V hardware
 - **0 clippy warnings** (down from 453)
-- **15,700+ tests passing**, 0 failing (156 new middleware tests)
+- **15,700+ tests passing**, 0 failing (330+ scientific middleware tests)
 - **396 WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
 - **Shader-first**: ALL math is WGSL primary, ToadStool dispatches to GPU/CPU
 - 18 special function shaders, 3 sampling shaders, 5 statistics shaders
-- **Scientific middleware** (10 modules: linalg, numerical, special, stats, optimize, surrogate, sample, pde, interpolate, dispatch — 300+ tests, 0 unsafe)
-- **hotSpring audit complete** — all HIGH/MEDIUM priority gaps resolved
-- **Auto-dispatch system** — CPU/GPU routing with per-operation thresholds
+- **Scientific middleware** (12 modules: linalg, linalg::sparse, numerical, special, stats, optimize, surrogate, sample, pde, interpolate, dispatch, pipeline — 330+ tests, 0 unsafe)
+- **hotSpring validation complete** — L1 χ²/datum = 1.19 (82% better than scipy)
+- **Auto-dispatch system** — CPU/GPU routing with benchmark suite
+- **Pipeline orchestration** — `Cascade` multi-stage filtering API
+- **Sparse linear algebra** — CG, BiCGSTAB, Jacobi solvers
 - **17 WorkloadHint variants** with auto-routing (GPU, NPU, CPU) and user preference override
 - **26 JSON-RPC methods** across 6 domains (toadstool, compute, gpu, ollama, gate, resources)
 - GPU job queue with cross-gate routing

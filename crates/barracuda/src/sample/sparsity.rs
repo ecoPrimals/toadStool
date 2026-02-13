@@ -52,8 +52,30 @@ use crate::optimize::eval_record::EvaluationCache;
 use crate::optimize::multi_start::SolverResult;
 use crate::sample::latin_hypercube;
 use crate::surrogate::adaptive::train_adaptive_gpu;
-use crate::surrogate::{RBFKernel, RBFSurrogate};
+use crate::surrogate::{loo_cv_optimal_smoothing, RBFKernel, RBFSurrogate};
 use std::sync::Arc;
+
+/// Penalty filter strategy for surrogate training.
+///
+/// When training the RBF surrogate, large penalty values from infeasible
+/// regions can corrupt the approximation. These filters remove or cap
+/// penalty values before training.
+///
+/// # Reference
+///
+/// hotSpring validation: `surrogate.rs::filter_training_data()`
+#[derive(Debug, Clone, Copy, Default)]
+pub enum PenaltyFilter {
+    /// No filtering (default)
+    #[default]
+    None,
+    /// Remove all y values exceeding threshold
+    Threshold(f64),
+    /// Remove top q% outliers (0.0 to 1.0)
+    Quantile(f64),
+    /// Median + k×MAD (robust outlier detection)
+    AdaptiveMAD(f64),
+}
 
 /// Configuration for the SparsitySampler.
 #[derive(Clone)]
@@ -70,8 +92,33 @@ pub struct SparsitySamplerConfig {
     pub tol: f64,
     /// RBF kernel for surrogate (default: ThinPlateSpline)
     pub kernel: RBFKernel,
-    /// RBF smoothing parameter (default: 1e-12)
+    /// RBF smoothing parameter (default: 1e-12, but see auto_smoothing)
     pub smoothing: f64,
+    /// Enable LOO-CV auto-tuning of smoothing (default: false)
+    ///
+    /// When enabled, the sampler will run LOO-CV grid search after each
+    /// iteration to find the optimal smoothing parameter. This prevents
+    /// both overfitting (smoothing too low) and underfitting (smoothing too high).
+    ///
+    /// # Reference
+    ///
+    /// hotSpring validation: `surrogate.rs::loo_cv_optimal_smoothing()`
+    pub auto_smoothing: bool,
+    /// Penalty filter for surrogate training (default: None)
+    ///
+    /// Filters out penalty values before training the surrogate, preventing
+    /// corruption from large infeasible-region penalties.
+    pub penalty_filter: PenaltyFilter,
+    /// Warm-start seeds (default: empty)
+    ///
+    /// Pre-computed starting points for optimization (e.g., from L1 layer
+    /// for L2 optimization). When non-empty, these seeds are used as
+    /// additional starting points alongside LHS samples.
+    ///
+    /// # Reference
+    ///
+    /// hotSpring validation: `nuclear_eos_l2_ref.rs` L1-seeded L2 pattern
+    pub warm_start_seeds: Vec<Vec<f64>>,
     /// Random seed
     pub seed: u64,
     /// GPU device for hybrid evaluation (None = CPU only)
@@ -90,6 +137,9 @@ impl std::fmt::Debug for SparsitySamplerConfig {
             .field("tol", &self.tol)
             .field("kernel", &self.kernel)
             .field("smoothing", &self.smoothing)
+            .field("auto_smoothing", &self.auto_smoothing)
+            .field("penalty_filter", &self.penalty_filter)
+            .field("warm_start_seeds", &self.warm_start_seeds.len())
             .field("seed", &self.seed)
             .field(
                 "gpu_device",
@@ -102,6 +152,9 @@ impl std::fmt::Debug for SparsitySamplerConfig {
 
 impl SparsitySamplerConfig {
     /// Create a default configuration scaled to the problem dimension.
+    ///
+    /// Default smoothing is 1e-12 (near-exact interpolation). For rugged
+    /// landscapes, enable `auto_smoothing` or set smoothing manually.
     pub fn new(n_dims: usize, seed: u64) -> Self {
         Self {
             n_initial: 10 * n_dims,
@@ -111,6 +164,9 @@ impl SparsitySamplerConfig {
             tol: 1e-6,
             kernel: RBFKernel::ThinPlateSpline,
             smoothing: 1e-12,
+            auto_smoothing: false,
+            penalty_filter: PenaltyFilter::None,
+            warm_start_seeds: Vec::new(),
             seed,
             gpu_device: None,
             gpu_threshold: 100,
@@ -183,6 +239,95 @@ impl SparsitySamplerConfig {
         self
     }
 
+    /// Set RBF smoothing parameter explicitly.
+    ///
+    /// Lower values → more exact interpolation (risk of overfitting).
+    /// Higher values → smoother fit (risk of underfitting).
+    ///
+    /// For rugged landscapes, consider `with_auto_smoothing()` instead.
+    pub fn with_smoothing(mut self, smoothing: f64) -> Self {
+        self.smoothing = smoothing;
+        self
+    }
+
+    /// Enable automatic smoothing via LOO-CV grid search.
+    ///
+    /// After each iteration, runs LOO-CV to find optimal smoothing
+    /// that minimizes cross-validation error. This prevents:
+    /// - Overfitting when smoothing is too low (default 1e-12)
+    /// - Underfitting when smoothing is too high
+    ///
+    /// # Reference
+    ///
+    /// hotSpring validation: `surrogate.rs::loo_cv_optimal_smoothing()`
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use barracuda::sample::sparsity::SparsitySamplerConfig;
+    ///
+    /// let config = SparsitySamplerConfig::new(10, 42)
+    ///     .with_auto_smoothing(true)
+    ///     .with_penalty_filter(barracuda::sample::sparsity::PenaltyFilter::Threshold(12.0));
+    /// ```
+    pub fn with_auto_smoothing(mut self, enabled: bool) -> Self {
+        self.auto_smoothing = enabled;
+        self
+    }
+
+    /// Set penalty filtering strategy for surrogate training.
+    ///
+    /// Large penalty values from infeasible regions can corrupt the
+    /// surrogate approximation. Filtering removes or caps these values
+    /// before training.
+    ///
+    /// # Options
+    ///
+    /// - `PenaltyFilter::None` — no filtering (default)
+    /// - `PenaltyFilter::Threshold(v)` — remove all y > v
+    /// - `PenaltyFilter::Quantile(q)` — remove top q% outliers
+    /// - `PenaltyFilter::AdaptiveMAD(k)` — remove y > median + k×MAD
+    ///
+    /// # Reference
+    ///
+    /// hotSpring validation: `surrogate.rs::filter_training_data()`
+    pub fn with_penalty_filter(mut self, filter: PenaltyFilter) -> Self {
+        self.penalty_filter = filter;
+        self
+    }
+
+    /// Set warm-start seeds from a previous optimization layer.
+    ///
+    /// When optimizing in layers (e.g., L1 → L2), the best solutions from
+    /// the cheaper layer make excellent starting points for the expensive
+    /// layer. This ensures NM starts in physically-valid regions rather
+    /// than random space.
+    ///
+    /// Seeds are used alongside (not replacing) the LHS initial samples.
+    ///
+    /// # Reference
+    ///
+    /// hotSpring validation: `nuclear_eos_l2_ref.rs` L1-seeded L2 pattern
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use barracuda::sample::sparsity::SparsitySamplerConfig;
+    ///
+    /// // Best solutions from L1 optimization
+    /// let l1_best = vec![
+    ///     vec![0.1, 0.2, 0.3],
+    ///     vec![0.15, 0.25, 0.35],
+    /// ];
+    ///
+    /// let config = SparsitySamplerConfig::new(3, 42)
+    ///     .with_warm_start(l1_best);
+    /// ```
+    pub fn with_warm_start(mut self, seeds: Vec<Vec<f64>>) -> Self {
+        self.warm_start_seeds = seeds;
+        self
+    }
+
     /// Total evaluation budget (approximate).
     pub fn total_budget(&self) -> usize {
         self.n_initial + self.n_iterations * self.n_solvers * self.max_eval_per_solver
@@ -207,6 +352,91 @@ pub struct SparsitySamplerResult {
     pub surrogate: Option<RBFSurrogate>,
     /// Results per iteration
     pub iteration_results: Vec<IterationResult>,
+}
+
+/// Apply penalty filtering to training data.
+///
+/// Removes or caps penalty values that would corrupt surrogate training.
+///
+/// # Arguments
+///
+/// * `x_data` - Training inputs
+/// * `y_data` - Training outputs (may contain penalty values)
+/// * `filter` - Filtering strategy
+///
+/// # Returns
+///
+/// Filtered (x_data, y_data) with penalties removed/capped.
+fn filter_training_data(
+    x_data: &[Vec<f64>],
+    y_data: &[f64],
+    filter: PenaltyFilter,
+) -> (Vec<Vec<f64>>, Vec<f64>) {
+    match filter {
+        PenaltyFilter::None => (x_data.to_vec(), y_data.to_vec()),
+
+        PenaltyFilter::Threshold(threshold) => {
+            let (x_filt, y_filt): (Vec<_>, Vec<_>) = x_data
+                .iter()
+                .zip(y_data.iter())
+                .filter(|(_, &y)| y <= threshold)
+                .map(|(x, &y)| (x.clone(), y))
+                .unzip();
+            (x_filt, y_filt)
+        }
+
+        PenaltyFilter::Quantile(q) => {
+            if y_data.is_empty() || !(0.0..=1.0).contains(&q) {
+                return (x_data.to_vec(), y_data.to_vec());
+            }
+            let mut sorted: Vec<f64> = y_data.to_vec();
+            sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            let cutoff_idx = ((1.0 - q) * (sorted.len() as f64)).floor() as usize;
+            let cutoff_idx = cutoff_idx.min(sorted.len().saturating_sub(1));
+            let threshold = sorted[cutoff_idx];
+
+            let (x_filt, y_filt): (Vec<_>, Vec<_>) = x_data
+                .iter()
+                .zip(y_data.iter())
+                .filter(|(_, &y)| y <= threshold)
+                .map(|(x, &y)| (x.clone(), y))
+                .unzip();
+            (x_filt, y_filt)
+        }
+
+        PenaltyFilter::AdaptiveMAD(k) => {
+            if y_data.is_empty() {
+                return (x_data.to_vec(), y_data.to_vec());
+            }
+            // Compute median
+            let mut sorted: Vec<f64> = y_data.to_vec();
+            sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            let median = if sorted.len() % 2 == 0 {
+                (sorted[sorted.len() / 2 - 1] + sorted[sorted.len() / 2]) / 2.0
+            } else {
+                sorted[sorted.len() / 2]
+            };
+
+            // Compute MAD (median absolute deviation)
+            let mut deviations: Vec<f64> = y_data.iter().map(|&y| (y - median).abs()).collect();
+            deviations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            let mad = if deviations.len() % 2 == 0 {
+                (deviations[deviations.len() / 2 - 1] + deviations[deviations.len() / 2]) / 2.0
+            } else {
+                deviations[deviations.len() / 2]
+            };
+
+            let threshold = median + k * mad;
+
+            let (x_filt, y_filt): (Vec<_>, Vec<_>) = x_data
+                .iter()
+                .zip(y_data.iter())
+                .filter(|(_, &y)| y <= threshold)
+                .map(|(x, &y)| (x.clone(), y))
+                .unzip();
+            (x_filt, y_filt)
+        }
+    }
 }
 
 /// Diagnostics for a single SparsitySampler iteration.
@@ -289,6 +519,7 @@ where
     let _n_dims = bounds.len();
     let mut cache = EvaluationCache::with_capacity(config.total_budget());
     let mut iteration_results = Vec::with_capacity(config.n_iterations);
+    let mut current_smoothing = config.smoothing;
 
     // Phase 1: Initial sampling via LHS
     let initial_points = latin_hypercube(config.n_initial, bounds, config.seed)?;
@@ -298,16 +529,48 @@ where
         cache.record(point.clone(), val);
     }
 
+    // Evaluate warm-start seeds (L1→L2 seeding pattern)
+    for seed in &config.warm_start_seeds {
+        if seed.len() == bounds.len() {
+            let val = f(seed);
+            cache.record(seed.clone(), val);
+        }
+    }
+
     // Iterative refinement loop
     let mut last_surrogate = None;
 
     for iter in 0..config.n_iterations {
         let iter_start_evals = cache.len();
 
-        // Train surrogate on ALL evaluations so far
-        let (x_data, y_data) = cache.training_data();
+        // Get training data from cache
+        let (x_raw, y_raw) = cache.training_data();
 
-        let surrogate = match RBFSurrogate::train(&x_data, &y_data, config.kernel, config.smoothing)
+        // Apply penalty filtering before surrogate training
+        let (x_data, y_data) = filter_training_data(&x_raw, &y_raw, config.penalty_filter);
+
+        // Skip if filtering removed too many points
+        if x_data.len() < 2 {
+            let nm_result = run_nm_batch(&f, bounds, config, iter, &mut cache)?;
+            iteration_results.push(IterationResult {
+                iteration: iter,
+                best_f: nm_result.f_best,
+                n_new_evals: cache.len() - iter_start_evals,
+                total_evals: cache.len(),
+                surrogate_error: None,
+                used_gpu: false,
+            });
+            continue;
+        }
+
+        // Auto-smoothing via LOO-CV grid search (if enabled)
+        if config.auto_smoothing {
+            if let Ok(result) = loo_cv_optimal_smoothing(&x_data, &y_data, config.kernel, None) {
+                current_smoothing = result.smoothing;
+            }
+        }
+
+        let surrogate = match RBFSurrogate::train(&x_data, &y_data, config.kernel, current_smoothing)
         {
             Ok(s) => s,
             Err(_) => {
@@ -326,8 +589,10 @@ where
             }
         };
 
-        // Compute surrogate quality metric (optional: leave-one-out RMSE approximation)
-        let surrogate_error = compute_surrogate_rmse(&surrogate, &x_data, &y_data);
+        // Compute surrogate quality metric (LOO-CV RMSE if available, else train error)
+        let surrogate_error = surrogate.loo_cv_rmse().unwrap_or_else(|_| {
+            compute_surrogate_rmse(&surrogate, &x_data, &y_data)
+        });
 
         // Use surrogate to find promising regions:
         // Run multi-start NM on the SURROGATE (cheap evaluations!)

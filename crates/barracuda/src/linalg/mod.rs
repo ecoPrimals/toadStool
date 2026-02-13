@@ -16,7 +16,7 @@
 //!
 //! # Available Operations
 //!
-//! ## Decompositions
+//! ## Dense Decompositions
 //!
 //! - [`lu_decompose`] - LU decomposition with partial pivoting (PA = LU)
 //! - [`qr_decompose`] - QR decomposition via Householder reflections
@@ -25,12 +25,22 @@
 //! - [`eigh_f64`] - Eigendecomposition for symmetric matrices (A = VDVᵀ)
 //! - [`gen_eigh_f64`] - Generalized eigenvalue problem Ax = λBx
 //!
-//! ## Solvers
+//! ## Dense Solvers
 //!
 //! - [`solve_f64`] - General linear solve via Gauss-Jordan
 //! - [`lu_solve`] - Linear solve via LU decomposition
 //! - [`qr_least_squares`] - Least squares via QR
 //! - [`tridiagonal_solve_f64`] - Thomas algorithm for tridiagonal systems
+//!
+//! ## Sparse Operations ([`sparse`] module)
+//!
+//! For large-scale problems (HFB basis sets, finite elements):
+//!
+//! - [`sparse::CsrMatrix`] - Compressed sparse row format
+//! - [`sparse::CooMatrix`] - Coordinate format (for construction)
+//! - [`sparse::cg_solve`] - Conjugate gradient (SPD matrices)
+//! - [`sparse::bicgstab_solve`] - BiCGSTAB (general matrices)
+//! - [`sparse::jacobi_solve`] - Jacobi iteration
 //!
 //! ## Utilities
 //!
@@ -59,10 +69,11 @@
 //! # Ok::<(), barracuda::error::BarracudaError>(())
 //! ```
 
-pub mod solve;
 pub mod cholesky;
 pub mod eigh;
 pub mod gen_eigh;
+pub mod solve;
+pub mod sparse;
 
 // Re-export solve
 pub use solve::solve_f64;

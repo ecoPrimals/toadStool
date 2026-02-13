@@ -1,51 +1,4 @@
-//! Auto-dispatch system for CPU/GPU routing
-//!
-//! Provides intelligent, size-based dispatch for mathematical operations.
-//! Small workloads stay on CPU (avoiding dispatch overhead), large workloads
-//! use GPU acceleration.
-//!
-//! # Dual-Precision Architecture
-//!
-//! ```text
-//! User calls: erf(x) or matmul(a, b)
-//!       ↓
-//! DispatchConfig checks:
-//! - Input size vs threshold
-//! - GPU availability
-//! - Force flags
-//!       ↓
-//! Routes to:
-//! - CPU f64 (small N, precision-critical)
-//! - GPU f32 (large N, throughput-critical)
-//! ```
-//!
-//! # Per-Function Thresholds
-//!
-//! Thresholds are empirically determined via benchmarking:
-//!
-//! | Operation | CPU Threshold | Reason |
-//! |-----------|---------------|--------|
-//! | erf | 512 | GPU dispatch overhead ~0.1ms |
-//! | matmul | 64 | GPU wins at 64×64 matrices |
-//! | eigh | 128 | Jacobi iteration memory-bound |
-//! | cdist | 200 | Distance computation O(N²) |
-//! | fft | 1024 | FFT benefits from parallelism |
-//!
-//! # Example
-//!
-//! ```
-//! use barracuda::dispatch::{Dispatch, DispatchConfig};
-//!
-//! // Configure dispatch
-//! let config = DispatchConfig::default();
-//!
-//! // Auto-route based on size
-//! if config.should_use_gpu(1000, "matmul") {
-//!     // GPU path
-//! } else {
-//!     // CPU path
-//! }
-//! ```
+//! Dispatch configuration and routing logic.
 
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -154,7 +107,7 @@ impl DispatchConfig {
 }
 
 /// Default threshold when operation not specified
-const DEFAULT_THRESHOLD: usize = 1024;
+pub const DEFAULT_THRESHOLD: usize = 1024;
 
 /// Default per-operation thresholds (empirically determined)
 fn default_thresholds() -> HashMap<&'static str, usize> {

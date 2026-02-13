@@ -11,17 +11,17 @@
 
 ---
 
-## Quality Gates (February 12, 2026)
+## Quality Gates (February 13, 2026)
 
 | Gate | Status |
 |------|--------|
 | `cargo build --workspace` | Clean, 0 warnings |
 | `cargo fmt --all -- --check` | Clean |
 | `cargo clippy --workspace` | **0 warnings** (down from 453) |
-| `cargo test --workspace` | **15,600+ passed, 0 failed** |
+| `cargo test --workspace` | **15,700+ passed, 0 failed** |
 | `unsafe` blocks | 100% documented with `// SAFETY:` comments |
 | File size | All production files appropriately structured |
-| Scientific middleware | 200+ tests, 100% passing, 0 unsafe blocks |
+| Scientific middleware | 330+ tests, 100% passing, 0 unsafe blocks |
 
 ---
 
@@ -198,35 +198,42 @@ toadStool/
 
 ## Recent Evolutions (Feb 2026)
 
-- **Phase 3 Complete** -- f64 linalg bridges, auto-dispatch, scientific functions (see below)
+- **Phase 5 Complete (Tiers 1-3)** -- All hotSpring validation fixes and new algorithms implemented
+- **Sparse Linear Algebra** -- `CsrMatrix`, CG, BiCGSTAB solvers for large HFB basis sets
+- **Pipeline Orchestration** -- `Cascade` API for multi-stage heterogeneous compute
+- **Benchmark Suite** -- Auto-dispatch threshold determination
+- **Phase 3 Complete** -- f64 linalg bridges, auto-dispatch, scientific functions
 - **Deep Debt Resolved** -- mock isolation, hardcoded path removal, primal self-knowledge verified
-- **CPU Tensor Ops** -- tiled matmul, conv2d, pooling with proper cache-blocking
-- **CUDA Backend** -- real PTX kernel execution for matmul, reduction ops
-- **Unified Memory** -- OpenCL/Vulkan backends now use wgpu fallback (pure Rust)
-- **Security Providers** -- Unix socket IPC with JSON-RPC 2.0 for inter-primal security
 - **Clippy Clean** -- 0 warnings across barracuda and core crates
 
-## Phase 3 Status (February 12, 2026)
+## Phase 5 Status (February 13, 2026) — TIERS 1-3 COMPLETE
 
-**Phase A & B COMPLETE** — Phase C awaiting Titan V hardware.
+In response to hotSpring validation (129/129 tests, L1 χ²/datum = 1.19 — 82% better than scipy):
 
-### Completed
-- ✅ **f64 Linalg Bridges** -- `cholesky_f64`, `eigh_f64`, `gen_eigh_f64`, LU/QR/SVD/tridiagonal re-exports
-- ✅ **Auto-Dispatch System** -- `dispatch` module with per-operation CPU/GPU thresholds
-- ✅ **Cache Persistence** -- `EvaluationCache::save/load/load_or_new` via serde_json
-- ✅ **LOO-CV Wiring** -- `RBFSurrogate::loo_cv_rmse()`, `loo_cv_errors()`
-- ✅ **Root-Finding** -- Newton-Raphson, Secant, Brent methods
-- ✅ **Chi-Squared Distribution** -- CDF, PDF, quantile, goodness-of-fit test
-- ✅ **Cubic Spline** -- Natural/clamped/not-a-knot with derivatives and integration
-- ✅ **Generalized Eigenvalue** -- `gen_eigh_f64` via Cholesky reduction
-- ✅ **Deep Debt** -- Mock isolation, hardcoded path removal, clippy clean
+### Tier 1: Critical Fixes ✅
+- **LOO-CV Hat Matrix** -- Fixed H_ii = 1.0 bug (K_raw for RHS, K_smooth for system)
+- **Auto-Smoothing** -- `loo_cv_optimal_smoothing()`, prevents over/underfitting
+- **Penalty Filtering** -- `PenaltyFilter` enum (Threshold, Quantile, AdaptiveMAD)
+- **Warm-Start Seeds** -- `SparsitySamplerConfig::with_warm_start()` for L1→L2 seeding
+- **digamma/beta** -- Missing special functions restored
 
-### Awaiting Hardware (Phase C)
+### Tier 2: New Algorithms ✅
+- **Direct Sampler** -- Round-based NM on true objective (achieved χ²/datum = 1.19)
+- **Chi² Decomposition** -- Per-datum residuals, pulls, worst-N analysis
+- **Bootstrap CI** -- Non-parametric confidence intervals
+- **Convergence Diagnostics** -- Stagnation/oscillation/divergence detection
+- **Adaptive Penalty** -- Data-driven penalty from feasible values
+
+### Tier 3: Architecture ✅
+- **Sparse Linear Algebra** -- `CsrMatrix`, `cg_solve`, `bicgstab_solve`, `jacobi_solve`
+- **Pipeline Orchestration** -- `Cascade` multi-stage filtering, `Stage` with `Target` devices
+- **Benchmark Suite** -- `BenchmarkSuite` for empirical CPU/GPU thresholds
+
+### Awaiting Hardware (Tier 4)
 - f64 WGSL shader variants (when WebGPU adds f64 extensions)
 - Multi-GPU DevicePool (when Titan V arrives)
-- f64 Tensor type
 
-See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
+See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
@@ -239,4 +246,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 12, 2026
+**Last Updated**: February 13, 2026

@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 12, 2026
+**Date**: February 13, 2026 (Phase 5 Evolution — Tier 3 Complete)
 
 ---
 
@@ -10,9 +10,9 @@
 cargo build --workspace          0 warnings
 cargo fmt --all -- --check       CLEAN
 cargo clippy --workspace         0 warnings (from 453)
-cargo test --workspace           15,600+ passed / 0 failed
+cargo test --workspace           15,700+ passed / 0 failed
 unsafe blocks                    35 blocks, 100% SAFETY documented
-middleware tests                 200+ passed (linalg, numerical, special, stats, optimize, surrogate, sample, pde)
+middleware tests                 330+ passed (linalg, sparse, numerical, special, stats, optimize, surrogate, sample, pde, pipeline)
 ```
 
 ---
@@ -132,7 +132,39 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 - Unified memory with wgpu fallback (OpenCL/Vulkan)
 - Unix socket security providers (JSON-RPC 2.0)
 
-## Phase 3 Status
+## Phase 5 Status (hotSpring Validation Response)
+
+### ✅ Completed (Feb 13, 2026) — Tier 3 Architecture (ALL COMPLETE)
+
+- **Dispatch Benchmark Suite** -- `BenchmarkSuite` for empirical CPU/GPU threshold determination
+- **Pipeline Orchestration** -- `Cascade` API for hotSpring-validated multi-stage filtering
+- **Sparse Linear Algebra** -- `CsrMatrix`, `cg_solve`, `bicgstab_solve` for large HFB basis sets
+
+### ✅ Completed (Feb 13, 2026) — Tier 2 New Algorithms
+
+- **Direct Sampler** -- `direct_sampler()` round-based NM on true objective (achieved χ²/datum = 1.19)
+- **Chi² Decomposition** -- `chi2_decomposed()` with per-datum residuals, pulls, worst-N
+- **Bootstrap CI** -- `bootstrap_ci()` non-parametric confidence intervals for any statistic
+- **Convergence Diagnostics** -- `convergence_diagnostics()` detecting stagnation/oscillation/divergence
+- **Adaptive Penalty** -- `adaptive_penalty()` data-driven penalty from feasible values
+
+### ✅ Completed (Feb 13, 2026) — Tier 1 Critical Fixes
+
+- **LOO-CV hat matrix bug fixed** -- K_raw for RHS, K_smooth for system (was H_ii = 1.0 always)
+- **Auto-smoothing** -- `SparsitySamplerConfig::auto_smoothing`, `loo_cv_optimal_smoothing()`
+- **Penalty filtering** -- `PenaltyFilter` enum (Threshold, Quantile, AdaptiveMAD)
+- **Warm-start seeds** -- `SparsitySamplerConfig::with_warm_start()` for L1→L2 seeding
+- **digamma(x)** -- ψ(x) = Γ'(x)/Γ(x) with 1e-9 precision
+- **beta(a,b), ln_beta(a,b)** -- B(a,b) = Γ(a)Γ(b)/Γ(a+b)
+
+### hotSpring Validation Results
+
+```
+L1 (SEMF): χ²/datum = 1.19 (BarraCUDA) vs 6.62 (scipy) → 82% BETTER
+Validation Suite: 129/129 tests PASS
+```
+
+## Phase 3 Status (Complete)
 
 ### ✅ Completed (Feb 12, 2026)
 
@@ -185,27 +217,29 @@ cargo llvm-cov -p toadstool-server --lib
 
 ## Scientific Middleware (Shader-First)
 
-**10 production-grade modules** — WGSL shaders primary, ToadStool dispatches:
+**12 production-grade modules** — WGSL shaders primary, ToadStool dispatches:
 
 ```
-barracuda::linalg      - solve, cholesky, eigh, gen_eigh, LU, QR, SVD, tridiagonal
-barracuda::numerical   - Gradient, trapz, RK45 adaptive ODE solver
-barracuda::special     - gamma, chi_squared, Hermite, Legendre, Laguerre, digamma, beta, erf, Bessel
-barracuda::stats       - norm_cdf, norm_ppf, correlation, covariance, variance
-barracuda::optimize    - Nelder-Mead, BFGS, bisection, Newton, Brent + EvaluationCache persistence
-barracuda::surrogate   - RBF with 6 kernels, GPU-accelerated training, LOO-CV
-barracuda::sample      - Sobol, LHS, random_uniform
-barracuda::pde         - Crank-Nicolson heat equation solver
-barracuda::interpolate - Cubic spline (natural/clamped/not-a-knot) with derivatives
-barracuda::dispatch    - Auto CPU/GPU routing with per-operation thresholds
+barracuda::linalg         - solve, cholesky, eigh, gen_eigh, LU, QR, SVD, tridiagonal
+barracuda::linalg::sparse - CsrMatrix, CooMatrix, CG, BiCGSTAB, Jacobi solvers
+barracuda::numerical      - Gradient, trapz, RK45 adaptive ODE solver
+barracuda::special        - gamma, chi_squared, Hermite, Legendre, Laguerre, digamma, beta, erf, Bessel
+barracuda::stats          - norm_cdf, norm_ppf, correlation, covariance, variance, bootstrap, chi2
+barracuda::optimize       - Nelder-Mead, BFGS, bisection, Newton, Brent, diagnostics, penalty
+barracuda::surrogate      - RBF with 6 kernels, GPU-accelerated training, LOO-CV
+barracuda::sample         - Sobol, LHS, random_uniform, direct_sampler
+barracuda::pde            - Crank-Nicolson heat equation solver
+barracuda::interpolate    - Cubic spline (natural/clamped/not-a-knot) with derivatives
+barracuda::dispatch       - Auto CPU/GPU routing with benchmark suite
+barracuda::pipeline       - Cascade multi-stage filtering, Stage with Target devices
 ```
 
-**Tests**: 300+ passing (156 new in Phase 3)
+**Tests**: 330+ passing (156 Phase 3 + 62 Phase 5 Tiers 1-3)
 **Quality**: Zero unsafe, clippy clean, pure Rust
 **Architecture**: Shader-first — ALL math runs on GPU when fp64 available
-**Audit**: All hotSpring HIGH/MEDIUM gaps resolved (Feb 12)
-**Docs**: `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md`, `docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md`
+**Audit**: All hotSpring Tiers 1-3 complete (Feb 13)
+**Docs**: `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md`, `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md`
 
 ---
 
-**Last Updated**: February 12, 2026
+**Last Updated**: February 13, 2026

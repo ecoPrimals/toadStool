@@ -342,56 +342,70 @@ impl RBFSurrogate {
         Ok(loo_residuals)
     }
 
-    /// Compute diagonal of the hat matrix H = K(K + λI)⁻¹.
+    /// Compute diagonal of the hat matrix H = K_raw · (K_smooth)⁻¹.
     ///
-    /// For RBF interpolation, the hat matrix relates predictions to targets:
-    /// ŷ = H·y
+    /// For RBF interpolation with regularization, the hat matrix is:
+    /// H = K_raw · (K_raw + λI)⁻¹
+    ///
+    /// where K_raw is the kernel matrix WITHOUT regularization and
+    /// K_smooth = K_raw + λI is the regularized matrix.
     ///
     /// H_ii measures how much influence point i has on its own prediction.
+    /// For exact interpolation (λ → 0), H_ii → 1.
+    /// For smoothed interpolation, H_ii < 1.
+    ///
+    /// # Algorithm (hotSpring validated)
+    ///
+    /// For each point i:
+    /// 1. Solve K_smooth · w = e_i (standard basis vector)
+    /// 2. H_ii = K_raw[i,:] · w = dot product of row i with solution
+    ///
+    /// This correctly gives H_ii < 1 when smoothing > 0.
     fn compute_hat_diagonal(&self) -> Result<Vec<f64>> {
-        // Compute kernel matrix K
+        let n = self.n_train;
+
+        // Compute distance matrix
         let distances = compute_distances(
             &self.train_x,
             &self.train_x,
-            self.n_train,
-            self.n_train,
+            n,
+            n,
             self.n_dim,
         );
 
-        let mut k = vec![0.0; self.n_train * self.n_train];
-        for i in 0..self.n_train {
-            for j in 0..self.n_train {
-                let k_ij = self.kernel.eval(distances[i * self.n_train + j]);
-                let smooth = if i == j { self.smoothing } else { 0.0 };
-                k[i * self.n_train + j] = k_ij + smooth;
+        // Build K_raw (kernel matrix WITHOUT smoothing)
+        let mut k_raw = vec![0.0; n * n];
+        for i in 0..n {
+            for j in 0..n {
+                k_raw[i * n + j] = self.kernel.eval(distances[i * n + j]);
             }
         }
 
-        // Compute H = K·(K + λI)⁻¹ by solving (K + λI)·H = K
-        // Actually, we need H = K·inv(K + λI), which is K·solve(K+λI, I)
-        // But for the diagonal, we can solve column by column
+        // Build K_smooth = K_raw + λI (kernel matrix WITH smoothing)
+        let mut k_smooth = k_raw.clone();
+        for i in 0..n {
+            k_smooth[i * n + i] += self.smoothing;
+        }
 
-        // Simpler approach: H_ii = e_i^T · K · inv(K + λI) · e_i
-        // where e_i is the i-th standard basis vector
+        // Compute H_ii for each point
+        // H = K_raw · (K_smooth)⁻¹
+        // H_ii = e_i^T · K_raw · (K_smooth)⁻¹ · e_i
+        //      = K_raw[i,:] · (K_smooth)⁻¹ · e_i
+        //      = K_raw[i,:] · w_i  where K_smooth · w_i = e_i
 
-        // Actually, for RBF with augmentation, this is more complex.
-        // For simplicity, we'll compute the full hat matrix and extract diagonal.
+        let mut h_diag = Vec::with_capacity(n);
 
-        // For the kernel-only case (no polynomial augmentation in hat):
-        // H = K · (K + λI)^{-1}
-        // We solve (K + λI) · X = K for X = (K + λI)^{-1} · K^T = H^T
-        // Then H_ii = X_ii
+        for i in 0..n {
+            // Create e_i (standard basis vector)
+            let mut e_i = vec![0.0; n];
+            e_i[i] = 1.0;
 
-        // Since K is symmetric, H = H^T, so we just need the diagonal of X.
+            // Solve K_smooth · w = e_i
+            let w = solve_f64(&k_smooth, &e_i, n)?;
 
-        let mut h_diag = Vec::with_capacity(self.n_train);
-
-        for i in 0..self.n_train {
-            // Solve (K + λI) · x = K[:,i] for x
-            // Then H_ii = x[i] = ((K+λI)^{-1} K)_ii
-            let k_col: Vec<f64> = (0..self.n_train).map(|j| k[j * self.n_train + i]).collect();
-            let x = solve_f64(&k, &k_col, self.n_train)?;
-            h_diag.push(x[i]);
+            // H_ii = K_raw[i,:] · w (dot product)
+            let h_ii: f64 = (0..n).map(|j| k_raw[i * n + j] * w[j]).sum();
+            h_diag.push(h_ii);
         }
 
         Ok(h_diag)
@@ -406,6 +420,102 @@ impl RBFSurrogate {
     pub fn n_dim(&self) -> usize {
         self.n_dim
     }
+}
+
+/// Result of LOO-CV grid search for optimal smoothing.
+pub struct LooSmoothing {
+    /// Optimal smoothing parameter
+    pub smoothing: f64,
+    /// LOO-CV RMSE at optimal smoothing
+    pub rmse: f64,
+    /// All grid search results as (smoothing, rmse) pairs
+    pub grid_results: Vec<(f64, f64)>,
+}
+
+/// Find optimal smoothing parameter via LOO-CV grid search.
+///
+/// Performs grid search over logarithmically-spaced smoothing values,
+/// returning the smoothing that minimizes LOO-CV RMSE.
+///
+/// # Arguments
+///
+/// * `x_data` - Training points (each inner vec is one point)
+/// * `y_data` - Training targets
+/// * `kernel` - RBF kernel to use
+/// * `smoothing_grid` - Grid of smoothing values to test (or None for default)
+///
+/// # Returns
+///
+/// [`LooSmoothing`] with optimal_smoothing, optimal_rmse, and all grid results.
+///
+/// # Example
+///
+/// ```ignore
+/// let result = loo_cv_optimal_smoothing(
+///     &x_data, &y_data,
+///     RBFKernel::ThinPlateSpline,
+///     None,  // Use default grid
+/// )?;
+/// println!("Optimal smoothing: {:.2e}, RMSE: {:.6}", result.smoothing, result.rmse);
+/// ```
+///
+/// # Reference
+///
+/// hotSpring validation: `surrogate.rs::loo_cv_optimal_smoothing()`
+pub fn loo_cv_optimal_smoothing(
+    x_data: &[Vec<f64>],
+    y_data: &[f64],
+    kernel: RBFKernel,
+    smoothing_grid: Option<&[f64]>,
+) -> Result<LooSmoothing> {
+    // Default grid: logarithmically spaced from 1e-10 to 1.0
+    let default_grid: Vec<f64> = (-10..=0)
+        .map(|i| 10.0_f64.powi(i))
+        .collect();
+    let grid = smoothing_grid.unwrap_or(&default_grid);
+
+    if grid.is_empty() {
+        return Err(BarracudaError::InvalidInput {
+            message: "smoothing_grid cannot be empty".into(),
+        });
+    }
+
+    let mut results = Vec::with_capacity(grid.len());
+    let mut best_smoothing = grid[0];
+    let mut best_rmse = f64::INFINITY;
+
+    for &s in grid {
+        // Train surrogate with this smoothing
+        let surrogate = match RBFSurrogate::train(x_data, y_data, kernel, s) {
+            Ok(surr) => surr,
+            Err(_) => continue, // Skip invalid configurations
+        };
+
+        // Compute LOO-CV RMSE
+        let rmse = match surrogate.loo_cv_rmse() {
+            Ok(r) if r.is_finite() => r,
+            _ => continue, // Skip non-finite RMSE
+        };
+
+        results.push((s, rmse));
+
+        if rmse < best_rmse {
+            best_rmse = rmse;
+            best_smoothing = s;
+        }
+    }
+
+    if results.is_empty() {
+        return Err(BarracudaError::ExecutionError {
+            message: "No valid smoothing values found during grid search".into(),
+        });
+    }
+
+    Ok(LooSmoothing {
+        smoothing: best_smoothing,
+        rmse: best_rmse,
+        grid_results: results,
+    })
 }
 
 /// Compute pairwise Euclidean distances (CPU f64)
@@ -621,5 +731,95 @@ mod tests {
 
         assert_eq!(surrogate.n_train(), 4);
         assert_eq!(surrogate.n_dim(), 2);
+    }
+
+    #[test]
+    fn test_loo_cv_hat_diagonal_correct() {
+        // Test that H_ii < 1 when smoothing > 0 (the bug was H_ii = 1 always)
+        // Use non-linear noisy data that won't be perfectly fit
+        let x_train = vec![
+            vec![0.0],
+            vec![0.5],
+            vec![1.0],
+            vec![1.5],
+            vec![2.0],
+            vec![2.5],
+            vec![3.0],
+        ];
+        // Noisy quadratic: y ≈ x² + noise
+        let y_train = vec![0.1, 0.35, 0.9, 2.3, 4.1, 6.2, 9.1];
+
+        // Use significant smoothing with Gaussian kernel
+        let surrogate = RBFSurrogate::train(
+            &x_train, &y_train,
+            RBFKernel::Gaussian { epsilon: 1.0 },
+            0.5  // High smoothing to force underfitting
+        ).unwrap();
+
+        let errors = surrogate.loo_cv_errors().unwrap();
+
+        // With the CORRECT hat matrix and high smoothing, predictions != targets
+        // So residuals (y - ŷ) should be non-zero
+        // And with H_ii < 1, the LOO residuals should also be non-zero
+
+        // First verify we have some residuals (smoothed predictions differ from targets)
+        let train_points: Vec<Vec<f64>> = x_train.clone();
+        let predictions = surrogate.predict(&train_points).unwrap();
+        let max_residual: f64 = predictions.iter()
+            .zip(y_train.iter())
+            .map(|(p, y)| (p - y).abs())
+            .fold(0.0, f64::max);
+
+        // With high smoothing, the fit should be imperfect
+        assert!(
+            max_residual > 0.01,
+            "Expected imperfect fit with high smoothing. Max residual: {}",
+            max_residual
+        );
+
+        // LOO errors should be non-zero (the main test)
+        let max_abs_error = errors.iter().map(|e| e.abs()).fold(0.0, f64::max);
+        assert!(
+            max_abs_error > 0.001,
+            "LOO errors should be non-zero with smoothing. Max error: {}",
+            max_abs_error
+        );
+    }
+
+    #[test]
+    fn test_loo_cv_smoothing_effect() {
+        // More smoothing should generally increase LOO-CV RMSE (underfitting)
+        // Less smoothing should decrease LOO-CV RMSE (better fit, but risk overfitting)
+        let x_train: Vec<Vec<f64>> = (0..10)
+            .map(|i| vec![i as f64 * 0.1])
+            .collect();
+        let y_train: Vec<f64> = x_train
+            .iter()
+            .map(|x| 2.0 * x[0] + 0.1 * (x[0] * 10.0).sin())
+            .collect();
+
+        let kernel = RBFKernel::Gaussian { epsilon: 1.0 };
+
+        let surrogate_low = RBFSurrogate::train(
+            &x_train, &y_train, kernel, 1e-4
+        ).unwrap();
+        let surrogate_high = RBFSurrogate::train(
+            &x_train, &y_train, kernel, 0.5
+        ).unwrap();
+
+        let rmse_low = surrogate_low.loo_cv_rmse().unwrap();
+        let rmse_high = surrogate_high.loo_cv_rmse().unwrap();
+
+        // Both should be finite and positive
+        assert!(rmse_low.is_finite() && rmse_low > 0.0);
+        assert!(rmse_high.is_finite() && rmse_high > 0.0);
+
+        // High smoothing should generally give higher RMSE (underfitting)
+        // But this isn't strictly monotonic, so we just verify they're different
+        assert!(
+            (rmse_low - rmse_high).abs() > 1e-6,
+            "LOO-CV should be sensitive to smoothing. low={}, high={}",
+            rmse_low, rmse_high
+        );
     }
 }

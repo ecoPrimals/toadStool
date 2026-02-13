@@ -7,6 +7,126 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-13] - Phase 5 Evolution — Tier 3 Architecture (Complete)
+
+**Impact**: Auto-dispatch benchmark suite, pipeline orchestration API, and sparse linear algebra for large-scale problems.
+
+#### Added
+
+- **Sparse Linear Algebra** (`barracuda::linalg::sparse`):
+  - `CsrMatrix` — Compressed Sparse Row format with O(nnz) SpMV
+  - `CooMatrix` — Coordinate format for easy construction
+  - `cg_solve()` — Preconditioned Conjugate Gradient for SPD matrices
+  - `bicgstab_solve()` — BiCGSTAB for general non-symmetric matrices
+  - `jacobi_solve()` — Jacobi iteration for diagonally dominant systems
+  - `SolverConfig` — Tolerance, max iterations, preconditioning options
+  - Factory methods: `identity()`, `from_diagonal()`, `tridiagonal()`
+
+- **Dispatch Benchmark Suite** (`barracuda::dispatch::benchmark`):
+  - `BenchmarkSuite` — Empirically determine optimal CPU/GPU thresholds
+  - `BenchmarkConfig` — Quick/default/thorough presets
+  - `OperationBenchmark` — Per-operation timing and crossover analysis
+  - `BenchmarkResult` — Aggregate results with optimal thresholds
+  - Operations: matmul, erf, gamma, bessel, cholesky, eigh, solve, cdist, etc.
+
+- **Pipeline Orchestration** (`barracuda::pipeline`):
+  - `Cascade` — Multi-stage filtering pipeline (hotSpring pattern)
+  - `CascadeBuilder` — Declarative pipeline construction
+  - `Stage` — Filter and/or transform with target device
+  - `Target` — Cpu, CpuParallel, Gpu, Npu, Auto
+  - `CascadeResult` — Per-stage statistics and overall savings
+
+#### Changed
+
+- `barracuda::dispatch` module restructured:
+  - Core config moved to `dispatch::config`
+  - New `dispatch::benchmark` submodule
+  - All exports preserved for backwards compatibility
+
+---
+
+### [2026-02-13] - Phase 5 Evolution — Tier 2 Algorithms
+
+**Impact**: New algorithms from hotSpring reference implementations. Direct round-based optimization, statistical inference, and convergence diagnostics.
+
+#### Added
+
+- **Direct Sampler** (`barracuda::sample::direct`):
+  - `direct_sampler()` — Round-based NM on true objective (not surrogate-guided)
+  - `DirectSamplerConfig` — Rounds, solvers, patience, warm-start
+  - Early stopping with improvement threshold
+  - Surrogate training for monitoring only (not guiding)
+  - Reference: hotSpring `round_based_direct_optimization()` achieving χ²/datum = 1.19
+
+- **Chi-Squared Decomposition** (`barracuda::stats::chi2`):
+  - `chi2_decomposed()` — Per-datum residuals, pulls, and contributions
+  - `chi2_decomposed_weighted()` — With known uncertainties
+  - `Chi2Decomposed::worst_n()` — Identify N worst-fitting points
+  - `Chi2Decomposed::summary()` — Human-readable analysis
+  - Reference: hotSpring `stats.rs::chi2_decomposed()`
+
+- **Bootstrap Confidence Intervals** (`barracuda::stats::bootstrap`):
+  - `bootstrap_ci()` — Generic CI for any statistic
+  - `bootstrap_mean/median/std()` — Convenience functions
+  - `BootstrapCI` — Estimate, bounds, std error, distribution
+  - Reference: hotSpring `stats.rs::bootstrap_ci()`
+
+- **Convergence Diagnostics** (`barracuda::optimize::diagnostics`):
+  - `convergence_diagnostics()` — Detect stagnation, oscillation, divergence
+  - `should_stop_early()` — Simple early stopping check
+  - `ConvergenceState` enum — Improving, Stagnant, Oscillating, Diverging
+  - Reference: hotSpring `stats.rs::convergence_diagnostics()`
+
+- **Adaptive Penalty** (`barracuda::optimize::penalty`):
+  - `adaptive_penalty()` — Data-driven penalty from feasible values
+  - `adaptive_penalty_mad()` — Robust MAD-based penalty
+  - `PenaltyConfig` — Min/max penalty, safety margin, log transform
+  - `penalized_objective()` — Wrap objective with constraint penalty
+  - Reference: hotSpring `surrogate.rs::adaptive_penalty()`
+
+---
+
+### [2026-02-13] - Phase 5 Evolution — hotSpring Critical Fixes (Tier 1)
+
+**Impact**: All Tier 1 critical bugs from hotSpring validation fixed. BarraCUDA now has correct LOO-CV, auto-smoothing, penalty filtering, warm-start seeding, and missing special functions.
+
+#### Added
+
+- **LOO-CV Optimal Smoothing** (`barracuda::surrogate::rbf`):
+  - `loo_cv_optimal_smoothing()` — Grid search for optimal smoothing parameter
+  - Logarithmic grid from 1e-10 to 1.0 (configurable)
+  - Returns (optimal_smoothing, optimal_rmse, all_results)
+
+- **Penalty Filtering** (`barracuda::sample::sparsity`):
+  - `PenaltyFilter` enum — None, Threshold, Quantile, AdaptiveMAD
+  - `filter_training_data()` — Remove penalty outliers before surrogate training
+  - `SparsitySamplerConfig::with_penalty_filter()` — Builder method
+
+- **Warm-Start Seeds** (`barracuda::sample::sparsity`):
+  - `SparsitySamplerConfig::warm_start_seeds` — Pre-computed starting points
+  - `SparsitySamplerConfig::with_warm_start()` — Builder method
+  - Enables L1→L2 seeding pattern validated by hotSpring
+
+- **Auto-Smoothing** (`barracuda::sample::sparsity`):
+  - `SparsitySamplerConfig::auto_smoothing` — Enable LOO-CV grid search
+  - `SparsitySamplerConfig::with_auto_smoothing()` — Builder method
+  - Runs after each iteration to prevent over/underfitting
+
+- **Digamma Function** (`barracuda::special::gamma`):
+  - `digamma(x)` — ψ(x) = Γ'(x)/Γ(x) via recurrence + asymptotic expansion
+  - Precision: 1e-9 relative error
+
+- **Beta Function** (`barracuda::special::gamma`):
+  - `beta(a, b)` — B(a,b) = Γ(a)Γ(b)/Γ(a+b)
+  - `ln_beta(a, b)` — Overflow-safe log-beta
+
+#### Fixed
+
+- **LOO-CV Hat Matrix Bug** (`barracuda::surrogate::rbf::compute_hat_diagonal`):
+  - **Bug**: Used K_smooth for both system matrix AND right-hand side, giving H_ii = 1.0 always
+  - **Fix**: Use K_raw for RHS, K_smooth for system matrix
+  - **Result**: H_ii now correctly < 1 when smoothing > 0
+
 ### [2026-02-12] - Phase 3 Evolution Complete (Phases A & B)
 
 **Impact**: All high and medium priority items from hotSpring handoff implemented. BarraCUDA now has complete f64 linalg bridges, auto-dispatch, scientific functions, and surrogate quality metrics.

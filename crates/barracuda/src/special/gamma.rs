@@ -298,6 +298,154 @@ fn gamma_cf(a: f64, x: f64, gln: f64) -> Result<f64> {
     })
 }
 
+/// Digamma function: ψ(x) = d/dx ln(Γ(x)) = Γ'(x) / Γ(x)
+///
+/// The logarithmic derivative of the gamma function, commonly used in
+/// statistics (e.g., expectation of log-gamma random variables) and
+/// physics (e.g., harmonic oscillator energy levels).
+///
+/// # Arguments
+///
+/// * `x` - Input value (x > 0)
+///
+/// # Returns
+///
+/// ψ(x)
+///
+/// # Algorithm
+///
+/// Uses recurrence relation ψ(x+1) = ψ(x) + 1/x to reduce to x ≥ 7,
+/// then applies asymptotic expansion:
+///
+/// ψ(x) ≈ ln(x) - 1/(2x) - 1/(12x²) + 1/(120x⁴) - 1/(252x⁶) + ...
+///
+/// # Example
+///
+/// ```
+/// use barracuda::special::digamma;
+///
+/// // ψ(1) = -γ (Euler-Mascheroni constant)
+/// let psi_1 = digamma(1.0).unwrap();
+/// assert!((psi_1 - (-0.5772156649015329)).abs() < 1e-9);
+///
+/// // Recurrence: ψ(2) = ψ(1) + 1
+/// let psi_2 = digamma(2.0).unwrap();
+/// assert!((psi_2 - (psi_1 + 1.0)).abs() < 1e-9);
+/// ```
+///
+/// # Reference
+///
+/// - Abramowitz & Stegun, 6.3.18
+/// - hotSpring Phase 5: inline implementation in `validate_special_functions.rs`
+pub fn digamma(x: f64) -> Result<f64> {
+    if x <= 0.0 {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("digamma requires x > 0, got {}", x),
+        });
+    }
+
+    // Recurrence to shift x >= 7
+    let mut val = 0.0;
+    let mut xx = x;
+    while xx < 7.0 {
+        val -= 1.0 / xx;
+        xx += 1.0;
+    }
+
+    // Asymptotic expansion for large x
+    let inv_x = 1.0 / xx;
+    let inv_x2 = inv_x * inv_x;
+
+    // ψ(x) ≈ ln(x) - 1/(2x) - 1/(12x²) + 1/(120x⁴) - 1/(252x⁶)
+    val += xx.ln() - 0.5 * inv_x
+        - inv_x2 * (1.0 / 12.0 - inv_x2 * (1.0 / 120.0 - inv_x2 / 252.0));
+
+    Ok(val)
+}
+
+/// Beta function: B(a, b) = Γ(a)Γ(b) / Γ(a+b)
+///
+/// The beta function is fundamental in probability (beta distribution) and
+/// statistical inference (posterior distributions, Bayesian analysis).
+///
+/// # Arguments
+///
+/// * `a` - First parameter (a > 0)
+/// * `b` - Second parameter (b > 0)
+///
+/// # Returns
+///
+/// B(a, b)
+///
+/// # Properties
+///
+/// - Symmetric: B(a, b) = B(b, a)
+/// - B(1, 1) = 1
+/// - B(a, 1) = 1/a
+/// - B(1/2, 1/2) = π
+///
+/// # Example
+///
+/// ```
+/// use barracuda::special::beta;
+/// use std::f64::consts::PI;
+///
+/// // B(1, 1) = 1
+/// let b_11 = beta(1.0, 1.0).unwrap();
+/// assert!((b_11 - 1.0).abs() < 1e-10);
+///
+/// // B(1/2, 1/2) = π
+/// let b_half = beta(0.5, 0.5).unwrap();
+/// assert!((b_half - PI).abs() < 1e-10);
+///
+/// // B(a, 1) = 1/a
+/// let b_a1 = beta(3.0, 1.0).unwrap();
+/// assert!((b_a1 - 1.0/3.0).abs() < 1e-10);
+/// ```
+///
+/// # Reference
+///
+/// - Abramowitz & Stegun, 6.2
+/// - hotSpring Phase 5: inline implementation in `validate_special_functions.rs`
+pub fn beta(a: f64, b: f64) -> Result<f64> {
+    if a <= 0.0 || b <= 0.0 {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("beta requires a > 0 and b > 0, got a={}, b={}", a, b),
+        });
+    }
+
+    // B(a, b) = exp(ln(Γ(a)) + ln(Γ(b)) - ln(Γ(a+b)))
+    let ln_beta = ln_gamma(a)? + ln_gamma(b)? - ln_gamma(a + b)?;
+    Ok(ln_beta.exp())
+}
+
+/// Natural logarithm of the beta function: ln(B(a, b))
+///
+/// Useful for avoiding overflow when a, b are large.
+///
+/// # Example
+///
+/// ```
+/// use barracuda::special::ln_beta;
+///
+/// // ln(B(1, 1)) = ln(1) = 0
+/// let lb_11 = ln_beta(1.0, 1.0).unwrap();
+/// assert!(lb_11.abs() < 1e-10);
+///
+/// // For large values, avoids overflow
+/// let lb_large = ln_beta(100.0, 100.0).unwrap();
+/// assert!(lb_large.is_finite());
+/// ```
+pub fn ln_beta(a: f64, b: f64) -> Result<f64> {
+    if a <= 0.0 || b <= 0.0 {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("ln_beta requires a > 0 and b > 0, got a={}, b={}", a, b),
+        });
+    }
+
+    Ok(ln_gamma(a)? + ln_gamma(b)? - ln_gamma(a + b)?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -394,5 +542,131 @@ mod tests {
         // Test that continued fraction works for x >= a+1
         let p = regularized_gamma_p(2.0, 5.0).unwrap();
         assert!(p > 0.9 && p < 1.0);
+    }
+
+    // Digamma tests
+
+    #[test]
+    fn test_digamma_euler_mascheroni() {
+        // ψ(1) = -γ (Euler-Mascheroni constant)
+        const EULER_MASCHERONI: f64 = 0.5772156649015329;
+        let psi_1 = digamma(1.0).unwrap();
+        assert!(
+            (psi_1 - (-EULER_MASCHERONI)).abs() < 1e-9,
+            "ψ(1) = {}, expected {}",
+            psi_1,
+            -EULER_MASCHERONI
+        );
+    }
+
+    #[test]
+    fn test_digamma_recurrence() {
+        // Recurrence relation: ψ(x+1) = ψ(x) + 1/x
+        let psi_1 = digamma(1.0).unwrap();
+        let psi_2 = digamma(2.0).unwrap();
+        assert!(
+            (psi_2 - (psi_1 + 1.0)).abs() < 1e-10,
+            "ψ(2) = {}, expected ψ(1) + 1 = {}",
+            psi_2,
+            psi_1 + 1.0
+        );
+
+        let psi_3 = digamma(3.0).unwrap();
+        assert!(
+            (psi_3 - (psi_2 + 0.5)).abs() < 1e-10,
+            "ψ(3) = {}, expected ψ(2) + 1/2 = {}",
+            psi_3,
+            psi_2 + 0.5
+        );
+    }
+
+    #[test]
+    fn test_digamma_half() {
+        // ψ(1/2) = -γ - 2*ln(2)
+        const EULER_MASCHERONI: f64 = 0.5772156649015329;
+        let expected = -EULER_MASCHERONI - 2.0 * 2.0_f64.ln();
+        let psi_half = digamma(0.5).unwrap();
+        assert!(
+            (psi_half - expected).abs() < 1e-9,
+            "ψ(1/2) = {}, expected {}",
+            psi_half,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_digamma_invalid_input() {
+        assert!(digamma(0.0).is_err());
+        assert!(digamma(-1.0).is_err());
+    }
+
+    // Beta function tests
+
+    #[test]
+    fn test_beta_simple_values() {
+        // B(1, 1) = 1
+        let b_11 = beta(1.0, 1.0).unwrap();
+        assert!((b_11 - 1.0).abs() < 1e-10);
+
+        // B(a, 1) = 1/a
+        let b_31 = beta(3.0, 1.0).unwrap();
+        assert!((b_31 - 1.0 / 3.0).abs() < 1e-10);
+
+        // B(1, b) = 1/b
+        let b_14 = beta(1.0, 4.0).unwrap();
+        assert!((b_14 - 0.25).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_beta_symmetry() {
+        // B(a, b) = B(b, a)
+        let b_ab = beta(2.5, 3.7).unwrap();
+        let b_ba = beta(3.7, 2.5).unwrap();
+        assert!((b_ab - b_ba).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_beta_half_half() {
+        // B(1/2, 1/2) = π
+        let b_half = beta(0.5, 0.5).unwrap();
+        assert!(
+            (b_half - PI).abs() < 1e-10,
+            "B(1/2, 1/2) = {}, expected π = {}",
+            b_half,
+            PI
+        );
+    }
+
+    #[test]
+    fn test_beta_integers() {
+        // B(m, n) = (m-1)!(n-1)! / (m+n-1)! for positive integers
+        // B(2, 3) = 1!*2! / 4! = 2/24 = 1/12
+        let b_23 = beta(2.0, 3.0).unwrap();
+        assert!((b_23 - 1.0 / 12.0).abs() < 1e-10);
+
+        // B(3, 4) = 2!*3! / 6! = 12/720 = 1/60
+        let b_34 = beta(3.0, 4.0).unwrap();
+        assert!((b_34 - 1.0 / 60.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_beta_invalid_input() {
+        assert!(beta(0.0, 1.0).is_err());
+        assert!(beta(1.0, 0.0).is_err());
+        assert!(beta(-1.0, 2.0).is_err());
+    }
+
+    #[test]
+    fn test_ln_beta() {
+        // ln(B(1, 1)) = 0
+        let lb_11 = ln_beta(1.0, 1.0).unwrap();
+        assert!(lb_11.abs() < 1e-10);
+
+        // ln(B(a, b)) = ln(beta(a, b))
+        let a = 2.5;
+        let b = 3.7;
+        let lb = ln_beta(a, b).unwrap();
+        let b_val = beta(a, b).unwrap();
+        assert!((lb - b_val.ln()).abs() < 1e-12);
     }
 }
