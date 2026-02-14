@@ -456,7 +456,7 @@ async fn schedule_workload(
     }
 
     // Sort by score (open solutions get massive preference)
-    scored_nodes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    scored_nodes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let (best_node, best_score, open_bonus) = scored_nodes.first().unwrap();
     let strategy = determine_execution_strategy(request, best_node);

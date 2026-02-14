@@ -73,7 +73,11 @@ impl SoftNMS {
 
         // Create indices sorted by score (descending)
         let mut indices: Vec<usize> = (0..num_boxes).collect();
-        indices.sort_by(|&a, &b| scores_data[b].partial_cmp(&scores_data[a]).unwrap());
+        indices.sort_by(|&a, &b| {
+            scores_data[b]
+                .partial_cmp(&scores_data[a])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         let mut keep = Vec::new();
 

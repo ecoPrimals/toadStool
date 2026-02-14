@@ -401,7 +401,7 @@ fn test_aggregation_count() {
 #[test]
 fn test_aggregation_percentile_concept() {
     let mut values = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
-    values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     // P50 (median) should be around 5.5
     let p50_idx = (values.len() / 2).saturating_sub(1);

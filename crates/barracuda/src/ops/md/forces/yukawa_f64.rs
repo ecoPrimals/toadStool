@@ -270,7 +270,11 @@ mod tests {
         };
 
         // Check for f64 support
-        if !device.device.features().contains(wgpu::Features::SHADER_F64) {
+        if !device
+            .device
+            .features()
+            .contains(wgpu::Features::SHADER_F64)
+        {
             println!("Skipping: GPU does not support SHADER_F64");
             return;
         }

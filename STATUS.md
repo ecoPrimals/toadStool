@@ -58,11 +58,17 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 - CPU-managed with GPU-ready exports (cell_start, cell_count)
 - sort_array/unsort_array for coalesced memory access
 
-#### PPPM/Ewald (Architecture)
+#### PPPM/Ewald (Complete)
+- `Pppm` — Full PPPM electrostatics solver
 - `PppmParams` — Automatic parameter tuning (Low/Medium/High accuracy)
-- Auto-compute: α (splitting), mesh dims, rc (cutoff), interpolation order
-- Memory and error estimation
-- **Next**: FFT f64 evolution for PPPM core
+- `BsplineCoeffs` — Cardinal B-spline charge spreading/force interpolation
+- `ChargeMesh` / `PotentialMesh` — Mesh data structures
+- `GreensFunction` — Precomputed G(k) with influence correction
+- `spread_charges()` / `interpolate_forces()` — Particle-mesh operations
+- `compute_short_range()` — erfc-damped real-space Coulomb
+- `self_energy_correction()` / `dipole_correction()` — Energy corrections
+- CPU FFT reference implementation (GPU integration ready)
+- **37 electrostatics tests passing**
 
 **Reference**: `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
 

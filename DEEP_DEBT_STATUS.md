@@ -15,10 +15,11 @@ System health verified with 15,700+ tests passing across workspace.
 
 ### Latest Updates (Feb 14, 2026)
 
+- ✅ **PPPM Complete** -- Full solver with B-spline spread, Green's function, force interpolation, short-range erfc (37 tests)
+- ✅ **FFT f64** -- Double-precision FFT for PPPM precision
 - ✅ **MD Pipeline Complete** -- Full thermostat suite (Berendsen, Nosé-Hoover, Langevin)
 - ✅ **MSD Observable** -- Mean-squared displacement with PBC unwrapping for diffusion
 - ✅ **Cell-List** -- O(N) neighbor search for large N-body simulations
-- ✅ **PPPM Architecture** -- Parameter auto-tuning for long-range Coulomb
 - ✅ **Clippy Warnings** -- Reduced 96% (166 → 6), remaining are cargo metadata
 
 ### Previous Updates (Feb 13, 2026)
@@ -309,7 +310,7 @@ specs/GENERIC_PRECISION_EVOLUTION.md                (Phase 1 complete)
 - ✅ MD pipeline: thermostats + observables + cell-list
 - ✅ Dependency evolution: std::sync::LazyLock (pure std)
 
-**System health: EXCELLENT. PPPM awaiting FFT f64 evolution.**
+**System health: EXCELLENT. PPPM complete with 37 electrostatics tests passing.**
 
 ---
 

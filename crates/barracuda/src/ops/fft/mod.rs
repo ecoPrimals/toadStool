@@ -14,12 +14,13 @@
 //! **Deep Debt Compliance**:
 //! - ✅ Pure Rust + WGSL (no unsafe code)
 //! - ✅ Hardware-agnostic (wgpu backend selection)
-//! - ✅ Numerically precise (IEEE 754 float32)
+//! - ✅ Numerically precise (IEEE 754 float32/float64)
 //! - ✅ Production-ready (full error handling)
 //!
 //! ## Operations
 //!
-//! - `fft_1d` - 1D Complex FFT (Cooley-Tukey radix-2) ⚠️ **CRITICAL FOR PPPM**
+//! - `fft_1d` - 1D Complex FFT (Cooley-Tukey radix-2, f32) ⚠️ **CRITICAL FOR PPPM**
+//! - `fft_1d_f64` - 1D Complex FFT (f64) for high-precision MD simulations
 //! - `ifft_1d` - 1D Inverse FFT (conjugate + normalize)
 //! - `fft_2d` - 2D FFT via row-column decomposition
 //! - `fft_3d` - 3D FFT for PPPM long-range forces
@@ -62,6 +63,7 @@
 //! ```
 
 pub mod fft_1d;
+pub mod fft_1d_f64;
 pub mod fft_2d;
 pub mod fft_3d;
 pub mod ifft_1d;
@@ -71,6 +73,7 @@ pub mod rfft;
 mod tests;
 
 pub use fft_1d::Fft1D;
+pub use fft_1d_f64::Fft1DF64;
 pub use fft_2d::Fft2D;
 pub use fft_3d::Fft3D;
 pub use ifft_1d::Ifft1D;

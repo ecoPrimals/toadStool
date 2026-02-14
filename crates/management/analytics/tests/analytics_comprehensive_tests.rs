@@ -80,7 +80,7 @@ fn test_count_aggregation() {
 #[test]
 fn test_percentile_sorting() {
     let mut values = vec![5.0, 2.0, 8.0, 1.0, 9.0];
-    values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     assert_eq!(values, vec![1.0, 2.0, 5.0, 8.0, 9.0]);
 }
@@ -88,7 +88,7 @@ fn test_percentile_sorting() {
 #[test]
 fn test_median_calculation() {
     let mut values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     let median_idx = values.len() / 2;
     let median = values[median_idx];
@@ -98,7 +98,7 @@ fn test_median_calculation() {
 #[test]
 fn test_percentile_p95() {
     let mut values: Vec<f64> = (1..=100).map(|x| x as f64).collect();
-    values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     let p95_idx = (values.len() as f64 * 0.95) as usize;
     let p95 = values[p95_idx.min(values.len() - 1)];

@@ -73,11 +73,7 @@ impl CellList {
         ];
 
         // Minimum 3 cells per dimension for PBC neighbor iteration
-        let n_cells = [
-            n_cells[0].max(3),
-            n_cells[1].max(3),
-            n_cells[2].max(3),
-        ];
+        let n_cells = [n_cells[0].max(3), n_cells[1].max(3), n_cells[2].max(3)];
 
         let cell_size = [
             box_dims[0] / n_cells[0] as f64,
@@ -367,12 +363,7 @@ mod tests {
         let mut cell_list = CellList::new(5.0, 10.0);
 
         // Cluster particles in one cell
-        let positions = vec![
-            1.0, 1.0, 1.0,
-            1.1, 1.1, 1.1,
-            1.2, 1.2, 1.2,
-            9.0, 9.0, 9.0,
-        ];
+        let positions = vec![1.0, 1.0, 1.0, 1.1, 1.1, 1.1, 1.2, 1.2, 1.2, 9.0, 9.0, 9.0];
 
         cell_list.rebuild(&positions, 4);
 

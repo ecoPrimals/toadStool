@@ -407,7 +407,9 @@ async fn test_cost_optimization_region_selection() {
     // Test: Cheapest region selection
     let regions = vec![("us-east-1", 1.0), ("us-west-2", 1.2), ("eu-west-1", 1.5)];
 
-    let cheapest = regions.iter().min_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+    let cheapest = regions
+        .iter()
+        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
     assert_eq!(
         cheapest.unwrap().0,
         "us-east-1",

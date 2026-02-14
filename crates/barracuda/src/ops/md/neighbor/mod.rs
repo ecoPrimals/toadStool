@@ -14,7 +14,7 @@
 //! **Usage Pattern**:
 //! ```text
 //! let cell_list = CellList::new(rc, box_side);
-//! 
+//!
 //! for step in 0..n_steps {
 //!     // Rebuild if needed (every step for correctness, or use Verlet skin)
 //!     cell_list.rebuild(&positions, n);

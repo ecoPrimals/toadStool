@@ -520,7 +520,7 @@ mod tests {
     #[test]
     fn test_discovery_method_derive_clone() {
         let m = DiscoveryMethod::Kubernetes;
-        let m2 = m.clone();
+        let m2 = m;
         assert!(matches!(m2, DiscoveryMethod::Kubernetes));
     }
 }

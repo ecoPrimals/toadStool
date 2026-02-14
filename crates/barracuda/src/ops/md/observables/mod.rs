@@ -57,12 +57,7 @@ pub struct EnergyValidation {
 /// * `n` - Number of particles
 /// * `box_side` - Box side length in reduced units
 /// * `n_bins` - Number of histogram bins
-pub fn compute_rdf(
-    snapshots: &[Vec<f64>],
-    n: usize,
-    box_side: f64,
-    n_bins: usize,
-) -> Rdf {
+pub fn compute_rdf(snapshots: &[Vec<f64>], n: usize, box_side: f64, n_bins: usize) -> Rdf {
     let r_max = box_side / 2.0;
     let dr = r_max / n_bins as f64;
     let mut histogram = vec![0u64; n_bins];
@@ -106,7 +101,11 @@ pub fn compute_rdf(
         })
         .collect();
 
-    Rdf { r_values, g_values, dr }
+    Rdf {
+        r_values,
+        g_values,
+        dr,
+    }
 }
 
 /// Compute VACF from velocity snapshots (CPU post-process)
@@ -116,12 +115,7 @@ pub fn compute_rdf(
 /// * `n` - Number of particles
 /// * `dt_dump` - Time between snapshots (reduced units)
 /// * `max_lag` - Maximum lag in snapshots
-pub fn compute_vacf(
-    vel_snapshots: &[Vec<f64>],
-    n: usize,
-    dt_dump: f64,
-    max_lag: usize,
-) -> Vacf {
+pub fn compute_vacf(vel_snapshots: &[Vec<f64>], n: usize, dt_dump: f64, max_lag: usize) -> Vacf {
     let n_frames = vel_snapshots.len();
     let n_lag = max_lag.min(n_frames);
     let mut c_values = vec![0.0f64; n_lag];
@@ -386,11 +380,7 @@ pub fn validate_energy(
 
     let totals: Vec<f64> = stable.iter().map(|e| e.3).collect();
     let mean_e: f64 = totals.iter().sum::<f64>() / totals.len() as f64;
-    let var_e: f64 = totals
-        .iter()
-        .map(|e| (e - mean_e).powi(2))
-        .sum::<f64>()
-        / totals.len() as f64;
+    let var_e: f64 = totals.iter().map(|e| (e - mean_e).powi(2)).sum::<f64>() / totals.len() as f64;
     let std_e = var_e.sqrt();
 
     let e_initial = stable.first().unwrap().3;
@@ -433,12 +423,12 @@ mod tests {
         for frame in 0..n_frames {
             let t = frame as f64 * dt;
             snapshots.push(vec![
-                t * velocity,        // particle 0: x
-                0.0,                 // particle 0: y
-                0.0,                 // particle 0: z
-                -t * velocity,       // particle 1: x (opposite direction)
-                0.0,                 // particle 1: y
-                0.0,                 // particle 1: z
+                t * velocity,  // particle 0: x
+                0.0,           // particle 0: y
+                0.0,           // particle 0: z
+                -t * velocity, // particle 1: x (opposite direction)
+                0.0,           // particle 1: y
+                0.0,           // particle 1: z
             ]);
         }
 
@@ -451,7 +441,7 @@ mod tests {
 
         // Check quadratic growth (MSD ∝ t² for ballistic)
         let msd_early = msd.msd_values[4]; // lag=5
-        let msd_late = msd.msd_values[9];  // lag=10
+        let msd_late = msd.msd_values[9]; // lag=10
         let ratio = msd_late / msd_early;
         // Should be close to (10/5)² = 4
         assert!((ratio - 4.0).abs() < 0.1, "Ballistic MSD ratio: {}", ratio);
@@ -503,9 +493,9 @@ mod tests {
 
         // Particle crosses box boundary
         let snapshots = vec![
-            vec![9.0, 0.0, 0.0],  // Near right edge
-            vec![1.0, 0.0, 0.0],  // Wrapped to left (actual displacement +2)
-            vec![3.0, 0.0, 0.0],  // Continues right
+            vec![9.0, 0.0, 0.0], // Near right edge
+            vec![1.0, 0.0, 0.0], // Wrapped to left (actual displacement +2)
+            vec![3.0, 0.0, 0.0], // Continues right
         ];
 
         let msd = compute_msd(&snapshots, n, box_side, dt, 2);
@@ -514,8 +504,16 @@ mod tests {
         // MSD at lag=1 should be ~4 (displacement of 2)
         // MSD at lag=2 should be ~16 (displacement of 4)
         assert!(msd.msd_values.len() == 2);
-        assert!((msd.msd_values[0] - 4.0).abs() < 0.5, "MSD[0] = {}", msd.msd_values[0]);
-        assert!((msd.msd_values[1] - 16.0).abs() < 0.5, "MSD[1] = {}", msd.msd_values[1]);
+        assert!(
+            (msd.msd_values[0] - 4.0).abs() < 0.5,
+            "MSD[0] = {}",
+            msd.msd_values[0]
+        );
+        assert!(
+            (msd.msd_values[1] - 16.0).abs() < 0.5,
+            "MSD[1] = {}",
+            msd.msd_values[1]
+        );
     }
 
     #[test]

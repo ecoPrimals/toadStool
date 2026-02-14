@@ -1,7 +1,26 @@
 //! Modern API for ToadStool with OpenAPI support
 //!
-//! This crate provides a RESTful API with OpenAPI/Swagger documentation
+//! This crate provides both JSON-RPC 2.0 (primary) and REST (legacy) APIs
 //! for interacting with the ToadStool universal compute platform.
+//!
+//! ## ecoBin Compliance: JSON-RPC First
+//!
+//! Per ecoBin standards, JSON-RPC 2.0 is the **primary** API protocol.
+//! REST endpoints are provided for backward compatibility but are **deprecated**.
+//!
+//! ### Primary: JSON-RPC 2.0
+//!
+//! ```text
+//! POST /jsonrpc
+//! Content-Type: application/json
+//!
+//! {"jsonrpc": "2.0", "method": "api.health", "id": 1}
+//! ```
+//!
+//! ### Legacy: REST (deprecated)
+//!
+//! REST routes at `/api/v2/*` are maintained for backward compatibility
+//! but will be removed in a future version.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -19,6 +38,7 @@ pub use types::*;
 pub mod byob;
 pub mod constants;
 pub mod handlers;
+pub mod jsonrpc;
 pub mod middleware;
 pub mod types;
 pub mod websocket;
@@ -56,8 +76,22 @@ impl Default for ApiMetrics {
 }
 
 /// Create the API router with all routes
+///
+/// ## Route Priority
+///
+/// 1. **JSON-RPC 2.0** (`/jsonrpc`) - Primary, ecoBin-compliant
+/// 2. **REST** (`/api/v2/*`) - Legacy, deprecated
+///
+/// New integrations should use JSON-RPC exclusively.
 pub fn create_router(state: ApiState) -> Router {
     Router::new()
+        // ================================================================
+        // PRIMARY: JSON-RPC 2.0 (ecoBin compliant)
+        // ================================================================
+        .route("/jsonrpc", post(jsonrpc::jsonrpc_handler))
+        // ================================================================
+        // LEGACY: REST routes (deprecated - use JSON-RPC instead)
+        // ================================================================
         // Execution management routes
         .route("/api/v2/executions", post(handlers::submit_execution))
         .route(

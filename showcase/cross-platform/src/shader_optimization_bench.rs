@@ -424,10 +424,11 @@ async fn run_all_benchmarks() -> Result<()> {
     // Find best for each GPU
     for gpu in ["NVIDIA RTX 3090", "AMD RX 6950 XT"] {
         let gpu_results: Vec<_> = results.iter().filter(|r| r.gpu == gpu).collect();
-        if let Some(best) = gpu_results
-            .iter()
-            .max_by(|a, b| a.bandwidth_gbps.partial_cmp(&b.bandwidth_gbps).unwrap())
-        {
+        if let Some(best) = gpu_results.iter().max_by(|a, b| {
+            a.bandwidth_gbps
+                .partial_cmp(&b.bandwidth_gbps)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }) {
             println!("{} - Best configuration:", gpu);
             println!(
                 "  Variant: {} (WG={}, {}/thread)",

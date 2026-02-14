@@ -37,7 +37,9 @@ pub use electrostatics::{PppmAccuracy, PppmParams};
 pub use forces::*;
 pub use integrators::*;
 pub use neighbor::CellList;
-pub use observables::{compute_msd, compute_rdf, compute_ssf, compute_vacf, KineticEnergy, Msd, Rdf, Vacf};
+pub use observables::{
+    compute_msd, compute_rdf, compute_ssf, compute_vacf, KineticEnergy, Msd, Rdf, Vacf,
+};
 pub use pbc::{DistanceMetric, PbcDistance};
 pub use thermostats::{
     BerendsenThermostat, LangevinParams, LangevinStep, NoseHooverChain, NoseHooverHalfKick,

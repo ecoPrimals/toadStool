@@ -175,7 +175,7 @@ async fn benchmark_dns_service_discovery(
     let success_rate = successful as f64 / config.iterations as f64;
 
     // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let avg_latency_ms = latencies.iter().sum::<f64>() / latencies.len() as f64;
     let p95_latency_ms = if !latencies.is_empty() {
         latencies[(latencies.len() as f64 * 0.95) as usize]
@@ -263,7 +263,7 @@ async fn benchmark_service_mesh_communication(
     let throughput_mbs = (total_bytes as f64 / 1024.0 / 1024.0) / total_duration.as_secs_f64();
 
     // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let avg_latency_ms = if !latencies.is_empty() {
         latencies.iter().sum::<f64>() / latencies.len() as f64
     } else {
@@ -339,7 +339,7 @@ async fn benchmark_load_balancing(
     let success_rate = successful as f64 / config.iterations as f64;
 
     // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let avg_latency_ms = if !latencies.is_empty() {
         latencies.iter().sum::<f64>() / latencies.len() as f64
     } else {
@@ -431,7 +431,7 @@ async fn benchmark_circuit_breaker(
     let success_rate = successful as f64 / config.iterations as f64;
 
     // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let avg_latency_ms = if !latencies.is_empty() {
         latencies.iter().sum::<f64>() / latencies.len() as f64
     } else {
@@ -505,7 +505,7 @@ async fn benchmark_network_policies(
     let success_rate = successful as f64 / config.iterations as f64;
 
     // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let avg_latency_ms = if !latencies.is_empty() {
         latencies.iter().sum::<f64>() / latencies.len() as f64
     } else {
@@ -579,7 +579,7 @@ async fn benchmark_cross_primal_security(
     let success_rate = successful as f64 / config.iterations as f64;
 
     // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let avg_latency_ms = if !latencies.is_empty() {
         latencies.iter().sum::<f64>() / latencies.len() as f64
     } else {

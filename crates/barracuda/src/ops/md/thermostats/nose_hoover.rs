@@ -134,13 +134,7 @@ impl NoseHooverHalfKick {
     ///
     /// # Errors
     /// Returns error if tensor shapes don't match.
-    pub fn new(
-        velocities: Tensor,
-        forces: Tensor,
-        dt: f64,
-        mass: f64,
-        xi: f64,
-    ) -> Result<Self> {
+    pub fn new(velocities: Tensor, forces: Tensor, dt: f64, mass: f64, xi: f64) -> Result<Self> {
         let vel_shape = velocities.shape();
         if vel_shape.len() != 2 || vel_shape[1] != 3 {
             return Err(BarracudaError::InvalidShape {
@@ -357,7 +351,11 @@ mod tests {
         };
 
         // Check for f64 support
-        if !device.device.features().contains(wgpu::Features::SHADER_F64) {
+        if !device
+            .device
+            .features()
+            .contains(wgpu::Features::SHADER_F64)
+        {
             println!("Skipping: GPU does not support SHADER_F64");
             return;
         }
@@ -390,8 +388,7 @@ mod tests {
         let mass = 3.0;
         let xi = 0.1; // Small friction
 
-        let half_kick =
-            NoseHooverHalfKick::new(vel_tensor, force_tensor, dt, mass, xi).unwrap();
+        let half_kick = NoseHooverHalfKick::new(vel_tensor, force_tensor, dt, mass, xi).unwrap();
 
         let _vel_after = half_kick.execute().unwrap();
 

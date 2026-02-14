@@ -24,6 +24,54 @@ use colored::Colorize;
 use std::path::{Path, PathBuf};
 use tracing::{debug, error, info, warn};
 
+/// Exit codes following ecoBin standard
+///
+/// **ecoBin Compliance**: Standard exit codes for consistent system integration
+#[allow(dead_code)]
+mod exit_codes {
+    /// Success - operation completed normally
+    pub const SUCCESS: i32 = 0;
+    /// General error - unspecified failure
+    pub const GENERAL_ERROR: i32 = 1;
+    /// Configuration error - invalid config, missing required settings
+    pub const CONFIG_ERROR: i32 = 2;
+    /// Runtime/network error - connection failures, resource exhaustion
+    pub const RUNTIME_ERROR: i32 = 3;
+    /// Interrupted - received SIGINT (Ctrl+C) or SIGTERM
+    pub const INTERRUPTED: i32 = 130;
+}
+
+/// Determine appropriate exit code from error
+fn exit_code_for_error(error: &anyhow::Error) -> i32 {
+    let error_str = error.to_string().to_lowercase();
+
+    // Configuration errors
+    if error_str.contains("config")
+        || error_str.contains("manifest")
+        || error_str.contains("invalid")
+        || error_str.contains("missing")
+        || error_str.contains("not found")
+        || error_str.contains("parse")
+    {
+        return exit_codes::CONFIG_ERROR;
+    }
+
+    // Runtime/network errors
+    if error_str.contains("connection")
+        || error_str.contains("network")
+        || error_str.contains("timeout")
+        || error_str.contains("refused")
+        || error_str.contains("resource")
+        || error_str.contains("exhausted")
+        || error_str.contains("memory")
+    {
+        return exit_codes::RUNTIME_ERROR;
+    }
+
+    // Default to general error
+    exit_codes::GENERAL_ERROR
+}
+
 use toadstool_cli::{
     ecosystem::EcosystemIntegrator,
     executor::BiomeExecutor,
@@ -103,7 +151,9 @@ async fn main() -> Result<()> {
             // Print enhanced error information
             print_enhanced_error(&e);
 
-            std::process::exit(1);
+            // Use ecoBin-compliant exit codes
+            let code = exit_code_for_error(&e);
+            std::process::exit(code);
         }
     }
 }
@@ -752,7 +802,7 @@ async fn execute_network_config_command(
             }
             Err(e) => {
                 eprintln!("❌ Network configuration validation failed: {e}");
-                std::process::exit(1);
+                std::process::exit(exit_codes::CONFIG_ERROR);
             }
         }
     }
@@ -785,7 +835,7 @@ async fn execute_network_config_command(
             }
             Err(e) => {
                 eprintln!("❌ Failed to apply network configuration: {e}");
-                std::process::exit(1);
+                std::process::exit(exit_codes::RUNTIME_ERROR);
             }
         }
     }
@@ -810,7 +860,7 @@ async fn execute_network_config_command(
             println!("✅ Configuration loaded successfully");
         } else {
             eprintln!("❌ Configuration file not found: {}", config_path.display());
-            std::process::exit(1);
+            std::process::exit(exit_codes::CONFIG_ERROR);
         }
     }
 

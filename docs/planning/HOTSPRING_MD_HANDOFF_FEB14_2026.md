@@ -329,7 +329,7 @@ The toadstool team has absorbed the hotSpring MD lessons:
 | **std::sync::LazyLock migration** | ✅ Removed once_cell, lazy_static dependencies |
 
 **Remaining**:
-- PPPM/Ewald: Architecture and parameter auto-tuning implemented (`electrostatics/`), awaiting FFT f64 evolution
+- PPPM/Ewald: ✅ Complete CPU implementation with orchestration. GPU FFT integration ready (uses existing Fft3D infrastructure).
 - MSU HPC benchmark (future)
 
 ---

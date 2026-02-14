@@ -80,16 +80,16 @@ pub mod lt;
 
 // Trigonometric operations
 pub mod acos_wgsl;
+pub mod acosh_wgsl;
 pub mod asin_wgsl;
+pub mod asinh_wgsl;
 pub mod atan_wgsl;
+pub mod atanh_wgsl;
 pub mod cos_wgsl;
 pub mod cosh_wgsl;
 pub mod sin_wgsl;
 pub mod sinh_wgsl;
 pub mod tan_wgsl;
-pub mod acosh_wgsl;
-pub mod asinh_wgsl;
-pub mod atanh_wgsl;
 
 // Rounding operations
 pub mod ceil_wgsl;
@@ -407,14 +407,14 @@ pub mod message_passing;
 pub mod sage_conv;
 
 // Advanced Optimizers & Learning (Category 14)
+pub mod adabound;
 pub mod adafactor;
 pub mod adamw;
+pub mod cyclical_lr;
 pub mod lamb;
 pub mod lookahead;
-pub mod radam;
-pub mod adabound;
-pub mod cyclical_lr;
 pub mod onecycle;
+pub mod radam;
 pub mod sgdw;
 
 // Audio/Signal Processing (Category 15)
@@ -443,13 +443,13 @@ pub mod random_perspective;
 pub mod random_rotation;
 
 // Specialized Losses & Metrics (Category 17)
-pub mod psnr;
-pub mod ssim;
 pub mod center_loss;
 pub mod chamfer_distance;
 pub mod earth_mover_distance;
 pub mod iou_loss;
 pub mod perceptual_loss;
+pub mod psnr;
+pub mod ssim;
 pub mod tversky_loss;
 pub mod wasserstein_loss;
 

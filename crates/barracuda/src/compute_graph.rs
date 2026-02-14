@@ -241,7 +241,14 @@ impl ComputeGraph {
                     output,
                     size,
                 } => {
-                    self.encode_scale_op(&mut encoder, &scale_shader, input, *scalar, output, *size);
+                    self.encode_scale_op(
+                        &mut encoder,
+                        &scale_shader,
+                        input,
+                        *scalar,
+                        output,
+                        *size,
+                    );
                 }
                 RecordedOp::Custom {
                     shader_source,
@@ -588,7 +595,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        self.queue.write_buffer(&scalar_buffer, 0, bytemuck::bytes_of(&scalar));
+        self.queue
+            .write_buffer(&scalar_buffer, 0, bytemuck::bytes_of(&scalar));
 
         let bgl = self
             .device
@@ -684,10 +692,12 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
         workgroups: (u32, u32, u32),
     ) {
         // Compile custom shader
-        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Custom Shader"),
-            source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-        });
+        let shader = self
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Custom Shader"),
+                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+            });
 
         // Build bind group layout dynamically based on buffer count
         // Assumes first N-1 buffers are read-only, last is read-write

@@ -169,7 +169,7 @@ pub fn npu_softmax_top_k(logits: &[f32], k: usize, temperature: f32) -> Result<V
     // Find top-k indices
     let mut indexed: Vec<(usize, f32)> = probs.iter().copied().enumerate().collect();
 
-    indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
     // Zero out non-top-k
     let top_k_indices: std::collections::HashSet<usize> =

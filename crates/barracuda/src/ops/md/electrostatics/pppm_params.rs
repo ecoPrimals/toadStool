@@ -80,11 +80,7 @@ impl PppmParams {
     /// * `n_particles` - Number of particles
     /// * `box_dims` - Box dimensions [Lx, Ly, Lz]
     /// * `accuracy` - Desired accuracy level
-    pub fn auto_with_dims(
-        n_particles: usize,
-        box_dims: [f64; 3],
-        accuracy: PppmAccuracy,
-    ) -> Self {
+    pub fn auto_with_dims(n_particles: usize, box_dims: [f64; 3], accuracy: PppmAccuracy) -> Self {
         let _target_error = accuracy.target_error();
 
         // Heuristic: interpolation order based on accuracy
@@ -218,14 +214,26 @@ impl PppmParams {
     /// Print parameter summary
     pub fn print_summary(&self) {
         println!("PPPM Parameters:");
-        println!("  Box: [{:.3}, {:.3}, {:.3}]", self.box_dims[0], self.box_dims[1], self.box_dims[2]);
+        println!(
+            "  Box: [{:.3}, {:.3}, {:.3}]",
+            self.box_dims[0], self.box_dims[1], self.box_dims[2]
+        );
         println!("  Particles: {}", self.n_particles);
-        println!("  Mesh: {}×{}×{}", self.mesh_dims[0], self.mesh_dims[1], self.mesh_dims[2]);
+        println!(
+            "  Mesh: {}×{}×{}",
+            self.mesh_dims[0], self.mesh_dims[1], self.mesh_dims[2]
+        );
         println!("  α = {:.4}, rc = {:.4}", self.alpha, self.real_cutoff);
         println!("  Interpolation order: {}", self.interpolation_order);
-        println!("  Est. memory: {:.1} MB", self.estimated_memory() as f64 / 1e6);
+        println!(
+            "  Est. memory: {:.1} MB",
+            self.estimated_memory() as f64 / 1e6
+        );
         println!("  Est. real error: {:.2e}", self.estimated_real_error());
-        println!("  Est. k-space error: {:.2e}", self.estimated_kspace_error());
+        println!(
+            "  Est. k-space error: {:.2e}",
+            self.estimated_kspace_error()
+        );
     }
 }
 
@@ -280,7 +288,7 @@ mod tests {
 
     #[test]
     fn test_next_power_of_2() {
-        assert_eq!(next_power_of_2(1), 8);   // Minimum is 8
+        assert_eq!(next_power_of_2(1), 8); // Minimum is 8
         assert_eq!(next_power_of_2(7), 8);
         assert_eq!(next_power_of_2(8), 8);
         assert_eq!(next_power_of_2(9), 16);

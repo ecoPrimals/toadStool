@@ -5,8 +5,23 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
-use tokio::signal;
 use tracing::{error, info, warn};
+
+/// Exit codes following uniBin/ecoBin standard
+///
+/// **ecoBin Compliance**: Standard exit codes for consistent system integration
+pub mod exit_codes {
+    /// Success - operation completed normally
+    pub const SUCCESS: i32 = 0;
+    /// General error - unspecified failure
+    pub const GENERAL_ERROR: i32 = 1;
+    /// Configuration error - invalid config, missing required settings
+    pub const CONFIG_ERROR: i32 = 2;
+    /// Runtime/network error - connection failures, resource exhaustion
+    pub const RUNTIME_ERROR: i32 = 3;
+    /// Interrupted - received SIGINT (Ctrl+C) or SIGTERM
+    pub const INTERRUPTED: i32 = 130;
+}
 
 use toadstool_distributed::{DistributedConfig, StandaloneConfig};
 // DISABLED: HTTP-based Songbird registration (legacy)
@@ -146,14 +161,20 @@ pub async fn run_server_main(
         }
     });
 
-    // Wait for shutdown signal
-    info!("Press Ctrl+C to shutdown");
-    match signal::ctrl_c().await {
-        Ok(()) => {
-            info!("Received shutdown signal");
+    // Wait for shutdown signal (SIGINT or SIGTERM)
+    // **ecoBin Compliance**: Handle both signals for proper system integration
+    info!("Ready for shutdown (Ctrl+C or SIGTERM)");
+    let shutdown_signal = wait_for_shutdown_signal().await;
+
+    match shutdown_signal {
+        ShutdownSignal::Sigint => {
+            info!("📡 Received SIGINT (Ctrl+C)");
         }
-        Err(err) => {
-            error!("Failed to listen for shutdown signal: {}", err);
+        ShutdownSignal::Sigterm => {
+            info!("📡 Received SIGTERM (graceful shutdown)");
+        }
+        ShutdownSignal::Error(err) => {
+            error!("Failed to listen for shutdown signals: {}", err);
         }
     }
 
@@ -638,6 +659,58 @@ fn is_selinux_enforcing() -> bool {
         .and_then(|s| s.trim().parse::<u8>().ok())
         .map(|enforce| enforce == 1)
         .unwrap_or(false)
+}
+
+/// Shutdown signal type for ecoBin compliance
+///
+/// **ecoBin Standard**: Both SIGINT and SIGTERM trigger graceful shutdown
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShutdownSignal {
+    /// SIGINT (Ctrl+C) - user interrupt
+    Sigint,
+    /// SIGTERM - system/orchestrator shutdown request
+    Sigterm,
+    /// Error listening for signals
+    Error(&'static str),
+}
+
+/// Wait for shutdown signal (SIGINT or SIGTERM)
+///
+/// **ecoBin Compliance**: Handles both signals for proper systemd/container integration
+///
+/// - SIGINT (Ctrl+C): User interrupt, typically from terminal
+/// - SIGTERM: System shutdown, from systemd, Docker, Kubernetes, etc.
+///
+/// Both signals trigger the same graceful shutdown path.
+async fn wait_for_shutdown_signal() -> ShutdownSignal {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+
+        let mut sigint = match signal(SignalKind::interrupt()) {
+            Ok(s) => s,
+            Err(_) => return ShutdownSignal::Error("Failed to register SIGINT handler"),
+        };
+
+        let mut sigterm = match signal(SignalKind::terminate()) {
+            Ok(s) => s,
+            Err(_) => return ShutdownSignal::Error("Failed to register SIGTERM handler"),
+        };
+
+        tokio::select! {
+            _ = sigint.recv() => ShutdownSignal::Sigint,
+            _ = sigterm.recv() => ShutdownSignal::Sigterm,
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        // Windows: Only SIGINT (Ctrl+C) is reliably supported
+        match signal::ctrl_c().await {
+            Ok(()) => ShutdownSignal::Sigint,
+            Err(_) => ShutdownSignal::Error("Failed to listen for Ctrl+C"),
+        }
+    }
 }
 
 /// Write TCP discovery file (XDG-compliant)

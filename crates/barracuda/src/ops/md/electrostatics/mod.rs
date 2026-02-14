@@ -66,12 +66,14 @@
 //!
 //! | Component | Status | Notes |
 //! |-----------|--------|-------|
-//! | Fft3D (f32) | ✅ Done | Needs f64 evolution |
-//! | B-spline spread | 🚧 Planned | |
-//! | Green's function | 🚧 Planned | |
-//! | Force interpolation | 🚧 Planned | |
-//! | erfc short-range | 🚧 Planned | Uses math_f64 |
-//! | Combined PPPM | 🚧 Planned | |
+//! | Fft3D (f32) | ✅ Done | |
+//! | Fft1D (f64) | ✅ Done | For PPPM precision |
+//! | B-spline functions | ✅ Done | Cardinal B-splines with derivatives |
+//! | Charge spreading | ✅ Done | CPU implementation |
+//! | Green's function | ✅ Done | Precomputed with influence correction |
+//! | Force interpolation | ✅ Done | B-spline gradient method |
+//! | erfc short-range | ✅ Done | With self-energy and dipole corrections |
+//! | Combined PPPM | ✅ Done | CPU reference impl, GPU FFT ready |
 //!
 //! # References
 //!
@@ -79,13 +81,23 @@
 //! - Deserno & Holm, JCP 109 (1998) - PPPM accuracy analysis
 //! - LAMMPS PPPM implementation (BSD-3-Clause)
 
+mod bspline;
+mod charge_spread;
+mod force_interpolation;
+mod greens_function;
+mod pppm;
 mod pppm_params;
+mod short_range;
 
+pub use bspline::{bspline, bspline_deriv, influence_function, BsplineCoeffs};
+pub use charge_spread::{spread_charges, spread_charges_with_coeffs, ChargeMesh};
+pub use force_interpolation::{
+    interpolate_forces, interpolate_forces_from_positions, PotentialMesh,
+};
+pub use greens_function::GreensFunction;
+pub use pppm::{Pppm, PppmError};
 pub use pppm_params::{PppmAccuracy, PppmParams};
-
-// TODO: Add these modules as implementation progresses
-// mod charge_spread;
-// mod greens_function;
-// mod force_interpolation;
-// mod short_range;
-// mod pppm;
+pub use short_range::{
+    compute_short_range, compute_short_range_forces, dipole_correction, erfc,
+    self_energy_correction,
+};

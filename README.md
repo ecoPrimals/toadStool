@@ -252,9 +252,11 @@ toadStool/
 | GPU observables (KE, RDF) | ✅ Done |
 | CPU observables (VACF, SSF, MSD) | ✅ Done |
 | PPPM/Ewald (parameters) | ✅ Done |
-| PPPM/Ewald (FFT f64 core) | 🚧 In Progress |
+| PPPM/Ewald (FFT f64) | ✅ Done |
+| PPPM (full solver) | ✅ Done |
 
 **Key additions (Feb 14)**:
+- `Pppm` — Complete PPPM electrostatics solver with B-spline charge spreading, Green's function, force interpolation, erfc short-range
 - `compute_msd()` — Mean-squared displacement with PBC unwrapping for diffusion
 - `CellList` — O(N) neighbor search for large N-body simulations
 - `PppmParams` — Automatic parameter tuning for PPPM accuracy levels
@@ -388,4 +390,4 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
-**Last Updated**: February 14, 2026 (MD Pipeline Complete + MSD + Cell-list + PPPM Architecture)
+**Last Updated**: February 14, 2026 (MD Pipeline Complete + PPPM Full Solver)
