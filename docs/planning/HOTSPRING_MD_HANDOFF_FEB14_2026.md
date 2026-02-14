@@ -329,7 +329,10 @@ The toadstool team has absorbed the hotSpring MD lessons:
 | **std::sync::LazyLock migration** | ✅ Removed once_cell, lazy_static dependencies |
 
 **Remaining**:
-- PPPM/Ewald: ✅ Complete CPU implementation with orchestration. GPU FFT integration ready (uses existing Fft3D infrastructure).
+- PPPM/Ewald: ✅ **Complete universal implementation** (CPU + GPU WGSL shaders)
+  - 5 WGSL kernels: bspline, charge_spread, greens_apply, force_interp, erfc_forces
+  - Uses math_f64.wgsl for transcendental functions on any hardware
+  - PppmGpu orchestrator with precompiled pipelines
 - MSU HPC benchmark (future)
 
 ---

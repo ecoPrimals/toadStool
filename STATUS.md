@@ -58,8 +58,14 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 - CPU-managed with GPU-ready exports (cell_start, cell_count)
 - sort_array/unsort_array for coalesced memory access
 
-#### PPPM/Ewald (Complete)
-- `Pppm` — Full PPPM electrostatics solver
+#### PPPM/Ewald (Complete — CPU + GPU Universal)
+- `Pppm` — CPU reference implementation
+- `PppmGpu` — **Universal GPU implementation** via WGSL shaders:
+  - `bspline.wgsl` — B-spline M_p(x) evaluation
+  - `charge_spread.wgsl` — Particle → mesh spreading
+  - `greens_apply.wgsl` — K-space G(k) multiplication
+  - `force_interp.wgsl` — Mesh → particle gradient
+  - `erfc_forces.wgsl` — Real-space erfc-damped forces
 - `PppmParams` — Automatic parameter tuning (Low/Medium/High accuracy)
 - `BsplineCoeffs` — Cardinal B-spline charge spreading/force interpolation
 - `ChargeMesh` / `PotentialMesh` — Mesh data structures

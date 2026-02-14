@@ -254,12 +254,18 @@ toadStool/
 | PPPM/Ewald (parameters) | ✅ Done |
 | PPPM/Ewald (FFT f64) | ✅ Done |
 | PPPM (full solver) | ✅ Done |
+| **PPPM (GPU WGSL)** | ✅ Done |
 
 **Key additions (Feb 14)**:
-- `Pppm` — Complete PPPM electrostatics solver with B-spline charge spreading, Green's function, force interpolation, erfc short-range
-- `compute_msd()` — Mean-squared displacement with PBC unwrapping for diffusion
+- `Pppm` — CPU reference implementation with full PPPM algorithm
+- `PppmGpu` — **Universal GPU implementation** via WGSL shaders
+  - `bspline.wgsl` — B-spline evaluation with derivatives
+  - `charge_spread.wgsl` — Particle → mesh spreading
+  - `greens_apply.wgsl` — K-space Green's function application
+  - `force_interp.wgsl` — Mesh → particle gradient interpolation
+  - `erfc_forces.wgsl` — Real-space short-range with self-energy
+- `compute_msd()` — Mean-squared displacement with PBC unwrapping
 - `CellList` — O(N) neighbor search for large N-body simulations
-- `PppmParams` — Automatic parameter tuning for PPPM accuracy levels
 
 See `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md` for full details.
 
