@@ -282,38 +282,204 @@ pub fn query_system_resources() -> SystemResources {
 ///
 /// Deep debt principle: No vendor lock-in, query all available GPUs
 ///
-/// **Implementation Status**: Stubbed for graceful degradation
-/// - Returns empty vec (ToadStool works without GPU)
-/// - Production would detect: NVIDIA (CUDA), AMD (ROCm), Intel (OneAPI), Apple (Metal)
-/// - Feature flags would enable vendor-specific detection
+/// Query GPU devices (self-knowledge)
 ///
-/// **Design**: Vendor-agnostic, no hardcoded GPU assumptions
+/// Detects GPUs via platform-specific mechanisms:
+/// - Linux: /sys/class/drm for all GPUs, /proc/driver/nvidia for NVIDIA details
+/// - macOS: System Profiler for Apple Silicon/discrete GPUs
+///
+/// **Design**: Vendor-agnostic, graceful degradation if no GPUs found
 fn query_gpu_devices() -> Vec<GpuDevice> {
-    // DESIGN NOTE: GPU detection would be feature-gated in production:
-    //
-    // #[cfg(feature = "cuda")]
-    // if let Ok(cuda_devices) = query_nvidia_gpus() {
-    //     devices.extend(cuda_devices);
-    // }
-    //
-    // #[cfg(feature = "rocm")]
-    // if let Ok(rocm_devices) = query_amd_gpus() {
-    //     devices.extend(rocm_devices);
-    // }
-    //
-    // #[cfg(target_os = "macos")]
-    // if let Ok(metal_devices) = query_apple_gpus() {
-    //     devices.extend(metal_devices);
-    // }
-    //
-    // #[cfg(feature = "oneapi")]
-    // if let Ok(intel_devices) = query_intel_gpus() {
-    //     devices.extend(intel_devices);
-    // }
+    let mut devices = Vec::new();
+    let mut device_id = 0;
+
+    #[cfg(target_os = "linux")]
+    {
+        // Check for NVIDIA GPUs via /proc/driver/nvidia
+        if let Ok(entries) = std::fs::read_dir("/proc/driver/nvidia/gpus") {
+            for entry in entries.flatten() {
+                let gpu_path = entry.path();
+                let pci_id = entry.file_name().to_string_lossy().to_string();
+
+                // Try to read GPU info
+                let info_path = gpu_path.join("information");
+                let mut name = format!("NVIDIA GPU {}", device_id);
+                let mut memory_bytes = 0u64;
+
+                if let Ok(info) = std::fs::read_to_string(&info_path) {
+                    for line in info.lines() {
+                        if line.starts_with("Model:") {
+                            name = line.trim_start_matches("Model:").trim().to_string();
+                        }
+                    }
+                }
+
+                // Try to get memory from nvidia-smi
+                if let Ok(output) = std::process::Command::new("nvidia-smi")
+                    .args(["--query-gpu=memory.total", "--format=csv,noheader,nounits", "-i", &device_id.to_string()])
+                    .output()
+                {
+                    if output.status.success() {
+                        if let Ok(mem_str) = String::from_utf8(output.stdout) {
+                            if let Ok(mem_mb) = mem_str.trim().parse::<u64>() {
+                                memory_bytes = mem_mb * 1024 * 1024;
+                            }
+                        }
+                    }
+                }
+
+                devices.push(GpuDevice {
+                    device_id,
+                    name,
+                    vendor: "nvidia".to_string(),
+                    memory_bytes,
+                    compute_capability: Some(pci_id),
+                });
+                device_id += 1;
+            }
+        }
+
+        // Check for AMD/Intel GPUs via /sys/class/drm
+        if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
+            for entry in entries.flatten() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                // Only look at card* entries (skip renderD*)
+                if !name.starts_with("card") || name.contains("render") {
+                    continue;
+                }
+
+                let card_path = entry.path();
+                let device_path = card_path.join("device");
+
+                // Check vendor
+                let vendor_path = device_path.join("vendor");
+                if let Ok(vendor_id) = std::fs::read_to_string(&vendor_path) {
+                    let vendor_id = vendor_id.trim();
+
+                    // Skip if it's an NVIDIA card (already detected above)
+                    if vendor_id == "0x10de" {
+                        continue;
+                    }
+
+                    let vendor = match vendor_id {
+                        "0x1002" => "amd",
+                        "0x8086" => "intel",
+                        _ => continue, // Unknown vendor, skip
+                    };
+
+                    // Try to get device name
+                    let mut gpu_name = format!("{} GPU {}", vendor.to_uppercase(), device_id);
+
+                    // Read uevent for more details
+                    let uevent_path = device_path.join("uevent");
+                    if let Ok(uevent) = std::fs::read_to_string(&uevent_path) {
+                        for line in uevent.lines() {
+                            if line.starts_with("PCI_ID=") {
+                                let pci_id = line.trim_start_matches("PCI_ID=");
+                                gpu_name = format!("{} GPU ({})", vendor.to_uppercase(), pci_id);
+                            }
+                        }
+                    }
+
+                    // Try to get memory (AMD exposes this in mem_info_vram_total)
+                    let mut memory_bytes = 0u64;
+                    let mem_path = device_path.join("mem_info_vram_total");
+                    if let Ok(mem_str) = std::fs::read_to_string(&mem_path) {
+                        if let Ok(mem) = mem_str.trim().parse::<u64>() {
+                            memory_bytes = mem;
+                        }
+                    }
+
+                    devices.push(GpuDevice {
+                        device_id,
+                        name: gpu_name,
+                        vendor: vendor.to_string(),
+                        memory_bytes,
+                        compute_capability: None,
+                    });
+                    device_id += 1;
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // On macOS, use system_profiler to detect GPUs
+        if let Ok(output) = std::process::Command::new("system_profiler")
+            .args(["SPDisplaysDataType", "-json"])
+            .output()
+        {
+            if output.status.success() {
+                if let Ok(json_str) = String::from_utf8(output.stdout) {
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                        if let Some(displays) = json.get("SPDisplaysDataType").and_then(|d| d.as_array()) {
+                            for display in displays {
+                                let name = display
+                                    .get("sppci_model")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("Unknown GPU")
+                                    .to_string();
+
+                                let vendor = if name.contains("Apple") || name.contains("M1") || name.contains("M2") || name.contains("M3") {
+                                    "apple"
+                                } else if name.contains("AMD") || name.contains("Radeon") {
+                                    "amd"
+                                } else if name.contains("Intel") {
+                                    "intel"
+                                } else if name.contains("NVIDIA") {
+                                    "nvidia"
+                                } else {
+                                    "unknown"
+                                };
+
+                                // Try to get VRAM
+                                let memory_bytes = display
+                                    .get("sppci_vram")
+                                    .and_then(|v| v.as_str())
+                                    .and_then(|s| {
+                                        // Parse strings like "8 GB" or "16384 MB"
+                                        let parts: Vec<&str> = s.split_whitespace().collect();
+                                        if parts.len() >= 2 {
+                                            let num: u64 = parts[0].parse().ok()?;
+                                            let unit = parts[1].to_uppercase();
+                                            match unit.as_str() {
+                                                "GB" => Some(num * 1024 * 1024 * 1024),
+                                                "MB" => Some(num * 1024 * 1024),
+                                                _ => None,
+                                            }
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .unwrap_or(0);
+
+                                devices.push(GpuDevice {
+                                    device_id,
+                                    name,
+                                    vendor: vendor.to_string(),
+                                    memory_bytes,
+                                    compute_capability: None,
+                                });
+                                device_id += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // Graceful degradation: ToadStool works without GPU detection
     // GPU capabilities are optional enhancement, not required
-    Vec::new()
+    if !devices.is_empty() {
+        info!("🎮 Detected {} GPU(s) via self-knowledge", devices.len());
+        for device in &devices {
+            info!("   - {}: {} ({} MB)", device.vendor, device.name, device.memory_bytes / (1024 * 1024));
+        }
+    }
+
+    devices
 }
 
 /// Capability name constants (avoids repeated literal allocations)
