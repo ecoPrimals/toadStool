@@ -176,7 +176,7 @@ impl SvdGpu {
             });
             pass.set_pipeline(&compute_ata_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let wg = (n + 15) / 16;
+            let wg = n.div_ceil(16);
             pass.dispatch_workgroups(wg, wg, 1);
         }
         device.queue.submit(Some(encoder.finish()));
@@ -192,7 +192,7 @@ impl SvdGpu {
             });
             pass.set_pipeline(&init_v_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let wg = (n + 15) / 16;
+            let wg = n.div_ceil(16);
             pass.dispatch_workgroups(wg, wg, 1);
         }
         device.queue.submit(Some(encoder.finish()));
@@ -212,7 +212,7 @@ impl SvdGpu {
             });
             pass.set_pipeline(&extract_sigma_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((n + 255) / 256, 1, 1);
+            pass.dispatch_workgroups(n.div_ceil(256), 1, 1);
         }
         device.queue.submit(Some(encoder.finish()));
 

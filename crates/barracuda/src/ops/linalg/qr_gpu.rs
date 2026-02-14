@@ -184,7 +184,7 @@ impl QrGpu {
                 pass.set_pipeline(&compute_householder_pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
                 let rows = m - k;
-                pass.dispatch_workgroups((rows + 255) / 256, 1, 1);
+                pass.dispatch_workgroups(rows.div_ceil(256), 1, 1);
             }
             device.queue.submit(Some(encoder.finish()));
 
@@ -206,8 +206,8 @@ impl QrGpu {
                 let submatrix_rows = m - k;
                 let submatrix_cols = n - k - 1;
                 if submatrix_cols > 0 {
-                    let wg_x = (submatrix_cols + 15) / 16;
-                    let wg_y = (submatrix_rows + 15) / 16;
+                    let wg_x = submatrix_cols.div_ceil(16);
+                    let wg_y = submatrix_rows.div_ceil(16);
                     pass.dispatch_workgroups(wg_x, wg_y, 1);
                 }
             }
@@ -225,7 +225,7 @@ impl QrGpu {
                 pass.set_pipeline(&update_column_k_pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
                 let rows = m - k;
-                pass.dispatch_workgroups((rows + 255) / 256, 1, 1);
+                pass.dispatch_workgroups(rows.div_ceil(256), 1, 1);
             }
             device.queue.submit(Some(encoder.finish()));
         }

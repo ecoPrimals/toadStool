@@ -199,7 +199,7 @@ impl LuGpu {
                     });
                     pass.set_pipeline(&row_swap_pipeline);
                     pass.set_bind_group(0, &swap_bg, &[]);
-                    pass.dispatch_workgroups((n + 255) / 256, 1, 1);
+                    pass.dispatch_workgroups(n.div_ceil(256), 1, 1);
                 }
                 device.queue.submit(Some(encoder.finish()));
             }
@@ -235,7 +235,7 @@ impl LuGpu {
                 pass.set_pipeline(&compute_mult_pipeline);
                 pass.set_bind_group(0, &mult_bg, &[]);
                 let rows_to_process = n - k - 1;
-                pass.dispatch_workgroups((rows_to_process + 255) / 256, 1, 1);
+                pass.dispatch_workgroups(rows_to_process.div_ceil(256), 1, 1);
             }
             device.queue.submit(Some(encoder.finish()));
 
@@ -270,8 +270,8 @@ impl LuGpu {
                 pass.set_pipeline(&row_elim_pipeline);
                 pass.set_bind_group(0, &elim_bg, &[]);
                 let submatrix_size = n - k - 1;
-                let workgroups_x = (submatrix_size + 15) / 16;
-                let workgroups_y = (submatrix_size + 15) / 16;
+                let workgroups_x = submatrix_size.div_ceil(16);
+                let workgroups_y = submatrix_size.div_ceil(16);
                 pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
             }
             device.queue.submit(Some(encoder.finish()));
