@@ -280,14 +280,17 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 - ✅ FP64-by-default architecture (SPIR-V/Vulkan bypasses CUDA throttle)
 - ✅ f64 WGSL shaders: `lu_decomp_f64.wgsl`, `qr_decomp_f64.wgsl`, `svd_f64.wgsl`
 - ✅ `LuGpu::execute_f64()` — complete f64 GPU LU orchestrator
+- ✅ `QrGpu::execute_f64()` — complete f64 GPU QR orchestrator
+- ✅ `SvdGpu::execute_f64()` — complete f64 GPU SVD orchestrator
+- ✅ `CgGpu::solve()` — GPU sparse CG solver + `sparse_matvec_f64.wgsl`
+- ✅ `eigh_f64.wgsl` — GPU symmetric eigenvalue decomposition
 - ✅ Native f64 builtins in MD kernels (yukawa, erfc, greens, rdf) — 1.5-2.2× faster
 - ✅ Cell-list i32 % wrapping bug fixed (hotSpring ALERT)
+- ✅ GPU FFT ready: `Fft1DF64` + `fft_1d_f64.wgsl`
 
 **Remaining Evolution Work**:
-- `QrGpu::execute_f64()` / `SvdGpu::execute_f64()` — wire up orchestrators
-- Sparse solvers: need WGSL implementation
-- Gen eigenvalue: need WGSL implementation
-- GPU FFT for `PppmGpu::compute_with_kspace()`
+- BiCGSTAB GPU solver (for non-symmetric systems)
+- PPPM full GPU FFT integration (orchestration pending)
 
 ---
 

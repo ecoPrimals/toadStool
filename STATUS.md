@@ -48,9 +48,11 @@ The WGSL/SPIR-V/Vulkan path bypasses CUDA's artificial fp64 throttle, achieving 
 - `qr_decomp_f64.wgsl` — Householder QR via parallel norm reductions  
 - `svd_f64.wgsl` — One-sided Jacobi SVD via eigendecomposition
 
-**GPU Orchestrators**:
+**GPU Orchestrators (all f64)**:
 - `LuGpu::execute_f64()` — Complete f64 GPU LU with buffer helpers
-- `QrGpu`, `SvdGpu` — f64 shader references wired, execute_f64() ready
+- `QrGpu::execute_f64()` — Full Householder QR on GPU
+- `SvdGpu::execute_f64()` — One-sided Jacobi SVD with full sweep orchestration
+- `CgGpu::solve()` — GPU sparse Conjugate Gradient for SPD systems
 
 ### Bug Fix: Cell-List Index Wrapping
 
@@ -89,13 +91,16 @@ hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than so
 
 ### Remaining Evolution Work
 
-**Shader Gaps to Wire Up:**
+**GPU Linear Algebra (f64) - COMPLETE:**
 | Area | Status | Notes |
 |------|--------|-------|
-| LU/QR/SVD | ✅ **F64 COMPLETE** | `LuGpu::execute_f64()` wired, QR/SVD shaders ready |
+| LU decomposition | ✅ **COMPLETE** | `LuGpu::execute_f64()` — full GPU orchestration |
+| QR decomposition | ✅ **COMPLETE** | `QrGpu::execute_f64()` — Householder via GPU |
+| SVD | ✅ **COMPLETE** | `SvdGpu::execute_f64()` — Jacobi SVD on GPU |
+| Sparse CG | ✅ **COMPLETE** | `CgGpu::solve()` — GPU sparse solver + `sparse_matvec_f64.wgsl` |
+| Eigenvalue (symmetric) | ✅ **COMPLETE** | `eigh_f64.wgsl` — Jacobi eigenvalue on GPU |
 | Native f64 builtins | ✅ **MIGRATED** | MD kernels use native sqrt/exp (1.5-2.2× faster) |
-| Sparse solvers | CPU only | Need WGSL implementation |
-| Gen eigenvalue | CPU only | Need WGSL implementation |
+| GPU FFT | ✅ **READY** | `Fft1DF64` + `fft_1d_f64.wgsl` — full Cooley-Tukey |
 | Optimizers (Brent, Newton) | CPU only | Consider WGSL for batch |
 | Stats (chi2, bootstrap) | CPU only | Low priority |
 | Cubic spline | CPU only | Low priority |
@@ -103,7 +108,7 @@ hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than so
 **Performance Opportunities:**
 - ✅ **FP64-by-default**: SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2-3 vs 1:32)
 - ✅ **Native f64 builtins**: MD kernels migrated — 1.5-2.2× faster transcendentals
-- GPU FFT integration for `PppmGpu::compute_with_kspace()` — currently CPU FFT hybrid
+- ✅ **GPU FFT available**: `Fft1DF64` ready for PPPM integration
 
 ---
 

@@ -7,6 +7,12 @@
 //! - Graph algorithms
 //! - Machine learning on sparse data
 //!
+//! # Precision Philosophy
+//!
+//! **Both CPU and GPU use f64 by default.**
+//! GPU solvers use native WGSL f64 via SPIR-V/Vulkan, bypassing CUDA's
+//! artificial fp64 throttle for 1:2-3 FP64:FP32 performance.
+//!
 //! # Storage Formats
 //!
 //! - **COO** (Coordinate): Easy construction, inefficient operations
@@ -15,9 +21,13 @@
 //!
 //! # Solvers
 //!
-//! - **CG** (Conjugate Gradient): For symmetric positive definite matrices
-//! - **BiCGSTAB**: For general non-symmetric matrices
-//! - **Jacobi/Gauss-Seidel**: Simple iterative methods
+//! ## CPU Solvers
+//! - **CG** (`cg_solve`): Conjugate Gradient for SPD matrices
+//! - **BiCGSTAB** (`bicgstab_solve`): For general non-symmetric matrices
+//! - **Jacobi** (`jacobi_solve`): Simple iterative method
+//!
+//! ## GPU Solvers (f64)
+//! - **CgGpu** (`CgGpu::solve`): GPU-accelerated Conjugate Gradient
 //!
 //! # Example
 //!
@@ -41,8 +51,10 @@
 //! - hotSpring Phase 5 Handoff: Large HFB basis sets requirement
 //! - Saad, Y. (2003). Iterative Methods for Sparse Linear Systems
 
+pub mod cg_gpu;
 pub mod csr;
 pub mod solvers;
 
+pub use cg_gpu::{CgGpu, CgGpuResult};
 pub use csr::{CooMatrix, CsrMatrix};
 pub use solvers::{bicgstab_solve, cg_solve, jacobi_solve, SolverConfig, SolverResult};

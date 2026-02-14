@@ -188,17 +188,20 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
 3. **Specialized fractional powers** — cbrt-based A^(2/3)
 4. **Naga gotchas documented** — Pattern library
 5. **LU decomposition f64** — `lu_decomp_f64.wgsl` + `LuGpu::execute_f64()`
-6. **QR decomposition f64** — `qr_decomp_f64.wgsl` (orchestrator ready)
-7. **SVD f64** — `svd_f64.wgsl` (orchestrator ready)
+6. **QR decomposition f64** — `qr_decomp_f64.wgsl` + `QrGpu::execute_f64()` ✅
+7. **SVD f64** — `svd_f64.wgsl` + `SvdGpu::execute_f64()` ✅
 8. **Native f64 builtins** — MD kernels use native sqrt/exp for 1.5-2.2× speedup
+9. **Sparse CG f64** — `sparse_matvec_f64.wgsl` + `CgGpu::solve()` ✅
+10. **Eigenvalue f64** — `eigh_f64.wgsl` (Jacobi algorithm) ✅
+11. **GPU FFT f64** — `fft_1d_f64.wgsl` + `Fft1DF64` (Cooley-Tukey) ✅
 
 ### Remaining
 
 1. **Modular preamble** — Only include needed functions
-2. **QrGpu::execute_f64()** — Wire up f64 QR orchestrator
-3. **SvdGpu::execute_f64()** — Wire up f64 SVD orchestrator
-4. **Prefix-sum for f64** — Parallel scan for integration
-5. **GPU-resident optimizer** — Keep Nelder-Mead on GPU
+2. **Prefix-sum for f64** — Parallel scan for integration
+3. **GPU-resident optimizer** — Keep Nelder-Mead on GPU
+4. **BiCGSTAB GPU** — Non-symmetric sparse solver
+5. **PPPM FFT integration** — Wire GPU FFT into `compute_with_kspace()`
 
 ---
 

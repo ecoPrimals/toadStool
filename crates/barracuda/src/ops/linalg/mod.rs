@@ -25,8 +25,8 @@
 //! ### Decompositions (GPU f64 via WGSL)
 //!
 //! - `LuGpu::execute_f64()` - GPU LU decomposition with partial pivoting (f64)
-//! - `QrGpu` - GPU QR decomposition via Householder reflections
-//! - `SvdGpu` - GPU SVD via one-sided Jacobi
+//! - `QrGpu::execute_f64()` - GPU QR decomposition via Householder reflections (f64)
+//! - `SvdGpu::execute_f64()` - GPU SVD via one-sided Jacobi (f64)
 //! - `Cholesky` - GPU Cholesky decomposition (A = L·Lᵀ)
 //! - `Eigh` - GPU eigenvalue decomposition for symmetric matrices
 //!
