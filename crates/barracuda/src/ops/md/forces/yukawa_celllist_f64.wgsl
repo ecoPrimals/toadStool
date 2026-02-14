@@ -6,7 +6,7 @@
 //
 // **Precision**: Full f64 using native builtins (sqrt, exp work on f64 via Naga/wgpu)
 //
-// **Performance (Feb 15 2026 hotSpring finding)**:
+// **Performance (Feb 14 2026 hotSpring finding)**:
 // Native sqrt(f64): 1.5× faster than math_f64 software sqrt_f64
 // Native exp(f64): 2.2× faster than math_f64 software exp_f64
 //
@@ -52,7 +52,7 @@ fn pbc_delta_cl(delta: f64, box_size: f64) -> f64 {
 // Map 3D cell coordinates to linear index with PBC wrapping
 // NOTE: Uses branch-based wrapping, NOT modular arithmetic.
 // WGSL i32 % produces incorrect results for negative operands on NVIDIA/Naga/Vulkan.
-// See: hotSpring ALERT Feb 15 2026 - cell-list bug diagnosis.
+// See: hotSpring ALERT Feb 14 2026 - cell-list bug diagnosis.
 fn cell_idx(cx: i32, cy: i32, cz: i32, nx: i32, ny: i32, nz: i32) -> u32 {
     var wx = cx;
     if (wx < 0)  { wx = wx + nx; }

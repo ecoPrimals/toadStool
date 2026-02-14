@@ -273,7 +273,7 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 **Audit**: All hotSpring Tiers 1-3 complete (Feb 13), MD pipeline complete (Feb 14)
 **Evolution**: once_cell/lazy_static → std::sync::LazyLock (pure std)
 **MD Pipeline**: Full thermostat suite + MSD + Cell-list + **PPPM universal** (CPU + GPU w/kspace) — 38 tests
-**Bug Fix (Feb 15)**: Cell-list i32 % wrapping bug fixed (hotSpring ALERT)
+**Bug Fix (Feb 14)**: Cell-list i32 % wrapping bug fixed (hotSpring ALERT)
 **Docs**: `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md`, `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
 
 **Completed (Feb 14):**
