@@ -573,7 +573,14 @@ mod tests {
     #[test]
     fn test_pppm_gpu_params() {
         // Basic parameter test - GPU tests require async runtime
-        let params = PppmParams::new([10.0, 10.0, 10.0], [16, 16, 16], 1.0, 3.0, 4);
+        let params = PppmParams::custom(
+            100,                // n_particles
+            [10.0, 10.0, 10.0], // box_dims
+            [16, 16, 16],       // mesh_dims
+            1.0,                // alpha
+            3.0,                // real_cutoff
+            4,                  // interpolation_order
+        );
         assert_eq!(params.mesh_dims, [16, 16, 16]);
         assert_eq!(params.alpha, 1.0);
     }
