@@ -53,6 +53,7 @@
 use crate::backend::{BackendType, ModelHandle, NpuBackend};
 use crate::capabilities::Capabilities;
 use crate::error::{AkidaError, Result};
+use crate::mmio::{regs, Bar, MappedRegion};
 use std::fs::{File, OpenOptions};
 use std::os::unix::io::{AsRawFd, RawFd};
 
@@ -331,8 +332,9 @@ pub struct VfioBackend {
     #[allow(dead_code)] // Needed for VFIO lifetime
     group: File,
     /// VFIO device file descriptor (for MMIO access)
-    #[allow(dead_code)] // For future MMIO register access
     device: File,
+    /// BAR0 control registers (MMIO mapped)
+    control_regs: MappedRegion,
     /// Device capabilities
     capabilities: Capabilities,
     /// Input DMA buffer
@@ -343,6 +345,8 @@ pub struct VfioBackend {
     model_buffer: Option<DmaBuffer>,
     /// Next available IOVA
     next_iova: u64,
+    /// Whether a model has been loaded
+    model_loaded: bool,
 }
 
 impl VfioBackend {
@@ -542,6 +546,13 @@ impl NpuBackend for VfioBackend {
             device_info.num_irqs
         );
 
+        // Map BAR0 for control registers
+        let control_regs = MappedRegion::map(&device, Bar::Control)?;
+        tracing::info!(
+            "Mapped BAR0 control registers ({} bytes)",
+            control_regs.size()
+        );
+
         // Query capabilities from sysfs (same as userspace backend)
         let capabilities = Capabilities::from_sysfs(pcie_address)?;
 
@@ -556,11 +567,13 @@ impl NpuBackend for VfioBackend {
             container,
             group,
             device,
+            control_regs,
             capabilities,
             input_buffer: None,
             output_buffer: None,
             model_buffer: None,
             next_iova: 0x1000_0000, // Start IOVA at 256MB
+            model_loaded: false,
         })
     }
 
@@ -571,16 +584,57 @@ impl NpuBackend for VfioBackend {
     fn load_model(&mut self, model: &[u8]) -> Result<ModelHandle> {
         tracing::info!("Loading model ({} bytes) via VFIO DMA", model.len());
 
+        // Check device is ready
+        let status = self.control_regs.read32(regs::STATUS);
+        if status & regs::status::BUSY != 0 {
+            return Err(AkidaError::hardware_error("Device busy, cannot load model"));
+        }
+
         // Allocate DMA buffer for model
         let mut buffer = self.alloc_dma(model.len())?;
         buffer.as_mut_slice().copy_from_slice(model);
 
-        // TODO: Trigger model load via MMIO registers
-        // For now, store buffer for later use
-        self.model_buffer = Some(buffer);
+        // Get IOVA for the model buffer
+        let model_iova = buffer.iova();
+        let model_size = model.len();
 
-        tracing::info!("Model loaded to DMA buffer");
-        Ok(ModelHandle::new(0))
+        // Write model address and size to MMIO registers
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            self.control_regs
+                .write32(regs::MODEL_ADDR_LO, model_iova as u32);
+            self.control_regs
+                .write32(regs::MODEL_ADDR_HI, (model_iova >> 32) as u32);
+            self.control_regs.write32(regs::MODEL_SIZE, model_size as u32);
+        }
+
+        // Trigger model load
+        self.control_regs.write32(regs::MODEL_LOAD, 1);
+        tracing::debug!("Triggered model load: IOVA={:#x}, size={}", model_iova, model_size);
+
+        // Poll for model load completion
+        const MAX_POLL_ITERATIONS: u32 = 1_000_000;
+        for i in 0..MAX_POLL_ITERATIONS {
+            let status = self.control_regs.read32(regs::STATUS);
+
+            if status & regs::status::MODEL_LOADED != 0 {
+                tracing::info!("Model loaded successfully after {} polls", i + 1);
+                self.model_buffer = Some(buffer);
+                self.model_loaded = true;
+                return Ok(ModelHandle::new(0));
+            }
+
+            if status & regs::status::ERROR != 0 {
+                return Err(AkidaError::hardware_error("Model load failed with device error"));
+            }
+
+            // Brief yield on every 1000th iteration to avoid spinning too hard
+            if i % 1000 == 0 {
+                std::thread::yield_now();
+            }
+        }
+
+        Err(AkidaError::hardware_error("Model load timed out"))
     }
 
     fn load_reservoir(&mut self, w_in: &[f32], w_res: &[f32]) -> Result<()> {
@@ -594,19 +648,75 @@ impl NpuBackend for VfioBackend {
             w_res.len()
         );
 
+        // Check device is ready
+        let status = self.control_regs.read32(regs::STATUS);
+        if status & regs::status::BUSY != 0 {
+            return Err(AkidaError::hardware_error(
+                "Device busy, cannot load reservoir",
+            ));
+        }
+
         // Allocate DMA buffer
         let mut buffer = self.alloc_dma(total_size)?;
         let slice = buffer.as_mut_slice();
         slice[..w_in_bytes.len()].copy_from_slice(w_in_bytes);
         slice[w_in_bytes.len()..].copy_from_slice(w_res_bytes);
 
-        self.model_buffer = Some(buffer);
+        // Get IOVA and trigger load via MMIO
+        let iova = buffer.iova();
 
-        tracing::info!("Reservoir weights loaded to DMA buffer");
-        Ok(())
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            self.control_regs.write32(regs::MODEL_ADDR_LO, iova as u32);
+            self.control_regs
+                .write32(regs::MODEL_ADDR_HI, (iova >> 32) as u32);
+            self.control_regs.write32(regs::MODEL_SIZE, total_size as u32);
+        }
+
+        // Trigger model load (reservoir uses same load path)
+        self.control_regs.write32(regs::MODEL_LOAD, 1);
+
+        // Poll for completion
+        const MAX_POLL_ITERATIONS: u32 = 1_000_000;
+        for i in 0..MAX_POLL_ITERATIONS {
+            let status = self.control_regs.read32(regs::STATUS);
+
+            if status & regs::status::MODEL_LOADED != 0 {
+                tracing::info!("Reservoir loaded successfully after {} polls", i + 1);
+                self.model_buffer = Some(buffer);
+                self.model_loaded = true;
+                return Ok(());
+            }
+
+            if status & regs::status::ERROR != 0 {
+                return Err(AkidaError::hardware_error(
+                    "Reservoir load failed with device error",
+                ));
+            }
+
+            if i % 1000 == 0 {
+                std::thread::yield_now();
+            }
+        }
+
+        Err(AkidaError::hardware_error("Reservoir load timed out"))
     }
 
     fn infer(&mut self, input: &[f32]) -> Result<Vec<f32>> {
+        // Verify model is loaded
+        if !self.model_loaded {
+            return Err(AkidaError::hardware_error("No model loaded"));
+        }
+
+        // Check device is ready and not busy
+        let status = self.control_regs.read32(regs::STATUS);
+        if status & regs::status::BUSY != 0 {
+            return Err(AkidaError::hardware_error("Device busy"));
+        }
+        if status & regs::status::READY == 0 {
+            return Err(AkidaError::hardware_error("Device not ready"));
+        }
+
         let input_bytes = bytemuck::cast_slice::<f32, u8>(input);
 
         // Allocate input buffer if needed
@@ -620,21 +730,82 @@ impl NpuBackend for VfioBackend {
         self.input_buffer.as_mut().unwrap().as_mut_slice()[..input_bytes.len()]
             .copy_from_slice(input_bytes);
 
-        // TODO: Trigger inference via MMIO registers and wait for interrupt
-        // For now, simulate with placeholder output
-        let output_size = 10 * std::mem::size_of::<f32>(); // 10 floats placeholder
-
-        // Allocate output buffer if needed
+        // Allocate output buffer (size determined by model, using reasonable default)
+        // In practice, this would be queried from model metadata
+        let output_size = 4096; // 1024 floats max, typical classification output
         if self.output_buffer.is_none() || self.output_buffer.as_ref().unwrap().size() < output_size
         {
             self.output_buffer = Some(self.alloc_dma(output_size)?);
         }
 
-        // Read output from DMA buffer
-        let output_bytes = &self.output_buffer.as_ref().unwrap().as_slice()[..output_size];
-        let output: Vec<f32> = bytemuck::cast_slice::<u8, f32>(output_bytes).to_vec();
+        // Get IOVAs
+        let input_iova = self.input_buffer.as_ref().unwrap().iova();
+        let output_iova = self.output_buffer.as_ref().unwrap().iova();
 
-        Ok(output)
+        // Write input/output addresses to MMIO registers
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            // Input buffer
+            self.control_regs
+                .write32(regs::INPUT_ADDR_LO, input_iova as u32);
+            self.control_regs
+                .write32(regs::INPUT_ADDR_HI, (input_iova >> 32) as u32);
+            self.control_regs
+                .write32(regs::INPUT_SIZE, input_bytes.len() as u32);
+
+            // Output buffer
+            self.control_regs
+                .write32(regs::OUTPUT_ADDR_LO, output_iova as u32);
+            self.control_regs
+                .write32(regs::OUTPUT_ADDR_HI, (output_iova >> 32) as u32);
+            self.control_regs.write32(regs::OUTPUT_SIZE, output_size as u32);
+        }
+
+        // Trigger inference
+        self.control_regs.write32(regs::INFER_START, 1);
+        tracing::debug!(
+            "Triggered inference: input_iova={:#x}, output_iova={:#x}",
+            input_iova,
+            output_iova
+        );
+
+        // Poll for inference completion
+        const MAX_POLL_ITERATIONS: u32 = 10_000_000; // Inference can take longer
+        for i in 0..MAX_POLL_ITERATIONS {
+            let infer_status = self.control_regs.read32(regs::INFER_STATUS);
+
+            // Check completion (bit 0 = done, bit 1 = error)
+            if infer_status & 0x1 != 0 {
+                // Read actual output size from register
+                let actual_output_size =
+                    self.control_regs.read32(regs::OUTPUT_SIZE) as usize;
+                let output_floats = actual_output_size.min(output_size) / std::mem::size_of::<f32>();
+
+                tracing::debug!(
+                    "Inference completed after {} polls, output size: {} floats",
+                    i + 1,
+                    output_floats
+                );
+
+                // Read output from DMA buffer
+                let output_bytes = &self.output_buffer.as_ref().unwrap().as_slice()
+                    [..output_floats * std::mem::size_of::<f32>()];
+                let output: Vec<f32> = bytemuck::cast_slice::<u8, f32>(output_bytes).to_vec();
+
+                return Ok(output);
+            }
+
+            if infer_status & 0x2 != 0 {
+                return Err(AkidaError::hardware_error("Inference failed with device error"));
+            }
+
+            // Yield periodically
+            if i % 10000 == 0 {
+                std::thread::yield_now();
+            }
+        }
+
+        Err(AkidaError::hardware_error("Inference timed out"))
     }
 
     fn measure_power(&self) -> Result<f32> {
@@ -664,8 +835,12 @@ impl NpuBackend for VfioBackend {
     }
 
     fn is_ready(&self) -> bool {
-        // TODO: Check device status via MMIO
-        true
+        // Check device status via MMIO
+        let status = self.control_regs.read32(regs::STATUS);
+        let ready = status & regs::status::READY != 0;
+        let not_busy = status & regs::status::BUSY == 0;
+        let no_error = status & regs::status::ERROR == 0;
+        ready && not_busy && no_error
     }
 }
 

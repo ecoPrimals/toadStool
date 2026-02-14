@@ -248,15 +248,21 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
    - Periodic convergence checks minimize CPU↔GPU syncs
    - Integrates with GPU-computable objectives (RBF surrogates)
 
+24. **Generalized eigensolver** — `GenEighGpu::execute_f64()` ✅
+   - Solves Ax = λBx where A symmetric, B SPD
+   - Hybrid CPU/GPU: CPU Cholesky+triangular solves, GPU eigensolve
+   - Batched support via `execute_batch_f64()` for multiple systems
+   - Level 3 application: HFB, vibration analysis, quantum chemistry
+
 ### Remaining (Low Priority)
 
 1. ~~**Modular preamble** — Only include needed functions~~ ✅ **COMPLETE**
 2. ~~**Prefix-sum for f64** — Parallel scan for integration~~ ✅ **COMPLETE**
 3. ~~**GPU-resident optimizer** — Keep Nelder-Mead on GPU~~ ✅ **COMPLETE**
-4. **Generalized eigensolver** — `gen_eigh_f64` for Ax = λBx (Level 3)
+4. ~~**Generalized eigensolver** — `gen_eigh_f64` for Ax = λBx~~ ✅ **COMPLETE**
 
-**All primary GPU f64 evolution work complete.**
-**hotSpring Level 2 blockers resolved (Feb 14, 2026).**
+**All GPU f64 evolution work complete.**
+**hotSpring Level 2 and Level 3 blockers resolved (Feb 14, 2026).**
 
 ---
 

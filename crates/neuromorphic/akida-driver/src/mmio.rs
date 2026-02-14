@@ -120,6 +120,16 @@ pub struct MappedRegion {
     bar: Bar,
 }
 
+impl std::fmt::Debug for MappedRegion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MappedRegion")
+            .field("ptr", &format_args!("{:p}", self.ptr))
+            .field("size", &self.size)
+            .field("bar", &self.bar)
+            .finish()
+    }
+}
+
 // SAFETY: MappedRegion owns exclusive access to the mapped memory
 unsafe impl Send for MappedRegion {}
 unsafe impl Sync for MappedRegion {}

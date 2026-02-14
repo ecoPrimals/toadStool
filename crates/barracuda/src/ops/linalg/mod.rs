@@ -30,6 +30,7 @@
 //! - `Cholesky` - GPU Cholesky decomposition (A = L·Lᵀ)
 //! - `Eigh` - GPU eigenvalue decomposition for symmetric matrices
 //! - `BatchedEighGpu` - GPU batched eigenvalue decomposition for multiple matrices (f64)
+//! - `GenEighGpu` - GPU generalized eigenvalue decomposition (Ax = λBx) (f64)
 //!
 //! ### Solvers
 //!
@@ -49,6 +50,7 @@
 pub mod batched_eigh_gpu;
 pub mod cholesky;
 pub mod eigh;
+pub mod gen_eigh_gpu;
 pub mod linsolve;
 pub mod lu;
 pub mod lu_gpu;
@@ -60,6 +62,7 @@ pub mod triangular_solve;
 pub mod tridiagonal;
 
 pub use batched_eigh_gpu::BatchedEighGpu;
+pub use gen_eigh_gpu::{GenEighDecompositionGpu, GenEighGpu};
 pub use cholesky::Cholesky;
 pub use eigh::Eigh;
 pub use linsolve::LinSolve;

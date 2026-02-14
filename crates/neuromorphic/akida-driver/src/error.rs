@@ -64,6 +64,13 @@ pub enum AkidaError {
         /// Timeout duration in milliseconds
         duration_ms: u64,
     },
+
+    /// Hardware-level error from device
+    #[error("Hardware error: {reason}")]
+    HardwareError {
+        /// Reason for failure
+        reason: String,
+    },
 }
 
 impl AkidaError {
@@ -90,6 +97,13 @@ impl AkidaError {
     pub fn invalid_state(state: impl Into<String>) -> Self {
         Self::InvalidState {
             state: state.into(),
+        }
+    }
+
+    /// Create a hardware error
+    pub fn hardware_error(reason: impl Into<String>) -> Self {
+        Self::HardwareError {
+            reason: reason.into(),
         }
     }
 }
