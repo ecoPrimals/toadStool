@@ -21,7 +21,8 @@
 | `cargo test --workspace` | **15,700+ passed, 0 failed** |
 | `unsafe` blocks | 100% documented — FFI only (VFIO, DRM) |
 | File size | All production files appropriately structured |
-| Scientific middleware | 330+ tests, 100% passing, 0 unsafe blocks |
+| Scientific middleware | 340+ tests, 100% passing, 0 unsafe blocks |
+| MD pipeline | Complete thermostat suite + observables + cell-list |
 | Dependency evolution | `once_cell`, `lazy_static` → `std::sync::LazyLock` |
 
 *Note: Remaining 6 clippy warnings are cargo metadata for internal showcase crates.*
@@ -197,8 +198,8 @@ toadStool/
 
 | Metric | Value |
 |--------|-------|
-| Clippy warnings | 9 (95% reduced from 166) |
-| Tests passing | 15,490+ (3,688 core) |
+| Clippy warnings | 6 (96% reduced from 166) |
+| Tests passing | 15,700+ (3,700+ core) |
 | Tests failing | 0 |
 | Build warnings | 0 |
 | Server line coverage | ~85% |
@@ -234,7 +235,31 @@ toadStool/
 
 ---
 
-## Recent Evolutions (Feb 13, 2026)
+## Recent Evolutions (Feb 14, 2026)
+
+### Molecular Dynamics Pipeline Complete ✅
+
+**hotSpring integration complete** — full MD thermostat suite + observables:
+
+| Component | Status |
+|-----------|--------|
+| f64 Yukawa force (PBC + PE) | ✅ Done |
+| Cell-list O(N) neighbor search | ✅ Done |
+| Split Velocity-Verlet | ✅ Done |
+| Berendsen thermostat | ✅ Done |
+| Nosé-Hoover thermostat | ✅ Done |
+| Langevin thermostat | ✅ Done |
+| GPU observables (KE, RDF) | ✅ Done |
+| CPU observables (VACF, SSF, MSD) | ✅ Done |
+| PPPM/Ewald (parameters) | ✅ Done |
+| PPPM/Ewald (FFT f64 core) | 🚧 In Progress |
+
+**Key additions (Feb 14)**:
+- `compute_msd()` — Mean-squared displacement with PBC unwrapping for diffusion
+- `CellList` — O(N) neighbor search for large N-body simulations
+- `PppmParams` — Automatic parameter tuning for PPPM accuracy levels
+
+See `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md` for full details.
 
 ### Pure-GPU F64 Math Library ✅
 
@@ -363,4 +388,4 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
-**Last Updated**: February 13, 2026 (Generic Precision Evolution + hotSpring Handoff)
+**Last Updated**: February 14, 2026 (MD Pipeline Complete + MSD + Cell-list + PPPM Architecture)

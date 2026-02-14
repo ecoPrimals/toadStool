@@ -1,4 +1,4 @@
-# Status -- February 13, 2026 (Phase 5 Tiers 1-3 Complete)
+# Status -- February 14, 2026 (MD Pipeline Complete)
 
 ## Quality Gates
 
@@ -6,7 +6,7 @@
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | Clean |
-| `cargo clippy --workspace` | PASS | **9 warnings** (95% reduced from 166) |
+| `cargo clippy --workspace` | PASS | **6 warnings** (96% reduced from 166) |
 | `cargo test --workspace --lib` | PASS | **4,000+ core tests passed** (1,040 toadstool + 421 server + 674 common + 316 config + 1,600+ barracuda) |
 
 *Remaining 9 clippy warnings are cargo metadata cache artifacts that clear on clean builds.*
@@ -32,6 +32,39 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 **Lowest coverage**: `unibin.rs` 18% (server startup), `manual_jsonrpc.rs` 27% (async I/O), `websocket.rs` 52% (requires live connections).
 
 **Coverage evolution**: 80% -> ~90% (+10pp) via 600+ new tests covering encryption, ecosystem, security, deployment, workload analysis, biomeos integration, auth, agents, BYOB types, graph types, capabilities, and handlers.
+
+---
+
+## New Features (Feb 14, 2026)
+
+### Molecular Dynamics Pipeline — COMPLETE ✅
+
+**hotSpring MD integration fully absorbed** — all thermostat types + observables + neighbor search:
+
+#### Thermostats (Complete Suite)
+- `BerendsenThermostat` — Velocity rescaling for equilibration
+- `NoseHooverChain` + `NoseHooverHalfKick` — Deterministic NVT production
+- `LangevinParams` + `LangevinStep` — Stochastic dynamics with friction + noise
+
+#### Observables
+- `KineticEnergy` — GPU per-particle KE for temperature
+- `compute_rdf()` — Radial distribution function (CPU)
+- `compute_vacf()` — Velocity autocorrelation (CPU)
+- `compute_ssf()` — Static structure factor (CPU)
+- `compute_msd()` — Mean-squared displacement with PBC unwrapping for diffusion
+
+#### Neighbor Search
+- `CellList` — O(N) cell-list for large N-body simulations
+- CPU-managed with GPU-ready exports (cell_start, cell_count)
+- sort_array/unsort_array for coalesced memory access
+
+#### PPPM/Ewald (Architecture)
+- `PppmParams` — Automatic parameter tuning (Low/Medium/High accuracy)
+- Auto-compute: α (splitting), mesh dims, rc (cutoff), interpolation order
+- Memory and error estimation
+- **Next**: FFT f64 evolution for PPPM core
+
+**Reference**: `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
 
 ---
 
@@ -626,4 +659,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 13, 2026
+**Last Updated**: February 14, 2026

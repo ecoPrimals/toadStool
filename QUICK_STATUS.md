@@ -266,11 +266,12 @@ burn-inference            - HuggingFace models via Burn (wgpu backend)
 neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 ```
 
-**Tests**: 340+ passing (156 Phase 3 + 62 Phase 5 + 25 cross-platform)
+**Tests**: 350+ passing (156 Phase 3 + 62 Phase 5 + 25 cross-platform + MD)
 **Quality**: Zero unsafe in compute ops, clippy clean, pure Rust
 **Architecture**: Shader-first — ALL math runs on GPU when fp64 available
-**Audit**: All hotSpring Tiers 1-3 complete (Feb 13), MD pipeline absorbed (Feb 14)
+**Audit**: All hotSpring Tiers 1-3 complete (Feb 13), MD pipeline complete (Feb 14)
 **Evolution**: once_cell/lazy_static → std::sync::LazyLock (pure std)
+**MD Pipeline**: Full thermostat suite (Berendsen/Nosé-Hoover/Langevin) + MSD + Cell-list + PPPM params
 **Docs**: `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md`, `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
 
 ---

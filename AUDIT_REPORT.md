@@ -20,7 +20,7 @@
 | **Mocks** | ✅ | Isolated to test-only (#[cfg(test)]) |
 | **JSON-RPC + tarpc** | ✅ | Both implemented |
 | **Pure Rust** | ✅ | Evolved: removed once_cell, lazy_static → std::sync::LazyLock |
-| **MD Pipeline** | ✅ | hotSpring f64 integration complete |
+| **MD Pipeline** | ✅ | Complete: thermostats + MSD + cell-list + PPPM params |
 
 ---
 
@@ -118,11 +118,12 @@ distributed: 3
 
 // MD pipeline ✅ COMPLETE (Feb 14, 2026)
 // - f64 Yukawa force with PBC + PE
-// - Cell-list neighbor search (27-neighbor)
+// - Cell-list neighbor search (27-neighbor, O(N))
 // - Split Velocity-Verlet (kick-drift-kick)
-// - Berendsen + Nosé-Hoover thermostats
+// - Berendsen, Nosé-Hoover, Langevin thermostats
 // - GPU observables (KE, RDF histogram)
-// - CPU observables (VACF, SSF, RDF)
+// - CPU observables (VACF, SSF, RDF, MSD)
+// - PPPM parameter auto-tuning (architecture ready)
 ```
 
 ---
