@@ -388,10 +388,10 @@ pub struct CacheStats {
     pub pipelines: usize,
 }
 
-// Global pipeline cache (singleton pattern via lazy_static)
-lazy_static::lazy_static! {
-    pub static ref GLOBAL_CACHE: PipelineCache = PipelineCache::new();
-}
+// Global pipeline cache (singleton pattern via std::sync::LazyLock)
+// Evolved from lazy_static to pure std (Rust 1.80+)
+pub static GLOBAL_CACHE: std::sync::LazyLock<PipelineCache> =
+    std::sync::LazyLock::new(PipelineCache::new);
 
 /// Clear the global pipeline cache (for testing only)
 ///

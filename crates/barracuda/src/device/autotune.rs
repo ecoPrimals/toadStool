@@ -69,8 +69,8 @@ impl AutoTuner {
         tuner.cache_path = Some(cache_path.clone());
 
         // Try to load existing calibrations
-        if let Ok(_contents) = std::fs::read_to_string(&cache_path) {
-            #[cfg(feature = "serde")]
+        #[cfg(feature = "serde")]
+        if let Ok(contents) = std::fs::read_to_string(&cache_path) {
             if let Ok(cals) = serde_json::from_str::<Vec<GpuCalibration>>(&contents) {
                 let mut map = tuner.calibrations.write().unwrap();
                 for cal in cals {
@@ -78,6 +78,9 @@ impl AutoTuner {
                 }
             }
         }
+        // Without serde, we still check file exists but can't parse
+        #[cfg(not(feature = "serde"))]
+        let _ = std::fs::read_to_string(&cache_path);
 
         tuner
     }
@@ -469,28 +472,27 @@ impl Default for AutoTuner {
     }
 }
 
-// Global auto-tuner instance (singleton pattern via lazy_static)
-lazy_static::lazy_static! {
-    pub static ref GLOBAL_TUNER: AutoTuner = {
-        // Try to use a standard cache location
-        let cache_dir = std::env::var("XDG_CACHE_HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| {
-                std::env::var("HOME")
-                    .map(|h| PathBuf::from(h).join(".cache"))
-                    .unwrap_or_else(|_| std::env::temp_dir())
-            });
+// Global auto-tuner instance (singleton pattern via std::sync::LazyLock)
+// Evolved from lazy_static to pure std (Rust 1.80+)
+pub static GLOBAL_TUNER: std::sync::LazyLock<AutoTuner> = std::sync::LazyLock::new(|| {
+    // Try to use a standard cache location
+    let cache_dir = std::env::var("XDG_CACHE_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            std::env::var("HOME")
+                .map(|h| PathBuf::from(h).join(".cache"))
+                .unwrap_or_else(|_| std::env::temp_dir())
+        });
 
-        let cache_path = cache_dir.join("barracuda").join("gpu_calibrations.json");
+    let cache_path = cache_dir.join("barracuda").join("gpu_calibrations.json");
 
-        // Ensure directory exists
-        if let Some(parent) = cache_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
+    // Ensure directory exists
+    if let Some(parent) = cache_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
 
-        AutoTuner::with_cache(cache_path)
-    };
-}
+    AutoTuner::with_cache(cache_path)
+});
 
 #[cfg(test)]
 mod tests {

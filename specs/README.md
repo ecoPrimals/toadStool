@@ -55,11 +55,13 @@
 
 | Priority | Target | Status |
 |----------|--------|--------|
-| HIGH | f64 Yukawa force with PBC + PE | Pending — hotSpring validated |
-| HIGH | Cell-list neighbor search | Pending — 27-neighbor GPU kernel |
-| MEDIUM | Split Velocity-Verlet (kick-drift-kick) | Pending — flexible thermostating |
-| MEDIUM | Berendsen/Nosé-Hoover thermostats | Pending — velocity rescaling |
-| MEDIUM | GPU observables (RDF, KE, VACF, SSF) | Pending — atomicAdd histograms |
+| HIGH | f64 Yukawa force with PBC + PE | **DONE** — `yukawa_f64.wgsl` |
+| HIGH | Cell-list neighbor search | **DONE** — `yukawa_celllist_f64.wgsl` |
+| MEDIUM | Split Velocity-Verlet (kick-drift-kick) | **DONE** — `velocity_verlet_split.wgsl` |
+| MEDIUM | Berendsen thermostat | **DONE** — `berendsen.wgsl` + Rust op |
+| MEDIUM | GPU observables (KE, RDF) | **DONE** — `kinetic_energy.wgsl`, `rdf_histogram.wgsl` |
+| MEDIUM | CPU observables (VACF, SSF) | **DONE** — `compute_vacf()`, `compute_ssf()` |
+| MEDIUM | Nosé-Hoover thermostat | Pending — NVT production |
 | HIGH | PPPM/Ewald for long-range Coulomb | Pending — uses existing FFT |
 | FUTURE | MSU HPC comparison benchmark | Planning — Murillo collaboration |
 

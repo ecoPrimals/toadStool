@@ -286,36 +286,45 @@ many constants (0.5, 1.0, etc.) that must be constructed from f64 arithmetic.
 
 ## 7. File Map: hotSpring → ToadStool
 
-| hotSpring file | Lesson for ToadStool | Priority |
-|---------------|---------------------|----------|
-| `md/shaders.rs` → `SHADER_YUKAWA_FORCE` | f64 Yukawa with PBC + PE → evolve `forces/yukawa.rs` | HIGH |
-| `md/shaders.rs` → `SHADER_YUKAWA_FORCE_CELLLIST` | Cell-list force kernel → new `forces/yukawa_celllist.rs` | HIGH |
-| `md/shaders.rs` → `SHADER_VV_KICK_DRIFT` | Split VV → evolve `integrators/velocity_verlet.rs` | MEDIUM |
-| `md/shaders.rs` → `SHADER_BERENDSEN` | Thermostat → new `integrators/berendsen.rs` | MEDIUM |
-| `md/shaders.rs` → `SHADER_KINETIC_ENERGY` | KE reduction → new `observables/kinetic_energy.rs` | MEDIUM |
-| `md/shaders.rs` → `SHADER_RDF_HISTOGRAM` | RDF on GPU → new `observables/rdf.rs` | MEDIUM |
+| hotSpring file | ToadStool target | Status |
+|---------------|------------------|--------|
+| `md/shaders.rs` → `SHADER_YUKAWA_FORCE` | `forces/yukawa_f64.wgsl` | ✅ DONE |
+| `md/shaders.rs` → `SHADER_YUKAWA_FORCE_CELLLIST` | `forces/yukawa_celllist_f64.wgsl` | ✅ DONE |
+| `md/shaders.rs` → `SHADER_VV_KICK_DRIFT` | `integrators/velocity_verlet_split.wgsl` | ✅ DONE |
+| `md/shaders.rs` → `SHADER_VV_HALF_KICK` | `integrators/vv_half_kick_f64.wgsl` | ✅ DONE |
+| `md/shaders.rs` → `SHADER_BERENDSEN` | `thermostats/berendsen.wgsl` | ✅ DONE |
+| `md/shaders.rs` → `SHADER_KINETIC_ENERGY` | `observables/kinetic_energy.wgsl` | ✅ DONE |
+| `md/shaders.rs` → `SHADER_RDF_HISTOGRAM` | `observables/rdf_histogram.wgsl` | ✅ DONE |
 | `md/simulation.rs` | Full loop orchestration → inform `session.rs` patterns | REFERENCE |
-| `md/config.rs` | OCP reduced units → inform docs/examples | REFERENCE |
-| `md/observables.rs` | CPU-side validation logic → reference implementation | REFERENCE |
-| `md/cpu_reference.rs` | CPU mirror for benchmarking → test infrastructure | LOW |
+| `md/config.rs` | OCP reduced units → documented in handoff | REFERENCE |
+| `md/observables.rs` | `compute_rdf()`, `compute_vacf()`, `compute_ssf()` | ✅ DONE |
+| `md/cpu_reference.rs` | CPU mirror for benchmarking | LOW |
 
 ---
 
 ## 8. What's Already Converged
 
-The toadstool team's latest commit (`f370a64e`) already absorbed several hotSpring lessons:
+The toadstool team has absorbed the hotSpring MD lessons:
 
 | Lesson | Status |
 |--------|--------|
-| `math_f64.wgsl` (27+ functions) | ✓ In toadstool, 649 lines (evolved beyond hotSpring's 370-line prototype) |
-| `ShaderTemplate::with_math_f64()` | ✓ In toadstool, plus `math_f64_subset()` for modular extraction |
-| Naga f64 gotchas | ✓ Documented in `specs/FP64_GPU_EVOLUTION.md` |
-| `f64_const(x, c)` helper | ✓ In upstream math_f64.wgsl |
-| FMA ops | ✓ New `ops/fma.rs` + WGSL shaders |
-| Cache hierarchy awareness | ✓ New `device/cache_hierarchy.rs` |
-| AGPL-3.0 license unification | ✓ All crates unified |
+| `math_f64.wgsl` (27+ functions) | ✅ In toadstool, 649 lines |
+| `ShaderTemplate::with_math_f64()` | ✅ Plus `math_f64_subset()` for modular extraction |
+| Naga f64 gotchas | ✅ Documented in `specs/FP64_GPU_EVOLUTION.md` |
+| `f64_const(x, c)` helper | ✅ In upstream math_f64.wgsl |
+| FMA ops | ✅ New `ops/fma.rs` + WGSL shaders |
+| Cache hierarchy awareness | ✅ New `device/cache_hierarchy.rs` |
+| AGPL-3.0 license unification | ✅ All crates unified |
+| **f64 Yukawa force (PBC + PE)** | ✅ `forces/yukawa_f64.wgsl` + `yukawa_f64.rs` |
+| **Cell-list Yukawa (27-neighbor)** | ✅ `forces/yukawa_celllist_f64.wgsl` |
+| **Split Velocity-Verlet (f64)** | ✅ `integrators/velocity_verlet_split.wgsl` + ops |
+| **Berendsen thermostat** | ✅ `thermostats/berendsen.wgsl` + `berendsen.rs` |
+| **Kinetic energy (GPU)** | ✅ `observables/kinetic_energy.wgsl` + ops |
+| **RDF histogram (GPU)** | ✅ `observables/rdf_histogram.wgsl` |
+| **CPU observables (VACF, SSF)** | ✅ `observables/mod.rs` compute functions |
+| **std::sync::LazyLock migration** | ✅ Removed once_cell, lazy_static dependencies |
 
-**Not yet absorbed**: Everything in Sections 5.1–5.6 above (MD-specific evolution).
+**Remaining**: PPPM/Ewald (uses existing FFT), Nosé-Hoover thermostat, MSU HPC benchmark.
 
 ---
 

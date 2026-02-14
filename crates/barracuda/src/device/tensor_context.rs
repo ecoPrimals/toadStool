@@ -37,17 +37,17 @@ use crate::device::pipeline_cache::{BindGroupLayoutSignature, DeviceFingerprint,
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use dashmap::DashMap;
-use once_cell::sync::Lazy;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, LazyLock, Weak};
 
 /// Type alias for pending GPU operations (executed on sync)
 type PendingOp = Box<dyn FnOnce(&mut wgpu::CommandEncoder) + Send>;
 
 /// Global context registry - one TensorContext per device
-static GLOBAL_CONTEXTS: Lazy<DashMap<DeviceFingerprint, Arc<TensorContext>>> =
-    Lazy::new(DashMap::new);
+/// Evolved from once_cell::sync::Lazy to std::sync::LazyLock (Rust 1.80+)
+static GLOBAL_CONTEXTS: LazyLock<DashMap<DeviceFingerprint, Arc<TensorContext>>> =
+    LazyLock::new(DashMap::new);
 
 // ============================================================================
 // PooledBuffer - Auto-returning buffer wrapper

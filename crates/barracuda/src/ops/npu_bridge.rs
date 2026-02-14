@@ -42,16 +42,16 @@ use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result as BarracudaResult};
 use crate::npu::NpuMlBackend;
 use crate::tensor::Tensor;
-use once_cell::sync::Lazy;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 
 /// Global NPU backend instance (lazy initialization)
 ///
 /// **Deep Debt**: Runtime discovery, no hardcoding!
+/// **Evolution**: Migrated from once_cell to std::sync::LazyLock (Rust 1.80+)
 ///
-/// Uses Lazy + Mutex for safe concurrent access across threads.
+/// Uses LazyLock + Mutex for safe concurrent access across threads.
 /// NPU is initialized only when first needed (lazy).
-static NPU_BACKEND: Lazy<Mutex<Option<NpuMlBackend>>> = Lazy::new(|| Mutex::new(None));
+static NPU_BACKEND: LazyLock<Mutex<Option<NpuMlBackend>>> = LazyLock::new(|| Mutex::new(None));
 
 /// Execute with NPU backend (internal helper)
 ///

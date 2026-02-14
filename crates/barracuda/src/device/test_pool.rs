@@ -3,10 +3,10 @@
 //! **Problem**: Creating 272 wgpu devices exhausts GPU resources
 //! **Solution**: Shared device pool with lazy initialization
 //! **Deep Debt**: Runtime discovery, no hardcoding, thread-safe
+//! **Evolution**: Migrated from once_cell to std::sync::LazyLock (Rust 1.80+)
 
 use crate::device::WgpuDevice;
-use once_cell::sync::Lazy;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use tokio::sync::Mutex;
 
 /// Global device pool for tests
@@ -16,8 +16,9 @@ use tokio::sync::Mutex;
 /// - Thread-safe (Arc + Mutex)
 /// - Lazy initialization (only create when needed)
 /// - Reusable (shared across all tests)
-static TEST_DEVICE_POOL: Lazy<Arc<Mutex<Option<Arc<WgpuDevice>>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(None)));
+/// - Pure std (no external lazy_static or once_cell)
+static TEST_DEVICE_POOL: LazyLock<Arc<Mutex<Option<Arc<WgpuDevice>>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
 
 /// Get or create shared test device
 ///
@@ -65,8 +66,8 @@ pub async fn reset_test_device_pool() {
 ///
 /// Software adapters (llvmpipe, lavapipe, swiftshader) produce NaN/Inf for
 /// transcendental operations. Tests using this pool skip when no real GPU exists.
-static TEST_GPU_DEVICE_POOL: Lazy<Arc<Mutex<Option<Arc<WgpuDevice>>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(None)));
+static TEST_GPU_DEVICE_POOL: LazyLock<Arc<Mutex<Option<Arc<WgpuDevice>>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
 
 /// Get test device, returning None if only a software/CPU adapter is available.
 ///
