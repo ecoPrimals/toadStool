@@ -17,7 +17,7 @@
 |------|--------|
 | `cargo build --workspace` | Clean |
 | `cargo fmt --all -- --check` | Clean |
-| `cargo clippy --workspace` | **6 warnings** (96% reduced from 166) |
+| `cargo clippy --workspace` | **Clean** (was 166 warnings) |
 | `cargo test --workspace` | **15,700+ passed, 0 failed** |
 | `unsafe` blocks | 100% documented — FFI only (VFIO, DRM) |
 | File size | All production files appropriately structured |
@@ -25,7 +25,7 @@
 | MD pipeline | Complete thermostat suite + observables + cell-list |
 | Dependency evolution | `once_cell`, `lazy_static` → `std::sync::LazyLock` |
 
-*Note: Remaining 6 clippy warnings are cargo metadata for internal showcase crates.*
+*All clippy warnings resolved. Workspace fully clean.*
 
 ---
 

@@ -6,10 +6,10 @@
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | Clean |
-| `cargo clippy --workspace` | PASS | **6 warnings** (96% reduced from 166) |
+| `cargo clippy --workspace` | PASS | **Clean** (was 166 warnings) |
 | `cargo test --workspace --lib` | PASS | **4,000+ core tests passed** (1,040 toadstool + 421 server + 674 common + 316 config + 1,600+ barracuda) |
 
-*Remaining 9 clippy warnings are cargo metadata cache artifacts that clear on clean builds.*
+*All clippy warnings resolved. Workspace fully clean.*
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). Full workspace lib total: 4,600+ tests.
 

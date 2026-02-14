@@ -9,14 +9,14 @@
 ```
 cargo build --workspace          CLEAN
 cargo fmt --all -- --check       CLEAN
-cargo clippy --workspace         6 warnings (96% reduced from 166)
+cargo clippy --workspace         CLEAN (was 166 warnings)
 cargo test --workspace           15,700+ passed / 0 failed
 unsafe blocks                    FFI only (VFIO, DRM) - SAFETY documented
 middleware tests                 330+ passed (linalg, sparse, numerical, special, stats, optimize, surrogate, sample, pde, pipeline)
 dependency evolution             once_cell, lazy_static → std::sync::LazyLock
 ```
 
-*Note: Remaining 6 clippy warnings are cargo metadata for showcase crates.*
+*All clippy warnings resolved. Workspace fully clean.*
 
 ---
 
@@ -95,7 +95,7 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 
 | Metric | Value |
 |--------|-------|
-| Clippy warnings | 6 (96% reduced) |
+| Clippy warnings | 0 (was 166) |
 | Build warnings | 0 |
 | Tests passing | 15,700+ |
 | Tests failing | 0 |
