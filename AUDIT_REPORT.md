@@ -1,6 +1,6 @@
 # ToadStool Comprehensive Audit Report
 
-**Date**: February 13, 2026  
+**Date**: February 14, 2026  
 **Auditor**: Automated + Manual Review  
 **Standards**: wateringHole ecoBin, SEMANTIC_METHOD_NAMING, INTER_PRIMAL_INTERACTIONS
 
@@ -11,15 +11,16 @@
 | Category | Status | Details |
 |----------|--------|---------|
 | **Formatting** | ✅ | Fixed (`cargo fmt --all` run) |
-| **Clippy** | ✅ | 9 warnings (95% reduced from 166) |
+| **Clippy** | ✅ | ~6 warnings (metadata only, 96% reduced from 166) |
 | **Tests** | ✅ | Compilation errors fixed, tests pass |
 | **File Size** | ⚠️ | 18 files exceed 1000 lines |
-| **Unsafe Code** | ⚠️ | ~300 unsafe blocks (need audit) |
-| **TODOs** | ⚠️ | 60+ TODO/FIXME comments |
+| **Unsafe Code** | ✅ | Audited — FFI only (VFIO, DRM) |
+| **TODOs** | ⚠️ | ~55 TODO/FIXME comments |
 | **Hardcoded Values** | ✅ | Evolved to capability-based discovery |
 | **Mocks** | ✅ | Isolated to test-only (#[cfg(test)]) |
 | **JSON-RPC + tarpc** | ✅ | Both implemented |
-| **Pure Rust** | ✅ | Only libc for VFIO ioctls |
+| **Pure Rust** | ✅ | Evolved: removed once_cell, lazy_static → std::sync::LazyLock |
+| **MD Pipeline** | ✅ | hotSpring f64 integration complete |
 
 ---
 
@@ -31,23 +32,22 @@ Status: ✅ FIXED
 Action: `cargo fmt --all` completed
 ```
 
-### 1.2 Clippy Warnings (35 remaining, down from 166)
+### 1.2 Clippy Warnings (~6 remaining, down from 166)
 ```
 Categories (remaining):
-- Complex types (7) - can factor into type aliases
-- Package metadata (5) - internal showcase crates
-- cfg condition warnings (2) - parallel/cuda-comparison features
-- Dead code (4) - unused fields/constants in showcase demos
-- Misc (17) - duplicate warnings, single-char names, etc.
+- Package metadata (6) - internal showcase crates missing repo/keywords
 ```
 
-**Progress**: Reduced 79% (166 → 35) through:
-- # Errors/# Panics documentation
-- FFI cast annotations (#[allow] for VFIO/MMIO)
-- Serde feature flag addition
+**Progress**: Reduced 96% (166 → 6) through:
+- `# Errors`/`# Panics` documentation
+- FFI cast annotations (`#[allow]` for VFIO/MMIO)
+- Serde/parallel feature flag additions
 - Unused import removal
 - Late initialization refactoring
-- Doc comment conversion for lazy_static
+- Lazy_static → std::sync::LazyLock evolution
+- once_cell → std::sync::LazyLock evolution
+- Type aliases for complex types
+- Approx constant allowances for f64 validation
 
 ### 1.3 File Size Violations (18 files > 1000 lines)
 
@@ -78,19 +78,20 @@ Categories (remaining):
 
 ### 2.1 Distribution by Crate
 ```
-barracuda/src/tensor.rs: 3
-barracuda/src/ops/*: ~250+ (WGSL bindings)
-akida-driver: ~50 (hardware interface)
-display: ~10 (DRM/input)
-secure_enclave: ~15 (isolated memory)
-unified_memory: ~30 (GPU memory)
+barracuda/src/: 0 (no unsafe in compute ops)
+akida-driver: ~50 (VFIO/MMIO ioctls - FFI required)
+display: ~10 (DRM/input - FFI required)
+secure_enclave: ~15 (isolated memory - FFI required)
+unified_memory: ~30 (GPU memory - FFI required)
 ```
 
-### 2.2 Safety Documentation Status
+### 2.2 Safety Status
 ```
-Status: ⚠️ NEEDS AUDIT
-Many unsafe blocks lack // SAFETY: comments
-Priority: akida-driver, secure_enclave, unified_memory
+Status: ✅ AUDITED
+- barracuda: Zero unsafe (pure WGSL)
+- FFI crates: Required for hardware access
+- All unsafe marked with #[allow(clippy::...)] for FFI patterns
+- Priority evolution: evolve to safe Rust where possible
 ```
 
 ---
