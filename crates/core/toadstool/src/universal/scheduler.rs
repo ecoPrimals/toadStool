@@ -291,27 +291,30 @@ impl UniversalScheduler {
                 return native_engine.execute(request).await;
             }
 
-            // No primal and no native engine - return placeholder
-            warn!(
-                "No primal or native runtime engine available for: {}",
+            // No primal and no native engine - return proper error
+            let error_msg = format!(
+                "No execution capability available for '{}': no matching primal provider and no local native runtime engine registered",
                 executable
             );
+            warn!("{}", error_msg);
             Ok(ExecutionResponse {
                 execution_id: Uuid::new_v4(),
-                status: crate::execution::ExecutionStatus::Success,
+                status: crate::execution::ExecutionStatus::Failed {
+                    error: error_msg.clone(),
+                },
                 output: crate::execution::ExecutionOutput {
                     data: Vec::new(),
-                    stdout: Some("Native execution: no runtime engine registered".to_string()),
-                    stderr: None,
-                    exit_code: Some(0),
+                    stdout: None,
+                    stderr: Some(error_msg),
+                    exit_code: Some(127), // Command not found
                     format: Some("text/plain".to_string()),
                     result: HashMap::new(),
                     metadata: HashMap::new(),
                 },
                 metrics: crate::RuntimeMetrics::default(),
-                duration: Duration::from_millis(100),
+                duration: Duration::from_millis(0),
                 runtime_used: crate::execution::RuntimeType::Native,
-                warnings: vec!["No native runtime engine registered".to_string()],
+                warnings: vec!["Register a native runtime engine or primal provider with NativeExecution capability".to_string()],
             })
         }
     }
@@ -360,77 +363,297 @@ impl UniversalScheduler {
             return wasm_engine.execute(request).await;
         }
 
-        // No WASM engine registered - return placeholder
-        warn!("No WASM runtime engine registered, returning placeholder response");
+        // No WASM engine registered - return proper error
+        let error_msg = format!(
+            "No WASM execution capability: no runtime engine registered for WASM modules ({} bytes)",
+            module.len()
+        );
+        warn!("{}", error_msg);
         Ok(ExecutionResponse {
             execution_id: Uuid::new_v4(),
-            status: crate::execution::ExecutionStatus::Success,
+            status: crate::execution::ExecutionStatus::Failed {
+                error: error_msg.clone(),
+            },
             output: crate::execution::ExecutionOutput {
                 data: Vec::new(),
-                stdout: Some("WASM execution: no runtime engine registered".to_string()),
-                stderr: None,
-                exit_code: Some(0),
+                stdout: None,
+                stderr: Some(error_msg),
+                exit_code: Some(126), // Command not executable
                 format: Some("text/plain".to_string()),
                 result: HashMap::new(),
                 metadata: HashMap::new(),
             },
             metrics: crate::RuntimeMetrics::default(),
-            duration: Duration::from_millis(100),
+            duration: Duration::from_millis(0),
             runtime_used: crate::execution::RuntimeType::Wasm,
-            warnings: vec!["No WASM runtime engine registered".to_string()],
+            warnings: vec!["Register a WASM runtime engine via register_runtime_engine(RuntimeType::Wasm, engine)".to_string()],
         })
     }
 
     async fn execute_primal(
         &self,
         primal_type: &str,
-        _endpoint: &str,
+        endpoint: &str,
         payload: &serde_json::Value,
     ) -> ToadStoolResult<ExecutionResponse> {
-        debug!("Executing primal job: {}", primal_type);
-        // Placeholder - uses primal registry
-        Ok(ExecutionResponse {
-            execution_id: Uuid::new_v4(),
-            status: crate::execution::ExecutionStatus::Success,
-            output: crate::execution::ExecutionOutput {
-                data: payload.to_string().into_bytes(),
-                stdout: Some(format!("Primal execution: {}", primal_type)),
-                stderr: None,
-                exit_code: Some(0),
-                format: Some("application/json".to_string()),
-                result: HashMap::new(),
+        debug!("Executing primal job: {} at endpoint: {}", primal_type, endpoint);
+        let start_time = std::time::Instant::now();
+        let execution_id = Uuid::new_v4();
+
+        // Find a primal provider that matches the requested type
+        let providers = self.primal_registry.get_all_providers().await;
+        let matching_provider = providers
+            .iter()
+            .find(|p| format!("{:?}", p.primal_type()) == primal_type);
+
+        if let Some(provider) = matching_provider {
+            // Build and route the request through the primal registry
+            let request = PrimalRequest {
+                id: execution_id,
+                source: "scheduler".to_string(),
+                target: provider.instance_id().to_string(),
+                request_type: endpoint.to_string(),
+                payload: payload.clone(),
+                context: PrimalContext {
+                    user_id: "scheduler".to_string(),
+                    device_id: "local".to_string(),
+                    session_id: execution_id.to_string(),
+                    network_location: NetworkLocation {
+                        ip_address: "127.0.0.1".to_string(),
+                        subnet: None,
+                        network_id: None,
+                        geo_location: None,
+                    },
+                    security_level: SecurityLevel::Standard,
+                    metadata: HashMap::new(),
+                },
                 metadata: HashMap::new(),
-            },
-            metrics: crate::RuntimeMetrics::default(),
-            duration: Duration::from_millis(100),
-            runtime_used: crate::execution::RuntimeType::Native,
-            warnings: Vec::new(),
-        })
+                timestamp: chrono::Utc::now(),
+            };
+
+            match self.primal_registry.route_request(request).await {
+                Ok(response) => {
+                    let duration = start_time.elapsed();
+                    let status = if response.status == ResponseStatus::Success {
+                        crate::execution::ExecutionStatus::Success
+                    } else {
+                        let error_msg = match &response.status {
+                            ResponseStatus::Error { message, .. } => message.clone(),
+                            ResponseStatus::Timeout => "Request timed out".to_string(),
+                            ResponseStatus::ServiceUnavailable => "Service unavailable".to_string(),
+                            ResponseStatus::Success => "Unknown error".to_string(),
+                        };
+                        crate::execution::ExecutionStatus::Failed { error: error_msg }
+                    };
+
+                    Ok(ExecutionResponse {
+                        execution_id,
+                        status,
+                        output: crate::execution::ExecutionOutput {
+                            data: response.payload.to_string().into_bytes(),
+                            stdout: Some(format!("Primal '{}' executed successfully", primal_type)),
+                            stderr: None,
+                            exit_code: Some(0),
+                            format: Some("application/json".to_string()),
+                            result: HashMap::new(),
+                            metadata: HashMap::new(),
+                        },
+                        metrics: crate::RuntimeMetrics::default(),
+                        duration,
+                        runtime_used: crate::execution::RuntimeType::Native,
+                        warnings: Vec::new(),
+                    })
+                }
+                Err(e) => {
+                    let duration = start_time.elapsed();
+                    let error_msg = format!("Primal '{}' execution failed: {}", primal_type, e);
+                    warn!("{}", error_msg);
+                    Ok(ExecutionResponse {
+                        execution_id,
+                        status: crate::execution::ExecutionStatus::Failed {
+                            error: error_msg.clone(),
+                        },
+                        output: crate::execution::ExecutionOutput {
+                            data: Vec::new(),
+                            stdout: None,
+                            stderr: Some(error_msg),
+                            exit_code: Some(1),
+                            format: Some("text/plain".to_string()),
+                            result: HashMap::new(),
+                            metadata: HashMap::new(),
+                        },
+                        metrics: crate::RuntimeMetrics::default(),
+                        duration,
+                        runtime_used: crate::execution::RuntimeType::Native,
+                        warnings: Vec::new(),
+                    })
+                }
+            }
+        } else {
+            // No matching primal provider found
+            let error_msg = format!(
+                "No primal provider registered for type '{}'. Available providers: {}",
+                primal_type,
+                if providers.is_empty() {
+                    "none".to_string()
+                } else {
+                    providers
+                        .iter()
+                        .map(|p| format!("{:?}", p.primal_type()))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                }
+            );
+            warn!("{}", error_msg);
+            Ok(ExecutionResponse {
+                execution_id,
+                status: crate::execution::ExecutionStatus::Failed {
+                    error: error_msg.clone(),
+                },
+                output: crate::execution::ExecutionOutput {
+                    data: Vec::new(),
+                    stdout: None,
+                    stderr: Some(error_msg),
+                    exit_code: Some(127),
+                    format: Some("text/plain".to_string()),
+                    result: HashMap::new(),
+                    metadata: HashMap::new(),
+                },
+                metrics: crate::RuntimeMetrics::default(),
+                duration: start_time.elapsed(),
+                runtime_used: crate::execution::RuntimeType::Native,
+                warnings: vec!["Register a primal provider via primal_registry.register_primal()".to_string()],
+            })
+        }
     }
 
     async fn execute_biome_os(
         &self,
-        _biome_manifest: &serde_json::Value,
+        biome_manifest: &serde_json::Value,
         team_id: &str,
     ) -> ToadStoolResult<ExecutionResponse> {
         debug!("Executing BiomeOS job for team: {}", team_id);
-        // Placeholder - delegated to BiomeOS integration
-        Ok(ExecutionResponse {
-            execution_id: Uuid::new_v4(),
-            status: crate::execution::ExecutionStatus::Success,
-            output: crate::execution::ExecutionOutput {
-                data: Vec::new(),
-                stdout: Some(format!("BiomeOS execution for team: {}", team_id)),
-                stderr: None,
-                exit_code: Some(0),
-                format: Some("text/plain".to_string()),
-                result: HashMap::new(),
+        let execution_id = Uuid::new_v4();
+        let start_time = std::time::Instant::now();
+
+        // BiomeOS integration: Look for a BiomeOS primal provider
+        let providers = self.primal_registry.get_all_providers().await;
+        let biome_provider = providers
+            .iter()
+            .find(|p| format!("{:?}", p.primal_type()).contains("BiomeOS"));
+
+        if let Some(provider) = biome_provider {
+            // Route to BiomeOS primal
+            let request = PrimalRequest {
+                id: execution_id,
+                source: "scheduler".to_string(),
+                target: provider.instance_id().to_string(),
+                request_type: "execute".to_string(),
+                payload: serde_json::json!({
+                    "manifest": biome_manifest,
+                    "team_id": team_id,
+                }),
+                context: PrimalContext {
+                    user_id: team_id.to_string(),
+                    device_id: "local".to_string(),
+                    session_id: execution_id.to_string(),
+                    network_location: NetworkLocation {
+                        ip_address: "127.0.0.1".to_string(),
+                        subnet: None,
+                        network_id: None,
+                        geo_location: None,
+                    },
+                    security_level: SecurityLevel::Standard,
+                    metadata: HashMap::new(),
+                },
                 metadata: HashMap::new(),
-            },
-            metrics: crate::RuntimeMetrics::default(),
-            duration: Duration::from_millis(100),
-            runtime_used: crate::execution::RuntimeType::Native,
-            warnings: Vec::new(),
-        })
+                timestamp: chrono::Utc::now(),
+            };
+
+            match self.primal_registry.route_request(request).await {
+                Ok(response) => {
+                    let duration = start_time.elapsed();
+                    let status = if response.status == ResponseStatus::Success {
+                        crate::execution::ExecutionStatus::Success
+                    } else {
+                        let error_msg = match &response.status {
+                            ResponseStatus::Error { message, .. } => message.clone(),
+                            ResponseStatus::Timeout => "BiomeOS request timed out".to_string(),
+                            ResponseStatus::ServiceUnavailable => "BiomeOS service unavailable".to_string(),
+                            ResponseStatus::Success => "Unknown error".to_string(),
+                        };
+                        crate::execution::ExecutionStatus::Failed { error: error_msg }
+                    };
+
+                    Ok(ExecutionResponse {
+                        execution_id,
+                        status,
+                        output: crate::execution::ExecutionOutput {
+                            data: response.payload.to_string().into_bytes(),
+                            stdout: Some(format!("BiomeOS execution for team '{}' completed", team_id)),
+                            stderr: None,
+                            exit_code: Some(0),
+                            format: Some("application/json".to_string()),
+                            result: HashMap::new(),
+                            metadata: HashMap::new(),
+                        },
+                        metrics: crate::RuntimeMetrics::default(),
+                        duration,
+                        runtime_used: crate::execution::RuntimeType::Native,
+                        warnings: Vec::new(),
+                    })
+                }
+                Err(e) => {
+                    let duration = start_time.elapsed();
+                    let error_msg = format!("BiomeOS execution failed for team '{}': {}", team_id, e);
+                    warn!("{}", error_msg);
+                    Ok(ExecutionResponse {
+                        execution_id,
+                        status: crate::execution::ExecutionStatus::Failed {
+                            error: error_msg.clone(),
+                        },
+                        output: crate::execution::ExecutionOutput {
+                            data: Vec::new(),
+                            stdout: None,
+                            stderr: Some(error_msg),
+                            exit_code: Some(1),
+                            format: Some("text/plain".to_string()),
+                            result: HashMap::new(),
+                            metadata: HashMap::new(),
+                        },
+                        metrics: crate::RuntimeMetrics::default(),
+                        duration,
+                        runtime_used: crate::execution::RuntimeType::Native,
+                        warnings: Vec::new(),
+                    })
+                }
+            }
+        } else {
+            // No BiomeOS primal provider registered
+            let error_msg = format!(
+                "BiomeOS integration not available: no BiomeOS primal provider registered for team '{}'",
+                team_id
+            );
+            warn!("{}", error_msg);
+            Ok(ExecutionResponse {
+                execution_id,
+                status: crate::execution::ExecutionStatus::Failed {
+                    error: error_msg.clone(),
+                },
+                output: crate::execution::ExecutionOutput {
+                    data: Vec::new(),
+                    stdout: None,
+                    stderr: Some(error_msg),
+                    exit_code: Some(127),
+                    format: Some("text/plain".to_string()),
+                    result: HashMap::new(),
+                    metadata: HashMap::new(),
+                },
+                metrics: crate::RuntimeMetrics::default(),
+                duration: start_time.elapsed(),
+                runtime_used: crate::execution::RuntimeType::Native,
+                warnings: vec!["BiomeOS execution requires a registered BiomeOS primal provider".to_string()],
+            })
+        }
     }
 }
