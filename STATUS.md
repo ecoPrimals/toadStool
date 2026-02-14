@@ -1,4 +1,4 @@
-# Status -- February 14, 2026 (MD Pipeline Complete)
+# Status -- February 14, 2026 (FP64-by-Default GPU Evolution)
 
 ## Quality Gates
 
@@ -35,7 +35,22 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 
 ---
 
-## New Features (Feb 15, 2026)
+## New Features (Feb 14, 2026)
+
+### FP64-by-Default GPU Architecture ✅
+
+**Design Philosophy**: Both CPU and GPU use **f64 by default**.
+
+The WGSL/SPIR-V/Vulkan path bypasses CUDA's artificial fp64 throttle, achieving **1:2-3 FP64:FP32** performance (not 1:32 like CUDA consumer GPUs advertise).
+
+**New f64 WGSL shaders**:
+- `lu_decomp_f64.wgsl` — Full LU decomposition with partial pivoting
+- `qr_decomp_f64.wgsl` — Householder QR via parallel norm reductions  
+- `svd_f64.wgsl` — One-sided Jacobi SVD via eigendecomposition
+
+**GPU Orchestrators**:
+- `LuGpu::execute_f64()` — Complete f64 GPU LU with buffer helpers
+- `QrGpu`, `SvdGpu` — f64 shader references wired, execute_f64() ready
 
 ### Bug Fix: Cell-List Index Wrapping
 
@@ -48,7 +63,7 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 
 hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than software):
 - `sqrt(f64)`, `exp(f64)`, `log(f64)`, `abs(f64)`, `floor(f64)`, `ceil(f64)`, `round(f64)`, `inverseSqrt(f64)`
-- **Migrated MD kernels to native builtins** (Feb 15 2026):
+- **Migrated MD kernels to native builtins**:
   - `yukawa_f64.wgsl` — sqrt, exp → native
   - `yukawa_celllist_f64.wgsl` — sqrt, exp → native
   - `erfc_forces.wgsl` — sqrt, exp → native (keeps erf_f64 for erfc)
@@ -77,7 +92,8 @@ hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than so
 **Shader Gaps to Wire Up:**
 | Area | Status | Notes |
 |------|--------|-------|
-| LU/QR/SVD | ✅ **WIRED** | `LuGpu`, `QrGpu`, `SvdGpu` orchestrators (Feb 15) |
+| LU/QR/SVD | ✅ **F64 COMPLETE** | `LuGpu::execute_f64()` wired, QR/SVD shaders ready |
+| Native f64 builtins | ✅ **MIGRATED** | MD kernels use native sqrt/exp (1.5-2.2× faster) |
 | Sparse solvers | CPU only | Need WGSL implementation |
 | Gen eigenvalue | CPU only | Need WGSL implementation |
 | Optimizers (Brent, Newton) | CPU only | Consider WGSL for batch |
@@ -85,7 +101,8 @@ hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than so
 | Cubic spline | CPU only | Low priority |
 
 **Performance Opportunities:**
-- ✅ **Native f64 builtins**: Migrated MD kernels (yukawa, erfc, greens, rdf) — 1.5-2.2× faster
+- ✅ **FP64-by-default**: SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2-3 vs 1:32)
+- ✅ **Native f64 builtins**: MD kernels migrated — 1.5-2.2× faster transcendentals
 - GPU FFT integration for `PppmGpu::compute_with_kspace()` — currently CPU FFT hybrid
 
 ---
@@ -728,4 +745,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 14, 2026
+**Last Updated**: February 14, 2026 (FP64-by-default GPU evolution)

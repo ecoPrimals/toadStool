@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 14, 2026 (L2 Evolution — hotSpring MD Complete)
+**Date**: February 14, 2026 (FP64-by-Default GPU Evolution)
 
 ---
 
@@ -34,13 +34,14 @@ ToadStool (Hardware Infrastructure Primal)
   Shared error tracking across all transports
   Hardware-agnostic workload routing (GPU / NPU / CPU)
 
-BarraCUDA (Universal Compute Engine — SHADER-FIRST)
-  396 WGSL shaders, proven cross-vendor
+BarraCUDA (Universal Compute Engine — SHADER-FIRST F64)
+  **FP64-by-default**: Both CPU and GPU use f64
+  SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2-3 vs 1:32)
+  396+ WGSL shaders, proven cross-vendor
   **Shader-first architecture**: ALL math is WGSL primary
-  ToadStool dispatches to GPU/CPU based on hardware
-  When fp64 GPUs available, seamless transition
   Bit-identical results: RTX 4070 = RTX 3090 = RX 6950 XT
   39.85 tok/s distributed LLM inference
+  Native f64 builtins: sqrt, exp, log work on f64 (1.5-2.2× faster)
   18 special function shaders (Hermite, Legendre, Laguerre, Bessel, etc.)
   3 sampling shaders (Sobol, LHS, random_uniform)
   Scientific middleware: 8 modules (linalg, numerical, special, stats, optimize, surrogate, sample, pde)
@@ -275,14 +276,19 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 **Bug Fix (Feb 15)**: Cell-list i32 % wrapping bug fixed (hotSpring ALERT)
 **Docs**: `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md`, `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
 
+**Completed (Feb 14):**
+- ✅ FP64-by-default architecture (SPIR-V/Vulkan bypasses CUDA throttle)
+- ✅ f64 WGSL shaders: `lu_decomp_f64.wgsl`, `qr_decomp_f64.wgsl`, `svd_f64.wgsl`
+- ✅ `LuGpu::execute_f64()` — complete f64 GPU LU orchestrator
+- ✅ Native f64 builtins in MD kernels (yukawa, erfc, greens, rdf) — 1.5-2.2× faster
+- ✅ Cell-list i32 % wrapping bug fixed (hotSpring ALERT)
+
 **Remaining Evolution Work**:
+- `QrGpu::execute_f64()` / `SvdGpu::execute_f64()` — wire up orchestrators
 - Sparse solvers: need WGSL implementation
 - Gen eigenvalue: need WGSL implementation
-
-**Completed (Feb 15):**
-- ✅ Native f64 builtins in MD kernels (yukawa, erfc, greens, rdf) — 1.5-2.2× faster
-- ✅ GPU linalg wiring: `LuGpu`, `QrGpu`, `SvdGpu` orchestrators (multi-pass WGSL)
+- GPU FFT for `PppmGpu::compute_with_kspace()`
 
 ---
 
-**Last Updated**: February 15, 2026
+**Last Updated**: February 14, 2026

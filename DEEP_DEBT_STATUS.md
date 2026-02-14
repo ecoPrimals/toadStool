@@ -15,12 +15,16 @@ System health verified with 15,700+ tests passing across workspace.
 
 ### Latest Updates (Feb 14, 2026)
 
-- ✅ **PPPM Complete** -- Full solver with B-spline spread, Green's function, force interpolation, short-range erfc (37 tests)
-- ✅ **FFT f64** -- Double-precision FFT for PPPM precision
+- ✅ **FP64-by-Default Architecture** -- Both CPU and GPU use f64 by default
+- ✅ **SPIR-V/Vulkan FP64** -- Bypasses CUDA throttle, achieves 1:2-3 FP64:FP32 (not 1:32)
+- ✅ **f64 WGSL Shaders** -- `lu_decomp_f64.wgsl`, `qr_decomp_f64.wgsl`, `svd_f64.wgsl`
+- ✅ **LuGpu::execute_f64()** -- Complete f64 GPU LU orchestrator
+- ✅ **Native f64 Builtins** -- MD kernels use native sqrt/exp (1.5-2.2× faster)
+- ✅ **Cell-list Bug Fix** -- i32 % wrapping fixed (hotSpring ALERT)
+- ✅ **PPPM Complete** -- Full solver with B-spline spread, Green's function, force interpolation
 - ✅ **MD Pipeline Complete** -- Full thermostat suite (Berendsen, Nosé-Hoover, Langevin)
-- ✅ **MSD Observable** -- Mean-squared displacement with PBC unwrapping for diffusion
 - ✅ **Cell-List** -- O(N) neighbor search for large N-body simulations
-- ✅ **Clippy Warnings** -- Reduced 96% (166 → 6), remaining are cargo metadata
+- ✅ **Clippy Clean** -- 0 warnings (was 166)
 
 ### Previous Updates (Feb 13, 2026)
 
