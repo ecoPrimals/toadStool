@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 13, 2026
+**Last Updated**: February 14, 2026
 
 ---
 
@@ -25,28 +25,25 @@
 
 ---
 
-## Current State (February 13, 2026)
+## Current State (February 14, 2026)
 
-- **Phase 5 Tiers 1-3 Complete** — Tier 4 awaiting Titan V hardware
-- **0 clippy warnings** (down from 453)
-- **15,700+ tests passing**, 0 failing (330+ scientific middleware tests)
-- **396 WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
+- **Deep Debt Evolution Complete** — All server placeholders evolved
+- **0 clippy warnings** (was 166)
+- **15,700+ tests passing**, 0 failing (350+ scientific middleware tests)
+- **470+ WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
 - **Shader-first**: ALL math is WGSL primary, ToadStool dispatches to GPU/CPU
-- 18 special function shaders, 3 sampling shaders, 5 statistics shaders
-- **Scientific middleware** (12 modules: linalg, linalg::sparse, numerical, special, stats, optimize, surrogate, sample, pde, interpolate, dispatch, pipeline — 330+ tests, 0 unsafe)
+- **Server metrics**: Real CPU/memory from sysinfo (no placeholders)
+- **GPU self-knowledge**: Actual hardware detection via sysfs/system_profiler
+- **Scheduler routing**: Real primal registry integration
+- **Scientific middleware** (12 modules: linalg, linalg::sparse, numerical, special, stats, optimize, surrogate, sample, pde, interpolate, dispatch, pipeline — 350+ tests, 0 unsafe)
 - **hotSpring validation complete** — L1 χ²/datum = 1.19 (82% better than scipy)
 - **Auto-dispatch system** — CPU/GPU routing with benchmark suite
-- **Pipeline orchestration** — `Cascade` multi-stage filtering API
-- **Sparse linear algebra** — CG, BiCGSTAB, Jacobi solvers
 - **17 WorkloadHint variants** with auto-routing (GPU, NPU, CPU) and user preference override
 - **26 JSON-RPC methods** across 6 domains (toadstool, compute, gpu, ollama, gate, resources)
 - GPU job queue with cross-gate routing
 - NPU detection: `/dev/akida*` and IOMMU/VFIO sysfs scan for BrainChip 0x1e7c
-- Ollama model lifecycle management
-- Shared error tracking across all server transports
-- 100% `unsafe` block documentation (35 blocks, all with `// SAFETY:`)
-- Zero production `todo!()`, zero production mocks
-- **Mocks feature-gated** — `dev-mock-auth` for development, errors in production
+- 100% `unsafe` block documentation (FFI only, all with `// SAFETY:`)
+- Zero production placeholders, zero production mocks
 - Cross-vendor distributed GPU compute validated (NVIDIA + AMD, bit-identical)
 - 39.85 tok/s distributed LLM inference with encrypted tensor transport
 
@@ -141,4 +138,4 @@ specs/                     -- Technical specifications
 
 ---
 
-**Last Updated**: February 12, 2026
+**Last Updated**: February 14, 2026

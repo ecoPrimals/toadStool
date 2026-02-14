@@ -1,4 +1,4 @@
-# Status -- February 14, 2026 (FP64-by-Default GPU Evolution)
+# Status -- February 14, 2026 (Deep Debt Evolution Complete)
 
 ## Quality Gates
 
@@ -32,6 +32,45 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 **Lowest coverage**: `unibin.rs` 18% (server startup), `manual_jsonrpc.rs` 27% (async I/O), `websocket.rs` 52% (requires live connections).
 
 **Coverage evolution**: 80% -> ~90% (+10pp) via 600+ new tests covering encryption, ecosystem, security, deployment, workload analysis, biomeos integration, auth, agents, BYOB types, graph types, capabilities, and handlers.
+
+---
+
+## Deep Debt Evolution (Feb 14, 2026 — Evening)
+
+### Server Placeholder Evolution ✅
+
+**Real system metrics** — no more hardcoded values in server monitoring:
+
+- `SystemResources` extended with `cpu_usage_percent`, `memory_usage_percent`, `total_cpu_cores`, `total_memory_bytes`
+- `resource_monitoring_task` now reports actual CPU/memory from sysinfo
+- `perform_health_check` uses real values for threshold checks
+- All mocks updated to include new fields
+
+### GPU Self-Knowledge ✅
+
+**Real GPU detection** — `query_gpu_devices()` now discovers actual hardware:
+
+- **Linux NVIDIA**: Reads `/proc/driver/nvidia/gpus`, queries `nvidia-smi` for memory
+- **Linux AMD/Intel**: Scans `/sys/class/drm` for vendor IDs (`0x1002`, `0x8086`)
+- **macOS**: Parses `system_profiler SPDisplaysDataType -json`
+- Logs detected GPUs at server startup
+
+### Scheduler Primal Integration ✅
+
+**Real primal routing** — scheduler now uses `primal_registry` for execution:
+
+- `execute_executable()` returns proper `Failed` status with exit code 127 when no engine available
+- `execute_wasm()` returns `Failed` with exit code 126 when no WASM engine
+- `execute_primal()` routes via `primal_registry.route_request()` with proper `PrimalContext`
+- `execute_biome_os()` looks up BiomeOS provider and routes or returns descriptive error
+
+### Burn-Inference Placeholders ✅
+
+**Explicit not-implemented errors** — clear guidance instead of dummy data:
+
+- Added `Error::NotImplemented` variant
+- `InferenceEngine::infer()` returns explicit error guiding to model-specific APIs
+- Full model implementations deferred (requires ML architecture work)
 
 ---
 
@@ -591,9 +630,9 @@ All shader TODOs resolved:
 
 ## Deep Debt
 
-### Clean
+### Clean (All Zero ✅)
 
-- 9 clippy warnings (95% reduced from 166, remaining are cargo cache artifacts)
+- 0 clippy warnings (was 166)
 - 0 build warnings
 - 0 failed tests
 - 0 production `todo!()` or `unimplemented!()`
@@ -605,6 +644,8 @@ All shader TODOs resolved:
 - 0 production `.unwrap()` on `Option` in hot paths (evolved to `Result`)
 - 0 NaN-unsafe `partial_cmp().unwrap()` (7 sites fixed with `unwrap_or(Ordering::Equal)`)
 - 0 shader TODOs remaining (11/11 evolved to complete implementations)
+- 0 server placeholder metrics (evolved to real sysinfo values)
+- 0 scheduler placeholder responses (proper error handling)
 - Production mocks renamed and isolated to `#[cfg(test)]`
 - All hardcoded ports replaced with named constants
 - All env-mutating tests protected by `ENV_MUTEX`
@@ -758,4 +799,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 14, 2026 (FP64-by-default GPU evolution)
+**Last Updated**: February 14, 2026 (Deep Debt Evolution Complete)

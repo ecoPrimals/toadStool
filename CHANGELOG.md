@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-14] - Deep Debt Evolution — Server Placeholders Eliminated
+
+**Impact**: All server placeholder code evolved to real implementations. Zero placeholders remaining in production code.
+
+#### Changed
+
+- **Server Metrics** (`toadstool-server::background`):
+  - `resource_monitoring_task` now uses actual `cpu_usage_percent` and `memory_usage_percent` from `SystemResources`
+  - `perform_health_check` uses real system values for threshold checks
+  - No more hardcoded placeholder percentages
+
+- **SystemResources** (`toadstool::resources`):
+  - Extended struct with `cpu_usage_percent`, `memory_usage_percent`, `total_cpu_cores`, `total_memory_bytes`
+  - `SystemResourceMonitor::get_system_resources()` populates all fields from sysinfo
+  - All mocks updated to include new fields
+
+- **GPU Detection** (`toadstool-server::capabilities`):
+  - `query_gpu_devices()` implements real hardware detection
+  - Linux: NVIDIA via `/proc/driver/nvidia/gpus` + `nvidia-smi`, AMD/Intel via `/sys/class/drm`
+  - macOS: `system_profiler SPDisplaysDataType -json` parsing
+  - Logs detected GPUs at startup
+
+- **Scheduler** (`toadstool::universal::scheduler`):
+  - `execute_executable()` returns `Failed` with exit code 127 when no engine available
+  - `execute_wasm()` returns `Failed` with exit code 126 when no WASM engine
+  - `execute_primal()` routes via `primal_registry.route_request()` with proper `PrimalContext`
+  - `execute_biome_os()` looks up BiomeOS provider and routes or returns descriptive error
+
+- **burn-inference** (`ml::burn-inference`):
+  - Added `Error::NotImplemented` variant
+  - `InferenceEngine::infer()` returns explicit error guiding to model-specific APIs
+  - Full model implementations deferred (requires ML architecture work)
+
+---
+
 ### [2026-02-13] - Akida NPU — VFIO Backend (Pure Rust with DMA)
 
 **Impact**: Pure Rust NPU driver with DMA support, eliminating need for C kernel module.

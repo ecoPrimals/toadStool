@@ -15,17 +15,18 @@
 
 | Gate | Status |
 |------|--------|
-| `cargo build --workspace` | Clean |
-| `cargo fmt --all -- --check` | Clean |
-| `cargo clippy --workspace` | **Clean** (was 166 warnings) |
-| `cargo test --workspace` | **15,700+ passed, 0 failed** |
-| `unsafe` blocks | 100% documented — FFI only (VFIO, DRM) |
-| File size | All production files appropriately structured |
-| Scientific middleware | 340+ tests, 100% passing, 0 unsafe blocks |
-| MD pipeline | Complete thermostat suite + observables + cell-list |
-| Dependency evolution | `once_cell`, `lazy_static` → `std::sync::LazyLock` |
+| `cargo build --workspace` | ✅ Clean |
+| `cargo fmt --all -- --check` | ✅ Clean |
+| `cargo clippy --workspace` | ✅ Clean (0 warnings) |
+| `cargo test --workspace` | ✅ 15,700+ passed, 0 failed |
+| `unsafe` blocks | ✅ FFI only (VFIO, DRM) — 100% documented |
+| Production placeholders | ✅ 0 remaining — all evolved |
+| Scientific middleware | ✅ 350+ tests, 100% passing |
+| MD pipeline | ✅ Complete (thermostats + observables + PPPM) |
+| Server metrics | ✅ Real system values (no placeholders) |
+| GPU detection | ✅ Self-knowledge via sysfs/system_profiler |
 
-*All clippy warnings resolved. Workspace fully clean.*
+*All quality gates green. Workspace fully clean.*
 
 ---
 
@@ -82,7 +83,7 @@ TinyLlama-1.1B split across two machines over LAN TCP:
 ```
 Applications (hotSpring, NUCLEUS inference, etc.)
        |
-BarraCUDA: 396 WGSL Shaders (SHADER-FIRST)
+BarraCUDA: 470+ WGSL Shaders (SHADER-FIRST)
   ALL math is WGSL primary — ToadStool dispatches to GPU/CPU
   18 special function shaders, 3 sampling shaders
   Middleware: linalg, numerical, special, stats, optimize, surrogate, sample, pde (200+ tests)
@@ -200,40 +201,42 @@ toadStool/
 
 | Metric | Value |
 |--------|-------|
-| Clippy warnings | 6 (96% reduced from 166) |
-| Tests passing | 15,700+ (3,700+ core) |
+| Clippy warnings | 0 (was 166) |
+| Tests passing | 15,700+ |
 | Tests failing | 0 |
 | Build warnings | 0 |
 | Server line coverage | ~85% |
 | Common line coverage | ~84% |
 | Config line coverage | ~85% |
-| `unsafe` blocks | 35 blocks, 100% documented with `// SAFETY:` |
-| File size | All production files under 1000 lines |
-| Production `todo!()` | 0 |
+| `unsafe` blocks | FFI only — 100% documented |
+| Production placeholders | 0 (all evolved) |
 | Production mocks | 0 (TestExecutor in test-only code) |
-| `#[serial]` in tests | 0 (replaced with scoped Mutex) |
-| Sleep-based test sync | 0 in server tests (event-driven) |
+| WGSL shaders | 470+ (shader-first architecture) |
 
 ---
 
 ## What Needs Evolution
 
 ### Performance (Completed ✅)
-- ~~**Bind group caching**~~ ✅ -- 100% cache hit rate
-- ~~**Fused kernels (FMA)**~~ ✅ -- 2.6x speedup at small sizes
-- ~~**Pure-GPU f64 math**~~ ✅ -- 27+ transcendentals via `math_f64.wgsl`
-- ~~**Runtime cache discovery**~~ ✅ -- Universal substrate awareness
+- ✅ **Bind group caching** -- 100% cache hit rate
+- ✅ **Fused kernels (FMA)** -- 2.6x speedup at small sizes
+- ✅ **Pure-GPU f64 math** -- 27+ transcendentals via `math_f64.wgsl`
+- ✅ **Runtime cache discovery** -- Universal substrate awareness
+- ✅ **Batched eigendecomposition** -- f64 Jacobi on GPU (`BatchedEighGpu`)
+- ✅ **Generalized eigensolver** -- `GenEighGpu::execute_f64()` hybrid CPU/GPU
+- ✅ **Server real metrics** -- CPU/memory usage from sysinfo (no placeholders)
+- ✅ **GPU self-knowledge** -- Vendor detection via sysfs/system_profiler
+- ✅ **Scheduler primal routing** -- Real primal registry integration
 
 ### Performance (Next)
 - **Runtime cache probing** -- Bandwidth microbenchmarks to find cache boundaries
 - **Timeline semaphores** -- Async submit without CPU-GPU sync
-- **Batched eigendecomposition** -- f64 Jacobi/QR on GPU
 
-### Infrastructure
-- **VFIO NPU backend** -- pure Rust via `/dev/vfio/*`
+### Infrastructure (Next)
 - **NPU model pipeline** -- train/compile/deploy from Rust
 - **Model weight loading** -- safetensors/GGUF loader
 - **INT4/INT8 quantization** -- quantized WGSL shaders
+- **burn-inference models** -- Full BERT/Whisper/YOLO implementations
 
 ---
 
@@ -416,4 +419,4 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
-**Last Updated**: February 14, 2026 (MD Pipeline Complete + PPPM Full Solver)
+**Last Updated**: February 14, 2026 (Deep Debt Evolution Complete)

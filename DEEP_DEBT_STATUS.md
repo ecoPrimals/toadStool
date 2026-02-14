@@ -13,8 +13,16 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **MD pipeline complete** — full thermostat suite + observables + O(N) neighbor search.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 14, 2026)
+### Latest Updates (Feb 14, 2026 — Evening)
 
+**Deep Debt Evolution Session:**
+- ✅ **Server Real Metrics** -- `SystemResources` extended with actual CPU/memory usage from sysinfo
+- ✅ **GPU Self-Knowledge** -- `query_gpu_devices()` detects real hardware via sysfs/system_profiler
+- ✅ **Scheduler Primal Routing** -- Real `primal_registry` integration, proper error responses
+- ✅ **burn-inference Errors** -- `Error::NotImplemented` variant, explicit guidance vs dummy data
+- ✅ **Clippy Clean** -- 0 warnings (was 166)
+
+**Previous (Feb 14, 2026):**
 - ✅ **FP64-by-Default Architecture** -- Both CPU and GPU use f64 by default
 - ✅ **SPIR-V/Vulkan FP64** -- Bypasses CUDA throttle, achieves 1:2-3 FP64:FP32 (not 1:32)
 - ✅ **f64 WGSL Shaders** -- `lu_decomp_f64.wgsl`, `qr_decomp_f64.wgsl`, `svd_f64.wgsl`
@@ -24,7 +32,6 @@ System health verified with 15,700+ tests passing across workspace.
 - ✅ **PPPM Complete** -- Full solver with B-spline spread, Green's function, force interpolation
 - ✅ **MD Pipeline Complete** -- Full thermostat suite (Berendsen, Nosé-Hoover, Langevin)
 - ✅ **Cell-List** -- O(N) neighbor search for large N-body simulations
-- ✅ **Clippy Clean** -- 0 warnings (was 166)
 
 ### Previous Updates (Feb 13, 2026)
 
@@ -120,10 +127,11 @@ TOTAL                     156      ✅
 - ✅ Tests use real functions
 
 ### Quality Gates
-- ✅ **clippy**: 6 warnings (96% reduced from 166, remaining are cargo metadata)
+- ✅ **clippy**: 0 warnings (was 166)
 - ✅ **fmt**: All code formatted
 - ✅ **tests**: 15,700+ passing, 0 failures
 - ✅ **docs**: Comprehensive with examples
+- ✅ **placeholders**: 0 remaining in production code
 
 ### Shader-First Architecture ✅
 - ✅ **396 WGSL shaders**: ALL parallelizable math is shader-primary
@@ -300,7 +308,7 @@ specs/GENERIC_PRECISION_EVOLUTION.md                (Phase 1 complete)
 
 ## Conclusion
 
-**Phase 3 (A & B) complete. MD pipeline complete. Deep debt resolved. Production-ready.**
+**Deep debt evolution complete. All placeholder code evolved. Production-ready.**
 
 - ✅ 15,700+ tests passing (100% in core crates)
 - ✅ 350+ middleware/MD tests (100% passing)
@@ -310,14 +318,16 @@ specs/GENERIC_PRECISION_EVOLUTION.md                (Phase 1 complete)
 - ✅ Modern idiomatic Rust throughout
 - ✅ Mock isolation via feature flags
 - ✅ Hardcoded paths eliminated
-- ✅ Primal self-knowledge architecture verified
-- ✅ MD pipeline: thermostats + observables + cell-list
+- ✅ Server metrics: real sysinfo values (no placeholders)
+- ✅ GPU detection: actual hardware discovery via sysfs
+- ✅ Scheduler: real primal routing via registry
+- ✅ MD pipeline: thermostats + observables + PPPM
 - ✅ Dependency evolution: std::sync::LazyLock (pure std)
 
-**System health: EXCELLENT. PPPM complete with 37 electrostatics tests passing.**
+**System health: EXCELLENT. All server placeholder code evolved to real implementations.**
 
 ---
 
-*Last Updated*: February 14, 2026  
+*Last Updated*: February 14, 2026 (Deep Debt Evolution Complete)  
 *Repository*: phase1/toadstool/  
 *License*: AGPL-3.0

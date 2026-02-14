@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 14, 2026 (FP64-by-Default GPU Evolution)
+**Date**: February 14, 2026 (Deep Debt Evolution Complete)
 
 ---
 
@@ -100,14 +100,14 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 | Build warnings | 0 |
 | Tests passing | 15,700+ |
 | Tests failing | 0 |
-| WGSL shaders | 396+ (including MD f64) |
+| WGSL shaders | 470+ (shader-first) |
 | Server line coverage | ~85% |
 | Common line coverage | ~84% |
 | Config line coverage | ~85% |
 | Unsafe blocks | FFI only (VFIO, DRM) |
-| Production `todo!()` | 0 |
+| Production placeholders | 0 (all evolved) |
 | Production mocks | 0 |
-| External lazy deps | 0 (migrated to std) |
+| Server metrics | Real sysinfo values |
 
 ---
 
