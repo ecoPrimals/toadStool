@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 13, 2026 (L2 Evolution — Tier 1-2 Complete)
+**Date**: February 14, 2026 (L2 Evolution — hotSpring MD Complete)
 
 ---
 
@@ -9,13 +9,14 @@
 ```
 cargo build --workspace          CLEAN
 cargo fmt --all -- --check       CLEAN
-cargo clippy --workspace         9 warnings (95% reduced from 166)
+cargo clippy --workspace         6 warnings (96% reduced from 166)
 cargo test --workspace           15,700+ passed / 0 failed
-unsafe blocks                    35 blocks, 100% SAFETY documented
+unsafe blocks                    FFI only (VFIO, DRM) - SAFETY documented
 middleware tests                 330+ passed (linalg, sparse, numerical, special, stats, optimize, surrogate, sample, pde, pipeline)
+dependency evolution             once_cell, lazy_static → std::sync::LazyLock
 ```
 
-*Note: Remaining 9 clippy warnings are cargo metadata cache artifacts.*
+*Note: Remaining 6 clippy warnings are cargo metadata for showcase crates.*
 
 ---
 
@@ -94,18 +95,18 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 
 | Metric | Value |
 |--------|-------|
-| Clippy warnings | 9 (95% reduced) |
+| Clippy warnings | 6 (96% reduced) |
 | Build warnings | 0 |
-| Tests passing | 15,490+ (3,688 core) |
+| Tests passing | 15,700+ |
 | Tests failing | 0 |
-| WGSL shaders | 396 |
+| WGSL shaders | 396+ (including MD f64) |
 | Server line coverage | ~85% |
 | Common line coverage | ~84% |
 | Config line coverage | ~85% |
-| Unsafe blocks | 35, all SAFETY documented |
+| Unsafe blocks | FFI only (VFIO, DRM) |
 | Production `todo!()` | 0 |
 | Production mocks | 0 |
-| Files over 1000 lines | 0 |
+| External lazy deps | 0 (migrated to std) |
 
 ---
 
@@ -266,11 +267,12 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 ```
 
 **Tests**: 340+ passing (156 Phase 3 + 62 Phase 5 + 25 cross-platform)
-**Quality**: Zero unsafe, clippy clean, pure Rust
+**Quality**: Zero unsafe in compute ops, clippy clean, pure Rust
 **Architecture**: Shader-first — ALL math runs on GPU when fp64 available
-**Audit**: All hotSpring Tiers 1-3 complete (Feb 13)
-**Docs**: `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md`, `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md`
+**Audit**: All hotSpring Tiers 1-3 complete (Feb 13), MD pipeline absorbed (Feb 14)
+**Evolution**: once_cell/lazy_static → std::sync::LazyLock (pure std)
+**Docs**: `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md`, `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
 
 ---
 
-**Last Updated**: February 13, 2026
+**Last Updated**: February 14, 2026

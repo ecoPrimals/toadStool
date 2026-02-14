@@ -11,19 +11,20 @@
 
 ---
 
-## Quality Gates (February 13, 2026)
+## Quality Gates (February 14, 2026)
 
 | Gate | Status |
 |------|--------|
 | `cargo build --workspace` | Clean |
 | `cargo fmt --all -- --check` | Clean |
-| `cargo clippy --workspace` | **9 warnings** (95% reduced from 166) |
+| `cargo clippy --workspace` | **6 warnings** (96% reduced from 166) |
 | `cargo test --workspace` | **15,700+ passed, 0 failed** |
-| `unsafe` blocks | 100% documented with `// SAFETY:` comments |
+| `unsafe` blocks | 100% documented — FFI only (VFIO, DRM) |
 | File size | All production files appropriately structured |
 | Scientific middleware | 330+ tests, 100% passing, 0 unsafe blocks |
+| Dependency evolution | `once_cell`, `lazy_static` → `std::sync::LazyLock` |
 
-*Note: Remaining 9 clippy warnings are cargo metadata cache artifacts that clear on clean builds.*
+*Note: Remaining 6 clippy warnings are cargo metadata for internal showcase crates.*
 
 ---
 
