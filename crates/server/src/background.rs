@@ -67,9 +67,9 @@ async fn resource_monitoring_task(state: ServerState) {
             }
         };
 
-        // Calculate usage percentages (simplified - would need more sophisticated calculation)
-        let cpu_usage_percent = 50.0; // Placeholder - real implementation would track usage over time
-        let memory_usage_percent = 45.0; // Placeholder - real implementation would calculate from available vs total
+        // Use actual system metrics (no more placeholders!)
+        let cpu_usage_percent = system_resources.cpu_usage_percent;
+        let memory_usage_percent = system_resources.memory_usage_percent;
 
         debug!(
             "Resource monitoring: CPU: {:.1}%, Memory: {:.1}%, Available CPU cores: {:.1}, Available Memory: {} bytes",
@@ -237,11 +237,10 @@ pub(crate) async fn perform_health_check(state: &ServerState) -> bool {
 
     // Check system resources using real data
     if config.check_resources {
-        if let Ok(_system_resources) = state.resource_monitor.get_system_resources().await {
-            // For now, we'll use simplified health checks
-            // In a real implementation, we'd track usage over time
-            let cpu_usage_percent = 50.0; // Placeholder - would need historical tracking
-            let memory_usage_percent = 45.0; // Placeholder - would calculate from available vs total
+        if let Ok(system_resources) = state.resource_monitor.get_system_resources().await {
+            // Use actual system metrics (no more placeholders!)
+            let cpu_usage_percent = system_resources.cpu_usage_percent;
+            let memory_usage_percent = system_resources.memory_usage_percent;
 
             if cpu_usage_percent > config.cpu_threshold_percent
                 || memory_usage_percent > config.memory_threshold_percent

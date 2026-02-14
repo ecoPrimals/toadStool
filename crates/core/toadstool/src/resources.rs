@@ -352,6 +352,14 @@ pub struct SystemResources {
     pub available_network_bandwidth: Option<u64>,
     /// Available GPU units
     pub available_gpu_units: u32,
+    /// CPU usage percentage (0.0 - 100.0)
+    pub cpu_usage_percent: f64,
+    /// Memory usage percentage (0.0 - 100.0)
+    pub memory_usage_percent: f64,
+    /// Total CPU cores
+    pub total_cpu_cores: usize,
+    /// Total memory in bytes
+    pub total_memory_bytes: u64,
 }
 
 impl Default for SystemResources {
@@ -362,6 +370,10 @@ impl Default for SystemResources {
             available_storage_bytes: 1024 * 1024 * 1024, // 1GB
             available_network_bandwidth: None,
             available_gpu_units: 0,
+            cpu_usage_percent: 0.0,
+            memory_usage_percent: 0.0,
+            total_cpu_cores: 1,
+            total_memory_bytes: 1024 * 1024 * 1024, // 1GB
         }
     }
 }
@@ -683,16 +695,22 @@ impl ResourceMonitor for SystemResourceMonitor {
             // Get CPU info (without additional refresh)
             // sysinfo 0.30 API: refresh then get usage
             system.refresh_cpu();
-            let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>()
-                / system.cpus().len() as f32;
-            let cpu_usage = f64::from(cpu_usage);
-            let cpu_cores = system.cpus().len() as f64;
-            let available_cpu_cores = cpu_cores * (1.0 - cpu_usage / 100.0);
+            let total_cpu_cores = system.cpus().len();
+            let cpu_usage_percent = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>()
+                / total_cpu_cores as f32;
+            let cpu_usage_percent = f64::from(cpu_usage_percent);
+            let cpu_cores = total_cpu_cores as f64;
+            let available_cpu_cores = cpu_cores * (1.0 - cpu_usage_percent / 100.0);
 
             // Get memory info (without additional refresh)
             let total_memory = system.total_memory();
             let used_memory = system.used_memory();
             let available_memory = total_memory - used_memory;
+            let memory_usage_percent = if total_memory > 0 {
+                (used_memory as f64 / total_memory as f64) * 100.0
+            } else {
+                0.0
+            };
 
             // Release the write lock before disk I/O
             drop(system);
@@ -717,6 +735,10 @@ impl ResourceMonitor for SystemResourceMonitor {
                 available_storage_bytes: available_disk,
                 available_network_bandwidth: None, // Would need additional network monitoring
                 available_gpu_units,
+                cpu_usage_percent,
+                memory_usage_percent,
+                total_cpu_cores,
+                total_memory_bytes: total_memory,
             })
         })
     }

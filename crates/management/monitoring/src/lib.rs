@@ -789,18 +789,20 @@ impl ResourceMonitor for SystemResourceMonitor {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
         Box::pin(async move {
             // Get system-wide resource information
-            let mut available_cpu_cores = 1.0;
-            let mut available_memory_bytes = 1024 * 1024 * 1024; // 1GB default
-            let available_storage_bytes = 10 * 1024 * 1024 * 1024; // 10GB default
+            let mut total_cpu_cores = 1usize;
+            let mut total_memory_bytes = 1024 * 1024 * 1024u64; // 1GB default
+            let mut available_memory_bytes = total_memory_bytes;
+            let available_storage_bytes = 10 * 1024 * 1024 * 1024u64; // 10GB default
 
             #[cfg(target_os = "linux")]
             {
                 // Get CPU info from /proc/cpuinfo
                 if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
-                    available_cpu_cores = cpuinfo
+                    total_cpu_cores = cpuinfo
                         .lines()
                         .filter(|line| line.starts_with("processor"))
-                        .count() as f64;
+                        .count()
+                        .max(1);
                 }
 
                 // Get memory info from /proc/meminfo
@@ -809,10 +811,15 @@ impl ResourceMonitor for SystemResourceMonitor {
                         if line.starts_with("MemTotal:") {
                             if let Some(value) = line.split_whitespace().nth(1) {
                                 if let Ok(mem_kb) = value.parse::<u64>() {
+                                    total_memory_bytes = mem_kb * 1024;
+                                }
+                            }
+                        } else if line.starts_with("MemAvailable:") {
+                            if let Some(value) = line.split_whitespace().nth(1) {
+                                if let Ok(mem_kb) = value.parse::<u64>() {
                                     available_memory_bytes = mem_kb * 1024;
                                 }
                             }
-                            break;
                         }
                     }
                 }
@@ -822,27 +829,42 @@ impl ResourceMonitor for SystemResourceMonitor {
             {
                 // Use sysctl for macOS
                 if let Ok(output) = std::process::Command::new("sysctl")
-                    .args(&["-n", "hw.ncpu"])
+                    .args(["-n", "hw.ncpu"])
                     .output()
                 {
                     if let Ok(cpu_str) = String::from_utf8(output.stdout) {
-                        if let Ok(cpu_count) = cpu_str.trim().parse::<f64>() {
-                            available_cpu_cores = cpu_count;
+                        if let Ok(cpu_count) = cpu_str.trim().parse::<usize>() {
+                            total_cpu_cores = cpu_count.max(1);
                         }
                     }
                 }
 
                 if let Ok(output) = std::process::Command::new("sysctl")
-                    .args(&["-n", "hw.memsize"])
+                    .args(["-n", "hw.memsize"])
                     .output()
                 {
                     if let Ok(mem_str) = String::from_utf8(output.stdout) {
                         if let Ok(mem_bytes) = mem_str.trim().parse::<u64>() {
-                            available_memory_bytes = mem_bytes;
+                            total_memory_bytes = mem_bytes;
+                            // macOS doesn't have MemAvailable, estimate at 50%
+                            available_memory_bytes = mem_bytes / 2;
                         }
                     }
                 }
             }
+
+            // Calculate usage percentages
+            let memory_usage_percent = if total_memory_bytes > 0 {
+                let used = total_memory_bytes.saturating_sub(available_memory_bytes);
+                (used as f64 / total_memory_bytes as f64) * 100.0
+            } else {
+                0.0
+            };
+
+            // CPU usage requires sampling over time - use 0% as snapshot
+            // Real usage tracking would need historical data
+            let cpu_usage_percent = 0.0;
+            let available_cpu_cores = total_cpu_cores as f64;
 
             Ok(SystemResources {
                 available_cpu_cores,
@@ -850,6 +872,10 @@ impl ResourceMonitor for SystemResourceMonitor {
                 available_storage_bytes,
                 available_network_bandwidth: None,
                 available_gpu_units: 0,
+                cpu_usage_percent,
+                memory_usage_percent,
+                total_cpu_cores,
+                total_memory_bytes,
             })
         })
     }

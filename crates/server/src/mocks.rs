@@ -56,6 +56,10 @@ impl ResourceMonitor for MockResourceMonitor {
                 available_storage_bytes: 100_000_000_000,
                 available_network_bandwidth: Some(1_000_000_000),
                 available_gpu_units: 1,
+                cpu_usage_percent: 25.0,
+                memory_usage_percent: 50.0,
+                total_cpu_cores: 8,
+                total_memory_bytes: 16_000_000_000,
             })
         })
     }
