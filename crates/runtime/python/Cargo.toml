@@ -49,9 +49,9 @@ futures = { workspace = true }
 pyo3 = { workspace = true }
 pyo3-asyncio = { workspace = true, features = ["tokio-runtime"] }
 
-# Process management
-nix = { workspace = true }
+# System information
 sysinfo = { workspace = true }
+# EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
 
 [dev-dependencies]
 tokio-test = { workspace = true }

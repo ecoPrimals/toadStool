@@ -49,9 +49,7 @@ regex = "1.0"
 
 # System information
 sysinfo = { workspace = true }
-
-# Process management
-nix = { workspace = true }
+# EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
 
 [dev-dependencies]
 tokio-test = { workspace = true }

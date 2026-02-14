@@ -220,13 +220,11 @@ async fn test_server_graceful_shutdown() {
     tokio::time::sleep(Duration::from_secs(2)).await;
 
     // Send SIGTERM
+    // EVOLVED: nix replaced with libc (Feb 14, 2026) - pure Rust binding
     #[cfg(unix)]
     {
-        use nix::sys::signal::{self, Signal};
-        use nix::unistd::Pid;
-
-        let pid = Pid::from_raw(cmd.id().unwrap() as i32);
-        let _ = signal::kill(pid, Signal::SIGTERM);
+        let pid = cmd.id().unwrap() as libc::pid_t;
+        unsafe { libc::kill(pid, libc::SIGTERM) };
     }
 
     // Wait for graceful shutdown

@@ -96,7 +96,9 @@ mod charge_spread;
 mod force_interpolation;
 mod greens_function;
 mod pppm;
+mod pppm_buffers;  // EVOLVED: Extracted for modularity (Feb 14, 2026)
 mod pppm_gpu;
+mod pppm_layouts;  // EVOLVED: Extracted for modularity (Feb 14, 2026)
 mod pppm_params;
 mod short_range;
 
@@ -116,3 +118,7 @@ pub use short_range::{
 
 // GPU universal implementation (WGSL shaders)
 pub use pppm_gpu::PppmGpu;
+
+// GPU helpers (for advanced users)
+pub use pppm_buffers::{PppmBuffers, PppmCpuFft};
+pub use pppm_layouts::{PppmBindGroupLayouts, PppmLayouts, PppmPipelines};

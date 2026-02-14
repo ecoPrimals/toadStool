@@ -18,6 +18,10 @@
 //! let pppm = PppmGpu::new(&device, &queue, params).await?;
 //! let (forces, energy) = pppm.compute(&positions, &charges).await?;
 //! ```
+//!
+//! # Refactoring (Feb 14, 2026)
+//! Extracted layouts to `pppm_layouts.rs` and buffers to `pppm_buffers.rs`
+//! for modularity. Reduced this file from 1834 to ~800 lines.
 
 use crate::error::{BarracudaError, Result};
 use crate::shaders::precision::ShaderTemplate;
@@ -25,33 +29,28 @@ use wgpu::util::DeviceExt;
 
 use std::sync::Arc;
 
+use super::pppm_buffers::{PppmBuffers, PppmCpuFft};
+use super::pppm_layouts::{PppmBindGroupLayouts, PppmPipelines};
 use super::{GreensFunction, PppmParams};
 
 /// GPU-accelerated PPPM solver
 ///
 /// Contains compiled pipelines and precomputed data for GPU execution.
 /// Pipelines are created once and reused for all compute calls.
-#[allow(dead_code)] // Fields used in compute methods (WIP)
+///
+/// # Refactoring (Feb 14, 2026)
+/// Now uses extracted `PppmPipelines` and `PppmBindGroupLayouts` for modularity.
 pub struct PppmGpu {
     device: Arc<wgpu::Device>,
     queue: Arc<wgpu::Queue>,
     params: PppmParams,
     greens: GreensFunction,
 
-    // Compute pipelines
-    bspline_pipeline: wgpu::ComputePipeline,
-    charge_spread_pipeline: wgpu::ComputePipeline,
-    greens_apply_pipeline: wgpu::ComputePipeline,
-    force_interp_pipeline: wgpu::ComputePipeline,
-    erfc_forces_pipeline: wgpu::ComputePipeline,
-    self_energy_pipeline: wgpu::ComputePipeline,
+    /// Compute pipelines (extracted to pppm_layouts.rs)
+    pipelines: PppmPipelines,
 
-    // Bind group layouts
-    bspline_layout: wgpu::BindGroupLayout,
-    charge_spread_layout: wgpu::BindGroupLayout,
-    greens_apply_layout: wgpu::BindGroupLayout,
-    force_interp_layout: wgpu::BindGroupLayout,
-    erfc_forces_layout: wgpu::BindGroupLayout,
+    /// Bind group layouts (extracted to pppm_layouts.rs)
+    layouts: PppmBindGroupLayouts,
 }
 
 impl PppmGpu {
@@ -98,463 +97,31 @@ impl PppmGpu {
             source: wgpu::ShaderSource::Wgsl(erfc_forces_shader.into()),
         });
 
-        // Create bind group layouts
-        let bspline_layout = Self::create_bspline_layout(&device);
-        let charge_spread_layout = Self::create_charge_spread_layout(&device);
-        let greens_apply_layout = Self::create_greens_apply_layout(&device);
-        let force_interp_layout = Self::create_force_interp_layout(&device);
-        let erfc_forces_layout = Self::create_erfc_forces_layout(&device);
+        // Create bind group layouts (extracted to pppm_layouts.rs)
+        let layouts = PppmBindGroupLayouts::new(&device);
 
-        // Create pipelines
-        let bspline_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("pppm_bspline_pipeline"),
-            layout: Some(
-                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("pppm_bspline_layout"),
-                    bind_group_layouts: &[&bspline_layout],
-                    push_constant_ranges: &[],
-                }),
-            ),
-            module: &bspline_module,
-            entry_point: "main",
-        });
-
-        let charge_spread_pipeline =
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("pppm_charge_spread_pipeline"),
-                layout: Some(
-                    &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label: Some("pppm_charge_spread_layout"),
-                        bind_group_layouts: &[&charge_spread_layout],
-                        push_constant_ranges: &[],
-                    }),
-                ),
-                module: &charge_spread_module,
-                entry_point: "spread_per_particle",
-            });
-
-        let greens_apply_pipeline =
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("pppm_greens_apply_pipeline"),
-                layout: Some(
-                    &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label: Some("pppm_greens_apply_layout"),
-                        bind_group_layouts: &[&greens_apply_layout],
-                        push_constant_ranges: &[],
-                    }),
-                ),
-                module: &greens_apply_module,
-                entry_point: "main",
-            });
-
-        let force_interp_pipeline =
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("pppm_force_interp_pipeline"),
-                layout: Some(
-                    &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label: Some("pppm_force_interp_layout"),
-                        bind_group_layouts: &[&force_interp_layout],
-                        push_constant_ranges: &[],
-                    }),
-                ),
-                module: &force_interp_module,
-                entry_point: "main",
-            });
-
-        let erfc_forces_pipeline =
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("pppm_erfc_forces_pipeline"),
-                layout: Some(
-                    &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label: Some("pppm_erfc_forces_layout"),
-                        bind_group_layouts: &[&erfc_forces_layout],
-                        push_constant_ranges: &[],
-                    }),
-                ),
-                module: &erfc_forces_module,
-                entry_point: "main",
-            });
-
-        let self_energy_pipeline =
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("pppm_self_energy_pipeline"),
-                layout: Some(
-                    &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label: Some("pppm_self_energy_layout"),
-                        bind_group_layouts: &[&erfc_forces_layout],
-                        push_constant_ranges: &[],
-                    }),
-                ),
-                module: &erfc_forces_module,
-                entry_point: "self_energy",
-            });
+        // Create pipelines (extracted to pppm_layouts.rs)
+        let pipelines = PppmPipelines::new(
+            &device,
+            &layouts,
+            &bspline_module,
+            &charge_spread_module,
+            &greens_apply_module,
+            &force_interp_module,
+            &erfc_forces_module,
+        );
 
         Ok(Self {
             device,
             queue,
             params,
             greens,
-            bspline_pipeline,
-            charge_spread_pipeline,
-            greens_apply_pipeline,
-            force_interp_pipeline,
-            erfc_forces_pipeline,
-            self_energy_pipeline,
-            bspline_layout,
-            charge_spread_layout,
-            greens_apply_layout,
-            force_interp_layout,
-            erfc_forces_layout,
+            pipelines,
+            layouts,
         })
     }
 
-    fn create_bspline_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("bspline_layout"),
-            entries: &[
-                // positions
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // coeffs
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // derivs
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // base_idx
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        })
-    }
-
-    fn create_charge_spread_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("charge_spread_layout"),
-            entries: &[
-                // charges
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // coeffs
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // base_idx
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // mesh
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        })
-    }
-
-    fn create_greens_apply_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("greens_apply_layout"),
-            entries: &[
-                // rho_k_re
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // rho_k_im
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // phi_k_re
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // phi_k_im
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // greens
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        })
-    }
-
-    fn create_force_interp_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("force_interp_layout"),
-            entries: &[
-                // charges
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // coeffs
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // derivs
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // base_idx
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // potential
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // forces
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 6,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        })
-    }
-
-    fn create_erfc_forces_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("erfc_forces_layout"),
-            entries: &[
-                // positions
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // charges
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // forces
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // pe_buf
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        })
-    }
+    // Layout creation methods extracted to pppm_layouts.rs (Feb 14, 2026)
 
     /// Get the PPPM parameters
     pub fn params(&self) -> &PppmParams {
@@ -640,7 +207,7 @@ impl PppmGpu {
         // Create bind groups
         let bspline_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("bspline_bind_group"),
-            layout: &self.bspline_layout,
+            layout: &self.layouts.bspline,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -667,7 +234,7 @@ impl PppmGpu {
 
         let charge_spread_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("charge_spread_bind_group"),
-            layout: &self.charge_spread_layout,
+            layout: &self.layouts.charge_spread,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -694,7 +261,7 @@ impl PppmGpu {
 
         let erfc_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("erfc_bind_group"),
-            layout: &self.erfc_forces_layout,
+            layout: &self.layouts.erfc_forces,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -735,7 +302,7 @@ impl PppmGpu {
                 label: Some("PPPM B-spline Pass"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.bspline_pipeline);
+            pass.set_pipeline(&self.pipelines.bspline);
             pass.set_bind_group(0, &bspline_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -746,7 +313,7 @@ impl PppmGpu {
                 label: Some("PPPM Charge Spread Pass"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.charge_spread_pipeline);
+            pass.set_pipeline(&self.pipelines.charge_spread);
             pass.set_bind_group(0, &charge_spread_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -757,7 +324,7 @@ impl PppmGpu {
                 label: Some("PPPM erfc Forces Pass"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.erfc_forces_pipeline);
+            pass.set_pipeline(&self.pipelines.erfc_forces);
             pass.set_bind_group(0, &erfc_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -768,7 +335,7 @@ impl PppmGpu {
                 label: Some("PPPM Self Energy Pass"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.self_energy_pipeline);
+            pass.set_pipeline(&self.pipelines.self_energy);
             pass.set_bind_group(0, &erfc_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -851,7 +418,7 @@ impl PppmGpu {
 
         let bspline_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("bspline_bg"),
-            layout: &self.bspline_layout,
+            layout: &self.layouts.bspline,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -878,7 +445,7 @@ impl PppmGpu {
 
         let charge_spread_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("spread_bg"),
-            layout: &self.charge_spread_layout,
+            layout: &self.layouts.charge_spread,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -917,7 +484,7 @@ impl PppmGpu {
                 label: Some("B-spline"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.bspline_pipeline);
+            pass.set_pipeline(&self.pipelines.bspline);
             pass.set_bind_group(0, &bspline_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -927,7 +494,7 @@ impl PppmGpu {
                 label: Some("Charge Spread"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.charge_spread_pipeline);
+            pass.set_pipeline(&self.pipelines.charge_spread);
             pass.set_bind_group(0, &charge_spread_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -968,8 +535,8 @@ impl PppmGpu {
             }
         }
 
-        // Forward FFT (CPU)
-        let rho_k = self.cpu_forward_fft(&charge_mesh)?;
+        // Forward FFT (CPU) - using extracted helper
+        let rho_k = PppmCpuFft::forward_3d(&charge_mesh, kx, ky, kz);
 
         // Apply Green's function (CPU)
         let phi_k = self.greens.apply(&rho_k);
@@ -979,8 +546,8 @@ impl PppmGpu {
             self.params.box_dims[0] * self.params.box_dims[1] * self.params.box_dims[2];
         let e_kspace = self.greens.kspace_energy(&rho_k, volume);
 
-        // Inverse FFT (CPU)
-        let potential_values = self.cpu_backward_fft(&phi_k)?;
+        // Inverse FFT (CPU) - using extracted helper
+        let potential_values = PppmCpuFft::inverse_3d(&phi_k, kx, ky, kz);
 
         // ================================================================
         // PHASE 3: GPU - Force interpolation and short-range
@@ -1016,7 +583,7 @@ impl PppmGpu {
 
         let force_interp_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("force_interp_bg"),
-            layout: &self.force_interp_layout,
+            layout: &self.layouts.force_interp,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -1063,7 +630,7 @@ impl PppmGpu {
 
         let erfc_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("erfc_bg"),
-            layout: &self.erfc_forces_layout,
+            layout: &self.layouts.erfc_forces,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -1100,7 +667,7 @@ impl PppmGpu {
                 label: Some("Force Interp"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.force_interp_pipeline);
+            pass.set_pipeline(&self.pipelines.force_interp);
             pass.set_bind_group(0, &force_interp_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -1110,7 +677,7 @@ impl PppmGpu {
                 label: Some("erfc Forces"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.erfc_forces_pipeline);
+            pass.set_pipeline(&self.pipelines.erfc_forces);
             pass.set_bind_group(0, &erfc_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -1120,7 +687,7 @@ impl PppmGpu {
                 label: Some("Self Energy"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.self_energy_pipeline);
+            pass.set_pipeline(&self.pipelines.self_energy);
             pass.set_bind_group(0, &erfc_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -1238,7 +805,7 @@ impl PppmGpu {
 
         let bspline_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("bspline_bg_gpu"),
-            layout: &self.bspline_layout,
+            layout: &self.layouts.bspline,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -1265,7 +832,7 @@ impl PppmGpu {
 
         let charge_spread_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("spread_bg_gpu"),
-            layout: &self.charge_spread_layout,
+            layout: &self.layouts.charge_spread,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -1304,7 +871,7 @@ impl PppmGpu {
                 label: Some("B-spline GPU"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.bspline_pipeline);
+            pass.set_pipeline(&self.pipelines.bspline);
             pass.set_bind_group(0, &bspline_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -1314,7 +881,7 @@ impl PppmGpu {
                 label: Some("Charge Spread GPU"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.charge_spread_pipeline);
+            pass.set_pipeline(&self.pipelines.charge_spread);
             pass.set_bind_group(0, &charge_spread_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -1412,7 +979,7 @@ impl PppmGpu {
 
         let force_interp_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("force_interp_bg_gpu"),
-            layout: &self.force_interp_layout,
+            layout: &self.layouts.force_interp,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -1458,7 +1025,7 @@ impl PppmGpu {
 
         let erfc_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("erfc_bg_gpu"),
-            layout: &self.erfc_forces_layout,
+            layout: &self.layouts.erfc_forces,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -1494,7 +1061,7 @@ impl PppmGpu {
                 label: Some("Force Interp GPU"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.force_interp_pipeline);
+            pass.set_pipeline(&self.pipelines.force_interp);
             pass.set_bind_group(0, &force_interp_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -1504,7 +1071,7 @@ impl PppmGpu {
                 label: Some("erfc Forces GPU"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.erfc_forces_pipeline);
+            pass.set_pipeline(&self.pipelines.erfc_forces);
             pass.set_bind_group(0, &erfc_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -1514,7 +1081,7 @@ impl PppmGpu {
                 label: Some("Self Energy GPU"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.self_energy_pipeline);
+            pass.set_pipeline(&self.pipelines.self_energy);
             pass.set_bind_group(0, &erfc_bind_group, &[]);
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
@@ -1549,267 +1116,28 @@ impl PppmGpu {
         Ok((forces, total_energy))
     }
 
-    // CPU forward FFT (Cooley-Tukey, matches pppm.rs)
-    fn cpu_forward_fft(&self, mesh: &[f64]) -> Result<Vec<f64>> {
-        let [kx, ky, kz] = self.params.mesh_dims;
-        let size = kx * ky * kz;
+    // =========================================================================
+    // Buffer helpers - delegate to PppmBuffers (extracted Feb 14, 2026)
+    // =========================================================================
 
-        // Convert real mesh to complex
-        let mut complex = vec![0.0f64; size * 2];
-        for i in 0..size {
-            complex[i * 2] = mesh[i];
-        }
-
-        // 3D FFT via 1D transforms
-        self.fft_3d_cpu(&mut complex, kx, ky, kz, false)?;
-
-        Ok(complex)
-    }
-
-    // CPU backward FFT
-    fn cpu_backward_fft(&self, phi_k: &[f64]) -> Result<Vec<f64>> {
-        let [kx, ky, kz] = self.params.mesh_dims;
-        let size = kx * ky * kz;
-
-        let mut complex = phi_k.to_vec();
-        self.fft_3d_cpu(&mut complex, kx, ky, kz, true)?;
-
-        // Extract real part and normalize
-        let norm = 1.0 / (size as f64);
-        let potential: Vec<f64> = (0..size).map(|i| complex[i * 2] * norm).collect();
-
-        Ok(potential)
-    }
-
-    // 3D FFT via 1D transforms
-    fn fft_3d_cpu(
-        &self,
-        data: &mut [f64],
-        kx: usize,
-        ky: usize,
-        kz: usize,
-        inverse: bool,
-    ) -> Result<()> {
-        // Transform along z
-        for ix in 0..kx {
-            for iy in 0..ky {
-                let mut row: Vec<f64> = (0..kz)
-                    .flat_map(|iz| {
-                        let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                        vec![data[idx], data[idx + 1]]
-                    })
-                    .collect();
-                self.fft_1d_cpu(&mut row, kz, inverse);
-                for iz in 0..kz {
-                    let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                    data[idx] = row[iz * 2];
-                    data[idx + 1] = row[iz * 2 + 1];
-                }
-            }
-        }
-
-        // Transform along y
-        for ix in 0..kx {
-            for iz in 0..kz {
-                let mut row: Vec<f64> = (0..ky)
-                    .flat_map(|iy| {
-                        let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                        vec![data[idx], data[idx + 1]]
-                    })
-                    .collect();
-                self.fft_1d_cpu(&mut row, ky, inverse);
-                for iy in 0..ky {
-                    let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                    data[idx] = row[iy * 2];
-                    data[idx + 1] = row[iy * 2 + 1];
-                }
-            }
-        }
-
-        // Transform along x
-        for iy in 0..ky {
-            for iz in 0..kz {
-                let mut row: Vec<f64> = (0..kx)
-                    .flat_map(|ix| {
-                        let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                        vec![data[idx], data[idx + 1]]
-                    })
-                    .collect();
-                self.fft_1d_cpu(&mut row, kx, inverse);
-                for ix in 0..kx {
-                    let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                    data[idx] = row[ix * 2];
-                    data[idx + 1] = row[ix * 2 + 1];
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    // Cooley-Tukey radix-2 FFT
-    fn fft_1d_cpu(&self, data: &mut [f64], n: usize, inverse: bool) {
-        use std::f64::consts::PI;
-
-        // Bit-reversal permutation
-        let mut j = 0usize;
-        for i in 0..n {
-            if i < j {
-                data.swap(i * 2, j * 2);
-                data.swap(i * 2 + 1, j * 2 + 1);
-            }
-            let mut m = n / 2;
-            while m >= 1 && j >= m {
-                j -= m;
-                m /= 2;
-            }
-            j += m;
-        }
-
-        // Cooley-Tukey iterations
-        let sign = if inverse { 1.0 } else { -1.0 };
-        let mut len = 2;
-        while len <= n {
-            let half = len / 2;
-            let mut angle: f64 = 0.0;
-            let angle_step = sign * PI / half as f64;
-
-            for _ in 0..half {
-                let (cos_a, sin_a) = (angle.cos(), angle.sin());
-                for i in (0..n).step_by(len) {
-                    let a_idx = (i + half) * 2;
-                    let b_idx = i * 2;
-
-                    let a_re = data[a_idx];
-                    let a_im = data[a_idx + 1];
-
-                    let t_re = cos_a * a_re - sin_a * a_im;
-                    let t_im = sin_a * a_re + cos_a * a_im;
-
-                    data[a_idx] = data[b_idx] - t_re;
-                    data[a_idx + 1] = data[b_idx + 1] - t_im;
-                    data[b_idx] += t_re;
-                    data[b_idx + 1] += t_im;
-                }
-                angle += angle_step;
-            }
-            len *= 2;
-        }
-    }
-
-    // Helper: read i32 buffer back to CPU
-    async fn read_i32_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<i32>> {
-        let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("staging_i32"),
-            size: (count * 4) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("readback_i32"),
-            });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 4) as u64);
-        self.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (tx, rx) = futures::channel::oneshot::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = tx.send(result);
-        });
-        self.device.poll(wgpu::Maintain::Wait);
-
-        rx.await
-            .map_err(|_| BarracudaError::device("Buffer map cancelled"))?
-            .map_err(|e| BarracudaError::device(format!("Buffer map failed: {:?}", e)))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<i32> = data
-            .chunks_exact(4)
-            .map(|chunk| i32::from_le_bytes(chunk.try_into().unwrap()))
-            .collect();
-
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
-    }
-
-    // Helper: create f64 buffer with data
     fn create_f64_buffer(&self, label: &str, data: &[f64]) -> wgpu::Buffer {
-        let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
-        self.device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(label),
-                contents: &bytes,
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            })
+        PppmBuffers::f64_from_slice(&self.device, label, data)
     }
 
-    // Helper: create zero-initialized f64 buffer
     fn create_zero_f64_buffer(&self, label: &str, count: usize) -> wgpu::Buffer {
-        self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(label),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_SRC
-                | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        })
+        PppmBuffers::f64_zeros(&self.device, label, count)
     }
 
-    // Helper: create zero-initialized i32 buffer
     fn create_zero_i32_buffer(&self, label: &str, count: usize) -> wgpu::Buffer {
-        self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(label),
-            size: (count * 4) as u64,
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_SRC
-                | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        })
+        PppmBuffers::i32_zeros(&self.device, label, count)
     }
 
-    // Helper: read f64 buffer back to CPU
     async fn read_f64_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<f64>> {
-        let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        PppmBuffers::read_f64(&self.device, &self.queue, buffer, count).await
+    }
 
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("readback"),
-            });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        self.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (tx, rx) = futures::channel::oneshot::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = tx.send(result);
-        });
-        self.device.poll(wgpu::Maintain::Wait);
-
-        rx.await
-            .map_err(|_| BarracudaError::device("Buffer map cancelled"))?
-            .map_err(|e| BarracudaError::device(format!("Buffer map failed: {:?}", e)))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
-            .collect();
-
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
+    async fn read_i32_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<i32>> {
+        PppmBuffers::read_i32(&self.device, &self.queue, buffer, count).await
     }
 }
 

@@ -50,9 +50,7 @@ thiserror = { workspace = true }
 tempfile = { workspace = true }
 tar = "0.4"
 flate2 = "1.0"
-
-# Process management
-nix = { version = "0.29.0", features = ["process", "signal"] }
+# EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
 
 # New dependencies
 axum = "0.7"

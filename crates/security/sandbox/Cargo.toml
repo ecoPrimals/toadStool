@@ -55,10 +55,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1.0"
 thiserror = "1.0"
 
-# Platform-specific dependencies
-[target.'cfg(unix)'.dependencies]
-nix = { version = "0.27", features = ["process", "signal", "user", "mount"] }
-
+# EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
 [target.'cfg(target_os = "linux")'.dependencies]
 caps = "0.5"
 procfs = "0.16"

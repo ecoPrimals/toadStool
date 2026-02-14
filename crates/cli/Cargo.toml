@@ -134,7 +134,8 @@ assert_cmd = "2.0"
 predicates = "3.0"
 
 [target.'cfg(unix)'.dev-dependencies]
-nix = { version = "0.29", features = ["signal", "process"] }
+# EVOLVED: nix replaced with libc (Feb 14, 2026) - pure Rust binding, minimal surface area
+libc = "0.2"
 
 [features]
 default = ["full"]
