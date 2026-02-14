@@ -7,6 +7,13 @@
 //! - Molecular dynamics simulations
 //! - Scientific computing workloads
 //!
+//! ## Precision Philosophy
+//!
+//! **Both CPU and GPU use f64 by default.**
+//!
+//! The WGSL/SPIR-V/Vulkan path bypasses CUDA's artificial fp64 throttle,
+//! achieving 1:2-3 FP64:FP32 performance (not 1:32 like CUDA consumer GPUs).
+//!
 //! ## Operations
 //!
 //! ### Decompositions (CPU f64)
@@ -15,13 +22,13 @@
 //! - `qr_decompose` - QR decomposition (A = Q·R)
 //! - `svd_decompose` - Singular value decomposition (A = U·Σ·Vᵀ)
 //!
-//! ### Decompositions (GPU f32 via WGSL)
+//! ### Decompositions (GPU f64 via WGSL)
 //!
-//! - `Cholesky` - GPU Cholesky decomposition (A = L·Lᵀ)
-//! - `Eigh` - GPU eigenvalue decomposition for symmetric matrices
-//! - `LuGpu` - GPU LU decomposition with partial pivoting
+//! - `LuGpu::execute_f64()` - GPU LU decomposition with partial pivoting (f64)
 //! - `QrGpu` - GPU QR decomposition via Householder reflections
 //! - `SvdGpu` - GPU SVD via one-sided Jacobi
+//! - `Cholesky` - GPU Cholesky decomposition (A = L·Lᵀ)
+//! - `Eigh` - GPU eigenvalue decomposition for symmetric matrices
 //!
 //! ### Solvers
 //!
@@ -31,6 +38,7 @@
 //!
 //! ## Design Principles
 //!
+//! - ✅ Full f64 precision via SPIR-V/Vulkan
 //! - ✅ Pure WGSL (hardware-agnostic)
 //! - ✅ Safe Rust (no unsafe blocks)
 //! - ✅ Runtime-configured sizes

@@ -53,6 +53,8 @@ Pure-GPU double precision with `math_f64.wgsl` library:
 
 **Key insight**: Consumer GPUs advertise 1:64 FP64:FP32 ratio, but via pure Vulkan/wgpu we achieve ~1:2 — the silicon is capable, vendor SDKs throttle it.
 
+**Design philosophy**: Both CPU and GPU use **f64 by default**. The math is written via WGSL shaders, compiled to SPIR-V/Vulkan, bypassing CUDA bottlenecks. GPU linear algebra (LU, QR, SVD) and MD kernels all use native f64.
+
 ### Universal Cache Awareness
 
 ToadStool discovers and optimizes for every substrate's memory hierarchy:

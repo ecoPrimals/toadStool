@@ -97,15 +97,24 @@ big = big * big;  // 1e148
 // ... etc
 ```
 
-### 3. No f64 Overloads for ANY Builtins
+### 3. Native f64 Builtins (Feb 2026 Update)
 
-These **do not work** with f64:
-- `sqrt`, `pow`, `exp`, `log`
-- `sin`, `cos`, `tan`
-- `abs`, `max`, `min`
-- `floor`, `ceil`, `round`, `clamp`, `sign`, `fract`
+**hotSpring found** that Naga/wgpu now supports native f64 for many builtins:
 
-All must be implemented as pure arithmetic.
+| Builtin | f64 Support | Performance vs Software |
+|---------|------------|------------------------|
+| `sqrt(f64)` | ✅ Native | 1.5× faster |
+| `exp(f64)` | ✅ Native | 2.2× faster |
+| `log(f64)` | ✅ Native | ~2× faster |
+| `abs(f64)` | ✅ Native | ~1× (trivial) |
+| `floor(f64)` | ✅ Native | ~1× |
+| `ceil(f64)` | ✅ Native | ~1× |
+| `inverseSqrt(f64)` | ✅ Native | 1.5× faster |
+| `sin`, `cos`, `tan` | ❌ Still need software | N/A |
+| `pow` | ❌ Still need software | N/A |
+| `round` | ⚠️ May work | Test first |
+
+**MD kernels now use native builtins** (yukawa, erfc_forces, rdf_histogram, greens_apply).
 
 ### 4. No f64 Vec Types
 
@@ -178,13 +187,18 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
 2. **ShaderTemplate::math_f64_preamble()** — Easy integration
 3. **Specialized fractional powers** — cbrt-based A^(2/3)
 4. **Naga gotchas documented** — Pattern library
+5. **LU decomposition f64** — `lu_decomp_f64.wgsl` + `LuGpu::execute_f64()`
+6. **QR decomposition f64** — `qr_decomp_f64.wgsl` (orchestrator ready)
+7. **SVD f64** — `svd_f64.wgsl` (orchestrator ready)
+8. **Native f64 builtins** — MD kernels use native sqrt/exp for 1.5-2.2× speedup
 
 ### Remaining
 
 1. **Modular preamble** — Only include needed functions
-2. **Batched eigendecomposition** — f64 Jacobi/QR on GPU  
-3. **Prefix-sum for f64** — Parallel scan for integration
-4. **GPU-resident optimizer** — Keep Nelder-Mead on GPU
+2. **QrGpu::execute_f64()** — Wire up f64 QR orchestrator
+3. **SvdGpu::execute_f64()** — Wire up f64 SVD orchestrator
+4. **Prefix-sum for f64** — Parallel scan for integration
+5. **GPU-resident optimizer** — Keep Nelder-Mead on GPU
 
 ---
 
