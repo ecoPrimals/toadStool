@@ -319,12 +319,13 @@ The toadstool team has absorbed the hotSpring MD lessons:
 | **Cell-list Yukawa (27-neighbor)** | ✅ `forces/yukawa_celllist_f64.wgsl` |
 | **Split Velocity-Verlet (f64)** | ✅ `integrators/velocity_verlet_split.wgsl` + ops |
 | **Berendsen thermostat** | ✅ `thermostats/berendsen.wgsl` + `berendsen.rs` |
+| **Nosé-Hoover thermostat** | ✅ `thermostats/nose_hoover.wgsl` + `nose_hoover.rs` |
 | **Kinetic energy (GPU)** | ✅ `observables/kinetic_energy.wgsl` + ops |
 | **RDF histogram (GPU)** | ✅ `observables/rdf_histogram.wgsl` |
 | **CPU observables (VACF, SSF)** | ✅ `observables/mod.rs` compute functions |
 | **std::sync::LazyLock migration** | ✅ Removed once_cell, lazy_static dependencies |
 
-**Remaining**: PPPM/Ewald (uses existing FFT), Nosé-Hoover thermostat, MSU HPC benchmark.
+**Remaining**: PPPM/Ewald (uses existing FFT), MSU HPC benchmark.
 
 ---
 
