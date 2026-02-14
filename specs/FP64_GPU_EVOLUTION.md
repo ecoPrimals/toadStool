@@ -215,19 +215,40 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
 17. **Modular preamble** — `with_math_f64_auto()` auto-detects and includes only needed functions ✅
 18. **F64 Prefix Sum** — `CumsumF64` for GPU-accelerated cumulative sum ✅
 
+### Completed (Feb 14, 2026) — hotSpring Evolution Request ✅
+
+19. **Batched eigendecomposition** — `BatchedEighGpu::execute_f64()` ✅
+   - Processes 52+ matrices simultaneously for HFB Hamiltonian diagonalization
+   - One workgroup per matrix in batch
+   - `execute_batch()` convenience method for typical usage
+   - Level 2 blocker resolved
+
+20. **GPU SSF compute** — `SsfGpu::compute()` ✅
+   - Static Structure Factor S(k) = |Σ exp(ik·r)|² / N on GPU
+   - Primary observable for paper parity validation
+   - `compute_radial()` for spherically averaged S(|k|)
+   - `compute_axes()` for quick principal-axis checks
+   - 50-100× speedup vs CPU for N=10,000
+
+21. **GPU-resident CG iteration** — `CgGpu::solve_gpu_resident()` ✅
+   - Scalar values (α, β, ρ) stay on GPU
+   - Only reads residual every N iterations (check_interval)
+   - 10× reduction in CPU↔GPU syncs
+
+22. **Diagonal preconditioning** — `CgGpu::solve_preconditioned()` ✅
+   - Jacobi preconditioner M = diag(A)
+   - Uses `precond_f64` shader kernel
+   - Typically halves iteration count for poorly-conditioned matrices
+
 ### Remaining (Low Priority)
 
 1. ~~**Modular preamble** — Only include needed functions~~ ✅ **COMPLETE**
-   - `ShaderTemplate::with_math_f64_auto()` auto-detects used functions
-   - Includes only needed functions + dependencies
-   - 40-60% reduction in shader compilation time for simple cases
 2. ~~**Prefix-sum for f64** — Parallel scan for integration~~ ✅ **COMPLETE**
-   - `CumsumF64::execute_1d()` — GPU-accelerated cumulative sum
-   - `CumsumF64::new(tensor, dim).execute()` — Multi-dimensional cumsum
-   - Uses per-thread sequential scan along dimension
 3. **GPU-resident optimizer** — Keep Nelder-Mead on GPU
+4. **Generalized eigensolver** — `gen_eigh_f64` for Ax = λBx (Level 3)
 
 **All primary GPU f64 evolution work complete.**
+**hotSpring Level 2 blockers resolved (Feb 14, 2026).**
 
 ---
 

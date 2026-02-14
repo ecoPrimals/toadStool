@@ -5,10 +5,10 @@
 //! **GPU Observables**:
 //! - Kinetic energy (per-particle, for temperature)
 //! - RDF histogram (pair distances with atomicAdd)
+//! - SSF (static structure factor) - **GPU accelerated** for paper parity
 //!
 //! **CPU Post-Processing** (from GPU snapshots):
 //! - VACF (velocity autocorrelation)
-//! - SSF (static structure factor)
 //! - MSD (mean-squared displacement for diffusion)
 //! - Energy statistics and drift
 //!
@@ -18,8 +18,10 @@
 //! - ✅ Zero unsafe code
 
 mod kinetic_energy;
+mod ssf_gpu;
 
 pub use kinetic_energy::KineticEnergy;
+pub use ssf_gpu::SsfGpu;
 
 use std::f64::consts::PI;
 

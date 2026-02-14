@@ -64,6 +64,1105 @@ impl CgGpu {
         include_str!("../../shaders/misc/sparse_matvec_f64.wgsl")
     }
 
+    /// Solve Ax = b using GPU-resident Conjugate Gradient (reduced CPU sync)
+    ///
+    /// This is the **recommended method** for large systems.
+    /// Scalar values (α, β, ρ) remain on GPU; residual is only read every `check_interval` iterations.
+    ///
+    /// # Arguments
+    /// * `device` - WgpuDevice to execute on
+    /// * `a` - Symmetric positive definite CSR matrix (f64)
+    /// * `b` - Right-hand side vector (f64)
+    /// * `tol` - Convergence tolerance
+    /// * `max_iter` - Maximum iterations
+    /// * `check_interval` - How often to read residual from GPU (default: 10)
+    ///
+    /// # Performance
+    /// For a 1000×1000 matrix:
+    /// - Original: ~100 GPU↔CPU syncs for 100 iterations
+    /// - GPU-resident (check_interval=10): ~10 GPU↔CPU syncs
+    pub fn solve_gpu_resident(
+        device: Arc<WgpuDevice>,
+        a: &CsrMatrix,
+        b: &[f64],
+        tol: f64,
+        max_iter: usize,
+        check_interval: usize,
+    ) -> Result<CgGpuResult> {
+        let n = a.n_rows;
+        if a.n_cols != n {
+            return Err(BarracudaError::InvalidInput {
+                message: "CG requires square matrix".to_string(),
+            });
+        }
+        if b.len() != n {
+            return Err(BarracudaError::InvalidInput {
+                message: format!("Vector length {} doesn't match matrix size {}", b.len(), n),
+            });
+        }
+
+        let check_interval = check_interval.max(1);
+
+        // Early exit for zero RHS
+        let b_norm: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
+        if b_norm < 1e-14 {
+            return Ok(CgGpuResult {
+                x: vec![0.0; n],
+                iterations: 0,
+                residual: 0.0,
+                converged: true,
+            });
+        }
+
+        // Create GPU buffers for CSR matrix
+        let values_buffer = Self::create_f64_buffer(&device, "CG values", &a.values);
+        let col_indices_buffer = Self::create_u32_buffer(&device, "CG col_idx", &a.col_indices);
+        let row_ptrs_buffer = Self::create_u32_buffer(&device, "CG row_ptr", &a.row_ptr);
+
+        // Create GPU buffers for vectors
+        let x_buffer = Self::create_zero_f64_buffer(&device, "CG x", n);
+        let r_buffer = Self::create_f64_buffer(&device, "CG r", b);
+        let p_buffer = Self::create_f64_buffer(&device, "CG p", b);
+        let ap_buffer = Self::create_zero_f64_buffer(&device, "CG Ap", n);
+
+        // Scalar buffers (stay on GPU)
+        let num_workgroups = n.div_ceil(256);
+        let partial_sums_buffer = Self::create_zero_f64_buffer(&device, "CG partial", num_workgroups);
+        let rz_buffer = Self::create_zero_f64_buffer(&device, "CG rz", 1);
+        let rz_new_buffer = Self::create_zero_f64_buffer(&device, "CG rz_new", 1);
+        let pap_buffer = Self::create_zero_f64_buffer(&device, "CG pAp", 1);
+        let alpha_buffer = Self::create_zero_f64_buffer(&device, "CG alpha", 1);
+        let beta_buffer = Self::create_zero_f64_buffer(&device, "CG beta", 1);
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("CG GPU-resident"));
+
+        // Create all bind group layouts
+        let spmv_bgl = Self::create_spmv_bgl(&device);
+        let dot_bgl = Self::create_dot_bgl(&device);
+        let reduce_bgl = Self::create_reduce_bgl(&device);
+        let update_xr_bgl = Self::create_update_xr_bgl(&device);
+        let update_p_bgl = Self::create_update_p_bgl(&device);
+        let compute_alpha_bgl = Self::create_compute_alpha_bgl(&device);
+        let compute_beta_bgl = Self::create_compute_beta_bgl(&device);
+
+        // Create pipelines
+        let spmv_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("SpMV f64"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("SpMV PL"),
+                bind_group_layouts: &[&spmv_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "spmv_f64",
+        });
+
+        let dot_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Dot f64"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Dot PL"),
+                bind_group_layouts: &[&dot_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "dot_f64",
+        });
+
+        let reduce_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Final reduce f64"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Reduce PL"),
+                bind_group_layouts: &[&reduce_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "final_reduce_f64",
+        });
+
+        let update_xr_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("CG update xr"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Update xr PL"),
+                bind_group_layouts: &[&update_xr_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "cg_update_xr",
+        });
+
+        let update_p_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("CG update p"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Update p PL"),
+                bind_group_layouts: &[&update_p_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "cg_update_p",
+        });
+
+        let compute_alpha_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Compute alpha"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Compute alpha PL"),
+                bind_group_layouts: &[&compute_alpha_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "compute_alpha",
+        });
+
+        let compute_beta_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Compute beta"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Compute beta PL"),
+                bind_group_layouts: &[&compute_beta_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "compute_beta",
+        });
+
+        // Create bind groups
+        let spmv_params = [n as u32];
+        let spmv_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SpMV params"),
+            contents: bytemuck::cast_slice(&spmv_params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let spmv_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("SpMV BG"),
+            layout: &spmv_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: values_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: col_indices_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: row_ptrs_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: p_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: ap_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: spmv_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let dot_params = [n as u32];
+        let dot_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Dot params"),
+            contents: bytemuck::cast_slice(&dot_params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        // rᵀr dot product bind group
+        let rr_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("rr BG"),
+            layout: &dot_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: r_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: r_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: partial_sums_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: dot_params_buf.as_entire_binding() },
+            ],
+        });
+
+        // pᵀAp dot product bind group
+        let pap_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("pAp BG"),
+            layout: &dot_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: p_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: ap_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: partial_sums_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: dot_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let reduce_params = [num_workgroups as u32];
+        let reduce_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Reduce params"),
+            contents: bytemuck::cast_slice(&reduce_params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        // Reduce to rz_buffer
+        let reduce_rz_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Reduce rz BG"),
+            layout: &reduce_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: partial_sums_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: rz_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: reduce_params_buf.as_entire_binding() },
+            ],
+        });
+
+        // Reduce to rz_new_buffer
+        let reduce_rz_new_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Reduce rz_new BG"),
+            layout: &reduce_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: partial_sums_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: rz_new_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: reduce_params_buf.as_entire_binding() },
+            ],
+        });
+
+        // Reduce to pap_buffer
+        let reduce_pap_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Reduce pAp BG"),
+            layout: &reduce_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: partial_sums_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: pap_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: reduce_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let cg_params = [n as u32];
+        let cg_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("CG params"),
+            contents: bytemuck::cast_slice(&cg_params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let update_xr_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Update xr BG"),
+            layout: &update_xr_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: x_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: r_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: p_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: ap_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: alpha_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: cg_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let update_p_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Update p BG"),
+            layout: &update_p_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: r_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: p_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: beta_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: cg_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let compute_alpha_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Compute alpha BG"),
+            layout: &compute_alpha_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: rz_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: pap_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: alpha_buffer.as_entire_binding() },
+            ],
+        });
+
+        let compute_beta_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Compute beta BG"),
+            layout: &compute_beta_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: rz_new_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: rz_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: beta_buffer.as_entire_binding() },
+            ],
+        });
+
+        // Initialize: compute rᵀr and store in rz_buffer
+        {
+            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Init rz"),
+            });
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Dot rr Pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&dot_pipeline);
+                pass.set_bind_group(0, &rr_bg, &[]);
+                pass.dispatch_workgroups(num_workgroups as u32, 1, 1);
+            }
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Reduce rz Pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&reduce_pipeline);
+                pass.set_bind_group(0, &reduce_rz_bg, &[]);
+                pass.dispatch_workgroups(1, 1, 1);
+            }
+            device.queue.submit(Some(encoder.finish()));
+        }
+
+        // Main CG iteration loop
+        let mut last_residual = 1.0;
+        for iter in 0..max_iter {
+            // 1. Compute Ap
+            // 2. Compute pᵀAp
+            // 3. α = rz / pAp
+            // 4. x = x + α*p, r = r - α*Ap
+            // 5. Compute new rᵀr
+            // 6. β = rz_new / rz, update rz
+            // 7. p = r + β*p
+
+            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("CG iter"),
+            });
+
+            // 1. SpMV: Ap = A * p
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("SpMV"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&spmv_pipeline);
+                pass.set_bind_group(0, &spmv_bg, &[]);
+                pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
+            }
+
+            // 2. Dot: pᵀAp
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Dot pAp"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&dot_pipeline);
+                pass.set_bind_group(0, &pap_bg, &[]);
+                pass.dispatch_workgroups(num_workgroups as u32, 1, 1);
+            }
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Reduce pAp"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&reduce_pipeline);
+                pass.set_bind_group(0, &reduce_pap_bg, &[]);
+                pass.dispatch_workgroups(1, 1, 1);
+            }
+
+            // 3. α = rz / pAp
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Compute alpha"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&compute_alpha_pipeline);
+                pass.set_bind_group(0, &compute_alpha_bg, &[]);
+                pass.dispatch_workgroups(1, 1, 1);
+            }
+
+            // 4. x = x + α*p, r = r - α*Ap
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Update xr"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&update_xr_pipeline);
+                pass.set_bind_group(0, &update_xr_bg, &[]);
+                pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
+            }
+
+            // 5. New rᵀr
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Dot rr new"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&dot_pipeline);
+                pass.set_bind_group(0, &rr_bg, &[]);
+                pass.dispatch_workgroups(num_workgroups as u32, 1, 1);
+            }
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Reduce rz new"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&reduce_pipeline);
+                pass.set_bind_group(0, &reduce_rz_new_bg, &[]);
+                pass.dispatch_workgroups(1, 1, 1);
+            }
+
+            // 6. β = rz_new / rz, then rz = rz_new
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Compute beta"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&compute_beta_pipeline);
+                pass.set_bind_group(0, &compute_beta_bg, &[]);
+                pass.dispatch_workgroups(1, 1, 1);
+            }
+
+            // 7. p = r + β*p
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Update p"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&update_p_pipeline);
+                pass.set_bind_group(0, &update_p_bg, &[]);
+                pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
+            }
+
+            device.queue.submit(Some(encoder.finish()));
+
+            // Check convergence only every check_interval iterations
+            if (iter + 1) % check_interval == 0 || iter == max_iter - 1 {
+                let rz_new = Self::read_f64_buffer(&device, &rz_new_buffer, 1)?;
+                let r_norm = rz_new[0].sqrt();
+                last_residual = r_norm / b_norm;
+
+                if last_residual < tol {
+                    let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
+                    return Ok(CgGpuResult {
+                        x: x_data,
+                        iterations: iter + 1,
+                        residual: last_residual,
+                        converged: true,
+                    });
+                }
+            }
+        }
+
+        // Did not converge
+        let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
+
+        Ok(CgGpuResult {
+            x: x_data,
+            iterations: max_iter,
+            residual: last_residual,
+            converged: false,
+        })
+    }
+
+    /// Solve Ax = b using Preconditioned Conjugate Gradient (GPU-resident)
+    ///
+    /// This version uses Jacobi (diagonal) preconditioning for faster convergence.
+    /// M = diag(A) → z = M⁻¹r = r / diag(A)
+    ///
+    /// Preconditioning typically halves the iteration count for poorly-conditioned matrices.
+    ///
+    /// # Arguments
+    /// * `device` - WgpuDevice to execute on
+    /// * `a` - Symmetric positive definite CSR matrix (f64)
+    /// * `b` - Right-hand side vector (f64)
+    /// * `tol` - Convergence tolerance
+    /// * `max_iter` - Maximum iterations
+    /// * `check_interval` - How often to read residual from GPU
+    ///
+    /// # Performance
+    /// For HFB matrices that are poorly conditioned, Jacobi preconditioning
+    /// can reduce iteration count by 2-3×.
+    pub fn solve_preconditioned(
+        device: Arc<WgpuDevice>,
+        a: &CsrMatrix,
+        b: &[f64],
+        tol: f64,
+        max_iter: usize,
+        check_interval: usize,
+    ) -> Result<CgGpuResult> {
+        let n = a.n_rows;
+        if a.n_cols != n {
+            return Err(BarracudaError::InvalidInput {
+                message: "CG requires square matrix".to_string(),
+            });
+        }
+        if b.len() != n {
+            return Err(BarracudaError::InvalidInput {
+                message: format!("Vector length {} doesn't match matrix size {}", b.len(), n),
+            });
+        }
+
+        let check_interval = check_interval.max(1);
+
+        // Early exit for zero RHS
+        let b_norm: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
+        if b_norm < 1e-14 {
+            return Ok(CgGpuResult {
+                x: vec![0.0; n],
+                iterations: 0,
+                residual: 0.0,
+                converged: true,
+            });
+        }
+
+        // Extract diagonal for Jacobi preconditioner
+        let diag: Vec<f64> = (0..n)
+            .map(|i| {
+                let row_start = a.row_ptr[i];
+                let row_end = a.row_ptr[i + 1];
+                for k in row_start..row_end {
+                    if a.col_indices[k] == i {
+                        return a.values[k];
+                    }
+                }
+                1.0 // Fallback if diagonal not found
+            })
+            .collect();
+
+        // Create GPU buffers
+        let values_buffer = Self::create_f64_buffer(&device, "PCG values", &a.values);
+        let col_indices_buffer = Self::create_u32_buffer(&device, "PCG col_idx", &a.col_indices);
+        let row_ptrs_buffer = Self::create_u32_buffer(&device, "PCG row_ptr", &a.row_ptr);
+        let diag_buffer = Self::create_f64_buffer(&device, "PCG diag", &diag);
+
+        let x_buffer = Self::create_zero_f64_buffer(&device, "PCG x", n);
+        let r_buffer = Self::create_f64_buffer(&device, "PCG r", b);
+        let z_buffer = Self::create_zero_f64_buffer(&device, "PCG z", n);  // z = M⁻¹r
+        let p_buffer = Self::create_zero_f64_buffer(&device, "PCG p", n);
+        let ap_buffer = Self::create_zero_f64_buffer(&device, "PCG Ap", n);
+
+        // Scalar buffers
+        let num_workgroups = n.div_ceil(256);
+        let partial_sums_buffer = Self::create_zero_f64_buffer(&device, "PCG partial", num_workgroups);
+        let rz_buffer = Self::create_zero_f64_buffer(&device, "PCG rz", 1);
+        let rz_new_buffer = Self::create_zero_f64_buffer(&device, "PCG rz_new", 1);
+        let pap_buffer = Self::create_zero_f64_buffer(&device, "PCG pAp", 1);
+        let alpha_buffer = Self::create_zero_f64_buffer(&device, "PCG alpha", 1);
+        let beta_buffer = Self::create_zero_f64_buffer(&device, "PCG beta", 1);
+
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("PCG f64"));
+
+        // Create bind group layouts
+        let spmv_bgl = Self::create_spmv_bgl(&device);
+        let dot_bgl = Self::create_dot_bgl(&device);
+        let reduce_bgl = Self::create_reduce_bgl(&device);
+        let update_xr_bgl = Self::create_update_xr_bgl(&device);
+        let update_p_bgl = Self::create_update_p_bgl(&device);
+        let compute_alpha_bgl = Self::create_compute_alpha_bgl(&device);
+        let compute_beta_bgl = Self::create_compute_beta_bgl(&device);
+        let precond_bgl = Self::create_precond_bgl(&device);
+
+        // Create pipelines
+        let spmv_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("SpMV f64"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("SpMV PL"),
+                bind_group_layouts: &[&spmv_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "spmv_f64",
+        });
+
+        let dot_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Dot f64"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Dot PL"),
+                bind_group_layouts: &[&dot_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "dot_f64",
+        });
+
+        let reduce_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Final reduce f64"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Reduce PL"),
+                bind_group_layouts: &[&reduce_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "final_reduce_f64",
+        });
+
+        let update_xr_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("PCG update xr"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Update xr PL"),
+                bind_group_layouts: &[&update_xr_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "cg_update_xr",
+        });
+
+        let update_p_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("PCG update p"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Update p PL"),
+                bind_group_layouts: &[&update_p_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "cg_update_p",
+        });
+
+        let compute_alpha_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Compute alpha"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Compute alpha PL"),
+                bind_group_layouts: &[&compute_alpha_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "compute_alpha",
+        });
+
+        let compute_beta_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Compute beta"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Compute beta PL"),
+                bind_group_layouts: &[&compute_beta_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "compute_beta",
+        });
+
+        let precond_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Precond f64"),
+            layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Precond PL"),
+                bind_group_layouts: &[&precond_bgl],
+                push_constant_ranges: &[],
+            })),
+            module: &shader,
+            entry_point: "precond_f64",
+        });
+
+        // Create bind groups
+        let spmv_params = [n as u32];
+        let spmv_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SpMV params"),
+            contents: bytemuck::cast_slice(&spmv_params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let spmv_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("SpMV BG"),
+            layout: &spmv_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: values_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: col_indices_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: row_ptrs_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: p_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: ap_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: spmv_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let dot_params = [n as u32];
+        let dot_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Dot params"),
+            contents: bytemuck::cast_slice(&dot_params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        // rᵀz dot product bind group
+        let rz_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("rz BG"),
+            layout: &dot_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: r_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: z_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: partial_sums_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: dot_params_buf.as_entire_binding() },
+            ],
+        });
+
+        // pᵀAp dot product bind group
+        let pap_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("pAp BG"),
+            layout: &dot_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: p_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: ap_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: partial_sums_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: dot_params_buf.as_entire_binding() },
+            ],
+        });
+
+        // rᵀr for convergence check
+        let rr_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("rr BG"),
+            layout: &dot_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: r_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: r_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: partial_sums_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: dot_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let reduce_params = [num_workgroups as u32];
+        let reduce_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Reduce params"),
+            contents: bytemuck::cast_slice(&reduce_params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let reduce_rz_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Reduce rz BG"),
+            layout: &reduce_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: partial_sums_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: rz_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: reduce_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let reduce_rz_new_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Reduce rz_new BG"),
+            layout: &reduce_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: partial_sums_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: rz_new_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: reduce_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let reduce_pap_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Reduce pAp BG"),
+            layout: &reduce_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: partial_sums_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: pap_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: reduce_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let precond_params = [n as u32];
+        let precond_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Precond params"),
+            contents: bytemuck::cast_slice(&precond_params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let precond_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Precond BG"),
+            layout: &precond_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: r_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: diag_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: z_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: precond_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let cg_params = [n as u32];
+        let cg_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("CG params"),
+            contents: bytemuck::cast_slice(&cg_params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let update_xr_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Update xr BG"),
+            layout: &update_xr_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: x_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: r_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: p_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: ap_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: alpha_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: cg_params_buf.as_entire_binding() },
+            ],
+        });
+
+        // p = z + β*p (using z instead of r)
+        let update_p_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Update p BG"),
+            layout: &update_p_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: z_buffer.as_entire_binding() },  // z = M⁻¹r
+                wgpu::BindGroupEntry { binding: 1, resource: p_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: beta_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: cg_params_buf.as_entire_binding() },
+            ],
+        });
+
+        let compute_alpha_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Compute alpha BG"),
+            layout: &compute_alpha_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: rz_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: pap_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: alpha_buffer.as_entire_binding() },
+            ],
+        });
+
+        let compute_beta_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Compute beta BG"),
+            layout: &compute_beta_bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: rz_new_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: rz_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: beta_buffer.as_entire_binding() },
+            ],
+        });
+
+        // Initialize: z₀ = M⁻¹r₀, p₀ = z₀, compute r₀ᵀz₀
+        {
+            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("PCG init"),
+            });
+
+            // z = M⁻¹r (apply preconditioner)
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Precond Pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&precond_pipeline);
+                pass.set_bind_group(0, &precond_bg, &[]);
+                pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
+            }
+
+            device.queue.submit(Some(encoder.finish()));
+
+            // Copy z to p: p₀ = z₀
+            Self::copy_buffer(&device, &z_buffer, &p_buffer, n);
+
+            // Compute rᵀz
+            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Init rz"),
+            });
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Dot rz Pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&dot_pipeline);
+                pass.set_bind_group(0, &rz_bg, &[]);
+                pass.dispatch_workgroups(num_workgroups as u32, 1, 1);
+            }
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Reduce rz Pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&reduce_pipeline);
+                pass.set_bind_group(0, &reduce_rz_bg, &[]);
+                pass.dispatch_workgroups(1, 1, 1);
+            }
+            device.queue.submit(Some(encoder.finish()));
+        }
+
+        // Main PCG iteration
+        let mut last_residual = 1.0;
+        for iter in 0..max_iter {
+            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("PCG iter"),
+            });
+
+            // 1. Ap = A * p
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("SpMV"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&spmv_pipeline);
+                pass.set_bind_group(0, &spmv_bg, &[]);
+                pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
+            }
+
+            // 2. pᵀAp
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Dot pAp"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&dot_pipeline);
+                pass.set_bind_group(0, &pap_bg, &[]);
+                pass.dispatch_workgroups(num_workgroups as u32, 1, 1);
+            }
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Reduce pAp"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&reduce_pipeline);
+                pass.set_bind_group(0, &reduce_pap_bg, &[]);
+                pass.dispatch_workgroups(1, 1, 1);
+            }
+
+            // 3. α = (rᵀz) / (pᵀAp)
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Compute alpha"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&compute_alpha_pipeline);
+                pass.set_bind_group(0, &compute_alpha_bg, &[]);
+                pass.dispatch_workgroups(1, 1, 1);
+            }
+
+            // 4. x = x + αp, r = r - αAp
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Update xr"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&update_xr_pipeline);
+                pass.set_bind_group(0, &update_xr_bg, &[]);
+                pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
+            }
+
+            // 5. z = M⁻¹r (apply preconditioner)
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Precond"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&precond_pipeline);
+                pass.set_bind_group(0, &precond_bg, &[]);
+                pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
+            }
+
+            // 6. New rᵀz
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Dot rz new"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&dot_pipeline);
+                pass.set_bind_group(0, &rz_bg, &[]);
+                pass.dispatch_workgroups(num_workgroups as u32, 1, 1);
+            }
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Reduce rz new"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&reduce_pipeline);
+                pass.set_bind_group(0, &reduce_rz_new_bg, &[]);
+                pass.dispatch_workgroups(1, 1, 1);
+            }
+
+            // 7. β = (r_new ᵀ z_new) / (rᵀz), then rz = rz_new
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Compute beta"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&compute_beta_pipeline);
+                pass.set_bind_group(0, &compute_beta_bg, &[]);
+                pass.dispatch_workgroups(1, 1, 1);
+            }
+
+            // 8. p = z + βp
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Update p"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&update_p_pipeline);
+                pass.set_bind_group(0, &update_p_bg, &[]);
+                pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
+            }
+
+            device.queue.submit(Some(encoder.finish()));
+
+            // Check convergence
+            if (iter + 1) % check_interval == 0 || iter == max_iter - 1 {
+                // Compute actual residual norm ‖r‖
+                let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Check convergence"),
+                });
+                {
+                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("Dot rr"),
+                        timestamp_writes: None,
+                    });
+                    pass.set_pipeline(&dot_pipeline);
+                    pass.set_bind_group(0, &rr_bg, &[]);
+                    pass.dispatch_workgroups(num_workgroups as u32, 1, 1);
+                }
+                {
+                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("Reduce rr"),
+                        timestamp_writes: None,
+                    });
+                    pass.set_pipeline(&reduce_pipeline);
+                    pass.set_bind_group(0, &reduce_rz_new_bg, &[]);  // Reuse buffer
+                    pass.dispatch_workgroups(1, 1, 1);
+                }
+                device.queue.submit(Some(encoder.finish()));
+
+                let rr = Self::read_f64_buffer(&device, &rz_new_buffer, 1)?;
+                let r_norm = rr[0].sqrt();
+                last_residual = r_norm / b_norm;
+
+                if last_residual < tol {
+                    let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
+                    return Ok(CgGpuResult {
+                        x: x_data,
+                        iterations: iter + 1,
+                        residual: last_residual,
+                        converged: true,
+                    });
+                }
+            }
+        }
+
+        // Did not converge
+        let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
+
+        Ok(CgGpuResult {
+            x: x_data,
+            iterations: max_iter,
+            residual: last_residual,
+            converged: false,
+        })
+    }
+
+    fn copy_buffer(device: &Arc<WgpuDevice>, src: &wgpu::Buffer, dst: &wgpu::Buffer, n: usize) {
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Copy buffer"),
+        });
+        encoder.copy_buffer_to_buffer(src, 0, dst, 0, (n * 8) as u64);
+        device.queue.submit(Some(encoder.finish()));
+    }
+
+    fn create_precond_bgl(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
+        device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Precond BGL"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        })
+    }
+
     /// Solve Ax = b using GPU-accelerated Conjugate Gradient
     ///
     /// # Arguments
@@ -538,6 +1637,238 @@ impl CgGpu {
             ],
         })
     }
+
+    // GPU-resident CG bind group layouts
+
+    fn create_reduce_bgl(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
+        device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Final Reduce BGL"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        })
+    }
+
+    fn create_update_xr_bgl(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
+        device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Update XR BGL"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        })
+    }
+
+    fn create_update_p_bgl(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
+        device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Update P BGL"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        })
+    }
+
+    fn create_compute_alpha_bgl(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
+        device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Compute Alpha BGL"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        })
+    }
+
+    fn create_compute_beta_bgl(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
+        device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Compute Beta BGL"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        })
+    }
 }
 
 #[cfg(test)]
@@ -581,6 +1912,123 @@ mod tests {
             assert!(
                 (axi - bi).abs() < 1e-8,
                 "Ax should equal b"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cg_gpu_resident() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return; // Skip if no GPU
+        };
+
+        // Test GPU-resident CG with larger system
+        let a = create_spd_tridiagonal(100);
+        let b: Vec<f64> = (0..100).map(|i| (i + 1) as f64).collect();
+
+        // Using check_interval=10 to reduce GPU↔CPU syncs
+        let result = CgGpu::solve_gpu_resident(device.clone(), &a, &b, 1e-10, 500, 10).unwrap();
+
+        assert!(result.converged, "GPU-resident CG should converge");
+        assert!(result.residual < 1e-10, "Residual should be small: {}", result.residual);
+
+        // Verify: Ax ≈ b
+        let ax = a.matvec(&result.x).unwrap();
+        for (i, (axi, bi)) in ax.iter().zip(b.iter()).enumerate() {
+            assert!(
+                (axi - bi).abs() < 1e-6,
+                "Ax[{}] = {} should equal b[{}] = {}",
+                i, axi, i, bi
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cg_gpu_resident_vs_original() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return; // Skip if no GPU
+        };
+
+        // Compare GPU-resident vs original implementation
+        let a = create_spd_tridiagonal(50);
+        let b: Vec<f64> = (0..50).map(|i| ((i + 1) as f64).sin()).collect();
+
+        let result_original = CgGpu::solve(device.clone(), &a, &b, 1e-10, 200).unwrap();
+        let result_resident = CgGpu::solve_gpu_resident(device.clone(), &a, &b, 1e-10, 200, 5).unwrap();
+
+        // Both should converge
+        assert!(result_original.converged, "Original CG should converge");
+        assert!(result_resident.converged, "GPU-resident CG should converge");
+
+        // Solutions should be nearly identical
+        for (i, (x_orig, x_res)) in result_original.x.iter().zip(result_resident.x.iter()).enumerate() {
+            assert!(
+                (x_orig - x_res).abs() < 1e-8,
+                "Solution mismatch at {}: orig={}, resident={}",
+                i, x_orig, x_res
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cg_gpu_preconditioned() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return; // Skip if no GPU
+        };
+
+        // Test preconditioned CG
+        let a = create_spd_tridiagonal(100);
+        let b: Vec<f64> = (0..100).map(|i| (i + 1) as f64).collect();
+
+        let result = CgGpu::solve_preconditioned(device.clone(), &a, &b, 1e-10, 500, 10).unwrap();
+
+        assert!(result.converged, "Preconditioned CG should converge");
+        assert!(result.residual < 1e-10, "Residual should be small: {}", result.residual);
+
+        // Verify: Ax ≈ b
+        let ax = a.matvec(&result.x).unwrap();
+        for (i, (axi, bi)) in ax.iter().zip(b.iter()).enumerate() {
+            assert!(
+                (axi - bi).abs() < 1e-6,
+                "Ax[{}] = {} should equal b[{}] = {}",
+                i, axi, i, bi
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cg_preconditioned_vs_unpreconditioned() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return; // Skip if no GPU
+        };
+
+        // Compare iteration counts: preconditioned should need fewer iterations
+        let a = create_spd_tridiagonal(100);
+        let b: Vec<f64> = (0..100).map(|i| (i + 1) as f64).collect();
+
+        let result_unprecond = CgGpu::solve_gpu_resident(device.clone(), &a, &b, 1e-10, 500, 1).unwrap();
+        let result_precond = CgGpu::solve_preconditioned(device.clone(), &a, &b, 1e-10, 500, 1).unwrap();
+
+        assert!(result_unprecond.converged, "Unpreconditioned should converge");
+        assert!(result_precond.converged, "Preconditioned should converge");
+
+        // For this specific matrix (tridiagonal with constant diagonal), 
+        // both should converge quickly, but let's at least verify they both work
+        println!(
+            "Iterations: unprecond={}, precond={}",
+            result_unprecond.iterations, result_precond.iterations
+        );
+
+        // Solutions should be nearly identical
+        for (i, (x_u, x_p)) in result_unprecond.x.iter().zip(result_precond.x.iter()).enumerate() {
+            assert!(
+                (x_u - x_p).abs() < 1e-6,
+                "Solution mismatch at {}: unprecond={}, precond={}",
+                i, x_u, x_p
             );
         }
     }

@@ -183,3 +183,136 @@ fn linear_comb_f64(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     lc_z[idx] = lc_params.alpha * lc_x[idx] + lc_params.beta * lc_y[idx];
 }
+
+// ============================================================================
+// GPU-Resident CG Operations (Feb 14 2026)
+// 
+// These kernels keep scalar values on GPU to eliminate per-iteration CPU sync.
+// hotSpring recommendation: only read back residual every N iterations.
+// ============================================================================
+
+// Final reduction: sum partial_sums[0..n_workgroups] into scalar_result[0]
+@group(0) @binding(0) var<storage, read> partial_sums_final: array<f64>;
+@group(0) @binding(1) var<storage, read_write> scalar_result: array<f64>;
+@group(0) @binding(2) var<uniform> reduce_params: ReduceParams;
+
+struct ReduceParams {
+    n_workgroups: u32,
+}
+
+var<workgroup> final_shared: array<f64, 256>;
+
+@compute @workgroup_size(256)
+fn final_reduce_f64(@builtin(local_invocation_id) local_id: vec3<u32>) {
+    let tid = local_id.x;
+    let n = reduce_params.n_workgroups;
+
+    // Load partial sums (handle case where n < 256)
+    var sum: f64 = 0.0;
+    if (tid < n) {
+        sum = partial_sums_final[tid];
+    }
+
+    // For n > 256, each thread sums multiple elements
+    var i = tid + 256u;
+    while (i < n) {
+        sum = sum + partial_sums_final[i];
+        i = i + 256u;
+    }
+
+    final_shared[tid] = sum;
+    workgroupBarrier();
+
+    // Tree reduction
+    for (var stride = 128u; stride > 0u; stride = stride >> 1u) {
+        if (tid < stride) {
+            final_shared[tid] = final_shared[tid] + final_shared[tid + stride];
+        }
+        workgroupBarrier();
+    }
+
+    if (tid == 0u) {
+        scalar_result[0] = final_shared[0];
+    }
+}
+
+// CG update step 1: x = x + alpha * p (alpha is a scalar on GPU)
+// r = r - alpha * Ap
+@group(0) @binding(0) var<storage, read_write> cg_x: array<f64>;
+@group(0) @binding(1) var<storage, read_write> cg_r: array<f64>;
+@group(0) @binding(2) var<storage, read> cg_p: array<f64>;
+@group(0) @binding(3) var<storage, read> cg_Ap: array<f64>;
+@group(0) @binding(4) var<storage, read> cg_alpha: array<f64>;  // alpha[0]
+@group(0) @binding(5) var<uniform> cg_params1: CGParams;
+
+struct CGParams {
+    n: u32,
+}
+
+@compute @workgroup_size(256)
+fn cg_update_xr(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let idx = global_id.x;
+    if (idx >= cg_params1.n) {
+        return;
+    }
+
+    let alpha = cg_alpha[0];
+    cg_x[idx] = cg_x[idx] + alpha * cg_p[idx];
+    cg_r[idx] = cg_r[idx] - alpha * cg_Ap[idx];
+}
+
+// CG update step 2: p = r + beta * p (beta is a scalar on GPU)
+@group(0) @binding(0) var<storage, read> cg_r2: array<f64>;
+@group(0) @binding(1) var<storage, read_write> cg_p2: array<f64>;
+@group(0) @binding(2) var<storage, read> cg_beta: array<f64>;  // beta[0]
+@group(0) @binding(3) var<uniform> cg_params2: CGParams;
+
+@compute @workgroup_size(256)
+fn cg_update_p(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let idx = global_id.x;
+    if (idx >= cg_params2.n) {
+        return;
+    }
+
+    let beta = cg_beta[0];
+    cg_p2[idx] = cg_r2[idx] + beta * cg_p2[idx];
+}
+
+// Compute alpha = rz / pAp from two scalar buffers
+// Stores result in alpha_out[0]
+@group(0) @binding(0) var<storage, read> rz_in: array<f64>;
+@group(0) @binding(1) var<storage, read> pap_in: array<f64>;
+@group(0) @binding(2) var<storage, read_write> alpha_out: array<f64>;
+
+@compute @workgroup_size(1)
+fn compute_alpha(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let rz = rz_in[0];
+    let pap = pap_in[0];
+
+    if (abs(pap) > 1e-30) {
+        alpha_out[0] = rz / pap;
+    } else {
+        alpha_out[0] = 0.0;
+    }
+}
+
+// Compute beta = rz_new / rz_old from two scalar buffers
+// Also copies rz_new to rz_old for next iteration
+@group(0) @binding(0) var<storage, read> rz_new_in: array<f64>;
+@group(0) @binding(1) var<storage, read_write> rz_old_inout: array<f64>;
+@group(0) @binding(2) var<storage, read_write> beta_out: array<f64>;
+
+@compute @workgroup_size(1)
+fn compute_beta(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let rz_new = rz_new_in[0];
+    let rz_old = rz_old_inout[0];
+
+    if (abs(rz_old) > 1e-30) {
+        beta_out[0] = rz_new / rz_old;
+    } else {
+        beta_out[0] = 0.0;
+    }
+
+    // Update rz_old for next iteration
+    rz_old_inout[0] = rz_new;
+}

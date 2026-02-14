@@ -29,6 +29,7 @@
 //! - `SvdGpu::execute_f64()` - GPU SVD via one-sided Jacobi (f64)
 //! - `Cholesky` - GPU Cholesky decomposition (A = L·Lᵀ)
 //! - `Eigh` - GPU eigenvalue decomposition for symmetric matrices
+//! - `BatchedEighGpu` - GPU batched eigenvalue decomposition for multiple matrices (f64)
 //!
 //! ### Solvers
 //!
@@ -45,6 +46,7 @@
 //! - ✅ Capability-based dispatch
 //! - ✅ Composable operations
 
+pub mod batched_eigh_gpu;
 pub mod cholesky;
 pub mod eigh;
 pub mod linsolve;
@@ -57,6 +59,7 @@ pub mod svd_gpu;
 pub mod triangular_solve;
 pub mod tridiagonal;
 
+pub use batched_eigh_gpu::BatchedEighGpu;
 pub use cholesky::Cholesky;
 pub use eigh::Eigh;
 pub use linsolve::LinSolve;
