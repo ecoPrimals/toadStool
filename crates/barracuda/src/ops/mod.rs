@@ -57,8 +57,6 @@ pub mod sigmoid;
 pub mod softmax;
 pub mod softplus_wgsl;
 pub mod swish_wgsl;
-// pub mod tanh; // Replaced by tanh_wgsl
-
 // Element-wise operations
 pub mod abs_wgsl;
 pub mod add;
@@ -89,7 +87,6 @@ pub mod cosh_wgsl;
 pub mod sin_wgsl;
 pub mod sinh_wgsl;
 pub mod tan_wgsl;
-// pub mod tanh_wgsl; // REMOVED - duplicate of tanh.rs
 pub mod acosh_wgsl;
 pub mod asinh_wgsl;
 pub mod atanh_wgsl;
@@ -386,17 +383,13 @@ pub mod lp_pool2d;
 // Enhanced losses
 pub mod focal_loss_alpha;
 pub mod focal_loss_v2;
-pub mod smooth_l1_loss; // WGSL implementation (not smooth_l1_loss_wgsl.rs)
-                        // pub mod smooth_l1_loss_wgsl; // REMOVED - duplicate of smooth_l1_loss.rs
+pub mod smooth_l1_loss;
 
-// Utility operations (original)
-// pub mod channel_shuffle; // Now channel_shuffle_wgsl
+// Utility operations
 pub mod layer_scale;
-// pub mod masked_fill; // Now masked_fill_wgsl
 pub mod pixel_shuffle;
 pub mod put;
 pub mod reshape;
-// pub mod roll; // Now roll_wgsl
 pub mod take;
 pub mod upsample;
 pub mod view;
@@ -419,7 +412,6 @@ pub mod adamw;
 pub mod lamb;
 pub mod lookahead;
 pub mod radam;
-// pub mod nadam; // Already exists above
 pub mod adabound;
 pub mod cyclical_lr;
 pub mod onecycle;
@@ -438,7 +430,6 @@ pub mod time_stretch;
 pub mod window_function;
 
 // Advanced Sampling & Augmentation (Category 16)
-// pub mod color_jitter; // Now color_jitter_wgsl
 pub mod cutmix;
 pub mod elastic_transform;
 pub mod grid_mask;
@@ -454,7 +445,6 @@ pub mod random_rotation;
 // Specialized Losses & Metrics (Category 17)
 pub mod psnr;
 pub mod ssim;
-// pub mod dice_loss; // Already exists above
 pub mod center_loss;
 pub mod chamfer_distance;
 pub mod earth_mover_distance;

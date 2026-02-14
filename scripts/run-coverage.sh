@@ -52,7 +52,6 @@ run_tier1() {
         "toadstool-integration-primals"
         "toadstool-integration-nestgate"
         "toadstool-integration-protocols"
-        "toadstool-integration-orchestrator"
     )
     
     # Clean previous coverage data
