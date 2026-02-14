@@ -138,10 +138,10 @@ bollard = "0.15" # Docker API
 # containerd-client = "0.4" # Containerd - REMOVED: protobuf dependency
 
 # WebAssembly
-wasmtime = { version = "18.0", features = ["component-model", "async"] }
-wasmtime-wasi = "18.0"
-wasmer = "4.2"
-wasi-common = "18.0"
+# EVOLVED: Removed dead dependencies (Feb 14, 2026)
+# - wasmtime, wasmtime-wasi, wasmer, wasi-common were unused
+# - Runtime uses wasmi (Pure Rust) for WASM execution
+# - runtime/gpu has optional wasmtime via local dependency for JIT path
 
 # Python integration (preparing for Squirrel MCP integration)
 # NOTE: Python 3.13 requires: export PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
@@ -165,7 +165,7 @@ mdns = "3.0"
 
 # System monitoring
 sysinfo = "0.30"
-psutil = "3.2"
+# EVOLVED: psutil removed (Feb 14, 2026) - unused, sysinfo covers all use cases
 
 # Async utilities
 futures = "0.3"

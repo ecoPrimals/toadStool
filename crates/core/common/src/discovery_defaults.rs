@@ -24,10 +24,8 @@
 //! Even fallback URLs now use runtime port discovery instead of hardcoded ports.
 //! This ensures no port conflicts even in development environments.
 
-use crate::constants::network::DEFAULT_HTTP_PORT;
-#[allow(deprecated)]
-use crate::interned_strings::primals;
-use crate::runtime_ports;
+// EVOLVED (Feb 14, 2026): Removed unused imports after localhost fallback removal
+// - DEFAULT_HTTP_PORT, primals, runtime_ports no longer needed
 use std::env;
 use std::time::Duration;
 
@@ -127,48 +125,26 @@ impl Default for LocalhostFallbacks {
 }
 
 impl LocalhostFallbacks {
-    /// Get localhost fallback URL for a service
+    /// Get fallback URL for a service from environment only
     ///
-    /// Returns None if fallbacks are disabled (production mode)
+    /// Returns None if:
+    /// - Fallbacks are disabled (production mode)
+    /// - No environment variable is set for the service
     ///
-    /// **Deep Debt**: Even fallback URLs now try preferred ports with runtime discovery.
-    /// If preferred port unavailable, discovers alternative automatically.
+    /// **EVOLVED (Feb 14, 2026)**: Removed hardcoded localhost URLs.
+    /// Primal self-knowledge principle: a primal cannot assume localhost endpoints exist.
+    /// All fallback URLs must come from explicit environment configuration.
+    ///
+    /// Environment variable format: `{SERVICE_TYPE}_URL` (e.g., `REDIS_URL`, `TOADSTOOL_URL`)
     #[must_use]
     pub fn get_fallback_url(&self, service_type: &str) -> Option<String> {
         if !self.enabled {
             return None;
         }
 
-        // Read from environment variables first
-        if let Ok(url) = env::var(format!("{}_URL", service_type.to_uppercase())) {
-            return Some(url);
-        }
-
-        // TODO(Phase 3/4): Replace with capability discovery. Localhost fallback violates self-knowledge.
-        // Deep Debt: Use runtime port discovery with preferred defaults
-        // If preferred port unavailable, finds alternative automatically
-        #[allow(deprecated)]
-        match service_type {
-            s if s == primals::TOADSTOOL => {
-                // Prefer default HTTP port, but discover if unavailable
-                let port = runtime_ports::discover_port_with_preference(DEFAULT_HTTP_PORT)
-                    .unwrap_or(DEFAULT_HTTP_PORT); // Fallback to preferred if discovery fails
-                Some(format!("http://localhost:{}", port))
-            }
-            "redis" => {
-                let port = runtime_ports::discover_port_with_preference(6379).unwrap_or(6379);
-                Some(format!("redis://localhost:{}", port))
-            }
-            "postgres" => {
-                let port = runtime_ports::discover_port_with_preference(5432).unwrap_or(5432);
-                Some(format!("postgresql://localhost:{}", port))
-            }
-            "mongodb" => {
-                let port = runtime_ports::discover_port_with_preference(27017).unwrap_or(27017);
-                Some(format!("mongodb://localhost:{}", port))
-            }
-            _ => None,
-        }
+        // EVOLVED: Only read from environment variables
+        // No hardcoded localhost - violates self-knowledge principle
+        env::var(format!("{}_URL", service_type.to_uppercase())).ok()
     }
 
     /// Check if fallbacks should be used
@@ -249,28 +225,14 @@ mod tests {
 
     #[test]
     fn test_localhost_fallback_urls() {
+        // EVOLVED (Feb 14, 2026): Fallbacks now require explicit env vars
+        // No hardcoded localhost - self-knowledge principle
         let fallbacks = LocalhostFallbacks { enabled: true };
 
-        // NOTE: These are FALLBACK values for when discovery fails.
-        // Port may vary based on runtime availability (discover_port_with_preference),
-        // so we check the URL format and protocol, not the exact port.
-        let toadstool_url = fallbacks.get_fallback_url("toadstool");
-        assert!(
-            toadstool_url
-                .as_ref()
-                .is_some_and(|u| u.starts_with("http://localhost:")),
-            "Expected http://localhost:<port>, got {toadstool_url:?}"
-        );
-
-        let redis_url = fallbacks.get_fallback_url("redis");
-        assert!(
-            redis_url
-                .as_ref()
-                .is_some_and(|u| u.starts_with("redis://localhost:")),
-            "Expected redis://localhost:<port>, got {redis_url:?}"
-        );
-
-        assert_eq!(fallbacks.get_fallback_url("unknown"), None);
+        // Without env vars set, fallback returns None
+        // (unless env var is set by another test)
+        let unknown_url = fallbacks.get_fallback_url("unknown_service_xyz");
+        assert_eq!(unknown_url, None);
     }
 
     #[test]

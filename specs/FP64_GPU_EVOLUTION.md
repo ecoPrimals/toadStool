@@ -240,11 +240,19 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
    - Uses `precond_f64` shader kernel
    - Typically halves iteration count for poorly-conditioned matrices
 
+### Completed (Feb 14, 2026) — Evolution Targets ✅
+
+23. **GPU-resident optimizer** — `NelderMeadGpu::optimize()` ✅
+   - Simplex data stays on GPU
+   - Batch function evaluations
+   - Periodic convergence checks minimize CPU↔GPU syncs
+   - Integrates with GPU-computable objectives (RBF surrogates)
+
 ### Remaining (Low Priority)
 
 1. ~~**Modular preamble** — Only include needed functions~~ ✅ **COMPLETE**
 2. ~~**Prefix-sum for f64** — Parallel scan for integration~~ ✅ **COMPLETE**
-3. **GPU-resident optimizer** — Keep Nelder-Mead on GPU
+3. ~~**GPU-resident optimizer** — Keep Nelder-Mead on GPU~~ ✅ **COMPLETE**
 4. **Generalized eigensolver** — `gen_eigh_f64` for Ax = λBx (Level 3)
 
 **All primary GPU f64 evolution work complete.**

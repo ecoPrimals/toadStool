@@ -231,14 +231,11 @@ impl UnifiedBuffer {
         );
         assert!(size > 0, "Buffer size cannot be zero");
 
-        // SAFETY: NonNull::new_unchecked requires ptr != null.
-        // Invariants that hold:
-        // - cpu_ptr is not null (asserted above)
-        // - cpu_ptr is not in NULL page (asserted above, >= 4096)
-        // - cpu_ptr points to valid unified memory allocated by backend
-        // - The pointer will remain valid for the lifetime of the UnifiedBuffer
-        // Note: We use NonNull instead of *mut u8 for compile-time null safety
-        let cpu_ptr_nonnull = unsafe { NonNull::new_unchecked(cpu_ptr) };
+        // EVOLVED: Use safe NonNull::new() with expect() instead of unsafe unchecked
+        // Since we asserted non-null above, this will never panic in practice
+        // This is "Fast AND Safe" - same performance, no unsafe
+        let cpu_ptr_nonnull = NonNull::new(cpu_ptr)
+            .expect("CPU pointer validated non-null above");
 
         Self {
             id,

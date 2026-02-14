@@ -119,26 +119,171 @@ pub trait DiscoverySource: Send + Sync {
 
 /// mDNS-based discovery source
 ///
-/// Discovers capability providers on the local network via mDNS.
+/// Discovers capability providers on the local network via mDNS/DNS-SD.
 /// Providers advertise their capabilities via mDNS service records.
-#[derive(Default)]
+///
+/// ## Service Types
+///
+/// ToadStool services advertise as `_toadstool._tcp.local.` with TXT records:
+/// - `capability=<type>` (security, storage, coordination, intelligence, compute, network, monitoring)
+/// - `provider_id=<uuid>`
+/// - `endpoint=<url>`
+///
+/// ## EVOLVED (Feb 14, 2026)
+/// Complete implementation using mdns-sd crate for pure Rust mDNS discovery.
 pub struct MDnsSource {
-    // TODO: Integrate with mdns crate when available
+    /// Browse timeout in seconds
+    browse_timeout_secs: u64,
+}
+
+impl Default for MDnsSource {
+    fn default() -> Self {
+        Self {
+            browse_timeout_secs: 2, // Quick scan for local services
+        }
+    }
 }
 
 impl MDnsSource {
     pub fn new() -> Self {
         Self::default()
     }
+
+    /// Create with custom browse timeout
+    pub fn with_timeout(secs: u64) -> Self {
+        Self {
+            browse_timeout_secs: secs,
+        }
+    }
+
+    /// Parse TXT records into capability info
+    fn parse_txt_records(
+        &self,
+        service_name: &str,
+        host: &str,
+        port: u16,
+        txt: &HashMap<String, String>,
+    ) -> Option<CapabilityInfo> {
+        // Extract provider_id (or generate from service name)
+        let provider_id = txt
+            .get("provider_id")
+            .cloned()
+            .unwrap_or_else(|| service_name.to_string());
+
+        // Extract endpoint (or construct from host:port)
+        let endpoint_str = txt.get("endpoint").map(String::as_str).unwrap_or_else(|| "");
+        let endpoint = if endpoint_str.is_empty() {
+            // Construct HTTP endpoint from host:port
+            ServiceEndpoint::Http(format!("http://{}:{}", host, port))
+        } else if let Ok(ep) = EnvironmentSource::parse_endpoint(endpoint_str) {
+            ep
+        } else {
+            ServiceEndpoint::Http(format!("http://{}:{}", host, port))
+        };
+
+        // Extract capability type
+        let capability_str = txt.get("capability").map(String::as_str).unwrap_or("coordination");
+        let capability = LocalRegistrySource::capability_from_str(capability_str);
+
+        // Build metadata from remaining TXT records
+        let metadata: HashMap<String, String> = txt
+            .iter()
+            .filter(|(k, _)| *k != "provider_id" && *k != "endpoint" && *k != "capability")
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+
+        Some(CapabilityInfo {
+            provider_id,
+            capability,
+            metadata,
+            endpoint,
+            health: HealthStatus::Unknown,
+        })
+    }
 }
 
 #[async_trait]
 impl DiscoverySource for MDnsSource {
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-        // mDNS discovery pending mdns-sd crate integration (network access required).
-        // Leaving Ok(vec![]) until we add the external dependency.
-        tracing::debug!("mDNS discovery pending mdns-sd integration; returning empty");
-        Ok(vec![])
+        use mdns_sd::{ServiceDaemon, ServiceEvent};
+        use std::time::Instant;
+
+        let mut providers = Vec::new();
+
+        // Try to create mDNS daemon (may fail on systems without network)
+        let mdns = match ServiceDaemon::new() {
+            Ok(daemon) => daemon,
+            Err(e) => {
+                tracing::debug!("mDNS daemon unavailable: {} (continuing without mDNS)", e);
+                return Ok(vec![]);
+            }
+        };
+
+        // Browse for ToadStool services
+        let service_type = "_toadstool._tcp.local.";
+        let receiver = match mdns.browse(service_type) {
+            Ok(rx) => rx,
+            Err(e) => {
+                tracing::debug!("mDNS browse failed for {}: {}", service_type, e);
+                // Try to shutdown daemon gracefully
+                let _ = mdns.shutdown();
+                return Ok(vec![]);
+            }
+        };
+
+        let timeout = Duration::from_secs(self.browse_timeout_secs);
+        let start = Instant::now();
+
+        // Collect services within timeout
+        // Note: mdns-sd uses flume channels internally
+        while start.elapsed() < timeout {
+            match receiver.recv_timeout(Duration::from_millis(100)) {
+                Ok(event) => {
+                    if let ServiceEvent::ServiceResolved(info) = event {
+                        // Extract TXT records
+                        let txt: HashMap<String, String> = info
+                            .get_properties()
+                            .iter()
+                            .filter_map(|p| {
+                                let val = p.val_str().to_string();
+                                Some((p.key().to_string(), val))
+                            })
+                            .collect();
+
+                        // Get host and port
+                        let host = info.get_hostname().trim_end_matches('.').to_string();
+                        let port = info.get_port();
+
+                        // Parse into CapabilityInfo
+                        if let Some(cap_info) =
+                            self.parse_txt_records(info.get_fullname(), &host, port, &txt)
+                        {
+                            tracing::debug!(
+                                "mDNS discovered: {} at {}:{}",
+                                cap_info.provider_id,
+                                host,
+                                port
+                            );
+                            providers.push(cap_info);
+                        }
+                    }
+                }
+                Err(e) => {
+                    // Either timeout (continue) or disconnected (break)
+                    if format!("{e:?}").contains("Disconnected") {
+                        break;
+                    }
+                    // Timeout - continue waiting
+                }
+            }
+        }
+
+        // Stop browsing and shutdown daemon
+        let _ = mdns.stop_browse(service_type);
+        let _ = mdns.shutdown();
+
+        tracing::debug!("mDNS discovery found {} providers", providers.len());
+        Ok(providers)
     }
 
     fn name(&self) -> &str {
@@ -632,8 +777,11 @@ mod tests {
     async fn test_mdns_source() {
         let source = MDnsSource::new();
         assert_eq!(source.name(), "mdns");
+        // EVOLVED: mDNS now implemented - may find services on local network
+        // or return empty if no ToadStool services are advertised
         let providers = source.discover().await.unwrap();
-        assert_eq!(providers.len(), 0, "mDNS not yet implemented");
+        // Just verify it returns without error; actual results depend on network
+        assert!(providers.iter().all(|p| !p.provider_id.is_empty()) || providers.is_empty());
     }
 
     #[tokio::test]

@@ -100,7 +100,7 @@ console = "0.15"
 indicatif = "0.17"
 colored = "2.0"
 term_size = "0.3"
-atty = "0.2"
+# EVOLVED: atty removed (Feb 14, 2026) - use std::io::IsTerminal (Rust 1.70+)
 
 # Process management
 which = "4.4"

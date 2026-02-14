@@ -55,9 +55,11 @@
 pub mod bicgstab_gpu;
 pub mod cg_gpu;
 pub mod csr;
+pub mod gpu_helpers;  // EVOLVED: Extracted common GPU helpers (Feb 14, 2026)
 pub mod solvers;
 
 pub use bicgstab_gpu::{BiCgStabGpu, BiCgStabGpuResult};
 pub use cg_gpu::{CgGpu, CgGpuResult};
+pub use gpu_helpers::{SparseBindGroupLayouts, SparseBuffers, SparsePipelines};
 pub use csr::{CooMatrix, CsrMatrix};
 pub use solvers::{bicgstab_solve, cg_solve, jacobi_solve, SolverConfig, SolverResult};

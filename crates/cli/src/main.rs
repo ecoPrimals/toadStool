@@ -21,6 +21,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use tracing::{debug, error, info, warn};
 
@@ -117,7 +118,7 @@ async fn main() -> Result<()> {
     }
 
     // Print banner (only in interactive mode)
-    if atty::is(atty::Stream::Stdout) {
+    if std::io::stdout().is_terminal() {
         print_banner();
     }
 
@@ -174,10 +175,10 @@ fn init_enhanced_logging(verbose: bool) -> Result<()> {
         .with_level(true)
         .with_span_events(FmtSpan::CLOSE)
         .with_timer(tracing_subscriber::fmt::time::SystemTime)
-        .with_ansi(atty::is(atty::Stream::Stderr));
+        .with_ansi(std::io::stderr().is_terminal());
 
     // Use JSON format if running in CI or non-interactive environment
-    if std::env::var("CI").is_ok() || !atty::is(atty::Stream::Stderr) {
+    if std::env::var("CI").is_ok() || !std::io::stderr().is_terminal() {
         subscriber.json().init();
     } else {
         subscriber.init();

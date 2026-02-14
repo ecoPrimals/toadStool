@@ -78,10 +78,12 @@ impl CpuBackend {
     /// - ptr is not used after this call
     unsafe fn free_aligned(ptr: *mut u8, size: usize, align: usize) {
         if !ptr.is_null() {
-            // SAFETY: Caller guarantees ptr/size/align from allocate_aligned; layout is valid.
-            let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
+            // EVOLVED: Use safe Layout creation with expect() instead of unsafe unchecked
+            // Since we validated alignment at allocation time, this should never fail
+            let layout = Layout::from_size_align(size, align)
+                .expect("free_aligned: layout must match original allocation");
             // SAFETY: ptr from alloc, layout matches; freed exactly once.
-            unsafe { dealloc(ptr, layout) };
+            dealloc(ptr, layout);
         }
     }
 }
