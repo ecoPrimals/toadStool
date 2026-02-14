@@ -74,6 +74,16 @@
 //! | Force interpolation | ✅ Done | B-spline gradient method |
 //! | erfc short-range | ✅ Done | With self-energy and dipole corrections |
 //! | Combined PPPM | ✅ Done | CPU reference impl, GPU FFT ready |
+//! | **GPU PPPM** | ✅ Done | Universal WGSL shaders |
+//!
+//! # WGSL Shaders (Universal)
+//!
+//! All PPPM math is implemented in WGSL for hardware-agnostic execution:
+//! - `bspline.wgsl` - B-spline evaluation kernel
+//! - `charge_spread.wgsl` - Particle → mesh spreading
+//! - `greens_apply.wgsl` - K-space Green's function
+//! - `force_interp.wgsl` - Mesh → particle interpolation
+//! - `erfc_forces.wgsl` - Real-space short-range forces
 //!
 //! # References
 //!
@@ -86,9 +96,11 @@ mod charge_spread;
 mod force_interpolation;
 mod greens_function;
 mod pppm;
+mod pppm_gpu;
 mod pppm_params;
 mod short_range;
 
+// CPU reference implementation
 pub use bspline::{bspline, bspline_deriv, influence_function, BsplineCoeffs};
 pub use charge_spread::{spread_charges, spread_charges_with_coeffs, ChargeMesh};
 pub use force_interpolation::{
@@ -101,3 +113,6 @@ pub use short_range::{
     compute_short_range, compute_short_range_forces, dipole_correction, erfc,
     self_energy_correction,
 };
+
+// GPU universal implementation (WGSL shaders)
+pub use pppm_gpu::PppmGpu;
