@@ -294,7 +294,8 @@ let shader = ShaderTemplate::with_math_f64(user_code);
 | MD/Physics | ~15 | ✅ Universal |
 | Activations | ~25 | ✅ Universal |
 
-**Remaining work:** Wire LU/QR/SVD shaders to API, add sparse solver WGSL.
+**Completed (Feb 15):** `LuGpu`, `QrGpu`, `SvdGpu` wired to public API.
+**Remaining:** Sparse solver WGSL, gen eigenvalue WGSL.
 
 ### Runtime Cache Discovery ✅
 

@@ -77,7 +77,7 @@ hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than so
 **Shader Gaps to Wire Up:**
 | Area | Status | Notes |
 |------|--------|-------|
-| LU/QR/SVD | WGSL exists, API is CPU | Wire shaders to public API |
+| LU/QR/SVD | ✅ **WIRED** | `LuGpu`, `QrGpu`, `SvdGpu` orchestrators (Feb 15) |
 | Sparse solvers | CPU only | Need WGSL implementation |
 | Gen eigenvalue | CPU only | Need WGSL implementation |
 | Optimizers (Brent, Newton) | CPU only | Consider WGSL for batch |
