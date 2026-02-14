@@ -63,7 +63,7 @@
 | MEDIUM | Langevin thermostat | **DONE** — `langevin.wgsl` + Rust ops |
 | MEDIUM | GPU observables (KE, RDF) | **DONE** — `kinetic_energy.wgsl`, `rdf_histogram.wgsl` |
 | MEDIUM | CPU observables (VACF, SSF, MSD) | **DONE** — `compute_vacf()`, `compute_ssf()`, `compute_msd()` |
-| HIGH | PPPM/Ewald for long-range Coulomb | Pending — uses existing FFT |
+| HIGH | PPPM/Ewald for long-range Coulomb | In Progress — `electrostatics/pppm_params.rs` |
 | FUTURE | MSU HPC comparison benchmark | Planning — Murillo collaboration |
 
 **Reference:** `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`

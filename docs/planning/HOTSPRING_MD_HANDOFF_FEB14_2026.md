@@ -328,7 +328,9 @@ The toadstool team has absorbed the hotSpring MD lessons:
 | **Cell-list neighbor search** | ✅ `neighbor/cell_list.rs` O(N) CPU sorting |
 | **std::sync::LazyLock migration** | ✅ Removed once_cell, lazy_static dependencies |
 
-**Remaining**: PPPM/Ewald (uses existing FFT), MSU HPC benchmark.
+**Remaining**:
+- PPPM/Ewald: Architecture and parameter auto-tuning implemented (`electrostatics/`), awaiting FFT f64 evolution
+- MSU HPC benchmark (future)
 
 ---
 
