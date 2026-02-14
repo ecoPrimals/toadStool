@@ -259,6 +259,8 @@ toadStool/
 **Key additions (Feb 14)**:
 - `Pppm` — CPU reference implementation with full PPPM algorithm
 - `PppmGpu` — **Universal GPU implementation** via WGSL shaders
+  - `compute()` — Short-range erfc forces + self-energy (pure GPU)
+  - `compute_with_kspace()` — Full PPPM with k-space forces (GPU particles + CPU FFT)
   - `bspline.wgsl` — B-spline evaluation with derivatives
   - `charge_spread.wgsl` — Particle → mesh spreading
   - `greens_apply.wgsl` — K-space Green's function application
