@@ -335,6 +335,7 @@ The toadstool team has absorbed the hotSpring MD lessons:
   - PppmGpu orchestrator with precompiled pipelines
   - `compute()`: Short-range erfc forces + self-energy on GPU
   - `compute_with_kspace()`: Full PPPM including k-space forces (GPU particle ops + CPU FFT)
+  - ✅ **`compute_with_kspace_gpu()`**: Full PPPM with GPU FFT via `Fft3DF64`
 - MSU HPC benchmark (future)
 
 ---

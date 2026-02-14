@@ -188,6 +188,8 @@ impl FlashAttention {
 
 #[cfg(test)]
 mod flash_attention_tests {
+    use crate::attention::ScaledDotProductAttention;
+    use anyhow::Context;
     use super::*;
 
     async fn create_test_device() -> Result<(Arc<wgpu::Device>, Arc<wgpu::Queue>)> {

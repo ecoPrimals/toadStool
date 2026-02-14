@@ -133,6 +133,8 @@ impl GRUCell {
 
 #[cfg(test)]
 mod tests {
+    use crate::recurrent::{RNNCell, LSTMCell};
+    use anyhow::Context;
     use super::*;
 
     async fn create_test_device() -> Result<(Arc<wgpu::Device>, Arc<wgpu::Queue>)> {

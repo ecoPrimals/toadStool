@@ -257,6 +257,7 @@ impl MultiHeadAttention {
 
 #[cfg(test)]
 mod multi_head_attention_tests {
+    use anyhow::Context;
     use super::*;
 
     async fn create_test_device() -> Result<(Arc<wgpu::Device>, Arc<wgpu::Queue>)> {

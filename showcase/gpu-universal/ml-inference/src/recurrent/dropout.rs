@@ -62,6 +62,9 @@ impl RecurrentDropout {
 
 #[cfg(test)]
 mod layer_tests {
+    use std::sync::Arc;
+    use anyhow::{Result, Context};
+    use crate::recurrent::{BidirectionalRNN, StackedLSTM, GRULayer, LSTMLayer};
     use super::*;
 
     async fn create_test_device() -> Result<(Arc<wgpu::Device>, Arc<wgpu::Queue>)> {
