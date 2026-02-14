@@ -213,6 +213,7 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
 15. **WgpuDevice bridge** — `from_existing_simple()` for raw wgpu integration ✅
 16. **Tensor f64 support** — `from_f64_data()`, `to_f64_vec()` ✅
 17. **Modular preamble** — `with_math_f64_auto()` auto-detects and includes only needed functions ✅
+18. **F64 Prefix Sum** — `CumsumF64` for GPU-accelerated cumulative sum ✅
 
 ### Remaining (Low Priority)
 
@@ -220,7 +221,10 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
    - `ShaderTemplate::with_math_f64_auto()` auto-detects used functions
    - Includes only needed functions + dependencies
    - 40-60% reduction in shader compilation time for simple cases
-2. **Prefix-sum for f64** — Parallel scan for integration
+2. ~~**Prefix-sum for f64** — Parallel scan for integration~~ ✅ **COMPLETE**
+   - `CumsumF64::execute_1d()` — GPU-accelerated cumulative sum
+   - `CumsumF64::new(tensor, dim).execute()` — Multi-dimensional cumsum
+   - Uses per-thread sequential scan along dimension
 3. **GPU-resident optimizer** — Keep Nelder-Mead on GPU
 
 **All primary GPU f64 evolution work complete.**
