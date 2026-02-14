@@ -318,9 +318,9 @@ async fn execute_policy_with_timeout(action: &PolicyAction, _timeout: Duration) 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-lazy_static::lazy_static! {
-    static ref POLICY_CACHE: Arc<Mutex<HashMap<String, PolicyResult>>> = Arc::new(Mutex::new(HashMap::new()));
-}
+// Evolved from lazy_static! to std::sync::LazyLock (Rust 1.80+)
+static POLICY_CACHE: std::sync::LazyLock<Arc<Mutex<HashMap<String, PolicyResult>>>> =
+    std::sync::LazyLock::new(|| Arc::new(Mutex::new(HashMap::new())));
 
 fn execute_policy_with_cache(action: &PolicyAction) -> PolicyResult {
     let cache_key = format!("{}:{}:{}", action.operation, action.resource, action.user);

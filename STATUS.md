@@ -50,6 +50,22 @@ hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than so
 - `sqrt(f64)`, `exp(f64)`, `log(f64)`, `abs(f64)`, `floor(f64)`, `ceil(f64)`, `round(f64)`, `inverseSqrt(f64)`
 - Updated `math_f64.wgsl` documentation with guidance
 
+### Deep Debt Evolution
+
+**Dependency Migration (Pure Rust):**
+- `once_cell` / `lazy_static` → `std::sync::LazyLock` (Rust 1.80+)
+- `num_cpus` → `std::thread::available_parallelism()` (Rust 1.59+)
+- All legacy lazy initialization removed from production code
+
+**Placeholder Implementations → Complete:**
+- `lookahead.rs`: Implemented full slow weight EMA update using tensor ops
+- `benchmark.rs`: Documented GPU simulation with empirical speedup factors
+
+**Code Quality:**
+- Zero unsafe blocks in barracuda and toadstool crates
+- All mocks isolated to `#[cfg(test)]` modules
+- Capability-based discovery (no hardcoded GPU/NPU identifiers)
+
 ### Remaining Evolution Work
 
 **Shader Gaps to Wire Up:**

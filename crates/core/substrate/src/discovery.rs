@@ -268,7 +268,10 @@ impl HardwareDiscovery {
                     "Unknown"
                 }.to_string();
 
-                let cores = num_cpus::get() as u32;
+                // Evolved from num_cpus::get() to std::thread::available_parallelism() (Rust 1.59+)
+                let cores = std::thread::available_parallelism()
+                    .map(|p| p.get() as u32)
+                    .unwrap_or(1);
 
                 let substrate = DiscoveredSubstrate {
                     substrate_type: SubstrateType::Cpu {

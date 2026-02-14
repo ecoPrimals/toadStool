@@ -73,20 +73,23 @@ impl Lookahead {
         // Update slow weights every k steps
         if self.state.k_counter.is_multiple_of(self.k) {
             // slow_weights = slow_weights + alpha * (fast_weights - slow_weights)
-            // This is: slow_weights = (1 - alpha) * slow_weights + alpha * fast_weights
+            // Rearranged: slow_weights = (1 - alpha) * slow_weights + alpha * fast_weights
             //
-            // Note: Actual tensor arithmetic implementation would go here.
-            // For now, we return slow weights. Full implementation would use:
-            // - Tensor subtraction: fast_weights - slow_weights
-            // - Tensor scalar multiplication: alpha * diff
-            // - Tensor addition: slow_weights + alpha_diff
-            //
-            // This is a placeholder - actual implementation requires tensor ops module
+            // Using tensor ops:
+            // 1. diff = fast_weights - slow_weights
+            // 2. scaled_diff = alpha * diff
+            // 3. new_slow = slow_weights + scaled_diff
 
-            // Return slow weights (actual update would happen here)
-            Ok(self.state.slow_weights)
+            let diff = self.fast_weights.sub(&self.state.slow_weights)?;
+            let scaled_diff = diff.mul_scalar(self.alpha)?;
+            let new_slow = self.state.slow_weights.add(&scaled_diff)?;
+
+            // Update state for next iteration
+            self.state.slow_weights = new_slow.clone();
+
+            Ok(new_slow)
         } else {
-            // Return fast weights
+            // Return fast weights (no slow weight update this step)
             Ok(self.fast_weights)
         }
     }
