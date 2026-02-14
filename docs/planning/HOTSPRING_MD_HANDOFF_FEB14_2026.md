@@ -323,7 +323,9 @@ The toadstool team has absorbed the hotSpring MD lessons:
 | **Langevin thermostat** | ✅ `thermostats/langevin.wgsl` + `langevin.rs` |
 | **Kinetic energy (GPU)** | ✅ `observables/kinetic_energy.wgsl` + ops |
 | **RDF histogram (GPU)** | ✅ `observables/rdf_histogram.wgsl` |
-| **CPU observables (VACF, SSF)** | ✅ `observables/mod.rs` compute functions |
+| **CPU observables (VACF, SSF, MSD)** | ✅ `observables/mod.rs` compute functions |
+| **MSD for diffusion coefficients** | ✅ `observables/mod.rs` compute_msd + PBC unwrapping |
+| **Cell-list neighbor search** | ✅ `neighbor/cell_list.rs` O(N) CPU sorting |
 | **std::sync::LazyLock migration** | ✅ Removed once_cell, lazy_static dependencies |
 
 **Remaining**: PPPM/Ewald (uses existing FFT), MSU HPC benchmark.
