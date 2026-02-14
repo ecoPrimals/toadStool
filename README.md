@@ -281,6 +281,21 @@ let shader = ShaderTemplate::with_math_f64(user_code);
 
 **Key finding:** `pow_two_thirds()` using `cbrt*cbrt` is **40x more precise** than `exp(log())` chain.
 
+**Native f64 builtins (Feb 15 discovery):** `sqrt`, `exp`, `log`, `abs`, `floor`, `ceil`, `round`, `inverseSqrt` work natively via Naga/wgpu — 1.5-2.2× faster than software.
+
+### Shader Inventory (464 WGSL)
+
+| Category | Count | Status |
+|----------|-------|--------|
+| Math core | ~30 | ✅ Universal |
+| Linalg | ~15 | ⚠️ WGSL exists, API partial |
+| Special functions | ~18 | ✅ Universal |
+| Tensor ops | ~45 | ✅ Universal |
+| MD/Physics | ~15 | ✅ Universal |
+| Activations | ~25 | ✅ Universal |
+
+**Remaining work:** Wire LU/QR/SVD shaders to API, add sparse solver WGSL.
+
 ### Runtime Cache Discovery ✅
 
 ```rust

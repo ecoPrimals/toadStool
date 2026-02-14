@@ -35,6 +35,39 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 
 ---
 
+## New Features (Feb 15, 2026)
+
+### Bug Fix: Cell-List Index Wrapping
+
+**CRITICAL** — Fixed `cell_idx` in `yukawa_celllist_f64.wgsl` (hotSpring ALERT):
+- WGSL `i32 %` produces incorrect results for negative operands on NVIDIA/Naga/Vulkan
+- Replaced modular arithmetic with branch-based wrapping
+- Post-fix: cell-list PE matches all-pairs to machine precision (<1e-16)
+
+### Native f64 Builtins Discovery
+
+hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than software):
+- `sqrt(f64)`, `exp(f64)`, `log(f64)`, `abs(f64)`, `floor(f64)`, `ceil(f64)`, `round(f64)`, `inverseSqrt(f64)`
+- Updated `math_f64.wgsl` documentation with guidance
+
+### Remaining Evolution Work
+
+**Shader Gaps to Wire Up:**
+| Area | Status | Notes |
+|------|--------|-------|
+| LU/QR/SVD | WGSL exists, API is CPU | Wire shaders to public API |
+| Sparse solvers | CPU only | Need WGSL implementation |
+| Gen eigenvalue | CPU only | Need WGSL implementation |
+| Optimizers (Brent, Newton) | CPU only | Consider WGSL for batch |
+| Stats (chi2, bootstrap) | CPU only | Low priority |
+| Cubic spline | CPU only | Low priority |
+
+**Performance Opportunities:**
+- Replace `math_f64.wgsl` software implementations with native builtins in MD kernels
+- GPU FFT integration for `PppmGpu::compute_with_kspace()`
+
+---
+
 ## New Features (Feb 14, 2026)
 
 ### Molecular Dynamics Pipeline — COMPLETE ✅

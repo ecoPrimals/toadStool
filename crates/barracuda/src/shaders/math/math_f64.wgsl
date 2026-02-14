@@ -3,8 +3,18 @@
 // ============================================================================
 //
 // This library implements transcendental functions using only f64 arithmetic
-// operations (+, -, *, /, comparisons). No WGSL builtins (sqrt, pow, exp, etc.)
-// work with f64, so we implement everything from scratch.
+// operations (+, -, *, /, comparisons). Originally created because WGSL spec
+// does not guarantee f64 builtins, but see NATIVE BUILTINS section below.
+//
+// NATIVE f64 BUILTINS (Feb 15 2026 hotSpring finding):
+// The following builtins DO work with f64 via Naga/wgpu on NVIDIA/AMD GPUs:
+//   sqrt(f64), exp(f64), log(f64), abs(f64), floor(f64), ceil(f64),
+//   round(f64), inverseSqrt(f64)
+// Performance (RTX 4070, 1M elements):
+//   - Native sqrt: 1.5× faster than sqrt_f64
+//   - Native exp: 2.2× faster than exp_f64
+// For MD force kernels, prefer native builtins when available.
+// This library remains useful for: sin, cos, tan, erf, gamma, etc. (no native)
 //
 // CRITICAL NAGA/WGSL GOTCHAS:
 // 1. AbstractFloat (0.0, 1.0) does NOT auto-promote to f64
@@ -15,9 +25,13 @@
 //    - WRONG: return 1e308;
 //    - RIGHT: construct via arithmetic
 //
-// 3. No f64 overloads for ANY builtins (sqrt, pow, exp, log, sin, cos, etc.)
+// 3. No f64 vec types (vec2<f64>, vec3<f64>, vec4<f64> not supported)
 //
-// 4. No f64 vec types (vec2<f64>, vec3<f64>, vec4<f64> not supported)
+// 4. NEVER use i32 % for negative wrapping — produces incorrect results on
+//    NVIDIA/Naga/Vulkan. Use branch-based conditionals instead:
+//    - WRONG: ((x % n) + n) % n
+//    - RIGHT: var w = x; if (w < 0) { w = w + n; } if (w >= n) { w = w - n; }
+//    See: hotSpring ALERT Feb 15 2026 - cell-list bug diagnosis.
 //
 // PRECISION TARGETS:
 // - sqrt_f64: Full f64 precision (5 Newton-Raphson iterations)

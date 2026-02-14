@@ -46,10 +46,19 @@ fn pbc_delta_cl(delta: f64, box_size: f64) -> f64 {
 }
 
 // Map 3D cell coordinates to linear index with PBC wrapping
+// NOTE: Uses branch-based wrapping, NOT modular arithmetic.
+// WGSL i32 % produces incorrect results for negative operands on NVIDIA/Naga/Vulkan.
+// See: hotSpring ALERT Feb 15 2026 - cell-list bug diagnosis.
 fn cell_idx(cx: i32, cy: i32, cz: i32, nx: i32, ny: i32, nz: i32) -> u32 {
-    let wx = ((cx % nx) + nx) % nx;
-    let wy = ((cy % ny) + ny) % ny;
-    let wz = ((cz % nz) + nz) % nz;
+    var wx = cx;
+    if (wx < 0)  { wx = wx + nx; }
+    if (wx >= nx) { wx = wx - nx; }
+    var wy = cy;
+    if (wy < 0)  { wy = wy + ny; }
+    if (wy >= ny) { wy = wy - ny; }
+    var wz = cz;
+    if (wz < 0)  { wz = wz + nz; }
+    if (wz >= nz) { wz = wz - nz; }
     return u32(wx + wy * nx + wz * nx * ny);
 }
 

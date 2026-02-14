@@ -268,12 +268,18 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 
 **Tests**: 350+ passing (156 Phase 3 + 62 Phase 5 + 25 cross-platform + MD)
 **Quality**: Zero unsafe in compute ops, clippy clean, pure Rust
-**Architecture**: Shader-first — ALL math runs on GPU when fp64 available
+**Architecture**: Shader-first — 464 WGSL shaders, universal hardware
 **Audit**: All hotSpring Tiers 1-3 complete (Feb 13), MD pipeline complete (Feb 14)
 **Evolution**: once_cell/lazy_static → std::sync::LazyLock (pure std)
 **MD Pipeline**: Full thermostat suite + MSD + Cell-list + **PPPM universal** (CPU + GPU w/kspace) — 38 tests
+**Bug Fix (Feb 15)**: Cell-list i32 % wrapping bug fixed (hotSpring ALERT)
 **Docs**: `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md`, `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
+
+**Remaining Evolution Work**:
+- Wire LU/QR/SVD WGSL shaders to public API
+- Sparse solvers: need WGSL implementation
+- Replace math_f64 software with native builtins in MD kernels
 
 ---
 
-**Last Updated**: February 14, 2026
+**Last Updated**: February 15, 2026
