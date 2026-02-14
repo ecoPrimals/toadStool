@@ -60,6 +60,7 @@
 | MEDIUM | Split Velocity-Verlet (kick-drift-kick) | **DONE** — `velocity_verlet_split.wgsl` |
 | MEDIUM | Berendsen thermostat | **DONE** — `berendsen.wgsl` + Rust op |
 | MEDIUM | Nosé-Hoover thermostat | **DONE** — `nose_hoover.wgsl` + Rust ops |
+| MEDIUM | Langevin thermostat | **DONE** — `langevin.wgsl` + Rust ops |
 | MEDIUM | GPU observables (KE, RDF) | **DONE** — `kinetic_energy.wgsl`, `rdf_histogram.wgsl` |
 | MEDIUM | CPU observables (VACF, SSF) | **DONE** — `compute_vacf()`, `compute_ssf()` |
 | HIGH | PPPM/Ewald for long-range Coulomb | Pending — uses existing FFT |

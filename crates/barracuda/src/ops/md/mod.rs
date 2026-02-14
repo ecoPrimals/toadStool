@@ -26,7 +26,9 @@ pub use forces::*;
 pub use integrators::*;
 pub use observables::{compute_rdf, compute_ssf, compute_vacf, KineticEnergy, Rdf, Vacf};
 pub use pbc::{DistanceMetric, PbcDistance};
-pub use thermostats::{BerendsenThermostat, NoseHooverChain, NoseHooverHalfKick};
+pub use thermostats::{
+    BerendsenThermostat, LangevinParams, LangevinStep, NoseHooverChain, NoseHooverHalfKick,
+};
 
 // Re-export for convenience
 pub use pbc::PbcDistance as Pbc;
