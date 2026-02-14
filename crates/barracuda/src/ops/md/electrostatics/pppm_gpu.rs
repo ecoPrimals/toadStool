@@ -793,6 +793,558 @@ impl PppmGpu {
         Ok(forces)
     }
 
+    /// Compute full PPPM with k-space forces
+    ///
+    /// This method runs:
+    /// - GPU: B-spline coefficients, charge spreading, erfc forces, force interpolation
+    /// - CPU: Mesh accumulation, FFT forward/inverse, Green's function
+    ///
+    /// For production use with large systems, consider upgrading FFT to GPU.
+    pub async fn compute_with_kspace(
+        &self,
+        positions: &[f64],
+        charges: &[f64],
+    ) -> Result<(Vec<f64>, f64)> {
+        let n = charges.len();
+        if positions.len() != n * 3 {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "positions length {} != charges length {} * 3",
+                    positions.len(),
+                    n
+                ),
+            });
+        }
+
+        let order = self.params.interpolation_order;
+        let [kx, ky, kz] = self.params.mesh_dims;
+        let mesh_size = kx * ky * kz;
+        let o3 = order * order * order;
+
+        // ================================================================
+        // PHASE 1: GPU - B-spline coefficients and charge spreading
+        // ================================================================
+
+        let positions_buffer = self.create_f64_buffer("positions", positions);
+        let charges_buffer = self.create_f64_buffer("charges", charges);
+
+        let coeffs_size = n * order * 3;
+        let coeffs_buffer = self.create_zero_f64_buffer("coeffs", coeffs_size);
+        let derivs_buffer = self.create_zero_f64_buffer("derivs", coeffs_size);
+        let base_idx_buffer = self.create_zero_i32_buffer("base_idx", n * 3);
+        let per_particle_mesh_buffer = self.create_zero_f64_buffer("per_particle_mesh", n * o3);
+
+        let bspline_params: Vec<f64> = vec![
+            n as f64,
+            order as f64,
+            kx as f64,
+            ky as f64,
+            kz as f64,
+            self.params.box_dims[0],
+            self.params.box_dims[1],
+            self.params.box_dims[2],
+        ];
+        let bspline_params_buffer = self.create_f64_buffer("bspline_params", &bspline_params);
+
+        let spread_params: Vec<f64> = vec![n as f64, order as f64, kx as f64, ky as f64, kz as f64];
+        let spread_params_buffer = self.create_f64_buffer("spread_params", &spread_params);
+
+        let bspline_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bspline_bg"),
+            layout: &self.bspline_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: positions_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: coeffs_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: derivs_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: base_idx_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: bspline_params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let charge_spread_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("spread_bg"),
+            layout: &self.charge_spread_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: charges_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: coeffs_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: base_idx_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: per_particle_mesh_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: spread_params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let particle_workgroups = (n as u32).div_ceil(64);
+
+        // Run B-spline and charge spread
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("PPPM Phase 1"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("B-spline"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.bspline_pipeline);
+            pass.set_bind_group(0, &bspline_bind_group, &[]);
+            pass.dispatch_workgroups(particle_workgroups, 1, 1);
+        }
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Charge Spread"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.charge_spread_pipeline);
+            pass.set_bind_group(0, &charge_spread_bind_group, &[]);
+            pass.dispatch_workgroups(particle_workgroups, 1, 1);
+        }
+
+        self.queue.submit(Some(encoder.finish()));
+
+        // Read back coefficients, derivs, base_idx, per_particle_mesh
+        let coeffs = self.read_f64_buffer(&coeffs_buffer, coeffs_size).await?;
+        let derivs = self.read_f64_buffer(&derivs_buffer, coeffs_size).await?;
+        let base_idx = self.read_i32_buffer(&base_idx_buffer, n * 3).await?;
+        let per_particle_mesh = self
+            .read_f64_buffer(&per_particle_mesh_buffer, n * o3)
+            .await?;
+
+        // ================================================================
+        // PHASE 2: CPU - Mesh accumulation and FFT
+        // ================================================================
+
+        // Accumulate per-particle mesh contributions
+        let mut charge_mesh = vec![0.0f64; mesh_size];
+        for i in 0..n {
+            let bx = base_idx[i * 3];
+            let by = base_idx[i * 3 + 1];
+            let bz = base_idx[i * 3 + 2];
+
+            let mut local_idx = 0;
+            for jx in 0..order {
+                let ix = ((bx + jx as i32) % kx as i32 + kx as i32) as usize % kx;
+                for jy in 0..order {
+                    let iy = ((by + jy as i32) % ky as i32 + ky as i32) as usize % ky;
+                    for jz in 0..order {
+                        let iz = ((bz + jz as i32) % kz as i32 + kz as i32) as usize % kz;
+                        let mesh_idx = ix * ky * kz + iy * kz + iz;
+                        charge_mesh[mesh_idx] += per_particle_mesh[i * o3 + local_idx];
+                        local_idx += 1;
+                    }
+                }
+            }
+        }
+
+        // Forward FFT (CPU)
+        let rho_k = self.cpu_forward_fft(&charge_mesh)?;
+
+        // Apply Green's function (CPU)
+        let phi_k = self.greens.apply(&rho_k);
+
+        // K-space energy
+        let volume =
+            self.params.box_dims[0] * self.params.box_dims[1] * self.params.box_dims[2];
+        let e_kspace = self.greens.kspace_energy(&rho_k, volume);
+
+        // Inverse FFT (CPU)
+        let potential_values = self.cpu_backward_fft(&phi_k)?;
+
+        // ================================================================
+        // PHASE 3: GPU - Force interpolation and short-range
+        // ================================================================
+
+        // Upload potential mesh to GPU
+        let potential_buffer = self.create_f64_buffer("potential", &potential_values);
+        let forces_buffer = self.create_zero_f64_buffer("forces", n * 3);
+        let pe_buffer = self.create_zero_f64_buffer("pe", n);
+
+        // Force interpolation params
+        let interp_params: Vec<f64> = vec![
+            n as f64,
+            order as f64,
+            kx as f64,
+            ky as f64,
+            kz as f64,
+            self.params.box_dims[0],
+            self.params.box_dims[1],
+            self.params.box_dims[2],
+        ];
+        let interp_params_buffer = self.create_f64_buffer("interp_params", &interp_params);
+
+        // Re-upload coeffs and derivs (could optimize by keeping on GPU)
+        let coeffs_buffer2 = self.create_f64_buffer("coeffs2", &coeffs);
+        let derivs_buffer2 = self.create_f64_buffer("derivs2", &derivs);
+        let base_idx_bytes: Vec<u8> = base_idx.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let base_idx_buffer2 = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("base_idx2"),
+            contents: &base_idx_bytes,
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+
+        let force_interp_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("force_interp_bg"),
+            layout: &self.force_interp_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: charges_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: coeffs_buffer2.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: derivs_buffer2.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: base_idx_buffer2.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: potential_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: forces_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: interp_params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // erfc params
+        let erfc_params: Vec<f64> = vec![
+            n as f64,
+            self.params.alpha,
+            self.params.real_cutoff * self.params.real_cutoff,
+            self.params.box_dims[0],
+            self.params.box_dims[1],
+            self.params.box_dims[2],
+            self.params.coulomb_constant,
+        ];
+        let erfc_params_buffer = self.create_f64_buffer("erfc_params", &erfc_params);
+
+        let erfc_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("erfc_bg"),
+            layout: &self.erfc_forces_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: positions_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: charges_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: forces_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: pe_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: erfc_params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Run force interpolation (k-space forces) first, then add short-range
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("PPPM Phase 3"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Force Interp"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.force_interp_pipeline);
+            pass.set_bind_group(0, &force_interp_bind_group, &[]);
+            pass.dispatch_workgroups(particle_workgroups, 1, 1);
+        }
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("erfc Forces"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.erfc_forces_pipeline);
+            pass.set_bind_group(0, &erfc_bind_group, &[]);
+            pass.dispatch_workgroups(particle_workgroups, 1, 1);
+        }
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Self Energy"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.self_energy_pipeline);
+            pass.set_bind_group(0, &erfc_bind_group, &[]);
+            pass.dispatch_workgroups(particle_workgroups, 1, 1);
+        }
+
+        self.queue.submit(Some(encoder.finish()));
+
+        // Read back final forces and energy
+        let forces = self.read_f64_buffer(&forces_buffer, n * 3).await?;
+        let pe_values = self.read_f64_buffer(&pe_buffer, n).await?;
+
+        // Compute corrections
+        let e_self = super::self_energy_correction(
+            charges,
+            self.params.alpha,
+            self.params.coulomb_constant,
+        );
+
+        // Convert positions to [[f64; 3]] for dipole correction
+        let pos_arrays: Vec<[f64; 3]> = positions
+            .chunks_exact(3)
+            .map(|c| [c[0], c[1], c[2]])
+            .collect();
+        let e_dipole = super::dipole_correction(
+            &pos_arrays,
+            charges,
+            self.params.box_dims,
+            self.params.coulomb_constant,
+        );
+
+        // Total energy: k-space + short-range (from pe_buf) + self + dipole
+        let e_short: f64 = pe_values.iter().sum();
+        let total_energy = e_kspace + e_short + e_self + e_dipole;
+
+        Ok((forces, total_energy))
+    }
+
+    // CPU forward FFT (Cooley-Tukey, matches pppm.rs)
+    fn cpu_forward_fft(&self, mesh: &[f64]) -> Result<Vec<f64>> {
+        let [kx, ky, kz] = self.params.mesh_dims;
+        let size = kx * ky * kz;
+
+        // Convert real mesh to complex
+        let mut complex = vec![0.0f64; size * 2];
+        for i in 0..size {
+            complex[i * 2] = mesh[i];
+        }
+
+        // 3D FFT via 1D transforms
+        self.fft_3d_cpu(&mut complex, kx, ky, kz, false)?;
+
+        Ok(complex)
+    }
+
+    // CPU backward FFT
+    fn cpu_backward_fft(&self, phi_k: &[f64]) -> Result<Vec<f64>> {
+        let [kx, ky, kz] = self.params.mesh_dims;
+        let size = kx * ky * kz;
+
+        let mut complex = phi_k.to_vec();
+        self.fft_3d_cpu(&mut complex, kx, ky, kz, true)?;
+
+        // Extract real part and normalize
+        let norm = 1.0 / (size as f64);
+        let potential: Vec<f64> = (0..size).map(|i| complex[i * 2] * norm).collect();
+
+        Ok(potential)
+    }
+
+    // 3D FFT via 1D transforms
+    fn fft_3d_cpu(
+        &self,
+        data: &mut [f64],
+        kx: usize,
+        ky: usize,
+        kz: usize,
+        inverse: bool,
+    ) -> Result<()> {
+        // Transform along z
+        for ix in 0..kx {
+            for iy in 0..ky {
+                let mut row: Vec<f64> = (0..kz)
+                    .flat_map(|iz| {
+                        let idx = (ix * ky * kz + iy * kz + iz) * 2;
+                        vec![data[idx], data[idx + 1]]
+                    })
+                    .collect();
+                self.fft_1d_cpu(&mut row, kz, inverse);
+                for iz in 0..kz {
+                    let idx = (ix * ky * kz + iy * kz + iz) * 2;
+                    data[idx] = row[iz * 2];
+                    data[idx + 1] = row[iz * 2 + 1];
+                }
+            }
+        }
+
+        // Transform along y
+        for ix in 0..kx {
+            for iz in 0..kz {
+                let mut row: Vec<f64> = (0..ky)
+                    .flat_map(|iy| {
+                        let idx = (ix * ky * kz + iy * kz + iz) * 2;
+                        vec![data[idx], data[idx + 1]]
+                    })
+                    .collect();
+                self.fft_1d_cpu(&mut row, ky, inverse);
+                for iy in 0..ky {
+                    let idx = (ix * ky * kz + iy * kz + iz) * 2;
+                    data[idx] = row[iy * 2];
+                    data[idx + 1] = row[iy * 2 + 1];
+                }
+            }
+        }
+
+        // Transform along x
+        for iy in 0..ky {
+            for iz in 0..kz {
+                let mut row: Vec<f64> = (0..kx)
+                    .flat_map(|ix| {
+                        let idx = (ix * ky * kz + iy * kz + iz) * 2;
+                        vec![data[idx], data[idx + 1]]
+                    })
+                    .collect();
+                self.fft_1d_cpu(&mut row, kx, inverse);
+                for ix in 0..kx {
+                    let idx = (ix * ky * kz + iy * kz + iz) * 2;
+                    data[idx] = row[ix * 2];
+                    data[idx + 1] = row[ix * 2 + 1];
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    // Cooley-Tukey radix-2 FFT
+    fn fft_1d_cpu(&self, data: &mut [f64], n: usize, inverse: bool) {
+        use std::f64::consts::PI;
+
+        // Bit-reversal permutation
+        let mut j = 0usize;
+        for i in 0..n {
+            if i < j {
+                data.swap(i * 2, j * 2);
+                data.swap(i * 2 + 1, j * 2 + 1);
+            }
+            let mut m = n / 2;
+            while m >= 1 && j >= m {
+                j -= m;
+                m /= 2;
+            }
+            j += m;
+        }
+
+        // Cooley-Tukey iterations
+        let sign = if inverse { 1.0 } else { -1.0 };
+        let mut len = 2;
+        while len <= n {
+            let half = len / 2;
+            let mut angle: f64 = 0.0;
+            let angle_step = sign * PI / half as f64;
+
+            for _ in 0..half {
+                let (cos_a, sin_a) = (angle.cos(), angle.sin());
+                for i in (0..n).step_by(len) {
+                    let a_idx = (i + half) * 2;
+                    let b_idx = i * 2;
+
+                    let a_re = data[a_idx];
+                    let a_im = data[a_idx + 1];
+
+                    let t_re = cos_a * a_re - sin_a * a_im;
+                    let t_im = sin_a * a_re + cos_a * a_im;
+
+                    data[a_idx] = data[b_idx] - t_re;
+                    data[a_idx + 1] = data[b_idx + 1] - t_im;
+                    data[b_idx] += t_re;
+                    data[b_idx + 1] += t_im;
+                }
+                angle += angle_step;
+            }
+            len *= 2;
+        }
+    }
+
+    // Helper: read i32 buffer back to CPU
+    async fn read_i32_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<i32>> {
+        let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("staging_i32"),
+            size: (count * 4) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("readback_i32"),
+            });
+        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 4) as u64);
+        self.queue.submit(Some(encoder.finish()));
+
+        let slice = staging.slice(..);
+        let (tx, rx) = futures::channel::oneshot::channel();
+        slice.map_async(wgpu::MapMode::Read, move |result| {
+            let _ = tx.send(result);
+        });
+        self.device.poll(wgpu::Maintain::Wait);
+
+        rx.await
+            .map_err(|_| BarracudaError::device("Buffer map cancelled"))?
+            .map_err(|e| BarracudaError::device(format!("Buffer map failed: {:?}", e)))?;
+
+        let data = slice.get_mapped_range();
+        let result: Vec<i32> = data
+            .chunks_exact(4)
+            .map(|chunk| i32::from_le_bytes(chunk.try_into().unwrap()))
+            .collect();
+
+        drop(data);
+        staging.unmap();
+
+        Ok(result)
+    }
+
     // Helper: create f64 buffer with data
     fn create_f64_buffer(&self, label: &str, data: &[f64]) -> wgpu::Buffer {
         let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();

@@ -333,6 +333,8 @@ The toadstool team has absorbed the hotSpring MD lessons:
   - 5 WGSL kernels: bspline, charge_spread, greens_apply, force_interp, erfc_forces
   - Uses math_f64.wgsl for transcendental functions on any hardware
   - PppmGpu orchestrator with precompiled pipelines
+  - `compute()`: Short-range erfc forces + self-energy on GPU
+  - `compute_with_kspace()`: Full PPPM including k-space forces (GPU particle ops + CPU FFT)
 - MSU HPC benchmark (future)
 
 ---

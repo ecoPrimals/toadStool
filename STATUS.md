@@ -61,6 +61,8 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 #### PPPM/Ewald (Complete — CPU + GPU Universal)
 - `Pppm` — CPU reference implementation
 - `PppmGpu` — **Universal GPU implementation** via WGSL shaders:
+  - `compute()` — Short-range erfc forces + self-energy (pure GPU)
+  - `compute_with_kspace()` — Full PPPM: k-space + short-range forces (GPU particles, CPU FFT)
   - `bspline.wgsl` — B-spline M_p(x) evaluation
   - `charge_spread.wgsl` — Particle → mesh spreading
   - `greens_apply.wgsl` — K-space G(k) multiplication
@@ -74,7 +76,7 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 - `compute_short_range()` — erfc-damped real-space Coulomb
 - `self_energy_correction()` / `dipole_correction()` — Energy corrections
 - CPU FFT reference implementation (GPU integration ready)
-- **37 electrostatics tests passing**
+- **38 electrostatics tests passing**
 
 **Reference**: `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
 
