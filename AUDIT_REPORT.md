@@ -100,7 +100,7 @@ Status: ✅ AUDITED
 
 ### 3.1 TODO/FIXME Count by Crate
 ```
-barracuda: 12
+barracuda: 1 (cyclic_reduction_wgsl.rs - batched 2D kernel)
 wasm/tests: 16 (test-only, OK)
 neuromorphic: 6
 server: 2
@@ -115,6 +115,14 @@ distributed: 3
 
 // precision.rs - Modular preamble ✅ IMPLEMENTED
 // math_f64_subset() extracts only needed functions with deps
+
+// MD pipeline ✅ COMPLETE (Feb 14, 2026)
+// - f64 Yukawa force with PBC + PE
+// - Cell-list neighbor search (27-neighbor)
+// - Split Velocity-Verlet (kick-drift-kick)
+// - Berendsen + Nosé-Hoover thermostats
+// - GPU observables (KE, RDF histogram)
+// - CPU observables (VACF, SSF, RDF)
 ```
 
 ---
