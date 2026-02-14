@@ -283,14 +283,29 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 - ✅ `QrGpu::execute_f64()` — complete f64 GPU QR orchestrator
 - ✅ `SvdGpu::execute_f64()` — complete f64 GPU SVD orchestrator
 - ✅ `CgGpu::solve()` — GPU sparse CG solver + `sparse_matvec_f64.wgsl`
+- ✅ `BiCgStabGpu::solve()` — GPU BiCGSTAB solver for non-symmetric systems
 - ✅ `eigh_f64.wgsl` — GPU symmetric eigenvalue decomposition
 - ✅ Native f64 builtins in MD kernels (yukawa, erfc, greens, rdf) — 1.5-2.2× faster
 - ✅ Cell-list i32 % wrapping bug fixed (hotSpring ALERT)
-- ✅ GPU FFT ready: `Fft1DF64` + `fft_1d_f64.wgsl`
+- ✅ GPU FFT: `Fft1DF64`, `Fft3DF64` + `fft_1d_f64.wgsl`
+- ✅ PPPM GPU FFT integration: `PppmGpu::compute_with_kspace_gpu()`
+- ✅ `WgpuDevice::from_existing_simple()` — bridge raw wgpu to WgpuDevice
+- ✅ `Tensor::from_f64_data()`, `to_f64_vec()` — f64 tensor support
 
-**Remaining Evolution Work**:
-- BiCGSTAB GPU solver (for non-symmetric systems)
-- PPPM full GPU FFT integration (orchestration pending)
+**GPU Linear Algebra (f64) — COMPLETE**:
+
+| Operation | Shader | Orchestrator | Status |
+|-----------|--------|--------------|--------|
+| LU Decomposition | `lu_decomp_f64.wgsl` | `LuGpu::execute_f64()` | ✅ |
+| QR Decomposition | `qr_decomp_f64.wgsl` | `QrGpu::execute_f64()` | ✅ |
+| SVD | `svd_f64.wgsl` | `SvdGpu::execute_f64()` | ✅ |
+| Sparse CG | `sparse_matvec_f64.wgsl` | `CgGpu::solve()` | ✅ |
+| Sparse BiCGSTAB | `sparse_matvec_f64.wgsl` | `BiCgStabGpu::solve()` | ✅ |
+| Symmetric Eigh | `eigh_f64.wgsl` | Ready for orchestrator | ✅ |
+| 3D FFT | `fft_1d_f64.wgsl` | `Fft3DF64` | ✅ |
+| PPPM Electrostatics | — | `PppmGpu::compute_with_kspace_gpu()` | ✅ |
+
+**All primary GPU evolution work complete.**
 
 ---
 

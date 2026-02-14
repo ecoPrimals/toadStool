@@ -192,16 +192,21 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
 7. **SVD f64** — `svd_f64.wgsl` + `SvdGpu::execute_f64()` ✅
 8. **Native f64 builtins** — MD kernels use native sqrt/exp for 1.5-2.2× speedup
 9. **Sparse CG f64** — `sparse_matvec_f64.wgsl` + `CgGpu::solve()` ✅
-10. **Eigenvalue f64** — `eigh_f64.wgsl` (Jacobi algorithm) ✅
-11. **GPU FFT f64** — `fft_1d_f64.wgsl` + `Fft1DF64` (Cooley-Tukey) ✅
+10. **Sparse BiCGSTAB f64** — `BiCgStabGpu::solve()` for non-symmetric systems ✅
+11. **Eigenvalue f64** — `eigh_f64.wgsl` (Jacobi algorithm) ✅
+12. **GPU FFT f64** — `fft_1d_f64.wgsl` + `Fft1DF64` (Cooley-Tukey) ✅
+13. **GPU 3D FFT f64** — `Fft3DF64` (row-column decomposition) ✅
+14. **PPPM GPU FFT** — `PppmGpu::compute_with_kspace_gpu()` ✅
+15. **WgpuDevice bridge** — `from_existing_simple()` for raw wgpu integration ✅
+16. **Tensor f64 support** — `from_f64_data()`, `to_f64_vec()` ✅
 
-### Remaining
+### Remaining (Low Priority)
 
 1. **Modular preamble** — Only include needed functions
 2. **Prefix-sum for f64** — Parallel scan for integration
 3. **GPU-resident optimizer** — Keep Nelder-Mead on GPU
-4. **BiCGSTAB GPU** — Non-symmetric sparse solver
-5. **PPPM FFT integration** — Wire GPU FFT into `compute_with_kspace()`
+
+**All primary GPU f64 evolution work complete.**
 
 ---
 

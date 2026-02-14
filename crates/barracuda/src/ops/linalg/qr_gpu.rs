@@ -775,21 +775,20 @@ impl QrGpu {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::Device;
 
     fn approx_eq(a: f32, b: f32, tol: f32) -> bool {
         (a - b).abs() < tol
     }
 
-    #[test]
-    fn test_qr_gpu_identity() {
-        let device = match Device::new() {
-            Ok(Device::Gpu(gpu)) => gpu,
-            _ => return, // Skip if no GPU
+    #[tokio::test]
+    async fn test_qr_gpu_identity() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return; // Skip if no GPU
         };
 
         let a = vec![1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
-        let input = Tensor::from_slice(&a, vec![3, 3], device.clone()).unwrap();
+        let input = Tensor::from_data(&a, vec![3, 3], device.clone()).unwrap();
 
         let qr_gpu = QrGpu::new(input);
         let (r_tensor, tau) = qr_gpu.execute().unwrap();
@@ -802,15 +801,15 @@ mod tests {
         assert_eq!(tau.len(), 3);
     }
 
-    #[test]
-    fn test_qr_gpu_2x2() {
-        let device = match Device::new() {
-            Ok(Device::Gpu(gpu)) => gpu,
-            _ => return,
+    #[tokio::test]
+    async fn test_qr_gpu_2x2() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return; // Skip if no GPU
         };
 
         let a = vec![3.0f32, 4.0, 0.0, 5.0]; // Column-major friendly
-        let input = Tensor::from_slice(&a, vec![2, 2], device.clone()).unwrap();
+        let input = Tensor::from_data(&a, vec![2, 2], device.clone()).unwrap();
 
         let qr_gpu = QrGpu::new(input);
         let (r_tensor, tau) = qr_gpu.execute().unwrap();

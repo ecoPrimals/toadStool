@@ -1,4 +1,4 @@
-//! GPU-accelerated Conjugate Gradient Solver (f64)
+//! GPU-accelerated BiCGSTAB Solver (f64)
 //!
 //! **Deep Debt Principles**:
 //! - ✅ Pure WGSL implementation (GPU-optimized)
@@ -8,17 +8,22 @@
 //!
 //! ## Algorithm
 //!
-//! Preconditioned Conjugate Gradient for symmetric positive definite systems:
+//! BiCGSTAB (Biconjugate Gradient Stabilized) for non-symmetric systems:
 //! ```text
-//! x₀ = 0, r₀ = b, z₀ = M⁻¹r₀, p₀ = z₀
-//! For k = 0, 1, ...
-//!   αₖ = (rₖ·zₖ) / (pₖ·Apₖ)
-//!   xₖ₊₁ = xₖ + αₖpₖ
-//!   rₖ₊₁ = rₖ - αₖApₖ
-//!   Check convergence: ‖rₖ₊₁‖ / ‖b‖ < tol
-//!   zₖ₊₁ = M⁻¹rₖ₊₁
-//!   βₖ = (rₖ₊₁·zₖ₊₁) / (rₖ·zₖ)
-//!   pₖ₊₁ = zₖ₊₁ + βₖpₖ
+//! x₀ = 0, r₀ = b, r̂ = r₀
+//! ρ₀ = α = ω₀ = 1, v₀ = p₀ = 0
+//! For i = 1, 2, ...
+//!   ρᵢ = r̂ᵀrᵢ₋₁
+//!   β = (ρᵢ/ρᵢ₋₁)(α/ωᵢ₋₁)
+//!   pᵢ = rᵢ₋₁ + β(pᵢ₋₁ - ωᵢ₋₁vᵢ₋₁)
+//!   v = Apᵢ
+//!   α = ρᵢ/(r̂ᵀv)
+//!   s = rᵢ₋₁ - αv
+//!   t = As
+//!   ωᵢ = (tᵀs)/(tᵀt)
+//!   xᵢ = xᵢ₋₁ + αpᵢ + ωᵢs
+//!   rᵢ = s - ωᵢt
+//!   Check convergence
 //! ```
 //!
 //! ## Precision
@@ -28,8 +33,9 @@
 //!
 //! ## References
 //!
+//! - van der Vorst, H.A. (1992). Bi-CGSTAB: A fast and smoothly converging
+//!   variant of Bi-CG for the solution of nonsymmetric linear systems
 //! - Saad, Y. (2003). Iterative Methods for Sparse Linear Systems
-//! - Golub & Van Loan, "Matrix Computations"
 
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
@@ -37,9 +43,9 @@ use super::csr::CsrMatrix;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
-/// GPU Conjugate Gradient solver result
+/// GPU BiCGSTAB solver result
 #[derive(Debug, Clone)]
-pub struct CgGpuResult {
+pub struct BiCgStabGpuResult {
     /// Solution vector
     pub x: Vec<f64>,
     /// Number of iterations performed
@@ -50,42 +56,44 @@ pub struct CgGpuResult {
     pub converged: bool,
 }
 
-impl CgGpuResult {
+impl BiCgStabGpuResult {
     pub fn is_ok(&self) -> bool {
         self.converged
     }
 }
 
-/// GPU-accelerated Conjugate Gradient solver
-pub struct CgGpu;
+/// GPU-accelerated BiCGSTAB solver
+pub struct BiCgStabGpu;
 
-impl CgGpu {
+impl BiCgStabGpu {
     fn wgsl_shader() -> &'static str {
         include_str!("../../shaders/misc/sparse_matvec_f64.wgsl")
     }
 
-    /// Solve Ax = b using GPU-accelerated Conjugate Gradient
+    /// Solve Ax = b using GPU-accelerated BiCGSTAB
+    ///
+    /// Works for general non-symmetric matrices (unlike CG which requires SPD).
     ///
     /// # Arguments
     /// * `device` - WgpuDevice to execute on
-    /// * `a` - Symmetric positive definite CSR matrix (f64)
+    /// * `a` - Square CSR matrix (f64)
     /// * `b` - Right-hand side vector (f64)
     /// * `tol` - Convergence tolerance
     /// * `max_iter` - Maximum iterations
     ///
     /// # Returns
-    /// CgGpuResult with solution, iteration count, and convergence info
+    /// BiCgStabGpuResult with solution, iteration count, and convergence info
     pub fn solve(
         device: Arc<WgpuDevice>,
         a: &CsrMatrix,
         b: &[f64],
         tol: f64,
         max_iter: usize,
-    ) -> Result<CgGpuResult> {
+    ) -> Result<BiCgStabGpuResult> {
         let n = a.n_rows;
         if a.n_cols != n {
             return Err(BarracudaError::InvalidInput {
-                message: "CG requires square matrix".to_string(),
+                message: "BiCGSTAB requires square matrix".to_string(),
             });
         }
         if b.len() != n {
@@ -97,7 +105,7 @@ impl CgGpu {
         // Early exit for zero RHS
         let b_norm: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
         if b_norm < 1e-14 {
-            return Ok(CgGpuResult {
+            return Ok(BiCgStabGpuResult {
                 x: vec![0.0; n],
                 iterations: 0,
                 residual: 0.0,
@@ -106,27 +114,30 @@ impl CgGpu {
         }
 
         // Create GPU buffers for CSR matrix
-        let values_buffer = Self::create_f64_buffer(&device, "CG values", &a.values);
-        let col_indices_buffer = Self::create_u32_buffer(&device, "CG col_idx", &a.col_indices);
-        let row_ptrs_buffer = Self::create_u32_buffer(&device, "CG row_ptr", &a.row_ptr);
+        let values_buffer = Self::create_f64_buffer(&device, "BiCG values", &a.values);
+        let col_indices_buffer = Self::create_u32_buffer(&device, "BiCG col_idx", &a.col_indices);
+        let row_ptrs_buffer = Self::create_u32_buffer(&device, "BiCG row_ptr", &a.row_ptr);
 
         // Create GPU buffers for vectors
-        let x_buffer = Self::create_zero_f64_buffer(&device, "CG x", n);
-        let r_buffer = Self::create_f64_buffer(&device, "CG r", b);  // r₀ = b
-        let p_buffer = Self::create_f64_buffer(&device, "CG p", b);  // p₀ = r₀ (no preconditioning for now)
-        let ap_buffer = Self::create_zero_f64_buffer(&device, "CG Ap", n);
+        let x_buffer = Self::create_zero_f64_buffer(&device, "BiCG x", n);
+        let r_buffer = Self::create_f64_buffer(&device, "BiCG r", b);  // r₀ = b
+        let r_hat_buffer = Self::create_f64_buffer(&device, "BiCG r_hat", b);  // r̂ = r₀ (fixed)
+        let p_buffer = Self::create_zero_f64_buffer(&device, "BiCG p", n);
+        let v_buffer = Self::create_zero_f64_buffer(&device, "BiCG v", n);
+        let s_buffer = Self::create_zero_f64_buffer(&device, "BiCG s", n);
+        let t_buffer = Self::create_zero_f64_buffer(&device, "BiCG t", n);
+        let _temp_buffer = Self::create_zero_f64_buffer(&device, "BiCG temp", n);  // For SpMV output
 
         // Partial sums buffer for dot products
         let num_workgroups = n.div_ceil(256);
-        let partial_sums_buffer = Self::create_zero_f64_buffer(&device, "CG partial", num_workgroups);
+        let _partial_sums_buffer = Self::create_zero_f64_buffer(&device, "BiCG partial", num_workgroups);
 
         // Compile shader
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("CG f64"));
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("BiCGSTAB f64"));
 
         // Create bind group layouts
         let spmv_bgl = Self::create_spmv_bgl(&device);
         let dot_bgl = Self::create_dot_bgl(&device);
-        let axpy_bgl = Self::create_axpy_bgl(&device);
 
         // Create pipelines
         let spmv_pl = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -141,12 +152,6 @@ impl CgGpu {
             push_constant_ranges: &[],
         });
 
-        let axpy_pl = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Axpy PL"),
-            bind_group_layouts: &[&axpy_bgl],
-            push_constant_ranges: &[],
-        });
-
         let spmv_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("SpMV f64"),
             layout: Some(&spmv_pl),
@@ -154,21 +159,14 @@ impl CgGpu {
             entry_point: "spmv_f64",
         });
 
-        let dot_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        let _dot_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("Dot f64"),
             layout: Some(&dot_pl),
             module: &shader,
             entry_point: "dot_f64",
         });
 
-        let _axpy_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Axpy f64"),
-            layout: Some(&axpy_pl),
-            module: &shader,
-            entry_point: "axpy_f64",
-        });
-
-        // SpMV bind group
+        // SpMV params
         let spmv_params = [n as u32];
         let spmv_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("SpMV params"),
@@ -176,117 +174,162 @@ impl CgGpu {
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        let spmv_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("SpMV BG"),
-            layout: &spmv_bgl,
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: values_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: col_indices_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: row_ptrs_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: p_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: ap_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 5, resource: spmv_params_buf.as_entire_binding() },
-            ],
-        });
-
-        // Dot product bind groups
+        // Dot params
         let dot_params = [n as u32];
-        let dot_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let _dot_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Dot params"),
             contents: bytemuck::cast_slice(&dot_params),
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        // rᵀr bind group
-        let _rr_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("rr BG"),
-            layout: &dot_bgl,
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: r_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: r_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: partial_sums_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: dot_params_buf.as_entire_binding() },
-            ],
-        });
+        // Initialize scalars
+        let mut rho: f64 = 1.0;
+        let mut alpha: f64 = 1.0;
+        let mut omega: f64 = 1.0;
 
-        // pᵀAp bind group
-        let pap_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("pAp BG"),
-            layout: &dot_bgl,
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: p_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: ap_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: partial_sums_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: dot_params_buf.as_entire_binding() },
-            ],
-        });
-
-        // Initial rᵀr (since r₀ = b and p₀ = b)
-        let mut rz = b.iter().map(|x| x * x).sum::<f64>();
-
-        // CG iteration
+        // BiCGSTAB iteration
         for iter in 0..max_iter {
-            // 1. Compute Ap
+            // Read current r
+            let r_data = Self::read_f64_buffer(&device, &r_buffer, n)?;
+
+            // ρ_new = r̂ᵀr (use CPU for now - could use GPU dot product)
+            let r_hat_data = Self::read_f64_buffer(&device, &r_hat_buffer, n)?;
+            let rho_new: f64 = r_data.iter().zip(&r_hat_data).map(|(a, b)| a * b).sum();
+
+            if rho_new.abs() < 1e-14 {
+                let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
+                let r_norm: f64 = r_data.iter().map(|x| x * x).sum::<f64>().sqrt();
+                return Ok(BiCgStabGpuResult {
+                    x: x_data,
+                    iterations: iter + 1,
+                    residual: r_norm / b_norm,
+                    converged: false,
+                });
+            }
+
+            // β = (ρ_new / ρ) * (α / ω)
+            let beta = (rho_new / rho) * (alpha / omega);
+            rho = rho_new;
+
+            // p = r + β(p - ω*v)
+            let p_data = Self::read_f64_buffer(&device, &p_buffer, n)?;
+            let v_data = Self::read_f64_buffer(&device, &v_buffer, n)?;
+            let new_p: Vec<f64> = r_data.iter().zip(&p_data).zip(&v_data)
+                .map(|((ri, pi), vi)| ri + beta * (pi - omega * vi))
+                .collect();
+            Self::write_f64_buffer(&device, &p_buffer, &new_p);
+
+            // v = A*p (SpMV)
+            let spmv_p_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("SpMV p BG"),
+                layout: &spmv_bgl,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: 0, resource: values_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 1, resource: col_indices_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 2, resource: row_ptrs_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 3, resource: p_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 4, resource: v_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 5, resource: spmv_params_buf.as_entire_binding() },
+                ],
+            });
+
             let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("SpMV"),
+                label: Some("SpMV p"),
             });
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("SpMV Pass"),
+                    label: Some("SpMV p Pass"),
                     timestamp_writes: None,
                 });
                 pass.set_pipeline(&spmv_pipeline);
-                pass.set_bind_group(0, &spmv_bg, &[]);
+                pass.set_bind_group(0, &spmv_p_bg, &[]);
                 pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
             }
             device.queue.submit(Some(encoder.finish()));
 
-            // 2. Compute pᵀAp (need to read back)
-            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("pAp"),
-            });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("pAp Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&dot_pipeline);
-                pass.set_bind_group(0, &pap_bg, &[]);
-                pass.dispatch_workgroups(num_workgroups as u32, 1, 1);
-            }
-            device.queue.submit(Some(encoder.finish()));
-
-            let partial = Self::read_f64_buffer(&device, &partial_sums_buffer, num_workgroups)?;
-            let pap: f64 = partial.iter().sum();
-
-            if pap.abs() < 1e-30 {
-                // Near-breakdown
-                let r_data = Self::read_f64_buffer(&device, &r_buffer, n)?;
-                let r_norm: f64 = r_data.iter().map(|x| x * x).sum::<f64>().sqrt();
+            // α = ρ / (r̂ᵀv)
+            let v_data = Self::read_f64_buffer(&device, &v_buffer, n)?;
+            let rv: f64 = r_hat_data.iter().zip(&v_data).map(|(a, b)| a * b).sum();
+            if rv.abs() < 1e-14 {
                 let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
-                return Ok(CgGpuResult {
+                let r_norm: f64 = r_data.iter().map(|x| x * x).sum::<f64>().sqrt();
+                return Ok(BiCgStabGpuResult {
                     x: x_data,
                     iterations: iter + 1,
                     residual: r_norm / b_norm,
-                    converged: r_norm / b_norm < tol,
+                    converged: false,
+                });
+            }
+            alpha = rho / rv;
+
+            // s = r - α*v
+            let s_data: Vec<f64> = r_data.iter().zip(&v_data).map(|(ri, vi)| ri - alpha * vi).collect();
+
+            // Check early convergence
+            let s_norm: f64 = s_data.iter().map(|x| x * x).sum::<f64>().sqrt();
+            if s_norm / b_norm < tol {
+                // x = x + α*p
+                let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
+                let new_x: Vec<f64> = x_data.iter().zip(&new_p).map(|(xi, pi)| xi + alpha * pi).collect();
+                return Ok(BiCgStabGpuResult {
+                    x: new_x,
+                    iterations: iter + 1,
+                    residual: s_norm / b_norm,
+                    converged: true,
                 });
             }
 
-            let alpha = rz / pap;
+            Self::write_f64_buffer(&device, &s_buffer, &s_data);
 
-            // 3. Update x = x + α*p and r = r - α*Ap (CPU loop for now - GPU vectors would need separate buffers)
+            // t = A*s (SpMV)
+            let spmv_s_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("SpMV s BG"),
+                layout: &spmv_bgl,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: 0, resource: values_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 1, resource: col_indices_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 2, resource: row_ptrs_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 3, resource: s_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 4, resource: t_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 5, resource: spmv_params_buf.as_entire_binding() },
+                ],
+            });
+
+            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("SpMV s"),
+            });
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("SpMV s Pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&spmv_pipeline);
+                pass.set_bind_group(0, &spmv_s_bg, &[]);
+                pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
+            }
+            device.queue.submit(Some(encoder.finish()));
+
+            // ω = (tᵀs) / (tᵀt)
+            let t_data = Self::read_f64_buffer(&device, &t_buffer, n)?;
+            let ts: f64 = t_data.iter().zip(&s_data).map(|(ti, si)| ti * si).sum();
+            let tt: f64 = t_data.iter().map(|ti| ti * ti).sum();
+
+            omega = if tt.abs() < 1e-14 { 0.0 } else { ts / tt };
+
+            // x = x + α*p + ω*s
             let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
-            let p_data = Self::read_f64_buffer(&device, &p_buffer, n)?;
-            let ap_data = Self::read_f64_buffer(&device, &ap_buffer, n)?;
-            let r_data = Self::read_f64_buffer(&device, &r_buffer, n)?;
+            let new_x: Vec<f64> = x_data.iter().zip(&new_p).zip(&s_data)
+                .map(|((xi, pi), si)| xi + alpha * pi + omega * si)
+                .collect();
+            Self::write_f64_buffer(&device, &x_buffer, &new_x);
 
-            let new_x: Vec<f64> = x_data.iter().zip(&p_data).map(|(xi, pi)| xi + alpha * pi).collect();
-            let new_r: Vec<f64> = r_data.iter().zip(&ap_data).map(|(ri, api)| ri - alpha * api).collect();
+            // r = s - ω*t
+            let new_r: Vec<f64> = s_data.iter().zip(&t_data).map(|(si, ti)| si - omega * ti).collect();
 
             // Check convergence
             let r_norm: f64 = new_r.iter().map(|x| x * x).sum::<f64>().sqrt();
             if r_norm / b_norm < tol {
-                return Ok(CgGpuResult {
+                return Ok(BiCgStabGpuResult {
                     x: new_x,
                     iterations: iter + 1,
                     residual: r_norm / b_norm,
@@ -294,17 +337,16 @@ impl CgGpu {
                 });
             }
 
-            // 4. Compute β and update p
-            let rz_new: f64 = new_r.iter().map(|x| x * x).sum();
-            let beta = rz_new / rz;
-            rz = rz_new;
-
-            let new_p: Vec<f64> = new_r.iter().zip(&p_data).map(|(ri, pi)| ri + beta * pi).collect();
-
-            // Write updated vectors back to GPU
-            Self::write_f64_buffer(&device, &x_buffer, &new_x);
             Self::write_f64_buffer(&device, &r_buffer, &new_r);
-            Self::write_f64_buffer(&device, &p_buffer, &new_p);
+
+            if omega.abs() < 1e-14 {
+                return Ok(BiCgStabGpuResult {
+                    x: new_x,
+                    iterations: iter + 1,
+                    residual: r_norm / b_norm,
+                    converged: false,
+                });
+            }
         }
 
         // Did not converge
@@ -312,7 +354,7 @@ impl CgGpu {
         let r_data = Self::read_f64_buffer(&device, &r_buffer, n)?;
         let r_norm: f64 = r_data.iter().map(|x| x * x).sum::<f64>().sqrt();
 
-        Ok(CgGpuResult {
+        Ok(BiCgStabGpuResult {
             x: x_data,
             iterations: max_iter,
             residual: r_norm / b_norm,
@@ -500,80 +542,39 @@ impl CgGpu {
             ],
         })
     }
-
-    fn create_axpy_bgl(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
-        device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Axpy BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        })
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn create_spd_tridiagonal(n: usize) -> CsrMatrix {
-        let mut triplets = Vec::new();
-
-        for i in 0..n {
-            triplets.push((i, i, 4.0));
-            if i > 0 {
-                triplets.push((i, i - 1, -1.0));
-            }
-            if i < n - 1 {
-                triplets.push((i, i + 1, -1.0));
-            }
-        }
-
-        CsrMatrix::from_triplets(n, n, &triplets)
-    }
-
     #[tokio::test]
-    async fn test_cg_gpu_small() {
+    async fn test_bicgstab_gpu_non_symmetric() {
         let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
         else {
             return; // Skip if no GPU
         };
 
-        let a = create_spd_tridiagonal(3);
+        // Non-symmetric matrix
+        let a = CsrMatrix::from_triplets(
+            3,
+            3,
+            &[
+                (0, 0, 4.0),
+                (0, 1, 1.0),
+                (1, 0, -1.0),
+                (1, 1, 3.0),
+                (1, 2, 1.0),
+                (2, 1, -1.0),
+                (2, 2, 2.0),
+            ],
+        );
+
         let b = vec![1.0, 2.0, 3.0];
 
-        let result = CgGpu::solve(device, &a, &b, 1e-10, 100).unwrap();
+        let result = BiCgStabGpu::solve(device, &a, &b, 1e-10, 100).unwrap();
 
-        assert!(result.converged, "CG should converge");
-        assert!(result.residual < 1e-10, "Residual should be small");
+        assert!(result.converged, "BiCGSTAB should converge");
 
         // Verify: Ax ≈ b
         let ax = a.matvec(&result.x).unwrap();

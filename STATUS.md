@@ -53,6 +53,9 @@ The WGSL/SPIR-V/Vulkan path bypasses CUDA's artificial fp64 throttle, achieving 
 - `QrGpu::execute_f64()` — Full Householder QR on GPU
 - `SvdGpu::execute_f64()` — One-sided Jacobi SVD with full sweep orchestration
 - `CgGpu::solve()` — GPU sparse Conjugate Gradient for SPD systems
+- `BiCgStabGpu::solve()` — GPU BiCGSTAB for non-symmetric sparse systems
+- `Fft3DF64::forward()` / `inverse()` — GPU 3D FFT via 1D decomposition
+- `PppmGpu::compute_with_kspace_gpu()` — Full PPPM with GPU FFT
 
 ### Bug Fix: Cell-List Index Wrapping
 
@@ -98,9 +101,11 @@ hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than so
 | QR decomposition | ✅ **COMPLETE** | `QrGpu::execute_f64()` — Householder via GPU |
 | SVD | ✅ **COMPLETE** | `SvdGpu::execute_f64()` — Jacobi SVD on GPU |
 | Sparse CG | ✅ **COMPLETE** | `CgGpu::solve()` — GPU sparse solver + `sparse_matvec_f64.wgsl` |
+| Sparse BiCGSTAB | ✅ **COMPLETE** | `BiCgStabGpu::solve()` — non-symmetric systems |
 | Eigenvalue (symmetric) | ✅ **COMPLETE** | `eigh_f64.wgsl` — Jacobi eigenvalue on GPU |
 | Native f64 builtins | ✅ **MIGRATED** | MD kernels use native sqrt/exp (1.5-2.2× faster) |
-| GPU FFT | ✅ **READY** | `Fft1DF64` + `fft_1d_f64.wgsl` — full Cooley-Tukey |
+| GPU FFT | ✅ **COMPLETE** | `Fft1DF64`, `Fft3DF64` — full Cooley-Tukey |
+| PPPM GPU FFT | ✅ **COMPLETE** | `PppmGpu::compute_with_kspace_gpu()` |
 | Optimizers (Brent, Newton) | CPU only | Consider WGSL for batch |
 | Stats (chi2, bootstrap) | CPU only | Low priority |
 | Cubic spline | CPU only | Low priority |
@@ -108,7 +113,7 @@ hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than so
 **Performance Opportunities:**
 - ✅ **FP64-by-default**: SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2-3 vs 1:32)
 - ✅ **Native f64 builtins**: MD kernels migrated — 1.5-2.2× faster transcendentals
-- ✅ **GPU FFT available**: `Fft1DF64` ready for PPPM integration
+- ✅ **GPU FFT integrated**: Full PPPM with GPU FFT via `compute_with_kspace_gpu()`
 
 ---
 

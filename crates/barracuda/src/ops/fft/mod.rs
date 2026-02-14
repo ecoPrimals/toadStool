@@ -66,6 +66,7 @@ pub mod fft_1d;
 pub mod fft_1d_f64;
 pub mod fft_2d;
 pub mod fft_3d;
+pub mod fft_3d_f64;
 pub mod ifft_1d;
 pub mod rfft;
 
@@ -76,5 +77,6 @@ pub use fft_1d::Fft1D;
 pub use fft_1d_f64::Fft1DF64;
 pub use fft_2d::Fft2D;
 pub use fft_3d::Fft3D;
+pub use fft_3d_f64::Fft3DF64;
 pub use ifft_1d::Ifft1D;
 pub use rfft::Rfft;

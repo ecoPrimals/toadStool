@@ -288,6 +288,59 @@ impl WgpuDevice {
         })
     }
 
+    /// Create WgpuDevice from existing wgpu device and queue
+    ///
+    /// This allows integration with code that already has wgpu::Device/Queue,
+    /// such as PppmGpu or external libraries.
+    ///
+    /// # Arguments
+    /// * `device` - Existing wgpu device
+    /// * `queue` - Existing wgpu queue
+    /// * `adapter_info` - Adapter info (for device metadata)
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // If you have existing wgpu resources
+    /// let wgpu_dev = WgpuDevice::from_existing(device, queue, info);
+    /// // Now can use with Tensor, FFT, etc.
+    /// ```
+    pub fn from_existing(
+        device: Arc<wgpu::Device>,
+        queue: Arc<wgpu::Queue>,
+        adapter_info: wgpu::AdapterInfo,
+    ) -> Self {
+        Self {
+            device,
+            queue,
+            adapter_info,
+            calibration: None,
+        }
+    }
+
+    /// Create WgpuDevice from existing device/queue with synthetic adapter info
+    ///
+    /// Use when you don't have the original adapter info. Creates synthetic
+    /// metadata that marks this as an "external" device.
+    pub fn from_existing_simple(
+        device: Arc<wgpu::Device>,
+        queue: Arc<wgpu::Queue>,
+    ) -> Self {
+        Self {
+            device,
+            queue,
+            adapter_info: wgpu::AdapterInfo {
+                name: "External Device".to_string(),
+                vendor: 0,
+                device: 0,
+                device_type: wgpu::DeviceType::Other,
+                driver: "external".to_string(),
+                driver_info: "wrapped from existing wgpu resources".to_string(),
+                backend: wgpu::Backend::Vulkan, // Reasonable default
+            },
+            calibration: None,
+        }
+    }
+
     /// Get device name (e.g., "NVIDIA RTX 4090", "llvmpipe (CPU)")
     pub fn name(&self) -> &str {
         &self.adapter_info.name
@@ -542,6 +595,56 @@ impl WgpuDevice {
         self.queue
             .write_buffer(buffer, 0, bytemuck::cast_slice(data));
         Ok(())
+    }
+
+    /// Read f64 buffer to host memory
+    ///
+    /// Used for high-precision operations (PPPM, FFT f64, sparse solvers)
+    pub fn read_buffer_f64(&self, buffer: &wgpu::Buffer, size: usize) -> Result<Vec<f64>> {
+        if size == 0 {
+            return Ok(Vec::new());
+        }
+        // Create staging buffer
+        let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Staging Buffer f64"),
+            size: (size * std::mem::size_of::<f64>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        // Copy GPU -> staging
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(
+            buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<f64>()) as u64,
+        );
+        self.queue.submit(Some(encoder.finish()));
+
+        // Map and read
+        let buffer_slice = staging_buffer.slice(..);
+        let (sender, receiver) = futures::channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).ok();
+        });
+
+        self.device.poll(wgpu::Maintain::Wait);
+
+        // Wait for mapping
+        futures::executor::block_on(receiver)
+            .map_err(|_| BarracudaError::gpu("Failed to map buffer"))?
+            .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
+
+        // Copy data
+        let data = buffer_slice.get_mapped_range();
+        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
+
+        drop(data);
+        staging_buffer.unmap();
+
+        Ok(result)
     }
 
     /// Read u32 buffer to host memory

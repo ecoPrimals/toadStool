@@ -811,17 +811,16 @@ impl SvdGpu {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::Device;
 
-    #[test]
-    fn test_svd_gpu_identity() {
-        let device = match Device::new() {
-            Ok(Device::Gpu(gpu)) => gpu,
-            _ => return, // Skip if no GPU
+    #[tokio::test]
+    async fn test_svd_gpu_identity() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return; // Skip if no GPU
         };
 
         let a = vec![1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
-        let input = Tensor::from_slice(&a, vec![3, 3], device.clone()).unwrap();
+        let input = Tensor::from_data(&a, vec![3, 3], device.clone()).unwrap();
 
         let svd_gpu = SvdGpu::new(input);
         let (sigma, v_tensor) = svd_gpu.execute().unwrap();
@@ -836,16 +835,16 @@ mod tests {
         assert_eq!(v_data.len(), 9);
     }
 
-    #[test]
-    fn test_svd_gpu_diagonal() {
-        let device = match Device::new() {
-            Ok(Device::Gpu(gpu)) => gpu,
-            _ => return,
+    #[tokio::test]
+    async fn test_svd_gpu_diagonal() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return; // Skip if no GPU
         };
 
         // Diagonal matrix with known singular values
         let a = vec![3.0f32, 0.0, 0.0, 4.0];
-        let input = Tensor::from_slice(&a, vec![2, 2], device.clone()).unwrap();
+        let input = Tensor::from_data(&a, vec![2, 2], device.clone()).unwrap();
 
         let svd_gpu = SvdGpu::new(input);
         let (sigma, _v) = svd_gpu.execute().unwrap();

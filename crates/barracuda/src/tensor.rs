@@ -408,6 +408,21 @@ impl Tensor {
         self.device.read_buffer_u32(self.buffer(), self.len())
     }
 
+    /// Read tensor data as f64 (for high-precision operations)
+    ///
+    /// Used by FFT f64, sparse solvers, and PPPM integration.
+    /// Note: Buffer size is interpreted as f64 element count (8 bytes each).
+    pub fn to_f64_vec(&self) -> Result<Vec<f64>> {
+        self.device.read_buffer_f64(self.buffer(), self.len())
+    }
+
+    /// Create tensor from f64 data
+    ///
+    /// Used for high-precision operations (PPPM, FFT f64, sparse solvers).
+    pub fn from_f64_data(data: &[f64], shape: Vec<usize>, device: Arc<WgpuDevice>) -> Result<Self> {
+        Self::from_data_pod(data, shape, device)
+    }
+
     /// Transfer tensor to another device
     pub async fn to_device(&self, target_device: Arc<WgpuDevice>) -> Result<Self> {
         let data = self.to_vec()?;

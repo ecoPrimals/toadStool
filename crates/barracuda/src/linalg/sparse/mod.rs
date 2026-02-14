@@ -27,7 +27,8 @@
 //! - **Jacobi** (`jacobi_solve`): Simple iterative method
 //!
 //! ## GPU Solvers (f64)
-//! - **CgGpu** (`CgGpu::solve`): GPU-accelerated Conjugate Gradient
+//! - **CgGpu** (`CgGpu::solve`): GPU-accelerated Conjugate Gradient (SPD)
+//! - **BiCgStabGpu** (`BiCgStabGpu::solve`): GPU-accelerated BiCGSTAB (non-symmetric)
 //!
 //! # Example
 //!
@@ -51,10 +52,12 @@
 //! - hotSpring Phase 5 Handoff: Large HFB basis sets requirement
 //! - Saad, Y. (2003). Iterative Methods for Sparse Linear Systems
 
+pub mod bicgstab_gpu;
 pub mod cg_gpu;
 pub mod csr;
 pub mod solvers;
 
+pub use bicgstab_gpu::{BiCgStabGpu, BiCgStabGpuResult};
 pub use cg_gpu::{CgGpu, CgGpuResult};
 pub use csr::{CooMatrix, CsrMatrix};
 pub use solvers::{bicgstab_solve, cg_solve, jacobi_solve, SolverConfig, SolverResult};
