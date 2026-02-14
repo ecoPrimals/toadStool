@@ -106,6 +106,8 @@ hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than so
 | Native f64 builtins | ✅ **MIGRATED** | MD kernels use native sqrt/exp (1.5-2.2× faster) |
 | GPU FFT | ✅ **COMPLETE** | `Fft1DF64`, `Fft3DF64` — full Cooley-Tukey |
 | PPPM GPU FFT | ✅ **COMPLETE** | `PppmGpu::compute_with_kspace_gpu()` |
+| Prefix Sum | ✅ **COMPLETE** | `CumsumF64` — GPU f64 cumulative sum |
+| Modular Preamble | ✅ **COMPLETE** | `with_math_f64_auto()` — 40-60% smaller shaders |
 | Optimizers (Brent, Newton) | CPU only | Consider WGSL for batch |
 | Stats (chi2, bootstrap) | CPU only | Low priority |
 | Cubic spline | CPU only | Low priority |
@@ -114,6 +116,7 @@ hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than so
 - ✅ **FP64-by-default**: SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2-3 vs 1:32)
 - ✅ **Native f64 builtins**: MD kernels migrated — 1.5-2.2× faster transcendentals
 - ✅ **GPU FFT integrated**: Full PPPM with GPU FFT via `compute_with_kspace_gpu()`
+- ✅ **Modular preamble**: Auto-detect needed math_f64 functions — faster shader compilation
 
 ---
 

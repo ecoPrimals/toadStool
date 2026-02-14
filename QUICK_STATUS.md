@@ -37,7 +37,7 @@ ToadStool (Hardware Infrastructure Primal)
 BarraCUDA (Universal Compute Engine — SHADER-FIRST F64)
   **FP64-by-default**: Both CPU and GPU use f64
   SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2-3 vs 1:32)
-  396+ WGSL shaders, proven cross-vendor
+  470+ WGSL shaders, proven cross-vendor
   **Shader-first architecture**: ALL math is WGSL primary
   Bit-identical results: RTX 4070 = RTX 3090 = RX 6950 XT
   39.85 tok/s distributed LLM inference
@@ -269,7 +269,7 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 
 **Tests**: 350+ passing (156 Phase 3 + 62 Phase 5 + 25 cross-platform + MD)
 **Quality**: Zero unsafe in compute ops, clippy clean, pure Rust
-**Architecture**: Shader-first — 464 WGSL shaders, universal hardware
+**Architecture**: Shader-first — 470+ WGSL shaders, universal hardware
 **Audit**: All hotSpring Tiers 1-3 complete (Feb 13), MD pipeline complete (Feb 14)
 **Evolution**: once_cell/lazy_static → std::sync::LazyLock (pure std)
 **MD Pipeline**: Full thermostat suite + MSD + Cell-list + **PPPM universal** (CPU + GPU w/kspace) — 38 tests
@@ -291,6 +291,8 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 - ✅ PPPM GPU FFT integration: `PppmGpu::compute_with_kspace_gpu()`
 - ✅ `WgpuDevice::from_existing_simple()` — bridge raw wgpu to WgpuDevice
 - ✅ `Tensor::from_f64_data()`, `to_f64_vec()` — f64 tensor support
+- ✅ `ShaderTemplate::with_math_f64_auto()` — auto-detecting modular preamble (40-60% smaller shaders)
+- ✅ `CumsumF64` — GPU-accelerated f64 prefix sum / cumulative sum
 
 **GPU Linear Algebra (f64) — COMPLETE**:
 
@@ -304,6 +306,7 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 | Symmetric Eigh | `eigh_f64.wgsl` | Ready for orchestrator | ✅ |
 | 3D FFT | `fft_1d_f64.wgsl` | `Fft3DF64` | ✅ |
 | PPPM Electrostatics | — | `PppmGpu::compute_with_kspace_gpu()` | ✅ |
+| Prefix Sum | `cumsum_f64.wgsl` | `CumsumF64` | ✅ |
 
 **All primary GPU evolution work complete.**
 
