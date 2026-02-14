@@ -2,10 +2,13 @@
 //
 // **Physics**: Applies Green's function in k-space: φ(k) = G(k) * ρ(k)
 // **Formula**: G(k) = 4π/k² × exp(-k²/(4α²)) × influence(k)
-// **Precision**: Full f64 via math_f64.wgsl preamble
+// **Precision**: Full f64 using native builtins where available
 // **Use Case**: PPPM k-space step after FFT
 //
-// Requires: math_f64.wgsl preamble
+// **Performance (Feb 15 2026 hotSpring finding)**:
+// Native exp(f64): 2.2× faster than math_f64 software exp_f64
+//
+// Requires: math_f64.wgsl preamble (for complex ops if needed)
 //
 // Complex multiplication: (a + bi)(c + di) = (ac - bd) + (ad + bc)i
 //
@@ -96,8 +99,8 @@ fn apply_greens_inline(@builtin(global_invocation_id) gid: vec3<u32>) {
         // Coulomb: 4π/k²
         let coulomb = (zero + 4.0) * pi / k_sq;
         
-        // Ewald damping: exp(-k²/(4α²))
-        let ewald = exp_f64(-k_sq / ((zero + 4.0) * alpha * alpha));
+        // Ewald damping: exp(-k²/(4α²)) - native f64 builtin
+        let ewald = exp(-k_sq / ((zero + 4.0) * alpha * alpha));
         
         // Simplified G (without influence function for this kernel)
         g = coulomb * ewald;

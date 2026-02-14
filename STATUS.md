@@ -44,11 +44,17 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 - Replaced modular arithmetic with branch-based wrapping
 - Post-fix: cell-list PE matches all-pairs to machine precision (<1e-16)
 
-### Native f64 Builtins Discovery
+### Native f64 Builtins Migration ✅
 
 hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than software):
 - `sqrt(f64)`, `exp(f64)`, `log(f64)`, `abs(f64)`, `floor(f64)`, `ceil(f64)`, `round(f64)`, `inverseSqrt(f64)`
-- Updated `math_f64.wgsl` documentation with guidance
+- **Migrated MD kernels to native builtins** (Feb 15 2026):
+  - `yukawa_f64.wgsl` — sqrt, exp → native
+  - `yukawa_celllist_f64.wgsl` — sqrt, exp → native
+  - `erfc_forces.wgsl` — sqrt, exp → native (keeps erf_f64 for erfc)
+  - `greens_apply.wgsl` — exp → native
+  - `rdf_histogram.wgsl` — sqrt → native
+- Expected 1.5-2.2× improvement in per-kernel transcendental performance
 
 ### Deep Debt Evolution
 
@@ -79,8 +85,8 @@ hotSpring found native f64 builtins work via Naga/wgpu (1.5-2.2× faster than so
 | Cubic spline | CPU only | Low priority |
 
 **Performance Opportunities:**
-- Replace `math_f64.wgsl` software implementations with native builtins in MD kernels
-- GPU FFT integration for `PppmGpu::compute_with_kspace()`
+- ✅ **Native f64 builtins**: Migrated MD kernels (yukawa, erfc, greens, rdf) — 1.5-2.2× faster
+- GPU FFT integration for `PppmGpu::compute_with_kspace()` — currently CPU FFT hybrid
 
 ---
 

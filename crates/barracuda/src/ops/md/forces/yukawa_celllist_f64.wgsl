@@ -4,10 +4,14 @@
 // **Algorithm**: 27-neighbor cell iteration instead of all-pairs
 // **Use Case**: N > 5000 particles where all-pairs becomes slow
 //
-// **Precision**: Full f64 via math_f64.wgsl preamble
+// **Precision**: Full f64 using native builtins (sqrt, exp work on f64 via Naga/wgpu)
+//
+// **Performance (Feb 15 2026 hotSpring finding)**:
+// Native sqrt(f64): 1.5× faster than math_f64 software sqrt_f64
+// Native exp(f64): 2.2× faster than math_f64 software exp_f64
 //
 // Requires: Particles sorted by cell index, cell_start[] and cell_count[] uploaded
-// Requires: math_f64.wgsl preamble (round_f64, sqrt_f64, exp_f64)
+// Requires: math_f64.wgsl preamble for round_f64 (no native round on f64)
 //
 // Bindings:
 //   0: positions    [N*3]           f64, read  — sorted by cell index
@@ -120,8 +124,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
                     let r_sq = ddx * ddx + ddy * ddy + ddz * ddz;
                     if (r_sq > cutoff_sq) { continue; }
 
-                    let r = sqrt_f64(r_sq + eps);
-                    let screening = exp_f64(-kappa * r);
+                    // Native f64 builtins: 1.5-2.2× faster than math_f64 software
+                    let r = sqrt(r_sq + eps);
+                    let screening = exp(-kappa * r);
                     let force_mag = prefactor * screening * (1.0 + kappa * r) / r_sq;
                     let inv_r = 1.0 / r;
 

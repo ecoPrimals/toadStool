@@ -14,9 +14,9 @@
 // This shader implements the friction + noise step (A + O combined).
 // The random numbers are passed in from CPU (generated via rand crate).
 //
-// **Precision**: Full f64 (uses exp via math_f64.wgsl)
+// **Precision**: Full f64
 //
-// Requires: math_f64.wgsl preamble (exp_f64, sqrt_f64)
+// Note: exp/sqrt factors are pre-computed on CPU (params[4,5]) for efficiency
 //
 // Bindings:
 //   0: velocities [N*3] f64, read-write — updated in-place

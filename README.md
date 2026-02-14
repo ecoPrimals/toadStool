@@ -281,7 +281,7 @@ let shader = ShaderTemplate::with_math_f64(user_code);
 
 **Key finding:** `pow_two_thirds()` using `cbrt*cbrt` is **40x more precise** than `exp(log())` chain.
 
-**Native f64 builtins (Feb 15 discovery):** `sqrt`, `exp`, `log`, `abs`, `floor`, `ceil`, `round`, `inverseSqrt` work natively via Naga/wgpu — 1.5-2.2× faster than software.
+**Native f64 builtins (Feb 15):** `sqrt`, `exp`, `log`, `abs`, `floor`, `ceil`, `round`, `inverseSqrt` work natively via Naga/wgpu — 1.5-2.2× faster than software. **Migrated all MD kernels** (yukawa, erfc, greens, rdf) to use native builtins.
 
 ### Shader Inventory (464 WGSL)
 

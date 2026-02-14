@@ -276,9 +276,11 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 **Docs**: `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md`, `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
 
 **Remaining Evolution Work**:
-- Wire LU/QR/SVD WGSL shaders to public API
+- Wire LU/QR/SVD WGSL shaders to public API (multi-pass orchestration needed)
 - Sparse solvers: need WGSL implementation
-- Replace math_f64 software with native builtins in MD kernels
+
+**Completed (Feb 15):**
+- ✅ Native f64 builtins in MD kernels (yukawa, erfc, greens, rdf) — 1.5-2.2× faster
 
 ---
 

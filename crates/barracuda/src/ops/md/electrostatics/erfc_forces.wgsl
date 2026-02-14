@@ -2,10 +2,14 @@
 //
 // **Physics**: Real-space Ewald sum with erfc damping
 // **Formula**: F_ij = q_i*q_j * [erfc(αr)/r² + 2α/√π * exp(-α²r²)/r] * r̂
-// **Precision**: Full f64 via math_f64.wgsl preamble
+// **Precision**: Full f64 using native builtins + math_f64.wgsl for erf
 // **Use Case**: PPPM real-space short-range contribution
 //
-// Requires: math_f64.wgsl preamble (erf_f64, exp_f64, sqrt_f64)
+// **Performance (Feb 15 2026 hotSpring finding)**:
+// Native sqrt(f64): 1.5× faster than math_f64 software sqrt_f64
+// Native exp(f64): 2.2× faster than math_f64 software exp_f64
+//
+// Requires: math_f64.wgsl preamble (erf_f64 for erfc, round_f64 for PBC)
 //
 // Bindings:
 //   0: positions   [N*3] f64, read     — particle positions
@@ -55,7 +59,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let one = zero + 1.0;
     let two = zero + 2.0;
     let pi = zero + 3.14159265358979323846;
-    let sqrt_pi_inv = one / sqrt_f64(pi);  // 1/√π
+    let sqrt_pi_inv = one / sqrt(pi);  // 1/√π (native f64 builtin)
     let two_alpha_sqrt_pi = two * alpha * sqrt_pi_inv;
     
     // Particle i data
@@ -88,17 +92,18 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         
         if (r_sq > cutoff_sq) { continue; }
         
-        let r = sqrt_f64(r_sq);
+        // Native f64 builtins: 1.5-2.2× faster than math_f64 software
+        let r = sqrt(r_sq);
         let inv_r = one / r;
         let inv_r2 = inv_r * inv_r;
         
         let alpha_r = alpha * r;
         
-        // erfc(αr)/r
+        // erfc(αr)/r (erfc uses erf_f64 from math_f64.wgsl)
         let erfc_term = erfc_f64(alpha_r) * inv_r;
         
-        // exp(-α²r²)
-        let exp_term = exp_f64(-alpha_r * alpha_r);
+        // exp(-α²r²) - native f64 builtin
+        let exp_term = exp(-alpha_r * alpha_r);
         
         // Force magnitude: q_i*q_j * prefactor * [erfc(αr)/r² + 2α/√π * exp(-α²r²)/r]
         // = q_i*q_j * prefactor * inv_r * [erfc(αr)/r + 2α/√π * exp(-α²r²)]
@@ -138,7 +143,7 @@ fn self_energy(@builtin(global_invocation_id) gid: vec3<u32>) {
     
     let zero = charges[0] - charges[0];
     let pi = zero + 3.14159265358979323846;
-    let sqrt_pi_inv = (zero + 1.0) / sqrt_f64(pi);
+    let sqrt_pi_inv = (zero + 1.0) / sqrt(pi);  // native f64 builtin
     
     // Self-energy contribution for particle i
     // E_self_i = -α/√π * prefactor * q_i²

@@ -5,7 +5,11 @@
 // **Use Case**: Structure analysis, validation vs Sarkas
 //
 // **Precision**: f64 positions, u32 histogram bins
-// Requires: math_f64.wgsl preamble (round_f64, sqrt_f64)
+//
+// **Performance (Feb 15 2026 hotSpring finding)**:
+// Native sqrt(f64): 1.5× faster than math_f64 software sqrt_f64
+//
+// Requires: math_f64.wgsl preamble (round_f64 for PBC)
 //
 // Note: Uses atomicAdd for histogram — requires workgroup synchronization
 //
@@ -44,7 +48,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let dy = pbc_delta_rdf(positions[j * 3u + 1u] - yi, box_y);
         let dz = pbc_delta_rdf(positions[j * 3u + 2u] - zi, box_z);
 
-        let r = sqrt_f64(dx * dx + dy * dy + dz * dz);
+        let r = sqrt(dx * dx + dy * dy + dz * dz);  // native f64 builtin
         let bin = u32(r / dr);
 
         if (bin < n_bins) {

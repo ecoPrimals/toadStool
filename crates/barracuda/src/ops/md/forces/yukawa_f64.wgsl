@@ -2,10 +2,14 @@
 //
 // **Physics**: Screened Coulomb interactions with PBC minimum-image convention
 // **Formula**: F = prefactor * exp(-κr) * (1 + κr) / r² * r̂ (repulsive)
-// **Precision**: Full f64 via math_f64.wgsl preamble
+// **Precision**: Full f64 using native builtins (sqrt, exp work on f64 via Naga/wgpu)
 // **Use Case**: OCP plasma simulation, Sarkas validation
 //
-// Requires: math_f64.wgsl preamble (round_f64, sqrt_f64, exp_f64)
+// **Performance (Feb 15 2026 hotSpring finding)**:
+// Native sqrt(f64): 1.5× faster than math_f64 software sqrt_f64
+// Native exp(f64): 2.2× faster than math_f64 software exp_f64
+//
+// Requires: math_f64.wgsl preamble for round_f64 (no native round on f64)
 //
 // Bindings:
 //   0: positions  [N*3] f64, read     — (x,y,z) per particle
@@ -72,10 +76,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
         if (r_sq > cutoff_sq) { continue; }
 
-        let r = sqrt_f64(r_sq + eps);
+        // Native f64 builtins: 1.5-2.2× faster than math_f64 software
+        let r = sqrt(r_sq + eps);
 
         // Yukawa force: F = prefactor * exp(-kappa*r) * (1 + kappa*r) / r^2
-        let screening = exp_f64(-kappa * r);
+        let screening = exp(-kappa * r);
         let force_mag = prefactor * screening * (1.0 + kappa * r) / r_sq;
 
         // Force on particle i due to j: repulsive → push AWAY from j
