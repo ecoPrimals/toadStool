@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA Specifications
 
-## Current Status (February 13, 2026)
+## Current Status (February 14, 2026)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
@@ -12,6 +12,11 @@
 - **82-86% theoretical bandwidth** on both NVIDIA and AMD
 - Pure-GPU f64 math library with 27+ transcendental functions
 - Runtime cache discovery for intelligent workload tiling
+
+**New: hotSpring MD Integration**
+- 9/9 Yukawa OCP cases validated (0.000% energy drift)
+- 3.7× GPU speedup at N=2000 (RTX 4070)
+- See `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md` for evolution targets
 
 ---
 
@@ -45,6 +50,20 @@
 | [UNIVERSAL_UNIFIED_MEMORY.md](./UNIVERSAL_UNIFIED_MEMORY.md) | Unified memory model |
 | [SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md](./SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md) | Quality standards |
 | [RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md) | Neuromorphic extensions |
+
+### Molecular Dynamics Evolution (hotSpring Integration)
+
+| Priority | Target | Status |
+|----------|--------|--------|
+| HIGH | f64 Yukawa force with PBC + PE | Pending — hotSpring validated |
+| HIGH | Cell-list neighbor search | Pending — 27-neighbor GPU kernel |
+| MEDIUM | Split Velocity-Verlet (kick-drift-kick) | Pending — flexible thermostating |
+| MEDIUM | Berendsen/Nosé-Hoover thermostats | Pending — velocity rescaling |
+| MEDIUM | GPU observables (RDF, KE, VACF, SSF) | Pending — atomicAdd histograms |
+| HIGH | PPPM/Ewald for long-range Coulomb | Pending — uses existing FFT |
+| FUTURE | MSU HPC comparison benchmark | Planning — Murillo collaboration |
+
+**Reference:** `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
 
 ### Other
 
