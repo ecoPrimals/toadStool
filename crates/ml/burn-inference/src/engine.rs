@@ -102,17 +102,24 @@ impl InferenceEngine {
         }
     }
 
-    /// Run inference (placeholder - actual implementation depends on model type)
-    pub fn infer(&self, _model: &LoadedModel, _input: &[f32]) -> Result<Vec<f32>> {
-        // This is a placeholder - actual implementation would:
-        // 1. Create Burn tensors from input
-        // 2. Run forward pass through model
-        // 3. Extract output values
+    /// Run inference
+    ///
+    /// # Errors
+    /// Returns `Error::NotImplemented` - full model inference requires implementing
+    /// the actual neural network forward pass. See `models/` for model-specific APIs.
+    pub fn infer(&self, model: &LoadedModel, _input: &[f32]) -> Result<Vec<f32>> {
+        // Full implementation requires:
+        // 1. Load model weights into Burn tensors
+        // 2. Build the model architecture (varies by model type)
+        // 3. Run forward pass through model layers
+        // 4. Extract output values from result tensor
 
-        info!("Running inference on {:?}", self.device.info().name);
-
-        // Return dummy output for now
-        Ok(vec![0.0; 10])
+        Err(Error::NotImplemented(format!(
+            "Generic inference not implemented for '{}' ({:?}). \
+             Use model-specific APIs: Bert::forward(), Whisper::transcribe(), \
+             Yolo::detect(), or ResNet::classify() instead.",
+            model.name, model.format
+        )))
     }
 }
 

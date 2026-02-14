@@ -36,6 +36,9 @@ pub enum Error {
     #[error("Unsupported model type: {0}")]
     UnsupportedModel(String),
 
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }
