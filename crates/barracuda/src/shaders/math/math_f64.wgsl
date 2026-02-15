@@ -226,8 +226,8 @@ fn exp_f64(x: f64) -> f64 {
     let underflow_thresh = f64_const(x, -745.0);
     
     if (x > overflow_thresh) {
-        // Return large value (can't express infinity)
-        return f64_const(x, 1e308);
+        // Return large value (can't express infinity; 1e308 overflows f32 literal)
+        return f64_const(x, 1e38) * f64_const(x, 1e38);
     }
     if (x < underflow_thresh) {
         return zero;
@@ -309,7 +309,7 @@ fn log_f64(x: f64) -> f64 {
     
     // Handle special cases
     if (x <= zero) {
-        return f64_const(x, -1e308);  // -infinity approximation
+        return -f64_const(x, 1e38) * f64_const(x, 1e38);  // -infinity approximation
     }
     
     // Range reduction to [1, 2)
@@ -549,25 +549,11 @@ fn tanh_f64(x: f64) -> f64 {
 // GAMMA FUNCTION (Lanczos approximation)
 // ============================================================================
 
-/// Gamma function using Lanczos approximation
-/// Accurate to ~15 digits for positive real arguments
-fn gamma_f64(x: f64) -> f64 {
-    let zero = f64_const(x, 0.0);
+/// Lanczos core: Gamma(x) for x >= 0.5 via Lanczos approximation (g=7, n=9)
+/// Split out so gamma_f64 can call it iteratively (WGSL forbids recursion).
+fn lanczos_core_f64(x: f64) -> f64 {
     let one = f64_const(x, 1.0);
     let half = f64_const(x, 0.5);
-    let pi = f64_const(x, 3.14159265358979323846);
-    
-    // Handle negative values using reflection formula
-    if (x < half) {
-        // Gamma(x) = pi / (sin(pi*x) * Gamma(1-x))
-        let sin_pix = sin_f64(pi * x);
-        if (abs_f64(sin_pix) < f64_const(x, 1e-15)) {
-            return f64_const(x, 1e308);  // Pole
-        }
-        return pi / (sin_pix * gamma_f64(one - x));
-    }
-    
-    // Lanczos coefficients (g=7, n=9)
     let g = f64_const(x, 7.0);
     let c0 = f64_const(x, 0.99999999999980993);
     let c1 = f64_const(x, 676.5203681218851);
@@ -578,9 +564,9 @@ fn gamma_f64(x: f64) -> f64 {
     let c6 = f64_const(x, -0.13857109526572012);
     let c7 = f64_const(x, 9.9843695780195716e-6);
     let c8 = f64_const(x, 1.5056327351493116e-7);
-    
+
     let z = x - one;
-    
+
     var sum = c0;
     sum = sum + c1 / (z + one);
     sum = sum + c2 / (z + f64_const(x, 2.0));
@@ -590,11 +576,32 @@ fn gamma_f64(x: f64) -> f64 {
     sum = sum + c6 / (z + f64_const(x, 6.0));
     sum = sum + c7 / (z + f64_const(x, 7.0));
     sum = sum + c8 / (z + f64_const(x, 8.0));
-    
+
     let t = z + g + half;
     let sqrt_2pi = f64_const(x, 2.5066282746310005);
-    
+
     return sqrt_2pi * pow_f64(t, z + half) * exp_f64(-t) * sum;
+}
+
+/// Gamma function using Lanczos approximation (non-recursive)
+/// Accurate to ~15 digits for positive real arguments.
+/// Reflection formula for x < 0.5 inlined to avoid WGSL recursion ban.
+fn gamma_f64(x: f64) -> f64 {
+    let half = f64_const(x, 0.5);
+    let one = f64_const(x, 1.0);
+    let pi = f64_const(x, 3.14159265358979323846);
+
+    if (x < half) {
+        // Reflection: Gamma(x) = pi / (sin(pi*x) * Gamma(1-x))
+        // Since 1-x >= 0.5, lanczos_core handles it directly.
+        let sin_pix = sin_f64(pi * x);
+        if (abs_f64(sin_pix) < f64_const(x, 1e-15)) {
+            return f64_const(x, 1e38) * f64_const(x, 1e38);  // Pole (~1e76, large enough)
+        }
+        return pi / (sin_pix * lanczos_core_f64(one - x));
+    }
+
+    return lanczos_core_f64(x);
 }
 
 // ============================================================================

@@ -42,10 +42,11 @@ fn init_V(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 
     let idx = row * n + col;
+    // Naga resolves 1.0 as f32; use f64() constructor for storage writes
     if (row == col) {
-        V[idx] = 1.0;
+        V[idx] = f64(1.0);
     } else {
-        V[idx] = 0.0;
+        V[idx] = f64(0.0);
     }
 }
 
@@ -75,8 +76,8 @@ fn compute_jacobi_angle(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     // Handle near-zero off-diagonal
     if (abs(apq) < 1e-14) {
-        cs[0] = 1.0;  // c = 1
-        cs[1] = 0.0;  // s = 0
+        cs[0] = f64(1.0);   // c = 1
+        cs[1] = f64(0.0);   // s = 0
         return;
     }
 
@@ -86,9 +87,9 @@ fn compute_jacobi_angle(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (abs(diff) < 1e-14) {
         // app ≈ aqq: use t = sign(apq)
         if (apq >= 0.0) {
-            t = 1.0;
+            t = f64(1.0);
         } else {
-            t = -1.0;
+            t = f64(-1.0);
         }
     } else {
         // Standard computation: tan(2θ) = 2*apq / (aqq - app)
@@ -96,14 +97,14 @@ fn compute_jacobi_angle(@builtin(global_invocation_id) global_id: vec3<u32>) {
         // t = sign(phi) / (|phi| + sqrt(1 + phi²))
         let abs_phi = abs(phi);
         if (phi >= 0.0) {
-            t = 1.0 / (abs_phi + sqrt(1.0 + phi * phi));
+            t = f64(1.0) / (abs_phi + sqrt(f64(1.0) + phi * phi));
         } else {
-            t = -1.0 / (abs_phi + sqrt(1.0 + phi * phi));
+            t = f64(-1.0) / (abs_phi + sqrt(f64(1.0) + phi * phi));
         }
     }
 
     // c = 1 / sqrt(1 + t²), s = t * c
-    let c = 1.0 / sqrt(1.0 + t * t);
+    let c = f64(1.0) / sqrt(f64(1.0) + t * t);
     let s = t * c;
 
     cs[0] = c;
@@ -169,8 +170,8 @@ fn jacobi_update_block(@builtin(global_invocation_id) global_id: vec3<u32>) {
     A_apply[q * n + q] = aqq_new;
 
     // Off-diagonal should be zero after rotation
-    A_apply[p * n + q] = 0.0;
-    A_apply[q * n + p] = 0.0;
+    A_apply[p * n + q] = f64(0.0);
+    A_apply[q * n + p] = f64(0.0);
 }
 
 // Apply Jacobi rotation to eigenvector matrix V: columns p and q
@@ -238,7 +239,7 @@ fn find_max_off_diag(@builtin(local_invocation_id) local_id: vec3<u32>,
     let total_pairs = (n * (n - 1u)) / 2u;
 
     // Each thread handles multiple pairs
-    var local_max: f64 = 0.0;
+    var local_max: f64 = f64(0.0);
     var local_p: u32 = 0u;
     var local_q: u32 = 1u;
 

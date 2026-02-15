@@ -52,10 +52,11 @@ fn batched_init_V(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let base = matrix_offset(batch_idx, n);
     let idx = base + row * n + col;
 
+    // Naga resolves 1.0 as f32; use f64() constructor for storage writes
     if (row == col) {
-        V_batch[idx] = 1.0;
+        V_batch[idx] = f64(1.0);
     } else {
-        V_batch[idx] = 0.0;
+        V_batch[idx] = f64(0.0);
     }
 }
 
@@ -111,8 +112,8 @@ fn batched_compute_jacobi_angle(@builtin(global_invocation_id) global_id: vec3<u
 
     // Handle near-zero off-diagonal
     if (abs(apq) < 1e-14) {
-        cs_batch[cs_base] = 1.0;      // c = 1
-        cs_batch[cs_base + 1u] = 0.0; // s = 0
+        cs_batch[cs_base] = f64(1.0);       // c = 1
+        cs_batch[cs_base + 1u] = f64(0.0);  // s = 0
         return;
     }
 
@@ -122,23 +123,23 @@ fn batched_compute_jacobi_angle(@builtin(global_invocation_id) global_id: vec3<u
     if (abs(diff) < 1e-14) {
         // app ≈ aqq: use t = sign(apq)
         if (apq >= 0.0) {
-            t = 1.0;
+            t = f64(1.0);
         } else {
-            t = -1.0;
+            t = f64(-1.0);
         }
     } else {
         // Standard computation: tan(2θ) = 2*apq / (aqq - app)
         let phi = diff / (2.0 * apq);
         let abs_phi = abs(phi);
         if (phi >= 0.0) {
-            t = 1.0 / (abs_phi + sqrt(1.0 + phi * phi));
+            t = f64(1.0) / (abs_phi + sqrt(f64(1.0) + phi * phi));
         } else {
-            t = -1.0 / (abs_phi + sqrt(1.0 + phi * phi));
+            t = f64(-1.0) / (abs_phi + sqrt(f64(1.0) + phi * phi));
         }
     }
 
     // c = 1 / sqrt(1 + t²), s = t * c
-    let c = 1.0 / sqrt(1.0 + t * t);
+    let c = f64(1.0) / sqrt(f64(1.0) + t * t);
     let s = t * c;
 
     cs_batch[cs_base] = c;
@@ -209,8 +210,8 @@ fn batched_jacobi_update_block(@builtin(global_invocation_id) global_id: vec3<u3
     A_apply[base + q * n + q] = aqq_new;
 
     // Off-diagonal should be zero after rotation
-    A_apply[base + p * n + q] = 0.0;
-    A_apply[base + q * n + p] = 0.0;
+    A_apply[base + p * n + q] = f64(0.0);
+    A_apply[base + q * n + p] = f64(0.0);
 }
 
 // Apply Jacobi rotation to eigenvector matrix V (columns p and q)
@@ -285,8 +286,8 @@ fn parallel_compute_angles(@builtin(global_invocation_id) global_id: vec3<u32>) 
 
     // Handle near-zero off-diagonal
     if (abs(apq) < 1e-14) {
-        cs_sweep[cs_base] = 1.0;
-        cs_sweep[cs_base + 1u] = 0.0;
+        cs_sweep[cs_base] = f64(1.0);
+        cs_sweep[cs_base + 1u] = f64(0.0);
         return;
     }
 
@@ -294,18 +295,18 @@ fn parallel_compute_angles(@builtin(global_invocation_id) global_id: vec3<u32>) 
     var t: f64;
 
     if (abs(diff) < 1e-14) {
-        if (apq >= 0.0) { t = 1.0; } else { t = -1.0; }
+        if (apq >= 0.0) { t = f64(1.0); } else { t = f64(-1.0); }
     } else {
         let phi = diff / (2.0 * apq);
         let abs_phi = abs(phi);
         if (phi >= 0.0) {
-            t = 1.0 / (abs_phi + sqrt(1.0 + phi * phi));
+            t = f64(1.0) / (abs_phi + sqrt(f64(1.0) + phi * phi));
         } else {
-            t = -1.0 / (abs_phi + sqrt(1.0 + phi * phi));
+            t = f64(-1.0) / (abs_phi + sqrt(f64(1.0) + phi * phi));
         }
     }
 
-    let c = 1.0 / sqrt(1.0 + t * t);
+    let c = f64(1.0) / sqrt(f64(1.0) + t * t);
     let s = t * c;
 
     cs_sweep[cs_base] = c;
@@ -376,8 +377,8 @@ fn parallel_update_blocks(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     A_sweep[base + p * n + p] = app_new;
     A_sweep[base + q * n + q] = aqq_new;
-    A_sweep[base + p * n + q] = 0.0;
-    A_sweep[base + q * n + p] = 0.0;
+    A_sweep[base + p * n + q] = f64(0.0);
+    A_sweep[base + q * n + p] = f64(0.0);
 }
 
 // Parallel rotate V for all batches
