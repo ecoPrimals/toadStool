@@ -170,12 +170,13 @@ TOTAL                     156      ✅
 - ✅ **placeholders**: 0 remaining in production code
 
 ### Shader-First Architecture ✅
-- ✅ **396 WGSL shaders**: ALL parallelizable math is shader-primary
-- ✅ **18 special function shaders**: Hermite, Legendre, Laguerre, Digamma, Beta, Normal CDF/PPF
+- ✅ **480+ WGSL shaders**: ALL parallelizable math is shader-primary
+- ✅ **20 special function shaders**: Hermite, Legendre, Laguerre, Digamma, Beta, Normal CDF/PPF, f64 variants
 - ✅ **3 sampling shaders**: Sobol, Latin Hypercube, Uniform Random
 - ✅ **5 statistics shaders**: Correlation, Covariance, Variance
+- ✅ **Mixing/Grid ops**: Broyden SCF mixing, finite-difference gradients, weighted reduction
 - ✅ **ToadStool dispatch**: GPU default, CPU fallback for fp64 precision
-- ✅ **Future-proof**: When fp64 GPUs available, math unchanged
+- ✅ **hotSpring validated**: 169/169 nuclear EOS acceptance checks on consumer GPU
 
 ---
 
