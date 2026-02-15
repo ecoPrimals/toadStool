@@ -15,6 +15,22 @@ System health verified with 15,700+ tests passing across workspace.
 
 ### Latest Updates (Feb 15, 2026)
 
+**hotSpring Math Primitives Absorption:**
+- ✅ **f64 Special Functions** -- `hermite_f64.wgsl`, `laguerre_f64.wgsl` with normalized variants
+- ✅ **Broyden Mixing Module** -- `ops/mixing/` for SCF solvers (DFT, HFB, Poisson-Boltzmann)
+  - Linear mixing: `x_new = (1-α)·x_old + α·x_computed`
+  - Broyden II: Quasi-Newton acceleration with history vectors
+- ✅ **Finite-Difference Gradients** -- `ops/grid/` for structured grid operations
+  - 1D/2D/cylindrical gradients, Laplacian
+  - Central FD with boundary handling
+- ✅ **Weighted Inner Product** -- `weighted_dot_f64.wgsl` with workgroup tree reduction
+  - Galerkin methods, FEM assembly, spectral methods
+- ✅ **Science-Grade Buffer Limits** -- `WgpuDevice::new()` defaults to 512 MiB / 1 GiB
+  - Was 128 MiB / 256 MiB (wgpu default)
+  - New `science_limits()` function exported
+- All primitives validated by hotSpring's 169/169 nuclear EOS acceptance checks
+- See: `docs/planning/HOTSPRING_ABSORPTION_FEB15_2026.md`
+
 **Code Quality Hardening Session:**
 - ✅ **Error Handling Evolution** -- 50+ unwrap() calls converted to proper Result propagation
   - `receiver.recv().unwrap()` → `recv().map_err(...)?`
