@@ -27,18 +27,14 @@
 
 ## Current State (February 15, 2026)
 
-- **Code Quality Hardening Complete** — No panic paths, unwrap → Result propagation
-- **Infrastructure Evolution Complete** — GGUF loader, quantized shaders, async GPU submit
-- **Deep Debt Evolution Complete** — All server placeholders evolved
-- **0 clippy warnings with -D warnings** (was 166)
-- **15,700+ tests passing**, 0 failing (350+ scientific middleware tests)
-- **470+ WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
+- **hotSpring Evolution Complete** — 169/169 nuclear EOS acceptance checks on consumer GPU
+- **Math Primitives Absorbed** — Broyden mixing, FD gradients, weighted inner products, Hermite/Laguerre f64
+- **47 new evolution tests** — Unit, E2E, chaos, fault coverage for absorbed primitives
+- **0 clippy warnings with -D warnings**
+- **15,700+ tests passing**, 0 failing (400+ scientific middleware tests)
+- **480+ WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
 - **Shader-first**: ALL math is WGSL primary, ToadStool dispatches to GPU/CPU
-- **Server metrics**: Real CPU/memory from sysinfo (no placeholders)
-- **GPU self-knowledge**: Actual hardware detection via sysfs/system_profiler
-- **Scheduler routing**: Real primal registry integration
-- **Scientific middleware** (12 modules: linalg, linalg::sparse, numerical, special, stats, optimize, surrogate, sample, pde, interpolate, dispatch, pipeline — 350+ tests, 0 unsafe)
-- **hotSpring validation complete** — L1 χ²/datum = 1.19 (82% better than scipy)
+- **Scientific middleware** (14 modules: linalg, linalg::sparse, numerical, special, stats, optimize, surrogate, sample, pde, interpolate, dispatch, pipeline, mixing, grid — 400+ tests, 0 unsafe)
 - **Auto-dispatch system** — CPU/GPU routing with benchmark suite
 - **17 WorkloadHint variants** with auto-routing (GPU, NPU, CPU) and user preference override
 - **26 JSON-RPC methods** across 6 domains (toadstool, compute, gpu, ollama, gate, resources)

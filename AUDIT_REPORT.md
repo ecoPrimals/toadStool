@@ -26,6 +26,8 @@
 | **Model Loading** | ✅ | Safetensors + GGUF (Q4/Q8 quantized) |
 | **Quantized Inference** | ✅ | INT4/INT8 WGSL shaders |
 | **Async GPU** | ✅ | AsyncSubmitter, AsyncReadback |
+| **hotSpring Validation** | ✅ | 169/169 nuclear EOS acceptance checks |
+| **Evolution Tests** | ✅ | 47 new unit/E2E/chaos/fault tests |
 
 ---
 
@@ -320,30 +322,44 @@ No forced updates or cloud requirements
 
 ---
 
-## 11. Session Evolutions (Feb 12-13, 2026)
+## 11. Session Evolutions (Feb 12-15, 2026)
 
-### Code Quality Improvements
+### Code Quality Improvements (Feb 12-13)
 - Added type aliases for complex function types (cascade, stage, tensor_context)
 - Implemented `Scale` and `Custom` operations in ComputeGraph
 - Fixed multi-device index matching in Substrate selection
 - Implemented benchmark report summary table
 - Added missing features: `parallel`, `cuda-comparison`, `npu`, `test-mocks`
-- Fixed numerous clippy warnings (166 → 9, 95% reduction)
+- Fixed numerous clippy warnings (166 → 0, 100% reduction)
 - Fixed f64 approximate constant warnings with documented allows
 - Added FFI/MMIO allow attributes with safety comments
 
-### Files Evolved
-- `crates/barracuda/src/device/tensor_context.rs` - PendingOp type alias
-- `crates/barracuda/src/pipeline/cascade.rs` - FilterPredicate, TransformFn aliases
-- `crates/barracuda/src/pipeline/stage.rs` - StageFilter, StageTransform aliases
-- `crates/barracuda/src/compute_graph.rs` - Scale/Custom ops implemented
-- `crates/barracuda/src/device/substrate.rs` - Multi-device AtomicUsize counter
-- `crates/barracuda/src/benchmarks/report.rs` - Summary statistics table
-- `crates/cli/Cargo.toml` - Added `npu` feature
-- `crates/auto_config/Cargo.toml` - Added `test-mocks` feature
-- `showcase/cross-platform/src/math_f64_validation.rs` - Allowed approx_constant lint
-- `showcase/cross-platform/Cargo.toml` - Added `cuda-comparison` feature
+### hotSpring Evolution (Feb 15, 2026)
+
+**Absorbed f64 Math Primitives**:
+- `hermite_f64.wgsl` — Physicist's Hermite polynomials via three-term recurrence
+- `laguerre_f64.wgsl` — Generalized Laguerre polynomials via three-term recurrence
+- `broyden_f64.wgsl` — Linear/Modified Broyden II mixing for SCF convergence
+- `fd_gradient_f64.wgsl` — 1D/2D/cylindrical finite-difference gradients + Laplacian
+- `weighted_dot_f64.wgsl` — Weighted inner product with workgroup tree reduction
+- Science-grade buffer limits (512 MiB / 1 GiB) in `WgpuDevice::new()`
+
+**New Modules**:
+- `crates/barracuda/src/ops/mixing/` — LinearMixer, BroydenMixer (CPU history)
+- `crates/barracuda/src/ops/grid/` — Gradient1D, Gradient2D, CylindricalGradient, Laplacian2D
+
+**Testing (47 new tests)**:
+- `crates/barracuda/tests/hotspring_evolution_tests.rs` — Full coverage
+- Unit: LinearMixer (5 α variants), BroydenMixer, Gradient1D (linear/quadratic/cubic/sine)
+- E2E: SCF convergence simulation, Broyden SCF, gradient-mixing pipeline
+- Chaos: large/small values, alternating signs, pseudorandom, spikes, oscillations
+- Fault: dimension mismatch, NaN/infinity propagation, empty input, zero dimension
+- Special functions: Hermite H_n(x), Laguerre L_n^α(x) CPU reference validation
+
+**Clippy Fixes**:
+- `manual_div_ceil` → `.div_ceil()` in broyden_f64.rs, fd_gradient_f64.rs, gemm_f64.rs, sum_reduce_f64.rs
+- `dead_code` warnings suppressed for fields used in struct coherence
 
 ---
 
-*Generated: February 13, 2026*
+*Generated: February 15, 2026*

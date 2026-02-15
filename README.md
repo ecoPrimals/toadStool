@@ -22,7 +22,7 @@
 | `unsafe` blocks | ✅ FFI only (VFIO, DRM) — 100% documented |
 | Production placeholders | ✅ 0 remaining — all evolved |
 | Error handling | ✅ No panic paths (unwrap → Result propagation) |
-| Scientific middleware | ✅ 350+ tests, 100% passing |
+| Scientific middleware | ✅ 400+ tests, 100% passing |
 | MD pipeline | ✅ Complete (thermostats + observables + PPPM) |
 | Server metrics | ✅ Real system values (no placeholders) |
 | GPU detection | ✅ Self-knowledge via sysfs/system_profiler |
@@ -84,11 +84,11 @@ TinyLlama-1.1B split across two machines over LAN TCP:
 ```
 Applications (hotSpring, NUCLEUS inference, etc.)
        |
-BarraCUDA: 470+ WGSL Shaders (SHADER-FIRST)
+BarraCUDA: 480+ WGSL Shaders (SHADER-FIRST)
   ALL math is WGSL primary — ToadStool dispatches to GPU/CPU
-  18 special function shaders, 3 sampling shaders
-  Middleware: linalg, numerical, special, stats, optimize, surrogate, sample, pde (200+ tests)
-  Proven: identical results NVIDIA + AMD
+  20 special function shaders, 3 sampling shaders
+  Middleware: linalg, numerical, special, stats, optimize, surrogate, sample, pde, mixing, grid (400+ tests)
+  Proven: identical results NVIDIA + AMD, validated by hotSpring (169/169 nuclear EOS checks)
        |
 ToadStool: Hardware Discovery + Orchestration + Dispatch
   JSON-RPC 2.0 + tarpc IPC (Unix sockets)
@@ -156,7 +156,7 @@ cargo test -p barracuda --lib ops::linalg --release
 ```
 toadStool/
 +-- crates/
-|   +-- barracuda/             -- 396 WGSL shaders, tensor ops
+|   +-- barracuda/             -- 480+ WGSL shaders, tensor ops, mixing, grid
 |   +-- core/
 |   |   +-- common/            -- Shared types, constants, discovery
 |   |   +-- config/            -- Centralized configuration (env-aware)
@@ -212,7 +212,8 @@ toadStool/
 | `unsafe` blocks | FFI only — 100% documented |
 | Production placeholders | 0 (all evolved) |
 | Production mocks | 0 (TestExecutor in test-only code) |
-| WGSL shaders | 470+ (shader-first architecture) |
+| WGSL shaders | 480+ (shader-first architecture) |
+| hotSpring validation | 169/169 acceptance checks |
 
 ---
 
@@ -291,19 +292,19 @@ let shader = ShaderTemplate::with_math_f64(user_code);
 
 **Native f64 builtins (Feb 15):** `sqrt`, `exp`, `log`, `abs`, `floor`, `ceil`, `round`, `inverseSqrt` work natively via Naga/wgpu — 1.5-2.2× faster than software. **Migrated all MD kernels** (yukawa, erfc, greens, rdf) to use native builtins.
 
-### Shader Inventory (464 WGSL)
+### Shader Inventory (480+ WGSL)
 
 | Category | Count | Status |
 |----------|-------|--------|
 | Math core | ~30 | ✅ Universal |
-| Linalg | ~15 | ⚠️ WGSL exists, API partial |
-| Special functions | ~18 | ✅ Universal |
+| Linalg | ~15 | ✅ Universal (LuGpu, QrGpu, SvdGpu) |
+| Special functions | ~20 | ✅ Universal (+ Hermite, Laguerre f64) |
 | Tensor ops | ~45 | ✅ Universal |
-| MD/Physics | ~15 | ✅ Universal |
+| MD/Physics | ~20 | ✅ Universal (+ Broyden, FD gradients) |
 | Activations | ~25 | ✅ Universal |
+| Mixing/Grid | ~6 | ✅ Universal (hotSpring absorption) |
 
-**Completed (Feb 15):** `LuGpu`, `QrGpu`, `SvdGpu` wired to public API.
-**Remaining:** Sparse solver WGSL, gen eigenvalue WGSL.
+**Completed (Feb 15):** hotSpring math primitives absorbed — Broyden mixing, FD gradients, weighted inner products.
 
 ### Runtime Cache Discovery ✅
 
@@ -422,4 +423,4 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
-**Last Updated**: February 15, 2026 (Infrastructure Evolution)
+**Last Updated**: February 15, 2026 (hotSpring Evolution Complete)

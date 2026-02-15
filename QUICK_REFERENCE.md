@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**February 14, 2026**
+**February 15, 2026**
 
 ---
 
@@ -404,6 +404,43 @@ let sobol_points = sobol_sequence(1000, 2)?;  // 1000 points in 2D
 let rng_points = random_uniform(1000, &bounds, 42);
 ```
 
+### Mixing (SCF Solvers)
+
+```rust
+use barracuda::ops::mixing::{LinearMixer, BroydenMixer};
+
+// Linear mixing: x_new = α*x_out + (1-α)*x_in
+let mixer = LinearMixer::new(device, n_dim, 0.3)?;  // α = 0.3
+let x_mixed = mixer.mix(&x_in, &x_out).await?;
+
+// Modified Broyden II: accelerated SCF convergence
+let mixer = BroydenMixer::new(device, n_dim, 0.3, 5)?;  // 5 history vectors
+let residual = mixer.compute_residual(&x_in, &x_out).await?;
+let x_next = mixer.update(&x_in, &residual).await?;
+```
+
+### Finite-Difference Gradients
+
+```rust
+use barracuda::ops::grid::{Gradient1D, Gradient2D, Laplacian2D, CylindricalGradient};
+
+// 1D gradient (3-point central differences, 2nd-order boundaries)
+let grad = Gradient1D::new(device, n_points)?;
+let df_dx = grad.compute(&f_values, dx).await?;
+
+// 2D gradient on structured grid
+let grad_2d = Gradient2D::new(device, nx, ny)?;
+let (df_dx, df_dy) = grad_2d.compute(&f_values, dx, dy).await?;
+
+// Laplacian ∇²f
+let lap = Laplacian2D::new(device, nx, ny)?;
+let del2_f = lap.compute(&f_values, dx, dy).await?;
+
+// Cylindrical coordinates (ρ, z)
+let cyl = CylindricalGradient::new(device, n_rho, n_z)?;
+let (df_drho, df_dz) = cyl.compute(&f_values, &rho_grid, d_rho, d_z).await?;
+```
+
 ---
 
 ## Hardware Routing API
@@ -471,4 +508,4 @@ constants::timeouts::*               // Connection, request, etc.
 
 ---
 
-**Last Updated**: February 12, 2026
+**Last Updated**: February 15, 2026

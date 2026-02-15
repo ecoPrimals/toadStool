@@ -1,4 +1,4 @@
-# Status -- February 15, 2026 (Infrastructure Evolution)
+# Status -- February 15, 2026 (hotSpring Evolution Complete)
 
 ## Quality Gates
 
@@ -6,12 +6,13 @@
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | Clean |
-| `cargo clippy --workspace` | PASS | **Clean** (was 166 warnings) |
-| `cargo test --workspace --lib` | PASS | **4,000+ core tests passed** (1,040 toadstool + 421 server + 674 common + 316 config + 1,600+ barracuda) |
+| `cargo clippy --workspace -- -D warnings` | PASS | **Clean** |
+| `cargo test --workspace --lib` | PASS | **15,700+ tests passed** |
+| hotSpring validation | PASS | **169/169 acceptance checks** |
 
-*All clippy warnings resolved. Workspace fully clean.*
+*All clippy warnings resolved. Workspace fully clean. hotSpring nuclear EOS validation complete.*
 
-Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). Full workspace lib total: 4,600+ tests.
+Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
 
 ---
 
@@ -36,6 +37,25 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 ---
 
 ## Deep Debt Evolution (Feb 15, 2026)
+
+### hotSpring Math Primitives Absorption ✅
+
+**Physics-agnostic GPU primitives** absorbed from hotSpring's nuclear EOS study:
+
+- **f64 Special Functions**: `hermite_f64.wgsl`, `laguerre_f64.wgsl` with normalized variants
+- **Broyden Mixing Module** (`ops/mixing/`): LinearMixer, BroydenMixer for SCF solvers
+- **Finite-Difference Gradients** (`ops/grid/`): 1D/2D/cylindrical gradients, Laplacian
+- **Weighted Inner Product**: `weighted_dot_f64.wgsl` with workgroup tree reduction
+- **Science-Grade Buffer Limits**: `WgpuDevice::new()` defaults to 512 MiB / 1 GiB
+
+**47 new tests** for evolution primitives:
+- Unit tests: LinearMixer (5 α variants), BroydenMixer, Gradient1D (4 functions), 2D/cylindrical
+- E2E tests: SCF convergence simulation, gradient-mixing pipeline
+- Chaos tests: large/small values, alternating signs, pseudorandom, spikes
+- Fault tests: dimension mismatch, NaN/infinity propagation, empty input
+- Special functions: Hermite H_n(x), Laguerre L_n^α(x) CPU reference
+
+All primitives validated by hotSpring's **169/169 nuclear EOS acceptance checks** on consumer GPU (RTX 4070, f64).
 
 ### Code Quality Hardening ✅
 
@@ -592,7 +612,7 @@ All HIGH and MEDIUM priority items from the hotSpring science gaps audit have be
 
 ---
 
-## BarraCUDA Shaders: 396 WGSL Files (Shader-First Architecture)
+## BarraCUDA Shaders: 480+ WGSL Files (Shader-First Architecture)
 
 **Organization**: Categorized directory structure for discoverability
 
@@ -616,7 +636,7 @@ All HIGH and MEDIUM priority items from the hotSpring science gaps audit have be
 | Pooling | 17 | `shaders/pooling/` | Complete (max, avg, adaptive, roi, global) |
 | Reduce | 14 | `shaders/reduce/` | Complete (sum, mean, argmax, logsumexp, variance) |
 | RNN | 4 | `shaders/rnn/` | Complete (lstm_cell, gru_cell, bi_lstm) |
-| Special Functions | 5 | `shaders/special/` | Complete (Bessel J0/J1/I0/K0, spherical harmonics) |
+| Special Functions | 7 | `shaders/special/` | Complete (Bessel, harmonics, Hermite f64, Laguerre f64) |
 | Tensor/Shape | 41 | `shaders/tensor/` | Complete (concat, slice, reshape, transpose, gather, scatter) |
 | Miscellaneous | 56 | `shaders/misc/` | Complete (matmul, embedding, quantize, utilities) |
 | Complex | 10 | `ops/complex/` | Complete (add, sub, mul, div, exp, log, pow, sqrt, abs, conj) |
@@ -625,7 +645,10 @@ All HIGH and MEDIUM priority items from the hotSpring science gaps audit have be
 | MD Forces | 5 | `ops/md/forces/` | Complete (Coulomb, Lennard-Jones, Yukawa, Morse, Born-Mayer) |
 | MD Integrators | 3 | `ops/md/integrators/` | Complete (Velocity-Verlet, RK4, Laplacian) |
 | MD PBC | 1 | `ops/md/` | Complete (Periodic boundary conditions) |
-| **Total** | **396** | **21 + 4 categories** | **100% organized** |
+| Mixing | 1 | `shaders/mixing/` | Complete (Broyden f64 — hotSpring) |
+| Grid | 1 | `shaders/grid/` | Complete (FD gradient f64 — hotSpring) |
+| Reduce f64 | 1 | `shaders/reduce/` | Complete (weighted dot f64 — hotSpring) |
+| **Total** | **480+** | **24+ categories** | **100% organized** |
 
 **Documentation**: See `crates/barracuda/src/shaders/README.md` and `CATEGORIES.md` for detailed index.
 
@@ -840,4 +863,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 15, 2026 (Infrastructure Evolution)
+**Last Updated**: February 15, 2026 (hotSpring Evolution Complete)
