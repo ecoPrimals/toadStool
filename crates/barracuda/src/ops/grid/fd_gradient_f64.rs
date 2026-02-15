@@ -184,7 +184,7 @@ impl Gradient1D {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(((self.n + 255) / 256) as u32, 1, 1);
+            pass.dispatch_workgroups(self.n.div_ceil(256) as u32, 1, 1);
         }
 
         // Read back
@@ -229,10 +229,13 @@ impl Gradient1D {
 
 /// 2D gradient computation (returns both components)
 pub struct Gradient2D {
+    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
     nx: usize,
     ny: usize,
+    #[allow(dead_code)]
     dx: f64,
+    #[allow(dead_code)]
     dy: f64,
 }
 
@@ -256,10 +259,13 @@ impl Gradient2D {
 
 /// 2D Laplacian computation
 pub struct Laplacian2D {
+    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
     nx: usize,
     ny: usize,
+    #[allow(dead_code)]
     dx: f64,
+    #[allow(dead_code)]
     dy: f64,
 }
 
@@ -283,11 +289,15 @@ impl Laplacian2D {
 
 /// Cylindrical (ρ, z) gradient for axially symmetric problems
 pub struct CylindricalGradient {
+    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
     n_rho: usize,
     n_z: usize,
+    #[allow(dead_code)]
     d_rho: f64,
+    #[allow(dead_code)]
     d_z: f64,
+    #[allow(dead_code)]
     z_min: f64,
 }
 
@@ -319,11 +329,15 @@ impl CylindricalGradient {
 
 /// Cylindrical Laplacian: ∇²f = ∂²f/∂ρ² + (1/ρ)∂f/∂ρ + ∂²f/∂z²
 pub struct CylindricalLaplacian {
+    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
     n_rho: usize,
     n_z: usize,
+    #[allow(dead_code)]
     d_rho: f64,
+    #[allow(dead_code)]
     d_z: f64,
+    #[allow(dead_code)]
     z_min: f64,
 }
 

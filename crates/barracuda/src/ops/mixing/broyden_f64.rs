@@ -244,7 +244,7 @@ impl LinearMixer {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(((self.vec_dim + 255) / 256) as u32, 1, 1);
+            pass.dispatch_workgroups(self.vec_dim.div_ceil(256) as u32, 1, 1);
         }
 
         // Read back
@@ -292,8 +292,10 @@ impl LinearMixer {
 /// Modified Broyden II algorithm:
 /// x_{n+1} = x_n + α·r_n - Σ_m γ_m·(Δx_m + α·Δr_m)
 pub struct BroydenMixer {
+    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
     linear_mixer: LinearMixer,
+    #[allow(dead_code)]
     vec_dim: usize,
     max_history: usize,
     params: MixingParams,

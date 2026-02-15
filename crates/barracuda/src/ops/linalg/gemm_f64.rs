@@ -240,8 +240,8 @@ impl GemmF64 {
         });
 
         // Dispatch: (ceil(N/16), ceil(M/16), batch_size)
-        let wg_x = ((n as u32) + 15) / 16;
-        let wg_y = ((m as u32) + 15) / 16;
+        let wg_x = (n as u32).div_ceil(16);
+        let wg_y = (m as u32).div_ceil(16);
         let wg_z = batch_size as u32;
 
         {

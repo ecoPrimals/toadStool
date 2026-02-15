@@ -136,7 +136,7 @@ impl SumReduceF64 {
         // Two-pass reduction
         let n = data.len();
         let wg_size = 256;
-        let n_workgroups = (n + wg_size - 1) / wg_size;
+        let n_workgroups = n.div_ceil(wg_size);
 
         // Pass 1: data -> partial sums
         let input_bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
@@ -210,7 +210,7 @@ impl SumReduceF64 {
         // Pass 2: partial sums -> final result
         let final_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Reduce final"),
-            size: 8 * ((n_workgroups + wg_size - 1) / wg_size) as u64,
+            size: 8 * n_workgroups.div_ceil(wg_size) as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
@@ -223,7 +223,7 @@ impl SumReduceF64 {
         };
         let params2_buffer = device.create_uniform_buffer("Reduce params 2", &params2);
 
-        let n_workgroups2 = (n_workgroups + wg_size - 1) / wg_size;
+        let n_workgroups2 = n_workgroups.div_ceil(wg_size);
         let bg2 = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Reduce BG pass 2"),
             layout: &bgl,
