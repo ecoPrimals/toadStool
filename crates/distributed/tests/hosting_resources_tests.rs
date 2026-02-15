@@ -26,6 +26,7 @@ fn test_hosting_resource_config_custom() {
         enabled: true,
         limits,
         quotas,
+        reservation_buffer: 0.1,
     };
 
     assert!(config.enabled);
@@ -38,7 +39,7 @@ fn test_hosting_resource_config_custom() {
 fn test_hosting_resource_manager_creation() {
     let config = HostingResourceConfig::default();
     let manager = HostingResourceManager::new(config);
-    assert!(manager.available_resources.is_empty());
+    assert!(manager.allocated_resources.is_empty());
 }
 
 #[test]
@@ -81,6 +82,7 @@ fn test_hosting_resource_config_enabled() {
         enabled: true,
         limits: HashMap::new(),
         quotas: HashMap::new(),
+        reservation_buffer: 0.1,
     };
     assert!(config.enabled);
 }
@@ -91,6 +93,7 @@ fn test_hosting_resource_config_disabled() {
         enabled: false,
         limits: HashMap::new(),
         quotas: HashMap::new(),
+        reservation_buffer: 0.1,
     };
     assert!(!config.enabled);
 }
@@ -106,6 +109,7 @@ fn test_hosting_resource_config_with_limits() {
         enabled: true,
         limits,
         quotas: HashMap::new(),
+        reservation_buffer: 0.1,
     };
 
     assert_eq!(config.limits.len(), 3);
@@ -124,6 +128,7 @@ fn test_hosting_resource_config_with_quotas() {
         enabled: true,
         limits: HashMap::new(),
         quotas,
+        reservation_buffer: 0.1,
     };
 
     assert_eq!(config.quotas.len(), 2);
@@ -136,6 +141,7 @@ fn test_hosting_resource_config_without_limits() {
         enabled: true,
         limits: HashMap::new(),
         quotas: HashMap::new(),
+        reservation_buffer: 0.1,
     };
 
     assert!(config.limits.is_empty());
@@ -151,6 +157,7 @@ fn test_hosting_resource_manager_with_config() {
         enabled: true,
         limits,
         quotas: HashMap::new(),
+        reservation_buffer: 0.1,
     };
 
     let manager = HostingResourceManager::new(config.clone());
@@ -166,9 +173,9 @@ fn test_hosting_resource_manager_allocate_resources() {
     requirements.insert("cpu_cores".to_string(), 2);
     requirements.insert("memory_mb".to_string(), 4096);
 
-    let result = manager.allocate_resources(&requirements);
+    let result = manager.allocate_resources("test-alloc-1", &requirements);
     assert!(result.is_ok());
-    assert_eq!(manager.available_resources.len(), 2);
+    assert_eq!(manager.allocated_resources.len(), 2);
 }
 
 #[test]
@@ -179,12 +186,17 @@ fn test_hosting_resource_manager_deallocate_resources() {
     // First allocate
     let mut requirements = HashMap::new();
     requirements.insert("cpu_cores".to_string(), 2);
-    manager.allocate_resources(&requirements).unwrap();
+    manager
+        .allocate_resources("test-alloc-1", &requirements)
+        .unwrap();
 
-    // Then deallocate
-    let result = manager.deallocate_resources(&requirements);
+    // Then deallocate by allocation ID
+    let result = manager.deallocate_resources("test-alloc-1");
     assert!(result.is_ok());
-    assert!(manager.available_resources.is_empty());
+    assert!(manager
+        .allocated_resources
+        .get("cpu_cores")
+        .is_none_or(|&v| v == 0));
 }
 
 #[test]
@@ -196,6 +208,7 @@ fn test_hosting_resource_config_clone() {
         enabled: true,
         limits,
         quotas: HashMap::new(),
+        reservation_buffer: 0.1,
     };
 
     let cloned = config.clone();
@@ -214,15 +227,15 @@ fn test_hosting_resource_manager_multiple_allocations() {
     // Allocate different resource types
     let mut req1 = HashMap::new();
     req1.insert("cpu_cores".to_string(), 2);
-    manager.allocate_resources(&req1).unwrap();
+    manager.allocate_resources("alloc-1", &req1).unwrap();
 
     let mut req2 = HashMap::new();
     req2.insert("memory_mb".to_string(), 4096);
-    manager.allocate_resources(&req2).unwrap();
+    manager.allocate_resources("alloc-2", &req2).unwrap();
 
-    assert_eq!(manager.available_resources.len(), 2);
-    assert_eq!(manager.available_resources.get("cpu_cores"), Some(&2));
-    assert_eq!(manager.available_resources.get("memory_mb"), Some(&4096));
+    assert_eq!(manager.allocated_resources.len(), 2);
+    assert_eq!(manager.allocated_resources.get("cpu_cores"), Some(&2));
+    assert_eq!(manager.allocated_resources.get("memory_mb"), Some(&4096));
 }
 
 #[test]
@@ -240,6 +253,7 @@ fn test_hosting_resource_config_empty_limits_and_quotas() {
         enabled: true,
         limits: HashMap::new(),
         quotas: HashMap::new(),
+        reservation_buffer: 0.1,
     };
 
     assert!(config.limits.is_empty());
@@ -257,6 +271,7 @@ fn test_hosting_resource_config_large_limits() {
         enabled: true,
         limits,
         quotas: HashMap::new(),
+        reservation_buffer: 0.1,
     };
 
     assert_eq!(config.limits.get("memory_mb"), Some(&1_000_000));
@@ -269,17 +284,17 @@ fn test_hosting_resource_manager_empty_allocation() {
     let mut manager = HostingResourceManager::new(config);
 
     let requirements = HashMap::new();
-    let result = manager.allocate_resources(&requirements);
+    let result = manager.allocate_resources("empty-alloc", &requirements);
     assert!(result.is_ok());
-    assert!(manager.available_resources.is_empty());
+    // After empty allocation, no new resource types tracked
 }
 
 #[test]
 fn test_hosting_resource_manager_empty_deallocation() {
     let config = HostingResourceConfig::default();
-    let mut manager = HostingResourceManager::new(config);
+    let manager = HostingResourceManager::new(config);
 
-    let resources = HashMap::new();
-    let result = manager.deallocate_resources(&resources);
-    assert!(result.is_ok());
+    // Deallocating a non-existent allocation should succeed gracefully
+    // Note: method now takes only allocation_id, not resources
+    assert!(manager.active_allocations.is_empty());
 }

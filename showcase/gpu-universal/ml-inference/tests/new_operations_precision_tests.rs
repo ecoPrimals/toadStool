@@ -139,7 +139,7 @@ async fn test_tanh_fp32_precision() {
     // Verify tanh properties
     // Note: For extreme values, tanh can be exactly ±1 due to fp32 limits
     assert!(
-        result.iter().all(|&x| x >= -1.0 && x <= 1.0),
+        result.iter().all(|x| (-1.0..=1.0).contains(x)),
         "Tanh output should be in [-1, 1]"
     );
 
@@ -935,7 +935,7 @@ async fn test_dice_loss_precision() {
 
     // Dice loss should be in [0, 1]
     assert!(
-        loss >= 0.0 && loss <= 1.0,
+        (0.0..=1.0).contains(&loss),
         "Dice loss should be in [0, 1], got {}",
         loss
     );

@@ -59,15 +59,12 @@ impl SsfGpu {
         positions: &[f64],
         k_vectors: &[f64],
     ) -> Result<Vec<f64>> {
-        if positions.len() % 3 != 0 {
+        if !positions.len().is_multiple_of(3) {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "positions length {} not divisible by 3",
-                    positions.len()
-                ),
+                message: format!("positions length {} not divisible by 3", positions.len()),
             });
         }
-        if k_vectors.len() % 3 != 0 {
+        if !k_vectors.len().is_multiple_of(3) {
             return Err(BarracudaError::InvalidInput {
                 message: format!("k_vectors length {} not divisible by 3", k_vectors.len()),
             });
@@ -279,10 +276,7 @@ impl SsfGpu {
                     let ky = ny as f64 * dk;
                     let kz = nz as f64 * dk;
 
-                    k_shells
-                        .entry(shell_key)
-                        .or_default()
-                        .push([kx, ky, kz]);
+                    k_shells.entry(shell_key).or_default().push([kx, ky, kz]);
                 }
             }
         }
@@ -405,19 +399,25 @@ impl SsfGpu {
         slice.map_async(
             wgpu::MapMode::Read,
             move |result: std::result::Result<(), wgpu::BufferAsyncError>| {
-                sender.send(result).unwrap();
+                let _ = sender.send(result);
             },
         );
         device.device.poll(wgpu::Maintain::Wait);
         receiver
             .recv()
-            .unwrap()
+            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
         let result: Vec<f64> = data
             .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
+            .map(|chunk| {
+                f64::from_le_bytes(
+                    chunk
+                        .try_into()
+                        .expect("chunks_exact(8) yields 8-byte chunks"),
+                )
+            })
             .collect();
         drop(data);
         staging.unmap();
@@ -471,18 +471,18 @@ mod tests {
         let n = 100;
         let box_side = 10.0;
 
-        // Pseudo-random positions
+        // Pseudo-random positions using irrational multipliers
+        #[allow(clippy::approx_constant)]
+        let (mult_a, mult_b, mult_c) = (1.618, 2.718, 3.141);
         let mut positions: Vec<f64> = Vec::with_capacity(n * 3);
         for i in 0..n {
-            positions.push((i as f64 * 1.618) % box_side);
-            positions.push((i as f64 * 2.718) % box_side);
-            positions.push((i as f64 * 3.141) % box_side);
+            positions.push((i as f64 * mult_a) % box_side);
+            positions.push((i as f64 * mult_b) % box_side);
+            positions.push((i as f64 * mult_c) % box_side);
         }
 
         let dk = 2.0 * PI / box_side;
-        let k_vectors: Vec<f64> = vec![
-            dk, 0.0, 0.0, 2.0 * dk, 0.0, 0.0, 3.0 * dk, 0.0, 0.0,
-        ];
+        let k_vectors: Vec<f64> = vec![dk, 0.0, 0.0, 2.0 * dk, 0.0, 0.0, 3.0 * dk, 0.0, 0.0];
 
         let ssf = SsfGpu::compute(device, &positions, &k_vectors).unwrap();
 
@@ -490,7 +490,7 @@ mod tests {
         // For random gas, S(k) should be close to 1.0 (statistical fluctuations)
         for (i, &s) in ssf.iter().enumerate() {
             assert!(
-                (s - 1.0).abs() < 1.0,
+                (0.0..2.0).contains(&s),
                 "S(k)[{}] = {}, expected close to 1.0",
                 i,
                 s
@@ -526,8 +526,7 @@ mod tests {
 
         // Compare
         assert_eq!(ssf_gpu.len(), ssf_cpu.len());
-        for (i, ((k_gpu, s_gpu), (k_cpu, s_cpu))) in
-            ssf_gpu.iter().zip(ssf_cpu.iter()).enumerate()
+        for (i, ((k_gpu, s_gpu), (k_cpu, s_cpu))) in ssf_gpu.iter().zip(ssf_cpu.iter()).enumerate()
         {
             assert!(
                 (k_gpu - k_cpu).abs() < 1e-10,
@@ -557,11 +556,14 @@ mod tests {
         let n = 100;
         let box_side = 10.0;
 
+        // Pseudo-random positions using irrational multipliers
+        #[allow(clippy::approx_constant)]
+        let (mult_a, mult_b, mult_c) = (1.618, 2.718, 3.141);
         let mut positions: Vec<f64> = Vec::with_capacity(n * 3);
         for i in 0..n {
-            positions.push((i as f64 * 1.618) % box_side);
-            positions.push((i as f64 * 2.718) % box_side);
-            positions.push((i as f64 * 3.141) % box_side);
+            positions.push((i as f64 * mult_a) % box_side);
+            positions.push((i as f64 * mult_b) % box_side);
+            positions.push((i as f64 * mult_c) % box_side);
         }
 
         let ssf_radial = SsfGpu::compute_radial(device, &positions, box_side, 3).unwrap();

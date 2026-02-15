@@ -225,6 +225,7 @@ fn test_system_resources_creation() {
         available_storage_bytes: 500_000_000_000,
         available_network_bandwidth: Some(1_000_000_000),
         available_gpu_units: 2,
+        ..Default::default()
     };
 
     assert_eq!(resources.available_cpu_cores, 8.0);
@@ -240,6 +241,7 @@ fn test_system_resources_clone() {
         available_storage_bytes: 250_000_000_000,
         available_network_bandwidth: Some(500_000_000),
         available_gpu_units: 1,
+        ..Default::default()
     };
 
     let cloned = original.clone();
@@ -260,6 +262,7 @@ fn test_system_resources_debug() {
         available_storage_bytes: 1_000_000_000_000,
         available_network_bandwidth: Some(10_000_000_000),
         available_gpu_units: 4,
+        ..Default::default()
     };
 
     let debug_str = format!("{:?}", resources);

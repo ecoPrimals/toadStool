@@ -1,1 +1,0 @@
-As the clock struck midnight, hundreds of computers around the world connected to share the immense processing power needed to decrypt a complex algorithm. Together, they worked in unison, solving the puzzle and showcasing the true power of distributed computing.

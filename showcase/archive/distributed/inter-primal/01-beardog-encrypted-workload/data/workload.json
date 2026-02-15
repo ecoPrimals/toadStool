@@ -1,9 +1,0 @@
-{
-  "workload_id": "mnist-training-001",
-  "model": "simple-cnn",
-  "dataset": "mnist",
-  "epochs": 10,
-  "batch_size": 32,
-  "learning_rate": 0.01,
-  "sensitive_data": true
-}

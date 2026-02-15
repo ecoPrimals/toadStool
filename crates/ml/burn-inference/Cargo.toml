@@ -37,6 +37,9 @@ thiserror = "1.0"
 # Byte manipulation
 bytemuck = { version = "1.14", features = ["derive"] }
 
+# Half-precision floats (for GGUF/safetensors f16)
+half = "2.4"
+
 # Logging
 tracing = "0.1"
 

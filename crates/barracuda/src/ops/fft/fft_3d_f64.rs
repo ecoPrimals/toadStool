@@ -73,12 +73,16 @@ impl Fft3DF64 {
     async fn execute_internal(&self, data: &[f64], inverse: bool) -> Result<Vec<f64>> {
         let size = self.nx * self.ny * self.nz;
         let expected_len = size * 2;
-        
+
         if data.len() != expected_len {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "FFT 3D data length {} doesn't match expected {} ({}x{}x{}x2)",
-                    data.len(), expected_len, self.nx, self.ny, self.nz
+                    data.len(),
+                    expected_len,
+                    self.nx,
+                    self.ny,
+                    self.nz
                 ),
             });
         }
@@ -119,10 +123,10 @@ impl Fft3DF64 {
     async fn fft_1d(&self, pencil: &[f64], n: usize, inverse: bool) -> Result<Vec<f64>> {
         // Create tensor from pencil data
         let tensor = Tensor::from_f64_data(pencil, vec![n, 2], self.device.clone())?;
-        
+
         // Create FFT operation
         let fft = Fft1DF64::new(tensor, n as u32)?;
-        
+
         // Execute
         let result = if inverse {
             fft.execute_inverse().await?
@@ -215,33 +219,37 @@ mod tests {
         // 4×4×4 FFT test
         let n = 4;
         let size = n * n * n;
-        
+
         // Create test signal: impulse at (0,0,0)
         let mut data = vec![0.0f64; size * 2];
         data[0] = 1.0; // Real part of (0,0,0)
 
         let fft = Fft3DF64::new(device.clone(), n, n, n).unwrap();
-        
+
         // Forward FFT
         let freq = fft.forward(&data).await.unwrap();
         assert_eq!(freq.len(), size * 2);
-        
+
         // For impulse input, all frequency bins should have magnitude 1
         // (DC component = 1.0 + 0i at each point)
         for i in 0..size {
             let re = freq[i * 2];
             let im = freq[i * 2 + 1];
             let mag = (re * re + im * im).sqrt();
-            assert!((mag - 1.0).abs() < 1e-10, "Expected magnitude 1.0, got {}", mag);
+            assert!(
+                (mag - 1.0).abs() < 1e-10,
+                "Expected magnitude 1.0, got {}",
+                mag
+            );
         }
 
         // Inverse FFT
         let back = fft.inverse(&freq).await.unwrap();
-        
+
         // Normalize
         let norm = (size as f64).recip();
         let back_norm: Vec<f64> = back.iter().map(|x| x * norm).collect();
-        
+
         // Should recover original impulse
         assert!((back_norm[0] - 1.0).abs() < 1e-10);
         for i in 1..size {

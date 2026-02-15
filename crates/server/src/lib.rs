@@ -90,12 +90,16 @@ pub use tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecuto
 #[deprecated(since = "2.2.0", note = "Use StandaloneExecutor instead")]
 pub use tarpc_server::TestExecutor;
 
-// ⚠️ IMPORTANT: Protocol Priority
-// 1. PRIMARY: tarpc over Unix sockets (binary RPC, high performance)
-// 2. UNIVERSAL: ManualJsonRpcServer over Unix sockets (text-based, compatible)
-// 3. DEPRECATED: JSON-RPC over TCP (hardcoded ports, deep debt violation)
+// ⚠️ IMPORTANT: Protocol Priority (wateringHole Standard)
+// 1. PRIMARY: JSON-RPC 2.0 over Unix sockets (universal, language-agnostic)
+// 2. OPTIONAL: tarpc over Unix sockets (binary RPC for performance-critical paths)
+// 3. DEPRECATED: HTTP/TCP (use Songbird for HTTP/TLS)
 //
-// See tarpc_server::serve_unix() and manual_jsonrpc::ManualJsonRpcServer::serve()
+// Per PRIMAL_IPC_PROTOCOL.md and UNIVERSAL_IPC_STANDARD_V3.md:
+// JSON-RPC 2.0 is the REQUIRED protocol for inter-primal communication.
+// tarpc is OPTIONAL for internal high-performance paths.
+//
+// See manual_jsonrpc::ManualJsonRpcServer::serve() and tarpc_server::serve_unix()
 // for correct implementations.
 
 // EVOLVED: Test exports properly isolated
@@ -110,7 +114,13 @@ pub mod coordinator_executor; // NEW: Distributed coordinator integration
 pub mod cross_gate; // Cross-gate compute delegation (job routing across mesh)
 pub mod errors;
 pub mod gpu_job_queue; // GPU compute job queue (compute.submit/status/result/cancel/list)
-pub mod graph_types; // NEW: Collaborative intelligence graph types
+
+// Graph types for collaborative intelligence - modularized for code size compliance
+pub mod graph_edge;
+pub mod graph_errors;
+pub mod graph_node;
+pub mod graph_types; // Main graph types (ExecutionGraph, builders)
+
 pub mod handlers;
 // ⚠️ DEPRECATED: Uses jsonrpsee which pulls ring (C dependency)
 // Use manual_jsonrpc.rs or pure_jsonrpc.rs instead (Pure Rust!)

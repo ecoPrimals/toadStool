@@ -105,7 +105,8 @@ pub async fn run_server_main(
     // Shared error counter for unified monitoring across tarpc and JSON-RPC
     let error_count = Arc::new(AtomicU64::new(0));
 
-    // Create tarpc server (PRIMARY protocol)
+    // Create tarpc server (OPTIONAL protocol - for binary RPC when needed)
+    // wateringHole standard: JSON-RPC 2.0 is PRIMARY, tarpc is OPTIONAL
     let server = ToadStoolTarpcServer::new(
         version.clone(),
         Arc::clone(&executor),
@@ -129,7 +130,7 @@ pub async fn run_server_main(
 
     // Start servers with isomorphic IPC (Try→Detect→Adapt→Succeed)
     info!("🔌 Starting IPC servers (isomorphic mode)...");
-    info!("   Protocol: tarpc (PRIMARY) + JSON-RPC 2.0 (UNIVERSAL)");
+    info!("   Protocol: JSON-RPC 2.0 (PRIMARY) + tarpc (OPTIONAL)");
 
     let jsonrpc_socket = socket_path.with_extension("jsonrpc.sock");
     let jsonrpc_server = ManualJsonRpcServer::new(
@@ -566,10 +567,10 @@ async fn try_unix_servers(
     }
 
     info!("✅ ToadStool server ready (Unix sockets)");
-    info!("   Socket (tarpc): {:?}", socket_path);
     info!("   Socket (JSON-RPC): {:?}", jsonrpc_socket);
-    info!("   Protocol: tarpc (binary RPC, PRIMARY)");
-    info!("   Protocol: JSON-RPC 2.0 (universal, FALLBACK)");
+    info!("   Socket (tarpc): {:?}", socket_path);
+    info!("   Protocol: JSON-RPC 2.0 (universal, PRIMARY - wateringHole standard)");
+    info!("   Protocol: tarpc (binary RPC, OPTIONAL)");
     info!("   Status: READY ✅ (optimal Unix socket mode)");
 
     // Start JSON-RPC server
@@ -605,8 +606,8 @@ async fn start_tcp_servers(
     let jsonrpc_addr = jsonrpc_listener.local_addr()?;
 
     info!("✅ TCP IPC listening:");
-    info!("   tarpc (PRIMARY): {}", tarpc_addr);
-    info!("   JSON-RPC (FALLBACK): {}", jsonrpc_addr);
+    info!("   JSON-RPC (PRIMARY): {}", jsonrpc_addr);
+    info!("   tarpc (OPTIONAL): {}", tarpc_addr);
 
     // Write discovery files for clients
     write_tcp_discovery_file("toadstool-ipc-port", &tarpc_addr)?;
@@ -848,9 +849,8 @@ mod tests {
     fn is_selinux_enforcing_returns_bool() {
         // On most systems (no SELinux or not enforcing), returns false.
         // If /sys/fs/selinux/enforce doesn't exist, returns false.
-        // We ensure it doesn't panic and returns a valid bool.
-        let result = is_selinux_enforcing();
-        assert!(result == true || result == false);
+        // We ensure it doesn't panic (result is always a valid bool).
+        let _result = is_selinux_enforcing();
     }
 }
 

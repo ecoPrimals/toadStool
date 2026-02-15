@@ -41,13 +41,15 @@ mod model;
 mod parser;
 mod shapes;
 mod weights;
+pub mod zoo;
 
 pub use error::{AkidaModelError, Result};
 pub use model::{Layer, LayerType, Model};
 pub use shapes::{extract_shapes, Shape};
 pub use weights::{extract_weights, QuantizationConfig, WeightData};
+pub use zoo::{ModelTask, ModelZoo, ZooModel};
 
 /// Re-export commonly used types
 pub mod prelude {
-    pub use crate::{Layer, LayerType, Model, Result};
+    pub use crate::{Layer, LayerType, Model, ModelZoo, Result, ZooModel};
 }

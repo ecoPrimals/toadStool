@@ -309,13 +309,14 @@ mod tests {
     #[test]
     fn result_ok_works() {
         let r: Result<i32> = Ok(42);
-        assert_eq!(r.unwrap(), 42);
+        let Ok(v) = r else { panic!("expected Ok(42)") };
+        assert_eq!(v, 42);
     }
 
     #[test]
     fn result_err_works() {
         let r: Result<i32> = Err(BarracudaError::Internal("test".into()));
-        let e = r.unwrap_err();
+        let Err(e) = r else { panic!("expected Err") };
         assert!(e.to_string().contains("Internal error"));
     }
 
@@ -326,7 +327,7 @@ mod tests {
         }
         let r = may_fail();
         assert!(r.is_err());
-        let e = r.unwrap_err();
+        let Err(e) = r else { panic!("expected Err") };
         assert!(matches!(e, BarracudaError::Device(_)));
     }
 }

@@ -358,7 +358,10 @@ impl TensorContext {
     {
         if self.is_batching() {
             // Queue for batch execution
-            self.pending_ops.lock().unwrap().push(Box::new(op));
+            self.pending_ops
+                .lock()
+                .expect("pending_ops mutex poisoned")
+                .push(Box::new(op));
             self.ops_batched.fetch_add(1, Ordering::Relaxed);
             Ok(())
         } else {
@@ -444,7 +447,7 @@ impl TensorContext {
 
     /// Execute all pending operations in a single batch
     pub fn sync(&self) -> Result<()> {
-        let mut pending = self.pending_ops.lock().unwrap();
+        let mut pending = self.pending_ops.lock().expect("pending_ops mutex poisoned");
 
         if pending.is_empty() {
             return Ok(());
@@ -698,7 +701,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_context_acquire_pooled() {
-        let wgpu_device = crate::device::WgpuDevice::new().await.unwrap();
+        let wgpu_device = crate::device::WgpuDevice::new()
+            .await
+            .expect("failed to create WgpuDevice");
         let device = Arc::new(wgpu_device);
         let ctx = TensorContext::new(device);
 
@@ -708,7 +713,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_context_batching_mode() {
-        let wgpu_device = crate::device::WgpuDevice::new().await.unwrap();
+        let wgpu_device = crate::device::WgpuDevice::new()
+            .await
+            .expect("failed to create WgpuDevice");
         let device = Arc::new(wgpu_device);
         let ctx = TensorContext::new(device);
 
@@ -720,13 +727,15 @@ mod tests {
         assert!(ctx.is_batching());
 
         // End batch
-        ctx.end_batch().unwrap();
+        ctx.end_batch().expect("end_batch failed");
         assert!(!ctx.is_batching());
     }
 
     #[tokio::test]
     async fn test_tensor_context_stats() {
-        let wgpu_device = crate::device::WgpuDevice::new().await.unwrap();
+        let wgpu_device = crate::device::WgpuDevice::new()
+            .await
+            .expect("failed to create WgpuDevice");
         let device = Arc::new(wgpu_device);
         let ctx = TensorContext::new(device);
 
@@ -761,7 +770,9 @@ mod tests {
     async fn test_global_context_registry() {
         clear_global_contexts();
 
-        let wgpu_device = crate::device::WgpuDevice::new().await.unwrap();
+        let wgpu_device = crate::device::WgpuDevice::new()
+            .await
+            .expect("failed to create WgpuDevice");
         let device = Arc::new(wgpu_device);
 
         // Get context twice - should be same instance

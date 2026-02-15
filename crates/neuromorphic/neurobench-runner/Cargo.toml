@@ -31,9 +31,14 @@ thiserror = "1.0"
 
 # Logging
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 
 # Time measurement
 instant = "0.1"
+
+[[bin]]
+name = "neurobench"
+path = "src/bin/neurobench.rs"
 
 [dev-dependencies]
 approx = "0.5"

@@ -135,8 +135,8 @@ impl LSTMCell {
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("LSTMCell Shader"));
 
         // Combine bias_ih and bias_hh into single buffer [bias_ih..., bias_hh...]
-        let bias_ih_data = self.bias_ih.to_vec().unwrap();
-        let bias_hh_data = self.bias_hh.to_vec().unwrap();
+        let bias_ih_data = self.bias_ih.to_vec()?;
+        let bias_hh_data = self.bias_hh.to_vec()?;
         let mut bias_combined: Vec<f32> =
             Vec::with_capacity(bias_ih_data.len() + bias_hh_data.len());
         bias_combined.extend_from_slice(&bias_ih_data);

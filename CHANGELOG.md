@@ -7,6 +7,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-15] - Code Quality Hardening
+
+**Impact**: Systematic elimination of panic paths in library code. Clippy -D warnings compliance. Large file refactoring.
+
+#### Changed
+
+- **Error Handling Evolution** (barracuda, akida-driver):
+  - 50+ `unwrap()` calls converted to proper Result propagation
+  - `receiver.recv().unwrap()` → `recv().map_err(|_| BarracudaError::execution_failed(...))?`
+  - `chunk.try_into().unwrap()` → `expect("chunks_exact invariant")` with SAFETY comments
+  - Mutex/RwLock: `lock().unwrap()` → `lock().expect("mutex poisoned")`
+  - Files: `cg_gpu.rs`, `bicgstab_gpu.rs`, `gpu_helpers.rs`, `svd_gpu.rs`, `qr_gpu.rs`, `lu_gpu.rs`, `batched_eigh_gpu.rs`, `vfio.rs`, `async_submit.rs`, `autotune.rs`, `tensor_context.rs`, `topk.rs`, `morse.rs`, `lstm_cell.rs`, `sparsity.rs`, `maximin.rs`, `nelder_mead_gpu.rs`, `ssf_gpu.rs`, `observables/mod.rs`
+
+- **Large File Refactoring** (barracuda):
+  - `cg_gpu.rs`: 2556 → 2011 lines (-21%)
+  - Buffer/BGL helpers migrated to shared `gpu_helpers.rs`
+  - `SparseBuffers::*_raw()` variants added for device/queue overloads
+
+- **panic!() Cleanup** (barracuda):
+  - `session.rs`: `panic!("Unknown op type")` → `unreachable!("Unknown op type: {op_type}")`
+
+#### Fixed
+
+- **Health Check Test** (`toadstool-server::background`):
+  - `test_perform_health_check_cpu_threshold_exceeded_returns_false` updated
+  - Mock returns 25% CPU (not 50%), threshold adjusted to 20%
+
+- **Clippy -D warnings**:
+  - `unnecessary_map_or` → `is_none_or` (vfio.rs)
+  - All workspace now passes `cargo clippy --workspace -- -D warnings`
+
+---
+
+### [2026-02-15] - Infrastructure Evolution — Model Loading and Async GPU
+
+**Impact**: Full LLM model loading infrastructure (safetensors + GGUF), quantized WGSL shaders for INT4/INT8 inference, and async GPU submission system.
+
+#### Added
+
+- **GGUF Model Loader** (`burn-inference::loaders::gguf`):
+  - Full GGUF v2/v3 format support (llama.cpp compatible)
+  - `GgufType` enum for all quantization types (Q4_0, Q8_0, Q2_K through Q8_K)
+  - `load()` function with automatic dequantization to f32
+  - `dequantize_q4_0()` and `dequantize_q8_0()` CPU reference implementations
+  - Tensor metadata parsing with shape reconstruction
+
+- **Quantized WGSL Shaders** (`barracuda::shaders::quantized`):
+  - `dequant_q4.wgsl` — Q4_0 block dequantization (scale + 4-bit data → f32)
+  - `dequant_q8.wgsl` — Q8_0 block dequantization (scale + 8-bit data → f32)
+  - `gemv_q4.wgsl` — On-the-fly Q4_0 GEMV (y = A @ x) for LLM inference
+  - `gemv_q8.wgsl` — On-the-fly Q8_0 GEMV for LLM inference
+  - `QuantType` enum and CPU reference functions for validation
+  - Block size 32 (llama.cpp standard), f16 scales
+
+- **Async GPU Submission** (`barracuda::device::async_submit`):
+  - `AsyncSubmitter` — Batch command buffers and submit to GPU
+  - `queue()` — Add command buffer to pending work
+  - `submit_all()` — Flush all pending work, returns submission index
+  - `wait_for()` — Block until specific submission completes
+  - Submission tracking via `AtomicU64` indices
+  - `AsyncReadback` — Non-blocking buffer reads
+  - `read_f32()`, `read_u32()`, `read_bytes()` async methods
+
+- **Cache Probing CLI** (`showcase::cross-platform::cache_probe`):
+  - Runtime bandwidth microbenchmark tool
+  - Probes memory hierarchy (L1/L2/L3/VRAM) boundaries
+  - Uses `SubstrateMemoryHierarchy::probe()` for cache detection
+  - Reports `CacheAwareTiler` analysis with optimal tile sizes
+  - New `[[bin]]` entry in cross-platform showcase
+
+#### Changed
+
+- **burn-inference Cargo.toml**: Added `half = "2.4"` for f16 support
+- **barracuda Cargo.toml**: Added `half = "2.4"` for quantized shader CPU reference
+- **barracuda shaders mod.rs**: Added `pub mod quantized;`
+- **barracuda device mod.rs**: Added `pub mod async_submit;` with re-exports
+- **burn-inference loaders mod.rs**: Added GGUF auto-detection in `load_weights()`
+
+#### Fixed
+
+- Clippy warning in `discovery_engine.rs` (`.filter_map()` → `.map()` when closure always returns `Some`)
+
+---
+
 ### [2026-02-14] - Deep Debt Evolution — Server Placeholders Eliminated
 
 **Impact**: All server placeholder code evolved to real implementations. Zero placeholders remaining in production code.

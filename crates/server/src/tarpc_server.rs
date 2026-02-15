@@ -114,7 +114,8 @@ impl ToadStoolTarpcServer {
         }
     }
 
-    /// Start tarpc server on Unix socket (PRIMARY transport)
+    /// Start tarpc server on Unix socket (OPTIONAL transport - for binary RPC when needed)
+    /// Per wateringHole standard: JSON-RPC 2.0 is PRIMARY, tarpc is OPTIONAL
     ///
     /// Deep debt principle: No TCP hardcoding, use Unix sockets for multi-instance support
     pub async fn serve_unix(

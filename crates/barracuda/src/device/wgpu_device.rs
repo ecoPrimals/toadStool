@@ -321,10 +321,7 @@ impl WgpuDevice {
     ///
     /// Use when you don't have the original adapter info. Creates synthetic
     /// metadata that marks this as an "external" device.
-    pub fn from_existing_simple(
-        device: Arc<wgpu::Device>,
-        queue: Arc<wgpu::Queue>,
-    ) -> Self {
+    pub fn from_existing_simple(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>) -> Self {
         Self {
             device,
             queue,

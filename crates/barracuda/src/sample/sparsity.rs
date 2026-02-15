@@ -850,7 +850,12 @@ where
         // Decide: GPU or CPU path?
         let (surrogate, used_gpu) = if config.should_use_gpu(x_data.len()) {
             // GPU path: use cdist.wgsl for distance computation
-            let device = config.gpu_device.as_ref().unwrap().clone();
+            // should_use_gpu returns true only when gpu_device.is_some()
+            let device = config
+                .gpu_device
+                .as_ref()
+                .expect("GPU device required when should_use_gpu is true")
+                .clone();
             match train_adaptive_gpu(&x_data, &y_data, config.kernel, config.smoothing, device)
                 .await
             {
@@ -1170,12 +1175,13 @@ mod tests {
 
         // Empty bounds
         let config = SparsitySamplerConfig::new(1, 42);
-        assert!(sparsity_sampler(&f, &[], &config).is_err());
+        let empty_bounds: [(f64, f64); 0] = [];
+        assert!(sparsity_sampler(f, &empty_bounds, &config).is_err());
 
         // Too few initial samples
-        let bounds = vec![(0.0, 1.0)];
+        let bounds = [(0.0, 1.0)];
         let config = SparsitySamplerConfig::new(1, 42).with_initial_samples(1);
-        assert!(sparsity_sampler(&f, &bounds, &config).is_err());
+        assert!(sparsity_sampler(f, &bounds, &config).is_err());
     }
 
     #[test]

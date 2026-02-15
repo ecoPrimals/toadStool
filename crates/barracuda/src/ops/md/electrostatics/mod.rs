@@ -96,9 +96,9 @@ mod charge_spread;
 mod force_interpolation;
 mod greens_function;
 mod pppm;
-mod pppm_buffers;  // EVOLVED: Extracted for modularity (Feb 14, 2026)
+mod pppm_buffers; // EVOLVED: Extracted for modularity (Feb 14, 2026)
 mod pppm_gpu;
-mod pppm_layouts;  // EVOLVED: Extracted for modularity (Feb 14, 2026)
+mod pppm_layouts; // EVOLVED: Extracted for modularity (Feb 14, 2026)
 mod pppm_params;
 mod short_range;
 

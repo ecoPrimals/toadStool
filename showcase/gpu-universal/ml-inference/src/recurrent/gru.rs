@@ -131,11 +131,78 @@ impl GRUCell {
     }
 }
 
+/// Bidirectional RNN
+///
+/// Processes sequences in both forward and backward directions,
+/// then concatenates the outputs.
+///
+/// ## Architecture
+///
+/// ```text
+/// h_forward = RNN_forward(x_0, x_1, ..., x_T)
+/// h_backward = RNN_backward(x_T, x_{T-1}, ..., x_0)
+/// output = concat(h_forward, h_backward)
+/// ```
+///
+/// ## Benefits
+///
+/// - Captures both past and future context
+/// - Better for non-causal tasks (e.g., named entity recognition)
+pub struct GRULayer {
+    cell: GRUCell,
+}
+
+impl GRULayer {
+    /// Create new GRU Layer
+    pub async fn new(
+        device: Arc<wgpu::Device>,
+        queue: Arc<wgpu::Queue>,
+        input_size: u32,
+        hidden_size: u32,
+    ) -> Result<Self> {
+        let cell = GRUCell::new(device, queue, input_size, hidden_size).await?;
+        Ok(Self { cell })
+    }
+
+    /// Forward pass through GRU layer
+    #[allow(clippy::too_many_arguments)]
+    pub async fn forward(
+        &self,
+        sequence: &[f32],
+        batch: u32,
+        seq_len: u32,
+        w_ih: &[f32],
+        w_hh: &[f32],
+        b_ih: &[f32],
+        b_hh: &[f32],
+    ) -> Result<Vec<f32>> {
+        let hidden_size = self.cell.hidden_size;
+        let input_size = self.cell.input_size;
+
+        let mut outputs = Vec::new();
+        let mut hidden = vec![0.0f32; (batch * hidden_size) as usize];
+
+        for t in 0..seq_len {
+            let input_start = (batch * t * input_size) as usize;
+            let input_end = (batch * (t + 1) * input_size) as usize;
+            let input_t = &sequence[input_start..input_end];
+
+            hidden = self
+                .cell
+                .forward(input_t, &hidden, w_ih, w_hh, b_ih, b_hh, batch)
+                .await?;
+            outputs.extend_from_slice(&hidden);
+        }
+
+        Ok(outputs)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::recurrent::{RNNCell, LSTMCell};
-    use anyhow::Context;
     use super::*;
+    use crate::recurrent::{LSTMCell, RNNCell};
+    use anyhow::Context;
 
     async fn create_test_device() -> Result<(Arc<wgpu::Device>, Arc<wgpu::Queue>)> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -268,72 +335,5 @@ mod tests {
                 }
             }
         }
-    }
-}
-
-/// Bidirectional RNN
-///
-/// Processes sequences in both forward and backward directions,
-/// then concatenates the outputs.
-///
-/// ## Architecture
-///
-/// ```text
-/// h_forward = RNN_forward(x_0, x_1, ..., x_T)
-/// h_backward = RNN_backward(x_T, x_{T-1}, ..., x_0)
-/// output = concat(h_forward, h_backward)
-/// ```
-///
-/// ## Benefits
-///
-/// - Captures both past and future context
-/// - Better for non-causal tasks (e.g., named entity recognition)
-pub struct GRULayer {
-    cell: GRUCell,
-}
-
-impl GRULayer {
-    /// Create new GRU Layer
-    pub async fn new(
-        device: Arc<wgpu::Device>,
-        queue: Arc<wgpu::Queue>,
-        input_size: u32,
-        hidden_size: u32,
-    ) -> Result<Self> {
-        let cell = GRUCell::new(device, queue, input_size, hidden_size).await?;
-        Ok(Self { cell })
-    }
-
-    /// Forward pass through GRU layer
-    #[allow(clippy::too_many_arguments)]
-    pub async fn forward(
-        &self,
-        sequence: &[f32],
-        batch: u32,
-        seq_len: u32,
-        w_ih: &[f32],
-        w_hh: &[f32],
-        b_ih: &[f32],
-        b_hh: &[f32],
-    ) -> Result<Vec<f32>> {
-        let hidden_size = self.cell.hidden_size;
-        let input_size = self.cell.input_size;
-
-        let mut outputs = Vec::new();
-        let mut hidden = vec![0.0f32; (batch * hidden_size) as usize];
-
-        for t in 0..seq_len {
-            let input_start = (batch * t * input_size) as usize;
-            let input_end = (batch * (t + 1) * input_size) as usize;
-            let input_t = &sequence[input_start..input_end];
-
-            hidden = self
-                .cell
-                .forward(input_t, &hidden, w_ih, w_hh, b_ih, b_hh, batch)
-                .await?;
-            outputs.extend_from_slice(&hidden);
-        }
-
-        Ok(outputs)
     }
 }

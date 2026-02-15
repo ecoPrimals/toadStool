@@ -104,7 +104,7 @@ impl SvdDecomposition {
             return f64::INFINITY;
         }
         let s_max = self.s[0];
-        let s_min = *self.s.last().unwrap();
+        let s_min = *self.s.last().expect("s is non-empty after empty check");
         if s_min < 1e-14 {
             f64::INFINITY
         } else {

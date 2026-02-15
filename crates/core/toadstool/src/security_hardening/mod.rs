@@ -188,7 +188,7 @@ impl SecurityHardeningManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::security::{Capability, FilesystemSecurity, SecurityContext};
+    use crate::security::SecurityContext;
     use std::time::Duration;
     use toadstool_common::constants::network::LOCALHOST_IPV4;
 
@@ -381,7 +381,9 @@ mod tests {
     fn test_input_validator_rejects_xss() {
         let rules = ValidationRules::default();
         let validator = InputValidator::new(rules);
-        assert!(validator.validate_input("<script>alert('xss')</script>").is_err());
+        assert!(validator
+            .validate_input("<script>alert('xss')</script>")
+            .is_err());
     }
 
     #[test]
@@ -476,11 +478,16 @@ mod tests {
         let config = SecurityHardeningConfig::default();
         let manager = SecurityHardeningManager::new(config);
 
-        let context = SecurityContext::new(
-            "test-user".to_string(),
-            FilesystemSecurity::ReadOnly,
-            vec![Capability::ReadFile],
-        );
+        let context = SecurityContext {
+            isolation_level: crate::security::IsolationLevel::Standard,
+            capabilities: vec![crate::security::Capability::Read],
+            user_context: None,
+            network_security: crate::security::NetworkSecurity::default(),
+            filesystem_security: crate::security::FilesystemSecurity {
+                read_only: true,
+                ..Default::default()
+            },
+        };
 
         let result = manager.check_security_context("client-1", &context).await;
         assert!(result.is_ok());

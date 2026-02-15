@@ -968,7 +968,7 @@ pub(crate) mod tests {
     #[test]
     fn test_security_env_config_from_env() {
         let config = SecurityEnvConfig::from_env();
-        assert!(config.isolation_level.len() > 0);
+        assert!(!config.isolation_level.is_empty());
         assert!(config.rate_limit_rps > 0);
         assert!(config.rate_limit_burst > 0);
     }

@@ -262,7 +262,9 @@ impl TopK {
             tx.send(result).ok();
         });
         device.device.poll(wgpu::Maintain::Wait);
-        futures::executor::block_on(rx).unwrap().unwrap();
+        futures::executor::block_on(rx)
+            .map_err(|_| BarracudaError::Gpu("Buffer map async wait canceled".into()))?
+            .map_err(|e| BarracudaError::Gpu(format!("Buffer mapping failed: {}", e)))?;
 
         // Convert u32 to f32
         let data = buffer_slice.get_mapped_range();

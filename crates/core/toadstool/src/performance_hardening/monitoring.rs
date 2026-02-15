@@ -121,18 +121,19 @@ mod tests {
     use std::time::Duration;
 
     fn create_test_metrics(cpu_percent: f64, memory_percent: f64) -> RuntimeMetrics {
-        let mut m = RuntimeMetrics::default();
-        m.cpu = CpuMetrics {
-            usage_percent: cpu_percent,
-            cores_used: cpu_percent / 100.0 * 4.0,
-            cpu_time_seconds: 1.0,
-        };
-        m.memory = MemoryMetrics {
-            usage_percent: memory_percent,
-            used_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
-            peak_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
-        };
-        m
+        RuntimeMetrics {
+            cpu: CpuMetrics {
+                usage_percent: cpu_percent,
+                cores_used: cpu_percent / 100.0 * 4.0,
+                cpu_time_seconds: 1.0,
+            },
+            memory: MemoryMetrics {
+                usage_percent: memory_percent,
+                used_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
+                peak_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
+            },
+            ..Default::default()
+        }
     }
 
     #[tokio::test]

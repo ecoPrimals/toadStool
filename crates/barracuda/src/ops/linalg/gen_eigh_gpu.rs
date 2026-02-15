@@ -210,10 +210,7 @@ impl GenEighGpu {
         // Step 3: GPU eigensolve on transformed matrix C
         // Use batch_size=1 for single matrix
         let (eigenvalues, eigenvectors_c) = BatchedEighGpu::execute_f64(
-            device,
-            &c,
-            n,
-            1, // batch_size = 1
+            device, &c, n, 1, // batch_size = 1
             max_sweeps,
         )?;
 

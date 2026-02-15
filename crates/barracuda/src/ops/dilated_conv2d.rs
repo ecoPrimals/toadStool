@@ -344,9 +344,11 @@ mod tests {
         .unwrap();
 
         // With dilation=2, kernel 3x3: effective kernel = 5x5
-        // out_h = (32 + 2 - 2*2 - 1)/1 + 1 = 30, out_w = 30
-        let expected_h = (height + 2 * 1 - 2 * (kernel_size - 1) - 1) / 1 + 1;
-        let expected_w = (width + 2 * 1 - 2 * (kernel_size - 1) - 1) / 1 + 1;
+        // out_h = (32 + 2*pad - dilation*(kernel_size-1) - 1)/stride + 1 = 30
+        let pad = 1;
+        let stride = 1;
+        let expected_h = (height + 2 * pad - 2 * (kernel_size - 1) - 1) / stride + 1;
+        let expected_w = (width + 2 * pad - 2 * (kernel_size - 1) - 1) / stride + 1;
         assert_eq!(
             output.shape(),
             &[batch_size, out_channels, expected_h, expected_w]

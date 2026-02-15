@@ -675,17 +675,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_cloud_detector_detect_when_aws_present() {
-        let _lock = ENV_MUTEX.lock().unwrap();
-        let prev = std::env::var("AWS_REGION").ok();
-        std::env::set_var("AWS_REGION", "us-east-1");
+        // Setup in sync scope - lock dropped before await
+        let prev = {
+            let _lock = ENV_MUTEX.lock().unwrap();
+            let prev = std::env::var("AWS_REGION").ok();
+            std::env::set_var("AWS_REGION", "us-east-1");
+            prev
+        };
 
+        // Async detection without holding lock
         let detector = CloudDetector::new();
         let result = detector.detect().await.unwrap();
 
-        if let Some(p) = prev {
-            std::env::set_var("AWS_REGION", p);
-        } else {
-            std::env::remove_var("AWS_REGION");
+        // Cleanup in sync scope
+        {
+            let _lock = ENV_MUTEX.lock().unwrap();
+            if let Some(p) = prev {
+                std::env::set_var("AWS_REGION", p);
+            } else {
+                std::env::remove_var("AWS_REGION");
+            }
         }
 
         if let Some(ref substrate) = result {
@@ -699,17 +708,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_cloud_detector_detect_when_gcp_present() {
-        let _lock = ENV_MUTEX.lock().unwrap();
-        let prev = std::env::var("GOOGLE_CLOUD_PROJECT").ok();
-        std::env::set_var("GOOGLE_CLOUD_PROJECT", "test-project");
+        // Setup in sync scope - lock dropped before await
+        let prev = {
+            let _lock = ENV_MUTEX.lock().unwrap();
+            let prev = std::env::var("GOOGLE_CLOUD_PROJECT").ok();
+            std::env::set_var("GOOGLE_CLOUD_PROJECT", "test-project");
+            prev
+        };
 
+        // Async detection without holding lock
         let detector = CloudDetector::new();
         let result = detector.detect().await.unwrap();
 
-        if let Some(p) = prev {
-            std::env::set_var("GOOGLE_CLOUD_PROJECT", p);
-        } else {
-            std::env::remove_var("GOOGLE_CLOUD_PROJECT");
+        // Cleanup in sync scope
+        {
+            let _lock = ENV_MUTEX.lock().unwrap();
+            if let Some(p) = prev {
+                std::env::set_var("GOOGLE_CLOUD_PROJECT", p);
+            } else {
+                std::env::remove_var("GOOGLE_CLOUD_PROJECT");
+            }
         }
 
         if let Some(ref substrate) = result {
@@ -724,17 +742,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_cloud_detector_detect_when_azure_present() {
-        let _lock = ENV_MUTEX.lock().unwrap();
-        let prev = std::env::var("AZURE_SUBSCRIPTION_ID").ok();
-        std::env::set_var("AZURE_SUBSCRIPTION_ID", "sub-12345");
+        // Setup in sync scope - lock dropped before await
+        let prev = {
+            let _lock = ENV_MUTEX.lock().unwrap();
+            let prev = std::env::var("AZURE_SUBSCRIPTION_ID").ok();
+            std::env::set_var("AZURE_SUBSCRIPTION_ID", "sub-12345");
+            prev
+        };
 
+        // Async detection without holding lock
         let detector = CloudDetector::new();
         let result = detector.detect().await.unwrap();
 
-        if let Some(p) = prev {
-            std::env::set_var("AZURE_SUBSCRIPTION_ID", p);
-        } else {
-            std::env::remove_var("AZURE_SUBSCRIPTION_ID");
+        // Cleanup in sync scope
+        {
+            let _lock = ENV_MUTEX.lock().unwrap();
+            if let Some(p) = prev {
+                std::env::set_var("AZURE_SUBSCRIPTION_ID", p);
+            } else {
+                std::env::remove_var("AZURE_SUBSCRIPTION_ID");
+            }
         }
 
         if let Some(ref substrate) = result {
@@ -748,32 +775,41 @@ mod tests {
 
     #[tokio::test]
     async fn test_kubernetes_detector_detect_when_k8s_env_set() {
-        let _lock = ENV_MUTEX.lock().unwrap();
-        let prev_host = std::env::var("KUBERNETES_SERVICE_HOST").ok();
-        let prev_ns = std::env::var("KUBERNETES_NAMESPACE").ok();
-        let prev_hostname = std::env::var("HOSTNAME").ok();
+        // Setup in sync scope - lock dropped before await
+        let (prev_host, prev_ns, prev_hostname) = {
+            let _lock = ENV_MUTEX.lock().unwrap();
+            let prev_host = std::env::var("KUBERNETES_SERVICE_HOST").ok();
+            let prev_ns = std::env::var("KUBERNETES_NAMESPACE").ok();
+            let prev_hostname = std::env::var("HOSTNAME").ok();
 
-        std::env::set_var("KUBERNETES_SERVICE_HOST", "10.96.0.1");
-        std::env::set_var("KUBERNETES_NAMESPACE", "default");
-        std::env::set_var("HOSTNAME", "my-pod-123");
+            std::env::set_var("KUBERNETES_SERVICE_HOST", "10.96.0.1");
+            std::env::set_var("KUBERNETES_NAMESPACE", "default");
+            std::env::set_var("HOSTNAME", "my-pod-123");
+            (prev_host, prev_ns, prev_hostname)
+        };
 
+        // Async detection without holding lock
         let detector = KubernetesDetector::new();
         let result = detector.detect().await.unwrap();
 
-        if let Some(p) = prev_host {
-            std::env::set_var("KUBERNETES_SERVICE_HOST", p);
-        } else {
-            std::env::remove_var("KUBERNETES_SERVICE_HOST");
-        }
-        if let Some(p) = prev_ns {
-            std::env::set_var("KUBERNETES_NAMESPACE", p);
-        } else {
-            std::env::remove_var("KUBERNETES_NAMESPACE");
-        }
-        if let Some(p) = prev_hostname {
-            std::env::set_var("HOSTNAME", p);
-        } else {
-            std::env::remove_var("HOSTNAME");
+        // Cleanup in sync scope
+        {
+            let _lock = ENV_MUTEX.lock().unwrap();
+            if let Some(p) = prev_host {
+                std::env::set_var("KUBERNETES_SERVICE_HOST", p);
+            } else {
+                std::env::remove_var("KUBERNETES_SERVICE_HOST");
+            }
+            if let Some(p) = prev_ns {
+                std::env::set_var("KUBERNETES_NAMESPACE", p);
+            } else {
+                std::env::remove_var("KUBERNETES_NAMESPACE");
+            }
+            if let Some(p) = prev_hostname {
+                std::env::set_var("HOSTNAME", p);
+            } else {
+                std::env::remove_var("HOSTNAME");
+            }
         }
 
         if let Some(ref substrate) = result {
@@ -802,17 +838,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_bare_metal_detector_with_os_env() {
-        let _lock = ENV_MUTEX.lock().unwrap();
-        let prev = std::env::var("OS").ok();
-        std::env::set_var("OS", "Linux");
+        // Setup in sync scope - lock dropped before await
+        let prev = {
+            let _lock = ENV_MUTEX.lock().unwrap();
+            let prev = std::env::var("OS").ok();
+            std::env::set_var("OS", "Linux");
+            prev
+        };
 
+        // Async detection without holding lock
         let detector = BareMetalDetector::new();
         let result = detector.detect().await.unwrap();
 
-        if let Some(p) = prev {
-            std::env::set_var("OS", p);
-        } else {
-            std::env::remove_var("OS");
+        // Cleanup in sync scope
+        {
+            let _lock = ENV_MUTEX.lock().unwrap();
+            if let Some(p) = prev {
+                std::env::set_var("OS", p);
+            } else {
+                std::env::remove_var("OS");
+            }
         }
 
         assert!(result.is_some());

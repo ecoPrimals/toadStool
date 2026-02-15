@@ -581,7 +581,10 @@ mod tests {
         // Set low threshold to trigger f32 path
         let n = 10;
         let x_train: Vec<Vec<f64>> = (0..n).map(|i| vec![i as f64 / n as f64]).collect();
-        let y_train: Vec<f64> = x_train.iter().map(|x| (x[0] * 3.14).sin()).collect();
+        let y_train: Vec<f64> = x_train
+            .iter()
+            .map(|x| (x[0] * std::f64::consts::PI).sin())
+            .collect();
 
         let config = AdaptiveConfig::with_threshold(5); // n=10 >= 5 → f32 path
         let (surrogate, diag) = train_adaptive(
@@ -940,7 +943,7 @@ mod tests {
 
             // Just verify we can predict without error - exact accuracy
             // depends on kernel parameters and smoothing
-            let y_pred = surrogate.predict(&x_train[..5].to_vec()).unwrap();
+            let y_pred = surrogate.predict(&x_train[..5]).unwrap();
             assert_eq!(y_pred.len(), 5);
             // Check predictions are finite (not NaN/Inf)
             for (i, &pred) in y_pred.iter().enumerate() {

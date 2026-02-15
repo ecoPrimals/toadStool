@@ -189,6 +189,8 @@ mod tests {
         let output = seeds_tensor.prng_xoshiro(0).unwrap();
         let result = output.to_vec().unwrap();
         assert_eq!(result.len(), 8);
-        assert!(result.iter().all(|&x| x >= 0.0 && x < 1.0 && x.is_finite()));
+        assert!(result
+            .iter()
+            .all(|&x| (0.0..1.0).contains(&x) && x.is_finite()));
     }
 }

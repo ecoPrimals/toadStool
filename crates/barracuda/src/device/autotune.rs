@@ -72,7 +72,10 @@ impl AutoTuner {
         #[cfg(feature = "serde")]
         if let Ok(contents) = std::fs::read_to_string(&cache_path) {
             if let Ok(cals) = serde_json::from_str::<Vec<GpuCalibration>>(&contents) {
-                let mut map = tuner.calibrations.write().unwrap();
+                let mut map = tuner
+                    .calibrations
+                    .write()
+                    .expect("calibrations RwLock poisoned");
                 for cal in cals {
                     map.insert(cal.device_name.clone(), cal);
                 }
@@ -94,7 +97,10 @@ impl AutoTuner {
     ) -> GpuCalibration {
         // Check cache first
         {
-            let cals = self.calibrations.read().unwrap();
+            let cals = self
+                .calibrations
+                .read()
+                .expect("calibrations RwLock poisoned");
             if let Some(cal) = cals.get(device_name) {
                 return cal.clone();
             }
@@ -105,7 +111,10 @@ impl AutoTuner {
 
         // Cache it
         {
-            let mut cals = self.calibrations.write().unwrap();
+            let mut cals = self
+                .calibrations
+                .write()
+                .expect("calibrations RwLock poisoned");
             cals.insert(device_name.to_string(), cal.clone());
         }
 
@@ -434,7 +443,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     #[cfg(feature = "serde")]
     fn save_cache(&self) {
         if let Some(ref path) = self.cache_path {
-            let cals = self.calibrations.read().unwrap();
+            let cals = self
+                .calibrations
+                .read()
+                .expect("calibrations RwLock poisoned");
             let cal_vec: Vec<&GpuCalibration> = cals.values().collect();
             if let Ok(json) = serde_json::to_string_pretty(&cal_vec) {
                 let _ = std::fs::write(path, json);
@@ -457,7 +469,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
         let cal = self.calibrate_device(device, queue, device_name);
 
         {
-            let mut cals = self.calibrations.write().unwrap();
+            let mut cals = self
+                .calibrations
+                .write()
+                .expect("calibrations RwLock poisoned");
             cals.insert(device_name.to_string(), cal.clone());
         }
 
@@ -507,6 +522,10 @@ mod tests {
     #[test]
     fn test_tuner_creation() {
         let tuner = AutoTuner::new();
-        assert!(tuner.calibrations.read().unwrap().is_empty());
+        assert!(tuner
+            .calibrations
+            .read()
+            .expect("calibrations RwLock poisoned")
+            .is_empty());
     }
 }

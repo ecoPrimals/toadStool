@@ -175,17 +175,17 @@ pub struct ServiceChannel {
 
 /// Client for communicating with services
 ///
-/// This enum supports multiple protocols following the ecosystem pattern:
-/// - tarpc (PRIMARY): High-performance binary RPC
-/// - JSON-RPC (PRIMARY): Universal language-agnostic access
-/// - HTTP (FALLBACK): Legacy/debugging
+/// This enum supports multiple protocols following the wateringHole standard:
+/// - JSON-RPC 2.0 (PRIMARY): Universal language-agnostic access
+/// - tarpc (OPTIONAL): High-performance binary RPC for internal paths
+/// - HTTP (DEPRECATED): Use Songbird for HTTP/TLS
 #[derive(Debug, Clone)]
 pub enum ServiceClient {
-    /// tarpc client (PRIMARY - high performance)
+    /// tarpc client (OPTIONAL - for performance-critical internal paths)
     #[cfg(feature = "networking")]
     Tarpc(Arc<tokio::sync::Mutex<Option<TarpcClientWrapper>>>),
 
-    /// JSON-RPC 2.0 over unix sockets (PRIMARY - pure Rust!)
+    /// JSON-RPC 2.0 over unix sockets (PRIMARY - wateringHole standard!)
     #[cfg(feature = "networking")]
     UnixSocket(toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient),
 

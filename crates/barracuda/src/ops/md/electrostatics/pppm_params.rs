@@ -307,16 +307,3 @@ mod tests {
         assert!(params.real_cutoff <= 10.0 / 4.0 + 0.01);
     }
 }
-
-/// Check if a number is a power of two (for tests)
-#[cfg(test)]
-trait PowerOfTwo {
-    fn is_power_of_two(&self) -> bool;
-}
-
-#[cfg(test)]
-impl PowerOfTwo for usize {
-    fn is_power_of_two(&self) -> bool {
-        *self != 0 && (*self & (*self - 1)) == 0
-    }
-}

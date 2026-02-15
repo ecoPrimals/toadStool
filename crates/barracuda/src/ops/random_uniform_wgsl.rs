@@ -223,8 +223,8 @@ mod tests {
         for i in 0..100 {
             let x = data[i * 2];
             let y = data[i * 2 + 1];
-            assert!(x >= 0.0 && x <= 1.0, "x={} out of [0,1]", x);
-            assert!(y >= -1.0 && y <= 1.0, "y={} out of [-1,1]", y);
+            assert!((0.0..=1.0).contains(&x), "x={} out of [0,1]", x);
+            assert!((-1.0..=1.0).contains(&y), "y={} out of [-1,1]", y);
         }
     }
 

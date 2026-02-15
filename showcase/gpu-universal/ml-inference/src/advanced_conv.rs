@@ -526,8 +526,8 @@ mod tests {
         let height = 5;
         let width = 5;
 
-        let input = vec![1.0f32; (batch * 1 * height * width) as usize];
-        let kernel = vec![0.1f32; (1 * 1 * 3 * 3) as usize];
+        let input = vec![1.0f32; (batch * height * width) as usize];
+        let kernel = vec![0.1f32; (3 * 3) as usize];
         let bias = vec![0.0f32; 1];
 
         let result = conv.forward(&input, &kernel, &bias, batch, height, width);
@@ -535,7 +535,7 @@ mod tests {
 
         let output = result.unwrap();
         let (out_h, out_w) = conv.output_shape(height, width);
-        assert_eq!(output.len(), (batch * 1 * out_h * out_w) as usize);
+        assert_eq!(output.len(), (batch * out_h * out_w) as usize);
     }
 
     #[test]

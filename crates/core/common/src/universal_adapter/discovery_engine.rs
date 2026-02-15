@@ -171,7 +171,10 @@ impl MDnsSource {
             .unwrap_or_else(|| service_name.to_string());
 
         // Extract endpoint (or construct from host:port)
-        let endpoint_str = txt.get("endpoint").map(String::as_str).unwrap_or_else(|| "");
+        let endpoint_str = txt
+            .get("endpoint")
+            .map(String::as_str)
+            .unwrap_or_else(|| "");
         let endpoint = if endpoint_str.is_empty() {
             // Construct HTTP endpoint from host:port
             ServiceEndpoint::Http(format!("http://{}:{}", host, port))
@@ -182,7 +185,10 @@ impl MDnsSource {
         };
 
         // Extract capability type
-        let capability_str = txt.get("capability").map(String::as_str).unwrap_or("coordination");
+        let capability_str = txt
+            .get("capability")
+            .map(String::as_str)
+            .unwrap_or("coordination");
         let capability = LocalRegistrySource::capability_from_str(capability_str);
 
         // Build metadata from remaining TXT records
@@ -244,9 +250,9 @@ impl DiscoverySource for MDnsSource {
                         let txt: HashMap<String, String> = info
                             .get_properties()
                             .iter()
-                            .filter_map(|p| {
+                            .map(|p| {
                                 let val = p.val_str().to_string();
-                                Some((p.key().to_string(), val))
+                                (p.key().to_string(), val)
                             })
                             .collect();
 

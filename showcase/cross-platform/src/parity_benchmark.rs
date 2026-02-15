@@ -140,6 +140,8 @@ extern "C" __global__ void reduce_sum(float* input, float* output, int n) {
 
             // Vector Add
             let f = device.get_func("vector_add", "vector_add").unwrap();
+            // SAFETY: CUDA kernel launch with valid device buffers of `size` elements,
+            // grid/block dimensions computed from size, kernel signature matches params
             unsafe {
                 f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?;
             }
@@ -148,6 +150,7 @@ extern "C" __global__ void reduce_sum(float* input, float* output, int n) {
             let start = Instant::now();
             for _ in 0..iterations {
                 let f = device.get_func("vector_add", "vector_add").unwrap();
+                // SAFETY: Same as above - valid buffers, dimensions, and kernel signature
                 unsafe {
                     f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?;
                 }
@@ -170,6 +173,7 @@ extern "C" __global__ void reduce_sum(float* input, float* output, int n) {
             let start = Instant::now();
             for _ in 0..iterations {
                 let f = device.get_func("vector_mul", "vector_mul").unwrap();
+                // SAFETY: CUDA kernel launch - valid buffers, dimensions, kernel signature
                 unsafe {
                     f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?;
                 }
@@ -190,6 +194,7 @@ extern "C" __global__ void reduce_sum(float* input, float* output, int n) {
             let start = Instant::now();
             for _ in 0..iterations {
                 let f = device.get_func("vector_fma", "vector_fma").unwrap();
+                // SAFETY: CUDA kernel launch - valid buffers, dimensions, kernel signature
                 unsafe {
                     f.launch(cfg, (&d_a, &d_b, &mut d_c, 2.0f32, size as i32))?;
                 }
@@ -218,6 +223,8 @@ extern "C" __global__ void reduce_sum(float* input, float* output, int n) {
             let start = Instant::now();
             for _ in 0..iterations {
                 let f = device.get_func("reduce_sum", "reduce_sum").unwrap();
+                // SAFETY: CUDA kernel launch - valid input buffer, output buffer,
+                // dimensions, and shared memory sized for block
                 unsafe {
                     f.launch(reduce_cfg, (&d_a, &mut d_out, size as i32))?;
                 }

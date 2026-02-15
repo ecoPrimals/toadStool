@@ -144,11 +144,11 @@ impl JsonRpcError {
 #[serde(tag = "method", content = "params")]
 pub enum DisplayMethod {
     /// Create a new window
-    #[serde(rename = "display.createWindow")]
+    #[serde(rename = "display.create_window")]
     CreateWindow(CreateWindowRequest),
 
     /// Destroy a window
-    #[serde(rename = "display.destroyWindow")]
+    #[serde(rename = "display.destroy_window")]
     DestroyWindow {
         /// Window ID to destroy
         window_id: String,
@@ -166,7 +166,7 @@ pub enum DisplayMethod {
     },
 
     /// Get window information
-    #[serde(rename = "display.getWindowInfo")]
+    #[serde(rename = "display.get_window_info")]
     GetWindowInfo {
         /// Window ID to query
         window_id: String,
@@ -184,7 +184,7 @@ pub enum DisplayMethod {
     PollEvents,
 
     /// Get display capabilities
-    #[serde(rename = "display.getCapabilities")]
+    #[serde(rename = "display.get_capabilities")]
     GetCapabilities,
 
     /// Present framebuffer (future: zero-copy)
@@ -268,10 +268,10 @@ mod tests {
 
     #[test]
     fn test_jsonrpc_request_serialization() {
-        let req = JsonRpcRequest::new("display.createWindow", None);
+        let req = JsonRpcRequest::new("display.create_window", None);
         let json = serde_json::to_string(&req).unwrap();
         assert!(json.contains("\"jsonrpc\":\"2.0\""));
-        assert!(json.contains("\"method\":\"display.createWindow\""));
+        assert!(json.contains("\"method\":\"display.create_window\""));
     }
 
     #[test]

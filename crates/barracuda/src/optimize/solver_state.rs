@@ -262,8 +262,7 @@ impl ResumableNelderMead {
             .iter()
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-            .map(|(idx, _)| idx)
-            .unwrap_or(0);
+            .map_or(0, |(idx, _)| idx);
 
         (self.simplex[best_idx].clone(), self.f_vals[best_idx])
     }
@@ -430,7 +429,7 @@ mod tests {
 
         // Cache should have all evaluations
         assert_eq!(solver.cache().len(), solver.n_evals());
-        assert!(solver.cache().len() > 0);
+        assert!(!solver.cache().is_empty());
 
         // Best in cache should match solver best
         let cache_best = solver.cache().best_f().unwrap();

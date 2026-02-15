@@ -706,8 +706,10 @@ mod tests {
             .await
             .unwrap();
 
-        let mut ctx = crate::SecurityContext::default();
-        ctx.capabilities = vec![];
+        let ctx = crate::SecurityContext {
+            capabilities: vec![],
+            ..Default::default()
+        };
         let request = ExecutionRequest {
             workload: ai_ml_workload_spec(),
             security_context: ctx,

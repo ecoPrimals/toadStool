@@ -767,16 +767,28 @@ mod tests {
         let subset = ShaderTemplate::math_f64_subset(&["sqrt_f64"]);
 
         assert!(subset.contains("fn sqrt_f64"), "Should include sqrt_f64");
-        assert!(subset.contains("fn f64_const"), "Should include f64_const helper");
+        assert!(
+            subset.contains("fn f64_const"),
+            "Should include f64_const helper"
+        );
         assert!(!subset.contains("fn exp_f64"), "Should NOT include exp_f64");
         assert!(!subset.contains("fn sin_f64"), "Should NOT include sin_f64");
 
         // pow_f64 has many dependencies
         let pow_subset = ShaderTemplate::math_f64_subset(&["pow_f64"]);
         assert!(pow_subset.contains("fn pow_f64"));
-        assert!(pow_subset.contains("fn exp_f64"), "pow_f64 depends on exp_f64");
-        assert!(pow_subset.contains("fn log_f64"), "pow_f64 depends on log_f64");
-        assert!(pow_subset.contains("fn abs_f64"), "pow_f64 depends on abs_f64");
+        assert!(
+            pow_subset.contains("fn exp_f64"),
+            "pow_f64 depends on exp_f64"
+        );
+        assert!(
+            pow_subset.contains("fn log_f64"),
+            "pow_f64 depends on log_f64"
+        );
+        assert!(
+            pow_subset.contains("fn abs_f64"),
+            "pow_f64 depends on abs_f64"
+        );
     }
 
     #[test]
@@ -793,10 +805,19 @@ mod tests {
         let full_shader = ShaderTemplate::with_math_f64_auto(shader);
 
         // Should detect and include sqrt_f64 and exp_f64
-        assert!(full_shader.contains("fn sqrt_f64"), "Should include sqrt_f64");
+        assert!(
+            full_shader.contains("fn sqrt_f64"),
+            "Should include sqrt_f64"
+        );
         assert!(full_shader.contains("fn exp_f64"), "Should include exp_f64");
-        assert!(full_shader.contains("fn abs_f64"), "Should include abs_f64 (exp dep)");
-        assert!(full_shader.contains("fn round_f64"), "Should include round_f64 (exp dep)");
+        assert!(
+            full_shader.contains("fn abs_f64"),
+            "Should include abs_f64 (exp dep)"
+        );
+        assert!(
+            full_shader.contains("fn round_f64"),
+            "Should include round_f64 (exp dep)"
+        );
 
         // Should NOT include unrelated functions
         assert!(

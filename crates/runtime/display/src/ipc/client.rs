@@ -319,7 +319,7 @@ impl DisplayClient {
     /// Create a window
     pub async fn create_window(&mut self, request: CreateWindowRequest) -> Result<WindowId> {
         let req = JsonRpcRequest::new(
-            "display.createWindow",
+            "display.create_window",
             Some(serde_json::to_value(request).unwrap()),
         );
 
@@ -343,7 +343,7 @@ impl DisplayClient {
     /// Destroy a window
     pub async fn destroy_window(&mut self, window_id: WindowId) -> Result<()> {
         let req = JsonRpcRequest::new(
-            "display.destroyWindow",
+            "display.destroy_window",
             Some(serde_json::json!({"window_id": window_id.as_string()})),
         );
 
@@ -388,7 +388,7 @@ impl DisplayClient {
     /// Get window information
     pub async fn get_window_info(&mut self, window_id: WindowId) -> Result<WindowInfo> {
         let req = JsonRpcRequest::new(
-            "display.getWindowInfo",
+            "display.get_window_info",
             Some(serde_json::json!({"window_id": window_id.as_string()})),
         );
 
@@ -409,7 +409,7 @@ impl DisplayClient {
 
     /// Get display capabilities
     pub async fn get_capabilities(&mut self) -> Result<DisplayCapabilitiesInfo> {
-        let req = JsonRpcRequest::new("display.getCapabilities", None);
+        let req = JsonRpcRequest::new("display.get_capabilities", None);
 
         let response = self.send_request(req).await?;
 
@@ -453,9 +453,9 @@ mod tests {
 
     #[test]
     fn test_jsonrpc_request_creation() {
-        let req = JsonRpcRequest::new("display.createWindow", None);
+        let req = JsonRpcRequest::new("display.create_window", None);
         assert_eq!(req.jsonrpc, "2.0");
-        assert_eq!(req.method, "display.createWindow");
+        assert_eq!(req.method, "display.create_window");
         assert!(req.id.is_some());
     }
 }

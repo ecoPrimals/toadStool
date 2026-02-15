@@ -163,7 +163,9 @@ impl ComplexAbs {
 
         // Output shape is [batch..., 1] (real magnitudes)
         let mut output_shape = self.input.shape().to_vec();
-        *output_shape.last_mut().unwrap() = 1;
+        *output_shape
+            .last_mut()
+            .ok_or_else(|| BarracudaError::execution_failed("output_shape empty"))? = 1;
 
         Ok(Tensor::from_buffer(
             output_buffer,

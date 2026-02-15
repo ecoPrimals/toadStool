@@ -63,10 +63,10 @@ pub mod triangular_solve;
 pub mod tridiagonal;
 
 pub use batched_eigh_gpu::BatchedEighGpu;
-pub use gemm_f64::GemmF64;
-pub use gen_eigh_gpu::{GenEighDecompositionGpu, GenEighGpu};
 pub use cholesky::Cholesky;
 pub use eigh::Eigh;
+pub use gemm_f64::GemmF64;
+pub use gen_eigh_gpu::{GenEighDecompositionGpu, GenEighGpu};
 pub use linsolve::LinSolve;
 pub use lu::{lu_decompose, lu_det, lu_inverse, lu_solve, LuDecomposition};
 pub use lu_gpu::LuGpu;

@@ -112,10 +112,10 @@ impl MockResourceMonitor {
                     available_storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB
                     available_network_bandwidth: Some(100000000),      // 100Mbps
                     available_gpu_units: 0,
-                    cpu_usage_percent: 75.0,                           // High usage
-                    memory_usage_percent: 87.5,                        // 7GB/8GB = 87.5%
+                    cpu_usage_percent: 75.0,    // High usage
+                    memory_usage_percent: 87.5, // 7GB/8GB = 87.5%
                     total_cpu_cores: 8,
-                    total_memory_bytes: 8 * 1024 * 1024 * 1024,        // 8GB
+                    total_memory_bytes: 8 * 1024 * 1024 * 1024, // 8GB
                 })
             })
         });

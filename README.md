@@ -11,22 +11,23 @@
 
 ---
 
-## Quality Gates (February 14, 2026)
+## Quality Gates (February 15, 2026)
 
 | Gate | Status |
 |------|--------|
 | `cargo build --workspace` | ✅ Clean |
 | `cargo fmt --all -- --check` | ✅ Clean |
-| `cargo clippy --workspace` | ✅ Clean (0 warnings) |
+| `cargo clippy --workspace -- -D warnings` | ✅ Clean (0 warnings) |
 | `cargo test --workspace` | ✅ 15,700+ passed, 0 failed |
 | `unsafe` blocks | ✅ FFI only (VFIO, DRM) — 100% documented |
 | Production placeholders | ✅ 0 remaining — all evolved |
+| Error handling | ✅ No panic paths (unwrap → Result propagation) |
 | Scientific middleware | ✅ 350+ tests, 100% passing |
 | MD pipeline | ✅ Complete (thermostats + observables + PPPM) |
 | Server metrics | ✅ Real system values (no placeholders) |
 | GPU detection | ✅ Self-knowledge via sysfs/system_profiler |
 
-*All quality gates green. Workspace fully clean.*
+*All quality gates green. Workspace fully clean. Clippy -D warnings compliant.*
 
 ---
 
@@ -228,14 +229,16 @@ toadStool/
 - ✅ **GPU self-knowledge** -- Vendor detection via sysfs/system_profiler
 - ✅ **Scheduler primal routing** -- Real primal registry integration
 
-### Performance (Next)
-- **Runtime cache probing** -- Bandwidth microbenchmarks to find cache boundaries
-- **Timeline semaphores** -- Async submit without CPU-GPU sync
+### Performance (Completed Feb 15) ✅
+- ✅ **Runtime cache probing** -- Bandwidth microbenchmarks to find cache boundaries
+- ✅ **Async batch submission** -- Deferred GPU submission with work tracking
+
+### Infrastructure (Completed Feb 15) ✅
+- ✅ **Model weight loading** -- safetensors AND GGUF loader (llama.cpp quantized models)
+- ✅ **INT4/INT8 quantization** -- Q4_0/Q8_0 dequantization and GEMV shaders for LLM inference
 
 ### Infrastructure (Next)
 - **NPU model pipeline** -- train/compile/deploy from Rust
-- **Model weight loading** -- safetensors/GGUF loader
-- **INT4/INT8 quantization** -- quantized WGSL shaders
 - **burn-inference models** -- Full BERT/Whisper/YOLO implementations
 
 ---
@@ -419,4 +422,4 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
-**Last Updated**: February 14, 2026 (Deep Debt Evolution Complete)
+**Last Updated**: February 15, 2026 (Infrastructure Evolution)

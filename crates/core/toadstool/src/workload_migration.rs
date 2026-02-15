@@ -1033,17 +1033,15 @@ mod tests {
 
         let loc = result.unwrap();
         assert!(matches!(loc, WorkloadLocation::Cloud { .. }));
-        match &loc {
-            WorkloadLocation::Cloud {
-                provider,
-                region,
-                instance_id,
-            } => {
-                assert_eq!(provider, "SimulatedCloud");
-                assert_eq!(region, "us-west-1");
-                assert!(instance_id.starts_with("instance-new-workload"));
-            }
-            _ => {}
+        if let WorkloadLocation::Cloud {
+            provider,
+            region,
+            instance_id,
+        } = &loc
+        {
+            assert_eq!(provider, "SimulatedCloud");
+            assert_eq!(region, "us-west-1");
+            assert!(instance_id.starts_with("instance-new-workload"));
         }
 
         let stored = coordinator.get_workload_location("new-workload").await;
@@ -1109,15 +1107,12 @@ mod tests {
 
         let loc = result.unwrap();
         assert!(matches!(loc, WorkloadLocation::Local { .. }));
-        match &loc {
-            WorkloadLocation::Local { hostname } => {
-                assert!(
-                    hostname.starts_with("node-")
-                        || !std::env::var("HOSTNAME").unwrap_or_default().is_empty()
-                        || !std::env::var("HOST").unwrap_or_default().is_empty()
-                );
-            }
-            _ => {}
+        if let WorkloadLocation::Local { hostname } = &loc {
+            assert!(
+                hostname.starts_with("node-")
+                    || !std::env::var("HOSTNAME").unwrap_or_default().is_empty()
+                    || !std::env::var("HOST").unwrap_or_default().is_empty()
+            );
         }
     }
 

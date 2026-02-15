@@ -399,9 +399,7 @@ mod tests {
 
         assert!(
             norm_high < norm_low,
-            "High regularization should produce smaller weights: {} vs {}",
-            norm_high,
-            norm_low
+            "High regularization should produce smaller weights: {norm_high} vs {norm_low}"
         );
     }
 }

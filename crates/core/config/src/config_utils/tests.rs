@@ -218,8 +218,8 @@ fn test_get_tls_auth_sandbox_flags() {
     let _sandbox = ConfigUtils::get_sandboxing_enabled();
     let metrics = ConfigUtils::get_metrics_enabled();
     let health = ConfigUtils::get_health_checks_enabled();
-    assert!(metrics || !metrics); // just exercise the path
-    assert!(health || !health);
+    // Exercise getters; both return valid bools
+    let _ = (metrics, health);
 }
 
 #[test]

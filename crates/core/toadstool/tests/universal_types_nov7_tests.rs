@@ -273,6 +273,7 @@ fn test_system_resources_creation() {
         available_storage_bytes: 1000 * 1024 * 1024 * 1024, // 1000 GB
         available_network_bandwidth: Some(10 * 1024 * 1024 * 1024), // 10 Gbps
         available_gpu_units: 2,
+        ..Default::default()
     };
 
     assert_eq!(resources.available_cpu_cores, 16.0);
@@ -293,6 +294,7 @@ fn test_system_resources_minimal() {
         available_storage_bytes: 10 * 1024 * 1024 * 1024, // 10 GB
         available_network_bandwidth: Some(100 * 1024 * 1024), // 100 Mbps
         available_gpu_units: 0,
+        ..Default::default()
     };
 
     assert_eq!(resources.available_cpu_cores, 1.0);
@@ -309,6 +311,7 @@ fn test_system_resources_high_spec() {
         available_storage_bytes: 10000 * 1024 * 1024 * 1024, // 10 TB
         available_network_bandwidth: Some(100 * 1024 * 1024 * 1024), // 100 Gbps
         available_gpu_units: 8,
+        ..Default::default()
     };
 
     assert!(resources.available_cpu_cores >= 64.0);
@@ -324,6 +327,7 @@ fn test_system_resources_clone() {
         available_storage_bytes: 500 * 1024 * 1024 * 1024, // 500 GB
         available_network_bandwidth: Some(1024 * 1024 * 1024), // 1 Gbps
         available_gpu_units: 1,
+        ..Default::default()
     };
 
     let cloned = resources.clone();

@@ -37,9 +37,9 @@
 //!   variant of Bi-CG for the solution of nonsymmetric linear systems
 //! - Saad, Y. (2003). Iterative Methods for Sparse Linear Systems
 
+use super::csr::CsrMatrix;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
-use super::csr::CsrMatrix;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
@@ -120,17 +120,18 @@ impl BiCgStabGpu {
 
         // Create GPU buffers for vectors
         let x_buffer = Self::create_zero_f64_buffer(&device, "BiCG x", n);
-        let r_buffer = Self::create_f64_buffer(&device, "BiCG r", b);  // r₀ = b
-        let r_hat_buffer = Self::create_f64_buffer(&device, "BiCG r_hat", b);  // r̂ = r₀ (fixed)
+        let r_buffer = Self::create_f64_buffer(&device, "BiCG r", b); // r₀ = b
+        let r_hat_buffer = Self::create_f64_buffer(&device, "BiCG r_hat", b); // r̂ = r₀ (fixed)
         let p_buffer = Self::create_zero_f64_buffer(&device, "BiCG p", n);
         let v_buffer = Self::create_zero_f64_buffer(&device, "BiCG v", n);
         let s_buffer = Self::create_zero_f64_buffer(&device, "BiCG s", n);
         let t_buffer = Self::create_zero_f64_buffer(&device, "BiCG t", n);
-        let _temp_buffer = Self::create_zero_f64_buffer(&device, "BiCG temp", n);  // For SpMV output
+        let _temp_buffer = Self::create_zero_f64_buffer(&device, "BiCG temp", n); // For SpMV output
 
         // Partial sums buffer for dot products
         let num_workgroups = n.div_ceil(256);
-        let _partial_sums_buffer = Self::create_zero_f64_buffer(&device, "BiCG partial", num_workgroups);
+        let _partial_sums_buffer =
+            Self::create_zero_f64_buffer(&device, "BiCG partial", num_workgroups);
 
         // Compile shader
         let shader = device.compile_shader(Self::wgsl_shader(), Some("BiCGSTAB f64"));
@@ -140,47 +141,61 @@ impl BiCgStabGpu {
         let dot_bgl = Self::create_dot_bgl(&device);
 
         // Create pipelines
-        let spmv_pl = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("SpMV PL"),
-            bind_group_layouts: &[&spmv_bgl],
-            push_constant_ranges: &[],
-        });
+        let spmv_pl = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("SpMV PL"),
+                bind_group_layouts: &[&spmv_bgl],
+                push_constant_ranges: &[],
+            });
 
-        let dot_pl = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Dot PL"),
-            bind_group_layouts: &[&dot_bgl],
-            push_constant_ranges: &[],
-        });
+        let dot_pl = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Dot PL"),
+                bind_group_layouts: &[&dot_bgl],
+                push_constant_ranges: &[],
+            });
 
-        let spmv_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("SpMV f64"),
-            layout: Some(&spmv_pl),
-            module: &shader,
-            entry_point: "spmv_f64",
-        });
+        let spmv_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("SpMV f64"),
+                    layout: Some(&spmv_pl),
+                    module: &shader,
+                    entry_point: "spmv_f64",
+                });
 
-        let _dot_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Dot f64"),
-            layout: Some(&dot_pl),
-            module: &shader,
-            entry_point: "dot_f64",
-        });
+        let _dot_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Dot f64"),
+                    layout: Some(&dot_pl),
+                    module: &shader,
+                    entry_point: "dot_f64",
+                });
 
         // SpMV params
         let spmv_params = [n as u32];
-        let spmv_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SpMV params"),
-            contents: bytemuck::cast_slice(&spmv_params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let spmv_params_buf = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("SpMV params"),
+                contents: bytemuck::cast_slice(&spmv_params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Dot params
         let dot_params = [n as u32];
-        let _dot_params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Dot params"),
-            contents: bytemuck::cast_slice(&dot_params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let _dot_params_buf = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Dot params"),
+                contents: bytemuck::cast_slice(&dot_params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Initialize scalars
         let mut rho: f64 = 1.0;
@@ -214,7 +229,10 @@ impl BiCgStabGpu {
             // p = r + β(p - ω*v)
             let p_data = Self::read_f64_buffer(&device, &p_buffer, n)?;
             let v_data = Self::read_f64_buffer(&device, &v_buffer, n)?;
-            let new_p: Vec<f64> = r_data.iter().zip(&p_data).zip(&v_data)
+            let new_p: Vec<f64> = r_data
+                .iter()
+                .zip(&p_data)
+                .zip(&v_data)
                 .map(|((ri, pi), vi)| ri + beta * (pi - omega * vi))
                 .collect();
             Self::write_f64_buffer(&device, &p_buffer, &new_p);
@@ -224,18 +242,39 @@ impl BiCgStabGpu {
                 label: Some("SpMV p BG"),
                 layout: &spmv_bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: values_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: col_indices_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: row_ptrs_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 3, resource: p_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 4, resource: v_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 5, resource: spmv_params_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: values_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: col_indices_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: row_ptrs_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: p_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: v_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: spmv_params_buf.as_entire_binding(),
+                    },
                 ],
             });
 
-            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("SpMV p"),
-            });
+            let mut encoder =
+                device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("SpMV p"),
+                    });
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("SpMV p Pass"),
@@ -263,14 +302,22 @@ impl BiCgStabGpu {
             alpha = rho / rv;
 
             // s = r - α*v
-            let s_data: Vec<f64> = r_data.iter().zip(&v_data).map(|(ri, vi)| ri - alpha * vi).collect();
+            let s_data: Vec<f64> = r_data
+                .iter()
+                .zip(&v_data)
+                .map(|(ri, vi)| ri - alpha * vi)
+                .collect();
 
             // Check early convergence
             let s_norm: f64 = s_data.iter().map(|x| x * x).sum::<f64>().sqrt();
             if s_norm / b_norm < tol {
                 // x = x + α*p
                 let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
-                let new_x: Vec<f64> = x_data.iter().zip(&new_p).map(|(xi, pi)| xi + alpha * pi).collect();
+                let new_x: Vec<f64> = x_data
+                    .iter()
+                    .zip(&new_p)
+                    .map(|(xi, pi)| xi + alpha * pi)
+                    .collect();
                 return Ok(BiCgStabGpuResult {
                     x: new_x,
                     iterations: iter + 1,
@@ -286,18 +333,39 @@ impl BiCgStabGpu {
                 label: Some("SpMV s BG"),
                 layout: &spmv_bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: values_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: col_indices_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: row_ptrs_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 3, resource: s_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 4, resource: t_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 5, resource: spmv_params_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: values_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: col_indices_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: row_ptrs_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: s_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: t_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: spmv_params_buf.as_entire_binding(),
+                    },
                 ],
             });
 
-            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("SpMV s"),
-            });
+            let mut encoder =
+                device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("SpMV s"),
+                    });
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("SpMV s Pass"),
@@ -318,13 +386,20 @@ impl BiCgStabGpu {
 
             // x = x + α*p + ω*s
             let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
-            let new_x: Vec<f64> = x_data.iter().zip(&new_p).zip(&s_data)
+            let new_x: Vec<f64> = x_data
+                .iter()
+                .zip(&new_p)
+                .zip(&s_data)
                 .map(|((xi, pi), si)| xi + alpha * pi + omega * si)
                 .collect();
             Self::write_f64_buffer(&device, &x_buffer, &new_x);
 
             // r = s - ω*t
-            let new_r: Vec<f64> = s_data.iter().zip(&t_data).map(|(si, ti)| si - omega * ti).collect();
+            let new_r: Vec<f64> = s_data
+                .iter()
+                .zip(&t_data)
+                .map(|(si, ti)| si - omega * ti)
+                .collect();
 
             // Check convergence
             let r_norm: f64 = new_r.iter().map(|x| x * x).sum::<f64>().sqrt();
@@ -364,32 +439,46 @@ impl BiCgStabGpu {
 
     fn create_f64_buffer(device: &Arc<WgpuDevice>, label: &str, data: &[f64]) -> wgpu::Buffer {
         let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
-        device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(label),
-            contents: &bytes,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-        })
+        device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: &bytes,
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            })
     }
 
     fn create_zero_f64_buffer(device: &Arc<WgpuDevice>, label: &str, count: usize) -> wgpu::Buffer {
         let zeros = vec![0u8; count * 8];
-        device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(label),
-            contents: &zeros,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-        })
+        device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: &zeros,
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            })
     }
 
     fn create_u32_buffer(device: &Arc<WgpuDevice>, label: &str, data: &[usize]) -> wgpu::Buffer {
         let u32_data: Vec<u32> = data.iter().map(|&x| x as u32).collect();
-        device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(label),
-            contents: bytemuck::cast_slice(&u32_data),
-            usage: wgpu::BufferUsages::STORAGE,
-        })
+        device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: bytemuck::cast_slice(&u32_data),
+                usage: wgpu::BufferUsages::STORAGE,
+            })
     }
 
-    fn read_f64_buffer(device: &Arc<WgpuDevice>, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<f64>> {
+    fn read_f64_buffer(
+        device: &Arc<WgpuDevice>,
+        buffer: &wgpu::Buffer,
+        count: usize,
+    ) -> Result<Vec<f64>> {
         let staging = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("f64 staging"),
             size: (count * 8) as u64,
@@ -397,24 +486,35 @@ impl BiCgStabGpu {
             mapped_at_creation: false,
         });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("f64 readback"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("f64 readback"),
+            });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
         device.queue.submit(Some(encoder.finish()));
 
         let slice = staging.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| {
-            sender.send(result).unwrap();
+            let _ = sender.send(result);
         });
         device.device.poll(wgpu::Maintain::Wait);
-        receiver.recv().unwrap().map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
+        receiver
+            .recv()
+            .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
+            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
         let result: Vec<f64> = data
             .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
+            .map(|chunk| {
+                f64::from_le_bytes(
+                    chunk
+                        .try_into()
+                        .expect("chunks_exact(8) yields 8-byte chunks"),
+                )
+            })
             .collect();
         drop(data);
         staging.unmap();
@@ -428,119 +528,123 @@ impl BiCgStabGpu {
     }
 
     fn create_spmv_bgl(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
-        device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("SpMV BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("SpMV BGL"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        })
+                ],
+            })
     }
 
     fn create_dot_bgl(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
-        device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Dot BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Dot BGL"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        })
+                ],
+            })
     }
 }
 
@@ -579,10 +683,7 @@ mod tests {
         // Verify: Ax ≈ b
         let ax = a.matvec(&result.x).unwrap();
         for (axi, bi) in ax.iter().zip(b.iter()) {
-            assert!(
-                (axi - bi).abs() < 1e-8,
-                "Ax should equal b"
-            );
+            assert!((axi - bi).abs() < 1e-8, "Ax should equal b");
         }
     }
 }

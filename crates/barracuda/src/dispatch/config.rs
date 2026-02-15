@@ -279,8 +279,7 @@ mod tests {
 
     #[test]
     fn test_size_threshold() {
-        let mut config = DispatchConfig::default();
-        config.force_cpu = false; // Ensure not forced
+        let config = DispatchConfig::default();
 
         // Below threshold: CPU
         // Note: if GPU not available, always returns false

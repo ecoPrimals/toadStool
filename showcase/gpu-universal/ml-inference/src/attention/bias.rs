@@ -186,8 +186,8 @@ impl AttentionBias {
 
 #[cfg(test)]
 mod causal_and_bias_tests {
-    use crate::attention::CausalMask;
     use super::*;
+    use crate::attention::CausalMask;
 
     #[test]
     fn test_causal_mask_generation() {

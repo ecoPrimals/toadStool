@@ -207,7 +207,7 @@ mod tests {
 
         // All values should be in [0, 1)
         for &v in &data {
-            assert!(v >= 0.0 && v < 1.0, "Value {} out of range", v);
+            assert!((0.0..1.0).contains(&v), "Value {v} out of range");
         }
 
         // First point should be 0
@@ -226,15 +226,15 @@ mod tests {
         // Sobol should cover intervals more evenly than random
         // Check that we have points in each quarter
         let q1 = data.iter().filter(|&&x| x < 0.25).count();
-        let q2 = data.iter().filter(|&&x| x >= 0.25 && x < 0.5).count();
-        let q3 = data.iter().filter(|&&x| x >= 0.5 && x < 0.75).count();
+        let q2 = data.iter().filter(|&&x| (0.25..0.5).contains(&x)).count();
+        let q3 = data.iter().filter(|&&x| (0.5..0.75).contains(&x)).count();
         let q4 = data.iter().filter(|&&x| x >= 0.75).count();
 
         // Each quarter should have roughly 16 points (allow some slack)
-        assert!(q1 >= 10 && q1 <= 22, "Q1 has {} points", q1);
-        assert!(q2 >= 10 && q2 <= 22, "Q2 has {} points", q2);
-        assert!(q3 >= 10 && q3 <= 22, "Q3 has {} points", q3);
-        assert!(q4 >= 10 && q4 <= 22, "Q4 has {} points", q4);
+        assert!((10..=22).contains(&q1), "Q1 has {q1} points");
+        assert!((10..=22).contains(&q2), "Q2 has {q2} points");
+        assert!((10..=22).contains(&q3), "Q3 has {q3} points");
+        assert!((10..=22).contains(&q4), "Q4 has {q4} points");
     }
 
     #[tokio::test]

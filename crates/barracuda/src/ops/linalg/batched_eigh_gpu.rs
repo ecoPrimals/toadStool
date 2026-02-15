@@ -168,7 +168,7 @@ impl BatchedEighGpu {
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Batched Eigh f64"));
 
         // Create bind group layouts and pipelines
-        
+
         // Init V layout (same as main params)
         let init_bgl = device
             .device
@@ -624,12 +624,11 @@ impl BatchedEighGpu {
             mapped_at_creation: false,
         });
 
-        let mut encoder =
-            device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("f64 readback"),
-                });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("f64 readback"),
+            });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
         device.queue.submit(Some(encoder.finish()));
 
@@ -638,19 +637,25 @@ impl BatchedEighGpu {
         slice.map_async(
             wgpu::MapMode::Read,
             move |result: std::result::Result<(), wgpu::BufferAsyncError>| {
-                sender.send(result).unwrap();
+                let _ = sender.send(result);
             },
         );
         device.device.poll(wgpu::Maintain::Wait);
         receiver
             .recv()
-            .unwrap()
+            .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
         let result: Vec<f64> = data
             .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
+            .map(|chunk| {
+                f64::from_le_bytes(
+                    chunk
+                        .try_into()
+                        .expect("chunks_exact(8) yields 8-byte chunks"),
+                )
+            })
             .collect();
         drop(data);
         staging.unmap();

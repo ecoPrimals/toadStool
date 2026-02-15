@@ -69,6 +69,9 @@ thiserror = "1.0"
 anyhow = "1.0"
 dashmap = "5.5"
 
+# System information (pure Rust!)
+sysinfo = "0.32"
+
 # Configuration
 config = "0.14" 
 [dev-dependencies]

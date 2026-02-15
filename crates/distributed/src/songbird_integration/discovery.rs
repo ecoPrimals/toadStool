@@ -419,10 +419,12 @@ impl DiscoveryClient {
 }
 
 impl NetworkHealthMonitor {
-    pub fn new(_timeout: Duration) -> Self {
+    pub fn new(timeout: Duration) -> Self {
         use std::collections::HashMap;
         Self {
             health_checks: HashMap::new(),
+            last_check: None,
+            check_interval: timeout,
         }
     }
 }
@@ -432,6 +434,8 @@ impl Clone for NetworkHealthMonitor {
         use std::collections::HashMap;
         Self {
             health_checks: HashMap::new(),
+            last_check: self.last_check,
+            check_interval: self.check_interval,
         }
     }
 }

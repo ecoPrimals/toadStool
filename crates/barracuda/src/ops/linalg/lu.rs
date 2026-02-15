@@ -292,9 +292,9 @@ mod tests {
         let x = lu_solve(&a, 3, &b).unwrap();
 
         // Verify: Ax = b
-        let ax0 = 2.0 * x[0] - 1.0 * x[1];
-        let ax1 = -1.0 * x[0] + 2.0 * x[1] - 1.0 * x[2];
-        let ax2 = -1.0 * x[1] + 2.0 * x[2];
+        let ax0 = 2.0 * x[0] - x[1];
+        let ax1 = -x[0] + 2.0 * x[1] - x[2];
+        let ax2 = -x[1] + 2.0 * x[2];
 
         assert!(approx_eq(ax0, b[0], 1e-10));
         assert!(approx_eq(ax1, b[1], 1e-10));

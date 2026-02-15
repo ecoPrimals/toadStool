@@ -164,7 +164,7 @@ mod tests {
             max_size: 10,
             ..Default::default()
         };
-        let pool = MemoryPool::new(config, || Vec::<i32>::new());
+        let pool = MemoryPool::new(config, Vec::<i32>::new);
 
         let obj1 = pool.get().await;
         assert!(obj1.get().is_some());

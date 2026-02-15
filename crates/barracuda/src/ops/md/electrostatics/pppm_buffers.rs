@@ -1,59 +1,36 @@
 //! PPPM GPU buffer helpers
 //!
 //! Extracted from pppm_gpu.rs for modularity (Feb 14, 2026).
-//! Contains buffer creation and readback utilities for PPPM compute.
+//! Delegates to `crate::linalg::sparse::SparseBuffers` for shared implementation (Feb 15, 2026).
 
-use crate::error::{BarracudaError, Result};
+use crate::error::Result;
+use crate::linalg::sparse::SparseBuffers;
 use wgpu::util::DeviceExt;
 
 /// PPPM buffer utilities for GPU memory management
+///
+/// Thin wrapper over `SparseBuffers` for electrostatics code paths that use raw
+/// `wgpu::Device` and `wgpu::Queue` (e.g. PppmGpu).
 pub struct PppmBuffers;
 
 impl PppmBuffers {
     /// Create f64 buffer initialized with data
-    pub fn f64_from_slice(
-        device: &wgpu::Device,
-        label: &str,
-        data: &[f64],
-    ) -> wgpu::Buffer {
-        let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(label),
-            contents: &bytes,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-        })
+    pub fn f64_from_slice(device: &wgpu::Device, label: &str, data: &[f64]) -> wgpu::Buffer {
+        SparseBuffers::f64_from_slice_raw(device, label, data)
     }
 
     /// Create zero-initialized f64 buffer
     pub fn f64_zeros(device: &wgpu::Device, label: &str, count: usize) -> wgpu::Buffer {
-        device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(label),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_SRC
-                | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        })
+        SparseBuffers::f64_zeros_raw(device, label, count)
     }
 
     /// Create zero-initialized i32 buffer
     pub fn i32_zeros(device: &wgpu::Device, label: &str, count: usize) -> wgpu::Buffer {
-        device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(label),
-            size: (count * 4) as u64,
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_SRC
-                | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        })
+        SparseBuffers::i32_zeros_raw(device, label, count)
     }
 
     /// Create i32 buffer from slice
-    pub fn i32_from_slice(
-        device: &wgpu::Device,
-        label: &str,
-        data: &[i32],
-    ) -> wgpu::Buffer {
+    pub fn i32_from_slice(device: &wgpu::Device, label: &str, data: &[i32]) -> wgpu::Buffer {
         let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(label),
@@ -62,90 +39,24 @@ impl PppmBuffers {
         })
     }
 
-    /// Read f64 buffer back to CPU
+    /// Read f64 buffer back to CPU (sync; async wrapper for API compatibility)
     pub async fn read_f64(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         buffer: &wgpu::Buffer,
         count: usize,
     ) -> Result<Vec<f64>> {
-        let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("pppm_staging_f64"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("pppm_readback_f64"),
-        });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (tx, rx) = futures::channel::oneshot::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = tx.send(result);
-        });
-        device.poll(wgpu::Maintain::Wait);
-
-        rx.await
-            .map_err(|_| BarracudaError::device("Buffer map cancelled"))?
-            .map_err(|e| BarracudaError::device(format!("Buffer map failed: {:?}", e)))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
-            .collect();
-
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
+        SparseBuffers::read_f64_raw(device, queue, buffer, count)
     }
 
-    /// Read i32 buffer back to CPU
+    /// Read i32 buffer back to CPU (sync; async wrapper for API compatibility)
     pub async fn read_i32(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         buffer: &wgpu::Buffer,
         count: usize,
     ) -> Result<Vec<i32>> {
-        let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("pppm_staging_i32"),
-            size: (count * 4) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("pppm_readback_i32"),
-        });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 4) as u64);
-        queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (tx, rx) = futures::channel::oneshot::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = tx.send(result);
-        });
-        device.poll(wgpu::Maintain::Wait);
-
-        rx.await
-            .map_err(|_| BarracudaError::device("Buffer map cancelled"))?
-            .map_err(|e| BarracudaError::device(format!("Buffer map failed: {:?}", e)))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<i32> = data
-            .chunks_exact(4)
-            .map(|chunk| i32::from_le_bytes(chunk.try_into().unwrap()))
-            .collect();
-
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
+        SparseBuffers::read_i32_raw(device, queue, buffer, count)
     }
 }
 

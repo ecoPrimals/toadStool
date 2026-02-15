@@ -190,7 +190,6 @@ fn wrap_position(pos: [f64; 3], box_dims: [f64; 3]) -> [f64; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ops::md::electrostatics::PppmAccuracy;
 
     #[test]
     fn test_uniform_potential_zero_force() {

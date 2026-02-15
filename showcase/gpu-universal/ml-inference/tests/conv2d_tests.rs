@@ -247,7 +247,7 @@ async fn test_conv2d_with_bias() {
     let input_w = 3;
 
     let input = vec![1.0; 9];
-    let weights = vec![0.0; 2 * 1 * 1 * 1]; // 1x1 kernel (effectively just bias)
+    let weights = vec![0.0; 2]; // 1x1 kernel (effectively just bias)
     let bias = vec![5.0, -3.0]; // Different bias per channel
 
     let config = Conv2DConfig {

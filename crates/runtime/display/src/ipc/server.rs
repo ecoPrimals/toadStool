@@ -408,7 +408,7 @@ impl DisplayServer {
         manager: &Arc<RwLock<WindowManager>>,
     ) -> Result<serde_json::Value> {
         match request.method.as_str() {
-            "display.createWindow" => {
+            "display.create_window" => {
                 let params: CreateWindowRequest = request
                     .params
                     .as_ref()
@@ -422,7 +422,7 @@ impl DisplayServer {
                     "window_id": window_id.as_string()
                 }))
             }
-            "display.destroyWindow" => {
+            "display.destroy_window" => {
                 let params: serde_json::Value = request.params.clone().unwrap_or_default();
                 let window_id_str = params["window_id"]
                     .as_str()
@@ -454,7 +454,7 @@ impl DisplayServer {
 
                 Ok(serde_json::json!({"resized": true}))
             }
-            "display.getWindowInfo" => {
+            "display.get_window_info" => {
                 let params: serde_json::Value = request.params.clone().unwrap_or_default();
                 let window_id_str = params["window_id"]
                     .as_str()
@@ -467,7 +467,7 @@ impl DisplayServer {
                 Ok(serde_json::to_value(info)
                     .map_err(|e| DisplayError::IpcError(format!("Serialization error: {}", e)))?)
             }
-            "display.getCapabilities" => {
+            "display.get_capabilities" => {
                 let mgr = manager.read().await;
 
                 // Runtime-determined capabilities (basic version for static dispatch)
@@ -516,8 +516,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_jsonrpc_parsing() {
-        let request_str = r#"{"jsonrpc":"2.0","method":"display.getCapabilities","id":1}"#;
+        let request_str = r#"{"jsonrpc":"2.0","method":"display.get_capabilities","id":1}"#;
         let request: JsonRpcRequest = serde_json::from_str(request_str).unwrap();
-        assert_eq!(request.method, "display.getCapabilities");
+        assert_eq!(request.method, "display.get_capabilities");
     }
 }

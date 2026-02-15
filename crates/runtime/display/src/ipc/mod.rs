@@ -14,15 +14,15 @@
 //! Hardware
 //! ```
 //!
-//! ## Protocol Methods
+//! ## Protocol Methods (wateringHole Semantic Naming Standard)
 //!
-//! - `display.createWindow` - Create a new window
-//! - `display.destroyWindow` - Destroy a window
-//! - `display.resizeWindow` - Resize a window
-//! - `display.getWindowInfo` - Get window information
-//! - `display.subscribeInput` - Subscribe to input events
-//! - `display.pollEvents` - Poll for pending events
-//! - `display.getCapabilities` - Get display capabilities
+//! - `display.create_window` - Create a new window
+//! - `display.destroy_window` - Destroy a window
+//! - `display.resize_window` - Resize a window
+//! - `display.get_window_info` - Get window information
+//! - `display.subscribe_input` - Subscribe to input events
+//! - `display.poll_events` - Poll for pending events
+//! - `display.get_capabilities` - Get display capabilities
 //! - `display.present` - Present framebuffer (future: zero-copy)
 //!
 //! ## Example (Server)

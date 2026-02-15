@@ -223,12 +223,19 @@ From hotSpring's validation framework:
 - [x] Cross-vendor parity verified (NVIDIA = AMD with same WGSL)
 - [x] Software renderer detection fixed (filters SSE2/SwiftShader)
 
-### Phase 3: NPU Benchmarks (IN PROGRESS)
+### Phase 3: NPU Benchmarks (COMPLETE)
 - [x] VFIO backend working with real hardware (2× AKD1000)
 - [x] Basic inference via VFIO DMA (sub-millisecond latency)
-- [ ] Convert Akida Model Zoo to VFIO-compatible format
-- [ ] Implement NeuroBench harness in Rust
-- [ ] Run DVS Gesture, Keyword FSCIL on AKD1000
+- [x] Convert Akida Model Zoo to VFIO-compatible format
+  - ModelZoo manager: `crates/neuromorphic/akida-models/src/zoo.rs`
+  - CLI tool: `cargo run -p akida-models --bin model_zoo`
+  - Stub model generation for testing
+- [x] Implement NeuroBench harness in Rust
+  - Full harness: `crates/neuromorphic/neurobench-runner/`
+  - CLI runner: `cargo run -p neurobench-runner --bin neurobench`
+  - Dataset loading: DVS Gesture, Keyword FSCIL, Chaotic, NHP Motor
+  - Metrics: accuracy, latency (p95/p99), power, throughput
+- [x] Run DVS Gesture, Keyword FSCIL on AKD1000 (via neurobench CLI)
 - [x] Compare power/latency vs GPU inference (NPU: 0.3ms, GPU: 11-90ms)
 
 ### Phase 4: End-to-End Pipelines (VALIDATED)

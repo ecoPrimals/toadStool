@@ -614,7 +614,12 @@ mod tests {
     #[test]
     fn toadstool_result_ok() {
         let r: ToadStoolResult<i32> = Ok(42);
-        assert_eq!(r.unwrap(), 42);
+        assert!(r.is_ok());
+        // Validate the value through match rather than unwrap
+        match r {
+            Ok(v) => assert_eq!(v, 42),
+            Err(_) => panic!("expected Ok"),
+        }
     }
 
     #[test]
@@ -624,7 +629,11 @@ mod tests {
         }
         .into());
         assert!(r.is_err());
-        assert!(r.unwrap_err().to_string().contains("bad"));
+        // Validate the error through match rather than unwrap_err
+        match r {
+            Ok(_) => panic!("expected Err"),
+            Err(e) => assert!(e.to_string().contains("bad")),
+        }
     }
 
     #[test]

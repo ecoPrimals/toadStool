@@ -511,7 +511,7 @@ mod tests {
         // All coordinates should be in [0, 1)
         for p in &points {
             for &xi in p {
-                assert!(xi >= 0.0 && xi < 1.0);
+                assert!((0.0..1.0).contains(&xi));
             }
         }
     }

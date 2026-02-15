@@ -425,8 +425,6 @@ struct Fft64Params {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_twiddle_factors() {
         // Verify twiddle factor computation
@@ -457,13 +455,17 @@ mod tests {
 
     #[test]
     fn test_power_of_2_validation() {
+        // Power-of-2 check: n & (n - 1) == 0
+        fn is_power_of_two(n: usize) -> bool {
+            n != 0 && (n & (n - 1)) == 0
+        }
         // These should be valid
-        assert!(16 & (16 - 1) == 0);
-        assert!(256 & (256 - 1) == 0);
-        assert!(1024 & (1024 - 1) == 0);
+        assert!(is_power_of_two(16));
+        assert!(is_power_of_two(256));
+        assert!(is_power_of_two(1024));
 
         // These should be invalid
-        assert!(15 & (15 - 1) != 0);
-        assert!(100 & (100 - 1) != 0);
+        assert!(!is_power_of_two(15));
+        assert!(!is_power_of_two(100));
     }
 }

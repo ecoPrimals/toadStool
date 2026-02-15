@@ -201,7 +201,7 @@ async fn test_concurrent_pipelines() {
     for (i, handle) in handles.into_iter().enumerate() {
         let result = handle.await.unwrap();
         assert!(
-            result >= 0.0 && result <= 1.0,
+            (0.0..=1.0).contains(&result),
             "Sigmoid output should be in [0,1]"
         );
         println!("Pipeline {} completed with mean: {}", i, result);

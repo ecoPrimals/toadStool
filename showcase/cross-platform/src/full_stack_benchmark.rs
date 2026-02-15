@@ -56,6 +56,8 @@ extern "C" __global__ void add_kernel(const float* a, const float* b, float* out
 
         // Warmup
         for _ in 0..5 {
+            // SAFETY: CUDA kernel launch with valid device buffers of `size` elements,
+            // grid/block dimensions computed from size, kernel signature matches params
             unsafe {
                 add_kernel.launch(cfg, (&a_dev, &b_dev, &mut out_dev, size as i32))?;
             }
@@ -66,6 +68,7 @@ extern "C" __global__ void add_kernel(const float* a, const float* b, float* out
         let single_times: Vec<f64> = (0..iterations)
             .map(|_| {
                 let start = Instant::now();
+                // SAFETY: Same as warmup - valid buffers, dimensions, and kernel signature
                 unsafe {
                     add_kernel
                         .launch(cfg, (&a_dev, &b_dev, &mut out_dev, size as i32))
@@ -83,6 +86,7 @@ extern "C" __global__ void add_kernel(const float* a, const float* b, float* out
             .map(|_| {
                 let start = Instant::now();
                 for _ in 0..batch_size {
+                    // SAFETY: Same as warmup - valid buffers, dimensions, and kernel signature
                     unsafe {
                         add_kernel
                             .launch(cfg, (&a_dev, &b_dev, &mut out_dev, size as i32))

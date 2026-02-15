@@ -62,6 +62,8 @@ extern "C" __global__ void vector_mul(float* a, float* b, float* c, int n) {
         // Warmup
         {
             let f = device.get_func("vector_add", "vector_add").unwrap();
+            // SAFETY: CUDA kernel launch with valid device buffers of `size` elements,
+            // grid/block dimensions computed from size, and matching kernel signature
             unsafe {
                 f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?;
             }
@@ -72,6 +74,7 @@ extern "C" __global__ void vector_mul(float* a, float* b, float* c, int n) {
         let start = Instant::now();
         for _ in 0..iterations {
             let f = device.get_func("vector_add", "vector_add").unwrap();
+            // SAFETY: Same as above - valid buffers, dimensions, and kernel signature
             unsafe {
                 f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?;
             }
@@ -83,6 +86,7 @@ extern "C" __global__ void vector_mul(float* a, float* b, float* c, int n) {
         let start = Instant::now();
         for _ in 0..iterations {
             let f = device.get_func("vector_mul", "vector_mul").unwrap();
+            // SAFETY: Same as above - valid buffers, dimensions, and kernel signature
             unsafe {
                 f.launch(cfg, (&d_a, &d_b, &mut d_c, size as i32))?;
             }

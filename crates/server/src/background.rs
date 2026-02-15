@@ -357,12 +357,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_perform_health_check_cpu_threshold_exceeded_returns_false() {
-        // perform_health_check uses hardcoded 50% cpu, 45% memory
+        // MockResourceMonitor::new_successful() returns cpu_usage_percent: 25.0
         let config = ServerConfig {
             health_check: HealthCheckConfig {
                 check_resources: true,
                 check_runtime_engines: false,
-                cpu_threshold_percent: 40.0, // 50 > 40
+                cpu_threshold_percent: 20.0, // 25 > 20
                 memory_threshold_percent: 90.0,
                 ..HealthCheckConfig::default()
             },

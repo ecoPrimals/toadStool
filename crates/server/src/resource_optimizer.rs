@@ -646,7 +646,7 @@ pub enum OptimizationError {
 
 #[cfg(test)]
 mod tests {
-    #[allow(deprecated)]
+    #![allow(deprecated)] // Tests use deprecated primal constants for legacy interop testing
     use toadstool_common::interned_strings::primals;
 
     use super::*;

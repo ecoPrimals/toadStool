@@ -238,7 +238,7 @@ async fn test_activation_comparison_pipeline() {
     let sigmoid_out = executor.execute_sigmoid(&input).await.unwrap();
     for &val in &sigmoid_out {
         assert!(
-            val >= 0.0 && val <= 1.0,
+            (0.0..=1.0).contains(&val),
             "Sigmoid output should be in [0,1]"
         );
     }
@@ -246,7 +246,10 @@ async fn test_activation_comparison_pipeline() {
     // Tanh: (e^x - e^-x) / (e^x + e^-x)
     let tanh_out = executor.execute_tanh(&input).await.unwrap();
     for &val in &tanh_out {
-        assert!(val >= -1.0 && val <= 1.0, "Tanh output should be in [-1,1]");
+        assert!(
+            (-1.0..=1.0).contains(&val),
+            "Tanh output should be in [-1,1]"
+        );
     }
 
     // Softmax: e^x_i / sum(e^x_j)

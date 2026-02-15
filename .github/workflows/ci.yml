@@ -100,6 +100,42 @@ jobs:
           cargo build --examples --release
         continue-on-error: true
 
+  coverage:
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config bc
+      - name: Run coverage (tier 1)
+        run: |
+          cargo llvm-cov --workspace --all-features --ignore-filename-regex "tests/" -- --skip performance
+      - name: Generate coverage report
+        run: |
+          cargo llvm-cov report --json --output-path coverage.json
+          cargo llvm-cov report
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(cargo llvm-cov report | grep "TOTAL" | awk '{print $10}' | sed 's/%//')
+          THRESHOLD=90
+          echo "Coverage: ${COVERAGE}%"
+          echo "Threshold: ${THRESHOLD}%"
+          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+            echo "::warning::Coverage ${COVERAGE}% is below target ${THRESHOLD}%"
+            # Note: Currently a warning, can be changed to error when 90% is achieved
+            # exit 1
+          else
+            echo "✅ Coverage meets threshold"
+          fi
+
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest

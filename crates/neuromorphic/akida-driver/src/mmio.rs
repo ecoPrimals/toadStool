@@ -284,6 +284,7 @@ impl Drop for MappedRegion {
 }
 
 #[cfg(test)]
+#[allow(clippy::assertions_on_constants)] // Compile-time constant validation tests
 mod tests {
     use super::*;
 

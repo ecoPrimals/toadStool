@@ -517,8 +517,10 @@ mod tests {
         let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
         clear_toadstool_env();
         env::set_var("TOADSTOOL_ENABLE_METRICS", "true");
-        let mut c = ToadStoolConfig::default();
-        c.metrics = None;
+        let mut c = ToadStoolConfig {
+            metrics: None,
+            ..Default::default()
+        };
         c.apply_env_overrides().unwrap();
         assert!(c.metrics.is_some());
         clear_toadstool_env();
@@ -529,8 +531,10 @@ mod tests {
         let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
         clear_toadstool_env();
         env::set_var("TOADSTOOL_ENABLE_CACHE", "true");
-        let mut c = ToadStoolConfig::default();
-        c.cache = None;
+        let mut c = ToadStoolConfig {
+            cache: None,
+            ..Default::default()
+        };
         c.apply_env_overrides().unwrap();
         assert!(c.cache.is_some());
         clear_toadstool_env();

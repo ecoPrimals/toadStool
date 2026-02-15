@@ -1454,7 +1454,7 @@ mod tests {
                 || ip.starts_with("192.0.2.")
                 || ip.starts_with("203.0.114.")
         );
-        assert!(ip.split('.').last().unwrap().parse::<u32>().unwrap() >= 50);
+        assert!(ip.split('.').next_back().unwrap().parse::<u32>().unwrap() >= 50);
     }
 
     #[test]

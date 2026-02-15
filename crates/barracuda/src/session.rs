@@ -500,7 +500,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
 "#,
                 self.workgroup_size
             ),
-            _ => panic!("Unknown op type: {}", op_type),
+            _ => unreachable!("Unknown op type: {op_type} - internal invariant violation"),
         };
 
         self.device

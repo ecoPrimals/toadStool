@@ -357,9 +357,9 @@ impl BenchmarkSuite {
                 // Simulated GPU time: faster than CPU for large workloads
                 // This reflects typical GPU behavior without actual hardware
                 let simulated_speedup: f64 = match operation {
-                    "matmul" => 0.02,  // GPU ~50x faster for large matmul
-                    "exp" | "log" | "sqrt" => 0.01,  // ~100x for elementwise
-                    _ => 0.1,  // ~10x default
+                    "matmul" => 0.02,               // GPU ~50x faster for large matmul
+                    "exp" | "log" | "sqrt" => 0.01, // ~100x for elementwise
+                    _ => 0.1,                       // ~10x default
                 };
                 cpu_time.mul_f64(simulated_speedup.max(0.01))
             };

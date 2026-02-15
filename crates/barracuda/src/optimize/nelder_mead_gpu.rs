@@ -150,10 +150,7 @@ impl NelderMeadGpu {
             // Check convergence periodically
             if iter % check_interval == 0 {
                 let f_mean: f64 = f_vals.iter().sum::<f64>() / n_vertices as f64;
-                let f_std = (f_vals
-                    .iter()
-                    .map(|&fi| (fi - f_mean).powi(2))
-                    .sum::<f64>()
+                let f_std = (f_vals.iter().map(|&fi| (fi - f_mean).powi(2)).sum::<f64>()
                     / n_vertices as f64)
                     .sqrt();
 
@@ -401,12 +398,12 @@ impl NelderMeadGpu {
             mapped_at_creation: false,
         });
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("NM readback"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("NM readback"),
+                });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
         self.device.queue.submit(Some(encoder.finish()));
 
@@ -418,13 +415,19 @@ impl NelderMeadGpu {
         self.device.device.poll(wgpu::Maintain::Wait);
         receiver
             .recv()
-            .unwrap()
+            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
         let result: Vec<f64> = data
             .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
+            .map(|chunk| {
+                f64::from_le_bytes(
+                    chunk
+                        .try_into()
+                        .expect("chunks_exact(8) yields 8-byte chunks"),
+                )
+            })
             .collect();
         drop(data);
         staging.unmap();
@@ -435,8 +438,6 @@ impl NelderMeadGpu {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     // Note: Full GPU tests require a device. These are compilation/API tests.
 
     #[test]
@@ -448,8 +449,8 @@ mod tests {
     #[test]
     fn test_simplex_init() {
         // Test initialization logic (doesn't need GPU)
-        let x0 = vec![1.0, 2.0];
-        let bounds = vec![(0.0, 10.0), (0.0, 10.0)];
+        let _x0 = vec![1.0, 2.0];
+        let _bounds = vec![(0.0, 10.0), (0.0, 10.0)];
 
         // Would need device for full test
         // This verifies the algorithm compiles

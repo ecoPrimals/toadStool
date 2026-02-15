@@ -283,7 +283,11 @@ pub fn compute_msd(
         let msd_fit: Vec<f64> = msd_values[fit_start..].to_vec();
         linear_fit_slope(&t_fit, &msd_fit) / 6.0
     } else if !msd_values.is_empty() {
-        msd_values.last().unwrap() / (6.0 * t_values.last().unwrap())
+        let msd = msd_values
+            .last()
+            .expect("msd_values non-empty in this branch");
+        let t = t_values.last().expect("t_values same length as msd_values");
+        msd / (6.0 * t)
     } else {
         0.0
     };
@@ -380,13 +384,24 @@ pub fn validate_energy(
     let skip = ((energies.len() as f64) * skip_fraction) as usize;
     let stable: Vec<_> = energies.iter().skip(skip).collect();
 
+    if stable.is_empty() {
+        return EnergyValidation {
+            mean_total: 0.0,
+            std_total: 0.0,
+            drift_pct: 0.0,
+            mean_temperature: 0.0,
+            std_temperature: 0.0,
+            passed: false,
+        };
+    }
+
     let totals: Vec<f64> = stable.iter().map(|e| e.3).collect();
     let mean_e: f64 = totals.iter().sum::<f64>() / totals.len() as f64;
     let var_e: f64 = totals.iter().map(|e| (e - mean_e).powi(2)).sum::<f64>() / totals.len() as f64;
     let std_e = var_e.sqrt();
 
-    let e_initial = stable.first().unwrap().3;
-    let e_final = stable.last().unwrap().3;
+    let e_initial = stable.first().expect("stable non-empty").3;
+    let e_final = stable.last().expect("stable non-empty").3;
     let drift_pct = if mean_e.abs() > 1e-30 {
         ((e_final - e_initial) / mean_e.abs()).abs() * 100.0
     } else {
@@ -439,7 +454,7 @@ mod tests {
         // For ballistic motion: MSD(t) = v² * t² * 2 (average over two particles)
         // At lag=10 (t=1.0): expected MSD ≈ 1² * 1.0² * 2 = 2.0
         assert!(!msd.msd_values.is_empty());
-        assert!(msd.msd_values.len() == 20);
+        assert_eq!(msd.msd_values.len(), 20);
 
         // Check quadratic growth (MSD ∝ t² for ballistic)
         let msd_early = msd.msd_values[4]; // lag=5
@@ -467,12 +482,15 @@ mod tests {
         let mut y = 0.0;
         let mut z = 0.0;
 
+        // Pseudo-random multipliers (deliberately close to golden ratio and e)
+        #[allow(clippy::approx_constant)]
+        let (mult_phi, mult_e) = (1.618, 2.718);
         for frame in 0..n_frames {
             snapshots.push(vec![x, y, z]);
 
             // Pseudo-random step based on frame number
-            let angle1 = (frame as f64 * 1.618) % (2.0 * PI);
-            let angle2 = (frame as f64 * 2.718) % PI;
+            let angle1 = (frame as f64 * mult_phi) % (2.0 * PI);
+            let angle2 = (frame as f64 * mult_e) % PI;
             x += step_size * angle2.sin() * angle1.cos();
             y += step_size * angle2.sin() * angle1.sin();
             z += step_size * angle2.cos();

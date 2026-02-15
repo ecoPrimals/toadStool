@@ -140,7 +140,9 @@ pub fn maximin_lhs(
         }
     }
 
-    let mut samples = best_samples.unwrap();
+    let mut samples = best_samples.ok_or_else(|| BarracudaError::InvalidInput {
+        message: "maximin_lhs requires n_candidates >= 1".to_string(),
+    })?;
     let initial_maximin_dist = best_dist;
     let mut current_dist = best_dist;
     let mut rng = Xoshiro256::new(config.seed.wrapping_add(99991));

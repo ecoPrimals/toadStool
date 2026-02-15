@@ -3,12 +3,21 @@
 //! This module provides:
 //! - **Precision-generic shader templates**: ONE source generates f16/f32/f64 shaders
 //! - **CPU implementations**: Same algorithms via `num-traits` for CPU fallback
+//! - **Quantized inference shaders**: INT4/INT8 dequantization and GEMV
 //!
 //! # Design Philosophy
 //!
 //! Same math runs on CPU and GPU:
 //! - GPU: WGSL shaders (generated from templates)
 //! - CPU: Rust implementations (via num-traits)
+//!
+//! # Quantized Inference
+//!
+//! For LLM inference with quantized weights (GGUF/llama.cpp):
+//! - `dequant_q4.wgsl`: Q4_0 dequantization (4-bit weights)
+//! - `dequant_q8.wgsl`: Q8_0 dequantization (8-bit weights)
+//! - `gemv_q4.wgsl`: On-the-fly Q4 matrix-vector multiply
+//! - `gemv_q8.wgsl`: On-the-fly Q8 matrix-vector multiply
 //!
 //! # Usage
 //!
@@ -25,5 +34,6 @@
 //! ```
 
 pub mod precision;
+pub mod quantized;
 
 pub use precision::{Precision, ShaderTemplate};

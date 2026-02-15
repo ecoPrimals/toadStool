@@ -419,9 +419,9 @@ async fn test_training_loop_integration() {
         // === STEP 3: Compute Gradients (simplified - normally backprop) ===
         println!("  Computing gradients...");
         let mut gradients = Vec::with_capacity(weights.len());
-        for i in 0..weights.len() {
+        for w in &weights {
             // Simplified gradient: derivative of MSE w.r.t weights
-            let grad = 0.001 * weights[i]; // Placeholder for actual backprop
+            let grad = 0.001 * w; // Placeholder for actual backprop
             gradients.push(grad);
         }
 

@@ -4,10 +4,17 @@
 //!
 //! ## Features
 //!
-//! - **Multi-Protocol**: tarpc (PRIMARY), JSON-RPC (PRIMARY), HTTP (FALLBACK)
+//! - **Multi-Protocol**: JSON-RPC 2.0 (PRIMARY), tarpc (OPTIONAL), HTTP (DEPRECATED)
 //! - **Trait-Based**: Polymorphic communication via `ServiceCommunication` trait
 //! - **Connection Management**: Automatic reconnection and health checks
 //! - **Message Routing**: Type-safe ecosystem messaging
+//!
+//! ## wateringHole Standard Compliance
+//!
+//! Per PRIMAL_IPC_PROTOCOL.md and UNIVERSAL_IPC_STANDARD_V3.md:
+//! - JSON-RPC 2.0 is the PRIMARY protocol for inter-primal communication
+//! - tarpc is OPTIONAL for performance-critical internal paths
+//! - HTTP is DEPRECATED (use Songbird for HTTP/TLS)
 //!
 //! ## Usage
 //!
@@ -250,23 +257,17 @@ impl CommunicationManager {
         service: &DiscoveredService,
     ) -> ToadStoolResult<ServiceClient> {
         // Check service endpoints for protocol support
-        // Priority: tarpc > JSON-RPC > HTTP
+        // wateringHole Standard: JSON-RPC > tarpc > HTTP (deprecated)
+        // JSON-RPC 2.0 is PRIMARY for inter-primal communication
 
         for endpoint in &service.endpoints {
-            if endpoint.protocol == "tarpc" {
-                tracing::debug!(
-                    "Skipping tarpc endpoint for {} (tarpc transport pending); falling through to JSON-RPC",
-                    service.name
-                );
-                continue;
-            }
-
+            // JSON-RPC is PRIMARY protocol per wateringHole standard
             if endpoint.protocol == "jsonrpc"
                 || endpoint.protocol == "json-rpc"
-                || endpoint.protocol == "tarpc"
+                || endpoint.protocol == "unix-socket"
             {
                 debug!(
-                    "🌍 Using JSON-RPC over unix socket (PRIMARY) for service: {}",
+                    "🌍 Using JSON-RPC 2.0 over unix socket (PRIMARY - wateringHole standard) for service: {}",
                     service.name
                 );
                 // Use unix socket path from discovery
@@ -275,6 +276,15 @@ impl CommunicationManager {
                 return Ok(ServiceClient::UnixSocket(
                     toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
                 ));
+            }
+
+            // tarpc is OPTIONAL for performance-critical paths
+            if endpoint.protocol == "tarpc" {
+                tracing::debug!(
+                    "tarpc endpoint available for {} but using JSON-RPC as PRIMARY per wateringHole standard",
+                    service.name
+                );
+                continue;
             }
         }
 

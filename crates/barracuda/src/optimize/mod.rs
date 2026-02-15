@@ -75,7 +75,7 @@ pub mod diagnostics;
 pub mod eval_record;
 pub mod multi_start;
 pub mod nelder_mead;
-pub mod nelder_mead_gpu;  // EVOLVED: GPU-resident optimizer (Feb 14, 2026)
+pub mod nelder_mead_gpu; // EVOLVED: GPU-resident optimizer (Feb 14, 2026)
 pub mod newton;
 pub mod penalty;
 pub mod solver_state;
@@ -89,7 +89,7 @@ pub use diagnostics::{
 pub use eval_record::{EvaluationCache, EvaluationRecord};
 pub use multi_start::{multi_start_nelder_mead, SolverResult};
 pub use nelder_mead::nelder_mead;
-pub use nelder_mead_gpu::{NelderMeadGpu, NelderMeadGpuResult};  // GPU-resident optimizer
+pub use nelder_mead_gpu::{NelderMeadGpu, NelderMeadGpuResult}; // GPU-resident optimizer
 pub use newton::{newton, newton_numerical, secant, NewtonResult};
 pub use penalty::{adaptive_penalty, adaptive_penalty_mad, AdaptivePenalty, PenaltyConfig};
 pub use solver_state::{ResumableNelderMead, SolverStatus};

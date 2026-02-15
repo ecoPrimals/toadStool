@@ -165,6 +165,9 @@ impl Tensor {
 mod tests {
     use super::*;
 
+    /// Euler-Mascheroni constant γ (not in std)
+    const EULER_MASCHERONI: f32 = 0.577_215_7;
+
     async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
         crate::device::test_pool::get_test_device_if_gpu_available().await
     }
@@ -174,13 +177,13 @@ mod tests {
         let Some(device) = get_test_device().await else {
             return;
         };
-        // ψ(1) = -γ ≈ -0.5772156649
+        // ψ(1) = -γ
         let input = Tensor::new(vec![1.0], vec![1], device.clone());
         let output = input.digamma().unwrap();
         let result = output.to_vec().unwrap();
-        let expected = -0.5772156649;
+        let expected = -EULER_MASCHERONI;
         assert!(
-            (result[0] - expected).abs() < 0.001,
+            (result[0] - expected).abs() < 0.001f32,
             "ψ(1) = {}, expected {}",
             result[0],
             expected
@@ -192,13 +195,13 @@ mod tests {
         let Some(device) = get_test_device().await else {
             return;
         };
-        // ψ(2) = 1 - γ ≈ 0.4227843351
+        // ψ(2) = 1 - γ
         let input = Tensor::new(vec![2.0], vec![1], device.clone());
         let output = input.digamma().unwrap();
         let result = output.to_vec().unwrap();
-        let expected = 0.4227843351;
+        let expected = 1.0 - EULER_MASCHERONI;
         assert!(
-            (result[0] - expected).abs() < 0.001,
+            (result[0] - expected).abs() < 0.001f32,
             "ψ(2) = {}, expected {}",
             result[0],
             expected

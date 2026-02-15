@@ -489,12 +489,16 @@ mod tests {
 
     #[test]
     fn execution_request_field_access() {
-        let mut req = ExecutionRequest::default();
         let id = Uuid::new_v4();
-        req.execution_id = id;
-        req.runtime_hint = Some(RuntimeType::Wasm);
-        req.timeout = Some(Duration::from_secs(60));
-        req.environment.insert("FOO".to_string(), "bar".to_string());
+        let mut environment = HashMap::new();
+        environment.insert("FOO".to_string(), "bar".to_string());
+        let req = ExecutionRequest {
+            execution_id: id,
+            runtime_hint: Some(RuntimeType::Wasm),
+            timeout: Some(Duration::from_secs(60)),
+            environment,
+            ..Default::default()
+        };
 
         assert_eq!(req.execution_id, id);
         assert_eq!(req.runtime_hint, Some(RuntimeType::Wasm));
@@ -504,12 +508,14 @@ mod tests {
 
     #[test]
     fn execution_request_with_callback_config() {
-        let mut req = ExecutionRequest::default();
-        req.callback_config = Some(CallbackConfig {
-            url: "https://example.com/callback".to_string(),
-            auth_token: Some("secret".to_string()),
-            events: vec![CallbackEvent::Started, CallbackEvent::Completed],
-        });
+        let req = ExecutionRequest {
+            callback_config: Some(CallbackConfig {
+                url: "https://example.com/callback".to_string(),
+                auth_token: Some("secret".to_string()),
+                events: vec![CallbackEvent::Started, CallbackEvent::Completed],
+            }),
+            ..Default::default()
+        };
 
         let config = req.callback_config.as_ref().unwrap();
         assert_eq!(config.url, "https://example.com/callback");
@@ -519,8 +525,10 @@ mod tests {
 
     #[test]
     fn execution_request_with_encryption_config() {
-        let mut req = ExecutionRequest::default();
-        req.encryption_config = Some(crate::encryption::EncryptionConfig::default());
+        let req = ExecutionRequest {
+            encryption_config: Some(crate::encryption::EncryptionConfig::default()),
+            ..Default::default()
+        };
 
         assert!(req.encryption_config.is_some());
     }
@@ -693,18 +701,22 @@ mod tests {
 
     #[test]
     fn runtime_config_with_settings() {
-        let mut config = RuntimeConfig::default();
-        config
-            .settings
-            .insert("foo".to_string(), serde_json::json!("bar"));
+        let mut settings = HashMap::new();
+        settings.insert("foo".to_string(), serde_json::json!("bar"));
+        let config = RuntimeConfig {
+            settings,
+            ..Default::default()
+        };
 
         assert_eq!(config.settings.get("foo"), Some(&serde_json::json!("bar")));
     }
 
     #[test]
     fn runtime_config_with_resource_limits() {
-        let mut config = RuntimeConfig::default();
-        config.resource_limits = Some(crate::resources::ResourceLimits::default());
+        let config = RuntimeConfig {
+            resource_limits: Some(crate::resources::ResourceLimits::default()),
+            ..Default::default()
+        };
 
         assert!(config.resource_limits.is_some());
     }
@@ -728,12 +740,13 @@ mod tests {
 
     #[test]
     fn execution_input_with_data() {
-        let mut input = ExecutionInput::default();
-        input.data = vec![1, 2, 3];
-        input.format = Some("json".to_string());
-        input
-            .metadata
-            .insert("key".to_string(), "value".to_string());
+        let mut metadata = HashMap::new();
+        metadata.insert("key".to_string(), "value".to_string());
+        let input = ExecutionInput {
+            data: vec![1, 2, 3],
+            format: Some("json".to_string()),
+            metadata,
+        };
 
         assert_eq!(input.data, vec![1, 2, 3]);
         assert_eq!(input.format.as_deref(), Some("json"));
@@ -895,9 +908,11 @@ mod tests {
 
     #[test]
     fn execution_input_serialization_roundtrip() {
-        let mut input = ExecutionInput::default();
-        input.data = vec![1, 2, 3];
-        input.format = Some("bin".to_string());
+        let input = ExecutionInput {
+            data: vec![1, 2, 3],
+            format: Some("bin".to_string()),
+            ..Default::default()
+        };
         let json = serde_json::to_string(&input).expect("serialize");
         let deserialized: ExecutionInput = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(input.data, deserialized.data);

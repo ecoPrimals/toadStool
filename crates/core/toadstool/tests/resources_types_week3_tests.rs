@@ -708,6 +708,7 @@ fn test_system_resources_typical_server() {
         available_storage_bytes: 1000 * 1024 * 1024 * 1024,
         available_network_bandwidth: Some(10 * 1024 * 1024 * 1024),
         available_gpu_units: 2,
+        ..Default::default()
     };
 
     assert!(sys.available_cpu_cores >= 8.0);
@@ -723,6 +724,7 @@ fn test_system_resources_high_end() {
         available_storage_bytes: 10000 * 1024 * 1024 * 1024,
         available_network_bandwidth: Some(100 * 1024 * 1024 * 1024),
         available_gpu_units: 8,
+        ..Default::default()
     };
 
     assert!(sys.available_cpu_cores >= 64.0);

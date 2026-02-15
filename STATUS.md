@@ -1,4 +1,4 @@
-# Status -- February 14, 2026 (Deep Debt Evolution Complete)
+# Status -- February 15, 2026 (Infrastructure Evolution)
 
 ## Quality Gates
 
@@ -32,6 +32,39 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 **Lowest coverage**: `unibin.rs` 18% (server startup), `manual_jsonrpc.rs` 27% (async I/O), `websocket.rs` 52% (requires live connections).
 
 **Coverage evolution**: 80% -> ~90% (+10pp) via 600+ new tests covering encryption, ecosystem, security, deployment, workload analysis, biomeos integration, auth, agents, BYOB types, graph types, capabilities, and handlers.
+
+---
+
+## Deep Debt Evolution (Feb 15, 2026)
+
+### Code Quality Hardening ✅
+
+**Error Handling Evolution** — systematic elimination of panic paths:
+
+- **unwrap/expect cleanup**: 50+ unwrap() calls in barracuda converted to proper error propagation
+  - `receiver.recv().unwrap()` → `recv().map_err(|_| BarracudaError::execution_failed(...))?`
+  - `chunk.try_into().unwrap()` → `expect("chunks_exact(N) yields N-byte chunks")` with SAFETY comments
+  - Mutex/RwLock poisoning: `lock().unwrap()` → `lock().expect("mutex poisoned")`
+- **panic!() to unreachable!()**: Internal invariant violations now use `unreachable!()` with clear messages
+- Files updated: `cg_gpu.rs`, `bicgstab_gpu.rs`, `gpu_helpers.rs`, `svd_gpu.rs`, `qr_gpu.rs`, `lu_gpu.rs`, `batched_eigh_gpu.rs`, `vfio.rs`, `async_submit.rs`, `autotune.rs`, `tensor_context.rs`, + 15 more
+
+### Large File Refactoring ✅
+
+**Smart refactoring** — domain separation, not just splitting:
+
+- **cg_gpu.rs**: 2556 → 2011 lines (-21%) by migrating buffer/BGL helpers to shared `gpu_helpers.rs`
+- **gpu_helpers.rs**: Extended with `*_raw()` variants for device/queue overloads
+- Reduced code duplication across all sparse linear algebra GPU solvers
+
+### Clippy Compliance ✅
+
+**Zero warnings** with `-D warnings`:
+
+- Fixed `unnecessary_map_or` → `is_none_or` pattern
+- Fixed `manual_range_contains` → `(0.0..1.0).contains(&x)` pattern
+- Fixed format strings: `format!("{}", x)` → `format!("{x}")`
+- Fixed identity operations: `1 * value` → `value`
+- All 87+ clippy errors from previous session resolved
 
 ---
 
@@ -742,11 +775,19 @@ All hotSpring validation items from Tiers 1-3 have been implemented:
 - ✅ Cubic spline interpolation
 - ✅ Generalized eigenvalue problem
 
+### Infrastructure (Feb 15, 2026 — Completed) ✅
+
+| Gap | Priority | Status |
+|-----|----------|--------|
+| Safetensors/GGUF weight loader | HIGH | ✅ **COMPLETE** — Full GGUF v2/v3 + safetensors |
+| INT4/INT8 quantized shaders | HIGH | ✅ **COMPLETE** — Q4_0/Q8_0 dequant + GEMV |
+| Async batch GPU submission | MEDIUM | ✅ **COMPLETE** — `AsyncSubmitter`, `AsyncReadback` |
+| Cache probing microbenchmarks | MEDIUM | ✅ **COMPLETE** — `cache_probe` CLI tool |
+
 ### Infrastructure Gaps (Remaining)
 
 | Gap | Priority | Status |
 |-----|----------|--------|
-| Safetensors/GGUF weight loader | HIGH | Not started |
 | Multi-GPU DevicePool | HIGH | Not started (awaiting Titan V) |
 | mDNS/K8s/Docker discovery | HIGH | Env vars work, other sources pending |
 | Cross-gate mesh relay | MEDIUM | Types defined, needs Songbird transport |
@@ -799,4 +840,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 14, 2026 (Deep Debt Evolution Complete)
+**Last Updated**: February 15, 2026 (Infrastructure Evolution)

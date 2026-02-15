@@ -18,6 +18,7 @@ use crate::error::Result;
 
 pub mod akida;
 pub mod akida_executor;
+pub mod async_submit;
 pub mod autotune;
 pub mod cache_hierarchy;
 pub mod capabilities;
@@ -49,6 +50,7 @@ pub use tensor_context::{
 
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};
 pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};
+pub use async_submit::{AsyncReadback, AsyncSubmitter};
 pub use cache_hierarchy::{
     CacheAwareTiler, CacheLevel, CacheResidency, MainMemory, SubstrateMemoryHierarchy, TileConfig,
 };

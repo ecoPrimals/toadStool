@@ -20,16 +20,21 @@ byteorder = "1"     # Endian-aware reading
 
 # Logging
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Akida driver integration
 akida-driver = { path = "../akida-driver" }
 
 [dev-dependencies]
 hex = "0.4"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tempfile = "3"
 
 [lib]
 crate-type = ["rlib"]
+
+[[bin]]
+name = "model_zoo"
+path = "src/bin/model_zoo.rs"
 
 [[example]]
 name = "parse_fbz"

@@ -129,6 +129,10 @@ path = "src/math_f64_validation.rs"
 name = "cache_awareness_demo"
 path = "src/cache_awareness_demo.rs"
 
+[[bin]]
+name = "cache_probe"
+path = "src/cache_probe.rs"
+
 [features]
 default = []
 cuda = ["cudarc"]

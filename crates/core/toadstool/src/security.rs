@@ -257,6 +257,43 @@ pub enum AuditEvent {
     FilesystemAccess,
 }
 
+/// Security provider trait
+#[async_trait]
+pub trait SecurityProvider: Send + Sync {
+    /// Create a security context
+    async fn create_security_context(
+        &self,
+        policy: &SecurityPolicy,
+    ) -> ToadStoolResult<SecurityContext>;
+
+    /// Validate a security context
+    async fn validate_security_context(&self, context: &SecurityContext) -> ToadStoolResult<()>;
+
+    /// Apply security context to a workload
+    async fn apply_security_context(
+        &self,
+        context: &SecurityContext,
+        workload_id: &str,
+    ) -> ToadStoolResult<()>;
+
+    /// Remove security context from a workload
+    async fn remove_security_context(&self, workload_id: &str) -> ToadStoolResult<()>;
+
+    /// Check if a capability is allowed
+    async fn check_capability(
+        &self,
+        context: &SecurityContext,
+        capability: &Capability,
+    ) -> ToadStoolResult<bool>;
+
+    /// Audit security event
+    async fn audit_event(
+        &self,
+        event: AuditEvent,
+        context: &SecurityContext,
+    ) -> ToadStoolResult<()>;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -369,8 +406,8 @@ mod tests {
     #[test]
     fn security_context_field_access() {
         let ctx = SecurityContext::default();
-        assert_eq!(ctx.network_security.allow_outbound, false);
-        assert_eq!(ctx.filesystem_security.read_only, false);
+        assert!(!ctx.network_security.allow_outbound);
+        assert!(!ctx.filesystem_security.read_only);
     }
 
     // ─── IsolationLevel ───────────────────────────────────────────────────
@@ -674,41 +711,4 @@ mod tests {
         assert_eq!(policy.name, restored.name);
         assert_eq!(policy.isolation_level, restored.isolation_level);
     }
-}
-
-/// Security provider trait
-#[async_trait]
-pub trait SecurityProvider: Send + Sync {
-    /// Create a security context
-    async fn create_security_context(
-        &self,
-        policy: &SecurityPolicy,
-    ) -> ToadStoolResult<SecurityContext>;
-
-    /// Validate a security context
-    async fn validate_security_context(&self, context: &SecurityContext) -> ToadStoolResult<()>;
-
-    /// Apply security context to a workload
-    async fn apply_security_context(
-        &self,
-        context: &SecurityContext,
-        workload_id: &str,
-    ) -> ToadStoolResult<()>;
-
-    /// Remove security context from a workload
-    async fn remove_security_context(&self, workload_id: &str) -> ToadStoolResult<()>;
-
-    /// Check if a capability is allowed
-    async fn check_capability(
-        &self,
-        context: &SecurityContext,
-        capability: &Capability,
-    ) -> ToadStoolResult<bool>;
-
-    /// Audit security event
-    async fn audit_event(
-        &self,
-        event: AuditEvent,
-        context: &SecurityContext,
-    ) -> ToadStoolResult<()>;
 }

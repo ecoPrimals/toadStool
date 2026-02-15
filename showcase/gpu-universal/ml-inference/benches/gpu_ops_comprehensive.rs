@@ -136,14 +136,16 @@ fn bench_linear_algebra(c: &mut Criterion) {
     }
 
     // Transpose
-    for (name, size) in vec![("512x512", 512), ("1024x1024", 1024)] {
+    for (name, size) in [("512x512", 512), ("1024x1024", 1024)] {
         let input: Vec<f32> = vec![1.0; size * size];
 
         group.bench_with_input(
             BenchmarkId::new("Transpose", name),
             &size,
             |bencher, &size| {
-                bencher.iter(|| rt.block_on(executor.execute_transpose(black_box(&input), size)));
+                bencher.iter(|| {
+                    rt.block_on(executor.execute_transpose(black_box(&input), size, size))
+                });
             },
         );
     }
@@ -162,7 +164,7 @@ fn bench_normalization(c: &mut Criterion) {
     let mut group = c.benchmark_group("Normalization");
 
     // Softmax
-    for (name, size) in vec![("1k", 1024), ("64k", 65536)] {
+    for (name, size) in [("1k", 1024), ("64k", 65536)] {
         let input: Vec<f32> = vec![0.5; size];
 
         group.bench_with_input(BenchmarkId::new("Softmax", name), &name, |bencher, _| {
@@ -205,7 +207,7 @@ fn bench_normalization(c: &mut Criterion) {
     }
 
     // BatchNorm - Common in CNNs
-    for (name, batch, channels) in vec![("batch32_ch64", 32, 64), ("batch128_ch256", 128, 256)] {
+    for (name, batch, channels) in [("batch32_ch64", 32, 64), ("batch128_ch256", 128, 256)] {
         let spatial_size = 32 * 32; // 32x32 feature maps
         let input_size = batch * channels * spatial_size;
         let input: Vec<f32> = vec![0.5; input_size];
@@ -245,7 +247,7 @@ fn bench_convolutions(c: &mut Criterion) {
     let mut group = c.benchmark_group("Convolutions");
 
     // Conv2D - Most common
-    let input_224 = vec![1.0; 1 * 3 * 224 * 224]; // ImageNet size
+    let input_224 = vec![1.0; 3 * 224 * 224]; // ImageNet size
     let kernel_3x3 = vec![1.0; 64 * 3 * 3 * 3]; // 64 filters, 3 channels, 3x3
     let bias = vec![0.0; 64];
 
@@ -288,7 +290,7 @@ fn bench_pooling(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("Pooling");
 
-    let input_224 = vec![1.0; 1 * 64 * 224 * 224];
+    let input_224 = vec![1.0; 64 * 224 * 224];
 
     // GlobalAvgPool - Most common in modern architectures
     group.bench_function("GlobalAvgPool_ImageNet", |bencher| {

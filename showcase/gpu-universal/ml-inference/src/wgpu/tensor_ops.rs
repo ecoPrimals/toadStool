@@ -1533,7 +1533,7 @@ mod phase2_tests {
         let data = vec![0.0, 1.0];
         let result = Exp::execute(&data);
         assert!((result[0] - 1.0).abs() < 1e-5);
-        assert!((result[1] - 2.718281828).abs() < 1e-5);
+        assert!((result[1] - std::f32::consts::E).abs() < 1e-5);
     }
 
     // Expand tests

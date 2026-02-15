@@ -105,8 +105,8 @@ async fn test_slice_attention_window() {
     assert_eq!(window.len(), 64);
 
     // Verify window contents
-    for i in 0..64 {
-        assert_eq!(window[i], (window_start + i) as f32);
+    for (i, &item) in window.iter().enumerate().take(64) {
+        assert_eq!(item, (window_start + i) as f32);
     }
 
     println!("✅ Attention window slice test passed");

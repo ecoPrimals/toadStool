@@ -219,12 +219,19 @@ async fn test_server_graceful_shutdown() {
     // Let it run
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    // Send SIGTERM
-    // EVOLVED: nix replaced with libc (Feb 14, 2026) - pure Rust binding
+    // Send SIGTERM for graceful shutdown testing
+    // DEEP DEBT: Using libc::kill for SIGTERM (tokio::kill() sends SIGKILL)
+    // SAFETY:
+    // - pid from cmd.id() is valid (just spawned)
+    // - SIGTERM is a safe signal (requests graceful termination)
+    // - Process may ignore it, but that's tested behavior
     #[cfg(unix)]
     {
-        let pid = cmd.id().unwrap() as libc::pid_t;
-        unsafe { libc::kill(pid, libc::SIGTERM) };
+        let pid = cmd.id().unwrap_or(0) as libc::pid_t;
+        if pid != 0 {
+            // SAFETY: Valid PID from spawned child; SIGTERM is harmless to send
+            unsafe { libc::kill(pid, libc::SIGTERM) };
+        }
     }
 
     // Wait for graceful shutdown

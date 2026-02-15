@@ -11,24 +11,24 @@
 //! - **Low Latency**: Binary encoding, direct communication
 //! - **High Throughput**: Optimized for high-volume operations
 //!
-//! ## Architecture
+//! ## Architecture (wateringHole Standard)
 //!
 //! ```text
 //! ┌─────────────────────────────────────────┐
 //! │      ToadStool Compute Service          │
 //! ├─────────────────────────────────────────┤
 //! │                                          │
-//! │  tarpc (PRIMARY)    JSON-RPC (PRIMARY)  │
-//! │  Binary RPC         Universal RPC        │
-//! │  ↓                  ↓                    │
-//! │  Primal ←→ Primal   External Clients    │
-//! │  • BearDog          • Python             │
-//! │  • Songbird         • JavaScript         │
-//! │  • NestGate         • Any language       │
+//! │  JSON-RPC 2.0 (PRIMARY)  tarpc (OPTIONAL)│
+//! │  Universal RPC           Binary RPC      │
+//! │  ↓                       ↓               │
+//! │  All Primals             Performance     │
+//! │  • BearDog               Critical Paths  │
+//! │  • Songbird                              │
+//! │  • NestGate                              │
+//! │  • External Clients                      │
+//! │    (Python, JS, etc.)                    │
 //! │                                          │
-//! │  HTTPS (FALLBACK - Optional)            │
-//! │  ↓                                       │
-//! │  Legacy/Debugging only                  │
+//! │  HTTP (DEPRECATED - via Songbird)       │
 //! └─────────────────────────────────────────┘
 //! ```
 

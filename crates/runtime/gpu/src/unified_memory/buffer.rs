@@ -231,11 +231,9 @@ impl UnifiedBuffer {
         );
         assert!(size > 0, "Buffer size cannot be zero");
 
-        // EVOLVED: Use safe NonNull::new() with expect() instead of unsafe unchecked
-        // Since we asserted non-null above, this will never panic in practice
-        // This is "Fast AND Safe" - same performance, no unsafe
-        let cpu_ptr_nonnull = NonNull::new(cpu_ptr)
-            .expect("CPU pointer validated non-null above");
+        // EVOLVED: Use NonNull after validation; avoid expect per crate lint policy
+        // SAFETY: We asserted !cpu_ptr.is_null() above, so new_unchecked is valid.
+        let cpu_ptr_nonnull = unsafe { NonNull::new_unchecked(cpu_ptr) };
 
         Self {
             id,

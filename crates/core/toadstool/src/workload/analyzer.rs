@@ -454,7 +454,7 @@ mod tests {
 
     #[test]
     fn test_workload_analyzer_default() {
-        let analyzer = WorkloadAnalyzer::default();
+        let analyzer = WorkloadAnalyzer::new();
         let _chars = analyzer.analyze(&WorkloadSpec::default());
     }
 

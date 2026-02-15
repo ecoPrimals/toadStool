@@ -485,7 +485,7 @@ mod tests {
         // float32: 4 bytes per element
         let f32_size = input.len() * 4;
         // int8: 1 byte per element + metadata
-        let i8_size = quantized.len() * 1 + 8; // +8 for scale/zero_point
+        let i8_size = quantized.len() + 8; // +8 for scale/zero_point
 
         assert!(i8_size < f32_size / 3, "Int8 should be ~4x smaller");
     }

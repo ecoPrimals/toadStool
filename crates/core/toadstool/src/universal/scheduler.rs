@@ -396,7 +396,10 @@ impl UniversalScheduler {
         endpoint: &str,
         payload: &serde_json::Value,
     ) -> ToadStoolResult<ExecutionResponse> {
-        debug!("Executing primal job: {} at endpoint: {}", primal_type, endpoint);
+        debug!(
+            "Executing primal job: {} at endpoint: {}",
+            primal_type, endpoint
+        );
         let start_time = std::time::Instant::now();
         let execution_id = Uuid::new_v4();
 
@@ -522,7 +525,9 @@ impl UniversalScheduler {
                 metrics: crate::RuntimeMetrics::default(),
                 duration: start_time.elapsed(),
                 runtime_used: crate::execution::RuntimeType::Native,
-                warnings: vec!["Register a primal provider via primal_registry.register_primal()".to_string()],
+                warnings: vec![
+                    "Register a primal provider via primal_registry.register_primal()".to_string(),
+                ],
             })
         }
     }
@@ -579,7 +584,9 @@ impl UniversalScheduler {
                         let error_msg = match &response.status {
                             ResponseStatus::Error { message, .. } => message.clone(),
                             ResponseStatus::Timeout => "BiomeOS request timed out".to_string(),
-                            ResponseStatus::ServiceUnavailable => "BiomeOS service unavailable".to_string(),
+                            ResponseStatus::ServiceUnavailable => {
+                                "BiomeOS service unavailable".to_string()
+                            }
                             ResponseStatus::Success => "Unknown error".to_string(),
                         };
                         crate::execution::ExecutionStatus::Failed { error: error_msg }
@@ -590,7 +597,10 @@ impl UniversalScheduler {
                         status,
                         output: crate::execution::ExecutionOutput {
                             data: response.payload.to_string().into_bytes(),
-                            stdout: Some(format!("BiomeOS execution for team '{}' completed", team_id)),
+                            stdout: Some(format!(
+                                "BiomeOS execution for team '{}' completed",
+                                team_id
+                            )),
                             stderr: None,
                             exit_code: Some(0),
                             format: Some("application/json".to_string()),
@@ -605,7 +615,8 @@ impl UniversalScheduler {
                 }
                 Err(e) => {
                     let duration = start_time.elapsed();
-                    let error_msg = format!("BiomeOS execution failed for team '{}': {}", team_id, e);
+                    let error_msg =
+                        format!("BiomeOS execution failed for team '{}': {}", team_id, e);
                     warn!("{}", error_msg);
                     Ok(ExecutionResponse {
                         execution_id,
@@ -652,7 +663,9 @@ impl UniversalScheduler {
                 metrics: crate::RuntimeMetrics::default(),
                 duration: start_time.elapsed(),
                 runtime_used: crate::execution::RuntimeType::Native,
-                warnings: vec!["BiomeOS execution requires a registered BiomeOS primal provider".to_string()],
+                warnings: vec![
+                    "BiomeOS execution requires a registered BiomeOS primal provider".to_string(),
+                ],
             })
         }
     }

@@ -24,12 +24,13 @@
 //! for modularity. Reduced this file from 1834 to ~800 lines.
 
 use crate::error::{BarracudaError, Result};
+use crate::linalg::sparse::SparseBuffers;
 use crate::shaders::precision::ShaderTemplate;
 use wgpu::util::DeviceExt;
 
 use std::sync::Arc;
 
-use super::pppm_buffers::{PppmBuffers, PppmCpuFft};
+use super::pppm_buffers::PppmCpuFft;
 use super::pppm_layouts::{PppmBindGroupLayouts, PppmPipelines};
 use super::{GreensFunction, PppmParams};
 
@@ -158,14 +159,15 @@ impl PppmGpu {
         let _mesh_size = kx * ky * kz; // Used in full k-space implementation
 
         // Create GPU buffers
-        let positions_buffer = self.create_f64_buffer("positions", positions);
-        let charges_buffer = self.create_f64_buffer("charges", charges);
+        let positions_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "positions", positions);
+        let charges_buffer = SparseBuffers::f64_from_slice_raw(&self.device, "charges", charges);
 
         // B-spline coefficient buffers
         let coeffs_size = n * order * 3;
-        let coeffs_buffer = self.create_zero_f64_buffer("coeffs", coeffs_size);
-        let derivs_buffer = self.create_zero_f64_buffer("derivs", coeffs_size);
-        let base_idx_buffer = self.create_zero_i32_buffer("base_idx", n * 3);
+        let coeffs_buffer = SparseBuffers::f64_zeros_raw(&self.device, "coeffs", coeffs_size);
+        let derivs_buffer = SparseBuffers::f64_zeros_raw(&self.device, "derivs", coeffs_size);
+        let base_idx_buffer = SparseBuffers::i32_zeros_raw(&self.device, "base_idx", n * 3);
 
         // B-spline params: [n, order, kx, ky, kz, box_x, box_y, box_z]
         let bspline_params: Vec<f64> = vec![
@@ -178,19 +180,22 @@ impl PppmGpu {
             self.params.box_dims[1],
             self.params.box_dims[2],
         ];
-        let bspline_params_buffer = self.create_f64_buffer("bspline_params", &bspline_params);
+        let bspline_params_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "bspline_params", &bspline_params);
 
         // Per-particle mesh output (order^3 per particle)
         let o3 = order * order * order;
-        let per_particle_mesh_buffer = self.create_zero_f64_buffer("per_particle_mesh", n * o3);
+        let per_particle_mesh_buffer =
+            SparseBuffers::f64_zeros_raw(&self.device, "per_particle_mesh", n * o3);
 
         // Charge spread params: [n, order, kx, ky, kz]
         let spread_params: Vec<f64> = vec![n as f64, order as f64, kx as f64, ky as f64, kz as f64];
-        let spread_params_buffer = self.create_f64_buffer("spread_params", &spread_params);
+        let spread_params_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "spread_params", &spread_params);
 
         // Output buffers
-        let forces_buffer = self.create_zero_f64_buffer("forces", n * 3);
-        let pe_buffer = self.create_zero_f64_buffer("pe", n);
+        let forces_buffer = SparseBuffers::f64_zeros_raw(&self.device, "forces", n * 3);
+        let pe_buffer = SparseBuffers::f64_zeros_raw(&self.device, "pe", n);
 
         // erfc params: [n, alpha, cutoff_sq, box_x, box_y, box_z, prefactor]
         let erfc_params: Vec<f64> = vec![
@@ -202,7 +207,8 @@ impl PppmGpu {
             self.params.box_dims[2],
             self.params.coulomb_constant,
         ];
-        let erfc_params_buffer = self.create_f64_buffer("erfc_params", &erfc_params);
+        let erfc_params_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "erfc_params", &erfc_params);
 
         // Create bind groups
         let bspline_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -344,8 +350,8 @@ impl PppmGpu {
         self.queue.submit(Some(encoder.finish()));
 
         // Read back results
-        let forces = self.read_f64_buffer(&forces_buffer, n * 3).await?;
-        let pe_values = self.read_f64_buffer(&pe_buffer, n).await?;
+        let forces = SparseBuffers::read_f64_raw(&self.device, &self.queue, &forces_buffer, n * 3)?;
+        let pe_values = SparseBuffers::read_f64_raw(&self.device, &self.queue, &pe_buffer, n)?;
 
         // Sum per-particle energies
         let total_energy: f64 = pe_values.iter().sum();
@@ -392,14 +398,16 @@ impl PppmGpu {
         // PHASE 1: GPU - B-spline coefficients and charge spreading
         // ================================================================
 
-        let positions_buffer = self.create_f64_buffer("positions", positions);
-        let charges_buffer = self.create_f64_buffer("charges", charges);
+        let positions_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "positions", positions);
+        let charges_buffer = SparseBuffers::f64_from_slice_raw(&self.device, "charges", charges);
 
         let coeffs_size = n * order * 3;
-        let coeffs_buffer = self.create_zero_f64_buffer("coeffs", coeffs_size);
-        let derivs_buffer = self.create_zero_f64_buffer("derivs", coeffs_size);
-        let base_idx_buffer = self.create_zero_i32_buffer("base_idx", n * 3);
-        let per_particle_mesh_buffer = self.create_zero_f64_buffer("per_particle_mesh", n * o3);
+        let coeffs_buffer = SparseBuffers::f64_zeros_raw(&self.device, "coeffs", coeffs_size);
+        let derivs_buffer = SparseBuffers::f64_zeros_raw(&self.device, "derivs", coeffs_size);
+        let base_idx_buffer = SparseBuffers::i32_zeros_raw(&self.device, "base_idx", n * 3);
+        let per_particle_mesh_buffer =
+            SparseBuffers::f64_zeros_raw(&self.device, "per_particle_mesh", n * o3);
 
         let bspline_params: Vec<f64> = vec![
             n as f64,
@@ -411,10 +419,12 @@ impl PppmGpu {
             self.params.box_dims[1],
             self.params.box_dims[2],
         ];
-        let bspline_params_buffer = self.create_f64_buffer("bspline_params", &bspline_params);
+        let bspline_params_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "bspline_params", &bspline_params);
 
         let spread_params: Vec<f64> = vec![n as f64, order as f64, kx as f64, ky as f64, kz as f64];
-        let spread_params_buffer = self.create_f64_buffer("spread_params", &spread_params);
+        let spread_params_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "spread_params", &spread_params);
 
         let bspline_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("bspline_bg"),
@@ -502,12 +512,18 @@ impl PppmGpu {
         self.queue.submit(Some(encoder.finish()));
 
         // Read back coefficients, derivs, base_idx, per_particle_mesh
-        let coeffs = self.read_f64_buffer(&coeffs_buffer, coeffs_size).await?;
-        let derivs = self.read_f64_buffer(&derivs_buffer, coeffs_size).await?;
-        let base_idx = self.read_i32_buffer(&base_idx_buffer, n * 3).await?;
-        let per_particle_mesh = self
-            .read_f64_buffer(&per_particle_mesh_buffer, n * o3)
-            .await?;
+        let coeffs =
+            SparseBuffers::read_f64_raw(&self.device, &self.queue, &coeffs_buffer, coeffs_size)?;
+        let derivs =
+            SparseBuffers::read_f64_raw(&self.device, &self.queue, &derivs_buffer, coeffs_size)?;
+        let base_idx =
+            SparseBuffers::read_i32_raw(&self.device, &self.queue, &base_idx_buffer, n * 3)?;
+        let per_particle_mesh = SparseBuffers::read_f64_raw(
+            &self.device,
+            &self.queue,
+            &per_particle_mesh_buffer,
+            n * o3,
+        )?;
 
         // ================================================================
         // PHASE 2: CPU - Mesh accumulation and FFT
@@ -542,8 +558,7 @@ impl PppmGpu {
         let phi_k = self.greens.apply(&rho_k);
 
         // K-space energy
-        let volume =
-            self.params.box_dims[0] * self.params.box_dims[1] * self.params.box_dims[2];
+        let volume = self.params.box_dims[0] * self.params.box_dims[1] * self.params.box_dims[2];
         let e_kspace = self.greens.kspace_energy(&rho_k, volume);
 
         // Inverse FFT (CPU) - using extracted helper
@@ -554,9 +569,10 @@ impl PppmGpu {
         // ================================================================
 
         // Upload potential mesh to GPU
-        let potential_buffer = self.create_f64_buffer("potential", &potential_values);
-        let forces_buffer = self.create_zero_f64_buffer("forces", n * 3);
-        let pe_buffer = self.create_zero_f64_buffer("pe", n);
+        let potential_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "potential", &potential_values);
+        let forces_buffer = SparseBuffers::f64_zeros_raw(&self.device, "forces", n * 3);
+        let pe_buffer = SparseBuffers::f64_zeros_raw(&self.device, "pe", n);
 
         // Force interpolation params
         let interp_params: Vec<f64> = vec![
@@ -569,17 +585,20 @@ impl PppmGpu {
             self.params.box_dims[1],
             self.params.box_dims[2],
         ];
-        let interp_params_buffer = self.create_f64_buffer("interp_params", &interp_params);
+        let interp_params_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "interp_params", &interp_params);
 
         // Re-upload coeffs and derivs (could optimize by keeping on GPU)
-        let coeffs_buffer2 = self.create_f64_buffer("coeffs2", &coeffs);
-        let derivs_buffer2 = self.create_f64_buffer("derivs2", &derivs);
+        let coeffs_buffer2 = SparseBuffers::f64_from_slice_raw(&self.device, "coeffs2", &coeffs);
+        let derivs_buffer2 = SparseBuffers::f64_from_slice_raw(&self.device, "derivs2", &derivs);
         let base_idx_bytes: Vec<u8> = base_idx.iter().flat_map(|v| v.to_le_bytes()).collect();
-        let base_idx_buffer2 = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("base_idx2"),
-            contents: &base_idx_bytes,
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let base_idx_buffer2 = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("base_idx2"),
+                contents: &base_idx_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         let force_interp_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("force_interp_bg"),
@@ -626,7 +645,8 @@ impl PppmGpu {
             self.params.box_dims[2],
             self.params.coulomb_constant,
         ];
-        let erfc_params_buffer = self.create_f64_buffer("erfc_params", &erfc_params);
+        let erfc_params_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "erfc_params", &erfc_params);
 
         let erfc_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("erfc_bg"),
@@ -695,15 +715,12 @@ impl PppmGpu {
         self.queue.submit(Some(encoder.finish()));
 
         // Read back final forces and energy
-        let forces = self.read_f64_buffer(&forces_buffer, n * 3).await?;
-        let pe_values = self.read_f64_buffer(&pe_buffer, n).await?;
+        let forces = SparseBuffers::read_f64_raw(&self.device, &self.queue, &forces_buffer, n * 3)?;
+        let pe_values = SparseBuffers::read_f64_raw(&self.device, &self.queue, &pe_buffer, n)?;
 
         // Compute corrections
-        let e_self = super::self_energy_correction(
-            charges,
-            self.params.alpha,
-            self.params.coulomb_constant,
-        );
+        let e_self =
+            super::self_energy_correction(charges, self.params.alpha, self.params.coulomb_constant);
 
         // Convert positions to [[f64; 3]] for dipole correction
         let pos_arrays: Vec<[f64; 3]> = positions
@@ -779,14 +796,16 @@ impl PppmGpu {
         // (Same as compute_with_kspace)
         // ================================================================
 
-        let positions_buffer = self.create_f64_buffer("positions", positions);
-        let charges_buffer = self.create_f64_buffer("charges", charges);
+        let positions_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "positions", positions);
+        let charges_buffer = SparseBuffers::f64_from_slice_raw(&self.device, "charges", charges);
 
         let coeffs_size = n * order * 3;
-        let coeffs_buffer = self.create_zero_f64_buffer("coeffs", coeffs_size);
-        let derivs_buffer = self.create_zero_f64_buffer("derivs", coeffs_size);
-        let base_idx_buffer = self.create_zero_i32_buffer("base_idx", n * 3);
-        let per_particle_mesh_buffer = self.create_zero_f64_buffer("per_particle_mesh", n * o3);
+        let coeffs_buffer = SparseBuffers::f64_zeros_raw(&self.device, "coeffs", coeffs_size);
+        let derivs_buffer = SparseBuffers::f64_zeros_raw(&self.device, "derivs", coeffs_size);
+        let base_idx_buffer = SparseBuffers::i32_zeros_raw(&self.device, "base_idx", n * 3);
+        let per_particle_mesh_buffer =
+            SparseBuffers::f64_zeros_raw(&self.device, "per_particle_mesh", n * o3);
 
         let bspline_params: Vec<f64> = vec![
             n as f64,
@@ -798,10 +817,12 @@ impl PppmGpu {
             self.params.box_dims[1],
             self.params.box_dims[2],
         ];
-        let bspline_params_buffer = self.create_f64_buffer("bspline_params", &bspline_params);
+        let bspline_params_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "bspline_params", &bspline_params);
 
         let spread_params: Vec<f64> = vec![n as f64, order as f64, kx as f64, ky as f64, kz as f64];
-        let spread_params_buffer = self.create_f64_buffer("spread_params", &spread_params);
+        let spread_params_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "spread_params", &spread_params);
 
         let bspline_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("bspline_bg_gpu"),
@@ -889,12 +910,18 @@ impl PppmGpu {
         self.queue.submit(Some(encoder.finish()));
 
         // Read back for mesh accumulation (could be GPU optimized later)
-        let coeffs = self.read_f64_buffer(&coeffs_buffer, coeffs_size).await?;
-        let derivs = self.read_f64_buffer(&derivs_buffer, coeffs_size).await?;
-        let base_idx = self.read_i32_buffer(&base_idx_buffer, n * 3).await?;
-        let per_particle_mesh = self
-            .read_f64_buffer(&per_particle_mesh_buffer, n * o3)
-            .await?;
+        let coeffs =
+            SparseBuffers::read_f64_raw(&self.device, &self.queue, &coeffs_buffer, coeffs_size)?;
+        let derivs =
+            SparseBuffers::read_f64_raw(&self.device, &self.queue, &derivs_buffer, coeffs_size)?;
+        let base_idx =
+            SparseBuffers::read_i32_raw(&self.device, &self.queue, &base_idx_buffer, n * 3)?;
+        let per_particle_mesh = SparseBuffers::read_f64_raw(
+            &self.device,
+            &self.queue,
+            &per_particle_mesh_buffer,
+            n * o3,
+        )?;
 
         // ================================================================
         // PHASE 2: CPU mesh accumulation + GPU FFT
@@ -936,8 +963,7 @@ impl PppmGpu {
         let phi_k = self.greens.apply(&rho_k);
 
         // K-space energy
-        let volume =
-            self.params.box_dims[0] * self.params.box_dims[1] * self.params.box_dims[2];
+        let volume = self.params.box_dims[0] * self.params.box_dims[1] * self.params.box_dims[2];
         let e_kspace = self.greens.kspace_energy(&rho_k, volume);
 
         // GPU Inverse FFT
@@ -952,9 +978,10 @@ impl PppmGpu {
         // (Same as compute_with_kspace)
         // ================================================================
 
-        let potential_buffer = self.create_f64_buffer("potential_gpu", &potential_values);
-        let forces_buffer = self.create_zero_f64_buffer("forces_gpu", n * 3);
-        let pe_buffer = self.create_zero_f64_buffer("pe_gpu", n);
+        let potential_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "potential_gpu", &potential_values);
+        let forces_buffer = SparseBuffers::f64_zeros_raw(&self.device, "forces_gpu", n * 3);
+        let pe_buffer = SparseBuffers::f64_zeros_raw(&self.device, "pe_gpu", n);
 
         let interp_params: Vec<f64> = vec![
             n as f64,
@@ -966,16 +993,21 @@ impl PppmGpu {
             self.params.box_dims[1],
             self.params.box_dims[2],
         ];
-        let interp_params_buffer = self.create_f64_buffer("interp_params_gpu", &interp_params);
+        let interp_params_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "interp_params_gpu", &interp_params);
 
-        let coeffs_buffer2 = self.create_f64_buffer("coeffs2_gpu", &coeffs);
-        let derivs_buffer2 = self.create_f64_buffer("derivs2_gpu", &derivs);
+        let coeffs_buffer2 =
+            SparseBuffers::f64_from_slice_raw(&self.device, "coeffs2_gpu", &coeffs);
+        let derivs_buffer2 =
+            SparseBuffers::f64_from_slice_raw(&self.device, "derivs2_gpu", &derivs);
         let base_idx_bytes: Vec<u8> = base_idx.iter().flat_map(|v| v.to_le_bytes()).collect();
-        let base_idx_buffer2 = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("base_idx2_gpu"),
-            contents: &base_idx_bytes,
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let base_idx_buffer2 = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("base_idx2_gpu"),
+                contents: &base_idx_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         let force_interp_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("force_interp_bg_gpu"),
@@ -1021,7 +1053,8 @@ impl PppmGpu {
             self.params.box_dims[2],
             self.params.coulomb_constant,
         ];
-        let erfc_params_buffer = self.create_f64_buffer("erfc_params_gpu", &erfc_params);
+        let erfc_params_buffer =
+            SparseBuffers::f64_from_slice_raw(&self.device, "erfc_params_gpu", &erfc_params);
 
         let erfc_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("erfc_bg_gpu"),
@@ -1089,15 +1122,12 @@ impl PppmGpu {
         self.queue.submit(Some(encoder.finish()));
 
         // Read back final forces and energy
-        let forces = self.read_f64_buffer(&forces_buffer, n * 3).await?;
-        let pe_values = self.read_f64_buffer(&pe_buffer, n).await?;
+        let forces = SparseBuffers::read_f64_raw(&self.device, &self.queue, &forces_buffer, n * 3)?;
+        let pe_values = SparseBuffers::read_f64_raw(&self.device, &self.queue, &pe_buffer, n)?;
 
         // Compute corrections
-        let e_self = super::self_energy_correction(
-            charges,
-            self.params.alpha,
-            self.params.coulomb_constant,
-        );
+        let e_self =
+            super::self_energy_correction(charges, self.params.alpha, self.params.coulomb_constant);
 
         let pos_arrays: Vec<[f64; 3]> = positions
             .chunks_exact(3)
@@ -1114,30 +1144,6 @@ impl PppmGpu {
         let total_energy = e_kspace + e_short + e_self + e_dipole;
 
         Ok((forces, total_energy))
-    }
-
-    // =========================================================================
-    // Buffer helpers - delegate to PppmBuffers (extracted Feb 14, 2026)
-    // =========================================================================
-
-    fn create_f64_buffer(&self, label: &str, data: &[f64]) -> wgpu::Buffer {
-        PppmBuffers::f64_from_slice(&self.device, label, data)
-    }
-
-    fn create_zero_f64_buffer(&self, label: &str, count: usize) -> wgpu::Buffer {
-        PppmBuffers::f64_zeros(&self.device, label, count)
-    }
-
-    fn create_zero_i32_buffer(&self, label: &str, count: usize) -> wgpu::Buffer {
-        PppmBuffers::i32_zeros(&self.device, label, count)
-    }
-
-    async fn read_f64_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<f64>> {
-        PppmBuffers::read_f64(&self.device, &self.queue, buffer, count).await
-    }
-
-    async fn read_i32_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<i32>> {
-        PppmBuffers::read_i32(&self.device, &self.queue, buffer, count).await
     }
 }
 

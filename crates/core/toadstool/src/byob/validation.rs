@@ -549,7 +549,7 @@ mod tests {
         let mut svc3 = create_test_service();
         svc3.name = "svc3".to_string();
         svc3.resources.cpu_cores = Some(1.0);
-        svc3.resources.memory_bytes = Some(1 * 1024 * 1024 * 1024);
+        svc3.resources.memory_bytes = Some(1024 * 1024 * 1024);
         svc3.resources.storage_bytes = Some(10 * 1024 * 1024 * 1024);
         services.insert("svc3".to_string(), svc3);
 

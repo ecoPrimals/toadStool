@@ -316,7 +316,12 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
 
                 // Try to get memory from nvidia-smi
                 if let Ok(output) = std::process::Command::new("nvidia-smi")
-                    .args(["--query-gpu=memory.total", "--format=csv,noheader,nounits", "-i", &device_id.to_string()])
+                    .args([
+                        "--query-gpu=memory.total",
+                        "--format=csv,noheader,nounits",
+                        "-i",
+                        &device_id.to_string(),
+                    ])
                     .output()
                 {
                     if output.status.success() {
@@ -413,7 +418,9 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
             if output.status.success() {
                 if let Ok(json_str) = String::from_utf8(output.stdout) {
                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&json_str) {
-                        if let Some(displays) = json.get("SPDisplaysDataType").and_then(|d| d.as_array()) {
+                        if let Some(displays) =
+                            json.get("SPDisplaysDataType").and_then(|d| d.as_array())
+                        {
                             for display in displays {
                                 let name = display
                                     .get("sppci_model")
@@ -421,7 +428,11 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
                                     .unwrap_or("Unknown GPU")
                                     .to_string();
 
-                                let vendor = if name.contains("Apple") || name.contains("M1") || name.contains("M2") || name.contains("M3") {
+                                let vendor = if name.contains("Apple")
+                                    || name.contains("M1")
+                                    || name.contains("M2")
+                                    || name.contains("M3")
+                                {
                                     "apple"
                                 } else if name.contains("AMD") || name.contains("Radeon") {
                                     "amd"
@@ -475,7 +486,12 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
     if !devices.is_empty() {
         info!("🎮 Detected {} GPU(s) via self-knowledge", devices.len());
         for device in &devices {
-            info!("   - {}: {} ({} MB)", device.vendor, device.name, device.memory_bytes / (1024 * 1024));
+            info!(
+                "   - {}: {} ({} MB)",
+                device.vendor,
+                device.name,
+                device.memory_bytes / (1024 * 1024)
+            );
         }
     }
 

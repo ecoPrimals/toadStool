@@ -155,6 +155,7 @@ pub const API_BURST_LIMIT: u32 = 200;
 // ============================================================================
 
 #[cfg(test)]
+#[allow(clippy::assertions_on_constants)] // Constants validated at compile time serve as documentation
 mod tests {
     use super::*;
 

@@ -1,6 +1,6 @@
 # Deep Debt Status Report
 
-**Date**: February 14, 2026  
+**Date**: February 15, 2026  
 **Status**: ✅ PRODUCTION-GRADE  
 **Quality**: ALL GATES GREEN
 
@@ -13,7 +13,27 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **MD pipeline complete** — full thermostat suite + observables + O(N) neighbor search.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 14, 2026 — Evening)
+### Latest Updates (Feb 15, 2026)
+
+**Code Quality Hardening Session:**
+- ✅ **Error Handling Evolution** -- 50+ unwrap() calls converted to proper Result propagation
+  - `receiver.recv().unwrap()` → `recv().map_err(...)?`
+  - `chunk.try_into().unwrap()` → `expect("chunks_exact invariant")` with SAFETY comments
+  - Mutex/RwLock poisoning: `lock().unwrap()` → `lock().expect("mutex poisoned")`
+- ✅ **panic!() Cleanup** -- Internal invariant violations use `unreachable!()` with messages
+- ✅ **Large File Refactoring** -- `cg_gpu.rs` reduced 2556 → 2011 lines (-21%)
+  - Buffer/BGL helpers migrated to shared `gpu_helpers.rs`
+  - Reduced duplication across all sparse linear algebra GPU solvers
+- ✅ **Clippy -D warnings** -- Full compliance with deny warnings flag
+- ✅ **Test Fix** -- Updated mock values in health check tests
+
+**Infrastructure Evolution Session:**
+- ✅ **GGUF Model Loader** -- Full llama.cpp GGUF v2/v3 format support with Q4/Q8 quantization
+- ✅ **Quantized WGSL Shaders** -- `dequant_q4.wgsl`, `dequant_q8.wgsl`, `gemv_q4.wgsl`, `gemv_q8.wgsl`
+- ✅ **Async GPU Submission** -- `AsyncSubmitter` for batched work, `AsyncReadback` for non-blocking reads
+- ✅ **Cache Probing CLI** -- `cache_probe` benchmark for runtime cache boundary detection
+
+### Previous Updates (Feb 14, 2026)
 
 **Deep Debt Evolution Session:**
 - ✅ **Server Real Metrics** -- `SystemResources` extended with actual CPU/memory usage from sysinfo
@@ -299,10 +319,14 @@ specs/GENERIC_PRECISION_EVOLUTION.md                (Phase 1 complete)
 2. **Multi-GPU DevicePool** -- When Titan V arrives
 3. **f64 Tensor type** -- Unified precision handling
 
+### Infrastructure (Completed Feb 15) ✅
+1. ✅ **Safetensors/GGUF loader** -- Full loader for HuggingFace and llama.cpp models
+2. ✅ **Quantized inference shaders** -- INT4/INT8 WGSL for LLM inference
+3. ✅ **Async GPU submission** -- Batch work and non-blocking readback
+
 ### Infrastructure (Ongoing)
 1. **VFIO NPU backend** -- Eliminate C kernel module
 2. **NPU model pipeline** -- Train/compile/deploy from Rust
-3. **Safetensors/GGUF loader** -- Eliminate PyTorch dependency
 
 ---
 
@@ -328,6 +352,6 @@ specs/GENERIC_PRECISION_EVOLUTION.md                (Phase 1 complete)
 
 ---
 
-*Last Updated*: February 14, 2026 (Deep Debt Evolution Complete)  
+*Last Updated*: February 15, 2026 (Infrastructure Evolution)  
 *Repository*: phase1/toadstool/  
 *License*: AGPL-3.0

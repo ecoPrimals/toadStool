@@ -1,7 +1,11 @@
-#[allow(clippy::await_holding_lock)]
+//! Tests for capability-based primal discovery.
+//!
+//! These tests use the deprecated primal name constants for testing
+//! the legacy interop code paths and ensuring backwards compatibility.
+#![allow(deprecated, clippy::await_holding_lock)]
+
 use super::*;
 use tempfile::TempDir;
-#[allow(deprecated)]
 use toadstool_common::interned_strings::primals;
 
 /// Mutex to serialize tests that modify XDG_RUNTIME_DIR.

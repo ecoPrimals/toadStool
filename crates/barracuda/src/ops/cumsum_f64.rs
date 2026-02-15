@@ -99,14 +99,12 @@ impl CumsumF64 {
         let device = self.input.device();
 
         // Create output buffer
-        let output_buffer = device
-            .device()
-            .create_buffer(&wgpu::BufferDescriptor {
-                label: Some("CumsumF64 Output"),
-                size: (size * std::mem::size_of::<f64>()) as u64,
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-                mapped_at_creation: false,
-            });
+        let output_buffer = device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("CumsumF64 Output"),
+            size: (size * std::mem::size_of::<f64>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
 
         // Create params buffer
         let params = CumsumF64Params {
@@ -165,24 +163,26 @@ impl CumsumF64 {
                 });
 
         // Create bind group
-        let bind_group = device.device().create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("CumsumF64 Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        let bind_group = device
+            .device()
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("CumsumF64 Bind Group"),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.input.buffer().as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                ],
+            });
 
         // Create pipeline
         let pipeline_layout =

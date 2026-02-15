@@ -1,23 +1,66 @@
 //! Model loaders for various formats
 //!
-//! Supports loading models from HuggingFace Hub and local files.
+//! Supports loading models from HuggingFace Hub (safetensors) and llama.cpp (GGUF).
+//!
+//! ## Supported Formats
+//!
+//! - **Safetensors**: HuggingFace standard format, full precision (F32, F16, BF16)
+//! - **GGUF**: llama.cpp format, supports quantized models (Q4_0, Q8_0, etc.)
 
+pub mod gguf;
 pub mod safetensors;
 
 use crate::Result;
 use std::path::Path;
 
-/// Load model weights from a directory
+/// Load model weights from a directory or file
+///
+/// Automatically detects format based on file extension or directory contents:
+/// - `.gguf` files → GGUF loader
+/// - `.safetensors` files → Safetensors loader
+/// - Directory with `model.safetensors` → Safetensors loader
 pub fn load_weights<P: AsRef<Path>>(path: P) -> Result<ModelWeights> {
     let path = path.as_ref();
 
-    // Check for safetensors (preferred)
+    // Handle direct file paths
+    if path.is_file() {
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+
+        return match ext {
+            "gguf" => gguf::load(path),
+            "safetensors" => safetensors::load(path),
+            _ => Err(crate::Error::ModelLoad(format!(
+                "Unknown file extension: {} (expected .gguf or .safetensors)",
+                ext
+            ))),
+        };
+    }
+
+    // Handle directories - prefer safetensors, then GGUF
     let safetensors_path = path.join("model.safetensors");
     if safetensors_path.exists() {
         return safetensors::load(&safetensors_path);
     }
 
-    // Check for pytorch bin
+    // Check for any safetensors file
+    for entry in std::fs::read_dir(path).map_err(crate::Error::Io)? {
+        let entry = entry.map_err(crate::Error::Io)?;
+        let entry_path = entry.path();
+        if entry_path.extension().and_then(|e| e.to_str()) == Some("safetensors") {
+            return safetensors::load(&entry_path);
+        }
+    }
+
+    // Check for GGUF files
+    for entry in std::fs::read_dir(path).map_err(crate::Error::Io)? {
+        let entry = entry.map_err(crate::Error::Io)?;
+        let entry_path = entry.path();
+        if entry_path.extension().and_then(|e| e.to_str()) == Some("gguf") {
+            return gguf::load(&entry_path);
+        }
+    }
+
+    // Check for pytorch bin (unsupported)
     let pytorch_path = path.join("pytorch_model.bin");
     if pytorch_path.exists() {
         tracing::warn!("pytorch_model.bin requires conversion - use safetensors format");

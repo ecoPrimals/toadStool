@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 14, 2026 (Deep Debt Evolution Complete)
+**Date**: February 15, 2026 (Infrastructure Evolution)
 
 ---
 
@@ -9,14 +9,15 @@
 ```
 cargo build --workspace          CLEAN
 cargo fmt --all -- --check       CLEAN
-cargo clippy --workspace         CLEAN (was 166 warnings)
+cargo clippy -- -D warnings      CLEAN (was 166 warnings)
 cargo test --workspace           15,700+ passed / 0 failed
 unsafe blocks                    FFI only (VFIO, DRM) - SAFETY documented
+error handling                   No panic paths (unwrap → Result propagation)
 middleware tests                 330+ passed (linalg, sparse, numerical, special, stats, optimize, surrogate, sample, pde, pipeline)
 dependency evolution             once_cell, lazy_static → std::sync::LazyLock
 ```
 
-*All clippy warnings resolved. Workspace fully clean.*
+*All quality gates green. Clippy -D warnings compliant. Zero panic paths in library code.*
 
 ---
 
@@ -216,10 +217,16 @@ Validation Suite: 129/129 tests PASS
 - **Cross-Platform Showcase** -- `multi_gpu_bench`, `npu_test`, `gpu_parity`, `cascade_demo`
 - **hotSpring Bridge** -- Integration with MD validation suite
 
+### Infrastructure (Feb 15, 2026 — Completed) ✅
+
+- ✅ **Safetensors/GGUF weight loader** — Full GGUF v2/v3 support for llama.cpp quantized models
+- ✅ **INT4/INT8 quantized WGSL shaders** — Q4_0/Q8_0 dequant + on-the-fly GEMV
+- ✅ **Async batch GPU submission** — `AsyncSubmitter` for deferred work batching
+- ✅ **Cache probing microbenchmarks** — Runtime bandwidth probing CLI tool
+
 ### Infrastructure (Ongoing)
 
 - NPU model pipeline (train/compile/deploy from Rust)
-- Safetensors/GGUF weight loader
 - mDNS/K8s discovery (env vars work, others pending)
 
 ---
@@ -323,4 +330,4 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 
 ---
 
-**Last Updated**: February 14, 2026
+**Last Updated**: February 15, 2026

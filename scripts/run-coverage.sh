@@ -79,11 +79,25 @@ run_tier1() {
         cargo llvm-cov report
     fi
     
-    # Get coverage percentage
+    # Get coverage percentage and enforce threshold
     COVERAGE=$(cargo llvm-cov report | grep "TOTAL" | awk '{print $10}')
+    COVERAGE_NUM=$(echo "$COVERAGE" | sed 's/%//')
+    THRESHOLD=90
+    
     echo ""
     echo -e "${GREEN}📊 Coverage: $COVERAGE${NC}"
+    echo -e "   Target: ${THRESHOLD}% (wateringHole standard)"
     echo ""
+    
+    # Enforce coverage threshold if ENFORCE_COVERAGE=true
+    if [ "${ENFORCE_COVERAGE:-false}" = "true" ]; then
+        if (( $(echo "$COVERAGE_NUM < $THRESHOLD" | bc -l) )); then
+            echo -e "${RED}❌ Coverage ${COVERAGE_NUM}% is below threshold ${THRESHOLD}%${NC}"
+            exit 1
+        else
+            echo -e "${GREEN}✅ Coverage ${COVERAGE_NUM}% meets threshold ${THRESHOLD}%${NC}"
+        fi
+    fi
 }
 
 run_tier2() {
@@ -121,7 +135,7 @@ show_summary() {
     echo ""
     echo "Tier 1 (Coverage): Unit & Integration tests"
     echo "  - Measured by llvm-cov"
-    echo "  - Target: 75% by end of Month 2"
+    echo "  - Target: 90% (wateringHole standard)"
     echo "  - Current: Run './scripts/run-coverage.sh tier1' to measure"
     echo ""
     echo "Tier 2 (Robustness): E2E & Chaos tests"

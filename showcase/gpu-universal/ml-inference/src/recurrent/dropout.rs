@@ -62,10 +62,10 @@ impl RecurrentDropout {
 
 #[cfg(test)]
 mod layer_tests {
-    use std::sync::Arc;
-    use anyhow::{Result, Context};
-    use crate::recurrent::{BidirectionalRNN, StackedLSTM, GRULayer, LSTMLayer};
     use super::*;
+    use crate::recurrent::{BidirectionalRNN, GRULayer, LSTMLayer, StackedLSTM};
+    use anyhow::{Context, Result};
+    use std::sync::Arc;
 
     async fn create_test_device() -> Result<(Arc<wgpu::Device>, Arc<wgpu::Queue>)> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -142,7 +142,7 @@ mod layer_tests {
 
         assert_eq!(output.len(), sequence.len());
         // Check that some values are dropped (0.0) and others are scaled
-        let has_zeros = output.iter().any(|&x| x == 0.0);
+        let has_zeros = output.contains(&0.0);
         let has_scaled = output.iter().any(|&x| x > 1.0);
         assert!(has_zeros || has_scaled, "Dropout should modify values");
     }
