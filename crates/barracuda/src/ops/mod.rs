@@ -12,6 +12,14 @@ pub mod linalg;
 // Interpolation operations (RBF, splines, etc.)
 pub mod interpolation;
 
+// Mixing operations for SCF solvers (Broyden, linear)
+// Validated by hotSpring nuclear EOS study (169/169 acceptance checks)
+pub mod mixing;
+
+// Structured grid operations (gradients, Laplacian, FD stencils)
+// Physics-agnostic primitives for fluid dynamics, nuclear physics, etc.
+pub mod grid;
+
 // NPU Bridge - Phase 3 unified API (Tensor ↔ NPU conversion)
 pub mod npu_bridge;
 

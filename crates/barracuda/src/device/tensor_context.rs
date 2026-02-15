@@ -533,7 +533,35 @@ impl std::fmt::Display for TensorContextStats {
     }
 }
 
-/// Extend wgpu::Limits with higher buffer limits
+/// Science-grade limits for serious GPU compute
+///
+/// These are the recommended defaults for scientific computing:
+/// - 512 MiB max storage buffer binding (up from 128 MiB default)
+/// - 1 GiB max buffer size (up from 256 MiB default)
+///
+/// Validated by hotSpring nuclear EOS study (169/169 acceptance checks)
+/// on consumer GPU (RTX 4070) with full f64 precision.
+///
+/// Use these limits for:
+/// - Large tensor operations (>32M elements)
+/// - 3D fields and grids
+/// - Molecular dynamics buffers
+/// - Scientific workloads
+pub fn science_limits() -> wgpu::Limits {
+    wgpu::Limits {
+        // 512 MiB for storage buffer binding (4x default)
+        max_storage_buffer_binding_size: 512 * 1024 * 1024,
+        // 1 GiB max buffer size (4x default)
+        max_buffer_size: 1024 * 1024 * 1024,
+        // Keep other limits at defaults
+        ..wgpu::Limits::default()
+    }
+}
+
+/// Extend wgpu::Limits with higher buffer limits (legacy compatibility)
+///
+/// For maximum capacity, use `high_capacity_limits()`.
+/// For validated science workloads, prefer `science_limits()`.
 pub fn high_capacity_limits() -> wgpu::Limits {
     wgpu::Limits {
         // Increase from 128MB to 1GB max binding

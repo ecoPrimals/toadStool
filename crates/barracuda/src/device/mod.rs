@@ -44,8 +44,8 @@ pub use pipeline_cache::clear_global_cache;
 
 // Re-export tensor context (zero-overhead Tensor operations)
 pub use tensor_context::{
-    clear_global_contexts, get_device_context, high_capacity_limits, BufferPool, PooledBuffer,
-    TensorContext, TensorContextStats,
+    clear_global_contexts, get_device_context, high_capacity_limits, science_limits, BufferPool,
+    PooledBuffer, TensorContext, TensorContextStats,
 };
 
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};

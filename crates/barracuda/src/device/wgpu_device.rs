@@ -217,7 +217,7 @@ impl WgpuDevice {
                 &wgpu::DeviceDescriptor {
                     label: Some("BarraCUDA device"),
                     required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
+                    required_limits: super::tensor_context::science_limits(),
                 },
                 None,
             )
@@ -260,13 +260,16 @@ impl WgpuDevice {
 
         let adapter_info = adapter.get_info();
 
-        // Request device (runtime capability negotiation)
+        // Request device with science-grade limits (runtime capability negotiation)
+        // Default limits raised from 128 MiB to 512 MiB for storage buffer binding,
+        // and from 256 MiB to 1 GiB for max buffer size.
+        // Validated by hotSpring nuclear EOS study (169/169 acceptance checks).
         let (device, queue): (wgpu::Device, wgpu::Queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some("barraCUDA Device"),
                     required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
+                    required_limits: super::tensor_context::science_limits(),
                 },
                 None,
             )
