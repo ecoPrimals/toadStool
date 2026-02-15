@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-15] - hotSpring Evolution Testing
+
+**Impact**: Comprehensive unit/E2E/chaos/fault test coverage for absorbed hotSpring primitives.
+
+#### Added
+
+- **Test Suite** (`barracuda::tests::hotspring_evolution_tests`):
+  - 47 new tests across 6 categories
+  - Unit tests: LinearMixer (α=0/0.3/0.5/1.0, varying values), BroydenMixer (warmup, reset)
+  - Unit tests: Gradient1D (linear/quadratic/cubic/sine), 2D/cylindrical struct creation
+  - E2E tests: SCF convergence (single/multi-dim), Broyden SCF, gradient-mixing pipeline
+  - Chaos tests: large/small values, alternating signs, pseudorandom, spikes, oscillations
+  - Fault tests: dimension mismatch, NaN/infinity propagation, empty input
+  - Special functions: CPU reference for Hermite H_n(x), Laguerre L_n^α(x)
+
+#### Fixed
+
+- **Clippy `manual_div_ceil`** warnings in `mixing/broyden_f64.rs`, `grid/fd_gradient_f64.rs`, `linalg/gemm_f64.rs`, `ops/sum_reduce_f64.rs`
+- **Dead code warnings** in Gradient2D, Laplacian2D, CylindricalGradient, CylindricalLaplacian, BroydenMixer
+
+---
+
 ### [2026-02-15] - hotSpring Math Primitives Absorption
 
 **Impact**: Physics-agnostic GPU primitives from hotSpring's nuclear EOS study absorbed into BarraCUDA. All primitives validated by 169/169 acceptance checks on consumer GPU (RTX 4070, f64).

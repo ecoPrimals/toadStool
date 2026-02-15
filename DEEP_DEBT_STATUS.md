@@ -15,6 +15,16 @@ System health verified with 15,700+ tests passing across workspace.
 
 ### Latest Updates (Feb 15, 2026)
 
+**Comprehensive Testing for hotSpring Evolution:**
+- ✅ **47 new tests** in `hotspring_evolution_tests.rs`
+  - Unit tests: LinearMixer (5 α variants), BroydenMixer (creation, warmup, reset)
+  - Unit tests: Gradient1D (linear/quadratic/cubic/sine), 2D/cylindrical creation
+  - E2E tests: SCF convergence simulation, gradient-mixing pipeline
+  - Chaos tests: large/small values, alternating signs, pseudorandom, spikes, oscillations
+  - Fault tests: dimension mismatch, NaN/infinity propagation, empty input
+  - Special functions: Hermite H_n(x), Laguerre L_n^α(x) CPU reference implementations
+- ✅ **Clippy compliance** -- Fixed `manual_div_ceil` warnings in mixing/grid/gemm/sum_reduce
+
 **hotSpring Math Primitives Absorption:**
 - ✅ **f64 Special Functions** -- `hermite_f64.wgsl`, `laguerre_f64.wgsl` with normalized variants
 - ✅ **Broyden Mixing Module** -- `ops/mixing/` for SCF solvers (DFT, HFB, Poisson-Boltzmann)
