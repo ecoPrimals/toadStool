@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-15] - hotSpring Math Primitives Absorption
+
+**Impact**: Physics-agnostic GPU primitives from hotSpring's nuclear EOS study absorbed into BarraCUDA. All primitives validated by 169/169 acceptance checks on consumer GPU (RTX 4070, f64).
+
+#### Added
+
+- **f64 Special Functions** (`barracuda::shaders::special`):
+  - `hermite_f64.wgsl` — Hermite polynomials with `hermite_function` (normalized) variant
+  - `laguerre_f64.wgsl` — Generalized Laguerre with `radial_laguerre` for 2D HO basis
+
+- **Broyden Mixing Module** (`barracuda::ops::mixing`):
+  - `LinearMixer` — Simple damped iteration: `x_new = (1-α)·x_old + α·x_computed`
+  - `BroydenMixer` — Modified Broyden II with history vectors
+  - `broyden_f64.wgsl` — WGSL kernels: `mix_linear`, `broyden_update`, `compute_residual`
+  - Presets: `warmup_linear()`, `standard_broyden()`, `density_mixing()`, `aggressive()`
+
+- **Finite-Difference Gradients** (`barracuda::ops::grid`):
+  - `Gradient1D`, `Gradient2D`, `CylindricalGradient`, `CylindricalLaplacian`
+  - `fd_gradient_f64.wgsl` — 1D/2D/cylindrical gradients, Laplacian (∇² with 1/ρ term)
+  - Central FD with forward/backward at boundaries
+
+- **Weighted Inner Product** (`barracuda::shaders::reduce`):
+  - `weighted_dot_f64.wgsl` — Workgroup tree reduction (256-wide shared memory)
+  - Kernels: `weighted_dot_parallel`, `dot_parallel`, `norm_squared_parallel`, `weighted_dot_batched`
+
+#### Changed
+
+- **Science-Grade Buffer Limits** (`barracuda::device`):
+  - `WgpuDevice::new()` now defaults to `science_limits()` (512 MiB / 1 GiB)
+  - Was 128 MiB / 256 MiB (wgpu default) — too small for scientific computing
+  - New `science_limits()` function exported from `tensor_context`
+  - `new_with_filter()` and `from_adapter_index()` also use science limits
+
+#### Documentation
+
+- `docs/planning/HOTSPRING_ABSORPTION_FEB15_2026.md` — Detailed absorption record
+- `DEEP_DEBT_STATUS.md` — Updated with absorption summary
+
+---
+
 ### [2026-02-15] - Code Quality Hardening
 
 **Impact**: Systematic elimination of panic paths in library code. Clippy -D warnings compliance. Large file refactoring.
