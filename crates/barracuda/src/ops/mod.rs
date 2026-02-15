@@ -164,6 +164,9 @@ pub mod scatter_wgsl;
 pub mod spatial_dropout;
 pub mod topk;
 
+// Reduction operations (f64)
+pub mod sum_reduce_f64;
+
 // Utility operations
 pub mod broadcast;
 pub mod cumprod_wgsl;
@@ -529,6 +532,7 @@ pub use conv2d::Conv2D;
 pub use conv3d::Conv3D;
 pub use cross_entropy::CrossEntropy;
 pub use cumsum_f64::CumsumF64;
+pub use sum_reduce_f64::SumReduceF64;
 pub use cumsum_wgsl::Cumsum;
 pub use depthwise_conv2d::DepthwiseConv2D;
 pub use embedding_wgsl::Embedding;

@@ -50,6 +50,7 @@
 pub mod batched_eigh_gpu;
 pub mod cholesky;
 pub mod eigh;
+pub mod gemm_f64;
 pub mod gen_eigh_gpu;
 pub mod linsolve;
 pub mod lu;
@@ -62,6 +63,7 @@ pub mod triangular_solve;
 pub mod tridiagonal;
 
 pub use batched_eigh_gpu::BatchedEighGpu;
+pub use gemm_f64::GemmF64;
 pub use gen_eigh_gpu::{GenEighDecompositionGpu, GenEighGpu};
 pub use cholesky::Cholesky;
 pub use eigh::Eigh;
