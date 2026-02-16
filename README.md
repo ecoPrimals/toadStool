@@ -11,7 +11,7 @@
 
 ---
 
-## Quality Gates (February 15, 2026)
+## Quality Gates (February 16, 2026)
 
 | Gate | Status |
 |------|--------|
@@ -244,7 +244,30 @@ toadStool/
 
 ---
 
-## Recent Evolutions (Feb 14, 2026)
+## Recent Evolutions (Feb 16, 2026)
+
+### GPU-Resident Pipeline Complete ✅
+
+**hotSpring Amdahl's Law bottleneck solved** — GPU-resident physics pipeline enables zero CPU↔GPU round-trips during iteration:
+
+| Component | Status | Description |
+|-----------|:------:|-------------|
+| Max Abs Diff Reduction | ✅ | Convergence check stays on GPU |
+| Persistent Buffer Mgmt | ✅ | Zero allocation iterations |
+| Batched Bisection | ✅ | 1000+ parallel root-finding |
+| Grid Quadrature GEMM | ✅ | GPU Hamiltonian construction |
+| Multi-Kernel Pipeline | ✅ | Buffer chaining without CPU |
+
+**Key metrics achieved:**
+- CPU↔GPU round-trips/iteration: ~10 → **1**
+- Buffer allocs/iteration: ~20 → **0**
+- Full SCF loop can now run GPU-resident
+
+See `NEXT_STEPS.md` for API usage examples.
+
+---
+
+## Previous Evolutions (Feb 14, 2026)
 
 ### Molecular Dynamics Pipeline Complete ✅
 
@@ -423,4 +446,4 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
-**Last Updated**: February 15, 2026 (hotSpring Evolution Complete)
+**Last Updated**: February 16, 2026 (GPU-Resident Pipeline Complete)

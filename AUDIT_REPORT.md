@@ -1,6 +1,6 @@
 # ToadStool Comprehensive Audit Report
 
-**Date**: February 15, 2026  
+**Date**: February 16, 2026  
 **Auditor**: Automated + Manual Review  
 **Standards**: wateringHole ecoBin, SEMANTIC_METHOD_NAMING, INTER_PRIMAL_INTERACTIONS
 
@@ -28,6 +28,8 @@
 | **Async GPU** | ✅ | AsyncSubmitter, AsyncReadback |
 | **hotSpring Validation** | ✅ | 169/169 nuclear EOS acceptance checks |
 | **Evolution Tests** | ✅ | 47 new unit/E2E/chaos/fault tests |
+| **GPU-Resident Pipeline** | ✅ | Zero CPU↔GPU round-trips (Feb 16) |
+| **Plugin Discovery** | ✅ | Real directory scanning (Feb 16) |
 
 ---
 

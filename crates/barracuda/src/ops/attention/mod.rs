@@ -65,10 +65,26 @@ impl Attention {
     /// Create new attention operation
     pub fn new(query: Tensor, key: Tensor, value: Tensor) -> Result<Self> {
         // Validate shapes: all must be [batch, heads, seq_len, head_dim]
-        if query.shape().len() != 4 || key.shape().len() != 4 || value.shape().len() != 4 {
-            return Err(BarracudaError::shape_mismatch(
-                query.shape().to_vec(),
-                vec![0, 0, 0, 0], // Placeholder - we need 4D
+        let q_ndim = query.shape().len();
+        let k_ndim = key.shape().len();
+        let v_ndim = value.shape().len();
+        
+        if q_ndim != 4 {
+            return Err(BarracudaError::invalid_op(
+                "attention",
+                format!("query requires 4D tensor [batch, heads, seq_len, head_dim], got {}D", q_ndim)
+            ));
+        }
+        if k_ndim != 4 {
+            return Err(BarracudaError::invalid_op(
+                "attention",
+                format!("key requires 4D tensor [batch, heads, seq_len, head_dim], got {}D", k_ndim)
+            ));
+        }
+        if v_ndim != 4 {
+            return Err(BarracudaError::invalid_op(
+                "attention",
+                format!("value requires 4D tensor [batch, heads, seq_len, head_dim], got {}D", v_ndim)
             ));
         }
 

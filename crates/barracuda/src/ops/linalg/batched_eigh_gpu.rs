@@ -611,6 +611,557 @@ impl BatchedEighGpu {
         Ok(results)
     }
 
+    /// Create GPU buffers for GPU-resident eigenvalue decomposition
+    ///
+    /// This is the first step for using `execute_f64_buffers()`. The returned buffers
+    /// can be reused across multiple solver iterations without CPU↔GPU transfers.
+    ///
+    /// # Arguments
+    /// * `device` - WgpuDevice
+    /// * `n` - Matrix dimension
+    /// * `batch_size` - Number of matrices
+    ///
+    /// # Returns
+    /// Tuple of (matrices_buffer, eigenvalues_buffer, eigenvectors_buffer)
+    /// - matrices_buffer: [batch_size × n × n] f64 - input/working buffer
+    /// - eigenvalues_buffer: [batch_size × n] f64 - output eigenvalues
+    /// - eigenvectors_buffer: [batch_size × n × n] f64 - output eigenvectors
+    ///
+    /// # Example
+    /// ```ignore
+    /// let (matrices_buf, eigenvalues_buf, eigenvectors_buf) =
+    ///     BatchedEighGpu::create_buffers(&device, n, batch_size)?;
+    /// // Write initial matrices to matrices_buf (from another GPU operation)
+    /// // Then execute without CPU readback:
+    /// BatchedEighGpu::execute_f64_buffers(&device, &matrices_buf, &eigenvalues_buf, &eigenvectors_buf, n, batch_size, 30)?;
+    /// // eigenvalues_buf and eigenvectors_buf now contain results (still on GPU)
+    /// ```
+    pub fn create_buffers(
+        device: &Arc<WgpuDevice>,
+        n: usize,
+        batch_size: usize,
+    ) -> Result<(wgpu::Buffer, wgpu::Buffer, wgpu::Buffer)> {
+        let nu = n as u32;
+        let batch_u = batch_size as u32;
+
+        // Matrices buffer (input, modified in-place during Jacobi)
+        let matrices_size = (batch_size * n * n * 8) as u64;
+        let matrices_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BatchedEigh matrices f64"),
+            size: matrices_size,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Eigenvalues buffer (output)
+        let eigenvalues_size = (batch_size * n * 8) as u64;
+        let eigenvalues_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BatchedEigh eigenvalues f64"),
+            size: eigenvalues_size,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Eigenvectors buffer (output)
+        let eigenvectors_size = (batch_size * n * n * 8) as u64;
+        let eigenvectors_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BatchedEigh eigenvectors f64"),
+            size: eigenvectors_size,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let _ = (nu, batch_u); // Suppress unused warnings
+        Ok((matrices_buffer, eigenvalues_buffer, eigenvectors_buffer))
+    }
+
+    /// Execute batched eigenvalue decomposition on GPU **without CPU readback**
+    ///
+    /// This is the GPU-resident variant for use in pipelines where data should
+    /// stay on GPU between operations (e.g., SCF iteration loops).
+    ///
+    /// # Arguments
+    /// * `device` - WgpuDevice
+    /// * `matrices_buffer` - Input buffer [batch_size × n × n] f64 (modified in-place)
+    /// * `eigenvalues_buffer` - Output buffer [batch_size × n] f64
+    /// * `eigenvectors_buffer` - Output buffer [batch_size × n × n] f64
+    /// * `n` - Matrix dimension
+    /// * `batch_size` - Number of matrices
+    /// * `max_sweeps` - Maximum Jacobi sweeps
+    ///
+    /// # Returns
+    /// `Ok(())` on success - results are in the output buffers (no CPU copy)
+    ///
+    /// # Example (GPU-resident SCF loop)
+    /// ```ignore
+    /// // Pre-allocate buffers once
+    /// let (h_buf, eig_buf, vec_buf) = BatchedEighGpu::create_buffers(&device, n, batch)?;
+    ///
+    /// for iteration in 0..max_iter {
+    ///     // Previous stage writes Hamiltonian to h_buf (GPU→GPU)
+    ///     hamiltonian_builder.execute_to_buffer(&h_buf)?;
+    ///
+    ///     // Eigensolve without CPU readback
+    ///     BatchedEighGpu::execute_f64_buffers(
+    ///         &device, &h_buf, &eig_buf, &vec_buf, n, batch, 30
+    ///     )?;
+    ///
+    ///     // Next stage reads from eig_buf/vec_buf (GPU→GPU)
+    ///     bcs_pairing.execute_from_buffers(&eig_buf, &occupations_buf)?;
+    ///
+    ///     // Only read back for convergence check (single scalar)
+    ///     let converged = convergence_check(&device, &energy_buf)?;
+    ///     if converged { break; }
+    /// }
+    /// ```
+    pub fn execute_f64_buffers(
+        device: &Arc<WgpuDevice>,
+        matrices_buffer: &wgpu::Buffer,
+        eigenvalues_buffer: &wgpu::Buffer,
+        eigenvectors_buffer: &wgpu::Buffer,
+        n: usize,
+        batch_size: usize,
+        max_sweeps: u32,
+    ) -> Result<()> {
+        let nu = n as u32;
+        let batch_u = batch_size as u32;
+
+        // Create working buffer for cos/sin rotation angles
+        let cs_size = (batch_size * 2 * 8) as u64;
+        let cs_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BatchedEigh cs f64"),
+            size: cs_size,
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("Batched Eigh f64 (buffers)"));
+
+        // Create bind group layouts and pipelines (same as execute_f64)
+
+        // Init V layout
+        let init_bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Batched Init V BGL (buffers)"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let init_pl = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Batched Init V PL (buffers)"),
+                bind_group_layouts: &[&init_bgl],
+                push_constant_ranges: &[],
+            });
+
+        let init_v_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Batched Init V (buffers)"),
+                    layout: Some(&init_pl),
+                    module: &shader,
+                    entry_point: "batched_init_V",
+                });
+
+        let extract_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Batched Extract Eigenvalues (buffers)"),
+                    layout: Some(&init_pl),
+                    module: &shader,
+                    entry_point: "batched_extract_eigenvalues",
+                });
+
+        // Parallel sweep layout
+        let sweep_bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Parallel Sweep BGL (buffers)"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let sweep_pl = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Parallel Sweep PL (buffers)"),
+                bind_group_layouts: &[&sweep_bgl],
+                push_constant_ranges: &[],
+            });
+
+        let compute_angles_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Parallel Compute Angles (buffers)"),
+                    layout: Some(&sweep_pl),
+                    module: &shader,
+                    entry_point: "parallel_compute_angles",
+                });
+
+        let rotate_a_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Parallel Rotate A (buffers)"),
+                    layout: Some(&sweep_pl),
+                    module: &shader,
+                    entry_point: "parallel_rotate_A",
+                });
+
+        let update_blocks_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Parallel Update Blocks (buffers)"),
+                    layout: Some(&sweep_pl),
+                    module: &shader,
+                    entry_point: "parallel_update_blocks",
+                });
+
+        let rotate_v_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Parallel Rotate V (buffers)"),
+                    layout: Some(&sweep_pl),
+                    module: &shader,
+                    entry_point: "parallel_rotate_V",
+                });
+
+        // Create params buffer
+        let params = BatchedEighParams {
+            n: nu,
+            batch_size: batch_u,
+            max_sweeps,
+            _pad: 0,
+        };
+        let params_buffer = device.create_uniform_buffer("Batched Eigh Params (buffers)", &params);
+
+        // Create init bind group using provided buffers
+        let init_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Batched Init BG (buffers)"),
+            layout: &init_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: matrices_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: eigenvectors_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: eigenvalues_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Step 1: Initialize V = Identity for all matrices
+        {
+            let mut encoder =
+                device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Init V Encoder (buffers)"),
+                    });
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Init V Pass (buffers)"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&init_v_pipeline);
+                pass.set_bind_group(0, &init_bg, &[]);
+                let wg_xy = nu.div_ceil(16);
+                pass.dispatch_workgroups(wg_xy, wg_xy, batch_u);
+            }
+            device.queue.submit(Some(encoder.finish()));
+        }
+
+        // Step 2: Jacobi sweeps
+        for _sweep in 0..max_sweeps {
+            for p in 0..(n - 1) {
+                for q in (p + 1)..n {
+                    let sweep_params = ParallelSweepParams {
+                        n: nu,
+                        batch_size: batch_u,
+                        current_p: p as u32,
+                        current_q: q as u32,
+                    };
+                    let sweep_params_buffer =
+                        device.create_uniform_buffer("Sweep Params (buffers)", &sweep_params);
+
+                    let sweep_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("Sweep BG (buffers)"),
+                        layout: &sweep_bgl,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: sweep_params_buffer.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: matrices_buffer.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 2,
+                                resource: eigenvectors_buffer.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 3,
+                                resource: cs_buffer.as_entire_binding(),
+                            },
+                        ],
+                    });
+
+                    // 2a: Compute rotation angles
+                    {
+                        let mut encoder =
+                            device
+                                .device
+                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                    label: Some("Compute Angles (buffers)"),
+                                });
+                        {
+                            let mut pass =
+                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                                    label: Some("Compute Angles Pass (buffers)"),
+                                    timestamp_writes: None,
+                                });
+                            pass.set_pipeline(&compute_angles_pipeline);
+                            pass.set_bind_group(0, &sweep_bg, &[]);
+                            pass.dispatch_workgroups(batch_u.div_ceil(64), 1, 1);
+                        }
+                        device.queue.submit(Some(encoder.finish()));
+                    }
+
+                    // 2b: Rotate A
+                    {
+                        let mut encoder =
+                            device
+                                .device
+                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                    label: Some("Rotate A (buffers)"),
+                                });
+                        {
+                            let mut pass =
+                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                                    label: Some("Rotate A Pass (buffers)"),
+                                    timestamp_writes: None,
+                                });
+                            pass.set_pipeline(&rotate_a_pipeline);
+                            pass.set_bind_group(0, &sweep_bg, &[]);
+                            pass.dispatch_workgroups(nu.div_ceil(64), batch_u, 1);
+                        }
+                        device.queue.submit(Some(encoder.finish()));
+                    }
+
+                    // 2c: Update 2×2 blocks
+                    {
+                        let mut encoder =
+                            device
+                                .device
+                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                    label: Some("Update Blocks (buffers)"),
+                                });
+                        {
+                            let mut pass =
+                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                                    label: Some("Update Blocks Pass (buffers)"),
+                                    timestamp_writes: None,
+                                });
+                            pass.set_pipeline(&update_blocks_pipeline);
+                            pass.set_bind_group(0, &sweep_bg, &[]);
+                            pass.dispatch_workgroups(batch_u.div_ceil(64), 1, 1);
+                        }
+                        device.queue.submit(Some(encoder.finish()));
+                    }
+
+                    // 2d: Rotate V
+                    {
+                        let mut encoder =
+                            device
+                                .device
+                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                    label: Some("Rotate V (buffers)"),
+                                });
+                        {
+                            let mut pass =
+                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                                    label: Some("Rotate V Pass (buffers)"),
+                                    timestamp_writes: None,
+                                });
+                            pass.set_pipeline(&rotate_v_pipeline);
+                            pass.set_bind_group(0, &sweep_bg, &[]);
+                            pass.dispatch_workgroups(nu.div_ceil(64), batch_u, 1);
+                        }
+                        device.queue.submit(Some(encoder.finish()));
+                    }
+                }
+            }
+        }
+
+        // Step 3: Extract eigenvalues from diagonal
+        {
+            let mut encoder =
+                device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Extract Eigenvalues (buffers)"),
+                    });
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Extract Eigenvalues Pass (buffers)"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&extract_pipeline);
+                pass.set_bind_group(0, &init_bg, &[]);
+                pass.dispatch_workgroups(nu.div_ceil(256), batch_u, 1);
+            }
+            device.queue.submit(Some(encoder.finish()));
+        }
+
+        // NO CPU READBACK - results stay in eigenvalues_buffer and eigenvectors_buffer
+        Ok(())
+    }
+
+    /// Read eigenvalues from a GPU buffer to CPU (for convergence checks)
+    ///
+    /// This is the minimal CPU readback needed during SCF iteration - just the
+    /// eigenvalues for energy/convergence calculations. The eigenvectors stay on GPU.
+    ///
+    /// # Arguments
+    /// * `device` - WgpuDevice
+    /// * `eigenvalues_buffer` - Buffer containing eigenvalues [batch_size × n] f64
+    /// * `n` - Matrix dimension
+    /// * `batch_size` - Number of matrices
+    ///
+    /// # Returns
+    /// Vec<f64> of eigenvalues (flattened)
+    pub fn read_eigenvalues(
+        device: &Arc<WgpuDevice>,
+        eigenvalues_buffer: &wgpu::Buffer,
+        n: usize,
+        batch_size: usize,
+    ) -> Result<Vec<f64>> {
+        Self::read_f64_buffer(device, eigenvalues_buffer, batch_size * n)
+    }
+
+    /// Read eigenvectors from a GPU buffer to CPU (optional, only when needed)
+    ///
+    /// # Arguments
+    /// * `device` - WgpuDevice
+    /// * `eigenvectors_buffer` - Buffer containing eigenvectors [batch_size × n × n] f64
+    /// * `n` - Matrix dimension
+    /// * `batch_size` - Number of matrices
+    ///
+    /// # Returns
+    /// Vec<f64> of eigenvectors (flattened row-major)
+    pub fn read_eigenvectors(
+        device: &Arc<WgpuDevice>,
+        eigenvectors_buffer: &wgpu::Buffer,
+        n: usize,
+        batch_size: usize,
+    ) -> Result<Vec<f64>> {
+        Self::read_f64_buffer(device, eigenvectors_buffer, batch_size * n * n)
+    }
+
     /// Helper: Read f64 buffer from GPU
     fn read_f64_buffer(
         device: &Arc<WgpuDevice>,
@@ -814,5 +1365,113 @@ mod tests {
             approx_eq_f64(trace_2, 4.0, 1e-4),
             "Matrix 2 trace should be 4"
         );
+    }
+
+    #[tokio::test]
+    async fn test_batched_eigh_buffer_api() {
+        // Test the GPU-resident buffer-based API
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
+
+        let n = 2;
+        let batch_size = 2;
+
+        // Create persistent buffers (as would be done in SCF loop setup)
+        let (matrices_buf, eigenvalues_buf, eigenvectors_buf) =
+            BatchedEighGpu::create_buffers(&device, n, batch_size).unwrap();
+
+        // Prepare input data: two 2x2 symmetric matrices
+        // Matrix 0: [[4, 2], [2, 3]] -> eigenvalues ~5, 2 (trace=7)
+        // Matrix 1: [[2, 1], [1, 2]] -> eigenvalues  3, 1 (trace=3)
+        let input_data: Vec<f64> = vec![
+            4.0, 2.0, 2.0, 3.0, // Matrix 0
+            2.0, 1.0, 1.0, 2.0, // Matrix 1
+        ];
+
+        // Upload input to GPU buffer (simulates Hamiltonian builder output)
+        device.queue.write_buffer(
+            &matrices_buf,
+            0,
+            bytemuck::cast_slice(&input_data),
+        );
+
+        // Execute eigensolve WITHOUT CPU readback
+        BatchedEighGpu::execute_f64_buffers(
+            &device,
+            &matrices_buf,
+            &eigenvalues_buf,
+            &eigenvectors_buf,
+            n,
+            batch_size,
+            30,
+        )
+        .unwrap();
+
+        // Now read back eigenvalues only (minimal readback for convergence check)
+        let eigenvalues =
+            BatchedEighGpu::read_eigenvalues(&device, &eigenvalues_buf, n, batch_size).unwrap();
+
+        assert_eq!(eigenvalues.len(), 4); // 2 matrices × 2 eigenvalues each
+
+        // Verify Matrix 0 trace = 7
+        let trace_0 = eigenvalues[0] + eigenvalues[1];
+        assert!(
+            approx_eq_f64(trace_0, 7.0, 1e-4),
+            "Matrix 0 trace should be 7, got {}",
+            trace_0
+        );
+
+        // Verify Matrix 1 trace = 4
+        let trace_1 = eigenvalues[2] + eigenvalues[3];
+        assert!(
+            approx_eq_f64(trace_1, 4.0, 1e-4),
+            "Matrix 1 trace should be 4, got {}",
+            trace_1
+        );
+
+        // Optionally verify eigenvectors are available
+        let eigenvectors =
+            BatchedEighGpu::read_eigenvectors(&device, &eigenvectors_buf, n, batch_size).unwrap();
+        assert_eq!(eigenvectors.len(), 8); // 2 matrices × 2×2 eigenvectors each
+    }
+
+    #[tokio::test]
+    async fn test_batched_eigh_buffer_reuse() {
+        // Test that buffers can be reused across iterations (GPU-resident SCF pattern)
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
+
+        let n = 2;
+        let batch_size = 1;
+
+        // Create buffers once (as in SCF setup)
+        let (matrices_buf, eigenvalues_buf, eigenvectors_buf) =
+            BatchedEighGpu::create_buffers(&device, n, batch_size).unwrap();
+
+        // Iteration 1: Identity matrix -> eigenvalues (1, 1)
+        let data_1: Vec<f64> = vec![1.0, 0.0, 0.0, 1.0];
+        device.queue.write_buffer(&matrices_buf, 0, bytemuck::cast_slice(&data_1));
+        BatchedEighGpu::execute_f64_buffers(
+            &device, &matrices_buf, &eigenvalues_buf, &eigenvectors_buf, n, batch_size, 10,
+        ).unwrap();
+        let eig_1 = BatchedEighGpu::read_eigenvalues(&device, &eigenvalues_buf, n, batch_size).unwrap();
+        let trace_1: f64 = eig_1.iter().sum();
+        assert!(approx_eq_f64(trace_1, 2.0, 1e-6), "Iteration 1 trace should be 2");
+
+        // Iteration 2: New matrix [[3, 1], [1, 3]] -> eigenvalues (4, 2), trace=6
+        let data_2: Vec<f64> = vec![3.0, 1.0, 1.0, 3.0];
+        device.queue.write_buffer(&matrices_buf, 0, bytemuck::cast_slice(&data_2));
+        BatchedEighGpu::execute_f64_buffers(
+            &device, &matrices_buf, &eigenvalues_buf, &eigenvectors_buf, n, batch_size, 10,
+        ).unwrap();
+        let eig_2 = BatchedEighGpu::read_eigenvalues(&device, &eigenvalues_buf, n, batch_size).unwrap();
+        let trace_2: f64 = eig_2.iter().sum();
+        assert!(approx_eq_f64(trace_2, 6.0, 1e-4), "Iteration 2 trace should be 6");
+
+        // Buffers successfully reused across iterations
     }
 }

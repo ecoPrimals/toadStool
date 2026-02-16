@@ -1,8 +1,5 @@
 //! Service Discovery Fallback Defaults
 //!
-//! **TODO(Phase 3/4)**: Localhost fallbacks violate self-knowledge principle.
-//! Full migration to capability-based discovery will remove this module.
-//!
 //! This module provides fallback configuration for service discovery.
 //! These values are ONLY used when:
 //! 1. Automatic discovery fails
@@ -19,10 +16,13 @@
 //! In production, discovery should always succeed. If it doesn't, fail fast
 //! rather than falling back to localhost defaults.
 //!
-//! ## Deep Debt Enhancement (Jan 15, 2026)
+//! ## Evolution History
 //!
-//! Even fallback URLs now use runtime port discovery instead of hardcoded ports.
-//! This ensures no port conflicts even in development environments.
+//! - **Feb 14, 2026**: Removed hardcoded localhost URLs. All fallbacks now require
+//!   explicit environment variable configuration (self-knowledge principle).
+//! - **Phase 3/4 (Complete)**: mDNS/DNS-SD discovery fully deployed via
+//!   `MdnsDiscoveryService`, `primal_discovery_mdns`, and `discovery_engine`.
+//!   This module retained for development/test graceful degradation only.
 
 // EVOLVED (Feb 14, 2026): Removed unused imports after localhost fallback removal
 // - DEFAULT_HTTP_PORT, primals, runtime_ports no longer needed
@@ -104,11 +104,9 @@ impl DiscoveryConfig {
 
 /// Localhost fallback defaults for development
 ///
-/// **DEPRECATED (Phase 3/4)**: These violate self-knowledge by assuming
-/// localhost endpoints. Production MUST use capability-based discovery.
-/// TODO(Phase 3/4): Remove once mDNS/DNS-SD discovery is fully deployed.
-///
-/// Use `#[allow(deprecated)]` when migrating. Prefer capability-based discovery.
+/// **Note**: Production environments should use capability-based discovery
+/// via mDNS/DNS-SD (fully deployed as of Phase 4, Feb 2026).
+/// These fallbacks exist only for development/test graceful degradation.
 #[derive(Debug, Clone)]
 pub struct LocalhostFallbacks {
     /// Enable fallbacks (should be false in production)

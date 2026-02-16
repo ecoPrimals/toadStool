@@ -29,7 +29,7 @@ use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
 
-/// Parameters for cyclic reduction shader
+/// Parameters for cyclic reduction shader (single system)
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct CyclicReductionParams {
@@ -37,6 +37,16 @@ struct CyclicReductionParams {
     step: u32,
     phase: u32,
     _pad: u32,
+}
+
+/// Parameters for batched cyclic reduction shader
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct BatchParams {
+    n: u32,           // System size per batch element
+    n_padded: u32,    // Padded to power of 2
+    batch_size: u32,  // Number of systems
+    step: u32,        // Current reduction step (for multi-pass)
 }
 
 const SHADER_SOURCE: &str = include_str!("../shaders/linalg/cyclic_reduction.wgsl");
@@ -233,10 +243,14 @@ fn tridiagonal_solve_gpu_large(
 
 /// Batch solve multiple independent tridiagonal systems in parallel.
 ///
+/// **Deep Debt Evolution**: True 2D batched kernel with single GPU dispatch.
+/// All systems are solved in parallel with zero CPU↔GPU round-trips per system.
+///
 /// Each system has the same size but different coefficients/RHS.
 /// This is extremely efficient for:
 /// - ADI methods (2D/3D PDE with row/column sweeps)
 /// - Monte Carlo with multiple realizations
+/// - Parallel independent 1D problems (e.g., fiber simulation)
 ///
 /// # Arguments
 ///
@@ -248,6 +262,12 @@ fn tridiagonal_solve_gpu_large(
 /// # Returns
 ///
 /// Solutions [batch_size × n]
+///
+/// # Performance
+///
+/// For batch_size=100, n=64:
+/// - Old (sequential): 100 GPU dispatches, ~100 CPU↔GPU round-trips
+/// - New (batched):    1 GPU dispatch, 1 CPU↔GPU round-trip
 pub fn tridiagonal_solve_batch_gpu(
     a_batch: &Tensor,
     b_batch: &Tensor,
@@ -264,21 +284,308 @@ pub fn tridiagonal_solve_batch_gpu(
     let batch_size = shape[0];
     let n = shape[1];
     
-    // For now, solve each system independently
-    // TODO: True batched kernel with 2D dispatch
-    let mut results = Vec::with_capacity(batch_size * n);
-    
-    for i in 0..batch_size {
-        let a_i = a_batch.slice(i, 0)?;
-        let b_i = b_batch.slice(i, 0)?;
-        let c_i = c_batch.slice(i, 0)?;
-        let d_i = d_batch.slice(i, 0)?;
-        
-        let x_i = tridiagonal_solve_gpu(&a_i, &b_i, &c_i, &d_i)?;
-        results.extend(x_i.to_vec_f32()?);
+    if n == 0 || batch_size == 0 {
+        return Err(BarracudaError::InvalidInput {
+            message: "Batch size and system size must be > 0".to_string(),
+        });
     }
     
-    Ok(Tensor::from_vec(results, vec![batch_size, n]))
+    // Use the true batched solver
+    if n <= 256 {
+        tridiagonal_solve_batch_gpu_small(a_batch, b_batch, c_batch, d_batch)
+    } else {
+        tridiagonal_solve_batch_gpu_large(a_batch, b_batch, c_batch, d_batch)
+    }
+}
+
+/// True batched solver for small systems (n ≤ 256) using 2D dispatch
+/// One workgroup per batch element, shared memory per system
+fn tridiagonal_solve_batch_gpu_small(
+    a_batch: &Tensor,
+    b_batch: &Tensor,
+    c_batch: &Tensor,
+    d_batch: &Tensor,
+) -> Result<Tensor> {
+    let shape = b_batch.shape();
+    let batch_size = shape[0];
+    let n = shape[1];
+    let n_padded = n.next_power_of_two();
+    
+    let device = WgpuDevice::new()?;
+    
+    // Flatten and pad data for all systems
+    let mut a_data = Vec::with_capacity(batch_size * n_padded);
+    let mut b_data = Vec::with_capacity(batch_size * n_padded);
+    let mut c_data = Vec::with_capacity(batch_size * n_padded);
+    let mut d_data = Vec::with_capacity(batch_size * n_padded);
+    
+    let a_flat = a_batch.to_vec_f32()?;
+    let b_flat = b_batch.to_vec_f32()?;
+    let c_flat = c_batch.to_vec_f32()?;
+    let d_flat = d_batch.to_vec_f32()?;
+    
+    for i in 0..batch_size {
+        // Copy original data
+        let start = i * n;
+        a_data.extend(&a_flat[start..start + n]);
+        b_data.extend(&b_flat[start..start + n]);
+        c_data.extend(&c_flat[start..start + n]);
+        d_data.extend(&d_flat[start..start + n]);
+        
+        // Pad to power of 2
+        for _ in n..n_padded {
+            a_data.push(0.0);
+            b_data.push(1.0);  // Identity for padded rows
+            c_data.push(0.0);
+            d_data.push(0.0);
+        }
+    }
+    
+    // Create uniform params for legacy binding (not used by batched kernel but required)
+    let legacy_params = CyclicReductionParams {
+        n: n as u32,
+        step: 0,
+        phase: 0,
+        _pad: 0,
+    };
+    
+    // Create batch params
+    let batch_params = BatchParams {
+        n: n as u32,
+        n_padded: n_padded as u32,
+        batch_size: batch_size as u32,
+        step: 0,
+    };
+    
+    // Create GPU buffers
+    let legacy_params_buffer = device.create_uniform_buffer(&legacy_params);
+    let a_buffer = device.create_storage_buffer_init(&a_data);
+    let b_buffer = device.create_storage_buffer_init(&b_data);
+    let c_buffer = device.create_storage_buffer_init(&c_data);
+    let d_buffer = device.create_storage_buffer_init(&d_data);
+    let batch_params_buffer = device.create_uniform_buffer(&batch_params);
+    
+    // Create compute pipeline for batched solve
+    let pipeline = device.create_compute_pipeline(SHADER_SOURCE, "solve_batch_small")?;
+    
+    // Create bind groups (group 0 for data, group 1 for batch params)
+    let bind_group_0 = device.create_bind_group(
+        &pipeline,
+        &[&legacy_params_buffer, &a_buffer, &b_buffer, &c_buffer, &d_buffer],
+    );
+    
+    // Create second bind group for batch params (group 1)
+    let bind_group_layout_1 = device.wgpu_device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("batch_params_layout"),
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    });
+    
+    let bind_group_1 = device.wgpu_device().create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("batch_params_bind_group"),
+        layout: &bind_group_layout_1,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: batch_params_buffer.as_entire_binding(),
+        }],
+    });
+    
+    // Dispatch: 1 workgroup in X (256 threads handle all elements), batch_size workgroups in Y
+    device.dispatch_with_bind_groups(
+        &pipeline, 
+        &[&bind_group_0, &bind_group_1], 
+        (1, batch_size as u32, 1)
+    )?;
+    
+    // Read back results (only original n elements per system)
+    let result_data = device.read_buffer_f32(&d_buffer, batch_size * n_padded)?;
+    
+    // Extract only the original elements (skip padding)
+    let mut result = Vec::with_capacity(batch_size * n);
+    for i in 0..batch_size {
+        let start = i * n_padded;
+        result.extend(&result_data[start..start + n]);
+    }
+    
+    Ok(Tensor::from_vec(result, vec![batch_size, n]))
+}
+
+/// True batched solver for large systems (n > 256) using multi-pass 2D dispatch
+fn tridiagonal_solve_batch_gpu_large(
+    a_batch: &Tensor,
+    b_batch: &Tensor,
+    c_batch: &Tensor,
+    d_batch: &Tensor,
+) -> Result<Tensor> {
+    let shape = b_batch.shape();
+    let batch_size = shape[0];
+    let n = shape[1];
+    let n_padded = n.next_power_of_two();
+    let num_steps = (n_padded as f64).log2() as u32;
+    
+    let device = WgpuDevice::new()?;
+    
+    // Flatten and pad data for all systems
+    let mut a_data = Vec::with_capacity(batch_size * n_padded);
+    let mut b_data = Vec::with_capacity(batch_size * n_padded);
+    let mut c_data = Vec::with_capacity(batch_size * n_padded);
+    let mut d_data = Vec::with_capacity(batch_size * n_padded);
+    
+    let a_flat = a_batch.to_vec_f32()?;
+    let b_flat = b_batch.to_vec_f32()?;
+    let c_flat = c_batch.to_vec_f32()?;
+    let d_flat = d_batch.to_vec_f32()?;
+    
+    for i in 0..batch_size {
+        let start = i * n;
+        a_data.extend(&a_flat[start..start + n]);
+        b_data.extend(&b_flat[start..start + n]);
+        c_data.extend(&c_flat[start..start + n]);
+        d_data.extend(&d_flat[start..start + n]);
+        
+        for _ in n..n_padded {
+            a_data.push(0.0);
+            b_data.push(1.0);
+            c_data.push(0.0);
+            d_data.push(0.0);
+        }
+    }
+    
+    // Create buffers (read_write for iterative updates)
+    let a_buffer = device.create_storage_buffer_init(&a_data);
+    let b_buffer = device.create_storage_buffer_init(&b_data);
+    let c_buffer = device.create_storage_buffer_init(&c_data);
+    let d_buffer = device.create_storage_buffer_init(&d_data);
+    
+    // Create pipelines for batched reduction and substitution
+    let reduction_pipeline = device.create_compute_pipeline(SHADER_SOURCE, "reduction_batch")?;
+    let substitution_pipeline = device.create_compute_pipeline(SHADER_SOURCE, "substitution_batch")?;
+    
+    // Legacy params placeholder (not used but required for bind group 0)
+    let legacy_params = CyclicReductionParams {
+        n: n as u32,
+        step: 0,
+        phase: 0,
+        _pad: 0,
+    };
+    let legacy_params_buffer = device.create_uniform_buffer(&legacy_params);
+    
+    // Reduction phase
+    for step in 0..num_steps {
+        let batch_params = BatchParams {
+            n: n as u32,
+            n_padded: n_padded as u32,
+            batch_size: batch_size as u32,
+            step,
+        };
+        let batch_params_buffer = device.create_uniform_buffer(&batch_params);
+        
+        let bind_group_0 = device.create_bind_group(
+            &reduction_pipeline,
+            &[&legacy_params_buffer, &a_buffer, &b_buffer, &c_buffer, &d_buffer],
+        );
+        
+        // Create bind group for batch params
+        let bind_group_layout_1 = device.wgpu_device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("batch_params_layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+        
+        let bind_group_1 = device.wgpu_device().create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("batch_params_bind_group"),
+            layout: &bind_group_layout_1,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: batch_params_buffer.as_entire_binding(),
+            }],
+        });
+        
+        let stride = 1 << (step + 1);
+        let workgroups_x = ((n_padded / stride) + 255) / 256;
+        
+        device.dispatch_with_bind_groups(
+            &reduction_pipeline,
+            &[&bind_group_0, &bind_group_1],
+            (workgroups_x.max(1) as u32, batch_size as u32, 1),
+        )?;
+    }
+    
+    // Substitution phase (reverse order)
+    for step in (0..num_steps).rev() {
+        let batch_params = BatchParams {
+            n: n as u32,
+            n_padded: n_padded as u32,
+            batch_size: batch_size as u32,
+            step,
+        };
+        let batch_params_buffer = device.create_uniform_buffer(&batch_params);
+        
+        let bind_group_0 = device.create_bind_group(
+            &substitution_pipeline,
+            &[&legacy_params_buffer, &a_buffer, &b_buffer, &c_buffer, &d_buffer],
+        );
+        
+        let bind_group_layout_1 = device.wgpu_device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("batch_params_layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+        
+        let bind_group_1 = device.wgpu_device().create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("batch_params_bind_group"),
+            layout: &bind_group_layout_1,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: batch_params_buffer.as_entire_binding(),
+            }],
+        });
+        
+        let stride = 1 << (step + 1);
+        let workgroups_x = ((n_padded / stride) + 255) / 256;
+        
+        device.dispatch_with_bind_groups(
+            &substitution_pipeline,
+            &[&bind_group_0, &bind_group_1],
+            (workgroups_x.max(1) as u32, batch_size as u32, 1),
+        )?;
+    }
+    
+    // Read back results
+    let result_data = device.read_buffer_f32(&d_buffer, batch_size * n_padded)?;
+    
+    // Extract only the original elements
+    let mut result = Vec::with_capacity(batch_size * n);
+    for i in 0..batch_size {
+        let start = i * n_padded;
+        result.extend(&result_data[start..start + n]);
+    }
+    
+    Ok(Tensor::from_vec(result, vec![batch_size, n]))
 }
 
 #[cfg(test)]

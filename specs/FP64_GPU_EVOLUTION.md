@@ -254,6 +254,38 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
    - Batched support via `execute_batch_f64()` for multiple systems
    - Level 3 application: HFB, vibration analysis, quantum chemistry
 
+### Completed (Feb 16, 2026) — GPU-Resident SCF Critical Path ✅
+
+25. **GPU-resident batched eigensolver** — `BatchedEighGpu::execute_f64_buffers()` ✅
+   - Takes `wgpu::Buffer` inputs and outputs (no CPU copies)
+   - `create_buffers()` pre-allocates persistent GPU buffers
+   - `read_eigenvalues()` for minimal CPU readback (convergence checks only)
+   - `read_eigenvectors()` optional, only when results needed on CPU
+   - Enables GPU-resident SCF loops without eigensolve round-trips
+   - **Resolves hotSpring item 4.1**: Dependent op chaining now possible
+
+   ```rust
+   // GPU-resident SCF loop pattern:
+   let (h_buf, eig_buf, vec_buf) = BatchedEighGpu::create_buffers(&device, n, batch)?;
+   
+   for iteration in 0..max_iter {
+       // Hamiltonian → h_buf (GPU→GPU, no CPU)
+       hamiltonian_kernel.execute_to_buffer(&h_buf)?;
+       
+       // Eigensolve without CPU readback
+       BatchedEighGpu::execute_f64_buffers(
+           &device, &h_buf, &eig_buf, &vec_buf, n, batch, 30
+       )?;
+       
+       // Next stage reads from GPU buffers (GPU→GPU)
+       density_kernel.execute_from_buffers(&vec_buf, &rho_buf)?;
+       
+       // Minimal readback for convergence only
+       let converged = check_convergence_scalar(&device, &energy_buf)?;
+       if converged { break; }
+   }
+   ```
+
 ### Remaining (Low Priority)
 
 1. ~~**Modular preamble** — Only include needed functions~~ ✅ **COMPLETE**
@@ -263,6 +295,7 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
 
 **All GPU f64 evolution work complete.**
 **hotSpring Level 2 and Level 3 blockers resolved (Feb 14, 2026).**
+**hotSpring GPU-resident SCF blocker (item 4.1) resolved (Feb 16, 2026).**
 
 ---
 

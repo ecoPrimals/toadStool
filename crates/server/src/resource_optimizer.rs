@@ -251,9 +251,9 @@ impl ResourceOptimizer {
         let total_storage_bytes = system.total_swap();
         let available_storage_bytes = system.free_swap();
 
-        // GPU (placeholder - would be queried via wgpu in production)
+        // GPU discovery via wgpu
         let (total_gpu_memory_bytes, available_gpu_memory_bytes, gpu_count, gpu_types) =
-            (0, 0, 0, Vec::new());
+            Self::query_gpu_capabilities().await;
 
         // Network bandwidth (rough estimate)
         let network_bandwidth_mbps = 1000;
@@ -271,6 +271,71 @@ impl ResourceOptimizer {
             gpu_count,
             gpu_types,
         })
+    }
+
+    /// Query GPU capabilities via wgpu
+    ///
+    /// **Deep Debt**: Runtime discovery, no hardcoding.
+    /// Uses wgpu to enumerate GPU adapters and query their capabilities.
+    #[cfg(feature = "gpu-discovery")]
+    async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
+        // Create wgpu instance
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
+        // Enumerate all adapters
+        let adapters: Vec<_> = instance.enumerate_adapters(wgpu::Backends::all());
+
+        if adapters.is_empty() {
+            return (0, 0, 0, Vec::new());
+        }
+
+        let mut total_memory: u64 = 0;
+        let mut gpu_types = Vec::new();
+        let mut gpu_count = 0usize;
+
+        for adapter in &adapters {
+            let info = adapter.get_info();
+
+            // Only count actual GPUs (not CPU fallback)
+            if matches!(
+                info.device_type,
+                wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu
+            ) {
+                gpu_count += 1;
+
+                // Estimate memory based on device type
+                // wgpu doesn't expose VRAM directly, so we estimate
+                let estimated_memory = match info.device_type {
+                    wgpu::DeviceType::DiscreteGpu => 8 * 1024 * 1024 * 1024, // 8GB typical
+                    wgpu::DeviceType::IntegratedGpu => 2 * 1024 * 1024 * 1024, // 2GB typical
+                    _ => 0,
+                };
+                total_memory += estimated_memory;
+
+                // Record GPU name
+                gpu_types.push(info.name.clone());
+
+                tracing::debug!(
+                    "GPU discovered: {} ({:?})",
+                    info.name,
+                    info.device_type
+                );
+            }
+        }
+
+        // Estimate 80% available (conservative)
+        let available_memory = (total_memory as f64 * 0.8) as u64;
+
+        (total_memory, available_memory, gpu_count, gpu_types)
+    }
+
+    /// Fallback when gpu-discovery feature is disabled
+    #[cfg(not(feature = "gpu-discovery"))]
+    async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
+        (0, 0, 0, Vec::new())
     }
 
     /// Identify bottlenecks in the graph

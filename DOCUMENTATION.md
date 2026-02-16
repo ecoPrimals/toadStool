@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 15, 2026
+**Last Updated**: February 16, 2026
 
 ---
 
@@ -25,8 +25,9 @@
 
 ---
 
-## Current State (February 15, 2026)
+## Current State (February 16, 2026)
 
+- **GPU-Resident Pipeline Complete** — Zero CPU↔GPU round-trips during iteration
 - **hotSpring Evolution Complete** — 169/169 nuclear EOS acceptance checks on consumer GPU
 - **Math Primitives Absorbed** — Broyden mixing, FD gradients, weighted inner products, Hermite/Laguerre f64
 - **47 new evolution tests** — Unit, E2E, chaos, fault coverage for absorbed primitives
@@ -136,4 +137,4 @@ specs/                     -- Technical specifications
 
 ---
 
-**Last Updated**: February 15, 2026
+**Last Updated**: February 16, 2026

@@ -355,30 +355,63 @@ impl ServiceDiscovery {
     }
 
     /// Discover via mDNS (multicast DNS for local network)
+    ///
+    /// # Implementation Notes
+    ///
+    /// For mDNS-based service discovery, use the lower-level `MdnsAdapter` from
+    /// `crate::primal_discovery_mdns` which provides full mDNS-SD functionality:
+    ///
+    /// ```rust,ignore
+    /// use toadstool_common::primal_discovery_mdns::MdnsAdapter;
+    /// let adapter = MdnsAdapter::new(config).await?;
+    /// let endpoints = adapter.discover("capability_name").await?;
+    /// ```
+    ///
+    /// This method is a higher-level wrapper that bridges different discovery APIs.
     async fn discover_via_mdns(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
-        // Returns empty results; mdns-sd integration pending. Use environment variables or config file for discovery until then.
+        // NOTE: Full mDNS implementation available in crate::primal_discovery_mdns::MdnsAdapter
+        // This wrapper layer bridges to DiscoveredService format (pending integration)
         debug!(
-            "pending: mdns-sd transport integration for zero-config local network discovery; returns empty until implemented"
+            "mDNS discovery: for full impl use crate::primal_discovery_mdns::MdnsAdapter"
         );
         Ok(Vec::new())
     }
 
     /// Discover from configuration file
+    ///
+    /// # Implementation Notes
+    ///
+    /// For file-based discovery, use the `infant_discovery` module which provides
+    /// TOML parsing and fallback chain handling:
+    ///
+    /// ```rust,ignore
+    /// use toadstool_common::infant_discovery::{InfantEndpointResolver, EnvironmentSource};
+    /// let resolver = InfantEndpointResolver::new().with_source(EnvironmentSource::default());
+    /// let endpoint = resolver.resolve("service_name").await?;
+    /// ```
     async fn discover_from_config(&self, _path: &str) -> DiscoveryResult<Vec<DiscoveredService>> {
-        // Returns empty results; TOML/YAML config parsing for static service endpoints pending.
+        // NOTE: TOML/environment-based discovery available in crate::infant_discovery module
+        // This wrapper layer bridges to DiscoveredService format (pending integration)
         debug!(
-            "pending: file-based discovery (TOML/YAML parsing); returns empty until implemented"
+            "Config-based discovery: for full impl use crate::infant_discovery module"
         );
         Ok(Vec::new())
     }
 
-    /// Discover from service registry
+    /// Discover from service registry (Consul, etcd)
+    ///
+    /// # Implementation Notes
+    ///
+    /// Registry-based discovery requires external service registry integration.
+    /// For most use cases, mDNS (local network) or environment variables (cloud/k8s)
+    /// provide sufficient discovery without external dependencies.
     async fn discover_from_registry(
         &self,
         _endpoint: &str,
     ) -> DiscoveryResult<Vec<DiscoveredService>> {
-        // Returns empty results; Consul/etcd client integration for registry-based discovery pending.
-        debug!("pending: Consul/etcd registry client integration; returns empty until implemented");
+        // NOTE: External registry (Consul/etcd) integration not yet implemented
+        // Consider using mDNS for local networks or environment variables for cloud deployments
+        debug!("Registry discovery: external service registry client integration pending");
         Ok(Vec::new())
     }
 

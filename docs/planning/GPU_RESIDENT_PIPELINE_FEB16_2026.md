@@ -1,7 +1,7 @@
 # GPU-Resident Pipeline Evolution — February 16, 2026
 
 **From**: hotSpring Experiment 005 findings  
-**Status**: Planning  
+**Status**: ✅ Core API Complete (Feb 16, 2026)  
 **Goal**: Pure GPU faster than CPU for iterative solvers
 
 ---
@@ -369,6 +369,53 @@ pool.release_solver_buffers("hfb_scf");
 
 ---
 
+## Implementation Status (Feb 16, 2026)
+
+| # | Item | Status | Notes |
+|:-:|------|:------:|:------|
+| 1 | Max Abs Diff Reduction | ✅ | `MaxAbsDiffF64` in `crates/barracuda/src/ops/` |
+| 2 | Persistent Buffer Management | ✅ | `BufferPool`, `SolverBufferSet` implemented |
+| 3 | Batched Bisection | ✅ | `BatchedBisectionGpu` in `crates/barracuda/src/optimize/` |
+| 4 | Grid Quadrature GEMM | ✅ | `GridQuadratureGemm` in `crates/barracuda/src/ops/linalg/` |
+| 5 | Multi-Kernel Pipeline | ✅ | `ComputePipeline` in `crates/barracuda/src/pipeline/` |
+| **6** | **GPU-Resident Eigensolve** | ✅ | **`BatchedEighGpu::execute_f64_buffers()` — NEW** |
+
+### Item 6: GPU-Resident Eigensolve (Critical Path Fix)
+
+The original `BatchedEighGpu::execute_f64()` required CPU readback of results. This
+blocked GPU-resident SCF because the eigenvalues/eigenvectors had to round-trip
+through CPU between iterations.
+
+**New API** (`execute_f64_buffers()`) enables buffer-to-buffer eigensolve:
+
+```rust
+// Create persistent buffers (once at solver start)
+let (h_buf, eig_buf, vec_buf) = BatchedEighGpu::create_buffers(&device, n, batch)?;
+
+for iteration in 0..max_iter {
+    // Hamiltonian construction writes to h_buf (GPU→GPU)
+    hamiltonian_kernel.execute_to_buffer(&h_buf)?;
+    
+    // Eigensolve: h_buf → eig_buf, vec_buf (NO CPU READBACK)
+    BatchedEighGpu::execute_f64_buffers(
+        &device, &h_buf, &eig_buf, &vec_buf, n, batch, 30
+    )?;
+    
+    // BCS pairing reads from eig_buf (GPU→GPU)
+    bcs_kernel.execute_from_buffers(&eig_buf, &occupations_buf)?;
+    
+    // Minimal readback for convergence only
+    let eigenvalues = BatchedEighGpu::read_eigenvalues(&device, &eig_buf, n, batch)?;
+    if converged(&eigenvalues) { break; }
+}
+```
+
+**This resolves hotSpring item 4.1**: Dependent op chaining is now possible
+through the full SCF iteration (H-build → eigensolve → BCS → density) with
+only scalar readbacks for convergence checks.
+
+---
+
 ## Priority Order
 
 | # | Item | Complexity | Impact | Dependencies |
@@ -378,8 +425,9 @@ pool.release_solver_buffers("hfb_scf");
 | 3 | Batched Bisection | Medium | High | None |
 | 4 | Grid Quadrature GEMM | Medium | High | None |
 | 5 | Multi-Kernel Pipeline | Med-High | Critical | Items 1-4 |
+| 6 | GPU-Resident Eigensolve | Medium | **Critical** | Item 5 |
 
-Items 1-4 can be implemented in parallel. Item 5 ties them together.
+**All items complete.**
 
 ---
 

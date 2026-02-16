@@ -16,6 +16,7 @@
 
 use crate::device::Device;
 use crate::error::Result;
+use crate::gpu_executor::GpuExecutor;
 use crate::unified_math::{MathOp, TensorDescriptor};
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -328,28 +329,39 @@ impl HardwareDiscovery {
     }
 
     async fn discover_gpus() -> Result<Vec<Arc<dyn ComputeExecutor>>> {
-        // HardwareDiscovery path returns empty; GPU execution uses UnifiedScheduler/WgpuDevice.
+        // Use GpuExecutor which wraps WgpuDevice and implements ComputeExecutor
         let available = Device::GPU.is_available();
-        debug!(
-            "pending: GpuExecutor implementing ComputeExecutor; GPU available={}; use UnifiedScheduler/DeviceContext for GPU",
-            available
-        );
-        Ok(Vec::new())
+        debug!("GPU discovery: available={}", available);
+
+        if !available {
+            return Ok(Vec::new());
+        }
+
+        match GpuExecutor::new().await {
+            Ok(executor) => {
+                debug!("GPU discovered: {}", executor.name());
+                Ok(vec![Arc::new(executor) as Arc<dyn ComputeExecutor>])
+            }
+            Err(e) => {
+                debug!("GPU discovery failed: {}", e);
+                Ok(Vec::new())
+            }
+        }
     }
 
     #[cfg(feature = "tpu")]
     async fn discover_tpus() -> Result<Vec<Arc<dyn ComputeExecutor>>> {
-        // TpuExecutor must implement ComputeExecutor before this path can return results.
-        debug!("pending: TpuExecutor implementing ComputeExecutor; TPU discovery via TpuDevice not yet wired into HardwareDiscovery");
+        // TODO: Create TpuExecutor implementing ComputeExecutor
+        // Currently TPU access uses TpuDevice directly via device/tpu.rs
+        debug!("TPU discovery: TpuExecutor not yet implemented");
         Ok(Vec::new())
     }
 
     async fn discover_npus() -> Result<Vec<Arc<dyn ComputeExecutor>>> {
+        // TODO: Create NpuExecutor implementing ComputeExecutor
+        // Currently NPU access uses AkidaDevice directly via device/akida.rs
         let available = Device::NPU.is_available();
-        debug!(
-            "pending: NpuExecutor implementing ComputeExecutor; NPU available={} (Device::NPU.is_available); use DeviceContext::for_device(Device::NPU) for NPU",
-            available
-        );
+        debug!("NPU discovery: available={}, NpuExecutor not yet implemented", available);
         Ok(Vec::new())
     }
 }

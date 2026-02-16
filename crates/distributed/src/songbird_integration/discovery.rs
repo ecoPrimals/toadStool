@@ -40,7 +40,7 @@ impl SongbirdNetworkDiscovery {
             loop {
                 interval.tick().await;
                 if let Err(e) = discovery_clone.perform_discovery().await {
-                    eprintln!("Discovery failed: {e}");
+                    tracing::error!("Discovery failed: {e}");
                 }
             }
         });

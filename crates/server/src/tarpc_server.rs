@@ -446,22 +446,48 @@ impl Default for StandaloneExecutor {
 #[async_trait::async_trait]
 impl WorkloadExecutor for StandaloneExecutor {
     async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
-        info!("Executing workload: {}", submission.workload_id);
+        info!("Executing workload: {} (type: {})", submission.workload_id, submission.workload_type);
 
-        // Simulate execution
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        // TODO: Connect to actual compute backends based on workload_type:
+        // - "gpu_compute" → dispatch to WgpuDevice via Tensor API
+        // - "cpu_compute" → dispatch to CPU executor
+        // - "neural_compute" → dispatch to NPU via AkidaDevice
+        //
+        // The workload data (submission.data) contains the serialized operation
+        // that needs to be parsed and executed on the appropriate backend.
+        //
+        // For now, simulate execution for testing/development purposes.
+
+        let start = std::time::Instant::now();
+
+        // Simulate execution time based on workload type
+        let exec_time_ms = match submission.workload_type.as_str() {
+            "gpu_compute" => 50,
+            "cpu_compute" => 100,
+            "neural_compute" => 200,
+            _ => 100,
+        };
+        tokio::time::sleep(tokio::time::Duration::from_millis(exec_time_ms)).await;
+
+        let execution_duration = start.elapsed().as_secs_f64();
 
         Ok(WorkloadResult {
             workload_id: submission.workload_id,
             status: WorkloadStatus::Completed,
-            data: Some(vec![0; 64]), // Placeholder result
+            // Return input data length as output for testing
+            // Real implementation would return actual computation results
+            data: Some(vec![0u8; submission.data.len().min(1024)]),
             error: None,
             metrics: ExecutionMetrics {
-                queued_duration_secs: 0.05,
-                execution_duration_secs: 0.1,
+                queued_duration_secs: 0.01,
+                execution_duration_secs: execution_duration,
                 cpu_cores_used: 1,
-                memory_used_bytes: 1024 * 1024,
-                gpu_memory_used_bytes: None,
+                memory_used_bytes: submission.data.len() as u64,
+                gpu_memory_used_bytes: if submission.workload_type == "gpu_compute" {
+                    Some(submission.data.len() as u64)
+                } else {
+                    None
+                },
             },
         })
     }

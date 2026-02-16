@@ -451,7 +451,7 @@ impl BenchmarkSuite {
                 }
                 Err(e) => {
                     // Log error but continue with other operations
-                    eprintln!("Warning: Failed to benchmark {}: {}", op, e);
+                    log::warn!("Failed to benchmark {}: {}", op, e);
                 }
             }
         }

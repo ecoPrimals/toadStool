@@ -432,18 +432,20 @@ impl BatchedBisectionGpu {
         let slice = staging.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| {
-            sender.send(result).unwrap();
+            // Channel send should not fail since receiver is alive during poll
+            let _ = sender.send(result);
         });
         self.device.device.poll(wgpu::Maintain::Wait);
         receiver
             .recv()
-            .unwrap()
+            .map_err(|_| BarracudaError::execution_failed("GPU buffer mapping channel closed"))?
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
+        // SAFETY: chunks_exact(8) guarantees exactly 8-byte chunks
         let result: Vec<f64> = data
             .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
+            .map(|chunk| f64::from_le_bytes(chunk.try_into().expect("chunks_exact(8) invariant")))
             .collect();
         drop(data);
         staging.unmap();
@@ -471,18 +473,20 @@ impl BatchedBisectionGpu {
         let slice = staging.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| {
-            sender.send(result).unwrap();
+            // Channel send should not fail since receiver is alive during poll
+            let _ = sender.send(result);
         });
         self.device.device.poll(wgpu::Maintain::Wait);
         receiver
             .recv()
-            .unwrap()
+            .map_err(|_| BarracudaError::execution_failed("GPU buffer mapping channel closed"))?
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
+        // SAFETY: chunks_exact(4) guarantees exactly 4-byte chunks
         let result: Vec<u32> = data
             .chunks_exact(4)
-            .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
+            .map(|chunk| u32::from_le_bytes(chunk.try_into().expect("chunks_exact(4) invariant")))
             .collect();
         drop(data);
         staging.unmap();

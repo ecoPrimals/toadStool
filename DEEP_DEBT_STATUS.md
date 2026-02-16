@@ -375,18 +375,18 @@ specs/GENERIC_PRECISION_EVOLUTION.md                (Phase 1 complete)
 - ✅ Documentation comprehensive
 - ✅ Deep debt resolved (mock isolation, hardcoded paths)
 
-### GPU-Resident Pipeline (Feb 16 — hotSpring Exp 005)
+### GPU-Resident Pipeline (Feb 16 — hotSpring Exp 005) ✅ COMPLETE
 Target: Pure GPU faster than CPU for iterative solvers (n<30 matrices)
 
 | # | Item | Complexity | Status |
 |:-:|------|:----------:|:------:|
-| 1 | Max Abs Diff Reduction | Low | Planned |
-| 2 | Persistent Buffer Management | Low-Med | Planned |
-| 3 | Batched Bisection (root-finding) | Medium | Planned |
-| 4 | Grid Quadrature GEMM | Medium | Planned |
-| 5 | Multi-Kernel Pipeline (buffer chaining) | Med-High | Planned |
+| 1 | Max Abs Diff Reduction | Low | ✅ Complete |
+| 2 | Persistent Buffer Management | Low-Med | ✅ Complete |
+| 3 | Batched Bisection (root-finding) | Medium | ✅ Complete |
+| 4 | Grid Quadrature GEMM | Medium | ✅ Complete |
+| 5 | Multi-Kernel Pipeline (buffer chaining) | Med-High | ✅ Complete |
 
-See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`
+See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md` and `NEXT_STEPS.md`
 
 ### Phase C (Awaiting Hardware)
 1. **Multi-GPU DevicePool** -- When Titan V arrives
@@ -398,7 +398,7 @@ See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`
 3. ✅ **Async GPU submission** -- Batch work and non-blocking readback
 
 ### Infrastructure (Ongoing)
-1. **VFIO NPU backend** -- Eliminate C kernel module
+1. ✅ **VFIO NPU backend** -- Pure Rust implementation (926 LOC, no C kernel module)
 2. **NPU model pipeline** -- Train/compile/deploy from Rust
 
 ---
@@ -425,6 +425,6 @@ See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`
 
 ---
 
-*Last Updated*: February 16, 2026 (GPU-Resident Pipeline Planning)  
+*Last Updated*: February 16, 2026 (GPU-Resident Pipeline Complete)  
 *Repository*: phase1/toadstool/  
 *License*: AGPL-3.0

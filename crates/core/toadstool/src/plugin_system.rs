@@ -39,6 +39,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
@@ -380,24 +381,87 @@ impl PluginManager {
     }
 
     /// Discover plugins in search paths
+    ///
+    /// Scans each search path for plugin manifests (`plugin.json`) and parses them.
+    /// Supports both flat directories and nested plugin directories.
+    ///
+    /// # Discovery Strategy
+    ///
+    /// For each search path, looks for:
+    /// 1. Direct `plugin.json` in the search path
+    /// 2. Subdirectories containing `plugin.json` (plugin bundles)
+    ///
+    /// # Example Directory Structure
+    ///
+    /// ```text
+    /// /usr/share/toadstool/plugins/
+    /// ├── aws-provider/
+    /// │   ├── plugin.json
+    /// │   └── libaws_provider.so
+    /// ├── gcp-provider/
+    /// │   ├── plugin.json
+    /// │   └── libgcp_provider.so
+    /// └── local-storage/
+    ///     ├── plugin.json
+    ///     └── liblocal_storage.so
+    /// ```
     pub fn discover_plugins(&mut self) -> Vec<PluginManifest> {
-        let discovered = Vec::new();
+        let mut discovered = Vec::new();
 
-        for path in &self.search_paths {
-            if !path.exists() {
+        for search_path in &self.search_paths {
+            if !search_path.exists() {
+                debug!("Plugin search path does not exist: {:?}", search_path);
                 continue;
             }
 
-            // In a real implementation, this would:
-            // 1. Scan directory for plugin manifests
-            // 2. Parse each manifest
-            // 3. Return list of discovered plugins
+            debug!("Scanning for plugins in: {:?}", search_path);
 
-            debug!("Scanning for plugins in: {:?}", path);
+            // Check for direct plugin.json in search path
+            let direct_manifest = search_path.join("plugin.json");
+            if direct_manifest.exists() {
+                if let Some(manifest) = self.parse_manifest(&direct_manifest) {
+                    discovered.push(manifest);
+                }
+            }
+
+            // Scan subdirectories for plugin bundles
+            if let Ok(entries) = fs::read_dir(search_path) {
+                for entry in entries.filter_map(Result::ok) {
+                    let entry_path = entry.path();
+                    if entry_path.is_dir() {
+                        let manifest_path = entry_path.join("plugin.json");
+                        if manifest_path.exists() {
+                            if let Some(manifest) = self.parse_manifest(&manifest_path) {
+                                discovered.push(manifest);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         info!("Discovered {} plugins", discovered.len());
         discovered
+    }
+
+    /// Parse a plugin manifest file
+    fn parse_manifest(&self, path: &std::path::Path) -> Option<PluginManifest> {
+        match fs::read_to_string(path) {
+            Ok(contents) => match serde_json::from_str::<PluginManifest>(&contents) {
+                Ok(manifest) => {
+                    debug!("Parsed plugin manifest: {} v{}", manifest.name, manifest.version);
+                    Some(manifest)
+                }
+                Err(e) => {
+                    warn!("Failed to parse plugin manifest {:?}: {}", path, e);
+                    None
+                }
+            },
+            Err(e) => {
+                warn!("Failed to read plugin manifest {:?}: {}", path, e);
+                None
+            }
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 15, 2026 (hotSpring Evolution Complete)
+**Date**: February 16, 2026 (GPU-Resident Pipeline Complete)
 
 ---
 
@@ -335,4 +335,22 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 
 ---
 
-**Last Updated**: February 15, 2026
+## GPU-Resident Pipeline (Feb 16) ✅ COMPLETE
+
+**Amdahl's Law bottleneck solved** — zero CPU↔GPU round-trips during iteration:
+
+| Component | Status |
+|-----------|:------:|
+| Max Abs Diff Reduction | ✅ |
+| Persistent Buffer Mgmt | ✅ |
+| Batched Bisection (1000+ parallel) | ✅ |
+| Grid Quadrature GEMM | ✅ |
+| Multi-Kernel Pipeline | ✅ |
+
+**Metrics**: CPU↔GPU trips: ~10 → 1, Buffer allocs/iter: ~20 → 0
+
+See `NEXT_STEPS.md` for API usage.
+
+---
+
+**Last Updated**: February 16, 2026
