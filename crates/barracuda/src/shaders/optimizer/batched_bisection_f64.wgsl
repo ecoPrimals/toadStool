@@ -148,11 +148,12 @@ fn batched_bisection(
     iterations[problem_idx] = config.max_iterations;
 }
 
-// Simple polynomial test function: f(x) = x² - target
-// params layout: [target]
+// Simple polynomial test function: f(x) = x² - target_val
+// params layout: [target_val]
+// NOTE: 'target' is a WGSL reserved keyword (Feb 16 2026 hotSpring finding)
 fn polynomial_test(x: f64, problem_idx: u32) -> f64 {
-    let target = params[problem_idx];
-    return x * x - target;
+    let target_val = params[problem_idx];
+    return x * x - target_val;
 }
 
 // Bisection for polynomial test (for validation)

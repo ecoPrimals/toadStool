@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 16, 2026 (Device Registry + F64 Reduce Suite)
+**Date**: February 16, 2026 (Three Springs Validation + Deep Debt Evolution)
 
 ---
 
@@ -14,7 +14,8 @@ cargo test --workspace           15,700+ passed / 0 failed
 unsafe blocks                    FFI only (VFIO, DRM) - SAFETY documented
 error handling                   No panic paths (unwrap → Result propagation)
 middleware tests                 400+ passed (linalg, sparse, numerical, special, stats, optimize, surrogate, sample, pde, pipeline, mixing, grid)
-hotSpring evolution tests        47 new tests (unit, E2E, chaos, fault)
+hotSpring evolution tests        47 tests (unit, E2E, chaos, fault)
+three springs evolution tests    37 tests (unit, E2E, chaos, fault, precision)
 ```
 
 *All quality gates green. Clippy -D warnings compliant. Zero panic paths in library code.*
@@ -40,7 +41,7 @@ BarraCUDA (Universal Compute Engine — SHADER-FIRST F64)
   SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2-3 vs 1:32)
   **480+ WGSL shaders**, proven cross-vendor
   **Shader-first architecture**: ALL math is WGSL primary
-  **hotSpring validated**: 169/169 nuclear EOS acceptance checks
+  **Three Springs validated**: 313+ Rust checks (hotSpring 195 + wetSpring 48 + airSpring 70)
   Bit-identical results: RTX 4070 = RTX 3090 = RX 6950 XT
   39.85 tok/s distributed LLM inference
   Native f64 builtins: sqrt, exp, log work on f64 (1.5-2.2× faster)
@@ -110,7 +111,10 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 | Production placeholders | 0 (all evolved) |
 | Production mocks | 0 |
 | Server metrics | Real sysinfo values |
-| hotSpring validation | 169/169 acceptance checks |
+| **hotSpring validation** | 195/195 nuclear physics |
+| **wetSpring validation** | 48/48 life science |
+| **airSpring validation** | 70/70 precision agriculture |
+| **Combined validation** | 313+ Rust acceptance checks |
 
 ---
 
@@ -274,17 +278,20 @@ barracuda::dispatch       - Auto CPU/GPU routing with benchmark suite
 barracuda::pipeline       - Cascade multi-stage filtering, Stage with Target devices
 barracuda::ops::mixing    - LinearMixer, BroydenMixer for SCF convergence (hotSpring)
 barracuda::ops::grid      - Gradient1D/2D, Laplacian, CylindricalGradient (hotSpring)
+barracuda::ops::fused_map_reduce_f64 - Shannon, Simpson, norms with CPU/GPU routing (wetSpring)
+barracuda::ops::kriging_f64 - Spatial interpolation with variograms (airSpring + wetSpring)
 burn-inference            - HuggingFace models via Burn (wgpu backend)
 neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 ```
 
-**Tests**: 400+ passing (156 Phase 3 + 62 Phase 5 + 47 hotSpring evolution + 25 cross-platform + MD)
+**Tests**: 500+ passing (156 Phase 3 + 62 Phase 5 + 47 hotSpring + 37 three springs + 25 cross-platform + MD)
 **Quality**: Zero unsafe in compute ops, clippy clean, pure Rust
 **Architecture**: Shader-first — 480+ WGSL shaders, universal hardware
-**Audit**: All hotSpring validation complete (Feb 15), 169/169 nuclear EOS acceptance checks
+**Audit**: All three springs complete — 313+ acceptance checks (hotSpring 195 + wetSpring 48 + airSpring 70)
 **Evolution**: once_cell/lazy_static → std::sync::LazyLock (pure std)
 **MD Pipeline**: Full thermostat suite + MSD + Cell-list + **PPPM universal** (CPU + GPU w/kspace) — 38 tests
 **Math Primitives**: Hermite/Laguerre f64, Broyden mixing, FD gradients, weighted inner products
+**New Unified Primitives**: Fused Map-Reduce, Kriging, Cosine Similarity f64, Batched ET₀
 **Docs**: `docs/planning/HOTSPRING_ABSORPTION_FEB15_2026.md`, `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
 
 **Completed (Feb 15 — hotSpring Math Primitives):**
@@ -335,6 +342,25 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 
 ---
 
+## Deep Debt Evolution + ecoBin Compliance (Feb 16) ✅ COMPLETE
+
+**Comprehensive audit and evolution** for modern Rust and ecoBin v2.0:
+
+| Category | Status | Evolution |
+|----------|:------:|-----------|
+| Platform Paths | ✅ | XDG-compliant `platform_paths` module |
+| TOML Config | ✅ | Preferred format (pure Rust, no C deps) |
+| CLI Dependencies | ✅ | `libc` → `rustix` for signals |
+| Semantic Naming | ✅ | camelCase → snake_case for IPC methods |
+| Unsafe Code | ✅ | Evolved to safer `slice.fill()` patterns |
+| NPU Executor | ✅ | `NpuExecutor` implements `ComputeExecutor` |
+| Test Coverage | ✅ | +18 new tests for low-coverage modules |
+| Documentation | ✅ | STATUS.md, CHANGELOG.md updated |
+
+**New**: `toadstool_common::platform_paths` — XDG paths for Linux/macOS/Windows/Android/WASM.
+
+---
+
 ## Device Registry + F64 Reduce Suite (Feb 16) ✅ COMPLETE
 
 **Physical device deduplication** — same GPU via multiple backends shows as one:
@@ -377,6 +403,26 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 **Metrics**: CPU↔GPU trips: ~10 → 1, Buffer allocs/iter: ~20 → 0
 
 See `NEXT_STEPS.md` for API usage.
+
+---
+
+## Three Springs Validation (Feb 16) ✅ COMPLETE
+
+**Domain-specific validation projects confirm BarraCUDA's universality:**
+
+| Project | Domain | Checks | Key Achievement |
+|---------|--------|:------:|-----------------|
+| **hotSpring** | Nuclear physics | 195/195 | GPU-resident HFB 15% faster than CPU |
+| **wetSpring** | Life science | 48/48 | Shannon/Simpson/Bray-Curtis at f64 |
+| **airSpring** | Precision agriculture | 70/70 | FAO-56 ET₀, soil, water balance |
+
+**Combined**: 313+ Rust acceptance checks across nuclear physics, metagenomics, analytical
+chemistry, and precision agriculture — all on the same BarraCUDA primitives.
+
+**Cross-spring synergies**:
+- hotSpring → airSpring: f64 GPU patterns, dispatch batching, hybrid GPU+Rayon
+- airSpring → wetSpring: Spatial interpolation (kriging) for sampling sites
+- wetSpring → airSpring: IoT stream processing for real-time sensor data
 
 ---
 

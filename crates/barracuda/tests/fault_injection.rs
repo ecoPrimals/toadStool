@@ -56,7 +56,9 @@ async fn test_shape_mismatch_matmul() {
             // Verify error contains useful info
             let error_msg = e.to_string().to_lowercase();
             assert!(
-                error_msg.contains("shape") || error_msg.contains("dimension") || error_msg.contains("mismatch"),
+                error_msg.contains("shape")
+                    || error_msg.contains("dimension")
+                    || error_msg.contains("mismatch"),
                 "Error should mention shape/dimension issue"
             );
         }
@@ -395,7 +397,10 @@ fn test_device_unavailability_handling() {
 
     // Test that Auto selection never fails
     let available = Device::available_devices();
-    assert!(!available.is_empty(), "At least one device should be available");
+    assert!(
+        !available.is_empty(),
+        "At least one device should be available"
+    );
     println!("\n  Available devices: {:?}", available);
 
     println!("\n  Device unavailability handling: PASS\n");

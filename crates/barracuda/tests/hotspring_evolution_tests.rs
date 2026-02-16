@@ -10,7 +10,9 @@
 
 use barracuda::device::WgpuDevice;
 use barracuda::error::BarracudaError;
-use barracuda::ops::grid::{CylindricalGradient, CylindricalLaplacian, Gradient1D, Gradient2D, Laplacian2D};
+use barracuda::ops::grid::{
+    CylindricalGradient, CylindricalLaplacian, Gradient1D, Gradient2D, Laplacian2D,
+};
 use barracuda::ops::mixing::{BroydenMixer, LinearMixer, MixingParams};
 use std::sync::Arc;
 
@@ -633,7 +635,11 @@ mod e2e_scf {
         }
 
         // Field should have moved toward target
-        let diff: f64 = field.iter().zip(&target).map(|(f, t)| (f - t).abs()).sum::<f64>()
+        let diff: f64 = field
+            .iter()
+            .zip(&target)
+            .map(|(f, t)| (f - t).abs())
+            .sum::<f64>()
             / n as f64;
         assert!(
             diff < 1.0,
@@ -723,8 +729,12 @@ mod chaos {
         let n = 100;
         let mixer = LinearMixer::new(device, n, params).unwrap();
 
-        let x_old: Vec<f64> = (0..n).map(|i| if i % 2 == 0 { 1.0 } else { -1.0 }).collect();
-        let x_computed: Vec<f64> = (0..n).map(|i| if i % 2 == 0 { -1.0 } else { 1.0 }).collect();
+        let x_old: Vec<f64> = (0..n)
+            .map(|i| if i % 2 == 0 { 1.0 } else { -1.0 })
+            .collect();
+        let x_computed: Vec<f64> = (0..n)
+            .map(|i| if i % 2 == 0 { -1.0 } else { 1.0 })
+            .collect();
 
         let result = mixer.mix(&x_old, &x_computed).await.unwrap();
 
@@ -839,12 +849,8 @@ mod chaos {
             (*s as f64 / (1u64 << 31) as f64) * 2.0 - 1.0 // [-1, 1]
         };
 
-        let x_old: Vec<f64> = (0..n)
-            .map(|_| lcg(&mut seed))
-            .collect();
-        let x_computed: Vec<f64> = (0..n)
-            .map(|_| lcg(&mut seed))
-            .collect();
+        let x_old: Vec<f64> = (0..n).map(|_| lcg(&mut seed)).collect();
+        let x_computed: Vec<f64> = (0..n).map(|_| lcg(&mut seed)).collect();
 
         let result = mixer.mix(&x_old, &x_computed).await.unwrap();
 
@@ -1100,7 +1106,8 @@ mod special_functions {
 
         for k in 1..n {
             let kf = k as f64;
-            let l_next = ((2.0 * kf + 1.0 + alpha - x) * l_curr - (kf + alpha) * l_prev) / (kf + 1.0);
+            let l_next =
+                ((2.0 * kf + 1.0 + alpha - x) * l_curr - (kf + alpha) * l_prev) / (kf + 1.0);
             l_prev = l_curr;
             l_curr = l_next;
         }

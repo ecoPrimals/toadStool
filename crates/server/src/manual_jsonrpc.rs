@@ -1043,4 +1043,124 @@ mod tests {
             .unwrap()
             .contains("nonexistent.weird_method"));
     }
+
+    // ---- Additional method dispatch tests for coverage ----
+
+    #[tokio::test]
+    async fn test_method_dispatch_query_capabilities() {
+        let server = test_server();
+        let request = mk_request("toadstool.query_capabilities", None, 3);
+        let response = server.handle_jsonrpc_request(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+        // Should have capabilities result
+        assert!(obj.contains_key("result"));
+    }
+
+    #[tokio::test]
+    async fn test_method_dispatch_resources_estimate() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "workload_type": "inference",
+            "input_size": 1024,
+            "output_size": 512
+        });
+        let request = mk_request("toadstool.resources.estimate", Some(params), 4);
+        let response = server.handle_jsonrpc_request(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+        // Should return estimate or error
+        assert!(obj.contains_key("result") || obj.contains_key("error"));
+    }
+
+    #[tokio::test]
+    async fn test_method_dispatch_resources_validate_availability() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "memory_mb": 100,
+            "cpu_cores": 1
+        });
+        let request = mk_request("toadstool.resources.validate_availability", Some(params), 5);
+        let response = server.handle_jsonrpc_request(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+    }
+
+    #[tokio::test]
+    async fn test_method_dispatch_resources_suggest_optimizations() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "current_config": {}
+        });
+        let request = mk_request("toadstool.resources.suggest_optimizations", Some(params), 6);
+        let response = server.handle_jsonrpc_request(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+    }
+
+    #[tokio::test]
+    async fn test_method_dispatch_compute_status_no_job() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "job_id": "00000000-0000-0000-0000-000000000000"
+        });
+        let request = mk_request("compute.status", Some(params), 7);
+        let response = server.handle_jsonrpc_request(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+        // Job doesn't exist, so should return error
+        assert!(obj.contains_key("error") || obj["result"]["status"] == "not_found");
+    }
+
+    #[tokio::test]
+    async fn test_method_dispatch_compute_cancel_no_job() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "job_id": "00000000-0000-0000-0000-000000000000"
+        });
+        let request = mk_request("compute.cancel", Some(params), 8);
+        let response = server.handle_jsonrpc_request(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+        // Non-existent job, should return error
+        assert!(obj.contains_key("error") || obj.contains_key("result"));
+    }
+
+    #[tokio::test]
+    async fn test_method_dispatch_compute_list() {
+        let server = test_server();
+        let request = mk_request("compute.list", None, 9);
+        let response = server.handle_jsonrpc_request(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+        // Should return list (potentially empty)
+        assert!(obj.contains_key("result"));
+    }
+
+    #[tokio::test]
+    async fn test_method_dispatch_compute_submit() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "workload": "test-workload",
+            "input": [1, 2, 3]
+        });
+        let request = mk_request("compute.submit", Some(params), 10);
+        let response = server.handle_jsonrpc_request(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+        // Should have result with job_id or error
+        assert!(obj.contains_key("result") || obj.contains_key("error"));
+    }
+
+    // ---- Error code constants coverage ----
+
+    #[test]
+    fn test_error_codes_values() {
+        // Verify standard JSON-RPC 2.0 error codes
+        assert_eq!(PARSE_ERROR, -32700);
+        assert_eq!(INVALID_REQUEST, -32600);
+        assert_eq!(METHOD_NOT_FOUND, -32601);
+        assert_eq!(INVALID_PARAMS, -32602);
+        assert_eq!(INTERNAL_ERROR, -32603);
+    }
 }

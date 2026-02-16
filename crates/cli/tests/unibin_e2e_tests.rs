@@ -220,17 +220,18 @@ async fn test_server_graceful_shutdown() {
     tokio::time::sleep(Duration::from_secs(2)).await;
 
     // Send SIGTERM for graceful shutdown testing
-    // DEEP DEBT: Using libc::kill for SIGTERM (tokio::kill() sends SIGKILL)
-    // SAFETY:
+    // EVOLVED: Using rustix (ecoBin compliant) instead of libc
     // - pid from cmd.id() is valid (just spawned)
     // - SIGTERM is a safe signal (requests graceful termination)
     // - Process may ignore it, but that's tested behavior
     #[cfg(unix)]
     {
-        let pid = cmd.id().unwrap_or(0) as libc::pid_t;
-        if pid != 0 {
-            // SAFETY: Valid PID from spawned child; SIGTERM is harmless to send
-            unsafe { libc::kill(pid, libc::SIGTERM) };
+        use rustix::process::{kill_process, Pid, Signal};
+        if let Some(pid) = cmd.id() {
+            // SAFETY: Pid::from_raw requires non-zero pid (we check via cmd.id())
+            if let Some(pid) = Pid::from_raw(pid as i32) {
+                let _ = kill_process(pid, Signal::Term);
+            }
         }
     }
 

@@ -127,10 +127,11 @@ impl UnifiedMemoryBackend for CpuBackend {
             self.capabilities.alignment_requirement
         );
 
-        // Zero the memory for safety
-        // SAFETY: ptr from allocate_aligned; size matches allocation; valid for write.
-        unsafe {
-            std::ptr::write_bytes(ptr, 0, size);
+        // Zero the memory for safety using slice-based approach
+        // SAFETY: ptr from allocate_aligned; size matches allocation; exclusive access.
+        {
+            let slice = unsafe { std::slice::from_raw_parts_mut(ptr, size) };
+            slice.fill(0);
         }
 
         tracing::debug!("CPU backend zeroed {} bytes at {:#x}", size, ptr as usize);

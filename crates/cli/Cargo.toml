@@ -134,8 +134,8 @@ assert_cmd = "2.0"
 predicates = "3.0"
 
 [target.'cfg(unix)'.dev-dependencies]
-# EVOLVED: nix replaced with libc (Feb 14, 2026) - pure Rust binding, minimal surface area
-libc = "0.2"
+# EVOLVED: libc replaced with rustix (Feb 16, 2026) - ecoBin compliant, safer API
+rustix = { version = "0.38", features = ["process"] }
 
 [features]
 default = ["full"]

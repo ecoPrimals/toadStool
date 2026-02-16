@@ -84,18 +84,12 @@ pub async fn connect<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixStream> {
 
 /// Get default ToadStool Unix socket path
 ///
-/// **Deep Debt**: Runtime detection, biomeOS standard
+/// **Deep Debt**: Platform-agnostic, ecoBin v2.0 compliant
+///
+/// Uses `platform_paths` for proper XDG and temp_dir resolution.
+/// No hardcoded paths like `/run/user/` or `/tmp/`.
 pub fn default_path() -> PathBuf {
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
-        // Pure Rust UID detection (no unsafe!)
-        if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
-            format!("/run/user/{}", uid)
-        } else {
-            "/tmp/biomeos-runtime".to_string()
-        }
-    });
-
-    PathBuf::from(format!("{}/biomeos/toadstool.sock", runtime_dir))
+    toadstool_common::platform_paths::toadstool_socket()
 }
 
 #[cfg(test)]

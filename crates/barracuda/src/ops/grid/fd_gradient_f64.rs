@@ -77,15 +77,14 @@ impl Gradient1D {
                     push_constant_ranges: &[],
                 });
 
-        let pipeline =
-            device
-                .device()
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("gradient_1d_pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "gradient_1d",
-                });
+        let pipeline = device
+            .device()
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("gradient_1d_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "gradient_1d",
+            });
 
         Ok(Self {
             device,
@@ -219,7 +218,11 @@ impl Gradient1D {
         let result: Vec<f64> = data
             .chunks_exact(8)
             .map(|chunk| {
-                f64::from_le_bytes(chunk.try_into().expect("chunks_exact(8) yields 8-byte chunks"))
+                f64::from_le_bytes(
+                    chunk
+                        .try_into()
+                        .expect("chunks_exact(8) yields 8-byte chunks"),
+                )
             })
             .collect();
 
@@ -314,15 +317,14 @@ impl Gradient2D {
                     push_constant_ranges: &[],
                 });
 
-        let pipeline =
-            device
-                .device()
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("gradient_2d_pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "gradient_2d",
-                });
+        let pipeline = device
+            .device()
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("gradient_2d_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "gradient_2d",
+            });
 
         Ok(Self {
             device,
@@ -353,7 +355,10 @@ impl Gradient2D {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "Input size mismatch: expected {} ({}×{}), got {}",
-                    total, self.nx, self.ny, input.len()
+                    total,
+                    self.nx,
+                    self.ny,
+                    input.len()
                 ),
             });
         }
@@ -450,11 +455,7 @@ impl Gradient2D {
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             // Workgroup size is (16, 16, 1)
-            pass.dispatch_workgroups(
-                self.nx.div_ceil(16) as u32,
-                self.ny.div_ceil(16) as u32,
-                1,
-            );
+            pass.dispatch_workgroups(self.nx.div_ceil(16) as u32, self.ny.div_ceil(16) as u32, 1);
         }
 
         // Read back both gradients
@@ -482,15 +483,13 @@ impl Gradient2D {
         Ok((grad_x, grad_y))
     }
 
-    async fn read_staging_buffer(
-        &self,
-        staging: &wgpu::Buffer,
-        count: usize,
-    ) -> Result<Vec<f64>> {
+    async fn read_staging_buffer(&self, staging: &wgpu::Buffer, count: usize) -> Result<Vec<f64>> {
         let (sender, receiver) = std::sync::mpsc::channel();
-        staging.slice(..).map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
+        staging
+            .slice(..)
+            .map_async(wgpu::MapMode::Read, move |result| {
+                let _ = sender.send(result);
+            });
         self.device.device().poll(wgpu::Maintain::Wait);
         receiver
             .recv()
@@ -618,15 +617,14 @@ impl Laplacian2D {
                     push_constant_ranges: &[],
                 });
 
-        let pipeline =
-            device
-                .device()
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("laplacian_2d_pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "laplacian_2d",
-                });
+        let pipeline = device
+            .device()
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("laplacian_2d_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "laplacian_2d",
+            });
 
         Ok(Self {
             device,
@@ -657,7 +655,10 @@ impl Laplacian2D {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "Input size mismatch: expected {} ({}×{}), got {}",
-                    total, self.nx, self.ny, input.len()
+                    total,
+                    self.nx,
+                    self.ny,
+                    input.len()
                 ),
             });
         }
@@ -762,11 +763,7 @@ impl Laplacian2D {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(
-                self.nx.div_ceil(16) as u32,
-                self.ny.div_ceil(16) as u32,
-                1,
-            );
+            pass.dispatch_workgroups(self.nx.div_ceil(16) as u32, self.ny.div_ceil(16) as u32, 1);
         }
 
         // Read back
@@ -781,9 +778,11 @@ impl Laplacian2D {
         self.device.queue().submit(Some(encoder.finish()));
 
         let (sender, receiver) = std::sync::mpsc::channel();
-        staging.slice(..).map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
+        staging
+            .slice(..)
+            .map_async(wgpu::MapMode::Read, move |result| {
+                let _ = sender.send(result);
+            });
         self.device.device().poll(wgpu::Maintain::Wait);
         receiver
             .recv()
@@ -897,15 +896,14 @@ impl CylindricalGradient {
                     push_constant_ranges: &[],
                 });
 
-        let pipeline =
-            device
-                .device()
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("cyl_grad_pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "gradient_cylindrical",
-                });
+        let pipeline = device
+            .device()
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("cyl_grad_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "gradient_cylindrical",
+            });
 
         Ok(Self {
             device,
@@ -937,7 +935,10 @@ impl CylindricalGradient {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "Input size mismatch: expected {} ({}×{}), got {}",
-                    total, self.n_rho, self.n_z, input.len()
+                    total,
+                    self.n_rho,
+                    self.n_z,
+                    input.len()
                 ),
             });
         }
@@ -1168,15 +1169,14 @@ impl CylindricalLaplacian {
                     push_constant_ranges: &[],
                 });
 
-        let pipeline =
-            device
-                .device()
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("cyl_lap_pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "laplacian_cylindrical",
-                });
+        let pipeline = device
+            .device()
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("cyl_lap_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "laplacian_cylindrical",
+            });
 
         Ok(Self {
             device,
@@ -1202,7 +1202,10 @@ impl CylindricalLaplacian {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "Input size mismatch: expected {} ({}×{}), got {}",
-                    total, self.n_rho, self.n_z, input.len()
+                    total,
+                    self.n_rho,
+                    self.n_z,
+                    input.len()
                 ),
             });
         }
@@ -1330,9 +1333,11 @@ async fn read_staging_f64(
     count: usize,
 ) -> Result<Vec<f64>> {
     let (sender, receiver) = std::sync::mpsc::channel();
-    staging.slice(..).map_async(wgpu::MapMode::Read, move |result| {
-        let _ = sender.send(result);
-    });
+    staging
+        .slice(..)
+        .map_async(wgpu::MapMode::Read, move |result| {
+            let _ = sender.send(result);
+        });
     device.poll(wgpu::Maintain::Wait);
     receiver
         .recv()
@@ -1425,7 +1430,11 @@ mod tests {
                 assert!(
                     error_gx < 0.05,
                     "grad_x at ({},{}) = {}, expected {}, error={}",
-                    ix, iy, grad_x[idx], expected_gx, error_gx
+                    ix,
+                    iy,
+                    grad_x[idx],
+                    expected_gx,
+                    error_gx
                 );
 
                 // ∂f/∂y = 2
@@ -1433,7 +1442,10 @@ mod tests {
                 assert!(
                     error_gy < 0.01,
                     "grad_y at ({},{}) = {}, expected 2, error={}",
-                    ix, iy, grad_y[idx], error_gy
+                    ix,
+                    iy,
+                    grad_y[idx],
+                    error_gy
                 );
             }
         }
@@ -1474,7 +1486,11 @@ mod tests {
                 assert!(
                     error < 0.01,
                     "Laplacian at ({},{}) = {}, expected {}, error={}",
-                    ix, iy, result[idx], expected, error
+                    ix,
+                    iy,
+                    result[idx],
+                    expected,
+                    error
                 );
             }
         }
@@ -1522,7 +1538,11 @@ mod tests {
                 assert!(
                     error_rho < 0.2,
                     "grad_rho at ({},{}) = {}, expected {}, error={}",
-                    i_rho, i_z, grad_rho[idx], expected_rho, error_rho
+                    i_rho,
+                    i_z,
+                    grad_rho[idx],
+                    expected_rho,
+                    error_rho
                 );
 
                 // ∂f/∂z = 1
@@ -1530,7 +1550,10 @@ mod tests {
                 assert!(
                     error_z < 0.01,
                     "grad_z at ({},{}) = {}, expected 1, error={}",
-                    i_rho, i_z, grad_z[idx], error_z
+                    i_rho,
+                    i_z,
+                    grad_z[idx],
+                    error_z
                 );
             }
         }
@@ -1573,7 +1596,11 @@ mod tests {
                 assert!(
                     error < 0.1,
                     "Laplacian at ({},{}) = {}, expected {}, error={}",
-                    i_rho, i_z, result[idx], expected, error
+                    i_rho,
+                    i_z,
+                    result[idx],
+                    expected,
+                    error
                 );
             }
         }

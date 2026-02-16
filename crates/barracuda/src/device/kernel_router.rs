@@ -79,10 +79,7 @@ pub enum ComputeWorkload {
     },
 
     /// FFT computation - always GPU (butterfly stages are parallel)
-    FFT {
-        size: usize,
-        batch_count: usize,
-    },
+    FFT { size: usize, batch_count: usize },
 
     /// Physics force computation - always GPU (needs arbitrary WGSL)
     PhysicsForce {
@@ -91,25 +88,16 @@ pub enum ComputeWorkload {
     },
 
     /// Eigenvalue decomposition - GPU for large, CPU for small
-    Eigendecomp {
-        matrix_size: usize,
-    },
+    Eigendecomp { matrix_size: usize },
 
     /// Linear system solve - GPU for large, CPU for small
-    LinearSolve {
-        system_size: usize,
-    },
+    LinearSolve { system_size: usize },
 
     /// Binary pre-screening / filtering - NPU ideal (ultra-low power)
-    BinaryPrescreen {
-        input_count: usize,
-        threshold: f64,
-    },
+    BinaryPrescreen { input_count: usize, threshold: f64 },
 
     /// Generic WGSL operation - always GPU/CPU
-    GenericWgsl {
-        shader_name: String,
-    },
+    GenericWgsl { shader_name: String },
 }
 
 /// Target hardware for kernel execution

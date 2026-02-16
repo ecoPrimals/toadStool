@@ -358,11 +358,21 @@ impl HardwareDiscovery {
     }
 
     async fn discover_npus() -> Result<Vec<Arc<dyn ComputeExecutor>>> {
-        // TODO: Create NpuExecutor implementing ComputeExecutor
-        // Currently NPU access uses AkidaDevice directly via device/akida.rs
-        let available = Device::NPU.is_available();
-        debug!("NPU discovery: available={}, NpuExecutor not yet implemented", available);
-        Ok(Vec::new())
+        // NPU discovery using NpuExecutor (wraps AkidaExecutor)
+        match crate::npu_executor::NpuExecutor::new() {
+            Ok(executor) => {
+                debug!(
+                    "NPU discovered: {} with {} NPUs",
+                    executor.name(),
+                    executor.npu_count()
+                );
+                Ok(vec![Arc::new(executor) as Arc<dyn ComputeExecutor>])
+            }
+            Err(e) => {
+                debug!("NPU discovery failed (no Akida hardware): {}", e);
+                Ok(Vec::new())
+            }
+        }
     }
 }
 

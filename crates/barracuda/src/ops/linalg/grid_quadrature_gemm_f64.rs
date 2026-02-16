@@ -54,9 +54,9 @@ struct QuadParams {
 pub struct GridQuadratureGemm {
     device: Arc<WgpuDevice>,
     batch_size: usize,
-    n: usize,          // Basis size (matrix dimension)
-    grid_size: usize,  // Number of quadrature points
-    symmetric: bool,   // Use symmetric optimization
+    n: usize,         // Basis size (matrix dimension)
+    grid_size: usize, // Number of quadrature points
+    symmetric: bool,  // Use symmetric optimization
 }
 
 impl GridQuadratureGemm {
@@ -108,21 +108,20 @@ impl GridQuadratureGemm {
     ///
     /// # Returns
     /// Hamiltonian matrices [batch, n, n]
-    pub fn execute(
-        &self,
-        phi: &[f64],
-        w: &[f64],
-        quad_weights: &[f64],
-    ) -> Result<Vec<f64>> {
+    pub fn execute(&self, phi: &[f64], w: &[f64], quad_weights: &[f64]) -> Result<Vec<f64>> {
         // Validate dimensions
         let expected_phi_len = self.batch_size * self.n * self.grid_size;
         let expected_w_len = self.batch_size * self.grid_size;
-        
+
         if phi.len() != expected_phi_len {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "phi length {} doesn't match expected {} (batch={}, n={}, grid={})",
-                    phi.len(), expected_phi_len, self.batch_size, self.n, self.grid_size
+                    phi.len(),
+                    expected_phi_len,
+                    self.batch_size,
+                    self.n,
+                    self.grid_size
                 ),
             });
         }
@@ -130,7 +129,10 @@ impl GridQuadratureGemm {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "w length {} doesn't match expected {} (batch={}, grid={})",
-                    w.len(), expected_w_len, self.batch_size, self.grid_size
+                    w.len(),
+                    expected_w_len,
+                    self.batch_size,
+                    self.grid_size
                 ),
             });
         }
@@ -138,7 +140,8 @@ impl GridQuadratureGemm {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "quad_weights length {} doesn't match grid_size {}",
-                    quad_weights.len(), self.grid_size
+                    quad_weights.len(),
+                    self.grid_size
                 ),
             });
         }
@@ -285,35 +288,40 @@ impl GridQuadratureGemm {
             grid_size: self.grid_size as u32,
             _pad: 0,
         };
-        let params_buffer = self.device.create_uniform_buffer("GridQuadGEMM params", &params);
+        let params_buffer = self
+            .device
+            .create_uniform_buffer("GridQuadGEMM params", &params);
 
         // Create bind group
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("GridQuadGEMM BG"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: phi_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: w_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: qw_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("GridQuadGEMM BG"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: phi_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: w_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: qw_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                ],
+            });
 
         // Calculate workgroup dimensions
         let (wg_x, wg_y) = if self.symmetric {
@@ -426,7 +434,10 @@ mod tests {
                 assert!(
                     (actual - expected).abs() < 1e-10,
                     "H[{},{}] = {}, expected {}",
-                    i, j, actual, expected
+                    i,
+                    j,
+                    actual,
+                    expected
                 );
             }
         }
@@ -498,7 +509,9 @@ mod tests {
         let phi: Vec<f64> = (0..batch * n * grid)
             .map(|i| ((i as f64) * 0.01).sin())
             .collect();
-        let w: Vec<f64> = (0..batch * grid).map(|i| ((i as f64) * 0.02).cos()).collect();
+        let w: Vec<f64> = (0..batch * grid)
+            .map(|i| ((i as f64) * 0.02).cos())
+            .collect();
         let quad_weights: Vec<f64> = (0..grid).map(|i| 1.0 / (1.0 + i as f64 * 0.1)).collect();
 
         let gemm = GridQuadratureGemm::new(device.clone(), batch, n, grid).unwrap();
@@ -516,7 +529,13 @@ mod tests {
                     assert!(
                         (h_ij - h_ji).abs() < 1e-10,
                         "Batch {}: H[{},{}] = {}, H[{},{}] = {}",
-                        b, i, j, h_ij, j, i, h_ji
+                        b,
+                        i,
+                        j,
+                        h_ij,
+                        j,
+                        i,
+                        h_ji
                     );
                 }
             }

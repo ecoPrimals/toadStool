@@ -85,10 +85,10 @@ pub mod compute_graph; // NEW: Lazy execution for operation batching
 pub mod esn_v2; // High-level Echo State Network API
 pub mod genomics; // High-level Bioinformatics/Genomics API
 pub mod multi_gpu; // Multi-GPU workload distribution
-pub mod resource_quota; // Resource quota management for multi-tenant compute
 pub mod nn; // High-level Neural Network Training API
 pub mod npu;
 pub mod ops;
+pub mod resource_quota; // Resource quota management for multi-tenant compute
 pub mod session;
 pub mod snn; // High-level Spiking Neural Network API
 pub mod tensor;
@@ -105,6 +105,7 @@ pub mod dispatch; // Auto-dispatch for CPU/GPU routing
 pub mod gpu_executor;
 pub mod interpolate; // Interpolation methods (cubic spline, etc.)
 pub mod linalg;
+pub mod npu_executor; // NPU executor for ComputeExecutor interface
 pub mod numerical;
 pub mod optimize;
 pub mod pde;

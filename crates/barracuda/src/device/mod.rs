@@ -57,6 +57,11 @@ pub use cache_hierarchy::{
     CacheAwareTiler, CacheLevel, CacheResidency, MainMemory, SubstrateMemoryHierarchy, TileConfig,
 };
 pub use capabilities::{DeviceCapabilities, WorkloadType};
+pub use kernel_router::{ComputeWorkload, KernelRouter, KernelTarget, NpuModelInfo};
+pub use registry::{
+    BackendInfo, DeviceCapabilities as PhysicalDeviceCapabilities, DeviceRegistry, DeviceVendor,
+    PhysicalDevice, PhysicalDeviceId,
+};
 pub use substrate::{Substrate, SubstrateType};
 pub use toadstool_integration::{
     discover_devices, hardware_report, has_gpu, has_npu, select_best_device, select_device_prefer,
@@ -65,11 +70,6 @@ pub use toadstool_integration::{
 pub use tpu::{TpuDevice, TpuGeneration, TpuInfo};
 pub use unified::{Capability, Device, DeviceContext, DeviceInfo, WorkloadHint};
 pub use wgpu_device::WgpuDevice;
-pub use kernel_router::{ComputeWorkload, KernelRouter, KernelTarget, NpuModelInfo};
-pub use registry::{
-    BackendInfo, DeviceCapabilities as PhysicalDeviceCapabilities, DeviceRegistry, DeviceVendor,
-    PhysicalDevice, PhysicalDeviceId,
-};
 
 /// Device pool for GPU operations (used by NMS and tests).
 /// Always compiled so NMS can acquire a GPU device at runtime.

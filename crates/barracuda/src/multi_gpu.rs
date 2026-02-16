@@ -558,7 +558,9 @@ impl DeviceLease {
             tracker.try_allocate(bytes)?;
         }
         // Also update device-level tracking
-        self.info.allocated_bytes.fetch_add(bytes, Ordering::Relaxed);
+        self.info
+            .allocated_bytes
+            .fetch_add(bytes, Ordering::Relaxed);
         self.info.allocations.fetch_add(1, Ordering::Relaxed);
         Ok(())
     }
@@ -568,7 +570,9 @@ impl DeviceLease {
         if let Some(tracker) = &self.quota_tracker {
             tracker.deallocate(bytes);
         }
-        self.info.allocated_bytes.fetch_sub(bytes, Ordering::Relaxed);
+        self.info
+            .allocated_bytes
+            .fetch_sub(bytes, Ordering::Relaxed);
         self.info.allocations.fetch_sub(1, Ordering::Relaxed);
     }
 }
@@ -692,20 +696,20 @@ impl MultiDevicePool {
                     let allocated_bytes = Arc::new(AtomicU64::new(0));
 
                     info.push(DeviceInfo {
-                    index: idx,
-                    pool_index: 0, // Will be set after sorting
-                    name: adapter.name.clone(),
-                    vendor,
-                    vram_bytes: estimated_vram,
-                    estimated_gflops,
-                    is_discrete: is_likely_discrete,
-                    allocations: allocations.clone(),
-                    allocated_bytes: allocated_bytes.clone(),
-                    busy: busy.clone(),
-                });
-                device_busy.push(busy);
-                devices.push(Arc::new(device));
-            }
+                        index: idx,
+                        pool_index: 0, // Will be set after sorting
+                        name: adapter.name.clone(),
+                        vendor,
+                        vram_bytes: estimated_vram,
+                        estimated_gflops,
+                        is_discrete: is_likely_discrete,
+                        allocations: allocations.clone(),
+                        allocated_bytes: allocated_bytes.clone(),
+                        busy: busy.clone(),
+                    });
+                    device_busy.push(busy);
+                    devices.push(Arc::new(device));
+                }
                 Err(e) => {
                     tracing::warn!(
                         "Failed to create device for adapter {}: {} - {}",
@@ -821,9 +825,8 @@ impl MultiDevicePool {
             }
         }
 
-        let idx = best_idx.ok_or_else(|| {
-            BarracudaError::device_not_found("No device matches requirements")
-        })?;
+        let idx = best_idx
+            .ok_or_else(|| BarracudaError::device_not_found("No device matches requirements"))?;
 
         // Mark device as busy
         self.inner.device_busy[idx].store(true, Ordering::Release);
@@ -976,7 +979,11 @@ mod tests {
             let reqs = DeviceRequirements::new().prefer_nvidia();
 
             if let Ok(lease) = pool.acquire(&reqs).await {
-                println!("Acquired: {} ({:?})", lease.info().name, lease.info().vendor);
+                println!(
+                    "Acquired: {} ({:?})",
+                    lease.info().name,
+                    lease.info().vendor
+                );
             }
 
             // Try to acquire with high VRAM requirement
@@ -993,7 +1000,9 @@ mod tests {
         if let Ok(pool) = pool {
             let quota = ResourceQuota::new().with_max_vram_mb(100);
 
-            if let Ok(lease) = pool.acquire_with_quota(&DeviceRequirements::new(), Some(quota)).await
+            if let Ok(lease) = pool
+                .acquire_with_quota(&DeviceRequirements::new(), Some(quota))
+                .await
             {
                 // Track some allocations
                 assert!(lease.track_allocation(50 * 1024 * 1024).is_ok()); // 50 MB

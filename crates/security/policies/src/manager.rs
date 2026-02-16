@@ -97,8 +97,20 @@ impl FilePolicyManager {
     }
 
     /// Generate policy file path
+    /// Get policy file path - prefers TOML (ecoBin compliant), falls back to YAML
     fn policy_file_path(&self, policy_id: &str) -> PathBuf {
-        self.config.policy_dir.join(format!("{policy_id}.yaml"))
+        // Check for TOML first (ecoBin preferred)
+        let toml_path = self.config.policy_dir.join(format!("{policy_id}.toml"));
+        if toml_path.exists() {
+            return toml_path;
+        }
+        // Fall back to YAML for backwards compatibility
+        let yaml_path = self.config.policy_dir.join(format!("{policy_id}.yaml"));
+        if yaml_path.exists() {
+            return yaml_path;
+        }
+        // New files use TOML
+        toml_path
     }
 
     /// Check if cached policy is still valid
@@ -130,22 +142,34 @@ impl FilePolicyManager {
             ))
         })?;
 
-        let policy: SecurityPolicy = serde_yaml::from_str(&content).map_err(|e| {
-            ToadStoolError::configuration(format!(
-                "Failed to parse policy file {}: {}",
-                file_path.display(),
-                e
-            ))
-        })?;
+        // Parse based on file extension (TOML preferred, YAML for backwards compatibility)
+        let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        let policy: SecurityPolicy = match extension {
+            "toml" => toml::from_str(&content).map_err(|e| {
+                ToadStoolError::configuration(format!(
+                    "Failed to parse TOML policy {}: {}",
+                    file_path.display(),
+                    e
+                ))
+            })?,
+            _ => serde_yaml::from_str(&content).map_err(|e| {
+                ToadStoolError::configuration(format!(
+                    "Failed to parse YAML policy {}: {}",
+                    file_path.display(),
+                    e
+                ))
+            })?,
+        };
 
         Ok(policy)
     }
 
-    /// Save policy to file
+    /// Save policy to file (TOML format - ecoBin compliant)
     async fn save_policy_to_file(&self, policy: &SecurityPolicy) -> ToadStoolResult<()> {
-        let file_path = self.policy_file_path(&policy.id);
+        // Always save as TOML (ecoBin compliant, pure Rust)
+        let file_path = self.config.policy_dir.join(format!("{}.toml", policy.id));
 
-        let content = serde_yaml::to_string(policy).map_err(|e| {
+        let content = toml::to_string_pretty(policy).map_err(|e| {
             ToadStoolError::configuration(format!(
                 "Failed to serialize policy {}: {}",
                 policy.id, e

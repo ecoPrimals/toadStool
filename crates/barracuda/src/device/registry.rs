@@ -37,10 +37,10 @@ static GLOBAL_REGISTRY: OnceLock<DeviceRegistry> = OnceLock::new();
 /// Backend preference order for ecoPrimals
 /// Vulkan is preferred for cross-platform compatibility and f64 support
 const BACKEND_PREFERENCE: &[wgpu::Backend] = &[
-    wgpu::Backend::Vulkan,  // Best f64 support, cross-platform
-    wgpu::Backend::Metal,   // macOS native
-    wgpu::Backend::Dx12,    // Windows native
-    wgpu::Backend::Gl,      // Legacy fallback
+    wgpu::Backend::Vulkan,        // Best f64 support, cross-platform
+    wgpu::Backend::Metal,         // macOS native
+    wgpu::Backend::Dx12,          // Windows native
+    wgpu::Backend::Gl,            // Legacy fallback
     wgpu::Backend::BrowserWebGpu, // WASM
 ];
 
@@ -354,7 +354,8 @@ impl DeviceRegistry {
                 }
 
                 // Check if names match (after normalization)
-                let existing_normalized = PhysicalDeviceId::normalize_device_name(&existing_device.name);
+                let existing_normalized =
+                    PhysicalDeviceId::normalize_device_name(&existing_device.name);
                 if normalized_name == existing_normalized {
                     return Some(existing_id.clone());
                 }
@@ -373,7 +374,8 @@ impl DeviceRegistry {
         for (existing_id, existing_device) in devices {
             if existing_id.device_id == 0 && existing_id.vendor_id == new_id.vendor_id {
                 let normalized_name = PhysicalDeviceId::normalize_device_name(&new_info.name);
-                let existing_normalized = PhysicalDeviceId::normalize_device_name(&existing_device.name);
+                let existing_normalized =
+                    PhysicalDeviceId::normalize_device_name(&existing_device.name);
 
                 if normalized_name == existing_normalized
                     || normalized_name.contains(&existing_normalized)
@@ -413,16 +415,16 @@ impl DeviceRegistry {
         // f64 support: NVIDIA with CC >= 6.0, AMD GCN+, Intel
         let f64_shaders = match vendor {
             DeviceVendor::Nvidia => compute_capability >= 6.0,
-            DeviceVendor::Amd => true,     // GCN and later support f64
-            DeviceVendor::Intel => true,   // Most Intel GPUs support f64
-            DeviceVendor::Apple => false,  // Apple GPUs don't support f64
+            DeviceVendor::Amd => true,    // GCN and later support f64
+            DeviceVendor::Intel => true,  // Most Intel GPUs support f64
+            DeviceVendor::Apple => false, // Apple GPUs don't support f64
             _ => false,
         };
 
         DeviceCapabilities {
             f64_shaders,
-            f16_shaders: true, // Most modern GPUs support f16
-            max_buffer_size: 0,  // Requires device creation to probe
+            f16_shaders: true,       // Most modern GPUs support f16
+            max_buffer_size: 0,      // Requires device creation to probe
             max_workgroup_size: 256, // Conservative default
             max_workgroups: [65535, 65535, 65535],
             vram_bytes: 0, // Not available from adapter info
@@ -509,7 +511,8 @@ impl DeviceRegistry {
 
     /// Get devices that support f64
     pub fn f64_capable(&self) -> impl Iterator<Item = &PhysicalDevice> {
-        self.physical_devices().filter(|d| d.capabilities.f64_shaders)
+        self.physical_devices()
+            .filter(|d| d.capabilities.f64_shaders)
     }
 
     /// Get raw adapter info by index (for wgpu device creation)
@@ -534,13 +537,21 @@ impl DeviceRegistry {
         ));
 
         for (idx, device) in self.physical_devices().enumerate() {
-            report.push_str(&format!("Device {}: {} ({})\n", idx, device.name, device.vendor.name()));
+            report.push_str(&format!(
+                "Device {}: {} ({})\n",
+                idx,
+                device.name,
+                device.vendor.name()
+            ));
             report.push_str(&format!("  Type: {:?}\n", device.device_type));
             report.push_str(&format!(
                 "  ID: vendor=0x{:04X}, device=0x{:04X}\n",
                 device.id.vendor_id, device.id.device_id
             ));
-            report.push_str(&format!("  f64 support: {}\n", device.capabilities.f64_shaders));
+            report.push_str(&format!(
+                "  f64 support: {}\n",
+                device.capabilities.f64_shaders
+            ));
 
             if device.capabilities.compute_capability > 0.0 {
                 report.push_str(&format!(
@@ -594,7 +605,10 @@ mod tests {
         for device in registry.physical_devices() {
             if device.backends.len() > 1 {
                 // If multiple backends, Vulkan should be first (if available)
-                let has_vulkan = device.backends.iter().any(|b| b.backend == wgpu::Backend::Vulkan);
+                let has_vulkan = device
+                    .backends
+                    .iter()
+                    .any(|b| b.backend == wgpu::Backend::Vulkan);
                 if has_vulkan {
                     assert_eq!(
                         device.backends[0].backend,

@@ -47,7 +47,7 @@ pub struct MaxAbsDiffF64;
 
 impl MaxAbsDiffF64 {
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/reduce/max_abs_diff_f64.wgsl")
+        include_str!("../../shaders/reduce/max_abs_diff_f64.wgsl")
     }
 
     /// Compute max|a[i] - b[i]| over all elements
@@ -143,14 +143,15 @@ impl MaxAbsDiffF64 {
                 push_constant_ranges: &[],
             });
 
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("max_abs_diff_f64"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "max_abs_diff_f64",
-            });
+        let pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("max_abs_diff_f64"),
+                    layout: Some(&pl),
+                    module: &shader,
+                    entry_point: "max_abs_diff_f64",
+                });
 
         // Two-pass reduction
         let n = a.len();
@@ -242,14 +243,15 @@ impl MaxAbsDiffF64 {
         }
 
         // Pass 2: reduce partial maxes using max_reduce_pass2
-        let pipeline2 = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("max_reduce_pass2"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "max_reduce_pass2",
-            });
+        let pipeline2 =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("max_reduce_pass2"),
+                    layout: Some(&pl),
+                    module: &shader,
+                    entry_point: "max_reduce_pass2",
+                });
 
         let n_workgroups2 = n_workgroups.div_ceil(wg_size);
         let final_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -344,31 +346,30 @@ impl MaxAbsDiffF64 {
             mapped_at_creation: false,
         });
 
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("MaxAbsDiff readback"),
-            });
+        let mut encoder =
+            device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("MaxAbsDiff readback"),
+                });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
         device.queue.submit(Some(encoder.finish()));
 
         let slice = staging.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| {
-            // Channel send should not fail since receiver is alive during poll
-            let _ = sender.send(result);
+            sender.send(result).unwrap();
         });
         device.device.poll(wgpu::Maintain::Wait);
         receiver
             .recv()
-            .map_err(|_| BarracudaError::execution_failed("GPU buffer mapping channel closed"))?
+            .unwrap()
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
-        // SAFETY: chunks_exact(8) guarantees exactly 8-byte chunks
         let result: Vec<f64> = data
             .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().expect("chunks_exact(8) invariant")))
+            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
             .collect();
         drop(data);
         staging.unmap();
@@ -465,10 +466,7 @@ mod tests {
         let b = vec![3.0_f64];
 
         let diff = MaxAbsDiffF64::compute(device, &a, &b).unwrap();
-        assert!(
-            (diff - 2.0).abs() < 1e-14,
-            "Single element diff should be 2"
-        );
+        assert!((diff - 2.0).abs() < 1e-14, "Single element diff should be 2");
     }
 
     #[tokio::test]

@@ -260,7 +260,6 @@ impl CholeskyF64 {
         data: &[f64],
         n: usize,
     ) -> Result<Vec<f64>> {
-        
         if data.len() != n * n {
             return Err(BarracudaError::InvalidShape {
                 expected: vec![n * n],
@@ -270,7 +269,9 @@ impl CholeskyF64 {
 
         // Create input buffer with f64 data
         let input_buffer = device.create_buffer_f64(n * n)?;
-        device.queue.write_buffer(&input_buffer, 0, bytemuck::cast_slice(data));
+        device
+            .queue
+            .write_buffer(&input_buffer, 0, bytemuck::cast_slice(data));
 
         // Create output buffer for L
         let output_buffer = device.create_buffer_f64(n * n)?;
@@ -407,7 +408,9 @@ impl CholeskyF64 {
 
         // Create buffers
         let input_buffer = device.create_buffer_f64(batch_size * mat_size)?;
-        device.queue.write_buffer(&input_buffer, 0, bytemuck::cast_slice(data));
+        device
+            .queue
+            .write_buffer(&input_buffer, 0, bytemuck::cast_slice(data));
 
         let output_buffer = device.create_buffer_f64(batch_size * mat_size)?;
 
@@ -685,32 +688,32 @@ mod tests {
         // SPD matrix: [[4, 2], [2, 3]]
         // Expected L: [[2, 0], [1, sqrt(2)]]
         let input_data: Vec<f64> = vec![4.0, 2.0, 2.0, 3.0];
-        
+
         let result = CholeskyF64::execute(device, &input_data, 2).unwrap();
-        
+
         assert_eq!(result.len(), 4);
-        
+
         // Check L[0,0] ≈ 2.0
         assert!(
             (result[0] - 2.0).abs() < 1e-12,
             "L[0,0] should be 2.0, got {}",
             result[0]
         );
-        
+
         // Check L[0,1] ≈ 0.0 (upper triangle)
         assert!(
             result[1].abs() < 1e-12,
             "L[0,1] should be 0.0, got {}",
             result[1]
         );
-        
+
         // Check L[1,0] ≈ 1.0
         assert!(
             (result[2] - 1.0).abs() < 1e-12,
             "L[1,0] should be 1.0, got {}",
             result[2]
         );
-        
+
         // Check L[1,1] ≈ sqrt(2)
         let sqrt_2: f64 = std::f64::consts::SQRT_2;
         assert!(
@@ -729,21 +732,21 @@ mod tests {
         // Test that L·Lᵀ = A with f64 precision
         let a: Vec<f64> = vec![4.0, 2.0, 2.0, 3.0];
         let n = 2;
-        
+
         let l = CholeskyF64::execute(device, &a, n).unwrap();
-        
+
         // Manual L·Lᵀ multiplication
         let mut reconstruction = vec![0.0f64; 4];
         for i in 0..n {
             for j in 0..n {
                 let mut sum = 0.0;
                 for k in 0..n {
-                    sum += l[i * n + k] * l[j * n + k];  // L[i,k] * L[j,k] (Lᵀ[k,j] = L[j,k])
+                    sum += l[i * n + k] * l[j * n + k]; // L[i,k] * L[j,k] (Lᵀ[k,j] = L[j,k])
                 }
                 reconstruction[i * n + j] = sum;
             }
         }
-        
+
         // Should match original with f64 precision
         for (i, (&orig, &recon)) in a.iter().zip(reconstruction.iter()).enumerate() {
             assert!(
@@ -762,25 +765,21 @@ mod tests {
             return;
         };
         // 3x3 SPD matrix (row-major)
-        let a: Vec<f64> = vec![
-            4.0, 2.0, 1.0,
-            2.0, 3.0, 1.0,
-            1.0, 1.0, 3.0,
-        ];
+        let a: Vec<f64> = vec![4.0, 2.0, 1.0, 2.0, 3.0, 1.0, 1.0, 1.0, 3.0];
         let n = 3;
-        
+
         let l = CholeskyF64::execute(device, &a, n).unwrap();
-        
+
         // Verify lower triangular
         assert!(l[1].abs() < 1e-12); // L[0,1]
         assert!(l[2].abs() < 1e-12); // L[0,2]
         assert!(l[5].abs() < 1e-12); // L[1,2]
-        
+
         // Verify diagonal is positive
         assert!(l[0] > 0.0);
         assert!(l[4] > 0.0);
         assert!(l[8] > 0.0);
-        
+
         // Verify L·Lᵀ = A
         let mut recon = vec![0.0f64; 9];
         for i in 0..n {
@@ -792,7 +791,7 @@ mod tests {
                 recon[i * n + j] = sum;
             }
         }
-        
+
         for (i, (&orig, &r)) in a.iter().zip(recon.iter()).enumerate() {
             assert!(
                 (orig - r).abs() < 1e-10,

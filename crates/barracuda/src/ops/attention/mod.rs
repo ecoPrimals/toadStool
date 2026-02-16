@@ -68,23 +68,32 @@ impl Attention {
         let q_ndim = query.shape().len();
         let k_ndim = key.shape().len();
         let v_ndim = value.shape().len();
-        
+
         if q_ndim != 4 {
             return Err(BarracudaError::invalid_op(
                 "attention",
-                format!("query requires 4D tensor [batch, heads, seq_len, head_dim], got {}D", q_ndim)
+                format!(
+                    "query requires 4D tensor [batch, heads, seq_len, head_dim], got {}D",
+                    q_ndim
+                ),
             ));
         }
         if k_ndim != 4 {
             return Err(BarracudaError::invalid_op(
                 "attention",
-                format!("key requires 4D tensor [batch, heads, seq_len, head_dim], got {}D", k_ndim)
+                format!(
+                    "key requires 4D tensor [batch, heads, seq_len, head_dim], got {}D",
+                    k_ndim
+                ),
             ));
         }
         if v_ndim != 4 {
             return Err(BarracudaError::invalid_op(
                 "attention",
-                format!("value requires 4D tensor [batch, heads, seq_len, head_dim], got {}D", v_ndim)
+                format!(
+                    "value requires 4D tensor [batch, heads, seq_len, head_dim], got {}D",
+                    v_ndim
+                ),
             ));
         }
 

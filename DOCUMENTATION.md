@@ -27,15 +27,24 @@
 
 ## Current State (February 16, 2026)
 
+- **Three Springs Validation** — 313+ checks across hotSpring (195), wetSpring (48), airSpring (70)
+- **Unified Math Library** — Fused Map-Reduce, Kriging, Cosine Similarity f64, Batched ET₀
+- **37 New Evolution Tests** — Unit, E2E, chaos, fault, precision coverage for unified primitives
+- **log_f64 Bug Fix** — Coefficients halved (~1e-3 → ~1e-15 precision), discovered by wetSpring
+- **hotSpring Bug Fixes** — `target` keyword, SHADER_F64 device creation
+- **Deep Debt Evolution** — Comprehensive audit and ecoBin v2.0 compliance
+- **ecoBin Compliance** — TOML preferred, XDG paths, rustix for signals, semantic naming
+- **Platform Paths** — `platform_paths` module for cross-platform path resolution
+- **NPU Executor** — `NpuExecutor` implements `ComputeExecutor` for unified hardware discovery
 - **Device Registry** — Physical device deduplication with backend preference (Vulkan > Metal > DX12 > GL)
 - **F64 Reduce Suite** — ProdReduceF64, VarianceReduceF64, NormReduceF64, CumprodF64
 - **F64 Unified Math Language Suite** — CholeskyF64, TriangularSolveF64, LennardJonesF64, CoulombF64, MorseF64
 - **GPU-Resident Pipeline Complete** — Zero CPU↔GPU round-trips during iteration
 - **hotSpring Evolution Complete** — 169/169 nuclear EOS acceptance checks on consumer GPU
 - **Math Primitives Absorbed** — Broyden mixing, FD gradients, weighted inner products, Hermite/Laguerre f64
-- **47 new evolution tests** — Unit, E2E, chaos, fault coverage for absorbed primitives
+- **84 new evolution tests** — 47 hotSpring + 37 three springs (unit, E2E, chaos, fault, precision)
 - **0 clippy warnings with -D warnings**
-- **15,700+ tests passing**, 0 failing (400+ scientific middleware tests)
+- **15,700+ tests passing**, 0 failing (500+ scientific middleware tests)
 - **480+ WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
 - **Shader-first**: ALL math is WGSL primary, ToadStool dispatches to GPU/CPU
 - **Scientific middleware** (14 modules: linalg, linalg::sparse, numerical, special, stats, optimize, surrogate, sample, pde, interpolate, dispatch, pipeline, mixing, grid — 400+ tests, 0 unsafe)

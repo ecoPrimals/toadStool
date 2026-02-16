@@ -174,7 +174,7 @@ async fn test_detector_multiple_sequential_calls() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detector_concurrent_calls() {
     let detector = BareMetalDetector::new();
-    
+
     // Run multiple concurrent detections
     let (r1, r2, r3, r4) = tokio::join!(
         detector.detect(),
@@ -182,7 +182,7 @@ async fn test_detector_concurrent_calls() {
         detector.detect(),
         detector.detect()
     );
-    
+
     assert!(r1.is_ok());
     assert!(r2.is_ok());
     assert!(r3.is_ok());

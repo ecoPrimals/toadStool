@@ -38,6 +38,18 @@ pub struct SandboxConfig {
 
 impl Default for SandboxConfig {
     fn default() -> Self {
+        // Platform-agnostic path resolution (ecoBin v2.0 compliant)
+        let sandbox_root = std::env::var("XDG_DATA_HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| {
+                std::env::var("HOME")
+                    .map(|h| PathBuf::from(h).join(".local/share"))
+                    .unwrap_or_else(|_| std::env::temp_dir())
+            })
+            .join("toadstool/sandbox");
+
+        let temp_dir = std::env::temp_dir().join("toadstool");
+
         Self {
             advanced_features_enabled: true,
             default_isolation_level: IsolationLevel::Standard,
@@ -45,8 +57,8 @@ impl Default for SandboxConfig {
             enable_capability_dropping: true,
             enable_namespace_isolation: cfg!(target_os = "linux"),
             enable_resource_limits: true,
-            sandbox_root: PathBuf::from("/var/lib/toadstool/sandbox"),
-            temp_dir: PathBuf::from("/tmp/toadstool"),
+            sandbox_root,
+            temp_dir,
             max_concurrent_sandboxes: 100,
             cleanup_timeout_secs: 30,
             enable_monitoring: true,

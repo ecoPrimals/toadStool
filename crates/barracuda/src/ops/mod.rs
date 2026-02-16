@@ -173,12 +173,14 @@ pub mod spatial_dropout;
 pub mod topk;
 
 // Reduction operations (f64) - Full f64 precision for scientific computing
-pub mod sum_reduce_f64;
-pub mod max_abs_diff_f64;
-pub mod prod_reduce_f64;
-pub mod variance_reduce_f64;
-pub mod norm_reduce_f64;
 pub mod cumprod_f64;
+pub mod fused_map_reduce_f64; // Unified pattern: Shannon, Simpson, norms, etc.
+pub mod kriging_f64; // Spatial interpolation (airSpring, wetSpring)
+pub mod max_abs_diff_f64;
+pub mod norm_reduce_f64;
+pub mod prod_reduce_f64;
+pub mod sum_reduce_f64;
+pub mod variance_reduce_f64;
 
 // Utility operations
 pub mod broadcast;
@@ -544,13 +546,8 @@ pub use conv1d::Conv1D;
 pub use conv2d::Conv2D;
 pub use conv3d::Conv3D;
 pub use cross_entropy::CrossEntropy;
-pub use cumsum_f64::CumsumF64;
-pub use sum_reduce_f64::SumReduceF64;
-pub use max_abs_diff_f64::MaxAbsDiffF64;
-pub use prod_reduce_f64::ProdReduceF64;
-pub use variance_reduce_f64::VarianceReduceF64;
-pub use norm_reduce_f64::NormReduceF64;
 pub use cumprod_f64::CumprodF64;
+pub use cumsum_f64::CumsumF64;
 pub use cumsum_wgsl::Cumsum;
 pub use depthwise_conv2d::DepthwiseConv2D;
 pub use embedding_wgsl::Embedding;
@@ -563,14 +560,19 @@ pub use group_norm_wgsl::GroupNorm;
 pub use instance_norm_wgsl::InstanceNorm;
 pub use l1_loss_wgsl::L1Loss;
 pub use matmul::MatMul;
+pub use max_abs_diff_f64::MaxAbsDiffF64;
 pub use maxpool2d::MaxPool2D;
 pub use mse_loss::MseLoss;
+pub use norm_reduce_f64::NormReduceF64;
 pub use one_hot_wgsl::OneHot;
+pub use prod_reduce_f64::ProdReduceF64;
 pub use repeat_wgsl::Repeat;
 pub use rmsnorm::RMSNorm;
 pub use softplus_wgsl::Softplus;
 pub use split::Split;
+pub use sum_reduce_f64::SumReduceF64;
 pub use transposed_conv2d::TransposedConv2D;
+pub use variance_reduce_f64::VarianceReduceF64;
 // pub use dice_loss::DiceLoss; // Function-only module
 pub use huber_loss::HuberLoss;
 pub use rmsprop::RMSprop;

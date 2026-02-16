@@ -155,7 +155,7 @@ pub enum DisplayMethod {
     },
 
     /// Resize a window
-    #[serde(rename = "display.resizeWindow")]
+    #[serde(rename = "display.resize_window")]
     ResizeWindow {
         /// Window ID to resize
         window_id: String,
@@ -173,14 +173,14 @@ pub enum DisplayMethod {
     },
 
     /// Subscribe to input events
-    #[serde(rename = "display.subscribeInput")]
+    #[serde(rename = "display.subscribe_input")]
     SubscribeInput {
         /// Window ID for events
         window_id: String,
     },
 
     /// Poll for pending events
-    #[serde(rename = "display.pollEvents")]
+    #[serde(rename = "display.poll_events")]
     PollEvents,
 
     /// Get display capabilities
@@ -276,7 +276,7 @@ mod tests {
 
     #[test]
     fn test_jsonrpc_notification() {
-        let notif = JsonRpcRequest::notification("display.inputEvent", None);
+        let notif = JsonRpcRequest::notification("display.input_event", None);
         assert!(notif.id.is_none());
     }
 

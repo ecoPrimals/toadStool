@@ -154,23 +154,11 @@ impl IpcClient {
             });
         }
 
-        // Unix socket with primal name
-        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
-            if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
-                format!("/run/user/{}", uid)
-            } else {
-                "/tmp/biomeos-runtime".to_string()
-            }
-        });
+        // Unix socket with primal name (ecoBin v2.0 compliant)
+        let socket_path = toadstool_common::platform_paths::biomeos_runtime_dir()
+            .join(format!("{}.sock", primal_name.to_lowercase()));
 
-        endpoints.push(Endpoint::Unix {
-            path: format!(
-                "{}/biomeos/{}.sock",
-                runtime_dir,
-                primal_name.to_lowercase()
-            )
-            .into(),
-        });
+        endpoints.push(Endpoint::Unix { path: socket_path });
 
         // Tier 2: TCP with environment-based port discovery
         // Deep Debt: No hardcoded ports for other primals.

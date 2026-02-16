@@ -7,6 +7,146 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-16] - Three Springs Validation + Bug Fixes + Deep Debt Evolution
+
+**Impact**: Three validation projects (313+ checks); three critical bug fixes; ecoBin v2.0 compliance.
+
+#### Validation Projects
+
+- **hotSpring** (nuclear physics): 195/195 checks — HFB, MD, eigensolve, BCS
+- **wetSpring** (life science): 48/48 checks — Shannon, Simpson, Bray-Curtis
+- **airSpring** (precision agriculture): 70/70 Rust + 142 Python — FAO-56 ET₀, soil, water balance
+
+#### math_f64.wgsl Precision Evolution
+
+All transcendental functions now use the `(zero + literal)` pattern for full f64 precision:
+
+- **exp_f64()**: Updated coefficients and 2^k scaling (O(log k) vs O(k) before)
+- **sin_f64()**, **cos_f64()**: Full precision Taylor coefficients, added c15 term
+- **sinh_f64()**, **cosh_f64()**: Updated to use precision pattern
+- **erf_f64()**: Abramowitz & Stegun with full precision constants
+- **gamma_f64()**, **lanczos_core_f64()**: Lanczos coefficients at full f64
+- **bessel_j0_f64()**: Polynomial coefficients at full f64
+
+This addresses wetSpring Priority 3 (`exp_f64` in math_f64.wgsl) and ensures all
+NVVM-rejected builtins (log, exp, pow, sin, cos) have ~1e-15 precision implementations.
+
+#### New Shaders
+
+- **cosine_similarity_f64.wgsl**: f64 cosine similarity for MS2 spectral matching (wetSpring Priority 2)
+  - Matrix mode: N×M all-pairs similarity
+  - Single-pair mode: workgroup reduction for efficient single comparison
+  - Uses (zero + literal) pattern throughout
+
+- **fused_map_reduce_f64.wgsl**: Unified single-dispatch map+reduce (wetSpring Priority 1)
+  - MapOp: Identity, Shannon, Simpson, Square, Abs, Log, Negate
+  - ReduceOp: Sum, Max, Min, Product
+  - Convenience methods: `shannon_entropy()`, `simpson_index()`, `sum_of_squares()`
+  - Smart CPU/GPU routing: CPU fallback for n < 1024
+
+- **batched_elementwise_f64.wgsl**: Unified batched computation template (airSpring)
+  - FAO-56 Penman-Monteith ET₀ (full implementation)
+  - Water balance daily update
+  - One workgroup per batch element pattern
+
+- **kriging_f64.wgsl + KrigingF64**: Spatial interpolation (airSpring + wetSpring)
+  - Ordinary Kriging with 4 variogram models (Spherical, Exponential, Gaussian, Linear)
+  - Kriging variance (uncertainty estimation)
+  - Simple Kriging variant for known mean
+  - Empirical variogram fitting via method of moments
+
+### Test Suite: `three_springs_evolution_tests.rs`
+
+Comprehensive testing for all three springs evolution primitives:
+
+- **Unit Tests (19)**: Shannon entropy, Simpson index, variograms, kriging interpolation
+- **E2E Tests (3)**: Biodiversity pipeline, soil moisture mapping, combined diversity+spatial
+- **Chaos Tests (8)**: Large counts, sparse data, co-located points, extrapolation, repeated ops
+- **Fault Tests (8)**: Empty inputs, NaN/Inf handling, invalid parameters, edge cases
+- **Precision Tests (3)**: Shannon/Simpson accuracy suite, Kahan summation verification
+
+Total: **37 passing tests** validating the unified math library across all springs
+
+#### Critical Bug Fixes
+
+- **`log_f64()` coefficients halved** (`math_f64.wgsl`) — wetSpring discovery:
+  - Root cause: atanh series coefficients were `2/3, 2/5, 2/7...` but should be `1/3, 1/5, 1/7...`
+  - The outer `2 * s * (1 + s² * p)` already provides the factor of 2
+  - Effect: ~1e-3 precision → ~1e-15 precision
+  - Validated by: wetSpring Shannon entropy (`counts=[10,20,30,40] → 1.27985422...`)
+  - Discovery: wetSpring life science validation (GPU vs CPU Shannon entropy)
+
+- **`zero + literal` pattern documented**:
+  - `f64(0.333...)` truncates through f32, losing ~7 digits
+  - Correct pattern: `let zero = x - x; let c = zero + 0.333...;`
+  - Updated GOTCHAS in `math_f64.wgsl` header
+
+- **Native f64 builtins clarified**:
+  - WORKS: `sqrt`, `abs`, `min`, `max`, `floor`, `ceil`
+  - REJECTED by NVVM: `log`, `exp`, `pow`, `sin`, `cos` (not in WGSL spec)
+
+- **`target` WGSL reserved keyword** (`batched_bisection_f64.wgsl`) — hotSpring discovery:
+  - Root cause: `target` is a WGSL reserved keyword, naga rejects shader
+  - Fix: Renamed `target` → `target_val` in `polynomial_test()` function
+  - Impact: All BCS bisection GPU calls now work
+
+- **`from_adapter_index()` not requesting SHADER_F64** (`wgpu_device.rs`) — hotSpring discovery:
+  - Root cause: Device created with `Features::empty()` even when adapter supports f64
+  - Symptom: "Using f64 values requires FLOAT64 flag" error on any f64 shader
+  - Fix: Inspect `adapter.features()` and request SHADER_F64/F16/TIMESTAMP_QUERY
+  - Impact: All `WgpuDevice` creation paths now properly enable f64 support
+
+#### Added
+
+#### Added
+
+- **Platform-Agnostic Path Resolution** (`toadstool_common::platform_paths`):
+  - `PlatformPaths` — XDG-compliant path resolution (runtime, data, cache, temp)
+  - `PathEnv` — Environment snapshot for testability
+  - Platform detection: Linux, macOS, Windows, Android, WASM
+  - ToadStool-specific: `toadstool_socket()`, `primal_socket()`, `biomeos_runtime_dir()`
+  - Eliminates all hardcoded `/run/user/`, `/tmp/` paths
+
+- **TOML Configuration Support** (ecoBin preferred format):
+  - `load_biome_manifest()` — Supports both TOML (preferred) and YAML (legacy)
+  - `SecurityPolicyManager` — Loads/saves TOML with YAML fallback
+  - `manifest_to_toml()` — TOML rendering for templates
+  - New policies saved as `.toml` (pure Rust, no C dependencies)
+
+- **NPU Executor** (`barracuda::npu_executor`):
+  - `NpuExecutor` implementing `ComputeExecutor` trait
+  - Wraps `AkidaExecutor` for unified hardware discovery
+  - NPU-specific capabilities: int8/int16, sparse ops, ~1W power
+
+- **Test Coverage Expansion**:
+  - 6 new tests in `unibin.rs` (biomeos directory, TCP discovery, exit codes)
+  - 12 new tests in `manual_jsonrpc.rs` (all method dispatch paths)
+  - Tests for platform paths, TOML loading, policy management
+
+#### Changed
+
+- **Dependency Evolution**:
+  - CLI tests: `libc::kill` → `rustix::process::kill_process` (ecoBin compliant)
+  - All socket paths use `std::env::temp_dir()` fallback instead of hardcoded `/tmp`
+
+- **Semantic Method Naming** (wateringHole standard):
+  - `display.resizeWindow` → `display.resize_window`
+  - `display.subscribeInput` → `display.subscribe_input`
+  - `display.pollEvents` → `display.poll_events`
+  - `display.inputEvent` → `display.input_event`
+
+- **Unsafe Code Evolution**:
+  - `isolated_memory.rs`: `slice.fill(0)` instead of `ptr::write_bytes`
+  - `cpu.rs`: Safer zeroing via slice operations
+  - `Drop` implementations now call `wipe()` (no duplicate unsafe)
+
+#### Fixed
+
+- `cargo fmt` — 39 files reformatted
+- `cargo doc` — Fixed unclosed HTML tag in shader_optimization_bench.rs
+
+---
+
 ### [2026-02-16] - Device Registry + F64 Reduce Operations Suite
 
 **Impact**: Physical device deduplication prevents duplicate workload dispatch; complete f64 reduce operation suite.

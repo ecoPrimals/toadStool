@@ -188,15 +188,14 @@ impl VarianceReduceF64 {
                 push_constant_ranges: &[],
             });
 
-        let pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("variance_reduce_f64"),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point: "variance_reduce_f64",
-                });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("variance_reduce_f64"),
+                layout: Some(&pl),
+                module: &shader,
+                entry_point: "variance_reduce_f64",
+            });
 
         let n = data.len();
         let wg_size = 256;
@@ -204,14 +203,13 @@ impl VarianceReduceF64 {
 
         // Create input buffer
         let input_bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
-        let input_buffer =
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("VarianceReduce input"),
-                    contents: &input_bytes,
-                    usage: wgpu::BufferUsages::STORAGE,
-                });
+        let input_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("VarianceReduce input"),
+                contents: &input_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         // Output: 3 f64s per workgroup (count, mean, M2)
         let partial_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -300,12 +298,11 @@ impl VarianceReduceF64 {
             mapped_at_creation: false,
         });
 
-        let mut encoder =
-            device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("VarianceReduce readback"),
-                });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("VarianceReduce readback"),
+            });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
         device.queue.submit(Some(encoder.finish()));
 
@@ -382,11 +379,7 @@ mod tests {
 
         let data: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let mean = VarianceReduceF64::mean(device, &data).unwrap();
-        assert!(
-            (mean - 3.0).abs() < 1e-6,
-            "Mean should be 3, got {}",
-            mean
-        );
+        assert!((mean - 3.0).abs() < 1e-6, "Mean should be 3, got {}", mean);
     }
 
     #[tokio::test]

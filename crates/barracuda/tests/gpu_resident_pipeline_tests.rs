@@ -336,9 +336,7 @@ async fn test_grid_quadrature_gemm_batched() {
     let w: Vec<f64> = (0..batch * grid)
         .map(|i| 1.0 + ((i as f64) * 0.02).cos() * 0.5)
         .collect();
-    let quad_weights: Vec<f64> = (0..grid)
-        .map(|i| 1.0 / (1.0 + i as f64 * 0.1))
-        .collect();
+    let quad_weights: Vec<f64> = (0..grid).map(|i| 1.0 / (1.0 + i as f64 * 0.1)).collect();
 
     let gemm = GridQuadratureGemm::new(device, batch, n, grid).unwrap();
     let result = gemm.execute(&phi, &w, &quad_weights).unwrap();
@@ -394,7 +392,13 @@ async fn test_grid_quadrature_gemm_large_grid() {
     for b in 0..batch {
         for i in 0..n {
             let h_ii = result[b * n * n + i * n + i];
-            assert!(h_ii >= 0.0, "Diagonal H[{},{}] = {} should be >= 0", i, i, h_ii);
+            assert!(
+                h_ii >= 0.0,
+                "Diagonal H[{},{}] = {} should be >= 0",
+                i,
+                i,
+                h_ii
+            );
         }
     }
 }
@@ -420,7 +424,10 @@ async fn test_scf_convergence_loop_simulation() {
     // Simulate convergence by reducing differences each iteration
     for iter in 0..max_iter {
         // "New" energies converging to target
-        let e_new: Vec<f64> = e_old.iter().map(|e| e - 0.1 * (0.5_f64).powi(iter)).collect();
+        let e_new: Vec<f64> = e_old
+            .iter()
+            .map(|e| e - 0.1 * (0.5_f64).powi(iter))
+            .collect();
 
         // Check convergence using GPU op
         let diff = MaxAbsDiffF64::compute(device.clone(), &e_old, &e_new).unwrap();
@@ -621,7 +628,10 @@ async fn test_e2e_persistent_buffers_scf() {
 
     // Verify buffers exist
     let stats = ctx.stats();
-    assert!(stats.buffer_allocations >= 6, "Should have allocated 6 buffers");
+    assert!(
+        stats.buffer_allocations >= 6,
+        "Should have allocated 6 buffers"
+    );
 
     // Simulate multiple SCF iterations using same buffers
     for iter in 0..3 {

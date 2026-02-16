@@ -258,7 +258,12 @@ impl WgpuDevice {
             .ok_or_else(|| {
                 let device = registry.get_device(device_index);
                 let backends: Vec<_> = device
-                    .map(|d| d.backends.iter().map(|b| format!("{:?}", b.backend)).collect())
+                    .map(|d| {
+                        d.backends
+                            .iter()
+                            .map(|b| format!("{:?}", b.backend))
+                            .collect()
+                    })
                     .unwrap_or_default();
 
                 BarracudaError::device(format!(
@@ -326,11 +331,29 @@ impl WgpuDevice {
             info.device_type
         );
 
+        // BUG FIX (Feb 16 2026 — hotSpring finding):
+        // Must request SHADER_F64 when adapter supports it, otherwise all f64
+        // WGSL shaders fail with "Using f64 values requires FLOAT64 flag".
+        // Also request SHADER_F16 and TIMESTAMP_QUERY if available.
+        let adapter_features = adapter.features();
+        let mut required_features = wgpu::Features::empty();
+        if adapter_features.contains(wgpu::Features::SHADER_F64) {
+            required_features |= wgpu::Features::SHADER_F64;
+            log::info!("  SHADER_F64: enabled");
+        }
+        if adapter_features.contains(wgpu::Features::SHADER_F16) {
+            required_features |= wgpu::Features::SHADER_F16;
+            log::info!("  SHADER_F16: enabled");
+        }
+        if adapter_features.contains(wgpu::Features::TIMESTAMP_QUERY) {
+            required_features |= wgpu::Features::TIMESTAMP_QUERY;
+        }
+
         let (device, queue): (wgpu::Device, wgpu::Queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some("BarraCUDA device"),
-                    required_features: wgpu::Features::empty(),
+                    required_features,
                     required_limits: super::tensor_context::science_limits(),
                 },
                 None,

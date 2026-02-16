@@ -69,9 +69,9 @@
 //! # Ok::<(), barracuda::error::BarracudaError>(())
 //! ```
 
+pub mod batched_bisection_gpu; // EVOLVED: GPU batched root-finding (Feb 16, 2026)
 pub mod bfgs;
 pub mod bisect;
-pub mod batched_bisection_gpu; // EVOLVED: GPU batched root-finding (Feb 16, 2026)
 pub mod brent;
 pub mod diagnostics;
 pub mod eval_record;
@@ -82,9 +82,9 @@ pub mod newton;
 pub mod penalty;
 pub mod solver_state;
 
+pub use batched_bisection_gpu::{BatchedBisectionGpu, BisectionResult};
 pub use bfgs::{bfgs, bfgs_numerical, numerical_gradient, BfgsConfig, BfgsResult};
 pub use bisect::bisect;
-pub use batched_bisection_gpu::{BatchedBisectionGpu, BisectionResult};
 pub use brent::{brent, brent_minimize, BrentResult};
 pub use diagnostics::{
     convergence_diagnostics, should_stop_early, ConvergenceDiagnostics, ConvergenceState,

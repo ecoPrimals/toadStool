@@ -330,25 +330,22 @@ impl SpinOrbitGpu {
                 push_constant_ranges: &[],
             });
 
-        let pipeline = self
-            .device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("SpinOrbit Pipeline"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point,
-            });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("SpinOrbit Pipeline"),
+                    layout: Some(&pl),
+                    module: &shader,
+                    entry_point,
+                });
 
         // Create buffers
-        let params = SpinOrbitParams::new(
-            batch_size as u32,
-            n_states as u32,
-            n_grid as u32,
-            dr,
-            w0,
-        );
-        let params_buffer = self.device.create_uniform_buffer("SpinOrbit Params", &params);
+        let params =
+            SpinOrbitParams::new(batch_size as u32, n_states as u32, n_grid as u32, dr, w0);
+        let params_buffer = self
+            .device
+            .create_uniform_buffer("SpinOrbit Params", &params);
 
         let wf_buffer = self
             .device
@@ -435,25 +432,28 @@ impl SpinOrbitGpu {
         // Add density buffer if needed
         let density_buffer;
         if let Some(dens) = density {
-            density_buffer = self
-                .device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("SpinOrbit density"),
-                    contents: bytemuck::cast_slice(dens),
-                    usage: wgpu::BufferUsages::STORAGE,
-                });
+            density_buffer =
+                self.device
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("SpinOrbit density"),
+                        contents: bytemuck::cast_slice(dens),
+                        usage: wgpu::BufferUsages::STORAGE,
+                    });
             bg_entries.push(wgpu::BindGroupEntry {
                 binding: 6,
                 resource: density_buffer.as_entire_binding(),
             });
         }
 
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("SpinOrbit BG"),
-            layout: &bgl,
-            entries: &bg_entries,
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("SpinOrbit BG"),
+                layout: &bgl,
+                entries: &bg_entries,
+            });
 
         // Execute
         let n_threads = batch_size * n_states;
@@ -649,6 +649,9 @@ mod tests {
             .unwrap();
 
         assert_eq!(h_so.len(), 1);
-        assert!(h_so[0].abs() > 0.0, "Should have non-zero spin-orbit correction");
+        assert!(
+            h_so[0].abs() > 0.0,
+            "Should have non-zero spin-orbit correction"
+        );
     }
 }

@@ -123,15 +123,14 @@ impl SumReduceF64 {
                 push_constant_ranges: &[],
             });
 
-        let pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some(entry_point),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point,
-                });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(entry_point),
+                layout: Some(&pl),
+                module: &shader,
+                entry_point,
+            });
 
         // Two-pass reduction
         let n = data.len();
@@ -140,14 +139,13 @@ impl SumReduceF64 {
 
         // Pass 1: data -> partial sums
         let input_bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
-        let input_buffer =
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Reduce input"),
-                    contents: &input_bytes,
-                    usage: wgpu::BufferUsages::STORAGE,
-                });
+        let input_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Reduce input"),
+                contents: &input_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         let partial_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Reduce partials"),
@@ -290,12 +288,11 @@ impl SumReduceF64 {
             mapped_at_creation: false,
         });
 
-        let mut encoder =
-            device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Reduce readback"),
-                });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Reduce readback"),
+            });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
         device.queue.submit(Some(encoder.finish()));
 
@@ -372,10 +369,6 @@ mod tests {
 
         let data = vec![3.0_f64, 1.0, 4.0, 1.0, 5.0, 9.0, 2.0, 6.0];
         let max = SumReduceF64::max(device, &data).unwrap();
-        assert!(
-            (max - 9.0).abs() < 1e-10,
-            "Max should be 9, got {}",
-            max
-        );
+        assert!((max - 9.0).abs() < 1e-10, "Max should be 9, got {}", max);
     }
 }

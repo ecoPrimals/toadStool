@@ -117,15 +117,14 @@ impl LinearMixer {
                     push_constant_ranges: &[],
                 });
 
-        let pipeline =
-            device
-                .device()
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("linear_mixer_pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "mix_linear",
-                });
+        let pipeline = device
+            .device()
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("linear_mixer_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "mix_linear",
+            });
 
         Ok(Self {
             device,
@@ -279,7 +278,11 @@ impl LinearMixer {
         let result: Vec<f64> = data
             .chunks_exact(8)
             .map(|chunk| {
-                f64::from_le_bytes(chunk.try_into().expect("chunks_exact(8) yields 8-byte chunks"))
+                f64::from_le_bytes(
+                    chunk
+                        .try_into()
+                        .expect("chunks_exact(8) yields 8-byte chunks"),
+                )
             })
             .collect();
 

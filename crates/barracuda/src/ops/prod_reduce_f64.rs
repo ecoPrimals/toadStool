@@ -120,15 +120,14 @@ impl ProdReduceF64 {
                 push_constant_ranges: &[],
             });
 
-        let pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some(entry_point),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point,
-                });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(entry_point),
+                layout: Some(&pl),
+                module: &shader,
+                entry_point,
+            });
 
         // Two-pass reduction
         let n = data.len();
@@ -137,14 +136,13 @@ impl ProdReduceF64 {
 
         // Pass 1: data -> partial products
         let input_bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
-        let input_buffer =
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("ProdReduce input"),
-                    contents: &input_bytes,
-                    usage: wgpu::BufferUsages::STORAGE,
-                });
+        let input_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("ProdReduce input"),
+                contents: &input_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         let partial_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("ProdReduce partials"),
@@ -284,12 +282,11 @@ impl ProdReduceF64 {
             mapped_at_creation: false,
         });
 
-        let mut encoder =
-            device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("ProdReduce readback"),
-                });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ProdReduce readback"),
+            });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
         device.queue.submit(Some(encoder.finish()));
 

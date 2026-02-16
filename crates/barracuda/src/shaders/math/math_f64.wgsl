@@ -6,32 +6,50 @@
 // operations (+, -, *, /, comparisons). Originally created because WGSL spec
 // does not guarantee f64 builtins, but see NATIVE BUILTINS section below.
 //
-// NATIVE f64 BUILTINS (Feb 15 2026 hotSpring finding):
-// The following builtins DO work with f64 via Naga/wgpu on NVIDIA/AMD GPUs:
-//   sqrt(f64), exp(f64), log(f64), abs(f64), floor(f64), ceil(f64),
-//   round(f64), inverseSqrt(f64)
+// NATIVE f64 BUILTINS (Feb 15-16 2026 hotSpring + wetSpring findings):
+// WORKS on NVIDIA/AMD via Vulkan/wgpu:
+//   sqrt(f64), abs(f64), min(f64), max(f64), floor(f64), ceil(f64)
+// REJECTED by NVVM (not in WGSL spec — "NVVM compilation failed: 1"):
+//   log(f64), exp(f64), pow(f64), sin(f64), cos(f64)
+//
+// This means ANY shader using log/exp/pow on f64 MUST use software
+// implementations from this library. Shannon entropy (p * log(p)) was the
+// first wetSpring workload to hit this — the fix is log_f64() below.
+//
 // Performance (RTX 4070, 1M elements):
-//   - Native sqrt: 1.5× faster than sqrt_f64
-//   - Native exp: 2.2× faster than exp_f64
-// For MD force kernels, prefer native builtins when available.
-// This library remains useful for: sin, cos, tan, erf, gamma, etc. (no native)
+//   - Native sqrt: 1.5× faster than sqrt_f64 (use native when available)
+// For MD force kernels, prefer native sqrt/abs. For transcendentals, use
+// the software implementations in this library.
 //
 // CRITICAL NAGA/WGSL GOTCHAS:
 // 1. AbstractFloat (0.0, 1.0) does NOT auto-promote to f64
 //    - WRONG: return 1.0;
 //    - RIGHT: return x - x + 1.0;  // (f64 - f64) + AbstractFloat → f64
 //
-// 2. Literals > f32 range cause parse errors
+// 2. f64 CONSTANT PRECISION (Feb 16 2026 — wetSpring finding):
+//    f64(0.333...) truncates through f32, losing ~7 digits of precision!
+//    - WRONG: let c = f64(0.3333333333333333);  // truncates to f32 first
+//    - WRONG: f64_const(x, 0.333...);           // f32 parameter truncates
+//    - RIGHT: let zero = x - x; let c = zero + 0.3333333333333333;
+//    The (zero + literal) pattern preserves all 15-16 significant digits.
+//    Use this for polynomial coefficients and high-precision constants.
+//
+// 3. Literals > f32 range cause parse errors
 //    - WRONG: return 1e308;
 //    - RIGHT: construct via arithmetic
 //
-// 3. No f64 vec types (vec2<f64>, vec3<f64>, vec4<f64> not supported)
+// 4. No f64 vec types (vec2<f64>, vec3<f64>, vec4<f64> not supported)
 //
-// 4. NEVER use i32 % for negative wrapping — produces incorrect results on
+// 5. NEVER use i32 % for negative wrapping — produces incorrect results on
 //    NVIDIA/Naga/Vulkan. Use branch-based conditionals instead:
 //    - WRONG: ((x % n) + n) % n
 //    - RIGHT: var w = x; if (w < 0) { w = w + n; } if (w >= n) { w = w - n; }
 //    See: hotSpring ALERT Feb 15 2026 - cell-list bug diagnosis.
+//
+// 6. NATIVE f64 BUILTINS (Feb 15-16 2026 — hotSpring + wetSpring findings):
+//    WORKS on NVIDIA/AMD via Vulkan/wgpu:  sqrt, abs, min, max, floor, ceil
+//    REJECTED by NVVM (not in WGSL spec):  log, exp, pow, sin, cos
+//    Use software implementations in this library for transcendentals.
 //
 // PRECISION TARGETS:
 // - sqrt_f64: Full f64 precision (5 Newton-Raphson iterations)
@@ -217,53 +235,64 @@ const INV_LN2: f64 = 1.4426950408889634;   // 1/ln(2)
 
 /// Exponential function using range reduction and polynomial
 /// exp(x) = 2^k * exp(r) where r = x - k*ln(2) and |r| < ln(2)/2
+///
+/// PRECISION FIX (Feb 16 2026 — wetSpring pattern):
+/// Uses (zero + literal) pattern for all f64 constants to preserve full precision.
+/// f64_const() truncates through f32, losing ~7 digits.
 fn exp_f64(x: f64) -> f64 {
-    let zero = f64_const(x, 0.0);
-    let one = f64_const(x, 1.0);
+    // Use (zero + literal) pattern for full f64 precision
+    let zero = x - x;
+    let one = zero + 1.0;
+    let two = zero + 2.0;
+    let half = zero + 0.5;
     
     // Handle special cases
-    let overflow_thresh = f64_const(x, 709.0);  // ln(DBL_MAX) ≈ 709.78
-    let underflow_thresh = f64_const(x, -745.0);
+    let overflow_thresh = zero + 709.0;  // ln(DBL_MAX) ≈ 709.78
+    let underflow_thresh = zero - 745.0;
     
     if (x > overflow_thresh) {
         // Return large value (can't express infinity; 1e308 overflows f32 literal)
-        return f64_const(x, 1e38) * f64_const(x, 1e38);
+        let big = zero + 1e38;
+        return big * big;
     }
     if (x < underflow_thresh) {
         return zero;
     }
-    if (abs_f64(x) < f64_const(x, 1e-15)) {
+    let tiny = zero + 1e-15;
+    if (abs_f64(x) < tiny) {
         return one + x;  // exp(x) ≈ 1 + x for small x
     }
     
     // Range reduction: x = k*ln(2) + r
-    let inv_ln2 = f64_const(x, 1.4426950408889634);
+    // Full precision constants via (zero + literal)
+    let inv_ln2 = zero + 1.4426950408889634;
     let k_f = round_f64(x * inv_ln2);
     let k = i32(k_f);
     
-    // r = x - k * ln(2) (high precision)
-    let ln2_hi = f64_const(x, 0.693147180559945286);
-    let ln2_lo = f64_const(x, 1.94821509970e-17);
+    // r = x - k * ln(2) (high precision, split into hi/lo parts)
+    let ln2_hi = zero + 0.6931471805599453;
+    let ln2_lo = zero + 2.3190468138462996e-17;
     var r = x - k_f * ln2_hi;
     r = r - k_f * ln2_lo;
     
     // Polynomial approximation for exp(r) - 1
     // Using degree-13 minimax polynomial for |r| < ln(2)/2
+    // Coefficients via (zero + literal) for full f64 precision
     let r2 = r * r;
     
-    // Coefficients for (exp(r) - 1 - r) / r^2
-    let c2 = f64_const(x, 0.5);
-    let c3 = f64_const(x, 0.166666666666666657);
-    let c4 = f64_const(x, 0.0416666666666666644);
-    let c5 = f64_const(x, 0.00833333333333401156);
-    let c6 = f64_const(x, 0.00138888888889774492);
-    let c7 = f64_const(x, 0.000198412698413242405);
-    let c8 = f64_const(x, 0.0000248015873015873016);
-    let c9 = f64_const(x, 0.00000275573192239858925);
-    let c10 = f64_const(x, 2.75573191913863016e-7);
-    let c11 = f64_const(x, 2.50521083854417202e-8);
-    let c12 = f64_const(x, 2.08767569878681002e-9);
-    let c13 = f64_const(x, 1.60590438368216145e-10);
+    // Coefficients: 1/n! series with minimax optimization
+    let c2 = zero + 0.5;
+    let c3 = zero + 0.16666666666666666;
+    let c4 = zero + 0.041666666666666664;
+    let c5 = zero + 0.008333333333333333;
+    let c6 = zero + 0.001388888888888889;
+    let c7 = zero + 0.0001984126984126984;
+    let c8 = zero + 0.0000248015873015873;
+    let c9 = zero + 0.0000027557319223985893;
+    let c10 = zero + 2.7557319223985888e-7;
+    let c11 = zero + 2.505210838544172e-8;
+    let c12 = zero + 2.08767569878681e-9;
+    let c13 = zero + 1.6059043836821613e-10;
     
     // Horner's method evaluation
     var p = c13;
@@ -282,16 +311,84 @@ fn exp_f64(x: f64) -> f64 {
     // exp(r) = 1 + r + r^2 * p
     var exp_r = one + r + r2 * p;
     
-    // Scale by 2^k
-    // Since we can't use ldexp, multiply by powers of 2
-    if (k > 0) {
-        for (var i = 0; i < k; i = i + 1) {
-            exp_r = exp_r * f64_const(x, 2.0);
+    // Scale by 2^k using repeated squaring (faster than loop)
+    // Split into positive and negative cases
+    if (k >= 0) {
+        // Build 2^k via repeated doubling in chunks
+        var scale = one;
+        var remaining = k;
+        // Handle large exponents in chunks of 64 (2^64 fits in f64)
+        let pow64 = zero + 18446744073709551616.0;  // 2^64
+        while (remaining >= 64) {
+            scale = scale * pow64;
+            remaining = remaining - 64;
         }
-    } else if (k < 0) {
-        for (var i = 0; i > k; i = i - 1) {
-            exp_r = exp_r * f64_const(x, 0.5);
+        // Handle remaining bits
+        let pow32 = zero + 4294967296.0;  // 2^32
+        if (remaining >= 32) {
+            scale = scale * pow32;
+            remaining = remaining - 32;
         }
+        let pow16 = zero + 65536.0;  // 2^16
+        if (remaining >= 16) {
+            scale = scale * pow16;
+            remaining = remaining - 16;
+        }
+        let pow8 = zero + 256.0;  // 2^8
+        if (remaining >= 8) {
+            scale = scale * pow8;
+            remaining = remaining - 8;
+        }
+        let pow4 = zero + 16.0;  // 2^4
+        if (remaining >= 4) {
+            scale = scale * pow4;
+            remaining = remaining - 4;
+        }
+        if (remaining >= 2) {
+            scale = scale * (zero + 4.0);
+            remaining = remaining - 2;
+        }
+        if (remaining >= 1) {
+            scale = scale * two;
+        }
+        exp_r = exp_r * scale;
+    } else {
+        // Negative k: multiply by 2^(-|k|) = 1/2^|k|
+        var scale = one;
+        var remaining = -k;
+        let inv_pow64 = zero + 5.421010862427522e-20;  // 2^-64
+        while (remaining >= 64) {
+            scale = scale * inv_pow64;
+            remaining = remaining - 64;
+        }
+        let inv_pow32 = zero + 2.3283064365386963e-10;  // 2^-32
+        if (remaining >= 32) {
+            scale = scale * inv_pow32;
+            remaining = remaining - 32;
+        }
+        let inv_pow16 = zero + 0.0000152587890625;  // 2^-16
+        if (remaining >= 16) {
+            scale = scale * inv_pow16;
+            remaining = remaining - 16;
+        }
+        let inv_pow8 = zero + 0.00390625;  // 2^-8
+        if (remaining >= 8) {
+            scale = scale * inv_pow8;
+            remaining = remaining - 8;
+        }
+        let inv_pow4 = zero + 0.0625;  // 2^-4
+        if (remaining >= 4) {
+            scale = scale * inv_pow4;
+            remaining = remaining - 4;
+        }
+        if (remaining >= 2) {
+            scale = scale * (zero + 0.25);
+            remaining = remaining - 2;
+        }
+        if (remaining >= 1) {
+            scale = scale * half;
+        }
+        exp_r = exp_r * scale;
     }
     
     return exp_r;
@@ -336,15 +433,25 @@ fn log_f64(x: f64) -> f64 {
     let s = z / (two + z);  // s = (y-1)/(y+1)
     let s2 = s * s;
     
-    // Polynomial for atanh(s)/s - 1, evaluated at s^2
-    // atanh(s) = s + s^3/3 + s^5/5 + s^7/7 + ...
-    let c1 = f64_const(x, 0.6666666666666735130);  // 2/3
-    let c2 = f64_const(x, 0.3999999999940941908);  // 2/5
-    let c3 = f64_const(x, 0.2857142874366239149);  // 2/7
-    let c4 = f64_const(x, 0.2222219843214978396);  // 2/9
-    let c5 = f64_const(x, 0.1818357216161805012);  // 2/11
-    let c6 = f64_const(x, 0.1531383769920937332);  // 2/13
-    let c7 = f64_const(x, 0.1479819860511658591);  // 2/15
+    // Polynomial for log(y) via atanh transformation:
+    // log(y) = 2 * atanh((y-1)/(y+1)) = 2 * s * (1 + s²/3 + s⁴/5 + s⁶/7 + ...)
+    // Coefficients are 1/(2k+1) with minimax optimization.
+    // The outer "two * s * (1 + s² * p)" provides the factor of 2.
+    //
+    // BUG FIX (Feb 16 2026 — wetSpring handoff):
+    // Original coefficients were 2/3, 2/5, etc. (doubled), causing ~1e-3 error.
+    // Corrected to 1/3, 1/5, etc. for ~1e-15 precision.
+    //
+    // NOTE: Use (x - x + literal) pattern to preserve full f64 precision.
+    // f64_const() truncates through f32, losing ~7 digits.
+    let zero = x - x;
+    let c1 = zero + 0.3333333333333367565;   // ≈ 1/3 (minimax)
+    let c2 = zero + 0.1999999999970470954;   // ≈ 1/5 (minimax)
+    let c3 = zero + 0.1428571437183119575;   // ≈ 1/7 (minimax)
+    let c4 = zero + 0.1111109921607489198;   // ≈ 1/9 (minimax)
+    let c5 = zero + 0.0909178608080902506;   // ≈ 1/11 (minimax)
+    let c6 = zero + 0.0765691884960468666;   // ≈ 1/13 (minimax)
+    let c7 = zero + 0.0739909930255829295;   // ≈ 1/15 (minimax)
     
     // Horner's evaluation
     var p = c7;
@@ -475,31 +582,35 @@ fn pow_f64(base: f64, exponent: f64) -> f64 {
 // ============================================================================
 
 /// Sine using Taylor series with range reduction
+/// PRECISION FIX (Feb 16 2026): Uses (zero + literal) pattern for full f64 precision.
 fn sin_f64(x: f64) -> f64 {
-    let pi = f64_const(x, 3.14159265358979323846);
-    let two_pi = f64_const(x, 6.28318530717958647693);
-    let half_pi = f64_const(x, 1.57079632679489661923);
-    let zero = f64_const(x, 0.0);
-    let one = f64_const(x, 1.0);
+    // Full precision constants via (zero + literal)
+    let zero = x - x;
+    let one = zero + 1.0;
+    let pi = zero + 3.141592653589793;
+    let two_pi = zero + 6.283185307179586;
+    let neg_pi = zero - 3.141592653589793;
     
     // Range reduction to [-pi, pi]
     var y = x;
     while (y > pi) { y = y - two_pi; }
-    while (y < -pi) { y = y + two_pi; }
+    while (y < neg_pi) { y = y + two_pi; }
     
     // Taylor series: sin(x) = x - x^3/3! + x^5/5! - x^7/7! + ...
     let x2 = y * y;
     
-    // Coefficients
-    let c3 = f64_const(x, -0.166666666666666667);   // -1/6
-    let c5 = f64_const(x, 0.00833333333333333333);  // 1/120
-    let c7 = f64_const(x, -0.000198412698412698413); // -1/5040
-    let c9 = f64_const(x, 0.00000275573192239858907); // 1/362880
-    let c11 = f64_const(x, -2.50521083854417188e-8);
-    let c13 = f64_const(x, 1.60590438368216146e-10);
+    // Coefficients via (zero + literal) for full f64 precision
+    let c3 = zero - 0.16666666666666666;    // -1/6
+    let c5 = zero + 0.008333333333333333;   // 1/120
+    let c7 = zero - 0.0001984126984126984;  // -1/5040
+    let c9 = zero + 0.0000027557319223985888;  // 1/362880
+    let c11 = zero - 2.505210838544172e-8;
+    let c13 = zero + 1.6059043836821613e-10;
+    let c15 = zero - 7.647163731819816e-13;
     
     // Horner's method
-    var p = c13;
+    var p = c15;
+    p = p * x2 + c13;
     p = p * x2 + c11;
     p = p * x2 + c9;
     p = p * x2 + c7;
@@ -510,8 +621,10 @@ fn sin_f64(x: f64) -> f64 {
 }
 
 /// Cosine using sin(x + pi/2)
+/// PRECISION FIX (Feb 16 2026): Uses (zero + literal) for full f64 precision.
 fn cos_f64(x: f64) -> f64 {
-    let half_pi = f64_const(x, 1.57079632679489661923);
+    let zero = x - x;
+    let half_pi = zero + 1.5707963267948966;
     return sin_f64(x + half_pi);
 }
 
@@ -526,16 +639,20 @@ fn tan_f64(x: f64) -> f64 {
 
 /// Hyperbolic sine: sinh(x) = (exp(x) - exp(-x)) / 2
 fn sinh_f64(x: f64) -> f64 {
+    let zero = x - x;
+    let two = zero + 2.0;
     let ex = exp_f64(x);
     let emx = exp_f64(-x);
-    return (ex - emx) / f64_const(x, 2.0);
+    return (ex - emx) / two;
 }
 
 /// Hyperbolic cosine: cosh(x) = (exp(x) + exp(-x)) / 2
 fn cosh_f64(x: f64) -> f64 {
+    let zero = x - x;
+    let two = zero + 2.0;
     let ex = exp_f64(x);
     let emx = exp_f64(-x);
-    return (ex + emx) / f64_const(x, 2.0);
+    return (ex + emx) / two;
 }
 
 /// Hyperbolic tangent: tanh(x) = sinh(x) / cosh(x)
@@ -551,34 +668,38 @@ fn tanh_f64(x: f64) -> f64 {
 
 /// Lanczos core: Gamma(x) for x >= 0.5 via Lanczos approximation (g=7, n=9)
 /// Split out so gamma_f64 can call it iteratively (WGSL forbids recursion).
+/// PRECISION FIX (Feb 16 2026): Uses (zero + literal) pattern for full f64 precision.
 fn lanczos_core_f64(x: f64) -> f64 {
-    let one = f64_const(x, 1.0);
-    let half = f64_const(x, 0.5);
-    let g = f64_const(x, 7.0);
-    let c0 = f64_const(x, 0.99999999999980993);
-    let c1 = f64_const(x, 676.5203681218851);
-    let c2 = f64_const(x, -1259.1392167224028);
-    let c3 = f64_const(x, 771.32342877765313);
-    let c4 = f64_const(x, -176.61502916214059);
-    let c5 = f64_const(x, 12.507343278686905);
-    let c6 = f64_const(x, -0.13857109526572012);
-    let c7 = f64_const(x, 9.9843695780195716e-6);
-    let c8 = f64_const(x, 1.5056327351493116e-7);
+    let zero = x - x;
+    let one = zero + 1.0;
+    let half = zero + 0.5;
+    let g = zero + 7.0;
+    
+    // Lanczos coefficients via (zero + literal) for full f64 precision
+    let c0 = zero + 0.99999999999980993;
+    let c1 = zero + 676.5203681218851;
+    let c2 = zero - 1259.1392167224028;
+    let c3 = zero + 771.32342877765313;
+    let c4 = zero - 176.61502916214059;
+    let c5 = zero + 12.507343278686905;
+    let c6 = zero - 0.13857109526572012;
+    let c7 = zero + 9.9843695780195716e-6;
+    let c8 = zero + 1.5056327351493116e-7;
 
     let z = x - one;
 
     var sum = c0;
     sum = sum + c1 / (z + one);
-    sum = sum + c2 / (z + f64_const(x, 2.0));
-    sum = sum + c3 / (z + f64_const(x, 3.0));
-    sum = sum + c4 / (z + f64_const(x, 4.0));
-    sum = sum + c5 / (z + f64_const(x, 5.0));
-    sum = sum + c6 / (z + f64_const(x, 6.0));
-    sum = sum + c7 / (z + f64_const(x, 7.0));
-    sum = sum + c8 / (z + f64_const(x, 8.0));
+    sum = sum + c2 / (z + (zero + 2.0));
+    sum = sum + c3 / (z + (zero + 3.0));
+    sum = sum + c4 / (z + (zero + 4.0));
+    sum = sum + c5 / (z + (zero + 5.0));
+    sum = sum + c6 / (z + (zero + 6.0));
+    sum = sum + c7 / (z + (zero + 7.0));
+    sum = sum + c8 / (z + (zero + 8.0));
 
     let t = z + g + half;
-    let sqrt_2pi = f64_const(x, 2.5066282746310005);
+    let sqrt_2pi = zero + 2.5066282746310005;
 
     return sqrt_2pi * pow_f64(t, z + half) * exp_f64(-t) * sum;
 }
@@ -586,17 +707,21 @@ fn lanczos_core_f64(x: f64) -> f64 {
 /// Gamma function using Lanczos approximation (non-recursive)
 /// Accurate to ~15 digits for positive real arguments.
 /// Reflection formula for x < 0.5 inlined to avoid WGSL recursion ban.
+/// PRECISION FIX (Feb 16 2026): Uses (zero + literal) pattern for full f64 precision.
 fn gamma_f64(x: f64) -> f64 {
-    let half = f64_const(x, 0.5);
-    let one = f64_const(x, 1.0);
-    let pi = f64_const(x, 3.14159265358979323846);
+    let zero = x - x;
+    let half = zero + 0.5;
+    let one = zero + 1.0;
+    let pi = zero + 3.141592653589793;
 
     if (x < half) {
         // Reflection: Gamma(x) = pi / (sin(pi*x) * Gamma(1-x))
         // Since 1-x >= 0.5, lanczos_core handles it directly.
         let sin_pix = sin_f64(pi * x);
-        if (abs_f64(sin_pix) < f64_const(x, 1e-15)) {
-            return f64_const(x, 1e38) * f64_const(x, 1e38);  // Pole (~1e76, large enough)
+        let tiny = zero + 1e-15;
+        if (abs_f64(sin_pix) < tiny) {
+            let big = zero + 1e38;
+            return big * big;  // Pole (~1e76, large enough)
         }
         return pi / (sin_pix * lanczos_core_f64(one - x));
     }
@@ -609,17 +734,18 @@ fn gamma_f64(x: f64) -> f64 {
 // ============================================================================
 
 /// Error function using Abramowitz & Stegun approximation
+/// PRECISION FIX (Feb 16 2026): Uses (zero + literal) pattern for full f64 precision.
 fn erf_f64(x: f64) -> f64 {
-    let zero = f64_const(x, 0.0);
-    let one = f64_const(x, 1.0);
+    let zero = x - x;
+    let one = zero + 1.0;
     
-    // Constants
-    let a1 = f64_const(x, 0.254829592);
-    let a2 = f64_const(x, -0.284496736);
-    let a3 = f64_const(x, 1.421413741);
-    let a4 = f64_const(x, -1.453152027);
-    let a5 = f64_const(x, 1.061405429);
-    let p = f64_const(x, 0.3275911);
+    // Constants via (zero + literal) for full f64 precision
+    let a1 = zero + 0.254829592;
+    let a2 = zero - 0.284496736;
+    let a3 = zero + 1.421413741;
+    let a4 = zero - 1.453152027;
+    let a5 = zero + 1.061405429;
+    let p = zero + 0.3275911;
     
     let sign = sign_f64(x);
     let ax = abs_f64(x);
@@ -640,30 +766,33 @@ fn erf_f64(x: f64) -> f64 {
 // ============================================================================
 
 /// Bessel function J0 using polynomial approximation
+/// PRECISION FIX (Feb 16 2026): Uses (zero + literal) pattern for full f64 precision.
 fn bessel_j0_f64(x: f64) -> f64 {
+    let zero = x - x;
+    let one = zero + 1.0;
     let ax = abs_f64(x);
-    let one = f64_const(x, 1.0);
+    let eight = zero + 8.0;
     
-    if (ax < f64_const(x, 8.0)) {
+    if (ax < eight) {
         let y = x * x;
-        let num = f64_const(x, 57568490574.0) + y * (
-            f64_const(x, -13362590354.0) + y * (
-            f64_const(x, 651619640.7) + y * (
-            f64_const(x, -11214424.18) + y * (
-            f64_const(x, 77392.33017) + y * f64_const(x, -184.9052456)))));
-        let den = f64_const(x, 57568490411.0) + y * (
-            f64_const(x, 1029532985.0) + y * (
-            f64_const(x, 9494680.718) + y * (
-            f64_const(x, 59272.64853) + y * (
-            f64_const(x, 267.8532712) + y))));
+        let num = (zero + 57568490574.0) + y * (
+            (zero - 13362590354.0) + y * (
+            (zero + 651619640.7) + y * (
+            (zero - 11214424.18) + y * (
+            (zero + 77392.33017) + y * (zero - 184.9052456)))));
+        let den = (zero + 57568490411.0) + y * (
+            (zero + 1029532985.0) + y * (
+            (zero + 9494680.718) + y * (
+            (zero + 59272.64853) + y * (
+            (zero + 267.8532712) + y))));
         return num / den;
     } else {
-        let z = f64_const(x, 8.0) / ax;
+        let z = eight / ax;
         let y = z * z;
-        let xx = ax - f64_const(x, 0.785398164);
-        let p0 = one + y * (f64_const(x, -0.1098628627e-2) + y * f64_const(x, 0.2734510407e-4));
-        let q0 = f64_const(x, -0.1562499995e-1) + y * (f64_const(x, 0.1430488765e-3) + y * f64_const(x, -0.6911147651e-5));
-        return sqrt_f64(f64_const(x, 0.636619772) / ax) * (cos_f64(xx) * p0 - z * sin_f64(xx) * q0);
+        let xx = ax - (zero + 0.785398164);
+        let p0 = one + y * ((zero - 0.0010986286270000001) + y * (zero + 0.000027345104070000003));
+        let q0 = (zero - 0.01562499995) + y * ((zero + 0.0001430488765) + y * (zero - 0.0000069111476510000005));
+        return sqrt_f64((zero + 0.636619772) / ax) * (cos_f64(xx) * p0 - z * sin_f64(xx) * q0);
     }
 }
 

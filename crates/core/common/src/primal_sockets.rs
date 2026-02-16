@@ -111,20 +111,22 @@ impl SocketPathEnv {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Pure logic: resolve runtime dir from environment snapshot
+///
+/// **ecoBin v2.0 Compliant**: No hardcoded `/run/user/` or `/tmp/` paths.
+/// Uses XDG_RUNTIME_DIR or platform-agnostic temp_dir fallback.
 #[must_use]
 pub fn resolve_runtime_dir(env: &SocketPathEnv) -> String {
     if let Some(ref xdg) = env.xdg_runtime_dir {
         return xdg.clone();
     }
-    // Try Linux standard path
-    if let Ok(uid) = crate::uid_detector::get_user_id() {
-        let linux_standard = format!("/run/user/{}", uid);
-        if std::path::Path::new(&linux_standard).exists() {
-            return linux_standard;
-        }
-    }
+
+    // Platform-agnostic fallback: use std::env::temp_dir()
+    let temp_dir = std::env::temp_dir();
     let username = env.user.as_deref().unwrap_or("default");
-    format!("/tmp/toadstool-runtime-{}", username)
+    temp_dir
+        .join(format!("toadstool-runtime-{}", username))
+        .to_string_lossy()
+        .to_string()
 }
 
 /// Pure logic: resolve biomeos dir

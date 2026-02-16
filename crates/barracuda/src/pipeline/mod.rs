@@ -286,11 +286,14 @@ impl PipelineBuilder {
                 binding += 1;
             }
 
-            let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some(&format!("Pipeline:{}:BG", stage.name)),
-                layout: &stage.bind_group_layout,
-                entries: &entries,
-            });
+            let bind_group = self
+                .device
+                .device
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some(&format!("Pipeline:{}:BG", stage.name)),
+                    layout: &stage.bind_group_layout,
+                    entries: &entries,
+                });
 
             compiled_stages.push(CompiledStage {
                 name: stage.name,
@@ -318,9 +321,12 @@ pub struct ComputePipeline {
 impl ComputePipeline {
     /// Write data to a pipeline buffer
     pub fn write_f64(&self, name: &str, data: &[f64]) -> Result<()> {
-        let buffer = self.buffers.get(name).ok_or_else(|| BarracudaError::InvalidInput {
-            message: format!("Unknown buffer: {}", name),
-        })?;
+        let buffer = self
+            .buffers
+            .get(name)
+            .ok_or_else(|| BarracudaError::InvalidInput {
+                message: format!("Unknown buffer: {}", name),
+            })?;
 
         let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
         self.device.queue.write_buffer(buffer, 0, &bytes);
@@ -329,9 +335,12 @@ impl ComputePipeline {
 
     /// Write f32 data to a pipeline buffer
     pub fn write_f32(&self, name: &str, data: &[f32]) -> Result<()> {
-        let buffer = self.buffers.get(name).ok_or_else(|| BarracudaError::InvalidInput {
-            message: format!("Unknown buffer: {}", name),
-        })?;
+        let buffer = self
+            .buffers
+            .get(name)
+            .ok_or_else(|| BarracudaError::InvalidInput {
+                message: format!("Unknown buffer: {}", name),
+            })?;
 
         let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
         self.device.queue.write_buffer(buffer, 0, &bytes);
@@ -340,9 +349,12 @@ impl ComputePipeline {
 
     /// Write raw bytes to a pipeline buffer
     pub fn write_bytes(&self, name: &str, data: &[u8]) -> Result<()> {
-        let buffer = self.buffers.get(name).ok_or_else(|| BarracudaError::InvalidInput {
-            message: format!("Unknown buffer: {}", name),
-        })?;
+        let buffer = self
+            .buffers
+            .get(name)
+            .ok_or_else(|| BarracudaError::InvalidInput {
+                message: format!("Unknown buffer: {}", name),
+            })?;
 
         self.device.queue.write_buffer(buffer, 0, data);
         Ok(())
@@ -350,12 +362,12 @@ impl ComputePipeline {
 
     /// Execute all pipeline stages with a single GPU submit
     pub fn execute(&self) -> Result<()> {
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Pipeline Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Pipeline Encoder"),
+                });
 
         for stage in &self.stages {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -373,9 +385,12 @@ impl ComputePipeline {
 
     /// Read f64 data from a pipeline buffer
     pub fn read_f64(&self, name: &str) -> Result<Vec<f64>> {
-        let buffer = self.buffers.get(name).ok_or_else(|| BarracudaError::InvalidInput {
-            message: format!("Unknown buffer: {}", name),
-        })?;
+        let buffer = self
+            .buffers
+            .get(name)
+            .ok_or_else(|| BarracudaError::InvalidInput {
+                message: format!("Unknown buffer: {}", name),
+            })?;
 
         let size = buffer.size() as usize;
         let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -385,12 +400,12 @@ impl ComputePipeline {
             mapped_at_creation: false,
         });
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Pipeline Read"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Pipeline Read"),
+                });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, size as u64);
         self.device.queue.submit(Some(encoder.finish()));
 
@@ -420,9 +435,12 @@ impl ComputePipeline {
 
     /// Read f32 data from a pipeline buffer
     pub fn read_f32(&self, name: &str) -> Result<Vec<f32>> {
-        let buffer = self.buffers.get(name).ok_or_else(|| BarracudaError::InvalidInput {
-            message: format!("Unknown buffer: {}", name),
-        })?;
+        let buffer = self
+            .buffers
+            .get(name)
+            .ok_or_else(|| BarracudaError::InvalidInput {
+                message: format!("Unknown buffer: {}", name),
+            })?;
 
         let size = buffer.size() as usize;
         let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -432,12 +450,12 @@ impl ComputePipeline {
             mapped_at_creation: false,
         });
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Pipeline Read"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Pipeline Read"),
+                });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, size as u64);
         self.device.queue.submit(Some(encoder.finish()));
 

@@ -318,11 +318,7 @@ impl ResourceOptimizer {
                 // Record GPU name
                 gpu_types.push(info.name.clone());
 
-                tracing::debug!(
-                    "GPU discovered: {} ({:?})",
-                    info.name,
-                    info.device_type
-                );
+                tracing::debug!("GPU discovered: {} ({:?})", info.name, info.device_type);
             }
         }
 

@@ -434,7 +434,7 @@ impl DisplayServer {
 
                 Ok(serde_json::json!({"destroyed": true}))
             }
-            "display.resizeWindow" => {
+            "display.resize_window" => {
                 let params: serde_json::Value = request.params.clone().unwrap_or_default();
                 let window_id_str = params["window_id"]
                     .as_str()

@@ -446,7 +446,10 @@ impl Default for StandaloneExecutor {
 #[async_trait::async_trait]
 impl WorkloadExecutor for StandaloneExecutor {
     async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
-        info!("Executing workload: {} (type: {})", submission.workload_id, submission.workload_type);
+        info!(
+            "Executing workload: {} (type: {})",
+            submission.workload_id, submission.workload_type
+        );
 
         // TODO: Connect to actual compute backends based on workload_type:
         // - "gpu_compute" → dispatch to WgpuDevice via Tensor API

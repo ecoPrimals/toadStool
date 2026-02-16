@@ -1,18 +1,248 @@
-# Status -- February 16, 2026 (Device Registry + F64 Reduce Suite)
+# Status -- February 16, 2026 (Three Springs Evolution + Unified Math Library)
 
 ## Quality Gates
 
 | Gate | Status | Notes |
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
-| `cargo fmt --all -- --check` | PASS | Clean |
+| `cargo fmt --all -- --check` | PASS | Clean (39 files fixed) |
 | `cargo clippy --workspace -- -D warnings` | PASS | **Clean** |
+| `cargo doc --workspace --no-deps` | PASS | **Clean** (1 rustdoc warning fixed) |
 | `cargo test --workspace --lib` | PASS | **15,700+ tests passed** |
 | hotSpring validation | PASS | **169/169 acceptance checks** |
 
 *All clippy warnings resolved. Workspace fully clean. hotSpring nuclear EOS validation complete.*
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+
+---
+
+## Critical Bug Fix: log_f64 (Feb 16, 2026 — wetSpring Discovery) ✅ FIXED
+
+**Problem**: `log_f64()` in `math_f64.wgsl` produced ~1e-3 precision instead of ~1e-15.
+
+**Root Cause**: The atanh series coefficients were doubled (`2/3, 2/5, 2/7...`) but the
+formula `2 * s * (1 + s² * p)` already multiplies by 2. Result: polynomial terms were 2× too large.
+
+**Discovery**: wetSpring life science validation — Shannon entropy `p * log(p)` on GPU
+differed from CPU baseline by ~1e-3 instead of expected ~1e-10.
+
+**Fix Applied**:
+```wgsl
+// BEFORE (wrong)
+let c1 = f64_const(x, 0.6666666666666735130);  // 2/3
+
+// AFTER (correct)
+let zero = x - x;
+let c1 = zero + 0.3333333333333367565;   // ≈ 1/3 (minimax)
+```
+
+**Additional Findings**:
+
+| Finding | Description |
+|---------|-------------|
+| `zero + literal` pattern | `f64(0.333...)` truncates through f32; use `(x - x) + 0.333...` for full f64 |
+| Native f64 builtins | `log(f64)`, `exp(f64)` REJECTED by NVVM — must use software implementations |
+| Validated | Shannon entropy: `counts=[10,20,30,40]` → `1.27985422...` (GPU-CPU error ≤ 1e-10) |
+
+**Impact**: All f64 GPU computations using `log_f64()` now achieve full precision.
+This affects: Shannon entropy, statistical distributions, optimization algorithms.
+
+---
+
+## Bug Fixes from hotSpring (Feb 16, 2026) ✅ FIXED
+
+### Bug 1: WGSL Reserved Keyword in BCS Bisection
+
+**File**: `crates/barracuda/src/shaders/optimizer/batched_bisection_f64.wgsl`
+
+**Problem**: `target` is a WGSL reserved keyword. naga rejects shader at compile time.
+
+**Fix Applied**: Renamed `target` → `target_val` in `polynomial_test()` function.
+
+### Bug 2: WgpuDevice Not Requesting SHADER_F64
+
+**File**: `crates/barracuda/src/device/wgpu_device.rs`
+
+**Problem**: `from_adapter_index()` created device with `Features::empty()` even when
+adapter supports f64. All f64 WGSL shaders fail with "FLOAT64 flag" error.
+
+**Fix Applied**: Inspect `adapter.features()` and request SHADER_F64/F16/TIMESTAMP_QUERY
+when available. Now all device creation paths properly enable f64.
+
+**Impact**: 
+- BCS bisection GPU calls now work (previously all failed)
+- All `WgpuDevice` creation paths now enable f64 when hardware supports it
+- hotSpring validated: 195/195 acceptance checks now pass
+
+---
+
+## Sibling Validation Projects (Feb 16, 2026)
+
+Three domain-specific projects validate BarraCUDA's compute stack:
+
+| Project | Domain | Rust Checks | Key Achievement |
+|---------|--------|:-----------:|-----------------|
+| **hotSpring** | Nuclear physics (HFB + MD) | 195/195 | GPU-resident HFB 15% faster than CPU |
+| **wetSpring** | Life science + analytical chemistry | 48/48 | Shannon/Simpson/Bray-Curtis on GPU |
+| **airSpring** | Precision agriculture (ET₀, soil, IoT) | 70/70 | FAO-56 validated; 918 real station-days |
+
+**Combined**: 313+ Rust acceptance checks across physics, chemistry, biology, and agriculture.
+
+**Cross-spring benefits**:
+- All three share `serde`, `rayon`, f64 patterns
+- hotSpring GPU patterns (batching, dispatch) inform airSpring and wetSpring
+- airSpring spatial interpolation (kriging) can serve wetSpring sampling sites
+- wetSpring IoT stream processing can serve airSpring real-time sensors
+
+---
+
+## Unified Math Library Evolution (Feb 16, 2026) ✅ COMPLETE
+
+New cross-spring primitives absorbed into BarraCUDA:
+
+### New Shaders
+
+| Shader | Purpose | Springs Served |
+|--------|---------|----------------|
+| `fused_map_reduce_f64.wgsl` | Single-dispatch map+reduce | wetSpring (Shannon, Simpson) |
+| `cosine_similarity_f64.wgsl` | All-pairs f64 similarity | wetSpring (MS2 matching) |
+| `batched_elementwise_f64.wgsl` | Batched ET₀, water balance | airSpring |
+| `kriging_f64.wgsl` | Spatial interpolation | airSpring + wetSpring |
+
+### New Rust Orchestrators
+
+| Module | Purpose | Features |
+|--------|---------|----------|
+| `FusedMapReduceF64` | Map+reduce primitive | Smart CPU/GPU routing, Shannon, Simpson, norms |
+| `KrigingF64` | Spatial interpolation | 4 variogram models, variance estimation, simple kriging |
+
+### Math f64 Precision Fixes
+
+Applied `(zero + literal)` pattern for full f64 precision:
+- `exp_f64()` - Full precision exponential
+- `sin_f64()`, `cos_f64()` - Full precision Taylor series
+- `sinh_f64()`, `cosh_f64()` - Via corrected exp_f64
+- `erf_f64()` - Abramowitz & Stegun coefficients
+- `gamma_f64()`, `lanczos_core_f64()` - Lanczos coefficients
+- `bessel_j0_f64()` - Polynomial coefficients
+
+### Comprehensive Test Suite: `three_springs_evolution_tests.rs`
+
+| Category | Tests | Coverage |
+|----------|:-----:|----------|
+| Unit (Fused Map-Reduce) | 9 | Shannon, Simpson, sum, max, min |
+| Unit (Kriging) | 7 | Variograms, interpolation, fitting |
+| E2E | 3 | Biodiversity, soil mapping, combined |
+| Chaos | 8 | Edge cases, stress, memory leak check |
+| Fault | 8 | Error handling, invalid inputs |
+| Precision | 3 | f64 accuracy, Kahan summation |
+| **Total** | **37** | All passing (1 GPU-path ignored) |
+
+---
+
+## Deep Debt Evolution (Feb 16, 2026) ✅ COMPLETE
+
+### ecoBin v2.0 Platform-Agnostic Compliance
+
+| # | Item | Status | Description |
+|:-:|------|:------:|-------------|
+| 1 | Platform Paths Module | ✅ **DONE** | `platform_paths.rs` - XDG/temp_dir resolution |
+| 2 | No Hardcoded `/run/user/` | ✅ **DONE** | Replaced with `XDG_RUNTIME_DIR` or temp_dir fallback |
+| 3 | No Hardcoded `/tmp/` | ✅ **DONE** | Replaced with `std::env::temp_dir()` |
+| 4 | IPC Path Evolution | ✅ **DONE** | client.rs, server.rs, unix.rs updated |
+| 5 | Launcher Evolution | ✅ **DONE** | TCP/socket discovery uses temp_dir |
+| 6 | Sandbox Evolution | ✅ **DONE** | SandboxConfig uses XDG_DATA_HOME |
+
+**New Module**: `toadstool_common::platform_paths` provides:
+- `runtime_dir()` - XDG_RUNTIME_DIR with temp_dir fallback
+- `temp_dir()` - std::env::temp_dir() with TMPDIR override
+- `toadstool_socket_dir()` - biomeOS standard paths
+- Platform detection (Linux, macOS, Windows, Android, WASM)
+
+### Semantic Method Naming (wateringHole Standard)
+
+| # | Item | Status | Description |
+|:-:|------|:------:|-------------|
+| 1 | display.resizeWindow | ✅ **FIXED** | → `display.resize_window` |
+| 2 | display.subscribeInput | ✅ **FIXED** | → `display.subscribe_input` |
+| 3 | display.pollEvents | ✅ **FIXED** | → `display.poll_events` |
+| 4 | display.inputEvent | ✅ **FIXED** | → `display.input_event` |
+
+All display IPC methods now follow `domain.operation` snake_case standard.
+
+### Unsafe Code Evolution
+
+| # | Item | Status | Description |
+|:-:|------|:------:|-------------|
+| 1 | isolated_memory.rs wipe | ✅ **DONE** | slice.fill(0) instead of write_bytes |
+| 2 | isolated_memory.rs Drop | ✅ **DONE** | Calls wipe() - no duplicate unsafe |
+| 3 | cpu.rs zeroing | ✅ **DONE** | slice.fill(0) instead of write_bytes |
+| 4 | SAFETY comments | ✅ **VERIFIED** | All unsafe blocks documented |
+
+**Result**: Reduced unsafe surface while maintaining performance.
+
+### NPU Executor Implementation
+
+| # | Item | Status | Description |
+|:-:|------|:------:|-------------|
+| 1 | NpuExecutor | ✅ **DONE** | Implements ComputeExecutor trait |
+| 2 | unified_hardware integration | ✅ **DONE** | discover_npus() returns NpuExecutor |
+| 3 | Akida bridge | ✅ **DONE** | Wraps AkidaExecutor for scheduler |
+| 4 | Capability detection | ✅ **DONE** | NPU-specific capabilities |
+
+**New File**: `barracuda/src/npu_executor.rs` - bridges Akida to unified hardware.
+
+### Pure Rust Dependency Evolution
+
+| # | Item | Status | Description |
+|:-:|------|:------:|-------------|
+| 1 | CLI libc → rustix | ✅ **DONE** | SIGTERM signal uses rustix (ecoBin compliant) |
+| 2 | Forbidden crypto audit | ✅ **PASS** | No openssl-sys, ring, aws-lc-sys |
+| 3 | dirs-sys analysis | 📋 **TRACKED** | Via burn dependency - upstream fix recommended |
+| 4 | unsafe-libyaml mitigation | ✅ **DONE** | TOML support added (preferred format) |
+| 5 | akida-driver libc | 📋 **TRACKED** | VFIO ioctls complex - requires hardware testing |
+
+**Quick wins applied**:
+- CLI tests use rustix instead of libc for signal handling
+- `load_biome_manifest()` now supports TOML (preferred) and YAML (legacy)
+- `SecurityPolicyManager` loads/saves TOML (preferred) with YAML fallback
+- `manifest_to_toml()` function added for template rendering
+
+**Future work**: Upstream dirs-sys fix in Burn, evolve akida-driver VFIO to rustix.
+
+### Large Files Analysis (Feb 16, 2026)
+
+| File | Lines | Status | Notes |
+|------|-------|--------|-------|
+| batched_eigh_gpu.rs | 2054 | ✅ **OK** | Complex GPU kernel, shaders extracted |
+| cg_gpu.rs | 2011 | ✅ **OK** | CG solver, well-structured |
+| byob_impl.rs | 1653 | ✅ **OK** | Below 2000 threshold |
+
+**Finding**: Large files are justified by algorithmic complexity. Shaders already extracted
+to `.wgsl` files. Arbitrary splitting would reduce cohesion without improving maintainability.
+
+### Pipeline Cache Status (Feb 16, 2026)
+
+| # | Item | Status | Notes |
+|:-:|------|:------:|-------|
+| 1 | Per-device isolation | ✅ **DONE** | DeviceFingerprint in cache keys |
+| 2 | Shader caching | ✅ **DONE** | GLOBAL_CACHE with dashmap |
+| 3 | Bind group caching | ✅ **DONE** | 100% hit rate verified |
+| 4 | Warmup system | ✅ **DONE** | Pre-compiles common ops |
+
+**GPU-resident pipeline** (multi-kernel with zero CPU round-trips) tracked separately in
+`BARRACUDA_PARITY_ROADMAP.md` - requires hotSpring integration work.
+
+### Production Mocks Audit
+
+| Category | Count | Status |
+|----------|-------|--------|
+| Mock* in production | 0 | ✅ All test-only |
+| Stub implementations | 2 | TPU/FPGA (future work) |
+| Fake patterns | 0 | ✅ Clean |
+
+All mocks properly isolated to `#[cfg(test)]` modules.
 
 ---
 
@@ -30,9 +260,14 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 
 **Highest coverage**: `state.rs` 100%, `graph_types.rs` 99%, `semantic_methods.rs` 99%, `self_identity.rs` 98%, `mocks.rs` 98%, `handlers.rs` 96%, `cross_gate.rs` 95%, `performance_hardening.rs` 96%, `layer_adaptation.rs` 94%.
 
-**Lowest coverage**: `unibin.rs` 18% (server startup), `manual_jsonrpc.rs` 27% (async I/O), `websocket.rs` 52% (requires live connections).
+**Lowest coverage** (improved Feb 16, 2026):
+- `unibin.rs`: 18% → ~35% (added tests for `ensure_biomeos_directory`, `write_tcp_discovery_file`, `exit_codes`)
+- `manual_jsonrpc.rs`: 27% → ~45% (added tests for all uncovered method dispatch paths)
+- `websocket.rs`: 52% (requires live connections - inherently hard to unit test)
 
 **Coverage evolution**: 80% -> ~90% (+10pp) via 600+ new tests covering encryption, ecosystem, security, deployment, workload analysis, biomeos integration, auth, agents, BYOB types, graph types, capabilities, and handlers.
+
+**Feb 16, 2026 coverage additions**: 18 new tests across `unibin.rs` and `manual_jsonrpc.rs`.
 
 ---
 

@@ -5,7 +5,7 @@
 //!
 //! Optimizations tested:
 //! 1. Workgroup size (64, 128, 256, 512)
-//! 2. Vectorization (f32 vs vec4<f32>)
+//! 2. Vectorization (f32 vs `vec4<f32>`)
 //! 3. Elements per thread (1, 4, 8)
 //! 4. FMA vs separate ops
 

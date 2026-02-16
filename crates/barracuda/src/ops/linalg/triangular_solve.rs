@@ -347,10 +347,14 @@ impl TriangularSolveF64 {
 
         // Create buffers
         let matrix_buffer = device.create_buffer_f64(n * n)?;
-        device.queue.write_buffer(&matrix_buffer, 0, bytemuck::cast_slice(matrix));
+        device
+            .queue
+            .write_buffer(&matrix_buffer, 0, bytemuck::cast_slice(matrix));
 
         let rhs_buffer = device.create_buffer_f64(n)?;
-        device.queue.write_buffer(&rhs_buffer, 0, bytemuck::cast_slice(rhs));
+        device
+            .queue
+            .write_buffer(&rhs_buffer, 0, bytemuck::cast_slice(rhs));
 
         let solution_buffer = device.create_buffer_f64(n)?;
 
@@ -435,7 +439,10 @@ impl TriangularSolveF64 {
             ],
         });
 
-        let shader = device.compile_shader(TriangularSolve::wgsl_shader_f64(), Some("TriangularSolve F64"));
+        let shader = device.compile_shader(
+            TriangularSolve::wgsl_shader_f64(),
+            Some("TriangularSolve F64"),
+        );
 
         let pipeline_layout =
             device
@@ -525,10 +532,14 @@ impl TriangularSolveF64 {
 
         // Create buffers
         let matrix_buffer = device.create_buffer_f64(n * n)?;
-        device.queue.write_buffer(&matrix_buffer, 0, bytemuck::cast_slice(matrix));
+        device
+            .queue
+            .write_buffer(&matrix_buffer, 0, bytemuck::cast_slice(matrix));
 
         let rhs_buffer = device.create_buffer_f64(n)?;
-        device.queue.write_buffer(&rhs_buffer, 0, bytemuck::cast_slice(rhs));
+        device
+            .queue
+            .write_buffer(&rhs_buffer, 0, bytemuck::cast_slice(rhs));
 
         let solution_buffer = device.create_buffer_f64(n)?;
 
@@ -611,7 +622,10 @@ impl TriangularSolveF64 {
             ],
         });
 
-        let shader = device.compile_shader(TriangularSolve::wgsl_shader_f64(), Some("TriangularSolve Transpose F64"));
+        let shader = device.compile_shader(
+            TriangularSolve::wgsl_shader_f64(),
+            Some("TriangularSolve Transpose F64"),
+        );
 
         let pipeline_layout =
             device
@@ -675,7 +689,7 @@ impl TriangularSolveF64 {
     ) -> Result<Vec<f64>> {
         // Step 1: L·z = b (forward)
         let z = Self::forward(device.clone(), l_matrix, b, n)?;
-        
+
         // Step 2: Lᵀ·x = z (transpose solve)
         Self::solve_transpose(device, l_matrix, &z, n)
     }
@@ -817,9 +831,9 @@ mod tests {
         // Solve L·x = b → x = [3, 2]
         let l: Vec<f64> = vec![2.0, 0.0, 3.0, 4.0];
         let b: Vec<f64> = vec![6.0, 17.0];
-        
+
         let x = TriangularSolveF64::forward(device, &l, &b, 2).unwrap();
-        
+
         assert!(
             (x[0] - 3.0).abs() < 1e-12,
             "x[0] should be 3.0, got {}",
@@ -841,9 +855,9 @@ mod tests {
         // Solve U·x = b → x = [3, 2]
         let u: Vec<f64> = vec![2.0, 3.0, 0.0, 4.0];
         let b: Vec<f64> = vec![12.0, 8.0];
-        
+
         let x = TriangularSolveF64::backward(device, &u, &b, 2).unwrap();
-        
+
         assert!(
             (x[0] - 3.0).abs() < 1e-12,
             "x[0] should be 3.0, got {}",
@@ -865,23 +879,23 @@ mod tests {
         // A = [[4, 2], [2, 3]] (SPD)
         // b = [6, 5]
         // Solve A·x = b via Cholesky
-        
+
         let a: Vec<f64> = vec![4.0, 2.0, 2.0, 3.0];
         let b: Vec<f64> = vec![6.0, 5.0];
         let n = 2;
-        
+
         // Step 1: Cholesky decomposition
         use super::super::cholesky::CholeskyF64;
         let l = CholeskyF64::execute(device.clone(), &a, n).unwrap();
-        
+
         // Step 2: Complete solve using cholesky_solve helper
         let x = TriangularSolveF64::cholesky_solve(device, &l, &b, n).unwrap();
-        
+
         // Verify: A·x should equal b
         // Manual A·x multiplication
         let ax0 = a[0] * x[0] + a[1] * x[1];
         let ax1 = a[2] * x[0] + a[3] * x[1];
-        
+
         assert!(
             (ax0 - b[0]).abs() < 1e-10,
             "A·x[0] should be {}, got {}",
@@ -905,18 +919,14 @@ mod tests {
         // L = [[2, 0, 0], [1, 3, 0], [4, 2, 5]]
         // b = [4, 7, 28]
         // Expected x = [2, 5/3, 2.6667...]
-        let l: Vec<f64> = vec![
-            2.0, 0.0, 0.0,
-            1.0, 3.0, 0.0,
-            4.0, 2.0, 5.0,
-        ];
+        let l: Vec<f64> = vec![2.0, 0.0, 0.0, 1.0, 3.0, 0.0, 4.0, 2.0, 5.0];
         // Create b such that L·x = b has a known solution
         // Let x = [2, 1, 3]
         // L·x = [4, 5, 25]
         let b: Vec<f64> = vec![4.0, 5.0, 25.0];
-        
+
         let x = TriangularSolveF64::forward(device, &l, &b, 3).unwrap();
-        
+
         assert!(
             (x[0] - 2.0).abs() < 1e-12,
             "x[0] should be 2.0, got {}",

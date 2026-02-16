@@ -366,7 +366,7 @@ impl DisplayClient {
         height: u32,
     ) -> Result<()> {
         let req = JsonRpcRequest::new(
-            "display.resizeWindow",
+            "display.resize_window",
             Some(serde_json::json!({
                 "window_id": window_id.as_string(),
                 "width": width,

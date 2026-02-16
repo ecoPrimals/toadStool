@@ -332,11 +332,7 @@ impl QuotaTracker {
                     self.quota_failures.fetch_add(1, Ordering::Relaxed);
                     return Err(BarracudaError::resource_exhausted(format!(
                         "Quota '{}': allocation of {} bytes would exceed limit ({} + {} > {})",
-                        self.quota.name,
-                        bytes,
-                        current,
-                        bytes,
-                        max_vram
+                        self.quota.name, bytes, current, bytes, max_vram
                     )));
                 }
 
@@ -359,7 +355,8 @@ impl QuotaTracker {
         self.current_buffers.fetch_add(1, Ordering::Relaxed);
 
         // Update stats
-        self.total_allocated_bytes.fetch_add(bytes, Ordering::Relaxed);
+        self.total_allocated_bytes
+            .fetch_add(bytes, Ordering::Relaxed);
 
         // Update peak
         let current = self.current_vram_bytes();

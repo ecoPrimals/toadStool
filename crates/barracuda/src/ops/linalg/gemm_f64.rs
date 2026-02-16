@@ -29,7 +29,7 @@ struct GemmParams {
     k: u32,
     n: u32,
     batch_size: u32,
-    alpha_lo: u32,  // f64 split into two u32s for Pod
+    alpha_lo: u32, // f64 split into two u32s for Pod
     alpha_hi: u32,
     beta_lo: u32,
     beta_hi: u32,
@@ -138,14 +138,7 @@ impl GemmF64 {
             mapped_at_creation: false,
         });
 
-        let params = GemmParams::new(
-            m as u32,
-            k as u32,
-            n as u32,
-            batch_size as u32,
-            alpha,
-            beta,
-        );
+        let params = GemmParams::new(m as u32, k as u32, n as u32, batch_size as u32, alpha, beta);
         let params_buffer = device.create_uniform_buffer("GEMM Params", &params);
 
         // Compile shader and create pipeline
@@ -280,12 +273,11 @@ impl GemmF64 {
             mapped_at_creation: false,
         });
 
-        let mut encoder =
-            device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("GEMM readback"),
-                });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("GEMM readback"),
+            });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
         device.queue.submit(Some(encoder.finish()));
 

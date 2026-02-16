@@ -147,10 +147,7 @@ async fn test_multi_device_pool_discovers_both_gpus() {
             let has_nvidia = pool.devices().iter().any(|d| d.vendor == GpuVendor::Nvidia);
             let has_amd = pool.devices().iter().any(|d| d.vendor == GpuVendor::Amd);
 
-            println!(
-                "Vendor coverage: NVIDIA={}, AMD={}",
-                has_nvidia, has_amd
-            );
+            println!("Vendor coverage: NVIDIA={}, AMD={}", has_nvidia, has_amd);
 
             if device_count >= 2 {
                 println!("✓ Multi-GPU configuration detected");
@@ -247,11 +244,17 @@ async fn test_acquire_multiple_devices_sequentially() {
     println!("\n=== Sequential Multi-Device Acquisition ===");
 
     // Acquire first device
-    let lease1 = pool.acquire_any().await.expect("Should acquire first device");
+    let lease1 = pool
+        .acquire_any()
+        .await
+        .expect("Should acquire first device");
     println!("Device 1: {} ({})", lease1.info().name, lease1.info().index);
 
     // Acquire second device (should get a different one)
-    let lease2 = pool.acquire_any().await.expect("Should acquire second device");
+    let lease2 = pool
+        .acquire_any()
+        .await
+        .expect("Should acquire second device");
     println!("Device 2: {} ({})", lease2.info().name, lease2.info().index);
 
     // They should be different devices

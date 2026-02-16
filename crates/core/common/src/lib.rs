@@ -25,6 +25,7 @@ pub mod error_codes;
 pub mod infant_discovery;
 pub mod interned_strings; // NEW: Zero-allocation string constants
 pub mod modern_utils;
+pub mod platform_paths; // NEW: Platform-agnostic path resolution (ecoBin v2.0)
 pub mod primal_capabilities; // Migration helper (deprecated)
 pub mod primal_discovery; // NEW: Runtime capability-based primal discovery
 pub mod primal_discovery_complete; // NEW: Complete capability-based discovery with mDNS

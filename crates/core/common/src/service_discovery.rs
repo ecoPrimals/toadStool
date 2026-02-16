@@ -371,9 +371,7 @@ impl ServiceDiscovery {
     async fn discover_via_mdns(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
         // NOTE: Full mDNS implementation available in crate::primal_discovery_mdns::MdnsAdapter
         // This wrapper layer bridges to DiscoveredService format (pending integration)
-        debug!(
-            "mDNS discovery: for full impl use crate::primal_discovery_mdns::MdnsAdapter"
-        );
+        debug!("mDNS discovery: for full impl use crate::primal_discovery_mdns::MdnsAdapter");
         Ok(Vec::new())
     }
 
@@ -392,9 +390,7 @@ impl ServiceDiscovery {
     async fn discover_from_config(&self, _path: &str) -> DiscoveryResult<Vec<DiscoveredService>> {
         // NOTE: TOML/environment-based discovery available in crate::infant_discovery module
         // This wrapper layer bridges to DiscoveredService format (pending integration)
-        debug!(
-            "Config-based discovery: for full impl use crate::infant_discovery module"
-        );
+        debug!("Config-based discovery: for full impl use crate::infant_discovery module");
         Ok(Vec::new())
     }
 

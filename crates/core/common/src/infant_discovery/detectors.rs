@@ -73,8 +73,11 @@ impl BareMetalDetector {
     fn is_containerized() -> bool {
         // Check for cgroup-based containerization (generic, not Docker-specific)
         std::path::Path::new("/.dockerenv").exists()
-            || std::fs::read_to_string("/proc/self/cgroup")
-                .is_ok_and(|content| content.contains("docker") || content.contains("containerd") || content.contains("lxc"))
+            || std::fs::read_to_string("/proc/self/cgroup").is_ok_and(|content| {
+                content.contains("docker")
+                    || content.contains("containerd")
+                    || content.contains("lxc")
+            })
     }
 }
 
@@ -91,7 +94,7 @@ impl SubstrateDetector for BareMetalDetector {
     {
         Box::pin(async move {
             let mut metadata = std::collections::HashMap::new();
-            
+
             // Detect deployment type based on hardware inspection
             let deployment_type = if Self::is_containerized() {
                 "container"
@@ -139,9 +142,7 @@ impl SubstrateDetector for BareMetalDetector {
 /// - No CloudDetector (vendor lock-in, not our concern)
 #[must_use]
 pub fn standard_detectors() -> Vec<Box<dyn SubstrateDetector>> {
-    vec![
-        Box::new(BareMetalDetector::new()),
-    ]
+    vec![Box::new(BareMetalDetector::new())]
 }
 
 // ============================================================================
@@ -149,7 +150,10 @@ pub fn standard_detectors() -> Vec<Box<dyn SubstrateDetector>> {
 // ============================================================================
 
 /// CloudEnvironment is deprecated - use HardwareEnvironment
-#[deprecated(since = "0.16.0", note = "Use HardwareEnvironment instead - vendor detection removed")]
+#[deprecated(
+    since = "0.16.0",
+    note = "Use HardwareEnvironment instead - vendor detection removed"
+)]
 pub type CloudEnvironment = HardwareEnvironment;
 
 #[cfg(test)]
@@ -212,7 +216,12 @@ mod tests {
         let substrate = result.unwrap();
         // Should have cpu_threads metadata
         assert!(substrate.metadata.contains_key("cpu_threads"));
-        let threads: usize = substrate.metadata.get("cpu_threads").unwrap().parse().unwrap();
+        let threads: usize = substrate
+            .metadata
+            .get("cpu_threads")
+            .unwrap()
+            .parse()
+            .unwrap();
         assert!(threads >= 1);
     }
 

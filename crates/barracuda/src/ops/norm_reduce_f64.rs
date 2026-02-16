@@ -146,15 +146,14 @@ impl NormReduceF64 {
                 push_constant_ranges: &[],
             });
 
-        let pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some(entry_point),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point,
-                });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(entry_point),
+                layout: Some(&pl),
+                module: &shader,
+                entry_point,
+            });
 
         let n = data.len();
         let wg_size = 256;
@@ -162,14 +161,13 @@ impl NormReduceF64 {
 
         // Create input buffer
         let input_bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
-        let input_buffer =
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("NormReduce input"),
-                    contents: &input_bytes,
-                    usage: wgpu::BufferUsages::STORAGE,
-                });
+        let input_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("NormReduce input"),
+                contents: &input_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         let partial_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("NormReduce partials"),
@@ -305,9 +303,7 @@ impl NormReduceF64 {
         if n_workgroups2 > 1 {
             let partials = Self::read_f64_buffer(&device, &final_buffer, n_workgroups2)?;
             if entry_point == "norm_linf_f64" {
-                return Ok(partials
-                    .iter()
-                    .fold(f64::NEG_INFINITY, |a, &b| a.max(b)));
+                return Ok(partials.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)));
             } else {
                 return Ok(partials.iter().sum());
             }
@@ -333,12 +329,11 @@ impl NormReduceF64 {
             mapped_at_creation: false,
         });
 
-        let mut encoder =
-            device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("NormReduce readback"),
-                });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("NormReduce readback"),
+            });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
         device.queue.submit(Some(encoder.finish()));
 

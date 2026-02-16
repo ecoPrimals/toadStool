@@ -29,22 +29,20 @@ use std::sync::Arc;
 // ============================================================================
 
 /// Execute a math operation through the full ToadStool → Barracuda pipeline
-async fn execute_pipeline(
-    data: Vec<f32>,
-    shape: Vec<usize>,
-    op: &str,
-) -> Result<Vec<f32>, String> {
+async fn execute_pipeline(data: Vec<f32>, shape: Vec<usize>, op: &str) -> Result<Vec<f32>, String> {
     // 1. ToadStool discovers hardware
     let _hw = discover_devices().map_err(|e| format!("Discovery failed: {}", e))?;
 
     // 2. Select best device for tensor operations
-    let selection =
-        select_best_device(HardwareWorkload::TensorOps).map_err(|e| format!("Selection failed: {}", e))?;
+    let selection = select_best_device(HardwareWorkload::TensorOps)
+        .map_err(|e| format!("Selection failed: {}", e))?;
 
     // 3. Create Barracuda device from selection (with fallback to auto)
     let device = match WgpuDevice::from_selection(selection).await {
         Ok(d) => d,
-        Err(_) => WgpuDevice::new().await.map_err(|e| format!("Device creation failed: {}", e))?,
+        Err(_) => WgpuDevice::new()
+            .await
+            .map_err(|e| format!("Device creation failed: {}", e))?,
     };
 
     // 4. Create tensor and execute operation
@@ -79,13 +77,15 @@ async fn execute_matmul_pipeline(
     b_shape: Vec<usize>,
 ) -> Result<Vec<f32>, String> {
     let _hw = discover_devices().map_err(|e| format!("Discovery failed: {}", e))?;
-    let selection =
-        select_best_device(HardwareWorkload::TensorOps).map_err(|e| format!("Selection failed: {}", e))?;
-    
+    let selection = select_best_device(HardwareWorkload::TensorOps)
+        .map_err(|e| format!("Selection failed: {}", e))?;
+
     // Create device with fallback to auto
     let device = Arc::new(match WgpuDevice::from_selection(selection).await {
         Ok(d) => d,
-        Err(_) => WgpuDevice::new().await.map_err(|e| format!("Device creation failed: {}", e))?,
+        Err(_) => WgpuDevice::new()
+            .await
+            .map_err(|e| format!("Device creation failed: {}", e))?,
     });
 
     let tensor_a = Tensor::from_vec_on(a, a_shape, device.clone())
@@ -203,7 +203,11 @@ async fn test_e2e_router_guided_execution() {
     let workloads = vec![
         (
             "Small matmul (CPU)",
-            ComputeWorkload::DenseMatmul { m: 16, n: 16, k: 16 },
+            ComputeWorkload::DenseMatmul {
+                m: 16,
+                n: 16,
+                k: 16,
+            },
         ),
         (
             "Large matmul (GPU)",
@@ -340,20 +344,16 @@ async fn test_e2e_multi_device_same_computation() {
             Ok(device) => {
                 let device_arc = Arc::new(device);
                 match Tensor::from_vec_on(data.clone(), shape.clone(), device_arc).await {
-                    Ok(tensor) => {
-                        match tensor.softmax() {
-                            Ok(result) => {
-                                match result.to_vec() {
-                                    Ok(output) => {
-                                        println!("  {} softmax: {:?}", name, &output[..4]);
-                                        results.push((name.clone(), output));
-                                    }
-                                    Err(e) => println!("  {} - read failed: {}", name, e),
-                                }
+                    Ok(tensor) => match tensor.softmax() {
+                        Ok(result) => match result.to_vec() {
+                            Ok(output) => {
+                                println!("  {} softmax: {:?}", name, &output[..4]);
+                                results.push((name.clone(), output));
                             }
-                            Err(e) => println!("  {} - softmax failed: {}", name, e),
-                        }
-                    }
+                            Err(e) => println!("  {} - read failed: {}", name, e),
+                        },
+                        Err(e) => println!("  {} - softmax failed: {}", name, e),
+                    },
                     Err(e) => println!("  {} - tensor creation failed: {}", name, e),
                 }
             }
@@ -396,8 +396,8 @@ async fn test_e2e_scientific_pipeline_cholesky() {
     println!("\n=== E2E Scientific Pipeline: Cholesky ===\n");
 
     // 1. ToadStool selects device for scientific compute
-    let selection = select_best_device(HardwareWorkload::ScientificCompute)
-        .expect("Selection failed");
+    let selection =
+        select_best_device(HardwareWorkload::ScientificCompute).expect("Selection failed");
     println!("  ToadStool selection: {:?}", selection);
 
     // 2. Create device (with fallback)
@@ -547,7 +547,13 @@ fn test_e2e_workload_routing_correctness() {
 
         let matches = match (&target, expected) {
             (KernelTarget::Wgsl { device: _, .. }, "wgsl") => true,
-            (KernelTarget::Wgsl { device: DeviceSelection::Cpu, .. }, "wgsl_cpu") => true,
+            (
+                KernelTarget::Wgsl {
+                    device: DeviceSelection::Cpu,
+                    ..
+                },
+                "wgsl_cpu",
+            ) => true,
             (KernelTarget::Npu { .. }, "npu") => true,
             _ => false,
         };
@@ -561,10 +567,7 @@ fn test_e2e_workload_routing_correctness() {
         if matches || expected == "wgsl" && matches!(target, KernelTarget::Wgsl { .. }) {
             println!("  ✓ {} -> {}", name, target_str);
         } else {
-            println!(
-                "  ? {} -> {} (expected {})",
-                name, target_str, expected
-            );
+            println!("  ? {} -> {} (expected {})", name, target_str, expected);
         }
     }
 

@@ -134,9 +134,10 @@ fn get_toadstool_socket_paths() -> Vec<PathBuf> {
         paths.push(PathBuf::from(home).join(".local/share/biomeos/toadstool.sock"));
     }
 
-    // 3. /tmp (fallback)
-    paths.push(PathBuf::from("/tmp/toadstool/display.sock"));
-    paths.push(PathBuf::from("/tmp/biomeos/toadstool.sock"));
+    // 3. Temp dir (fallback - platform agnostic)
+    let temp = std::env::temp_dir();
+    paths.push(temp.join("toadstool/display.sock"));
+    paths.push(temp.join("biomeos/toadstool.sock"));
 
     paths
 }
@@ -157,8 +158,8 @@ fn get_tcp_discovery_file_paths() -> Vec<PathBuf> {
         paths.push(PathBuf::from(home).join(".local/share/toadstool-ipc-port"));
     }
 
-    // 3. /tmp (fallback)
-    paths.push(PathBuf::from("/tmp/toadstool-ipc-port"));
+    // 3. Temp dir (fallback - platform agnostic)
+    paths.push(std::env::temp_dir().join("toadstool-ipc-port"));
 
     paths
 }

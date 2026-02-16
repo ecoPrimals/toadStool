@@ -187,7 +187,14 @@ impl BatchedBisectionGpu {
             params.push(target_n[i]);
         }
 
-        self.solve_internal(lower, upper, &params, n_levels as u32, false, "batched_bisection")
+        self.solve_internal(
+            lower,
+            upper,
+            &params,
+            n_levels as u32,
+            false,
+            "batched_bisection",
+        )
     }
 
     /// Solve BCS pairing equations with level degeneracy (deg_k)
@@ -261,7 +268,14 @@ impl BatchedBisectionGpu {
             params.push(target_n[i]);
         }
 
-        self.solve_internal(lower, upper, &params, n_levels as u32, true, "batched_bisection")
+        self.solve_internal(
+            lower,
+            upper,
+            &params,
+            n_levels as u32,
+            true,
+            "batched_bisection",
+        )
     }
 
     fn solve_internal(
@@ -382,34 +396,34 @@ impl BatchedBisectionGpu {
 
         // Create buffers
         let lower_bytes: Vec<u8> = lower.iter().flat_map(|v| v.to_le_bytes()).collect();
-        let lower_buffer = self
-            .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("BatchedBisection lower"),
-                contents: &lower_bytes,
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+        let lower_buffer =
+            self.device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("BatchedBisection lower"),
+                    contents: &lower_bytes,
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
 
         let upper_bytes: Vec<u8> = upper.iter().flat_map(|v| v.to_le_bytes()).collect();
-        let upper_buffer = self
-            .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("BatchedBisection upper"),
-                contents: &upper_bytes,
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+        let upper_buffer =
+            self.device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("BatchedBisection upper"),
+                    contents: &upper_bytes,
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
 
         let params_bytes: Vec<u8> = params.iter().flat_map(|v| v.to_le_bytes()).collect();
-        let params_buffer = self
-            .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("BatchedBisection params"),
-                contents: &params_bytes,
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+        let params_buffer =
+            self.device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("BatchedBisection params"),
+                    contents: &params_bytes,
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
 
         let roots_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("BatchedBisection roots"),
@@ -432,39 +446,44 @@ impl BatchedBisectionGpu {
             use_degeneracy,
             self.tolerance,
         );
-        let config_buffer = self.device.create_uniform_buffer("BatchedBisection config", &config);
+        let config_buffer = self
+            .device
+            .create_uniform_buffer("BatchedBisection config", &config);
 
         // Create bind group
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("BatchedBisection BG"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: lower_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: upper_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: roots_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: iterations_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: config_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("BatchedBisection BG"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: lower_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: upper_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: roots_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: iterations_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: config_buffer.as_entire_binding(),
+                    },
+                ],
+            });
 
         // Execute
         let n_workgroups = batch_size.div_ceil(64);
@@ -677,24 +696,31 @@ mod tests {
         // Problem 1: 3 levels with degeneracies [1, 2, 1], ε = [0.0, 1.0, 2.0], Δ=0.5, N=2.0
         let lower = vec![-5.0, -5.0];
         let upper = vec![5.0, 5.0];
-        
+
         // Packed eigenvalues [batch × n_levels]
         let eigenvalues = vec![
-            0.0, 1.0, 2.0,  // Problem 0
-            0.0, 1.0, 2.0,  // Problem 1
+            0.0, 1.0, 2.0, // Problem 0
+            0.0, 1.0, 2.0, // Problem 1
         ];
-        
+
         // Degeneracies [batch × n_levels]
         let degeneracies = vec![
-            2.0, 4.0, 2.0,  // Problem 0: total capacity = 8
-            1.0, 2.0, 1.0,  // Problem 1: total capacity = 4
+            2.0, 4.0, 2.0, // Problem 0: total capacity = 8
+            1.0, 2.0, 1.0, // Problem 1: total capacity = 4
         ];
-        
+
         let delta = vec![0.5, 0.5];
         let target_n = vec![4.0, 2.0];
 
         let result = bisect
-            .solve_bcs_with_degeneracy(&lower, &upper, &eigenvalues, &degeneracies, &delta, &target_n)
+            .solve_bcs_with_degeneracy(
+                &lower,
+                &upper,
+                &eigenvalues,
+                &degeneracies,
+                &delta,
+                &target_n,
+            )
             .unwrap();
 
         assert_eq!(result.roots.len(), 2);
@@ -704,7 +730,7 @@ mod tests {
             let base = i * 3;
             let delta_i = delta[i];
             let target = target_n[i];
-            
+
             let mut sum = 0.0;
             for k in 0..3 {
                 let eps_k = eigenvalues[base + k];
@@ -714,7 +740,7 @@ mod tests {
                 let v2_k = 0.5 * (1.0 - diff / e_k);
                 sum += deg_k * v2_k;
             }
-            
+
             assert!(
                 (sum - target).abs() < 0.01,
                 "Problem {}: Σ deg_k v²_k should be {}, got {} (μ={})",
@@ -750,7 +776,14 @@ mod tests {
         // With uniform degeneracy = 1.0
         let degeneracies = vec![1.0, 1.0, 1.0, 1.0];
         let result_with_deg = bisect
-            .solve_bcs_with_degeneracy(&lower, &upper, &eigenvalues, &degeneracies, &delta, &target_n)
+            .solve_bcs_with_degeneracy(
+                &lower,
+                &upper,
+                &eigenvalues,
+                &degeneracies,
+                &delta,
+                &target_n,
+            )
             .unwrap();
 
         // Should match

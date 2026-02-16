@@ -15,7 +15,30 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **Device Registry COMPLETE** — physical device deduplication with backend preference.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 16, 2026 — Device Registry + F64 Reduce Suite)
+### Latest Updates (Feb 16, 2026 — Deep Debt Evolution + ecoBin Compliance)
+
+**ecoBin v2.0 Compliance ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| Platform Paths | ✅ | `platform_paths` module with XDG compliance |
+| TOML Config | ✅ | Preferred format for manifests and policies |
+| CLI Dependencies | ✅ | `libc` → `rustix` for signal handling |
+| Semantic Naming | ✅ | IPC methods follow `domain.operation` snake_case |
+| Unsafe Evolution | ✅ | `slice.fill(0)` replaces raw `ptr::write_bytes` |
+| NPU Integration | ✅ | `NpuExecutor` implements `ComputeExecutor` trait |
+| Test Coverage | ✅ | +18 new tests for unibin.rs, manual_jsonrpc.rs |
+| Quality Gates | ✅ | All passing: fmt, clippy, doc, test |
+
+Key achievements:
+- Created `toadstool_common::platform_paths` for cross-platform path resolution
+- TOML support in `load_biome_manifest()` and `SecurityPolicyManager`
+- Semantic method naming: `display.resizeWindow` → `display.resize_window`
+- NPU hardware integrated into unified `ComputeExecutor` discovery
+
+---
+
+### Previous Updates (Feb 16, 2026 — Device Registry + F64 Reduce Suite)
 
 **Physical Device Deduplication ✓**
 

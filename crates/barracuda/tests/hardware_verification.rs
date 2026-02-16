@@ -114,7 +114,10 @@ impl HardwareInventory {
         println!("║           HARDWARE VERIFICATION INVENTORY                     ║");
         println!("╠══════════════════════════════════════════════════════════════╣");
 
-        println!("║ GPUs Detected: {}                                             ", self.gpus.len());
+        println!(
+            "║ GPUs Detected: {}                                             ",
+            self.gpus.len()
+        );
         for gpu in &self.gpus {
             println!(
                 "║   [{:2}] {} ({}) - {:?}/{:?}",
@@ -122,7 +125,10 @@ impl HardwareInventory {
             );
         }
 
-        println!("║ NPUs Detected: {}                                             ", self.npus.len());
+        println!(
+            "║ NPUs Detected: {}                                             ",
+            self.npus.len()
+        );
         for npu in &self.npus {
             println!("║   {} @ {}", npu.name, npu.device_path);
         }
@@ -231,7 +237,11 @@ async fn test_all_gpus_can_create_device() {
         }
     }
 
-    println!("\nSummary: {}/{} devices created successfully", successful, inventory.gpus.len());
+    println!(
+        "\nSummary: {}/{} devices created successfully",
+        successful,
+        inventory.gpus.len()
+    );
 
     // At least one GPU should work
     assert!(successful > 0, "No GPUs could create devices: {:?}", failed);
@@ -341,9 +351,7 @@ async fn test_cross_vendor_cholesky_parity() {
     }
 
     // SPD matrix (positive definite)
-    let spd = vec![
-        4.0, 12.0, -16.0, 12.0, 37.0, -43.0, -16.0, -43.0, 98.0,
-    ];
+    let spd = vec![4.0, 12.0, -16.0, 12.0, 37.0, -43.0, -16.0, -43.0, 98.0];
 
     let mut results: HashMap<String, Vec<f32>> = HashMap::new();
 
@@ -488,7 +496,11 @@ fn test_kernel_router_small_workloads_to_cpu() {
 
     // Small workloads should prefer CPU (avoid GPU dispatch overhead)
     let small_workloads = vec![
-        ComputeWorkload::DenseMatmul { m: 16, n: 16, k: 16 },
+        ComputeWorkload::DenseMatmul {
+            m: 16,
+            n: 16,
+            k: 16,
+        },
         ComputeWorkload::Eigendecomp { matrix_size: 32 },
         ComputeWorkload::LinearSolve { system_size: 64 },
     ];
@@ -635,7 +647,8 @@ async fn test_multi_gpu_performance_characterization() {
 
         let total_ms = elapsed.as_secs_f64() * 1000.0;
         let per_op_ms = total_ms / iterations as f64;
-        let gflops = (2.0 * (size as f64).powi(3) * iterations as f64) / elapsed.as_secs_f64() / 1e9;
+        let gflops =
+            (2.0 * (size as f64).powi(3) * iterations as f64) / elapsed.as_secs_f64() / 1e9;
 
         println!(
             "  {}: {:.2} ms total, {:.3} ms/op, {:.2} GFLOP/s",

@@ -600,7 +600,7 @@ impl BatchedEighGpu {
         tolerance: f64,
     ) -> Result<(Vec<f64>, Vec<f64>)> {
         const MAX_N: usize = 32;
-        
+
         if n > MAX_N {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
@@ -622,11 +622,13 @@ impl BatchedEighGpu {
         }
 
         // Create GPU buffers
-        let a_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SingleDispatch A"),
-            contents: bytemuck::cast_slice(data),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-        });
+        let a_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("SingleDispatch A"),
+                contents: bytemuck::cast_slice(data),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            });
 
         let v_size = (batch_size * n * n * 8) as u64;
         let v_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -717,13 +719,14 @@ impl BatchedEighGpu {
                 ],
             });
 
-        let pipeline_layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("SingleDispatch PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("SingleDispatch PL"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
         let pipeline = device
             .device
@@ -810,7 +813,7 @@ impl BatchedEighGpu {
         tolerance: f64,
     ) -> Result<()> {
         const MAX_N: usize = 32;
-        
+
         if n > MAX_N {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
@@ -835,7 +838,8 @@ impl BatchedEighGpu {
             max_sweeps,
             tolerance: tolerance as f32,
         };
-        let params_buffer = device.create_uniform_buffer("SingleDispatch Params (buffers)", &params);
+        let params_buffer =
+            device.create_uniform_buffer("SingleDispatch Params (buffers)", &params);
 
         let shader = device.compile_shader(
             Self::single_dispatch_shader(),
@@ -890,13 +894,14 @@ impl BatchedEighGpu {
                 ],
             });
 
-        let pipeline_layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("SingleDispatch PL (buffers)"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("SingleDispatch PL (buffers)"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
         let pipeline = device
             .device
@@ -1790,11 +1795,9 @@ mod tests {
         ];
 
         // Upload input to GPU buffer (simulates Hamiltonian builder output)
-        device.queue.write_buffer(
-            &matrices_buf,
-            0,
-            bytemuck::cast_slice(&input_data),
-        );
+        device
+            .queue
+            .write_buffer(&matrices_buf, 0, bytemuck::cast_slice(&input_data));
 
         // Execute eigensolve WITHOUT CPU readback
         BatchedEighGpu::execute_f64_buffers(
@@ -1853,23 +1856,49 @@ mod tests {
 
         // Iteration 1: Identity matrix -> eigenvalues (1, 1)
         let data_1: Vec<f64> = vec![1.0, 0.0, 0.0, 1.0];
-        device.queue.write_buffer(&matrices_buf, 0, bytemuck::cast_slice(&data_1));
+        device
+            .queue
+            .write_buffer(&matrices_buf, 0, bytemuck::cast_slice(&data_1));
         BatchedEighGpu::execute_f64_buffers(
-            &device, &matrices_buf, &eigenvalues_buf, &eigenvectors_buf, n, batch_size, 10,
-        ).unwrap();
-        let eig_1 = BatchedEighGpu::read_eigenvalues(&device, &eigenvalues_buf, n, batch_size).unwrap();
+            &device,
+            &matrices_buf,
+            &eigenvalues_buf,
+            &eigenvectors_buf,
+            n,
+            batch_size,
+            10,
+        )
+        .unwrap();
+        let eig_1 =
+            BatchedEighGpu::read_eigenvalues(&device, &eigenvalues_buf, n, batch_size).unwrap();
         let trace_1: f64 = eig_1.iter().sum();
-        assert!(approx_eq_f64(trace_1, 2.0, 1e-6), "Iteration 1 trace should be 2");
+        assert!(
+            approx_eq_f64(trace_1, 2.0, 1e-6),
+            "Iteration 1 trace should be 2"
+        );
 
         // Iteration 2: New matrix [[3, 1], [1, 3]] -> eigenvalues (4, 2), trace=6
         let data_2: Vec<f64> = vec![3.0, 1.0, 1.0, 3.0];
-        device.queue.write_buffer(&matrices_buf, 0, bytemuck::cast_slice(&data_2));
+        device
+            .queue
+            .write_buffer(&matrices_buf, 0, bytemuck::cast_slice(&data_2));
         BatchedEighGpu::execute_f64_buffers(
-            &device, &matrices_buf, &eigenvalues_buf, &eigenvectors_buf, n, batch_size, 10,
-        ).unwrap();
-        let eig_2 = BatchedEighGpu::read_eigenvalues(&device, &eigenvalues_buf, n, batch_size).unwrap();
+            &device,
+            &matrices_buf,
+            &eigenvalues_buf,
+            &eigenvectors_buf,
+            n,
+            batch_size,
+            10,
+        )
+        .unwrap();
+        let eig_2 =
+            BatchedEighGpu::read_eigenvalues(&device, &eigenvalues_buf, n, batch_size).unwrap();
         let trace_2: f64 = eig_2.iter().sum();
-        assert!(approx_eq_f64(trace_2, 6.0, 1e-4), "Iteration 2 trace should be 6");
+        assert!(
+            approx_eq_f64(trace_2, 6.0, 1e-4),
+            "Iteration 2 trace should be 6"
+        );
 
         // Buffers successfully reused across iterations
     }
@@ -1889,7 +1918,8 @@ mod tests {
         ];
 
         let (eigenvalues, eigenvectors) =
-            BatchedEighGpu::execute_single_dispatch(device.clone(), &data, 2, 2, 30, 1e-12).unwrap();
+            BatchedEighGpu::execute_single_dispatch(device.clone(), &data, 2, 2, 30, 1e-12)
+                .unwrap();
 
         assert_eq!(eigenvalues.len(), 4);
         assert_eq!(eigenvectors.len(), 8);
@@ -1931,9 +1961,15 @@ mod tests {
         }
 
         // Single dispatch for all 40 matrices
-        let (eigenvalues, _eigenvectors) =
-            BatchedEighGpu::execute_single_dispatch(device.clone(), &data, n, batch_size, 30, 1e-12)
-                .unwrap();
+        let (eigenvalues, _eigenvectors) = BatchedEighGpu::execute_single_dispatch(
+            device.clone(),
+            &data,
+            n,
+            batch_size,
+            30,
+            1e-12,
+        )
+        .unwrap();
 
         assert_eq!(eigenvalues.len(), batch_size * n);
 
@@ -1978,7 +2014,9 @@ mod tests {
             }
         }
 
-        device.queue.write_buffer(&matrices_buf, 0, bytemuck::cast_slice(&data));
+        device
+            .queue
+            .write_buffer(&matrices_buf, 0, bytemuck::cast_slice(&data));
 
         // Execute single-dispatch without CPU readback
         BatchedEighGpu::execute_single_dispatch_buffers(

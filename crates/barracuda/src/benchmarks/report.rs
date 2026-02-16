@@ -64,33 +64,51 @@ impl ReportGenerator {
             return;
         }
 
-        let ops_at_90 = ops_with_cuda.iter().filter(|r| r.parity_percent >= 90.0).count();
-        let ops_at_95 = ops_with_cuda.iter().filter(|r| r.parity_percent >= 95.0).count();
-        let ops_at_100 = ops_with_cuda.iter().filter(|r| r.parity_percent >= 100.0).count();
-        let avg_parity = ops_with_cuda.iter().map(|r| r.parity_percent).sum::<f64>() / cuda_count as f64;
+        let ops_at_90 = ops_with_cuda
+            .iter()
+            .filter(|r| r.parity_percent >= 90.0)
+            .count();
+        let ops_at_95 = ops_with_cuda
+            .iter()
+            .filter(|r| r.parity_percent >= 95.0)
+            .count();
+        let ops_at_100 = ops_with_cuda
+            .iter()
+            .filter(|r| r.parity_percent >= 100.0)
+            .count();
+        let avg_parity =
+            ops_with_cuda.iter().map(|r| r.parity_percent).sum::<f64>() / cuda_count as f64;
 
         writeln!(report, "| Metric | Value |").unwrap();
         writeln!(report, "|--------|-------|").unwrap();
         writeln!(report, "| Total Operations | {} |", total_ops).unwrap();
-        writeln!(report, "| Operations with CUDA comparison | {} |", cuda_count).unwrap();
+        writeln!(
+            report,
+            "| Operations with CUDA comparison | {} |",
+            cuda_count
+        )
+        .unwrap();
         writeln!(
             report,
             "| ≥90% parity | {} ({:.1}%) |",
             ops_at_90,
             ops_at_90 as f64 / cuda_count as f64 * 100.0
-        ).unwrap();
+        )
+        .unwrap();
         writeln!(
             report,
             "| ≥95% parity | {} ({:.1}%) |",
             ops_at_95,
             ops_at_95 as f64 / cuda_count as f64 * 100.0
-        ).unwrap();
+        )
+        .unwrap();
         writeln!(
             report,
             "| ≥100% parity (faster) | {} ({:.1}%) |",
             ops_at_100,
             ops_at_100 as f64 / cuda_count as f64 * 100.0
-        ).unwrap();
+        )
+        .unwrap();
         writeln!(report, "| Average parity | {:.1}% |", avg_parity).unwrap();
         writeln!(report).unwrap();
     }
@@ -106,14 +124,16 @@ impl ReportGenerator {
                 report,
                 "- **BarraCUDA:** {:.3}ms",
                 result.barracuda.median_time.as_secs_f64() * 1000.0
-            ).unwrap();
+            )
+            .unwrap();
 
             if let Some(ref cuda) = result.cuda {
                 writeln!(
                     report,
                     "- **CUDA:** {:.3}ms",
                     cuda.median_time.as_secs_f64() * 1000.0
-                ).unwrap();
+                )
+                .unwrap();
                 writeln!(report, "- **Parity:** {:.1}%", result.parity_percent).unwrap();
             }
             writeln!(report).unwrap();

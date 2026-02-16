@@ -234,29 +234,36 @@ impl IsolatedMemoryRegion {
     /// explicitly for additional security.
     ///
     /// Wipes the entire physical allocation, not just the logical size.
+    ///
+    /// # Evolution Note
+    ///
+    /// Uses slice-based `fill(0)` instead of raw `write_bytes` for safer code.
+    /// The compiler fence ensures the optimizer cannot remove the zeroing.
     pub fn wipe(&mut self) {
-        // SAFETY: ptr valid; physical_size matches allocation; write_bytes for u8 is safe.
-        unsafe {
-            std::ptr::write_bytes(self.ptr.as_ptr(), 0, self.physical_size);
-        }
+        // Safe Rust: Use slice fill instead of raw write_bytes
+        // SAFETY: as_physical_slice_mut is safe (we own the memory)
+        self.as_physical_slice_mut().fill(0);
 
         // Compiler fence to prevent optimizer from removing the write
+        // This is critical for security - ensures memory is actually zeroed
         std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
 
         tracing::trace!("Wiped {} bytes of isolated memory", self.physical_size);
+    }
+
+    /// Get mutable slice of the physical allocation (for internal use like wiping)
+    fn as_physical_slice_mut(&mut self) -> &mut [u8] {
+        // SAFETY: ptr is valid for physical_size bytes (from successful allocation)
+        // We have exclusive access via &mut self
+        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.physical_size) }
     }
 }
 
 impl Drop for IsolatedMemoryRegion {
     fn drop(&mut self) {
-        // Step 1: Explicitly wipe memory before unlocking/deallocating
-        // SAFETY: ptr valid; physical_size matches allocation.
-        unsafe {
-            std::ptr::write_bytes(self.ptr.as_ptr(), 0, self.physical_size);
-        }
-
-        // Compiler fence to ensure wipe completes
-        std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
+        // Step 1: Wipe memory before unlocking/deallocating
+        // Uses safe slice-based fill via self.wipe()
+        self.wipe();
 
         // Step 2: Unlock memory (reverse of mlock)
         // EVOLVED: Using rustix instead of raw libc (better error handling)

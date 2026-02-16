@@ -1,14 +1,85 @@
 # BarraCUDA Performance Parity Roadmap
 
-**Date**: February 15, 2026  
-**Status**: BEYOND PARITY — GPU-RESIDENT PIPELINE NEXT  
+**Date**: February 16, 2026  
+**Status**: GPU-RESIDENT PIPELINE COMPLETE + log_f64 BUG FIX  
 **Goal**: Achieve vendor-free CUDA/ROCm parity with self-optimizing runtime
 
 ---
 
 ## 0. Latest Updates
 
-### 0.0.3 GPU-Resident Pipeline (Feb 16, 2026) — NEW
+### 0.0.6 Three Springs Validation Complete (Feb 16, 2026) — NEW
+
+**Three domain-specific validation projects now confirm BarraCUDA's compute stack:**
+
+| Project | Domain | Rust Checks | Key Achievement |
+|---------|--------|:-----------:|-----------------|
+| **hotSpring** | Nuclear physics | 195/195 | GPU-resident HFB 15% faster than CPU |
+| **wetSpring** | Life science | 48/48 | Shannon/Simpson/Bray-Curtis at f64 |
+| **airSpring** | Precision agriculture | 70/70 | FAO-56 ET₀, soil, water balance |
+
+**Combined**: 313+ Rust acceptance checks. The same BarraCUDA primitives serve
+nuclear physics, metagenomics, analytical chemistry, and precision agriculture.
+
+**airSpring GPU Acceleration Opportunities (Phase 3):**
+
+| Tier | Workload | Architecture | Impact |
+|:----:|----------|--------------|--------|
+| 1.1 | Batched ET₀ | Single dispatch, N station-days | Enables spatial grid ET₀ |
+| 1.2 | Batched Water Balance | One workgroup per field | Sub-field irrigation scheduling |
+| 2.1 | Kriging / Spatial Interpolation | GemmF64 + variogram kernel | Sensor → grid mapping |
+| 2.2 | 1D Richards Solver | FdGradientF64 + implicit time | Open alternative to HYDRUS |
+
+---
+
+### 0.0.5 hotSpring Bug Fixes + Full Validation (Feb 16, 2026)
+
+**Two Critical Bugs Fixed:**
+
+| Bug | File | Fix | Impact |
+|-----|------|-----|--------|
+| `target` reserved keyword | `batched_bisection_f64.wgsl` | Renamed to `target_val` | BCS GPU now works |
+| `from_adapter_index()` no SHADER_F64 | `wgpu_device.rs` | Request features from adapter | All f64 ops work |
+
+**hotSpring Validation Results (195/195 checks pass):**
+
+| Domain | Checks | Key Metrics |
+|--------|:------:|-------------|
+| MD Pipeline | 45 | Force magnitude: 1.86e-7, Energy drift: 0.0000% |
+| Nuclear EOS | 26 | chi²/datum L1: 2.27, L2: 23.97, L3: 55.8 |
+| HFB Pipeline | 14 | Eigenvalue: 2.4e-12, BCS: 6.2e-11 |
+| GPU Compute | 110 | GPU-resident HFB: 3.65s vs CPU 4.30s (15% faster) |
+
+**Key Achievement:** GPU-resident hybrid HFB beats CPU-only on consumer hardware (RTX 4070).
+
+---
+
+### 0.0.4 log_f64 Bug Fix + wetSpring Validation (Feb 16, 2026)
+
+**Critical Bug Fixed:** `log_f64()` in `math_f64.wgsl` had 2× inflated coefficients.
+
+| Before | After | Discovery |
+|--------|-------|-----------|
+| ~1e-3 precision | ~1e-15 precision | wetSpring Shannon entropy validation |
+
+**Root cause:** atanh series coefficients were `2/3, 2/5, 2/7...` but the formula
+`2 * s * (1 + s² * p)` already multiplies by 2. Result: polynomial terms 2× too large.
+
+**Additional findings:**
+- `f64(literal)` truncates through f32 — use `(x - x) + literal` pattern
+- Native `log(f64)`, `exp(f64)` **rejected by NVVM** — must use software implementations
+
+**wetSpring Validation Results (48/48 checks pass):**
+
+| Metric | GPU vs CPU Error | Status |
+|--------|:----------------:|:------:|
+| Shannon entropy | ≤ 1e-10 | ✅ PASS |
+| Simpson index | ≤ 1e-6 | ✅ PASS |
+| Bray-Curtis distances | ≤ 1e-10 | ✅ PASS |
+
+---
+
+### 0.0.3 GPU-Resident Pipeline (Feb 16, 2026) ✅ COMPLETE
 
 **hotSpring Experiment 005 Finding:** 95% GPU utilization but CPU still **70× faster**!
 
@@ -23,13 +94,13 @@ Each CPU step requires GPU↔CPU round-trip.
 
 | Target | Status | Impact |
 |--------|:------:|--------|
-| Max Abs Diff Reduction | Planned | Convergence check |
-| Persistent Buffer Management | Planned | Zero allocs/iteration |
-| Batched Bisection | Planned | GPU BCS pairing |
-| Grid Quadrature GEMM | Planned | GPU Hamiltonian |
-| Multi-Kernel Pipeline | Planned | Buffer chaining |
+| Max Abs Diff Reduction | ✅ DONE | Convergence check |
+| Persistent Buffer Management | ✅ DONE | Zero allocs/iteration |
+| Batched Bisection | ✅ DONE | GPU BCS pairing |
+| Grid Quadrature GEMM | ✅ DONE | GPU Hamiltonian |
+| Multi-Kernel Pipeline | ✅ DONE | Buffer chaining |
 
-**See:** `../NEXT_STEPS.md` and `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`
+**Result:** CPU↔GPU trips: ~10 → 1, Buffer allocs/iter: ~20 → 0
 
 ---
 

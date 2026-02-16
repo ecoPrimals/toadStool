@@ -35,6 +35,9 @@
 | **Sobol skip_to** | ✅ | Bug fixed, all tests pass (Feb 15) |
 | **Device Registry** | ✅ | Physical device deduplication with backend preference (Feb 16) |
 | **F64 Reduce Suite** | ✅ | ProdReduceF64, VarianceReduceF64, NormReduceF64, CumprodF64 (Feb 16) |
+| **ecoBin Compliance** | ✅ | TOML config, XDG paths, rustix signals, semantic naming (Feb 16) |
+| **Platform Paths** | ✅ | `platform_paths` module for cross-platform resolution (Feb 16) |
+| **NPU Executor** | ✅ | `NpuExecutor` implements `ComputeExecutor` trait (Feb 16) |
 
 ---
 

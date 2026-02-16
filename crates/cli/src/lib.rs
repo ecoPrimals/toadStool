@@ -789,13 +789,33 @@ impl CliContext {
 }
 
 /// Load biome manifest from file
+///
+/// Supports both TOML (preferred, ecoBin compliant) and YAML formats.
+/// Format is detected by file extension:
+/// - `.toml` → TOML parser (pure Rust, no C dependencies)
+/// - `.yaml`, `.yml` → YAML parser (legacy support)
+/// - Other → Try TOML first, fall back to YAML
 pub async fn load_biome_manifest(path: &PathBuf) -> Result<BiomeManifest> {
     let content = fs::read_to_string(path)
         .await
         .with_context(|| format!("Failed to read manifest file: {}", path.display()))?;
 
-    let manifest: BiomeManifest = serde_yaml::from_str(&content)
-        .with_context(|| format!("Failed to parse manifest file: {}", path.display()))?;
+    // Determine format from extension (TOML preferred for ecoBin compliance)
+    let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+
+    let manifest: BiomeManifest = match extension.to_lowercase().as_str() {
+        "toml" => toml::from_str(&content)
+            .with_context(|| format!("Failed to parse TOML manifest: {}", path.display()))?,
+        "yaml" | "yml" => serde_yaml::from_str(&content)
+            .with_context(|| format!("Failed to parse YAML manifest: {}", path.display()))?,
+        _ => {
+            // Unknown extension: try TOML first (ecoBin preferred), then YAML
+            toml::from_str(&content).or_else(|_| {
+                serde_yaml::from_str(&content)
+                    .with_context(|| format!("Failed to parse manifest: {}", path.display()))
+            })?
+        }
+    };
 
     Ok(manifest)
 }

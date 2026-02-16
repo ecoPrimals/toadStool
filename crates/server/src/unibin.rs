@@ -852,6 +852,119 @@ mod tests {
         // We ensure it doesn't panic (result is always a valid bool).
         let _result = is_selinux_enforcing();
     }
+
+    // ========== ensure_biomeos_directory ==========
+
+    #[test]
+    fn ensure_biomeos_directory_creates_dir() {
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let runtime_path = temp_dir.path();
+
+        let result = ensure_biomeos_directory(runtime_path);
+        assert!(result.is_ok());
+
+        let biomeos_dir = result.expect("dir creation succeeded");
+        assert!(biomeos_dir.exists());
+        assert!(biomeos_dir.is_dir());
+        assert_eq!(biomeos_dir.file_name().unwrap(), "biomeos");
+    }
+
+    #[test]
+    fn ensure_biomeos_directory_idempotent() {
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let runtime_path = temp_dir.path();
+
+        // Create twice - should succeed both times
+        let result1 = ensure_biomeos_directory(runtime_path);
+        let result2 = ensure_biomeos_directory(runtime_path);
+
+        assert!(result1.is_ok());
+        assert!(result2.is_ok());
+        assert_eq!(result1.unwrap(), result2.unwrap());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn ensure_biomeos_directory_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let runtime_path = temp_dir.path();
+
+        let biomeos_dir = ensure_biomeos_directory(runtime_path).expect("dir creation succeeded");
+
+        let perms = std::fs::metadata(&biomeos_dir)
+            .expect("metadata read")
+            .permissions();
+        // Should be 0700 (user-only access)
+        assert_eq!(perms.mode() & 0o777, 0o700);
+    }
+
+    // ========== write_tcp_discovery_file ==========
+
+    #[test]
+    fn write_tcp_discovery_file_creates_file() {
+        // Use temp_env to set XDG_RUNTIME_DIR for this test
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let temp_path = temp_dir.path().to_string_lossy().to_string();
+
+        // Temporarily set XDG_RUNTIME_DIR
+        let old_val = std::env::var("XDG_RUNTIME_DIR").ok();
+        std::env::set_var("XDG_RUNTIME_DIR", &temp_path);
+
+        let addr: std::net::SocketAddr = "127.0.0.1:8080".parse().expect("valid addr");
+        let result = write_tcp_discovery_file("test-discovery.txt", &addr);
+
+        // Restore original value
+        if let Some(val) = old_val {
+            std::env::set_var("XDG_RUNTIME_DIR", val);
+        } else {
+            std::env::remove_var("XDG_RUNTIME_DIR");
+        }
+
+        assert!(result.is_ok());
+
+        // Verify file content
+        let file_path = temp_dir.path().join("test-discovery.txt");
+        let content = std::fs::read_to_string(&file_path).expect("file read");
+        assert_eq!(content, "tcp:127.0.0.1:8080");
+    }
+
+    #[test]
+    fn write_tcp_discovery_file_ipv6() {
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let temp_path = temp_dir.path().to_string_lossy().to_string();
+
+        let old_val = std::env::var("XDG_RUNTIME_DIR").ok();
+        std::env::set_var("XDG_RUNTIME_DIR", &temp_path);
+
+        let addr: std::net::SocketAddr = "[::1]:9000".parse().expect("valid addr");
+        let result = write_tcp_discovery_file("ipv6-discovery.txt", &addr);
+
+        if let Some(val) = old_val {
+            std::env::set_var("XDG_RUNTIME_DIR", val);
+        } else {
+            std::env::remove_var("XDG_RUNTIME_DIR");
+        }
+
+        assert!(result.is_ok());
+
+        let file_path = temp_dir.path().join("ipv6-discovery.txt");
+        let content = std::fs::read_to_string(&file_path).expect("file read");
+        assert_eq!(content, "tcp:[::1]:9000");
+    }
+
+    // ========== exit_codes module ==========
+
+    #[test]
+    fn exit_codes_values() {
+        // Verify ecoBin-compliant exit codes
+        assert_eq!(exit_codes::SUCCESS, 0);
+        assert_eq!(exit_codes::GENERAL_ERROR, 1);
+        assert_eq!(exit_codes::CONFIG_ERROR, 2);
+        assert_eq!(exit_codes::RUNTIME_ERROR, 3);
+        assert_eq!(exit_codes::INTERRUPTED, 130);
+    }
 }
 
 // DISABLED: HTTP-based ecosystem registration (legacy)

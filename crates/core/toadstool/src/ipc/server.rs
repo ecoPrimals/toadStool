@@ -71,23 +71,11 @@ impl IpcServer {
             });
         }
 
-        // Unix socket
-        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
-            if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
-                format!("/run/user/{}", uid)
-            } else {
-                "/tmp/biomeos-runtime".to_string()
-            }
-        });
+        // Unix socket (ecoBin v2.0 compliant)
+        let socket_path = toadstool_common::platform_paths::biomeos_runtime_dir()
+            .join(format!("{}.sock", primal_name.to_lowercase()));
 
-        endpoints.push(Endpoint::Unix {
-            path: format!(
-                "{}/biomeos/{}.sock",
-                runtime_dir,
-                primal_name.to_lowercase()
-            )
-            .into(),
-        });
+        endpoints.push(Endpoint::Unix { path: socket_path });
 
         // TCP with environment-based port allocation (Deep Debt: no hardcoded primal ports)
         // Self-knowledge: ToadStool knows its own default port.

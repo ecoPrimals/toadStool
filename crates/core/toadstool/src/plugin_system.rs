@@ -449,7 +449,10 @@ impl PluginManager {
         match fs::read_to_string(path) {
             Ok(contents) => match serde_json::from_str::<PluginManifest>(&contents) {
                 Ok(manifest) => {
-                    debug!("Parsed plugin manifest: {} v{}", manifest.name, manifest.version);
+                    debug!(
+                        "Parsed plugin manifest: {} v{}",
+                        manifest.name, manifest.version
+                    );
                     Some(manifest)
                 }
                 Err(e) => {

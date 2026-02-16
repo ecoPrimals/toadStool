@@ -209,7 +209,11 @@ pub fn hardware_report() -> Result<HardwareReport> {
     let device_infos: Vec<_> = registry
         .physical_devices()
         .map(|d| {
-            let backends: Vec<_> = d.backends.iter().map(|b| format!("{:?}", b.backend)).collect();
+            let backends: Vec<_> = d
+                .backends
+                .iter()
+                .map(|b| format!("{:?}", b.backend))
+                .collect();
             PhysicalDeviceInfo {
                 name: d.name.clone(),
                 vendor: d.vendor.name().to_string(),
@@ -273,7 +277,6 @@ pub struct HardwareReport {
     pub npus_discovered: usize,
 
     // --- Registry-based counts (deduplicated by physical hardware) ---
-
     /// Unique physical compute devices (deduplicated across backends)
     pub physical_devices: usize,
     /// Unique physical GPUs (discrete + integrated, deduplicated)
@@ -284,14 +287,12 @@ pub struct HardwareReport {
     pub f64_capable_gpus: usize,
 
     // --- Raw adapter counts (may include duplicates) ---
-
     /// Total WGPU adapters (may include duplicates from multiple backends)
     pub wgpu_adapters: usize,
     /// WGPU adapters that are CPU software rasterizers
     pub wgpu_cpu_adapters: usize,
 
     // --- Capabilities ---
-
     /// Can run WGSL on GPU hardware?
     pub can_run_wgsl_on_gpu: bool,
     /// Can run WGSL on CPU (software rasterizer)?
@@ -315,15 +316,47 @@ impl std::fmt::Display for HardwareReport {
         writeln!(f)?;
         writeln!(f, "Physical Devices (deduplicated):")?;
         writeln!(f, "  Total:          {}", self.physical_devices)?;
-        writeln!(f, "  GPUs:           {} ({} discrete)", self.physical_gpus, self.physical_discrete_gpus)?;
+        writeln!(
+            f,
+            "  GPUs:           {} ({} discrete)",
+            self.physical_gpus, self.physical_discrete_gpus
+        )?;
         writeln!(f, "  f64-capable:    {}", self.f64_capable_gpus)?;
         writeln!(f)?;
-        writeln!(f, "Raw WGPU Adapters: {} (may include duplicates)", self.wgpu_adapters)?;
+        writeln!(
+            f,
+            "Raw WGPU Adapters: {} (may include duplicates)",
+            self.wgpu_adapters
+        )?;
         writeln!(f)?;
         writeln!(f, "Capabilities:")?;
-        writeln!(f, "  WGSL on GPU:    {}", if self.can_run_wgsl_on_gpu { "✓" } else { "✗" })?;
-        writeln!(f, "  WGSL on CPU:    {}", if self.can_run_wgsl_on_cpu { "✓" } else { "✗" })?;
-        writeln!(f, "  NPU inference:  {}", if self.can_run_npu_inference { "✓" } else { "✗" })?;
+        writeln!(
+            f,
+            "  WGSL on GPU:    {}",
+            if self.can_run_wgsl_on_gpu {
+                "✓"
+            } else {
+                "✗"
+            }
+        )?;
+        writeln!(
+            f,
+            "  WGSL on CPU:    {}",
+            if self.can_run_wgsl_on_cpu {
+                "✓"
+            } else {
+                "✗"
+            }
+        )?;
+        writeln!(
+            f,
+            "  NPU inference:  {}",
+            if self.can_run_npu_inference {
+                "✓"
+            } else {
+                "✗"
+            }
+        )?;
         writeln!(f)?;
         writeln!(f, "Devices:")?;
         for (idx, device) in self.devices.iter().enumerate() {

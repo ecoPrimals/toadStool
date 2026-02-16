@@ -193,13 +193,14 @@ impl LennardJonesF64 {
         // Compile shader
         let shader = device.compile_shader(Self::wgsl_shader(), Some("LJ F64"));
 
-        let pipeline_layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("LJ F64 PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("LJ F64 PL"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
         let pipeline = device
             .device
@@ -258,7 +259,11 @@ mod tests {
             return;
         };
 
-        if !device.device.features().contains(wgpu::Features::SHADER_F64) {
+        if !device
+            .device
+            .features()
+            .contains(wgpu::Features::SHADER_F64)
+        {
             println!("Skipping: GPU does not support SHADER_F64");
             return;
         }
@@ -309,7 +314,11 @@ mod tests {
             return;
         };
 
-        if !device.device.features().contains(wgpu::Features::SHADER_F64) {
+        if !device
+            .device
+            .features()
+            .contains(wgpu::Features::SHADER_F64)
+        {
             return;
         }
 

@@ -1154,14 +1154,12 @@ mod tests {
             .expect("first pin failed");
 
         // Try to pin again with same ID - should fail
-        let result =
-            pool.pin_solver_buffers("solver_a", &[("buf2", BufferDescriptor::new(256))]);
+        let result = pool.pin_solver_buffers("solver_a", &[("buf2", BufferDescriptor::new(256))]);
         assert!(result.is_err());
 
         // Release and try again - should work
         pool.release_solver_buffers("solver_a");
-        let result =
-            pool.pin_solver_buffers("solver_a", &[("buf2", BufferDescriptor::new(256))]);
+        let result = pool.pin_solver_buffers("solver_a", &[("buf2", BufferDescriptor::new(256))]);
         assert!(result.is_ok());
     }
 

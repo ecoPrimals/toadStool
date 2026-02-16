@@ -1,7 +1,31 @@
 # FP64 GPU Evolution — Pure-GPU Transcendental Math
 
 **Date**: February 16, 2026  
-**Status**: Implementation complete, hotSpring validated (169/169 nuclei)
+**Status**: Implementation complete, validated by hotSpring (195), wetSpring (48), airSpring (70) — 313+ checks
+
+---
+
+## Critical Update: log_f64 Bug Fix (Feb 16, 2026)
+
+**Discovery:** wetSpring life science validation found `log_f64()` produced ~1e-3 precision
+instead of ~1e-15. Shannon entropy `p * log(p)` on GPU differed from CPU baseline.
+
+**Root Cause:** The atanh series coefficients were `2/3, 2/5, 2/7...` but the formula
+`2 * s * (1 + s² * p)` already multiplies by 2. Result: polynomial terms 2× too large.
+
+**Fix Applied:**
+```wgsl
+// BEFORE (wrong)
+let c1 = f64_const(x, 0.6666666666666735130);  // 2/3
+
+// AFTER (correct)
+let zero = x - x;
+let c1 = zero + 0.3333333333333367565;   // ≈ 1/3 (minimax)
+```
+
+**Additional Findings:**
+- `f64(literal)` truncates through f32, losing ~7 digits — use `(x - x) + literal` pattern
+- Native `log(f64)`, `exp(f64)` are **rejected by NVVM** (not in WGSL spec)
 
 ---
 
@@ -72,17 +96,22 @@ fn foo(x: f64) -> f64 {
 }
 ```
 
-**We use the `f64_const(x, c)` helper:**
+**Two patterns available:**
 
 ```wgsl
+// Pattern 1: f64_const() — convenient but loses precision (f32 param)
 fn f64_const(x: f64, c: f32) -> f64 {
     return x - x + f64(c);
 }
+let one = f64_const(x, 1.0);  // OK for simple constants
 
-// Usage:
-let one = f64_const(x, 1.0);
-let pi = f64_const(x, 3.14159265358979323846);
+// Pattern 2: zero + literal — FULL f64 precision (Feb 16 discovery)
+let zero = x - x;
+let c1 = zero + 0.3333333333333367565;  // All 15-16 digits preserved!
 ```
+
+**IMPORTANT (wetSpring finding):** For polynomial coefficients and high-precision
+constants, use Pattern 2. `f64_const()` truncates through f32, losing ~7 digits.
 
 ### 2. Literals > f32 Range Cause Parse Errors
 
