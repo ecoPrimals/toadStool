@@ -174,6 +174,7 @@ pub mod topk;
 
 // Reduction operations (f64)
 pub mod sum_reduce_f64;
+pub mod max_abs_diff_f64;
 
 // Utility operations
 pub mod broadcast;
@@ -541,6 +542,7 @@ pub use conv3d::Conv3D;
 pub use cross_entropy::CrossEntropy;
 pub use cumsum_f64::CumsumF64;
 pub use sum_reduce_f64::SumReduceF64;
+pub use max_abs_diff_f64::MaxAbsDiffF64;
 pub use cumsum_wgsl::Cumsum;
 pub use depthwise_conv2d::DepthwiseConv2D;
 pub use embedding_wgsl::Embedding;

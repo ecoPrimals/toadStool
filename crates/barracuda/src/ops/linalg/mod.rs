@@ -52,6 +52,7 @@ pub mod cholesky;
 pub mod eigh;
 pub mod gemm_f64;
 pub mod gen_eigh_gpu;
+pub mod grid_quadrature_gemm_f64; // EVOLVED: GPU Hamiltonian construction (Feb 16, 2026)
 pub mod linsolve;
 pub mod lu;
 pub mod lu_gpu;
@@ -67,6 +68,7 @@ pub use cholesky::Cholesky;
 pub use eigh::Eigh;
 pub use gemm_f64::GemmF64;
 pub use gen_eigh_gpu::{GenEighDecompositionGpu, GenEighGpu};
+pub use grid_quadrature_gemm_f64::GridQuadratureGemm;
 pub use linsolve::LinSolve;
 pub use lu::{lu_decompose, lu_det, lu_inverse, lu_solve, LuDecomposition};
 pub use lu_gpu::LuGpu;

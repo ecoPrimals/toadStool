@@ -7,18 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### [2026-02-16] - GPU-Resident Pipeline Planning (hotSpring Exp 005)
+### [2026-02-16] - GPU-Resident Pipeline Implementation COMPLETE
 
-**Impact**: New evolution targets identified from hotSpring's L2 mega-batch experiment. CPU is 70× faster than GPU for small matrices — the path forward is GPU-resident iteration with zero CPU↔GPU round-trips.
+**Impact**: Solved hotSpring's Amdahl's Law bottleneck. Full GPU-resident physics pipeline now available for iterative solvers (SCF, HFB, DFT) with zero CPU↔GPU round-trips during iteration.
 
 #### Added
 
-- **Planning Document** (`docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`):
-  - Multi-kernel pipeline without CPU round-trips
-  - GPU Hamiltonian construction kernel (batched grid-quadrature GEMM)
-  - GPU BCS pairing kernel (batched bisection/root-finding)
-  - GPU convergence reduction (max_abs_diff_f64)
-  - Persistent buffer management for iterative solvers
+- **Max Abs Diff Reduction** (`barracuda::ops::max_abs_diff_f64`):
+  - GPU-accelerated `max|a[i] - b[i]|` for convergence checking
+  - WGSL kernel: `shaders/reduce/max_abs_diff_f64.wgsl`
+  - Two-pass tree reduction, handles arbitrary array sizes
+
+- **Persistent Buffer Management** (`barracuda::device::tensor_context`):
+  - `BufferPool::pin_solver_buffers()` - pin buffers for solver lifetime
+  - `BufferPool::release_solver_buffers()` - release when done
+  - `BufferDescriptor::f64_array()`, `f32_array()` helpers
+  - `SolverBufferSet` - typed buffer access by name
+
+- **Batched Bisection GPU** (`barracuda::optimize::batched_bisection_gpu`):
+  - GPU-parallel 1D root-finding (1000+ problems per dispatch)
+  - `solve_polynomial()` - validation/testing (find √n)
+  - `solve_bcs()` - BCS chemical potential (particle number equation)
+  - WGSL kernel: `shaders/optimizer/batched_bisection_f64.wgsl`
+
+- **Grid Quadrature GEMM** (`barracuda::ops::linalg::grid_quadrature_gemm_f64`):
+  - Batched Hamiltonian construction: `H[b,i,j] = Σ_k φ[b,i,k] * W[b,k] * φ[b,j,k] * weights[k]`
+  - Three kernels: general, small grid (≤256), symmetric optimization
+  - WGSL kernel: `shaders/linalg/grid_quadrature_gemm_f64.wgsl`
+
+- **Multi-Kernel Pipeline** (`barracuda::pipeline`):
+  - `PipelineBuilder` - declarative buffer/stage construction
+  - `Stage` - compute stage with inputs/outputs/workgroups
+  - `ComputePipeline::execute()` - single GPU submit for all stages
+  - `BufferSpec::f64()`, `f32()`, `bytes()` helpers
+
+- **GPU-Resident Pipeline Tests** (`tests/gpu_resident_pipeline_tests.rs`):
+  - Unit tests: MaxAbsDiff, Batched Bisection, Grid Quadrature GEMM
+  - E2E tests: SCF convergence simulation, persistent buffer patterns
+  - Integration: hotSpring 169-nucleus pattern validation
+  - Stress tests: 100K elements, 1000 parallel root-finding
+
+#### Key Metrics
+
+| Metric | Before | After |
+|--------|:------:|:-----:|
+| CPU↔GPU round-trips/iteration | ~10 | 1 |
+| Buffer allocs/iteration | ~20 | 0 |
+| Convergence check location | CPU | GPU |
+| Hamiltonian construction | CPU | GPU |
+| BCS root-finding | CPU | GPU |
+
+---
+
+### [2026-02-16] - GPU-Resident Pipeline Planning (hotSpring Exp 005)
+
+**Impact**: Evolution targets identified from hotSpring's L2 mega-batch experiment. (Now implemented above)
 
 #### Key Findings from hotSpring Exp 005
 

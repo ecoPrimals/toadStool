@@ -35,11 +35,12 @@
 
 use crate::device::pipeline_cache::{BindGroupLayoutSignature, DeviceFingerprint, GLOBAL_CACHE};
 use crate::device::WgpuDevice;
-use crate::error::Result;
+use crate::error::{BarracudaError, Result};
 use dashmap::DashMap;
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, LazyLock, Weak};
+use std::sync::{Arc, LazyLock, RwLock, Weak};
 
 /// Type alias for pending GPU operations (executed on sync)
 type PendingOp = Box<dyn FnOnce(&mut wgpu::CommandEncoder) + Send>;
@@ -127,12 +128,120 @@ struct BufferPoolInner {
     device: Arc<wgpu::Device>,
     allocations: AtomicUsize,
     reuses: AtomicUsize,
+    /// Pinned solver buffers (not returned to pool until explicitly released)
+    solver_buffers: RwLock<HashMap<String, SolverBufferSet>>,
 }
 
 impl BufferPoolInner {
     fn return_buffer(&self, buffer: wgpu::Buffer, bucket: usize) {
         self.pools.entry(bucket).or_default().push(buffer);
         self.reuses.fetch_add(1, Ordering::Relaxed);
+    }
+}
+
+/// Descriptor for creating a pinned solver buffer
+#[derive(Debug, Clone)]
+pub struct BufferDescriptor {
+    /// Size in bytes
+    pub size: u64,
+    /// Buffer usage flags (defaults to STORAGE | COPY_SRC | COPY_DST)
+    pub usage: wgpu::BufferUsages,
+    /// Optional label for debugging
+    pub label: Option<String>,
+}
+
+impl BufferDescriptor {
+    /// Create a new buffer descriptor with the given size
+    ///
+    /// Default usage: STORAGE | COPY_SRC | COPY_DST
+    pub fn new(size: u64) -> Self {
+        Self {
+            size,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+            label: None,
+        }
+    }
+
+    /// Create a descriptor for f64 array
+    pub fn f64_array(count: usize) -> Self {
+        Self::new((count * std::mem::size_of::<f64>()) as u64)
+    }
+
+    /// Create a descriptor for f32 array
+    pub fn f32_array(count: usize) -> Self {
+        Self::new((count * std::mem::size_of::<f32>()) as u64)
+    }
+
+    /// Set a label for debugging
+    pub fn with_label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
+        self
+    }
+
+    /// Set custom usage flags
+    pub fn with_usage(mut self, usage: wgpu::BufferUsages) -> Self {
+        self.usage = usage;
+        self
+    }
+}
+
+/// A set of buffers pinned for the lifetime of a solver
+///
+/// This enables zero-allocation steady state during iterative solvers.
+/// Buffers are created once at solver start and reused across all iterations.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let buffers = pool.pin_solver_buffers("hfb_scf", &[
+///     ("hamiltonian", BufferDescriptor::f64_array(batch * n * n)),
+///     ("eigenvalues", BufferDescriptor::f64_array(batch * n)),
+///     ("eigenvectors", BufferDescriptor::f64_array(batch * n * n)),
+/// ])?;
+///
+/// for iteration in 0..max_iterations {
+///     // Use buffers.get("hamiltonian") etc — no allocation
+/// }
+///
+/// pool.release_solver_buffers("hfb_scf");
+/// ```
+#[derive(Debug)]
+pub struct SolverBufferSet {
+    solver_id: String,
+    buffers: HashMap<String, Arc<wgpu::Buffer>>,
+}
+
+impl SolverBufferSet {
+    /// Get a buffer by name
+    pub fn get(&self, name: &str) -> Option<&wgpu::Buffer> {
+        self.buffers.get(name).map(|b| b.as_ref())
+    }
+
+    /// Get a buffer by name (Arc reference)
+    pub fn get_arc(&self, name: &str) -> Option<Arc<wgpu::Buffer>> {
+        self.buffers.get(name).cloned()
+    }
+
+    /// Get the solver ID
+    pub fn solver_id(&self) -> &str {
+        &self.solver_id
+    }
+
+    /// Get all buffer names
+    pub fn buffer_names(&self) -> impl Iterator<Item = &str> {
+        self.buffers.keys().map(|s| s.as_str())
+    }
+
+    /// Get the number of buffers
+    pub fn len(&self) -> usize {
+        self.buffers.len()
+    }
+
+    /// Check if empty
+    pub fn is_empty(&self) -> bool {
+        self.buffers.is_empty()
     }
 }
 
@@ -172,6 +281,7 @@ impl BufferPool {
                 device,
                 allocations: AtomicUsize::new(0),
                 reuses: AtomicUsize::new(0),
+                solver_buffers: RwLock::new(HashMap::new()),
             }),
         }
     }
@@ -245,6 +355,144 @@ impl BufferPool {
             self.inner.allocations.load(Ordering::Relaxed),
             self.inner.reuses.load(Ordering::Relaxed),
         )
+    }
+
+    /// Pin a set of named buffers for the lifetime of a solver
+    ///
+    /// Pinned buffers are not returned to the general pool when dropped.
+    /// They remain allocated until explicitly released via `release_solver_buffers()`.
+    ///
+    /// This enables zero-allocation steady state during iterative solvers like SCF.
+    ///
+    /// # Arguments
+    /// * `solver_id` - Unique identifier for the solver (e.g., "hfb_scf", "md_nvt")
+    /// * `buffers` - Array of (name, descriptor) pairs
+    ///
+    /// # Returns
+    /// A `SolverBufferSet` that provides access to the buffers by name
+    ///
+    /// # Errors
+    /// Returns error if a solver with the same ID already has pinned buffers
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let buffers = pool.pin_solver_buffers("hfb_scf", &[
+    ///     ("hamiltonian", BufferDescriptor::f64_array(batch * n * n)),
+    ///     ("eigenvalues", BufferDescriptor::f64_array(batch * n)),
+    /// ])?;
+    ///
+    /// let h = buffers.get("hamiltonian").unwrap();
+    /// // Use h in compute passes...
+    /// ```
+    pub fn pin_solver_buffers(
+        &self,
+        solver_id: &str,
+        buffers: &[(&str, BufferDescriptor)],
+    ) -> Result<SolverBufferSet> {
+        let mut solver_buffers = self
+            .inner
+            .solver_buffers
+            .write()
+            .expect("solver_buffers lock poisoned");
+
+        if solver_buffers.contains_key(solver_id) {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "Solver '{}' already has pinned buffers. Call release_solver_buffers() first.",
+                    solver_id
+                ),
+            });
+        }
+
+        let mut buffer_map = HashMap::new();
+        for (name, desc) in buffers {
+            let label = desc
+                .label
+                .clone()
+                .unwrap_or_else(|| format!("{}:{}", solver_id, name));
+
+            let buffer = self.inner.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(&label),
+                size: desc.size,
+                usage: desc.usage,
+                mapped_at_creation: false,
+            });
+
+            self.inner.allocations.fetch_add(1, Ordering::Relaxed);
+            buffer_map.insert(name.to_string(), Arc::new(buffer));
+        }
+
+        let buffer_set = SolverBufferSet {
+            solver_id: solver_id.to_string(),
+            buffers: buffer_map.clone(),
+        };
+
+        solver_buffers.insert(solver_id.to_string(), buffer_set);
+
+        // Return a clone of the buffer set for the caller
+        Ok(SolverBufferSet {
+            solver_id: solver_id.to_string(),
+            buffers: buffer_map,
+        })
+    }
+
+    /// Release all buffers associated with a solver
+    ///
+    /// After calling this, the solver's buffers are dropped and memory is freed.
+    /// The solver ID can then be reused for a new set of buffers.
+    ///
+    /// # Arguments
+    /// * `solver_id` - The solver ID passed to `pin_solver_buffers()`
+    ///
+    /// # Returns
+    /// `true` if buffers were found and released, `false` if no buffers existed
+    pub fn release_solver_buffers(&self, solver_id: &str) -> bool {
+        let mut solver_buffers = self
+            .inner
+            .solver_buffers
+            .write()
+            .expect("solver_buffers lock poisoned");
+
+        solver_buffers.remove(solver_id).is_some()
+    }
+
+    /// Get a reference to an existing solver's buffer set
+    ///
+    /// Returns None if the solver has no pinned buffers
+    pub fn get_solver_buffers(&self, solver_id: &str) -> Option<SolverBufferSet> {
+        let solver_buffers = self
+            .inner
+            .solver_buffers
+            .read()
+            .expect("solver_buffers lock poisoned");
+
+        solver_buffers.get(solver_id).map(|set| SolverBufferSet {
+            solver_id: set.solver_id.clone(),
+            buffers: set.buffers.clone(),
+        })
+    }
+
+    /// Check if a solver has pinned buffers
+    pub fn has_solver_buffers(&self, solver_id: &str) -> bool {
+        let solver_buffers = self
+            .inner
+            .solver_buffers
+            .read()
+            .expect("solver_buffers lock poisoned");
+
+        solver_buffers.contains_key(solver_id)
+    }
+
+    /// Get list of all solver IDs with pinned buffers
+    pub fn solver_ids(&self) -> Vec<String> {
+        let solver_buffers = self
+            .inner
+            .solver_buffers
+            .read()
+            .expect("solver_buffers lock poisoned");
+
+        solver_buffers.keys().cloned().collect()
     }
 }
 
@@ -473,6 +721,34 @@ impl TensorContext {
     /// Get device reference
     pub fn device(&self) -> &Arc<WgpuDevice> {
         &self.device
+    }
+
+    /// Get the buffer pool
+    pub fn buffer_pool(&self) -> &BufferPool {
+        &self.buffer_pool
+    }
+
+    /// Pin solver buffers (convenience method delegating to buffer_pool)
+    ///
+    /// See `BufferPool::pin_solver_buffers()` for documentation.
+    pub fn pin_solver_buffers(
+        &self,
+        solver_id: &str,
+        buffers: &[(&str, BufferDescriptor)],
+    ) -> Result<SolverBufferSet> {
+        self.buffer_pool.pin_solver_buffers(solver_id, buffers)
+    }
+
+    /// Release solver buffers (convenience method delegating to buffer_pool)
+    ///
+    /// See `BufferPool::release_solver_buffers()` for documentation.
+    pub fn release_solver_buffers(&self, solver_id: &str) -> bool {
+        self.buffer_pool.release_solver_buffers(solver_id)
+    }
+
+    /// Get solver buffers (convenience method delegating to buffer_pool)
+    pub fn get_solver_buffers(&self, solver_id: &str) -> Option<SolverBufferSet> {
+        self.buffer_pool.get_solver_buffers(solver_id)
     }
 
     /// Get statistics
@@ -830,5 +1106,165 @@ mod tests {
 
         // 2GB max buffer
         assert_eq!(limits.max_buffer_size, 1 << 31);
+    }
+
+    // ========================================================================
+    // Persistent Solver Buffer Tests
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_pin_solver_buffers_basic() {
+        let device = create_test_device().await;
+        let pool = BufferPool::new(device);
+
+        // Pin some buffers
+        let buffers = pool
+            .pin_solver_buffers(
+                "test_solver",
+                &[
+                    ("matrix_a", BufferDescriptor::f64_array(100)),
+                    ("matrix_b", BufferDescriptor::f64_array(100)),
+                    ("result", BufferDescriptor::f64_array(100)),
+                ],
+            )
+            .expect("pin_solver_buffers failed");
+
+        // Verify buffers exist
+        assert_eq!(buffers.len(), 3);
+        assert!(buffers.get("matrix_a").is_some());
+        assert!(buffers.get("matrix_b").is_some());
+        assert!(buffers.get("result").is_some());
+        assert!(buffers.get("nonexistent").is_none());
+
+        // Verify buffer sizes (100 f64s = 800 bytes)
+        assert!(buffers.get("matrix_a").unwrap().size() >= 800);
+
+        // Release
+        assert!(pool.release_solver_buffers("test_solver"));
+        assert!(!pool.release_solver_buffers("test_solver")); // Already released
+    }
+
+    #[tokio::test]
+    async fn test_pin_solver_buffers_duplicate_id_error() {
+        let device = create_test_device().await;
+        let pool = BufferPool::new(device);
+
+        // Pin first
+        pool.pin_solver_buffers("solver_a", &[("buf", BufferDescriptor::new(256))])
+            .expect("first pin failed");
+
+        // Try to pin again with same ID - should fail
+        let result =
+            pool.pin_solver_buffers("solver_a", &[("buf2", BufferDescriptor::new(256))]);
+        assert!(result.is_err());
+
+        // Release and try again - should work
+        pool.release_solver_buffers("solver_a");
+        let result =
+            pool.pin_solver_buffers("solver_a", &[("buf2", BufferDescriptor::new(256))]);
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_solver_buffer_set_methods() {
+        let device = create_test_device().await;
+        let pool = BufferPool::new(device);
+
+        let buffers = pool
+            .pin_solver_buffers(
+                "my_solver",
+                &[
+                    ("h", BufferDescriptor::f64_array(25)),
+                    ("v", BufferDescriptor::f64_array(5)),
+                ],
+            )
+            .expect("pin failed");
+
+        // Test solver_id
+        assert_eq!(buffers.solver_id(), "my_solver");
+
+        // Test is_empty
+        assert!(!buffers.is_empty());
+
+        // Test buffer_names
+        let names: Vec<_> = buffers.buffer_names().collect();
+        assert!(names.contains(&"h"));
+        assert!(names.contains(&"v"));
+
+        // Test get_arc
+        let arc = buffers.get_arc("h");
+        assert!(arc.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_buffer_descriptor_helpers() {
+        // Test f64_array
+        let desc = BufferDescriptor::f64_array(100);
+        assert_eq!(desc.size, 800); // 100 * 8 bytes
+
+        // Test f32_array
+        let desc = BufferDescriptor::f32_array(100);
+        assert_eq!(desc.size, 400); // 100 * 4 bytes
+
+        // Test with_label
+        let desc = BufferDescriptor::new(1024).with_label("my_buffer");
+        assert_eq!(desc.label, Some("my_buffer".to_string()));
+
+        // Test default usage
+        let desc = BufferDescriptor::new(1024);
+        assert!(desc.usage.contains(wgpu::BufferUsages::STORAGE));
+        assert!(desc.usage.contains(wgpu::BufferUsages::COPY_SRC));
+        assert!(desc.usage.contains(wgpu::BufferUsages::COPY_DST));
+    }
+
+    #[tokio::test]
+    async fn test_get_solver_buffers() {
+        let device = create_test_device().await;
+        let pool = BufferPool::new(device);
+
+        // Should be None before pinning
+        assert!(pool.get_solver_buffers("solver_x").is_none());
+
+        // Pin
+        pool.pin_solver_buffers("solver_x", &[("buf", BufferDescriptor::new(256))])
+            .unwrap();
+
+        // Should exist now
+        let buffers = pool.get_solver_buffers("solver_x");
+        assert!(buffers.is_some());
+        assert_eq!(buffers.unwrap().len(), 1);
+
+        // has_solver_buffers
+        assert!(pool.has_solver_buffers("solver_x"));
+        assert!(!pool.has_solver_buffers("solver_y"));
+
+        // solver_ids
+        let ids = pool.solver_ids();
+        assert!(ids.contains(&"solver_x".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_tensor_context_solver_buffers() {
+        let wgpu_device = crate::device::WgpuDevice::new()
+            .await
+            .expect("failed to create WgpuDevice");
+        let device = Arc::new(wgpu_device);
+        let ctx = TensorContext::new(device);
+
+        // Test via TensorContext convenience methods
+        let buffers = ctx
+            .pin_solver_buffers(
+                "scf_solver",
+                &[
+                    ("hamiltonian", BufferDescriptor::f64_array(64)),
+                    ("density", BufferDescriptor::f64_array(32)),
+                ],
+            )
+            .expect("pin failed");
+
+        assert_eq!(buffers.len(), 2);
+        assert!(ctx.get_solver_buffers("scf_solver").is_some());
+        assert!(ctx.release_solver_buffers("scf_solver"));
+        assert!(ctx.get_solver_buffers("scf_solver").is_none());
     }
 }

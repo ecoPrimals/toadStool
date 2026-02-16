@@ -1,0 +1,578 @@
+//! Batched Bisection Root-Finding (GPU) — Parallel Root-Finding
+//!
+//! Solves many independent root-finding problems in parallel on GPU.
+//! Each problem runs bisection concurrently with full f64 precision.
+//!
+//! **Use cases**:
+//! - BCS pairing: Find μ where Σ v²_k(μ) = N for each nucleus
+//! - Multi-system parameter fitting
+//! - Batch chemical equilibrium calculations
+//!
+//! **Deep Debt Principles**:
+//! - Pure WGSL implementation (hardware-agnostic)
+//! - Full f64 precision
+//! - Safe Rust wrapper (no unsafe code)
+//!
+//! # Example
+//!
+//! ```rust,ignore
+//! let device = WgpuDevice::new().await?;
+//! let bisect = BatchedBisectionGpu::new(device.clone(), 64, 1e-12)?;
+//!
+//! // Find √2, √3, √5 in parallel
+//! let lower = vec![0.0, 0.0, 0.0];
+//! let upper = vec![2.0, 2.0, 3.0];
+//! let targets = vec![2.0, 3.0, 5.0]; // x² = target
+//!
+//! let roots = bisect.solve_polynomial(&lower, &upper, &targets)?;
+//! // roots ≈ [1.414, 1.732, 2.236]
+//! ```
+
+use crate::device::WgpuDevice;
+use crate::error::{BarracudaError, Result};
+use bytemuck::{Pod, Zeroable};
+use std::sync::Arc;
+use wgpu::util::DeviceExt;
+
+/// Parameters for batched bisection shader
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct BisectionParams {
+    batch_size: u32,
+    max_iterations: u32,
+    n_levels: u32,
+    _pad: u32,
+    tolerance_lo: u32, // f64 as two u32s for alignment
+    tolerance_hi: u32,
+}
+
+impl BisectionParams {
+    fn new(batch_size: u32, max_iterations: u32, n_levels: u32, tolerance: f64) -> Self {
+        let tol_bits = tolerance.to_bits();
+        Self {
+            batch_size,
+            max_iterations,
+            n_levels,
+            _pad: 0,
+            tolerance_lo: tol_bits as u32,
+            tolerance_hi: (tol_bits >> 32) as u32,
+        }
+    }
+}
+
+/// GPU-accelerated batched bisection root-finding
+///
+/// Solves N independent bisection problems in parallel.
+pub struct BatchedBisectionGpu {
+    device: Arc<WgpuDevice>,
+    max_iterations: u32,
+    tolerance: f64,
+}
+
+/// Result of batched bisection
+pub struct BisectionResult {
+    /// Found roots [batch_size]
+    pub roots: Vec<f64>,
+    /// Number of iterations used per problem [batch_size]
+    pub iterations: Vec<u32>,
+}
+
+impl BatchedBisectionGpu {
+    /// Create a new batched bisection solver
+    ///
+    /// # Arguments
+    /// * `device` - WgpuDevice
+    /// * `max_iterations` - Maximum bisection iterations per problem (typically 50-100)
+    /// * `tolerance` - Convergence tolerance (typically 1e-10 to 1e-14)
+    pub fn new(device: Arc<WgpuDevice>, max_iterations: u32, tolerance: f64) -> Result<Self> {
+        if tolerance <= 0.0 {
+            return Err(BarracudaError::InvalidInput {
+                message: "Tolerance must be positive".to_string(),
+            });
+        }
+        Ok(Self {
+            device,
+            max_iterations,
+            tolerance,
+        })
+    }
+
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/optimizer/batched_bisection_f64.wgsl")
+    }
+
+    /// Solve batched polynomial root-finding: x² = target
+    ///
+    /// Finds √target for each problem in parallel.
+    /// This is a validation/test function.
+    ///
+    /// # Arguments
+    /// * `lower` - Lower bounds [batch_size]
+    /// * `upper` - Upper bounds [batch_size]
+    /// * `targets` - Target values (find x where x² = target) [batch_size]
+    pub fn solve_polynomial(
+        &self,
+        lower: &[f64],
+        upper: &[f64],
+        targets: &[f64],
+    ) -> Result<BisectionResult> {
+        if lower.len() != upper.len() || lower.len() != targets.len() {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "Array lengths must match: lower={}, upper={}, targets={}",
+                    lower.len(),
+                    upper.len(),
+                    targets.len()
+                ),
+            });
+        }
+
+        self.solve_internal(lower, upper, targets, 1, "batched_bisection_poly")
+    }
+
+    /// Solve BCS particle number equation: Σ v²_k(μ) = N
+    ///
+    /// Finds chemical potential μ for each nucleus such that the
+    /// BCS occupation numbers sum to the target particle number.
+    ///
+    /// # Arguments
+    /// * `lower` - Lower bounds for μ [batch_size]
+    /// * `upper` - Upper bounds for μ [batch_size]
+    /// * `eigenvalues` - Single-particle energies [batch_size, n_levels]
+    /// * `delta` - Pairing gap for each problem [batch_size]
+    /// * `target_n` - Target particle number for each problem [batch_size]
+    pub fn solve_bcs(
+        &self,
+        lower: &[f64],
+        upper: &[f64],
+        eigenvalues: &[f64],
+        delta: &[f64],
+        target_n: &[f64],
+    ) -> Result<BisectionResult> {
+        let batch_size = lower.len();
+        if upper.len() != batch_size || delta.len() != batch_size || target_n.len() != batch_size {
+            return Err(BarracudaError::InvalidInput {
+                message: "Array lengths must match batch_size".to_string(),
+            });
+        }
+
+        // Calculate n_levels
+        if !eigenvalues.len().is_multiple_of(batch_size) {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "eigenvalues length {} must be divisible by batch_size {}",
+                    eigenvalues.len(),
+                    batch_size
+                ),
+            });
+        }
+        let n_levels = eigenvalues.len() / batch_size;
+
+        // Pack params: [ε_0, ..., ε_{n-1}, Δ, N] per problem
+        let params_per_problem = n_levels + 2;
+        let mut params = Vec::with_capacity(batch_size * params_per_problem);
+        for i in 0..batch_size {
+            // Eigenvalues for this problem
+            for j in 0..n_levels {
+                params.push(eigenvalues[i * n_levels + j]);
+            }
+            // Delta and target N
+            params.push(delta[i]);
+            params.push(target_n[i]);
+        }
+
+        self.solve_internal(lower, upper, &params, n_levels as u32, "batched_bisection")
+    }
+
+    fn solve_internal(
+        &self,
+        lower: &[f64],
+        upper: &[f64],
+        params: &[f64],
+        n_levels: u32,
+        entry_point: &str,
+    ) -> Result<BisectionResult> {
+        let batch_size = lower.len();
+        if batch_size == 0 {
+            return Ok(BisectionResult {
+                roots: vec![],
+                iterations: vec![],
+            });
+        }
+
+        let shader = self
+            .device
+            .compile_shader(Self::wgsl_shader(), Some("Batched Bisection f64"));
+
+        // Create bind group layout
+        let bgl = self
+            .device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("BatchedBisection BGL"),
+                entries: &[
+                    // lower [batch]
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // upper [batch]
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // params [batch, params_per_problem]
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // roots [batch]
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // iterations [batch]
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // config
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let pl = self
+            .device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("BatchedBisection PL"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            });
+
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some(entry_point),
+                    layout: Some(&pl),
+                    module: &shader,
+                    entry_point,
+                });
+
+        // Create buffers
+        let lower_bytes: Vec<u8> = lower.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let lower_buffer = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("BatchedBisection lower"),
+                contents: &lower_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let upper_bytes: Vec<u8> = upper.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let upper_buffer = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("BatchedBisection upper"),
+                contents: &upper_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let params_bytes: Vec<u8> = params.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let params_buffer = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("BatchedBisection params"),
+                contents: &params_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let roots_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BatchedBisection roots"),
+            size: (batch_size * 8) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let iterations_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BatchedBisection iterations"),
+            size: (batch_size * 4) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let config = BisectionParams::new(
+            batch_size as u32,
+            self.max_iterations,
+            n_levels,
+            self.tolerance,
+        );
+        let config_buffer = self.device.create_uniform_buffer("BatchedBisection config", &config);
+
+        // Create bind group
+        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("BatchedBisection BG"),
+            layout: &bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: lower_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: upper_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: roots_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: iterations_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: config_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Execute
+        let n_workgroups = batch_size.div_ceil(64);
+        {
+            let mut encoder =
+                self.device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("BatchedBisection encoder"),
+                    });
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("BatchedBisection pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&pipeline);
+                pass.set_bind_group(0, &bg, &[]);
+                pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
+            }
+            self.device.queue.submit(Some(encoder.finish()));
+        }
+
+        // Read back results
+        let roots = self.read_f64_buffer(&roots_buffer, batch_size)?;
+        let iterations = self.read_u32_buffer(&iterations_buffer, batch_size)?;
+
+        Ok(BisectionResult { roots, iterations })
+    }
+
+    fn read_f64_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<f64>> {
+        let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BatchedBisection f64 staging"),
+            size: (count * 8) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("BatchedBisection f64 readback"),
+                });
+        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
+        self.device.queue.submit(Some(encoder.finish()));
+
+        let slice = staging.slice(..);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).unwrap();
+        });
+        self.device.device.poll(wgpu::Maintain::Wait);
+        receiver
+            .recv()
+            .unwrap()
+            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
+
+        let data = slice.get_mapped_range();
+        let result: Vec<f64> = data
+            .chunks_exact(8)
+            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
+            .collect();
+        drop(data);
+        staging.unmap();
+
+        Ok(result)
+    }
+
+    fn read_u32_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<u32>> {
+        let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BatchedBisection u32 staging"),
+            size: (count * 4) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("BatchedBisection u32 readback"),
+                });
+        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 4) as u64);
+        self.device.queue.submit(Some(encoder.finish()));
+
+        let slice = staging.slice(..);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).unwrap();
+        });
+        self.device.device.poll(wgpu::Maintain::Wait);
+        receiver
+            .recv()
+            .unwrap()
+            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
+
+        let data = slice.get_mapped_range();
+        let result: Vec<u32> = data
+            .chunks_exact(4)
+            .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
+            .collect();
+        drop(data);
+        staging.unmap();
+
+        Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_batched_bisection_polynomial() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
+
+        let bisect = BatchedBisectionGpu::new(device, 64, 1e-10).unwrap();
+
+        // Find √2, √3, √5 in parallel
+        let lower = vec![0.0, 0.0, 0.0];
+        let upper = vec![2.0, 2.0, 3.0];
+        let targets = vec![2.0, 3.0, 5.0];
+
+        let result = bisect.solve_polynomial(&lower, &upper, &targets).unwrap();
+
+        assert!(
+            (result.roots[0] - 2.0_f64.sqrt()).abs() < 1e-9,
+            "√2 should be {}, got {}",
+            2.0_f64.sqrt(),
+            result.roots[0]
+        );
+        assert!(
+            (result.roots[1] - 3.0_f64.sqrt()).abs() < 1e-9,
+            "√3 should be {}, got {}",
+            3.0_f64.sqrt(),
+            result.roots[1]
+        );
+        assert!(
+            (result.roots[2] - 5.0_f64.sqrt()).abs() < 1e-9,
+            "√5 should be {}, got {}",
+            5.0_f64.sqrt(),
+            result.roots[2]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_batched_bisection_large_batch() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
+
+        let bisect = BatchedBisectionGpu::new(device, 64, 1e-10).unwrap();
+
+        // Find √n for n = 2 to 1001 (1000 problems)
+        let n = 1000;
+        let lower = vec![0.0; n];
+        let upper: Vec<f64> = (2..=n + 1).map(|i| (i as f64).max(2.0)).collect();
+        let targets: Vec<f64> = (2..=n + 1).map(|i| i as f64).collect();
+
+        let result = bisect.solve_polynomial(&lower, &upper, &targets).unwrap();
+
+        // Verify all roots
+        for i in 0..n {
+            let expected = ((i + 2) as f64).sqrt();
+            assert!(
+                (result.roots[i] - expected).abs() < 1e-8,
+                "Problem {}: √{} should be {}, got {}",
+                i,
+                i + 2,
+                expected,
+                result.roots[i]
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_batched_bisection_empty() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
+
+        let bisect = BatchedBisectionGpu::new(device, 64, 1e-10).unwrap();
+
+        let result = bisect.solve_polynomial(&[], &[], &[]).unwrap();
+        assert!(result.roots.is_empty());
+        assert!(result.iterations.is_empty());
+    }
+}
