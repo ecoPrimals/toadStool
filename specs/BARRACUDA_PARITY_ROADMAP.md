@@ -1,12 +1,37 @@
 # BarraCUDA Performance Parity Roadmap
 
-**Date**: February 13, 2026  
-**Status**: BEYOND PARITY ON AMD — FMA EVOLUTION COMPLETE  
+**Date**: February 16, 2026  
+**Status**: BEYOND PARITY — GPU-RESIDENT PIPELINE NEXT  
 **Goal**: Achieve vendor-free CUDA/ROCm parity with self-optimizing runtime
 
 ---
 
 ## 0. Latest Updates
+
+### 0.0.3 GPU-Resident Pipeline (Feb 16, 2026) — NEW
+
+**hotSpring Experiment 005 Finding:** 95% GPU utilization but CPU still **70× faster**!
+
+| Metric | GPU | CPU |
+|--------|:---:|:---:|
+| Wall time (791 nuclei) | 40.9 min | 35 sec |
+
+**Root cause:** Amdahl's Law. Eigensolve = 1% of SCF, CPU physics = 99%.
+Each CPU step requires GPU↔CPU round-trip.
+
+**Solution:** GPU-resident iteration loop with zero CPU round-trips.
+
+| Target | Status | Impact |
+|--------|:------:|--------|
+| Max Abs Diff Reduction | Planned | Convergence check |
+| Persistent Buffer Management | Planned | Zero allocs/iteration |
+| Batched Bisection | Planned | GPU BCS pairing |
+| Grid Quadrature GEMM | Planned | GPU Hamiltonian |
+| Multi-Kernel Pipeline | Planned | Buffer chaining |
+
+**See:** `../NEXT_STEPS.md` and `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`
+
+---
 
 ### 0.0 Bind Group Caching Fix + FMA (Feb 13, 2026)
 

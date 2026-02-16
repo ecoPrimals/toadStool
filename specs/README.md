@@ -1,93 +1,104 @@
 # ToadStool + BarraCUDA Specifications
 
-## Current Status (February 14, 2026)
+## Current Status (February 16, 2026)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
+- **`../NEXT_STEPS.md`** — Immediate work from hotSpring (GPU-resident pipeline)
 - **`BARRACUDA_PARITY_ROADMAP.md`** — Performance evolution and validation results
 
 **Key Numbers:**
 - **15,700+ tests passing**, 0 failing
-- **396 WGSL shaders** (shader-first architecture)
+- **480+ WGSL shaders** (shader-first architecture)
 - **82-86% theoretical bandwidth** on both NVIDIA and AMD
+- **hotSpring validated**: 169/169 nuclear EOS acceptance checks
 - Pure-GPU f64 math library with 27+ transcendental functions
-- Runtime cache discovery for intelligent workload tiling
 
-**New: hotSpring MD Integration**
-- 9/9 Yukawa OCP cases validated (0.000% energy drift)
-- 3.7× GPU speedup at N=2000 (RTX 4070)
-- See `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md` for evolution targets
+**Latest: GPU-Resident Pipeline (Feb 16)**
+- hotSpring Exp 005: 95% GPU utilization, but CPU still 70× faster (small matrices)
+- Root cause: Amdahl's Law — eigensolve is 1% of iteration, CPU physics is 99%
+- Solution: GPU-resident iteration loop with zero CPU↔GPU round-trips
+- See `../NEXT_STEPS.md` and `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`
 
 ---
 
 ## Active Specifications
 
-### Performance & Evolution
+### Performance & Evolution (Primary Focus)
 
-| Document | Purpose |
-|----------|---------|
-| **[BARRACUDA_PARITY_ROADMAP.md](./BARRACUDA_PARITY_ROADMAP.md)** | Performance evolution, benchmarks, validated results |
-| **[FP64_GPU_EVOLUTION.md](./FP64_GPU_EVOLUTION.md)** | Pure-GPU f64 math, Naga/WGSL gotchas, precision validation |
-| **[CROSS_PLATFORM_WORKLOADS.md](./CROSS_PLATFORM_WORKLOADS.md)** | Cross-vendor benchmark specifications |
-| **[CROSS_VENDOR_BENCHMARK_SPEC.md](./CROSS_VENDOR_BENCHMARK_SPEC.md)** | Benchmark methodology and validation |
+| Document | Purpose | Updated |
+|----------|---------|---------|
+| **[BARRACUDA_PARITY_ROADMAP.md](./BARRACUDA_PARITY_ROADMAP.md)** | Performance evolution, benchmarks, validated results | Feb 13 |
+| **[FP64_GPU_EVOLUTION.md](./FP64_GPU_EVOLUTION.md)** | Pure-GPU f64 math, Naga/WGSL gotchas, precision validation | Feb 14 |
+| **[CROSS_PLATFORM_WORKLOADS.md](./CROSS_PLATFORM_WORKLOADS.md)** | Cross-vendor workload strategy (GPU + NPU) | Feb 13 |
+| **[CROSS_VENDOR_BENCHMARK_SPEC.md](./CROSS_VENDOR_BENCHMARK_SPEC.md)** | Benchmark methodology and validation | Feb 12 |
 
-### Architecture & Infrastructure
+### NPU & Multi-Tenant
 
-| Document | Purpose |
-|----------|---------|
-| **[BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md](./BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md)** | Universal tensor ops (CPU, GPU, NPU) |
-| **[BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md](./BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md)** | FFT, complex arithmetic, physics primitives |
-| **[NPU_DRIVER_ARCHITECTURE.md](./NPU_DRIVER_ARCHITECTURE.md)** | NPU driver design |
-| **[NPU_MULTI_TENANT_ARCHITECTURE.md](./NPU_MULTI_TENANT_ARCHITECTURE.md)** | Multi-tenant NPU |
-| **[MULTITENANT_COMPUTE_ARCHITECTURE.md](./MULTITENANT_COMPUTE_ARCHITECTURE.md)** | Compute multi-tenancy |
+| Document | Purpose | Updated |
+|----------|---------|---------|
+| **[NPU_DRIVER_ARCHITECTURE.md](./NPU_DRIVER_ARCHITECTURE.md)** | Pure Rust VFIO NPU driver design | Feb 11 |
+| **[NPU_MULTI_TENANT_ARCHITECTURE.md](./NPU_MULTI_TENANT_ARCHITECTURE.md)** | Multi-tenant NPU resource partitioning | Feb 11 |
+| **[MULTITENANT_COMPUTE_ARCHITECTURE.md](./MULTITENANT_COMPUTE_ARCHITECTURE.md)** | Compute multi-tenancy across GPU/NPU/CPU | Feb 11 |
+| **[BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md](./BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md)** | Universal tensor ops (CPU, GPU, NPU) | Feb 2 |
 
-### Platform & Integration
+### Research & Extensions
 
-| Document | Purpose |
-|----------|---------|
-| [PRIMAL_CAPABILITY_SYSTEM.md](./PRIMAL_CAPABILITY_SYSTEM.md) | Capability-based discovery |
-| [UNIVERSAL_COMPUTE_PLATFORM.md](./UNIVERSAL_COMPUTE_PLATFORM.md) | Platform architecture |
-| [UNIVERSAL_UNIFIED_MEMORY.md](./UNIVERSAL_UNIFIED_MEMORY.md) | Unified memory model |
-| [SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md](./SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md) | Quality standards |
-| [RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md) | Neuromorphic extensions |
+| Document | Purpose | Updated |
+|----------|---------|---------|
+| **[RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md)** | Neuromorphic reservoir computing ops | Jan 29 |
+| **[DISPLAY_BACKEND_SPEC.md](./DISPLAY_BACKEND_SPEC.md)** | DRM/input backend (Phase 0) | Jan 18 |
+| **[PRIMAL_CAPABILITY_SYSTEM.md](./PRIMAL_CAPABILITY_SYSTEM.md)** | Capability-based discovery | Jan 7 |
 
-### Molecular Dynamics Evolution (hotSpring Integration)
+---
 
-| Priority | Target | Status |
-|----------|--------|--------|
-| HIGH | f64 Yukawa force with PBC + PE | **DONE** — `yukawa_f64.wgsl` |
-| HIGH | Cell-list neighbor search | **DONE** — `neighbor/cell_list.rs` |
-| MEDIUM | Split Velocity-Verlet (kick-drift-kick) | **DONE** — `velocity_verlet_split.wgsl` |
-| MEDIUM | Berendsen thermostat | **DONE** — `berendsen.wgsl` + Rust op |
-| MEDIUM | Nosé-Hoover thermostat | **DONE** — `nose_hoover.wgsl` + Rust ops |
-| MEDIUM | Langevin thermostat | **DONE** — `langevin.wgsl` + Rust ops |
-| MEDIUM | GPU observables (KE, RDF) | **DONE** — `kinetic_energy.wgsl`, `rdf_histogram.wgsl` |
-| MEDIUM | CPU observables (VACF, SSF, MSD) | **DONE** — `compute_vacf()`, `compute_ssf()`, `compute_msd()` |
-| HIGH | PPPM/Ewald for long-range Coulomb | In Progress — `electrostatics/pppm_params.rs` |
-| FUTURE | MSU HPC comparison benchmark | Planning — Murillo collaboration |
+## GPU-Resident Pipeline Targets (Feb 16)
 
-**Reference:** `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
+| # | Item | Status | Impact |
+|:-:|------|:------:|--------|
+| 1 | Max Abs Diff Reduction | Planned | Convergence check |
+| 2 | Persistent Buffer Management | Planned | Pin for solver lifetime |
+| 3 | Batched Bisection | Planned | GPU BCS pairing |
+| 4 | Grid Quadrature GEMM | Planned | GPU Hamiltonian |
+| 5 | Multi-Kernel Pipeline | Planned | Buffer chaining |
 
-### Other
+**Target**: GPU-resident SCF → ~40s for 791 nuclei (vs 35s CPU)
 
-| Document | Purpose |
-|----------|---------|
-| [TOADSTOOL_CORE_IMPLEMENTATION_SPEC.md](./TOADSTOOL_CORE_IMPLEMENTATION_SPEC.md) | Core implementation |
-| [TOADSTOOL_LOCAL_SHOWCASE_SPEC.md](./TOADSTOOL_LOCAL_SHOWCASE_SPEC.md) | Local showcase demos |
-| [UNIVERSAL_COMPUTE_ORCHESTRATOR.md](./UNIVERSAL_COMPUTE_ORCHESTRATOR.md) | Orchestration |
-| [DISPLAY_BACKEND_SPEC.md](./DISPLAY_BACKEND_SPEC.md) | Display backend |
-| [CRYPTO_LOCK_ARCHITECTURE.md](./CRYPTO_LOCK_ARCHITECTURE.md) | Security |
-| [PHASE2_CONFIGURATION_MANAGEMENT_COMPLETE.md](./PHASE2_CONFIGURATION_MANAGEMENT_COMPLETE.md) | Phase 2 config |
+---
+
+## Completed Evolution (Reference)
+
+### MD Pipeline (Feb 14) ✅
+
+| Target | Status |
+|--------|:------:|
+| f64 Yukawa force with PBC + PE | ✅ DONE |
+| Cell-list neighbor search | ✅ DONE |
+| Split Velocity-Verlet | ✅ DONE |
+| Berendsen/Nosé-Hoover/Langevin thermostats | ✅ DONE |
+| GPU observables (KE, RDF) | ✅ DONE |
+| CPU observables (VACF, SSF, MSD) | ✅ DONE |
+| PPPM/Ewald (full solver) | ✅ DONE |
+
+### Math Primitives (Feb 15) ✅
+
+| Primitive | Status |
+|-----------|:------:|
+| Hermite/Laguerre f64 | ✅ DONE |
+| Broyden mixing | ✅ DONE |
+| FD gradients | ✅ DONE |
+| Weighted inner product | ✅ DONE |
+| Science buffer limits | ✅ DONE |
 
 ---
 
 ## Archive
 
-Historical documents preserved for context are in `archive/`:
+Historical documents preserved in `archive/`:
 - Evolution phase documents (superseded by PARITY_ROADMAP)
 - Science gap audits (completed)
 - Old optimization plans (implemented)
-- Fractal composition specs (different focus)
+- Older architecture specs (core implementation complete)
 
 ---
 
@@ -95,23 +106,19 @@ Historical documents preserved for context are in `archive/`:
 
 ### Runtime Discovery, Not Hardcoding
 
-**WRONG:**
 ```rust
+// WRONG
 let cache_size = if vendor == "AMD" { 128_MB } else { 6_MB };
-```
 
-**RIGHT:**
-```rust
+// RIGHT
 let hierarchy = SubstrateMemoryHierarchy::probe(&device).await;
-// The silicon tells us what it can do
 ```
 
 ### Shader-First Architecture
 
 All math is WGSL primary. ToadStool dispatches to GPU or CPU based on hardware:
-- 396 WGSL shaders
+- 480+ WGSL shaders
 - Same shader → Vulkan (NVIDIA/AMD), Metal (Apple), DX12 (Windows)
-- CPU fallback via wgpu software rasterizer
 
 ### Vendor-Agnostic Results
 
@@ -124,6 +131,8 @@ Same binary, identical results:
 
 ## Quick Links
 
+- **Immediate work:** `../NEXT_STEPS.md`
+- **Planning docs:** `docs/planning/`
 - **Benchmarks:** `showcase/cross-platform/`
 - **Shaders:** `crates/barracuda/src/shaders/`
 - **Device layer:** `crates/barracuda/src/device/`
