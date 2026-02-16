@@ -1,6 +1,6 @@
 # BarraCUDA Performance Parity Roadmap
 
-**Date**: February 16, 2026  
+**Date**: February 15, 2026  
 **Status**: BEYOND PARITY — GPU-RESIDENT PIPELINE NEXT  
 **Goal**: Achieve vendor-free CUDA/ROCm parity with self-optimizing runtime
 

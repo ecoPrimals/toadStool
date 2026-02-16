@@ -1,148 +1,14 @@
 //! Comprehensive tests for substrate detectors
 //!
-//! Sprint 23R: detectors.rs coverage 35.47% → 60%+
+//! ## Evolution (Feb 15, 2026)
+//!
+//! Tests updated to focus on BareMetalDetector only.
+//! Vendor-specific detectors (Kubernetes, Docker, Consul, Cloud) removed.
+//! ToadStool only cares about hardware capabilities - service discovery
+//! is delegated to Songbird (comms primal).
 
 use toadstool_common::infant_discovery::capabilities::*;
 use toadstool_common::infant_discovery::detectors::*;
-
-// ============================================================================
-// KubernetesDetector Tests
-// ============================================================================
-
-#[test]
-fn test_kubernetes_detector_new() {
-    let detector = KubernetesDetector::new();
-    assert_eq!(detector.name(), "kubernetes");
-}
-
-#[test]
-fn test_kubernetes_detector_default() {
-    let detector = KubernetesDetector;
-    assert_eq!(detector.name(), "kubernetes");
-}
-
-#[test]
-fn test_kubernetes_detector_name() {
-    let detector = KubernetesDetector::new();
-    assert_eq!(detector.name(), "kubernetes");
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_kubernetes_detector_no_kubernetes_env() {
-    // Ensure we're not in a k8s environment for this test
-    std::env::remove_var("KUBERNETES_SERVICE_HOST");
-
-    let detector = KubernetesDetector::new();
-    let result = detector.detect().await;
-
-    assert!(result.is_ok());
-    // Result depends on if /.../serviceaccount exists (unlikely in test env)
-}
-
-// ============================================================================
-// DockerDetector Tests
-// ============================================================================
-
-#[test]
-fn test_docker_detector_new() {
-    let detector = DockerDetector::new();
-    assert_eq!(detector.name(), "docker");
-}
-
-#[test]
-fn test_docker_detector_default() {
-    let detector = DockerDetector;
-    assert_eq!(detector.name(), "docker");
-}
-
-#[test]
-fn test_docker_detector_name() {
-    let detector = DockerDetector::new();
-    assert_eq!(detector.name(), "docker");
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_docker_detector_no_docker_env() {
-    let detector = DockerDetector::new();
-    let result = detector.detect().await;
-
-    assert!(result.is_ok());
-    // Result depends on if /.dockerenv or /proc/self/cgroup exists
-}
-
-// ============================================================================
-// ConsulDetector Tests
-// ============================================================================
-
-#[test]
-fn test_consul_detector_new() {
-    let detector = ConsulDetector::new();
-    assert_eq!(detector.name(), "consul");
-}
-
-#[test]
-fn test_consul_detector_default() {
-    let detector = ConsulDetector;
-    assert_eq!(detector.name(), "consul");
-}
-
-#[test]
-fn test_consul_detector_name() {
-    let detector = ConsulDetector::new();
-    assert_eq!(detector.name(), "consul");
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_consul_detector_no_consul() {
-    std::env::remove_var("CONSUL_HTTP_ADDR");
-
-    let detector = ConsulDetector::new();
-    let result = detector.detect().await;
-
-    assert!(result.is_ok());
-    // Should return None when consul is not available
-    if let Ok(None) = result {
-        // Expected: No consul running
-    }
-}
-
-// ============================================================================
-// CloudDetector Tests
-// ============================================================================
-
-#[test]
-fn test_cloud_detector_new() {
-    let detector = CloudDetector::new();
-    assert_eq!(detector.name(), "cloud");
-}
-
-#[test]
-fn test_cloud_detector_default() {
-    let detector = CloudDetector;
-    assert_eq!(detector.name(), "cloud");
-}
-
-#[test]
-fn test_cloud_detector_name() {
-    let detector = CloudDetector::new();
-    assert_eq!(detector.name(), "cloud");
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_cloud_detector_no_cloud_env() {
-    // Remove all cloud environment variables
-    std::env::remove_var("AWS_REGION");
-    std::env::remove_var("AWS_DEFAULT_REGION");
-    std::env::remove_var("GCP_PROJECT");
-    std::env::remove_var("GOOGLE_CLOUD_PROJECT");
-    std::env::remove_var("AZURE_SUBSCRIPTION_ID");
-
-    let detector = CloudDetector::new();
-    let result = detector.detect().await;
-
-    assert!(result.is_ok());
-    // Should return None when no cloud detected
-}
 
 // ============================================================================
 // BareMetalDetector Tests
@@ -167,82 +33,70 @@ fn test_bare_metal_detector_name() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_bare_metal_detector_always_succeeds() {
+async fn test_bare_metal_detector_detect() {
     let detector = BareMetalDetector::new();
     let result = detector.detect().await;
 
     assert!(result.is_ok());
-    let substrate_option = result.unwrap();
-    assert!(substrate_option.is_some());
-
-    let substrate = substrate_option.unwrap();
+    let substrate = result.unwrap();
+    assert!(substrate.is_some());
+    let substrate = substrate.unwrap();
     assert_eq!(substrate.substrate_type, SubstrateType::Bare);
-    assert_eq!(substrate.capabilities.len(), 1);
-    assert_eq!(substrate.capabilities[0], SubstrateCapability::BareMetal);
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_bare_metal_detector_metadata() {
-    let detector = BareMetalDetector::new();
-    let result = detector.detect().await.unwrap().unwrap();
-
-    assert!(result.metadata.contains_key("deployment"));
-    assert_eq!(
-        result.metadata.get("deployment"),
-        Some(&"bare_metal".to_string())
-    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_bare_metal_detector_capabilities() {
     let detector = BareMetalDetector::new();
-    let result = detector.detect().await.unwrap().unwrap();
-
-    assert!(result.has_capability(&SubstrateCapability::BareMetal));
-    assert!(!result.has_capability(&SubstrateCapability::CloudCompute));
+    let result = detector.detect().await.unwrap();
+    assert!(result.is_some());
+    let substrate = result.unwrap();
+    assert!(!substrate.capabilities.is_empty());
+    assert!(substrate
+        .capabilities
+        .contains(&SubstrateCapability::BareMetal));
 }
-
-// ============================================================================
-// standard_detectors() Function Tests
-// ============================================================================
-
-#[test]
-fn test_standard_detectors_count() {
-    let detectors = standard_detectors();
-    assert_eq!(detectors.len(), 5);
-}
-
-#[test]
-fn test_standard_detectors_order() {
-    let detectors = standard_detectors();
-
-    assert_eq!(detectors[0].name(), "kubernetes");
-    assert_eq!(detectors[1].name(), "docker");
-    assert_eq!(detectors[2].name(), "consul");
-    assert_eq!(detectors[3].name(), "cloud");
-    assert_eq!(detectors[4].name(), "bare_metal");
-}
-
-#[test]
-fn test_standard_detectors_all_names() {
-    let detectors = standard_detectors();
-    let names: Vec<&str> = detectors.iter().map(|d| d.name()).collect();
-
-    assert_eq!(
-        names,
-        vec!["kubernetes", "docker", "consul", "cloud", "bare_metal"]
-    );
-}
-
-// ============================================================================
-// Detector Integration Tests
-// ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_detector_chain_execution() {
-    let detectors = standard_detectors();
+async fn test_bare_metal_detector_metadata() {
+    let detector = BareMetalDetector::new();
+    let result = detector.detect().await.unwrap();
+    assert!(result.is_some());
+    let substrate = result.unwrap();
+    assert!(!substrate.metadata.is_empty());
+    assert!(substrate.metadata.contains_key("deployment"));
+}
 
-    // All detectors should be callable
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_bare_metal_detector_cpu_threads() {
+    let detector = BareMetalDetector::new();
+    let result = detector.detect().await.unwrap();
+    assert!(result.is_some());
+    let substrate = result.unwrap();
+    // Should have cpu_threads metadata
+    assert!(substrate.metadata.contains_key("cpu_threads"));
+    let threads: usize = substrate
+        .metadata
+        .get("cpu_threads")
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert!(threads >= 1);
+}
+
+// ============================================================================
+// Standard Detectors Chain Tests
+// ============================================================================
+
+#[test]
+fn test_standard_detectors_returns_only_bare_metal() {
+    let detectors = standard_detectors();
+    assert_eq!(detectors.len(), 1, "Only BareMetalDetector should remain");
+    assert_eq!(detectors[0].name(), "bare_metal");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_standard_detectors_all_dont_panic() {
+    let detectors = standard_detectors();
     for detector in detectors {
         let result = detector.detect().await;
         assert!(result.is_ok());
@@ -250,258 +104,98 @@ async fn test_detector_chain_execution() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_bare_metal_fallback_works() {
-    // BareMetalDetector should always succeed as fallback
-    let detector = BareMetalDetector::new();
-    let result = detector.detect().await;
-
-    assert!(result.is_ok());
-    assert!(result.unwrap().is_some());
-}
-
-// ============================================================================
-// Detector Type Tests
-// ============================================================================
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_kubernetes_detector_substrate_type() {
-    let detector = KubernetesDetector::new();
-    // We can't guarantee k8s detection, but we can test the type is correct
-    if let Ok(Some(substrate)) = detector.detect().await {
-        assert_eq!(
-            substrate.substrate_type,
-            SubstrateType::ContainerOrchestrator
-        );
-    }
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_docker_detector_substrate_type() {
-    let detector = DockerDetector::new();
-    if let Ok(Some(substrate)) = detector.detect().await {
-        assert_eq!(substrate.substrate_type, SubstrateType::ContainerRuntime);
-    }
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_consul_detector_substrate_type() {
-    let detector = ConsulDetector::new();
-    if let Ok(Some(substrate)) = detector.detect().await {
-        assert_eq!(
-            substrate.substrate_type,
-            SubstrateType::ContainerOrchestrator
-        );
-    }
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_cloud_detector_substrate_type() {
-    let detector = CloudDetector::new();
-    if let Ok(Some(substrate)) = detector.detect().await {
-        assert_eq!(substrate.substrate_type, SubstrateType::Cloud);
-    }
-}
-
-// ============================================================================
-// Capability Tests
-// ============================================================================
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_kubernetes_capabilities() {
-    let detector = KubernetesDetector::new();
-    if let Ok(Some(substrate)) = detector.detect().await {
-        // K8s should provide orchestration, discovery, and mesh capabilities
-        assert!(substrate.capabilities.len() >= 3);
-        assert!(substrate
-            .capabilities
-            .contains(&SubstrateCapability::ContainerOrchestration));
-    }
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_docker_capabilities() {
-    let detector = DockerDetector::new();
-    if let Ok(Some(substrate)) = detector.detect().await {
-        assert!(substrate
-            .capabilities
-            .contains(&SubstrateCapability::ContainerRuntime));
-    }
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_consul_capabilities() {
-    let detector = ConsulDetector::new();
-    if let Ok(Some(substrate)) = detector.detect().await {
-        assert!(substrate
-            .capabilities
-            .contains(&SubstrateCapability::ServiceDiscovery));
-        assert!(substrate
-            .capabilities
-            .contains(&SubstrateCapability::ServiceMesh));
-    }
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_cloud_capabilities() {
-    let detector = CloudDetector::new();
-    if let Ok(Some(substrate)) = detector.detect().await {
-        assert!(substrate
-            .capabilities
-            .contains(&SubstrateCapability::CloudCompute));
-    }
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_bare_metal_capabilities() {
-    let detector = BareMetalDetector::new();
-    let substrate = detector.detect().await.unwrap().unwrap();
-
-    assert_eq!(substrate.capabilities.len(), 1);
-    assert!(substrate
-        .capabilities
-        .contains(&SubstrateCapability::BareMetal));
-}
-
-// ============================================================================
-// Metadata Tests
-// ============================================================================
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_bare_metal_metadata_deployment() {
-    let detector = BareMetalDetector::new();
-    let substrate = detector.detect().await.unwrap().unwrap();
-
-    assert!(substrate.metadata.contains_key("deployment"));
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_kubernetes_metadata_structure() {
-    let detector = KubernetesDetector::new();
-    if let Ok(Some(substrate)) = detector.detect().await {
-        // Should have orchestrator metadata
-        assert!(substrate.metadata.contains_key("orchestrator"));
-    }
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_docker_metadata_structure() {
-    let detector = DockerDetector::new();
-    if let Ok(Some(substrate)) = detector.detect().await {
-        // Should have runtime metadata
-        assert!(substrate.metadata.contains_key("runtime"));
-    }
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_consul_metadata_structure() {
-    let detector = ConsulDetector::new();
-    if let Ok(Some(substrate)) = detector.detect().await {
-        // Should have service_mesh metadata
-        assert!(substrate.metadata.contains_key("service_mesh"));
-    }
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_cloud_metadata_structure() {
-    let detector = CloudDetector::new();
-    if let Ok(Some(substrate)) = detector.detect().await {
-        // Should have cloud_provider metadata
-        assert!(substrate.metadata.contains_key("cloud_provider"));
-    }
-}
-
-// ============================================================================
-// Default Trait Tests
-// ============================================================================
-
-#[test]
-fn test_all_detectors_have_default() {
-    let _k8s = KubernetesDetector;
-    let _docker = DockerDetector;
-    let _consul = ConsulDetector;
-    let _cloud = CloudDetector;
-    let _bare = BareMetalDetector;
-    // All created successfully via Default trait
-}
-
-#[test]
-fn test_detector_default_equals_new() {
-    // Verify Default produces same result as new()
-    let k8s_new = KubernetesDetector::new();
-    let k8s_default = KubernetesDetector;
-    assert_eq!(k8s_new.name(), k8s_default.name());
-
-    let docker_new = DockerDetector::new();
-    let docker_default = DockerDetector;
-    assert_eq!(docker_new.name(), docker_default.name());
-}
-
-// ============================================================================
-// Error Handling Tests
-// ============================================================================
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_detectors_never_panic() {
+async fn test_standard_detectors_at_least_one_succeeds() {
     let detectors = standard_detectors();
-
+    let mut found = false;
     for detector in detectors {
-        // All detectors should return Result, never panic
-        let _ = detector.detect().await;
-    }
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_bare_metal_never_returns_error() {
-    let detector = BareMetalDetector::new();
-    let result = detector.detect().await;
-
-    // BareMetalDetector should always succeed
-    assert!(result.is_ok());
-    assert!(result.unwrap().is_some());
-}
-
-// ============================================================================
-// Name Consistency Tests
-// ============================================================================
-
-#[test]
-fn test_detector_names_lowercase() {
-    let detectors = standard_detectors();
-
-    for detector in detectors {
-        let name = detector.name();
-        assert_eq!(
-            name,
-            name.to_lowercase(),
-            "Detector names should be lowercase"
-        );
-    }
-}
-
-#[test]
-fn test_detector_names_no_spaces() {
-    let detectors = standard_detectors();
-
-    for detector in detectors {
-        let name = detector.name();
-        assert!(
-            !name.contains(' '),
-            "Detector names should not contain spaces"
-        );
-    }
-}
-
-#[test]
-fn test_detector_names_unique() {
-    let detectors = standard_detectors();
-    let names: Vec<&str> = detectors.iter().map(|d| d.name()).collect();
-
-    // Check for duplicates
-    for (i, name1) in names.iter().enumerate() {
-        for (j, name2) in names.iter().enumerate() {
-            if i != j {
-                assert_ne!(name1, name2, "Detector names must be unique");
-            }
+        if let Ok(Some(_)) = detector.detect().await {
+            found = true;
+            break;
         }
     }
+    assert!(found, "At least one detector should succeed");
+}
+
+// ============================================================================
+// HardwareEnvironment Tests
+// ============================================================================
+
+#[test]
+fn test_hardware_environment_default() {
+    let env = HardwareEnvironment::default();
+    assert!(env.hostname.is_none());
+}
+
+#[test]
+fn test_hardware_environment_from_env() {
+    let env = HardwareEnvironment::from_env();
+    // May or may not have hostname depending on test environment
+    let _ = env.hostname;
+}
+
+#[test]
+fn test_hardware_environment_clone() {
+    let env1 = HardwareEnvironment::default();
+    let env2 = env1.clone();
+    assert_eq!(env1.hostname, env2.hostname);
+}
+
+#[test]
+fn test_hardware_environment_debug() {
+    let env = HardwareEnvironment::default();
+    let debug = format!("{:?}", env);
+    assert!(debug.contains("HardwareEnvironment"));
+}
+
+// ============================================================================
+// Substrate Type Tests
+// ============================================================================
+
+#[test]
+fn test_substrate_type_bare() {
+    let substrate_type = SubstrateType::Bare;
+    assert_eq!(substrate_type, SubstrateType::Bare);
+}
+
+// ============================================================================
+// Edge Cases
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_detector_multiple_sequential_calls() {
+    let detector = BareMetalDetector::new();
+    // Multiple calls should all succeed
+    for _ in 0..5 {
+        let result = detector.detect().await;
+        assert!(result.is_ok());
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_detector_concurrent_calls() {
+    let detector = BareMetalDetector::new();
+    
+    // Run multiple concurrent detections
+    let (r1, r2, r3, r4) = tokio::join!(
+        detector.detect(),
+        detector.detect(),
+        detector.detect(),
+        detector.detect()
+    );
+    
+    assert!(r1.is_ok());
+    assert!(r2.is_ok());
+    assert!(r3.is_ok());
+    assert!(r4.is_ok());
+}
+
+// ============================================================================
+// Legacy CloudEnvironment Tests (Deprecated)
+// ============================================================================
+
+#[test]
+#[allow(deprecated)]
+fn test_cloud_environment_alias_deprecated() {
+    // CloudEnvironment is now an alias to HardwareEnvironment
+    let _env: CloudEnvironment = HardwareEnvironment::default();
 }

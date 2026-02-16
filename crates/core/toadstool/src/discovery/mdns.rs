@@ -2,12 +2,26 @@
 //!
 //! Implements automatic service discovery using mDNS/DNS-SD (Multicast DNS).
 //!
+//! ## Evolution (Feb 15, 2026) - Songbird Delegation
+//!
+//! ToadStool **exposes** mDNS capability to Songbird (comms primal).
+//! This follows the ecoPrimal separation of concerns:
+//!
+//! - **ToadStool**: Owns hardware discovery (GPU, NPU, CPU), exposes mDNS capability
+//! - **Songbird**: Owns network discovery, coordinates service mesh
+//!
+//! ToadStool advertises its capabilities via mDNS. Songbird discovers
+//! and coordinates primals across the network. ToadStool does NOT
+//! implement vendor-specific service meshes (K8s, Consul, etc.) -
+//! that's Songbird's domain.
+//!
 //! ## Key Concepts
 //!
 //! - **Service Type**: `_toadstool._tcp.local.`
 //! - **Advertise by Capability**: Services advertise WHAT they can do
 //! - **Discover by Capability**: Find services by WHAT you need
 //! - **No Hardcoding**: Zero hardcoded addresses
+//! - **Songbird Integration**: mDNS exposed for comms primal
 //!
 //! ## Example
 //!

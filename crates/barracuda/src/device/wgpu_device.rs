@@ -163,9 +163,13 @@ impl WgpuDevice {
         }
     }
 
-    /// List all available WGPU adapters
+    /// List all available WGPU adapters (raw, may include duplicates)
     ///
     /// Returns adapter info for every compute device WGPU can see.
+    /// **Note**: The same physical GPU may appear multiple times through
+    /// different backends (Vulkan, OpenCL, etc.). For deduplicated devices,
+    /// use `enumerate_physical_devices()` instead.
+    ///
     /// ToadStool uses this to understand what BarraCUDA can target.
     pub fn enumerate_adapters() -> Vec<wgpu::AdapterInfo> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -177,6 +181,116 @@ impl WgpuDevice {
             .iter()
             .map(|a| a.get_info())
             .collect()
+    }
+
+    /// List unique physical devices (deduplicated by hardware)
+    ///
+    /// Returns one entry per physical device, regardless of how many backends
+    /// can access it. For example, an RTX 3090 accessible via both Vulkan and
+    /// OpenGL appears as ONE device.
+    ///
+    /// **Preferred over `enumerate_adapters()`** for device selection and
+    /// workload distribution to avoid sending duplicate work to the same GPU.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use barracuda::device::WgpuDevice;
+    ///
+    /// let devices = WgpuDevice::enumerate_physical_devices();
+    /// for device in &devices {
+    ///     println!("{}: {:?} (f64: {})",
+    ///         device.name,
+    ///         device.vendor,
+    ///         device.capabilities.f64_shaders
+    ///     );
+    /// }
+    /// ```
+    pub fn enumerate_physical_devices() -> Vec<super::registry::PhysicalDevice> {
+        super::registry::DeviceRegistry::global()
+            .physical_devices()
+            .cloned()
+            .collect()
+    }
+
+    /// Get the global device registry
+    ///
+    /// The registry provides detailed information about physical devices,
+    /// their backends, and capabilities. It deduplicates devices that
+    /// appear through multiple backends.
+    pub fn registry() -> &'static super::registry::DeviceRegistry {
+        super::registry::DeviceRegistry::global()
+    }
+
+    /// Create device from a physical device index (using preferred backend)
+    ///
+    /// Uses the device registry to select the best backend (Vulkan preferred).
+    /// The index corresponds to `enumerate_physical_devices()` order.
+    ///
+    /// **Preferred over `from_adapter_index()`** as it uses deduplicated
+    /// physical devices and selects the optimal backend automatically.
+    pub async fn from_physical_device(index: usize) -> Result<Self> {
+        let registry = super::registry::DeviceRegistry::global();
+
+        let adapter_index = registry.get_preferred_adapter_index(index).ok_or_else(|| {
+            BarracudaError::device(format!(
+                "Physical device index {} out of bounds (only {} devices available)",
+                index,
+                registry.device_count()
+            ))
+        })?;
+
+        Self::from_adapter_index(adapter_index).await
+    }
+
+    /// Create device from a physical device with explicit backend
+    ///
+    /// Allows specifying which backend to use for a physical device.
+    /// Returns error if the device doesn't support the requested backend.
+    pub async fn from_physical_device_with_backend(
+        device_index: usize,
+        backend: wgpu::Backend,
+    ) -> Result<Self> {
+        let registry = super::registry::DeviceRegistry::global();
+
+        let adapter_index = registry
+            .get_adapter_for_backend(device_index, backend)
+            .ok_or_else(|| {
+                let device = registry.get_device(device_index);
+                let backends: Vec<_> = device
+                    .map(|d| d.backends.iter().map(|b| format!("{:?}", b.backend)).collect())
+                    .unwrap_or_default();
+
+                BarracudaError::device(format!(
+                    "Backend {:?} not available for device {} (available: {:?})",
+                    backend, device_index, backends
+                ))
+            })?;
+
+        Self::from_adapter_index(adapter_index).await
+    }
+
+    /// Create device for the first f64-capable GPU (using preferred backend)
+    ///
+    /// Returns error if no GPU with f64 shader support is available.
+    /// Prefers discrete GPUs over integrated.
+    pub async fn new_f64_capable() -> Result<Self> {
+        let registry = super::registry::DeviceRegistry::global();
+
+        for (idx, device) in registry.physical_devices().enumerate() {
+            if device.capabilities.f64_shaders
+                && matches!(
+                    device.device_type,
+                    wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu
+                )
+            {
+                return Self::from_physical_device(idx).await;
+            }
+        }
+
+        Err(BarracudaError::device(
+            "No f64-capable GPU found (NVIDIA Pascal+, AMD GCN+, or Intel required)",
+        ))
     }
 
     /// Create with specific backend (for testing/multi-GPU)
@@ -484,6 +598,22 @@ impl WgpuDevice {
                     | wgpu::BufferUsages::COPY_DST
                     | wgpu::BufferUsages::COPY_SRC,
             }))
+    }
+
+    /// Allocate buffer for f64 data
+    ///
+    /// **Deep Debt Evolution (Feb 16, 2026)**:
+    /// Science-grade f64 precision for scientific computing.
+    /// Native Vulkan fp64 support via WebGPU.
+    pub fn create_buffer_f64(&self, size: usize) -> Result<wgpu::Buffer> {
+        Ok(self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("barraCUDA F64 Buffer"),
+            size: (size * std::mem::size_of::<f64>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        }))
     }
 
     /// Compile WGSL shader

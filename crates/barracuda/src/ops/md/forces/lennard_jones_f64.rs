@@ -1,0 +1,333 @@
+//! Lennard-Jones Force (f64) — Science-Grade MD
+//!
+//! **Deep Debt Evolution (Feb 16, 2026)**:
+//! - ✅ Pure WGSL f64 implementation
+//! - ✅ Native sqrt(f64) via Vulkan
+//! - ✅ Hardware-agnostic (NVIDIA/AMD/Intel via WebGPU)
+//! - ✅ WGSL as unified math language
+//!
+//! **Physics**: Van der Waals interactions (noble gases, simple liquids)
+//! **Potential**: U(r) = 4ε[(σ/r)^12 - (σ/r)^6]
+//! **Force**: F = 24ε/r * [2(σ/r)^12 - (σ/r)^6] * r̂
+
+use crate::device::WgpuDevice;
+use crate::error::{BarracudaError, Result};
+use std::sync::Arc;
+use wgpu::util::DeviceExt;
+
+/// f64 Lennard-Jones force computation
+///
+/// **Key features**:
+/// - Full f64 precision for energy conservation
+/// - Lorentz-Berthelot mixing rules for heterogeneous systems
+/// - Optional shifted potential for smooth cutoff
+/// - Per-particle or global parameters
+pub struct LennardJonesF64;
+
+impl LennardJonesF64 {
+    fn wgsl_shader() -> &'static str {
+        include_str!("lennard_jones_f64.wgsl")
+    }
+
+    /// Compute LJ forces with per-particle parameters
+    ///
+    /// # Arguments
+    /// * `device` - GPU device
+    /// * `positions` - Particle positions [N*3] (x,y,z interleaved)
+    /// * `sigmas` - Per-particle σ values [N]
+    /// * `epsilons` - Per-particle ε values [N]
+    /// * `cutoff` - Cutoff radius
+    ///
+    /// # Returns
+    /// Forces [N*3] (fx,fy,fz interleaved)
+    pub fn compute(
+        device: Arc<WgpuDevice>,
+        positions: &[f64],
+        sigmas: &[f64],
+        epsilons: &[f64],
+        cutoff: f64,
+    ) -> Result<Vec<f64>> {
+        let n = sigmas.len();
+        if positions.len() != n * 3 {
+            return Err(BarracudaError::InvalidShape {
+                expected: vec![n * 3],
+                actual: vec![positions.len()],
+            });
+        }
+        if epsilons.len() != n {
+            return Err(BarracudaError::InvalidShape {
+                expected: vec![n],
+                actual: vec![epsilons.len()],
+            });
+        }
+
+        // Create buffers
+        let pos_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("LJ F64 Positions"),
+                contents: bytemuck::cast_slice(positions),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let sigma_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("LJ F64 Sigmas"),
+                contents: bytemuck::cast_slice(sigmas),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let epsilon_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("LJ F64 Epsilons"),
+                contents: bytemuck::cast_slice(epsilons),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let forces_buffer = device.create_buffer_f64(n * 3)?;
+
+        // Params: n_particles (u32), _pad (u32), cutoff (f64), cutoff_sq (f64)
+        let cutoff_sq = cutoff * cutoff;
+        let mut params_bytes = Vec::with_capacity(24);
+        params_bytes.extend_from_slice(&(n as u32).to_le_bytes());
+        params_bytes.extend_from_slice(&0u32.to_le_bytes()); // padding
+        params_bytes.extend_from_slice(&cutoff.to_le_bytes());
+        params_bytes.extend_from_slice(&cutoff_sq.to_le_bytes());
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("LJ F64 Params"),
+                contents: &params_bytes,
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        // Bind group layout
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("LJ F64 BGL"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("LJ F64 BG"),
+            layout: &bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: pos_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: sigma_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: epsilon_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: forces_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("LJ F64"));
+
+        let pipeline_layout = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("LJ F64 PL"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("LJ F64 Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "lennard_jones_f64",
+            });
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("LJ F64 Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("LJ F64 Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        crate::utils::read_buffer_f64(&device, &forces_buffer, n * 3)
+    }
+
+    /// Compute LJ forces with uniform parameters (all particles same σ, ε)
+    pub fn compute_uniform(
+        device: Arc<WgpuDevice>,
+        positions: &[f64],
+        sigma: f64,
+        epsilon: f64,
+        cutoff: f64,
+    ) -> Result<Vec<f64>> {
+        let n = positions.len() / 3;
+        let sigmas = vec![sigma; n];
+        let epsilons = vec![epsilon; n];
+        Self::compute(device, positions, &sigmas, &epsilons, cutoff)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
+
+    #[tokio::test]
+    async fn test_lj_f64_two_particles() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+
+        if !device.device.features().contains(wgpu::Features::SHADER_F64) {
+            println!("Skipping: GPU does not support SHADER_F64");
+            return;
+        }
+
+        // Two argon-like particles at distance 3.4 Å (σ = 3.4, ε = 1.0)
+        // At r = σ, U = 0, F is repulsive
+        let positions: Vec<f64> = vec![0.0, 0.0, 0.0, 3.4, 0.0, 0.0];
+        let sigma = 3.4;
+        let epsilon = 1.0;
+        let cutoff = 10.0;
+
+        let forces =
+            LennardJonesF64::compute_uniform(device, &positions, sigma, epsilon, cutoff).unwrap();
+
+        assert_eq!(forces.len(), 6);
+
+        // At r = σ, the force should be repulsive (pushing particle 0 to -x, particle 1 to +x)
+        // Force magnitude: F = 24ε/r * [2(σ/r)^12 - (σ/r)^6] = 24/3.4 * [2 - 1] = 24/3.4 ≈ 7.06
+        // Particle 0 should have negative fx (pushed away from particle 1)
+        assert!(
+            forces[0] < 0.0,
+            "Particle 0 should be pushed in -x direction, got fx={}",
+            forces[0]
+        );
+
+        // Particle 1 should have positive fx (pushed away from particle 0)
+        assert!(
+            forces[3] > 0.0,
+            "Particle 1 should be pushed in +x direction, got fx={}",
+            forces[3]
+        );
+
+        // Newton's third law: forces should be equal and opposite
+        assert!(
+            (forces[0] + forces[3]).abs() < 1e-10,
+            "Newton's third law violated: {} + {} = {}",
+            forces[0],
+            forces[3],
+            forces[0] + forces[3]
+        );
+
+        println!("✅ LJ f64 two-particle test passed");
+    }
+
+    #[tokio::test]
+    async fn test_lj_f64_equilibrium() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+
+        if !device.device.features().contains(wgpu::Features::SHADER_F64) {
+            return;
+        }
+
+        // At r = 2^(1/6) * σ ≈ 1.122 * σ, force should be zero (equilibrium)
+        let sigma = 1.0;
+        let r_eq = sigma * 2.0_f64.powf(1.0 / 6.0);
+        let positions: Vec<f64> = vec![0.0, 0.0, 0.0, r_eq, 0.0, 0.0];
+
+        let forces =
+            LennardJonesF64::compute_uniform(device, &positions, sigma, 1.0, 10.0).unwrap();
+
+        // Force should be very small at equilibrium
+        assert!(
+            forces[0].abs() < 1e-10,
+            "Force should be ~0 at equilibrium, got {}",
+            forces[0]
+        );
+
+        println!("✅ LJ f64 equilibrium test passed");
+    }
+}

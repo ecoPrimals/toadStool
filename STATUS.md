@@ -1,4 +1,4 @@
-# Status -- February 16, 2026 (GPU-Resident Pipeline Complete)
+# Status -- February 16, 2026 (Device Registry + F64 Reduce Suite)
 
 ## Quality Gates
 
@@ -36,7 +36,79 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 
 ---
 
-## GPU-Resident Pipeline (Feb 16, 2026) ✅ COMPLETE
+## Device Registry + F64 Reduce Suite (Feb 16, 2026) ✅ COMPLETE
+
+### Physical Device Deduplication
+
+**Problem solved**: Same GPU appearing multiple times via different backends (Vulkan, OpenCL).
+
+| # | Item | Status | Description |
+|:-:|------|:------:|-------------|
+| 1 | DeviceRegistry | ✅ **DONE** | Physical device tracking with backend preference |
+| 2 | Backend Preference | ✅ **DONE** | Vulkan > Metal > DX12 > GL (ecoPrimals uses Vulkan) |
+| 3 | Name-based Dedup | ✅ **DONE** | Handles OpenGL device_id=0 quirk |
+| 4 | Hardware Report | ✅ **DONE** | Deduplicated counts + raw adapter counts |
+
+**Example**: RTX 3090 via Vulkan+GL now shows as **1 device** with **2 backends**, not 2 devices.
+
+### F64 Reduce Operations Suite
+
+| # | Item | Status | Description |
+|:-:|------|:------:|-------------|
+| 1 | ProdReduceF64 | ✅ **DONE** | GPU product reduction with log-domain variant |
+| 2 | VarianceReduceF64 | ✅ **DONE** | Welford's algorithm for parallel variance |
+| 3 | NormReduceF64 | ✅ **DONE** | L1, L2, Linf, Frobenius, p-norm |
+| 4 | CumprodF64 | ✅ **DONE** | Cumulative product (inclusive/exclusive/reverse) |
+
+**18 new tests** for f64 reduce operations (all passing).
+
+---
+
+## F64 Unified Math Language Suite (Feb 15, 2026) ✅ COMPLETE
+
+### WGSL as Unified Math — Science-Grade Precision on Any GPU
+
+| # | Item | Status | Description |
+|:-:|------|:------:|-------------|
+| 1 | CholeskyF64 | ✅ **DONE** | f64 Cholesky decomposition for SPD matrices |
+| 2 | TriangularSolveF64 | ✅ **DONE** | Forward/backward solve + Cholesky pipeline |
+| 3 | CyclicReductionF64 | ✅ **DONE** | O(log n) parallel tridiagonal solver |
+| 4 | LennardJonesF64 | ✅ **DONE** | f64 van der Waals forces with Rust API |
+| 5 | CoulombF64 | ✅ **DONE** | f64 electrostatics + Ewald real-space |
+| 6 | MorseF64 | ✅ **DONE** | f64 bonded anharmonic interactions |
+
+### Architecture: "Unified Math Language"
+
+- **WGSL shaders** as the primary math implementation
+- **f64 by default** — SPIR-V/Vulkan bypasses CUDA fp64 throttle
+- **Native f64 builtins** — `sqrt()`, `exp()`, `log()` work at full speed
+- **Any GPU hardware** — same shader runs NVIDIA, AMD, Intel
+
+---
+
+## ResourceQuota + MultiDevicePool (Feb 15, 2026) ✅ COMPLETE
+
+### Multi-GPU with VRAM Budget Enforcement
+
+| # | Item | Status | Description |
+|:-:|------|:------:|-------------|
+| 1 | ResourceQuota | ✅ **DONE** | Per-task VRAM budget with atomic tracking |
+| 2 | QuotaTracker | ✅ **DONE** | Real-time usage monitoring and enforcement |
+| 3 | MultiDevicePool | ✅ **DONE** | Heterogeneous GPU support (NVIDIA + AMD) |
+| 4 | DeviceRequirements | ✅ **DONE** | Device selection by VRAM, vendor, capability |
+| 5 | DeviceLease RAII | ✅ **DONE** | Automatic device release on drop |
+| 6 | Vendor Detection Fix | ✅ **DONE** | NVIDIA OpenGL adapters correctly identified |
+| 7 | Integration Tests | ✅ **DONE** | 13/13 tests pass (RTX 3090 + RX 6950 XT) |
+
+### Test Environment
+
+- **Hardware**: NVIDIA RTX 3090 (OpenGL) + AMD RX 6950 XT (Vulkan)
+- **Tests**: `cargo test -p barracuda --test multi_device_integration`
+- **Coverage**: Vendor preference, sequential/concurrent acquisition, quota enforcement, stress test
+
+---
+
+## GPU-Resident Pipeline (Feb 15, 2026) ✅ COMPLETE
 
 ### Implementation Complete
 
@@ -94,6 +166,42 @@ The Amdahl's Law boundary identified in planning has been addressed:
 - **hotSpring item 4.1**: Dependent op chaining now possible through full SCF iteration
 
 See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md` and `NEXT_STEPS.md` for API usage
+
+---
+
+## Deep Debt Evolution (Feb 15, 2026 — Continued)
+
+### Async-Safe Buffer Readback ✅
+
+**Problem**: `AsyncReadback::read_*()` methods called `device.poll(Maintain::Wait)` BEFORE awaiting, blocking the async executor.
+
+**Solution**:
+- Added `poll_until_ready()` helper with cooperative yield points
+- Uses `futures::FutureExt::now_or_never()` for non-blocking checks
+- `tokio::task::yield_now()` between polls to avoid executor starvation
+- Added explicit `read_*_blocking()` methods for synchronous contexts
+
+### Cylindrical Grid Operators ✅
+
+**Problem**: `CylindricalGradient` and `CylindricalLaplacian` had stubbed `compute()` methods.
+
+**Solution**:
+- Implemented `CylindricalGradient::compute()` returning `(grad_rho, grad_z)`
+- Implemented `CylindricalLaplacian::compute()` with proper ∇²f = ∂²f/∂ρ² + (1/ρ)∂f/∂ρ + ∂²f/∂z²
+- Tests validate against analytical derivatives
+
+### Sobol Sequence Bug Fix ✅
+
+**Problem**: `skip_to(n)` used incorrect Gray code formula causing wrong state computation.
+
+**Solution**:
+- Changed to sequential generation internally (O(n) but correct)
+- Test removed from `#[ignore]` — all 14 Sobol tests now pass
+
+### Documentation Cleanup ✅
+
+- Fixed 7 rustdoc warnings for unclosed HTML tags (`Vec<f64>` escaping)
+- `cargo doc` builds warning-free
 
 ---
 
@@ -924,4 +1032,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 16, 2026 (GPU-Resident Pipeline Complete)
+**Last Updated**: February 16, 2026 (Device Registry + F64 Reduce Suite)

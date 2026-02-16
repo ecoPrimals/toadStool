@@ -84,7 +84,8 @@ pub mod shaders; // Generic precision shader templates (f16/f32/f64)
 pub mod compute_graph; // NEW: Lazy execution for operation batching
 pub mod esn_v2; // High-level Echo State Network API
 pub mod genomics; // High-level Bioinformatics/Genomics API
-pub mod multi_gpu; // NEW: Multi-GPU workload distribution
+pub mod multi_gpu; // Multi-GPU workload distribution
+pub mod resource_quota; // Resource quota management for multi-tenant compute
 pub mod nn; // High-level Neural Network Training API
 pub mod npu;
 pub mod ops;
@@ -146,4 +147,12 @@ pub mod prelude {
 
     // Auto-dispatch for CPU/GPU routing
     pub use crate::dispatch::{dispatch_for, DispatchConfig, DispatchTarget};
+
+    // Multi-GPU and resource quota management
+    pub use crate::multi_gpu::{
+        DeviceLease, DeviceRequirements, GpuPool, GpuVendor, MultiDevicePool, WorkloadConfig,
+    };
+    // Note: multi_gpu::DeviceInfo aliased to avoid conflict with device::DeviceInfo
+    pub use crate::multi_gpu::DeviceInfo as GpuDeviceInfo;
+    pub use crate::resource_quota::{presets as quota_presets, QuotaTracker, ResourceQuota};
 }

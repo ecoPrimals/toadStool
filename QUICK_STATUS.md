@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 16, 2026 (GPU-Resident Pipeline Complete)
+**Date**: February 16, 2026 (Device Registry + F64 Reduce Suite)
 
 ---
 
@@ -335,7 +335,34 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 
 ---
 
-## GPU-Resident Pipeline (Feb 16) ✅ COMPLETE
+## Device Registry + F64 Reduce Suite (Feb 16) ✅ COMPLETE
+
+**Physical device deduplication** — same GPU via multiple backends shows as one:
+
+| Feature | Description | Status |
+|---------|-------------|:------:|
+| DeviceRegistry | Tracks physical devices by (vendor_id, device_id) | ✅ |
+| Backend Preference | Vulkan > Metal > DX12 > GL | ✅ |
+| F64 Product | `ProdReduceF64::prod()`, log-domain variant | ✅ |
+| F64 Variance | `VarianceReduceF64::variance()`, Welford's algorithm | ✅ |
+| F64 Norms | `NormReduceF64::l1()`, `l2()`, `linf()`, `p_norm()` | ✅ |
+| F64 Cumprod | `CumprodF64::new()`, inclusive/exclusive/reverse | ✅ |
+
+---
+
+## F64 Unified Math Language Suite (Feb 15) ✅ COMPLETE
+
+**WGSL as unified math language** — science-grade f64 on any GPU:
+
+| Category | Operations | Status |
+|----------|-----------|:------:|
+| Linalg f64 | CholeskyF64, TriangularSolveF64, CyclicReductionF64 | ✅ |
+| MD Forces f64 | LennardJonesF64, CoulombF64, MorseF64 | ✅ |
+| Native f64 builtins | sqrt, exp, log, abs | ✅ |
+
+---
+
+## GPU-Resident Pipeline (Feb 15) ✅ COMPLETE
 
 **Amdahl's Law bottleneck solved** — zero CPU↔GPU round-trips during iteration:
 

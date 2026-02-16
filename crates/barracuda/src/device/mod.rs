@@ -22,10 +22,12 @@ pub mod async_submit;
 pub mod autotune;
 pub mod cache_hierarchy;
 pub mod capabilities;
+pub mod kernel_router; // Unified Math → Hardware routing (Feb 15, 2026)
 pub mod pipeline_cache;
+pub mod registry; // Physical device tracking with backend preference (Feb 16, 2026)
 pub mod substrate;
 pub mod tensor_context;
-pub mod toadstool_integration; // NEW: ToadStool hardware layer integration
+pub mod toadstool_integration;
 pub mod tpu;
 pub mod unified;
 pub mod warmup;
@@ -63,6 +65,11 @@ pub use toadstool_integration::{
 pub use tpu::{TpuDevice, TpuGeneration, TpuInfo};
 pub use unified::{Capability, Device, DeviceContext, DeviceInfo, WorkloadHint};
 pub use wgpu_device::WgpuDevice;
+pub use kernel_router::{ComputeWorkload, KernelRouter, KernelTarget, NpuModelInfo};
+pub use registry::{
+    BackendInfo, DeviceCapabilities as PhysicalDeviceCapabilities, DeviceRegistry, DeviceVendor,
+    PhysicalDevice, PhysicalDeviceId,
+};
 
 /// Device pool for GPU operations (used by NMS and tests).
 /// Always compiled so NMS can acquire a GPU device at runtime.

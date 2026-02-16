@@ -27,6 +27,9 @@
 
 ## Current State (February 16, 2026)
 
+- **Device Registry** — Physical device deduplication with backend preference (Vulkan > Metal > DX12 > GL)
+- **F64 Reduce Suite** — ProdReduceF64, VarianceReduceF64, NormReduceF64, CumprodF64
+- **F64 Unified Math Language Suite** — CholeskyF64, TriangularSolveF64, LennardJonesF64, CoulombF64, MorseF64
 - **GPU-Resident Pipeline Complete** — Zero CPU↔GPU round-trips during iteration
 - **hotSpring Evolution Complete** — 169/169 nuclear EOS acceptance checks on consumer GPU
 - **Math Primitives Absorbed** — Broyden mixing, FD gradients, weighted inner products, Hermite/Laguerre f64

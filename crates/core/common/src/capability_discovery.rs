@@ -13,8 +13,13 @@
 //! This enables:
 //! - **Multi-vendor support**: Any service providing a capability works
 //! - **Federation**: Multiple providers for same capability
-//! - **Edge capability**: Local service discovery (mDNS)
-//! - **Cloud capability**: Kubernetes service discovery
+//! - **Edge capability**: Local service discovery (mDNS via Songbird)
+//!
+//! ## Evolution (Feb 15, 2026)
+//!
+//! Service discovery is delegated to Songbird (comms primal). ToadStool only
+//! exposes mDNS capability requirements - Songbird handles the actual discovery.
+//! Vendor-specific discovery (K8s, Consul, cloud providers) removed.
 //!
 //! ## Usage Example
 //!
@@ -48,7 +53,7 @@ use thiserror::Error;
 /// Capability-based discovery client
 ///
 /// This is the **primary interface** for discovering services by capability.
-/// It abstracts over multiple discovery methods (mDNS, DNS-SD, K8s, Consul, etc.)
+/// Service discovery is delegated to Songbird (comms primal) via mDNS.
 pub struct CapabilityDiscovery {
     /// Underlying discovery implementation
     discovery: Box<dyn ServiceDiscoveryTrait>,
@@ -64,8 +69,7 @@ impl CapabilityDiscovery {
     /// Create new capability discovery client
     ///
     /// Automatically detects available discovery methods:
-    /// - Kubernetes (if in K8s cluster)
-    /// - mDNS/DNS-SD (if on local network)
+    /// - mDNS/DNS-SD via Songbird (if on local network)
     /// - Environment variables (always available)
     pub fn new() -> Result<Self, DiscoveryError> {
         Self::with_config(&DiscoveryConfig::default())
@@ -170,41 +174,34 @@ impl CapabilityDiscovery {
     /// Detect available discovery backend
     ///
     /// **Deep Debt Compliance**: Runtime environment detection
-    /// - Checks for Kubernetes environment (service mesh)
-    /// - Checks for mDNS capability (local network)
+    /// - Checks for mDNS capability (local network via Songbird)
     /// - Falls back to environment variables (self-knowledge)
     /// - Graceful degradation at every level
+    ///
+    /// ## Evolution (Feb 15, 2026)
+    ///
+    /// Removed vendor-specific detection (K8s, Docker, cloud providers).
+    /// Service discovery is Songbird's responsibility - ToadStool only cares
+    /// about hardware capabilities.
     fn detect_discovery_backend() -> Result<Box<dyn ServiceDiscoveryTrait>, DiscoveryError> {
         use crate::service_discovery::DiscoveryMethod;
 
-        // 1. Check for Kubernetes environment (KUBERNETES_SERVICE_HOST env var)
-        if std::env::var("KUBERNETES_SERVICE_HOST").is_ok() {
-            tracing::info!("Detected Kubernetes environment - using K8s service discovery");
-            // K8s discovery uses DNS-based service discovery
-            // Services are accessible via: <service-name>.<namespace>.svc.cluster.local
-            // This is automatically configured by K8s
-        }
-
-        // 2. Check for Docker/container environment
-        if std::path::Path::new("/.dockerenv").exists() || std::env::var("DOCKER_HOST").is_ok() {
-            tracing::info!("Detected containerized environment");
-        }
-
-        // 3. Check for mDNS availability (Avahi on Linux, Bonjour on macOS)
+        // 1. Check for mDNS availability (Avahi on Linux, Bonjour on macOS)
+        // mDNS discovery is delegated to Songbird (comms primal)
         #[cfg(target_os = "linux")]
         {
             if std::path::Path::new("/usr/bin/avahi-browse").exists() {
-                tracing::info!("mDNS (Avahi) available - can use for local discovery");
+                tracing::info!("mDNS (Avahi) available - Songbird can use for local discovery");
             }
         }
 
         #[cfg(target_os = "macos")]
         {
             // Bonjour is built into macOS
-            tracing::info!("mDNS (Bonjour) available on macOS");
+            tracing::info!("mDNS (Bonjour) available on macOS - Songbird can use for discovery");
         }
 
-        // 4. Fall back to environment variables (Deep Debt: self-knowledge)
+        // 2. Fall back to environment variables (Deep Debt: self-knowledge)
         tracing::info!("Using environment-based service discovery");
 
         // ServiceDiscovery::new is async, so we need to run it in a blocking context
@@ -258,22 +255,30 @@ impl Default for DiscoveryConfig {
 }
 
 /// Discovery methods
+///
+/// ## Evolution (Feb 15, 2026)
+///
+/// Vendor-specific methods (Kubernetes, Consul) are deprecated.
+/// Service discovery is delegated to Songbird (comms primal).
+/// ToadStool only supports mDNS (via Songbird) and environment variables.
 #[derive(Debug, Clone, Copy)]
 pub enum DiscoveryMethod {
     /// Automatically detect best method
     Auto,
 
-    /// Kubernetes service discovery
-    Kubernetes,
-
-    /// mDNS/DNS-SD (local network)
+    /// mDNS/DNS-SD (local network via Songbird)
     Mdns,
 
-    /// Consul service discovery
-    Consul,
-
-    /// Environment variables
+    /// Environment variables (self-knowledge)
     Environment,
+
+    /// Kubernetes service discovery (deprecated - use Songbird)
+    #[deprecated(since = "0.16.0", note = "Use mDNS via Songbird instead")]
+    Kubernetes,
+
+    /// Consul service discovery (deprecated - use Songbird)
+    #[deprecated(since = "0.16.0", note = "Use mDNS via Songbird instead")]
+    Consul,
 }
 
 /// Discovery errors
@@ -309,7 +314,7 @@ mod tests {
         let config = DiscoveryConfig {
             timeout: Duration::from_secs(10),
             enable_localhost_fallback: false,
-            methods: vec![DiscoveryMethod::Kubernetes],
+            methods: vec![DiscoveryMethod::Mdns],
         };
         assert_eq!(config.timeout, Duration::from_secs(10));
         assert!(!config.enable_localhost_fallback);
@@ -325,18 +330,25 @@ mod tests {
 
     #[test]
     fn test_discovery_method_variants() {
-        // Test all variants
+        // Test non-deprecated variants
         let auto = DiscoveryMethod::Auto;
-        let k8s = DiscoveryMethod::Kubernetes;
         let mdns = DiscoveryMethod::Mdns;
-        let consul = DiscoveryMethod::Consul;
         let env = DiscoveryMethod::Environment;
 
         assert!(matches!(auto, DiscoveryMethod::Auto));
-        assert!(matches!(k8s, DiscoveryMethod::Kubernetes));
         assert!(matches!(mdns, DiscoveryMethod::Mdns));
-        assert!(matches!(consul, DiscoveryMethod::Consul));
         assert!(matches!(env, DiscoveryMethod::Environment));
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_discovery_method_deprecated_variants() {
+        // Test deprecated variants still exist for backward compatibility
+        let k8s = DiscoveryMethod::Kubernetes;
+        let consul = DiscoveryMethod::Consul;
+
+        assert!(matches!(k8s, DiscoveryMethod::Kubernetes));
+        assert!(matches!(consul, DiscoveryMethod::Consul));
     }
 
     #[test]
@@ -519,8 +531,8 @@ mod tests {
 
     #[test]
     fn test_discovery_method_derive_clone() {
-        let m = DiscoveryMethod::Kubernetes;
+        let m = DiscoveryMethod::Mdns;
         let m2 = m;
-        assert!(matches!(m2, DiscoveryMethod::Kubernetes));
+        assert!(matches!(m2, DiscoveryMethod::Mdns));
     }
 }

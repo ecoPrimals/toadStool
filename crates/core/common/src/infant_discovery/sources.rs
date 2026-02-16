@@ -231,25 +231,44 @@ impl EndpointSource for MDNSSource {
     }
 }
 
-/// Service mesh source - discovers via Consul, etcd, etc.
+/// Service mesh source - discovers services via Songbird (comms primal)
+///
+/// ## Evolution (Feb 15, 2026)
+///
+/// Service mesh discovery is now delegated to Songbird (comms primal).
+/// Vendor-specific options (Consul, etcd, Kubernetes) removed - they are
+/// Songbird's concern, not ToadStool's.
+///
+/// ToadStool only reports mDNS capability requirements to Songbird.
 pub struct ServiceMeshSource {
     mesh_type: ServiceMeshType,
 }
 
+/// Service mesh type
+///
+/// ## Evolution (Feb 15, 2026)
+///
+/// Vendor-specific types (Consul, etcd, Kubernetes) deprecated.
+/// Service discovery is Songbird's responsibility.
 #[derive(Debug, Clone, Copy)]
 pub enum ServiceMeshType {
-    /// Auto-detect mesh type
+    /// Auto-detect (delegates to Songbird)
     Auto,
-    /// Consul service mesh
+    /// Consul service mesh (deprecated - use Songbird)
+    #[deprecated(since = "0.16.0", note = "Use Songbird for service mesh discovery")]
     Consul,
-    /// etcd key-value store
+    /// etcd key-value store (deprecated - use Songbird)
+    #[deprecated(since = "0.16.0", note = "Use Songbird for service mesh discovery")]
     Etcd,
-    /// Kubernetes service discovery
+    /// Kubernetes service discovery (deprecated - use Songbird)
+    #[deprecated(since = "0.16.0", note = "Use Songbird for service mesh discovery")]
     Kubernetes,
 }
 
 impl ServiceMeshSource {
     /// Create new service mesh source with auto-detection
+    ///
+    /// Discovery is delegated to Songbird (comms primal).
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -258,6 +277,8 @@ impl ServiceMeshSource {
     }
 
     /// Create with specific mesh type
+    ///
+    /// Note: Vendor-specific types are deprecated. Use Auto to delegate to Songbird.
     #[must_use]
     pub const fn with_type(mesh_type: ServiceMeshType) -> Self {
         Self { mesh_type }
@@ -271,6 +292,7 @@ impl Default for ServiceMeshSource {
 }
 
 impl EndpointSource for ServiceMeshSource {
+    #[allow(deprecated)]
     fn resolve(
         &self,
         service: &str,
@@ -280,27 +302,18 @@ impl EndpointSource for ServiceMeshSource {
 
         Box::pin(async move {
             match mesh_type {
-                ServiceMeshType::Consul => {
-                    // PURE RUST: Consul integration removed for pure Rust
-                    tracing::trace!(service, "Consul discovery disabled (pure Rust mode)");
-                    Ok(None) // Graceful degradation
-                }
-                ServiceMeshType::Etcd => {
-                    // PURE RUST: etcd integration removed for pure Rust
-                    tracing::trace!(service, "etcd discovery disabled (pure Rust mode)");
-                    Ok(None) // Graceful degradation
-                }
-                ServiceMeshType::Kubernetes => {
-                    // PURE RUST: Kubernetes DNS can still work (no HTTP needed for DNS)
-                    let k8s_dns = format!("{service}.default.svc.cluster.local");
-                    tracing::trace!(service, k8s_dns, "Trying Kubernetes DNS lookup");
-                    Ok(Some(format!("http://{k8s_dns}")))
-                }
                 ServiceMeshType::Auto => {
-                    // PURE RUST: Auto-detection simplified - try K8s DNS
-                    let k8s_dns = format!("{service}.default.svc.cluster.local");
-                    tracing::trace!(service, "Auto-detection: trying K8s DNS (pure Rust)");
-                    Ok(Some(format!("http://{k8s_dns}")))
+                    // Delegate to Songbird - return None to trigger fallback
+                    tracing::trace!(service, "Service mesh discovery delegated to Songbird");
+                    Ok(None)
+                }
+                ServiceMeshType::Consul | ServiceMeshType::Etcd | ServiceMeshType::Kubernetes => {
+                    // Deprecated vendor-specific discovery - delegate to Songbird
+                    tracing::warn!(
+                        service,
+                        "Vendor-specific service mesh deprecated - use Songbird"
+                    );
+                    Ok(None)
                 }
             }
         })
@@ -698,66 +711,53 @@ mod tests {
     }
 
     #[test]
-    fn test_service_mesh_source_with_consul() {
+    #[allow(deprecated)]
+    fn test_service_mesh_source_with_consul_deprecated() {
         let source = ServiceMeshSource::with_type(ServiceMeshType::Consul);
         assert!(matches!(source.mesh_type, ServiceMeshType::Consul));
     }
 
     #[test]
-    fn test_service_mesh_source_with_etcd() {
+    #[allow(deprecated)]
+    fn test_service_mesh_source_with_etcd_deprecated() {
         let source = ServiceMeshSource::with_type(ServiceMeshType::Etcd);
         assert!(matches!(source.mesh_type, ServiceMeshType::Etcd));
     }
 
     #[test]
-    fn test_service_mesh_source_with_kubernetes() {
+    #[allow(deprecated)]
+    fn test_service_mesh_source_with_kubernetes_deprecated() {
         let source = ServiceMeshSource::with_type(ServiceMeshType::Kubernetes);
         assert!(matches!(source.mesh_type, ServiceMeshType::Kubernetes));
     }
 
     #[tokio::test]
-    async fn test_service_mesh_consul_returns_none() {
-        let source = ServiceMeshSource::with_type(ServiceMeshType::Consul);
-        let result = source.resolve("test-service").await.unwrap();
+    #[allow(deprecated)]
+    async fn test_service_mesh_deprecated_returns_none() {
+        // All deprecated vendor-specific types now return None (delegate to Songbird)
+        let consul = ServiceMeshSource::with_type(ServiceMeshType::Consul);
+        let etcd = ServiceMeshSource::with_type(ServiceMeshType::Etcd);
+        let k8s = ServiceMeshSource::with_type(ServiceMeshType::Kubernetes);
 
-        // Consul disabled in pure Rust mode
-        assert_eq!(result, None);
+        assert_eq!(consul.resolve("test-service").await.unwrap(), None);
+        assert_eq!(etcd.resolve("test-service").await.unwrap(), None);
+        assert_eq!(k8s.resolve("test-service").await.unwrap(), None);
     }
 
     #[tokio::test]
-    async fn test_service_mesh_etcd_returns_none() {
-        let source = ServiceMeshSource::with_type(ServiceMeshType::Etcd);
-        let result = source.resolve("test-service").await.unwrap();
-
-        // etcd disabled in pure Rust mode
-        assert_eq!(result, None);
-    }
-
-    #[tokio::test]
-    async fn test_service_mesh_kubernetes() {
-        let source = ServiceMeshSource::with_type(ServiceMeshType::Kubernetes);
-        let result = source.resolve("my-service").await.unwrap();
-
-        assert!(result.is_some());
-        let endpoint = result.unwrap();
-        assert!(endpoint.contains("my-service.default.svc.cluster.local"));
-    }
-
-    #[tokio::test]
-    async fn test_service_mesh_auto_detection() {
+    async fn test_service_mesh_auto_delegates_to_songbird() {
         let source = ServiceMeshSource::new();
         let result = source.resolve("auto-service").await.unwrap();
 
-        assert!(result.is_some());
-        let endpoint = result.unwrap();
-        assert!(endpoint.contains("auto-service.default.svc.cluster.local"));
+        // Auto now returns None - delegates to Songbird
+        assert_eq!(result, None);
     }
 
     #[test]
     fn test_service_mesh_type_debug() {
-        let mesh_type = ServiceMeshType::Consul;
+        let mesh_type = ServiceMeshType::Auto;
         let debug = format!("{:?}", mesh_type);
-        assert!(debug.contains("Consul"));
+        assert!(debug.contains("Auto"));
     }
 
     #[test]

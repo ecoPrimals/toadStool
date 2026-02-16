@@ -55,6 +55,9 @@ pub enum BarracudaError {
 
     #[error("Numerical error: {message}")]
     Numerical { message: String },
+
+    #[error("Resource exhausted: {0}")]
+    ResourceExhausted(String),
 }
 
 impl BarracudaError {
@@ -104,6 +107,10 @@ impl BarracudaError {
 
     pub fn invalid_shape(expected: Vec<usize>, actual: Vec<usize>) -> Self {
         Self::InvalidShape { expected, actual }
+    }
+
+    pub fn resource_exhausted(msg: impl Into<String>) -> Self {
+        Self::ResourceExhausted(msg.into())
     }
 }
 

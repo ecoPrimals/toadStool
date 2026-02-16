@@ -30,6 +30,11 @@
 | **Evolution Tests** | ✅ | 47 new unit/E2E/chaos/fault tests |
 | **GPU-Resident Pipeline** | ✅ | Zero CPU↔GPU round-trips (Feb 16) |
 | **Plugin Discovery** | ✅ | Real directory scanning (Feb 16) |
+| **Async-Safe Reads** | ✅ | Non-blocking buffer readback (Feb 16) |
+| **Cylindrical Grid Ops** | ✅ | Gradient/Laplacian fully wired (Feb 16) |
+| **Sobol skip_to** | ✅ | Bug fixed, all tests pass (Feb 15) |
+| **Device Registry** | ✅ | Physical device deduplication with backend preference (Feb 16) |
+| **F64 Reduce Suite** | ✅ | ProdReduceF64, VarianceReduceF64, NormReduceF64, CumprodF64 (Feb 16) |
 
 ---
 

@@ -7,7 +7,172 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### [2026-02-16] - GPU-Resident Pipeline Implementation COMPLETE
+### [2026-02-16] - Device Registry + F64 Reduce Operations Suite
+
+**Impact**: Physical device deduplication prevents duplicate workload dispatch; complete f64 reduce operation suite.
+
+#### Added
+
+- **DeviceRegistry** (`barracuda::device::registry`):
+  - `PhysicalDeviceId` — Unique device identity by (vendor_id, device_id, name_hash)
+  - `PhysicalDevice` — Aggregated device info with all available backends
+  - `BackendInfo` — Per-backend adapter details (index, features, limits)
+  - `DeviceCapabilities` — f64 shaders, f16 shaders, compute capability flags
+  - `DeviceRegistry::discover()` — Enumerate and deduplicate physical devices
+  - `DeviceRegistry::global()` — Singleton access for ToadStool integration
+  - Backend preference: **Vulkan > Metal > DX12 > OpenGL** (ecoPrimals uses Vulkan)
+
+- **Physical Device Deduplication**:
+  - Same GPU via multiple backends (Vulkan + OpenGL) now shows as **1 physical device**
+  - Handles OpenGL device_id=0 quirk via normalized name matching
+  - `WgpuDevice::enumerate_physical_devices()` — Deduplicated device list
+  - `WgpuDevice::from_physical_device(index)` — Create from physical device (uses preferred backend)
+  - `WgpuDevice::from_physical_device_with_backend()` — Create with specific backend
+  - `WgpuDevice::new_f64_capable()` — Select first f64-capable GPU
+
+- **F64 Reduce Operations Suite** (`barracuda::ops`):
+  - `prod_reduce_f64.wgsl` — Product reduction with log-domain variant for numerical stability
+  - `ProdReduceF64::prod()`, `log_prod()` — Rust API with two-pass reduction
+  - `variance_reduce_f64.wgsl` — Welford's online algorithm for parallel variance
+  - `VarianceReduceF64::variance()`, `std()`, `mean()`, `mean_and_variance()`, `statistics()`
+  - `norm_reduce_f64.wgsl` — L1, L2, Linf, Frobenius, generic p-norm
+  - `NormReduceF64::l1()`, `l2()`, `l2_squared()`, `linf()`, `frobenius()`, `p_norm()`
+  - `cumprod_f64.wgsl` — Cumulative product (inclusive, exclusive, reverse, log-domain)
+  - `CumprodF64::new()`, `exclusive()`, `reverse()`, `log_domain()`
+
+- **ToadStool Integration**:
+  - `HardwareReport` updated with deduplicated physical device counts
+  - Raw WGPU adapter counts preserved for debugging
+  - `PhysicalDeviceInfo` for detailed device reporting
+
+#### Tests
+
+- `test_registry_discovery` — RTX 3090 deduplication (Vulkan + GL → 1 device)
+- `test_prod_reduce_f64_*` — Product reduction validation
+- `test_variance_reduce_f64_*` — Welford algorithm, population/sample variance
+- `test_norm_reduce_f64_*` — L1, L2, Linf, p-norm accuracy
+- `test_cumprod_f64_*` — Cumulative product variants
+
+---
+
+### [2026-02-15] - F64 Unified Math Language Suite
+
+**Impact**: WGSL as "unified math language" — science-grade f64 precision on any GPU hardware.
+
+#### Added
+
+- **F64 Linear Algebra Suite** (`barracuda::ops::linalg`):
+  - `cholesky_f64.wgsl` — Cholesky decomposition for SPD matrices (A = LLᵀ)
+  - `CholeskyF64::execute()` / `execute_batch()` — Rust API with Arc<WgpuDevice>
+  - `triangular_solve_f64.wgsl` — Forward/backward substitution
+  - `TriangularSolveF64` — Forward, backward, transpose, and complete `cholesky_solve()` pipeline
+  - `cyclic_reduction_f64.wgsl` — O(log n) parallel tridiagonal solver
+  - Thomas algorithm fallback for small systems
+
+- **F64 MD Force Suite** (`barracuda::ops::md::forces`):
+  - `lennard_jones_f64.wgsl` — Van der Waals with shifted potential and energy variants
+  - `LennardJonesF64::compute()` / `compute_uniform()` — Rust API for per-particle or global params
+  - `coulomb_f64.wgsl` — Electrostatics with Ewald real-space (erfc approximation)
+  - `morse_f64.wgsl` — Bonded anharmonic with separate force reduction kernel
+
+- **WGSL f64 Patterns**:
+  - Scalar-only operations (no vec2<f64> in WGSL)
+  - `f64_const(x, c)` helper for AbstractFloat → f64 conversion
+  - Lorentz-Berthelot mixing rules for LJ cross-species
+  - Approximate erfc(x) polynomial for Ewald real-space
+
+#### Tests
+
+- `test_cholesky_f64_2x2`, `test_cholesky_f64_3x3`, `test_cholesky_f64_reconstruction`
+- `test_triangular_solve_f64_forward`, `test_triangular_solve_f64_backward`
+- `test_triangular_solve_f64_cholesky_pipeline`
+- `test_lj_f64_two_particles` — Newton's third law validation
+- `test_lj_f64_equilibrium` — Zero force at equilibrium distance
+
+---
+
+### [2026-02-15] - ResourceQuota + MultiDevicePool: Multi-GPU with VRAM Budget Enforcement
+
+**Impact**: Enables multi-tenant GPU compute with fair resource sharing across heterogeneous GPU configurations.
+
+#### Added
+
+- **ResourceQuota** (`barracuda::resource_quota`):
+  - Per-task VRAM budget enforcement with atomic tracking
+  - `QuotaTracker` for real-time usage monitoring and enforcement
+  - Builder pattern: `ResourceQuota::new().with_max_vram_gb(4).with_max_buffers(100)`
+  - Presets: `presets::small()`, `presets::medium()`, `presets::large()`, `presets::ml_inference()`
+  - Thread-safe via `AtomicU64` operations
+
+- **MultiDevicePool** (`barracuda::multi_gpu`):
+  - Heterogeneous GPU support (NVIDIA + AMD in same pool)
+  - Device selection by requirements: VRAM, vendor preference, discrete requirement
+  - `DeviceLease` RAII pattern for automatic device release
+  - Per-device usage tracking and busy status
+  - Concurrent acquisition with semaphore-based limiting
+  - `acquire_with_quota()` for combined device + quota management
+
+- **DeviceRequirements** (`barracuda::multi_gpu`):
+  - `with_min_vram_gb(8)` — Minimum VRAM filter
+  - `prefer_nvidia()` / `prefer_amd()` — Vendor preference (soft)
+  - `require_discrete()` — Only discrete GPUs
+  - Scoring system for optimal device selection
+
+- **GpuVendor Detection** improvements:
+  - NVIDIA OpenGL adapter names (containing "SSE2") now correctly identified as NVIDIA
+  - Vendor detection prioritized over software renderer patterns
+
+#### Tests
+
+- 13/13 `multi_device_integration` tests pass
+- Validates: vendor preference, sequential/concurrent acquisition, quota enforcement, stress test
+- Tested with: NVIDIA RTX 3090 (OpenGL) + AMD RX 6950 XT (Vulkan)
+
+---
+
+### [2026-02-15] - Deep Debt Evolution: Async Safety + Grid Operators + Bug Fixes
+
+**Impact**: Continued deep debt evolution with async-safe patterns, completed grid operators, and bug fixes.
+
+#### Added
+
+- **Async-Safe Buffer Readback** (`barracuda::device::async_submit`):
+  - `poll_until_ready()` — Non-blocking poll with cooperative yield points
+  - Uses `futures::FutureExt::now_or_never()` for non-blocking channel checks
+  - `tokio::task::yield_now()` between polls to avoid executor starvation
+  - Explicit `read_*_blocking()` methods for synchronous contexts
+
+- **CylindricalGradient::compute()** (`barracuda::ops::grid::fd_gradient_f64`):
+  - Full GPU implementation for cylindrical coordinate gradient (∂f/∂ρ, ∂f/∂z)
+  - Returns tuple `(grad_rho, grad_z)` for axially symmetric problems
+  - Used for nuclear physics (deformed nuclei), fluid dynamics
+
+- **CylindricalLaplacian::compute()** (`barracuda::ops::grid::fd_gradient_f64`):
+  - Proper cylindrical Laplacian: ∇²f = ∂²f/∂ρ² + (1/ρ)∂f/∂ρ + ∂²f/∂z²
+  - Includes 1/ρ correction term for cylindrical coordinates
+  - Tests validate against analytical solutions
+
+#### Fixed
+
+- **Sobol `skip_to(n)` Bug** (`barracuda::sample::sobol`):
+  - Gray code-based skip had incorrect state computation
+  - Changed to sequential generation internally for correctness
+  - Test removed from `#[ignore]` and now passes
+  - All 14 Sobol tests pass
+
+- **Rustdoc HTML Tag Warnings**:
+  - Escaped `Vec<f64>` and similar type parameters with backticks
+  - Fixed in: `batched_eigh_gpu.rs`, `qr_gpu.rs`, `svd_gpu.rs`, `fft_1d_f64.rs`, `bfgs.rs`
+  - `cargo doc` now builds warning-free
+
+#### Tests
+
+- 5/5 `fd_gradient_f64` tests pass (gradient_1d, gradient_2d, laplacian_2d, cylindrical_gradient, cylindrical_laplacian)
+- 14/14 Sobol tests pass (including previously ignored `skip_to` test)
+
+---
+
+### [2026-02-15] - GPU-Resident Pipeline Implementation COMPLETE
 
 **Impact**: Solved hotSpring's Amdahl's Law bottleneck. Full GPU-resident physics pipeline now available for iterative solvers (SCF, HFB, DFT) with zero CPU↔GPU round-trips during iteration.
 
@@ -59,7 +224,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-### [2026-02-16] - GPU-Resident Pipeline Planning (hotSpring Exp 005)
+### [2026-02-15] - GPU-Resident Pipeline Planning (hotSpring Exp 005)
 
 **Impact**: Evolution targets identified from hotSpring's L2 mega-batch experiment. (Now implemented above)
 

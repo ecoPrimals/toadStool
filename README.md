@@ -246,6 +246,63 @@ toadStool/
 
 ## Recent Evolutions (Feb 16, 2026)
 
+### Device Registry with Physical Device Deduplication ✅
+
+**Problem solved**: Same physical GPU appearing multiple times via different backends (Vulkan, OpenGL).
+
+**Solution**: `DeviceRegistry` tracks physical devices by (vendor_id, device_id) and aggregates backend capabilities:
+
+```rust
+// Deduplicated physical devices
+let devices = WgpuDevice::enumerate_physical_devices();
+for device in &devices {
+    println!("{}: {} (backends: {})",
+        device.name, device.vendor.name(),
+        device.backends.iter().map(|b| format!("{:?}", b.backend)).collect::<Vec<_>>().join("/")
+    );
+}
+
+// Create device from physical index (uses preferred backend)
+let device = WgpuDevice::from_physical_device(0).await?;
+```
+
+**Backend preference**: Vulkan > Metal > DX12 > OpenGL (ecoPrimals leverages Vulkan/wgpu)
+
+### F64 Reduce Operations Suite ✅
+
+| Operation | WGSL Shader | Rust API | Use Cases |
+|-----------|-------------|----------|-----------|
+| Product | `prod_reduce_f64.wgsl` | `ProdReduceF64::prod()` | Determinants, probability chains |
+| Variance/Std | `variance_reduce_f64.wgsl` | `VarianceReduceF64::variance()`, `std()` | Statistics, Welford's algorithm |
+| Norms | `norm_reduce_f64.wgsl` | `NormReduceF64::l1()`, `l2()`, `linf()` | Convergence, error metrics |
+| Cumulative Product | `cumprod_f64.wgsl` | `CumprodF64::new()` | Running products |
+
+**All f64 reduce operations use numerically stable algorithms** (Welford for variance, tree reduction for norms).
+
+---
+
+## Previous Evolutions (Feb 15, 2026)
+
+### F64 Unified Math Language Suite ✅
+
+**WGSL as unified math language** — science-grade f64 precision on any GPU hardware:
+
+#### F64 Linear Algebra Suite ✅
+| Operation | WGSL Shader | Rust API | Notes |
+|-----------|------------|----------|-------|
+| Cholesky Decomposition | `cholesky_f64.wgsl` | `CholeskyF64::execute()` | SPD matrices, 1e-12 precision |
+| Triangular Solve | `triangular_solve_f64.wgsl` | `TriangularSolveF64` | Forward/backward + Cholesky pipeline |
+| Cyclic Reduction | `cyclic_reduction_f64.wgsl` | — | O(log n) tridiagonal solver |
+
+#### F64 MD Force Suite ✅
+| Force | WGSL Shader | Rust API | Physics |
+|-------|------------|----------|---------|
+| Lennard-Jones | `lennard_jones_f64.wgsl` | `LennardJonesF64::compute()` | Van der Waals |
+| Coulomb | `coulomb_f64.wgsl` | — | Electrostatics + Ewald |
+| Morse | `morse_f64.wgsl` | — | Bonded anharmonic |
+
+**Design philosophy**: f64 by default via WGSL/SPIR-V/Vulkan, bypassing CUDA throttles.
+
 ### GPU-Resident Pipeline Complete ✅
 
 **hotSpring Amdahl's Law bottleneck solved** — GPU-resident physics pipeline enables zero CPU↔GPU round-trips during iteration:
@@ -264,8 +321,6 @@ toadStool/
 - Full SCF loop can now run GPU-resident
 
 See `NEXT_STEPS.md` for API usage examples.
-
----
 
 ## Previous Evolutions (Feb 14, 2026)
 
@@ -446,4 +501,4 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
-**Last Updated**: February 16, 2026 (GPU-Resident Pipeline Complete)
+**Last Updated**: February 16, 2026 (Device Registry + F64 Reduce Suite)

@@ -12,9 +12,59 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **Shader-first architecture** implemented — ALL parallelizable math is WGSL primary.
 **MD pipeline complete** — full thermostat suite + observables + O(N) neighbor search.
 **GPU-Resident Pipeline COMPLETE** — zero CPU↔GPU round-trips during iteration.
+**Device Registry COMPLETE** — physical device deduplication with backend preference.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 16, 2026 Evening)
+### Latest Updates (Feb 16, 2026 — Device Registry + F64 Reduce Suite)
+
+**Physical Device Deduplication ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| DeviceRegistry | ✅ | Singleton tracking physical devices across backends |
+| Backend Preference | ✅ | Vulkan > Metal > DX12 > GL (ecoPrimals uses Vulkan) |
+| Name-based Matching | ✅ | Handles OpenGL device_id=0 quirk |
+| ToadStool Integration | ✅ | `HardwareReport` with deduplicated counts |
+
+**F64 Reduce Operations Suite ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| ProdReduceF64 | ✅ | `prod_reduce_f64.wgsl` + log-domain variant |
+| VarianceReduceF64 | ✅ | Welford's algorithm for parallel variance |
+| NormReduceF64 | ✅ | L1, L2, Linf, Frobenius, p-norm |
+| CumprodF64 | ✅ | Cumulative product (inclusive/exclusive/reverse) |
+
+Key achievements:
+- Same RTX 3090 via Vulkan+GL now shows as **1 device, 2 backends**
+- Numerically stable f64 reduce operations (Welford, tree reduction)
+- Complete f64 statistics foundation (mean, variance, std, norms)
+
+### Previous Updates (Feb 15, 2026 — F64 Unified Math Language Suite)
+
+**F64 Linalg Suite ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| CholeskyF64 | ✅ | `cholesky_f64.wgsl` + `CholeskyF64::execute()` Rust API |
+| TriangularSolveF64 | ✅ | Forward/backward/transpose + complete Cholesky pipeline |
+| CyclicReductionF64 | ✅ | O(log n) tridiagonal solver with Thomas fallback |
+
+**F64 MD Forces Suite ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| LennardJonesF64 | ✅ | `lennard_jones_f64.wgsl` + `LennardJonesF64::compute()` |
+| CoulombF64 | ✅ | Electrostatics + Ewald real-space erfc term |
+| MorseF64 | ✅ | Bonded anharmonic + force reduction kernel |
+
+Key achievements:
+- WGSL as "unified math language" — same shader, any GPU
+- Native f64 builtins for sqrt, exp, log (1.5-2.2× faster)
+- Lorentz-Berthelot mixing rules for LJ
+- Approximate erfc(x) for Ewald in WGSL
+
+### Previous Updates (Feb 15, 2026 — GPU-Resident Pipeline)
 
 **GPU-Resident Pipeline Implementation COMPLETE ✓**
 
@@ -38,7 +88,13 @@ New capabilities:
 
 See: `NEXT_STEPS.md` for API examples
 
-### Previous Updates (Feb 16, 2026 Morning)
+### Previous Updates (Feb 15, 2026 — Deep Debt Continuation)
+
+**Async-Safe Buffer Reads, Cylindrical Ops, Sobol Fix:**
+- `AsyncReadback::read_*()` now uses cooperative polling (non-blocking)
+- CylindricalGradient and CylindricalLaplacian fully wired
+- Sobol skip_to bug fixed, all 14 tests pass
+- `cargo doc` builds warning-free
 
 **GPU-Resident Pipeline Planning (hotSpring Exp 005):**
 - hotSpring validated mega-batch dispatch: 101 dispatches, 95% GPU utilization
@@ -425,6 +481,6 @@ See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md` and `NEXT_STEPS.md`
 
 ---
 
-*Last Updated*: February 16, 2026 (GPU-Resident Pipeline Complete)  
+*Last Updated*: February 15, 2026 (F64 Unified Math Language Suite)  
 *Repository*: phase1/toadstool/  
 *License*: AGPL-3.0

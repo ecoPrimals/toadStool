@@ -14,6 +14,13 @@
 //! The WGSL/SPIR-V/Vulkan path bypasses CUDA's artificial fp64 throttle,
 //! achieving 1:2-3 FP64:FP32 performance (not 1:32 like CUDA consumer GPUs).
 //!
+//! ## WGSL as Unified Math Language (Feb 16, 2026)
+//!
+//! The same shader runs on any hardware: NVIDIA, AMD, Intel via WebGPU/Vulkan.
+//! - CUDA handicaps: vendor lock-in, artificial fp64 throttling
+//! - OpenCL fragmentation: driver quality varies wildly
+//! - WGSL advantage: write once, run anywhere with native fp64 builtins
+//!
 //! ## Operations
 //!
 //! ### Decompositions (CPU f64)
@@ -27,7 +34,8 @@
 //! - `LuGpu::execute_f64()` - GPU LU decomposition with partial pivoting (f64)
 //! - `QrGpu::execute_f64()` - GPU QR decomposition via Householder reflections (f64)
 //! - `SvdGpu::execute_f64()` - GPU SVD via one-sided Jacobi (f64)
-//! - `Cholesky` - GPU Cholesky decomposition (A = L·Lᵀ)
+//! - `Cholesky` - GPU Cholesky decomposition (A = L·Lᵀ) (f32)
+//! - `CholeskyF64` - GPU Cholesky decomposition with science-grade precision (f64)
 //! - `Eigh` - GPU eigenvalue decomposition for symmetric matrices
 //! - `BatchedEighGpu` - GPU batched eigenvalue decomposition for multiple matrices (f64)
 //! - `GenEighGpu` - GPU generalized eigenvalue decomposition (Ax = λBx) (f64)
@@ -35,8 +43,13 @@
 //! ### Solvers
 //!
 //! - `LinSolve` - GPU linear system solve (A·x = b)
-//! - `TriangularSolve` - GPU forward/backward substitution
+//! - `TriangularSolve` - GPU forward/backward substitution (f32)
+//! - `TriangularSolveF64` - GPU triangular solve with f64 precision
+//!   - Forward/backward substitution
+//!   - Transpose solve (for Cholesky step 2: Lᵀ·x = z)
+//!   - Complete `cholesky_solve()` pipeline
 //! - `tridiagonal_solve` - Thomas algorithm for tridiagonal systems
+//! - `cyclic_reduction_f64.wgsl` - O(log n) parallel tridiagonal for PDEs
 //!
 //! ## Design Principles
 //!
@@ -76,5 +89,8 @@ pub use qr::{qr_decompose, qr_least_squares, QrDecomposition};
 pub use qr_gpu::QrGpu;
 pub use svd::{svd_decompose, svd_pinv, svd_values, SvdDecomposition};
 pub use svd_gpu::SvdGpu;
-pub use triangular_solve::TriangularSolve;
+pub use triangular_solve::{TriangularSolve, TriangularSolveF64};
 pub use tridiagonal::{tridiagonal_solve, tridiagonal_solve_batch, tridiagonal_solve_f32};
+
+// Re-export f64 Cholesky
+pub use cholesky::CholeskyF64;

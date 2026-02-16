@@ -19,6 +19,11 @@
 //! Optimized for scientific computing (N ≤ 30,000)
 //! ```
 //!
+//! ## Precision Support
+//!
+//! - `execute()` - f32 precision
+//! - `execute_f64()` - f64 precision (science-grade, native Vulkan fp64)
+//!
 //! ## Use Case
 //!
 //! **RBF Surrogate Learning** (hotSpring physics integration):
@@ -58,6 +63,10 @@ impl Cholesky {
 
     fn wgsl_shader() -> &'static str {
         include_str!("../../shaders/linalg/cholesky.wgsl")
+    }
+
+    fn wgsl_shader_f64() -> &'static str {
+        include_str!("../../shaders/linalg/cholesky_f64.wgsl")
     }
 
     /// Execute Cholesky decomposition on GPU
@@ -223,6 +232,290 @@ impl Cholesky {
     }
 }
 
+/// Cholesky decomposition for f64 data (GPU)
+///
+/// **Deep Debt Evolution (Feb 16, 2026)**:
+/// - Science-grade f64 precision
+/// - Native Vulkan fp64 builtins (sqrt)
+/// - WGSL as unified math language
+pub struct CholeskyF64;
+
+impl CholeskyF64 {
+    /// Execute Cholesky decomposition on GPU with f64 precision
+    ///
+    /// # Arguments
+    /// * `device` - GPU device (Arc-wrapped)
+    /// * `data` - Input SPD matrix data (row-major f64)
+    /// * `n` - Matrix dimension (n×n)
+    ///
+    /// # Returns
+    /// Lower triangular matrix L where A = L·Lᵀ
+    ///
+    /// # Deep Debt Compliance
+    /// - Pure WGSL f64 execution
+    /// - Native sqrt(f64) on Vulkan
+    /// - Hardware-agnostic (NVIDIA/AMD/Intel)
+    pub fn execute(
+        device: std::sync::Arc<crate::device::WgpuDevice>,
+        data: &[f64],
+        n: usize,
+    ) -> Result<Vec<f64>> {
+        
+        if data.len() != n * n {
+            return Err(BarracudaError::InvalidShape {
+                expected: vec![n * n],
+                actual: vec![data.len()],
+            });
+        }
+
+        // Create input buffer with f64 data
+        let input_buffer = device.create_buffer_f64(n * n)?;
+        device.queue.write_buffer(&input_buffer, 0, bytemuck::cast_slice(data));
+
+        // Create output buffer for L
+        let output_buffer = device.create_buffer_f64(n * n)?;
+
+        // Create params buffer
+        let params_buffer = device.create_uniform_buffer("Cholesky F64 Params", &[n as u32]);
+
+        // Create bind group layout
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Cholesky F64 BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Cholesky F64 BG"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Compile f64 shader
+        let shader = device.compile_shader(Cholesky::wgsl_shader_f64(), Some("Cholesky F64"));
+
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Cholesky F64 PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Cholesky F64 Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "cholesky_f64",
+            });
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Cholesky F64 Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Cholesky F64 Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(1, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Read back f64 results
+        crate::utils::read_buffer_f64(&device, &output_buffer, n * n)
+    }
+
+    /// Execute batched Cholesky decomposition
+    ///
+    /// # Arguments
+    /// * `device` - GPU device (Arc-wrapped)
+    /// * `data` - Batch of SPD matrices (flattened: batch_size × n × n)
+    /// * `n` - Matrix dimension per batch element
+    /// * `batch_size` - Number of matrices
+    ///
+    /// # Returns
+    /// Batch of lower triangular matrices L
+    pub fn execute_batch(
+        device: std::sync::Arc<crate::device::WgpuDevice>,
+        data: &[f64],
+        n: usize,
+        batch_size: usize,
+    ) -> Result<Vec<f64>> {
+        let mat_size = n * n;
+        if data.len() != batch_size * mat_size {
+            return Err(BarracudaError::InvalidShape {
+                expected: vec![batch_size * mat_size],
+                actual: vec![data.len()],
+            });
+        }
+
+        // Create buffers
+        let input_buffer = device.create_buffer_f64(batch_size * mat_size)?;
+        device.queue.write_buffer(&input_buffer, 0, bytemuck::cast_slice(data));
+
+        let output_buffer = device.create_buffer_f64(batch_size * mat_size)?;
+
+        let params_buffer = device.create_uniform_buffer("Cholesky F64 Batch Params", &[n as u32]);
+
+        // Create bind group layout
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Cholesky F64 Batch BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Cholesky F64 Batch BG"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let shader = device.compile_shader(Cholesky::wgsl_shader_f64(), Some("Cholesky F64 Batch"));
+
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Cholesky F64 Batch PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Cholesky F64 Batch Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "cholesky_f64_batched",
+            });
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Cholesky F64 Batch Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Cholesky F64 Batch Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            // One workgroup per matrix
+            pass.dispatch_workgroups(batch_size as u32, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        crate::utils::read_buffer_f64(&device, &output_buffer, batch_size * mat_size)
+    }
+}
+
 /// Tensor extension for Cholesky decomposition
 impl Tensor {
     /// Compute Cholesky decomposition: A = L·Lᵀ
@@ -376,6 +669,137 @@ mod tests {
                 i,
                 orig,
                 recon
+            );
+        }
+    }
+
+    // =========================================================================
+    // F64 Tests — Science-grade precision
+    // =========================================================================
+
+    #[tokio::test]
+    async fn test_cholesky_f64_2x2() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        // SPD matrix: [[4, 2], [2, 3]]
+        // Expected L: [[2, 0], [1, sqrt(2)]]
+        let input_data: Vec<f64> = vec![4.0, 2.0, 2.0, 3.0];
+        
+        let result = CholeskyF64::execute(device, &input_data, 2).unwrap();
+        
+        assert_eq!(result.len(), 4);
+        
+        // Check L[0,0] ≈ 2.0
+        assert!(
+            (result[0] - 2.0).abs() < 1e-12,
+            "L[0,0] should be 2.0, got {}",
+            result[0]
+        );
+        
+        // Check L[0,1] ≈ 0.0 (upper triangle)
+        assert!(
+            result[1].abs() < 1e-12,
+            "L[0,1] should be 0.0, got {}",
+            result[1]
+        );
+        
+        // Check L[1,0] ≈ 1.0
+        assert!(
+            (result[2] - 1.0).abs() < 1e-12,
+            "L[1,0] should be 1.0, got {}",
+            result[2]
+        );
+        
+        // Check L[1,1] ≈ sqrt(2)
+        let sqrt_2: f64 = std::f64::consts::SQRT_2;
+        assert!(
+            (result[3] - sqrt_2).abs() < 1e-12,
+            "L[1,1] should be sqrt(2)={}, got {}",
+            sqrt_2,
+            result[3]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cholesky_f64_reconstruction() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        // Test that L·Lᵀ = A with f64 precision
+        let a: Vec<f64> = vec![4.0, 2.0, 2.0, 3.0];
+        let n = 2;
+        
+        let l = CholeskyF64::execute(device, &a, n).unwrap();
+        
+        // Manual L·Lᵀ multiplication
+        let mut reconstruction = vec![0.0f64; 4];
+        for i in 0..n {
+            for j in 0..n {
+                let mut sum = 0.0;
+                for k in 0..n {
+                    sum += l[i * n + k] * l[j * n + k];  // L[i,k] * L[j,k] (Lᵀ[k,j] = L[j,k])
+                }
+                reconstruction[i * n + j] = sum;
+            }
+        }
+        
+        // Should match original with f64 precision
+        for (i, (&orig, &recon)) in a.iter().zip(reconstruction.iter()).enumerate() {
+            assert!(
+                (orig - recon).abs() < 1e-12,
+                "f64 reconstruction error at {}: expected {}, got {}",
+                i,
+                orig,
+                recon
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cholesky_f64_3x3() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        // 3x3 SPD matrix (row-major)
+        let a: Vec<f64> = vec![
+            4.0, 2.0, 1.0,
+            2.0, 3.0, 1.0,
+            1.0, 1.0, 3.0,
+        ];
+        let n = 3;
+        
+        let l = CholeskyF64::execute(device, &a, n).unwrap();
+        
+        // Verify lower triangular
+        assert!(l[1].abs() < 1e-12); // L[0,1]
+        assert!(l[2].abs() < 1e-12); // L[0,2]
+        assert!(l[5].abs() < 1e-12); // L[1,2]
+        
+        // Verify diagonal is positive
+        assert!(l[0] > 0.0);
+        assert!(l[4] > 0.0);
+        assert!(l[8] > 0.0);
+        
+        // Verify L·Lᵀ = A
+        let mut recon = vec![0.0f64; 9];
+        for i in 0..n {
+            for j in 0..n {
+                let mut sum = 0.0;
+                for k in 0..n {
+                    sum += l[i * n + k] * l[j * n + k];
+                }
+                recon[i * n + j] = sum;
+            }
+        }
+        
+        for (i, (&orig, &r)) in a.iter().zip(recon.iter()).enumerate() {
+            assert!(
+                (orig - r).abs() < 1e-10,
+                "3x3 f64 reconstruction error at {}: expected {}, got {}",
+                i,
+                orig,
+                r
             );
         }
     }

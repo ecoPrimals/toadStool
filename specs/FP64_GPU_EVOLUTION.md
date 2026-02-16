@@ -323,6 +323,87 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
    }
    ```
 
+### Completed (Feb 15, 2026) — F64 Linalg Suite Extension ✅
+
+33. **Cholesky f64 decomposition** — `CholeskyF64::execute()` ✅
+    - Pure WGSL f64 with native sqrt() builtin
+    - `execute_batch()` for multiple SPD matrices
+    - 1e-12 precision verified against CPU reference
+    - Science-grade precision for Gaussian process, covariance matrices
+
+34. **Triangular solve f64** — `TriangularSolveF64` ✅
+    - `forward()` — L·x = b (lower triangular)
+    - `backward()` — U·x = b (upper triangular)
+    - `solve_transpose()` — Lᵀ·x = b without explicit transpose
+    - `cholesky_solve()` — Complete A·x = b via Cholesky factorization
+    - Completes the f64 Cholesky → Solve pipeline
+
+35. **Cyclic reduction f64** — `cyclic_reduction_f64.wgsl` ✅
+    - O(log n) parallel tridiagonal solver
+    - Crank-Nicolson PDEs with science-grade precision
+    - Thomas algorithm fallback for small systems
+    - Batched solver for multiple independent systems
+
+### Completed (Feb 15, 2026) — F64 MD Forces Suite ✅
+
+36. **Lennard-Jones f64** — `LennardJonesF64` ✅
+    - `lennard_jones_f64.wgsl` — Van der Waals with shifted potential variant
+    - `lennard_jones_shifted_f64` — Smooth cutoff for MD stability
+    - `lennard_jones_with_energy_f64` — Force + potential energy
+    - `LennardJonesF64::compute()` — Per-particle σ, ε parameters
+    - `LennardJonesF64::compute_uniform()` — Global σ, ε for all particles
+    - Lorentz-Berthelot mixing rules: σ_ij = (σ_i + σ_j)/2, ε_ij = √(ε_i·ε_j)
+    - Tests validate Newton's third law and equilibrium force
+
+37. **Coulomb f64** — `coulomb_f64.wgsl` ✅
+    - `coulomb_f64` — Direct Coulomb force with softening parameter
+    - `coulomb_with_energy_f64` — Force + potential energy
+    - `coulomb_ewald_real_f64` — Ewald real-space term with erfc(αr)/r
+    - Approximate erfc(x) polynomial for WGSL (no native erfc)
+    - Softening prevents singularity at r=0
+
+38. **Morse f64** — `morse_f64.wgsl` ✅
+    - `morse_bonds_f64` — Anharmonic bonded interaction
+    - `morse_with_energy_f64` — Force + potential energy
+    - `reduce_bond_forces_f64` — Separate kernel for per-particle accumulation
+    - Parameters: D_e (well depth), a (width), r_e (equilibrium)
+    - Formula: V(r) = D_e · (1 - exp(-a(r - r_e)))²
+
+### Completed (Feb 16, 2026) — F64 Reduce Operations Suite ✅
+
+39. **Product reduction f64** — `ProdReduceF64` ✅
+    - `prod()` — GPU-accelerated product of all elements
+    - `log_prod()` — Log-domain product (numerically stable for long sequences)
+    - Two-pass tree reduction algorithm
+    - Identity element: 1.0 (empty product returns 1)
+    - Use cases: determinants, probability chains, partition functions
+
+40. **Variance/Std f64** — `VarianceReduceF64` ✅
+    - `variance()` — Sample variance with Bessel correction (n-1)
+    - `population_variance()` — Population variance (n)
+    - `std()` / `population_std()` — Standard deviations
+    - `mean()` — Numerically stable mean via Welford
+    - `statistics()` — Returns (count, mean, variance, std) tuple
+    - **Welford's online algorithm** — numerically stable parallel merge
+    - WGSL shader outputs (count, mean, M2) per workgroup
+
+41. **Norm reduction f64** — `NormReduceF64` ✅
+    - `l1()` — L1 norm: sum(|x|)
+    - `l2()` — L2 norm: sqrt(sum(x²))
+    - `l2_squared()` — Sum of squares without sqrt
+    - `linf()` — Max norm: max(|x|)
+    - `frobenius()` — Frobenius norm (same as L2 for vectors/matrices)
+    - `p_norm(p)` — Generic p-norm: (sum(|x|^p))^(1/p)
+    - Use cases: convergence checks, error metrics, regularization
+
+42. **Cumulative product f64** — `CumprodF64` ✅
+    - `new()` — Inclusive cumprod: [a, a*b, a*b*c, ...]
+    - `exclusive()` — Exclusive cumprod: [1, a, a*b, ...]
+    - `reverse()` — Reverse cumprod: [a*b*c*d, b*c*d, c*d, d]
+    - `log_domain()` — Log-domain (stable for long sequences)
+    - `execute_1d()` / `execute_1d_exclusive()` — Convenience methods
+    - Parallel across slices, sequential along scan dimension
+
 ### Remaining (Low Priority)
 
 1. ~~**Modular preamble** — Only include needed functions~~ ✅ **COMPLETE**
@@ -332,11 +413,14 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
 
 **All GPU f64 evolution work complete.**
 **hotSpring Level 2 and Level 3 blockers resolved (Feb 14, 2026).**
-**hotSpring GPU-resident SCF blocker (item 4.1) resolved (Feb 16, 2026).**
+**hotSpring GPU-resident SCF blocker (item 4.1) resolved (Feb 15, 2026).**
+**F64 Linalg Suite complete (Feb 15, 2026) — Cholesky, TriangularSolve, CyclicReduction.**
+**F64 MD Forces Suite complete (Feb 15, 2026) — Lennard-Jones, Coulomb, Morse.**
+**F64 Reduce Suite complete (Feb 16, 2026) — Prod, Variance/Std, Norms, Cumprod.**
 
 ---
 
-## Deep Debt Evolution (Feb 16, 2026)
+## Deep Debt Evolution (Feb 15, 2026)
 
 ### 31. Async-Safe Buffer Readback (Completed)
 
@@ -394,4 +478,4 @@ NVIDIA advertises 1:64 FP64:FP32 ratio on consumer GPUs, but observed ratio is *
 
 ---
 
-*From the ToadStool evolution desk, February 13, 2026*
+*From the ToadStool evolution desk, February 16, 2026*
