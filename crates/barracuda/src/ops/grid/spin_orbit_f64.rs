@@ -503,12 +503,13 @@ impl SpinOrbitGpu {
         let slice = staging_buffer.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).unwrap();
+            // Use .ok() instead of .unwrap() - receiver may be dropped on early return
+            let _ = tx.send(result);
         });
         self.device.device.poll(wgpu::Maintain::Wait);
 
         rx.recv()
-            .map_err(|e| BarracudaError::Device(format!("Failed to map buffer: {}", e)))?
+            .map_err(|e| BarracudaError::Device(format!("Buffer mapping channel closed: {}", e)))?
             .map_err(|e| BarracudaError::Device(format!("Buffer map error: {:?}", e)))?;
 
         let data = slice.get_mapped_range();
@@ -625,8 +626,8 @@ mod tests {
 
         // Test the version that computes gradient internally
         let n_grid = 10;
-        let n_states = 1;
-        let batch_size = 1;
+        let _n_states = 1;
+        let _batch_size = 1;
         let dr = 0.5;
         let w0 = 120.0;
 
