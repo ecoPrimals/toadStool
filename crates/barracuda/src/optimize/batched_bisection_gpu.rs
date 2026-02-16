@@ -41,19 +41,25 @@ struct BisectionParams {
     batch_size: u32,
     max_iterations: u32,
     n_levels: u32,
-    _pad: u32,
-    tolerance_lo: u32, // f64 as two u32s for alignment
+    use_degeneracy: u32, // 1 = use deg_k weights, 0 = assume deg_k=1
+    tolerance_lo: u32,   // f64 as two u32s for alignment
     tolerance_hi: u32,
 }
 
 impl BisectionParams {
-    fn new(batch_size: u32, max_iterations: u32, n_levels: u32, tolerance: f64) -> Self {
+    fn new(
+        batch_size: u32,
+        max_iterations: u32,
+        n_levels: u32,
+        use_degeneracy: bool,
+        tolerance: f64,
+    ) -> Self {
         let tol_bits = tolerance.to_bits();
         Self {
             batch_size,
             max_iterations,
             n_levels,
-            _pad: 0,
+            use_degeneracy: if use_degeneracy { 1 } else { 0 },
             tolerance_lo: tol_bits as u32,
             tolerance_hi: (tol_bits >> 32) as u32,
         }
@@ -127,7 +133,7 @@ impl BatchedBisectionGpu {
             });
         }
 
-        self.solve_internal(lower, upper, targets, 1, "batched_bisection_poly")
+        self.solve_internal(lower, upper, targets, 1, false, "batched_bisection_poly")
     }
 
     /// Solve BCS particle number equation: Σ v²_k(μ) = N
@@ -181,7 +187,81 @@ impl BatchedBisectionGpu {
             params.push(target_n[i]);
         }
 
-        self.solve_internal(lower, upper, &params, n_levels as u32, "batched_bisection")
+        self.solve_internal(lower, upper, &params, n_levels as u32, false, "batched_bisection")
+    }
+
+    /// Solve BCS pairing equations with level degeneracy (deg_k)
+    ///
+    /// For nuclear HFB: deg_k = 2j+1 (spin degeneracy of each level)
+    ///
+    /// **Formula**: Find μ such that Σ_k deg_k · v²_k(μ) = N
+    ///
+    /// # Arguments
+    /// * `lower` - Lower bounds for μ [batch_size]
+    /// * `upper` - Upper bounds for μ [batch_size]
+    /// * `eigenvalues` - Packed energy levels [batch_size × n_levels]
+    /// * `degeneracies` - Degeneracy of each level [batch_size × n_levels]
+    /// * `delta` - BCS pairing gap per problem [batch_size]
+    /// * `target_n` - Target particle number per problem [batch_size]
+    ///
+    /// # Evolution
+    /// Added Feb 16, 2026 per hotSpring handoff TIER 3.1
+    pub fn solve_bcs_with_degeneracy(
+        &self,
+        lower: &[f64],
+        upper: &[f64],
+        eigenvalues: &[f64],
+        degeneracies: &[f64],
+        delta: &[f64],
+        target_n: &[f64],
+    ) -> Result<BisectionResult> {
+        let batch_size = lower.len();
+        if upper.len() != batch_size || delta.len() != batch_size || target_n.len() != batch_size {
+            return Err(BarracudaError::InvalidInput {
+                message: "Array lengths must match batch_size".to_string(),
+            });
+        }
+
+        // Calculate n_levels
+        if !eigenvalues.len().is_multiple_of(batch_size) {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "eigenvalues length {} must be divisible by batch_size {}",
+                    eigenvalues.len(),
+                    batch_size
+                ),
+            });
+        }
+        let n_levels = eigenvalues.len() / batch_size;
+
+        if degeneracies.len() != eigenvalues.len() {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "degeneracies length {} must match eigenvalues length {}",
+                    degeneracies.len(),
+                    eigenvalues.len()
+                ),
+            });
+        }
+
+        // Pack params: [ε_0, ..., ε_{n-1}, deg_0, ..., deg_{n-1}, Δ, N] per problem
+        let params_per_problem = n_levels * 2 + 2;
+        let mut params = Vec::with_capacity(batch_size * params_per_problem);
+        for i in 0..batch_size {
+            // Eigenvalues for this problem
+            for j in 0..n_levels {
+                params.push(eigenvalues[i * n_levels + j]);
+            }
+            // Degeneracies for this problem
+            for j in 0..n_levels {
+                params.push(degeneracies[i * n_levels + j]);
+            }
+            // Delta and target N
+            params.push(delta[i]);
+            params.push(target_n[i]);
+        }
+
+        self.solve_internal(lower, upper, &params, n_levels as u32, true, "batched_bisection")
     }
 
     fn solve_internal(
@@ -190,6 +270,7 @@ impl BatchedBisectionGpu {
         upper: &[f64],
         params: &[f64],
         n_levels: u32,
+        use_degeneracy: bool,
         entry_point: &str,
     ) -> Result<BisectionResult> {
         let batch_size = lower.len();
@@ -348,6 +429,7 @@ impl BatchedBisectionGpu {
             batch_size as u32,
             self.max_iterations,
             n_levels,
+            use_degeneracy,
             self.tolerance,
         );
         let config_buffer = self.device.create_uniform_buffer("BatchedBisection config", &config);
@@ -578,5 +660,105 @@ mod tests {
         let result = bisect.solve_polynomial(&[], &[], &[]).unwrap();
         assert!(result.roots.is_empty());
         assert!(result.iterations.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_bcs_with_degeneracy() {
+        // Test BCS with level degeneracies (hotSpring TIER 3.1)
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
+
+        let bisect = BatchedBisectionGpu::new(device, 100, 1e-10).unwrap();
+
+        // Two problems:
+        // Problem 0: 3 levels with degeneracies [2, 4, 2], ε = [0.0, 1.0, 2.0], Δ=0.5, N=4.0
+        // Problem 1: 3 levels with degeneracies [1, 2, 1], ε = [0.0, 1.0, 2.0], Δ=0.5, N=2.0
+        let lower = vec![-5.0, -5.0];
+        let upper = vec![5.0, 5.0];
+        
+        // Packed eigenvalues [batch × n_levels]
+        let eigenvalues = vec![
+            0.0, 1.0, 2.0,  // Problem 0
+            0.0, 1.0, 2.0,  // Problem 1
+        ];
+        
+        // Degeneracies [batch × n_levels]
+        let degeneracies = vec![
+            2.0, 4.0, 2.0,  // Problem 0: total capacity = 8
+            1.0, 2.0, 1.0,  // Problem 1: total capacity = 4
+        ];
+        
+        let delta = vec![0.5, 0.5];
+        let target_n = vec![4.0, 2.0];
+
+        let result = bisect
+            .solve_bcs_with_degeneracy(&lower, &upper, &eigenvalues, &degeneracies, &delta, &target_n)
+            .unwrap();
+
+        assert_eq!(result.roots.len(), 2);
+
+        // Verify: compute occupation for each root
+        for (i, &mu) in result.roots.iter().enumerate() {
+            let base = i * 3;
+            let delta_i = delta[i];
+            let target = target_n[i];
+            
+            let mut sum = 0.0;
+            for k in 0..3 {
+                let eps_k = eigenvalues[base + k];
+                let deg_k = degeneracies[base + k];
+                let diff = eps_k - mu;
+                let e_k = (diff * diff + delta_i * delta_i).sqrt();
+                let v2_k = 0.5 * (1.0 - diff / e_k);
+                sum += deg_k * v2_k;
+            }
+            
+            assert!(
+                (sum - target).abs() < 0.01,
+                "Problem {}: Σ deg_k v²_k should be {}, got {} (μ={})",
+                i,
+                target,
+                sum,
+                mu
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_bcs_degeneracy_vs_no_degeneracy() {
+        // Verify that uniform degeneracy=1 matches solve_bcs behavior
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
+
+        let bisect = BatchedBisectionGpu::new(device, 100, 1e-10).unwrap();
+
+        let lower = vec![-3.0];
+        let upper = vec![5.0];
+        let eigenvalues = vec![0.0, 1.0, 2.0, 3.0];
+        let delta = vec![0.5];
+        let target_n = vec![2.0];
+
+        // Without degeneracy
+        let result_no_deg = bisect
+            .solve_bcs(&lower, &upper, &eigenvalues, &delta, &target_n)
+            .unwrap();
+
+        // With uniform degeneracy = 1.0
+        let degeneracies = vec![1.0, 1.0, 1.0, 1.0];
+        let result_with_deg = bisect
+            .solve_bcs_with_degeneracy(&lower, &upper, &eigenvalues, &degeneracies, &delta, &target_n)
+            .unwrap();
+
+        // Should match
+        assert!(
+            (result_no_deg.roots[0] - result_with_deg.roots[0]).abs() < 1e-6,
+            "Results should match: {} vs {}",
+            result_no_deg.roots[0],
+            result_with_deg.roots[0]
+        );
     }
 }

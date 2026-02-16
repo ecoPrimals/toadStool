@@ -51,7 +51,9 @@
 //! - Validated by hotSpring nuclear EOS (169/169 acceptance checks)
 
 mod fd_gradient_f64;
+mod spin_orbit_f64;
 
 pub use fd_gradient_f64::{
     CylindricalGradient, CylindricalLaplacian, Gradient1D, Gradient2D, Laplacian2D,
 };
+pub use spin_orbit_f64::{compute_ls_factor, SpinOrbitGpu};

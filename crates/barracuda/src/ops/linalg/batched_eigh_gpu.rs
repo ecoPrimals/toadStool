@@ -72,6 +72,10 @@ impl BatchedEighGpu {
         include_str!("../../shaders/linalg/batched_eigh_f64.wgsl")
     }
 
+    fn single_dispatch_shader() -> &'static str {
+        include_str!("../../shaders/linalg/batched_eigh_single_dispatch_f64.wgsl")
+    }
+
     /// Execute batched eigenvalue decomposition on GPU with full f64 precision
     ///
     /// This processes multiple symmetric matrices in parallel, ideal for HFB
@@ -549,6 +553,401 @@ impl BatchedEighGpu {
         let eigenvectors = Self::read_f64_buffer(&device, &v_buffer, batch_size * n * n)?;
 
         Ok((eigenvalues, eigenvectors))
+    }
+
+    /// **SINGLE-DISPATCH** batched eigenvalue decomposition — eliminates poll bottleneck
+    ///
+    /// This is the critical evolution for GPU-resident SCF loops. Instead of
+    /// ~8000 `queue.submit()` calls per batch, this uses exactly ONE dispatch.
+    ///
+    /// # Performance
+    ///
+    /// For n=12, batch=40:
+    /// - Previous: 4 × 66 × 30 = 7,920 submits (66 rotations/sweep, 30 sweeps)
+    /// - This: 1 submit
+    ///
+    /// # Constraints
+    ///
+    /// - Maximum n=32 (limited by workgroup shared memory: 32×32×8×2 = 16KB)
+    /// - For larger matrices, use `execute_f64()` or `execute_f64_buffers()`
+    ///
+    /// # Arguments
+    /// * `device` - WgpuDevice
+    /// * `data` - Packed matrices [batch_size × n × n] in row-major order (f64)
+    /// * `n` - Matrix dimension (must be ≤ 32)
+    /// * `batch_size` - Number of matrices
+    /// * `max_sweeps` - Maximum Jacobi sweeps
+    /// * `tolerance` - Convergence tolerance for off-diagonal elements
+    ///
+    /// # Returns
+    /// Tuple (eigenvalues, eigenvectors) where:
+    /// - eigenvalues: [batch_size × n] f64
+    /// - eigenvectors: [batch_size × n × n] f64
+    ///
+    /// # Example (hotSpring HFB)
+    /// ```ignore
+    /// // 40 matrices of 12×12 dimension - ONE dispatch
+    /// let (eigenvalues, eigenvectors) = BatchedEighGpu::execute_single_dispatch(
+    ///     device, &packed_hamiltonians, 12, 40, 30, 1e-12
+    /// )?;
+    /// ```
+    pub fn execute_single_dispatch(
+        device: Arc<WgpuDevice>,
+        data: &[f64],
+        n: usize,
+        batch_size: usize,
+        max_sweeps: u32,
+        tolerance: f64,
+    ) -> Result<(Vec<f64>, Vec<f64>)> {
+        const MAX_N: usize = 32;
+        
+        if n > MAX_N {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "Single-dispatch eigensolve limited to n≤{}, got n={}. Use execute_f64() for larger matrices.",
+                    MAX_N, n
+                ),
+            });
+        }
+
+        if data.len() != batch_size * n * n {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "Data length {} does not match batch_size={} × n²={}",
+                    data.len(),
+                    batch_size,
+                    n * n
+                ),
+            });
+        }
+
+        // Create GPU buffers
+        let a_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SingleDispatch A"),
+            contents: bytemuck::cast_slice(data),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+
+        let v_size = (batch_size * n * n * 8) as u64;
+        let v_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("SingleDispatch V"),
+            size: v_size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let eig_size = (batch_size * n * 8) as u64;
+        let eig_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("SingleDispatch Eigenvalues"),
+            size: eig_size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Params buffer
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct SingleDispatchParams {
+            n: u32,
+            batch_size: u32,
+            max_sweeps: u32,
+            tolerance: f32,
+        }
+
+        let params = SingleDispatchParams {
+            n: n as u32,
+            batch_size: batch_size as u32,
+            max_sweeps,
+            tolerance: tolerance as f32,
+        };
+        let params_buffer = device.create_uniform_buffer("SingleDispatch Params", &params);
+
+        // Compile shader
+        let shader = device.compile_shader(
+            Self::single_dispatch_shader(),
+            Some("Batched Eigh Single-Dispatch f64"),
+        );
+
+        // Create bind group layout
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("SingleDispatch BGL"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let pipeline_layout = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("SingleDispatch PL"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("SingleDispatch Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "batched_eigh_single_dispatch",
+            });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("SingleDispatch BG"),
+            layout: &bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: a_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: v_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: eig_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // *** THE KEY: SINGLE DISPATCH ***
+        // One workgroup per matrix in batch
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("SingleDispatch Encoder"),
+            });
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("SingleDispatch Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            // batch_size workgroups, each processes one matrix
+            pass.dispatch_workgroups(batch_size as u32, 1, 1);
+        }
+        device.queue.submit(Some(encoder.finish()));
+
+        // Read back results
+        let eigenvalues = Self::read_f64_buffer(&device, &eig_buffer, batch_size * n)?;
+        let eigenvectors = Self::read_f64_buffer(&device, &v_buffer, batch_size * n * n)?;
+
+        Ok((eigenvalues, eigenvectors))
+    }
+
+    /// **SINGLE-DISPATCH** buffer-based eigensolve — no CPU readback
+    ///
+    /// Combines single-dispatch efficiency with buffer-based API for GPU-resident loops.
+    ///
+    /// # Arguments
+    /// * `device` - WgpuDevice
+    /// * `matrices_buffer` - Input buffer [batch_size × n × n] f64
+    /// * `eigenvalues_buffer` - Output buffer [batch_size × n] f64
+    /// * `eigenvectors_buffer` - Output buffer [batch_size × n × n] f64
+    /// * `n` - Matrix dimension (must be ≤ 32)
+    /// * `batch_size` - Number of matrices
+    /// * `max_sweeps` - Maximum Jacobi sweeps
+    /// * `tolerance` - Convergence tolerance
+    ///
+    /// # Returns
+    /// `Ok(())` - results in output buffers, no CPU copy
+    pub fn execute_single_dispatch_buffers(
+        device: &Arc<WgpuDevice>,
+        matrices_buffer: &wgpu::Buffer,
+        eigenvalues_buffer: &wgpu::Buffer,
+        eigenvectors_buffer: &wgpu::Buffer,
+        n: usize,
+        batch_size: usize,
+        max_sweeps: u32,
+        tolerance: f64,
+    ) -> Result<()> {
+        const MAX_N: usize = 32;
+        
+        if n > MAX_N {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "Single-dispatch eigensolve limited to n≤{}, got n={}",
+                    MAX_N, n
+                ),
+            });
+        }
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct SingleDispatchParams {
+            n: u32,
+            batch_size: u32,
+            max_sweeps: u32,
+            tolerance: f32,
+        }
+
+        let params = SingleDispatchParams {
+            n: n as u32,
+            batch_size: batch_size as u32,
+            max_sweeps,
+            tolerance: tolerance as f32,
+        };
+        let params_buffer = device.create_uniform_buffer("SingleDispatch Params (buffers)", &params);
+
+        let shader = device.compile_shader(
+            Self::single_dispatch_shader(),
+            Some("Batched Eigh Single-Dispatch f64 (buffers)"),
+        );
+
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("SingleDispatch BGL (buffers)"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let pipeline_layout = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("SingleDispatch PL (buffers)"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("SingleDispatch Pipeline (buffers)"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "batched_eigh_single_dispatch",
+            });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("SingleDispatch BG (buffers)"),
+            layout: &bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: matrices_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: eigenvectors_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: eigenvalues_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Single dispatch - one workgroup per matrix
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("SingleDispatch Encoder (buffers)"),
+            });
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("SingleDispatch Pass (buffers)"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(batch_size as u32, 1, 1);
+        }
+        device.queue.submit(Some(encoder.finish()));
+
+        Ok(())
     }
 
     /// Convenience method for processing a batch of matrices
@@ -1473,5 +1872,145 @@ mod tests {
         assert!(approx_eq_f64(trace_2, 6.0, 1e-4), "Iteration 2 trace should be 6");
 
         // Buffers successfully reused across iterations
+    }
+
+    #[tokio::test]
+    async fn test_single_dispatch_basic() {
+        // Test the single-dispatch eigensolve (TIER 1.1 critical feature)
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
+
+        // Two 2×2 matrices
+        let data: Vec<f64> = vec![
+            4.0, 2.0, 2.0, 3.0, // Matrix 0: trace=7
+            2.0, 1.0, 1.0, 2.0, // Matrix 1: trace=4
+        ];
+
+        let (eigenvalues, eigenvectors) =
+            BatchedEighGpu::execute_single_dispatch(device.clone(), &data, 2, 2, 30, 1e-12).unwrap();
+
+        assert_eq!(eigenvalues.len(), 4);
+        assert_eq!(eigenvectors.len(), 8);
+
+        // Verify traces
+        let trace_0 = eigenvalues[0] + eigenvalues[1];
+        let trace_1 = eigenvalues[2] + eigenvalues[3];
+
+        assert!(
+            approx_eq_f64(trace_0, 7.0, 1e-4),
+            "Matrix 0 trace should be 7, got {}",
+            trace_0
+        );
+        assert!(
+            approx_eq_f64(trace_1, 4.0, 1e-4),
+            "Matrix 1 trace should be 4, got {}",
+            trace_1
+        );
+    }
+
+    #[tokio::test]
+    async fn test_single_dispatch_hotspring_scale() {
+        // Test at hotSpring scale: 40 matrices of 12×12
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
+
+        let n = 12;
+        let batch_size = 40;
+
+        // Create batch of diagonal matrices with known eigenvalues
+        let mut data = vec![0.0_f64; batch_size * n * n];
+        for b in 0..batch_size {
+            for i in 0..n {
+                // Eigenvalues: 1, 2, 3, ..., n for each matrix
+                data[b * n * n + i * n + i] = (i + 1) as f64;
+            }
+        }
+
+        // Single dispatch for all 40 matrices
+        let (eigenvalues, _eigenvectors) =
+            BatchedEighGpu::execute_single_dispatch(device.clone(), &data, n, batch_size, 30, 1e-12)
+                .unwrap();
+
+        assert_eq!(eigenvalues.len(), batch_size * n);
+
+        // Check first matrix: eigenvalue sum = 1+2+...+12 = 78
+        let first_sum: f64 = eigenvalues[0..n].iter().sum();
+        assert!(
+            approx_eq_f64(first_sum, 78.0, 1e-3),
+            "First matrix eigenvalue sum should be 78, got {}",
+            first_sum
+        );
+
+        // Check last matrix
+        let last_start = (batch_size - 1) * n;
+        let last_sum: f64 = eigenvalues[last_start..last_start + n].iter().sum();
+        assert!(
+            approx_eq_f64(last_sum, 78.0, 1e-3),
+            "Last matrix eigenvalue sum should be 78, got {}",
+            last_sum
+        );
+    }
+
+    #[tokio::test]
+    async fn test_single_dispatch_buffers() {
+        // Test single-dispatch buffer API (GPU-resident, no CPU readback)
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return;
+        };
+
+        let n = 4;
+        let batch_size = 3;
+
+        // Create buffers
+        let (matrices_buf, eigenvalues_buf, eigenvectors_buf) =
+            BatchedEighGpu::create_buffers(&device, n, batch_size).unwrap();
+
+        // Prepare diagonal matrices with known eigenvalues
+        let mut data = vec![0.0_f64; batch_size * n * n];
+        for b in 0..batch_size {
+            for i in 0..n {
+                data[b * n * n + i * n + i] = ((b + 1) * (i + 1)) as f64;
+            }
+        }
+
+        device.queue.write_buffer(&matrices_buf, 0, bytemuck::cast_slice(&data));
+
+        // Execute single-dispatch without CPU readback
+        BatchedEighGpu::execute_single_dispatch_buffers(
+            &device,
+            &matrices_buf,
+            &eigenvalues_buf,
+            &eigenvectors_buf,
+            n,
+            batch_size,
+            30,
+            1e-12,
+        )
+        .unwrap();
+
+        // Read back eigenvalues
+        let eigenvalues =
+            BatchedEighGpu::read_eigenvalues(&device, &eigenvalues_buf, n, batch_size).unwrap();
+
+        // Matrix 0: eigenvalues 1,2,3,4 -> sum=10
+        let sum_0: f64 = eigenvalues[0..n].iter().sum();
+        assert!(
+            approx_eq_f64(sum_0, 10.0, 1e-4),
+            "Matrix 0 sum should be 10, got {}",
+            sum_0
+        );
+
+        // Matrix 1: eigenvalues 2,4,6,8 -> sum=20
+        let sum_1: f64 = eigenvalues[n..2 * n].iter().sum();
+        assert!(
+            approx_eq_f64(sum_1, 20.0, 1e-4),
+            "Matrix 1 sum should be 20, got {}",
+            sum_1
+        );
     }
 }

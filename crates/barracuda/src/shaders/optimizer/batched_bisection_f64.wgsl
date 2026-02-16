@@ -19,15 +19,18 @@
 // - Runs bisection loop until convergence or max_iter
 // - Writes root to output buffer
 //
-// BCS Pairing Formula:
-//   Find μ such that: Σ_k v²_k(μ) = N
+// BCS Pairing Formula (with degeneracy):
+//   Find μ such that: Σ_k deg_k · v²_k(μ) = N
 //   where v²_k = ½(1 - (ε_k - μ)/√((ε_k - μ)² + Δ²))
+//
+// Evolution (Feb 16, 2026): Added degeneracy support per hotSpring handoff TIER 3.1
+// Nuclear HFB levels have degeneracy 2j+1, not uniform.
 
 struct BisectionParams {
     batch_size: u32,        // Number of problems to solve
     max_iterations: u32,    // Max bisection iterations per problem
     n_levels: u32,          // Number of energy levels for BCS (params per problem)
-    _pad: u32,
+    use_degeneracy: u32,    // 1 = use deg_k weights, 0 = assume deg_k=1
     tolerance: f64,         // Convergence tolerance |f(x)| < tol
 }
 
@@ -52,15 +55,30 @@ fn sqrt_f64(x: f64) -> f64 {
     return sqrt(x);
 }
 
-// BCS particle number function: Σ_k v²_k(μ) - N
-// params layout: [ε_0, ε_1, ..., ε_{n-1}, Δ, N]
+// BCS particle number function: Σ_k deg_k · v²_k(μ) - N
+// 
+// Params layout depends on use_degeneracy:
+//   use_degeneracy=0: [ε_0, ε_1, ..., ε_{n-1}, Δ, N]
+//   use_degeneracy=1: [ε_0, ..., ε_{n-1}, deg_0, ..., deg_{n-1}, Δ, N]
+//
+// For nuclear HFB: deg_k = 2j+1 (spin degeneracy of each level)
 fn bcs_particle_number(mu: f64, problem_idx: u32) -> f64 {
     let n_levels = config.n_levels;
-    let params_per_problem = n_levels + 2u; // eigenvalues + delta + target_N
+    let use_deg = config.use_degeneracy;
+    
+    // Calculate params_per_problem based on whether degeneracy is used
+    var params_per_problem: u32;
+    if (use_deg == 1u) {
+        params_per_problem = n_levels * 2u + 2u; // eigenvalues + degeneracies + delta + target_N
+    } else {
+        params_per_problem = n_levels + 2u; // eigenvalues + delta + target_N
+    }
+    
     let base = problem_idx * params_per_problem;
     
-    let delta = params[base + n_levels];
-    let target_n = params[base + n_levels + 1u];
+    // Delta and target_N are always at the end
+    let delta = params[base + params_per_problem - 2u];
+    let target_n = params[base + params_per_problem - 1u];
     
     var sum = f64(0.0);
     for (var k = 0u; k < n_levels; k = k + 1u) {
@@ -69,7 +87,14 @@ fn bcs_particle_number(mu: f64, problem_idx: u32) -> f64 {
         let e_k = sqrt_f64(diff * diff + delta * delta);
         // v²_k = ½(1 - (ε_k - μ)/E_k)
         let v2_k = f64(0.5) * (f64(1.0) - diff / e_k);
-        sum = sum + v2_k;
+        
+        // Get degeneracy (default 1.0 if not using degeneracy)
+        var deg_k = f64(1.0);
+        if (use_deg == 1u) {
+            deg_k = params[base + n_levels + k];
+        }
+        
+        sum = sum + deg_k * v2_k;
     }
     
     return sum - target_n;

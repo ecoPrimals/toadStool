@@ -264,6 +264,31 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
    - Enables GPU-resident SCF loops without eigensolve round-trips
    - **Resolves hotSpring item 4.1**: Dependent op chaining now possible
 
+26. **Single-dispatch batched eigensolve** — `BatchedEighGpu::execute_single_dispatch()` ✅
+   - **CRITICAL EVOLUTION**: Eliminates poll bottleneck (hotSpring TIER 1.1)
+   - Previous: 4 × n(n-1)/2 × max_sweeps = ~8000 `queue.submit()` per batch
+   - Now: **1 dispatch total** — entire Jacobi algorithm runs in shader
+   - Workgroup shared memory holds matrix A and eigenvectors V
+   - Supports n≤32 (12×12 matrices fit easily in 16KB shared memory)
+   - hotSpring scale test: 40 × 12×12 matrices in single dispatch ✅
+   - Also: `execute_single_dispatch_buffers()` for GPU-resident loops
+
+27. **BCS bisection with degeneracy** — `BatchedBisectionGpu::solve_bcs_with_degeneracy()` ✅
+   - hotSpring TIER 3.1: Nuclear HFB levels have degeneracy 2j+1
+   - Formula: Σ_k deg_k · v²_k(μ) = N (was Σ_k v²_k = N)
+   - Params layout extended: [ε_0..ε_n, deg_0..deg_n, Δ, N]
+   - Backward compatible: `solve_bcs()` still works (assumes deg_k=1)
+   - Test: degeneracy=1 matches solve_bcs behavior ✅
+
+28. **GPU spin-orbit coupling** — `SpinOrbitGpu` ✅
+   - hotSpring TIER 2.1: Moves last CPU physics to GPU
+   - Formula: H_so[i,i] = w0 · ls_i · ∫ |ψ_i|² · (dρ/dr) · r dr
+   - `compute()`: with pre-computed gradient
+   - `compute_with_density()`: computes gradient internally
+   - `compute_ls_factor(l, j)`: helper for ls_i = (j(j+1) - l(l+1) - 3/4)/2
+   - Batched across nuclei and states
+   - Uses trapezoidal integration (matches CPU reference)
+
    ```rust
    // GPU-resident SCF loop pattern:
    let (h_buf, eig_buf, vec_buf) = BatchedEighGpu::create_buffers(&device, n, batch)?;
