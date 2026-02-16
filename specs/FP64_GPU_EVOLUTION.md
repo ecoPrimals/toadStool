@@ -289,6 +289,18 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
    - Batched across nuclei and states
    - Uses trapezoidal integration (matches CPU reference)
 
+29. **Gradient2D / Laplacian2D wiring** ✅
+   - Deep debt: WGSL existed but Rust `compute()` methods were stubs
+   - `Gradient2D::compute()` — returns (grad_x, grad_y) as row-major arrays
+   - `Laplacian2D::compute()` — ∇²f = ∂²f/∂x² + ∂²f/∂y²
+   - Both use `fd_gradient_f64.wgsl` entry points
+   - Tests: f(x,y)=x²+y² → ∇²f=4 ✅
+
+30. **Idiomatic Rust refactoring** — `report.rs` ✅
+   - Deep debt: replaced `push_str(&format!(...))` with `write!` macro
+   - Split monolithic method into focused helpers
+   - Added edge case handling for empty results
+
    ```rust
    // GPU-resident SCF loop pattern:
    let (h_buf, eig_buf, vec_buf) = BatchedEighGpu::create_buffers(&device, n, batch)?;
@@ -321,6 +333,43 @@ The specialized `pow_two_thirds()` using `cbrt*cbrt` achieves **400x better prec
 **All GPU f64 evolution work complete.**
 **hotSpring Level 2 and Level 3 blockers resolved (Feb 14, 2026).**
 **hotSpring GPU-resident SCF blocker (item 4.1) resolved (Feb 16, 2026).**
+
+---
+
+## Deep Debt Evolution (Feb 16, 2026)
+
+### 31. Async-Safe Buffer Readback (Completed)
+
+**Problem**: `AsyncReadback::read_*()` methods called `device.poll(Maintain::Wait)` *before* awaiting, which blocks the async executor.
+
+**Solution**:
+- Added `poll_until_ready()` helper that uses `now_or_never()` for non-blocking checks
+- Uses `tokio::task::yield_now()` between polls to let other tasks run
+- Added explicit `read_*_blocking()` methods for synchronous contexts
+
+```rust
+async fn poll_until_ready(&mut self, device: &wgpu::Device) -> Result<(), String> {
+    loop {
+        device.poll(wgpu::Maintain::Poll);
+        match (&mut self.receiver).now_or_never() {
+            Some(result) => return /* ... */,
+            None => tokio::task::yield_now().await, // Cooperative!
+        }
+    }
+}
+```
+
+### 32. CylindricalGradient / CylindricalLaplacian Wiring (Completed)
+
+**Problem**: Cylindrical coordinate GPU operators were stubbed out with no `compute()` methods.
+
+**Solution**: Implemented full GPU computation for both operators:
+- `CylindricalGradient::compute()` — Returns `(grad_rho, grad_z)` tuples
+- `CylindricalLaplacian::compute()` — Proper cylindrical Laplacian: ∇²f = ∂²f/∂ρ² + (1/ρ)∂f/∂ρ + ∂²f/∂z²
+
+**Tests Added**:
+- `test_cylindrical_gradient` — f(ρ,z) = ρ² + z → ∂f/∂ρ = 2ρ, ∂f/∂z = 1
+- `test_cylindrical_laplacian` — f(ρ,z) = z² → ∇²f = 2
 
 ---
 

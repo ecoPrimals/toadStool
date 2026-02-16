@@ -802,16 +802,17 @@ impl Laplacian2D {
 }
 
 /// Cylindrical (ρ, z) gradient for axially symmetric problems
+///
+/// Computes ∂f/∂ρ and ∂f/∂z on a (ρ, z) grid.
+/// Used for nuclear physics (deformed nuclei), fluid dynamics, etc.
 pub struct CylindricalGradient {
-    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
+    pipeline: wgpu::ComputePipeline,
+    bind_group_layout: wgpu::BindGroupLayout,
     n_rho: usize,
     n_z: usize,
-    #[allow(dead_code)]
     d_rho: f64,
-    #[allow(dead_code)]
     d_z: f64,
-    #[allow(dead_code)]
     z_min: f64,
 }
 
@@ -825,8 +826,91 @@ impl CylindricalGradient {
         d_z: f64,
         z_min: f64,
     ) -> Result<Self> {
+        let shader_source = include_str!("../../shaders/grid/fd_gradient_f64.wgsl");
+
+        let shader_module = device
+            .device()
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("cylindrical_gradient_shader"),
+                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+            });
+
+        let bind_group_layout =
+            device
+                .device()
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("cyl_grad_bgl"),
+                    entries: &[
+                        // Uniform params (binding 0)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Input field (binding 1)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // grad_rho output (binding 2)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // grad_z output (binding 3)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let pipeline_layout =
+            device
+                .device()
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("cyl_grad_layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline =
+            device
+                .device()
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("cyl_grad_pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "gradient_cylindrical",
+                });
+
         Ok(Self {
             device,
+            pipeline,
+            bind_group_layout,
             n_rho,
             n_z,
             d_rho,
@@ -839,19 +923,159 @@ impl CylindricalGradient {
     pub fn shape(&self) -> (usize, usize) {
         (self.n_rho, self.n_z)
     }
+
+    /// Compute cylindrical gradient (∂f/∂ρ, ∂f/∂z)
+    ///
+    /// # Arguments
+    /// * `input` - Field on (ρ,z) grid as row-major array [n_rho × n_z]
+    ///
+    /// # Returns
+    /// Tuple (grad_rho, grad_z) each as row-major [n_rho × n_z]
+    pub async fn compute(&self, input: &[f64]) -> Result<(Vec<f64>, Vec<f64>)> {
+        let total = self.n_rho * self.n_z;
+        if input.len() != total {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "Input size mismatch: expected {} ({}×{}), got {}",
+                    total, self.n_rho, self.n_z, input.len()
+                ),
+            });
+        }
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct CylParams {
+            n_rho: u32,
+            n_z: u32,
+            _pad0: u32,
+            _pad1: u32,
+            d_rho: f64,
+            d_z: f64,
+            z_min: f64,
+        }
+
+        let params = CylParams {
+            n_rho: self.n_rho as u32,
+            n_z: self.n_z as u32,
+            _pad0: 0,
+            _pad1: 0,
+            d_rho: self.d_rho,
+            d_z: self.d_z,
+            z_min: self.z_min,
+        };
+
+        let params_buffer =
+            self.device
+                .device()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("cyl_grad_params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        let input_buffer =
+            self.device
+                .device()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("cyl_grad_input"),
+                    contents: bytemuck::cast_slice(input),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
+
+        let buffer_size = (total * std::mem::size_of::<f64>()) as u64;
+
+        let grad_rho_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("cyl_grad_rho"),
+            size: buffer_size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let grad_z_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("cyl_grad_z"),
+            size: buffer_size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let bind_group = self
+            .device
+            .device()
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("cyl_grad_bg"),
+                layout: &self.bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: input_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: grad_rho_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: grad_z_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+
+        let mut encoder = self
+            .device
+            .device()
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("cyl_grad"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            // Workgroup size is 256, processing flat index
+            pass.dispatch_workgroups(total.div_ceil(256) as u32, 1, 1);
+        }
+
+        // Read back
+        let staging_rho = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("staging_rho"),
+            size: buffer_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let staging_z = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("staging_z"),
+            size: buffer_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        encoder.copy_buffer_to_buffer(&grad_rho_buffer, 0, &staging_rho, 0, buffer_size);
+        encoder.copy_buffer_to_buffer(&grad_z_buffer, 0, &staging_z, 0, buffer_size);
+        self.device.queue().submit(Some(encoder.finish()));
+
+        let grad_rho = read_staging_f64(self.device.device(), &staging_rho, total).await?;
+        let grad_z = read_staging_f64(self.device.device(), &staging_z, total).await?;
+
+        Ok((grad_rho, grad_z))
+    }
 }
 
 /// Cylindrical Laplacian: ∇²f = ∂²f/∂ρ² + (1/ρ)∂f/∂ρ + ∂²f/∂z²
+///
+/// Proper cylindrical Laplacian including the 1/ρ term.
+/// Used for axially symmetric problems in physics.
 pub struct CylindricalLaplacian {
-    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
+    pipeline: wgpu::ComputePipeline,
+    bind_group_layout: wgpu::BindGroupLayout,
     n_rho: usize,
     n_z: usize,
-    #[allow(dead_code)]
     d_rho: f64,
-    #[allow(dead_code)]
     d_z: f64,
-    #[allow(dead_code)]
     z_min: f64,
 }
 
@@ -865,8 +1089,99 @@ impl CylindricalLaplacian {
         d_z: f64,
         z_min: f64,
     ) -> Result<Self> {
+        let shader_source = include_str!("../../shaders/grid/fd_gradient_f64.wgsl");
+
+        let shader_module = device
+            .device()
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("cyl_laplacian_shader"),
+                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+            });
+
+        // Laplacian uses bindings 0, 1, 4 (params, input, laplacian)
+        // Need dummy bindings for 2, 3 (grad_rho, grad_z)
+        let bind_group_layout =
+            device
+                .device()
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("cyl_lap_bgl"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let pipeline_layout =
+            device
+                .device()
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("cyl_lap_layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline =
+            device
+                .device()
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("cyl_lap_pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "laplacian_cylindrical",
+                });
+
         Ok(Self {
             device,
+            pipeline,
+            bind_group_layout,
             n_rho,
             n_z,
             d_rho,
@@ -879,6 +1194,159 @@ impl CylindricalLaplacian {
     pub fn shape(&self) -> (usize, usize) {
         (self.n_rho, self.n_z)
     }
+
+    /// Compute cylindrical Laplacian: ∇²f = ∂²f/∂ρ² + (1/ρ)∂f/∂ρ + ∂²f/∂z²
+    pub async fn compute(&self, input: &[f64]) -> Result<Vec<f64>> {
+        let total = self.n_rho * self.n_z;
+        if input.len() != total {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "Input size mismatch: expected {} ({}×{}), got {}",
+                    total, self.n_rho, self.n_z, input.len()
+                ),
+            });
+        }
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct CylParams {
+            n_rho: u32,
+            n_z: u32,
+            _pad0: u32,
+            _pad1: u32,
+            d_rho: f64,
+            d_z: f64,
+            z_min: f64,
+        }
+
+        let params = CylParams {
+            n_rho: self.n_rho as u32,
+            n_z: self.n_z as u32,
+            _pad0: 0,
+            _pad1: 0,
+            d_rho: self.d_rho,
+            d_z: self.d_z,
+            z_min: self.z_min,
+        };
+
+        let params_buffer =
+            self.device
+                .device()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("cyl_lap_params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        let input_buffer =
+            self.device
+                .device()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("cyl_lap_input"),
+                    contents: bytemuck::cast_slice(input),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
+
+        let buffer_size = (total * std::mem::size_of::<f64>()) as u64;
+
+        // Dummy buffers for unused bindings
+        let dummy_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("cyl_lap_dummy"),
+            size: 8,
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
+
+        let laplacian_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("cyl_lap_output"),
+            size: buffer_size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let bind_group = self
+            .device
+            .device()
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("cyl_lap_bg"),
+                layout: &self.bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: input_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: dummy_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: dummy_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: laplacian_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+
+        let mut encoder = self
+            .device
+            .device()
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("cyl_lap"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(total.div_ceil(256) as u32, 1, 1);
+        }
+
+        // Read back
+        let staging = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("cyl_lap_staging"),
+            size: buffer_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        encoder.copy_buffer_to_buffer(&laplacian_buffer, 0, &staging, 0, buffer_size);
+        self.device.queue().submit(Some(encoder.finish()));
+
+        read_staging_f64(self.device.device(), &staging, total).await
+    }
+}
+
+/// Helper function to read f64 data from a staging buffer
+async fn read_staging_f64(
+    device: &wgpu::Device,
+    staging: &wgpu::Buffer,
+    count: usize,
+) -> Result<Vec<f64>> {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    staging.slice(..).map_async(wgpu::MapMode::Read, move |result| {
+        let _ = sender.send(result);
+    });
+    device.poll(wgpu::Maintain::Wait);
+    receiver
+        .recv()
+        .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
+        .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
+
+    let data = staging.slice(..).get_mapped_range();
+    let result: Vec<f64> = data
+        .chunks_exact(8)
+        .take(count)
+        .map(|chunk| f64::from_le_bytes(chunk.try_into().expect("8-byte chunks")))
+        .collect();
+
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -1007,6 +1475,105 @@ mod tests {
                     error < 0.01,
                     "Laplacian at ({},{}) = {}, expected {}, error={}",
                     ix, iy, result[idx], expected, error
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cylindrical_gradient() {
+        let device = match WgpuDevice::new().await {
+            Ok(d) => Arc::new(d),
+            Err(_) => return, // Skip if no GPU
+        };
+
+        let n_rho = 10;
+        let n_z = 10;
+        let d_rho = 0.2;
+        let d_z = 0.2;
+        let z_min = -1.0;
+
+        let grad = CylindricalGradient::new(device, n_rho, n_z, d_rho, d_z, z_min).unwrap();
+
+        // f(ρ, z) = ρ² + z → ∂f/∂ρ = 2ρ, ∂f/∂z = 1
+        let mut input = vec![0.0; n_rho * n_z];
+        for i_rho in 0..n_rho {
+            for i_z in 0..n_z {
+                let rho = (i_rho + 1) as f64 * d_rho; // ρ starts at d_rho
+                let z = z_min + (i_z as f64 + 0.5) * d_z;
+                input[i_rho * n_z + i_z] = rho * rho + z;
+            }
+        }
+
+        let (grad_rho, grad_z) = grad.compute(&input).await.unwrap();
+
+        assert_eq!(grad_rho.len(), n_rho * n_z);
+        assert_eq!(grad_z.len(), n_rho * n_z);
+
+        // Check interior points
+        for i_rho in 1..n_rho - 1 {
+            for i_z in 1..n_z - 1 {
+                let rho = (i_rho + 1) as f64 * d_rho;
+                let idx = i_rho * n_z + i_z;
+
+                // ∂f/∂ρ = 2ρ
+                let expected_rho = 2.0 * rho;
+                let error_rho = (grad_rho[idx] - expected_rho).abs();
+                assert!(
+                    error_rho < 0.2,
+                    "grad_rho at ({},{}) = {}, expected {}, error={}",
+                    i_rho, i_z, grad_rho[idx], expected_rho, error_rho
+                );
+
+                // ∂f/∂z = 1
+                let error_z = (grad_z[idx] - 1.0).abs();
+                assert!(
+                    error_z < 0.01,
+                    "grad_z at ({},{}) = {}, expected 1, error={}",
+                    i_rho, i_z, grad_z[idx], error_z
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cylindrical_laplacian() {
+        let device = match WgpuDevice::new().await {
+            Ok(d) => Arc::new(d),
+            Err(_) => return, // Skip if no GPU
+        };
+
+        let n_rho = 10;
+        let n_z = 10;
+        let d_rho = 0.2;
+        let d_z = 0.2;
+        let z_min = -1.0;
+
+        let lap = CylindricalLaplacian::new(device, n_rho, n_z, d_rho, d_z, z_min).unwrap();
+
+        // f(ρ, z) = z²
+        // ∇²f = ∂²f/∂ρ² + (1/ρ)∂f/∂ρ + ∂²f/∂z² = 0 + 0 + 2 = 2
+        let mut input = vec![0.0; n_rho * n_z];
+        for i_rho in 0..n_rho {
+            for i_z in 0..n_z {
+                let z = z_min + (i_z as f64 + 0.5) * d_z;
+                input[i_rho * n_z + i_z] = z * z;
+            }
+        }
+
+        let result = lap.compute(&input).await.unwrap();
+        assert_eq!(result.len(), n_rho * n_z);
+
+        // Check interior points
+        for i_rho in 2..n_rho - 2 {
+            for i_z in 2..n_z - 2 {
+                let idx = i_rho * n_z + i_z;
+                let expected = 2.0;
+                let error = (result[idx] - expected).abs();
+                assert!(
+                    error < 0.1,
+                    "Laplacian at ({},{}) = {}, expected {}, error={}",
+                    i_rho, i_z, result[idx], expected, error
                 );
             }
         }

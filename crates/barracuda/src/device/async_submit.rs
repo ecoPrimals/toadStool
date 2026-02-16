@@ -12,6 +12,12 @@
 //! 3. **Async Readback**: Non-blocking buffer reads with futures
 //! 4. **Submission Index**: Track work completion without explicit fences
 //!
+//! ## Deep Debt Evolution (Feb 16, 2026)
+//!
+//! - Fixed async methods that were blocking inside async context
+//! - Added `poll_until_ready()` helper for cooperative async polling
+//! - Uses `tokio::task::yield_now()` to avoid starving the executor
+//!
 //! ## Usage
 //!
 //! ```rust,ignore
@@ -231,15 +237,39 @@ impl AsyncReadback {
         !self.receiver.is_terminated()
     }
 
-    /// Wait for data and read as f32
-    pub async fn read_f32(self, device: &wgpu::Device) -> Result<Vec<f32>, String> {
-        // Wait for map to complete
-        device.poll(wgpu::Maintain::Wait);
+    /// Poll the device until the buffer is ready (async-safe)
+    ///
+    /// Uses non-blocking poll with yield points to avoid blocking the executor.
+    /// This is the proper async pattern for wgpu buffer mapping.
+    async fn poll_until_ready(&mut self, device: &wgpu::Device) -> Result<(), String> {
+        loop {
+            // Non-blocking poll
+            device.poll(wgpu::Maintain::Poll);
 
-        self.receiver
-            .await
-            .map_err(|_| "Readback cancelled".to_string())?
-            .map_err(|e| format!("Map error: {:?}", e))?;
+            // Check if the receiver is ready (oneshot channels can be checked)
+            // We use a select-like approach: try to receive without blocking
+            use futures::future::FutureExt;
+            match (&mut self.receiver).now_or_never() {
+                Some(result) => {
+                    // Receiver completed
+                    return result
+                        .map_err(|_| "Readback cancelled".to_string())?
+                        .map_err(|e| format!("Map error: {:?}", e));
+                }
+                None => {
+                    // Not ready yet - yield to let other tasks run
+                    // This prevents blocking the async executor
+                    tokio::task::yield_now().await;
+                }
+            }
+        }
+    }
+
+    /// Wait for data and read as f32 (async-safe)
+    ///
+    /// Uses cooperative polling that yields to the async executor.
+    pub async fn read_f32(mut self, device: &wgpu::Device) -> Result<Vec<f32>, String> {
+        self.poll_until_ready(device).await?;
 
         // Read data
         let data = self.staging_buffer.slice(..).get_mapped_range();
@@ -251,14 +281,9 @@ impl AsyncReadback {
         Ok(result)
     }
 
-    /// Wait for data and read as f64
-    pub async fn read_f64(self, device: &wgpu::Device) -> Result<Vec<f64>, String> {
-        device.poll(wgpu::Maintain::Wait);
-
-        self.receiver
-            .await
-            .map_err(|_| "Readback cancelled".to_string())?
-            .map_err(|e| format!("Map error: {:?}", e))?;
+    /// Wait for data and read as f64 (async-safe)
+    pub async fn read_f64(mut self, device: &wgpu::Device) -> Result<Vec<f64>, String> {
+        self.poll_until_ready(device).await?;
 
         let data = self.staging_buffer.slice(..).get_mapped_range();
         let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
@@ -269,14 +294,9 @@ impl AsyncReadback {
         Ok(result)
     }
 
-    /// Wait for data and read as u32
-    pub async fn read_u32(self, device: &wgpu::Device) -> Result<Vec<u32>, String> {
-        device.poll(wgpu::Maintain::Wait);
-
-        self.receiver
-            .await
-            .map_err(|_| "Readback cancelled".to_string())?
-            .map_err(|e| format!("Map error: {:?}", e))?;
+    /// Wait for data and read as u32 (async-safe)
+    pub async fn read_u32(mut self, device: &wgpu::Device) -> Result<Vec<u32>, String> {
+        self.poll_until_ready(device).await?;
 
         let data = self.staging_buffer.slice(..).get_mapped_range();
         let result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
@@ -287,17 +307,48 @@ impl AsyncReadback {
         Ok(result)
     }
 
-    /// Wait for data and read as raw bytes
-    pub async fn read_bytes(self, device: &wgpu::Device) -> Result<Vec<u8>, String> {
+    /// Wait for data and read as raw bytes (async-safe)
+    pub async fn read_bytes(mut self, device: &wgpu::Device) -> Result<Vec<u8>, String> {
+        self.poll_until_ready(device).await?;
+
+        let data = self.staging_buffer.slice(..).get_mapped_range();
+        let result = data.to_vec();
+
+        drop(data);
+        self.staging_buffer.unmap();
+
+        Ok(result)
+    }
+
+    /// Blocking read as f32 (for non-async contexts)
+    ///
+    /// Use this when you're in a synchronous context and need to read data.
+    pub fn read_f32_blocking(self, device: &wgpu::Device) -> Result<Vec<f32>, String> {
         device.poll(wgpu::Maintain::Wait);
 
-        self.receiver
-            .await
+        futures::executor::block_on(self.receiver)
             .map_err(|_| "Readback cancelled".to_string())?
             .map_err(|e| format!("Map error: {:?}", e))?;
 
         let data = self.staging_buffer.slice(..).get_mapped_range();
-        let result = data.to_vec();
+        let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
+
+        drop(data);
+        self.staging_buffer.unmap();
+
+        Ok(result)
+    }
+
+    /// Blocking read as f64 (for non-async contexts)
+    pub fn read_f64_blocking(self, device: &wgpu::Device) -> Result<Vec<f64>, String> {
+        device.poll(wgpu::Maintain::Wait);
+
+        futures::executor::block_on(self.receiver)
+            .map_err(|_| "Readback cancelled".to_string())?
+            .map_err(|e| format!("Map error: {:?}", e))?;
+
+        let data = self.staging_buffer.slice(..).get_mapped_range();
+        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
 
         drop(data);
         self.staging_buffer.unmap();
