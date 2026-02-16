@@ -95,7 +95,7 @@ pub struct BfgsResult {
 /// # Arguments
 ///
 /// * `f` - Objective function f(x) -> f64
-/// * `grad_f` - Gradient function ∇f(x) -> Vec<f64>
+/// * `grad_f` - Gradient function ∇f(x) -> `Vec<f64>`
 /// * `x0` - Initial guess
 /// * `config` - Optimizer configuration
 ///

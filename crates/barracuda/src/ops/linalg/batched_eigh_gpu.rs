@@ -1532,7 +1532,7 @@ impl BatchedEighGpu {
     /// * `batch_size` - Number of matrices
     ///
     /// # Returns
-    /// Vec<f64> of eigenvalues (flattened)
+    /// `Vec<f64>` of eigenvalues (flattened)
     pub fn read_eigenvalues(
         device: &Arc<WgpuDevice>,
         eigenvalues_buffer: &wgpu::Buffer,
@@ -1551,7 +1551,7 @@ impl BatchedEighGpu {
     /// * `batch_size` - Number of matrices
     ///
     /// # Returns
-    /// Vec<f64> of eigenvectors (flattened row-major)
+    /// `Vec<f64>` of eigenvectors (flattened row-major)
     pub fn read_eigenvectors(
         device: &Arc<WgpuDevice>,
         eigenvectors_buffer: &wgpu::Buffer,

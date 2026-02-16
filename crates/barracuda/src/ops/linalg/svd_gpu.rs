@@ -274,8 +274,8 @@ impl SvdGpu {
     ///
     /// # Returns
     /// Tuple (sigma, V) where:
-    /// - sigma: Singular values as Vec<f64>
-    /// - V: Right singular vectors [N × N] as Vec<f64>
+    /// - sigma: Singular values as `Vec<f64>`
+    /// - V: Right singular vectors \[N × N\] as `Vec<f64>`
     pub fn execute_f64(
         device: Arc<WgpuDevice>,
         data: &[f64],

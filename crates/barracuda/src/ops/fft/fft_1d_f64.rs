@@ -6,7 +6,7 @@
 //! ## Differences from f32 Version
 //!
 //! - Uses `f64` storage instead of `f32`
-//! - Twiddle factors stored in separate re/im arrays (no vec2<f64>)
+//! - Twiddle factors stored in separate re/im arrays (no `vec2<f64>`)
 //! - Uses `math_f64.wgsl` for sin/cos (prepended via `ShaderTemplate`)
 //! - Double precision throughout for energy conservation
 

@@ -304,7 +304,7 @@ impl QrGpu {
     ///
     /// # Returns
     /// Tuple (R, tau) where:
-    /// - R: Upper triangular matrix as Vec<f64>
+    /// - R: Upper triangular matrix as `Vec<f64>`
     /// - tau: Householder scalars for Q reconstruction
     pub fn execute_f64(
         device: Arc<WgpuDevice>,
