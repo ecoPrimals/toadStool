@@ -245,24 +245,25 @@ impl SobolGenerator {
     ///
     /// Useful for parallel generation where different workers start
     /// at different offsets.
+    ///
+    /// After calling `skip_to(n)`, the next `next_point()` call will return
+    /// the point at index n.
+    ///
+    /// # Implementation Note
+    ///
+    /// For correctness, this uses sequential generation internally.
+    /// For very large n (> 1M), consider using parallel Sobol generation
+    /// with different scrambling seeds instead.
     pub fn skip_to(&mut self, n: u64) {
-        // Reset
+        // Reset to initial state
         self.index = 0;
         self.x.fill(0);
 
-        // Gray code method: for each bit set in n, XOR the corresponding direction
-        let mut gray = n ^ (n >> 1);
-        let mut bit = 0;
-        while gray > 0 {
-            if gray & 1 == 1 {
-                for d in 0..self.dim {
-                    self.x[d] ^= self.v[d][bit];
-                }
-            }
-            gray >>= 1;
-            bit += 1;
+        // Generate n points to advance state
+        // This is O(n) but guaranteed correct
+        for _ in 0..n {
+            let _ = self.next_point();
         }
-        self.index = n;
     }
 
     /// Generate the next point in the sequence.
@@ -462,7 +463,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "skip_to implementation needs debugging"]
     fn test_sobol_skip_to() {
         let mut gen1 = SobolGenerator::new(3).unwrap();
         let mut gen2 = SobolGenerator::new(3).unwrap();
