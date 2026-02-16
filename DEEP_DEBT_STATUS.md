@@ -13,7 +13,22 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **MD pipeline complete** — full thermostat suite + observables + O(N) neighbor search.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 15, 2026)
+### Latest Updates (Feb 16, 2026)
+
+**GPU-Resident Pipeline Planning (hotSpring Exp 005):**
+- hotSpring validated mega-batch dispatch: 101 dispatches, 95% GPU utilization
+- **But CPU is still 70× faster** — eigensolve is only 1% of iteration
+- Root cause: Amdahl's Law — CPU physics (Hamiltonian, BCS, density) dominates
+- **Solution**: GPU-resident iteration loop with zero CPU↔GPU round-trips
+- New evolution targets:
+  1. Multi-kernel pipeline without CPU round-trips (buffer chaining)
+  2. GPU Hamiltonian construction (batched grid-quadrature GEMM)
+  3. GPU BCS pairing (batched bisection/root-finding)
+  4. GPU convergence reduction (max_abs_diff_f64)
+  5. Persistent buffer management (pin for solver lifetime)
+- See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`
+
+### Previous Updates (Feb 15, 2026)
 
 **Comprehensive Testing for hotSpring Evolution:**
 - ✅ **47 new tests** in `hotspring_evolution_tests.rs`
@@ -341,10 +356,22 @@ specs/GENERIC_PRECISION_EVOLUTION.md                (Phase 1 complete)
 - ✅ Documentation comprehensive
 - ✅ Deep debt resolved (mock isolation, hardcoded paths)
 
+### GPU-Resident Pipeline (Feb 16 — hotSpring Exp 005)
+Target: Pure GPU faster than CPU for iterative solvers (n<30 matrices)
+
+| # | Item | Complexity | Status |
+|:-:|------|:----------:|:------:|
+| 1 | Max Abs Diff Reduction | Low | Planned |
+| 2 | Persistent Buffer Management | Low-Med | Planned |
+| 3 | Batched Bisection (root-finding) | Medium | Planned |
+| 4 | Grid Quadrature GEMM | Medium | Planned |
+| 5 | Multi-Kernel Pipeline (buffer chaining) | Med-High | Planned |
+
+See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`
+
 ### Phase C (Awaiting Hardware)
-1. **f64 WGSL shaders** -- When WebGPU adds f64 extensions
-2. **Multi-GPU DevicePool** -- When Titan V arrives
-3. **f64 Tensor type** -- Unified precision handling
+1. **Multi-GPU DevicePool** -- When Titan V arrives
+2. **f64 Tensor type** -- Unified precision handling
 
 ### Infrastructure (Completed Feb 15) ✅
 1. ✅ **Safetensors/GGUF loader** -- Full loader for HuggingFace and llama.cpp models
@@ -379,6 +406,6 @@ specs/GENERIC_PRECISION_EVOLUTION.md                (Phase 1 complete)
 
 ---
 
-*Last Updated*: February 15, 2026 (Infrastructure Evolution)  
+*Last Updated*: February 16, 2026 (GPU-Resident Pipeline Planning)  
 *Repository*: phase1/toadstool/  
 *License*: AGPL-3.0

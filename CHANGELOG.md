@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-16] - GPU-Resident Pipeline Planning (hotSpring Exp 005)
+
+**Impact**: New evolution targets identified from hotSpring's L2 mega-batch experiment. CPU is 70× faster than GPU for small matrices — the path forward is GPU-resident iteration with zero CPU↔GPU round-trips.
+
+#### Added
+
+- **Planning Document** (`docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`):
+  - Multi-kernel pipeline without CPU round-trips
+  - GPU Hamiltonian construction kernel (batched grid-quadrature GEMM)
+  - GPU BCS pairing kernel (batched bisection/root-finding)
+  - GPU convergence reduction (max_abs_diff_f64)
+  - Persistent buffer management for iterative solvers
+
+#### Key Findings from hotSpring Exp 005
+
+- **Complexity boundary**: n<30 CPU wins, n>50 GPU wins
+- **Mega-batch validated**: 101 dispatches, 95% GPU utilization
+- **Amdahl's Law**: Eigensolve is 1% of iteration; CPU physics is the bottleneck
+- **Target**: GPU-resident SCF loop → 40s for 791 nuclei (matching CPU)
+
+---
+
 ### [2026-02-15] - hotSpring Evolution Testing
 
 **Impact**: Comprehensive unit/E2E/chaos/fault test coverage for absorbed hotSpring primitives.

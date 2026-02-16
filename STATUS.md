@@ -1,4 +1,4 @@
-# Status -- February 15, 2026 (hotSpring Evolution Complete)
+# Status -- February 16, 2026 (GPU-Resident Pipeline Planning)
 
 ## Quality Gates
 
@@ -33,6 +33,46 @@ Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
 **Lowest coverage**: `unibin.rs` 18% (server startup), `manual_jsonrpc.rs` 27% (async I/O), `websocket.rs` 52% (requires live connections).
 
 **Coverage evolution**: 80% -> ~90% (+10pp) via 600+ new tests covering encryption, ecosystem, security, deployment, workload analysis, biomeos integration, auth, agents, BYOB types, graph types, capabilities, and handlers.
+
+---
+
+## GPU-Resident Pipeline (Feb 16, 2026 — NEW)
+
+### hotSpring Experiment 005 Findings
+
+hotSpring's L2 mega-batch experiment revealed the **Amdahl's Law boundary**:
+
+| Metric | Result |
+|--------|--------|
+| GPU utilization | 95% |
+| Dispatch count | 101 (down from 145k) |
+| **CPU vs GPU** | **CPU is 70× faster** |
+
+**Root cause**: Eigensolve is only 1% of the SCF iteration. The other 99% (Hamiltonian construction, BCS pairing, density updates) runs on CPU with GPU↔CPU round-trips each step.
+
+### Complexity Boundary
+
+| Matrix size (n) | GPU wins? |
+|:---------------:|:---------:|
+| n < 30 | No (CPU cache coherence beats GPU) |
+| n ≈ 50 | Yes (GPU parallelism dominates) |
+| n > 100 | Dominant GPU advantage |
+
+**For n<30**: GPU wins ONLY with zero CPU↔GPU round-trips during iteration.
+
+### Evolution Targets
+
+| # | Item | Status | Description |
+|:-:|------|:------:|-------------|
+| 1 | Max Abs Diff Reduction | Planned | Convergence check with single scalar return |
+| 2 | Persistent Buffer Management | Planned | Pin buffers for solver lifetime |
+| 3 | Batched Bisection | Planned | GPU root-finding for BCS pairing |
+| 4 | Grid Quadrature GEMM | Planned | GPU Hamiltonian construction |
+| 5 | Multi-Kernel Pipeline | Planned | Buffer chaining without CPU round-trips |
+
+**Target**: GPU-resident SCF loop → ~40s for 791 nuclei (matching CPU's 35s).
+
+See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`
 
 ---
 
@@ -863,4 +903,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 15, 2026 (hotSpring Evolution Complete)
+**Last Updated**: February 16, 2026 (GPU-Resident Pipeline Planning)
