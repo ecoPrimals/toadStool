@@ -602,7 +602,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batched_bisection_polynomial() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -638,7 +638,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batched_bisection_large_batch() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -669,7 +669,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batched_bisection_empty() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -684,7 +684,7 @@ mod tests {
     #[tokio::test]
     async fn test_bcs_with_degeneracy() {
         // Test BCS with level degeneracies (hotSpring TIER 3.1)
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -755,7 +755,7 @@ mod tests {
     #[tokio::test]
     async fn test_bcs_degeneracy_vs_no_degeneracy() {
         // Verify that uniform degeneracy=1 matches solve_bcs behavior
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
