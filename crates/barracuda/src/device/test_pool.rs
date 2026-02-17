@@ -90,6 +90,34 @@ pub async fn get_test_device_if_gpu_available() -> Option<Arc<WgpuDevice>> {
     }
 }
 
+/// f64-capable GPU device pool for tests requiring SHADER_F64 feature.
+///
+/// Many scientific shaders (SSF, forces, PDE solvers) require f64 precision.
+/// This pool selects a GPU with wgpu::Features::SHADER_F64 enabled.
+static TEST_F64_GPU_DEVICE_POOL: LazyLock<Arc<Mutex<Option<Arc<WgpuDevice>>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
+
+/// Get f64-capable test device, returning None if no f64 GPU is available.
+///
+/// f64 shader tests should use this to gracefully skip on machines without f64 GPUs.
+/// Use: `let Some(device) = get_test_device_if_f64_gpu_available().await else { return };`
+pub async fn get_test_device_if_f64_gpu_available() -> Option<Arc<WgpuDevice>> {
+    let mut pool = TEST_F64_GPU_DEVICE_POOL.lock().await;
+
+    if let Some(device) = pool.as_ref() {
+        return Some(Arc::clone(device));
+    }
+
+    match WgpuDevice::new_f64_capable().await {
+        Ok(device) => {
+            let device = Arc::new(device);
+            *pool = Some(Arc::clone(&device));
+            Some(device)
+        }
+        Err(_) => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
