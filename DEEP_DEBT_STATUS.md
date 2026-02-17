@@ -21,6 +21,22 @@ System health verified with 15,700+ tests passing across workspace.
 
 ### Latest Updates (Feb 17, 2026 — Unidirectional Pipeline + Deep Debt Hardening)
 
+**Server Timeout Consolidation ✓**
+
+| File | Before | After |
+|------|--------|-------|
+| `handlers.rs` | `Duration::from_secs(300)` ×7 | `WORKLOAD_EXECUTION_TIMEOUT` |
+| `background.rs` | `Duration::from_secs(300/30)` | `DEFAULT_CACHE_TTL` / `HEALTH_CHECK_INTERVAL` |
+| `config/mod.rs` | `Duration::from_secs(300/30)` | Centralized constants |
+
+**SIMD Runtime Detection ✓**
+
+| Architecture | Before | After |
+|--------------|--------|-------|
+| x86_64 | `cfg!(target_feature)` | `std::arch::is_x86_feature_detected!` |
+| aarch64 | Compile-time assumption | Fixed NEON width (always 128-bit) |
+| Other | Hardcoded | Conservative 128-bit fallback |
+
 **Unidirectional Compute Pipeline (NEW) ✓**
 
 | Item | Status | Description |
@@ -634,6 +650,17 @@ See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md` and `NEXT_STEPS.md`
 1. ✅ **Safetensors/GGUF loader** -- Full loader for HuggingFace and llama.cpp models
 2. ✅ **Quantized inference shaders** -- INT4/INT8 WGSL for LLM inference
 3. ✅ **Async GPU submission** -- Batch work and non-blocking readback
+
+### Future Dependency Upgrades
+
+| Dependency | Current | Latest | Notes |
+|------------|---------|--------|-------|
+| `cudarc` | 0.11 | 0.19.2 | API migration needed (CudaDevice → CudaContext) |
+
+**cudarc Upgrade Path:**
+- New API uses `CudaContext` + `CudaStream` instead of `CudaDevice`
+- Will expose proper device name, compute capability, memory info
+- Currently using safe defaults; upgrade when CUDA testing available
 
 ### Infrastructure (Ongoing)
 1. ✅ **VFIO NPU backend** -- Pure Rust implementation (926 LOC, no C kernel module)
