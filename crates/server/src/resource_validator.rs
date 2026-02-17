@@ -198,20 +198,29 @@ impl ResourceValidator {
 
         // Query memory - Pure Rust Evolution (Jan 17, 2026)
         // Migrated from sys-info (C dependency) to sysinfo (100% Pure Rust)
-        use sysinfo::System;
+        use sysinfo::{Disks, Networks, System};
         let mut system = System::new_all();
         system.refresh_memory();
 
         let total_memory_bytes = system.total_memory(); // Already in bytes
         let available_memory_bytes = system.available_memory(); // Already in bytes
 
-        // Query disk - Pure Rust Evolution
-        // Note: sysinfo provides system-wide storage info
-        let total_storage_bytes = system.total_swap(); // Use swap as proxy for storage
-        let available_storage_bytes = system.free_swap();
-
-        // TODO: For more accurate disk usage, consider using std::fs or platform-specific APIs
-        // For now, using memory values as reasonable proxy
+        // Query disk - Deep Debt Evolution (Feb 17 2026)
+        // Use actual disk enumeration via sysinfo::Disks (pure Rust)
+        let disks = Disks::new_with_refreshed_list();
+        let (total_storage_bytes, available_storage_bytes): (u64, u64) = disks
+            .iter()
+            .filter(|disk| {
+                // Filter out virtual filesystems
+                let fs = disk.file_system().to_string_lossy();
+                !fs.contains("tmpfs")
+                    && !fs.contains("devtmpfs")
+                    && !fs.contains("squashfs")
+                    && !fs.contains("overlay")
+            })
+            .fold((0u64, 0u64), |(total, avail), disk| {
+                (total + disk.total_space(), avail + disk.available_space())
+            });
 
         // Query GPU (if available) - uses runtime detection via toadstool-runtime-gpu
         // Detection happens at runtime, no hardcoded assumptions about GPU vendors
@@ -219,8 +228,23 @@ impl ResourceValidator {
         let (total_gpu_memory_bytes, available_gpu_memory_bytes, gpu_count, gpu_types) =
             self.query_gpu_capabilities().await;
 
-        // Network bandwidth (rough estimate, in production would query actual interface)
-        let network_bandwidth_mbps = 1000; // Assume 1 Gbps
+        // Network bandwidth - Deep Debt Evolution (Feb 17 2026)
+        // Query actual network interfaces for bandwidth estimate
+        let networks = Networks::new_with_refreshed_list();
+        let network_bandwidth_mbps = if networks.iter().count() > 0 {
+            // Sum received bytes across all interfaces as bandwidth indicator
+            // Most physical NICs are 1Gbps+, but we estimate conservatively
+            let total_received: u64 = networks.iter().map(|(_, n)| n.received()).sum();
+            // If we've seen significant traffic, assume at least 1Gbps
+            // Otherwise fall back to conservative 100Mbps estimate
+            if total_received > 1_000_000_000 {
+                1000 // 1 Gbps
+            } else {
+                100 // Conservative 100 Mbps
+            }
+        } else {
+            100 // No interfaces detected, conservative fallback
+        };
 
         Ok(SystemCapabilities {
             total_cpu_cores,

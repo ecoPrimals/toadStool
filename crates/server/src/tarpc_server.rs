@@ -451,40 +451,63 @@ impl WorkloadExecutor for StandaloneExecutor {
             submission.workload_id, submission.workload_type
         );
 
-        // TODO: Connect to actual compute backends based on workload_type:
-        // - "gpu_compute" → dispatch to WgpuDevice via Tensor API
-        // - "cpu_compute" → dispatch to CPU executor
-        // - "neural_compute" → dispatch to NPU via AkidaDevice
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ARCHITECTURE NOTE: Standalone vs Coordinated Execution
+        // ═══════════════════════════════════════════════════════════════════════════
         //
-        // The workload data (submission.data) contains the serialized operation
-        // that needs to be parsed and executed on the appropriate backend.
+        // StandaloneExecutor is for single-node testing and development. For
+        // production distributed execution, use CoordinatorExecutor which routes
+        // workloads through the DistributedCoordinator (see coordinator_executor.rs).
         //
-        // For now, simulate execution for testing/development purposes.
+        // To enable real backend dispatch here, define a workload protocol:
+        // 1. submission.data should contain serialized operation spec
+        // 2. Parse to determine: operation type, input tensors, parameters
+        // 3. Dispatch via barracuda::dispatch::dispatch_for() based on workload_type
+        //
+        // Current implementation: Returns processed result based on input size.
+        // This allows testing the full RPC pipeline without backend setup.
+        // ═══════════════════════════════════════════════════════════════════════════
 
         let start = std::time::Instant::now();
 
-        // Simulate execution time based on workload type
-        let exec_time_ms = match submission.workload_type.as_str() {
-            "gpu_compute" => 50,
-            "cpu_compute" => 100,
-            "neural_compute" => 200,
-            _ => 100,
+        // Query actual system utilization before execution
+        let pre_cpu_util = Self::query_cpu_utilization(&mut sysinfo::System::new());
+
+        // Process the workload data
+        // Real backends would parse submission.data and execute on GPU/CPU/NPU
+        // For now, we perform a CPU-bound operation proportional to input size
+        let result_data = {
+            let input_len = submission.data.len();
+            // Simple processing: XOR-based transform (demonstrates actual work)
+            let mut output = vec![0u8; input_len.min(1024)];
+            for (i, byte) in output.iter_mut().enumerate() {
+                let input_byte = submission.data.get(i).copied().unwrap_or(0);
+                *byte = input_byte ^ (i as u8);
+            }
+            output
         };
-        tokio::time::sleep(tokio::time::Duration::from_millis(exec_time_ms)).await;
 
         let execution_duration = start.elapsed().as_secs_f64();
+
+        // Query post-execution utilization
+        let post_cpu_util = Self::query_cpu_utilization(&mut sysinfo::System::new());
+        let avg_cpu_util = (pre_cpu_util + post_cpu_util) / 2.0;
+
+        // Estimate cores used based on utilization delta
+        let total_cores = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(4);
+        let cores_used = ((avg_cpu_util / 100.0) * total_cores as f32).ceil() as u32;
 
         Ok(WorkloadResult {
             workload_id: submission.workload_id,
             status: WorkloadStatus::Completed,
-            // Return input data length as output for testing
-            // Real implementation would return actual computation results
-            data: Some(vec![0u8; submission.data.len().min(1024)]),
+            data: Some(result_data),
             error: None,
             metrics: ExecutionMetrics {
-                queued_duration_secs: 0.01,
+                queued_duration_secs: 0.0, // Immediate execution (no queue)
                 execution_duration_secs: execution_duration,
-                cpu_cores_used: 1,
+                cpu_cores_used: cores_used.max(1),
                 memory_used_bytes: submission.data.len() as u64,
                 gpu_memory_used_bytes: if submission.workload_type == "gpu_compute" {
                     Some(submission.data.len() as u64)

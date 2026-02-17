@@ -256,7 +256,7 @@ impl ProtocolClient {
         if self.config.health_config.base.enabled {
             let services_for_health = Arc::clone(&self.services);
             let interval = self.config.health_config.base.interval;
-            let _event_bus = self.event_bus.clone();
+            let event_bus = self.event_bus.clone();
 
             tokio::spawn(async move {
                 let mut interval_timer = tokio::time::interval(interval);
@@ -265,17 +265,67 @@ impl ProtocolClient {
                     interval_timer.tick().await;
 
                     // Check health of all registered services
-                    let services_snapshot = services_for_health.read().await;
-                    for (service_id, service_info) in services_snapshot.iter() {
-                        // Check each service endpoint
-                        // EVOLVED: Health checks delegated to capability-based discovery
-                        for endpoint in &service_info.endpoints {
-                            debug!("Service {} endpoint: {:?}", service_id, endpoint.address);
+                    // Deep Debt Evolution (Feb 17 2026): Actually probe endpoints
+                    let mut services_snapshot = services_for_health.write().await;
+                    let mut health_updates = Vec::new();
 
-                            // TODO: Use Unix socket ping instead of HTTP
-                            // For now, assume service is healthy if it announced capabilities
+                    for (service_id, service_info) in services_snapshot.iter() {
+                        for endpoint in &service_info.endpoints {
+                            // Attempt TCP/Unix socket connection to verify endpoint is reachable
+                            let addr = format!("{}:{}", endpoint.address, endpoint.port);
+                            let is_healthy = match tokio::time::timeout(
+                                std::time::Duration::from_secs(2),
+                                tokio::net::TcpStream::connect(&addr),
+                            )
+                            .await
+                            {
+                                Ok(Ok(_stream)) => {
+                                    debug!(
+                                        "✅ Service {} endpoint {} is healthy",
+                                        service_id, addr
+                                    );
+                                    true
+                                }
+                                Ok(Err(e)) => {
+                                    debug!(
+                                        "⚠️ Service {} endpoint {} connection failed: {}",
+                                        service_id, addr, e
+                                    );
+                                    false
+                                }
+                                Err(_) => {
+                                    debug!(
+                                        "⚠️ Service {} endpoint {} timed out",
+                                        service_id, addr
+                                    );
+                                    false
+                                }
+                            };
+
+                            health_updates.push((service_id.clone(), endpoint.id.clone(), is_healthy));
                         }
                     }
+
+                    // Update health status and emit events
+                    for (service_id, _endpoint_id, is_healthy) in health_updates {
+                        if let Some(service_info) = services_snapshot.get_mut(&service_id) {
+                            let new_status = if is_healthy {
+                                HealthStatus::Healthy
+                            } else {
+                                HealthStatus::Unhealthy
+                            };
+
+                            if service_info.health_status != new_status {
+                                service_info.health_status = new_status.clone();
+                                // Emit health change event
+                                let _ = event_bus.send(ProtocolEvent::ServiceHealthChanged {
+                                    service_id: service_id.clone(),
+                                    status: new_status,
+                                });
+                            }
+                        }
+                    }
+
                     debug!(
                         "Health check cycle completed for {} services",
                         services_snapshot.len()
