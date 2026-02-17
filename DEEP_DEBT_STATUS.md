@@ -54,6 +54,21 @@ Key files modified:
 - `crates/cli/src/monitoring.rs` — sysinfo 0.30 API migration
 - `crates/server/src/handlers.rs`, `tarpc_server.rs` — sysinfo 0.30 API migration
 
+**Server & Protocol Evolution ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| StandaloneExecutor | ✅ | Replaced sleep simulation with actual data processing |
+| CPU utilization tracking | ✅ | Pre/post execution metrics via sysinfo |
+| resource_validator storage | ✅ | Uses Disks API (was swap as proxy) |
+| resource_validator network | ✅ | Queries Networks API (was hardcoded 1000) |
+| Protocol health checks | ✅ | Real TCP connection probing with timeout |
+
+Key files modified:
+- `crates/server/src/tarpc_server.rs` — StandaloneExecutor actual processing
+- `crates/server/src/resource_validator.rs` — Disks + Networks API
+- `crates/integration/protocols/src/client.rs` — TCP health probing
+
 ---
 
 ### Previous Updates (Feb 16, 2026 — Deep Debt Evolution + ecoBin Compliance)
