@@ -9,6 +9,11 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
+// Centralized timeout constants (Deep Debt evolution)
+use toadstool_common::constants::timeouts::{
+    TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL,
+};
+
 use super::auth_backend::AuthBackend;
 use super::types::{
     BearDogConfig, BiomeOSConfig, NestGateConfig, SongbirdConfig, SquirrelConfig, ToadStoolConfig,
@@ -74,9 +79,9 @@ impl Default for AuthManagerConfig {
     fn default() -> Self {
         Self {
             beardog_endpoint: String::new(), // Empty = use runtime discovery
-            token_refresh_interval: Duration::from_secs(3600),
+            token_refresh_interval: TOKEN_REFRESH_INTERVAL,
             signature_validation: true,
-            timestamp_window: Duration::from_secs(300),
+            timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
             replay_protection: true,
             signing_key_seed: None,
         }
@@ -578,9 +583,9 @@ mod tests {
     fn test_config() -> AuthManagerConfig {
         AuthManagerConfig {
             beardog_endpoint: "http://localhost:9090".to_string(),
-            token_refresh_interval: Duration::from_secs(3600),
+            token_refresh_interval: TOKEN_REFRESH_INTERVAL,
             signature_validation: true,
-            timestamp_window: Duration::from_secs(300),
+            timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
             replay_protection: true,
             signing_key_seed: None,
         }
@@ -593,9 +598,9 @@ mod tests {
         use base64::{engine::general_purpose, Engine as _};
         AuthManagerConfig {
             beardog_endpoint: "http://localhost:9090".to_string(),
-            token_refresh_interval: Duration::from_secs(3600),
+            token_refresh_interval: TOKEN_REFRESH_INTERVAL,
             signature_validation: true,
-            timestamp_window: Duration::from_secs(300),
+            timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
             replay_protection: true,
             signing_key_seed: Some(general_purpose::STANDARD.encode(seed)),
         }
@@ -622,7 +627,7 @@ mod tests {
     fn test_auth_manager_config_construction() {
         let config = test_config();
         assert_eq!(config.beardog_endpoint, "http://localhost:9090");
-        assert_eq!(config.token_refresh_interval, Duration::from_secs(3600));
+        assert_eq!(config.token_refresh_interval, TOKEN_REFRESH_INTERVAL);
         assert!(config.signature_validation);
         assert!(config.replay_protection);
     }

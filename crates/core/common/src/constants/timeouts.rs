@@ -121,3 +121,14 @@ pub const VERIFICATION_PHASE_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Total zero-config bootstrap target (60 seconds)
 pub const ZERO_CONFIG_TARGET: Duration = Duration::from_secs(60);
+
+// ============================================================================
+// Authentication Timeouts
+// ============================================================================
+
+/// Token refresh interval (1 hour)
+pub const TOKEN_REFRESH_INTERVAL: Duration = Duration::from_secs(3600);
+
+/// Timestamp validation window (5 minutes)
+/// Used for replay protection - messages older than this are rejected
+pub const TIMESTAMP_VALIDATION_WINDOW: Duration = Duration::from_secs(300);
