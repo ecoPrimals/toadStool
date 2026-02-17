@@ -319,7 +319,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_prod_small() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -335,7 +335,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_prod_identity() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -351,7 +351,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_prod_with_zeros() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -367,7 +367,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_prod_large() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };

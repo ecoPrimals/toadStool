@@ -70,18 +70,29 @@ impl NormReduceF64 {
     }
 
     /// Compute generic p-norm: (sum(|x|^p))^(1/p)
-    pub fn p_norm(device: Arc<WgpuDevice>, data: &[f64], p: f64) -> Result<f64> {
+    ///
+    /// Note: Falls back to CPU for arbitrary p since many GPUs (especially AMD)
+    /// don't support f64 log/exp operations required for pow.
+    pub fn p_norm(_device: Arc<WgpuDevice>, data: &[f64], p: f64) -> Result<f64> {
+        if data.is_empty() {
+            return Ok(0.0);
+        }
         if p == 1.0 {
-            return Self::l1(device, data);
+            // CPU fallback for L1
+            return Ok(data.iter().map(|x| x.abs()).sum());
         }
         if p == 2.0 {
-            return Self::l2(device, data);
+            // CPU fallback for L2
+            let sum_sq: f64 = data.iter().map(|x| x * x).sum();
+            return Ok(sum_sq.sqrt());
         }
         if p.is_infinite() && p > 0.0 {
-            return Self::linf(device, data);
+            // CPU fallback for Linf
+            return Ok(data.iter().map(|x| x.abs()).fold(f64::NEG_INFINITY, f64::max));
         }
 
-        let sum_p = Self::reduce_op(device, data, "norm_p_f64", Some(p))?;
+        // CPU fallback for generic p-norm (GPU f64 pow not widely supported)
+        let sum_p: f64 = data.iter().map(|x| x.abs().powf(p)).sum();
         Ok(sum_p.powf(1.0 / p))
     }
 
@@ -366,7 +377,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_l1_norm() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -382,7 +393,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_l2_norm() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -398,7 +409,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_linf_norm() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -414,7 +425,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_frobenius_norm() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -432,7 +443,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_p_norm() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };

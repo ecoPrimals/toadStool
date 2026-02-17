@@ -335,7 +335,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_variance_simple() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -354,7 +354,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_std_simple() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -372,7 +372,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_mean() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -384,7 +384,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_population_vs_sample_variance() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -407,7 +407,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_statistics() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };

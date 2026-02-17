@@ -130,6 +130,14 @@ pub mod bessel_k0_f64_wgsl; // f64 Modified Bessel K0 (Yukawa potential)
 
 // Spherical harmonics (f64) - multipole expansion
 pub mod spherical_harmonics_f64_wgsl;
+
+// Statistical functions (f64) - statistics, ML
+pub mod beta_f64_wgsl;       // f64 Beta function (Bayesian statistics)
+pub mod correlation_f64_wgsl; // f64 Pearson correlation (portfolio analysis)
+pub mod covariance_f64_wgsl; // f64 Covariance (PCA, Kalman)
+pub mod digamma_f64_wgsl;    // f64 Digamma function (Fisher information)
+pub mod variance_f64_wgsl;   // f64 Variance/StdDev (normalization)
+
 pub mod lgamma_wgsl;
 pub mod norm_cdf_wgsl;
 pub mod norm_ppf_wgsl;

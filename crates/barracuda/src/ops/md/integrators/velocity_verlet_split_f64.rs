@@ -430,7 +430,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_split_vv_single_particle() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             println!("Skipping: No GPU available");
             return;

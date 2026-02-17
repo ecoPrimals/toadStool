@@ -437,12 +437,12 @@ impl BroydenMixer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device_if_f64_gpu_available;
 
     #[tokio::test]
     async fn test_linear_mixer() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return, // Skip if no GPU
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return; // Skip if no f64-capable GPU
         };
 
         let params = MixingParams {

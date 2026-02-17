@@ -314,11 +314,11 @@ impl CumprodF64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device_if_gpu_available;
+    use crate::device::test_pool::get_test_device_if_f64_gpu_available;
 
     #[tokio::test]
     async fn test_cumprod_f64_1d() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
 
@@ -340,7 +340,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cumprod_f64_exclusive() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
 
@@ -364,7 +364,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cumprod_f64_with_identity() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
 
@@ -384,7 +384,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cumprod_f64_precision() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
 

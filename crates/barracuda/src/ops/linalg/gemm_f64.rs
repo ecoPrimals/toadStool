@@ -316,7 +316,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_gemm_2x2() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -337,7 +337,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_gemm_batched() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
