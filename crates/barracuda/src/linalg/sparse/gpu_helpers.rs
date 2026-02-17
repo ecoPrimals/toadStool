@@ -312,7 +312,7 @@ impl SparseBindGroupLayouts {
             })
     }
 
-    /// AXPY: x, y, alpha, params
+    /// AXPY: x, y, params (alpha is in params struct)
     pub fn axpy(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
         device
             .device
@@ -321,13 +321,12 @@ impl SparseBindGroupLayouts {
                 entries: &[
                     Self::storage_ro(0), // x
                     Self::storage_rw(1), // y (y = y + alpha*x)
-                    Self::storage_ro(2), // alpha
-                    Self::uniform(3),    // params
+                    Self::uniform(2),    // params (includes alpha)
                 ],
             })
     }
 
-    /// CG update xr: x, r, p, Ap, alpha, params
+    /// CG update xr: x, r, p, Ap, alpha, params (all read_write for consistency)
     pub fn cg_update_xr(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
         device
             .device
@@ -336,52 +335,52 @@ impl SparseBindGroupLayouts {
                 entries: &[
                     Self::storage_rw(0), // x
                     Self::storage_rw(1), // r
-                    Self::storage_ro(2), // p
-                    Self::storage_ro(3), // Ap
-                    Self::storage_ro(4), // alpha
+                    Self::storage_rw(2), // p
+                    Self::storage_rw(3), // Ap
+                    Self::storage_rw(4), // alpha
                     Self::uniform(5),    // params
                 ],
             })
     }
 
-    /// CG update p: r, p, beta, params
+    /// CG update p: r, p, beta, params (all read_write for consistency)
     pub fn cg_update_p(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
         device
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("CG update_p BGL"),
                 entries: &[
-                    Self::storage_ro(0), // r (or z for preconditioned)
+                    Self::storage_rw(0), // r (or z for preconditioned)
                     Self::storage_rw(1), // p
-                    Self::storage_ro(2), // beta
+                    Self::storage_rw(2), // beta
                     Self::uniform(3),    // params
                 ],
             })
     }
 
-    /// Compute alpha: rz, pAp, alpha
+    /// Compute alpha: rz, pAp, alpha (all read_write for consistency)
     pub fn compute_alpha(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
         device
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Compute alpha BGL"),
                 entries: &[
-                    Self::storage_ro(0), // rz
-                    Self::storage_ro(1), // pAp
+                    Self::storage_rw(0), // rz
+                    Self::storage_rw(1), // pAp
                     Self::storage_rw(2), // alpha
                 ],
             })
     }
 
-    /// Compute beta: rz_new, rz, beta
+    /// Compute beta: rz_new, rz, beta (all read_write for consistency)
     pub fn compute_beta(device: &Arc<WgpuDevice>) -> wgpu::BindGroupLayout {
         device
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Compute beta BGL"),
                 entries: &[
-                    Self::storage_ro(0), // rz_new
-                    Self::storage_ro(1), // rz
+                    Self::storage_rw(0), // rz_new
+                    Self::storage_rw(1), // rz
                     Self::storage_rw(2), // beta
                 ],
             })

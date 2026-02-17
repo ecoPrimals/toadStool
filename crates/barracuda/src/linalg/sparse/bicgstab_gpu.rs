@@ -66,8 +66,13 @@ impl BiCgStabGpuResult {
 pub struct BiCgStabGpu;
 
 impl BiCgStabGpu {
-    fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/misc/sparse_matvec_f64.wgsl")
+    // Separate shader modules to avoid binding conflicts
+    fn spmv_shader() -> &'static str {
+        include_str!("../../shaders/sparse/spmv_f64.wgsl")
+    }
+
+    fn dot_reduce_shader() -> &'static str {
+        include_str!("../../shaders/sparse/dot_reduce_f64.wgsl")
     }
 
     /// Solve Ax = b using GPU-accelerated BiCGSTAB
@@ -133,14 +138,15 @@ impl BiCgStabGpu {
         let _partial_sums_buffer =
             Self::create_zero_f64_buffer(&device, "BiCG partial", num_workgroups);
 
-        // Compile shader
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("BiCGSTAB f64"));
+        // Compile separate shader modules to avoid binding conflicts
+        let spmv_shader = device.compile_shader(Self::spmv_shader(), Some("BiCGSTAB SpMV"));
+        let dot_reduce_shader = device.compile_shader(Self::dot_reduce_shader(), Some("BiCGSTAB Dot"));
 
         // Create bind group layouts
         let spmv_bgl = Self::create_spmv_bgl(&device);
         let dot_bgl = Self::create_dot_bgl(&device);
 
-        // Create pipelines
+        // Create pipelines using appropriate shader modules
         let spmv_pl = device
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -163,7 +169,7 @@ impl BiCgStabGpu {
                 .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some("SpMV f64"),
                     layout: Some(&spmv_pl),
-                    module: &shader,
+                    module: &spmv_shader,
                     entry_point: "spmv_f64",
                 });
 
@@ -173,7 +179,7 @@ impl BiCgStabGpu {
                 .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some("Dot f64"),
                     layout: Some(&dot_pl),
-                    module: &shader,
+                    module: &dot_reduce_shader,
                     entry_point: "dot_f64",
                 });
 
@@ -653,7 +659,6 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore = "Shader has multi-entry-point binding conflicts - needs architectural refactor"]
     async fn test_bicgstab_gpu_non_symmetric() {
         let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {

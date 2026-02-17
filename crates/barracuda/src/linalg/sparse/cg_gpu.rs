@@ -61,8 +61,17 @@ impl CgGpuResult {
 pub struct CgGpu;
 
 impl CgGpu {
-    fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/misc/sparse_matvec_f64.wgsl")
+    // Separate shader modules to avoid binding conflicts
+    fn spmv_shader() -> &'static str {
+        include_str!("../../shaders/sparse/spmv_f64.wgsl")
+    }
+
+    fn dot_reduce_shader() -> &'static str {
+        include_str!("../../shaders/sparse/dot_reduce_f64.wgsl")
+    }
+
+    fn cg_kernels_shader() -> &'static str {
+        include_str!("../../shaders/sparse/cg_kernels_f64.wgsl")
     }
 
     /// Solve Ax = b using GPU-resident Conjugate Gradient (reduced CPU sync)
@@ -136,8 +145,10 @@ impl CgGpu {
         let alpha_buffer = SparseBuffers::f64_zeros(&device, "CG alpha", 1);
         let beta_buffer = SparseBuffers::f64_zeros(&device, "CG beta", 1);
 
-        // Compile shader
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("CG GPU-resident"));
+        // Compile separate shader modules to avoid binding conflicts
+        let spmv_shader = device.compile_shader(Self::spmv_shader(), Some("CG SpMV"));
+        let dot_reduce_shader = device.compile_shader(Self::dot_reduce_shader(), Some("CG Dot/Reduce"));
+        let cg_kernels_shader = device.compile_shader(Self::cg_kernels_shader(), Some("CG Kernels"));
 
         // Create all bind group layouts
         let spmv_bgl = SparseBindGroupLayouts::spmv(&device);
@@ -148,7 +159,7 @@ impl CgGpu {
         let compute_alpha_bgl = SparseBindGroupLayouts::compute_alpha(&device);
         let compute_beta_bgl = SparseBindGroupLayouts::compute_beta(&device);
 
-        // Create pipelines
+        // Create pipelines using appropriate shader modules
         let spmv_pipeline =
             device
                 .device
@@ -161,7 +172,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &spmv_shader,
                     entry_point: "spmv_f64",
                 });
 
@@ -177,7 +188,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &dot_reduce_shader,
                     entry_point: "dot_f64",
                 });
 
@@ -193,7 +204,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &dot_reduce_shader,
                     entry_point: "final_reduce_f64",
                 });
 
@@ -209,7 +220,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &cg_kernels_shader,
                     entry_point: "cg_update_xr",
                 });
 
@@ -225,7 +236,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &cg_kernels_shader,
                     entry_point: "cg_update_p",
                 });
 
@@ -241,7 +252,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &cg_kernels_shader,
                     entry_point: "compute_alpha",
                 });
 
@@ -257,7 +268,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &cg_kernels_shader,
                     entry_point: "compute_beta",
                 });
 
@@ -790,7 +801,11 @@ impl CgGpu {
         let alpha_buffer = SparseBuffers::f64_zeros(&device, "PCG alpha", 1);
         let beta_buffer = SparseBuffers::f64_zeros(&device, "PCG beta", 1);
 
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("PCG f64"));
+        // Compile separate shader modules to avoid binding conflicts
+        let spmv_shader = device.compile_shader(Self::spmv_shader(), Some("PCG SpMV"));
+        let dot_reduce_shader = device.compile_shader(Self::dot_reduce_shader(), Some("PCG Dot/Reduce"));
+        let cg_kernels_shader = device.compile_shader(Self::cg_kernels_shader(), Some("PCG Kernels"));
+        let vector_ops_shader = device.compile_shader(include_str!("../../shaders/sparse/vector_ops_f64.wgsl"), Some("PCG VecOps"));
 
         // Create bind group layouts
         let spmv_bgl = SparseBindGroupLayouts::spmv(&device);
@@ -802,7 +817,7 @@ impl CgGpu {
         let compute_beta_bgl = SparseBindGroupLayouts::compute_beta(&device);
         let precond_bgl = SparseBindGroupLayouts::precond(&device);
 
-        // Create pipelines
+        // Create pipelines using appropriate shader modules
         let spmv_pipeline =
             device
                 .device
@@ -815,7 +830,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &spmv_shader,
                     entry_point: "spmv_f64",
                 });
 
@@ -831,7 +846,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &dot_reduce_shader,
                     entry_point: "dot_f64",
                 });
 
@@ -847,7 +862,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &dot_reduce_shader,
                     entry_point: "final_reduce_f64",
                 });
 
@@ -863,7 +878,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &cg_kernels_shader,
                     entry_point: "cg_update_xr",
                 });
 
@@ -879,7 +894,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &cg_kernels_shader,
                     entry_point: "cg_update_p",
                 });
 
@@ -895,7 +910,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &cg_kernels_shader,
                     entry_point: "compute_alpha",
                 });
 
@@ -911,7 +926,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &cg_kernels_shader,
                     entry_point: "compute_beta",
                 });
 
@@ -927,7 +942,7 @@ impl CgGpu {
                             push_constant_ranges: &[],
                         },
                     )),
-                    module: &shader,
+                    module: &vector_ops_shader,
                     entry_point: "precond_f64",
                 });
 
@@ -1539,15 +1554,17 @@ impl CgGpu {
         let num_workgroups = n.div_ceil(256);
         let partial_sums_buffer = SparseBuffers::f64_zeros(&device, "CG partial", num_workgroups);
 
-        // Compile shader
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("CG f64"));
+        // Compile separate shader modules to avoid binding conflicts
+        let spmv_shader = device.compile_shader(Self::spmv_shader(), Some("CG SpMV"));
+        let dot_reduce_shader = device.compile_shader(Self::dot_reduce_shader(), Some("CG Dot"));
+        let vector_ops_shader = device.compile_shader(include_str!("../../shaders/sparse/vector_ops_f64.wgsl"), Some("CG VecOps"));
 
         // Create bind group layouts
         let spmv_bgl = SparseBindGroupLayouts::spmv(&device);
         let dot_bgl = SparseBindGroupLayouts::dot(&device);
         let axpy_bgl = SparseBindGroupLayouts::axpy(&device);
 
-        // Create pipelines
+        // Create pipelines using appropriate shader modules
         let spmv_pl = device
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -1578,7 +1595,7 @@ impl CgGpu {
                 .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some("SpMV f64"),
                     layout: Some(&spmv_pl),
-                    module: &shader,
+                    module: &spmv_shader,
                     entry_point: "spmv_f64",
                 });
 
@@ -1588,7 +1605,7 @@ impl CgGpu {
                 .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some("Dot f64"),
                     layout: Some(&dot_pl),
-                    module: &shader,
+                    module: &dot_reduce_shader,
                     entry_point: "dot_f64",
                 });
 
@@ -1598,7 +1615,7 @@ impl CgGpu {
                 .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some("Axpy f64"),
                     layout: Some(&axpy_pl),
-                    module: &shader,
+                    module: &vector_ops_shader,
                     entry_point: "axpy_f64",
                 });
 
@@ -1837,7 +1854,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Shader has multi-entry-point binding conflicts - needs architectural refactor"]
     async fn test_cg_gpu_small() {
         let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
@@ -1860,7 +1876,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Shader has multi-entry-point binding conflicts - needs architectural refactor"]
     async fn test_cg_gpu_resident() {
         let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
@@ -1896,7 +1911,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Shader has multi-entry-point binding conflicts - needs architectural refactor"]
     async fn test_cg_gpu_resident_vs_original() {
         let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
@@ -1933,7 +1947,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Shader has multi-entry-point binding conflicts - needs architectural refactor"]
     async fn test_cg_gpu_preconditioned() {
         let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
@@ -1968,7 +1981,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Shader has multi-entry-point binding conflicts - needs architectural refactor"]
     async fn test_cg_preconditioned_vs_unpreconditioned() {
         let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
