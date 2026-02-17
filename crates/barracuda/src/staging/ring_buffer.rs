@@ -116,6 +116,8 @@ pub struct GpuRingBuffer {
     /// The underlying GPU buffer
     buffer: wgpu::Buffer,
     /// Staging buffer for CPU access (only for DeviceToHost)
+    /// Used in Phase 5+ for async readback of completed work
+    #[allow(dead_code)]
     staging_buffer: Option<wgpu::Buffer>,
     /// Buffer capacity (power of 2)
     capacity: usize,

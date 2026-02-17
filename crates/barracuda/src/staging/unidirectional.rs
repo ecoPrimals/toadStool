@@ -203,7 +203,8 @@ impl BandwidthThrottler {
 ///
 /// Manages streaming data flow to GPU with fire-and-forget semantics.
 pub struct UnidirectionalPipeline {
-    /// Device reference
+    /// Device reference (used for shader dispatch in Phase 5+)
+    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
     /// Input ring buffer (Host → Device)
     input_buffer: GpuRingBuffer,
@@ -219,7 +220,8 @@ pub struct UnidirectionalPipeline {
     stats: PipelineStats,
     /// Input throttler (for simulation)
     input_throttler: Option<BandwidthThrottler>,
-    /// Output throttler (for simulation)
+    /// Output throttler (for bandwidth simulation in Phase 5+)
+    #[allow(dead_code)]
     output_throttler: Option<BandwidthThrottler>,
     /// Pipeline start time (for throughput calculation)
     start_time: Instant,
