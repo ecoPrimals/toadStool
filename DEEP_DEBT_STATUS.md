@@ -19,7 +19,48 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **Production Mock Hardening COMPLETE** — removed fake capabilities/models from production paths.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 17, 2026 — cudarc 0.19 Upgrade & hotSpring Handoff)
+### Latest Updates (Feb 17, 2026 — wgpu v22 Migration & Test Infrastructure)
+
+**wgpu 0.19 → v22 Workspace Migration ✓**
+
+Eliminated pinned dependency debt by migrating all crates to workspace wgpu v22:
+
+| Change | Before | After |
+|--------|--------|-------|
+| barracuda | wgpu 0.19 (pinned) | workspace wgpu v22 |
+| cross-platform | wgpu 0.19 (pinned) | workspace wgpu v22 |
+| homomorphic-computing | wgpu 0.19 (pinned) | workspace wgpu v22 |
+| DeviceDescriptor | 3 fields | 4 fields (+memory_hints) |
+| ComputePipelineDescriptor | 4 fields | 6 fields (+cache, +compilation_options) |
+
+Files modified: 440 files across workspace (mostly pipeline descriptors).
+
+**Test Infrastructure Evolution ✓**
+
+Fixed GPU resource exhaustion in tests using idiomatic Rust patterns:
+
+- `test_pool.rs`: LazyLock-based shared device pool (std::sync::LazyLock)
+- `get_test_device()`: Async shared device for `#[tokio::test]`
+- `get_test_device_sync()`: Sync wrapper for `#[test]` functions
+- `tensor_context.rs`: Migrated 18 tests to use shared pool (all pass)
+
+**Remaining Test Migration (Deep Debt)**
+
+~227 ops/ test modules still create per-test devices. Pattern to migrate:
+
+```rust
+// Current (causes exhaustion)
+let device = WgpuDevice::new().await?;
+
+// Should be
+let device = get_test_device().await;
+```
+
+This is tracked as ongoing deep debt modernization.
+
+---
+
+### Previous Updates (Feb 17, 2026 — cudarc 0.19 Upgrade & hotSpring Handoff)
 
 **cudarc 0.11 → 0.19 Upgrade ✓**
 
