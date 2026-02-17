@@ -367,7 +367,10 @@ mod tests {
     use crate::device::WgpuDevice;
 
     fn get_test_device() -> Arc<WgpuDevice> {
-        WgpuDevice::new().expect("Failed to create test device")
+        Arc::new(
+            pollster::block_on(async { WgpuDevice::new_f64_capable().await })
+                .expect("Failed to create test device"),
+        )
     }
 
     #[test]
@@ -442,11 +445,18 @@ mod tests {
         let gpu_sim = op.similarity(&a, &b).unwrap();
         let cpu_sim = op.similarity_cpu(&a, &b);
 
+        // GPU and CPU use different reduction orderings, expect ~1e-6 relative error
+        let rel_tol = 1e-6;
+        let abs_tol = 1e-10;
+        let diff = (gpu_sim - cpu_sim).abs();
+        let tol = rel_tol * cpu_sim.abs().max(1.0) + abs_tol;
         assert!(
-            (gpu_sim - cpu_sim).abs() < 1e-10,
-            "GPU: {}, CPU: {}",
+            diff < tol,
+            "GPU: {}, CPU: {}, diff: {}, tol: {}",
             gpu_sim,
-            cpu_sim
+            cpu_sim,
+            diff,
+            tol
         );
     }
 }

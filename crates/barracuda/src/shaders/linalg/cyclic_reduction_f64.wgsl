@@ -56,8 +56,8 @@ fn reduction_f64(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    let ref = b[i];
-    let epsilon = f64_const(ref, 1e-14);
+    let pivot_ref = b[i];
+    let epsilon = f64_const(pivot_ref, 1e-14);
     
     // Skip if diagonal is too small
     if (abs(b[i_prev]) < epsilon || abs(b[i_next]) < epsilon) {
@@ -92,9 +92,9 @@ fn substitution_f64(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let i_prev = i - half_stride;
     let i_next = i + half_stride;
     
-    let ref = b[i];
-    let zero = f64_const(ref, 0.0);
-    let epsilon = f64_const(ref, 1e-14);
+    let pivot_ref = b[i];
+    let zero = f64_const(pivot_ref, 0.0);
+    let epsilon = f64_const(pivot_ref, 1e-14);
     
     var x_prev = zero;
     var x_next = zero;
@@ -122,9 +122,9 @@ fn solve_serial_f64(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     let n = params.n;
-    let ref = b[0];
-    let epsilon = f64_const(ref, 1e-14);
-    let zero = f64_const(ref, 0.0);
+    let pivot_ref = b[0];
+    let epsilon = f64_const(pivot_ref, 1e-14);
+    let zero = f64_const(pivot_ref, 0.0);
     
     // Thomas algorithm (serial, but optimal for small n)
     // Forward elimination
@@ -198,8 +198,8 @@ fn reduction_batch_f64(@builtin(global_invocation_id) global_id: vec3<u32>,
     let idx_prev = offset + i_prev;
     let idx_next = offset + i_next;
     
-    let ref = b[idx];
-    let epsilon = f64_const(ref, 1e-14);
+    let pivot_ref = b[idx];
+    let epsilon = f64_const(pivot_ref, 1e-14);
     
     if (abs(b[idx_prev]) < epsilon || abs(b[idx_next]) < epsilon) {
         return;
@@ -240,9 +240,9 @@ fn substitution_batch_f64(@builtin(global_invocation_id) global_id: vec3<u32>,
     let i_next = i + half_stride;
     let idx = offset + i;
     
-    let ref = b[idx];
-    let zero = f64_const(ref, 0.0);
-    let epsilon = f64_const(ref, 1e-14);
+    let pivot_ref = b[idx];
+    let zero = f64_const(pivot_ref, 0.0);
+    let epsilon = f64_const(pivot_ref, 1e-14);
     
     var x_prev = zero;
     var x_next = zero;
@@ -272,8 +272,8 @@ fn solve_batch_serial_f64(@builtin(workgroup_id) wg_id: vec3<u32>) {
     let n = batch_params.n;
     let offset = batch_idx * batch_params.n_padded;
     
-    let ref = b[offset];
-    let epsilon = f64_const(ref, 1e-14);
+    let pivot_ref = b[offset];
+    let epsilon = f64_const(pivot_ref, 1e-14);
     
     // Thomas algorithm
     // Forward elimination

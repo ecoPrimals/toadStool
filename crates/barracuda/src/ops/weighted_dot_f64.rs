@@ -340,7 +340,10 @@ mod tests {
     use crate::device::WgpuDevice;
 
     fn get_test_device() -> Arc<WgpuDevice> {
-        WgpuDevice::new().expect("Failed to create test device")
+        Arc::new(
+            pollster::block_on(async { WgpuDevice::new_f64_capable().await })
+                .expect("Failed to create test device"),
+        )
     }
 
     #[test]
