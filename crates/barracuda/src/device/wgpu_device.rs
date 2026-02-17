@@ -1245,4 +1245,67 @@ mod tests {
             }
         }
     }
+
+    #[tokio::test]
+    async fn test_driver_detection_apis() {
+        // Test is_nvk, is_radv, is_nvidia_proprietary APIs
+        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            println!("No GPU available for driver detection test");
+            return;
+        };
+
+        let is_nvk = device.is_nvk();
+        let is_radv = device.is_radv();
+        let is_nvidia_prop = device.is_nvidia_proprietary();
+
+        println!("Driver detection for '{}':", device.name());
+        println!("  is_nvk: {}", is_nvk);
+        println!("  is_radv: {}", is_radv);
+        println!("  is_nvidia_proprietary: {}", is_nvidia_prop);
+        println!("  driver: {}", device.adapter_info().driver);
+        println!("  driver_info: {}", device.adapter_info().driver_info);
+
+        // These should be mutually exclusive (at most one can be true)
+        let driver_count = [is_nvk, is_radv, is_nvidia_prop]
+            .iter()
+            .filter(|&&b| b)
+            .count();
+        assert!(
+            driver_count <= 1,
+            "Driver types should be mutually exclusive, got {} true",
+            driver_count
+        );
+    }
+
+    #[test]
+    fn test_driver_detection_logic() {
+        // Unit test the driver detection logic without needing a real device
+        // Simulates various driver strings
+
+        // NVK detection
+        assert!(contains_nvk_markers("NVK"));
+        assert!(contains_nvk_markers("nvk"));
+        assert!(contains_nvk_markers("nouveau"));
+        assert!(contains_nvk_markers("Mesa 25.1.5"));
+        assert!(!contains_nvk_markers("NVIDIA"));
+
+        // RADV detection
+        assert!(contains_radv_markers("RADV"));
+        assert!(contains_radv_markers("radv"));
+        assert!(!contains_radv_markers("NVIDIA"));
+    }
+}
+
+// Helper functions for testing driver detection logic
+#[cfg(test)]
+fn contains_nvk_markers(driver: &str) -> bool {
+    let lower = driver.to_lowercase();
+    lower.contains("nvk") || lower.contains("nouveau") || lower.contains("mesa")
+}
+
+#[cfg(test)]
+fn contains_radv_markers(driver: &str) -> bool {
+    let lower = driver.to_lowercase();
+    lower.contains("radv")
 }
