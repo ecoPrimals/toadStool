@@ -74,18 +74,27 @@ Key files modified:
 | Item | Status | Description |
 |------|:------:|-------------|
 | FPGA discovery | ✅ | Documented future path (Intel OPAE, Xilinx XRT) |
-| GPU remote execution | ✅ | Documented graceful degradation and evolution path |
+| GPU remote execution | ✅ | Documented biomeOS tower path (NO reqwest/hyper!) |
 | GPU kernel compiler | ✅ | Documented pass-through nature for JIT frameworks |
 | Akida model parsing | ✅ | Documented FlatBuffers schema dependency for shapes |
 | Songbird registry query | ✅ | Evolved from Err(not_found) to real JSON-RPC call |
 | Unsafe code audit | ✅ | Verified all unsafe is necessary (FFI, hardware, allocators) |
+| reqwest references | ✅ | Removed from docs; client crate excluded pending migration |
+
+**Pure Rust Networking (biomeOS Tower)**:
+- **NO reqwest/hyper** — C dependencies (ring, openssl) not allowed
+- **Songbird**: Provides TLS/networking (pure Rust rustls)
+- **Beardog**: Provides cryptographic operations (pure Rust)
+- JSON-RPC 2.0 over Unix sockets (local) or TCP (remote)
 
 Key files modified:
 - `crates/core/substrate/src/discovery.rs` — FPGA discovery documentation
-- `crates/runtime/gpu/src/distributed/mod.rs` — Remote execution docs
+- `crates/runtime/gpu/src/distributed/mod.rs` — biomeOS tower evolution path
 - `crates/runtime/gpu/src/compiler.rs` — Compiler pass-through docs
 - `crates/neuromorphic/akida-models/src/model.rs` — Shape parsing docs
 - `crates/auto_config/src/ecosystem_evolved.rs` — Real Songbird JSON-RPC
+- `crates/distributed/src/songbird_integration/capability_discovery.rs` — Fixed reqwest doc example
+- `crates/client/Cargo.toml` — Documented excluded status + migration path
 
 ---
 

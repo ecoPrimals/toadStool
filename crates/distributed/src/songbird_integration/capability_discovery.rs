@@ -208,10 +208,12 @@ impl SongbirdConnection {
     ///
     /// # Example
     /// ```no_run
+    /// # use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
     /// # async fn example(connection: SongbirdConnection) -> Result<(), Box<dyn std::error::Error>> {
     /// let result = connection.execute_with_failover(|service| async move {
-    ///     // Your operation here
-    ///     reqwest::get(&service.endpoint).await?.text().await
+    ///     // Pure Rust: JSON-RPC over Unix socket (no reqwest!)
+    ///     let client = UnixJsonRpcClient::new(&service.socket_path);
+    ///     client.call::<_, String>("service.health", serde_json::json!({})).await
     /// }).await?;
     /// # Ok(())
     /// # }

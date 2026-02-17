@@ -359,7 +359,7 @@ impl DistributedGpuScheduler {
         Self::execute_remote_http(&endpoint.address, workload).await
     }
 
-    /// Execute on remote tower via HTTP (static for spawning)
+    /// Execute on remote tower via biomeOS tower (static for spawning)
     ///
     /// ## Deep Debt Status: Placeholder (Graceful Degradation)
     ///
@@ -367,28 +367,27 @@ impl DistributedGpuScheduler {
     /// to be tested without network infrastructure. This is NOT a mock —
     /// it's intentional graceful degradation for development.
     ///
-    /// ## Evolution Path
+    /// ## Evolution Path (Pure Rust via biomeOS Tower)
     ///
-    /// 1. Add `reqwest` or `hyper` for HTTP client (workspace feature-gated)
-    /// 2. Implement actual POST to tower's `/api/v1/execute` endpoint
-    /// 3. Add timeout/retry with configurable backoff
-    /// 4. Add circuit breaker for tower failure isolation
+    /// **NO reqwest/hyper** — these have C dependencies (ring, openssl).
+    /// Use biomeOS tower atomic components:
+    ///
+    /// 1. **Songbird**: Provides TLS/networking (pure Rust rustls)
+    /// 2. **Beardog**: Provides cryptographic operations (pure Rust)
+    /// 3. JSON-RPC 2.0 over Unix sockets for local, TCP for remote
     ///
     /// ## Example Implementation
     ///
     /// ```ignore
-    /// async fn execute_remote_http(address: &str, workload: UniversalWorkload) -> Result<...> {
-    ///     let client = reqwest::Client::builder()
-    ///         .timeout(Duration::from_secs(30))
-    ///         .build()?;
+    /// async fn execute_remote_tower(
+    ///     tower_socket: &str,
+    ///     workload: UniversalWorkload,
+    /// ) -> Result<WorkloadResult> {
+    ///     // Use Songbird for remote tower connection
+    ///     let client = songbird::TowerClient::connect(tower_socket).await?;
     ///     
-    ///     let response = client
-    ///         .post(format!("{}/api/v1/execute", address))
-    ///         .json(&workload)
-    ///         .send()
-    ///         .await?;
-    ///     
-    ///     response.json().await.map_err(Into::into)
+    ///     // JSON-RPC call to tower's execute method
+    ///     client.call("tower.execute", workload).await
     /// }
     /// ```
     ///
@@ -397,6 +396,7 @@ impl DistributedGpuScheduler {
     /// - No hardcoded addresses (address from Songbird discovery)
     /// - No hardcoded ports (tower reports its own endpoint)
     /// - Timeout and retry configurable (not hardcoded)
+    /// - **Pure Rust**: No C dependencies (no reqwest, hyper, ring)
     async fn execute_remote_http(
         address: &str,
         _workload: UniversalWorkload,
