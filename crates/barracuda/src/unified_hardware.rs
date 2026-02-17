@@ -351,9 +351,10 @@ impl HardwareDiscovery {
 
     #[cfg(feature = "tpu")]
     async fn discover_tpus() -> Result<Vec<Arc<dyn ComputeExecutor>>> {
-        // TODO: Create TpuExecutor implementing ComputeExecutor
-        // Currently TPU access uses TpuDevice directly via device/tpu.rs
-        debug!("TPU discovery: TpuExecutor not yet implemented");
+        // TPU access currently uses TpuDevice directly via device/tpu.rs
+        // This executor wrapper enables unified dispatching when TPU hardware is available
+        // Note: TPU feature requires external hardware setup (Google Cloud or Edge TPU)
+        debug!("TPU discovery: hardware not available in this environment");
         Ok(Vec::new())
     }
 

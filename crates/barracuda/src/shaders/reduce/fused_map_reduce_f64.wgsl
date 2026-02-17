@@ -93,6 +93,7 @@ fn log_f64(x: f64) -> f64 {
 
 struct Params {
     n: u32,              // Input array length
+    n_workgroups: u32,   // Number of dispatched workgroups (for grid stride)
     total: f64,          // Normalization constant (e.g., sum for Shannon)
     map_op: u32,         // Map operation enum
     reduce_op: u32,      // Reduce operation enum
@@ -242,12 +243,15 @@ fn fused_map_reduce(
     let first_val = input[0];
     var acc = reduce_identity(reduce_op, first_val);
     
+    // Grid stride = total threads = n_workgroups × workgroup_size (256)
+    let grid_stride = params.n_workgroups * 256u;
+    
     var idx = gid;
     while (idx < n) {
         let val = input[idx];
         let mapped = apply_map(val, total, map_op);
         acc = apply_reduce(acc, mapped, reduce_op);
-        idx = idx + 256u * 256u;  // Grid stride (max workgroups × workgroup size)
+        idx = idx + grid_stride;
     }
     
     // Phase 2: Store to shared memory

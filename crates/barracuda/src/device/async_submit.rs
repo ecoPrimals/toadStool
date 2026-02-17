@@ -366,28 +366,17 @@ impl AsyncReadback {
 mod tests {
     use super::*;
 
-    // Note: These tests require a GPU device
-    // Run with: cargo test -p barracuda --lib device::async_submit -- --ignored
+    #[tokio::test]
+    async fn test_submitter_creation() {
+        let Some(wgpu_device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        else {
+            return; // Skip if no GPU available
+        };
 
-    #[test]
-    #[ignore = "requires GPU"]
-    fn test_submitter_creation() {
-        let rt = tokio::runtime::Runtime::new().expect("failed to create tokio runtime");
-        rt.block_on(async {
-            let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
-            let adapter = instance
-                .request_adapter(&wgpu::RequestAdapterOptions::default())
-                .await
-                .expect("No adapter");
-            let (device, queue) = adapter
-                .request_device(&wgpu::DeviceDescriptor::default(), None)
-                .await
-                .expect("No device");
-
-            let submitter = AsyncSubmitter::new(Arc::new(device), Arc::new(queue));
-            assert_eq!(submitter.pending_count(), 0);
-            assert_eq!(submitter.current_index(), 0);
-        });
+        let submitter =
+            AsyncSubmitter::new(Arc::clone(&wgpu_device.device), Arc::clone(&wgpu_device.queue));
+        assert_eq!(submitter.pending_count(), 0);
+        assert_eq!(submitter.current_index(), 0);
     }
 
     #[test]

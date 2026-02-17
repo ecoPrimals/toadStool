@@ -80,7 +80,7 @@ pub enum ReduceOp {
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct Params {
     n: u32,
-    _pad1: u32,
+    n_workgroups: u32,
     total: f64,
     map_op: u32,
     reduce_op: u32,
@@ -193,7 +193,7 @@ impl FusedMapReduceF64 {
         // Create params buffer
         let params = Params {
             n: n as u32,
-            _pad1: 0,
+            n_workgroups: n_workgroups as u32,
             total,
             map_op: map_op as u32,
             reduce_op: reduce_op as u32,
@@ -288,8 +288,8 @@ impl FusedMapReduceF64 {
 
         let params = Params {
             n: n_partials as u32,
-            _pad1: 0,
-            total: 1.0, // Not used in reduce_partials
+            n_workgroups: 1, // Single workgroup for partials reduction
+            total: 1.0,      // Not used in reduce_partials
             map_op: MapOp::Identity as u32,
             reduce_op: reduce_op as u32,
         };
@@ -527,16 +527,13 @@ impl FusedMapReduceF64 {
 mod tests {
     use super::*;
 
-    fn create_test_device() -> Result<Arc<WgpuDevice>> {
-        // Use pollster to block on async device creation
-        let device = pollster::block_on(async { WgpuDevice::new_f64_capable().await })?;
-        Ok(Arc::new(device))
-    }
-
-    #[test]
-    fn test_shannon_entropy_cpu() -> Result<()> {
+    #[tokio::test]
+    async fn test_shannon_entropy_cpu() -> Result<()> {
         // Test CPU path (small array)
-        let device = create_test_device()?;
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
+        else {
+            return Ok(()); // Skip if no f64 GPU available
+        };
         let fmr = FusedMapReduceF64::new(device)?;
 
         // Test case from wetSpring handoff: counts = [10, 20, 30, 40] → Shannon ≈ 1.27985422
@@ -569,9 +566,12 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_simpson_index_cpu() -> Result<()> {
-        let device = create_test_device()?;
+    #[tokio::test]
+    async fn test_simpson_index_cpu() -> Result<()> {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
+        else {
+            return Ok(()); // Skip if no f64 GPU available
+        };
         let fmr = FusedMapReduceF64::new(device)?;
 
         let counts = vec![10.0, 20.0, 30.0, 40.0];
@@ -593,10 +593,12 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    #[ignore] // Requires GPU with SHADER_F64
-    fn test_large_array_sum_gpu() -> Result<()> {
-        let device = create_test_device()?;
+    #[tokio::test]
+    async fn test_large_array_sum_gpu() -> Result<()> {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
+        else {
+            return Ok(()); // Skip if no f64 GPU available
+        };
         let fmr = FusedMapReduceF64::new(device)?;
 
         // Large array to trigger GPU path

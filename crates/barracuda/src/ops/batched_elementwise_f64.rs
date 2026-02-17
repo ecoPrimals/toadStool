@@ -485,11 +485,6 @@ fn water_balance_cpu(dr_prev: f64, precip: f64, irrig: f64, etc: f64, taw: f64, 
 mod tests {
     use super::*;
 
-    fn create_test_device() -> Result<Arc<WgpuDevice>> {
-        let device = pollster::block_on(async { WgpuDevice::new_f64_capable().await })?;
-        Ok(Arc::new(device))
-    }
-
     #[test]
     fn test_fao56_et0_cpu_reference() {
         // FAO-56 Example 18: Reference grass ET₀
@@ -523,10 +518,12 @@ mod tests {
         assert!((dr_new - 64.0).abs() < 0.001);
     }
 
-    #[test]
-    #[ignore] // Requires GPU with SHADER_F64
-    fn test_fao56_et0_gpu() -> Result<()> {
-        let device = create_test_device()?;
+    #[tokio::test]
+    async fn test_fao56_et0_gpu() -> Result<()> {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
+        else {
+            return Ok(()); // Skip if no f64 GPU available
+        };
         let executor = BatchedElementwiseF64::new(device)?;
 
         // Test batch of 3 station-days

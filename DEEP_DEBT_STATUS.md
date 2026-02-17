@@ -525,7 +525,7 @@ See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md` and `NEXT_STEPS.md`
 | Issue | Status | Fix Applied |
 |-------|--------|-------------|
 | ✅ GPU cyclic reduction | **FIXED** | GPU serial solver for n>=64, CPU for tiny |
-| ⚠️ SSF k-ordering | Ignored | CPU is correct, GPU needs algorithm fix |
+| ✅ SSF GPU f64 trig | **FIXED** | Software sin/cos (AMD lacks native f64 trig) |
 | ✅ Coulomb GPU energy | **FIXED** | Implemented coulomb_with_energy_f64 kernel |
 | ✅ Sparse solver bindings | **FIXED** | Split shader into 4 modules |
 
@@ -554,7 +554,6 @@ All 6 sparse solver tests now pass (was 6 ignored).
 2. Test coverage CI enforcement (<90%)
 3. NPU/display backends
 4. Unix socket health ping
-5. SSF GPU k-ordering algorithm bug
 
 ---
 

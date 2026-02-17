@@ -115,6 +115,7 @@ impl SsfGpu {
             _pad1: 0,
             _pad2: 0,
         };
+
         let params_buffer = device.create_uniform_buffer("SSF params", &params);
 
         // Compile shader
@@ -499,7 +500,48 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "compute_axes GPU implementation has k-ordering bug - CPU returns correct values"]
+    async fn test_ssf_gpu_mixed_k_vectors() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
+        else {
+            return;
+        };
+
+        // Use SAME positions as random_gas but different k-vectors
+        let n = 100;
+        let box_side = 10.0;
+
+        #[allow(clippy::approx_constant)]
+        let (mult_a, mult_b, mult_c) = (1.618, 2.718, 3.141);
+        let mut positions: Vec<f64> = Vec::with_capacity(n * 3);
+        for i in 0..n {
+            positions.push((i as f64 * mult_a) % box_side);
+            positions.push((i as f64 * mult_b) % box_side);
+            positions.push((i as f64 * mult_c) % box_side);
+        }
+
+        let dk = 2.0 * PI / box_side;
+
+        // K-vectors along x, y, z axes - same pattern as compute_axes
+        let k_vectors: Vec<f64> = vec![
+            dk, 0.0, 0.0, // x
+            0.0, dk, 0.0, // y
+            0.0, 0.0, dk, // z
+        ];
+
+        let ssf = SsfGpu::compute(device, &positions, &k_vectors).unwrap();
+
+        assert_eq!(ssf.len(), 3);
+        for (i, &s) in ssf.iter().enumerate() {
+            assert!(
+                s > 0.0,
+                "S(k)[{}] should be > 0, got {}",
+                i,
+                s
+            );
+        }
+    }
+
+    #[tokio::test]
     async fn test_ssf_gpu_vs_cpu() {
         let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
@@ -536,8 +578,9 @@ mod tests {
                 k_gpu,
                 k_cpu
             );
+            // Tolerance 1e-5 due to software f64 trig (Taylor series) vs native CPU trig
             assert!(
-                (s_gpu - s_cpu).abs() < 1e-6,
+                (s_gpu - s_cpu).abs() < 1e-5,
                 "S(k) mismatch at {}: {} vs {}",
                 i,
                 s_gpu,
