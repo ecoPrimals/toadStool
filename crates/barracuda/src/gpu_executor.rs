@@ -48,6 +48,12 @@ impl GpuExecutor {
         }
     }
 
+    /// Create from shared Arc<WgpuDevice> (for test pool usage)
+    pub fn from_device_arc(device: Arc<WgpuDevice>) -> Self {
+        let capabilities = Self::detect_capabilities(&device);
+        Self { device, capabilities }
+    }
+
     /// Detect GPU capabilities
     fn detect_capabilities(device: &WgpuDevice) -> HardwareCapabilities {
         // Estimate GPU memory and performance based on device type
@@ -349,14 +355,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_gpu_can_execute() {
-        // Create mock executor for testing (without actual GPU)
-        let device = WgpuDevice::new().await;
-        if device.is_err() {
-            tracing::debug!("No GPU for testing (okay)");
-            return;
-        }
-
-        // Will test when GPU available
+        // Use shared device pool to avoid resource exhaustion
+        let device = crate::device::test_pool::get_test_device().await;
+        let executor = GpuExecutor::from_device_arc(device);
+        
+        // Verify executor was created with capabilities
+        assert!(executor.capabilities().memory.total_bytes > 0);
     }
 
     #[test]

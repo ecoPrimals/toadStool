@@ -27,6 +27,7 @@
 
 // Constants for f64 Taylor series
 const PI_F64: f64 = 3.141592653589793;
+const NEG_PI_F64: f64 = -3.141592653589793;  // WGSL requires explicit constant for negation
 const TWO_PI_F64: f64 = 6.283185307179586;
 const HALF_PI_F64: f64 = 1.5707963267948966;
 
@@ -37,7 +38,7 @@ fn sin_f64(x_in: f64) -> f64 {
     var x = x_in;
     x = x - floor(x / TWO_PI_F64) * TWO_PI_F64;
     if (x > PI_F64) { x = x - TWO_PI_F64; }
-    if (x < -PI_F64) { x = x + TWO_PI_F64; }
+    if (x < NEG_PI_F64) { x = x + TWO_PI_F64; }
     
     // Taylor series: sin(x) = x - x³/3! + x⁵/5! - x⁷/7! + x⁹/9! - x¹¹/11! + x¹³/13!
     let x2 = x * x;
