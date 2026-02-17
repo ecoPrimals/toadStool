@@ -669,18 +669,42 @@ impl CapacityInfo {
 
     /// Create CapacityInfo from current system state
     ///
-    /// **Deep Debt**: Self-knowledge - query actual system resources
+    /// **Deep Debt Resolved**: Self-knowledge - queries actual system resources
+    /// including CPU cores, available memory, and total disk storage.
     #[must_use]
     pub fn from_system() -> Self {
+        use sysinfo::Disks;
+
+        // Get CPU cores using std (pure Rust, no sysinfo needed)
+        let cpu_cores = std::thread::available_parallelism()
+            .map(|n| n.get() as f64)
+            .unwrap_or(1.0);
+
+        // Get memory from sysinfo
         let mut sys = sysinfo::System::new_all();
-        sys.refresh_all();
+        sys.refresh_memory();
+        let memory_bytes = sys.available_memory();
+
+        // Enumerate disks and sum available space
+        // Only count physical disks (not tmpfs, devtmpfs, etc.)
+        let disks = Disks::new_with_refreshed_list();
+        let storage_bytes: u64 = disks
+            .iter()
+            .filter(|disk| {
+                // Filter out virtual filesystems
+                let fs = disk.file_system().to_string_lossy();
+                !fs.contains("tmpfs")
+                    && !fs.contains("devtmpfs")
+                    && !fs.contains("squashfs")
+                    && !fs.contains("overlay")
+            })
+            .map(|disk| disk.available_space())
+            .sum();
 
         Self {
-            cpu_cores: std::thread::available_parallelism()
-                .map(|n| n.get() as f64)
-                .unwrap_or(1.0),
-            memory_bytes: sys.available_memory(),
-            storage_bytes: 0, // Would need disk enumeration
+            cpu_cores,
+            memory_bytes,
+            storage_bytes,
         }
     }
 }

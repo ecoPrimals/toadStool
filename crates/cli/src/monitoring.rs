@@ -11,7 +11,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use sysinfo::{CpuExt, DiskExt, NetworkExt, System, SystemExt};
+use sysinfo::{Disks, Networks, System};
 use tokio::sync::RwLock;
 use tokio::time::Duration;
 use tracing::{debug, info};
@@ -713,10 +713,12 @@ impl MetricsCollector for SystemMetricsCollector {
     fn collect(&self) -> Result<MetricBatch> {
         let timestamp = Utc::now();
         let mut metrics = Vec::new();
+
+        // System metrics (CPU, memory)
         let mut system = System::new_all();
         system.refresh_all();
 
-        // Real CPU usage
+        // Real CPU usage (sysinfo 0.30+ API)
         let cpu_usage = system.global_cpu_info().cpu_usage();
         metrics.push(Metric {
             name: "cpu_usage_percent".to_string(),
@@ -740,10 +742,11 @@ impl MetricsCollector for SystemMetricsCollector {
             timestamp,
         });
 
-        // Real storage usage
-        let mut total_disk = 0;
-        let mut used_disk = 0;
-        for disk in system.disks() {
+        // Real storage usage (sysinfo 0.30+ uses separate Disks struct)
+        let disks = Disks::new_with_refreshed_list();
+        let mut total_disk: u64 = 0;
+        let mut used_disk: u64 = 0;
+        for disk in disks.iter() {
             total_disk += disk.total_space();
             used_disk += disk.total_space() - disk.available_space();
         }
@@ -831,13 +834,14 @@ impl MetricsCollector for NetworkMetricsCollector {
     fn collect(&self) -> Result<MetricBatch> {
         let timestamp = Utc::now();
         let mut metrics = Vec::new();
-        let mut system = System::new_all();
-        system.refresh_networks();
+
+        // sysinfo 0.30+ uses separate Networks struct
+        let networks = Networks::new_with_refreshed_list();
 
         // Real network throughput
-        let mut total_rx = 0;
-        let mut total_tx = 0;
-        for (_interface_name, network) in system.networks() {
+        let mut total_rx: u64 = 0;
+        let mut total_tx: u64 = 0;
+        for (_interface_name, network) in networks.iter() {
             total_rx += network.received();
             total_tx += network.transmitted();
         }

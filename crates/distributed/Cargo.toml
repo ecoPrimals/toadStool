@@ -70,7 +70,7 @@ anyhow = "1.0"
 dashmap = "5.5"
 
 # System information (pure Rust!)
-sysinfo = "0.32"
+sysinfo = { workspace = true }
 
 # Configuration
 config = "0.14" 

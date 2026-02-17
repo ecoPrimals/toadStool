@@ -478,8 +478,19 @@ impl AuthenticationManager {
             // No signing key configured
             #[cfg(any(test, feature = "dev-mock-auth"))]
             {
-                // Development/test mode: return mock signature
-                tracing::warn!("No signing key configured, using mock signature (dev mode only)");
+                // SAFETY: dev-mock-auth should NEVER be enabled in release builds
+                // This compile-time check prevents accidental production use
+                #[cfg(all(feature = "dev-mock-auth", not(debug_assertions)))]
+                compile_error!(
+                    "dev-mock-auth feature must not be enabled in release builds! \
+                     Use TOADSTOOL_SIGNING_KEY_SEED environment variable for production."
+                );
+
+                // Development/test mode: return mock signature with prominent warning
+                tracing::warn!(
+                    "⚠️ INSECURE: No signing key configured, using mock signature. \
+                     This is acceptable ONLY in tests. In production, set TOADSTOOL_SIGNING_KEY_SEED."
+                );
                 Ok(format!(
                     "ed25519:mock:{}",
                     general_purpose::STANDARD.encode(payload.as_bytes())

@@ -339,58 +339,11 @@ impl CommunicationManager {
         )
     }
 
-    /// Send message via HTTP - DEPRECATED
-    ///
-    /// **LEGACY**: HTTP deprecated - use Unix sockets
-    #[allow(dead_code)]
-    #[cfg(feature = "networking")]
-    async fn send_via_http(
-        &self,
-        channel: &ServiceChannel,
-        _client_placeholder: &str, // Was: &reqwest::Client
-        message: EcosystemMessage,
-    ) -> ToadStoolResult<EcosystemMessage> {
-        // LEGACY: HTTP deprecated - return error
-        Err(ToadStoolError::not_supported(format!(
-            "HTTP communication deprecated for channel {}. Use Unix sockets. Message: {:?}",
-            channel.service_id, message
-        )))
-    }
-
-    /// Send message via JSON-RPC - DEPRECATED
-    ///
-    /// **LEGACY**: HTTP RPC deprecated - use Unix sockets
-    #[allow(dead_code)]
-    #[cfg(feature = "networking")]
-    async fn send_via_jsonrpc(
-        &self,
-        channel: &ServiceChannel,
-        _client_placeholder: &str, // Was: &reqwest::Client
-        message: EcosystemMessage,
-    ) -> ToadStoolResult<EcosystemMessage> {
-        // LEGACY: HTTP RPC deprecated - return error
-        Err(ToadStoolError::not_supported(format!(
-            "HTTP JSON-RPC communication deprecated for channel {}. Use Unix sockets. Message: {:?}",
-            channel.service_id, message
-        )))
-    }
-
-    /// Fallback HTTP sending - DEPRECATED
-    ///
-    /// **LEGACY**: Use Unix sockets instead
-    #[allow(dead_code)]
-    #[cfg(feature = "networking")]
-    async fn send_via_http_fallback(
-        &self,
-        channel: &ServiceChannel,
-        message: EcosystemMessage,
-    ) -> ToadStoolResult<EcosystemMessage> {
-        // LEGACY: Use Unix sockets instead
-        Err(ToadStoolError::not_supported(format!(
-            "HTTP fallback deprecated for channel {}. Use Unix sockets. Message: {:?}",
-            channel.service_id, message
-        )))
-    }
+    // DEPRECATED HTTP METHODS REMOVED (Feb 17, 2026 — Deep Debt Evolution)
+    // - send_via_http: Removed (placeholder parameter, always returned error)
+    // - send_via_jsonrpc: Removed (placeholder parameter, always returned error)  
+    // - send_via_http_fallback: Removed (always returned error)
+    // Use send_via_unix_socket instead (pure Rust, no external dependencies)
 
     /// Send message via JSON-RPC 2.0 over unix socket (pure Rust!)
     #[cfg(feature = "networking")]
@@ -412,14 +365,23 @@ impl CommunicationManager {
     }
 
     /// Fallback response when networking is disabled (degraded-mode)
+    ///
+    /// **Deep Debt Evolved**: Returns a structured status indicating networking
+    /// is disabled, rather than a generic "mock_response". This allows callers
+    /// to detect degraded mode and take appropriate action.
     #[cfg(not(feature = "networking"))]
     fn fallback_response(&self, original: EcosystemMessage) -> EcosystemMessage {
         EcosystemMessage {
             id: uuid::Uuid::new_v4(),
-            from: "toadstool_disabled".to_string(),
+            from: "toadstool_local".to_string(),
             to: original.from,
             message_type: super::types::EcosystemMessageType::StatusUpdate,
-            payload: serde_json::json!({"status": "mock_response"}),
+            payload: serde_json::json!({
+                "status": "networking_disabled",
+                "reason": "Networking feature not compiled",
+                "mode": "degraded",
+                "original_message_id": original.id.to_string()
+            }),
             timestamp: chrono::Utc::now(),
         }
     }
@@ -464,7 +426,10 @@ mod tests {
         {
             let response = _manager.fallback_response(_original.clone());
             assert_eq!(response.to, _original.from);
-            assert_eq!(response.from, "toadstool_disabled");
+            assert_eq!(response.from, "toadstool_local"); // Evolved: indicates local-only mode
+            // Verify structured status payload
+            let status = response.payload.get("status").and_then(|v| v.as_str());
+            assert_eq!(status, Some("networking_disabled"));
         }
     }
 

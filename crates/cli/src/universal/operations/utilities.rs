@@ -5,7 +5,7 @@
 use anyhow::Result;
 use std::collections::HashMap;
 use std::future::Future;
-use sysinfo::{CpuExt, System, SystemExt};
+use sysinfo::System;
 
 use crate::universal::types::{GpuInfo, HardwareInfo};
 use toadstool_distributed::substrate_detection::PlatformType;

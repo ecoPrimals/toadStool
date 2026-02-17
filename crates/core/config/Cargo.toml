@@ -63,6 +63,7 @@ toadstool-common = { path = "../common" }
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
-num_cpus = "1.16"
+# num_cpus removed: use std::thread::available_parallelism() instead (pure Rust, no FFI)
+
 [features]
 default = [] 

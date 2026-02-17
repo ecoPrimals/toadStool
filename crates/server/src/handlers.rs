@@ -48,9 +48,9 @@ pub async fn health_check_handler(State(state): State<ServerState>) -> impl Into
         45.0 // Fallback if detection fails
     };
 
-    // CPU usage - use global CPU usage from sysinfo
+    // CPU usage - use global CPU info from sysinfo
     // Note: First call may return 0, as it needs time to measure
-    let cpu_usage_percent = sys.global_cpu_usage() as f64;
+    let cpu_usage_percent = sys.global_cpu_info().cpu_usage() as f64;
     let cpu_usage_percent = if cpu_usage_percent > 0.0 {
         cpu_usage_percent.clamp(0.0, 100.0)
     } else {

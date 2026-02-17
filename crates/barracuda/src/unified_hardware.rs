@@ -379,8 +379,13 @@ impl HardwareDiscovery {
 
 /// CPU executor implementation (always available)
 ///
-/// Deep Debt: CPU execution uses WGPU software rasterizer (llvmpipe).
-/// Same WGSL shaders run on CPU - no separate CPU code paths needed.
+/// **Deep Debt Principles**:
+/// - ✅ Runtime CPU discovery via `std::thread::available_parallelism()` (pure Rust)
+/// - ✅ Memory/bandwidth are *conservative estimates* (barracuda doesn't depend on sysinfo)
+/// - ✅ Same WGSL shaders run via WGPU software rasterizer (llvmpipe)
+///
+/// **Memory Note**: Values below are conservative fallbacks. Higher-level code (e.g., toadstool)
+/// that has sysinfo can override with actual system info when constructing compute pools.
 /// This was proven in cross_hardware_parity tests (Feb 8, 2026).
 struct CpuExecutor {
     capabilities: HardwareCapabilities,
@@ -388,27 +393,45 @@ struct CpuExecutor {
 
 impl CpuExecutor {
     fn new() -> Self {
+        // Query actual core count (pure Rust - no sysinfo dependency)
+        let cpu_cores = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(4);
+
+        // SIMD width: Detect via CPUID when possible, fall back to AVX2 assumption
+        // TODO(Deep Debt): Use std::is_x86_feature_detected! for actual SIMD width
+        let simd_width = if cfg!(target_feature = "avx512f") {
+            16 // AVX-512
+        } else if cfg!(target_feature = "avx2") {
+            8 // AVX2
+        } else if cfg!(target_feature = "sse4.1") {
+            4 // SSE4
+        } else {
+            4 // Conservative fallback
+        };
+
         Self {
             capabilities: HardwareCapabilities {
                 hardware_type: HardwareType::CPU,
                 parallelism: ParallelismCapabilities {
-                    max_parallel_units: std::thread::available_parallelism()
-                        .map(|n| n.get())
-                        .unwrap_or(4),
-                    simd_width: 8, // AVX2
+                    max_parallel_units: cpu_cores,
+                    simd_width,
                     task_parallel: true,
                     data_parallel: true,
                     pipeline_parallel: true,
                 },
                 memory: MemoryCapabilities {
-                    total_bytes: 16 * 1024 * 1024 * 1024, // Estimate 16GB
-                    available_bytes: 8 * 1024 * 1024 * 1024,
-                    bandwidth_bytes_per_sec: 50 * 1024 * 1024 * 1024, // 50 GB/s
+                    // Conservative estimates - barracuda is a compute library
+                    // without sysinfo dependency. Callers can provide actual
+                    // values via capability overrides if needed.
+                    total_bytes: 16 * 1024 * 1024 * 1024, // 16GB fallback
+                    available_bytes: 8 * 1024 * 1024 * 1024, // 8GB fallback
+                    bandwidth_bytes_per_sec: 50 * 1024 * 1024 * 1024, // 50 GB/s (DDR4-3200)
                     unified_memory: true,
                     zero_copy: true,
                 },
                 precision: PrecisionCapabilities {
-                    fp16: false,
+                    fp16: false, // CPU doesn't have native fp16
                     fp32: true,
                     fp64: true,
                     int8: true,
@@ -426,8 +449,10 @@ impl CpuExecutor {
                     custom_kernels: false,
                 },
                 performance: PerformanceCapabilities {
-                    peak_tflops_fp32: 0.5,
-                    peak_tflops_fp16: 0.0,
+                    // Estimates based on typical modern CPU (8-core)
+                    // Actual: ~100 GFLOPS per core for AVX2 FMA
+                    peak_tflops_fp32: (cpu_cores as f64 * 0.1).min(2.0),
+                    peak_tflops_fp16: 0.0, // No native fp16
                     peak_bandwidth_gbps: 50.0,
                     typical_power_watts: 65.0,
                     typical_latency_us: 10.0,

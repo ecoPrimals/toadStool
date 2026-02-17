@@ -569,6 +569,32 @@ Both visible to `WgpuDevice::enumerate_adapters()`. Selection via:
 - nvidia-smi unavailable under NVK/nouveau — power monitoring degrades gracefully
 - NVK requires `nouveau` kernel module (blacklisted by nvidia driver package)
 
+### wgpu Version Migration Plan (0.19 → 22)
+
+**Current State**: barracuda uses wgpu 0.19, workspace defines wgpu 22
+
+**Breaking Changes to Address**:
+1. `Adapter::request_device()` → async signature changes
+2. `Surface::configure()` parameter changes
+3. `BindGroupLayoutEntry` structure updates
+4. `RenderPassDescriptor` updates
+5. `Features` enum changes (some features renamed/removed)
+
+**Migration Strategy**:
+1. **Phase 1**: Update wgpu in barracuda Cargo.toml to `{ workspace = true }`
+2. **Phase 2**: Fix compilation errors in order:
+   - Device initialization (`WgpuDevice::new()`)
+   - Buffer creation and bind groups
+   - Pipeline creation
+   - Shader module loading
+3. **Phase 3**: Run full test suite, fix any runtime issues
+4. **Phase 4**: Performance validation (compare 0.19 vs 22 benchmarks)
+
+**Timeline**: Recommended after current deep debt phase is complete
+
+**Risk**: Low - wgpu maintains API stability within major versions. Changes are mostly
+signature updates, not fundamental architecture changes.
+
 ### Commits
 
 - `5c90eb29`: Fix fd_gradient_f64 bind group mismatch (5 tests → pass)

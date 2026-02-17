@@ -88,7 +88,7 @@ chrono = { version = "0.4", features = ["serde"] }
 # OLD: sys-info = "0.9" (C dependency, blocked ARM cross-compilation)
 # NEW: sysinfo (100% Pure Rust, cross-platform, better maintained)
 # Migration: sys_info::mem_info() → System::new_all() + refresh_memory()
-sysinfo = "0.37"
+sysinfo = { workspace = true }
 
 # GPU detection via barraCUDA (vendor-agnostic)
 wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅

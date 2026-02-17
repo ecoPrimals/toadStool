@@ -409,7 +409,7 @@ impl StandaloneExecutor {
     ///
     /// Deep debt principle: Runtime discovery, no hardcoding
     fn query_cpu_utilization(system: &mut sysinfo::System) -> f32 {
-        system.refresh_cpu_all();
+        system.refresh_cpu_usage();
 
         // Average utilization across all CPUs
         let cpus = system.cpus();

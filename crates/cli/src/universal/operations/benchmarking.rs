@@ -236,7 +236,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
     }
 
     fn get_system_info(&self) -> SystemInfo {
-        use sysinfo::{CpuExt, System, SystemExt};
+        use sysinfo::System;
 
         let mut sys = System::new_all();
         sys.refresh_all();

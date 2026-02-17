@@ -41,7 +41,7 @@ mdns = "3.0"
 # coap = "0.10"  # Optional - not critical for core functionality
 
 # Device discovery and management
-sysinfo = "0.30"
+sysinfo = { workspace = true }
 # Pure Rust udev parsing - reading /sys/class directly instead of libudev
 # Removed: udev = "0.8" (uses libudev C library)
 # Removed: libudev = "0.3" (C library dependency)

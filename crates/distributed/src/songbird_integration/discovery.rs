@@ -3,6 +3,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use sysinfo::System;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tokio::sync::RwLock;
 use tracing::debug;
@@ -232,9 +233,27 @@ impl SongbirdNetworkDiscovery {
             total_capacity.gpu_count += node.capabilities.gpu_count;
         }
 
-        // Calculate current utilization (simplified)
+        // Calculate current utilization from local system metrics
+        // This represents this node's contribution to network utilization
         let current_utilization = if total_capacity.cpu_cores > 0.0 {
-            0.65 // Placeholder for actual utilization calculation
+            // Use sysinfo to get actual CPU and memory utilization
+            let mut sys = System::new();
+            sys.refresh_cpu_usage();
+            sys.refresh_memory();
+
+            // CPU utilization: average across all cores (0.0 - 1.0)
+            let cpu_utilization = sys.global_cpu_info().cpu_usage() / 100.0;
+
+            // Memory utilization: used / total
+            let memory_utilization = if sys.total_memory() > 0 {
+                (sys.total_memory() - sys.available_memory()) as f64 / sys.total_memory() as f64
+            } else {
+                0.0
+            };
+
+            // Combined utilization (weighted average: 60% CPU, 40% memory)
+            // This heuristic reflects that CPU is often the primary bottleneck
+            (cpu_utilization as f64 * 0.6 + memory_utilization * 0.4).clamp(0.0, 1.0)
         } else {
             0.0
         };

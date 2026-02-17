@@ -13,7 +13,7 @@
 use anyhow::Result;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
-use sysinfo::{System, SystemExt};
+use sysinfo::System;
 
 /// Results of the doctor diagnostic checks
 #[derive(Debug, Serialize)]

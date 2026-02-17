@@ -1,6 +1,6 @@
 # Deep Debt Status Report
 
-**Date**: February 16, 2026  
+**Date**: February 17, 2026  
 **Status**: ✅ PRODUCTION-GRADE  
 **Quality**: ALL GATES GREEN
 
@@ -13,9 +13,50 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **MD pipeline complete** — full thermostat suite + observables + O(N) neighbor search.
 **GPU-Resident Pipeline COMPLETE** — zero CPU↔GPU round-trips during iteration.
 **Device Registry COMPLETE** — physical device deduplication with backend preference.
+**Multi-GPU Evolution COMPLETE** — adapter selection, ShaderTemplate conflict detection.
+**Dependency Unification COMPLETE** — sysinfo API consolidated across workspace.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 16, 2026 — Deep Debt Evolution + ecoBin Compliance)
+### Latest Updates (Feb 17, 2026 — Deep Debt Evolution + Primal Self-Knowledge)
+
+**Production Mock Elimination ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| `dev-mock-auth` guard | ✅ | Compile-time check prevents release builds with mock auth |
+| Utilization metrics | ✅ | Real CPU/memory utilization (was hardcoded 0.65) |
+| Storage enumeration | ✅ | Actual disk space enumeration (was always 0) |
+| Networking fallback | ✅ | Structured "networking_disabled" status (was "mock_response") |
+| Deprecated HTTP methods | ✅ | Removed dead code with placeholder parameters |
+
+**Dependency Evolution ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| sysinfo unification | ✅ | All crates use workspace version (0.30) |
+| num_cpus removal | ✅ | Eliminated from api, config (std::thread::available_parallelism) |
+| API compatibility | ✅ | Updated cli, server, distributed for sysinfo 0.30 API |
+
+**Primal Self-Knowledge ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| Capability-based discovery | ✅ | `discover_*_at()` uses primal constants, not hardcoded strings |
+| Service subdir resolution | ✅ | Priority: env var → primal constant (self-knowledge) |
+| Deprecation warnings | ✅ | Guide users toward capability-based discovery |
+
+Key files modified:
+- `crates/core/toadstool/src/biomeos_integration/auth.rs` — mock signature protection
+- `crates/distributed/src/songbird_integration/discovery.rs` — real utilization
+- `crates/distributed/src/songbird_integration/types.rs` — disk enumeration
+- `crates/core/common/src/primal_integration.rs` — capability-based resolution
+- `crates/core/toadstool/src/ecosystem/communication.rs` — deprecated method removal
+- `crates/cli/src/monitoring.rs` — sysinfo 0.30 API migration
+- `crates/server/src/handlers.rs`, `tarpc_server.rs` — sysinfo 0.30 API migration
+
+---
+
+### Previous Updates (Feb 16, 2026 — Deep Debt Evolution + ecoBin Compliance)
 
 **Health Check & Capabilities Query Evolution ✓**
 

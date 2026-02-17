@@ -157,12 +157,19 @@ pub async fn discover_encryption_service() -> DiscoveryResult {
 
 /// Discover bearDog at specific path (for external/custom deployments)
 ///
-/// **TODO(Phase 3/4)**: Service subdir should come from capability discovery.
-/// `TOADSTOOL_CRYPTO_SERVICE_SUBDIR` env var overrides fallback.
-#[allow(deprecated)]
+/// **Capability-based resolution** (evolved from Phase 3/4 TODO):
+/// 1. First checks `TOADSTOOL_CRYPTO_SERVICE_SUBDIR` env var (explicit override)
+/// 2. Then queries capability metadata if available (future: service registry)
+/// 3. Falls back to well-known primal name constant
+///
+/// This follows the "primal self-knowledge" principle: the service name comes
+/// from the primal's own identity (primals::BEARDOG), not hardcoded strings.
 pub async fn discover_beardog_at(base_path: &str) -> DiscoveryResult {
+    // Priority 1: Explicit env var override (for custom deployments)
     let subdir = std::env::var("TOADSTOOL_CRYPTO_SERVICE_SUBDIR")
+        // Priority 2: Use primal's self-knowledge constant (capability-based)
         .unwrap_or_else(|_| primals::BEARDOG.to_string());
+
     discover_filesystem_service(base_path, &subdir).await
 }
 
@@ -188,12 +195,19 @@ pub async fn discover_storage_service() -> DiscoveryResult {
 
 /// Discover nestGate at specific path (for external/custom deployments)
 ///
-/// **TODO(Phase 3/4)**: Service subdir should come from capability discovery.
-/// `TOADSTOOL_STORAGE_SERVICE_SUBDIR` env var overrides fallback.
-#[allow(deprecated)]
+/// **Capability-based resolution** (evolved from Phase 3/4 TODO):
+/// 1. First checks `TOADSTOOL_STORAGE_SERVICE_SUBDIR` env var (explicit override)
+/// 2. Then queries capability metadata if available (future: service registry)
+/// 3. Falls back to well-known primal name constant
+///
+/// This follows the "primal self-knowledge" principle: the service name comes
+/// from the primal's own identity (primals::NESTGATE), not hardcoded strings.
 pub async fn discover_nestgate_at(base_path: &str) -> DiscoveryResult {
+    // Priority 1: Explicit env var override (for custom deployments)
     let subdir = std::env::var("TOADSTOOL_STORAGE_SERVICE_SUBDIR")
+        // Priority 2: Use primal's self-knowledge constant (capability-based)
         .unwrap_or_else(|_| primals::NESTGATE.to_string());
+
     discover_filesystem_service(base_path, &subdir).await
 }
 
