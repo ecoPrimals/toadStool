@@ -342,6 +342,24 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 
 ---
 
+## Unidirectional Pipeline Architecture (Feb 17) — EXPLORATION
+
+**Novel GPU data flow patterns** for eliminating round-trip latency:
+
+| Phase | Status | Description |
+|:-----:|:------:|-------------|
+| 0 | ✅ | Design docs (4 documents) |
+| 1 | 📋 | GpuRingBuffer implementation |
+| 2 | 📋 | UnidirectionalPipeline API |
+| 3 | 📋 | Bandwidth throttling |
+| 4 | 📋 | Benchmark vs traditional |
+
+**Key insight**: Factory model — raw materials in one door, finished products out another.
+
+**Tracking**: See `UNIDIRECTIONAL_PIPELINE.md` at root.
+
+---
+
 ## Deep Debt Evolution — Pure Rust System Calls (Feb 17) ✅ COMPLETE
 
 **Pure Rust syscalls** in akida-driver (replaced libc with rustix):

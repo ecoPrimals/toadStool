@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA Specifications
 
-## Current Status (February 16, 2026)
+## Current Status (February 17, 2026)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
@@ -16,7 +16,17 @@
 - **wetSpring validated**: 48/48 life science checks (Shannon, Simpson, Bray-Curtis)
 - Pure-GPU f64 math library with 27+ transcendental functions
 
-**Latest Updates (Feb 16):**
+**Latest Updates (Feb 17):**
+
+| Update | Impact |
+|--------|--------|
+| **Unidirectional Pipeline** | Zero round-trip architecture exploration — 4 design docs |
+| **Hardware Routing Layer** | ToadStool manages PCIe/HDMI/NVLink as data channels |
+| **Software Simulation** | 90/10 bandwidth partitioning to validate patterns |
+| **Pure Rust syscalls** | akida-driver mmap/mlock migrated to rustix |
+| **biomeOS networking** | No reqwest/hyper — Songbird TLS, Beardog crypto |
+
+**Previous Updates (Feb 16):**
 
 | Update | Impact |
 |--------|--------|
@@ -76,6 +86,21 @@
 
 ## Future Work
 
+### Unidirectional Pipeline Architecture (Feb 17 Exploration) 🆕
+
+| Phase | Item | Status | Description |
+|:-----:|------|:------:|-------------|
+| 0 | **Design docs** | ✅ Done | 4 planning docs: GPU-Direct, Hardware Routing, Pipeline, Simulation |
+| 1 | **GpuRingBuffer** | 📋 Planned | Ring buffer staging for input/output |
+| 2 | **UnidirectionalPipeline** | 📋 Planned | Fire-and-forget input, batched async output |
+| 3 | **Bandwidth throttling** | 📋 Planned | Simulate 90/10 split |
+| 4 | **Benchmark vs traditional** | 📋 Planned | Measure speedup from eliminating round-trips |
+| 5 | **HDMI + capture (hardware)** | 📝 Research | Physical unidirectional with Magewell GPUDirect |
+
+**Key insight**: 10 GB/s of completed results (not raw data) = 12.5M eigensolves/sec.
+
+### Existing Future Work
+
 | Category | Items | Status | Requesting Spring |
 |----------|-------|--------|-------------------|
 | **Fused Map-Reduce** | Single-dispatch map + sum | ✅ Complete | wetSpring |
@@ -87,6 +112,7 @@
 | **NPU Pipeline** | Train/compile/deploy from Rust | 📋 Planned | ToadStool core |
 | **Display Backend** | DRM/input backend (Phase 0) | 📋 Planned | ToadStool core |
 | **Multi-Gate Routing** | Cross-machine GPU job routing | 📋 Planned | ToadStool core |
+| **Hardware Routing Layer** | ToadStool manages physical interconnects | 📋 Planned | ToadStool core |
 
 ---
 

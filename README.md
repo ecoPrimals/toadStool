@@ -255,6 +255,23 @@ toadStool/
 
 ## Recent Evolutions (Feb 17, 2026)
 
+### Unidirectional Compute Pipeline Architecture (Feb 17) — EXPLORATION
+
+**Novel GPU data flow patterns** for eliminating round-trip latency:
+
+| Concept | Description | Status |
+|---------|-------------|:------:|
+| **GPU-Direct Display** | Compute → storage texture → display (no CPU readback) | 📋 Designed |
+| **Hardware Routing Layer** | ToadStool manages PCIe/HDMI/NVLink as data channels | 📋 Designed |
+| **Unidirectional Pipeline** | CPU→GPU (input) separate from GPU→CPU (output) | 📋 Designed |
+| **Software Simulation** | 90% input / 10% output bandwidth partitioning | 📋 Designed |
+
+**Key insight**: The 10 GB/s HDMI output carries **completed results**, not raw data. With 100:1 compression (eigenvalues vs matrices), that's **12.5 million eigensolves/sec** streaming output.
+
+**Design docs**: `docs/planning/GPU_DIRECT_DISPLAY_EXPLORATION_FEB17_2026.md`, `HARDWARE_ROUTING_LAYER_FEB17_2026.md`, `UNIDIRECTIONAL_COMPUTE_PIPELINE_FEB17_2026.md`, `SOFTWARE_UNIDIRECTIONAL_SIMULATION_FEB17_2026.md`
+
+---
+
 ### Deep Debt Evolution — Pure Rust & Documentation (Feb 17) ✅
 
 **Pure Rust system calls** (akida-driver):
