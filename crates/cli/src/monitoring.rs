@@ -17,6 +17,9 @@ use tokio::time::Duration;
 use tracing::{debug, info};
 use uuid::Uuid;
 
+// Centralized timeout constants (Deep Debt evolution)
+use toadstool_common::constants::timeouts::HEALTH_CHECK_INTERVAL;
+
 /// Comprehensive monitoring system for `ToadStool`
 pub struct MonitoringSystem {
     /// Active monitoring sessions
@@ -685,7 +688,7 @@ impl MetricsStore {
 impl Default for MonitoringConfig {
     fn default() -> Self {
         Self {
-            default_interval: Duration::from_secs(30),
+            default_interval: HEALTH_CHECK_INTERVAL, // 30 seconds
             retention_period: Duration::from_secs(7 * 24 * 3600), // 7 days
             max_metrics_per_batch: 1000,
             enable_alerts: true,
