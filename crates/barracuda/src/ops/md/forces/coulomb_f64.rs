@@ -441,18 +441,271 @@ impl CoulombForceF64 {
 
     fn compute_gpu_with_energy(
         &self,
-        _positions: &[f64],
-        _charges: &[f64],
-        _k: f64,
-        _cutoff: f64,
-        _eps: f64,
+        positions: &[f64],
+        charges: &[f64],
+        k: f64,
+        cutoff: f64,
+        eps: f64,
     ) -> Result<(Vec<f64>, Vec<f64>)> {
-        // TODO: Implement GPU path with energy output
-        // For now, use CPU fallback
-        Err(BarracudaError::InvalidOperation {
-            op: "compute_gpu_with_energy".to_string(),
-            reason: "GPU energy output not yet implemented, use CPU fallback".to_string(),
-        })
+        let n = charges.len();
+
+        let pos_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Coulomb f64 Positions"),
+                contents: bytemuck::cast_slice(positions),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let charges_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Coulomb f64 Charges"),
+                contents: bytemuck::cast_slice(charges),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let forces_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Coulomb f64 Forces"),
+            size: (n * 3 * std::mem::size_of::<f64>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let energy_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Coulomb f64 Energy"),
+            size: (n * std::mem::size_of::<f64>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            n_particles: u32,
+            _pad0: u32,
+            coulomb_constant: f64,
+            cutoff_radius: f64,
+            cutoff_radius_sq: f64,
+            softening: f64,
+        }
+
+        let params = Params {
+            n_particles: n as u32,
+            _pad0: 0,
+            coulomb_constant: k,
+            cutoff_radius: cutoff,
+            cutoff_radius_sq: cutoff * cutoff,
+            softening: eps,
+        };
+
+        let params_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Coulomb f64 Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let bgl = self
+            .device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Coulomb f64 Energy BGL"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Coulomb f64 Energy Bind Group"),
+            layout: &bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: pos_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: charges_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: forces_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: energy_buf.as_entire_binding(),
+                },
+            ],
+        });
+
+        let shader = self
+            .device
+            .compile_shader(Self::wgsl_shader(), Some("Coulomb f64 Energy"));
+
+        let pipeline_layout =
+            self.device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Coulomb f64 Energy Pipeline Layout"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = self
+            .device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Coulomb f64 Energy Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "coulomb_with_energy_f64",
+            });
+
+        let mut encoder = self
+            .device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Coulomb f64 Energy Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Coulomb f64 Energy Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            let workgroups = (n as u32 + 255) / 256;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        // Read back forces
+        let forces_staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Coulomb f64 Forces Staging"),
+            size: (n * 3 * std::mem::size_of::<f64>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        // Read back energy
+        let energy_staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Coulomb f64 Energy Staging"),
+            size: (n * std::mem::size_of::<f64>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        encoder.copy_buffer_to_buffer(
+            &forces_buf,
+            0,
+            &forces_staging,
+            0,
+            (n * 3 * std::mem::size_of::<f64>()) as u64,
+        );
+
+        encoder.copy_buffer_to_buffer(
+            &energy_buf,
+            0,
+            &energy_staging,
+            0,
+            (n * std::mem::size_of::<f64>()) as u64,
+        );
+
+        self.device.queue.submit(Some(encoder.finish()));
+
+        // Map forces
+        let forces_slice = forces_staging.slice(..);
+        let (tx1, rx1) = std::sync::mpsc::channel();
+        forces_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx1.send(result).unwrap();
+        });
+
+        // Map energy
+        let energy_slice = energy_staging.slice(..);
+        let (tx2, rx2) = std::sync::mpsc::channel();
+        energy_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx2.send(result).unwrap();
+        });
+
+        self.device.device.poll(wgpu::Maintain::Wait);
+
+        rx1.recv()
+            .map_err(|e| BarracudaError::Device(format!("Forces buffer map failed: {}", e)))?
+            .map_err(|e| BarracudaError::Device(format!("Forces buffer map error: {:?}", e)))?;
+
+        rx2.recv()
+            .map_err(|e| BarracudaError::Device(format!("Energy buffer map failed: {}", e)))?
+            .map_err(|e| BarracudaError::Device(format!("Energy buffer map error: {:?}", e)))?;
+
+        let forces_data = forces_slice.get_mapped_range();
+        let forces: Vec<f64> = bytemuck::cast_slice(&forces_data).to_vec();
+        drop(forces_data);
+        forces_staging.unmap();
+
+        let energy_data = energy_slice.get_mapped_range();
+        let energies: Vec<f64> = bytemuck::cast_slice(&energy_data).to_vec();
+        drop(energy_data);
+        energy_staging.unmap();
+
+        Ok((forces, energies))
     }
 }
 
@@ -539,6 +792,47 @@ mod tests {
             (ratio - 4.0).abs() < 0.01,
             "Force should scale as 1/r^2, ratio = {}",
             ratio
+        );
+    }
+
+    #[test]
+    fn test_coulomb_f64_with_energy_gpu() {
+        let device = get_test_device();
+        let op = CoulombForceF64::new(device).unwrap();
+
+        // Need at least 32 particles to use GPU path
+        let n = 40;
+        let mut positions = vec![0.0; n * 3];
+        let mut charges = vec![0.0; n];
+
+        // Arrange particles in a line with alternating charges
+        for i in 0..n {
+            positions[i * 3] = i as f64; // x position
+            charges[i] = if i % 2 == 0 { 1.0 } else { -1.0 };
+        }
+
+        let (forces, energies) = op
+            .compute_forces_and_energy(&positions, &charges, Some(1.0), None, Some(1e-10))
+            .unwrap();
+
+        assert_eq!(forces.len(), n * 3, "Forces should have 3N elements");
+        assert_eq!(energies.len(), n, "Energies should have N elements");
+
+        // Total energy should be negative (attractive system with alternating charges)
+        let total_energy: f64 = energies.iter().sum();
+        assert!(total_energy < 0.0, "Total energy should be negative for alternating charges");
+
+        // Forces on interior particles should be small (nearly balanced)
+        // First and last particles see unbalanced forces
+        let mid = n / 2;
+        let fx_mid = forces[mid * 3].abs();
+        let fx_first = forces[0].abs();
+
+        // Interior forces should be smaller than boundary forces
+        assert!(
+            fx_mid < fx_first,
+            "Interior force {} should be less than boundary force {}",
+            fx_mid, fx_first
         );
     }
 }
