@@ -175,7 +175,7 @@ serde_json = "1.0"
 rayon = "1.8"
 
 # Direct wgpu access for shader optimization benchmarks
-wgpu = { version = "0.19", features = ["wgsl"] }
+wgpu = { workspace = true }
 bytemuck = { version = "1.14", features = ["derive"] }
 
 # Optional: Native CUDA comparison (NVIDIA only)

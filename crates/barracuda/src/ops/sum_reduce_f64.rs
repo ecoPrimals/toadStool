@@ -130,6 +130,8 @@ impl SumReduceF64 {
                 layout: Some(&pl),
                 module: &shader,
                 entry_point,
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         // Two-pass reduction

@@ -174,6 +174,8 @@ impl CgGpu {
                     )),
                     module: &spmv_shader,
                     entry_point: "spmv_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let dot_pipeline =
@@ -190,6 +192,8 @@ impl CgGpu {
                     )),
                     module: &dot_reduce_shader,
                     entry_point: "dot_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let reduce_pipeline =
@@ -206,6 +210,8 @@ impl CgGpu {
                     )),
                     module: &dot_reduce_shader,
                     entry_point: "final_reduce_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let update_xr_pipeline =
@@ -222,6 +228,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "cg_update_xr",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let update_p_pipeline =
@@ -238,6 +246,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "cg_update_p",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let compute_alpha_pipeline =
@@ -254,6 +264,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "compute_alpha",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let compute_beta_pipeline =
@@ -270,6 +282,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "compute_beta",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Create bind groups
@@ -832,6 +846,8 @@ impl CgGpu {
                     )),
                     module: &spmv_shader,
                     entry_point: "spmv_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let dot_pipeline =
@@ -848,6 +864,8 @@ impl CgGpu {
                     )),
                     module: &dot_reduce_shader,
                     entry_point: "dot_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let reduce_pipeline =
@@ -864,6 +882,8 @@ impl CgGpu {
                     )),
                     module: &dot_reduce_shader,
                     entry_point: "final_reduce_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let update_xr_pipeline =
@@ -880,6 +900,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "cg_update_xr",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let update_p_pipeline =
@@ -896,6 +918,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "cg_update_p",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let compute_alpha_pipeline =
@@ -912,6 +936,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "compute_alpha",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let compute_beta_pipeline =
@@ -928,6 +954,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "compute_beta",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let precond_pipeline =
@@ -944,6 +972,8 @@ impl CgGpu {
                     )),
                     module: &vector_ops_shader,
                     entry_point: "precond_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Create bind groups
@@ -1597,6 +1627,8 @@ impl CgGpu {
                     layout: Some(&spmv_pl),
                     module: &spmv_shader,
                     entry_point: "spmv_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let dot_pipeline =
@@ -1607,6 +1639,8 @@ impl CgGpu {
                     layout: Some(&dot_pl),
                     module: &dot_reduce_shader,
                     entry_point: "dot_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let _axpy_pipeline =
@@ -1617,6 +1651,8 @@ impl CgGpu {
                     layout: Some(&axpy_pl),
                     module: &vector_ops_shader,
                     entry_point: "axpy_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // SpMV bind group

@@ -254,6 +254,8 @@ impl WeightedDotF64 {
                 layout: Some(&pl),
                 module: &shader,
                 entry_point: "weighted_dot_parallel",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {

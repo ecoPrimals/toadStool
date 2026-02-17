@@ -479,6 +479,8 @@ impl SvdGpu {
                     layout: Some(&main_pl),
                     module: &shader,
                     entry_point: "compute_AtA",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let init_v_pipeline =
@@ -489,6 +491,8 @@ impl SvdGpu {
                     layout: Some(&main_pl),
                     module: &shader,
                     entry_point: "init_V",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let compute_jacobi_pipeline =
@@ -499,6 +503,8 @@ impl SvdGpu {
                     layout: Some(&jac_pl),
                     module: &shader,
                     entry_point: "compute_jacobi_rotation",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let jacobi_rotate_b_pipeline =
@@ -509,6 +515,8 @@ impl SvdGpu {
                     layout: Some(&rot_pl),
                     module: &shader,
                     entry_point: "jacobi_rotate_B",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let jacobi_update_block_pipeline =
@@ -519,6 +527,8 @@ impl SvdGpu {
                     layout: Some(&rot_pl),
                     module: &shader,
                     entry_point: "jacobi_update_block",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let jacobi_rotate_v_pipeline =
@@ -529,6 +539,8 @@ impl SvdGpu {
                     layout: Some(&rot_pl),
                     module: &shader,
                     entry_point: "jacobi_rotate_V",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let extract_sigma_pipeline =
@@ -539,6 +551,8 @@ impl SvdGpu {
                     layout: Some(&main_pl),
                     module: &shader,
                     entry_point: "extract_sigma",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Create params buffer
@@ -946,6 +960,8 @@ impl SvdGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point,
+        cache: None,
+        compilation_options: Default::default(),
         })
     }
 }

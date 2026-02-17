@@ -263,6 +263,8 @@ impl Correlation {
                 layout: Some(&pl),
                 module: &shader,
                 entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {

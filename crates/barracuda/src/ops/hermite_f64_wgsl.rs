@@ -248,6 +248,8 @@ impl HermiteF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point,
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = self

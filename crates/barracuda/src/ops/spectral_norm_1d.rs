@@ -214,6 +214,8 @@ impl SpectralNorm1D {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "normalize_weights",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Execute compute shader

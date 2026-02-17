@@ -198,6 +198,8 @@ impl FheIntt {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Bit-reversal pipeline
@@ -209,6 +211,8 @@ impl FheIntt {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "bit_reverse",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Scaling pipeline (divide by N)
@@ -220,6 +224,8 @@ impl FheIntt {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "scale_by_n",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         Ok(Self {

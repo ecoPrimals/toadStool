@@ -103,6 +103,7 @@ impl GpuContext {
                     label: Some(&info.name),
                     required_features,
                     required_limits: wgpu::Limits::default(),
+                memory_hints: Default::default(),
                 },
                 None,
             )
@@ -425,6 +426,8 @@ fn run_single_add(ctx: &GpuContext, a: f64, b: f64) -> (f32, f64) {
             layout: Some(&pipeline_layout),
             module: &module,
             entry_point: "main",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
     let bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -513,6 +516,8 @@ fn run_single_add(ctx: &GpuContext, a: f64, b: f64) -> (f32, f64) {
                 layout: Some(&pipeline_layout),
                 module: &module,
                 entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -633,6 +638,8 @@ fn run_kahan_sum_f64(ctx: &GpuContext, data: &[f64]) -> f64 {
             layout: Some(&pipeline_layout),
             module: &module,
             entry_point: "main",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
     let bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -744,6 +751,8 @@ fn run_kahan_sum_f32(ctx: &GpuContext, data: &[f32]) -> f32 {
             layout: Some(&pipeline_layout),
             module: &module,
             entry_point: "main",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
     let bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {

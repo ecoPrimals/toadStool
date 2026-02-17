@@ -295,6 +295,8 @@ impl GcnConv {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "transform_features",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {
@@ -320,6 +322,8 @@ impl GcnConv {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "aggregate",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {
@@ -346,6 +350,8 @@ impl GcnConv {
                         layout: Some(&pipeline_layout),
                         module: &shader_module,
                         entry_point: "add_self_loops",
+                    cache: None,
+                    compilation_options: Default::default(),
                     });
 
             {

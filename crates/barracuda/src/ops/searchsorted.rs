@@ -231,6 +231,8 @@ impl SearchSorted {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = device
@@ -360,6 +362,8 @@ impl SearchSorted {
                     layout: Some(&convert_pipeline_layout),
                     module: &convert_shader,
                     entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let mut convert_encoder =

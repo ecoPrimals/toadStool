@@ -300,6 +300,8 @@ impl SageConv {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "aggregate",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {
@@ -325,6 +327,8 @@ impl SageConv {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "apply_transform",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {
@@ -351,6 +355,8 @@ impl SageConv {
                         layout: Some(&pipeline_layout),
                         module: &shader_module,
                         entry_point: "normalize_output",
+                    cache: None,
+                    compilation_options: Default::default(),
                     });
 
             {

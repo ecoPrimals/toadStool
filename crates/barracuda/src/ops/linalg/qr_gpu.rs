@@ -537,6 +537,8 @@ impl QrGpu {
                     layout: Some(&main_pl),
                     module: &shader,
                     entry_point: "column_norm",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let compute_hh_pipeline =
@@ -547,6 +549,8 @@ impl QrGpu {
                     layout: Some(&hh_pl),
                     module: &shader,
                     entry_point: "compute_householder",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let compute_vta_pipeline =
@@ -557,6 +561,8 @@ impl QrGpu {
                     layout: Some(&apply_pl),
                     module: &shader,
                     entry_point: "compute_vTA",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let apply_hh_pipeline =
@@ -567,6 +573,8 @@ impl QrGpu {
                     layout: Some(&apply_pl),
                     module: &shader,
                     entry_point: "apply_householder",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let update_col_pipeline =
@@ -577,6 +585,8 @@ impl QrGpu {
                     layout: Some(&apply_pl),
                     module: &shader,
                     entry_point: "update_column_k",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Main loop: process each column
@@ -921,6 +931,8 @@ impl QrGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point,
+        cache: None,
+        compilation_options: Default::default(),
         })
     }
 }

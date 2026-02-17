@@ -106,6 +106,8 @@ impl BatchedElementwiseF64 {
                 layout: None,
                 module: &shader_module,
                 entry_point: "batched_compute",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         Ok(Self { device, pipeline })

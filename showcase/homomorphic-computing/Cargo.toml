@@ -50,7 +50,7 @@ num-traits = "0.2"
 num-complex = "0.4"
 
 # GPU (via wgpu - barraCUDA's backend)
-wgpu = "0.19"
+wgpu = { workspace = true }
 bytemuck = "1.20"
 tfhe = { version = "1.5.1", default-features = false, features = ["boolean", "shortint", "integer"] }
 

@@ -444,6 +444,8 @@ impl LuGpu {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "row_swap",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let compute_mult_pipeline =
@@ -454,6 +456,8 @@ impl LuGpu {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "compute_multipliers",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let row_elim_pipeline =
@@ -464,6 +468,8 @@ impl LuGpu {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "row_elimination",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Find pivot has different layout (read-only matrix, read-write result)
@@ -521,6 +527,8 @@ impl LuGpu {
                     layout: Some(&pivot_pl),
                     module: &shader,
                     entry_point: "find_pivot",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Main LU loop
@@ -781,6 +789,8 @@ impl LuGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point: "find_pivot",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
         (pipeline, layout)
@@ -839,6 +849,8 @@ impl LuGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point: "row_swap",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
         (pipeline, layout)
@@ -898,6 +910,8 @@ impl LuGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point: "compute_multipliers",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
         (pipeline, layout)
@@ -956,6 +970,8 @@ impl LuGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point: "row_elimination",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
         (pipeline, layout)

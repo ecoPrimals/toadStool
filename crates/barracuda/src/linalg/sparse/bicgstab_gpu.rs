@@ -171,6 +171,8 @@ impl BiCgStabGpu {
                     layout: Some(&spmv_pl),
                     module: &spmv_shader,
                     entry_point: "spmv_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let _dot_pipeline =
@@ -181,6 +183,8 @@ impl BiCgStabGpu {
                     layout: Some(&dot_pl),
                     module: &dot_reduce_shader,
                     entry_point: "dot_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // SpMV params

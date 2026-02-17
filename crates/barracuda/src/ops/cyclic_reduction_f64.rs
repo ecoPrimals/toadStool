@@ -277,6 +277,8 @@ impl CyclicReductionF64 {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "solve_serial_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let params = CyclicParams {
@@ -510,6 +512,8 @@ impl CyclicReductionF64 {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "reduction_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let substitution_pipeline =
@@ -520,6 +524,8 @@ impl CyclicReductionF64 {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "substitution_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Multi-pass cyclic reduction

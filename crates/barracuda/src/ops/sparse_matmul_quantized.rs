@@ -263,6 +263,8 @@ pub async fn sparse_matmul_quantized(
         layout: Some(&pipeline_layout),
         module: &shader,
         entry_point: "sparse_matmul_quantized",
+    cache: None,
+    compilation_options: Default::default(),
     });
 
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {

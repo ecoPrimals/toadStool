@@ -183,6 +183,8 @@ impl FheExtract {
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "extract_coefficient",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         Ok(Self {

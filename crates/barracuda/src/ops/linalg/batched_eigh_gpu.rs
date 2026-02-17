@@ -238,6 +238,8 @@ impl BatchedEighGpu {
                     layout: Some(&init_pl),
                     module: &shader,
                     entry_point: "batched_init_V",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let extract_pipeline =
@@ -248,6 +250,8 @@ impl BatchedEighGpu {
                     layout: Some(&init_pl),
                     module: &shader,
                     entry_point: "batched_extract_eigenvalues",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Parallel sweep layout (A, V, cs buffers)
@@ -315,6 +319,8 @@ impl BatchedEighGpu {
                     layout: Some(&sweep_pl),
                     module: &shader,
                     entry_point: "parallel_compute_angles",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let rotate_a_pipeline =
@@ -325,6 +331,8 @@ impl BatchedEighGpu {
                     layout: Some(&sweep_pl),
                     module: &shader,
                     entry_point: "parallel_rotate_A",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let update_blocks_pipeline =
@@ -335,6 +343,8 @@ impl BatchedEighGpu {
                     layout: Some(&sweep_pl),
                     module: &shader,
                     entry_point: "parallel_update_blocks",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let rotate_v_pipeline =
@@ -345,6 +355,8 @@ impl BatchedEighGpu {
                     layout: Some(&sweep_pl),
                     module: &shader,
                     entry_point: "parallel_rotate_V",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Create params buffer
@@ -735,6 +747,8 @@ impl BatchedEighGpu {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "batched_eigh_single_dispatch",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -910,6 +924,8 @@ impl BatchedEighGpu {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "batched_eigh_single_dispatch",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -1215,6 +1231,8 @@ impl BatchedEighGpu {
                     layout: Some(&init_pl),
                     module: &shader,
                     entry_point: "batched_init_V",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let extract_pipeline =
@@ -1225,6 +1243,8 @@ impl BatchedEighGpu {
                     layout: Some(&init_pl),
                     module: &shader,
                     entry_point: "batched_extract_eigenvalues",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Parallel sweep layout
@@ -1292,6 +1312,8 @@ impl BatchedEighGpu {
                     layout: Some(&sweep_pl),
                     module: &shader,
                     entry_point: "parallel_compute_angles",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let rotate_a_pipeline =
@@ -1302,6 +1324,8 @@ impl BatchedEighGpu {
                     layout: Some(&sweep_pl),
                     module: &shader,
                     entry_point: "parallel_rotate_A",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let update_blocks_pipeline =
@@ -1312,6 +1336,8 @@ impl BatchedEighGpu {
                     layout: Some(&sweep_pl),
                     module: &shader,
                     entry_point: "parallel_update_blocks",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let rotate_v_pipeline =
@@ -1322,6 +1348,8 @@ impl BatchedEighGpu {
                     layout: Some(&sweep_pl),
                     module: &shader,
                     entry_point: "parallel_rotate_V",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Create params buffer

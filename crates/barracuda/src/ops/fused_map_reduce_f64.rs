@@ -116,6 +116,8 @@ impl FusedMapReduceF64 {
                 layout: None,
                 module: &shader_module,
                 entry_point: "fused_map_reduce",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         // Pipeline for reducing partials
@@ -127,6 +129,8 @@ impl FusedMapReduceF64 {
                     layout: None,
                     module: &shader_module,
                     entry_point: "reduce_partials",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         Ok(Self {

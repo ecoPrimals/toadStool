@@ -156,6 +156,8 @@ impl MatrixPower {
                         layout: Some(&pipeline_layout),
                         module: &shader_module,
                         entry_point: "init_identity",
+                    cache: None,
+                    compilation_options: Default::default(),
                     });
 
             // Encode and execute

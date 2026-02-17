@@ -103,6 +103,7 @@ impl GpuContext {
                     label: Some(&info.name),
                     required_features,
                     required_limits: wgpu::Limits::default(),
+                memory_hints: Default::default(),
                 },
                 None,
             )
@@ -208,6 +209,8 @@ fn run_f32_benchmark(ctx: &GpuContext, size: usize, iterations: usize) -> (f64, 
             layout: Some(&pipeline_layout),
             module: &add_module,
             entry_point: "main",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
     let bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -362,6 +365,8 @@ fn run_f64_benchmark(ctx: &GpuContext, size: usize, iterations: usize) -> Option
             layout: Some(&pipeline_layout),
             module: &add_module,
             entry_point: "main",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
     let bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {

@@ -186,6 +186,8 @@ impl Cholesky {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         // Create command encoder
@@ -357,6 +359,8 @@ impl CholeskyF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "cholesky_f64",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = device
@@ -493,6 +497,8 @@ impl CholeskyF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "cholesky_f64_batched",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = device

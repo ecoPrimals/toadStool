@@ -341,6 +341,8 @@ impl Lamb {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "compute_adam_step",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {
@@ -366,6 +368,8 @@ impl Lamb {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "apply_trust_ratio",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {

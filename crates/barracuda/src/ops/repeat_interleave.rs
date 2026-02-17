@@ -184,6 +184,8 @@ impl RepeatInterleave {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Execute compute shader

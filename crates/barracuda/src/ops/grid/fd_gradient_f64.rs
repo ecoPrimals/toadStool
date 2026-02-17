@@ -84,6 +84,8 @@ impl Gradient1D {
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "gradient_1d",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         Ok(Self {
@@ -324,6 +326,8 @@ impl Gradient2D {
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "gradient_2d",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         Ok(Self {
@@ -624,6 +628,8 @@ impl Laplacian2D {
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "laplacian_2d",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         Ok(Self {
@@ -903,6 +909,8 @@ impl CylindricalGradient {
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "gradient_cylindrical",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         Ok(Self {
@@ -1176,6 +1184,8 @@ impl CylindricalLaplacian {
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "laplacian_cylindrical",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         Ok(Self {

@@ -44,6 +44,8 @@ impl BinaryCrossEntropy {
                 layout: None,
                 module: &shader,
                 entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         // Create bind group

@@ -207,6 +207,8 @@ impl GemmF64 {
                 layout: Some(&pl),
                 module: &shader,
                 entry_point: "gemm_f64",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {

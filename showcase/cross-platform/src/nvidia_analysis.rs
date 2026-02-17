@@ -90,6 +90,8 @@ async fn benchmark_raw_compute(
         layout: Some(&pipeline_layout),
         module: &shader,
         entry_point: "main",
+    cache: None,
+    compilation_options: Default::default(),
     });
 
     // Create buffers
@@ -250,6 +252,8 @@ async fn measure_overheads(device: &Arc<WgpuDevice>, size: usize) -> Result<()> 
         layout: Some(&pipeline_layout),
         module: &shader,
         entry_point: "main",
+    cache: None,
+    compilation_options: Default::default(),
     });
 
     let buffer_a = wgpu_device.create_buffer(&wgpu::BufferDescriptor {

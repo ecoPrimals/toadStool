@@ -166,6 +166,8 @@ impl MatrixRank {
                     layout: Some(&unified_pipeline_layout),
                     module: &shader,
                     entry_point: "copy_matrix",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let mut encoder = device
@@ -199,6 +201,8 @@ impl MatrixRank {
                     layout: Some(&unified_pipeline_layout),
                     module: &shader,
                     entry_point: "gaussian_elimination",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {
@@ -228,6 +232,8 @@ impl MatrixRank {
                     layout: Some(&unified_pipeline_layout),
                     module: &shader,
                     entry_point: "count_rank",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {

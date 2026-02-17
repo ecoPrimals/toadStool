@@ -138,6 +138,7 @@ impl WgpuDevice {
                     label: Some("BarraCUDA high-capacity device"),
                     required_features: wgpu::Features::empty(),
                     required_limits: limits,
+                    memory_hints: Default::default(),
                 },
                 None,
             )
@@ -466,6 +467,7 @@ impl WgpuDevice {
                     label: Some("BarraCUDA device"),
                     required_features,
                     required_limits: super::tensor_context::science_limits(),
+                    memory_hints: Default::default(),
                 },
                 None,
             )
@@ -518,6 +520,7 @@ impl WgpuDevice {
                     label: Some("barraCUDA Device"),
                     required_features: wgpu::Features::empty(),
                     required_limits: super::tensor_context::science_limits(),
+                    memory_hints: Default::default(),
                 },
                 None,
             )
@@ -830,6 +833,8 @@ impl WgpuDevice {
                 layout: None,
                 module: &shader,
                 entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         // Encode and submit

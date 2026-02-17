@@ -219,6 +219,8 @@ impl FheKeySwitch {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "decompose_base_b",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let pipeline_accumulate =
@@ -229,6 +231,8 @@ impl FheKeySwitch {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "accumulate_switched",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         Ok(Self {

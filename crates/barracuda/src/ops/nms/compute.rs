@@ -157,6 +157,8 @@ impl NMS {
                     layout: Some(&iou_pipeline_layout),
                     module: &shader_module,
                     entry_point: "compute_iou_matrix",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Execute IoU computation
@@ -320,6 +322,8 @@ impl NMS {
                     layout: Some(&suppress_pipeline_layout),
                     module: &shader_module,
                     entry_point: "mark_suppressed",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Execute suppression marking
@@ -484,6 +488,8 @@ impl NMS {
                     layout: Some(&compact_pipeline_layout),
                     module: &shader_module,
                     entry_point: "compact_results",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Execute compaction

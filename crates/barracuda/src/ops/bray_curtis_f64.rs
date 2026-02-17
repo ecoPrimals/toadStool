@@ -86,6 +86,8 @@ impl BrayCurtisF64 {
                 layout: None,
                 module: &shader_module,
                 entry_point: "bray_curtis_pairs",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         Ok(Self { device, pipeline })

@@ -209,6 +209,8 @@ impl LennardJonesF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "lennard_jones_f64",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = device

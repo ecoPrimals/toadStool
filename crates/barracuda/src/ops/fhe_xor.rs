@@ -126,6 +126,8 @@ impl FheXor {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         Ok(Self {

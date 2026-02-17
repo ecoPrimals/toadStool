@@ -142,6 +142,8 @@ fn execute_2d(
             layout: Some(&pipeline_layout),
             module: &shader,
             entry_point: "main_2d",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
     // Encode and execute
@@ -432,6 +434,8 @@ fn execute_nd(
             layout: Some(&pipeline_layout),
             module: &shader,
             entry_point: "main_nd",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
     // Encode and execute

@@ -257,6 +257,8 @@ impl GraphBatchNorm {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "compute_mean",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {
@@ -282,6 +284,8 @@ impl GraphBatchNorm {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "compute_variance",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {
@@ -307,6 +311,8 @@ impl GraphBatchNorm {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "normalize",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {

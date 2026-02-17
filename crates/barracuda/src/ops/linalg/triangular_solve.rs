@@ -231,6 +231,8 @@ impl TriangularSolve {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         // Create command encoder
@@ -460,6 +462,8 @@ impl TriangularSolveF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "triangular_solve_f64",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = device
@@ -643,6 +647,8 @@ impl TriangularSolveF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "triangular_solve_transpose_f64",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = device

@@ -180,6 +180,8 @@ impl Fft1DF64 {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let pipeline_bit_reverse =
@@ -190,6 +192,8 @@ impl Fft1DF64 {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "bit_reverse",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         Ok(Self {

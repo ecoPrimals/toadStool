@@ -201,6 +201,8 @@ impl Scatter {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let scatter_pipeline =
@@ -211,6 +213,8 @@ impl Scatter {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "scatter",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Execute compute shader (two passes)

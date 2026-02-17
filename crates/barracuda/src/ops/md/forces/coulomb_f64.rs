@@ -383,6 +383,8 @@ impl CoulombForceF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point,
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = self
@@ -617,6 +619,8 @@ impl CoulombForceF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "coulomb_with_energy_f64",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = self

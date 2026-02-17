@@ -111,6 +111,8 @@ impl BesselI0F64 {
             layout: Some(&pipeline_layout),
             module: &shader_module,
             entry_point: "main",
+        cache: None,
+        compilation_options: Default::default(),
         });
 
         let mut encoder = self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Bessel I0 f64 Encoder") });

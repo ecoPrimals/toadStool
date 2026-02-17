@@ -164,6 +164,8 @@ impl NormReduceF64 {
                 layout: Some(&pl),
                 module: &shader,
                 entry_point,
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let n = data.len();
@@ -255,6 +257,8 @@ impl NormReduceF64 {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: second_entry,
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let final_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {

@@ -293,6 +293,8 @@ impl GinConv {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "aggregate",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {
@@ -318,6 +320,8 @@ impl GinConv {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "apply_mlp",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         {

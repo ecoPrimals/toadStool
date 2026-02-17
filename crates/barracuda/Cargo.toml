@@ -16,9 +16,8 @@ anyhow = "1.0"
 thiserror = "1.0"
 
 # GPU compute (WebGPU - hardware agnostic, handles CPU/GPU/NPU/TPU!)
-# NOTE: Using wgpu 0.19 - upgrade to v22 requires API changes (breaking changes)
-# TODO: Migrate to workspace wgpu v22 in future release (API compatibility work)
-wgpu = { version = "0.19", default-features = false, features = ["wgsl"] }
+# Uses workspace wgpu v22 - Pure Rust, no renderdoc C dependency
+wgpu = { workspace = true }
 futures = "0.3"
 bytemuck = { version = "1.14", features = ["derive"] }
 

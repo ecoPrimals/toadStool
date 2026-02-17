@@ -151,6 +151,8 @@ impl MaxAbsDiffF64 {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "max_abs_diff_f64",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         // Two-pass reduction
@@ -251,6 +253,8 @@ impl MaxAbsDiffF64 {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "max_reduce_pass2",
+                cache: None,
+                compilation_options: Default::default(),
                 });
 
         let n_workgroups2 = n_workgroups.div_ceil(wg_size);

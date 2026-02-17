@@ -124,6 +124,8 @@ impl LinearMixer {
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "mix_linear",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         Ok(Self {

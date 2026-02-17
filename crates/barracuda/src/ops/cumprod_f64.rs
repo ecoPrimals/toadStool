@@ -243,6 +243,8 @@ impl CumprodF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: self.entry_point(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         // Dispatch

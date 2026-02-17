@@ -195,6 +195,8 @@ impl VarianceReduceF64 {
                 layout: Some(&pl),
                 module: &shader,
                 entry_point: "variance_reduce_f64",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let n = data.len();

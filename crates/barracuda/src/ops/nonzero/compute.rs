@@ -183,6 +183,8 @@ impl NonZero {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "inclusive_scan",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = device
@@ -317,6 +319,8 @@ impl NonZero {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = device
@@ -450,6 +454,8 @@ impl NonZero {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = device
@@ -661,6 +667,8 @@ impl NonZero {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
             });
 
         let mut encoder = device
