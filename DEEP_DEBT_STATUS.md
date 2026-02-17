@@ -517,6 +517,48 @@ See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md` and `NEXT_STEPS.md`
 
 ---
 
+## February 17, 2026 — Multi-GPU Evolution
+
+### hotSpring Validation Success
+
+BarraCUDA WGSL shaders validated as **driver-agnostic** across:
+
+| GPU | Architecture | Driver | shaderFloat64 | Results |
+|-----|-------------|--------|---------------|---------|
+| RTX 4070 | Ada (AD104) | nvidia proprietary 580.82 | true | 16/16 HFB pass |
+| Titan V | Volta (GV100) | NVK / nouveau (Mesa 25.1.5) | true | 16/16 HFB pass |
+
+**Numerical parity**: eigenvalue errors, orthogonality, BCS occupations identical to 1e-15.
+
+### New Multi-GPU Features
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| ✅ `from_env()` | **NEW** | Environment-based adapter selection via `BARRACUDA_GPU_ADAPTER` |
+| ✅ `with_adapter_selector()` | **NEW** | Programmatic selection by index or name substring |
+| ✅ `with_math_f64_safe()` | **NEW** | Conflict detection prevents "redefinition" errors |
+| ✅ `shader_defines_function()` | **NEW** | Utility for detecting existing definitions |
+| ✅ NVK compatibility | **DOCUMENTED** | Notes on nouveau, power monitoring, kernel modules |
+
+### Adapter Selection Usage
+
+```rust
+// Environment: export BARRACUDA_GPU_ADAPTER=titan
+let device = WgpuDevice::from_env().await?;
+
+// Programmatic: by name or index
+let device = WgpuDevice::with_adapter_selector("titan").await?;
+let device = WgpuDevice::with_adapter_selector("0").await?;
+
+// List available
+let adapters = WgpuDevice::enumerate_adapters();
+```
+
+**Key insight**: Numeric selectors exceeding adapter count fall through to name matching,
+allowing "4070" to match "NVIDIA GeForce RTX 4070".
+
+---
+
 ## February 17, 2026 — Deep Debt Investigation
 
 ### Audit Results

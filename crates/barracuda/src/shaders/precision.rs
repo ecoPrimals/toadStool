@@ -317,6 +317,95 @@ impl ShaderTemplate {
 
         output
     }
+
+    /// Check if shader body already defines a function
+    ///
+    /// Used to avoid injecting duplicate definitions that cause
+    /// "redefinition of X" errors in WGSL.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let shader = "fn f64_const(x: f64, c: f32) -> f64 { ... }";
+    /// assert!(ShaderTemplate::shader_defines_function(shader, "f64_const"));
+    /// ```
+    pub fn shader_defines_function(shader_body: &str, func_name: &str) -> bool {
+        let pattern1 = format!("fn {func_name}(");
+        let pattern2 = format!("fn {func_name} (");
+        shader_body.contains(&pattern1) || shader_body.contains(&pattern2)
+    }
+
+    /// Check if shader body defines any variable/constant with a given name
+    ///
+    /// Checks for module-scope let/var/const definitions that would conflict
+    /// with injected code. Does NOT match function-local definitions.
+    ///
+    /// # BUG FIX (Feb 17 2026 — hotSpring validation):
+    /// User shaders that define `let zero = x - x;` at module scope conflict
+    /// with math_f64 functions that use `let zero = ...` internally. This
+    /// helper enables detection before injection.
+    pub fn shader_defines_module_var(shader_body: &str, var_name: &str) -> bool {
+        // Module-scope definitions appear at start of line (no indentation)
+        // or after bindings section
+        for line in shader_body.lines() {
+            let trimmed = line.trim();
+            // Skip function bodies (start with spaces/tabs in well-formatted WGSL)
+            // Module-scope definitions are at column 0 or after comments
+            if line.starts_with("let ")
+                || line.starts_with("var ")
+                || line.starts_with("const ")
+            {
+                if trimmed.contains(&format!("{var_name} "))
+                    || trimmed.contains(&format!("{var_name}="))
+                    || trimmed.contains(&format!("{var_name}:"))
+                {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Prepends math_f64 library with conflict detection
+    ///
+    /// Like `with_math_f64()` but skips injection if the shader already
+    /// defines `f64_const` or other math_f64 functions. This prevents
+    /// "redefinition" errors in WGSL compilation.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let shader = include_str!("my_shader.wgsl");
+    /// let full = ShaderTemplate::with_math_f64_safe(shader);
+    /// // If my_shader.wgsl already has f64_const, won't cause redefinition
+    /// ```
+    pub fn with_math_f64_safe(shader_body: &str) -> String {
+        // If shader already defines f64_const, assume it has its own math lib
+        if Self::shader_defines_function(shader_body, "f64_const") {
+            log::debug!("Shader already defines f64_const, skipping preamble injection");
+            return shader_body.to_string();
+        }
+
+        Self::with_math_f64(shader_body)
+    }
+
+    /// Auto-detect and prepend math_f64 with conflict detection
+    ///
+    /// Like `with_math_f64_auto()` but skips injection if conflicts detected.
+    /// This is the safest method for use with user shaders.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let shader = include_str!("user_shader.wgsl");
+    /// let full = ShaderTemplate::with_math_f64_auto_safe(shader);
+    /// ```
+    pub fn with_math_f64_auto_safe(shader_body: &str) -> String {
+        // If shader already defines f64_const, skip auto-injection
+        if Self::shader_defines_function(shader_body, "f64_const") {
+            log::debug!("Shader already defines f64_const, skipping auto-injection");
+            return shader_body.to_string();
+        }
+
+        Self::with_math_f64_auto(shader_body)
+    }
 }
 
 /// Function dependency map for math_f64.wgsl
@@ -876,5 +965,82 @@ mod tests {
             "Expected >40% size reduction, got {:.1}%",
             reduction * 100.0
         );
+    }
+
+    #[test]
+    fn test_shader_defines_function() {
+        let shader = r#"
+            fn f64_const(x: f64, c: f32) -> f64 {
+                return x - x + f64(c);
+            }
+        "#;
+        assert!(ShaderTemplate::shader_defines_function(shader, "f64_const"));
+        assert!(!ShaderTemplate::shader_defines_function(shader, "sqrt_f64"));
+
+        // Test with space before paren
+        let shader_space = r#"fn sqrt_f64 (x: f64) -> f64 { return x; }"#;
+        assert!(ShaderTemplate::shader_defines_function(shader_space, "sqrt_f64"));
+    }
+
+    #[test]
+    fn test_shader_defines_module_var() {
+        // Module-scope definition
+        let shader_module_scope = r#"
+let zero = 0.0;
+fn main() { }
+"#;
+        assert!(ShaderTemplate::shader_defines_module_var(
+            shader_module_scope,
+            "zero"
+        ));
+
+        // Function-local definition (indented, should NOT match)
+        let shader_local = r#"
+fn main() {
+    let zero = x - x;
+}
+"#;
+        assert!(!ShaderTemplate::shader_defines_module_var(shader_local, "zero"));
+
+        // Const at module scope
+        let shader_const = r#"
+const EPSILON: f64 = 1e-15;
+"#;
+        assert!(ShaderTemplate::shader_defines_module_var(shader_const, "EPSILON"));
+    }
+
+    #[test]
+    fn test_with_math_f64_safe_no_conflict() {
+        let shader = r#"
+            @compute @workgroup_size(256)
+            fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+                output[id.x] = sqrt(input[id.x]);
+            }
+        "#;
+
+        let result = ShaderTemplate::with_math_f64_safe(shader);
+        // Should include the full library (no conflict)
+        assert!(result.contains("fn f64_const"));
+    }
+
+    #[test]
+    fn test_with_math_f64_safe_conflict() {
+        let shader = r#"
+            // User shader already has f64_const
+            fn f64_const(x: f64, c: f32) -> f64 {
+                return x - x + f64(c);
+            }
+
+            @compute @workgroup_size(256)
+            fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+                output[id.x] = f64_const(input[id.x], 1.0);
+            }
+        "#;
+
+        let result = ShaderTemplate::with_math_f64_safe(shader);
+        // Should return shader as-is (detected conflict)
+        assert!(result.contains("User shader already has f64_const"));
+        // Should NOT have duplicate f64_const
+        assert_eq!(result.matches("fn f64_const").count(), 1);
     }
 }

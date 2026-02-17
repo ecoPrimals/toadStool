@@ -5,11 +5,30 @@
 //! - wgpu handles execution on ANY device (GPU/CPU/NPU/TPU)
 //! - Single implementation per operation
 //! - Let wgpu experts handle backend optimization
+//!
+//! ## Adapter Selection
+//!
+//! Set `BARRACUDA_GPU_ADAPTER` environment variable to control GPU selection:
+//!
+//! - `BARRACUDA_GPU_ADAPTER=0` — Select first adapter
+//! - `BARRACUDA_GPU_ADAPTER=titan` — Select adapter containing "titan" (case-insensitive)
+//! - `BARRACUDA_GPU_ADAPTER=auto` — Use wgpu HighPerformance (default)
+//!
+//! Numeric values that exceed adapter count fall through to name matching.
+//! This enables "4070" to match "NVIDIA GeForce RTX 4070" even when parsed as number.
+//!
+//! ## Multi-GPU Coexistence
+//!
+//! Multiple GPUs with different drivers (e.g., nvidia proprietary + NVK/nouveau)
+//! can coexist and are all visible to wgpu's `enumerate_adapters()`.
 
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
 
 use super::autotune::{GpuCalibration, GLOBAL_TUNER};
+
+/// Environment variable for adapter selection
+const ADAPTER_ENV_VAR: &str = "BARRACUDA_GPU_ADAPTER";
 
 /// WebGPU device - executes WGSL on any hardware
 ///
@@ -296,6 +315,98 @@ impl WgpuDevice {
         Err(BarracudaError::device(
             "No f64-capable GPU found (NVIDIA Pascal+, AMD GCN+, or Intel required)",
         ))
+    }
+
+    /// Create device using `BARRACUDA_GPU_ADAPTER` environment variable
+    ///
+    /// Selection modes:
+    /// - Numeric index: `BARRACUDA_GPU_ADAPTER=0` selects first adapter
+    /// - Name match: `BARRACUDA_GPU_ADAPTER=titan` matches "TITAN V" (case-insensitive)
+    /// - Auto: `BARRACUDA_GPU_ADAPTER=auto` or unset uses HighPerformance
+    ///
+    /// **Key insight**: Numeric values that exceed adapter count fall through to
+    /// name matching. This allows "4070" to match "NVIDIA GeForce RTX 4070".
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // In shell: export BARRACUDA_GPU_ADAPTER=titan
+    /// let device = WgpuDevice::from_env().await?;
+    /// // → selects "NVIDIA TITAN V" if available
+    /// ```
+    pub async fn from_env() -> Result<Self> {
+        let selector = std::env::var(ADAPTER_ENV_VAR).unwrap_or_else(|_| "auto".to_string());
+        Self::with_adapter_selector(&selector).await
+    }
+
+    /// Create device with explicit adapter selector
+    ///
+    /// Selector modes:
+    /// - `"auto"` — wgpu HighPerformance power preference (default)
+    /// - `"0"`, `"1"`, etc. — adapter index from `enumerate_adapters()`
+    /// - `"titan"`, `"4070"`, etc. — case-insensitive name substring match
+    ///
+    /// Numeric selectors that exceed adapter count fall through to name matching.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // By index
+    /// let device = WgpuDevice::with_adapter_selector("0").await?;
+    ///
+    /// // By name
+    /// let device = WgpuDevice::with_adapter_selector("titan").await?;
+    /// ```
+    pub async fn with_adapter_selector(selector: &str) -> Result<Self> {
+        let selector = selector.trim().to_lowercase();
+
+        if selector == "auto" || selector.is_empty() {
+            log::info!("Adapter selection: auto (HighPerformance)");
+            return Self::new().await;
+        }
+
+        let adapters = Self::enumerate_adapters();
+
+        if adapters.is_empty() {
+            return Err(BarracudaError::device("No adapters available"));
+        }
+
+        // Try numeric index first
+        if let Ok(index) = selector.parse::<usize>() {
+            if index < adapters.len() {
+                log::info!(
+                    "Adapter selection: index {} → {}",
+                    index,
+                    adapters[index].name
+                );
+                return Self::from_adapter_index(index).await;
+            }
+            // Fall through to name matching if index out of bounds
+            // This allows "4070" to match "NVIDIA GeForce RTX 4070"
+            log::debug!(
+                "Adapter index {} out of bounds ({}), trying name match",
+                index,
+                adapters.len()
+            );
+        }
+
+        // Name substring match (case-insensitive)
+        for (index, info) in adapters.iter().enumerate() {
+            if info.name.to_lowercase().contains(&selector) {
+                log::info!(
+                    "Adapter selection: '{}' → {} (index {})",
+                    selector,
+                    info.name,
+                    index
+                );
+                return Self::from_adapter_index(index).await;
+            }
+        }
+
+        // No match found
+        let available: Vec<_> = adapters.iter().map(|a| a.name.as_str()).collect();
+        Err(BarracudaError::device(format!(
+            "No adapter matches '{}'. Available: {:?}",
+            selector, available
+        )))
     }
 
     /// Create with specific backend (for testing/multi-GPU)
@@ -987,6 +1098,105 @@ mod tests {
             }
             Err(_) => {
                 println!("  No CPU software rasterizer available");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_adapter_selector_auto() {
+        // "auto" should work like the default new()
+        match WgpuDevice::with_adapter_selector("auto").await {
+            Ok(device) => {
+                println!("Auto-selected: {} ({:?})", device.name(), device.device_type());
+            }
+            Err(e) => {
+                println!("No adapter available: {e}");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_adapter_selector_index() {
+        let adapters = WgpuDevice::enumerate_adapters();
+        if adapters.is_empty() {
+            println!("No adapters to test index selection");
+            return;
+        }
+
+        // Select first adapter by index
+        match WgpuDevice::with_adapter_selector("0").await {
+            Ok(device) => {
+                println!("Index 0: {} ({:?})", device.name(), device.device_type());
+                // Should match first adapter
+                assert_eq!(device.name(), adapters[0].name);
+            }
+            Err(e) => {
+                panic!("Index 0 should succeed when adapters exist: {e}");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_adapter_selector_name_match() {
+        let adapters = WgpuDevice::enumerate_adapters();
+        if adapters.is_empty() {
+            println!("No adapters to test name matching");
+            return;
+        }
+
+        // Get first 3 chars of first adapter name (lowercase)
+        let first_name = &adapters[0].name;
+        let partial = first_name.chars().take(4).collect::<String>().to_lowercase();
+
+        println!("Testing name match with partial: '{partial}'");
+
+        match WgpuDevice::with_adapter_selector(&partial).await {
+            Ok(device) => {
+                println!("Name match: {} ({:?})", device.name(), device.device_type());
+                // Should match an adapter containing the partial name
+                assert!(device.name().to_lowercase().contains(&partial));
+            }
+            Err(e) => {
+                // Might fail if partial doesn't uniquely match
+                println!("Name match failed (expected if ambiguous): {e}");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_adapter_selector_fallthrough() {
+        // Test that large numeric indices fall through to name matching
+        // e.g., "4070" as index (probably > adapter count) should match "RTX 4070"
+        let adapters = WgpuDevice::enumerate_adapters();
+
+        // Use a number larger than adapter count
+        let large_index = (adapters.len() + 1000).to_string();
+
+        // This should fail with "no adapter matches"
+        match WgpuDevice::with_adapter_selector(&large_index).await {
+            Ok(_) => {
+                // Only succeeds if there's an adapter with this name substring
+                println!("Unexpectedly found adapter matching '{large_index}'");
+            }
+            Err(e) => {
+                // Expected: should report available adapters
+                println!("Expected error: {e}");
+                assert!(e.to_string().contains("No adapter matches"));
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_from_env_default() {
+        // With no env var set, should default to auto
+        std::env::remove_var(ADAPTER_ENV_VAR);
+
+        match WgpuDevice::from_env().await {
+            Ok(device) => {
+                println!("Env default: {} ({:?})", device.name(), device.device_type());
+            }
+            Err(e) => {
+                println!("No adapter available: {e}");
             }
         }
     }

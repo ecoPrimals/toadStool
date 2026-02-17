@@ -499,6 +499,76 @@ The parallel cyclic reduction algorithm had data flow issues. Instead of multi-p
 
 **Result**: All 3 cyclic reduction tests pass. Pure GPU for PDE grid sizes.
 
+---
+
+## Multi-GPU Evolution (Feb 17 2026)
+
+### hotSpring Validation Success
+
+hotSpring validated that BarraCUDA WGSL shaders are **driver-agnostic**:
+
+| GPU | Architecture | Driver | shaderFloat64 | Results |
+|-----|-------------|--------|---------------|---------|
+| RTX 4070 | Ada (AD104) | nvidia proprietary 580.82 | true | 16/16 HFB pass |
+| Titan V | Volta (GV100) | NVK / nouveau (Mesa 25.1.5) | true | 16/16 HFB pass |
+
+**Numerical parity**: eigenvalue errors, orthogonality, BCS occupations identical to 1e-15.
+
+### New Features Implemented
+
+#### 1. Environment-Based Adapter Selection
+
+```rust
+// Set BARRACUDA_GPU_ADAPTER=titan to select Titan V
+// Set BARRACUDA_GPU_ADAPTER=0 for first adapter  
+// Set BARRACUDA_GPU_ADAPTER=auto for default (or unset)
+
+let device = WgpuDevice::from_env().await?;
+
+// Or programmatically:
+let device = WgpuDevice::with_adapter_selector("titan").await?;
+let device = WgpuDevice::with_adapter_selector("0").await?;
+```
+
+Key insight: numeric values exceeding adapter count fall through to name matching,
+allowing "4070" to match "NVIDIA GeForce RTX 4070".
+
+#### 2. ShaderTemplate Conflict Detection
+
+New safe variants prevent "redefinition" errors when user shaders define `f64_const`:
+
+```rust
+// Detects if shader already defines f64_const
+let shader = ShaderTemplate::with_math_f64_safe(user_shader);
+let shader = ShaderTemplate::with_math_f64_auto_safe(user_shader);
+
+// Utility functions for conflict detection
+if ShaderTemplate::shader_defines_function(shader, "f64_const") {
+    // Skip injection
+}
+```
+
+#### 3. Multi-GPU Coexistence Pattern
+
+Multiple GPUs with different drivers can coexist:
+
+```
+RTX 4070 (01:00.0) → nvidia kernel module → proprietary Vulkan ICD
+Titan V  (05:00.0) → nouveau kernel module → NVK Mesa Vulkan ICD
+```
+
+Both visible to `WgpuDevice::enumerate_adapters()`. Selection via:
+- `BARRACUDA_GPU_ADAPTER` environment variable
+- `WgpuDevice::with_adapter_selector()`
+- `WgpuDevice::from_adapter_index()`
+
+### NVK Compatibility Notes
+
+- NVK (Mesa 25.1+) is Vulkan 1.4 conformant for Maxwell through Blackwell
+- `shaderFloat64 = true` unconditionally (all NVIDIA GPUs have fp64 ALUs)
+- nvidia-smi unavailable under NVK/nouveau — power monitoring degrades gracefully
+- NVK requires `nouveau` kernel module (blacklisted by nvidia driver package)
+
 ### Commits
 
 - `5c90eb29`: Fix fd_gradient_f64 bind group mismatch (5 tests → pass)
