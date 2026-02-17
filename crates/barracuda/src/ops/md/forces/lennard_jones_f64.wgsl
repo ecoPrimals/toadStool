@@ -103,13 +103,14 @@ fn lennard_jones_f64(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let sigma_r6 = sigma_r_sq * sigma_r_sq * sigma_r_sq;
         let sigma_r12 = sigma_r6 * sigma_r6;
         
-        // Force magnitude (scalar)
+        // Force magnitude (scalar): positive = repulsive
         let force_over_r = twenty_four * epsilon / r_sq * (two * sigma_r12 - sigma_r6);
         
-        // Force vector components (along r̂ = r_vec / r)
-        fx = fx + force_over_r * dx;
-        fy = fy + force_over_r * dy;
-        fz = fz + force_over_r * dz;
+        // Force vector components: F_i = -F * r_hat_ij (repulsion pushes AWAY from j)
+        // r_hat_ij points from i to j (along dx,dy,dz), so negate for repulsive force
+        fx = fx - force_over_r * dx;
+        fy = fy - force_over_r * dy;
+        fz = fz - force_over_r * dz;
     }
     
     // Write forces
@@ -181,9 +182,10 @@ fn lennard_jones_shifted_f64(@builtin(global_invocation_id) global_id: vec3<u32>
         // Force with shifted potential (same formula, just well-defined at cutoff)
         let force_over_r = twenty_four * epsilon / r_sq * (two * sigma_r12 - sigma_r6);
         
-        fx = fx + force_over_r * dx;
-        fy = fy + force_over_r * dy;
-        fz = fz + force_over_r * dz;
+        // Repulsion pushes AWAY from j
+        fx = fx - force_over_r * dx;
+        fy = fy - force_over_r * dy;
+        fz = fz - force_over_r * dz;
     }
     
     forces[i * 3u] = fx;
@@ -253,11 +255,11 @@ fn lennard_jones_with_energy_f64(@builtin(global_invocation_id) global_id: vec3<
         let sigma_r6 = sigma_r_sq * sigma_r_sq * sigma_r_sq;
         let sigma_r12 = sigma_r6 * sigma_r6;
         
-        // Force
+        // Force: repulsion pushes AWAY from j
         let force_over_r = twenty_four * epsilon / r_sq * (two * sigma_r12 - sigma_r6);
-        fx = fx + force_over_r * dx;
-        fy = fy + force_over_r * dy;
-        fz = fz + force_over_r * dz;
+        fx = fx - force_over_r * dx;
+        fy = fy - force_over_r * dy;
+        fz = fz - force_over_r * dz;
         
         // Potential energy: U = 4ε[(σ/r)^12 - (σ/r)^6]
         // Divide by 2 to avoid double counting
