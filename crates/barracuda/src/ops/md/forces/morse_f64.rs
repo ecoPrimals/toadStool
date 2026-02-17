@@ -11,9 +11,8 @@
 //! - ✅ Agnostic (no hardcoded constants)
 
 use crate::device::WgpuDevice;
-use crate::error::{BarracudaError, Result};
+use crate::error::Result;
 use std::sync::Arc;
-use wgpu::util::DeviceExt;
 
 /// f64 Morse force calculation for bonded interactions
 ///

@@ -25,6 +25,7 @@
 //! **Deep Debt**: All math in WGSL, zero unsafe
 
 pub mod born_mayer;
+pub mod born_mayer_f64;
 pub mod coulomb;
 pub mod coulomb_f64;
 pub mod lennard_jones;
@@ -36,6 +37,7 @@ pub mod yukawa_celllist_f64;
 pub mod yukawa_f64;
 
 pub use born_mayer::BornMayerForce;
+pub use born_mayer_f64::BornMayerForceF64;
 pub use coulomb::CoulombForce;
 pub use coulomb_f64::CoulombForceF64;
 pub use lennard_jones::LennardJonesForce;

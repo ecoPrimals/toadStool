@@ -16,9 +16,11 @@
 pub mod laplacian;
 pub mod rk4;
 pub mod velocity_verlet;
+pub mod velocity_verlet_f64;
 pub mod velocity_verlet_split_f64;
 
 pub use laplacian::Laplacian;
 pub use rk4::Rk4;
 pub use velocity_verlet::VelocityVerlet;
+pub use velocity_verlet_f64::VelocityVerletF64;
 pub use velocity_verlet_split_f64::{VelocityVerletHalfKick, VelocityVerletKickDrift};

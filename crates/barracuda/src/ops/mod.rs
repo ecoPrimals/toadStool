@@ -119,7 +119,17 @@ pub mod hermite_f64_wgsl; // f64 Hermite polynomials (hotSpring nuclear physics)
 pub mod hermite_wgsl;
 pub mod laguerre_f64_wgsl; // f64 generalized Laguerre polynomials (hotSpring)
 pub mod laguerre_wgsl;
+pub mod legendre_f64_wgsl; // f64 Legendre polynomials (angular momentum, multipoles)
 pub mod legendre_wgsl;
+
+// Bessel functions (f64) - cylindrical/spherical problems
+pub mod bessel_i0_f64_wgsl; // f64 Modified Bessel I0 (Kaiser windows)
+pub mod bessel_j0_f64_wgsl; // f64 Bessel J0 (cylindrical waves)
+pub mod bessel_j1_f64_wgsl; // f64 Bessel J1 (electromagnetic propagation)
+pub mod bessel_k0_f64_wgsl; // f64 Modified Bessel K0 (Yukawa potential)
+
+// Spherical harmonics (f64) - multipole expansion
+pub mod spherical_harmonics_f64_wgsl;
 pub mod lgamma_wgsl;
 pub mod norm_cdf_wgsl;
 pub mod norm_ppf_wgsl;

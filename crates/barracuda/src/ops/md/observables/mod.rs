@@ -18,9 +18,13 @@
 //! - ✅ Zero unsafe code
 
 mod kinetic_energy;
+mod kinetic_energy_f64;
+mod rdf_f64;
 mod ssf_gpu;
 
 pub use kinetic_energy::KineticEnergy;
+pub use kinetic_energy_f64::KineticEnergyF64;
+pub use rdf_f64::RdfHistogramF64;
 pub use ssf_gpu::SsfGpu;
 
 use std::f64::consts::PI;
