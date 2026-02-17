@@ -246,7 +246,8 @@ pub enum FrameworkHandle {
     #[cfg(feature = "opencl")]
     OpenCl(ocl::Device),
     #[cfg(feature = "cuda")]
-    Cuda(cudarc::driver::CudaDevice),
+    /// cudarc 0.19: CudaContext replaces CudaDevice, wrapped in Arc for Clone
+    Cuda(Arc<cudarc::driver::safe::CudaContext>),
     #[cfg(feature = "vulkan")]
     Vulkan(Arc<vulkano::device::Device>),
     #[cfg(feature = "webgpu")]
@@ -262,10 +263,8 @@ impl Clone for FrameworkHandle {
             #[cfg(feature = "opencl")]
             FrameworkHandle::OpenCl(device) => FrameworkHandle::OpenCl(*device),
             #[cfg(feature = "cuda")]
-            FrameworkHandle::Cuda(_device) => {
-                // CudaDevice doesn't implement Clone, so we use a placeholder
-                FrameworkHandle::Placeholder("cuda_device_clone_not_supported".to_string())
-            }
+            // cudarc 0.19: CudaContext is in Arc, so we can clone it
+            FrameworkHandle::Cuda(context) => FrameworkHandle::Cuda(Arc::clone(context)),
             #[cfg(feature = "vulkan")]
             FrameworkHandle::Vulkan(device) => FrameworkHandle::Vulkan(Arc::clone(device)),
             #[cfg(feature = "webgpu")]

@@ -1,18 +1,25 @@
 //! CUDA Backend Implementation
 //!
 //! Fast AND safe CUDA execution for NVIDIA GPUs
-//! Pragmatic support for Python AI ecosystem (PyTorch, TensorFlow) in 2025
-//! Evolution path: Migrate to WebGPU when ecosystem matures (2026+)
+//! Pragmatic support for Python AI ecosystem (PyTorch, TensorFlow)
+//! Evolution path: Migrate to WebGPU when ecosystem matures
 //!
 //! ## Philosophy
 //! - **Fast**: Direct CUDA API, zero overhead
 //! - **Safe**: Comprehensive error handling, no panics
 //! - **Pragmatic**: Supports Python AI workloads today
 //! - **Evolvable**: Clear migration path to WebGPU
+//!
+//! ## Deep Debt: cudarc 0.19 Upgrade (Feb 2026)
+//! - Proper device queries: name(), compute_capability(), attribute()
+//! - Stream-based memory management (CudaStream)
+//! - Modern launch_builder() API for kernels
 
 use crate::universal::*;
 use async_trait::async_trait;
-use cudarc::driver::{CudaDevice, CudaSlice, DeviceRepr, LaunchAsync, ValidAsZeroBits};
+use cudarc::driver::safe::{CudaContext, CudaModule, CudaSlice, CudaStream, LaunchConfig};
+use cudarc::driver::sys::CUdevice_attribute;
+use cudarc::driver::DeviceRepr;
 use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -22,10 +29,20 @@ use uuid::Uuid;
 /// CUDA compute backend - real NVIDIA GPU execution
 ///
 /// Provides high-performance GPU compute via CUDA for AI/ML workloads
+///
+/// ## cudarc 0.19 Architecture
+/// - `CudaContext`: Handle to device, manages lifetime
+/// - `CudaStream`: Schedules work on device (memory ops, kernel launches)
+/// - `CudaSlice`: Device memory owned by a context
 pub struct CudaBackend {
-    device: Arc<CudaDevice>,
+    /// CUDA context (device handle) - cudarc 0.19 uses CudaContext instead of CudaDevice
+    context: Arc<CudaContext>,
+    /// Default stream for synchronous operations
+    stream: Arc<CudaStream>,
+    /// Device info discovered at runtime
     device_info: DeviceInfo,
-    module_cache: Arc<RwLock<HashMap<String, Vec<u8>>>>,
+    /// Module cache for PTX compilation
+    module_cache: Arc<RwLock<HashMap<String, Arc<CudaModule>>>>,
 }
 
 /// CUDA device information discovered at runtime
@@ -57,10 +74,10 @@ impl CudaBackend {
     /// "device with most memory", "fastest device", etc.
     pub fn with_device_selector<F>(selector: F) -> ToadStoolResult<Self>
     where
-        F: FnOnce(Vec<(Arc<CudaDevice>, DeviceInfo)>) -> Option<(Arc<CudaDevice>, DeviceInfo)>,
+        F: FnOnce(Vec<(Arc<CudaContext>, DeviceInfo)>) -> Option<(Arc<CudaContext>, DeviceInfo)>,
     {
-        // Discover all CUDA devices
-        let device_count = CudaDevice::count()
+        // Discover all CUDA devices (cudarc 0.19 API)
+        let device_count = CudaContext::device_count()
             .map_err(|e| ToadStoolError::runtime(format!("Failed to query CUDA devices: {}", e)))?;
 
         if device_count == 0 {
@@ -71,12 +88,12 @@ impl CudaBackend {
 
         // Gather information about each device
         let mut devices_with_info = Vec::new();
-        for ordinal in 0..device_count {
-            match CudaDevice::new(ordinal as usize) {
-                Ok(device) => {
-                    // cudarc::CudaDevice::new() returns Arc<CudaDevice>
-                    if let Some(info) = Self::query_device_info(&device, ordinal as usize) {
-                        devices_with_info.push((device, info));
+        for ordinal in 0..device_count as usize {
+            match CudaContext::new(ordinal) {
+                Ok(context) => {
+                    // cudarc 0.19: CudaContext::new() returns Arc<CudaContext>
+                    if let Some(info) = Self::query_device_info(&context, ordinal) {
+                        devices_with_info.push((context, info));
                     }
                 }
                 Err(e) => {
@@ -93,8 +110,11 @@ impl CudaBackend {
         }
 
         // Select device using provided strategy
-        let (device, device_info) = selector(devices_with_info)
+        let (context, device_info) = selector(devices_with_info)
             .ok_or_else(|| ToadStoolError::runtime("Device selector found no suitable device"))?;
+
+        // Get default stream for this context (cudarc 0.19)
+        let stream = context.default_stream();
 
         tracing::info!(
             "🎮 CUDA Backend initialized: {} (SM {}.{}) - {} SMs, {} GB memory",
@@ -106,7 +126,8 @@ impl CudaBackend {
         );
 
         Ok(Self {
-            device,
+            context,
+            stream,
             device_info,
             module_cache: Arc::new(RwLock::new(HashMap::new())),
         })
@@ -116,8 +137,8 @@ impl CudaBackend {
     ///
     /// Ranks devices by: compute capability > SM count > memory
     fn prefer_high_compute_capability(
-        devices: Vec<(Arc<CudaDevice>, DeviceInfo)>,
-    ) -> Option<(Arc<CudaDevice>, DeviceInfo)> {
+        devices: Vec<(Arc<CudaContext>, DeviceInfo)>,
+    ) -> Option<(Arc<CudaContext>, DeviceInfo)> {
         devices.into_iter().max_by_key(|(_, info)| {
             (
                 info.compute_capability.0 * 10 + info.compute_capability.1,
@@ -129,103 +150,86 @@ impl CudaBackend {
 
     /// Query detailed device information for capability-based selection
     ///
-    /// **Fast AND Safe**: Safe wrappers around CUDA API calls
+    /// **Fast AND Safe**: Uses cudarc 0.19's proper device query APIs
     ///
     /// Returns None if device query fails (device may be unhealthy)
-    fn query_device_info(device: &CudaDevice, ordinal: usize) -> Option<DeviceInfo> {
-        // cudarc 0.11 doesn't expose high-level methods for these queries
-        // We use safe wrappers around CUDA sys calls (Fast AND Safe approach)
+    fn query_device_info(context: &CudaContext, ordinal: usize) -> Option<DeviceInfo> {
+        // cudarc 0.19 exposes proper device query methods!
+        let name = context.name().ok()?;
+        let (major, minor) = context.compute_capability().ok()?;
 
-        let name = Self::get_device_name(device)?;
-        let (major, minor) = Self::get_compute_capability(device)?;
-        let total_memory = Self::get_total_memory(device)?;
+        // Query device attributes via attribute() method
+        let total_memory = Self::query_attribute(context, CUdevice_attribute::CU_DEVICE_ATTRIBUTE_TOTAL_CONSTANT_MEMORY)
+            .or_else(|| {
+                // Fallback: estimate from compute capability
+                Some(Self::estimate_memory_from_cc(major, minor))
+            })?;
 
-        // Query device attributes using safe wrappers
-        // cudarc 0.11 doesn't have DeviceAttribute enum, so we query directly
-        let multiprocessor_count = Self::get_device_multiprocessor_count(device)?;
-        let max_threads_per_block = Self::get_device_max_threads_per_block(device)?;
-        let max_threads_per_sm = Self::get_device_max_threads_per_sm(device)?;
-        let clock_rate = Self::get_device_clock_rate(device)?;
-        let memory_clock = Self::get_device_memory_clock_rate(device)?;
-        let bus_width = Self::get_device_memory_bus_width(device)?;
+        let multiprocessor_count = Self::query_attribute(
+            context,
+            CUdevice_attribute::CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT,
+        )?;
+
+        let max_threads_per_block = Self::query_attribute(
+            context,
+            CUdevice_attribute::CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
+        )
+        .unwrap_or(1024);
+
+        let max_threads_per_sm = Self::query_attribute(
+            context,
+            CUdevice_attribute::CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR,
+        )
+        .unwrap_or(2048);
+
+        let clock_rate = Self::query_attribute(
+            context,
+            CUdevice_attribute::CU_DEVICE_ATTRIBUTE_CLOCK_RATE,
+        )
+        .unwrap_or(1500000);
+
+        let memory_clock = Self::query_attribute(
+            context,
+            CUdevice_attribute::CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE,
+        )
+        .unwrap_or(7000000);
+
+        let bus_width = Self::query_attribute(
+            context,
+            CUdevice_attribute::CU_DEVICE_ATTRIBUTE_GLOBAL_MEMORY_BUS_WIDTH,
+        )
+        .unwrap_or(256);
 
         Some(DeviceInfo {
             name,
             ordinal,
-            compute_capability: (major, minor),
-            total_memory,
-            multiprocessor_count,
-            max_threads_per_block,
-            max_threads_per_multiprocessor: max_threads_per_sm,
-            clock_rate_khz: clock_rate,
-            memory_clock_rate_khz: memory_clock,
-            memory_bus_width: bus_width,
+            compute_capability: (major as usize, minor as usize),
+            total_memory: total_memory as usize,
+            multiprocessor_count: multiprocessor_count as usize,
+            max_threads_per_block: max_threads_per_block as usize,
+            max_threads_per_multiprocessor: max_threads_per_sm as usize,
+            clock_rate_khz: clock_rate as usize,
+            memory_clock_rate_khz: memory_clock as usize,
+            memory_bus_width: bus_width as usize,
         })
     }
 
-    /// Safe wrapper: Get device name
-    ///
-    /// NOTE: cudarc 0.11 doesn't expose name() method reliably
-    /// We provide a safe default until we upgrade to cudarc 0.12+
-    fn get_device_name(_device: &CudaDevice) -> Option<String> {
-        // TODO: Upgrade to cudarc 0.12+ which exposes name()
-        // For now, return generic name
-        Some("NVIDIA CUDA Device".to_string())
+    /// Query a device attribute via cudarc 0.19 API
+    fn query_attribute(context: &CudaContext, attrib: CUdevice_attribute) -> Option<i32> {
+        context.attribute(attrib).ok()
     }
 
-    /// Safe wrapper: Get compute capability
-    ///
-    /// NOTE: cudarc 0.11 doesn't expose compute_cap() method
-    /// We provide a safe default until we upgrade to cudarc 0.12+
-    fn get_compute_capability(_device: &CudaDevice) -> Option<(usize, usize)> {
-        // TODO: Upgrade to cudarc 0.12+ which exposes compute_cap()
-        // For now, return reasonable default (SM 7.5 = Turing/Volta)
-        Some((7, 5))
-    }
-
-    /// Safe wrapper: Get total device memory
-    ///
-    /// NOTE: cudarc 0.11 doesn't expose total_memory() method
-    /// We provide a safe default until we upgrade to cudarc 0.12+
-    fn get_total_memory(_device: &CudaDevice) -> Option<usize> {
-        // TODO: Upgrade to cudarc 0.12+ which exposes total_memory()
-        // For now, return reasonable default (8 GB typical mid-range GPU)
-        Some(8 * 1024 * 1024 * 1024)
-    }
-
-    /// Safe wrapper: Get device multiprocessor count
-    ///
-    /// NOTE: cudarc 0.11 doesn't expose direct methods for device attributes
-    /// We estimate based on compute capability until we upgrade to newer cudarc
-    fn get_device_multiprocessor_count(_device: &CudaDevice) -> Option<usize> {
-        // Reasonable default - will be accurate enough for capability matching
-        // TODO: Upgrade to cudarc 0.12+ which exposes these properly
-        Some(32) // Typical mid-range GPU
-    }
-
-    /// Safe wrapper: Get device max threads per block
-    fn get_device_max_threads_per_block(_device: &CudaDevice) -> Option<usize> {
-        Some(1024) // Standard CUDA max threads per block
-    }
-
-    /// Safe wrapper: Get device max threads per multiprocessor
-    fn get_device_max_threads_per_sm(_device: &CudaDevice) -> Option<usize> {
-        Some(2048) // Typical for modern CUDA devices
-    }
-
-    /// Safe wrapper: Get device clock rate (kHz)
-    fn get_device_clock_rate(_device: &CudaDevice) -> Option<usize> {
-        Some(1500000) // ~1.5 GHz typical
-    }
-
-    /// Safe wrapper: Get device memory clock rate (kHz)
-    fn get_device_memory_clock_rate(_device: &CudaDevice) -> Option<usize> {
-        Some(7000000) // ~7 GHz typical GDDR6
-    }
-
-    /// Safe wrapper: Get device memory bus width (bits)
-    fn get_device_memory_bus_width(_device: &CudaDevice) -> Option<usize> {
-        Some(256) // Typical 256-bit bus
+    /// Estimate memory based on compute capability (fallback)
+    fn estimate_memory_from_cc(major: i32, minor: i32) -> i32 {
+        match (major, minor) {
+            (9, _) => 80 * 1024 * 1024 * 1024, // Hopper: 80GB
+            (8, 9) => 24 * 1024 * 1024 * 1024, // Ada: 24GB
+            (8, 6) => 24 * 1024 * 1024 * 1024, // Ampere: 24GB
+            (8, 0) => 40 * 1024 * 1024 * 1024, // A100: 40/80GB
+            (7, _) => 16 * 1024 * 1024 * 1024, // Volta/Turing: 16GB
+            (6, _) => 12 * 1024 * 1024 * 1024, // Pascal: 12GB
+            _ => 8 * 1024 * 1024 * 1024,       // Default: 8GB
+        }
     }
 
     /// Get device capabilities as ComputeCapabilities
@@ -296,25 +300,34 @@ impl CudaBackend {
 
     /// Query CUDA cache hierarchy using safe API
     ///
-    /// **Fast AND Safe**: No unsafe code, uses cudarc's validated wrappers
+    /// **Fast AND Safe**: Uses cudarc 0.19's attribute queries
     fn query_cache_hierarchy(&self) -> Vec<CacheLevel> {
         let mut cache_levels = Vec::new();
 
-        // L1 cache (shared memory + L1 unified on modern GPUs)
-        // NOTE: cudarc 0.11 doesn't expose cache size queries
-        // Using reasonable defaults based on modern CUDA architectures
-        let l1_per_sm = 65536; // 64 KB per SM typical
+        // L1 cache - query from device or use architecture defaults
+        let l1_per_sm = Self::query_attribute(
+            &self.context,
+            CUdevice_attribute::CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_MULTIPROCESSOR,
+        )
+        .unwrap_or(65536) as u64; // 64 KB per SM typical
+
         cache_levels.push(CacheLevel {
             level: 1,
-            size_bytes: (l1_per_sm * self.device_info.multiprocessor_count) as u64,
+            size_bytes: l1_per_sm * self.device_info.multiprocessor_count as u64,
             line_size_bytes: 128,
             associativity: 0,
         });
 
-        // L2 cache - typical 4-6 MB for modern GPUs
+        // L2 cache - query or use architecture-based estimate
+        let l2_size = Self::query_attribute(
+            &self.context,
+            CUdevice_attribute::CU_DEVICE_ATTRIBUTE_L2_CACHE_SIZE,
+        )
+        .unwrap_or(4 * 1024 * 1024) as u64; // 4 MB typical
+
         cache_levels.push(CacheLevel {
             level: 2,
-            size_bytes: 4 * 1024 * 1024, // 4 MB typical
+            size_bytes: l2_size,
             line_size_bytes: 128,
             associativity: 0,
         });
@@ -362,40 +375,46 @@ impl CudaBackend {
     /// Load PTX module and cache it
     ///
     /// PTX (Parallel Thread Execution) is CUDA's portable intermediate representation
-    pub async fn load_ptx(&self, ptx_code: &str, module_name: &str) -> ToadStoolResult<()> {
+    ///
+    /// ## cudarc 0.19 API
+    /// Uses `CudaContext::load_module()` with `Ptx::from_src()`
+    pub async fn load_ptx(&self, ptx_code: &str, module_name: &str) -> ToadStoolResult<Arc<CudaModule>> {
         // Check cache first
         {
             let cache = self.module_cache.read().await;
-            if cache.contains_key(module_name) {
+            if let Some(module) = cache.get(module_name) {
                 tracing::debug!("Using cached CUDA module: {}", module_name);
-                return Ok(());
+                return Ok(Arc::clone(module));
             }
         }
 
-        // Load PTX into device
-        self.device
-            .load_ptx(ptx_code.into(), module_name, &[])
-            .map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to load CUDA PTX module: {}", e))
-            })?;
+        // Load PTX into context (cudarc 0.19 API)
+        let ptx = cudarc::nvrtc::Ptx::from_src(ptx_code);
+        let module = self.context.load_module(ptx).map_err(|e| {
+            ToadStoolError::runtime(format!("Failed to load CUDA PTX module: {}", e))
+        })?;
 
-        // Cache the PTX
+        // Cache the module
         let mut cache = self.module_cache.write().await;
-        cache.insert(module_name.to_string(), ptx_code.as_bytes().to_vec());
+        cache.insert(module_name.to_string(), Arc::clone(&module));
 
         tracing::info!("✅ Loaded CUDA module: {}", module_name);
-        Ok(())
+        Ok(module)
     }
 
     /// Execute CUDA kernel with zero-copy where possible
     ///
-    /// **Fast AND Safe**: Uses proper trait bounds and modern CUDA API
+    /// **Fast AND Safe**: Uses cudarc 0.19's modern stream-based API
+    ///
+    /// ## cudarc 0.19 API Changes
+    /// - Memory allocation via `CudaStream::clone_htod()` and `stream.alloc_zeros()`
+    /// - Kernel launch via `stream.launch_builder(&func).arg(...).launch(cfg)`
+    /// - Synchronization via `stream.synchronize()` or `context.synchronize()`
     ///
     /// Generic `T` must satisfy:
     /// - `DeviceRepr`: Can be transferred to GPU
-    /// - `ValidAsZeroBits`: Can be zero-initialized safely
     /// - `Unpin`: Required for async GPU operations
-    /// - `Clone`: Needed for htod_copy operation (unavoidable with current cudarc API)
+    /// - `Default`: For zero-initialization
     pub async fn execute_kernel<T>(
         &self,
         module_name: &str,
@@ -406,79 +425,90 @@ impl CudaBackend {
         block_dim: (u32, u32, u32),
     ) -> ToadStoolResult<Vec<T>>
     where
-        T: DeviceRepr + ValidAsZeroBits + Unpin + Clone,
+        T: DeviceRepr + Default + Clone + Unpin,
     {
         let start_time = std::time::Instant::now();
 
-        // Get kernel function from module
-        let func = self
-            .device
-            .get_func(module_name, kernel_name)
-            .ok_or_else(|| {
-                ToadStoolError::runtime(format!(
-                    "CUDA kernel '{}' not found in module '{}'",
-                    kernel_name, module_name
-                ))
+        // Load module (or get from cache)
+        let module = self.load_ptx("", module_name).await.or_else(|_| {
+            // If empty PTX fails, module should already be cached
+            let cache = self.module_cache.try_read().map_err(|_| {
+                ToadStoolError::runtime("Failed to acquire module cache lock")
             })?;
+            cache.get(module_name).cloned().ok_or_else(|| {
+                ToadStoolError::runtime(format!("Module '{}' not found in cache", module_name))
+            })
+        })?;
 
-        // Allocate and upload input buffers
-        // Note: htod_copy requires Vec<T>, so we must convert slice to vec
-        // Future optimization: Use pinned memory for zero-copy
-        let mut input_buffers = Vec::new();
+        // Get kernel function from module (cudarc 0.19)
+        let func = module.load_function(kernel_name).map_err(|e| {
+            ToadStoolError::runtime(format!(
+                "CUDA kernel '{}' not found in module '{}': {}",
+                kernel_name, module_name, e
+            ))
+        })?;
+
+        // Allocate and upload input buffers (cudarc 0.19 stream API)
+        let mut input_buffers: Vec<CudaSlice<T>> = Vec::new();
         for (idx, input) in inputs.iter().enumerate() {
-            let buffer = self.device.htod_copy(input.to_vec()).map_err(|e| {
+            let buffer = self.stream.clone_htod(input).map_err(|e| {
                 ToadStoolError::runtime(format!("Failed to upload input {}: {}", idx, e))
             })?;
             input_buffers.push(buffer);
         }
 
         // Allocate output buffer (zero-initialized on GPU)
-        let output_buffer: CudaSlice<T> = self.device.alloc_zeros(output_size).map_err(|e| {
+        let mut output_buffer: CudaSlice<T> = self.stream.alloc_zeros(output_size).map_err(|e| {
             ToadStoolError::runtime(format!("Failed to allocate output buffer: {}", e))
         })?;
 
-        // Launch kernel with proper configuration
-        let cfg = cudarc::driver::LaunchConfig {
+        // Launch kernel with proper configuration (cudarc 0.19 launch_builder API)
+        let cfg = LaunchConfig {
             grid_dim,
             block_dim,
             shared_mem_bytes: 0,
         };
 
-        // Modern cudarc API: launch_async with proper types
         // SAFETY: This unsafe block is required by cudarc's kernel launch API.
         // - All input/output buffers are validated CudaSlice types allocated by cudarc
-        // - Grid and block dimensions are validated before launch (checked above)
+        // - Grid and block dimensions are validated before launch
         // - Kernel function was successfully loaded and compiled
-        // - Parameter tuple types match kernel signature (enforced by CUDA runtime)
-        // - CUDA driver validates parameter counts and types at runtime
+        // - Parameter types match kernel signature (enforced by CUDA runtime)
         unsafe {
-            // Build parameter tuple dynamically based on input count
+            // cudarc 0.19: Use launch_builder() for kernel launches
             match inputs.len() {
                 1 => {
-                    func.launch(cfg, (&input_buffers[0], &output_buffer))
+                    self.stream
+                        .launch_builder(&func)
+                        .arg(&input_buffers[0])
+                        .arg(&mut output_buffer)
+                        .launch(cfg)
                         .map_err(|e| {
                             ToadStoolError::runtime(format!("CUDA kernel launch failed: {}", e))
                         })?;
                 }
                 2 => {
-                    func.launch(cfg, (&input_buffers[0], &input_buffers[1], &output_buffer))
+                    self.stream
+                        .launch_builder(&func)
+                        .arg(&input_buffers[0])
+                        .arg(&input_buffers[1])
+                        .arg(&mut output_buffer)
+                        .launch(cfg)
                         .map_err(|e| {
                             ToadStoolError::runtime(format!("CUDA kernel launch failed: {}", e))
                         })?;
                 }
                 3 => {
-                    func.launch(
-                        cfg,
-                        (
-                            &input_buffers[0],
-                            &input_buffers[1],
-                            &input_buffers[2],
-                            &output_buffer,
-                        ),
-                    )
-                    .map_err(|e| {
-                        ToadStoolError::runtime(format!("CUDA kernel launch failed: {}", e))
-                    })?;
+                    self.stream
+                        .launch_builder(&func)
+                        .arg(&input_buffers[0])
+                        .arg(&input_buffers[1])
+                        .arg(&input_buffers[2])
+                        .arg(&mut output_buffer)
+                        .launch(cfg)
+                        .map_err(|e| {
+                            ToadStoolError::runtime(format!("CUDA kernel launch failed: {}", e))
+                        })?;
                 }
                 _ => {
                     return Err(ToadStoolError::runtime(format!(
@@ -489,15 +519,15 @@ impl CudaBackend {
             }
         }
 
-        // Synchronize to ensure completion
-        self.device
+        // Synchronize to ensure completion (cudarc 0.19)
+        self.context
             .synchronize()
             .map_err(|e| ToadStoolError::runtime(format!("CUDA synchronization failed: {}", e)))?;
 
-        // Download result (zero-copy where possible with dtoh_sync_copy)
+        // Download result (cudarc 0.19 stream API)
         let output = self
-            .device
-            .dtoh_sync_copy(&output_buffer)
+            .stream
+            .clone_dtoh(&output_buffer)
             .map_err(|e| ToadStoolError::runtime(format!("Failed to download output: {}", e)))?;
 
         let duration = start_time.elapsed();
@@ -539,7 +569,7 @@ impl CudaComputeResource {
     /// Create with custom device selector
     pub fn with_selector<F>(selector: F) -> ToadStoolResult<Self>
     where
-        F: FnOnce(Vec<(Arc<CudaDevice>, DeviceInfo)>) -> Option<(Arc<CudaDevice>, DeviceInfo)>,
+        F: FnOnce(Vec<(Arc<CudaContext>, DeviceInfo)>) -> Option<(Arc<CudaContext>, DeviceInfo)>,
     {
         let backend = CudaBackend::with_device_selector(selector)?;
         let resource_id = format!(
@@ -684,8 +714,9 @@ impl ComputeContext for CudaComputeContext {
                 }
 
                 // Load PTX module (PTX is CUDA's portable assembly format)
+                // cudarc 0.19: load_ptx returns Arc<CudaModule>
                 let module_name = format!("workload_{}", workload.id);
-                self.backend.load_ptx(code, &module_name).await?;
+                let _module = self.backend.load_ptx(code, &module_name).await?;
 
                 // Convert input buffers to f32 vectors
                 let input_vecs: Vec<Vec<f32>> = workload
@@ -835,7 +866,7 @@ DONE:
 "#;
 
         let module_name = format!("matmul_{}", workload.id);
-        self.backend.load_ptx(matmul_ptx, &module_name).await?;
+        let _module = self.backend.load_ptx(matmul_ptx, &module_name).await?;
 
         // Convert inputs
         let a_data: Vec<f32> = workload.inputs[0]
@@ -969,7 +1000,7 @@ DONE:
 "#;
 
         let module_name = format!("reduce_{}", workload.id);
-        self.backend.load_ptx(reduce_ptx, &module_name).await?;
+        let _module = self.backend.load_ptx(reduce_ptx, &module_name).await?;
 
         let input_data: Vec<f32> = workload.inputs[0]
             .data

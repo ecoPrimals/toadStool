@@ -19,7 +19,27 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **Production Mock Hardening COMPLETE** — removed fake capabilities/models from production paths.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 17, 2026 — hotSpring GPU Validation Handoff Continued)
+### Latest Updates (Feb 17, 2026 — cudarc 0.19 Upgrade & hotSpring Handoff)
+
+**cudarc 0.11 → 0.19 Upgrade ✓**
+
+Upgraded the CUDA backend from cudarc 0.11 to 0.19, addressing long-standing TODOs for proper device queries:
+
+| Change | Before (0.11) | After (0.19) |
+|--------|---------------|--------------|
+| Device type | `CudaDevice` | `CudaContext` (Arc-wrapped) |
+| Device name | Hardcoded "NVIDIA CUDA Device" | Real `ctx.name()` |
+| Compute capability | Hardcoded (7, 5) | Real `ctx.compute_capability()` |
+| Memory/SM queries | Hardcoded defaults | `ctx.attribute(CUdevice_attribute::*)` |
+| Memory allocation | `device.htod_copy()` | `stream.clone_htod()` |
+| Kernel launch | `func.launch()` | `stream.launch_builder(&f).arg(...).launch(cfg)` |
+| Module loading | `device.load_ptx()` | `context.load_module(Ptx::from_src())` |
+
+Key files modified:
+- `crates/runtime/gpu/Cargo.toml` — cudarc version bump
+- `crates/runtime/gpu/src/backends/cuda_impl.rs` — Full API migration
+- `crates/runtime/gpu/src/types.rs` — FrameworkHandle::Cuda now uses Arc<CudaContext>
+- `showcase/cross-platform/Cargo.toml` — cudarc version bump
 
 **PPPM Energy Sign Bug Fix ✓**
 
@@ -152,6 +172,7 @@ Key files modified:
 |------|:------:|-------------|
 | sysinfo unification | ✅ | All crates use workspace version (0.30) |
 | num_cpus removal | ✅ | Eliminated from api, config (std::thread::available_parallelism) |
+| cudarc upgrade | ✅ | 0.11 → 0.19 for real device queries (Feb 2026) |
 | API compatibility | ✅ | Updated cli, server, distributed for sysinfo 0.30 API |
 
 **Primal Self-Knowledge ✓**

@@ -73,7 +73,8 @@ ocl = { version = "0.19", optional = true }
 spirv = { version = "0.3", optional = true }
 
 # CUDA support (NVIDIA-specific) - Only enabled explicitly
-cudarc = { version = "0.11", optional = true, features = ["cuda-12050"] }
+# Upgraded from 0.11 to 0.19 for proper device queries (name, compute_capability, memory)
+cudarc = { version = "0.19", optional = true, features = ["cuda-12050"] }
 
 # JIT compilation and optimization - Only for jit feature
 cranelift-jit = { version = "0.100", optional = true }
