@@ -44,10 +44,10 @@ fn triangular_solve_f64(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     // Reference for f64 constant construction
-    let ref = rhs[0];
-    let epsilon = f64_const(ref, 1e-14);
-    let zero = f64_const(ref, 0.0);
-    let one = f64_const(ref, 1.0);
+    let ref_val = rhs[0];
+    let epsilon = f64_const(ref_val, 1e-14);
+    let zero = f64_const(ref_val, 0.0);
+    let one = f64_const(ref_val, 1.0);
     
     if (params.is_lower == 1u) {
         // Forward substitution: L·x = b
@@ -111,9 +111,9 @@ fn triangular_solve_f64_batched(
     // Each batch element uses different RHS/solution vectors
     let vec_offset = batch_idx * n;
     
-    let ref = rhs[vec_offset];
-    let epsilon = f64_const(ref, 1e-14);
-    let zero = f64_const(ref, 0.0);
+    let ref_val = rhs[vec_offset];
+    let epsilon = f64_const(ref_val, 1e-14);
+    let zero = f64_const(ref_val, 0.0);
     
     // Matrix is shared across batches (same L or U)
     if (params.is_lower == 1u) {
@@ -167,9 +167,9 @@ fn triangular_solve_transpose_f64(@builtin(global_invocation_id) global_id: vec3
         return;
     }
     
-    let ref = rhs[0];
-    let epsilon = f64_const(ref, 1e-14);
-    let zero = f64_const(ref, 0.0);
+    let ref_val = rhs[0];
+    let epsilon = f64_const(ref_val, 1e-14);
+    let zero = f64_const(ref_val, 0.0);
     
     // Lᵀ is upper triangular, solve backwards
     // Lᵀ[i,j] = L[j,i] (stored column becomes row)

@@ -46,9 +46,9 @@ fn cholesky_f64(@builtin(global_invocation_id) global_id: vec3<u32>) {
     
     // f64 epsilon for numerical stability (smaller than f32's 1e-8)
     // Using a reference value to satisfy Naga's AbstractFloat rules
-    let ref = input[0];
-    let epsilon = f64_const(ref, 1e-14);
-    let zero = f64_const(ref, 0.0);
+    let ref_val = input[0];
+    let epsilon = f64_const(ref_val, 1e-14);
+    let zero = f64_const(ref_val, 0.0);
     
     // Initialize output to zero
     for (var i = 0u; i < n * n; i = i + 1u) {
@@ -106,9 +106,9 @@ fn cholesky_f64_batched(
         return;
     }
     
-    let ref = input[in_offset];
-    let epsilon = f64_const(ref, 1e-14);
-    let zero = f64_const(ref, 0.0);
+    let ref_val = input[in_offset];
+    let epsilon = f64_const(ref_val, 1e-14);
+    let zero = f64_const(ref_val, 0.0);
     
     // Initialize output to zero
     for (var i = 0u; i < mat_size; i = i + 1u) {

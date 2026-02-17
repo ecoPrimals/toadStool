@@ -698,7 +698,7 @@ impl TriangularSolveF64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device_if_gpu_available;
+    use crate::device::test_pool::{get_test_device_if_f64_gpu_available, get_test_device_if_gpu_available};
 
     #[tokio::test]
     async fn test_forward_substitution_2x2() {
@@ -824,7 +824,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_triangular_solve_f64_forward() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
         // L = [[2, 0], [3, 4]], b = [6, 17]
@@ -848,7 +848,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_triangular_solve_f64_backward() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
         // U = [[2, 3], [0, 4]], b = [12, 8]
@@ -872,7 +872,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_triangular_solve_f64_cholesky_pipeline() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
         // Complete Cholesky solve with f64 precision
@@ -912,7 +912,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_triangular_solve_f64_3x3() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
         // 3x3 lower triangular solve with f64

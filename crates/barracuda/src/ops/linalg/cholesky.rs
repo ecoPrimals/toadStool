@@ -548,7 +548,7 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device_if_gpu_available;
+    use crate::device::test_pool::{get_test_device_if_f64_gpu_available, get_test_device_if_gpu_available};
 
     #[tokio::test]
     async fn test_cholesky_2x2() {
@@ -682,7 +682,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cholesky_f64_2x2() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
         // SPD matrix: [[4, 2], [2, 3]]
@@ -726,7 +726,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cholesky_f64_reconstruction() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
         // Test that L·Lᵀ = A with f64 precision
@@ -761,7 +761,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cholesky_f64_3x3() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
         // 3x3 SPD matrix (row-major)

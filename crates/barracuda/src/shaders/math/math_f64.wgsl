@@ -444,14 +444,14 @@ fn log_f64(x: f64) -> f64 {
     //
     // NOTE: Use (x - x + literal) pattern to preserve full f64 precision.
     // f64_const() truncates through f32, losing ~7 digits.
-    let zero = x - x;
-    let c1 = zero + 0.3333333333333367565;   // ≈ 1/3 (minimax)
-    let c2 = zero + 0.1999999999970470954;   // ≈ 1/5 (minimax)
-    let c3 = zero + 0.1428571437183119575;   // ≈ 1/7 (minimax)
-    let c4 = zero + 0.1111109921607489198;   // ≈ 1/9 (minimax)
-    let c5 = zero + 0.0909178608080902506;   // ≈ 1/11 (minimax)
-    let c6 = zero + 0.0765691884960468666;   // ≈ 1/13 (minimax)
-    let c7 = zero + 0.0739909930255829295;   // ≈ 1/15 (minimax)
+    let base = x - x;  // Use different name to avoid redefinition
+    let c1 = base + 0.3333333333333367565;   // ≈ 1/3 (minimax)
+    let c2 = base + 0.1999999999970470954;   // ≈ 1/5 (minimax)
+    let c3 = base + 0.1428571437183119575;   // ≈ 1/7 (minimax)
+    let c4 = base + 0.1111109921607489198;   // ≈ 1/9 (minimax)
+    let c5 = base + 0.0909178608080902506;   // ≈ 1/11 (minimax)
+    let c6 = base + 0.0765691884960468666;   // ≈ 1/13 (minimax)
+    let c7 = base + 0.0739909930255829295;   // ≈ 1/15 (minimax)
     
     // Horner's evaluation
     var p = c7;

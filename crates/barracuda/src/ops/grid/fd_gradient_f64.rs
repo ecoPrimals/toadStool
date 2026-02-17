@@ -1357,12 +1357,12 @@ async fn read_staging_f64(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device_if_f64_gpu_available;
 
     #[tokio::test]
     async fn test_gradient_1d() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return, // Skip if no GPU
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return;
         };
 
         let n = 100;
@@ -1392,9 +1392,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_gradient_2d() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return, // Skip if no GPU
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return;
         };
 
         let nx = 20;
@@ -1453,9 +1452,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_laplacian_2d() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return, // Skip if no GPU
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return;
         };
 
         let nx = 20;
@@ -1498,9 +1496,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_cylindrical_gradient() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return, // Skip if no GPU
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return;
         };
 
         let n_rho = 10;
@@ -1561,9 +1558,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_cylindrical_laplacian() {
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => return, // Skip if no GPU
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return;
         };
 
         let n_rho = 10;
