@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [2026-02-17] - cudarc 0.19 Upgrade + Clippy Cleanup
+
+**Impact**: CUDA backend modernized with real device queries; workspace clippy-clean.
+
+#### Changed
+
+- **cudarc 0.11 → 0.19 Upgrade** (`crates/runtime/gpu/src/backends/cuda_impl.rs`):
+  - `CudaDevice` → `CudaContext` (Arc-wrapped for Clone)
+  - Device name: hardcoded → `ctx.name()`
+  - Compute capability: hardcoded (7, 5) → `ctx.compute_capability()`
+  - Memory allocation: `device.htod_copy()` → `stream.clone_htod()`
+  - Kernel launch: `func.launch()` → `stream.launch_builder(&func).arg(...).launch(cfg)`
+  - Module loading: `device.load_ptx()` → `context.load_module(Ptx::from_src())`
+  - `FrameworkHandle::Cuda` now holds `Arc<CudaContext>` (cloneable)
+
+- **Clippy Cleanup** (44 warnings resolved):
+  - barracuda: 43 auto-fixes (div_ceil, is_multiple_of, slice calculations)
+  - barracuda: 1 manual fix (CellSortResult type alias for complex return type)
+  - toadstool-server: 1 auto-fix (map iteration pattern)
+
+#### Added
+
+- **CellSortResult Type Alias** (`crates/barracuda/src/ops/md/forces/yukawa_celllist_f64.rs`):
+  ```rust
+  pub type CellSortResult = (Vec<f64>, Vec<usize>, Vec<u32>, Vec<u32>);
+  ```
+
+#### Updated
+
+- `crates/runtime/gpu/Cargo.toml` — cudarc 0.11 → 0.19
+- `showcase/cross-platform/Cargo.toml` — cudarc 0.11 → 0.19
+- `DEEP_DEBT_STATUS.md` — cudarc upgrade documented
+
+#### Notes
+
+- WebGPU tests may fail in parallel due to resource exhaustion (too many concurrent device connections). Use `--test-threads=1` if needed.
+- Intentional deprecation warnings remain for `BEARDOG`/`NESTGATE` migration helpers.
+
+---
+
 ### [2026-02-16] - Three Springs Validation + Bug Fixes + Deep Debt Evolution
 
 **Impact**: Three validation projects (313+ checks); three critical bug fixes; ecoBin v2.0 compliance.

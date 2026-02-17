@@ -29,6 +29,8 @@
 
 ## Current State (February 17, 2026)
 
+- **cudarc 0.19 Upgrade** — CUDA backend modernized with real device queries, stream-based ops
+- **Clippy Cleanup** — 44 warnings fixed across workspace (div_ceil, is_multiple_of, type alias)
 - **Pure Rust Syscalls** — akida-driver mmap/mlock migrated from libc to rustix
 - **biomeOS Networking** — No reqwest/hyper; Songbird (TLS) + Beardog (crypto) + JSON-RPC
 - **Broadcast Error Handling** — Server/protocols log when sends fail (debug/trace)

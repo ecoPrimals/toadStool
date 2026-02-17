@@ -1,7 +1,7 @@
 # ToadStool/BarraCUDA — Next Steps
 
-**Updated**: February 17, 2026 (Deep Debt Evolution — Timeout Consolidation + SIMD Detection)  
-**Status**: Unidirectional Pipeline Phase 0-4 COMPLETE, Timeout Consolidation COMPLETE, SIMD Runtime Detection COMPLETE
+**Updated**: February 17, 2026 (cudarc 0.19 Upgrade + Clippy Cleanup)  
+**Status**: cudarc 0.19 COMPLETE, Clippy Cleanup COMPLETE, Unidirectional Pipeline COMPLETE
 
 ---
 
@@ -165,11 +165,12 @@ From `DEEP_DEBT_STATUS.md` and `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.m
 
 ## Recent Deep Debt (Feb 17 Complete)
 
+- [x] **cudarc 0.11 → 0.19 Upgrade** — Real device queries, stream-based memory ops, modern kernel launch
+- [x] **Clippy Cleanup** — 44 warnings fixed (div_ceil, is_multiple_of, type alias for CellSortResult)
 - [x] **Unidirectional Pipeline** — Phases 0-4 (design, ring buffer, pipeline, throttler, benchmark)
 - [x] **Timeout Consolidation** — Centralized Duration constants across server/auth/cli
 - [x] **SIMD Runtime Detection** — std::arch::is_x86_feature_detected! for accurate capability
 - [x] **Production Mock Hardening** — Beardog/NeuroBench/GPU remote return real errors
-- [x] **cudarc Upgrade Path** — Documented 0.11 → 0.19.2 API changes for future
 
 ---
 

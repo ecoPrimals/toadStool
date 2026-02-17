@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 17, 2026 (Deep Debt Evolution — Timeout Consolidation + SIMD Runtime Detection)
+**Date**: February 17, 2026 (cudarc 0.19 Upgrade + Clippy Cleanup)
 
 ---
 
@@ -473,7 +473,28 @@ chemistry, and precision agriculture — all on the same BarraCUDA primitives.
 
 ---
 
-## Deep Debt Evolution (Feb 17) ✅ ONGOING
+## cudarc 0.19 Upgrade + Clippy Cleanup (Feb 17) ✅ COMPLETE
+
+**CUDA Backend Modernization:**
+
+| Change | Before | After |
+|--------|--------|-------|
+| Device type | `CudaDevice` | `CudaContext` (Arc-wrapped) |
+| Device queries | Hardcoded | Real `ctx.name()`, `ctx.compute_capability()` |
+| Memory ops | `device.htod_copy()` | `stream.clone_htod()` |
+| Kernel launch | `func.launch()` | `stream.launch_builder().arg().launch()` |
+
+**Clippy Cleanup** — 44 warnings fixed:
+- Replaced manual `div_ceil()` with method
+- Replaced manual `.is_multiple_of()` implementations  
+- Added `CellSortResult` type alias for complex tuple
+- Fixed map iteration patterns
+
+**Result**: Workspace clippy-clean (only intentional deprecation warnings remain).
+
+---
+
+## Deep Debt Evolution (Feb 17) ✅ COMPLETE
 
 **Timeout Constant Consolidation:**
 

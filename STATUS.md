@@ -1,4 +1,4 @@
-# Status -- February 17, 2026 (Deep Debt Evolution — Timeout Consolidation + SIMD Detection)
+# Status -- February 17, 2026 (cudarc 0.19 Upgrade + Clippy Cleanup)
 
 ## Quality Gates
 
@@ -19,6 +19,49 @@
 *All clippy warnings resolved. Workspace fully clean. Pure Rust syscalls in akida-driver.*
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). `crates/client` excluded (pending reqwest migration to biomeOS tower).
+
+---
+
+## cudarc 0.11 → 0.19 Upgrade (Feb 17, 2026) ✅ COMPLETE
+
+Major dependency upgrade for the CUDA backend, resolving long-standing TODOs for proper device queries:
+
+| API | Before (0.11) | After (0.19) |
+|-----|---------------|--------------|
+| Device type | `CudaDevice` | `CudaContext` (Arc-wrapped for Clone) |
+| Device name | Hardcoded "NVIDIA CUDA Device" | `ctx.name()` returns actual GPU name |
+| Compute capability | Hardcoded (7, 5) | `ctx.compute_capability()` returns real values |
+| Memory queries | Hardcoded defaults | `ctx.attribute(CUdevice_attribute::*)` |
+| Memory allocation | `device.htod_copy()` | `stream.clone_htod()` (stream-based) |
+| Kernel launch | `func.launch()` | `stream.launch_builder(&func).arg(...).launch(cfg)` |
+| Module loading | `device.load_ptx()` | `context.load_module(Ptx::from_src())` |
+
+**Files Modified**:
+- `crates/runtime/gpu/Cargo.toml` — cudarc version bump
+- `crates/runtime/gpu/src/backends/cuda_impl.rs` — Full API migration
+- `crates/runtime/gpu/src/types.rs` — `FrameworkHandle::Cuda` now uses `Arc<CudaContext>`
+- `showcase/cross-platform/Cargo.toml` — cudarc version bump
+
+**Note**: WebGPU tests may fail when run in parallel due to resource exhaustion (too many concurrent device connections). Use `--test-threads=1` if needed.
+
+---
+
+## Clippy Cleanup (Feb 17, 2026) ✅ COMPLETE
+
+Applied automatic and manual clippy fixes across the workspace:
+
+| Crate | Warnings Fixed | Type |
+|-------|---------------|------|
+| barracuda | 43 | Auto-fix (`div_ceil`, `is_multiple_of`, slice calc) |
+| barracuda | 1 | Manual (type alias for `CellSortResult`) |
+| toadstool-server | 1 | Auto-fix (map iteration) |
+
+**New Type Alias** (`crates/barracuda/src/ops/md/forces/yukawa_celllist_f64.rs`):
+```rust
+pub type CellSortResult = (Vec<f64>, Vec<usize>, Vec<u32>, Vec<u32>);
+```
+
+**Result**: Workspace clippy-clean. Only intentional deprecation warnings remain (for `BEARDOG`/`NESTGATE` migration helpers).
 
 ---
 
@@ -1474,4 +1517,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 16, 2026 (Device Registry + F64 Reduce Suite)
+**Last Updated**: February 17, 2026 (cudarc 0.19 Upgrade + Clippy Cleanup)

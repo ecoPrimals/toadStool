@@ -256,6 +256,31 @@ toadStool/
 
 ## Recent Evolutions (Feb 17, 2026)
 
+### cudarc 0.11 → 0.19 Upgrade (Feb 17) — COMPLETE
+
+Major deep debt elimination for CUDA backend:
+
+| Change | Before (0.11) | After (0.19) |
+|--------|---------------|--------------|
+| Device type | `CudaDevice` | `CudaContext` (Arc-wrapped) |
+| Device name | Hardcoded "NVIDIA CUDA Device" | Real `ctx.name()` |
+| Compute capability | Hardcoded (7, 5) | Real `ctx.compute_capability()` |
+| Memory queries | Hardcoded defaults | `ctx.attribute(CUdevice_attribute::*)` |
+| Memory allocation | `device.htod_copy()` | `stream.clone_htod()` |
+| Kernel launch | `func.launch()` | `stream.launch_builder().arg().launch()` |
+
+**Files**: `crates/runtime/gpu/src/backends/cuda_impl.rs`, `crates/runtime/gpu/src/types.rs`
+
+### Clippy Cleanup (Feb 17) — COMPLETE
+
+Applied 44 clippy auto-fixes across workspace:
+- Replaced manual `div_ceil()` implementations with method
+- Replaced manual `.is_multiple_of()` implementations
+- Added `CellSortResult` type alias for complex return type
+- Fixed map iteration patterns in server crate
+
+**Result**: Workspace clippy-clean (only intentional deprecation warnings remain)
+
 ### Unidirectional Compute Pipeline Architecture (Feb 17) — IMPLEMENTED
 
 **Novel GPU data flow patterns** for eliminating round-trip latency:
@@ -601,4 +626,4 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
-**Last Updated**: February 17, 2026 (Deep Debt Evolution — Timeout Consolidation + SIMD Runtime Detection)
+**Last Updated**: February 17, 2026 (cudarc 0.19 Upgrade + Clippy Cleanup)
