@@ -1,19 +1,77 @@
-# Status -- February 16, 2026 (Three Springs Evolution + Unified Math Library)
+# Status -- February 17, 2026 (Deep Debt Evolution — Pure Rust + biomeOS Networking)
 
 ## Quality Gates
 
 | Gate | Status | Notes |
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
-| `cargo fmt --all -- --check` | PASS | Clean (39 files fixed) |
+| `cargo fmt --all -- --check` | PASS | Clean |
 | `cargo clippy --workspace -- -D warnings` | PASS | **Clean** |
-| `cargo doc --workspace --no-deps` | PASS | **Clean** (1 rustdoc warning fixed) |
+| `cargo doc --workspace --no-deps` | PASS | **Clean** |
 | `cargo test --workspace --lib` | PASS | **15,700+ tests passed** |
-| hotSpring validation | PASS | **169/169 acceptance checks** |
+| hotSpring validation | PASS | **195/195 acceptance checks** |
+| Pure Rust syscalls | PASS | **mmap/mlock via rustix** |
+| biomeOS networking | PASS | **No reqwest/hyper** |
 
-*All clippy warnings resolved. Workspace fully clean. hotSpring nuclear EOS validation complete.*
+*All clippy warnings resolved. Workspace fully clean. Pure Rust syscalls in akida-driver.*
 
-Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). `crates/client` excluded (pending reqwest migration to biomeOS tower).
+
+---
+
+## Deep Debt Evolution — Pure Rust System Calls (Feb 17, 2026) ✅ COMPLETE
+
+### Pure Rust Syscalls (akida-driver)
+
+**Migrated from `libc` to `rustix`** for portable, pure Rust system calls:
+
+| Syscall | Before | After | File |
+|---------|--------|-------|------|
+| `mmap` | `libc::mmap` | `rustix::mm::mmap` | `mmio.rs` |
+| `munmap` | `libc::munmap` | `rustix::mm::munmap` | `mmio.rs` |
+| `mlock` | `libc::mlock` | `rustix::mm::mlock` | `backends/vfio.rs` |
+| `munlock` | `libc::munlock` | `rustix::mm::munlock` | `backends/vfio.rs` |
+| VFIO ioctls | `libc::ioctl` | **Retained** | Kernel-specific |
+
+**Note**: `libc` retained only for VFIO `ioctl()` calls — these are Linux kernel-specific and have no `rustix` equivalent.
+
+### biomeOS Networking Policy
+
+**NO reqwest / hyper / ring / openssl** — all have C dependencies:
+
+| Component | Provider | Implementation |
+|-----------|----------|----------------|
+| TLS | **Songbird** | Pure Rust via `rustls` |
+| Crypto | **Beardog** | Pure Rust (ChaCha20-Poly1305, etc.) |
+| Transport | JSON-RPC 2.0 | Unix sockets (local) / TCP (remote) |
+
+**Documentation updated**:
+- `crates/runtime/gpu/src/distributed/mod.rs` — biomeOS tower pattern
+- `crates/distributed/src/songbird_integration/capability_discovery.rs` — JSON-RPC example
+- `crates/client/Cargo.toml` — workspace exclusion documented
+
+### Broadcast Error Handling
+
+Replaced `let _ = channel.send(...)` with explicit logging:
+
+| File | Event | Log Level |
+|------|-------|-----------|
+| `server/handlers.rs` | `ExecutionStarted` | debug |
+| `server/background.rs` | `ResourceUsageUpdate` | trace |
+| `server/background.rs` | `HealthStatusChanged` | debug |
+| `server/background.rs` | `ExecutionCompleted` | debug |
+| `protocols/client.rs` | `ServiceHealthChanged` | debug |
+
+No event receivers is normal when no clients are connected — now logged rather than silently ignored.
+
+### Placeholder Documentation
+
+| Placeholder | Location | Documentation Added |
+|-------------|----------|---------------------|
+| FPGA discovery | `core/substrate/discovery.rs` | Intel OPAE / Xilinx XRT evolution path |
+| GPU remote execution | `runtime/gpu/distributed/mod.rs` | biomeOS tower pattern |
+| GPU kernel compiler | `runtime/gpu/compiler.rs` | AOT vs JIT rationale |
+| Akida model parsing | `neuromorphic/akida-models/model.rs` | FlatBuffers schema dependency |
 
 ---
 

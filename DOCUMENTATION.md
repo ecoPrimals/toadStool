@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 16, 2026
+**Last Updated**: February 17, 2026
 
 ---
 
@@ -12,6 +12,7 @@
 | See current status | [STATUS.md](STATUS.md) |
 | Quick one-page summary | [QUICK_STATUS.md](QUICK_STATUS.md) |
 | Commands and API reference | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
+| Deep debt progress | [DEEP_DEBT_STATUS.md](DEEP_DEBT_STATUS.md) |
 | See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-26-total) |
 | Try GPU operations | [docs/guides/QUICK_START_GPU.md](docs/guides/QUICK_START_GPU.md) |
 | Learn FHE | [docs/guides/QUICK_START_ENCRYPTION.md](docs/guides/QUICK_START_ENCRYPTION.md) |
@@ -25,8 +26,13 @@
 
 ---
 
-## Current State (February 16, 2026)
+## Current State (February 17, 2026)
 
+- **Pure Rust Syscalls** — akida-driver mmap/mlock migrated from libc to rustix
+- **biomeOS Networking** — No reqwest/hyper; Songbird (TLS) + Beardog (crypto) + JSON-RPC
+- **Broadcast Error Handling** — Server/protocols log when sends fail (debug/trace)
+- **Placeholder Documentation** — FPGA, GPU remote, Akida parsing evolution paths documented
+- **Songbird Registry** — Evolved from stub to real JSON-RPC call
 - **Three Springs Validation** — 313+ checks across hotSpring (195), wetSpring (48), airSpring (70)
 - **Unified Math Library** — Fused Map-Reduce, Kriging, Cosine Similarity f64, Batched ET₀
 - **37 New Evolution Tests** — Unit, E2E, chaos, fault, precision coverage for unified primitives
@@ -40,7 +46,7 @@
 - **F64 Reduce Suite** — ProdReduceF64, VarianceReduceF64, NormReduceF64, CumprodF64
 - **F64 Unified Math Language Suite** — CholeskyF64, TriangularSolveF64, LennardJonesF64, CoulombF64, MorseF64
 - **GPU-Resident Pipeline Complete** — Zero CPU↔GPU round-trips during iteration
-- **hotSpring Evolution Complete** — 169/169 nuclear EOS acceptance checks on consumer GPU
+- **hotSpring Evolution Complete** — 195/195 nuclear EOS acceptance checks on consumer GPU
 - **Math Primitives Absorbed** — Broyden mixing, FD gradients, weighted inner products, Hermite/Laguerre f64
 - **84 new evolution tests** — 47 hotSpring + 37 three springs (unit, E2E, chaos, fault, precision)
 - **0 clippy warnings with -D warnings**
@@ -149,4 +155,4 @@ specs/                     -- Technical specifications
 
 ---
 
-**Last Updated**: February 16, 2026
+**Last Updated**: February 17, 2026

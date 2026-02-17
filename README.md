@@ -11,7 +11,7 @@
 
 ---
 
-## Quality Gates (February 16, 2026)
+## Quality Gates (February 17, 2026)
 
 | Gate | Status |
 |------|--------|
@@ -33,6 +33,8 @@
 | Server metrics | ✅ Real system values (no placeholders) |
 | GPU detection | ✅ Self-knowledge via sysfs/system_profiler |
 | ecoBin compliance | ✅ TOML preferred, XDG paths, pure Rust |
+| Pure Rust syscalls | ✅ mmap/mlock via rustix (akida-driver) |
+| biomeOS networking | ✅ No reqwest/hyper (Songbird TLS, Beardog crypto) |
 
 *All quality gates green. Workspace fully clean. Clippy -D warnings compliant.*
 
@@ -251,7 +253,31 @@ toadStool/
 
 ---
 
-## Recent Evolutions (Feb 16, 2026)
+## Recent Evolutions (Feb 17, 2026)
+
+### Deep Debt Evolution — Pure Rust & Documentation (Feb 17) ✅
+
+**Pure Rust system calls** (akida-driver):
+| Syscall | Before | After |
+|---------|--------|-------|
+| mmap/munmap | `libc` | `rustix::mm` |
+| mlock/munlock | `libc` | `rustix::mm` |
+| VFIO ioctls | `libc` | Retained (kernel-specific) |
+
+**biomeOS networking** — NO reqwest/hyper (C dependencies via ring/openssl):
+- **Songbird**: TLS/networking (pure Rust rustls)
+- **Beardog**: Cryptographic operations (pure Rust)
+- JSON-RPC 2.0 over Unix sockets (local) or TCP (remote)
+
+**Documentation & placeholder evolution**:
+- FPGA discovery: Documented Intel OPAE / Xilinx XRT paths
+- GPU remote execution: Documented biomeOS tower pattern
+- Songbird registry: Evolved from stub to real JSON-RPC call
+- Broadcast errors: Server/protocols now log when sends fail
+
+---
+
+## Previous Evolutions (Feb 16, 2026)
 
 ### Bug Fixes from Validation Projects (Feb 16) ✅
 
@@ -536,4 +562,4 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
-**Last Updated**: February 16, 2026 (Device Registry + F64 Reduce Suite)
+**Last Updated**: February 17, 2026 (Deep Debt Evolution — Pure Rust syscalls + biomeOS networking)

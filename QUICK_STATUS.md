@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 16, 2026 (Three Springs Validation + Deep Debt Evolution)
+**Date**: February 17, 2026 (Deep Debt Evolution — Pure Rust + biomeOS Networking)
 
 ---
 
@@ -342,6 +342,33 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 
 ---
 
+## Deep Debt Evolution — Pure Rust System Calls (Feb 17) ✅ COMPLETE
+
+**Pure Rust syscalls** in akida-driver (replaced libc with rustix):
+
+| Syscall | Migration | Impact |
+|---------|-----------|--------|
+| `mmap` / `munmap` | `rustix::mm::mmap` / `munmap` | Memory mapping |
+| `mlock` / `munlock` | `rustix::mm::mlock` / `munlock` | Memory locking |
+| VFIO ioctls | Retained `libc::ioctl` | Kernel-specific |
+
+**biomeOS networking policy** — NO C dependencies:
+
+| Component | Provider | Role |
+|-----------|----------|------|
+| TLS | **Songbird** | Pure Rust TLS (rustls) |
+| Crypto | **Beardog** | Pure Rust crypto |
+| Transport | JSON-RPC 2.0 | Unix sockets / TCP |
+
+All `reqwest` / `hyper` references removed from documentation. The `crates/client` excluded pending migration.
+
+**Additional evolutions**:
+- Broadcast sends now log failures (debug/trace level)
+- FPGA/GPU remote execution placeholders documented with evolution paths
+- Songbird registry query evolved from stub → real JSON-RPC
+
+---
+
 ## Deep Debt Evolution + ecoBin Compliance (Feb 16) ✅ COMPLETE
 
 **Comprehensive audit and evolution** for modern Rust and ecoBin v2.0:
@@ -426,4 +453,4 @@ chemistry, and precision agriculture — all on the same BarraCUDA primitives.
 
 ---
 
-**Last Updated**: February 16, 2026
+**Last Updated**: February 17, 2026
