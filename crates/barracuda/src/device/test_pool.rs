@@ -118,6 +118,31 @@ pub async fn get_test_device_if_f64_gpu_available() -> Option<Arc<WgpuDevice>> {
     }
 }
 
+// ============================================================================
+// Sync helpers for gradual migration of #[test] to #[tokio::test]
+// ============================================================================
+
+/// Sync wrapper for get_test_device (uses pollster for sync tests)
+///
+/// **Prefer async**: Use `get_test_device().await` in `#[tokio::test]` when possible.
+/// This sync helper exists for gradual migration of existing `#[test]` functions.
+#[cfg(test)]
+pub fn get_test_device_sync() -> Arc<WgpuDevice> {
+    pollster::block_on(get_test_device())
+}
+
+/// Sync wrapper for get_test_device_if_gpu_available
+#[cfg(test)]
+pub fn get_test_device_if_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
+    pollster::block_on(get_test_device_if_gpu_available())
+}
+
+/// Sync wrapper for get_test_device_if_f64_gpu_available  
+#[cfg(test)]
+pub fn get_test_device_if_f64_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
+    pollster::block_on(get_test_device_if_f64_gpu_available())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
