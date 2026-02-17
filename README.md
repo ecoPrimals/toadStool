@@ -35,6 +35,7 @@
 | ecoBin compliance | ✅ TOML preferred, XDG paths, pure Rust |
 | Pure Rust syscalls | ✅ mmap/mlock via rustix (akida-driver) |
 | biomeOS networking | ✅ No reqwest/hyper (Songbird TLS, Beardog crypto) |
+| Unidirectional pipeline | ✅ Phases 0-4 complete (staging, benchmark) |
 
 *All quality gates green. Workspace fully clean. Clippy -D warnings compliant.*
 
@@ -255,20 +256,23 @@ toadStool/
 
 ## Recent Evolutions (Feb 17, 2026)
 
-### Unidirectional Compute Pipeline Architecture (Feb 17) — EXPLORATION
+### Unidirectional Compute Pipeline Architecture (Feb 17) — IMPLEMENTED
 
 **Novel GPU data flow patterns** for eliminating round-trip latency:
 
-| Concept | Description | Status |
+| Component | Description | Status |
 |---------|-------------|:------:|
-| **GPU-Direct Display** | Compute → storage texture → display (no CPU readback) | 📋 Designed |
-| **Hardware Routing Layer** | ToadStool manages PCIe/HDMI/NVLink as data channels | 📋 Designed |
-| **Unidirectional Pipeline** | CPU→GPU (input) separate from GPU→CPU (output) | 📋 Designed |
-| **Software Simulation** | 90% input / 10% output bandwidth partitioning | 📋 Designed |
+| **GpuRingBuffer** | SPSC ring buffer with atomic head/tail | ✅ Implemented |
+| **UnidirectionalPipeline** | Fire-and-forget API with work tracking | ✅ Implemented |
+| **BandwidthThrottler** | 90/10 bandwidth simulation | ✅ Implemented |
+| **Benchmark** | Traditional vs unidirectional comparison | ✅ Implemented |
+| **Hardware (HDMI/DP)** | Physical display output for data streaming | 📋 Future |
 
 **Key insight**: The 10 GB/s HDMI output carries **completed results**, not raw data. With 100:1 compression (eigenvalues vs matrices), that's **12.5 million eigensolves/sec** streaming output.
 
-**Design docs**: `docs/planning/GPU_DIRECT_DISPLAY_EXPLORATION_FEB17_2026.md`, `HARDWARE_ROUTING_LAYER_FEB17_2026.md`, `UNIDIRECTIONAL_COMPUTE_PIPELINE_FEB17_2026.md`, `SOFTWARE_UNIDIRECTIONAL_SIMULATION_FEB17_2026.md`
+**Files**: `crates/barracuda/src/staging/` (ring_buffer, unidirectional), `benches/unidirectional_benchmark.rs`
+
+**Tracker**: [UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md)
 
 ---
 
@@ -288,9 +292,11 @@ toadStool/
 
 **Documentation & placeholder evolution**:
 - FPGA discovery: Documented Intel OPAE / Xilinx XRT paths
-- GPU remote execution: Documented biomeOS tower pattern
+- GPU remote execution: Returns proper error (was placeholder success)
 - Songbird registry: Evolved from stub to real JSON-RPC call
 - Broadcast errors: Server/protocols now log when sends fail
+- Beardog capabilities: Returns error on RPC failure (was fake capabilities)
+- NeuroBench model: Returns error on missing file (was loading zeros)
 
 ---
 
