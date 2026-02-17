@@ -26,16 +26,22 @@
 
 pub mod born_mayer;
 pub mod coulomb;
+pub mod coulomb_f64;
 pub mod lennard_jones;
 pub mod lennard_jones_f64;
 pub mod morse;
+pub mod morse_f64;
 pub mod yukawa;
+pub mod yukawa_celllist_f64;
 pub mod yukawa_f64;
 
 pub use born_mayer::BornMayerForce;
 pub use coulomb::CoulombForce;
+pub use coulomb_f64::CoulombForceF64;
 pub use lennard_jones::LennardJonesForce;
 pub use lennard_jones_f64::LennardJonesF64;
 pub use morse::MorseForce;
+pub use morse_f64::MorseForceF64;
 pub use yukawa::YukawaForce;
+pub use yukawa_celllist_f64::YukawaCellListF64;
 pub use yukawa_f64::YukawaForceF64;

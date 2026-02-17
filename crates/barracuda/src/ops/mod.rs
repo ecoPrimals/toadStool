@@ -115,7 +115,9 @@ pub mod beta_wgsl;
 pub mod digamma_wgsl;
 pub mod erf_wgsl;
 pub mod erfc_wgsl;
+pub mod hermite_f64_wgsl; // f64 Hermite polynomials (hotSpring nuclear physics)
 pub mod hermite_wgsl;
+pub mod laguerre_f64_wgsl; // f64 generalized Laguerre polynomials (hotSpring)
 pub mod laguerre_wgsl;
 pub mod legendre_wgsl;
 pub mod lgamma_wgsl;
