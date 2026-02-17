@@ -19,7 +19,35 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **Production Mock Hardening COMPLETE** — removed fake capabilities/models from production paths.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 17, 2026 — hotSpring GPU Validation Handoff)
+### Latest Updates (Feb 17, 2026 — hotSpring GPU Validation Handoff Continued)
+
+**PPPM Energy Sign Bug Fix ✓**
+
+Fixed double-counting of self-energy in GPU PPPM implementation. The `self_energy` kernel in `erfc_forces.wgsl` was writing to `pe_buf`, and then `self_energy_correction()` was computed again on CPU and added to the total. Now the CPU self-energy calculation is removed from `compute_kspace()` and `compute_gpu_fft()` since the GPU already handles it.
+
+**Multi-GPU Workload Routing ✓**
+
+Implemented intelligent workload routing based on hotSpring's cross-GPU validation findings:
+
+| New Type | Description |
+|----------|-------------|
+| `GpuDriver` enum | Distinguishes NVK, RADV, proprietary NVIDIA, Intel, Software |
+| `WorkloadType` enum | `Streaming`, `Iterative`, `F64Builtins` classifications |
+| `GpuInfo.driver` | Driver type field for routing decisions |
+| `GpuInfo.supports_f64_builtins()` | Returns false for NVK (NAK compiler bugs) |
+| `GpuPool.route()` | Selects best device for workload type |
+| `GpuPool.route_acquire()` | Route + acquire semaphore permit |
+
+**GPU PPPM Tests Added**
+
+Added comprehensive GPU-specific tests in `pppm_gpu.rs`:
+- `test_pppm_gpu_opposite_charges_energy` — verifies negative (attractive) energy
+- `test_pppm_gpu_newtons_third_law` — verifies forces sum to zero
+- `test_pppm_gpu_like_charges_repel` — verifies repulsive forces
+
+---
+
+### Previous Updates (Feb 17, 2026 — hotSpring GPU Validation Handoff)
 
 **hotSpring Cross-GPU Validation Integration ✓**
 
@@ -32,6 +60,7 @@ Absorbed validation findings from hotSpring's full BarraCUDA GPU pass on RTX 407
 | Fix 3: Naga bitcast<f64> workaround | ✅ | Documented in `math_f64.wgsl` with ratio encoding helper |
 | Fix 4: f64 literal audit | ✅ | WGSL shaders use explicit `f64()` casts |
 | Fix 5: Buffer usage conflicts | ✅ | PPPM uses separate passes (no conflicts found) |
+| Fix 6: PPPM self-energy double-counting | ✅ | **NEW** — Removed CPU self-energy calculation from GPU path |
 
 | New API | Status | Description |
 |---------|:------:|-------------|
@@ -40,6 +69,9 @@ Absorbed validation findings from hotSpring's full BarraCUDA GPU pass on RTX 407
 | `WgpuDevice::is_nvidia_proprietary()` | ✅ | Detects proprietary NVIDIA |
 | `ShaderTemplate::for_device()` | ✅ | Auto-patches exp/log for NVK compatibility |
 | `ShaderTemplate::for_device_auto()` | ✅ | Auto-patch + minimal function inclusion |
+| `GpuPool.route()` | ✅ | **NEW** — Workload-based device routing |
+| `WorkloadType` | ✅ | **NEW** — Streaming/Iterative/F64Builtins enum |
+| `GpuDriver` | ✅ | **NEW** — Driver detection for routing |
 
 **NVK exp(f64) Workaround**
 
@@ -47,17 +79,19 @@ The NVK (nouveau) Vulkan driver has a NAK compiler bug that crashes on native `e
 The `ShaderTemplate::for_device()` method auto-replaces `exp(` with `exp_f64(` when running on NVK,
 using the software implementation from `math_f64.wgsl`.
 
-**Known Issues (Pre-existing, Not Fixed)**
+**Known Issues (Documented)**
 
 | Issue | Status | Description |
 |-------|:------:|-------------|
-| PPPM energy sign | 🔶 DEFERRED | GPU PPPM may return positive energy for attractive charges (CPU tests pass) |
-| f64 exp precision | 🔶 DEFERRED | Native GPU exp(f64) differs from CPU by ~8e-8 (tolerance too tight) |
+| f64 exp precision | 📝 DOCUMENTED | Native GPU exp(f64) differs from CPU by ~8e-8 — documented in `math_f64.wgsl` |
 
 Key files modified:
 - `crates/barracuda/src/device/wgpu_device.rs` — `is_nvk()`, `is_radv()`, `is_nvidia_proprietary()`
 - `crates/barracuda/src/device/tensor_context.rs` — `science_limits()` storage buffer increase
 - `crates/barracuda/src/shaders/precision.rs` — `for_device()`, `for_device_auto()`
+- `crates/barracuda/src/ops/md/electrostatics/pppm_gpu.rs` — **NEW** — self-energy fix + GPU tests
+- `crates/barracuda/src/multi_gpu.rs` — **NEW** — `GpuDriver`, `WorkloadType`, routing APIs
+- `crates/barracuda/src/shaders/math/math_f64.wgsl` — **UPDATED** — precision documentation
 - `crates/barracuda/src/shaders/math/math_f64.wgsl` — bitcast documentation + ratio helper
 
 ---

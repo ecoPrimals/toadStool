@@ -683,6 +683,14 @@ impl WgpuDevice {
         &self.queue
     }
 
+    /// Get Arc to command queue for shared ownership
+    ///
+    /// Returns a clone of the internal `Arc<wgpu::Queue>` for use cases
+    /// that need shared ownership, like PPPM and other multi-stage compute.
+    pub fn queue_arc(&self) -> Arc<wgpu::Queue> {
+        self.queue.clone()
+    }
+
     /// Create storage buffer (convenience helper)
     ///
     /// **Deep Debt**: Reduces boilerplate for external barraCUDA users

@@ -6,11 +6,20 @@
 // operations (+, -, *, /, comparisons). Originally created because WGSL spec
 // does not guarantee f64 builtins, but see NATIVE BUILTINS section below.
 //
-// NATIVE f64 BUILTINS (Feb 15-16 2026 hotSpring + wetSpring findings):
+// NATIVE f64 BUILTINS (Feb 15-17 2026 hotSpring + wetSpring findings):
 // WORKS on NVIDIA/AMD via Vulkan/wgpu:
 //   sqrt(f64), abs(f64), min(f64), max(f64), floor(f64), ceil(f64)
 // REJECTED by NVVM (not in WGSL spec — "NVVM compilation failed: 1"):
 //   log(f64), exp(f64), pow(f64), sin(f64), cos(f64)
+//
+// DRIVER-SPECIFIC ISSUES (hotSpring cross-GPU validation Feb 2026):
+// - NVK (nouveau): Native exp(f64) CRASHES NAK compiler - use exp_f64()
+// - Proprietary NVIDIA: Native exp(f64) works but differs from CPU by ~8e-8
+// - RADV (AMD): Full f64 builtin support via AMDGPU backend
+//
+// For portable code with consistent precision:
+// - Use exp_f64(), log_f64() from this library (~1e-15 precision)
+// - Use ShaderTemplate::for_device() to auto-patch for driver bugs
 //
 // This means ANY shader using log/exp/pow on f64 MUST use software
 // implementations from this library. Shannon entropy (p * log(p)) was the

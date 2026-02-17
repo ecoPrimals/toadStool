@@ -353,10 +353,11 @@ impl PppmGpu {
         let forces = SparseBuffers::read_f64_raw(&self.device, &self.queue, &forces_buffer, n * 3)?;
         let pe_values = SparseBuffers::read_f64_raw(&self.device, &self.queue, &pe_buffer, n)?;
 
-        // Sum per-particle energies
+        // Sum per-particle energies (includes short-range + self-energy from GPU)
+        // NOTE: This method only computes short-range forces, not full PPPM.
+        // Use compute_kspace() or compute_gpu_fft() for full electrostatics.
         let total_energy: f64 = pe_values.iter().sum();
 
-        // Convert forces to per-particle arrays
         Ok((forces, total_energy))
     }
 
@@ -718,9 +719,8 @@ impl PppmGpu {
         let forces = SparseBuffers::read_f64_raw(&self.device, &self.queue, &forces_buffer, n * 3)?;
         let pe_values = SparseBuffers::read_f64_raw(&self.device, &self.queue, &pe_buffer, n)?;
 
-        // Compute corrections
-        let e_self =
-            super::self_energy_correction(charges, self.params.alpha, self.params.coulomb_constant);
+        // NOTE: Self-energy is already computed in GPU self_energy kernel and
+        // included in pe_buf, so we don't compute it again here.
 
         // Convert positions to [[f64; 3]] for dipole correction
         let pos_arrays: Vec<[f64; 3]> = positions
@@ -734,9 +734,10 @@ impl PppmGpu {
             self.params.coulomb_constant,
         );
 
-        // Total energy: k-space + short-range (from pe_buf) + self + dipole
-        let e_short: f64 = pe_values.iter().sum();
-        let total_energy = e_kspace + e_short + e_self + e_dipole;
+        // Total energy: k-space + short-range+self (from pe_buf) + dipole
+        // pe_buf contains: erfc short-range energy + self-energy correction (from GPU)
+        let e_short_and_self: f64 = pe_values.iter().sum();
+        let total_energy = e_kspace + e_short_and_self + e_dipole;
 
         Ok((forces, total_energy))
     }
@@ -1125,9 +1126,8 @@ impl PppmGpu {
         let forces = SparseBuffers::read_f64_raw(&self.device, &self.queue, &forces_buffer, n * 3)?;
         let pe_values = SparseBuffers::read_f64_raw(&self.device, &self.queue, &pe_buffer, n)?;
 
-        // Compute corrections
-        let e_self =
-            super::self_energy_correction(charges, self.params.alpha, self.params.coulomb_constant);
+        // NOTE: Self-energy is already computed in GPU self_energy kernel and
+        // included in pe_buf, so we don't compute it again here.
 
         let pos_arrays: Vec<[f64; 3]> = positions
             .chunks_exact(3)
@@ -1140,8 +1140,9 @@ impl PppmGpu {
             self.params.coulomb_constant,
         );
 
-        let e_short: f64 = pe_values.iter().sum();
-        let total_energy = e_kspace + e_short + e_self + e_dipole;
+        // pe_buf contains: erfc short-range energy + self-energy correction (from GPU)
+        let e_short_and_self: f64 = pe_values.iter().sum();
+        let total_energy = e_kspace + e_short_and_self + e_dipole;
 
         Ok((forces, total_energy))
     }
@@ -1164,5 +1165,141 @@ mod tests {
         );
         assert_eq!(params.mesh_dims, [16, 16, 16]);
         assert_eq!(params.alpha, 1.0);
+    }
+
+    /// Test that two opposite charges have negative (attractive) energy
+    /// This was a bug reported by hotSpring - GPU was returning positive energy
+    #[tokio::test]
+    async fn test_pppm_gpu_opposite_charges_energy() {
+        use crate::device::WgpuDevice;
+        use std::sync::Arc;
+
+        let device = match WgpuDevice::new().await {
+            Ok(d) => Arc::new(d),
+            Err(_) => {
+                eprintln!("Skipping GPU test - no GPU available");
+                return;
+            }
+        };
+
+        let params = PppmParams::custom(
+            2,
+            [10.0, 10.0, 10.0],
+            [8, 8, 8],
+            2.0, // alpha
+            3.0, // rc
+            4,   // order
+        );
+
+        let pppm = PppmGpu::new(device.device_arc(), device.queue_arc(), params)
+            .await
+            .expect("Failed to create PppmGpu");
+
+        // Two opposite charges at distance 2.0
+        let positions: Vec<f64> = vec![4.0, 5.0, 5.0, 6.0, 5.0, 5.0];
+        let charges: Vec<f64> = vec![1.0, -1.0];
+
+        let (_forces, energy) = pppm.compute_with_kspace(&positions, &charges).await.unwrap();
+
+        // Energy should be negative (attractive)
+        assert!(
+            energy < 0.0,
+            "Opposite charges should have negative energy, got {}",
+            energy
+        );
+    }
+
+    /// Test Newton's 3rd law: forces should sum to approximately zero
+    #[tokio::test]
+    async fn test_pppm_gpu_newtons_third_law() {
+        use crate::device::WgpuDevice;
+        use std::sync::Arc;
+
+        let device = match WgpuDevice::new().await {
+            Ok(d) => Arc::new(d),
+            Err(_) => {
+                eprintln!("Skipping GPU test - no GPU available");
+                return;
+            }
+        };
+
+        let params = PppmParams::custom(
+            2,
+            [10.0, 10.0, 10.0],
+            [8, 8, 8],
+            2.0,
+            3.0,
+            4,
+        );
+
+        let pppm = PppmGpu::new(device.device_arc(), device.queue_arc(), params)
+            .await
+            .expect("Failed to create PppmGpu");
+
+        let positions: Vec<f64> = vec![4.0, 5.0, 5.0, 6.0, 5.0, 5.0];
+        let charges: Vec<f64> = vec![1.0, -1.0];
+
+        let (forces, _energy) = pppm.compute_with_kspace(&positions, &charges).await.unwrap();
+
+        // Forces should sum to zero (Newton's 3rd law)
+        let fx_sum = forces[0] + forces[3];
+        let fy_sum = forces[1] + forces[4];
+        let fz_sum = forces[2] + forces[5];
+
+        let f1_mag = (forces[0].powi(2) + forces[1].powi(2) + forces[2].powi(2)).sqrt();
+        let relative_error = (fx_sum.powi(2) + fy_sum.powi(2) + fz_sum.powi(2)).sqrt() / f1_mag;
+
+        assert!(
+            relative_error < 1e-3,
+            "Newton's 3rd law violation: |F1+F2|/|F1| = {} (should be ~0)",
+            relative_error
+        );
+    }
+
+    /// Test that like charges have repulsive forces
+    #[tokio::test]
+    async fn test_pppm_gpu_like_charges_repel() {
+        use crate::device::WgpuDevice;
+        use std::sync::Arc;
+
+        let device = match WgpuDevice::new().await {
+            Ok(d) => Arc::new(d),
+            Err(_) => {
+                eprintln!("Skipping GPU test - no GPU available");
+                return;
+            }
+        };
+
+        let params = PppmParams::custom(
+            2,
+            [10.0, 10.0, 10.0],
+            [8, 8, 8],
+            2.0,
+            3.0,
+            4,
+        );
+
+        let pppm = PppmGpu::new(device.device_arc(), device.queue_arc(), params)
+            .await
+            .expect("Failed to create PppmGpu");
+
+        // Two positive charges: charge 0 at x=4, charge 1 at x=6
+        let positions: Vec<f64> = vec![4.0, 5.0, 5.0, 6.0, 5.0, 5.0];
+        let charges: Vec<f64> = vec![1.0, 1.0];
+
+        let (forces, _energy) = pppm.compute_with_kspace(&positions, &charges).await.unwrap();
+
+        // Force on particle 0 (at x=4) should be negative x (pushed away from x=6)
+        assert!(
+            forces[0] < 0.0,
+            "Like charges should repel: F0_x should be negative, got {}",
+            forces[0]
+        );
+        // Force on particle 1 (at x=6) should be positive x (pushed away from x=4)
+        assert!(
+            forces[3] > 0.0,
+            "Like charges should repel: F1_x should be positive, got {}",
+            forces[3]
+        );
     }
 }

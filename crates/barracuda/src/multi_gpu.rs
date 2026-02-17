@@ -55,10 +55,33 @@ pub struct GpuInfo {
     pub name: String,
     /// Vendor
     pub vendor: GpuVendor,
+    /// Driver type (affects f64 builtin support)
+    pub driver: GpuDriver,
     /// Estimated GFLOPS
     pub gflops: f64,
     /// Currently busy
     pub busy: bool,
+}
+
+impl GpuInfo {
+    /// Check if this GPU supports f64 builtins (exp, log, sqrt)
+    ///
+    /// Returns false for NVK driver due to NAK compiler bugs with exp(f64)
+    pub fn supports_f64_builtins(&self) -> bool {
+        match self.driver {
+            GpuDriver::Nvk => false, // NAK compiler crash on exp(f64)
+            GpuDriver::Software => false, // Usually limited precision
+            _ => true,
+        }
+    }
+
+    /// Check if this GPU is suitable for compute-intensive workloads
+    pub fn is_compute_capable(&self) -> bool {
+        matches!(
+            self.vendor,
+            GpuVendor::Nvidia | GpuVendor::Amd | GpuVendor::Intel
+        ) && self.gflops >= 500.0
+    }
 }
 
 /// GPU vendor
@@ -69,6 +92,46 @@ pub enum GpuVendor {
     Intel,
     Software,
     Unknown,
+}
+
+/// GPU driver type (affects f64 builtin support)
+///
+/// **hotSpring finding (Feb 2026)**: Different drivers have different f64 capabilities:
+/// - Proprietary NVIDIA: Full f64 support, native exp/log/sqrt
+/// - NVK (nouveau): NAK compiler crash on exp(f64) - use software fallback
+/// - RADV (AMD): Full f64 support via AMDGPU backend
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GpuDriver {
+    /// Proprietary NVIDIA driver (full f64 support)
+    NvidiaProprietary,
+    /// NVK/nouveau open-source driver (limited f64 builtins)
+    Nvk,
+    /// RADV open-source AMD driver (full f64 support)
+    Radv,
+    /// Intel driver
+    Intel,
+    /// Software rasterizer
+    Software,
+    /// Unknown driver
+    Unknown,
+}
+
+/// Workload classification for intelligent GPU routing
+///
+/// **hotSpring recommendation**: Route workloads based on characteristics:
+/// - Streaming: High memory throughput, less compute-bound (FFT, data transfers)
+/// - Iterative: Compute-bound, benefits from high GFLOPS (MD integration, PPPM)
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum WorkloadType {
+    /// High memory throughput workloads (FFT, data transfers, charge spreading)
+    /// Can run well on any GPU with good memory bandwidth
+    Streaming,
+    /// Compute-intensive workloads (MD integration, force calculation, PPPM)
+    /// Benefits from high GFLOPS and f64 precision support
+    Iterative,
+    /// Workloads requiring full f64 builtin support (exp, log, sqrt)
+    /// Must avoid NVK driver due to NAK compiler bugs
+    F64Builtins,
 }
 
 impl GpuVendor {
@@ -103,6 +166,56 @@ impl GpuVendor {
             || lower.contains("sse2")
             || lower.contains("sse4")
             || lower.contains("avx")
+        {
+            return Self::Software;
+        }
+
+        Self::Unknown
+    }
+}
+
+impl GpuDriver {
+    /// Detect driver type from device name and driver strings
+    ///
+    /// Uses the same detection logic as `WgpuDevice::is_nvk()` etc.
+    fn from_adapter_info(name: &str, driver: &str, driver_info: &str) -> Self {
+        let name_lower = name.to_lowercase();
+        let driver_lower = driver.to_lowercase();
+        let info_lower = driver_info.to_lowercase();
+
+        // Check for NVK (nouveau) first - has f64 builtin issues
+        if driver_lower.contains("nvk")
+            || driver_lower.contains("nouveau")
+            || info_lower.contains("nvk")
+            || info_lower.contains("nouveau")
+        {
+            return Self::Nvk;
+        }
+
+        // Check for RADV (AMD open-source)
+        if driver_lower.contains("radv") || info_lower.contains("radv") {
+            return Self::Radv;
+        }
+
+        // Check for proprietary NVIDIA (no mesa indicators)
+        if (name_lower.contains("nvidia")
+            || name_lower.contains("geforce")
+            || name_lower.contains("rtx")
+            || name_lower.contains("gtx"))
+            && !driver_lower.contains("mesa")
+        {
+            return Self::NvidiaProprietary;
+        }
+
+        // Intel
+        if name_lower.contains("intel") || name_lower.contains("iris") {
+            return Self::Intel;
+        }
+
+        // Software rasterizer
+        if name_lower.contains("llvmpipe")
+            || name_lower.contains("swiftshader")
+            || name_lower.contains("software")
         {
             return Self::Software;
         }
@@ -185,10 +298,18 @@ impl GpuPool {
 
             // Create device
             if let Ok(device) = WgpuDevice::from_adapter_index(idx).await {
+                // Detect driver type from adapter info
+                let driver = GpuDriver::from_adapter_info(
+                    &adapter.name,
+                    &adapter.driver,
+                    &adapter.driver_info,
+                );
+
                 info.push(GpuInfo {
                     index: idx,
                     name: adapter.name.clone(),
                     vendor,
+                    driver,
                     gflops,
                     busy: false,
                 });
@@ -211,9 +332,10 @@ impl GpuPool {
         tracing::info!("GPU pool initialized with {} devices", sorted_devices.len());
         for gi in &sorted_info {
             tracing::info!(
-                "  - {} ({:?}, ~{:.0} GFLOPS)",
+                "  - {} ({:?}, {:?}, ~{:.0} GFLOPS)",
                 gi.name,
                 gi.vendor,
+                gi.driver,
                 gi.gflops
             );
         }
@@ -240,6 +362,79 @@ impl GpuPool {
     /// Get a specific device
     pub fn device(&self, index: usize) -> Option<Arc<WgpuDevice>> {
         self.devices.get(index).cloned()
+    }
+
+    /// Route workload to optimal device based on workload type
+    ///
+    /// **hotSpring recommendation (Feb 2026)**: Intelligent routing based on:
+    /// - `Streaming`: Any device with good memory bandwidth
+    /// - `Iterative`: Prefer high-GFLOPS devices with full f64 support
+    /// - `F64Builtins`: Must avoid NVK driver (NAK compiler bug on exp(f64))
+    ///
+    /// # Returns
+    /// (device_arc, device_info) tuple for the selected device
+    pub fn route(&self, workload: WorkloadType) -> Option<(Arc<WgpuDevice>, &GpuInfo)> {
+        if self.devices.is_empty() {
+            return None;
+        }
+
+        match workload {
+            WorkloadType::Streaming => {
+                // Any device works for streaming, prefer fastest
+                self.devices
+                    .first()
+                    .map(|d| (d.clone(), &self.info[0]))
+            }
+
+            WorkloadType::Iterative => {
+                // Prefer high-GFLOPS devices with compute capability
+                for (i, gi) in self.info.iter().enumerate() {
+                    if gi.is_compute_capable() && gi.supports_f64_builtins() {
+                        return Some((self.devices[i].clone(), gi));
+                    }
+                }
+                // Fallback to fastest available
+                self.devices
+                    .first()
+                    .map(|d| (d.clone(), &self.info[0]))
+            }
+
+            WorkloadType::F64Builtins => {
+                // Must have full f64 builtin support (avoid NVK)
+                for (i, gi) in self.info.iter().enumerate() {
+                    if gi.supports_f64_builtins() {
+                        return Some((self.devices[i].clone(), gi));
+                    }
+                }
+                // No suitable device - f64 builtins not available
+                tracing::warn!(
+                    "No GPU with f64 builtin support found - workload may fail on NVK"
+                );
+                self.devices
+                    .first()
+                    .map(|d| (d.clone(), &self.info[0]))
+            }
+        }
+    }
+
+    /// Route workload and acquire semaphore permit
+    ///
+    /// Returns a tuple of (device, info, permit) where permit must be held
+    /// for the duration of the workload to ensure proper load balancing.
+    pub async fn route_acquire(
+        &self,
+        workload: WorkloadType,
+    ) -> Result<(Arc<WgpuDevice>, GpuInfo, tokio::sync::OwnedSemaphorePermit)> {
+        let permit = Arc::clone(&self.semaphore)
+            .acquire_owned()
+            .await
+            .map_err(|e| BarracudaError::device(format!("Semaphore error: {e}")))?;
+
+        let (device, info) = self.route(workload).ok_or_else(|| {
+            BarracudaError::device_not_found("No GPU available for workload")
+        })?;
+
+        Ok((device, info.clone(), permit))
     }
 
     /// Execute a closure on the best available device
@@ -474,6 +669,9 @@ pub struct DeviceInfo {
     /// Vendor
     pub vendor: GpuVendor,
 
+    /// Driver type (affects f64 builtin support)
+    pub driver: GpuDriver,
+
     /// Total VRAM in bytes
     pub vram_bytes: u64,
 
@@ -520,6 +718,17 @@ impl DeviceInfo {
             return 0.0;
         }
         (self.allocated_bytes() as f64 / self.vram_bytes as f64) * 100.0
+    }
+
+    /// Check if this GPU supports f64 builtins (exp, log, sqrt)
+    ///
+    /// Returns false for NVK driver due to NAK compiler bugs with exp(f64)
+    pub fn supports_f64_builtins(&self) -> bool {
+        match self.driver {
+            GpuDriver::Nvk => false, // NAK compiler crash on exp(f64)
+            GpuDriver::Software => false, // Usually limited precision
+            _ => true,
+        }
     }
 }
 
@@ -695,11 +904,19 @@ impl MultiDevicePool {
                     let allocations = Arc::new(AtomicUsize::new(0));
                     let allocated_bytes = Arc::new(AtomicU64::new(0));
 
+                    // Detect driver type from adapter info
+                    let driver = GpuDriver::from_adapter_info(
+                        &adapter.name,
+                        &adapter.driver,
+                        &adapter.driver_info,
+                    );
+
                     info.push(DeviceInfo {
                         index: idx,
                         pool_index: 0, // Will be set after sorting
                         name: adapter.name.clone(),
                         vendor,
+                        driver,
                         vram_bytes: estimated_vram,
                         estimated_gflops,
                         is_discrete: is_likely_discrete,
@@ -1032,6 +1249,7 @@ mod tests {
             pool_index: 0,
             name: "RTX 4070".to_string(),
             vendor: GpuVendor::Nvidia,
+            driver: GpuDriver::NvidiaProprietary,
             vram_bytes: 12 * 1024 * 1024 * 1024,
             estimated_gflops: 5000.0,
             is_discrete: true,
@@ -1045,6 +1263,7 @@ mod tests {
             pool_index: 1,
             name: "RX 6800".to_string(),
             vendor: GpuVendor::Amd,
+            driver: GpuDriver::Radv,
             vram_bytes: 16 * 1024 * 1024 * 1024,
             estimated_gflops: 4000.0,
             is_discrete: true,
