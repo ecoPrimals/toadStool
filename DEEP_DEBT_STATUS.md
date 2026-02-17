@@ -517,6 +517,41 @@ See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md` and `NEXT_STEPS.md`
 
 ---
 
-*Last Updated*: February 15, 2026 (F64 Unified Math Language Suite)  
+## February 17, 2026 — Deep Debt Investigation
+
+### Audit Results
+
+**Critical Bugs (Known/Documented)**:
+| Issue | Status | Notes |
+|-------|--------|-------|
+| GPU cyclic reduction | Documented | CPU Thomas fallback for n<100k |
+| SSF k-ordering | Ignored | CPU is correct, GPU path has bug |
+| Coulomb GPU energy | Not impl | CPU fallback available |
+| Sparse solver bindings | Architecture | Needs shader refactor |
+
+**Sparse Solver Architecture Issue**:
+The `sparse_matvec_f64.wgsl` has multi-entry-point binding conflicts:
+- Different entry points declare same binding with different access modes
+- naga validator rejects inconsistent StorageAccess
+- Solution: Split shader or unify bindings (P3 refactor)
+- Tests marked `#[ignore]` with documentation
+
+**Test Infrastructure Status**:
+| Category | Status |
+|----------|--------|
+| Sparse CG tests | 5 ignored |
+| Sparse BiCGSTAB | 1 ignored |
+| Tensor basic ops | Passing |
+| f64 shaders | 173 passing |
+
+**Remaining P2/P3 Items**:
+1. wgpu v22 upgrade (API migration work)
+2. Test coverage CI enforcement (<90%)
+3. NPU/display backends
+4. Unix socket health ping
+
+---
+
+*Last Updated*: February 17, 2026 (Deep Debt Investigation)  
 *Repository*: phase1/toadstool/  
 *License*: AGPL-3.0
