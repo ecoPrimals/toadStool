@@ -16,6 +16,9 @@ use crate::device::WgpuDevice;
 use crate::error::Result;
 use std::sync::Arc;
 
+/// Result of particle sorting by cell: (sorted_positions, particle_indices, cell_start, cell_count)
+pub type CellSortResult = (Vec<f64>, Vec<usize>, Vec<u32>, Vec<u32>);
+
 /// f64 Yukawa force with cell-list O(N) scaling
 ///
 /// For large systems (N > 5000), uses cell decomposition for O(N) complexity.
@@ -89,7 +92,7 @@ impl YukawaCellListF64 {
         &self,
         positions: &[f64],
         params: &CellListParams,
-    ) -> Result<(Vec<f64>, Vec<usize>, Vec<u32>, Vec<u32>)> {
+    ) -> Result<CellSortResult> {
         let n = positions.len() / 3;
         let n_cells_total = params.n_cells[0] * params.n_cells[1] * params.n_cells[2];
 

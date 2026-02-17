@@ -63,7 +63,7 @@ impl BesselI0F64 {
 
         let output_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Bessel I0 f64 Output"),
-            size: (size * std::mem::size_of::<f64>()) as u64,
+            size: std::mem::size_of_val(x) as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
@@ -118,16 +118,16 @@ impl BesselI0F64 {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("Bessel I0 f64 Pass"), timestamp_writes: None });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            pass.dispatch_workgroups((size as u32).div_ceil(256), 1, 1);
         }
 
         let staging_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Bessel I0 f64 Staging"),
-            size: (size * std::mem::size_of::<f64>()) as u64,
+            size: std::mem::size_of_val(x) as u64,
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        encoder.copy_buffer_to_buffer(&output_buf, 0, &staging_buf, 0, (size * std::mem::size_of::<f64>()) as u64);
+        encoder.copy_buffer_to_buffer(&output_buf, 0, &staging_buf, 0, std::mem::size_of_val(x) as u64);
         self.device.queue.submit(Some(encoder.finish()));
 
         let buffer_slice = staging_buf.slice(..);

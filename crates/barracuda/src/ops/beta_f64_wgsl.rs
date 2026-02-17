@@ -44,7 +44,7 @@ impl BetaF64 {
     /// # Returns
     /// Vector of B(aᵢ, bᵢ) values with f64 precision
     pub fn beta(&self, pairs: &[f64]) -> Result<Vec<f64>> {
-        if pairs.is_empty() || pairs.len() % 2 != 0 {
+        if pairs.is_empty() || !pairs.len().is_multiple_of(2) {
             return Ok(vec![]);
         }
 
@@ -76,15 +76,15 @@ impl BetaF64 {
             // Lanczos approximation
             let g = 7.0;
             let x_shifted = x - 1.0;
-            let mut sum = 0.99999999999980993;
+            let mut sum = 0.999_999_999_999_809_9;
             let coeffs = [
                 676.5203681218851,
                 -1259.1392167224028,
-                771.32342877765313,
-                -176.61502916214059,
+                771.323_428_777_653_1,
+                -176.615_029_162_140_6,
                 12.507343278686905,
                 -0.13857109526572012,
-                9.9843695780195716e-6,
+                9.984_369_578_019_572e-6,
                 1.5056327351493116e-7,
             ];
             for (i, &c) in coeffs.iter().enumerate() {

@@ -57,7 +57,7 @@ impl BesselJ1F64 {
                 + 1.057874120e-7 * z * z8;
 
             let sqrt_2_over_pi = 0.7978845608028654;
-            let three_pi_over_4 = 2.3561944901923449;
+            let three_pi_over_4 = 2.356_194_490_192_345;
             let inv_sqrt_x = sqrt_2_over_pi / ax.sqrt();
             let xx = ax - three_pi_over_4;
             let r = inv_sqrt_x * (p1 * xx.cos() - q1 * xx.sin());
@@ -90,7 +90,7 @@ impl BesselJ1F64 {
 
         let output_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Bessel J1 f64 Output"),
-            size: (size * std::mem::size_of::<f64>()) as u64,
+            size: std::mem::size_of_val(x) as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
@@ -145,16 +145,16 @@ impl BesselJ1F64 {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("Bessel J1 f64 Pass"), timestamp_writes: None });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            pass.dispatch_workgroups((size as u32).div_ceil(256), 1, 1);
         }
 
         let staging_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Bessel J1 f64 Staging"),
-            size: (size * std::mem::size_of::<f64>()) as u64,
+            size: std::mem::size_of_val(x) as u64,
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        encoder.copy_buffer_to_buffer(&output_buf, 0, &staging_buf, 0, (size * std::mem::size_of::<f64>()) as u64);
+        encoder.copy_buffer_to_buffer(&output_buf, 0, &staging_buf, 0, std::mem::size_of_val(x) as u64);
         self.device.queue.submit(Some(encoder.finish()));
 
         let buffer_slice = staging_buf.slice(..);

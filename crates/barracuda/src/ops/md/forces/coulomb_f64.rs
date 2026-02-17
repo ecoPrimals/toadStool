@@ -399,7 +399,7 @@ impl CoulombForceF64 {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (n as u32 + 255) / 256;
+            let workgroups = (n as u32).div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -476,7 +476,7 @@ impl CoulombForceF64 {
 
         let energy_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Coulomb f64 Energy"),
-            size: (n * std::mem::size_of::<f64>()) as u64,
+            size: std::mem::size_of_val(charges) as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
@@ -633,7 +633,7 @@ impl CoulombForceF64 {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (n as u32 + 255) / 256;
+            let workgroups = (n as u32).div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -648,7 +648,7 @@ impl CoulombForceF64 {
         // Read back energy
         let energy_staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Coulomb f64 Energy Staging"),
-            size: (n * std::mem::size_of::<f64>()) as u64,
+            size: std::mem::size_of_val(charges) as u64,
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -666,7 +666,7 @@ impl CoulombForceF64 {
             0,
             &energy_staging,
             0,
-            (n * std::mem::size_of::<f64>()) as u64,
+            std::mem::size_of_val(charges) as u64,
         );
 
         self.device.queue.submit(Some(encoder.finish()));

@@ -407,17 +407,15 @@ impl ShaderTemplate {
             let trimmed = line.trim();
             // Skip function bodies (start with spaces/tabs in well-formatted WGSL)
             // Module-scope definitions are at column 0 or after comments
-            if line.starts_with("let ")
+            if (line.starts_with("let ")
                 || line.starts_with("var ")
-                || line.starts_with("const ")
-            {
-                if trimmed.contains(&format!("{var_name} "))
+                || line.starts_with("const "))
+                && (trimmed.contains(&format!("{var_name} "))
                     || trimmed.contains(&format!("{var_name}="))
-                    || trimmed.contains(&format!("{var_name}:"))
+                    || trimmed.contains(&format!("{var_name}:")))
                 {
                     return true;
                 }
-            }
         }
         false
     }

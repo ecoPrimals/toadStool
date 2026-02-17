@@ -34,7 +34,7 @@ impl SphericalHarmonicsF64 {
     /// * `l` - Degree (0, 1, 2, ...)
     /// * `m` - Order (-l ≤ m ≤ l)
     pub fn ylm(&self, theta_phi: &[f64], l: u32, m: i32) -> Result<Vec<f64>> {
-        if theta_phi.is_empty() || theta_phi.len() % 2 != 0 {
+        if theta_phi.is_empty() || !theta_phi.len().is_multiple_of(2) {
             return Ok(vec![]);
         }
 
@@ -83,7 +83,7 @@ impl SphericalHarmonicsF64 {
         if t <= 0.0 {
             // At x = ±1: P_l(1) = 1, P_l(-1) = (-1)^l, P_l^m(±1) = 0 for m > 0
             if m == 0 {
-                return if x > 0.0 { 1.0 } else if l % 2 == 0 { 1.0 } else { -1.0 };
+                return if x > 0.0 { 1.0 } else if l.is_multiple_of(2) { 1.0 } else { -1.0 };
             } else {
                 return 0.0;
             }
@@ -200,7 +200,7 @@ impl SphericalHarmonicsF64 {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("SH f64 Pass"), timestamp_writes: None });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            pass.dispatch_workgroups((size as u32).div_ceil(256), 1, 1);
         }
 
         let staging_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
