@@ -234,7 +234,7 @@ impl ResourceValidator {
         let network_bandwidth_mbps = if networks.iter().count() > 0 {
             // Sum received bytes across all interfaces as bandwidth indicator
             // Most physical NICs are 1Gbps+, but we estimate conservatively
-            let total_received: u64 = networks.iter().map(|(_, n)| n.received()).sum();
+            let total_received: u64 = networks.values().map(|n| n.received()).sum();
             // If we've seen significant traffic, assume at least 1Gbps
             // Otherwise fall back to conservative 100Mbps estimate
             if total_received > 1_000_000_000 {
