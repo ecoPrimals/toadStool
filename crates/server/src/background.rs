@@ -67,7 +67,7 @@ async fn resource_monitoring_task(state: ServerState) {
             }
         };
 
-        // Use actual system metrics (no more placeholders!)
+        // System metrics from resource monitor
         let cpu_usage_percent = system_resources.cpu_usage_percent;
         let memory_usage_percent = system_resources.memory_usage_percent;
 
@@ -254,7 +254,7 @@ pub(crate) async fn perform_health_check(state: &ServerState) -> bool {
     // Check system resources using real data
     if config.check_resources {
         if let Ok(system_resources) = state.resource_monitor.get_system_resources().await {
-            // Use actual system metrics (no more placeholders!)
+            // System metrics from resource monitor
             let cpu_usage_percent = system_resources.cpu_usage_percent;
             let memory_usage_percent = system_resources.memory_usage_percent;
 

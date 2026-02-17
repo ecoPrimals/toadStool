@@ -140,9 +140,8 @@ impl ModuleExecutor {
 
         Ok(ExecutionOutput {
             data: Vec::new(), // WASM functions can return data here
-            // EVOLVED FROM TODO: Capture implemented with discovered limitations
-            // wasmi_wasi currently doesn't expose easy buffer capture APIs
-            // For full capture, need custom Write implementation - future evolution!
+            // Note: wasmi_wasi doesn't expose easy buffer capture APIs.
+            // For full capture, would need custom Write implementation.
             // Current: outputs inherit to host (safe for now)
             stdout: None, // Future: capture when wasmi_wasi supports it
             stderr: None, // Future: capture when wasmi_wasi supports it

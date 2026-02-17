@@ -157,7 +157,7 @@ pub async fn discover_encryption_service() -> DiscoveryResult {
 
 /// Discover bearDog at specific path (for external/custom deployments)
 ///
-/// **Capability-based resolution** (evolved from Phase 3/4 TODO):
+/// **Capability-based resolution**:
 /// 1. First checks `TOADSTOOL_CRYPTO_SERVICE_SUBDIR` env var (explicit override)
 /// 2. Then queries capability metadata if available (future: service registry)
 /// 3. Falls back to well-known primal name constant
@@ -195,7 +195,7 @@ pub async fn discover_storage_service() -> DiscoveryResult {
 
 /// Discover nestGate at specific path (for external/custom deployments)
 ///
-/// **Capability-based resolution** (evolved from Phase 3/4 TODO):
+/// **Capability-based resolution**:
 /// 1. First checks `TOADSTOOL_STORAGE_SERVICE_SUBDIR` env var (explicit override)
 /// 2. Then queries capability metadata if available (future: service registry)
 /// 3. Falls back to well-known primal name constant
