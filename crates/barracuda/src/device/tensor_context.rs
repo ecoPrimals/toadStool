@@ -855,18 +855,14 @@ pub fn high_capacity_limits() -> wgpu::Limits {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device;
 
+    /// Get shared test device (uses pool to prevent GPU exhaustion)
+    /// 
+    /// **Deep Debt Evolution**: Tests now share a single wgpu device via LazyLock pool.
+    /// This prevents "Maximum number of clients reached" errors when running many tests.
     async fn create_test_device() -> Arc<wgpu::Device> {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions::default())
-            .await
-            .expect("No adapter found");
-        let (device, _) = adapter
-            .request_device(&wgpu::DeviceDescriptor::default(), None)
-            .await
-            .expect("Failed to create device");
-        Arc::new(device)
+        Arc::clone(&get_test_device().await.device)
     }
 
     // ========================================================================
@@ -1008,10 +1004,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_context_acquire_pooled() {
-        let wgpu_device = crate::device::WgpuDevice::new()
-            .await
-            .expect("failed to create WgpuDevice");
-        let device = Arc::new(wgpu_device);
+        let device = get_test_device().await;
         let ctx = TensorContext::new(device);
 
         let pooled = ctx.acquire_pooled_output(1000); // 1000 f32s = 4000 bytes
@@ -1020,10 +1013,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_context_batching_mode() {
-        let wgpu_device = crate::device::WgpuDevice::new()
-            .await
-            .expect("failed to create WgpuDevice");
-        let device = Arc::new(wgpu_device);
+        let device = get_test_device().await;
         let ctx = TensorContext::new(device);
 
         // Not batching by default
@@ -1040,10 +1030,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_context_stats() {
-        let wgpu_device = crate::device::WgpuDevice::new()
-            .await
-            .expect("failed to create WgpuDevice");
-        let device = Arc::new(wgpu_device);
+        let device = get_test_device().await;
         let ctx = TensorContext::new(device);
 
         let stats = ctx.stats();
@@ -1077,10 +1064,7 @@ mod tests {
     async fn test_global_context_registry() {
         clear_global_contexts();
 
-        let wgpu_device = crate::device::WgpuDevice::new()
-            .await
-            .expect("failed to create WgpuDevice");
-        let device = Arc::new(wgpu_device);
+        let device = get_test_device().await;
 
         // Get context twice - should be same instance
         let ctx1 = get_device_context(&device);
@@ -1246,10 +1230,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_context_solver_buffers() {
-        let wgpu_device = crate::device::WgpuDevice::new()
-            .await
-            .expect("failed to create WgpuDevice");
-        let device = Arc::new(wgpu_device);
+        let device = get_test_device().await;
         let ctx = TensorContext::new(device);
 
         // Test via TensorContext convenience methods
