@@ -257,13 +257,12 @@ impl Harness {
                     .load_model(&bytes)
                     .map_err(|e| Error::ModelLoad(e.to_string()))?;
             }
-            Err(_) => {
-                warn!("Model file not found: {}", model_path);
-                // Use mock model for testing
-                let mock_model = vec![0u8; 1024];
-                self.device
-                    .load_model(&mock_model)
-                    .map_err(|e| Error::ModelLoad(e.to_string()))?;
+            Err(e) => {
+                // Deep Debt: Don't use mock model - fail clearly when model file is missing
+                return Err(Error::ModelLoad(format!(
+                    "Model file not found: {} ({}). NeuroBench requires a valid model file.",
+                    model_path, e
+                )));
             }
         }
 

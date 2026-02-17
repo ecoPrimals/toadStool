@@ -113,6 +113,7 @@ pub mod pipeline; // Heterogeneous compute pipeline orchestration
 pub mod sample;
 pub mod scheduler;
 pub mod special;
+pub mod staging; // Unidirectional compute pipeline staging buffers
 pub mod stats;
 pub mod surrogate;
 pub mod unified_hardware;
@@ -156,4 +157,10 @@ pub mod prelude {
     // Note: multi_gpu::DeviceInfo aliased to avoid conflict with device::DeviceInfo
     pub use crate::multi_gpu::DeviceInfo as GpuDeviceInfo;
     pub use crate::resource_quota::{presets as quota_presets, QuotaTracker, ResourceQuota};
+
+    // Unidirectional pipeline staging
+    pub use crate::staging::{
+        BufferDirection, GpuRingBuffer, PipelineStats, RingBufferConfig, UnidirectionalConfig,
+        UnidirectionalPipeline, WorkHandle, WriteHandle,
+    };
 }

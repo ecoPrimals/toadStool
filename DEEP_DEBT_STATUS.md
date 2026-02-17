@@ -12,22 +12,44 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **Shader-first architecture** implemented — ALL parallelizable math is WGSL primary.
 **MD pipeline complete** — full thermostat suite + observables + O(N) neighbor search.
 **GPU-Resident Pipeline COMPLETE** — zero CPU↔GPU round-trips during iteration.
+**Unidirectional Pipeline COMPLETE** — fire-and-forget staging with bandwidth throttling.
 **Device Registry COMPLETE** — physical device deduplication with backend preference.
 **Multi-GPU Evolution COMPLETE** — adapter selection, ShaderTemplate conflict detection.
 **Dependency Unification COMPLETE** — sysinfo API consolidated across workspace.
+**Production Mock Hardening COMPLETE** — removed fake capabilities/models from production paths.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 17, 2026 — Deep Debt Evolution + Primal Self-Knowledge)
+### Latest Updates (Feb 17, 2026 — Unidirectional Pipeline + Deep Debt Hardening)
 
-**Production Mock Elimination ✓**
+**Unidirectional Compute Pipeline (NEW) ✓**
 
 | Item | Status | Description |
 |------|:------:|-------------|
+| `GpuRingBuffer` | ✅ | SPSC ring buffer with atomic head/tail pointers |
+| `UnidirectionalPipeline` | ✅ | Fire-and-forget API with work tracking |
+| `BandwidthThrottler` | ✅ | Rate limiting for 90/10 bandwidth simulation |
+| Staging module | ✅ | `crates/barracuda/src/staging/` created |
+
+Key files created:
+- `crates/barracuda/src/staging/ring_buffer.rs` — GPU ring buffer
+- `crates/barracuda/src/staging/unidirectional.rs` — Pipeline orchestration
+- `crates/barracuda/src/staging/mod.rs` — Module exports
+
+**Production Mock Hardening ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| Beardog capabilities | ✅ | Returns error on RPC failure (was fake capabilities) |
+| NeuroBench model load | ✅ | Fails clearly when model file missing (was zero bytes) |
 | `dev-mock-auth` guard | ✅ | Compile-time check prevents release builds with mock auth |
 | Utilization metrics | ✅ | Real CPU/memory utilization (was hardcoded 0.65) |
 | Storage enumeration | ✅ | Actual disk space enumeration (was always 0) |
 | Networking fallback | ✅ | Structured "networking_disabled" status (was "mock_response") |
 | Deprecated HTTP methods | ✅ | Removed dead code with placeholder parameters |
+
+Key files modified:
+- `crates/distributed/src/beardog_integration/client.rs` — Error on RPC failure
+- `crates/neuromorphic/neurobench-runner/src/harness.rs` — Clear error on missing model
 
 **Dependency Evolution ✓**
 

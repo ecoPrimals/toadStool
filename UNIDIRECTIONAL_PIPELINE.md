@@ -56,34 +56,37 @@ Traditional:
 - [x] Unidirectional Pipeline architecture
 - [x] Software Simulation design
 
-### Phase 1: Ring Buffer Staging
+### Phase 1: Ring Buffer Staging ✅ COMPLETE
 
-- [ ] `GpuRingBuffer` struct (input/output variants)
-- [ ] Write head / read head management
-- [ ] Async map for output reads
-- [ ] Tests
+- [x] `GpuRingBuffer` struct (input/output variants)
+- [x] Write head / read head management
+- [x] Atomic SPSC for thread safety
+- [x] Power-of-two capacity for efficient modulo
+- [x] Stats tracking
 
-**Files to create:**
+**Files created:**
 - `crates/barracuda/src/staging/ring_buffer.rs`
 - `crates/barracuda/src/staging/mod.rs`
 
-### Phase 2: Unidirectional Pipeline
+### Phase 2: Unidirectional Pipeline ✅ COMPLETE
 
-- [ ] `UnidirectionalConfig` struct
-- [ ] `UnidirectionalPipeline` struct
-- [ ] `submit_work()` — fire and forget
-- [ ] `poll_results()` — non-blocking
-- [ ] `stats()` — metrics
-- [ ] Feature flag: `unidirectional`
+- [x] `UnidirectionalConfig` struct
+- [x] `UnidirectionalPipeline` struct
+- [x] `submit()` / `try_submit()` — fire and forget
+- [x] `mark_completed()` — work tracking
+- [x] `stats()` — metrics
+- [x] In-flight work queue
+- [x] Bandwidth throttling integration
 
-**Files to create:**
-- `crates/barracuda/src/pipeline/unidirectional.rs`
+**Files created:**
+- `crates/barracuda/src/staging/unidirectional.rs`
 
-### Phase 3: Bandwidth Throttling
+### Phase 3: Bandwidth Throttling ✅ COMPLETE
 
-- [ ] `BandwidthThrottler` struct
-- [ ] Rate limiting for simulation
-- [ ] Configurable 90/10, 80/20, etc.
+- [x] `BandwidthThrottler` struct
+- [x] Rate limiting for simulation
+- [x] Configurable input/output split via `UnidirectionalConfig`
+- [x] Strict mode for unidirectional enforcement
 
 ### Phase 4: Benchmark
 
@@ -166,12 +169,19 @@ Unidirectional: Factory
 
 ## Status Updates
 
-### Feb 17, 2026
+### Feb 17, 2026 (Evening)
+
+- **Phase 1 COMPLETE**: `GpuRingBuffer` implemented with SPSC atomics
+- **Phase 2 COMPLETE**: `UnidirectionalPipeline` with fire-and-forget API
+- **Phase 3 COMPLETE**: `BandwidthThrottler` integrated
+- Deep Debt: Fixed production mocks in beardog/neurobench
+- Deep Debt: Identified 100+ hardcoded timeouts for future evolution
+
+### Feb 17, 2026 (Morning)
 
 - Created 4 design documents
 - Established architecture and terminology
 - Defined implementation phases
-- Ready to begin Phase 1
 
 ---
 

@@ -273,34 +273,34 @@ impl BearDogClient {
         &self,
     ) -> ToadStoolResult<toadstool::encryption::CryptoCapability> {
         // Query the service for its capabilities via RPC
+        // Deep Debt: Don't synthesize fake capabilities on RPC failure - propagate the error
         let response: serde_json::Value = self
             .rpc_client
             .call_typed("beardog.capabilities", serde_json::json!({}))
             .await
-            .unwrap_or_else(|_| {
-                // If RPC fails, return default capabilities
-                serde_json::json!({
-                    "algorithms": ["chacha20poly1305", "aes-256-gcm"],
-                    "security_level": "enhanced",
-                    "hardware_backed": false
-                })
-            });
+            .map_err(|e| {
+                tracing::warn!("Beardog capabilities query failed: {}", e);
+                ToadStoolError::network(format!(
+                    "Beardog crypto capabilities query failed: {}",
+                    e
+                ))
+            })?;
 
         // Parse the response into CryptoCapability
         let algorithms: Vec<String> = response
             .get("algorithms")
-            .and_then(|v| v.as_array())
-            .map(|arr| {
+            .and_then(|v: &serde_json::Value| v.as_array())
+            .map(|arr: &Vec<serde_json::Value>| {
                 arr.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
+                    .filter_map(|v: &serde_json::Value| v.as_str().map(String::from))
                     .collect()
             })
             .unwrap_or_else(|| vec!["chacha20poly1305".to_string(), "aes-256-gcm".to_string()]);
 
         let security_level = response
             .get("security_level")
-            .and_then(|v| v.as_str())
-            .map(|s| match s.to_lowercase().as_str() {
+            .and_then(|v: &serde_json::Value| v.as_str())
+            .map(|s: &str| match s.to_lowercase().as_str() {
                 "standard" => toadstool::encryption::SecurityLevel::Standard,
                 "hardware_secured" | "hardware" => {
                     toadstool::encryption::SecurityLevel::HardwareSecured
@@ -311,7 +311,7 @@ impl BearDogClient {
 
         let hardware_backed = response
             .get("hardware_backed")
-            .and_then(|v| v.as_bool())
+            .and_then(|v: &serde_json::Value| v.as_bool())
             .unwrap_or(false);
 
         Ok(toadstool::encryption::CryptoCapability {
