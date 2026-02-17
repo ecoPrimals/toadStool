@@ -1629,7 +1629,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batched_eigh_single_2x2() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -1662,7 +1662,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batched_eigh_identity_batch() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -1692,7 +1692,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batched_eigh_hfb_scale() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -1736,7 +1736,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batched_eigh_execute_batch() {
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -1774,7 +1774,7 @@ mod tests {
     #[tokio::test]
     async fn test_batched_eigh_buffer_api() {
         // Test the GPU-resident buffer-based API
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -1842,7 +1842,7 @@ mod tests {
     #[tokio::test]
     async fn test_batched_eigh_buffer_reuse() {
         // Test that buffers can be reused across iterations (GPU-resident SCF pattern)
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -1906,7 +1906,7 @@ mod tests {
     #[tokio::test]
     async fn test_single_dispatch_basic() {
         // Test the single-dispatch eigensolve (TIER 1.1 critical feature)
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -1943,7 +1943,7 @@ mod tests {
     #[tokio::test]
     async fn test_single_dispatch_hotspring_scale() {
         // Test at hotSpring scale: 40 matrices of 12×12
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };
@@ -1994,7 +1994,7 @@ mod tests {
     #[tokio::test]
     async fn test_single_dispatch_buffers() {
         // Test single-dispatch buffer API (GPU-resident, no CPU readback)
-        let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
             return;
         };

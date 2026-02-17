@@ -83,7 +83,7 @@ struct HouseholderParams {
 }
 
 @group(0) @binding(0) var<uniform> hh_params: HouseholderParams;
-@group(0) @binding(1) var<storage, read> A_hh: array<f32>;
+@group(0) @binding(1) var<storage, read_write> A_hh: array<f32>;  // read_write for consistent bind group layout
 @group(0) @binding(2) var<storage, read_write> v_hh: array<f32>;
 @group(0) @binding(3) var<storage, read_write> tau_hh: array<f32>;
 
@@ -145,7 +145,7 @@ struct ApplyParams {
 }
 
 @group(0) @binding(0) var<uniform> apply_params: ApplyParams;
-@group(0) @binding(1) var<storage, read> v_apply: array<f32>;
+@group(0) @binding(1) var<storage, read_write> v_apply: array<f32>;  // read_write for consistent bind group layout
 @group(0) @binding(2) var<storage, read_write> A_apply: array<f32>;
 @group(0) @binding(3) var<storage, read_write> w: array<f32>;  // Work array [n]
 
@@ -244,7 +244,7 @@ struct QAccumParams {
 }
 
 @group(0) @binding(0) var<uniform> q_params: QAccumParams;
-@group(0) @binding(1) var<storage, read> v_q: array<f32>;
+@group(0) @binding(1) var<storage, read_write> v_q: array<f32>;  // read_write for consistent bind group layout
 @group(0) @binding(2) var<storage, read_write> Q: array<f32>;  // [m × m]
 
 // Q = Q - tau * (Q * v) * vᵀ
