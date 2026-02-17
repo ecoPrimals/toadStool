@@ -521,37 +521,43 @@ See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md` and `NEXT_STEPS.md`
 
 ### Audit Results
 
-**Critical Bugs (Known/Documented)**:
-| Issue | Status | Notes |
-|-------|--------|-------|
-| GPU cyclic reduction | Documented | CPU Thomas fallback for n<100k |
-| SSF k-ordering | Ignored | CPU is correct, GPU path has bug |
-| Coulomb GPU energy | Not impl | CPU fallback available |
-| Sparse solver bindings | Architecture | Needs shader refactor |
+**Critical Bugs FIXED**:
+| Issue | Status | Fix Applied |
+|-------|--------|-------------|
+| ✅ GPU cyclic reduction | **FIXED** | GPU serial solver for n>=64, CPU for tiny |
+| ⚠️ SSF k-ordering | Ignored | CPU is correct, GPU needs algorithm fix |
+| ✅ Coulomb GPU energy | **FIXED** | Implemented coulomb_with_energy_f64 kernel |
+| ✅ Sparse solver bindings | **FIXED** | Split shader into 4 modules |
 
-**Sparse Solver Architecture Issue**:
-The `sparse_matvec_f64.wgsl` has multi-entry-point binding conflicts:
-- Different entry points declare same binding with different access modes
-- naga validator rejects inconsistent StorageAccess
-- Solution: Split shader or unify bindings (P3 refactor)
-- Tests marked `#[ignore]` with documentation
+**Sparse Solver Architecture (RESOLVED)**:
+The `sparse_matvec_f64.wgsl` had multi-entry-point binding conflicts.
+Split into separate shader modules:
+- `spmv_f64.wgsl` — Sparse matrix-vector product
+- `dot_reduce_f64.wgsl` — Dot product and reduction
+- `vector_ops_f64.wgsl` — AXPY, scale, copy, precond
+- `cg_kernels_f64.wgsl` — CG-specific update kernels
+All 6 sparse solver tests now pass (was 6 ignored).
 
 **Test Infrastructure Status**:
 | Category | Status |
 |----------|--------|
-| Sparse CG tests | 5 ignored |
-| Sparse BiCGSTAB | 1 ignored |
-| Tensor basic ops | Passing |
-| f64 shaders | 173 passing |
+| Sparse CG tests | ✅ 5 passing |
+| Sparse BiCGSTAB | ✅ 1 passing |
+| Cyclic reduction | ✅ 3 passing (GPU serial) |
+| Coulomb f64 | ✅ 4 passing (incl. energy) |
+| Linalg ops | ✅ 136 passing |
+| MD forces | ✅ 100 passing, 1 ignored |
+| Optimizer | ✅ 85 passing |
 
 **Remaining P2/P3 Items**:
 1. wgpu v22 upgrade (API migration work)
 2. Test coverage CI enforcement (<90%)
 3. NPU/display backends
 4. Unix socket health ping
+5. SSF GPU k-ordering algorithm bug
 
 ---
 
-*Last Updated*: February 17, 2026 (Deep Debt Investigation)  
+*Last Updated*: February 17, 2026 (Deep Debt Fixes Applied)  
 *Repository*: phase1/toadstool/  
 *License*: AGPL-3.0

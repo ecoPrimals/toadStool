@@ -469,33 +469,42 @@ File issues at `ecoPrimals/toadStool` or discuss in `wateringHole/`.
 | fp64 only | 23 |
 | Critical gaps filled | 5 (ODE/PDE, linear algebra) |
 
-### Remaining Known Issues
+### Known Issues (Current Status)
 
-1. **Pre-existing tensor op failures**: Many basic ops (`add`, `mul`, etc.) have test failures unrelated to f64 work
-2. **Sparse solver tests**: `cg_gpu` and `bicgstab_gpu` tests now ignored - requires architectural refactor (see below)
-3. **SSF GPU**: `compute_axes` has k-ordering bug (ignored test)
-4. **GPU cyclic reduction**: Algorithm bugs in `cyclic_reduction_f64.rs` - CPU Thomas fallback for n<100k
-5. **Coulomb GPU energy**: `compute_gpu_with_energy` not implemented - CPU fallback available
+| Issue | Status | Notes |
+|-------|--------|-------|
+| Pre-existing tensor op failures | Known | Many basic ops have failures unrelated to f64 |
+| SSF GPU k-ordering | Ignored | `compute_axes` algorithm bug - CPU is correct |
+| ✅ Sparse solver tests | **FIXED** | Split shader into 4 modules |
+| ✅ GPU cyclic reduction | **FIXED** | Uses GPU serial solver for n>=64 |
+| ✅ Coulomb GPU energy | **FIXED** | Implemented `coulomb_with_energy_f64` |
 
-### Sparse Solver Architecture Issue
+### Sparse Solver Architecture (RESOLVED Feb 17)
 
-The `sparse_matvec_f64.wgsl` shader has multiple entry points (spmv, dot, axpy, etc.) that each declare different variables at the same binding slots with different access modes. For example:
+The `sparse_matvec_f64.wgsl` shader had multi-entry-point binding conflicts.
 
-- Entry point A: `@binding(0) var<storage, read> values`
-- Entry point B: `@binding(0) var<storage, read_write> cg_x`
+**Solution Applied**: Split into separate shader modules:
+- `shaders/sparse/spmv_f64.wgsl` — Sparse matrix-vector product
+- `shaders/sparse/dot_reduce_f64.wgsl` — Dot product and final reduction  
+- `shaders/sparse/vector_ops_f64.wgsl` — AXPY, scale, copy, precond
+- `shaders/sparse/cg_kernels_f64.wgsl` — CG update kernels (alpha, beta, xr, p)
 
-WGPU's naga validator requires consistent access modes across all entry points when using a shared shader module. This causes "type mismatch" validation errors.
+**Result**: All 6 sparse solver tests now pass (5 CG + 1 BiCGSTAB).
 
-**Solution paths**:
-1. Split shader into separate files per entry point
-2. Use consistent binding layouts across all entry points
-3. Create separate shader modules per pipeline
+### GPU Cyclic Reduction (RESOLVED Feb 17)
 
-This is a P3 refactoring task - the CPU fallback is functional for sparse solvers.
+The parallel cyclic reduction algorithm had data flow issues. Instead of multi-pass parallel, now uses:
+- GPU serial Thomas algorithm (`solve_serial_f64`) for n >= 64
+- CPU Thomas for n < 64
+
+**Result**: All 3 cyclic reduction tests pass. Pure GPU for PDE grid sizes.
 
 ### Commits
 
 - `5c90eb29`: Fix fd_gradient_f64 bind group mismatch (5 tests → pass)
 - `55b3d174`: Add critical f64 shader implementations (5 new shaders)
+- `6a12d288`: Split sparse solver shader into separate modules for pure GPU
+- `03343303`: Enable GPU tridiagonal solver using serial kernel
+- `8151fc24`: Implement Coulomb GPU energy path for pure GPU electrostatics
 - `728838fa`: Resolve shader/pipeline binding mismatches (QR, batched_eigh)
 - `774b9b7b`: Mark sparse solver tests as ignored with documentation
