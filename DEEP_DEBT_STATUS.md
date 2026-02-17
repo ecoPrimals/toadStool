@@ -28,6 +28,8 @@ System health verified with 15,700+ tests passing across workspace.
 | `handlers.rs` | `Duration::from_secs(300)` ×7 | `WORKLOAD_EXECUTION_TIMEOUT` |
 | `background.rs` | `Duration::from_secs(300/30)` | `DEFAULT_CACHE_TTL` / `HEALTH_CHECK_INTERVAL` |
 | `config/mod.rs` | `Duration::from_secs(300/30)` | Centralized constants |
+| `auth.rs` | `Duration::from_secs(3600/300)` | `TOKEN_REFRESH_INTERVAL` / `TIMESTAMP_VALIDATION_WINDOW` |
+| `monitoring.rs` | `Duration::from_secs(30)` | `HEALTH_CHECK_INTERVAL` |
 
 **SIMD Runtime Detection ✓**
 
