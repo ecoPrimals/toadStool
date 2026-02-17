@@ -96,6 +96,35 @@ Key files modified:
 - `crates/distributed/src/songbird_integration/capability_discovery.rs` — Fixed reqwest doc example
 - `crates/client/Cargo.toml` — Documented excluded status + migration path
 
+**Pure Rust System Calls (akida-driver) ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| mmap/munmap | ✅ | Evolved to rustix::mm::mmap/munmap |
+| mlock/munlock | ✅ | Evolved to rustix::mm::mlock/munlock |
+| VFIO ioctls | 📋 | Retained libc (kernel-specific, not in rustix) |
+| Broadcast errors | ✅ | Server/protocols now log when broadcasts fail |
+
+Key files modified:
+- `crates/neuromorphic/akida-driver/src/mmio.rs` — rustix mmap/munmap
+- `crates/neuromorphic/akida-driver/src/backends/vfio.rs` — rustix mlock/munlock
+- `crates/server/src/handlers.rs`, `background.rs` — Broadcast error logging
+- `crates/integration/protocols/src/client.rs` — Broadcast error logging
+
+**Known Technical Debt (Future Evolution)**
+
+| Category | Location | Current | Evolution Path |
+|----------|----------|---------|----------------|
+| Timeouts | server/handlers.rs | `Duration::from_secs(300)` | Config-driven |
+| Timeouts | distributed/capability_*.rs | `Duration::from_secs(30)` | Config-driven |
+| Retries | distributed/load_balancer.rs | `max_retries: 3` | Config-driven |
+| Buffer sizes | cli/zero_config/service_discovery.rs | `vec![0u8; 1500]` | MTU from config |
+| Memory limits | runtime/universal/substrate.rs | `8 * 1024^3` | Capability-based |
+| Specialty runtimes | runtime/specialty/ | Placeholders | Implement when hardware available |
+
+These are documented limitations. Timeouts/limits should move to configuration
+files or capability-based discovery when centralized config is implemented.
+
 ---
 
 ### Previous Updates (Feb 16, 2026 — Deep Debt Evolution + ecoBin Compliance)
