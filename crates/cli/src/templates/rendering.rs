@@ -64,6 +64,7 @@ pub fn get_template_tags(template: &BiomeTemplate) -> Vec<String> {
 /// - Pure Rust implementation (no C dependencies)
 /// - Better for configuration files
 /// - Native to Rust ecosystem
+#[allow(dead_code)] // Utility function for future CLI commands
 pub fn manifest_to_toml(manifest: &BiomeManifest) -> Result<String> {
     let mut toml_str = String::new();
 

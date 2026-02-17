@@ -44,8 +44,28 @@ impl StorageProvisioningManager {
         Self { config, backend }
     }
 
+    /// Create a new manager with capability-based storage service discovery (RECOMMENDED)
+    ///
+    /// **Deep Debt Compliant**: Discovers storage service by capability, not name.
+    pub async fn with_storage_service(config: StorageProvisioningConfig) -> ToadStoolResult<Self> {
+        let backend = super::storage_backend::NestGateBackend::new_async(
+            config.storage_tier.clone(),
+            config.replication_enabled,
+            config.replication_factor,
+        )
+        .await?;
+        Ok(Self {
+            config,
+            backend: Arc::new(backend),
+        })
+    }
+
     /// Create a new manager with NestGate production backend
+    ///
+    /// **DEPRECATED**: Use `with_storage_service()` for capability-based discovery.
     #[must_use]
+    #[deprecated(since = "0.3.0", note = "Use with_storage_service() for capability-based discovery")]
+    #[allow(deprecated)]
     pub fn with_nestgate(config: StorageProvisioningConfig) -> Self {
         let backend = super::storage_backend::NestGateBackend::new(
             config.nestgate_endpoint.clone(),

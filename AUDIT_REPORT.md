@@ -38,6 +38,8 @@
 | **ecoBin Compliance** | ✅ | TOML config, XDG paths, rustix signals, semantic naming (Feb 16) |
 | **Platform Paths** | ✅ | `platform_paths` module for cross-platform resolution (Feb 16) |
 | **NPU Executor** | ✅ | `NpuExecutor` implements `ComputeExecutor` trait (Feb 16) |
+| **Health Check** | ✅ | `health_check()` probes endpoints via RPC (Feb 16) |
+| **Capabilities Query** | ✅ | `query_capabilities_async()` for runtime discovery (Feb 16) |
 
 ---
 

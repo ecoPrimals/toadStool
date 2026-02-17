@@ -11,6 +11,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Impact**: Three validation projects (313+ checks); three critical bug fixes; ecoBin v2.0 compliance.
 
+#### wetSpring Bray-Curtis Shader Absorbed
+
+The `bray_curtis_pairs_f64.wgsl` shader from wetSpring has been absorbed into ToadStool:
+
+- **Shader**: `shaders/math/bray_curtis_f64.wgsl`
+- **Orchestrator**: `ops::bray_curtis_f64::BrayCurtisF64`
+- **API**: `condensed_distance_matrix(samples, n_samples, n_features)`
+- **Tests**: 5 unit tests (CPU reference, indexing, known values)
+
+This is a general-purpose distance metric used for:
+- Metagenomics diversity analysis (species abundance profiles)
+- Ecological community comparison
+- Any non-negative abundance/count data comparison
+
+#### hotSpring v0.5.5 Quality Handoff Acknowledged
+
+The hotSpring team completed a code quality hardening pass:
+- 182 unit tests (up from 158)
+- 39% line coverage (up from 33%)
+- 8 WGSL shaders extracted from inline code
+- Zero inline magic numbers (all tolerances centralized)
+- Identified 3 ToadStool primitives for next evolution:
+  - `SumReduceF64` — Ready for HFB energy integrands
+  - `SpinOrbitGpu` — Ready for HFB Hamiltonian
+  - `FusedMapReduceF64` — Fixed (TS-004) for MD observables
+
+#### airSpring ToadStool Issues Resolution (TS-001 through TS-004)
+
+All four ToadStool issues identified by the airSpring team have been resolved:
+
+- **TS-001 (Critical)**: `pow_f64` in `batched_elementwise_f64.wgsl` now handles fractional exponents
+  - Previously returned 0.0 for non-integer exponents (blocked FAO-56 Eq. 7: exponent 5.26)
+  - Now uses `exp(exp * log(base))` for proper fractional power computation
+  - Integer exponents still use fast binary exponentiation
+
+- **TS-002 (Medium)**: Created Rust orchestrator `batched_elementwise_f64.rs`
+  - `BatchedElementwiseF64` executor for FAO-56 ET₀ and water balance operations
+  - Convenience methods: `fao56_et0_batch()`, `water_balance_batch()`
+  - Type aliases: `StationDayInput`, `WaterBalanceInput`
+  - CPU fallback for small batches (<64 elements)
+  - CPU reference implementations for validation
+
+- **TS-003 (Medium)**: Fixed `acos`/`sin` precision drift in f64 WGSL shaders
+  - `sin_simple()`: Extended Taylor series (13 terms, ~1e-15 precision)
+  - `cos_simple()`: Full Taylor series (12 terms)
+  - `acos_simple()`: New algorithm using `asin_core()` for |x| > 0.5
+  - `asin_core()`: Padé approximation for |x| <= 0.5
+
+- **TS-004 (High)**: Fixed `FusedMapReduceF64` buffer conflict for N>=1024
+  - `reduce_partials_pass()` now uses separate input/output buffers
+  - Previously bound same buffer to both bindings (race condition)
+  - Returns new output buffer instead of modifying in place
+
+#### Health Check & Capabilities Query Evolution (Continued)
+
+- **`health_check()` method evolved** (`beardog_integration/client.rs`):
+  - Now probes endpoints via `beardog.health` RPC call
+  - Updates `healthy` and `latency_ms` based on actual response
+  - Previously just returned discovered endpoints without probing
+
+- **`query_capabilities_async()` added** (`beardog_integration/client.rs`):
+  - Runtime capability discovery via `beardog.capabilities` RPC
+  - Returns actual algorithms, security level, and hardware status
+  - Works around CryptoProvider trait lifetime constraint
+
 #### Validation Projects
 
 - **hotSpring** (nuclear physics): 195/195 checks — HFB, MD, eigensolve, BCS

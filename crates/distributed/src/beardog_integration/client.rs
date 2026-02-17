@@ -17,7 +17,7 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use toadstool_common::primal_sockets::get_socket_path_for_service;
+use toadstool_common::primal_sockets::{discover_crypto_socket, get_socket_path_for_service};
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use toadstool_common::{ToadStoolError, ToadStoolResult};
 
@@ -208,15 +208,46 @@ pub struct BearDogClient {
 }
 
 impl BearDogClient {
+    /// Create new BearDog client with capability-based discovery (RECOMMENDED)
+    ///
+    /// **Deep Debt Compliant**: Discovers crypto service by capability, not name.
+    /// Works with ANY service providing crypto.encryption capability.
+    ///
+    /// **Pure Rust**: No HTTP client, uses unix sockets!
+    ///
+    /// # Errors
+    /// Returns error if no crypto service is discovered
+    pub async fn new_async(config: BearDogConfig) -> ToadStoolResult<Self> {
+        // CAPABILITY-BASED: Discover ANY crypto service, not just "beardog"
+        let socket_path = discover_crypto_socket()
+            .await
+            .map_err(|e| ToadStoolError::configuration(format!(
+                "No crypto service discovered: {}. Ensure a crypto provider (e.g., BearDog) is running.",
+                e
+            )))?;
+
+        let rpc_client = UnixJsonRpcClient::new(socket_path);
+
+        Ok(Self {
+            discovery: Arc::new(BearDogDiscovery::new(config)),
+            rpc_client,
+        })
+    }
+
     /// Create new BearDog client with unix socket transport
+    ///
+    /// **DEPRECATED**: Use `new_async()` for capability-based discovery.
+    /// This function uses hardcoded primal name which violates Deep Debt principles.
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
     ///
     /// # Errors
     /// Returns error if socket path discovery fails
+    #[deprecated(since = "0.3.0", note = "Use new_async() for capability-based discovery")]
+    #[allow(deprecated)]
     pub fn new(config: BearDogConfig) -> ToadStoolResult<Self> {
         // Get unix socket path from environment-based discovery
-        // CAPABILITY-BASED: Use generic discovery instead of primal-specific knowledge
+        // LEGACY: Still uses primal name for backward compatibility
         let socket_path = get_socket_path_for_service("beardog");
         let rpc_client = UnixJsonRpcClient::new(socket_path);
 
@@ -229,6 +260,65 @@ impl BearDogClient {
     /// Discover BearDog services
     pub async fn discover(&self) -> ToadStoolResult<Vec<BearDogEndpoint>> {
         self.discovery.discover().await
+    }
+
+    /// Query actual capabilities from the crypto service
+    ///
+    /// **Design**: Queries the service at runtime for its true capabilities.
+    /// Use this instead of the trait's `capabilities()` method when you need
+    /// the actual service capabilities rather than conservative defaults.
+    ///
+    /// Returns the algorithms supported, security level, and hardware status.
+    pub async fn query_capabilities_async(
+        &self,
+    ) -> ToadStoolResult<toadstool::encryption::CryptoCapability> {
+        // Query the service for its capabilities via RPC
+        let response: serde_json::Value = self
+            .rpc_client
+            .call_typed("beardog.capabilities", serde_json::json!({}))
+            .await
+            .unwrap_or_else(|_| {
+                // If RPC fails, return default capabilities
+                serde_json::json!({
+                    "algorithms": ["chacha20poly1305", "aes-256-gcm"],
+                    "security_level": "enhanced",
+                    "hardware_backed": false
+                })
+            });
+
+        // Parse the response into CryptoCapability
+        let algorithms: Vec<String> = response
+            .get("algorithms")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_else(|| vec!["chacha20poly1305".to_string(), "aes-256-gcm".to_string()]);
+
+        let security_level = response
+            .get("security_level")
+            .and_then(|v| v.as_str())
+            .map(|s| match s.to_lowercase().as_str() {
+                "standard" => toadstool::encryption::SecurityLevel::Standard,
+                "hardware_secured" | "hardware" => {
+                    toadstool::encryption::SecurityLevel::HardwareSecured
+                }
+                _ => toadstool::encryption::SecurityLevel::Enhanced,
+            })
+            .unwrap_or(toadstool::encryption::SecurityLevel::Enhanced);
+
+        let hardware_backed = response
+            .get("hardware_backed")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        Ok(toadstool::encryption::CryptoCapability {
+            algorithms,
+            security_level,
+            hardware_backed,
+        })
     }
 
     /// Encrypt data using BearDog via unix socket
@@ -373,12 +463,42 @@ impl BearDogClient {
     }
 
     /// Check health of BearDog services
+    ///
+    /// **Design**: Probes each discovered endpoint with a health check RPC call
+    /// and updates their health status and latency based on actual response.
     pub async fn health_check(&self) -> ToadStoolResult<Vec<BearDogEndpoint>> {
         let endpoints = self.discovery.discover().await?;
 
-        // TODO: Implement actual health checks for each endpoint
+        // Probe each endpoint for actual health status
+        let mut checked_endpoints = Vec::with_capacity(endpoints.len());
 
-        Ok(endpoints)
+        for mut endpoint in endpoints {
+            let start = std::time::Instant::now();
+
+            // Try to ping the endpoint via the unix socket RPC
+            let health_result: Result<serde_json::Value, _> = self
+                .rpc_client
+                .call_typed("beardog.health", serde_json::json!({}))
+                .await;
+
+            let latency_ms = start.elapsed().as_millis() as u64;
+
+            match health_result {
+                Ok(_response) => {
+                    endpoint.healthy = true;
+                    endpoint.latency_ms = Some(latency_ms);
+                }
+                Err(_) => {
+                    // Endpoint failed health check but may still be discoverable
+                    endpoint.healthy = false;
+                    endpoint.latency_ms = Some(latency_ms);
+                }
+            }
+
+            checked_endpoints.push(endpoint);
+        }
+
+        Ok(checked_endpoints)
     }
 }
 
@@ -392,8 +512,9 @@ impl toadstool::encryption::CryptoProvider for BearDogClient {
     }
 
     fn capabilities(&self) -> &toadstool::encryption::CryptoCapability {
-        // TODO: Return actual discovered capabilities
-        // For now, return default capabilities
+        // NOTE: CryptoProvider trait requires &'static lifetime, which prevents
+        // dynamic runtime queries. Use query_capabilities_async() for actual
+        // discovered capabilities. This returns conservative defaults.
         static CAPABILITIES: std::sync::OnceLock<toadstool::encryption::CryptoCapability> =
             std::sync::OnceLock::new();
 

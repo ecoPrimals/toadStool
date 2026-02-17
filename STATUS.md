@@ -77,6 +77,71 @@ when available. Now all device creation paths properly enable f64.
 
 ---
 
+## wetSpring Bray-Curtis Shader Absorbed (Feb 16, 2026) ✅ COMPLETE
+
+The `bray_curtis_pairs_f64.wgsl` shader was missing from ToadStool and has been absorbed:
+
+| Component | Location |
+|-----------|----------|
+| Shader | `shaders/math/bray_curtis_f64.wgsl` |
+| Orchestrator | `ops::bray_curtis_f64::BrayCurtisF64` |
+| Tests | 5 unit tests |
+
+**API**: `BrayCurtisF64::condensed_distance_matrix(samples, n_samples, n_features)`
+
+wetSpring can now wire this for GPU-accelerated diversity analysis.
+
+---
+
+## hotSpring v0.5.5 Quality Handoff (Feb 16, 2026 evening) ✅ ACKNOWLEDGED
+
+hotSpring completed code quality hardening (no new physics, cleaner infrastructure):
+
+| Metric | Before | After |
+|--------|:------:|:-----:|
+| Unit tests | 158 | **182** |
+| Line coverage | 33% | **39%** |
+| Inline magic numbers | 30+ | **0** |
+| WGSL shaders extracted | 0 | **8** |
+
+**Primitives Ready for hotSpring**:
+| Primitive | Module | Status |
+|-----------|--------|:------:|
+| `SumReduceF64` | `barracuda::ops::sum_reduce_f64` | ✅ Ready |
+| `SpinOrbitGpu` | `barracuda::ops::grid::spin_orbit_f64` | ✅ Ready |
+| `FusedMapReduceF64` | `barracuda::ops::fused_map_reduce_f64` | ✅ Fixed (TS-004) |
+
+hotSpring can now wire `SumReduceF64::sum()` to replace CPU `trapz` in HFB energy pipeline.
+
+---
+
+## airSpring ToadStool Issues Resolution (Feb 16, 2026) ✅ ALL RESOLVED
+
+The airSpring team identified 4 ToadStool issues during their Phase 3 GPU integration.
+All have been resolved:
+
+| ID | Severity | Issue | Resolution |
+|----|:--------:|-------|------------|
+| TS-001 | **Critical** | `pow_f64` returns 0.0 for fractional exponents | Implemented `exp(exp * log(base))` for non-integer exponents |
+| TS-002 | **Medium** | No Rust orchestrator for `batched_elementwise_f64` | Created `BatchedElementwiseF64` with FAO-56 and water balance support |
+| TS-003 | **Medium** | `acos`/`sin` precision drift in f64 shaders | Extended Taylor series + new `asin_core` Padé approximation |
+| TS-004 | **High** | `FusedMapReduceF64` buffer conflict for N>=1024 | Use separate input/output buffers in `reduce_partials_pass` |
+
+**Files Modified**:
+- `crates/barracuda/src/shaders/science/batched_elementwise_f64.wgsl` (TS-001, TS-003)
+- `crates/barracuda/src/ops/batched_elementwise_f64.rs` (TS-002 — NEW)
+- `crates/barracuda/src/ops/fused_map_reduce_f64.rs` (TS-004)
+- `crates/barracuda/src/ops/mod.rs` (TS-002 — module registration)
+
+**Validation**:
+- `cargo clippy --workspace -- -D warnings` → **PASS** (0 warnings)
+- `cargo test -p barracuda --lib batched_elementwise` → **3/3 PASS** (1 ignored, requires GPU)
+- `cargo test -p barracuda --lib fused_map_reduce` → **2/2 PASS** (1 ignored, requires GPU)
+
+airSpring can now proceed with GPU acceleration of FAO-56 ET₀ and water balance pipelines.
+
+---
+
 ## Sibling Validation Projects (Feb 16, 2026)
 
 Three domain-specific projects validate BarraCUDA's compute stack:
@@ -243,6 +308,54 @@ to `.wgsl` files. Arbitrary splitting would reduce cohesion without improving ma
 | Fake patterns | 0 | ✅ Clean |
 
 All mocks properly isolated to `#[cfg(test)]` modules.
+
+### Capability-Based Discovery Evolution (Feb 16, 2026)
+
+Evolved hardcoded primal names to capability-based discovery.
+
+| # | File | Change | Description |
+|:-:|------|--------|-------------|
+| 1 | beardog_integration/client.rs | `new_async()` | Capability-based crypto discovery |
+| 2 | crypto_integration/client.rs | Endpoint metadata | Uses actual endpoint, not hardcoded |
+| 3 | ecosystem/communication.rs | `extract_socket_path()` | Helper for capability-based paths |
+| 4 | beardog/discovery.rs | Generic fallback | `crypto.sock` instead of `beardog.sock` |
+| 5 | auth_backend.rs | `new_async()` | `discover_crypto_socket()` |
+| 6 | storage_backend.rs | `new_async()` | `discover_storage_socket()` |
+| 7 | agent_backend.rs | `new_async()` | Custom ML capability |
+| 8 | agents.rs | `with_ml_service()` | Async manager constructor |
+| 9 | auth.rs | `with_crypto_service()` | Async manager constructor |
+| 10 | storage.rs | `with_storage_service()` | Async manager constructor |
+
+**Pattern**: All sync constructors deprecated with `#[deprecated]`. New async versions
+use `toadstool_common::primal_sockets::discover_*_socket()`.
+
+**Principle**: Self-knowledge only — each primal knows itself and discovers others at runtime.
+
+### Health Check & Runtime Capabilities (Feb 16, 2026 — Continued)
+
+| # | File | Change | Description |
+|:-:|------|--------|-------------|
+| 1 | beardog_integration/client.rs | `health_check()` | Actually probes endpoints via RPC |
+| 2 | beardog_integration/client.rs | `query_capabilities_async()` | Runtime capability discovery |
+
+**Before**: `health_check()` just returned discovered endpoints without probing.
+**After**: `health_check()` calls `beardog.health` RPC and updates `healthy`/`latency_ms`.
+
+**Before**: `capabilities()` returned hardcoded defaults (trait lifetime constraint).
+**After**: `query_capabilities_async()` queries `beardog.capabilities` RPC at runtime.
+
+### AlignedBuffer RAII Evolution (Feb 16, 2026)
+
+Evolved `unified_memory/backends/cpu.rs` unsafe code:
+
+| # | Item | Description |
+|:-:|------|-------------|
+| 1 | `AlignedBuffer` struct | RAII wrapper for aligned memory |
+| 2 | `NonNull<u8>` | Compile-time null safety |
+| 3 | `Drop` impl | Automatic cleanup via dealloc |
+| 4 | `from_raw`/`into_raw` | Safe ownership transfer |
+
+**Result**: Encapsulated unsafe operations in single audited location with automatic cleanup.
 
 ---
 

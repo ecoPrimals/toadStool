@@ -119,7 +119,7 @@ fn pow_f64(base: f64, exp: f64) -> f64 {
     if (base == one) { return one; }
     if (exp == one) { return base; }
     
-    // Integer check
+    // Integer exponent: fast binary exponentiation
     let exp_i = i32(exp);
     if (f64(exp_i) == exp) {
         var result = one;
@@ -134,8 +134,14 @@ fn pow_f64(base: f64, exp: f64) -> f64 {
         return result;
     }
     
-    // General: exp(exp * log(base)) - simplified for common cases
-    return zero; // Placeholder for complex powers
+    // Fractional exponent: base^exp = exp(exp * log(base))
+    // REQUIRES: base > 0 for real result
+    if (base < zero) {
+        // Negative base with fractional exponent → NaN (return 0 as sentinel)
+        return zero;
+    }
+    
+    return exp_f64(exp * log_f64(base));
 }
 
 fn log_f64(x: f64) -> f64 {
@@ -253,22 +259,65 @@ fn fao56_et0(
     return numerator / denominator;
 }
 
-// Simple trig for ET₀ (avoid full math library)
+// Precision trig for ET₀ (f64 Taylor series)
 fn sin_simple(x: f64) -> f64 {
     let zero = x - x;
+    let one = zero + 1.0;
     let pi = zero + 3.141592653589793;
     let two_pi = zero + 6.283185307179586;
+    
+    // Range reduction to [-π, π]
     var y = x;
     while (y > pi) { y = y - two_pi; }
     while (y < -pi) { y = y + two_pi; }
+    
+    // Taylor series: sin(y) = y - y³/3! + y⁵/5! - y⁷/7! + y⁹/9! - y¹¹/11! + y¹³/13!
     let y2 = y * y;
-    return y * (zero + 1.0 - y2 * ((zero + 0.16666666666666666) - y2 * (zero + 0.008333333333333333)));
+    let c3 = zero + 0.16666666666666666;   // 1/6
+    let c5 = zero + 0.008333333333333333;  // 1/120
+    let c7 = zero + 0.0001984126984126984; // 1/5040
+    let c9 = zero + 0.0000027557319223985893; // 1/362880
+    let c11 = zero + 2.505210838544172e-8;  // 1/39916800
+    let c13 = zero + 1.6059043836821613e-10; // 1/6227020800
+    
+    var p = -c13;
+    p = p * y2 + c11;
+    p = p * y2 - c9;
+    p = p * y2 + c7;
+    p = p * y2 - c5;
+    p = p * y2 + c3;
+    
+    return y * (one - y2 * p);
 }
 
 fn cos_simple(x: f64) -> f64 {
     let zero = x - x;
-    let half_pi = zero + 1.5707963267948966;
-    return sin_simple(x + half_pi);
+    let one = zero + 1.0;
+    let pi = zero + 3.141592653589793;
+    let two_pi = zero + 6.283185307179586;
+    
+    // Range reduction
+    var y = x;
+    while (y > pi) { y = y - two_pi; }
+    while (y < -pi) { y = y + two_pi; }
+    
+    // Taylor series: cos(y) = 1 - y²/2! + y⁴/4! - y⁶/6! + y⁸/8! - y¹⁰/10! + y¹²/12!
+    let y2 = y * y;
+    let c2 = zero + 0.5;                   // 1/2
+    let c4 = zero + 0.041666666666666664;  // 1/24
+    let c6 = zero + 0.001388888888888889;  // 1/720
+    let c8 = zero + 0.0000248015873015873; // 1/40320
+    let c10 = zero + 2.7557319223985893e-7; // 1/3628800
+    let c12 = zero + 2.08767569878681e-9;  // 1/479001600
+    
+    var p = c12;
+    p = p * y2 - c10;
+    p = p * y2 + c8;
+    p = p * y2 - c6;
+    p = p * y2 + c4;
+    p = p * y2 - c2;
+    
+    return one + y2 * p;
 }
 
 fn tan_simple(x: f64) -> f64 {
@@ -279,12 +328,53 @@ fn acos_simple(x: f64) -> f64 {
     let zero = x - x;
     let one = zero + 1.0;
     let half_pi = zero + 1.5707963267948966;
+    let pi = zero + 3.141592653589793;
     
+    // Boundary cases
     if (x >= one) { return zero; }
-    if (x <= -one) { return zero + 3.141592653589793; }
+    if (x <= -one) { return pi; }
     
-    // Simple approximation
-    return half_pi - x - x * x * x * (zero + 0.16666666666666666);
+    // acos(x) = atan2(sqrt(1-x²), x) approximation via asin
+    // For |x| <= 0.5: acos(x) = π/2 - asin(x)
+    // For x > 0.5: acos(x) = 2 * asin(sqrt((1-x)/2))
+    // For x < -0.5: acos(x) = π - 2 * asin(sqrt((1+x)/2))
+    
+    let half = zero + 0.5;
+    
+    if (x > half) {
+        // acos(x) = 2 * asin(sqrt((1-x)/2))
+        let t = sqrt_f64((one - x) * half);
+        return (zero + 2.0) * asin_core(t);
+    } else if (x < -half) {
+        // acos(x) = π - 2 * asin(sqrt((1+x)/2))
+        let t = sqrt_f64((one + x) * half);
+        return pi - (zero + 2.0) * asin_core(t);
+    } else {
+        // acos(x) = π/2 - asin(x)
+        return half_pi - asin_core(x);
+    }
+}
+
+// Helper: asin for |x| <= 0.5 using Padé approximation
+fn asin_core(x: f64) -> f64 {
+    let zero = x - x;
+    let x2 = x * x;
+    
+    // Minimax polynomial for asin(x)/x for |x| <= 0.5
+    // asin(x) ≈ x * (1 + x² * P(x²))
+    let c1 = zero + 0.16666666666666666;   // 1/6
+    let c2 = zero + 0.075;                  // 3/40
+    let c3 = zero + 0.04464285714285714;   // 15/336
+    let c4 = zero + 0.030381944444444446;  // 35/1152
+    let c5 = zero + 0.022372159090909092;  // 63/2816
+    
+    var p = c5;
+    p = p * x2 + c4;
+    p = p * x2 + c3;
+    p = p * x2 + c2;
+    p = p * x2 + c1;
+    
+    return x * ((zero + 1.0) + x2 * p);
 }
 
 // ============================================================================

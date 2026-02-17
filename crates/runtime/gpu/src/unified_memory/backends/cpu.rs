@@ -1,4 +1,11 @@
 //! CPU fallback backend - Always available
+//!
+//! # Safety Evolution
+//!
+//! This module uses safe Rust patterns where possible:
+//! - `AlignedBuffer`: RAII wrapper for aligned memory with automatic cleanup
+//! - `NonNull`: Null-checked pointer type for better safety guarantees
+//! - Encapsulated unsafe: All raw pointer operations in a single, audited location
 
 use crate::unified_memory::{
     backend::{BackendAllocation, BackendInitializer, CpuAllocation, UnifiedMemoryBackend},
@@ -6,7 +13,93 @@ use crate::unified_memory::{
 };
 use async_trait::async_trait;
 use std::alloc::{alloc, dealloc, Layout};
+use std::ptr::NonNull;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
+
+/// RAII wrapper for aligned memory allocation (Safe Rust pattern)
+///
+/// This struct encapsulates unsafe pointer operations and ensures memory is
+/// properly deallocated via Drop. The `ManuallyDrop` on the inner buffer
+/// prevents double-free when converting to raw pointer for backend use.
+///
+/// # Safety Invariants
+///
+/// - `ptr` is always valid and non-null (guaranteed by NonNull)
+/// - `size` and `align` exactly match the allocation parameters
+/// - Memory is zeroed on allocation
+/// - Memory is freed exactly once in Drop (unless taken via `into_raw`)
+struct AlignedBuffer {
+    ptr: NonNull<u8>,
+    size: usize,
+    align: usize,
+}
+
+impl AlignedBuffer {
+    /// Allocate aligned, zeroed memory
+    ///
+    /// # Errors
+    /// Returns error if alignment is not power of 2 or allocation fails (OOM)
+    fn new(size: usize, align: usize) -> ToadStoolResult<Self> {
+        if !align.is_power_of_two() {
+            return Err(ToadStoolError::runtime("Alignment must be power of 2"));
+        }
+
+        let layout = Layout::from_size_align(size, align)
+            .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {e}")))?;
+
+        // SAFETY: Layout is valid (from_size_align succeeded)
+        let ptr = unsafe { alloc(layout) };
+
+        let ptr = NonNull::new(ptr).ok_or_else(|| ToadStoolError::runtime("Out of memory"))?;
+
+        // Zero the memory for safety
+        // SAFETY: ptr is valid and points to `size` bytes (just allocated)
+        unsafe {
+            std::ptr::write_bytes(ptr.as_ptr(), 0, size);
+        }
+
+        Ok(Self { ptr, size, align })
+    }
+
+    /// Get the raw pointer (for use in allocations)
+    #[allow(dead_code)] // API for future use
+    fn as_ptr(&self) -> *mut u8 {
+        self.ptr.as_ptr()
+    }
+
+    /// Consume the buffer and return the raw pointer
+    /// Caller takes ownership and responsibility for deallocation
+    fn into_raw(self) -> *mut u8 {
+        let ptr = self.ptr.as_ptr();
+        // Prevent Drop from running (caller now owns memory)
+        std::mem::forget(self);
+        ptr
+    }
+
+    /// Create from raw pointer (takes ownership)
+    ///
+    /// # Safety
+    /// - `ptr` must be non-null and point to valid memory
+    /// - `size` and `align` must match the original allocation
+    /// - Caller must transfer ownership (not use ptr after this)
+    unsafe fn from_raw(ptr: *mut u8, size: usize, align: usize) -> Option<Self> {
+        NonNull::new(ptr).map(|ptr| Self { ptr, size, align })
+    }
+}
+
+impl Drop for AlignedBuffer {
+    fn drop(&mut self) {
+        // SAFETY: ptr from alloc with this exact layout; freed exactly once
+        unsafe {
+            let layout = Layout::from_size_align_unchecked(self.size, self.align);
+            dealloc(self.ptr.as_ptr(), layout);
+        }
+    }
+}
+
+// SAFETY: AlignedBuffer owns its memory exclusively
+unsafe impl Send for AlignedBuffer {}
+unsafe impl Sync for AlignedBuffer {}
 
 /// CPU shared memory backend
 ///
@@ -19,6 +112,11 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 /// - **Coherent**: No synchronization needed
 /// - **Fast CPU access**: Direct memory access
 /// - **No GPU acceleration**: CPU-only, no actual GPU access
+///
+/// # Safety Evolution
+///
+/// Uses `AlignedBuffer` RAII wrapper to minimize unsafe code and ensure
+/// proper memory management with automatic cleanup.
 ///
 /// # Use Cases
 ///
@@ -45,44 +143,23 @@ impl CpuBackend {
         })
     }
 
-    /// Allocate aligned memory
-    fn allocate_aligned(size: usize, align: usize) -> ToadStoolResult<*mut u8> {
-        // Validate alignment
-        if !align.is_power_of_two() {
-            return Err(ToadStoolError::runtime("Alignment must be power of 2"));
-        }
-
-        // Create layout
-        let layout = Layout::from_size_align(size, align)
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to create layout: {}", e)))?;
-
-        // Allocate
-        // SAFETY: Layout is valid (from_size_align checked size and power-of-2 align above).
-        // alloc returns null on OOM (we check); otherwise valid for layout.size() bytes.
-        let ptr = unsafe { alloc(layout) };
-
-        if ptr.is_null() {
-            return Err(ToadStoolError::runtime("Out of memory"));
-        }
-
-        Ok(ptr)
+    /// Allocate aligned memory using safe RAII wrapper
+    ///
+    /// **EVOLVED**: Uses `AlignedBuffer` for safe memory management
+    fn allocate_aligned_safe(size: usize, align: usize) -> ToadStoolResult<AlignedBuffer> {
+        AlignedBuffer::new(size, align)
     }
 
-    /// Free aligned memory
+    /// Free aligned memory safely
     ///
-    /// # Safety
-    ///
-    /// Caller must ensure:
-    /// - ptr was allocated with allocate_aligned
-    /// - size and align match the original allocation
-    /// - ptr is not used after this call
-    unsafe fn free_aligned(ptr: *mut u8, size: usize, align: usize) {
+    /// **EVOLVED**: Uses `AlignedBuffer` RAII for automatic cleanup.
+    /// This function reconstructs the buffer and lets Drop handle deallocation.
+    fn free_aligned_safe(ptr: *mut u8, size: usize, align: usize) {
         if !ptr.is_null() {
-            // EVOLVED: Use Layout; caller guarantees size/align match allocation.
-            // SAFETY: size and align from allocate_aligned; always valid there.
-            let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
-            // SAFETY: ptr from alloc, layout matches; freed exactly once.
-            dealloc(ptr, layout);
+            // SAFETY: ptr/size/align from our allocate_aligned_safe; buffer takes ownership
+            if let Some(buffer) = unsafe { AlignedBuffer::from_raw(ptr, size, align) } {
+                drop(buffer); // Explicit drop for clarity (would happen anyway)
+            }
         }
     }
 }
@@ -117,24 +194,16 @@ impl UnifiedMemoryBackend for CpuBackend {
         size: usize,
         _flags: MemoryFlags,
     ) -> ToadStoolResult<BackendAllocation> {
-        // Allocate aligned memory
-        let ptr = Self::allocate_aligned(size, self.capabilities.alignment_requirement)?;
+        // EVOLVED: Use safe RAII wrapper for allocation
+        let buffer = Self::allocate_aligned_safe(size, self.capabilities.alignment_requirement)?;
+        let ptr = buffer.into_raw(); // Transfer ownership to CpuAllocation
 
         tracing::debug!(
-            "CPU backend allocated {} bytes at address {:#x} (alignment {})",
+            "CPU backend allocated {} bytes at address {:#x} (alignment {}, zeroed)",
             size,
             ptr as usize,
             self.capabilities.alignment_requirement
         );
-
-        // Zero the memory for safety using slice-based approach
-        // SAFETY: ptr from allocate_aligned; size matches allocation; exclusive access.
-        {
-            let slice = unsafe { std::slice::from_raw_parts_mut(ptr, size) };
-            slice.fill(0);
-        }
-
-        tracing::debug!("CPU backend zeroed {} bytes at {:#x}", size, ptr as usize);
 
         Ok(BackendAllocation::Cpu(CpuAllocation { ptr, size }))
     }
@@ -142,15 +211,12 @@ impl UnifiedMemoryBackend for CpuBackend {
     async fn free_unified(&self, allocation: BackendAllocation) -> ToadStoolResult<()> {
         match allocation {
             BackendAllocation::Cpu(alloc) => {
-                // SAFETY: alloc from our allocate_unified; ptr/size/align match original allocation.
-                // free_aligned requires matching layout (documented in its Safety section).
-                unsafe {
-                    Self::free_aligned(
-                        alloc.ptr,
-                        alloc.size,
-                        self.capabilities.alignment_requirement,
-                    );
-                }
+                // EVOLVED: Use safe deallocation via RAII wrapper
+                Self::free_aligned_safe(
+                    alloc.ptr,
+                    alloc.size,
+                    self.capabilities.alignment_requirement,
+                );
                 Ok(())
             }
             _ => Err(ToadStoolError::runtime(

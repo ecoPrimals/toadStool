@@ -255,26 +255,37 @@ impl FusedMapReduceF64 {
         if n_workgroups > 1 {
             if n_workgroups <= 256 {
                 // Single workgroup can handle all partials
-                self.reduce_partials_pass(&output_buffer, n_workgroups, reduce_op)?;
+                // TS-004 FIX: reduce_partials_pass now returns the output buffer
+                let final_buffer = self.reduce_partials_pass(&output_buffer, n_workgroups, reduce_op)?;
+                return self.read_result(&final_buffer);
             } else {
                 // Need multiple passes (rare for typical workloads)
                 return self.reduce_partials_recursive(&output_buffer, n_workgroups, reduce_op);
             }
         }
 
-        // Read result
+        // Read result (single workgroup case)
         self.read_result(&output_buffer)
     }
 
     /// Execute reduction of partial results
+    ///
+    /// TS-004 FIX: Use separate input/output buffers to avoid buffer binding conflicts.
+    /// The shader reads from input (binding 0) and writes to output (binding 1).
     fn reduce_partials_pass(
         &self,
-        buffer: &wgpu::Buffer,
+        input_buffer: &wgpu::Buffer,
         n_partials: usize,
         reduce_op: ReduceOp,
-    ) -> Result<()> {
-        // For second pass, we read from and write to the same buffer
-        // (first element will contain final result)
+    ) -> Result<wgpu::Buffer> {
+        // Create separate output buffer for the final result
+        let output_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("FMR Partials Output"),
+            size: 8, // Single f64 result
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
         let params = Params {
             n: n_partials as u32,
             _pad1: 0,
@@ -301,11 +312,11 @@ impl FusedMapReduceF64 {
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: buffer.as_entire_binding(),
+                        resource: input_buffer.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
-                        resource: buffer.as_entire_binding(),
+                        resource: output_buffer.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
@@ -332,7 +343,7 @@ impl FusedMapReduceF64 {
         }
 
         self.device.queue.submit(Some(encoder.finish()));
-        Ok(())
+        Ok(output_buffer)
     }
 
     /// Recursive reduction for very large inputs (>256 workgroups)

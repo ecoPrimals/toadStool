@@ -279,49 +279,68 @@ impl AuthenticationManager {
     }
 
     /// Discover security provider with custom configuration
+    ///
+    /// **EVOLVED**: Uses capability-based discovery (no hardcoded primal names).
     pub async fn discover_with_config(config: AuthManagerConfig) -> crate::ToadStoolResult<Self> {
-        // Priority 1: Check if endpoint is already configured (env var override)
-        if !config.beardog_endpoint.is_empty() {
-            tracing::debug!(
-                "Using configured BearDog endpoint: {}",
-                config.beardog_endpoint
-            );
-            return Ok(Self::with_beardog(config));
+        // Priority 1: Try capability-based discovery first (Deep Debt compliant)
+        match Self::with_crypto_service(config.clone()).await {
+            Ok(manager) => {
+                tracing::info!("Discovered crypto service via capability-based discovery");
+                return Ok(manager);
+            }
+            Err(e) => {
+                tracing::debug!("Capability discovery failed: {}, trying fallbacks", e);
+            }
         }
 
-        // Priority 2: Check environment variables
+        // Priority 2: Check environment variables (backward compatibility)
         if let Ok(endpoint) = std::env::var("BEARDOG_ENDPOINT")
             .or_else(|_| std::env::var("TOADSTOOL_SECURITY_ENDPOINT"))
         {
-            tracing::info!("Discovered BearDog via environment: {}", endpoint);
+            tracing::info!("Discovered crypto service via environment: {}", endpoint);
             let mut config = config;
             config.beardog_endpoint = endpoint;
+            #[allow(deprecated)]
             return Ok(Self::with_beardog(config));
         }
 
-        // Priority 3: Capability-based discovery via ipc_helpers
-        match crate::ipc_helpers::resolve_primal("beardog").await {
-            Ok(endpoint) => {
-                tracing::info!("Discovered BearDog via capability lookup: {}", endpoint);
-                let mut config = config;
-                config.beardog_endpoint = endpoint;
-                Ok(Self::with_beardog(config))
-            }
-            Err(_) => {
-                // Priority 4: Fall back to in-memory backend for development
-                tracing::warn!(
-                    "No security provider discovered, using in-memory backend. \
-                     Set BEARDOG_ENDPOINT for production use."
-                );
-                Ok(Self::with_inmemory(config))
-            }
+        // Priority 3: Check if endpoint is already configured
+        if !config.beardog_endpoint.is_empty() {
+            tracing::debug!(
+                "Using configured endpoint: {}",
+                config.beardog_endpoint
+            );
+            #[allow(deprecated)]
+            return Ok(Self::with_beardog(config));
         }
+
+        // Priority 4: Fall back to in-memory backend for development
+        tracing::warn!(
+            "No crypto provider discovered, using in-memory backend. \
+             Ensure a crypto provider is running or set BEARDOG_ENDPOINT."
+        );
+        Ok(Self::with_inmemory(config))
+    }
+
+    /// Create a new manager with capability-based crypto service discovery (RECOMMENDED)
+    ///
+    /// **Deep Debt Compliant**: Discovers crypto service by capability, not name.
+    pub async fn with_crypto_service(config: AuthManagerConfig) -> ToadStoolResult<Self> {
+        let backend = super::auth_backend::BearDogBackend::new_async().await?;
+        Ok(Self {
+            config,
+            current_token: None,
+            backend: Arc::new(backend),
+            refresh_task: None,
+        })
     }
 
     /// Create a new manager with BearDog production backend
     ///
-    /// **Note**: Prefer `discover()` for new code to use capability-based discovery.
+    /// **DEPRECATED**: Use `with_crypto_service()` or `discover()` for capability-based discovery.
     #[must_use]
+    #[deprecated(since = "0.3.0", note = "Use with_crypto_service() or discover() for capability-based discovery")]
+    #[allow(deprecated)]
     pub fn with_beardog(config: AuthManagerConfig) -> Self {
         let backend = super::auth_backend::BearDogBackend::new(config.beardog_endpoint.clone());
         Self {

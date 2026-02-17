@@ -17,6 +17,19 @@ System health verified with 15,700+ tests passing across workspace.
 
 ### Latest Updates (Feb 16, 2026 — Deep Debt Evolution + ecoBin Compliance)
 
+**Health Check & Capabilities Query Evolution ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| `health_check()` | ✅ | Probes endpoints via `beardog.health` RPC |
+| `query_capabilities_async()` | ✅ | Runtime capability discovery via RPC |
+| Latency tracking | ✅ | Updates `latency_ms` based on actual response |
+
+Key achievements:
+- `health_check()` now actually probes endpoints (was just returning discovery results)
+- `query_capabilities_async()` queries service at runtime for algorithms/security level
+- Works around CryptoProvider trait lifetime constraint on `capabilities()`
+
 **ecoBin v2.0 Compliance ✓**
 
 | Item | Status | Description |

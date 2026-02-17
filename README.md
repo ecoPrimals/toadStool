@@ -17,12 +17,13 @@
 |------|--------|
 | `cargo build --workspace` | ✅ Clean |
 | `cargo fmt --all -- --check` | ✅ Clean |
-| `cargo clippy --workspace -- -D warnings` | ✅ Clean (1 expected warning) |
+| `cargo clippy --workspace -- -D warnings` | ✅ Clean |
 | `cargo doc --workspace --no-deps` | ✅ Clean |
 | `cargo test --workspace` | ✅ 15,700+ passed, 0 failed |
 | hotSpring validation | ✅ 195/195 nuclear physics + MD checks |
 | wetSpring validation | ✅ 48/48 life science checks |
 | airSpring validation | ✅ 70/70 Rust + 142 Python precision agriculture checks |
+| airSpring ToadStool issues | ✅ TS-001/002/003/004 resolved — GPU integration unblocked |
 | Three springs test suite | ✅ 37 unit/E2E/chaos/fault/precision tests |
 | `unsafe` blocks | ✅ FFI only (VFIO, DRM) — 100% documented |
 | Production placeholders | ✅ 0 remaining — all evolved |

@@ -265,14 +265,14 @@ impl CommunicationManager {
             if endpoint.protocol == "jsonrpc"
                 || endpoint.protocol == "json-rpc"
                 || endpoint.protocol == "unix-socket"
+                || endpoint.protocol == "unix"
             {
                 debug!(
                     "🌍 Using JSON-RPC 2.0 over unix socket (PRIMARY - wateringHole standard) for service: {}",
                     service.name
                 );
-                // Use unix socket path from discovery
-                let socket_path =
-                    toadstool_common::primal_sockets::get_socket_path_for_service(&service.name);
+                // EVOLVED: Extract socket path from endpoint when available
+                let socket_path = Self::extract_socket_path(endpoint, &service.name);
                 return Ok(ServiceClient::UnixSocket(
                     toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
                 ));
@@ -288,10 +288,13 @@ impl CommunicationManager {
             }
         }
 
-        // Fallback: Try to determine from service name
+        // Fallback: Use capability-based path resolution
         debug!("Using socket path discovery for service: {}", service.name);
-        let socket_path =
-            toadstool_common::primal_sockets::get_socket_path_for_service(&service.name);
+        let socket_path = toadstool_common::primal_sockets::resolve_socket_path_for_service(
+            &service.name,
+            &toadstool_common::primal_sockets::SocketPathEnv::from_env(),
+            None,
+        );
         Ok(ServiceClient::UnixSocket(
             toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
         ))
@@ -303,6 +306,37 @@ impl CommunicationManager {
         _service: &DiscoveredService,
     ) -> ToadStoolResult<ServiceClient> {
         Ok(ServiceClient::Disabled)
+    }
+
+    /// Extract socket path from endpoint (capability-based)
+    ///
+    /// **Deep Debt Compliant**: Uses actual endpoint info, not hardcoded names.
+    #[cfg(feature = "networking")]
+    fn extract_socket_path(
+        endpoint: &toadstool_common::primal_identity::ServiceEndpoint,
+        service_name: &str,
+    ) -> std::path::PathBuf {
+        // Priority 1: Address is a Unix socket path
+        if endpoint.address.starts_with('/') {
+            return std::path::PathBuf::from(&endpoint.address);
+        }
+
+        // Priority 2: Metadata contains socket_path
+        if let Some(path) = endpoint.metadata.get("socket_path") {
+            return std::path::PathBuf::from(path);
+        }
+
+        // Priority 3: Metadata contains path
+        if let Some(path) = endpoint.metadata.get("path") {
+            return std::path::PathBuf::from(path);
+        }
+
+        // Fallback: Resolve by service name (capability-based)
+        toadstool_common::primal_sockets::resolve_socket_path_for_service(
+            service_name,
+            &toadstool_common::primal_sockets::SocketPathEnv::from_env(),
+            None,
+        )
     }
 
     /// Send message via HTTP - DEPRECATED

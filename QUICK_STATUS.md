@@ -9,7 +9,7 @@
 ```
 cargo build --workspace          CLEAN
 cargo fmt --all -- --check       CLEAN
-cargo clippy -- -D warnings      CLEAN
+cargo clippy --workspace -- -D warnings   CLEAN
 cargo test --workspace           15,700+ passed / 0 failed
 unsafe blocks                    FFI only (VFIO, DRM) - SAFETY documented
 error handling                   No panic paths (unwrap → Result propagation)

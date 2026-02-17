@@ -110,11 +110,13 @@ impl EntropyClient {
         }
 
         // Try Unix socket discovery (preferred - capability-based, no port conflicts)
-        // EVOLVED (Feb 12, 2026): Removed deprecated HTTP fallbacks - pure capability-based discovery
+        // EVOLVED (Feb 16, 2026): Pure capability-based - no hardcoded primal names
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
             .await
-            .unwrap_or_else(|_| {
-                toadstool_common::primal_sockets::get_socket_path_for_service("beardog")
+            .unwrap_or_else(|e| {
+                tracing::debug!("Capability discovery failed: {}, using biomeOS standard path", e);
+                // Fallback to biomeOS standard path for crypto services (no hardcoded name)
+                toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock")
             });
 
         if tokio::fs::metadata(&socket_path).await.is_ok() {
@@ -130,16 +132,17 @@ impl EntropyClient {
         )
     }
 
-    /// Probe unix socket to check if bearDog service is available
+    /// Probe unix socket to check if crypto service is available
     ///
     /// **PURE RUST**: Uses unix socket instead of HTTP
-    /// **CAPABILITY-BASED**: Discovers crypto service by capability
+    /// **CAPABILITY-BASED**: Discovers crypto service by capability (not hardcoded name)
     async fn probe_service(_url: &str) -> Result<()> {
         // CAPABILITY-BASED: Discover ANY crypto service (not hardcoded "beardog")
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
             .await
             .unwrap_or_else(|_| {
-                toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock")
+                // Fallback to biomeOS standard path for crypto services
+                toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock")
             });
 
         match tokio::net::UnixStream::connect(socket_path).await {

@@ -214,17 +214,66 @@ pub struct SquirrelBackend {
 }
 
 impl SquirrelBackend {
-    /// Create a new Squirrel backend with unix socket transport
+    /// Create ML agent backend with capability-based discovery (RECOMMENDED)
+    ///
+    /// **Deep Debt Compliant**: Discovers ML/MCP service by capability, not name.
+    /// Works with ANY service providing ml.agent capability.
+    ///
+    /// **Pure Rust**: No HTTP client, uses unix sockets!
+    pub async fn new_async(
+        model_registry: impl Into<String>,
+        agent_runtime: impl Into<String>,
+        mcp_enabled: bool,
+    ) -> ToadStoolResult<Self> {
+        use toadstool_common::primal_identity::Capability;
+
+        // CAPABILITY-BASED: Discover ANY ML service (not hardcoded "squirrel")
+        let socket_path = toadstool_common::primal_sockets::discover_socket_for_capability(
+            Capability::Custom {
+                name: "ml.agent".to_string(),
+                version: "1.0".to_string(),
+            },
+        )
+        .await
+        .or_else(|_| {
+            // Fallback: Try MCP capability
+            futures::executor::block_on(
+                toadstool_common::primal_sockets::discover_socket_for_capability(Capability::Custom {
+                    name: "mcp".to_string(),
+                    version: "1.0".to_string(),
+                }),
+            )
+        })
+        .map_err(|e| {
+            ToadStoolError::configuration(format!(
+                "No ML/MCP service discovered: {}. Ensure a ML provider is running.",
+                e
+            ))
+        })?;
+
+        Ok(Self {
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
+            model_registry: model_registry.into(),
+            agent_runtime: agent_runtime.into(),
+            _mcp_enabled: mcp_enabled,
+        })
+    }
+
+    /// Create a new ML agent backend with unix socket transport
+    ///
+    /// **DEPRECATED**: Use `new_async()` for capability-based discovery.
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
     #[must_use]
+    #[deprecated(since = "0.3.0", note = "Use new_async() for capability-based discovery")]
+    #[allow(deprecated)]
     pub fn new(
         _endpoint: impl Into<String>,
         model_registry: impl Into<String>,
         agent_runtime: impl Into<String>,
         mcp_enabled: bool,
     ) -> Self {
-        // ✅ TRUE PRIMAL: Generic socket path discovery (vendor-agnostic!)
+        // LEGACY: Uses primal name for backward compatibility
         let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("squirrel");
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),

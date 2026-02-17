@@ -307,17 +307,48 @@ pub struct NestGateBackend {
 }
 
 impl NestGateBackend {
-    /// Create a new NestGate backend with unix socket transport
+    /// Create storage backend with capability-based discovery (RECOMMENDED)
+    ///
+    /// **Deep Debt Compliant**: Discovers storage service by capability, not name.
+    /// Works with ANY service providing storage.object capability.
+    ///
+    /// **Pure Rust**: No HTTP client, uses unix sockets!
+    pub async fn new_async(
+        storage_tier: impl Into<String>,
+        replication_enabled: bool,
+        replication_factor: u32,
+    ) -> ToadStoolResult<Self> {
+        // CAPABILITY-BASED: Discover ANY storage service (not hardcoded "nestgate")
+        let socket_path = toadstool_common::primal_sockets::discover_storage_socket()
+            .await
+            .map_err(|e| ToadStoolError::configuration(format!(
+                "No storage service discovered: {}. Ensure a storage provider is running.",
+                e
+            )))?;
+
+        Ok(Self {
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
+            storage_tier: storage_tier.into(),
+            replication_enabled,
+            replication_factor,
+        })
+    }
+
+    /// Create a new storage backend with unix socket transport
+    ///
+    /// **DEPRECATED**: Use `new_async()` for capability-based discovery.
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
     #[must_use]
+    #[deprecated(since = "0.3.0", note = "Use new_async() for capability-based discovery")]
+    #[allow(deprecated)]
     pub fn new(
         _endpoint: impl Into<String>,
         storage_tier: impl Into<String>,
         replication_enabled: bool,
         replication_factor: u32,
     ) -> Self {
-        // ✅ TRUE PRIMAL: Generic socket path discovery (vendor-agnostic!)
+        // LEGACY: Uses primal name for backward compatibility
         let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("nestgate");
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),

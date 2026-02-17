@@ -176,6 +176,10 @@ pub mod topk;
 pub mod cumprod_f64;
 pub mod fused_map_reduce_f64; // Unified pattern: Shannon, Simpson, norms, etc.
 pub mod kriging_f64; // Spatial interpolation (airSpring, wetSpring)
+
+// Batched element-wise operations (f64) - Unified pattern for all springs
+// TS-002 FIX: Rust orchestrator for batched_elementwise_f64.wgsl
+pub mod batched_elementwise_f64; // FAO-56 ET₀, water balance, diversity metrics
 pub mod max_abs_diff_f64;
 pub mod norm_reduce_f64;
 pub mod prod_reduce_f64;
@@ -357,6 +361,7 @@ pub mod tile;
 
 // Advanced matrix operations
 pub mod cosine_similarity;
+pub mod bray_curtis_f64; // Bray-Curtis distance (absorbed from wetSpring)
 pub mod cross_product;
 pub mod determinant;
 pub mod matrix_inverse;

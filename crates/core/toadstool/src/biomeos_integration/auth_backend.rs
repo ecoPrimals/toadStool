@@ -74,12 +74,36 @@ pub struct BearDogBackend {
 }
 
 impl BearDogBackend {
-    /// Create a new BearDog authentication backend with unix socket transport
+    /// Create crypto auth backend with capability-based discovery (RECOMMENDED)
+    ///
+    /// **Deep Debt Compliant**: Discovers crypto service by capability, not name.
+    /// Works with ANY service providing crypto.authentication capability.
+    ///
+    /// **Pure Rust**: No HTTP client, uses unix sockets!
+    pub async fn new_async() -> ToadStoolResult<Self> {
+        // CAPABILITY-BASED: Discover ANY crypto service (not hardcoded "beardog")
+        let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
+            .await
+            .map_err(|e| ToadStoolError::configuration(format!(
+                "No crypto service discovered: {}. Ensure a crypto provider is running.",
+                e
+            )))?;
+
+        Ok(Self {
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
+        })
+    }
+
+    /// Create a new crypto authentication backend with unix socket transport
+    ///
+    /// **DEPRECATED**: Use `new_async()` for capability-based discovery.
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
     #[must_use]
+    #[deprecated(since = "0.3.0", note = "Use new_async() for capability-based discovery")]
+    #[allow(deprecated)]
     pub fn new(_endpoint: impl Into<String>) -> Self {
-        // ✅ TRUE PRIMAL: Generic socket path discovery (vendor-agnostic!)
+        // LEGACY: Uses primal name for backward compatibility
         let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("beardog");
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),

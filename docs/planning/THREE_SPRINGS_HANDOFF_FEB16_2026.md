@@ -78,6 +78,64 @@ let c1 = zero + 0.333333333333333;
 | SHADER_F64 device creation fix | ✅ |
 | Broyden mixer | ✅ Already in |
 | FD gradients (1D, 2D, cylindrical) | ✅ Already in |
+
+### ✅ v0.5.5 Quality Hardening Acknowledged (Feb 16, 2026 evening)
+
+| Metric | Value |
+|--------|:-----:|
+| Unit tests | 182 (+24) |
+| Line coverage | 39% |
+| Inline magic numbers | **0** |
+| WGSL shaders extracted | 8 |
+| Clippy warnings | 0 |
+
+### 🎯 Primitives Ready for Your Next Evolution
+
+All three primitives you identified are available in ToadStool:
+
+| Primitive | Location | API |
+|-----------|----------|-----|
+| **SumReduceF64** | `barracuda::ops::sum_reduce_f64` | `SumReduceF64::sum(device, data)` |
+| **SpinOrbitGpu** | `barracuda::ops::grid::spin_orbit_f64` | `SpinOrbitGpu::compute(...)` |
+| **FusedMapReduceF64** | `barracuda::ops::fused_map_reduce_f64` | `FusedMapReduceF64::execute(...)` |
+
+#### Priority 1: Wire SumReduceF64 for HFB Energy
+
+Replace CPU `trapz` with GPU reduction:
+
+```rust
+use barracuda::ops::sum_reduce_f64::SumReduceF64;
+
+// Your batched_hfb_energy_f64.wgsl already computes integrands
+// After shader execution, read back integrand buffer...
+
+// BEFORE (CPU trapz):
+// let energy = trapz(&integrands, dr);
+
+// AFTER (GPU reduce):
+let energy = SumReduceF64::sum(device.clone(), &integrands)? * dr;
+```
+
+#### Priority 3: Wire SpinOrbitGpu for HFB Hamiltonian
+
+```rust
+use barracuda::ops::grid::spin_orbit_f64::SpinOrbitGpu;
+
+let so = SpinOrbitGpu::new(device.clone());
+
+// With pre-computed density gradient
+let h_so = so.compute(
+    &wf_squared,     // [batch × n_states × n_grid]
+    &drho_dr,        // [batch × n_grid]
+    &r_grid,         // [n_grid]
+    &ls_factors,     // [batch × n_states]
+    dr,              // grid spacing
+    w0,              // spin-orbit coupling (MeV·fm⁵)
+)?;
+
+// Or compute gradient internally
+let h_so = so.compute_with_density(&wf_squared, &density, &r_grid, &ls_factors, dr, w0)?;
+```
 | Hermite/Laguerre f64 | ✅ Already in |
 | BatchedEighGpu | ✅ Already in |
 | GPU SSF | ✅ Already in |
@@ -140,7 +198,24 @@ fn pow_f64(base: f64, exp: f64) -> f64 {
 | `zero + literal` pattern | ✅ Documented and applied |
 | Shannon map concept | ✅ Evolved to `FusedMapReduceF64` |
 | Simpson map concept | ✅ Evolved to `FusedMapReduceF64` |
-| Bray-Curtis concept | ✅ Pattern in `cosine_similarity_f64.wgsl` |
+| **Bray-Curtis shader** | ✅ **ABSORBED** — `ops::bray_curtis_f64::BrayCurtisF64` |
+
+### ✅ Bray-Curtis Shader Absorbed (Feb 16, 2026)
+
+Your `bray_curtis_pairs_f64.wgsl` has been absorbed into ToadStool:
+
+```rust
+use barracuda::ops::bray_curtis_f64::BrayCurtisF64;
+
+let bc = BrayCurtisF64::new(device.clone())?;
+
+// 100 samples, 500 features each → condensed distance matrix
+let distances = bc.condensed_distance_matrix(&samples, 100, 500)?;
+// distances.len() = 100*99/2 = 4950
+
+// Convert index to sample pair
+let (i, j) = BrayCurtisF64::condensed_index_to_pair(idx);
+```
 
 ### 🎯 What You Can Work On Now
 
@@ -213,6 +288,19 @@ Use `batched_bisection_f64.wgsl` for binary search on sorted m/z arrays:
 | Spatial interpolation need | ✅ `KrigingF64` with 4 variogram models |
 | Validation architecture | ✅ Pattern documented |
 
+### ✅ ToadStool Issues Resolved (Feb 16, 2026)
+
+All four ToadStool issues you identified have been fixed:
+
+| ID | Severity | Issue | Status |
+|----|:--------:|-------|:------:|
+| TS-001 | Critical | `pow_f64` returns 0.0 for fractional exponents | ✅ **FIXED** |
+| TS-002 | Medium | No Rust orchestrator for `batched_elementwise_f64` | ✅ **FIXED** |
+| TS-003 | Medium | `acos`/`sin` precision drift | ✅ **FIXED** |
+| TS-004 | High | `FusedMapReduceF64` buffer conflict for N≥1024 | ✅ **FIXED** |
+
+See `docs/planning/AIRSPRING_TS_ISSUES_RESOLVED_FEB16_2026.md` for details.
+
 ### 🎯 What You Can Work On Now
 
 #### Immediate: Use Kriging for Soil Moisture Mapping
@@ -246,24 +334,26 @@ let result = kriging.interpolate(&sensors, &grid, model)?;
 // result.variances[i] = uncertainty (useful for adaptive sampling)
 ```
 
-#### Priority 1: Wire Batched ET₀ Orchestrator
+#### ✅ Batched ET₀ Orchestrator (TS-002 — DONE)
 
-The shader `batched_elementwise_f64.wgsl` has FAO-56 Penman-Monteith fully implemented. Create Rust orchestrator:
+The Rust orchestrator is now available in `barracuda::ops::batched_elementwise_f64`:
 
 ```rust
-pub struct BatchedEt0Gpu {
-    device: Arc<WgpuDevice>,
-    pipeline: wgpu::ComputePipeline,
-}
+use barracuda::ops::batched_elementwise_f64::{BatchedElementwiseF64, StationDayInput};
 
-impl BatchedEt0Gpu {
-    pub fn compute(&self, inputs: &[Et0Input]) -> Result<Vec<f64>> {
-        // Pack inputs: [tmax, tmin, rh_max, rh_min, wind, Rs, lat, elev, doy] per station
-        // Dispatch: ceil(n / 64) workgroups
-        // Read back: n ET₀ values
-    }
-}
+let executor = BatchedElementwiseF64::new(device.clone())?;
+
+// FAO-56 Example 18: Uccle, Belgium
+let station_days: Vec<StationDayInput> = vec![
+    (21.5, 12.3, 84.0, 63.0, 2.78, 22.07, 100.0, 50.8, 187),
+    // (tmax, tmin, rh_max, rh_min, wind_2m, rs, elevation, latitude, doy)
+];
+
+let et0_values = executor.fao56_et0_batch(&station_days)?;
+// et0_values[0] ≈ 3.88 mm/day (validated against FAO-56 Example 18)
 ```
+
+Also available: `water_balance_batch()` for daily depletion updates.
 
 #### Priority 2: Richards Equation 1D Solver
 

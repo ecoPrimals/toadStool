@@ -105,51 +105,73 @@ impl AgentDeploymentManager {
     }
 
     /// Discover AI provider with custom configuration
+    ///
+    /// **EVOLVED**: Uses capability-based discovery (no hardcoded primal names).
     pub async fn discover_with_config(
         config: AgentDeploymentConfig,
     ) -> crate::ToadStoolResult<Self> {
-        // Priority 1: Check if endpoint is already configured
-        if !config.squirrel_endpoint.is_empty() {
-            tracing::debug!(
-                "Using configured Squirrel endpoint: {}",
-                config.squirrel_endpoint
-            );
-            return Ok(Self::with_squirrel(config));
+        // Priority 1: Try capability-based discovery first (Deep Debt compliant)
+        match Self::with_ml_service(config.clone()).await {
+            Ok(manager) => {
+                tracing::info!("Discovered ML service via capability-based discovery");
+                return Ok(manager);
+            }
+            Err(e) => {
+                tracing::debug!("Capability discovery failed: {}, trying fallbacks", e);
+            }
         }
 
-        // Priority 2: Check environment variables
+        // Priority 2: Check environment variables (backward compatibility)
         if let Ok(endpoint) =
             std::env::var("SQUIRREL_ENDPOINT").or_else(|_| std::env::var("TOADSTOOL_AI_ENDPOINT"))
         {
-            tracing::info!("Discovered Squirrel via environment: {}", endpoint);
+            tracing::info!("Discovered ML service via environment: {}", endpoint);
             let mut config = config;
             config.squirrel_endpoint = endpoint;
+            #[allow(deprecated)]
             return Ok(Self::with_squirrel(config));
         }
 
-        // Priority 3: Capability-based discovery
-        match crate::ipc_helpers::resolve_primal("squirrel").await {
-            Ok(endpoint) => {
-                tracing::info!("Discovered Squirrel via capability lookup: {}", endpoint);
-                let mut config = config;
-                config.squirrel_endpoint = endpoint;
-                Ok(Self::with_squirrel(config))
-            }
-            Err(_) => {
-                // Priority 4: Fall back to in-memory backend for development
-                tracing::warn!(
-                    "No AI provider discovered, using in-memory backend. \
-                     Set SQUIRREL_ENDPOINT for production use."
-                );
-                Ok(Self::with_inmemory(config))
-            }
+        // Priority 3: Check if endpoint is already configured
+        if !config.squirrel_endpoint.is_empty() {
+            tracing::debug!(
+                "Using configured endpoint: {}",
+                config.squirrel_endpoint
+            );
+            #[allow(deprecated)]
+            return Ok(Self::with_squirrel(config));
         }
+
+        // Priority 4: Fall back to in-memory backend for development
+        tracing::warn!(
+            "No AI provider discovered, using in-memory backend. \
+             Ensure a ML provider is running or set SQUIRREL_ENDPOINT."
+        );
+        Ok(Self::with_inmemory(config))
+    }
+
+    /// Create a new manager with capability-based ML service discovery (RECOMMENDED)
+    ///
+    /// **Deep Debt Compliant**: Discovers ML service by capability, not name.
+    pub async fn with_ml_service(config: AgentDeploymentConfig) -> crate::ToadStoolResult<Self> {
+        let backend = super::agent_backend::SquirrelBackend::new_async(
+            config.model_registry.clone(),
+            config.agent_runtime.clone(),
+            config.mcp_enabled,
+        )
+        .await?;
+        Ok(Self {
+            _config: config,
+            backend: Arc::new(backend),
+        })
     }
 
     /// Create a new manager with Squirrel production backend
     ///
-    /// **Note**: Prefer `discover()` for new code to use capability-based discovery.
+    /// **DEPRECATED**: Use `with_ml_service()` or `discover()` for capability-based discovery.
     #[must_use]
+    #[deprecated(since = "0.3.0", note = "Use with_ml_service() or discover() for capability-based discovery")]
+    #[allow(deprecated)]
     pub fn with_squirrel(config: AgentDeploymentConfig) -> Self {
         let backend = super::agent_backend::SquirrelBackend::new(
             config.squirrel_endpoint.clone(),

@@ -129,6 +129,8 @@ impl CryptoServiceClient {
     /// Create client for a discovered service with unix socket transport
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
+    ///
+    /// **EVOLVED**: Uses the discovered service's actual endpoint, not hardcoded name.
     pub fn new(service: &DiscoveredService) -> ToadStoolResult<Self> {
         let endpoint = service.endpoints.first().ok_or_else(|| {
             ToadStoolError::Network(NetworkError::ConnectionFailed {
@@ -137,9 +139,24 @@ impl CryptoServiceClient {
             })
         })?;
 
-        // Use unix socket path discovery - crypto services are typically BearDog
-        // CAPABILITY-BASED: Use generic discovery instead of primal-specific knowledge
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("beardog");
+        // CAPABILITY-BASED: Use the discovered service's actual socket path
+        // Extract Unix socket path from endpoint (supports unix:// protocol)
+        let socket_path = if endpoint.protocol == "unix" {
+            // Use endpoint address directly (it's the socket path)
+            std::path::PathBuf::from(&endpoint.address)
+        } else if let Some(path) = endpoint.metadata.get("socket_path") {
+            // Or from metadata
+            std::path::PathBuf::from(path)
+        } else {
+            // Fallback: Use generic socket path for discovered service name
+            // This allows ANY crypto service to work (BearDog, HSM, cloud KMS)
+            toadstool_common::primal_sockets::resolve_socket_path_for_service(
+                &service.name,
+                &toadstool_common::primal_sockets::SocketPathEnv::from_env(),
+                None,
+            )
+        };
+
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {
