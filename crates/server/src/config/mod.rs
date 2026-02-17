@@ -3,6 +3,11 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+// Centralized timeout constants (Deep Debt evolution)
+use toadstool_common::constants::timeouts::{
+    HEALTH_CHECK_INTERVAL, WORKLOAD_EXECUTION_TIMEOUT,
+};
+
 /// `ToadStool` server configuration
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
@@ -56,8 +61,8 @@ impl Default for ServerConfig {
             enable_websocket: false, // Disabled by default for security - opt-in required
             enable_cors: true,
             max_concurrent_executions: 100,
-            default_timeout: Duration::from_secs(300),
-            resource_monitoring_interval: Duration::from_secs(30),
+            default_timeout: WORKLOAD_EXECUTION_TIMEOUT,
+            resource_monitoring_interval: HEALTH_CHECK_INTERVAL,
             auth: None,
             rate_limiting: None,
             logging: LoggingConfig::default(),
@@ -212,7 +217,7 @@ pub struct HealthCheckConfig {
 impl Default for HealthCheckConfig {
     fn default() -> Self {
         Self {
-            interval: Duration::from_secs(30),
+            interval: HEALTH_CHECK_INTERVAL,
             check_runtime_engines: true,
             check_resources: true,
             memory_threshold_percent: 90.0,

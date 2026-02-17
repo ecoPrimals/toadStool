@@ -131,6 +131,18 @@ Key files modified:
 - `crates/neuromorphic/akida-driver/src/mmio.rs` — rustix mmap/munmap
 - `crates/neuromorphic/akida-driver/src/backends/vfio.rs` — rustix mlock/munlock
 - `crates/server/src/handlers.rs`, `background.rs` — Broadcast error logging
+
+**Centralized Timeout Constants (server crate) ✓**
+
+| File | Before | After |
+|------|--------|-------|
+| `handlers.rs` | `Duration::from_secs(300)` ×7 | `WORKLOAD_EXECUTION_TIMEOUT` |
+| `background.rs` | `Duration::from_secs(300)` | `DEFAULT_CACHE_TTL` |
+| `background.rs` | `Duration::from_secs(30)` | `HEALTH_CHECK_INTERVAL` |
+| `config/mod.rs` | `Duration::from_secs(300)` | `WORKLOAD_EXECUTION_TIMEOUT` |
+| `config/mod.rs` | `Duration::from_secs(30)` ×2 | `HEALTH_CHECK_INTERVAL` |
+
+Constants from `toadstool_common::constants::timeouts` replace hardcoded values.
 - `crates/integration/protocols/src/client.rs` — Broadcast error logging
 
 **Known Technical Debt (Future Evolution)**

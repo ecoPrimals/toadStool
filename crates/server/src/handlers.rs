@@ -12,6 +12,9 @@ use uuid::Uuid;
 // Removed mock dependency - using real system resources now
 use crate::state::{ServerEvent, ServerState};
 
+// Centralized timeout constants (Deep Debt evolution)
+use toadstool_common::constants::timeouts::WORKLOAD_EXECUTION_TIMEOUT;
+
 /// Health check endpoint handler
 pub async fn health_check_handler(State(state): State<ServerState>) -> impl IntoResponse {
     debug!("Health check requested");
@@ -162,7 +165,7 @@ pub async fn submit_execution_handler(
         execution_id,
         runtime_type: runtime_type.clone(),
         started_at: chrono::Utc::now(),
-        timeout: std::time::Duration::from_secs(300),
+        timeout: WORKLOAD_EXECUTION_TIMEOUT,
         status: toadstool::ExecutionStatus::Pending,
         client_info: crate::state::ClientInfo {
             ip_address: None,
@@ -636,7 +639,7 @@ mod tests {
                     execution_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: chrono::Utc::now(),
-                    timeout: std::time::Duration::from_secs(300),
+                    timeout: WORKLOAD_EXECUTION_TIMEOUT,
                     status: toadstool::ExecutionStatus::Running,
                     client_info: crate::ClientInfo {
                         ip_address: None,
@@ -678,7 +681,7 @@ mod tests {
                     execution_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: chrono::Utc::now(),
-                    timeout: std::time::Duration::from_secs(300),
+                    timeout: WORKLOAD_EXECUTION_TIMEOUT,
                     status: toadstool::ExecutionStatus::Running,
                     client_info: crate::ClientInfo {
                         ip_address: None,
@@ -720,7 +723,7 @@ mod tests {
                     execution_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: chrono::Utc::now(),
-                    timeout: std::time::Duration::from_secs(300),
+                    timeout: WORKLOAD_EXECUTION_TIMEOUT,
                     status: toadstool::ExecutionStatus::Success,
                     client_info: crate::ClientInfo {
                         ip_address: None,
@@ -916,7 +919,7 @@ mod tests {
                     execution_id,
                     runtime_type: toadstool::RuntimeType::Wasm,
                     started_at: chrono::Utc::now(),
-                    timeout: std::time::Duration::from_secs(300),
+                    timeout: WORKLOAD_EXECUTION_TIMEOUT,
                     status: toadstool::ExecutionStatus::Running,
                     client_info: crate::state::ClientInfo {
                         ip_address: None,
@@ -979,7 +982,7 @@ mod tests {
                     execution_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: chrono::Utc::now(),
-                    timeout: std::time::Duration::from_secs(300),
+                    timeout: WORKLOAD_EXECUTION_TIMEOUT,
                     status: toadstool::ExecutionStatus::Success,
                     client_info: crate::state::ClientInfo {
                         ip_address: None,
@@ -1015,7 +1018,7 @@ mod tests {
                     execution_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: chrono::Utc::now(),
-                    timeout: std::time::Duration::from_secs(300),
+                    timeout: WORKLOAD_EXECUTION_TIMEOUT,
                     status: toadstool::ExecutionStatus::Pending,
                     client_info: crate::state::ClientInfo {
                         ip_address: None,

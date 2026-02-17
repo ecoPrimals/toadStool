@@ -8,6 +8,11 @@ use tracing::{debug, info, warn};
 // Removed mock dependency - using real system resources now
 use crate::state::{ServerEvent, ServerState};
 
+// Centralized timeout/interval constants (Deep Debt evolution)
+use toadstool_common::constants::timeouts::{DEFAULT_CACHE_TTL, HEALTH_CHECK_INTERVAL};
+#[cfg(test)]
+use toadstool_common::constants::timeouts::WORKLOAD_EXECUTION_TIMEOUT;
+
 /// Start all background services
 pub async fn start_background_services(state: ServerState) {
     info!("Starting background services");
@@ -171,7 +176,7 @@ async fn statistics_collection_task(state: ServerState) {
 async fn cleanup_task(state: ServerState) {
     debug!("Starting cleanup task");
 
-    let mut interval = interval(Duration::from_secs(300)); // Cleanup every 5 minutes
+    let mut interval = interval(DEFAULT_CACHE_TTL); // Cleanup every 5 minutes
 
     loop {
         interval.tick().await;
@@ -224,7 +229,7 @@ async fn capability_heartbeat_task(state: ServerState) {
     let heartbeat_interval = if let Some(ref primal_config) = state.config.primal_capabilities {
         Duration::from_secs(primal_config.heartbeat_interval_secs)
     } else {
-        Duration::from_secs(30)
+        HEALTH_CHECK_INTERVAL // 30 second fallback
     };
 
     let mut interval = interval(heartbeat_interval);
@@ -464,7 +469,7 @@ mod tests {
                     execution_id: id,
                     runtime_type: RuntimeType::Native,
                     started_at: chrono::Utc::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: WORKLOAD_EXECUTION_TIMEOUT,
                     status: ExecutionStatus::Running,
                     client_info: ClientInfo {
                         ip_address: Some(format!("127.0.0.{}", i)),
