@@ -298,9 +298,35 @@ impl HardwareDiscovery {
     }
 
     /// Discover FPGAs
+    ///
+    /// **Deep Debt Status**: Placeholder — requires FPGA hardware for development
+    ///
+    /// ## Implementation Plan
+    ///
+    /// When FPGA hardware is available, implement discovery via:
+    /// 1. **Intel FPGAs**: Query OPAE (Open Programmable Acceleration Engine) via sysfs
+    ///    - `/sys/class/fpga_region/` for Intel PAC cards
+    /// 2. **Xilinx FPGAs**: Query XRT (Xilinx Runtime) via sysfs
+    ///    - `/sys/bus/pci/drivers/xclmgmt/` for Alveo cards
+    /// 3. **Generic**: PCIe device class 0x1200 (Processing Accelerator)
+    ///
+    /// ## Current Behavior
+    ///
+    /// Returns `Ok(())` with no FPGAs discovered. This allows the system to
+    /// function on machines without FPGA hardware while preserving the
+    /// discovery API for future implementation.
     fn discover_fpgas(&mut self) -> Result<()> {
         info!("  🔌 Scanning for FPGAs...");
-        // TODO: Implement FPGA discovery
+
+        // Deep Debt: FPGA discovery requires hardware access
+        // Currently no-op; will implement when FPGA hardware available
+        //
+        // Implementation paths:
+        // - Intel OPAE: check /sys/class/fpga_region/
+        // - Xilinx XRT: check /sys/bus/pci/drivers/xclmgmt/
+        // - Generic: PCIe class 0x1200
+
+        debug!("    FPGA discovery not yet implemented (no hardware available)");
         Ok(())
     }
 

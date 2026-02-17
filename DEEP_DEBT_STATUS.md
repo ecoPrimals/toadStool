@@ -69,6 +69,24 @@ Key files modified:
 - `crates/server/src/resource_validator.rs` — Disks + Networks API
 - `crates/integration/protocols/src/client.rs` — TCP health probing
 
+**Placeholder Documentation & Songbird Evolution ✓**
+
+| Item | Status | Description |
+|------|:------:|-------------|
+| FPGA discovery | ✅ | Documented future path (Intel OPAE, Xilinx XRT) |
+| GPU remote execution | ✅ | Documented graceful degradation and evolution path |
+| GPU kernel compiler | ✅ | Documented pass-through nature for JIT frameworks |
+| Akida model parsing | ✅ | Documented FlatBuffers schema dependency for shapes |
+| Songbird registry query | ✅ | Evolved from Err(not_found) to real JSON-RPC call |
+| Unsafe code audit | ✅ | Verified all unsafe is necessary (FFI, hardware, allocators) |
+
+Key files modified:
+- `crates/core/substrate/src/discovery.rs` — FPGA discovery documentation
+- `crates/runtime/gpu/src/distributed/mod.rs` — Remote execution docs
+- `crates/runtime/gpu/src/compiler.rs` — Compiler pass-through docs
+- `crates/neuromorphic/akida-models/src/model.rs` — Shape parsing docs
+- `crates/auto_config/src/ecosystem_evolved.rs` — Real Songbird JSON-RPC
+
 ---
 
 ### Previous Updates (Feb 16, 2026 — Deep Debt Evolution + ecoBin Compliance)

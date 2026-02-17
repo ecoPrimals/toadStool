@@ -98,7 +98,24 @@ impl Model {
         // Extract layer names
         let layer_names = parser::extract_layer_names(data);
 
-        // Create layers (simplified for now)
+        // Create layers from extracted names
+        //
+        // Deep Debt: Shape extraction requires FlatBuffers schema
+        //
+        // Akida .fbz files use FlatBuffers serialization. To properly
+        // parse input_shape and output_shape, we need:
+        //
+        // 1. The official FlatBuffers schema (.fbs file) from BrainChip
+        // 2. Generated Rust bindings from `flatc --rust`
+        //
+        // The current heuristic parser extracts layer names and weights
+        // successfully, but shape data is embedded in FlatBuffers tables
+        // that require proper schema-aware parsing.
+        //
+        // Evolution path:
+        // - Reverse-engineer schema from known good models
+        // - Or: Obtain schema from BrainChip SDK documentation
+        // - Generate Rust bindings and replace heuristic parser
         let layers = layer_names
             .into_iter()
             .map(|name| {
@@ -108,8 +125,10 @@ impl Model {
                 Layer {
                     name,
                     layer_type,
-                    input_shape: Vec::new(),  // TODO: Parse from model
-                    output_shape: Vec::new(), // TODO: Parse from model
+                    // Deep Debt: Empty until FlatBuffers schema available
+                    // Shape data exists in .fbz but requires schema for extraction
+                    input_shape: Vec::new(),
+                    output_shape: Vec::new(),
                 }
             })
             .collect();

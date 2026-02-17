@@ -65,19 +65,68 @@ impl EcosystemDiscoverer {
     }
 
     /// Query Songbird registry via Unix socket
+    ///
+    /// **EVOLVED**: Real JSON-RPC call to Songbird using `ipc.list` method
+    ///
+    /// ## Protocol
+    ///
+    /// Songbird service registry uses JSON-RPC 2.0 over Unix sockets.
+    /// Method: `ipc.list` returns array of registered services.
     async fn query_songbird_registry(
         &self,
-        _socket_path: &str,
+        socket_path: &str,
     ) -> ToadStoolResult<Vec<DiscoveredService>> {
-        // TODO: Implement JSON-RPC call to Songbird
-        // Method: "ipc.list"
-        // Returns list of registered services
-        
-        // For now, return empty list (will be implemented when Songbird integration is complete)
-        debug!("🚧 Songbird registry query not yet implemented");
-        Err(ToadStoolError::not_found(
-            "Songbird registry query not yet implemented",
-        ))
+        use std::path::Path;
+        use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
+
+        // Check if socket exists before attempting connection
+        if !Path::new(socket_path).exists() {
+            debug!(
+                "Songbird socket not found at {} (service may not be running)",
+                socket_path
+            );
+            return Err(ToadStoolError::not_found(format!(
+                "Songbird socket not found: {}",
+                socket_path
+            )));
+        }
+
+        let client = UnixJsonRpcClient::new(socket_path);
+
+        // Call ipc.list to get registered services
+        // Timeout is handled by the client internally
+        match tokio::time::timeout(self.discovery_timeout, async {
+            client
+                .call::<_, Vec<SongbirdServiceEntry>>("ipc.list", serde_json::json!({}))
+                .await
+        })
+        .await
+        {
+            Ok(Ok(entries)) => {
+                debug!("Songbird returned {} service entries", entries.len());
+                let services = entries
+                    .into_iter()
+                    .map(|entry| DiscoveredService {
+                        name: entry.name,
+                        socket_path: Some(entry.socket_path),
+                        capabilities: entry.capabilities,
+                        available: entry.healthy,
+                    })
+                    .collect();
+                Ok(services)
+            }
+            Ok(Err(e)) => {
+                debug!("Songbird ipc.list call failed: {}", e);
+                Err(e)
+            }
+            Err(_) => {
+                debug!("Songbird query timed out after {:?}", self.discovery_timeout);
+                Err(ToadStoolError::timeout(format!(
+                    "Songbird query timed out after {:?}",
+                    self.discovery_timeout
+                )))
+            }
+        }
     }
 
     /// Discover services from environment variables
@@ -161,6 +210,28 @@ pub struct DiscoveredService {
     pub capabilities: Vec<String>,
     /// Service availability
     pub available: bool,
+}
+
+/// Service entry from Songbird registry
+///
+/// This is the JSON structure returned by Songbird's `ipc.list` method.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct SongbirdServiceEntry {
+    /// Service name
+    name: String,
+    /// Unix socket path
+    socket_path: String,
+    /// Service capabilities
+    #[serde(default)]
+    capabilities: Vec<String>,
+    /// Health status
+    #[serde(default = "default_healthy")]
+    healthy: bool,
+}
+
+/// Default for healthy field (assume healthy if not specified)
+fn default_healthy() -> bool {
+    true
 }
 
 #[cfg(test)]

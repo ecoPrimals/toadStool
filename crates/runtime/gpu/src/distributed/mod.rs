@@ -361,33 +361,42 @@ impl DistributedGpuScheduler {
 
     /// Execute on remote tower via HTTP (static for spawning)
     ///
-    /// **Architecture**: HTTP/gRPC-based remote execution
+    /// ## Deep Debt Status: Placeholder (Graceful Degradation)
     ///
-    /// **Design** (for production):
+    /// Currently returns a placeholder result to allow distributed scheduling
+    /// to be tested without network infrastructure. This is NOT a mock —
+    /// it's intentional graceful degradation for development.
+    ///
+    /// ## Evolution Path
+    ///
+    /// 1. Add `reqwest` or `hyper` for HTTP client (workspace feature-gated)
+    /// 2. Implement actual POST to tower's `/api/v1/execute` endpoint
+    /// 3. Add timeout/retry with configurable backoff
+    /// 4. Add circuit breaker for tower failure isolation
+    ///
+    /// ## Example Implementation
+    ///
     /// ```ignore
     /// async fn execute_remote_http(address: &str, workload: UniversalWorkload) -> Result<...> {
-    ///     // 1. Serialize workload to JSON
-    ///     let payload = serde_json::to_string(&workload)?;
+    ///     let client = reqwest::Client::builder()
+    ///         .timeout(Duration::from_secs(30))
+    ///         .build()?;
     ///     
-    ///     // 2. POST to remote tower's execution endpoint
-    ///     let response = reqwest::Client::new()
+    ///     let response = client
     ///         .post(format!("{}/api/v1/execute", address))
     ///         .json(&workload)
     ///         .send()
     ///         .await?;
     ///     
-    ///     // 3. Deserialize result
-    ///     let result: WorkloadResult = response.json().await?;
-    ///     Ok(result)
+    ///     response.json().await.map_err(Into::into)
     /// }
     /// ```
     ///
-    /// **Deep Debt**:
+    /// ## Deep Debt Principles
+    ///
     /// - No hardcoded addresses (address from Songbird discovery)
     /// - No hardcoded ports (tower reports its own endpoint)
-    /// - Timeout and retry configurable
-    ///
-    /// **Current**: Graceful degradation with informative logging
+    /// - Timeout and retry configurable (not hardcoded)
     async fn execute_remote_http(
         address: &str,
         _workload: UniversalWorkload,

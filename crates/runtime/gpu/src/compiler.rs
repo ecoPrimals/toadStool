@@ -87,6 +87,26 @@ impl UniversalKernelCompiler {
     }
 
     /// Internal kernel compilation
+    ///
+    /// ## Deep Debt Status: Pass-through (No Real Compilation)
+    ///
+    /// Currently returns the (optionally optimized) source as bytes without
+    /// invoking any actual GPU compiler. This works because:
+    ///
+    /// 1. WGSL → wgpu compiles shaders at pipeline creation time
+    /// 2. CUDA → nvrtc would be invoked here, but requires CUDA toolkit
+    /// 3. OpenCL → clBuildProgram at runtime, not ahead-of-time
+    ///
+    /// ## Evolution Path
+    ///
+    /// To add real compilation:
+    ///
+    /// - **CUDA**: Use `nvrtc` crate or shell out to `nvcc`
+    /// - **SPIR-V**: Use `naga` for WGSL→SPIR-V (already in wgpu)
+    /// - **OpenCL**: Runtime compilation via OpenCL driver
+    ///
+    /// The current pass-through is valid for interpreted/JIT frameworks.
+    /// Only add AOT compilation when targeting specific binary formats.
     fn compile_kernel_internal(
         &self,
         kernel_source: &str,
@@ -101,8 +121,14 @@ impl UniversalKernelCompiler {
             kernel_source.to_string()
         };
 
-        // For now, return a placeholder compiled kernel
-        // In a real implementation, this would use framework-specific compilers
+        // Deep Debt: Pass-through compilation
+        //
+        // The "binary" here is actually source code. This is valid for:
+        // - WGSL: wgpu compiles at pipeline creation
+        // - OpenCL: runtime compilation
+        //
+        // For true AOT compilation, this would invoke nvrtc (CUDA) or
+        // produce SPIR-V via naga.
         Ok(CompiledKernel {
             id: uuid::Uuid::new_v4().to_string(),
             binary: optimized_source.into_bytes(),
@@ -110,6 +136,7 @@ impl UniversalKernelCompiler {
             compiled_at: std::time::Instant::now(),
             optimization_level: self.config.optimization_level.clone(),
             resource_requirements: ResourceAllocation {
+                // Conservative default; real impl would analyze kernel
                 memory_bytes: 1024 * 1024, // 1MB default
                 compute_units: 1,
                 priority: 1,
