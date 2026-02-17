@@ -430,3 +430,53 @@ File issues at `ecoPrimals/toadStool` or discuss in `wateringHole/`.
 ---
 
 *February 16, 2026 — Unified math library complete. 313+ validation checks across nuclear physics, life science, and precision agriculture. Single-dispatch eigensolve is the critical path for hotSpring Tier 1. Kriging and fused map-reduce ready for immediate use.*
+
+---
+
+## February 17, 2026 Update — fp32/fp64 Shader Evolution
+
+### New f64 Shaders Added
+
+| Shader | Purpose | Location |
+|--------|---------|----------|
+| `rk4_f64.wgsl` | 4th-order Runge-Kutta time integration | `ops/md/integrators/` |
+| `rk_stage_f64.wgsl` | Dormand-Prince RK45 stages | `shaders/numerical/` |
+| `linsolve_f64.wgsl` | Gaussian elimination with pivoting | `shaders/linalg/` |
+| `inverse_f64.wgsl` | Gauss-Jordan matrix inversion | `shaders/linalg/` |
+| `crank_nicolson_f64.wgsl` | Implicit PDE solver with ADI | `shaders/pde/` |
+
+### Bugs Fixed
+
+| Issue | Root Cause | Fix |
+|-------|------------|-----|
+| `fd_gradient_f64` pipeline binding errors | Shader used different @group() for different entry points | Changed all 2D/cylindrical operations to @group(0) |
+| `qr_gpu` pipeline binding mismatch | Inconsistent storage access modes across entry points | Changed all read bindings to read_write |
+| `batched_eigh_gpu` f64 device errors | Tests requested non-f64 device for f64 shaders | Updated 9 tests to use `get_test_device_if_f64_gpu_available()` |
+
+### Test Results
+
+| Category | Passed | Failed | Ignored |
+|----------|--------|--------|---------|
+| f64 tests | 173 | 0 | 2 |
+| linalg tests | 75 | 0 | 0 |
+| MD tests | 99 | 0 | 1 |
+
+### Shader Coverage Summary
+
+| Status | Count |
+|--------|-------|
+| fp32 + fp64 pairs | 38+ |
+| fp64 only | 23 |
+| Critical gaps filled | 5 (ODE/PDE, linear algebra) |
+
+### Remaining Known Issues
+
+1. **Pre-existing tensor op failures**: Many basic ops (`add`, `mul`, etc.) have test failures unrelated to f64 work
+2. **Sparse solver tests**: `cg_gpu` and `bicgstab_gpu` tests fail (pre-existing)
+3. **SSF GPU**: `compute_axes` has k-ordering bug (ignored test)
+
+### Commits
+
+- `5c90eb29`: Fix fd_gradient_f64 bind group mismatch (5 tests → pass)
+- `55b3d174`: Add critical f64 shader implementations (5 new shaders)
+- `728838fa`: Resolve shader/pipeline binding mismatches (QR, batched_eigh)
