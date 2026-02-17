@@ -78,5 +78,9 @@ cuda-comparison = ["benchmarks"]
 # PPPM debug output (verbose charge/potential mesh dumps)
 debug-pppm = []
 
-# NOTE: benchmark binary removed during deep-debt cleanup (Feb 2026)
-# Benchmarks are now run via `cargo bench` and the harness in src/benchmarks/
+# Unidirectional pipeline feature
+unidirectional = []
+
+[[bench]]
+name = "unidirectional_benchmark"
+harness = false

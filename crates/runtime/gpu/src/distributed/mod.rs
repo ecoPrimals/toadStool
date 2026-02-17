@@ -30,7 +30,6 @@ pub use types::{
 
 use crate::scheduler::UniversalComputeScheduler;
 use crate::universal::{UniversalWorkload, WorkloadResult};
-use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use uuid::Uuid;
@@ -410,22 +409,13 @@ impl DistributedGpuScheduler {
             address
         );
 
-        // Graceful degradation: return placeholder success
-        // This allows distributed scheduler to be tested and used
-        // even before full remote execution is implemented
-        Ok(WorkloadResult {
-            outputs: HashMap::new(),
-            metrics: crate::universal::ExecutionMetrics {
-                execution_time: std::time::Duration::from_millis(1),
-                memory_used: 0,
-                energy_joules: None,
-                utilization: 0.0,
-            },
-            messages: vec![format!(
-                "Remote execution to {} (placeholder - use local for now)",
-                address
-            )],
-        })
+        // Deep Debt: Return explicit error instead of fake success
+        // Remote execution requires biomeOS tower infrastructure
+        Err(ToadStoolError::not_supported(format!(
+            "Remote GPU execution to {} not yet implemented. \
+             Use local execution or await biomeOS tower integration.",
+            address
+        )))
     }
 }
 
