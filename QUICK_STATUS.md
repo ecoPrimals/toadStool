@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 17, 2026 (Deep Debt Evolution — Pure Rust + biomeOS Networking)
+**Date**: February 17, 2026 (Deep Debt Evolution — Timeout Consolidation + SIMD Runtime Detection)
 
 ---
 
@@ -16,6 +16,8 @@ error handling                   No panic paths (unwrap → Result propagation)
 middleware tests                 400+ passed (linalg, sparse, numerical, special, stats, optimize, surrogate, sample, pde, pipeline, mixing, grid)
 hotSpring evolution tests        47 tests (unit, E2E, chaos, fault)
 three springs evolution tests    37 tests (unit, E2E, chaos, fault, precision)
+timeout constants                Centralized in toadstool_common::constants::timeouts
+SIMD detection                   Runtime via std::arch::is_x86_feature_detected!
 ```
 
 *All quality gates green. Clippy -D warnings compliant. Zero panic paths in library code.*
@@ -468,6 +470,39 @@ chemistry, and precision agriculture — all on the same BarraCUDA primitives.
 - hotSpring → airSpring: f64 GPU patterns, dispatch batching, hybrid GPU+Rayon
 - airSpring → wetSpring: Spatial interpolation (kriging) for sampling sites
 - wetSpring → airSpring: IoT stream processing for real-time sensor data
+
+---
+
+## Deep Debt Evolution (Feb 17) ✅ ONGOING
+
+**Timeout Constant Consolidation:**
+
+| File | Before | After |
+|------|--------|-------|
+| `handlers.rs` | `Duration::from_secs(300)` ×7 | `WORKLOAD_EXECUTION_TIMEOUT` |
+| `background.rs` | Hardcoded intervals | `DEFAULT_CACHE_TTL`, `HEALTH_CHECK_INTERVAL` |
+| `config/mod.rs` | `Duration::from_secs(300/30)` | Centralized constants |
+| `auth.rs` | `Duration::from_secs(3600/300)` | `TOKEN_REFRESH_INTERVAL`, `TIMESTAMP_VALIDATION_WINDOW` |
+| `monitoring.rs` | `Duration::from_secs(30)` | `HEALTH_CHECK_INTERVAL` |
+
+**SIMD Runtime Detection:**
+
+| Architecture | Before | After |
+|--------------|--------|-------|
+| x86_64 | `cfg!()` compile-time | `std::arch::is_x86_feature_detected!` runtime |
+| aarch64 | Compile-time assumption | Fixed NEON width (always 128-bit) |
+
+**Unidirectional Pipeline (Phases 0-4 Complete):**
+
+| Phase | Component | Status |
+|-------|-----------|:------:|
+| 0 | Design & Architecture | ✅ |
+| 1 | GpuRingBuffer (SPSC) | ✅ |
+| 2 | UnidirectionalPipeline | ✅ |
+| 3 | BandwidthThrottler | ✅ |
+| 4 | Benchmark Suite | ✅ |
+
+See `UNIDIRECTIONAL_PIPELINE.md` for tracking and `DEEP_DEBT_STATUS.md` for full details.
 
 ---
 

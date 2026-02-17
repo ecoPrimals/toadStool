@@ -1,7 +1,7 @@
 # ToadStool/BarraCUDA — Next Steps
 
-**Updated**: February 17, 2026 (Deep Debt Evolution — Pure Rust + biomeOS Networking)  
-**Status**: GPU-Resident Pipeline COMPLETE, ecoBin v2.0 Compliance COMPLETE, Pure Rust Syscalls COMPLETE
+**Updated**: February 17, 2026 (Deep Debt Evolution — Timeout Consolidation + SIMD Detection)  
+**Status**: Unidirectional Pipeline Phase 0-4 COMPLETE, Timeout Consolidation COMPLETE, SIMD Runtime Detection COMPLETE
 
 ---
 
@@ -163,6 +163,16 @@ From `DEEP_DEBT_STATUS.md` and `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.m
 
 ---
 
+## Recent Deep Debt (Feb 17 Complete)
+
+- [x] **Unidirectional Pipeline** — Phases 0-4 (design, ring buffer, pipeline, throttler, benchmark)
+- [x] **Timeout Consolidation** — Centralized Duration constants across server/auth/cli
+- [x] **SIMD Runtime Detection** — std::arch::is_x86_feature_detected! for accurate capability
+- [x] **Production Mock Hardening** — Beardog/NeuroBench/GPU remote return real errors
+- [x] **cudarc Upgrade Path** — Documented 0.11 → 0.19.2 API changes for future
+
+---
+
 ## Previous Absorption (Complete)
 
 From Feb 14-15 hotSpring handoffs:
@@ -175,6 +185,6 @@ From Feb 14-15 hotSpring handoffs:
 
 ---
 
-*GPU-Resident Pipeline complete. Ready for hotSpring validation.*
+*Unidirectional Pipeline Phases 0-4 complete. Deep debt principles enforced.*
 
 *From the ToadStool evolution desk*

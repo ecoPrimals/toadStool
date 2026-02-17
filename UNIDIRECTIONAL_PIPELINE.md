@@ -171,6 +171,13 @@ Unidirectional: Factory
 
 ## Status Updates
 
+### Feb 17, 2026 (Late Night)
+
+- **Deep Debt: Timeout Consolidation** — Duration constants centralized in toadstool_common
+- **Deep Debt: SIMD Runtime Detection** — std::arch::is_x86_feature_detected! for accurate capability
+- All dead_code warnings addressed with documented future use
+- Documentation updated across root docs
+
 ### Feb 17, 2026 (Night)
 
 - **Phase 4 COMPLETE**: Benchmark created comparing traditional vs unidirectional
@@ -183,7 +190,7 @@ Unidirectional: Factory
 - **Phase 2 COMPLETE**: `UnidirectionalPipeline` with fire-and-forget API
 - **Phase 3 COMPLETE**: `BandwidthThrottler` integrated
 - Deep Debt: Fixed production mocks in beardog/neurobench
-- Deep Debt: Identified 100+ hardcoded timeouts for future evolution
+- Deep Debt: Identified 100+ hardcoded timeouts — NOW CONSOLIDATED
 
 ### Feb 17, 2026 (Morning)
 

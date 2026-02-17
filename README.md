@@ -278,6 +278,22 @@ toadStool/
 
 ### Deep Debt Evolution — Pure Rust & Documentation (Feb 17) ✅
 
+**Timeout constant consolidation** — centralized in `toadstool_common::constants::timeouts`:
+
+| File | Hardcoded Values | Centralized Constant |
+|------|------------------|---------------------|
+| `handlers.rs` | `Duration::from_secs(300)` ×7 | `WORKLOAD_EXECUTION_TIMEOUT` |
+| `background.rs` | Cleanup/heartbeat intervals | `DEFAULT_CACHE_TTL`, `HEALTH_CHECK_INTERVAL` |
+| `auth.rs` | Token refresh/timestamp | `TOKEN_REFRESH_INTERVAL`, `TIMESTAMP_VALIDATION_WINDOW` |
+| `monitoring.rs` | Collection interval | `HEALTH_CHECK_INTERVAL` |
+
+**SIMD runtime detection** — evolved from compile-time `cfg!()`:
+
+| Architecture | Detection Method |
+|--------------|-----------------|
+| x86_64 | `std::arch::is_x86_feature_detected!` (AVX-512/AVX2/SSE4) |
+| aarch64 | Fixed NEON width (128-bit, always available) |
+
 **Pure Rust system calls** (akida-driver):
 | Syscall | Before | After |
 |---------|--------|-------|
@@ -585,4 +601,4 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
-**Last Updated**: February 17, 2026 (Deep Debt Evolution — Pure Rust syscalls + biomeOS networking)
+**Last Updated**: February 17, 2026 (Deep Debt Evolution — Timeout Consolidation + SIMD Runtime Detection)

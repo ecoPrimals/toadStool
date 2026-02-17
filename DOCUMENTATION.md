@@ -13,6 +13,7 @@
 | Quick one-page summary | [QUICK_STATUS.md](QUICK_STATUS.md) |
 | Commands and API reference | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
 | Deep debt progress | [DEEP_DEBT_STATUS.md](DEEP_DEBT_STATUS.md) |
+| Unidirectional pipeline | [UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md) |
 | See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-26-total) |
 | Try GPU operations | [docs/guides/QUICK_START_GPU.md](docs/guides/QUICK_START_GPU.md) |
 | Learn FHE | [docs/guides/QUICK_START_ENCRYPTION.md](docs/guides/QUICK_START_ENCRYPTION.md) |

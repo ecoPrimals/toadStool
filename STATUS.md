@@ -1,4 +1,4 @@
-# Status -- February 17, 2026 (Deep Debt Evolution — Pure Rust + biomeOS Networking)
+# Status -- February 17, 2026 (Deep Debt Evolution — Timeout Consolidation + SIMD Detection)
 
 ## Quality Gates
 
@@ -12,6 +12,9 @@
 | hotSpring validation | PASS | **195/195 acceptance checks** |
 | Pure Rust syscalls | PASS | **mmap/mlock via rustix** |
 | biomeOS networking | PASS | **No reqwest/hyper** |
+| Timeout constants | PASS | **Centralized in toadstool_common** |
+| SIMD detection | PASS | **Runtime via std::arch** |
+| Unidirectional pipeline | PASS | **Phases 0-4 complete** |
 
 *All clippy warnings resolved. Workspace fully clean. Pure Rust syscalls in akida-driver.*
 
@@ -72,6 +75,39 @@ No event receivers is normal when no clients are connected — now logged rather
 | GPU remote execution | `runtime/gpu/distributed/mod.rs` | biomeOS tower pattern |
 | GPU kernel compiler | `runtime/gpu/compiler.rs` | AOT vs JIT rationale |
 | Akida model parsing | `neuromorphic/akida-models/model.rs` | FlatBuffers schema dependency |
+
+---
+
+## Deep Debt Evolution — Timeout Consolidation (Feb 17, 2026) ✅ COMPLETE
+
+**Centralized timeout constants** in `toadstool_common::constants::timeouts`:
+
+| File | Before | After |
+|------|--------|-------|
+| `server/handlers.rs` | `Duration::from_secs(300)` ×7 | `WORKLOAD_EXECUTION_TIMEOUT` |
+| `server/background.rs` | `Duration::from_secs(300/30)` | `DEFAULT_CACHE_TTL` / `HEALTH_CHECK_INTERVAL` |
+| `server/config/mod.rs` | `Duration::from_secs(300/30)` | Centralized constants |
+| `toadstool/auth.rs` | `Duration::from_secs(3600/300)` | `TOKEN_REFRESH_INTERVAL` / `TIMESTAMP_VALIDATION_WINDOW` |
+| `cli/monitoring.rs` | `Duration::from_secs(30)` | `HEALTH_CHECK_INTERVAL` |
+
+**New auth constants added:**
+- `TOKEN_REFRESH_INTERVAL` — 1 hour token refresh
+- `TIMESTAMP_VALIDATION_WINDOW` — 5 minute replay protection window
+
+---
+
+## Deep Debt Evolution — SIMD Runtime Detection (Feb 17, 2026) ✅ COMPLETE
+
+**Evolved compile-time `cfg!()` to runtime detection** in `unified_hardware.rs`:
+
+| Architecture | Before | After |
+|--------------|--------|-------|
+| x86_64 | `cfg!(target_feature = "avx512f")` | `std::arch::is_x86_feature_detected!("avx512f")` |
+| x86_64 | `cfg!(target_feature = "avx2")` | `std::arch::is_x86_feature_detected!("avx2")` |
+| x86_64 | `cfg!(target_feature = "sse4.1")` | `std::arch::is_x86_feature_detected!("sse4.1")` |
+| aarch64 | Compile-time assumption | Fixed NEON width (always 128-bit on aarch64) |
+
+**Benefit**: Runtime detection accurately reflects actual CPU capabilities vs compile-time assumptions that depend on build flags.
 
 ---
 
