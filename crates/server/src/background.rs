@@ -79,14 +79,20 @@ async fn resource_monitoring_task(state: ServerState) {
         let active_executions =
             u32::try_from(state.active_executions.read().await.len()).unwrap_or(0);
 
-        let _ = state
+        // Deep Debt: Log if broadcast fails (normal when no clients connected)
+        if state
             .event_broadcaster
             .send(ServerEvent::ResourceUsageUpdate {
                 cpu_usage_percent,
                 memory_usage_percent,
                 active_executions,
                 timestamp: chrono::Utc::now(),
-            });
+            })
+            .is_err()
+        {
+            // Only log at trace level - this happens constantly when no clients
+            tracing::trace!("No event receivers for ResourceUsageUpdate");
+        }
 
         // Update statistics
         let mut stats = state.stats.write().await;
@@ -115,7 +121,8 @@ async fn health_monitoring_task(state: ServerState) {
                 if healthy { "healthy" } else { "unhealthy" }
             );
 
-            let _ = state
+            // Deep Debt: Log if broadcast fails
+            if state
                 .event_broadcaster
                 .send(ServerEvent::HealthStatusChanged {
                     healthy,
@@ -126,7 +133,11 @@ async fn health_monitoring_task(state: ServerState) {
                     }
                     .to_string(),
                     timestamp: chrono::Utc::now(),
-                });
+                })
+                .is_err()
+            {
+                tracing::debug!("No event receivers for HealthStatusChanged");
+            }
 
             last_healthy = healthy;
         }
@@ -182,7 +193,8 @@ async fn cleanup_task(state: ServerState) {
             if let Some(execution) = active_executions.remove(&id) {
                 warn!("Cleaning up timed-out execution: {}", id);
 
-                let _ = state
+                // Deep Debt: Log if broadcast fails (important - execution completed)
+                if state
                     .event_broadcaster
                     .send(ServerEvent::ExecutionCompleted {
                         execution_id: id,
@@ -191,7 +203,11 @@ async fn cleanup_task(state: ServerState) {
                         },
                         duration_ms: u64::try_from(execution.timeout.as_millis()).unwrap_or(0),
                         timestamp: now,
-                    });
+                    })
+                    .is_err()
+                {
+                    tracing::debug!("No event receivers for ExecutionCompleted (timeout)");
+                }
             }
         }
 

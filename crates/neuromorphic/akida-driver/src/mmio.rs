@@ -2,6 +2,11 @@
 //!
 //! Provides safe abstractions for accessing Akida hardware registers.
 //! Based on VFIO region mapping.
+//!
+//! # Deep Debt Evolution (Feb 17, 2026)
+//!
+//! Evolved to use rustix for mmap/munmap while keeping libc only for VFIO ioctls.
+//! VFIO ioctls are kernel-specific and not covered by rustix's standard API.
 
 // Hardware register access requires exact type casts for mmap/ioctl APIs
 // MMIO registers are naturally aligned by hardware, so pointer casts are safe
@@ -12,8 +17,9 @@
 #![allow(clippy::items_after_statements)] // VFIO ioctl constants near usage
 
 use crate::error::{AkidaError, Result};
+use rustix::mm::{mmap, munmap, MapFlags, ProtFlags};
 use std::fs::File;
-use std::os::unix::io::AsRawFd;
+use std::os::unix::io::{AsFd, AsRawFd};
 
 /// AKD1000 BAR regions
 #[derive(Debug, Clone, Copy)]
@@ -179,26 +185,28 @@ impl MappedRegion {
             region_info.flags
         );
 
-        // Map the region
+        // Map the region using rustix (pure Rust mmap wrapper)
         // SAFETY: We have exclusive access via VFIO device fd
+        // - device_fd is valid (passed from VFIO device open)
+        // - region_info contains valid size/offset from VFIO ioctl
+        // - rustix returns Result, so no MAP_FAILED check needed
         let ptr = unsafe {
-            libc::mmap(
+            mmap(
                 std::ptr::null_mut(),
                 region_info.size as usize,
-                libc::PROT_READ | libc::PROT_WRITE,
-                libc::MAP_SHARED,
-                device_fd.as_raw_fd(),
-                region_info.offset as i64,
+                ProtFlags::READ | ProtFlags::WRITE,
+                MapFlags::SHARED,
+                device_fd.as_fd(),
+                region_info.offset,
             )
+            .map_err(|e| {
+                AkidaError::capability_query_failed(format!(
+                    "Failed to mmap BAR{}: {}",
+                    bar as u32,
+                    e
+                ))
+            })?
         };
-
-        if ptr == libc::MAP_FAILED {
-            return Err(AkidaError::capability_query_failed(format!(
-                "Failed to mmap BAR{}: {}",
-                bar as u32,
-                std::io::Error::last_os_error()
-            )));
-        }
 
         tracing::info!(
             "Mapped BAR{} at {:p}, size={:#x}",
@@ -276,8 +284,10 @@ impl MappedRegion {
 impl Drop for MappedRegion {
     fn drop(&mut self) {
         // SAFETY: ptr was created by mmap with this size
+        // Using rustix munmap (pure Rust, better error handling)
         unsafe {
-            libc::munmap(self.ptr.cast(), self.size);
+            // Ignore error in Drop (can't propagate, would need to log)
+            let _ = munmap(self.ptr.cast(), self.size);
         }
         tracing::debug!("Unmapped BAR{}", self.bar as u32);
     }

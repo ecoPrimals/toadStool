@@ -318,10 +318,16 @@ impl ProtocolClient {
                             if service_info.health_status != new_status {
                                 service_info.health_status = new_status.clone();
                                 // Emit health change event
-                                let _ = event_bus.send(ProtocolEvent::ServiceHealthChanged {
-                                    service_id: service_id.clone(),
-                                    status: new_status,
-                                });
+                                // Deep Debt: Log if broadcast fails
+                                if event_bus
+                                    .send(ProtocolEvent::ServiceHealthChanged {
+                                        service_id: service_id.clone(),
+                                        status: new_status,
+                                    })
+                                    .is_err()
+                                {
+                                    tracing::debug!("No event receivers for ServiceHealthChanged");
+                                }
                             }
                         }
                     }

@@ -54,6 +54,7 @@ use crate::backend::{BackendType, ModelHandle, NpuBackend};
 use crate::capabilities::Capabilities;
 use crate::error::{AkidaError, Result};
 use crate::mmio::{regs, Bar, MappedRegion};
+use rustix::mm::{mlock, munlock};
 use std::fs::{File, OpenOptions};
 use std::os::unix::io::{AsRawFd, RawFd};
 
@@ -199,14 +200,13 @@ impl DmaBuffer {
 
         // Lock the memory in RAM (required for VFIO DMA)
         // SAFETY: vaddr points to valid, allocated memory of `size` bytes
-        let mlock_ret = unsafe { libc::mlock(vaddr.cast(), size) };
-        if mlock_ret < 0 {
+        // Using rustix mlock (pure Rust, better error handling)
+        if let Err(e) = unsafe { mlock(vaddr.cast(), size) } {
             // SAFETY: vaddr was allocated above with this exact layout, and we're
             // cleaning up on error before returning
             unsafe { std::alloc::dealloc(vaddr, layout) };
             return Err(AkidaError::transfer_failed(format!(
-                "Failed to lock DMA memory: {}",
-                std::io::Error::last_os_error()
+                "Failed to lock DMA memory: {e}"
             )));
         }
 
@@ -244,8 +244,9 @@ impl DmaBuffer {
             // Clean up allocated memory on failure
             // SAFETY: vaddr was allocated above with this exact layout and mlock'd
             // successfully, so munlock and dealloc are valid cleanup operations
+            // Using rustix munlock (pure Rust)
             unsafe {
-                libc::munlock(vaddr.cast(), size);
+                let _ = munlock(vaddr.cast(), size);
                 std::alloc::dealloc(vaddr, layout);
             };
             return Err(AkidaError::transfer_failed(format!(
@@ -288,9 +289,9 @@ impl DmaBuffer {
 
 impl Drop for DmaBuffer {
     fn drop(&mut self) {
-        // Unlock memory
+        // Unlock memory using rustix (pure Rust)
         // SAFETY: vaddr was locked in new()
-        unsafe { libc::munlock(self.vaddr.cast(), self.size) };
+        unsafe { let _ = munlock(self.vaddr.cast(), self.size); };
 
         // Unmap DMA
         let dma_unmap = VfioDmaUnmap {

@@ -179,11 +179,18 @@ pub async fn submit_execution_handler(
     }
 
     // Notify about execution start
-    let _ = state.event_broadcaster.send(ServerEvent::ExecutionStarted {
-        execution_id,
-        runtime_type: runtime_type.clone(),
-        timestamp: chrono::Utc::now(),
-    });
+    // Deep Debt: Log if broadcast fails (channel full or no receivers)
+    if state
+        .event_broadcaster
+        .send(ServerEvent::ExecutionStarted {
+            execution_id,
+            runtime_type: runtime_type.clone(),
+            timestamp: chrono::Utc::now(),
+        })
+        .is_err()
+    {
+        tracing::debug!("No event receivers for ExecutionStarted (normal if no clients connected)");
+    }
 
     (
         StatusCode::ACCEPTED,
