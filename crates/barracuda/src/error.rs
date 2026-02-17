@@ -58,6 +58,9 @@ pub enum BarracudaError {
 
     #[error("Resource exhausted: {0}")]
     ResourceExhausted(String),
+
+    #[error("Not implemented: {feature}")]
+    NotImplemented { feature: String },
 }
 
 impl BarracudaError {

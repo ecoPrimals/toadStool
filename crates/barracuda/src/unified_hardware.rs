@@ -498,19 +498,27 @@ impl ComputeExecutor for CpuExecutor {
 
     async fn execute(
         &self,
-        _op: &MathOp,
+        op: &MathOp,
         inputs: Vec<Arc<dyn TensorStorage>>,
     ) -> Result<Arc<dyn TensorStorage>> {
+        // **Deep Debt Note**: The scheduler path via ComputeExecutor is not yet implemented.
         // CPU execution delegates to WGPU software rasterizer (llvmpipe).
-        // Same WGSL shaders, same results as GPU, different performance.
         // The actual Tensor operations use WgpuDevice::new_cpu() directly.
-        // This ComputeExecutor is for the scheduler path.
+        //
+        // This explicit error prevents silent incorrect results from the stub.
+        // When scheduler-based execution is needed, implement MathOp dispatch here.
         if inputs.is_empty() {
             return Err(crate::error::BarracudaError::InvalidInput {
                 message: "No inputs provided".to_string(),
             });
         }
-        Ok(inputs[0].clone())
+
+        Err(crate::error::BarracudaError::NotImplemented {
+            feature: format!(
+                "CpuExecutor::execute({:?}) - use Tensor API directly (e.g., tensor.matmul())",
+                op
+            ),
+        })
     }
 
     async fn allocate(&self, descriptor: TensorDescriptor) -> Result<Arc<dyn TensorStorage>> {
