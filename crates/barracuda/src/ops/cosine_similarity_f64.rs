@@ -368,16 +368,13 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
 
-    fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(
-            pollster::block_on(async { WgpuDevice::new_f64_capable().await })
-                .expect("Failed to create test device"),
-        )
+    fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_identical_vectors() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = CosineSimilarityF64::new(device).unwrap();
 
         let a = vec![1.0, 2.0, 3.0, 4.0];
@@ -392,7 +389,7 @@ mod tests {
 
     #[test]
     fn test_orthogonal_vectors() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = CosineSimilarityF64::new(device).unwrap();
 
         let a = vec![1.0, 0.0, 0.0];
@@ -404,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_opposite_vectors() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = CosineSimilarityF64::new(device).unwrap();
 
         let a = vec![1.0, 2.0, 3.0];
@@ -420,7 +417,7 @@ mod tests {
 
     #[test]
     fn test_all_pairs() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = CosineSimilarityF64::new(device).unwrap();
 
         let vectors_a = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
@@ -437,7 +434,7 @@ mod tests {
 
     #[test]
     fn test_large_vectors() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = CosineSimilarityF64::new(device).unwrap();
 
         let n = 1000;

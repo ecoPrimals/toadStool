@@ -74,12 +74,11 @@ pub fn npu_layer_norm(input: &[f32], gamma: &[f32], beta: &[f32], eps: f32) -> R
     // CRITICAL: Use WGSL shader (same math as GPU/CPU!)
     // ═══════════════════════════════════════════════════════════
 
-    use crate::device::WgpuDevice;
+    use crate::device::test_pool::get_test_device_sync;
     use crate::tensor::Tensor;
-    use std::sync::Arc;
 
-    // Get device (auto-detect GPU, fallback to CPU via wgpu)
-    let device = Arc::new(futures::executor::block_on(WgpuDevice::new())?);
+    // Get device from shared pool (thread-safe concurrent access)
+    let device = get_test_device_sync();
 
     // Create tensors from raw data
     let input_tensor =

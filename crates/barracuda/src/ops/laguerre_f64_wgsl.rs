@@ -282,16 +282,13 @@ impl LaguerreF64 {
 mod tests {
     use super::*;
 
-    fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(
-            pollster::block_on(async { WgpuDevice::new_f64_capable().await })
-                .expect("Failed to create test device"),
-        )
+    fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_laguerre_f64_l0() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = LaguerreF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, -1.0, 0.5];
@@ -305,7 +302,7 @@ mod tests {
 
     #[test]
     fn test_laguerre_f64_l1() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = LaguerreF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, 0.5];
@@ -326,7 +323,7 @@ mod tests {
 
     #[test]
     fn test_laguerre_f64_l2() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = LaguerreF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, 0.5];
@@ -348,7 +345,7 @@ mod tests {
 
     #[test]
     fn test_laguerre_f64_generalized() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = LaguerreF64::new(device).unwrap();
 
         // L₁^(1)(x) = 2 - x (α = 1)
@@ -369,7 +366,7 @@ mod tests {
 
     #[test]
     fn test_laguerre_f64_at_zero() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = LaguerreF64::new(device).unwrap();
 
         // L_n^(α)(0) = C(n+α, n) = (n+α)! / (n! α!)

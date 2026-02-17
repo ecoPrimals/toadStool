@@ -6,7 +6,7 @@ use std::sync::Arc;
 #[tokio::test]
 async fn test_transpose_basic() {
     let device = crate::device::Auto::new().await.unwrap();
-    let device = Arc::new(device);
+    // device is already Arc from Auto::new()
 
     // Test data: 2x3 matrix [[1,2,3], [4,5,6]]
     let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3], device)
@@ -33,7 +33,7 @@ async fn test_transpose_basic() {
 #[tokio::test]
 async fn test_transpose_nd() {
     let device = crate::device::Auto::new().await.unwrap();
-    let device = Arc::new(device);
+    // device is already Arc from Auto::new()
 
     // Test 3D transpose: [B, C, H] -> [B, H, C]
     let input = Tensor::from_vec_on(

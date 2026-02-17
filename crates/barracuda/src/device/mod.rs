@@ -15,6 +15,7 @@
 //! - Auto: Smart selection
 
 use crate::error::Result;
+use std::sync::Arc;
 
 pub mod akida;
 pub mod akida_executor;
@@ -86,9 +87,20 @@ pub struct Auto;
 impl Auto {
     /// Discover best available device (wgpu handles selection)
     ///
-    /// Returns `WgpuDevice` (not `Self`) because `Auto` is a zero-sized factory type.
+    /// Returns shared `WgpuDevice` from the global pool for thread-safe concurrent access.
+    /// This enables parallel tests and concurrent GPU workloads without resource exhaustion.
+    ///
+    /// **Architecture**: Uses LazyLock-based pool (Rust 1.80+) for idiomatic lazy initialization.
     #[allow(clippy::new_ret_no_self)]
-    pub async fn new() -> Result<WgpuDevice> {
+    pub async fn new() -> Result<Arc<WgpuDevice>> {
+        Ok(test_pool::get_test_device().await)
+    }
+
+    /// Create a fresh device (not from pool)
+    ///
+    /// Use sparingly - creates a new device each call, which can exhaust GPU resources.
+    /// Prefer `Auto::new()` for most cases.
+    pub async fn new_fresh() -> Result<WgpuDevice> {
         WgpuDevice::new().await
     }
 }

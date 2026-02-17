@@ -308,12 +308,9 @@ impl Covariance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
 
-    fn get_test_device() -> Arc<WgpuDevice> {
-        pollster::block_on(async { WgpuDevice::new().await })
-            .map(Arc::new)
-            .expect("Failed to create test device")
+    fn get_test_device() -> Arc<crate::device::WgpuDevice> {
+        crate::device::test_pool::get_test_device_sync()
     }
 
     #[test]

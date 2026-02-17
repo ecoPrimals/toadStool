@@ -159,14 +159,13 @@ impl BesselK0F64 {
 mod tests {
     use super::*;
 
-    fn create_test_device() -> Result<Arc<WgpuDevice>> {
-        let device = pollster::block_on(async { WgpuDevice::new_f64_capable().await })?;
-        Ok(Arc::new(device))
+    fn create_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_k0_known_values() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bessel = BesselK0F64::new(device)?;
         let x = vec![0.5, 1.0, 2.0, 5.0];
         let expected = vec![0.9244190712276659, 0.4210244382407084, 0.1138938727495334, 0.003691098334042594];
@@ -180,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_k0_exponential_decay() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bessel = BesselK0F64::new(device)?;
         let x = vec![5.0, 10.0, 15.0];
         let result = bessel.k0(&x)?;

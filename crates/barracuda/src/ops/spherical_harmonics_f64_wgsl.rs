@@ -233,14 +233,13 @@ mod tests {
     use super::*;
     use std::f64::consts::PI;
 
-    fn create_test_device() -> Result<Arc<WgpuDevice>> {
-        let device = pollster::block_on(async { WgpuDevice::new_f64_capable().await })?;
-        Ok(Arc::new(device))
+    fn create_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_y00() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let sh = SphericalHarmonicsF64::new(device)?;
         // Y_0^0 = 1/(2√π) ≈ 0.282
         let theta_phi = vec![0.0, 0.0, PI / 2.0, 0.0, PI, PI];
@@ -254,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_y10() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let sh = SphericalHarmonicsF64::new(device)?;
         // Y_1^0 = √(3/(4π)) cos(θ)
         let theta_phi = vec![0.0, 0.0, PI / 2.0, 0.0, PI, 0.0];
@@ -268,7 +267,7 @@ mod tests {
 
     #[test]
     fn test_orthonormality_y00_y10() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let sh = SphericalHarmonicsF64::new(device)?;
         // Test at several points - not a full integral but sanity check
         let theta_phi = vec![PI / 4.0, 0.0, PI / 2.0, PI / 4.0, 3.0 * PI / 4.0, PI / 2.0];

@@ -177,14 +177,13 @@ impl BesselJ1F64 {
 mod tests {
     use super::*;
 
-    fn create_test_device() -> Result<Arc<WgpuDevice>> {
-        let device = pollster::block_on(async { WgpuDevice::new_f64_capable().await })?;
-        Ok(Arc::new(device))
+    fn create_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_j1_at_zero() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bessel = BesselJ1F64::new(device)?;
         let result = bessel.j1(&[0.0])?;
         assert!((result[0]).abs() < 1e-10, "J₁(0) = {}, expected 0", result[0]);
@@ -193,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_j1_known_values() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bessel = BesselJ1F64::new(device)?;
         let x = vec![1.0, 2.0, 5.0];
         let expected = vec![0.4400505857449335, 0.5767248077568734, -0.3275791375914652];
@@ -206,7 +205,7 @@ mod tests {
 
     #[test]
     fn test_j1_antisymmetry() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bessel = BesselJ1F64::new(device)?;
         let x = vec![-2.0, 2.0];
         let result = bessel.j1(&x)?;

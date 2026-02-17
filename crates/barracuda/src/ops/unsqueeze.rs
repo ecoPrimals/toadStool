@@ -137,7 +137,7 @@ mod tests {
     #[tokio::test]
     async fn test_unsqueeze_basic() {
         let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        // device is already Arc from Auto::new()
 
         // Shape [3] should become [1, 3] when unsqueeze at axis 0
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device)

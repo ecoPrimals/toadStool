@@ -311,7 +311,7 @@ impl Tensor {
     /// Create tensor from data (wgpu auto-discovers best device)
     pub async fn from_vec(data: Vec<f32>, shape: Vec<usize>) -> Result<Self> {
         let device = Auto::new().await?;
-        Self::from_vec_on(data, shape, Arc::new(device)).await
+        Self::from_vec_on(data, shape, device).await
     }
 
     /// Create tensor on specific device
@@ -344,7 +344,7 @@ impl Tensor {
     /// Create zero tensor (wgpu auto-discovers device)
     pub async fn zeros(shape: Vec<usize>) -> Result<Self> {
         let device = Auto::new().await?;
-        Self::zeros_on(shape, Arc::new(device)).await
+        Self::zeros_on(shape, device).await
     }
 
     /// Create zero tensor on specific device
@@ -357,7 +357,7 @@ impl Tensor {
     /// Create ones tensor
     pub async fn ones(shape: Vec<usize>) -> Result<Self> {
         let device = Auto::new().await?;
-        Self::ones_on(shape, Arc::new(device)).await
+        Self::ones_on(shape, device).await
     }
 
     /// Create ones tensor on specific device

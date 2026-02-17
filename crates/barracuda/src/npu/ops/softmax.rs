@@ -77,8 +77,8 @@ pub fn npu_softmax(logits: &[f32], temperature: f32) -> Result<Vec<f32>> {
     // Create tensor from logits
     let logits_len = scaled_logits.len();
 
-    // Get device (auto-detect GPU, fallback to CPU via wgpu)
-    let device = Arc::new(futures::executor::block_on(WgpuDevice::new())?);
+    // Get device from shared pool (thread-safe concurrent access)
+    let device = crate::device::test_pool::get_test_device_sync();
 
     let tensor =
         futures::executor::block_on(Tensor::from_vec_on(scaled_logits, vec![logits_len], device))?;

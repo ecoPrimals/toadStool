@@ -43,31 +43,21 @@ impl AutoContext {
         // Initialize scheduler
         let scheduler = UnifiedScheduler::new().await?;
 
-        // Create device pool (one device per hardware type)
+        // Create device pool (uses shared device pool for concurrent safety)
         let mut devices = HashMap::new();
 
-        // GPU device (if available)
-        if let Some(_gpu_executor) = scheduler.get_executor(HardwareType::GPU) {
-            match WgpuDevice::new().await {
-                Ok(gpu) => {
-                    println!("  ✅ GPU device pool created");
-                    devices.insert(HardwareType::GPU, Arc::new(gpu));
-                }
-                Err(e) => {
-                    println!("  ⚠️  GPU device creation failed: {}", e);
-                }
-            }
-        }
-
-        // CPU device (always available via WgpuDevice CPU backend)
-        match WgpuDevice::new_with_backend(wgpu::Backends::all()).await {
-            Ok(cpu) => {
-                // Note: This might still be GPU, but it's okay - we have a device
-                devices.insert(HardwareType::CPU, Arc::new(cpu));
-            }
-            Err(_) => {
-                println!("  ⚠️  No fallback device available");
-            }
+        // GPU device - use shared pool for thread-safe concurrent access
+        if scheduler.get_executor(HardwareType::GPU).is_some() {
+            let shared_device = crate::device::test_pool::get_test_device().await;
+            println!("  ✅ GPU device from shared pool");
+            devices.insert(HardwareType::GPU, shared_device.clone());
+            // CPU uses the same device (wgpu handles backend selection)
+            devices.insert(HardwareType::CPU, shared_device);
+        } else {
+            // Fallback: try to get any device from pool
+            let shared_device = crate::device::test_pool::get_test_device().await;
+            println!("  ✅ Fallback device from shared pool");
+            devices.insert(HardwareType::CPU, shared_device);
         }
 
         println!("  ✅ AutoContext ready with {} device(s)", devices.len());

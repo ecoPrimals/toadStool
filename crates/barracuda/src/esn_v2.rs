@@ -168,8 +168,8 @@ impl ESN {
             });
         }
 
-        // Auto-detect best device
-        let device = Arc::new(Auto::new().await?);
+        // Auto-detect best device (uses shared pool for concurrent safety)
+        let device = Auto::new().await?;
 
         // Initialize reservoir weights (sparse random matrix on device!)
         let w_res = Self::init_reservoir(&config, &device).await?;

@@ -297,14 +297,13 @@ impl BesselJ0F64 {
 mod tests {
     use super::*;
 
-    fn create_test_device() -> Result<Arc<WgpuDevice>> {
-        let device = pollster::block_on(async { WgpuDevice::new_f64_capable().await })?;
-        Ok(Arc::new(device))
+    fn create_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_j0_at_zero() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bessel = BesselJ0F64::new(device)?;
 
         let x = vec![0.0];
@@ -321,7 +320,7 @@ mod tests {
 
     #[test]
     fn test_j0_known_values() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bessel = BesselJ0F64::new(device)?;
 
         // Known values from tables
@@ -349,7 +348,7 @@ mod tests {
 
     #[test]
     fn test_j0_symmetry() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bessel = BesselJ0F64::new(device)?;
 
         // J₀(-x) = J₀(x) (even function)
@@ -373,7 +372,7 @@ mod tests {
 
     #[test]
     fn test_j0_large() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bessel = BesselJ0F64::new(device)?;
 
         // Large input to trigger GPU path

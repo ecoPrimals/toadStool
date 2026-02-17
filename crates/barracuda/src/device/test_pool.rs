@@ -119,28 +119,136 @@ pub async fn get_test_device_if_f64_gpu_available() -> Option<Arc<WgpuDevice>> {
 }
 
 // ============================================================================
-// Sync helpers for gradual migration of #[test] to #[tokio::test]
+// Sync helpers - always available for test modules across crate
 // ============================================================================
 
-/// Sync wrapper for get_test_device (uses pollster for sync tests)
+/// Sync wrapper for get_test_device (uses futures executor)
 ///
 /// **Prefer async**: Use `get_test_device().await` in `#[tokio::test]` when possible.
-/// This sync helper exists for gradual migration of existing `#[test]` functions.
-#[cfg(test)]
+/// This sync helper exists for test functions that can't be async.
+///
+/// **Thread-safe**: Multiple tests can call this concurrently - they all get the same device.
 pub fn get_test_device_sync() -> Arc<WgpuDevice> {
-    pollster::block_on(get_test_device())
+    futures::executor::block_on(get_test_device())
 }
 
 /// Sync wrapper for get_test_device_if_gpu_available
-#[cfg(test)]
+///
+/// Returns None if only software adapter available. Use for tests requiring real GPU.
 pub fn get_test_device_if_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
-    pollster::block_on(get_test_device_if_gpu_available())
+    futures::executor::block_on(get_test_device_if_gpu_available())
 }
 
-/// Sync wrapper for get_test_device_if_f64_gpu_available  
-#[cfg(test)]
+/// Sync wrapper for get_test_device_if_f64_gpu_available
+///
+/// Returns None if no f64-capable GPU. Use for double-precision shader tests.
 pub fn get_test_device_if_f64_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
-    pollster::block_on(get_test_device_if_f64_gpu_available())
+    futures::executor::block_on(get_test_device_if_f64_gpu_available())
+}
+
+// ============================================================================
+// Test prelude - import this in test modules for easy device access
+// ============================================================================
+
+/// Test prelude for concurrent GPU tests
+///
+/// # Usage
+/// ```rust,ignore
+/// #[cfg(test)]
+/// mod tests {
+///     use crate::device::test_pool::test_prelude::*;
+///     
+///     #[tokio::test]
+///     async fn test_my_op() {
+///         let device = test_device().await;
+///         let tensor = test_tensor(&[1.0, 2.0, 3.0], &[3], &device).await;
+///         // ... test logic
+///     }
+/// }
+/// ```
+pub mod test_prelude {
+    use super::*;
+    use crate::tensor::Tensor;
+
+    /// Get shared test device (async version - preferred)
+    pub async fn test_device() -> Arc<WgpuDevice> {
+        get_test_device().await
+    }
+
+    /// Get shared test device (sync version)
+    pub fn test_device_blocking() -> Arc<WgpuDevice> {
+        get_test_device_sync()
+    }
+
+    /// Get GPU-only test device, or skip test if unavailable
+    pub async fn test_gpu_device() -> Option<Arc<WgpuDevice>> {
+        get_test_device_if_gpu_available().await
+    }
+
+    /// Get f64-capable test device, or skip test if unavailable
+    pub async fn test_f64_device() -> Option<Arc<WgpuDevice>> {
+        get_test_device_if_f64_gpu_available().await
+    }
+
+    /// Create test tensor on shared device
+    pub async fn test_tensor(data: &[f32], shape: &[usize], device: &Arc<WgpuDevice>) -> Tensor {
+        Tensor::from_vec_on(data.to_vec(), shape.to_vec(), Arc::clone(device))
+            .await
+            .expect("Failed to create test tensor")
+    }
+
+    /// Create test tensor (sync version)
+    pub fn test_tensor_blocking(data: &[f32], shape: &[usize], device: &Arc<WgpuDevice>) -> Tensor {
+        futures::executor::block_on(test_tensor(data, shape, device))
+    }
+
+    /// Create zeros tensor on shared device
+    pub async fn test_zeros(shape: &[usize], device: &Arc<WgpuDevice>) -> Tensor {
+        Tensor::zeros_on(shape.to_vec(), Arc::clone(device))
+            .await
+            .expect("Failed to create zeros tensor")
+    }
+
+    /// Create randn tensor on shared device
+    ///
+    /// Uses Box-Muller transform on CPU, then uploads to shared device.
+    pub async fn test_randn(shape: &[usize], device: &Arc<WgpuDevice>) -> Tensor {
+        use rand::Rng;
+        let size: usize = shape.iter().product();
+        let mut rng = rand::thread_rng();
+        
+        // Box-Muller for normal distribution
+        let mut data = Vec::with_capacity(size);
+        for _ in 0..(size / 2) {
+            let u1: f32 = rng.gen::<f32>().max(1e-10);
+            let u2: f32 = rng.gen();
+            let r = (-2.0 * u1.ln()).sqrt();
+            let theta = 2.0 * std::f32::consts::PI * u2;
+            data.push(r * theta.cos());
+            data.push(r * theta.sin());
+        }
+        if size % 2 == 1 {
+            let u1: f32 = rng.gen::<f32>().max(1e-10);
+            let u2: f32 = rng.gen();
+            data.push((-2.0 * u1.ln()).sqrt() * (2.0 * std::f32::consts::PI * u2).cos());
+        }
+        data.truncate(size);
+        
+        Tensor::from_vec_on(data, shape.to_vec(), Arc::clone(device))
+            .await
+            .expect("Failed to create randn tensor")
+    }
+
+    /// Create rand tensor on shared device (uniform [0, 1))
+    pub async fn test_rand(shape: &[usize], device: &Arc<WgpuDevice>) -> Tensor {
+        use rand::Rng;
+        let size: usize = shape.iter().product();
+        let data: Vec<f32> = (0..size).map(|_| rand::thread_rng().gen()).collect();
+        
+        Tensor::from_vec_on(data, shape.to_vec(), Arc::clone(device))
+            .await
+            .expect("Failed to create rand tensor")
+    }
 }
 
 #[cfg(test)]

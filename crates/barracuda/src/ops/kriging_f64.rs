@@ -451,9 +451,8 @@ impl KrigingF64 {
 mod tests {
     use super::*;
 
-    fn create_test_device() -> Result<Arc<WgpuDevice>> {
-        let device = pollster::block_on(async { WgpuDevice::new_f64_capable().await })?;
-        Ok(Arc::new(device))
+    fn create_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
@@ -480,7 +479,7 @@ mod tests {
 
     #[test]
     fn test_kriging_simple_case() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let kriging = KrigingF64::new(device)?;
 
         // Simple 4-point case
@@ -516,7 +515,7 @@ mod tests {
 
     #[test]
     fn test_kriging_at_known_point() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let kriging = KrigingF64::new(device)?;
 
         let known = vec![(0.0, 0.0, 1.0), (10.0, 0.0, 2.0), (0.0, 10.0, 3.0)];

@@ -1171,16 +1171,9 @@ mod tests {
     /// This was a bug reported by hotSpring - GPU was returning positive energy
     #[tokio::test]
     async fn test_pppm_gpu_opposite_charges_energy() {
-        use crate::device::WgpuDevice;
-        use std::sync::Arc;
+        use crate::device::test_pool::get_test_device;
 
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => {
-                eprintln!("Skipping GPU test - no GPU available");
-                return;
-            }
-        };
+        let device = get_test_device().await;
 
         let params = PppmParams::custom(
             2,
@@ -1212,16 +1205,9 @@ mod tests {
     /// Test Newton's 3rd law: forces should sum to approximately zero
     #[tokio::test]
     async fn test_pppm_gpu_newtons_third_law() {
-        use crate::device::WgpuDevice;
-        use std::sync::Arc;
+        use crate::device::test_pool::get_test_device;
 
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => {
-                eprintln!("Skipping GPU test - no GPU available");
-                return;
-            }
-        };
+        let device = get_test_device().await;
 
         let params = PppmParams::custom(
             2,
@@ -1259,16 +1245,9 @@ mod tests {
     /// Test that like charges have repulsive forces
     #[tokio::test]
     async fn test_pppm_gpu_like_charges_repel() {
-        use crate::device::WgpuDevice;
-        use std::sync::Arc;
+        use crate::device::test_pool::get_test_device;
 
-        let device = match WgpuDevice::new().await {
-            Ok(d) => Arc::new(d),
-            Err(_) => {
-                eprintln!("Skipping GPU test - no GPU available");
-                return;
-            }
-        };
+        let device = get_test_device().await;
 
         let params = PppmParams::custom(
             2,

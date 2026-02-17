@@ -262,11 +262,10 @@ impl ClipGradNorm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
     use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> Arc<crate::device::WgpuDevice> {
+        crate::device::test_pool::get_test_device().await
     }
 
     #[tokio::test]

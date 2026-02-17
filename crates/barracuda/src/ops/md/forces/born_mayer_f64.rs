@@ -183,14 +183,13 @@ impl BornMayerForceF64 {
 mod tests {
     use super::*;
 
-    fn create_test_device() -> Result<Arc<WgpuDevice>> {
-        let device = pollster::block_on(async { WgpuDevice::new_f64_capable().await })?;
-        Ok(Arc::new(device))
+    fn create_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_born_mayer_two_particles() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bm = BornMayerForceF64::new(device)?;
 
         // Two particles along x-axis
@@ -210,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_born_mayer_energy_positive() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bm = BornMayerForceF64::new(device)?;
 
         let positions = vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0];
@@ -226,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_born_mayer_cutoff() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let bm = BornMayerForceF64::new(device)?;
 
         let positions = vec![0.0, 0.0, 0.0, 5.0, 0.0, 0.0];

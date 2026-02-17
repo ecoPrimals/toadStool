@@ -311,16 +311,13 @@ impl HermiteF64 {
 mod tests {
     use super::*;
 
-    fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(
-            pollster::block_on(async { WgpuDevice::new_f64_capable().await })
-                .expect("Failed to create test device"),
-        )
+    fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_hermite_f64_h0() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = HermiteF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, -1.0, 0.5];
@@ -334,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_hermite_f64_h1() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = HermiteF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, -1.0, 0.5];
@@ -355,7 +352,7 @@ mod tests {
 
     #[test]
     fn test_hermite_f64_h2() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = HermiteF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, -1.0, 0.5];
@@ -377,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_hermite_f64_h10() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = HermiteF64::new(device).unwrap();
 
         // H₁₀(0) = -30240 (from tables)
@@ -392,7 +389,7 @@ mod tests {
 
     #[test]
     fn test_hermite_function_normalization() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = HermiteF64::new(device).unwrap();
 
         // Test that ψ₀(0) = π^(-1/4) ≈ 0.7511

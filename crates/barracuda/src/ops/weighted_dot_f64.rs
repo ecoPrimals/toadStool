@@ -341,16 +341,13 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
 
-    fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(
-            pollster::block_on(async { WgpuDevice::new_f64_capable().await })
-                .expect("Failed to create test device"),
-        )
+    fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_weighted_dot_small() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = WeightedDotF64::new(device).unwrap();
 
         let w = vec![1.0, 2.0, 3.0];
@@ -364,7 +361,7 @@ mod tests {
 
     #[test]
     fn test_dot_product() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = WeightedDotF64::new(device).unwrap();
 
         let a = vec![1.0, 2.0, 3.0, 4.0];
@@ -376,7 +373,7 @@ mod tests {
 
     #[test]
     fn test_norm_squared() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = WeightedDotF64::new(device).unwrap();
 
         let a = vec![3.0, 4.0];
@@ -387,7 +384,7 @@ mod tests {
 
     #[test]
     fn test_weighted_dot_large() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = WeightedDotF64::new(device).unwrap();
 
         let n = 10000;

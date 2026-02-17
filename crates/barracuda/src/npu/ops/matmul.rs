@@ -100,12 +100,11 @@ pub fn npu_matmul(
     // Create tensors from raw data
     // Note: We get WGSL device for universal compute
     // The WGSL shader is hardware-agnostic - wgpu routes to best available
-    use crate::device::WgpuDevice;
+    use crate::device::test_pool::get_test_device_sync;
     use crate::tensor::Tensor;
-    use std::sync::Arc;
 
-    // Get device (auto-detect GPU, fallback to CPU via wgpu)
-    let device = Arc::new(futures::executor::block_on(WgpuDevice::new())?);
+    // Get device from shared pool (thread-safe concurrent access)
+    let device = get_test_device_sync();
 
     // Block on async tensor creation
     let tensor_a =

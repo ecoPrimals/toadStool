@@ -137,14 +137,13 @@ impl VelocityVerletF64 {
 mod tests {
     use super::*;
 
-    fn create_test_device() -> Result<Arc<WgpuDevice>> {
-        let device = pollster::block_on(async { WgpuDevice::new_f64_capable().await })?;
-        Ok(Arc::new(device))
+    fn create_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_free_particle() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let vv = VelocityVerletF64::new(device)?;
 
         // Particle moving with constant velocity (no force)
@@ -171,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_constant_acceleration() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let vv = VelocityVerletF64::new(device)?;
 
         // Particle under constant force
@@ -194,7 +193,7 @@ mod tests {
 
     #[test]
     fn test_symplectic_energy_conservation() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let vv = VelocityVerletF64::new(device)?;
 
         // Simple harmonic oscillator: F = -kx, k=1

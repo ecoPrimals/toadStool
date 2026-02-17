@@ -149,7 +149,7 @@ mod tests {
     #[tokio::test]
     async fn test_concat_basic() {
         let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        // device is already Arc from Auto::new()
 
         let t1 = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
@@ -171,7 +171,7 @@ mod tests {
     #[tokio::test]
     async fn test_concat_edge_cases() {
         let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        // device is already Arc from Auto::new()
 
         // Single element tensors
         let t1 = Tensor::from_vec_on(vec![1.0], vec![1], device.clone())
@@ -199,7 +199,7 @@ mod tests {
     #[tokio::test]
     async fn test_concat_boundary() {
         let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        // device is already Arc from Auto::new()
 
         // Different sized tensors
         let t1 = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())
@@ -221,7 +221,7 @@ mod tests {
     #[tokio::test]
     async fn test_concat_large_tensors() {
         let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        // device is already Arc from Auto::new()
 
         // Large tensors
         let size1 = 1000;
@@ -244,7 +244,7 @@ mod tests {
     #[tokio::test]
     async fn test_concat_precision() {
         let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        // device is already Arc from Auto::new()
 
         // Test with specific values
         let t1 = Tensor::from_vec_on(vec![1.5, 2.5, 3.5], vec![3], device.clone())

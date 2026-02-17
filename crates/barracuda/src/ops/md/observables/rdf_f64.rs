@@ -133,14 +133,13 @@ impl RdfHistogramF64 {
 mod tests {
     use super::*;
 
-    fn create_test_device() -> Result<Arc<WgpuDevice>> {
-        let device = pollster::block_on(async { WgpuDevice::new_f64_capable().await })?;
-        Ok(Arc::new(device))
+    fn create_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_two_particles() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let rdf = RdfHistogramF64::new(device)?;
 
         // Two particles at distance 1.0
@@ -157,7 +156,7 @@ mod tests {
 
     #[test]
     fn test_pbc() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let rdf = RdfHistogramF64::new(device)?;
 
         // Two particles at opposite corners - should see minimum image
@@ -181,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_gr_ideal_gas() -> Result<()> {
-        let device = create_test_device()?;
+        let Some(device) = create_test_device() else { return Ok(()); };
         let rdf = RdfHistogramF64::new(device)?;
 
         // Random positions (approximating ideal gas)

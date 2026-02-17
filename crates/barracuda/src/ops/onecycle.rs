@@ -88,10 +88,8 @@ impl OneCycle {
     /// Note: This requires async context. For synchronous use, use `execute()` and create tensor manually.
     pub async fn execute_as_tensor(self) -> Result<Tensor> {
         let lr = self.execute()?;
-        let device = crate::device::Auto::new()
-            .await
-            .map_err(|e| crate::error::BarracudaError::Device(format!("{}", e)))?;
-        Ok(Tensor::new(vec![lr], vec![1], std::sync::Arc::new(device)))
+        let device = crate::device::Auto::new().await?;
+        Ok(Tensor::new(vec![lr], vec![1], device))
     }
 }
 

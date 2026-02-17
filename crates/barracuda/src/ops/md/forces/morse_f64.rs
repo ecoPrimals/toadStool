@@ -206,16 +206,13 @@ impl MorseForceF64 {
 mod tests {
     use super::*;
 
-    fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(
-            pollster::block_on(async { WgpuDevice::new_f64_capable().await })
-                .expect("Failed to create test device"),
-        )
+    fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
+        crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
     }
 
     #[test]
     fn test_morse_equilibrium() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = MorseForceF64::new(device).unwrap();
 
         // Two particles at equilibrium distance
@@ -237,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_morse_stretched() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = MorseForceF64::new(device).unwrap();
 
         // Two particles stretched beyond equilibrium
@@ -259,7 +256,7 @@ mod tests {
 
     #[test]
     fn test_morse_compressed() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = MorseForceF64::new(device).unwrap();
 
         // Two particles compressed below equilibrium
@@ -281,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_morse_energy_minimum() {
-        let device = get_test_device();
+        let Some(device) = get_test_device() else { return; };
         let op = MorseForceF64::new(device).unwrap();
 
         // At equilibrium
