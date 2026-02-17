@@ -177,6 +177,22 @@ pub mod cumprod_f64;
 pub mod fused_map_reduce_f64; // Unified pattern: Shannon, Simpson, norms, etc.
 pub mod kriging_f64; // Spatial interpolation (airSpring, wetSpring)
 
+// Tridiagonal solvers - Critical for PDE/ODE (all springs)
+// Note: cyclic_reduction_wgsl.rs exists but has API drift; use cyclic_reduction_f64 instead
+pub mod cyclic_reduction_f64; // f64 cyclic reduction for PDEs (Feb 17, 2026)
+pub mod weighted_dot_f64; // Weighted inner products (energy integrals, Galerkin)
+
+// Statistical kernels
+pub mod correlation_wgsl; // Pearson correlation
+pub mod covariance_wgsl; // Sample covariance
+
+// PDE/ODE infrastructure
+pub mod crank_nicolson; // Implicit PDE solver (Richards, heat, Schrödinger)
+pub mod rk_stage; // Runge-Kutta ODE integrator
+
+// Cosine similarity (f64)
+pub mod cosine_similarity_f64; // Spectral matching, small-batch queries
+
 // Batched element-wise operations (f64) - Unified pattern for all springs
 // TS-002 FIX: Rust orchestrator for batched_elementwise_f64.wgsl
 pub mod batched_elementwise_f64; // FAO-56 ET₀, water balance, diversity metrics
