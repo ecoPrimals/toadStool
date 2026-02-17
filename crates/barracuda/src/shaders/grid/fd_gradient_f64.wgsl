@@ -66,10 +66,10 @@ struct Grad2DParams {
     dy: f64,        // Grid spacing in y
 }
 
-@group(1) @binding(0) var<uniform> grad2d_params: Grad2DParams;
-@group(1) @binding(1) var<storage, read> input_2d: array<f64>;     // [nx × ny] row-major
-@group(1) @binding(2) var<storage, read_write> grad_x: array<f64>; // ∂f/∂x
-@group(1) @binding(3) var<storage, read_write> grad_y: array<f64>; // ∂f/∂y
+@group(0) @binding(0) var<uniform> grad2d_params: Grad2DParams;
+@group(0) @binding(1) var<storage, read> input_2d: array<f64>;     // [nx × ny] row-major
+@group(0) @binding(2) var<storage, read_write> grad_x: array<f64>; // ∂f/∂x
+@group(0) @binding(3) var<storage, read_write> grad_y: array<f64>; // ∂f/∂y
 
 @compute @workgroup_size(16, 16, 1)
 fn gradient_2d(@builtin(global_invocation_id) gid: vec3<u32>) {
@@ -112,7 +112,7 @@ fn gradient_2d(@builtin(global_invocation_id) gid: vec3<u32>) {
 // 2D Gradient Magnitude: |∇f| = sqrt((∂f/∂x)² + (∂f/∂y)²)
 // ═══════════════════════════════════════════════════════════════════
 
-@group(1) @binding(4) var<storage, read_write> grad_mag: array<f64>;
+@group(0) @binding(4) var<storage, read_write> grad_mag: array<f64>;
 
 @compute @workgroup_size(16, 16, 1)
 fn gradient_magnitude_2d(@builtin(global_invocation_id) gid: vec3<u32>) {
@@ -133,7 +133,7 @@ fn gradient_magnitude_2d(@builtin(global_invocation_id) gid: vec3<u32>) {
 // 2D Laplacian: ∇²f = ∂²f/∂x² + ∂²f/∂y²
 // ═══════════════════════════════════════════════════════════════════
 
-@group(1) @binding(5) var<storage, read_write> laplacian: array<f64>;
+@group(0) @binding(5) var<storage, read_write> laplacian: array<f64>;
 
 @compute @workgroup_size(16, 16, 1)
 fn laplacian_2d(@builtin(global_invocation_id) gid: vec3<u32>) {
@@ -187,10 +187,10 @@ struct CylParams {
     z_min: f64,     // z grid starts at z_min + 0.5*d_z
 }
 
-@group(2) @binding(0) var<uniform> cyl_params: CylParams;
-@group(2) @binding(1) var<storage, read> cyl_input: array<f64>;
-@group(2) @binding(2) var<storage, read_write> grad_rho: array<f64>;  // ∂f/∂ρ
-@group(2) @binding(3) var<storage, read_write> grad_z_out: array<f64>;   // ∂f/∂z
+@group(0) @binding(0) var<uniform> cyl_params: CylParams;
+@group(0) @binding(1) var<storage, read> cyl_input: array<f64>;
+@group(0) @binding(2) var<storage, read_write> grad_rho: array<f64>;  // ∂f/∂ρ
+@group(0) @binding(3) var<storage, read_write> grad_z_out: array<f64>;   // ∂f/∂z
 
 @compute @workgroup_size(256)
 fn gradient_cylindrical(@builtin(global_invocation_id) gid: vec3<u32>) {
@@ -233,7 +233,7 @@ fn gradient_cylindrical(@builtin(global_invocation_id) gid: vec3<u32>) {
 // Cylindrical Laplacian: ∇²f = ∂²f/∂ρ² + (1/ρ)∂f/∂ρ + ∂²f/∂z²
 // ═══════════════════════════════════════════════════════════════════
 
-@group(2) @binding(4) var<storage, read_write> cyl_laplacian: array<f64>;
+@group(0) @binding(4) var<storage, read_write> cyl_laplacian: array<f64>;
 
 @compute @workgroup_size(256)
 fn laplacian_cylindrical(@builtin(global_invocation_id) gid: vec3<u32>) {
