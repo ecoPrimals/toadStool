@@ -63,9 +63,7 @@ pub fn npu_softmax(logits: &[f32], temperature: f32) -> Result<Vec<f32>> {
     // CRITICAL: Use WGSL shader (same math as GPU/CPU!)
     // ═══════════════════════════════════════════════════════════
 
-    use crate::device::WgpuDevice;
     use crate::tensor::Tensor;
-    use std::sync::Arc;
 
     // Apply temperature scaling if needed
     let scaled_logits = if (temperature - 1.0).abs() > 1e-6 {

@@ -2,13 +2,14 @@
 //!
 //! **Deep Debt Principles**:
 //! - ✅ Pure WGSL implementation (universal compute)
-//! - ✅ Capability-based dispatch (vendor-optimized)
+//! - ✅ Capability-based dispatch (vendor ID, not string matching)
 //! - ✅ Vendor-specific workgroup sizes (NVIDIA: 64, AMD: 128)
 //! - ✅ Pipeline caching (compile once, dispatch many)
 //! - ✅ Buffer pooling (zero allocation after warmup)
 //!
 //! Formula: C = A + B (element-wise)
 
+use crate::device::capabilities::DeviceCapabilities;
 use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
 use crate::device::tensor_context::get_device_context;
 use crate::error::{BarracudaError, Result};
@@ -22,6 +23,10 @@ const SHADER_WG128: &str = include_str!("../shaders/math/elementwise_add_wg128.w
 
 /// Default shader (WG=256, fallback)
 const SHADER_DEFAULT: &str = include_str!("../shaders/math/elementwise_add.wgsl");
+
+// Vendor IDs for capability-based dispatch (no string matching)
+const VENDOR_NVIDIA: u32 = 0x10DE;
+const VENDOR_AMD: u32 = 0x1002;
 
 /// Element-wise addition operation
 pub struct Add {
@@ -42,7 +47,9 @@ impl Add {
         Ok(Self { lhs, rhs })
     }
 
-    /// Select vendor-optimized shader based on GPU and tensor size
+    /// Select vendor-optimized shader based on GPU capabilities and tensor size
+    ///
+    /// **Deep Debt Evolution**: Uses vendor ID (not string matching) for reliable detection
     ///
     /// Benchmarks show:
     /// - NVIDIA: WG=64 is 3x faster than WG=256
@@ -50,37 +57,36 @@ impl Add {
     ///
     /// Note: wgpu limits dispatch to 65535 workgroups per dimension,
     /// so for very large tensors we use larger workgroup sizes.
-    fn wgsl_shader(device_name: &str, size: usize) -> (&'static str, u32) {
-        let lower = device_name.to_lowercase();
-
+    fn wgsl_shader(caps: &DeviceCapabilities, size: usize) -> (&'static str, u32) {
         // Calculate workgroup size based on tensor size to stay within dispatch limits
         let max_dispatch = 65535u32;
 
         // Optimal sizes from benchmarks
         let (nvidia_wg, amd_wg) = (64u32, 128u32);
 
-        // For NVIDIA
-        if lower.contains("nvidia")
-            || lower.contains("geforce")
-            || lower.contains("rtx")
-            || lower.contains("gtx")
-        {
-            let needed_workgroups = (size as u32).div_ceil(nvidia_wg);
-            if needed_workgroups <= max_dispatch {
-                (SHADER_WG64, nvidia_wg)
-            } else {
-                // Fall back to larger workgroup for huge tensors
+        // Capability-based vendor detection (no string matching)
+        match caps.vendor {
+            VENDOR_NVIDIA => {
+                let needed_workgroups = (size as u32).div_ceil(nvidia_wg);
+                if needed_workgroups <= max_dispatch {
+                    (SHADER_WG64, nvidia_wg)
+                } else {
+                    // Fall back to larger workgroup for huge tensors
+                    (SHADER_DEFAULT, 256)
+                }
+            }
+            VENDOR_AMD => {
+                let needed_workgroups = (size as u32).div_ceil(amd_wg);
+                if needed_workgroups <= max_dispatch {
+                    (SHADER_WG128, amd_wg)
+                } else {
+                    (SHADER_DEFAULT, 256)
+                }
+            }
+            _ => {
+                // Unknown vendor - use safe default
                 (SHADER_DEFAULT, 256)
             }
-        } else if lower.contains("amd") || lower.contains("radeon") || lower.contains("radv") {
-            let needed_workgroups = (size as u32).div_ceil(amd_wg);
-            if needed_workgroups <= max_dispatch {
-                (SHADER_WG128, amd_wg)
-            } else {
-                (SHADER_DEFAULT, 256)
-            }
-        } else {
-            (SHADER_DEFAULT, 256)
         }
     }
 
@@ -96,9 +102,9 @@ impl Add {
         // Get device context for buffer pooling
         let ctx = get_device_context(device);
 
-        // Select vendor-optimized shader based on GPU and tensor size
-        let device_name = device.name();
-        let (shader_source, workgroup_size) = Self::wgsl_shader(device_name, size);
+        // Get device capabilities for vendor-based shader selection
+        let caps = DeviceCapabilities::from_device(device);
+        let (shader_source, workgroup_size) = Self::wgsl_shader(&caps, size);
 
         // Acquire pooled output buffer (returns to pool when tensor dropped!)
         let output_buffer = ctx.acquire_pooled_output(size);

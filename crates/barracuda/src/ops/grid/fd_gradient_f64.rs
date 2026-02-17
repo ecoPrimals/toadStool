@@ -2,7 +2,13 @@
 //!
 //! GPU-accelerated gradient and Laplacian operations on structured grids.
 //! Uses WGSL shaders for f64 precision on all GPU hardware.
+//!
+//! **Smart Refactoring**: Uses `fd_common` for shared infrastructure.
 
+use super::fd_common::{
+    create_staging_buffer, read_staging_f64 as read_staging, FdPipelineBuilder,
+    FD_WORKGROUP_SIZE,
+};
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
@@ -19,74 +25,14 @@ pub struct Gradient1D {
 
 impl Gradient1D {
     /// Create a new 1D gradient operator
+    ///
+    /// Uses `FdPipelineBuilder` for reduced boilerplate.
     pub fn new(device: Arc<WgpuDevice>, n: usize, dx: f64) -> Result<Self> {
-        let shader_source = include_str!("../../shaders/grid/fd_gradient_f64.wgsl");
-
-        let shader_module = device
-            .device()
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("gradient_1d_shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-            });
-
-        let bind_group_layout =
-            device
-                .device()
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("gradient_1d_bgl"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let pipeline_layout =
-            device
-                .device()
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("gradient_1d_layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device()
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("gradient_1d_pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "gradient_1d",
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let (pipeline, bind_group_layout) = FdPipelineBuilder::new(device.device(), "gradient_1d")
+            .with_uniform(0) // params
+            .with_input(1)   // input field
+            .with_output(2)  // gradient output
+            .build("gradient_1d")?;
 
         Ok(Self {
             device,
@@ -185,50 +131,16 @@ impl Gradient1D {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(self.n.div_ceil(256) as u32, 1, 1);
+            pass.dispatch_workgroups(self.n.div_ceil(FD_WORKGROUP_SIZE as usize) as u32, 1, 1);
         }
 
-        // Read back
-        let staging_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
-            label: Some("staging"),
-            size: (self.n * std::mem::size_of::<f64>()) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        encoder.copy_buffer_to_buffer(
-            &output_buffer,
-            0,
-            &staging_buffer,
-            0,
-            (self.n * std::mem::size_of::<f64>()) as u64,
-        );
+        // Read back using common utility
+        let buffer_size = (self.n * std::mem::size_of::<f64>()) as u64;
+        let staging = create_staging_buffer(self.device.device(), buffer_size, "grad1d_staging");
+        encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging, 0, buffer_size);
         self.device.queue().submit(Some(encoder.finish()));
 
-        let (sender, receiver) = std::sync::mpsc::channel();
-        staging_buffer
-            .slice(..)
-            .map_async(wgpu::MapMode::Read, move |result| {
-                let _ = sender.send(result);
-            });
-        self.device.device().poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = staging_buffer.slice(..).get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| {
-                f64::from_le_bytes(
-                    chunk
-                        .try_into()
-                        .expect("chunks_exact(8) yields 8-byte chunks"),
-                )
-            })
-            .collect();
-
-        Ok(result)
+        read_staging(self.device.device(), &staging, self.n).await
     }
 }
 
@@ -245,90 +157,15 @@ pub struct Gradient2D {
 
 impl Gradient2D {
     /// Create a new 2D gradient operator
+    ///
+    /// Uses `FdPipelineBuilder` for reduced boilerplate.
     pub fn new(device: Arc<WgpuDevice>, nx: usize, ny: usize, dx: f64, dy: f64) -> Result<Self> {
-        let shader_source = include_str!("../../shaders/grid/fd_gradient_f64.wgsl");
-
-        let shader_module = device
-            .device()
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("gradient_2d_shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-            });
-
-        let bind_group_layout =
-            device
-                .device()
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("gradient_2d_bgl"),
-                    entries: &[
-                        // Uniform params
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Input field
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // grad_x output
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // grad_y output
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let pipeline_layout =
-            device
-                .device()
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("gradient_2d_layout"),
-                    // Group 0 is for 1D, Group 1 is for 2D in the shader
-                    // But we only create ONE bind group layout here, so use empty for group 0
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device()
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("gradient_2d_pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "gradient_2d",
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let (pipeline, bind_group_layout) = FdPipelineBuilder::new(device.device(), "gradient_2d")
+            .with_uniform(0) // params
+            .with_input(1)   // input field
+            .with_output(2)  // grad_x output
+            .with_output(3)  // grad_y output
+            .build("gradient_2d")?;
 
         Ok(Self {
             device,
@@ -524,113 +361,18 @@ pub struct Laplacian2D {
 
 impl Laplacian2D {
     /// Create a new 2D Laplacian operator
+    ///
+    /// Uses `FdPipelineBuilder` for reduced boilerplate.
+    /// Note: Shader requires dummy bindings 2-4 for shared layout compatibility.
     pub fn new(device: Arc<WgpuDevice>, nx: usize, ny: usize, dx: f64, dy: f64) -> Result<Self> {
-        let shader_source = include_str!("../../shaders/grid/fd_gradient_f64.wgsl");
-
-        let shader_module = device
-            .device()
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("laplacian_2d_shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-            });
-
-        // Laplacian needs: params (0), input (1), laplacian output (5)
-        // But we can't skip bindings, so we need to include dummy bindings 2-4
-        // OR use a simpler layout with just 3 bindings
-        let bind_group_layout =
-            device
-                .device()
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("laplacian_2d_bgl"),
-                    entries: &[
-                        // Uniform params (binding 0)
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Input field (binding 1)
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Dummy grad_x (binding 2) - required by shader
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Dummy grad_y (binding 3) - required by shader
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Dummy grad_mag (binding 4) - required by shader
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 4,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Laplacian output (binding 5)
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 5,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let pipeline_layout =
-            device
-                .device()
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("laplacian_2d_layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device()
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("laplacian_2d_pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "laplacian_2d",
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let (pipeline, bind_group_layout) = FdPipelineBuilder::new(device.device(), "laplacian_2d")
+            .with_uniform(0) // params
+            .with_input(1)   // input field
+            .with_output(2)  // dummy grad_x (required by shader)
+            .with_output(3)  // dummy grad_y (required by shader)
+            .with_output(4)  // dummy grad_mag (required by shader)
+            .with_output(5)  // laplacian output
+            .build("laplacian_2d")?;
 
         Ok(Self {
             device,
@@ -823,6 +565,8 @@ pub struct CylindricalGradient {
 
 impl CylindricalGradient {
     /// Create a new cylindrical gradient operator
+    ///
+    /// Uses `FdPipelineBuilder` for reduced boilerplate.
     pub fn new(
         device: Arc<WgpuDevice>,
         n_rho: usize,
@@ -831,87 +575,12 @@ impl CylindricalGradient {
         d_z: f64,
         z_min: f64,
     ) -> Result<Self> {
-        let shader_source = include_str!("../../shaders/grid/fd_gradient_f64.wgsl");
-
-        let shader_module = device
-            .device()
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("cylindrical_gradient_shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-            });
-
-        let bind_group_layout =
-            device
-                .device()
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("cyl_grad_bgl"),
-                    entries: &[
-                        // Uniform params (binding 0)
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // Input field (binding 1)
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // grad_rho output (binding 2)
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        // grad_z output (binding 3)
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let pipeline_layout =
-            device
-                .device()
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("cyl_grad_layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device()
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("cyl_grad_pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "gradient_cylindrical",
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let (pipeline, bind_group_layout) = FdPipelineBuilder::new(device.device(), "cyl_grad")
+            .with_uniform(0) // params
+            .with_input(1)   // input field
+            .with_output(2)  // grad_rho output
+            .with_output(3)  // grad_z output
+            .build("gradient_cylindrical")?;
 
         Ok(Self {
             device,
@@ -1066,8 +735,8 @@ impl CylindricalGradient {
         encoder.copy_buffer_to_buffer(&grad_z_buffer, 0, &staging_z, 0, buffer_size);
         self.device.queue().submit(Some(encoder.finish()));
 
-        let grad_rho = read_staging_f64(self.device.device(), &staging_rho, total).await?;
-        let grad_z = read_staging_f64(self.device.device(), &staging_z, total).await?;
+        let grad_rho = read_staging(self.device.device(), &staging_rho, total).await?;
+        let grad_z = read_staging(self.device.device(), &staging_z, total).await?;
 
         Ok((grad_rho, grad_z))
     }
@@ -1090,6 +759,9 @@ pub struct CylindricalLaplacian {
 
 impl CylindricalLaplacian {
     /// Create a new cylindrical Laplacian operator
+    ///
+    /// Uses `FdPipelineBuilder` for reduced boilerplate.
+    /// Note: Shader requires dummy bindings 2-3 for shared layout compatibility.
     pub fn new(
         device: Arc<WgpuDevice>,
         n_rho: usize,
@@ -1098,95 +770,13 @@ impl CylindricalLaplacian {
         d_z: f64,
         z_min: f64,
     ) -> Result<Self> {
-        let shader_source = include_str!("../../shaders/grid/fd_gradient_f64.wgsl");
-
-        let shader_module = device
-            .device()
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("cyl_laplacian_shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-            });
-
-        // Laplacian uses bindings 0, 1, 4 (params, input, laplacian)
-        // Need dummy bindings for 2, 3 (grad_rho, grad_z)
-        let bind_group_layout =
-            device
-                .device()
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("cyl_lap_bgl"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 4,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let pipeline_layout =
-            device
-                .device()
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("cyl_lap_layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device()
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("cyl_lap_pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "laplacian_cylindrical",
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let (pipeline, bind_group_layout) = FdPipelineBuilder::new(device.device(), "cyl_lap")
+            .with_uniform(0) // params
+            .with_input(1)   // input field
+            .with_output(2)  // dummy grad_rho (required by shader)
+            .with_output(3)  // dummy grad_z (required by shader)
+            .with_output(4)  // laplacian output
+            .build("laplacian_cylindrical")?;
 
         Ok(Self {
             device,
@@ -1332,36 +922,8 @@ impl CylindricalLaplacian {
         encoder.copy_buffer_to_buffer(&laplacian_buffer, 0, &staging, 0, buffer_size);
         self.device.queue().submit(Some(encoder.finish()));
 
-        read_staging_f64(self.device.device(), &staging, total).await
+        read_staging(self.device.device(), &staging, total).await
     }
-}
-
-/// Helper function to read f64 data from a staging buffer
-async fn read_staging_f64(
-    device: &wgpu::Device,
-    staging: &wgpu::Buffer,
-    count: usize,
-) -> Result<Vec<f64>> {
-    let (sender, receiver) = std::sync::mpsc::channel();
-    staging
-        .slice(..)
-        .map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
-    device.poll(wgpu::Maintain::Wait);
-    receiver
-        .recv()
-        .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
-        .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-    let data = staging.slice(..).get_mapped_range();
-    let result: Vec<f64> = data
-        .chunks_exact(8)
-        .take(count)
-        .map(|chunk| f64::from_le_bytes(chunk.try_into().expect("8-byte chunks")))
-        .collect();
-
-    Ok(result)
 }
 
 #[cfg(test)]

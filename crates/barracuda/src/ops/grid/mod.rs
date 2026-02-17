@@ -50,9 +50,14 @@
 //! - Physics-agnostic (no domain-specific parameters)
 //! - Validated by hotSpring nuclear EOS (169/169 acceptance checks)
 
+mod fd_common;
 mod fd_gradient_f64;
 mod spin_orbit_f64;
 
+pub use fd_common::{
+    create_f64_buffer, create_empty_f64_buffer, create_staging_buffer, 
+    read_staging_f64, FdComputeRunner, FdPipelineBuilder,
+};
 pub use fd_gradient_f64::{
     CylindricalGradient, CylindricalLaplacian, Gradient1D, Gradient2D, Laplacian2D,
 };
