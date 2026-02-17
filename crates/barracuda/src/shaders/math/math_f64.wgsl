@@ -762,6 +762,38 @@ fn erf_f64(x: f64) -> f64 {
 }
 
 // ============================================================================
+// F64 ENCODING/DECODING HELPERS
+// ============================================================================
+//
+// NAGA LIMITATION (wgpu 0.19 / Naga 0.14):
+// bitcast<f64>(vec2<u32>) is NOT supported, even though WGSL spec allows it.
+// Workaround: Use these helper functions or integer-ratio encoding.
+//
+// When Naga catches up to WGSL spec, these can be replaced with bitcast.
+
+/// Encode f64 as vec2<u32> for storage buffers that require u32 types.
+/// Uses the IEEE 754 bit representation split across lo (bits 0-31) and hi (bits 32-63).
+/// NOTE: This requires native bitcast support which Naga 0.14 lacks. 
+/// For now, prefer using native f64 arrays or the pattern: f64(num) / f64(den).
+// fn encode_f64(x: f64) -> vec2<u32> {
+//     return bitcast<vec2<u32>>(x);  // NOT SUPPORTED IN NAGA 0.14
+// }
+
+/// Decode vec2<u32> back to f64.
+/// NOTE: Not supported in Naga 0.14. See encode_f64 comments.
+// fn decode_f64(v: vec2<u32>) -> f64 {
+//     return bitcast<f64>(v);  // NOT SUPPORTED IN NAGA 0.14
+// }
+
+/// Alternative: Encode f64 as ratio of two i32 values (numerator / denominator).
+/// Useful for passing constants from CPU to GPU with full precision.
+/// Example: To pass 0.333... → encode as (1, 3) → GPU computes f64(1) / f64(3)
+fn decode_f64_ratio(num: i32, den: i32, x_ref: f64) -> f64 {
+    let zero = x_ref - x_ref;
+    return (zero + f64(num)) / (zero + f64(den));
+}
+
+// ============================================================================
 // BESSEL FUNCTIONS (J0, J1)
 // ============================================================================
 

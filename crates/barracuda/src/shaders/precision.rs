@@ -198,6 +198,63 @@ impl ShaderTemplate {
         )
     }
 
+    /// Auto-patch shader for driver compatibility.
+    ///
+    /// Replaces native builtins that crash on certain drivers with software equivalents
+    /// from `math_f64.wgsl`. This is the recommended way to create portable f64 shaders.
+    ///
+    /// # NVK (nouveau) Workarounds (Feb 2026 - hotSpring validation)
+    /// - Replaces `exp(` with `exp_f64(` to avoid NAK compiler crash
+    /// - Replaces `log(` with `log_f64(` for consistency
+    /// - `sqrt`, `abs`, `floor`, `ceil` are NOT patched (work correctly on NVK)
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// use barracuda::device::WgpuDevice;
+    /// use barracuda::shaders::precision::ShaderTemplate;
+    ///
+    /// let device = WgpuDevice::new().await?;
+    /// let user_shader = r#"
+    /// @compute @workgroup_size(256)
+    /// fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    ///     output[id.x] = exp(input[id.x]);  // Uses native exp()
+    /// }
+    /// "#;
+    ///
+    /// // Auto-patches exp() to exp_f64() if running on NVK
+    /// let safe_shader = ShaderTemplate::for_device(user_shader, &device);
+    /// ```
+    pub fn for_device(shader_body: &str, device: &crate::device::WgpuDevice) -> String {
+        let patched = if device.is_nvk() {
+            // Replace native f64 builtins that crash NAK with software equivalents
+            // Only exp/log are problematic; sqrt/abs/floor/ceil work fine
+            shader_body
+                .replace("exp(", "exp_f64(")
+                .replace("log(", "log_f64(")
+        } else {
+            shader_body.to_string()
+        };
+
+        // Always include math_f64 preamble for the _f64 functions
+        Self::with_math_f64(&patched)
+    }
+
+    /// Auto-patch shader for driver compatibility with auto-detection of needed functions.
+    ///
+    /// Like `for_device`, but only includes the math_f64 functions that are actually used.
+    /// This provides both portability and minimal shader compilation time.
+    pub fn for_device_auto(shader_body: &str, device: &crate::device::WgpuDevice) -> String {
+        let patched = if device.is_nvk() {
+            shader_body
+                .replace("exp(", "exp_f64(")
+                .replace("log(", "log_f64(")
+        } else {
+            shader_body.to_string()
+        };
+
+        Self::with_math_f64_auto(&patched)
+    }
+
     /// Auto-detects which math_f64 functions are used in a shader and includes only those.
     /// This reduces shader compilation time by ~40-60% compared to the full library.
     ///

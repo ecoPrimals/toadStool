@@ -829,6 +829,9 @@ pub fn science_limits() -> wgpu::Limits {
         max_storage_buffer_binding_size: 512 * 1024 * 1024,
         // 1 GiB max buffer size (4x default)
         max_buffer_size: 1024 * 1024 * 1024,
+        // 12 storage buffers per shader stage (hotSpring HFB potentials shader binds 12)
+        // Default is 8, which is insufficient for complex physics shaders
+        max_storage_buffers_per_shader_stage: 12,
         // Keep other limits at defaults
         ..wgpu::Limits::default()
     }

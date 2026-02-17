@@ -19,7 +19,50 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **Production Mock Hardening COMPLETE** — removed fake capabilities/models from production paths.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 17, 2026 — Unidirectional Pipeline + Deep Debt Hardening)
+### Latest Updates (Feb 17, 2026 — hotSpring GPU Validation Handoff)
+
+**hotSpring Cross-GPU Validation Integration ✓**
+
+Absorbed validation findings from hotSpring's full BarraCUDA GPU pass on RTX 4070 (NVIDIA proprietary) + Titan V (NVK/nouveau).
+
+| Fix | Status | Description |
+|-----|:------:|-------------|
+| Fix 1: `science_limits()` storage buffers | ✅ | Increased to 12 per shader stage (was 8) |
+| Fix 2: Adapter selector fallthrough | ✅ | Already implemented — numeric OOB falls through to name match |
+| Fix 3: Naga bitcast<f64> workaround | ✅ | Documented in `math_f64.wgsl` with ratio encoding helper |
+| Fix 4: f64 literal audit | ✅ | WGSL shaders use explicit `f64()` casts |
+| Fix 5: Buffer usage conflicts | ✅ | PPPM uses separate passes (no conflicts found) |
+
+| New API | Status | Description |
+|---------|:------:|-------------|
+| `WgpuDevice::is_nvk()` | ✅ | Detects NVK/nouveau/Mesa drivers |
+| `WgpuDevice::is_radv()` | ✅ | Detects AMD RADV driver |
+| `WgpuDevice::is_nvidia_proprietary()` | ✅ | Detects proprietary NVIDIA |
+| `ShaderTemplate::for_device()` | ✅ | Auto-patches exp/log for NVK compatibility |
+| `ShaderTemplate::for_device_auto()` | ✅ | Auto-patch + minimal function inclusion |
+
+**NVK exp(f64) Workaround**
+
+The NVK (nouveau) Vulkan driver has a NAK compiler bug that crashes on native `exp(f64)` builtins.
+The `ShaderTemplate::for_device()` method auto-replaces `exp(` with `exp_f64(` when running on NVK,
+using the software implementation from `math_f64.wgsl`.
+
+**Known Issues (Pre-existing, Not Fixed)**
+
+| Issue | Status | Description |
+|-------|:------:|-------------|
+| PPPM energy sign | 🔶 DEFERRED | GPU PPPM may return positive energy for attractive charges (CPU tests pass) |
+| f64 exp precision | 🔶 DEFERRED | Native GPU exp(f64) differs from CPU by ~8e-8 (tolerance too tight) |
+
+Key files modified:
+- `crates/barracuda/src/device/wgpu_device.rs` — `is_nvk()`, `is_radv()`, `is_nvidia_proprietary()`
+- `crates/barracuda/src/device/tensor_context.rs` — `science_limits()` storage buffer increase
+- `crates/barracuda/src/shaders/precision.rs` — `for_device()`, `for_device_auto()`
+- `crates/barracuda/src/shaders/math/math_f64.wgsl` — bitcast documentation + ratio helper
+
+---
+
+### Previous Updates (Feb 17, 2026 — Unidirectional Pipeline + Deep Debt Hardening)
 
 **Server Timeout Consolidation ✓**
 

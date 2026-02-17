@@ -604,6 +604,51 @@ impl WgpuDevice {
         self.adapter_info.device_type == wgpu::DeviceType::Cpu
     }
 
+    /// Check if this device uses the NVK (nouveau) Vulkan driver
+    ///
+    /// NVK is the open-source Vulkan driver for NVIDIA GPUs built on Mesa.
+    /// Some f64 builtins (particularly `exp()`) crash the NAK compiler on NVK.
+    ///
+    /// # Usage
+    /// ```rust,ignore
+    /// if device.is_nvk() {
+    ///     // Use software exp_f64() instead of native exp()
+    ///     shader = shader.replace("exp(", "exp_f64(");
+    /// }
+    /// ```
+    ///
+    /// # Known Issues (Feb 2026 - hotSpring validation)
+    /// - Native `exp(f64)` crashes NAK compiler with assertion failure
+    /// - Workaround: Use `exp_f64()` from `math_f64.wgsl`
+    /// - `sqrt`, `abs`, `floor`, `ceil` work correctly on NVK
+    pub fn is_nvk(&self) -> bool {
+        let driver = self.adapter_info.driver.to_lowercase();
+        let driver_info = self.adapter_info.driver_info.to_lowercase();
+        driver.contains("nvk")
+            || driver.contains("nouveau")
+            || driver.contains("mesa")
+            || driver_info.contains("nvk")
+            || driver_info.contains("nouveau")
+    }
+
+    /// Check if this device uses AMD's RADV Vulkan driver
+    ///
+    /// RADV is the open-source Vulkan driver for AMD GPUs built on Mesa.
+    pub fn is_radv(&self) -> bool {
+        let driver = self.adapter_info.driver.to_lowercase();
+        let driver_info = self.adapter_info.driver_info.to_lowercase();
+        driver.contains("radv") || driver_info.contains("radv")
+    }
+
+    /// Check if this device uses a proprietary NVIDIA driver
+    pub fn is_nvidia_proprietary(&self) -> bool {
+        let name = self.adapter_info.name.to_lowercase();
+        let driver = self.adapter_info.driver.to_lowercase();
+        (name.contains("nvidia") || name.contains("geforce") || name.contains("rtx") || name.contains("gtx"))
+            && !self.is_nvk()
+            && !driver.contains("mesa")
+    }
+
     /// Access underlying wgpu device
     ///
     /// **Deep Debt**: Enables external consumers to use barraCUDA infrastructure
