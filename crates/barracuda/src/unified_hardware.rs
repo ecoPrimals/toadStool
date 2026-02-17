@@ -398,17 +398,26 @@ impl CpuExecutor {
             .map(|n| n.get())
             .unwrap_or(4);
 
-        // SIMD width: Detect via CPUID when possible, fall back to AVX2 assumption
-        // TODO(Deep Debt): Use std::is_x86_feature_detected! for actual SIMD width
-        let simd_width = if cfg!(target_feature = "avx512f") {
-            16 // AVX-512
-        } else if cfg!(target_feature = "avx2") {
-            8 // AVX2
-        } else if cfg!(target_feature = "sse4.1") {
-            4 // SSE4
-        } else {
-            4 // Conservative fallback
+        // SIMD width: Runtime detection via CPUID (Deep Debt evolution)
+        // Using runtime detection instead of compile-time cfg!() for accurate width
+        #[cfg(target_arch = "x86_64")]
+        let simd_width = {
+            if std::arch::is_x86_feature_detected!("avx512f") {
+                16 // AVX-512: 512-bit = 16 × f32
+            } else if std::arch::is_x86_feature_detected!("avx2") {
+                8 // AVX2: 256-bit = 8 × f32
+            } else if std::arch::is_x86_feature_detected!("sse4.1") {
+                4 // SSE4: 128-bit = 4 × f32
+            } else {
+                4 // Baseline SSE2 (guaranteed on x86_64)
+            }
         };
+
+        #[cfg(target_arch = "aarch64")]
+        let simd_width = 4; // NEON is 128-bit = 4 × f32 (always available on aarch64)
+
+        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+        let simd_width = 4; // Conservative fallback for other architectures
 
         Self {
             capabilities: HardwareCapabilities {
