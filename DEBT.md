@@ -55,8 +55,13 @@ grep confirms no shaders call `sqrt_f64()` etc. directly.
 1. **DONE: Capability probing** — `probe::probe_f64_builtins()` tests ALL f64 builtins,
    crash-isolated per function. Cache keyed per adapter. Legacy `probe_f64_exp_capable()`
    preserved. Run `cargo run --release --bin bench_f64_builtins` on any GPU.
-2. **Immediate**: Audit math_f64.wgsl — remove software sqrt/fma/abs (universally native).
-   Shaders calling native `sqrt()` / `fma()` / `abs()` already work everywhere.
+2. **DONE: Fossil f64 functions** — Feb 18 2026. `math_f64.wgsl` software implementations
+   for `abs`, `sqrt`, `min`, `max`, `clamp`, `sign`, `floor`, `ceil`, `round`, `fract`
+   are marked as `🦴 FOSSIL`. `ShaderTemplate::inject_missing_math_f64()` now skips
+   fossils. `ShaderTemplate::substitute_fossil_f64()` rewrites legacy `abs_f64(` → `abs(`
+   etc. `for_driver_auto()` applies fossil substitution automatically.
+   Active function bodies (`cbrt_f64`, `exp_f64`, `pow_f64`, `erf_f64`, `gamma_f64`,
+   `bessel_j0_f64`) now call native WGSL builtins directly (no more fossil deps).
 3. **Upstream ACO fix**: Contribute `fexp2(f64)` implementation to Mesa ACO for RDNA2/3.
    Track: https://gitlab.freedesktop.org/mesa/mesa
 4. **Upstream NAK fix**: Contribute `exp(f64)` lowering to Mesa NAK compiler.

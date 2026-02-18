@@ -12,7 +12,9 @@ use templates::{
     TEMPLATE_ELEMENTWISE_FMA, TEMPLATE_ELEMENTWISE_MUL, TEMPLATE_REDUCE_SUM,
 };
 
-use math_f64::{extract_wgsl_function, F64_FUNCTION_DEPS, F64_FUNCTION_ORDER};
+use math_f64::{
+    extract_wgsl_function, F64_FOSSIL_FUNCTIONS, F64_FUNCTION_DEPS, F64_FUNCTION_ORDER,
+};
 
 /// Supported precision types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -164,13 +166,33 @@ impl ShaderTemplate {
             )
     }
 
+    /// Replace legacy fossil f64 function calls with native WGSL equivalents.
+    ///
+    /// Probe-confirmed native on all `SHADER_F64` hardware via Vulkan (Feb 2026):
+    /// `abs`, `sign`, `floor`, `ceil`, `round`, `fract`, `min`, `max`, `clamp`, `sqrt`.
+    ///
+    /// Rewrites `abs_f64(` → `abs(`, `sqrt_f64(` → `sqrt(` etc. in legacy shaders.
+    /// New shaders must use native WGSL builtins directly — this method is the
+    /// migration path for older code still using the `_f64` names.
+    pub fn substitute_fossil_f64(shader_body: &str) -> String {
+        let mut result = shader_body.to_string();
+        for (fossil_name, native_name) in F64_FOSSIL_FUNCTIONS {
+            let from = format!("{fossil_name}(");
+            let to = format!("{native_name}(");
+            result = result.replace(&from, &to);
+        }
+        result
+    }
+
     pub fn for_driver_auto(shader_body: &str, needs_exp_log_workaround: bool) -> String {
+        // Upgrade any legacy fossil calls to native WGSL builtins first.
+        let substituted = Self::substitute_fossil_f64(shader_body);
         let patched = if needs_exp_log_workaround {
-            shader_body
+            substituted
                 .replace("exp(", "exp_f64(")
                 .replace("log(", "log_f64(")
         } else {
-            shader_body.to_string()
+            substituted
         };
         Self::inject_missing_math_f64(&patched)
     }
@@ -178,6 +200,11 @@ impl ShaderTemplate {
     fn inject_missing_math_f64(shader_body: &str) -> String {
         let mut missing_functions: Vec<&str> = Vec::new();
         for func_name in F64_FUNCTION_ORDER {
+            // Fossil functions are universally-native WGSL builtins on all
+            // SHADER_F64 hardware — never inject them; use native calls directly.
+            if F64_FOSSIL_FUNCTIONS.iter().any(|(f, _)| f == func_name) {
+                continue;
+            }
             let call_pattern = format!("{func_name}(");
             if shader_body.contains(&call_pattern)
                 && !Self::shader_defines_function(shader_body, func_name)
@@ -359,6 +386,7 @@ mod tests {
     #[test]
     fn test_math_f64_subset() {
         let subset = ShaderTemplate::math_f64_subset(&["sqrt_f64"]);
+        // sqrt_f64 is fossil — still extractable from the library for reference
         assert!(subset.contains("fn sqrt_f64"));
         assert!(subset.contains("fn f64_const"));
         assert!(!subset.contains("fn exp_f64"));
@@ -367,7 +395,8 @@ mod tests {
         assert!(pow_subset.contains("fn pow_f64"));
         assert!(pow_subset.contains("fn exp_f64"));
         assert!(pow_subset.contains("fn log_f64"));
-        assert!(pow_subset.contains("fn abs_f64"));
+        // abs_f64 is no longer a dep of pow_f64 — pow body uses native abs() directly
+        assert!(!pow_subset.contains("fn abs_f64"));
     }
 
     #[test]
@@ -381,10 +410,12 @@ mod tests {
             }
         "#;
         let full_shader = ShaderTemplate::with_math_f64_auto(shader);
+        // sqrt_f64 is fossil but still in the library — with_math_f64_auto includes it
         assert!(full_shader.contains("fn sqrt_f64"));
         assert!(full_shader.contains("fn exp_f64"));
-        assert!(full_shader.contains("fn abs_f64"));
-        assert!(full_shader.contains("fn round_f64"));
+        // abs_f64 and round_f64 are no longer deps of exp_f64 — body uses native builtins
+        assert!(!full_shader.contains("fn abs_f64"));
+        assert!(!full_shader.contains("fn round_f64"));
         assert!(!full_shader.contains("fn sin_f64"));
         assert!(!full_shader.contains("fn gamma_f64"));
     }
@@ -448,16 +479,28 @@ const EPSILON: f64 = 1e-15;
 
     #[test]
     fn test_safe_injects_only_called_functions() {
-        let shader = r#"
+        // Fossil functions (sqrt_f64) are NOT injected — native sqrt() handles them.
+        // Active fallbacks (cbrt_f64) ARE injected when called.
+        let fossil_shader = r#"
             @compute @workgroup_size(256)
             fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                 output[id.x] = sqrt_f64(input[id.x]);
             }
         "#;
-        let result = ShaderTemplate::with_math_f64_safe(shader);
-        assert!(result.contains("fn sqrt_f64"));
-        assert!(result.contains("fn f64_const"));
-        assert!(!result.contains("fn exp_f64"));
+        let fossil_result = ShaderTemplate::with_math_f64_safe(fossil_shader);
+        assert!(!fossil_result.contains("fn sqrt_f64"), "fossil must not be injected");
+        assert!(!fossil_result.contains("fn f64_const"), "no injection means no preamble");
+
+        let active_shader = r#"
+            @compute @workgroup_size(256)
+            fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+                output[id.x] = cbrt_f64(input[id.x]);
+            }
+        "#;
+        let active_result = ShaderTemplate::with_math_f64_safe(active_shader);
+        assert!(active_result.contains("fn cbrt_f64"), "active fallback must be injected");
+        assert!(active_result.contains("fn f64_const"));
+        assert!(!active_result.contains("fn exp_f64"));
     }
 
     #[test]
@@ -470,6 +513,43 @@ const EPSILON: f64 = 1e-15;
         "#;
         let result = ShaderTemplate::with_math_f64_safe(shader);
         assert!(!result.contains("fn f64_const"));
+    }
+
+    #[test]
+    fn test_substitute_fossil_f64() {
+        let legacy = "let y = sqrt_f64(x); let z = abs_f64(y); let w = min_f64(y, z);";
+        let upgraded = ShaderTemplate::substitute_fossil_f64(legacy);
+        assert!(upgraded.contains("sqrt(x)"));
+        assert!(upgraded.contains("abs(y)"));
+        assert!(upgraded.contains("min(y, z)"));
+        assert!(!upgraded.contains("sqrt_f64("));
+        assert!(!upgraded.contains("abs_f64("));
+        assert!(!upgraded.contains("min_f64("));
+        // Active fallbacks must NOT be touched
+        let with_active = "let e = exp_f64(x); let c = cbrt_f64(x);";
+        let result = ShaderTemplate::substitute_fossil_f64(with_active);
+        assert!(result.contains("exp_f64("));
+        assert!(result.contains("cbrt_f64("));
+    }
+
+    #[test]
+    fn test_for_driver_auto_applies_fossil_substitution() {
+        // for_driver_auto should substitute fossils AND apply exp/log workaround
+        let legacy_shader = r#"
+            @compute @workgroup_size(256)
+            fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+                let s = sqrt_f64(input[id.x]);
+                let e = exp(s);
+                output[id.x] = s + e;
+            }
+        "#;
+        let result = ShaderTemplate::for_driver_auto(legacy_shader, true);
+        // sqrt_f64 → sqrt (fossil substitution)
+        assert!(result.contains("sqrt("), "fossil sqrt_f64 must become native sqrt");
+        assert!(!result.contains("sqrt_f64("), "fossil name must be gone");
+        // exp → exp_f64 (workaround)
+        assert!(result.contains("exp_f64("));
+        assert!(result.contains("fn exp_f64"), "exp fallback must be injected");
     }
 
     #[test]

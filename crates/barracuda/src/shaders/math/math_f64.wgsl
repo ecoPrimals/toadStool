@@ -1,51 +1,55 @@
 // ============================================================================
-// math_f64.wgsl — Pure-arithmetic f64 math library for GPU compute
+// math_f64.wgsl — f64 math library for GPU compute
 // ============================================================================
 //
-// This library implements transcendental functions using only f64 arithmetic
-// operations (+, -, *, /, comparisons). Originally created because WGSL spec
-// does not guarantee f64 builtins, but see NATIVE BUILTINS section below.
+// Two categories of functions live here:
 //
-// NATIVE f64 BUILTINS (Feb 15-17 2026 hotSpring + wetSpring findings):
-// WORKS on NVIDIA/AMD via Vulkan/wgpu:
-//   sqrt(f64), abs(f64), min(f64), max(f64), floor(f64), ceil(f64)
-// REJECTED by NVVM (not in WGSL spec — "NVVM compilation failed: 1"):
-//   log(f64), exp(f64), pow(f64), sin(f64), cos(f64)
+// ── FOSSILS ─────────────────────────────────────────────────────────────────
+// Probe-confirmed (Feb 18 2026, bench_f64_builtins — RTX 3090 + RX 6950 XT)
+// native WGSL f64 builtins on ALL SHADER_F64 hardware via Vulkan:
 //
-// DRIVER-SPECIFIC ISSUES (hotSpring cross-GPU validation Feb 2026):
-// - NVK (nouveau): Native exp(f64) CRASHES NAK compiler - use exp_f64()
-// - Proprietary NVIDIA: Native exp(f64) works but differs from CPU by ~8e-8
-// - RADV (AMD): Full f64 builtin support via AMDGPU backend
+//   abs(f64)    min(f64,f64)  max(f64,f64)  clamp(f64,f64,f64)
+//   sqrt(f64)   floor(f64)    ceil(f64)     round(f64)
+//   sign(f64)   fract(f64)    fma(f64,f64,f64)
 //
-// For portable code with consistent precision:
-// - Use exp_f64(), log_f64() from this library (~1e-15 precision)
-// - Use ShaderTemplate::for_device() to auto-patch for driver bugs
+// These software implementations are FOSSILS: retained as reference /
+// emergency fallback for future edge-case GPU profiling. New shader code
+// MUST use native WGSL builtins directly. ShaderTemplate will NOT inject
+// fossil functions into new shaders. See F64_FOSSIL_FUNCTIONS in math_f64.rs.
 //
-// This means ANY shader using log/exp/pow on f64 MUST use software
-// implementations from this library. Shannon entropy (p * log(p)) was the
-// first wetSpring workload to hit this — the fix is log_f64() below.
+// ── ACTIVE FALLBACKS ────────────────────────────────────────────────────────
+// The transcendentals are NOT provided as f64 builtins on open-source drivers:
 //
-// Performance (RTX 4070, 1M elements):
-//   - Native sqrt: 1.5× faster than sqrt_f64 (use native when available)
-// For MD force kernels, prefer native sqrt/abs. For transcendentals, use
-// the software implementations in this library.
+//   Driver           exp  log  exp2 log2 sin  cos  | sqrt fma  abs
+//   ─────────────────────────────────────────────────────────────────
+//   RTX 3090 PTXAS   ✓    ✓    ✓    ✓    ✓    ✓   |  ✓    ✓    ✓
+//   RX 6950 XT ACO   ✗    ✗    ✗    ✗    ✗    ✗   |  ✓    ✓    ✓
+//   NVK/NAK          ✗    ✗    ✗    ✗    ✗    ✗   |  ✓    ✓    ✓
 //
-// CRITICAL NAGA/WGSL GOTCHAS:
+// NOTE: RADV/ACO does NOT have full f64 builtin support — only sqrt/fma/abs
+// are native. Earlier comments claiming "RADV full f64 via AMDGPU" were wrong.
+// The WGSL→Vulkan path exposes VK_KHR_shader_float64, bypassing proprietary
+// FP64 locks, but open-source compilers (ACO, NAK) have not yet implemented
+// f64 transcendentals. See DEBT.md W-001 and W-003.
+//
+// For portable code across open-source drivers:
+//   exp(f64), log(f64), sin(f64), cos(f64) → use exp_f64(), log_f64(), etc.
+//   ShaderTemplate::for_driver_auto() patches shaders automatically.
+//
+// ── CRITICAL NAGA/WGSL GOTCHAS ──────────────────────────────────────────────
 // 1. AbstractFloat (0.0, 1.0) does NOT auto-promote to f64
 //    - WRONG: return 1.0;
-//    - RIGHT: return x - x + 1.0;  // (f64 - f64) + AbstractFloat → f64
+//    - RIGHT: return x - x + 1.0;   // (f64 - f64) + AbstractFloat → f64
 //
 // 2. f64 CONSTANT PRECISION (Feb 16 2026 — wetSpring finding):
 //    f64(0.333...) truncates through f32, losing ~7 digits of precision!
-//    - WRONG: let c = f64(0.3333333333333333);  // truncates to f32 first
+//    - WRONG: let c = f64(0.3333333333333333);
 //    - WRONG: f64_const(x, 0.333...);           // f32 parameter truncates
 //    - RIGHT: let zero = x - x; let c = zero + 0.3333333333333333;
 //    The (zero + literal) pattern preserves all 15-16 significant digits.
 //    Use this for polynomial coefficients and high-precision constants.
 //
-// 3. Literals > f32 range cause parse errors
-//    - WRONG: return 1e308;
-//    - RIGHT: construct via arithmetic
+// 3. Literals > f32 range cause parse errors — construct via arithmetic
 //
 // 4. No f64 vec types (vec2<f64>, vec3<f64>, vec4<f64> not supported)
 //
@@ -55,17 +59,11 @@
 //    - RIGHT: var w = x; if (w < 0) { w = w + n; } if (w >= n) { w = w - n; }
 //    See: hotSpring ALERT Feb 15 2026 - cell-list bug diagnosis.
 //
-// 6. NATIVE f64 BUILTINS (Feb 15-16 2026 — hotSpring + wetSpring findings):
-//    WORKS on NVIDIA/AMD via Vulkan/wgpu:  sqrt, abs, min, max, floor, ceil
-//    REJECTED by NVVM (not in WGSL spec):  log, exp, pow, sin, cos
-//    Use software implementations in this library for transcendentals.
-//
-// PRECISION TARGETS:
-// - sqrt_f64: Full f64 precision (5 Newton-Raphson iterations)
-// - cbrt_f64: Full f64 precision (Halley's method)
-// - exp_f64: ~1e-15 relative error (degree-17 polynomial)
-// - log_f64: ~1e-15 relative error (degree-15 polynomial)
-// - pow_f64: Uses specialized paths for common exponents
+// ── PRECISION TARGETS ───────────────────────────────────────────────────────
+//   cbrt_f64:  full f64 precision (Halley's method)
+//   exp_f64:   ~1e-15 relative error (degree-13 polynomial with range reduction)
+//   log_f64:   ~1e-15 relative error (atanh transform, degree-7 polynomial)
+//   pow_f64:   uses specialized paths for common exponents
 // ============================================================================
 
 // Helper: construct f64 constant from AbstractFloat
@@ -75,10 +73,15 @@ fn f64_const(x: f64, c: f32) -> f64 {
 }
 
 // ============================================================================
-// BASIC FUNCTIONS
+// FOSSIL FUNCTIONS — superseded by native WGSL f64 builtins
+// ============================================================================
+// Probe-confirmed native on RTX 3090 (PTXAS) and RX 6950 XT (ACO) Feb 2026.
+// Kept as reference / emergency fallback for future edge-case GPU profiling.
+// New shaders MUST use native WGSL built-ins. ShaderTemplate does NOT inject
+// these. See F64_FOSSIL_FUNCTIONS in math_f64.rs.
 // ============================================================================
 
-/// Absolute value
+// 🦴 FOSSIL — use native abs(x)
 fn abs_f64(x: f64) -> f64 {
     if (x < f64_const(x, 0.0)) {
         return -x;
@@ -86,7 +89,7 @@ fn abs_f64(x: f64) -> f64 {
     return x;
 }
 
-/// Sign function: -1, 0, or 1
+// 🦴 FOSSIL — use native sign(x)
 fn sign_f64(x: f64) -> f64 {
     let zero = f64_const(x, 0.0);
     if (x > zero) {
@@ -98,7 +101,7 @@ fn sign_f64(x: f64) -> f64 {
     return zero;
 }
 
-/// Floor function (rounds toward negative infinity)
+// 🦴 FOSSIL — use native floor(x)
 fn floor_f64(x: f64) -> f64 {
     let i = i32(x);
     let fi = f64(i);
@@ -108,7 +111,7 @@ fn floor_f64(x: f64) -> f64 {
     return fi;
 }
 
-/// Ceiling function (rounds toward positive infinity)
+// 🦴 FOSSIL — use native ceil(x)
 fn ceil_f64(x: f64) -> f64 {
     let i = i32(x);
     let fi = f64(i);
@@ -118,40 +121,40 @@ fn ceil_f64(x: f64) -> f64 {
     return fi;
 }
 
-/// Round to nearest integer
+// 🦴 FOSSIL — use native round(x)
 fn round_f64(x: f64) -> f64 {
     return floor_f64(x + f64_const(x, 0.5));
 }
 
-/// Fractional part
+// 🦴 FOSSIL — use native fract(x)
 fn fract_f64(x: f64) -> f64 {
     return x - floor_f64(x);
 }
 
-/// Minimum of two values
+// 🦴 FOSSIL — use native min(a, b)
 fn min_f64(a: f64, b: f64) -> f64 {
     if (a < b) { return a; }
     return b;
 }
 
-/// Maximum of two values
+// 🦴 FOSSIL — use native max(a, b)
 fn max_f64(a: f64, b: f64) -> f64 {
     if (a > b) { return a; }
     return b;
 }
 
-/// Clamp to range
+// 🦴 FOSSIL — use native clamp(x, lo, hi)
 fn clamp_f64(x: f64, lo: f64, hi: f64) -> f64 {
     return min_f64(max_f64(x, lo), hi);
 }
 
 // ============================================================================
-// SQUARE ROOT — Newton-Raphson (5 iterations for full f64 precision)
+// SQUARE ROOT — Newton-Raphson (kept as fossil; native sqrt(f64) preferred)
 // ============================================================================
 
-/// Square root using Newton-Raphson iteration
-/// x_{n+1} = 0.5 * (x_n + S / x_n)
-/// 5 iterations achieves full f64 precision
+// 🦴 FOSSIL — use native sqrt(x) on all SHADER_F64 hardware.
+// Probe-confirmed native on RTX 3090 (PTXAS) and RX 6950 XT (ACO) Feb 2026.
+// Newton-Raphson implementation retained for edge-case GPU profiling only.
 fn sqrt_f64(x: f64) -> f64 {
     let zero = f64_const(x, 0.0);
     if (x <= zero) {
@@ -190,7 +193,11 @@ fn sqrt_f64(x: f64) -> f64 {
 }
 
 // ============================================================================
-// CUBE ROOT — Halley's method (faster convergence than Newton)
+// ACTIVE FALLBACK FUNCTIONS — no native WGSL f64 equivalent
+// ============================================================================
+
+// ============================================================================
+// CUBE ROOT — Halley's method (no native cbrt(f64) in WGSL)
 // ============================================================================
 
 /// Cube root using Halley's iteration
@@ -202,7 +209,7 @@ fn cbrt_f64(x: f64) -> f64 {
     }
     
     let neg = x < zero;
-    var y = abs_f64(x);
+    var y = abs(x);
     
     // Scale to reasonable range
     var scale = f64_const(x, 1.0);
@@ -268,14 +275,14 @@ fn exp_f64(x: f64) -> f64 {
         return zero;
     }
     let tiny = zero + 1e-15;
-    if (abs_f64(x) < tiny) {
+    if (abs(x) < tiny) {
         return one + x;  // exp(x) ≈ 1 + x for small x
     }
     
     // Range reduction: x = k*ln(2) + r
     // Full precision constants via (zero + literal)
     let inv_ln2 = zero + 1.4426950408889634;
-    let k_f = round_f64(x * inv_ln2);
+    let k_f = round(x * inv_ln2);
     let k = i32(k_f);
     
     // r = x - k * ln(2) (high precision, split into hi/lo parts)
@@ -518,7 +525,7 @@ fn pow_one_third(x: f64) -> f64 {
 
 /// Square root specialized for A^(1/2) — higher precision than exp(log(x)/2)
 fn pow_one_half(x: f64) -> f64 {
-    return sqrt_f64(x);
+    return sqrt(x);
 }
 
 /// A^(2/3) specialized — higher precision than exp(2*log(x)/3)
@@ -550,8 +557,8 @@ fn pow_f64(base: f64, exponent: f64) -> f64 {
     }
     
     // Check for integer exponent
-    let exp_rounded = round_f64(exponent);
-    let is_integer = abs_f64(exponent - exp_rounded) < f64_const(base, 1e-10);
+    let exp_rounded = round(exponent);
+    let is_integer = abs(exponent - exp_rounded) < f64_const(base, 1e-10);
     
     if (is_integer) {
         return ipow_f64(base, i32(exp_rounded));
@@ -563,17 +570,17 @@ fn pow_f64(base: f64, exponent: f64) -> f64 {
     let two_thirds = f64_const(base, 0.666666666666666667);
     let neg_half = f64_const(base, -0.5);
     
-    if (abs_f64(exponent - half) < f64_const(base, 1e-10)) {
-        return sqrt_f64(base);
+    if (abs(exponent - half) < f64_const(base, 1e-10)) {
+        return sqrt(base);
     }
-    if (abs_f64(exponent - one_third) < f64_const(base, 1e-10)) {
+    if (abs(exponent - one_third) < f64_const(base, 1e-10)) {
         return cbrt_f64(base);
     }
-    if (abs_f64(exponent - two_thirds) < f64_const(base, 1e-10)) {
+    if (abs(exponent - two_thirds) < f64_const(base, 1e-10)) {
         return pow_two_thirds(base);
     }
-    if (abs_f64(exponent - neg_half) < f64_const(base, 1e-10)) {
-        return one / sqrt_f64(base);
+    if (abs(exponent - neg_half) < f64_const(base, 1e-10)) {
+        return one / sqrt(base);
     }
     
     // General case: exp(exponent * log(base))
@@ -728,7 +735,7 @@ fn gamma_f64(x: f64) -> f64 {
         // Since 1-x >= 0.5, lanczos_core handles it directly.
         let sin_pix = sin_f64(pi * x);
         let tiny = zero + 1e-15;
-        if (abs_f64(sin_pix) < tiny) {
+        if (abs(sin_pix) < tiny) {
             let big = zero + 1e38;
             return big * big;  // Pole (~1e76, large enough)
         }
@@ -756,8 +763,8 @@ fn erf_f64(x: f64) -> f64 {
     let a5 = zero + 1.061405429;
     let p = zero + 0.3275911;
     
-    let sign = sign_f64(x);
-    let ax = abs_f64(x);
+    let sign = sign(x);
+    let ax = abs(x);
     
     let t = one / (one + p * ax);
     let t2 = t * t;
@@ -811,7 +818,7 @@ fn decode_f64_ratio(num: i32, den: i32, x_ref: f64) -> f64 {
 fn bessel_j0_f64(x: f64) -> f64 {
     let zero = x - x;
     let one = zero + 1.0;
-    let ax = abs_f64(x);
+    let ax = abs(x);
     let eight = zero + 8.0;
     
     if (ax < eight) {
@@ -833,7 +840,7 @@ fn bessel_j0_f64(x: f64) -> f64 {
         let xx = ax - (zero + 0.785398164);
         let p0 = one + y * ((zero - 0.0010986286270000001) + y * (zero + 0.000027345104070000003));
         let q0 = (zero - 0.01562499995) + y * ((zero + 0.0001430488765) + y * (zero - 0.0000069111476510000005));
-        return sqrt_f64((zero + 0.636619772) / ax) * (cos_f64(xx) * p0 - z * sin_f64(xx) * q0);
+        return sqrt((zero + 0.636619772) / ax) * (cos_f64(xx) * p0 - z * sin_f64(xx) * q0);
     }
 }
 
