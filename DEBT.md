@@ -94,12 +94,14 @@ double-normalization in inverse_3d).
 
 ### W-003: NAK Compiler 149x Performance Gap (Sovereign FP64 Compute)
 
-**Status**: ACTIVE — Contribution roadmap defined, first solution absorbed
+**Status**: ACTIVE — Phase 1 latency tables written, pending hardware validation on Titan V
 **Impact**: NVK/NAK Jacobi eigensolve ~9x slower than NVIDIA proprietary after warp-packing
 **Files**:
 - `crates/barracuda/src/shaders/linalg/batched_eigh_single_dispatch_f64.wgsl` — warp-packed (done)
 - `crates/barracuda/src/device/capabilities.rs` — `GpuDriverProfile`, `EigensolveStrategy` (done)
 - `crates/barracuda/src/bin/bench_wgsize_nvk.rs` — diagnostic binary (done)
+- `ecoPrimals/mesa-nak/.../sm70_instr_latencies.rs` — **NEW: SM70 latency table** (Phase 1)
+- `ecoPrimals/mesa-nak/.../sm70.rs` — wired SM70Latency into all 6 dispatch points (Phase 1)
 
 **Problem**: hotSpring analysis (Feb 18, 2026) found a 149x compiler efficiency gap
 between NAK (Mesa open-source NVIDIA compiler, Rust) and proprietary PTXAS for
@@ -107,7 +109,7 @@ loop-heavy f64 Jacobi kernels. Root cause is five specific NAK deficiencies:
 
 | # | Deficiency | Gap factor | NAK status |
 |---|-----------|------------|------------|
-| 1 | No SM70 instruction scheduling | ~3-4x | Only SM32 (Kepler) has real scheduling |
+| 1 | No SM70 instruction scheduling | ~3-4x | **DONE** — `sm70_instr_latencies.rs` written |
 | 2 | No dual-issue exploitation | ~2x | Not implemented for any arch |
 | 3 | Limited loop unrolling | ~1.5-2x | MR 26626 (Dec 2023), may miss nested loops |
 | 4 | Missing f64 FMA selection | ~1.3-1.5x | Not confirmed, needs IR dump |
@@ -118,15 +120,25 @@ loop-heavy f64 Jacobi kernels. Root cause is five specific NAK deficiencies:
 - `GpuDriverProfile::optimal_eigensolve_strategy()` — data-driven strategy selection
 - `bench_wgsize_nvk.rs` — permanent diagnostic binary
 
+**Phase 1 DONE (Feb 18, 2026)**:
+Created `sm70_instr_latencies.rs` — SM70/Volta instruction latency table, structured after
+SM75's (Turing) table but without HMMA/IMMA (Volta doesn't have tensor cores), with corrected
+FP64 latencies from arXiv:1804.06826:
+- **FP64 DFMA was 13cy placeholder → now 8cy** (key correction, ~1.6x scheduling improvement)
+- **FP32 FFMA**: 4cy (correct, was 6cy placeholder for ALU)
+- **WAR latency**: per-category (was flat 4cy guess)
+- **WAW latency**: per-category (was `instr_latency()` approximation)
+- **Scoreboard assignment**: real `needs_scoreboards()` per instruction (was `!has_fixed_latency`)
+Wired into `sm70.rs` at: `op_needs_scoreboard`, `raw_latency`, `war_latency`, `waw_latency`,
+`paw_latency` (already had Volta branch), `worst_latency`, `latency_upper_bound`.
+**Next step**: run `bench_wgsize_nvk` on Titan V with patched Mesa NVK to measure impact.
+
 **Evolution Path** (NAK contribution — all Rust, AGPL-aligned):
 
-1. **Phase 1**: SM70 latency tables in `nak/src/calc_instr_deps.rs`
-   - Template: Lorenzo Rossi's SM32 (Kepler) MR — Mesa 25.2, July 2025, same file/pattern
-   - Data sources: arXiv:1804.06826 (public SM70 microbenchmarks) + Red Hat NDA docs
-     (contact `karolherbst`/`airlied` on `irc.oftc.net #nouveau` or `#nouveau:matrix.org`)
-   - Known SM70 latencies: FP32 FFMA=4cy, FP64 DFMA≈8cy, INT=6cy, shared-mem≈23cy
-   - Expected impact: **3-4x improvement** on Titan V Jacobi kernel
-   - Detailed plan: `docs/planning/NAK_CONTRIBUTION_PLAN_FEB18_2026.md`
+1. **Phase 1**: ~~SM70 latency tables~~ **DONE** (Feb 18, 2026)
+   - `sm70_instr_latencies.rs` created; `sm70.rs` wired
+   - Data: arXiv:1804.06826 — DFMA=8cy, FFMA=4cy, IMAD=6cy
+   - Expected impact: **~3-4x** scheduler improvement on Titan V (pending hardware test)
 
 2. **Phase 2**: f64 FMA selection — `mul+add` → `DFMA`
    - SM70 has native `DFMA` (same latency as DMUL+DADD but 1 instruction vs 2)
