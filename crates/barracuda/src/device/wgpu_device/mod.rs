@@ -44,6 +44,16 @@ impl WgpuDevice {
         self.adapter_info.device_type == wgpu::DeviceType::Cpu
     }
 
+    /// Check if f64 shaders are enabled for this device.
+    ///
+    /// Returns `true` when `wgpu::Features::SHADER_F64` was successfully
+    /// requested at device creation. F64 shaders panic at validation time
+    /// when this is false, so callers should gate any f64 shader dispatch on
+    /// this check rather than discovering the missing feature at runtime.
+    pub fn has_f64_shaders(&self) -> bool {
+        self.device.features().contains(wgpu::Features::SHADER_F64)
+    }
+
     /// Access underlying wgpu device
     pub fn device(&self) -> &wgpu::Device {
         &self.device

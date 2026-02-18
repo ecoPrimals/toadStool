@@ -32,20 +32,40 @@ with async `probe_f64_exp_capable()` now available for definitive runtime verifi
 3. Software fallbacks are ~2x slower than native hardware
 4. Applies blanket workaround rather than per-op capability check
 
-**Evolution Path** (ordered by priority):
-1. **DONE: Capability probing** — `probe::probe_f64_exp_capable()` dispatches a tiny
-   `exp(f64)` test shader, caches results per adapter (name:backend:vendor). Async
-   callers can use this for definitive detection; synchronous `for_device()` keeps
-   heuristic fallback. `seed_cache_from_heuristics()` primes cache at device creation.
-2. **Upstream NAK fix**: Contribute `exp(f64)` lowering to Mesa NAK compiler.
-   Track: https://gitlab.freedesktop.org/mesa/mesa — see W-003 for full NAK roadmap.
-3. **Upstream ACO fix**: Contribute `fexp2(f64)` implementation to Mesa ACO.
-   Track: https://gitlab.freedesktop.org/mesa/mesa
-4. **Remove workaround**: When both compilers support f64 transcendentals
-   natively, delete the replacement logic entirely.
+**F64 Built-in Capability Matrix** (probed Feb 18, 2026 via `bench_f64_builtins`):
 
-**Validation**: Cross-GPU testing on 3090 (NVIDIA), 6950XT (AMD),
-Titan V (NVK), RTX 4070 (proprietary).
+| Function     | RTX 3090 (Ampere/PTXAS) | RX 6950 XT (RDNA2/ACO) | Titan V (NVK/NAK) | RTX 4070 (Ada/PTXAS) |
+|-------------|------------------------|------------------------|-------------------|----------------------|
+| exp, log    | NATIVE                 | fallback               | fallback          | NATIVE (expected)    |
+| exp2, log2  | NATIVE                 | fallback               | fallback          | NATIVE (expected)    |
+| sin, cos    | NATIVE†                | fallback               | TBD               | NATIVE† (expected)   |
+| sqrt        | NATIVE                 | **NATIVE**             | TBD               | NATIVE               |
+| fma         | NATIVE                 | **NATIVE**             | TBD               | NATIVE               |
+| abs/min/max | NATIVE                 | **NATIVE**             | TBD               | NATIVE               |
+
+†NVIDIA PTXAS sin/cos on f64 uses MUFU — likely f32 precision in f64 register. Precision probe needed.
+
+Strategic insight: WGSL → naga → SPIR-V → Vulkan exposes `VK_KHR_shader_float64` directly,
+bypassing the proprietary software FP64 lock. Both RTX 3090 and RX 6950 XT confirm SHADER_F64=true.
+`sqrt`, `fma`, `abs/min/max` are **universally native** across all SHADER_F64 hardware.
+The `math_f64.wgsl` software implementations for these are unnecessary debt — removable once
+grep confirms no shaders call `sqrt_f64()` etc. directly.
+
+**Evolution Path** (ordered by priority):
+1. **DONE: Capability probing** — `probe::probe_f64_builtins()` tests ALL f64 builtins,
+   crash-isolated per function. Cache keyed per adapter. Legacy `probe_f64_exp_capable()`
+   preserved. Run `cargo run --release --bin bench_f64_builtins` on any GPU.
+2. **Immediate**: Audit math_f64.wgsl — remove software sqrt/fma/abs (universally native).
+   Shaders calling native `sqrt()` / `fma()` / `abs()` already work everywhere.
+3. **Upstream ACO fix**: Contribute `fexp2(f64)` implementation to Mesa ACO for RDNA2/3.
+   Track: https://gitlab.freedesktop.org/mesa/mesa
+4. **Upstream NAK fix**: Contribute `exp(f64)` lowering to Mesa NAK compiler.
+   Track: https://gitlab.freedesktop.org/mesa/mesa — see W-003 for full NAK roadmap.
+5. **Remove workaround**: When both compilers support f64 transcendentals natively,
+   delete the exp/log replacement logic entirely.
+
+**Validation**: RTX 3090 (9/9 native) + RX 6950 XT (3/9: sqrt/fma/abs native) confirmed.
+Titan V (NVK) + RTX 4070 probe needed from hotSpring.
 
 ---
 

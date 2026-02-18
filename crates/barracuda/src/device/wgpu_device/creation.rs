@@ -63,11 +63,24 @@ impl WgpuDevice {
             info.device_type
         );
 
+        let adapter_features = adapter.features();
+        let mut required_features = wgpu::Features::empty();
+        if adapter_features.contains(wgpu::Features::SHADER_F64) {
+            required_features |= wgpu::Features::SHADER_F64;
+            log::info!("  SHADER_F64: enabled");
+        }
+        if adapter_features.contains(wgpu::Features::SHADER_F16) {
+            required_features |= wgpu::Features::SHADER_F16;
+        }
+        if adapter_features.contains(wgpu::Features::TIMESTAMP_QUERY) {
+            required_features |= wgpu::Features::TIMESTAMP_QUERY;
+        }
+
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some("BarraCUDA high-capacity device"),
-                    required_features: wgpu::Features::empty(),
+                    required_features,
                     required_limits: limits,
                     memory_hints: Default::default(),
                 },
@@ -343,11 +356,24 @@ impl WgpuDevice {
             adapter_info.device_type
         );
 
+        let adapter_features = adapter.features();
+        let mut required_features = wgpu::Features::empty();
+        if adapter_features.contains(wgpu::Features::SHADER_F64) {
+            required_features |= wgpu::Features::SHADER_F64;
+            log::info!("  SHADER_F64: enabled");
+        }
+        if adapter_features.contains(wgpu::Features::SHADER_F16) {
+            required_features |= wgpu::Features::SHADER_F16;
+        }
+        if adapter_features.contains(wgpu::Features::TIMESTAMP_QUERY) {
+            required_features |= wgpu::Features::TIMESTAMP_QUERY;
+        }
+
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some("barraCUDA Device"),
-                    required_features: wgpu::Features::empty(),
+                    required_features,
                     required_limits: super::super::tensor_context::science_limits(),
                     memory_hints: Default::default(),
                 },

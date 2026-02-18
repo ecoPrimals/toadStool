@@ -19,10 +19,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::io;
-use toadstool_common::constants::{
-    network::LOCALHOST_IPV4,
-    timeouts::DEFAULT_REQUEST_TIMEOUT,
-};
+use toadstool_common::constants::{network::LOCALHOST_IPV4, timeouts::DEFAULT_REQUEST_TIMEOUT};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tracing::debug;

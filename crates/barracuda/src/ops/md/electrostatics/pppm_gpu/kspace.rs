@@ -52,8 +52,7 @@ pub async fn compute_with_kspace(
         pppm.pipelines(),
     );
 
-    let positions_buffer =
-        SparseBuffers::f64_from_slice_raw(device, "positions", &positions);
+    let positions_buffer = SparseBuffers::f64_from_slice_raw(device, "positions", &positions);
     let charges_buffer = SparseBuffers::f64_from_slice_raw(device, "charges", charges);
     let coeffs_size = n * order * 3;
     let coeffs_buffer = SparseBuffers::f64_zeros_raw(device, "coeffs", coeffs_size);
@@ -316,7 +315,10 @@ pub async fn compute_with_kspace(
 
     let forces = SparseBuffers::read_f64_raw(device, queue, &forces_buffer, n * 3)?;
     let pe_values = SparseBuffers::read_f64_raw(device, queue, &pe_buffer, n)?;
-    let pos_arrays: Vec<[f64; 3]> = positions.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let pos_arrays: Vec<[f64; 3]> = positions
+        .chunks_exact(3)
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
     let e_dipole = dipole_correction(
         &pos_arrays,
         charges,

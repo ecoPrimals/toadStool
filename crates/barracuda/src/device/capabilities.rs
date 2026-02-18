@@ -582,12 +582,27 @@ impl GpuDriverProfile {
     ///
     /// hotSpring measured 2.2x NVK speedup with warp-packing (Titan V, Feb 2026).
     /// Neutral on proprietary NVIDIA (scheduler already handles wg1 efficiently).
+    ///
+    /// ## AMD RDNA2/RDNA3 (ACO compiler)
+    ///
+    /// Empirically measured on RX 6950 XT (RDNA2/NAVI21, Feb 2026):
+    /// - `wg_size=32`: 67.7ms  ← optimal
+    /// - `wg_size=64`: 117.1ms ← 1.7× slower
+    ///
+    /// Root cause: ACO targets **wave32 mode** for compute shaders on RDNA2.
+    /// A `@workgroup_size(64)` becomes 2 wave32s per workgroup rather than
+    /// 1 wave64, halving workgroup count (8 vs 16 for batch=512) and reducing
+    /// CU utilisation with no offsetting benefit. Use `WarpPacked { wg_size: 32 }`
+    /// for all current ACO targets. Revisit for CDNA (wave64 compute) or very
+    /// large batch sizes where 64-thread workgroups improve occupancy.
     pub fn optimal_eigensolve_strategy(&self) -> EigensolveStrategy {
         match (self.compiler, self.arch) {
             (CompilerKind::Nak, _) => EigensolveStrategy::WarpPacked { wg_size: 32 },
+            // ACO on RDNA2/3: wave32 mode for compute — wg_size=32 is empirically optimal
             (CompilerKind::Aco, GpuArch::Rdna2 | GpuArch::Rdna3) => {
-                EigensolveStrategy::WavePacked { wave_size: 64 }
+                EigensolveStrategy::WarpPacked { wg_size: 32 }
             }
+            // CDNA2 uses wave64 natively for compute — WavePacked may help at large batch
             (CompilerKind::Aco, GpuArch::Cdna2) => EigensolveStrategy::WavePacked { wave_size: 64 },
             (CompilerKind::NvidiaPtxas, _) => {
                 // Proprietary scheduler handles wg1 efficiently,

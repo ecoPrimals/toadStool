@@ -517,31 +517,46 @@ mod tests {
             .await
             .expect("GPU PPPM create failed");
         let (device_ref, queue) = (pppm.device(), pppm.queue());
-        let positions_buffer =
-            SparseBuffers::f64_from_slice_raw(device_ref, "pos", &positions);
-        let coeffs_buffer =
-            SparseBuffers::f64_zeros_raw(device_ref, "coeffs", 2 * order * 3);
-        let derivs_buffer =
-            SparseBuffers::f64_zeros_raw(device_ref, "derivs", 2 * order * 3);
+        let positions_buffer = SparseBuffers::f64_from_slice_raw(device_ref, "pos", &positions);
+        let coeffs_buffer = SparseBuffers::f64_zeros_raw(device_ref, "coeffs", 2 * order * 3);
+        let derivs_buffer = SparseBuffers::f64_zeros_raw(device_ref, "derivs", 2 * order * 3);
         let base_idx_buffer = SparseBuffers::i32_zeros_raw(device_ref, "base", 6);
         let bspline_params: Vec<f64> = vec![
             2.0,
             order as f64,
-            8.0, 8.0, 8.0,
-            box_dims[0], box_dims[1], box_dims[2],
+            8.0,
+            8.0,
+            8.0,
+            box_dims[0],
+            box_dims[1],
+            box_dims[2],
         ];
-        let params_buffer =
-            SparseBuffers::f64_from_slice_raw(device_ref, "bp", &bspline_params);
+        let params_buffer = SparseBuffers::f64_from_slice_raw(device_ref, "bp", &bspline_params);
         let layout = &pppm.layouts().bspline;
         let bg = device_ref.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: positions_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: coeffs_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: derivs_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: base_idx_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: params_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: positions_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: coeffs_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: derivs_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: base_idx_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: params_buffer.as_entire_binding(),
+                },
             ],
         });
         let mut enc = device_ref.create_command_encoder(&Default::default());
@@ -554,22 +569,33 @@ mod tests {
         queue.submit(Some(enc.finish()));
 
         let gpu_coeffs =
-            SparseBuffers::read_f64_raw(device_ref, queue, &coeffs_buffer, 2 * order * 3)
-                .unwrap();
+            SparseBuffers::read_f64_raw(device_ref, queue, &coeffs_buffer, 2 * order * 3).unwrap();
         let gpu_derivs =
-            SparseBuffers::read_f64_raw(device_ref, queue, &derivs_buffer, 2 * order * 3)
-                .unwrap();
-        let gpu_base =
-            SparseBuffers::read_i32_raw(device_ref, queue, &base_idx_buffer, 6).unwrap();
+            SparseBuffers::read_f64_raw(device_ref, queue, &derivs_buffer, 2 * order * 3).unwrap();
+        let gpu_base = SparseBuffers::read_i32_raw(device_ref, queue, &base_idx_buffer, 6).unwrap();
 
         for d in 0..3 {
             for k in 0..order {
                 let cpu_c = cpu_coeffs0.coeffs[d][k];
                 let gpu_c = gpu_coeffs[d * order + k];
-                assert!((cpu_c - gpu_c).abs() < 1e-10, "coeff0 d{} k{}: CPU {} GPU {}", d, k, cpu_c, gpu_c);
+                assert!(
+                    (cpu_c - gpu_c).abs() < 1e-10,
+                    "coeff0 d{} k{}: CPU {} GPU {}",
+                    d,
+                    k,
+                    cpu_c,
+                    gpu_c
+                );
                 let cpu_d = cpu_coeffs0.derivs[d][k];
                 let gpu_d = gpu_derivs[d * order + k];
-                assert!((cpu_d - gpu_d).abs() < 1e-10, "deriv0 d{} k{}: CPU {} GPU {}", d, k, cpu_d, gpu_d);
+                assert!(
+                    (cpu_d - gpu_d).abs() < 1e-10,
+                    "deriv0 d{} k{}: CPU {} GPU {}",
+                    d,
+                    k,
+                    cpu_d,
+                    gpu_d
+                );
             }
             assert_eq!(cpu_coeffs0.base_idx[d], gpu_base[d], "base0 d{}", d);
         }
@@ -577,7 +603,14 @@ mod tests {
             for k in 0..order {
                 let cpu_c = cpu_coeffs1.coeffs[d][k];
                 let gpu_c = gpu_coeffs[3 * order + d * order + k];
-                assert!((cpu_c - gpu_c).abs() < 1e-10, "coeff1 d{} k{}: CPU {} GPU {}", d, k, cpu_c, gpu_c);
+                assert!(
+                    (cpu_c - gpu_c).abs() < 1e-10,
+                    "coeff1 d{} k{}: CPU {} GPU {}",
+                    d,
+                    k,
+                    cpu_c,
+                    gpu_c
+                );
             }
         }
     }

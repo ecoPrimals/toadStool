@@ -5,8 +5,10 @@
 
 use super::params::SingleDispatchParams;
 use super::BatchedEighGpu;
+use crate::device::capabilities::{EigensolveStrategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
+use crate::shaders::precision::ShaderTemplate;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
@@ -77,10 +79,16 @@ impl BatchedEighGpu {
         };
         let params_buffer = device.create_uniform_buffer("SingleDispatch Params", &params);
 
-        let shader = device.compile_shader_f64(
-            Self::single_dispatch_shader(),
-            Some("Batched Eigh Single-Dispatch f64"),
-        );
+        // Determine optimal wave/warp size from driver profile
+        let wave_size = match GpuDriverProfile::from_device(&device).optimal_eigensolve_strategy() {
+            EigensolveStrategy::WarpPacked { wg_size } => wg_size,
+            EigensolveStrategy::WavePacked { wave_size } => wave_size,
+            EigensolveStrategy::Standard => 1,
+        };
+        let patched_shader =
+            ShaderTemplate::patch_warp_size(Self::single_dispatch_shader(), wave_size);
+        let shader =
+            device.compile_shader_f64(&patched_shader, Some("Batched Eigh Single-Dispatch f64"));
 
         let bgl = device
             .device
@@ -173,7 +181,6 @@ impl BatchedEighGpu {
             ],
         });
 
-        const WARP_SIZE: u32 = 32;
         let mut encoder = device
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -186,7 +193,7 @@ impl BatchedEighGpu {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((batch_size as u32).div_ceil(WARP_SIZE), 1, 1);
+            pass.dispatch_workgroups((batch_size as u32).div_ceil(wave_size), 1, 1);
         }
         device.queue.submit(Some(encoder.finish()));
 
@@ -227,8 +234,15 @@ impl BatchedEighGpu {
         let params_buffer =
             device.create_uniform_buffer("SingleDispatch Params (buffers)", &params);
 
+        let wave_size = match GpuDriverProfile::from_device(device).optimal_eigensolve_strategy() {
+            EigensolveStrategy::WarpPacked { wg_size } => wg_size,
+            EigensolveStrategy::WavePacked { wave_size } => wave_size,
+            EigensolveStrategy::Standard => 1,
+        };
+        let patched_shader =
+            ShaderTemplate::patch_warp_size(Self::single_dispatch_shader(), wave_size);
         let shader = device.compile_shader_f64(
-            Self::single_dispatch_shader(),
+            &patched_shader,
             Some("Batched Eigh Single-Dispatch f64 (buffers)"),
         );
 
@@ -323,7 +337,6 @@ impl BatchedEighGpu {
             ],
         });
 
-        const WARP_SIZE: u32 = 32;
         let mut encoder = device
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -336,7 +349,7 @@ impl BatchedEighGpu {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((batch_size as u32).div_ceil(WARP_SIZE), 1, 1);
+            pass.dispatch_workgroups((batch_size as u32).div_ceil(wave_size), 1, 1);
         }
         device.queue.submit(Some(encoder.finish()));
 

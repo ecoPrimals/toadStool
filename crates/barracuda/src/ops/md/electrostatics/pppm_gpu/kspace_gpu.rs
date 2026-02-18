@@ -68,8 +68,7 @@ pub async fn compute_with_kspace_gpu(
         pppm.pipelines(),
     );
 
-    let positions_buffer =
-        SparseBuffers::f64_from_slice_raw(device, "positions", &positions);
+    let positions_buffer = SparseBuffers::f64_from_slice_raw(device, "positions", &positions);
     let charges_buffer = SparseBuffers::f64_from_slice_raw(device, "charges", charges);
     let coeffs_size = n * order * 3;
     let coeffs_buffer = SparseBuffers::f64_zeros_raw(device, "coeffs", coeffs_size);

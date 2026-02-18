@@ -55,8 +55,8 @@ async fn main() {
     let selected = std::env::var("BARRACUDA_GPU_ADAPTER").unwrap_or_else(|_| "auto".to_string());
     println!("BARRACUDA_GPU_ADAPTER = {selected}\n");
 
-    // ── Create device ─────────────────────────────────────────────────────
-    let device = match WgpuDevice::new().await {
+    // ── Create device via env-aware selector (honours BARRACUDA_GPU_ADAPTER) ──
+    let device = match WgpuDevice::from_env().await {
         Ok(d) => Arc::new(d),
         Err(e) => {
             eprintln!("Failed to create device: {e}");
@@ -66,6 +66,17 @@ async fn main() {
 
     println!("Active device: {}", device.name());
     println!("Device type:   {:?}", device.device_type());
+    println!("SHADER_F64:    {}", device.has_f64_shaders());
+
+    if !device.has_f64_shaders() {
+        eprintln!(
+            "\nERROR: This device does not expose SHADER_F64 capability.\n\
+             The f64 eigensolve shader cannot be compiled on this adapter.\n\
+             Try a different adapter: BARRACUDA_GPU_ADAPTER=amd or BARRACUDA_GPU_ADAPTER=1\n\
+             Full adapter list shown above."
+        );
+        std::process::exit(1);
+    }
 
     // ── Print driver profile ──────────────────────────────────────────────
     let profile = GpuDriverProfile::from_device(&device);
@@ -84,8 +95,10 @@ async fn main() {
             println!("  Results should be ~same as wg1 baseline.");
         }
         DriverKind::Radv => {
-            println!("  RADV/ACO: 64-wide wavefronts. warp-packing (32) underutilizes.");
-            println!("  WavePacked{{wave_size:64}} would be optimal. Minor benefit expected.");
+            println!("  RADV/ACO (RDNA2/3): ACO uses wave32 mode for compute by default.");
+            println!("  wg_size=32 is empirically optimal (RX 6950 XT: 67ms vs 117ms for wg64).");
+            println!("  AMD RX 6950 XT beats RTX 3090 on f64: 1:4 ratio vs 1:64 throttling.");
+            println!("  ACO/RADV faster than proprietary for f64-heavy workloads on RDNA2.");
         }
         _ => {
             println!("  Unknown driver — results are informational.");
@@ -98,28 +111,25 @@ async fn main() {
     let configs: &[(usize, usize, u32, &str)] = &[
         (20, 512, 200, ""),
         (30, 512, 200, ""),
-        (12, 512, 200, "HFB"),          // hotSpring HFB n=12, batch=40 analogue
-        (30, 512, 5, "dispatch-dom"),   // dispatch-dominated: shows overhead floor
+        (12, 512, 200, "HFB"),        // hotSpring HFB n=12, batch=40 analogue
+        (30, 512, 5, "dispatch-dom"), // dispatch-dominated: shows overhead floor
     ];
 
     const RUNS: u32 = 5;
 
     println!("──────────────────────────────────────────────────────────");
-    println!("{:<14} {:>6} {:>8} {:>12}   Notes", "Config", "Batch", "Sweeps", "Time(ms)");
+    println!(
+        "{:<14} {:>6} {:>8} {:>12}   Notes",
+        "Config", "Batch", "Sweeps", "Time(ms)"
+    );
     println!("──────────────────────────────────────────────────────────");
 
     for &(n, batch, sweeps, label) in configs {
         let data = random_spd_batch(n, batch);
 
         // Warm-up: trigger pipeline compilation
-        let _ = BatchedEighGpu::execute_single_dispatch(
-            device.clone(),
-            &data,
-            n,
-            batch,
-            sweeps,
-            1e-10,
-        );
+        let _ =
+            BatchedEighGpu::execute_single_dispatch(device.clone(), &data, n, batch, sweeps, 1e-10);
 
         // Timed runs
         let start = Instant::now();

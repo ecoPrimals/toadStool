@@ -18,7 +18,6 @@ use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 use uuid::Uuid;
 
-use toadstool_common::constants::network::{BIND_ALL_IPV4, BYOB_DEFAULT_PORT};
 use toadstool::{
     byob::{
         create_byob_executor, ByobDeploymentRequest, ByobDeploymentResponse, ByobExecutor,
@@ -27,6 +26,7 @@ use toadstool::{
     RuntimeEngine, ToadStoolError, ToadStoolResult,
 };
 use toadstool_api::byob::{ApiError, HealthResponse, StopDeploymentResponse};
+use toadstool_common::constants::network::{BIND_ALL_IPV4, BYOB_DEFAULT_PORT};
 use toadstool_runtime_container::ContainerRuntimeEngine;
 // use toadstool_config::constants::network::DEFAULT_TOADSTOOL_PORT;
 

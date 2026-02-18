@@ -146,6 +146,24 @@ impl ShaderTemplate {
         Self::for_driver_auto(shader_body, device.needs_f64_exp_log_workaround())
     }
 
+    /// Patch a WGSL shader's `WARP_SIZE` constant and `@workgroup_size` annotation.
+    ///
+    /// Replaces `const WARP_SIZE: u32 = 32u;` with the given `wave_size` and
+    /// adjusts `@workgroup_size(32, 1, 1)` accordingly. Used to specialise the
+    /// single-dispatch Jacobi eigensolve for AMD RDNA2/3 (wave_size=64) vs
+    /// NVIDIA warp (wave_size=32) at shader-compilation time.
+    pub fn patch_warp_size(shader_body: &str, wave_size: u32) -> String {
+        shader_body
+            .replace(
+                "const WARP_SIZE: u32 = 32u;",
+                &format!("const WARP_SIZE: u32 = {wave_size}u;"),
+            )
+            .replace(
+                "@workgroup_size(32, 1, 1)",
+                &format!("@workgroup_size({wave_size}, 1, 1)"),
+            )
+    }
+
     pub fn for_driver_auto(shader_body: &str, needs_exp_log_workaround: bool) -> String {
         let patched = if needs_exp_log_workaround {
             shader_body
