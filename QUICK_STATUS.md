@@ -1,6 +1,6 @@
-# ToadStool + BarraCUDA -- Quick Status
+# ToadStool + BarraCUDA — Quick Status
 
-**Date**: February 18, 2026 (Capability-Based Dispatch + Test Fixes)
+**Date**: February 18, 2026 — Session 3 (Distributed Compute + GPU Sovereignty + Dead-Code Audit)
 
 ---
 
@@ -11,11 +11,15 @@ cargo build --workspace          CLEAN
 cargo fmt --all -- --check       CLEAN
 cargo clippy --workspace -- -D warnings   CLEAN
 cargo test --workspace           15,700+ passed / 0 failed
-unsafe blocks                    FFI only (VFIO, DRM) - SAFETY documented
-error handling                   No panic paths (unwrap → Result propagation)
+unsafe blocks                    FFI only (VFIO, DRM) — SAFETY documented
+error handling                   No panic paths — Mutex poison recovery via lock_cache
+production stubs                 0 remaining — all service discovery, routing, capacity live
 middleware tests                 400+ passed (linalg, sparse, numerical, special, stats, optimize, surrogate, sample, pde, pipeline, mixing, grid)
 hotSpring evolution tests        47 tests (unit, E2E, chaos, fault)
 three springs evolution tests    37 tests (unit, E2E, chaos, fault, precision)
+GPU sovereignty                  f64 fossils removed, capability matrix probed per-GPU
+NAK Phase 1                      SM70 Volta latency tables written (DFMA=8cy, wired)
+node routing                     least-loaded selection, local fallback, Songbird wiring
 timeout constants                Centralized in toadstool_common::constants::timeouts
 SIMD detection                   Runtime via std::arch::is_x86_feature_detected!
 ```
@@ -29,29 +33,39 @@ SIMD detection                   Runtime via std::arch::is_x86_feature_detected!
 ```
 ToadStool (Hardware Infrastructure Primal)
   Pure Rust | ecoBin | UniBin | JSON-RPC 2.0 + tarpc
-  26 JSON-RPC methods (compute, gpu, ollama, gate)
+  36 JSON-RPC methods (toadstool, compute, resources, ai, gpu, ollama, gate)
   GPU Job Queue with Cross-Gate Routing
   Ollama model lifecycle management
   3 GPUs across 2 machines, 2 vendors (NVIDIA + AMD)
   52 GB combined VRAM, 88 CPU threads
   Capability-based runtime discovery (zero hardcoding)
+  mDNS / config-file / HTTP-registry service discovery (all live)
+  Distributed node routing: least-loaded via NetworkLoadBalancer
   Shared error tracking across all transports
   Hardware-agnostic workload routing (GPU / NPU / CPU)
+  Auth self-knowledge: env!("CARGO_PKG_NAME"), audience from config
 
 BarraCUDA (Universal Compute Engine — SHADER-FIRST F64)
-  **FP64-by-default**: Both CPU and GPU use f64
+  FP64-by-default: Both CPU and GPU use f64
   SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2-3 vs 1:32)
-  **480+ WGSL shaders**, proven cross-vendor
-  **Shader-first architecture**: ALL math is WGSL primary
-  **Three Springs validated**: 313+ Rust checks (hotSpring 195 + wetSpring 48 + airSpring 70)
+  480+ WGSL shaders, proven cross-vendor
+  Shader-first architecture: ALL math is WGSL primary
+  f64 fossil functions removed — native WGSL builtins used directly
+  F64BuiltinCapabilities matrix: RTX 3090 (9/9 native), RX 6950 XT (3/9)
+  Three Springs validated: 313+ Rust checks (hotSpring 195 + wetSpring 48 + airSpring 70)
   Bit-identical results: RTX 4070 = RTX 3090 = RX 6950 XT
   39.85 tok/s distributed LLM inference
-  Native f64 builtins: sqrt, exp, log work on f64 (1.5-2.2× faster)
   20 special function shaders (Hermite, Legendre, Laguerre, Bessel, f64 variants)
   3 sampling shaders (Sobol, LHS, random_uniform)
   Scientific middleware: 10 modules (linalg, numerical, special, stats, optimize, surrogate, sample, pde, mixing, grid)
   400+ tests (RBF, LU/QR/SVD, RK45, Crank-Nicolson, BFGS, Sobol, Broyden mixing, FD gradients)
   Smart auto-routing with user device preference override
+
+NAK Compiler Contribution (Mesa open-source)
+  SM70/Volta latency tables: DFMA=8cy, FFMA=4cy, WAR/WAW per-category
+  Wired into sm70.rs at all 6 dispatch points
+  Expected ~3-4× scheduler improvement on Titan V (hardware validation pending)
+  Titan V (hotSpring) + RTX 4070 (Tower) available for testing
 ```
 
 ---

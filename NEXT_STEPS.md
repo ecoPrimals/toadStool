@@ -1,198 +1,103 @@
 # ToadStool/BarraCUDA — Next Steps
 
-**Updated**: February 18, 2026 (Capability-Based Dispatch + Test Fixes)  
-**Status**: Capability-Based Dispatch COMPLETE, Test Concurrency FIXED, Unidirectional Pipeline COMPLETE
+**Updated**: February 18, 2026 — Session 3
+**Status**: GPU-Resident Pipeline ✅ | NAK Phase 1 ✅ | Fossil Functions ✅ | Distributed Routing ✅
 
 ---
 
-## The Problem (SOLVED)
+## Active Work
 
-hotSpring's L2 mega-batch experiment achieved 95% GPU utilization but CPU was **70× faster**:
+### W-003: NAK Compiler — Phase 2 (f64 FMA Selection)
 
-| Metric | GPU | CPU |
-|--------|:---:|:---:|
-| Wall time | 40.9 min | 35 sec |
-| Slowdown | **70×** | — |
+**Phase 1 DONE**: SM70/Volta latency tables written and wired. DFMA=8cy corrected.
 
-**Root cause**: Amdahl's Law. The eigensolve is only 1% of the SCF iteration.
-The other 99% (Hamiltonian, BCS pairing, density updates) runs on CPU with
-GPU↔CPU round-trips between every step.
+**Phase 2 Next**: Verify NAK selects `DFMA` instead of `DMUL+DADD` for `a*b+c` patterns.
 
-**The fix**: Move ALL physics to GPU. Zero round-trips during iteration.
+| Step | Action | Location |
+|------|--------|----------|
+| 1 | Run `bench_wgsize_nvk` on Titan V with patched Mesa NVK | hotSpring hardware |
+| 2 | Measure baseline vs Phase 1 improvement | DEBT.md W-003 table |
+| 3 | Dump NAK IR for Jacobi kernel (`MESA_SHADER_DUMP_PATH`) | Mesa environment |
+| 4 | Check `from_nir.rs` for `OpFMul+OpFAdd` → `OpFma` fusion | `mesa-nak/nak/from_nir.rs` |
+| 5 | If not fusing, add `FoldFmaPattern` pass | Phase 2 contribution |
 
----
-
-## Implementation Status: COMPLETE ✓
-
-### Phase 1: Reduction & Buffers ✓
-
-- [x] **Max Abs Diff Reduction** (`max_abs_diff_f64.wgsl`)
-  - `max|a[i] - b[i]|` for SCF convergence check
-  - Location: `crates/barracuda/src/ops/max_abs_diff_f64.rs`
-  - API: `MaxAbsDiffF64::compute(device, &a, &b) -> f64`
-  - WGSL: `crates/barracuda/src/shaders/reduce/max_abs_diff_f64.wgsl`
-
-- [x] **Persistent Buffer Management**
-  - Pin buffers at solver start, reuse across iterations
-  - Extended: `crates/barracuda/src/device/tensor_context.rs`
-  - API: `BufferPool::pin_solver_buffers()`, `release_solver_buffers()`
-  - Types: `BufferDescriptor`, `SolverBufferSet`
-
-### Phase 2: Physics Kernels ✓
-
-- [x] **Batched Bisection** (`batched_bisection_f64.wgsl`)
-  - GPU-parallel 1D root-finding for BCS chemical potential
-  - Location: `crates/barracuda/src/optimize/batched_bisection_gpu.rs`
-  - API: `BatchedBisectionGpu::solve_polynomial()`, `solve_bcs()`
-  - WGSL: `crates/barracuda/src/shaders/optimizer/batched_bisection_f64.wgsl`
-
-- [x] **Grid Quadrature GEMM** (`grid_quadrature_gemm_f64.wgsl`)
-  - Batched: `H[b,i,j] = Σ_k φ[b,i,k] * W[b,k] * φ[b,j,k] * weights[k]`
-  - Location: `crates/barracuda/src/ops/linalg/grid_quadrature_gemm_f64.rs`
-  - API: `GridQuadratureGemm::execute(phi, w, quad_weights)`
-  - WGSL: `crates/barracuda/src/shaders/linalg/grid_quadrature_gemm_f64.wgsl`
-
-### Phase 3: Pipeline ✓
-
-- [x] **Multi-Kernel Pipeline**
-  - Chain ops: H-build → eigensolve → BCS → density (GPU buffers only)
-  - Location: `crates/barracuda/src/pipeline/mod.rs`
-  - API: `PipelineBuilder::new().create_buffer().add_stage().build()`
-  - Types: `BufferSpec`, `Stage`, `ComputePipeline`
-
-### Testing ✓
-
-- [x] Unit tests for each new op
-- [x] E2E test: Full SCF iteration on GPU
-- [x] Integration tests: hotSpring 169-nucleus pattern
-- Test file: `crates/barracuda/tests/gpu_resident_pipeline_tests.rs`
+**Expected impact**: ~1.3-1.5× additional speedup on Titan V.
 
 ---
 
-## Quick Reference
+### W-001: Upstream ACO/NAK Transcendental Fix
 
-```rust
-// Max Abs Diff (Phase 1)
-let converged = MaxAbsDiffF64::compute(device.clone(), &e_new, &e_old)? < 1e-10;
+**Status**: Fossil functions removed (abs/sqrt/min/max/floor/ceil now native). Only exp/log still need workaround.
 
-// Persistent Buffers (Phase 1)
-let ctx = TensorContext::new(device.clone());
-let buffers = ctx.pin_solver_buffers("hfb_scf", &[
-    ("hamiltonian", BufferDescriptor::f64_array(batch * n * n)),
-    ("eigenvalues", BufferDescriptor::f64_array(batch * n)),
-])?;
-// ... use buffers across 100+ iterations ...
-ctx.release_solver_buffers("hfb_scf");
-
-// Batched Bisection (Phase 2)
-let bisect = BatchedBisectionGpu::new(device.clone(), 64, 1e-12)?;
-let result = bisect.solve_polynomial(&lower, &upper, &targets)?;
-// result.roots: Vec<f64>, result.iterations: Vec<u32>
-
-// Grid Quadrature GEMM (Phase 2)
-let gemm = GridQuadratureGemm::new(device.clone(), batch, n, grid)?;
-let h = gemm.execute(&phi, &potential, &quad_weights)?;
-// h: Vec<f64> [batch * n * n] - Hamiltonian matrices
-
-// Multi-Kernel Pipeline (Phase 3)
-let pipeline = PipelineBuilder::new(device.clone())
-    .create_buffer("input", BufferSpec::f64(1000))
-    .create_buffer("output", BufferSpec::f64(100))
-    .add_stage(Stage::new("transform", pipeline_arc, bgl_arc)
-        .with_inputs(&["input"])
-        .with_outputs(&["output"])
-        .with_workgroups(4, 1, 1))
-    .build()?;
-pipeline.write_f64("input", &data)?;
-pipeline.execute()?;  // Single GPU submit, no CPU round-trips
-let result = pipeline.read_f64("output")?;
-```
+**Next steps**:
+- **ACO (AMD)**: Contribute `fexp2(f64)` implementation to Mesa RADV/ACO for RDNA2/3
+  - Track: https://gitlab.freedesktop.org/mesa/mesa
+- **NAK (NVIDIA)**: Contribute `exp(f64)` lowering after Phase 1 hardware validation confirms benefit
+- **Validate on Titan V + RTX 4070**: Run `bench_f64_builtins` binary to complete the capability matrix
 
 ---
 
-## Success Criteria: ACHIEVED
+## Upcoming Infrastructure
 
-| Metric | Before | After | Status |
-|--------|:------:|:-----:|:------:|
-| CPU↔GPU round-trips/iteration | ~10 | 1 | ✓ |
-| Buffer allocs/iteration | ~20 | 0 | ✓ |
-| SCF convergence check | CPU | GPU | ✓ |
-| Hamiltonian construction | CPU | GPU | ✓ |
-| BCS root-finding | CPU | GPU | ✓ |
-| Pipeline chaining | N/A | ✓ | ✓ |
+### NPU Model Pipeline
+- [ ] Train → compile → deploy from Rust (VFIO backend exists)
+- [ ] Integrate Akida NPU with ToadStool job queue
 
----
+### burn-inference Models
+- [ ] Full BERT implementation (tokenizer + inference loop)
+- [ ] Whisper (audio → text)
+- [ ] YOLO (object detection)
 
-## Files Created/Modified
-
-| Phase | File | Action |
-|:-----:|------|--------|
-| 1 | `crates/barracuda/src/ops/max_abs_diff_f64.rs` | Created |
-| 1 | `crates/barracuda/src/shaders/reduce/max_abs_diff_f64.wgsl` | Created |
-| 1 | `crates/barracuda/src/device/tensor_context.rs` | Extended |
-| 2 | `crates/barracuda/src/optimize/batched_bisection_gpu.rs` | Created |
-| 2 | `crates/barracuda/src/shaders/optimizer/batched_bisection_f64.wgsl` | Created |
-| 2 | `crates/barracuda/src/ops/linalg/grid_quadrature_gemm_f64.rs` | Created |
-| 2 | `crates/barracuda/src/shaders/linalg/grid_quadrature_gemm_f64.wgsl` | Created |
-| 3 | `crates/barracuda/src/pipeline/mod.rs` | Created |
-| T | `crates/barracuda/tests/gpu_resident_pipeline_tests.rs` | Created |
+### Multi-GPU DevicePool
+- [ ] Cross-device workload distribution
+- [ ] f64 Tensor type with unified precision across vendors
 
 ---
 
-## Future Work
+## Completed (All Sessions)
 
-From `DEEP_DEBT_STATUS.md` and `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md`:
+### Session 3 (Feb 18, 2026) ✅
+- [x] `NetworkDistributor::distribute_job` — least-loaded node selection, local fallback
+- [x] `LocalCapacityManager` — real sysinfo, live capacity tracking
+- [x] `ToadStoolSongbirdIntegration::submit_job` — full dispatch flow, all helpers wired
+- [x] `MassiveJobDistributor` dead-code — `select_algorithm`, `plan_distribution` wired
+- [x] f64 fossil functions — `abs_f64`, `sqrt_f64`, etc. → native WGSL builtins
+- [x] `F64BuiltinCapabilities` probe — per-GPU matrix, crash-isolated
+- [x] NAK SM70 latency tables — DFMA=8cy, FFMA=4cy, WAR/WAW per-category
+- [x] `for_driver_auto` comment-aware — exp/log replacement skips comment lines
+- [x] Service discovery — mDNS, config-file, HTTP registry all live
+- [x] Auth self-knowledge — `env!("CARGO_PKG_NAME")`, audience from config/env
+- [x] Health dashboard — WebSocket JS → /health polling
+- [x] `discover_beardog_at` / `discover_nestgate_at` — wrong defaults fixed (12 tests fixed)
 
-### Immediate (Can Start Now)
-- [ ] Benchmark: GPU vs CPU timing comparison (169 nuclei)
-- [ ] Integrate with hotSpring for validation
+### Session 2 (Feb 18, 2026) ✅
+- [x] Mutex poison recovery — `lock_cache` helper in `probe.rs`
+- [x] GPU sampler panic — `sampler_gpu.rs` expect → `ok_or_else`
+- [x] Auth audience hardcoding — `AuthManagerConfig::token_audience` + env var
+- [x] Songbird stub types — `NodeCapacityTracker`, `PerformanceMetrics`, `SongbirdFeedbackSender`, `BroadcastChannel`, `MessageTypeRegistry`, `SubscriptionManager` all stateful
+- [x] Unix socket health check — `probe_unix_socket` via tokio `UnixStream`
+- [x] PPPM GPU physics validated — Cooley-Tukey butterfly bug fixed, 3 tests pass
 
-### When Hardware Available
-- [ ] Multi-GPU DevicePool (Titan V)
-- [ ] f64 Tensor type with unified precision
+### Session 1 (Feb 18, 2026) ✅
+- [x] Warp-packed eigensolve (`@workgroup_size(32,1,1)`, 2.2x NVK speedup)
+- [x] `GpuDriverProfile`, `EigensolveStrategy`, `bench_wgsize_nvk.rs`
+- [x] `WgpuDevice::has_f64_shaders()`, SHADER_F64 feature request at creation
+- [x] AMD wave32 empirical finding — RDNA2 ACO targets wave32 for compute
+- [x] `bench_f64_builtins.rs` — per-GPU f64 capability survey binary
+- [x] `F64BuiltinCapabilities` struct and `probe_f64_builtins()` function
+- [x] WebSocket removed (tungstenite/ring C-FFI) — pure Rust JSON-RPC/tarpc
+- [x] `reqwest` removed from client — Unix JSON-RPC
+- [x] All files ≤ 1000 lines (smart refactor of 21 large files)
 
-### Infrastructure (Ongoing)
-- [x] VFIO NPU backend - eliminate C kernel module *(Pure Rust, 926 LOC, Feb 2026)*
-- [ ] NPU model pipeline - train/compile/deploy from Rust
-
-### Strandgate Vision
-- [ ] ResourceQuota - Per-task VRAM budget
-- [ ] ComputePartition - GPU fraction allocation
-- [ ] WorkloadRouter - Route to best device
-- [ ] MultiDevicePool - Heterogeneous GPU array
-
----
-
-## Recent Deep Debt (Feb 18 Complete)
-
-- [x] **Capability-Based Dispatch** — All hardcoded `div_ceil(256)` → `WORKGROUP_SIZE_1D` (19 files)
-- [x] **Test Concurrency Fix** — Removed `clear_global_contexts()` that broke parallel tests
-- [x] **Sync Tensor Creation** — Added `from_vec_on_sync()` to eliminate `block_on()` in async contexts
-- [x] **Unused Imports Cleanup** — Auto-fixed 8 warnings via `cargo fix`
-
-## Previous Deep Debt (Feb 17 Complete)
-
-- [x] **cudarc 0.11 → 0.19 Upgrade** — Real device queries, stream-based memory ops, modern kernel launch
-- [x] **Clippy Cleanup** — 44 warnings fixed (div_ceil, is_multiple_of, type alias for CellSortResult)
-- [x] **Unidirectional Pipeline** — Phases 0-4 (design, ring buffer, pipeline, throttler, benchmark)
-- [x] **Timeout Consolidation** — Centralized Duration constants across server/auth/cli
-- [x] **SIMD Runtime Detection** — std::arch::is_x86_feature_detected! for accurate capability
-- [x] **Production Mock Hardening** — Beardog/NeuroBench/GPU remote return real errors
-
----
-
-## Previous Absorption (Complete)
-
-From Feb 14-15 hotSpring handoffs:
-
-- [x] MD pipeline (Yukawa, thermostats, PPPM, observables)
-- [x] Math primitives (Hermite, Laguerre, Broyden, FD gradients)
-- [x] Science buffer limits (512 MiB storage, 1 GiB total)
-- [x] 47 new tests (unit, E2E, chaos, fault)
-- [x] All clippy warnings fixed
+### Previous Sessions (Feb 14-17, 2026) ✅
+- [x] GPU-Resident Pipeline complete (Phases 1-3)
+- [x] Unidirectional Pipeline complete (Phases 0-4)
+- [x] MD pipeline complete (thermostats + PPPM + observables)
+- [x] cudarc 0.11 → 0.19 upgrade
+- [x] Clippy -D warnings clean across workspace
+- [x] Three Springs validated: 313+ Rust checks
+- [x] f64 math library: 27+ transcendentals via WGSL
 
 ---
 
-*Unidirectional Pipeline Phases 0-4 complete. Deep debt principles enforced.*
-
-*From the ToadStool evolution desk*
+*From the ToadStool evolution desk — sovereign compute, pure Rust, any GPU.*
