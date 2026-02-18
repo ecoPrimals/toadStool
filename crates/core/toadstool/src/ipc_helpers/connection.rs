@@ -16,18 +16,22 @@ use super::framing;
 /// Request timeout for IPC operations (from config defaults)
 pub(crate) const IPC_TIMEOUT: Duration = timeouts::TCP_CONNECT_TIMEOUT;
 
-/// Get default Songbird socket path using biomeOS standard
-///
-/// biomeOS socket standard: /run/user/$UID/biomeos/songbird.sock
-pub fn get_default_songbird_socket() -> String {
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
+/// Get `$XDG_RUNTIME_DIR` or fall back to `/run/user/$UID`.
+fn get_runtime_dir() -> String {
+    std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
         if let Ok(uid) = uid_detector::get_user_id() {
             format!("/run/user/{}", uid)
         } else {
             String::from("/tmp/biomeos-runtime")
         }
-    });
-    format!("{}/biomeos/songbird.sock", runtime_dir)
+    })
+}
+
+/// Get default Songbird socket path using biomeOS standard.
+///
+/// biomeOS socket standard: `$XDG_RUNTIME_DIR/biomeos/songbird.sock`
+pub fn get_default_songbird_socket() -> String {
+    format!("{}/biomeos/songbird.sock", get_runtime_dir())
 }
 
 /// Register ToadStool with Songbird discovery service
@@ -47,14 +51,26 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
             ))
         })?;
 
+    let socket_endpoint = std::env::var("TOADSTOOL_SOCKET").unwrap_or_else(|_| {
+        // XDG-compliant biomeOS standard path: $XDG_RUNTIME_DIR/biomeos/toadstool.sock
+        let runtime_dir = get_runtime_dir();
+        format!("{}/biomeos/toadstool.sock", runtime_dir)
+    });
+
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
         "method": "ipc.register",
         "params": {
             "primal_name": "toadstool",
-            "capabilities": ["compute", "gpu", "wasm", "container"],
-            "endpoint": std::env::var("TOADSTOOL_SOCKET")
-                .unwrap_or_else(|_| String::from("/primal/toadstool"))
+            // biomeOS Node Atomic capabilities (node_atomic_compute.toml):
+            //   compute, workload, orchestration, ai_local
+            // Plus implementation-level capabilities advertised to consumers:
+            //   gpu, wasm, container
+            "capabilities": [
+                "compute", "workload", "orchestration", "ai_local",
+                "gpu", "wasm", "container"
+            ],
+            "endpoint": socket_endpoint
         },
         "id": 1
     });

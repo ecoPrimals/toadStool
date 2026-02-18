@@ -39,25 +39,46 @@ impl ManualJsonRpcServer {
         request: JsonRpcRequest,
     ) -> serde_json::Value {
         let capabilities = serde_json::json!({
-            "capabilities": [
+            // Semantic capabilities (biomeOS node_atomic_compute.toml)
+            "node_capabilities": [
+                "compute", "workload", "orchestration", "ai_local",
+                "gpu", "wasm", "container"
+            ],
+            // Concrete JSON-RPC methods on this socket
+            "methods": [
+                // Canonical toadstool.* namespace
                 "toadstool.health",
                 "toadstool.version",
                 "toadstool.query_capabilities",
                 "toadstool.resources.estimate",
                 "toadstool.resources.validate_availability",
                 "toadstool.resources.suggest_optimizations",
+                // biomeOS node_atomic_compute.toml aliases (no namespace prefix)
+                "resources.estimate",
+                "resources.validate_availability",
+                "resources.suggest_optimizations",
+                // compute.* (biomeOS canonical + GPU job queue)
+                "compute.health",
+                "compute.version",
+                "compute.capabilities",
                 "compute.discover_capabilities",
                 "compute.submit",
                 "compute.status",
                 "compute.result",
                 "compute.cancel",
                 "compute.list",
+                // ai.* (biomeOS ai_local capability)
+                "ai.local_inference",
+                "ai.local_execute",
+                // gpu.* (hardware info)
                 "gpu.info",
                 "gpu.memory",
+                // ollama.* (local LLM)
                 "ollama.list_models",
                 "ollama.inference",
                 "ollama.load",
                 "ollama.unload",
+                // gate.* (distributed routing)
                 "gate.update",
                 "gate.remove",
                 "gate.list",

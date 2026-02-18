@@ -134,6 +134,7 @@ impl ManualJsonRpcServer {
         }
 
         match request.method.as_str() {
+            // ── Canonical toadstool.* methods ────────────────────────────────
             "toadstool.health" => self.handle_health(request).await,
             "toadstool.version" => self.handle_version(request).await,
             "toadstool.query_capabilities" => self.handle_query_capabilities(request).await,
@@ -144,6 +145,26 @@ impl ManualJsonRpcServer {
             "toadstool.resources.suggest_optimizations" => {
                 self.handle_resources_suggest_optimizations(request).await
             }
+            // ── biomeOS Node Atomic aliases (node_atomic_compute.toml) ───────
+            // The biomeOS neural API translates capability calls before routing:
+            //   compute.estimate    → resources.estimate
+            //   compute.validate    → resources.validate_availability
+            //   compute.optimize    → resources.suggest_optimizations
+            //   ai.local_inference  → resources.estimate
+            //   ai.local_execute    → resources.validate_availability
+            "resources.estimate" | "ai.local_inference" => {
+                self.handle_resources_estimate(request).await
+            }
+            "resources.validate_availability" | "ai.local_execute" => {
+                self.handle_resources_validate_availability(request).await
+            }
+            "resources.suggest_optimizations" => {
+                self.handle_resources_suggest_optimizations(request).await
+            }
+            // ── compute.* methods ────────────────────────────────────────────
+            "compute.health" => self.handle_health(request).await,
+            "compute.version" => self.handle_version(request).await,
+            "compute.capabilities" => self.handle_query_capabilities(request).await,
             "compute.discover_capabilities" => self.handle_discover_capabilities(request).await,
             "compute.submit" => self.handle_compute_submit(request).await,
             "compute.status" => self.handle_compute_status(request).await,
