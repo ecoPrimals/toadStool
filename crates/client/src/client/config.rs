@@ -113,6 +113,7 @@ impl Default for ClientConfig {
 
 impl ClientConfig {
     /// Build an API URL with the given endpoint (zero-copy optimization)
+    #[cfg(test)]
     pub(crate) fn api_url(&self, endpoint: &str) -> String {
         format!("{}/api/v1/{}", self.base_url, endpoint)
     }

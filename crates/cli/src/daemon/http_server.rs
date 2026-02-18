@@ -287,14 +287,3 @@ impl From<anyhow::Error> for ApiError {
 }
 
 // ============================================================================
-// Non-daemon stub (when feature is disabled)
-// ============================================================================
-
-#[cfg(not(feature = "daemon"))]
-pub async fn start_http_server(
-    _port: u16,
-    _biomeos_client: Option<std::sync::Arc<()>>,
-    _workload_manager: std::sync::Arc<()>,
-) -> anyhow::Result<()> {
-    anyhow::bail!("Daemon mode requires the 'daemon' feature to be enabled")
-}

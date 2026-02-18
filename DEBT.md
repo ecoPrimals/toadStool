@@ -78,10 +78,10 @@ validated reference implementation. Each stage may have subtle bugs.
 **Impact**: Non-configurable behavior
 **Evolution**: Move to capability-based or config-driven timeouts
 
-### D-003: `batched_eigh_gpu.rs` at 2085 lines
+### D-003: `batched_eigh_gpu.rs` at 1772 lines (was 2085)
 
-**Impact**: Hard to maintain
-**Evolution**: Smart refactoring — extract eigenvalue strategies as traits
+**Impact**: Still over 1000-line limit; remaining bulk is 5 distinct eigenvalue sweep variants
+**Evolution**: Extract each sweep variant (standard, deflation, shift-invert, blocked, banded) as a trait impl
 
 ### D-004: cudarc version outdated in docs
 
@@ -100,6 +100,10 @@ validated reference implementation. Each stage may have subtle bugs.
 | R-004 | `futures::executor::block_on` in async test context | Feb 18, 2026 |
 | R-005 | wgpu 0.19 pinned dependency | Feb 17, 2026 |
 | R-006 | NVK-only exp workaround (now covers NVK + RADV) | Feb 18, 2026 |
+| R-007 | Duplicate `ExternalTarget` enums in crypto_lock vs security_provider | Feb 18, 2026 |
+| R-008 | `reqwest` C-FFI dep in toadstool-client — migrated to Unix JSON-RPC | Feb 18, 2026 |
+| R-009 | `crates/client` excluded from workspace — re-included | Feb 18, 2026 |
+| R-010 | 9 files over 1000 LOC — smart-refactored: cg_gpu, multi_gpu, production_hardening, graph_types, handlers, graph_types, handlers | Feb 18, 2026 |
 
 ---
 

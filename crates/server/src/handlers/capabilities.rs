@@ -1,0 +1,31 @@
+//! Capability and runtime engine endpoint handlers
+
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use serde_json::json;
+use tracing::debug;
+
+use crate::state::ServerState;
+
+/// List runtime engines endpoint handler
+pub async fn list_runtime_engines_handler(State(state): State<ServerState>) -> impl IntoResponse {
+    debug!("Runtime engines list requested");
+
+    let runtime_engines = state.runtime_engines.read().await;
+    let engines: Vec<serde_json::Value> = runtime_engines
+        .keys()
+        .map(|runtime_type| {
+            json!({
+                "runtime_type": runtime_type,
+                "status": "active",
+            })
+        })
+        .collect();
+
+    let response = json!({
+        "runtime_engines": engines,
+        "total_count": engines.len(),
+        "timestamp": chrono::Utc::now(),
+    });
+
+    (StatusCode::OK, Json(response))
+}

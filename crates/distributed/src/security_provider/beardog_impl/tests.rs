@@ -133,7 +133,8 @@ mod tests {
             requester_id: "test-user".to_string(),
             target: ExternalTarget::ExternalTool {
                 tool_name: "test-tool".to_string(),
-                endpoints: vec!["https://test.example.com".to_string()],
+                api_endpoints: vec!["https://test.example.com".to_string()],
+                feature_set: vec![],
             },
             scope: PermissionScope {
                 operations: vec!["read".to_string(), "write".to_string()],

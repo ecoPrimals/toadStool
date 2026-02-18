@@ -1,13 +1,5 @@
-[workspace]
-# EXCLUDED from parent workspace — DEEP DEBT: reqwest removal needed
-#
-# This crate still contains reqwest code (C dependency via ring/openssl).
-# Evolution path:
-# 1. Replace reqwest with biomeOS tower (Songbird for TLS, Beardog for crypto)
-# 2. Use JSON-RPC 2.0 over Unix sockets (local) or TCP (remote)
-# 3. Re-enable in workspace after migration complete
-#
-# See: crates/core/common/src/unix_jsonrpc_client.rs for pattern
+# Re-enabled in parent workspace: reqwest removed, Unix JSON-RPC only.
+# See: crates/core/common/src/unix_jsonrpc_client.rs
 
 [package]
 name = "toadstool-client"

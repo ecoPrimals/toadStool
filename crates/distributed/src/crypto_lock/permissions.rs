@@ -29,46 +29,8 @@ pub struct SecurityProviderPermission {
     pub metadata: PermissionMetadata,
 }
 
-/// External targets that require crypto permissions
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum ExternalTarget {
-    /// Cloud provider APIs
-    CloudProvider {
-        provider: CloudProvider,
-        regions: Vec<String>,
-        services: Vec<String>,
-    },
-    /// Container orchestration platforms
-    ContainerPlatform {
-        platform: ContainerPlatform,
-        clusters: Vec<String>,
-        namespaces: Vec<String>,
-    },
-    /// External tools and services
-    ExternalTool {
-        tool_name: String,
-        api_endpoints: Vec<String>,
-        feature_set: Vec<String>,
-    },
-    /// Quantum computing platforms
-    QuantumProvider {
-        provider: QuantumProvider,
-        backends: Vec<String>,
-        qubit_limits: Option<u32>,
-    },
-    /// HPC and supercomputing clusters
-    HPCCluster {
-        cluster_name: String,
-        scheduler: HPCScheduler,
-        partitions: Vec<String>,
-    },
-    /// Enterprise and commercial services
-    EnterpriseService {
-        service_name: String,
-        tier: ServiceTier,
-        features: Vec<String>,
-    },
-}
+/// Re-export ExternalTarget from security_provider for backward compatibility
+pub use crate::security_provider::types::ExternalTarget;
 
 /// Permission holder identification
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -231,59 +193,7 @@ pub struct PermissionStatus {
     pub is_delegated: bool,
 }
 
-// Cloud providers and external services enums
-
-/// Cloud provider types
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum CloudProvider {
-    AWS,
-    Azure,
-    GCP,
-    DigitalOcean,
-    Linode,
-    Vultr,
-    Hetzner,
-    OVH,
-    Scaleway,
-}
-
-/// Container platform types
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum ContainerPlatform {
-    Docker,
-    Kubernetes,
-    Nomad,
-    OpenShift,
-    DockerSwarm,
-    Podman,
-}
-
-/// Quantum provider types
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum QuantumProvider {
-    IBM,
-    Google,
-    IonQ,
-    Rigetti,
-    AWSBraket,
-    AzureQuantum,
-}
-
-/// HPC scheduler types
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum HPCScheduler {
-    SLURM,
-    PBS,
-    SGE,
-    LSF,
-    Custom,
-}
-
-/// Service tier types
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum ServiceTier {
-    Basic,
-    Professional,
-    Enterprise,
-    Premium,
-}
+// Cloud providers and external services - re-export from security_provider
+pub use crate::security_provider::types::{
+    CloudProvider, ContainerPlatform, HPCScheduler, QuantumProvider, ServiceTier,
+};

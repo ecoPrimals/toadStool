@@ -1,7 +1,11 @@
 //! Domain-specific JSON-RPC method handlers for ManualJsonRpcServer.
 //!
 //! Separated from the core server module for code size compliance (1000-line max).
-//! These handlers implement the compute.*, gpu.*, ollama.*, gate.*, and resources.* domains.
+//! These handlers implement toadstool.*, compute.*, gpu.*, ollama.*, gate.*, and resources.* domains.
+
+use std::sync::atomic::Ordering;
+#[allow(deprecated)]
+use toadstool_common::interned_strings::primals;
 
 use serde_json::Value;
 
@@ -9,8 +13,75 @@ use super::cross_gate::GateGpuInfo;
 use super::gpu_job_queue::{query_gpu_devices, query_gpu_memory, JobType};
 use super::graph_types::ExecutionGraph;
 use super::manual_jsonrpc::{
-    JsonRpcRequest, ManualJsonRpcServer, INTERNAL_ERROR, INVALID_PARAMS, SERIALIZATION_FAILED,
+    JsonRpcRequest, JsonRpcResponse, ManualJsonRpcServer, INTERNAL_ERROR, INVALID_PARAMS,
+    JSONRPC_VERSION, SERIALIZATION_FAILED,
 };
+
+/// Core toadstool handlers (toadstool.*)
+impl ManualJsonRpcServer {
+    /// Handle health check
+    #[allow(deprecated)]
+    pub(crate) async fn handle_health(&self, request: JsonRpcRequest) -> Value {
+        self.success_response(
+            serde_json::json!({
+                "healthy": true,
+                "service": primals::TOADSTOOL,
+                "version": self.version,
+                "error_count": self.error_count.load(Ordering::Relaxed),
+                "uptime_secs": self.start_time.elapsed().as_secs(),
+            }),
+            &request,
+        )
+    }
+
+    /// Handle version query
+    pub(crate) async fn handle_version(&self, request: JsonRpcRequest) -> Value {
+        self.success_response(
+            serde_json::json!({"version": self.version, "protocol": "json-rpc-2.0"}),
+            &request,
+        )
+    }
+
+    /// Handle discover_capabilities - returns all available methods
+    #[allow(deprecated)]
+    pub(crate) async fn handle_discover_capabilities(&self, request: JsonRpcRequest) -> Value {
+        let capabilities = serde_json::json!({
+            "capabilities": [
+                "toadstool.health",
+                "toadstool.version",
+                "toadstool.query_capabilities",
+                "toadstool.resources.estimate",
+                "toadstool.resources.validate_availability",
+                "toadstool.resources.suggest_optimizations",
+                "compute.discover_capabilities",
+                "compute.submit",
+                "compute.status",
+                "compute.result",
+                "compute.cancel",
+                "compute.list",
+                "gpu.info",
+                "gpu.memory",
+                "ollama.list_models",
+                "ollama.inference",
+                "ollama.load",
+                "ollama.unload",
+                "gate.update",
+                "gate.remove",
+                "gate.list",
+                "gate.route"
+            ],
+            "version": self.version,
+            "primal": primals::TOADSTOOL
+        });
+
+        serde_json::to_value(JsonRpcResponse {
+            jsonrpc: JSONRPC_VERSION.clone(),
+            result: capabilities,
+            id: request.id,
+        })
+        .unwrap_or_else(|_| serde_json::json!({"error": SERIALIZATION_FAILED}))
+    }
+}
 
 /// Compute domain handlers (compute.*)
 impl ManualJsonRpcServer {

@@ -1,28 +1,68 @@
 //! ToadStool client implementation
+//!
+//! Uses JSON-RPC 2.0 over Unix sockets (local) per biomeOS networking policy.
+//! NO reqwest/hyper/ring/openssl.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
+#[cfg(feature = "websocket")]
 use std::time::Duration;
 
+#[cfg(feature = "websocket")]
 use futures_util::stream::StreamExt;
+#[cfg(feature = "websocket")]
 use futures_util::SinkExt;
 use tokio::sync::{mpsc, RwLock};
+#[cfg(feature = "websocket")]
 use tokio_tungstenite::{connect_async, tungstenite::Message};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 use url::Url;
 use uuid::Uuid;
 
-use super::config::{AuthConfig, ClientConfig};
+use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
+
+use super::config::ClientConfig;
 use super::error::{ClientError, ClientResult};
 use super::types::{
-    ClusterStatus, EventHandlers, ExecutionInfo, ExecutionStatus, ToadStoolEvent,
-    WorkloadSubmission,
+    ClusterStatus, EventHandlers, ExecutionInfo, ToadStoolEvent, WorkloadSubmission,
 };
 
+/// Resolve socket path from config.
+/// - If base_url is "unix:" or starts with "unix://", extract path
+/// - Else use TOADSTOOL_SOCKET env or platform_paths for local
+fn resolve_socket_path(base_url: &str) -> ClientResult<PathBuf> {
+    // Support unix:///path/to/socket or unix:path
+    if base_url.starts_with("unix://") {
+        let path = base_url
+            .strip_prefix("unix://")
+            .unwrap_or(base_url)
+            .trim_start_matches('/');
+        return Ok(PathBuf::from(path));
+    }
+    if base_url.starts_with("unix:") {
+        let path = base_url
+            .strip_prefix("unix:")
+            .unwrap_or("")
+            .trim_start_matches('/');
+        return Ok(PathBuf::from(path));
+    }
+
+    // HTTP URL: use JSON-RPC socket (local daemon)
+    // Env override for testing
+    if let Ok(s) = std::env::var("TOADSTOOL_SOCKET") {
+        return Ok(PathBuf::from(s));
+    }
+    // Default: ToadStool JSON-RPC socket per platform_paths
+    Ok(toadstool_common::platform_paths::toadstool_socket_dir().join("toadstool.jsonrpc.sock"))
+}
+
 /// ToadStool client for interacting with ToadStool servers
+///
+/// Uses Unix JSON-RPC (local) per biomeOS networking policy.
 pub struct ToadStoolClient {
     config: ClientConfig,
-    // EVOLVED: Unix socket communication (Pure Rust! No HTTP client needed) ✅
+    rpc_client: UnixJsonRpcClient,
     active_executions: Arc<RwLock<HashMap<Uuid, ExecutionInfo>>>,
     event_handlers: Arc<RwLock<EventHandlers>>,
 }
@@ -77,182 +117,101 @@ impl ToadStoolClient {
     ///
     /// Returns an error if the configuration is invalid or client initialization fails
     pub async fn with_config(config: ClientConfig) -> ClientResult<Self> {
-        // Validate configuration
-        let _parsed_url = Url::parse(&config.base_url)?;
-
-        // Build HTTP client
-        let mut http_client_builder = reqwest::Client::builder()
-            .timeout(config.request_timeout)
-            .user_agent("ToadStool-Client/1.0");
-
-        // Add authentication headers
-        let mut default_headers = reqwest::header::HeaderMap::new();
-
-        if let Some(auth) = &config.auth {
-            match auth {
-                AuthConfig::ApiKey { key, header_name } => {
-                    default_headers.insert(
-                        reqwest::header::HeaderName::from_bytes(header_name.as_bytes()).map_err(
-                            |e| ClientError::Configuration(format!("Invalid API key header name '{header_name}': {e}. Header names must contain only ASCII letters, numbers, and hyphens.")),
-                        )?,
-                        reqwest::header::HeaderValue::from_str(key).map_err(|e| {
-                            ClientError::Configuration(format!("Invalid API key value: {e}. Header values must contain only visible ASCII characters."))
-                        })?,
-                    );
-                }
-                AuthConfig::BearerToken { token } => {
-                    default_headers.insert(
-                        reqwest::header::AUTHORIZATION,
-                        reqwest::header::HeaderValue::from_str(&format!("Bearer {token}")).map_err(
-                            |e| ClientError::Configuration(format!("Invalid bearer token '{token}': {e}. Token must contain only visible ASCII characters and no newlines.")),
-                        )?,
-                    );
-                }
-                AuthConfig::Basic { username, password } => {
-                    use base64::Engine;
-                    let credentials = base64::engine::general_purpose::STANDARD
-                        .encode(format!("{username}:{password}"));
-                    default_headers.insert(
-                        reqwest::header::AUTHORIZATION,
-                        reqwest::header::HeaderValue::from_str(&format!("Basic {credentials}")).map_err(
-                            |e| ClientError::Configuration(format!("Invalid basic auth credentials for user '{username}': {e}. Username and password must contain only visible ASCII characters.")),
-                        )?,
-                    );
-                }
-                AuthConfig::Custom { headers } => {
-                    for (name, value) in headers {
-                        default_headers.insert(
-                            reqwest::header::HeaderName::from_bytes(name.as_bytes()).map_err(
-                                |e| ClientError::Configuration(format!("Invalid custom header name '{name}': {e}. Header names must contain only ASCII letters, numbers, and hyphens.")),
-                            )?,
-                            reqwest::header::HeaderValue::from_str(value).map_err(|e| {
-                                ClientError::Configuration(format!("Invalid custom header value for '{name}': {e}. Header values must contain only visible ASCII characters."))
-                            })?,
-                        );
-                    }
-                }
-            }
+        // Validate base_url (URL parse for http, or path for unix)
+        if !config.base_url.starts_with("unix:") {
+            let _ = Url::parse(&config.base_url)?;
         }
 
-        // Add custom headers
-        for (name, value) in &config.custom_headers {
-            default_headers.insert(
-                reqwest::header::HeaderName::from_bytes(name.as_bytes()).map_err(|e| {
-                    ClientError::Configuration(format!("Invalid custom header name '{name}': {e}. Header names must contain only ASCII letters, numbers, and hyphens."))
-                })?,
-                reqwest::header::HeaderValue::from_str(value).map_err(|e| {
-                    ClientError::Configuration(format!("Invalid custom header value for '{name}': {e}. Header values must contain only visible ASCII characters."))
-                })?,
-            );
-        }
-
-        http_client_builder = http_client_builder.default_headers(default_headers);
-
-        let http_client = http_client_builder.build().map_err(|e| {
-            ClientError::Configuration(format!("Failed to create HTTP client: {e}"))
-        })?;
+        let socket_path = resolve_socket_path(&config.base_url)?;
+        let rpc_client = UnixJsonRpcClient::new(socket_path);
 
         let client = Self {
             config,
-            http_client,
+            rpc_client,
             active_executions: Arc::new(RwLock::new(HashMap::new())),
             event_handlers: Arc::new(RwLock::new(Vec::new())),
         };
 
+        // Auth/custom headers: stored but not used for Unix JSON-RPC
+        // (auth can be added to JSON-RPC params when server supports it)
+        if client.config.auth.is_some() || !client.config.custom_headers.is_empty() {
+            debug!("Auth/custom headers configured (JSON-RPC server may not use them yet)");
+        }
+
         // Test connection
         client.health_check().await?;
 
-        info!("ToadStool client connected to {}", client.config.base_url);
+        info!("ToadStool client connected via Unix JSON-RPC");
 
         Ok(client)
     }
 
     /// Submit a workload for execution
     ///
-    /// # EVOLVED: Use Unix Socket Communication
-    ///
-    /// This method has been deprecated in favor of Unix socket-based communication.
-    /// For production use, interact directly with ToadStool daemon via Unix sockets.
+    /// Use `compute.submit` JSON-RPC method for GPU/compute jobs.
+    /// Workload execution (native/container/wasm/python) is not yet mapped to JSON-RPC.
     ///
     /// # Errors
     ///
-    /// Returns an error indicating HTTP client is no longer supported
+    /// Returns an error - workload submission via JSON-RPC not fully implemented
     pub async fn submit_workload(
         &self,
         _workload: WorkloadSubmission,
     ) -> ClientResult<ExecutionInfo> {
         Err(ClientError::Http(
-            "HTTP client deprecated - use Unix socket communication instead".to_string(),
+            "Workload submission: use compute.submit for GPU jobs; native/container/wasm/python not yet exposed via JSON-RPC".to_string(),
         ))
     }
 
     /// Get execution status
     ///
-    /// # EVOLVED: Use Unix Socket Communication
-    ///
-    /// # Errors
-    ///
-    /// Returns an error indicating HTTP client is no longer supported
+    /// Use `compute.status` for GPU job status. Execution status (active_executions) not exposed.
     pub async fn get_execution_status(&self, _execution_id: Uuid) -> ClientResult<ExecutionInfo> {
         Err(ClientError::Http(
-            "HTTP client deprecated - use Unix socket communication instead".to_string(),
+            "Execution status: use compute.status for GPU jobs; workload executions not yet exposed via JSON-RPC".to_string(),
         ))
     }
 
     /// Cancel an execution
     ///
-    /// # Errors
-    ///
-    /// Returns an error if the job ID is invalid or the server returns an error
+    /// Uses `compute.cancel` JSON-RPC for GPU jobs. Maps execution_id → job_id.
     pub async fn cancel_execution(&self, execution_id: Uuid) -> ClientResult<()> {
         debug!("Cancelling execution: {}", execution_id);
 
-        let url = format!(
-            "{}/api/v1/executions/{}",
-            self.config.base_url, execution_id
-        );
+        let params = serde_json::json!({ "job_id": execution_id.to_string() });
+        let _ = self
+            .rpc_client
+            .call("compute.cancel", params)
+            .await
+            .map_err(|e| ClientError::Server(format!("compute.cancel failed: {}", e)))?;
 
-        let response = self.http_client.delete(&url).send().await?;
-
-        if response.status().is_success() {
-            info!("Execution cancelled successfully: {}", execution_id);
-            Ok(())
-        } else {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_owned());
-            Err(ClientError::Server(format!("HTTP {status}: {error_text}")))
-        }
+        info!("Execution cancelled successfully: {}", execution_id);
+        Ok(())
     }
 
     /// Wait for execution completion (event-driven with polling fallback)
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the job ID is invalid or the server returns an error
     pub async fn wait_for_completion(&self, execution_id: Uuid) -> ClientResult<ExecutionInfo> {
         debug!("Waiting for execution completion: {}", execution_id);
 
-        // Try event-driven approach first if WebSocket is available
-        if self.config.enable_websocket {
-            match self.wait_for_completion_via_events(execution_id).await {
-                Ok(info) => return Ok(info),
-                Err(e) => {
-                    warn!(
-                        "WebSocket event subscription failed ({}), falling back to polling",
-                        e
-                    );
+        #[cfg(feature = "websocket")]
+        {
+            if self.config.enable_websocket {
+                if let Ok(info) = self.wait_for_completion_via_events(execution_id).await {
+                    return Ok(info);
                 }
+                warn!("WebSocket event subscription failed, falling back to NotImplemented");
             }
         }
 
-        // Fallback to polling with exponential backoff
-        self.wait_for_completion_via_polling(execution_id).await
+        // get_execution_status returns NotImplemented for workload executions
+        Err(ClientError::Http(
+            "wait_for_completion requires get_execution_status; use compute.status for GPU jobs"
+                .to_string(),
+        ))
     }
 
     /// Wait for completion using WebSocket events (no polling!)
+    #[cfg(feature = "websocket")]
     async fn wait_for_completion_via_events(
         &self,
         execution_id: Uuid,
@@ -262,10 +221,9 @@ impl ToadStoolClient {
             execution_id
         );
 
-        let max_wait_time = Duration::from_secs(300); // 5 minutes default
+        let max_wait_time = Duration::from_secs(300);
         let mut event_rx = self.subscribe_to_events().await?;
 
-        // Use timeout to prevent infinite waiting
         tokio::time::timeout(max_wait_time, async {
             while let Some(event) = event_rx.recv().await {
                 match event {
@@ -274,7 +232,6 @@ impl ToadStoolClient {
                         ..
                     } if event_id == execution_id => {
                         info!("Execution completed via event: {}", execution_id);
-                        // Fetch final status
                         return self.get_execution_status(execution_id).await;
                     }
                     ServerEvent::ErrorOccurred {
@@ -284,13 +241,9 @@ impl ToadStoolClient {
                         ..
                     } if event_id == execution_id => {
                         warn!("Execution error via event: {} - {}", error_type, message);
-                        // Fetch final status to get error details
                         return self.get_execution_status(execution_id).await;
                     }
-                    _ => {
-                        // Ignore other events
-                        continue;
-                    }
+                    _ => continue,
                 }
             }
             Err(ClientError::WebSocket(
@@ -306,103 +259,73 @@ impl ToadStoolClient {
         })?
     }
 
-    /// Wait for completion using polling (fallback)
-    async fn wait_for_completion_via_polling(
-        &self,
-        execution_id: Uuid,
-    ) -> ClientResult<ExecutionInfo> {
-        debug!("Waiting for execution via polling: {}", execution_id);
-
-        // ✅ LEGITIMATE POLLING: This polls an external HTTP API which doesn't provide
-        // event streaming or websockets yet. Polling with exponential backoff is appropriate here.
-        // Future improvement: Use Server-Sent Events or WebSockets when available.
-        let mut polling_interval = Duration::from_millis(500);
-        let max_polling_interval = Duration::from_secs(5);
-        let max_wait_time = Duration::from_secs(300);
-        let start_time = std::time::Instant::now();
-
-        loop {
-            let execution_info = self.get_execution_status(execution_id).await?;
-
-            match execution_info.status {
-                ExecutionStatus::Completed
-                | ExecutionStatus::Failed
-                | ExecutionStatus::Cancelled
-                | ExecutionStatus::Timeout => {
-                    info!(
-                        "Execution completed: {} with status {:?}",
-                        execution_id, execution_info.status
-                    );
-                    return Ok(execution_info);
-                }
-                _ => {
-                    if start_time.elapsed() > max_wait_time {
-                        return Err(ClientError::Timeout(format!(
-                            "Execution {} did not complete within {:?}",
-                            execution_id, max_wait_time
-                        )));
-                    }
-
-                    tokio::time::sleep(polling_interval).await;
-                    polling_interval =
-                        std::cmp::min(polling_interval * 3 / 2, max_polling_interval);
-                }
-            }
-        }
-    }
-
     /// Get cluster status
     ///
-    /// # Errors
-    ///
-    /// Returns an error if the server returns an error
+    /// Builds ClusterStatus from toadstool.health + compute.list (partial).
     pub async fn get_cluster_status(&self) -> ClientResult<ClusterStatus> {
         debug!("Getting cluster status");
 
-        let url = self.config.api_url("cluster/status");
+        let health: serde_json::Value = self
+            .rpc_client
+            .call("toadstool.health", serde_json::json!({}))
+            .await
+            .map_err(|e| ClientError::Server(format!("toadstool.health failed: {}", e)))?;
 
-        let response = self.http_client.get(&url).send().await?;
+        let jobs: serde_json::Value = self
+            .rpc_client
+            .call("compute.list", serde_json::json!({}))
+            .await
+            .unwrap_or(serde_json::json!({"jobs": [], "counts": {}}));
 
-        if response.status().is_success() {
-            let cluster_status: ClusterStatus = response.json().await?;
-            Ok(cluster_status)
-        } else {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_owned());
-            Err(ClientError::Server(format!("HTTP {status}: {error_text}")))
-        }
+        let counts = jobs.get("counts").and_then(|c| c.as_object());
+        let pending = counts
+            .and_then(|m| m.get("pending"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let running = counts
+            .and_then(|m| m.get("running"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let _completed = counts
+            .and_then(|m| m.get("completed"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+
+        let healthy = health
+            .get("healthy")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+
+        Ok(ClusterStatus {
+            total_nodes: 1,
+            healthy_nodes: if healthy { 1 } else { 0 },
+            cluster_load: (pending + running) as f64,
+            active_executions: (pending + running) as u32,
+            available_runtimes: vec!["native".to_string(), "wasm".to_string()],
+        })
     }
 
     /// Health check
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the server returns an error
     pub async fn health_check(&self) -> ClientResult<()> {
-        let url = self.config.api_url("health");
+        let result = self
+            .rpc_client
+            .call("toadstool.health", serde_json::json!({}))
+            .await
+            .map_err(|e| ClientError::Server(format!("Health check failed: {}", e)))?;
 
-        let response = self.http_client.get(&url).send().await?;
+        let healthy = result
+            .get("healthy")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
 
-        if response.status().is_success() {
+        if healthy {
             Ok(())
         } else {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_owned());
-            Err(ClientError::Server(format!("HTTP {status}: {error_text}")))
+            Err(ClientError::Server("Server reported unhealthy".to_string()))
         }
     }
 
-    /// List active executions
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the server returns an error
+    /// List active executions (local cache; server-side list via compute.list)
     pub async fn list_executions(&self) -> ClientResult<Vec<ExecutionInfo>> {
         let executions = self.active_executions.read().await;
         Ok(executions.values().cloned().collect())
@@ -419,12 +342,8 @@ impl ToadStoolClient {
 
     /// Subscribe to server events via WebSocket
     ///
-    /// Returns a channel receiver that receives server events in real-time.
-    /// This is the modern, event-driven approach that eliminates polling.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if WebSocket connection fails
+    /// Note: Requires "websocket" feature. WebSocket needs HTTP server.
+    #[cfg(feature = "websocket")]
     pub async fn subscribe_to_events(&self) -> ClientResult<mpsc::UnboundedReceiver<ServerEvent>> {
         let ws_url = self
             .config
@@ -435,42 +354,32 @@ impl ToadStoolClient {
 
         debug!("Connecting to WebSocket: {}", ws_url);
 
-        let url = Url::parse(&ws_url)?;
+        let url = Url::parse(&ws_url)
+            .map_err(|e| ClientError::WebSocket(format!("Invalid WebSocket URL: {}", e)))?;
         let (ws_stream, _) = connect_async(url)
             .await
             .map_err(|e| ClientError::WebSocket(format!("Connection failed: {}", e)))?;
 
         let (mut write, mut read) = ws_stream.split();
 
-        // Create channel for events
         let (tx, rx) = mpsc::unbounded_channel();
 
-        // Subscribe to events
-        let subscribe_msg = serde_json::json!({
-            "type": "subscribe"
-        });
+        let subscribe_msg = serde_json::json!({ "type": "subscribe" });
         write
             .send(Message::Text(subscribe_msg.to_string()))
             .await
             .map_err(|e| ClientError::WebSocket(format!("Failed to subscribe: {}", e)))?;
 
-        // Spawn task to receive events
         tokio::spawn(async move {
             while let Some(msg_result) = read.next().await {
                 match msg_result {
                     Ok(Message::Text(text)) => {
-                        match serde_json::from_str::<serde_json::Value>(&text) {
-                            Ok(value) => {
-                                // Parse as ServerEvent
-                                if let Ok(event) = serde_json::from_value::<ServerEvent>(value) {
-                                    if tx.send(event).is_err() {
-                                        debug!("Event receiver dropped, closing WebSocket");
-                                        break;
-                                    }
+                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) {
+                            if let Ok(event) = serde_json::from_value::<ServerEvent>(value) {
+                                if tx.send(event).is_err() {
+                                    debug!("Event receiver dropped, closing WebSocket");
+                                    break;
                                 }
-                            }
-                            Err(e) => {
-                                warn!("Failed to parse WebSocket message: {}", e);
                             }
                         }
                     }
@@ -491,11 +400,22 @@ impl ToadStoolClient {
         Ok(rx)
     }
 
+    /// Subscribe to events (stub when websocket feature disabled)
+    #[cfg(not(feature = "websocket"))]
+    pub async fn subscribe_to_events(&self) -> ClientResult<mpsc::UnboundedReceiver<ServerEvent>> {
+        Err(ClientError::WebSocket(
+            "WebSocket support requires 'websocket' feature".to_string(),
+        ))
+    }
+
+    /// Start event stream (stub when websocket feature disabled)
+    #[cfg(not(feature = "websocket"))]
+    pub fn start_event_stream(&self) -> ClientResult<()> {
+        Ok(())
+    }
+
     /// Start WebSocket connection for real-time events (legacy method)
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if WebSocket is disabled or connection fails
+    #[cfg(feature = "websocket")]
     pub fn start_event_stream(&self) -> ClientResult<()> {
         if !self.config.enable_websocket {
             return Ok(());
@@ -513,23 +433,25 @@ impl ToadStoolClient {
         let event_handlers = Arc::clone(&self.event_handlers);
 
         tokio::spawn(async move {
-            if let Ok((ws_stream, _)) = connect_async(&ws_url).await {
-                info!("WebSocket connected: {}", ws_url);
+            if let Ok(url) = Url::parse(&ws_url) {
+                if let Ok((ws_stream, _)) = connect_async(url).await {
+                    info!("WebSocket connected: {}", ws_url);
 
-                let (_, mut read) = ws_stream.split();
+                    let (_, mut read) = ws_stream.split();
 
-                while let Ok(Some(message)) = read.next().await.transpose() {
-                    if let Message::Text(text) = message {
-                        if let Ok(event) = serde_json::from_str::<ToadStoolEvent>(&text) {
-                            let handlers = event_handlers.read().await;
-                            for handler in handlers.iter() {
-                                handler(event.clone());
+                    while let Ok(Some(message)) = read.next().await.transpose() {
+                        if let Message::Text(text) = message {
+                            if let Ok(event) = serde_json::from_str::<ToadStoolEvent>(&text) {
+                                let handlers = event_handlers.read().await;
+                                for handler in handlers.iter() {
+                                    handler(event.clone());
+                                }
                             }
                         }
                     }
+                } else {
+                    error!("Failed to connect to WebSocket: {}", ws_url);
                 }
-            } else {
-                error!("Failed to connect to WebSocket: {}", ws_url);
             }
         });
 

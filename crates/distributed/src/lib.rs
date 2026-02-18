@@ -102,7 +102,7 @@ pub use universal::substrate::{
 // Re-export existing modules with specific types
 pub use cloud::{AWSCredentials, AzureCredentials, CloudProvider, GCPCredentials};
 pub use crypto_lock::{
-    AccessPolicies, CryptoValidator, DelegationValidator, ExternalTarget, PermissionHolder,
+    AccessPolicies, CryptoValidator, DelegationValidator, PermissionHolder,
     PermissionRevocationList, SecurityPermissionValidator, SecurityProviderPermission,
     ToadStoolCryptoLock,
 };
@@ -110,6 +110,7 @@ pub use primal_capabilities::{
     Capability, CapabilityProvider, CapabilityRegistry, PrimalAdapter, SongbirdAdapter,
     WorkloadExecutor, WorkloadRequest, WorkloadResponse,
 };
+pub use security_provider::ExternalTarget;
 
 // Re-export deprecated songbird types for backward compatibility
 #[allow(deprecated)]

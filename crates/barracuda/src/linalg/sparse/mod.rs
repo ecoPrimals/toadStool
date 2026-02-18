@@ -61,5 +61,7 @@ pub mod solvers;
 pub use bicgstab_gpu::{BiCgStabGpu, BiCgStabGpuResult};
 pub use cg_gpu::{CgGpu, CgGpuResult};
 pub use csr::{CooMatrix, CsrMatrix};
-pub use gpu_helpers::{SparseBindGroupLayouts, SparseBuffers, SparsePipelines};
+pub use gpu_helpers::{
+    cg_dispatch_pass, CgPipelineSet, SparseBindGroupLayouts, SparseBuffers, SparsePipelines,
+};
 pub use solvers::{bicgstab_solve, cg_solve, jacobi_solve, SolverConfig, SolverResult};

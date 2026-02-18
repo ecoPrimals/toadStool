@@ -1088,4 +1088,48 @@ mod tests {
         assert_eq!(DiscoveryMethod::Auto, DiscoveryMethod::Auto);
         assert_ne!(DiscoveryMethod::Auto, DiscoveryMethod::Mdns);
     }
+
+    // ---- Error path coverage: ServiceEndpoint::from_url_string ----
+
+    #[tokio::test]
+    async fn test_service_endpoint_from_url_no_protocol_separator() {
+        // "noprotocol" splits on "://" to single element - fails
+        let result = ServiceEndpoint::from_url_string("noprotocol");
+        assert!(result.is_err());
+    }
+
+    // ---- find_service_by_capability: no services error path ----
+
+    #[tokio::test]
+    async fn test_find_service_by_capability_no_services_returns_error() {
+        use crate::primal_identity::CoordinationCapability;
+        // Use Mdns which returns empty - no services to find
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Mdns).await.unwrap();
+        let cap = Capability::Coordination(CoordinationCapability::ServiceDiscovery);
+        let result = discovery.find_service_by_capability(cap).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("No services found") || msg.contains("NoServiceFound"));
+    }
+
+    // ---- DiscoveredService Debug/Clone ----
+
+    #[test]
+    fn test_discovered_service_debug() {
+        let service = DiscoveredService {
+            id: "dbg-id".to_string(),
+            name: "dbg-service".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![],
+            metadata: HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        };
+        let dbg = format!("{:?}", service);
+        assert!(dbg.contains("dbg-id"));
+        assert!(dbg.contains("dbg-service"));
+    }
 }

@@ -51,11 +51,8 @@ impl From<ClientError> for ToadStoolError {
     fn from(error: ClientError) -> Self {
         match error {
             ClientError::Http(e) => ToadStoolError::Network(NetworkError::ConnectionFailed {
-                endpoint: format!(
-                    "HTTP request: {}",
-                    e.url().map(|u| u.as_str()).unwrap_or("unknown")
-                ),
-                reason: e.to_string(),
+                endpoint: "json-rpc".to_string(),
+                reason: e,
             }),
             ClientError::WebSocket(msg) => {
                 ToadStoolError::Network(NetworkError::ConnectionFailed {
@@ -86,6 +83,10 @@ impl From<ClientError> for ToadStoolError {
                     reason: format!("Invalid URL: {}", e),
                 })
             }
+            ClientError::Io(e) => ToadStoolError::Network(NetworkError::ConnectionFailed {
+                endpoint: "unix-socket".to_string(),
+                reason: e.to_string(),
+            }),
         }
     }
 }

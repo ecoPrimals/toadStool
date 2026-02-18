@@ -1094,4 +1094,61 @@ mod tests {
         let s = path.to_string_lossy();
         assert!(s.contains("nucleus") || s.contains("biomeos"));
     }
+
+    // ---- SocketDiscoveryError display ----
+
+    #[test]
+    fn test_socket_discovery_error_display() {
+        let err = SocketDiscoveryError::DiscoveryFailed("test failure".to_string());
+        let msg = err.to_string();
+        assert!(msg.contains("Discovery") || msg.contains("failed"));
+
+        let err2 = SocketDiscoveryError::NoSocketFound("Capability::Crypto".to_string());
+        let msg2 = err2.to_string();
+        assert!(msg2.contains("socket") || msg2.contains("Crypto"));
+
+        let err3 = SocketDiscoveryError::InvalidEndpoint("bad path".to_string());
+        let msg3 = err3.to_string();
+        assert!(msg3.contains("Invalid") || msg3.contains("bad path"));
+    }
+
+    // ---- ensure_biomeos_dir ----
+
+    #[test]
+    fn test_ensure_biomeos_dir_creates_dir() {
+        let result = ensure_biomeos_dir();
+        assert!(result.is_ok());
+        let path = result.unwrap();
+        assert!(path.to_string_lossy().contains("biomeos"));
+    }
+
+    // ---- get_socket_path_for_service with unknown service and env override ----
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_get_socket_path_for_service_unknown_with_env_override() {
+        // Env var format: {SERVICE_NAME}_SOCKET (uppercase, hyphens to underscores)
+        let service_name = format!("testsvc_{}", std::process::id());
+        let test_key = format!("TESTSVC_{}_SOCKET", std::process::id());
+        let custom_path = "/tmp/custom-test.sock";
+        std::env::set_var(&test_key, custom_path);
+
+        let path = get_socket_path_for_service(&service_name);
+
+        std::env::remove_var(&test_key);
+
+        // With env override, should get custom path
+        assert_eq!(path.to_string_lossy(), custom_path);
+    }
+
+    // ---- resolve_socket_path_for_service with empty service name ----
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_resolve_service_socket_empty_service_name() {
+        let env = test_env();
+        let result = resolve_socket_path_for_service("", &env, None);
+        // Empty string.lowercase = "" -> falls through to generic pattern
+        assert!(result.to_string_lossy().ends_with(".sock"));
+    }
 }

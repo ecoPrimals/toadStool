@@ -13,13 +13,12 @@ use serde::{Deserialize, Serialize};
 
 use toadstool::error::ToadStoolResult;
 
-use super::permissions::{ExternalTarget as CryptoExternalTarget, SecurityProviderPermission};
+use super::permissions::SecurityProviderPermission;
 use crate::security_provider::provider::SecurityProvider;
 use crate::security_provider::types::{
-    ExternalTarget as ProviderExternalTarget, PermissionScope as ProviderPermissionScope,
-    ProviderMetadata, ResourceLimits as ProviderResourceLimits,
-    SecurityPermission as ProviderPermission, SecurityProof as ProviderSecurityProof,
-    SignatureAlgorithm,
+    PermissionScope as ProviderPermissionScope, ProviderMetadata,
+    ResourceLimits as ProviderResourceLimits, SecurityPermission as ProviderPermission,
+    SecurityProof as ProviderSecurityProof, SignatureAlgorithm,
 };
 
 /// Security Permission Validator - validates crypto permissions
@@ -135,8 +134,6 @@ impl SecurityPermissionValidator {
 
 /// Convert a `SecurityProviderPermission` (crypto_lock domain type) into the
 /// provider-agnostic `SecurityPermission` expected by the `SecurityProvider` trait.
-///
-/// This is a bridge function that will be obsoleted once the two type systems are unified.
 fn to_provider_permission(p: &SecurityProviderPermission) -> ProviderPermission {
     let holder_id = match &p.holder {
         super::permissions::PermissionHolder::Individual { user_id, .. } => user_id.clone(),
@@ -146,51 +143,8 @@ fn to_provider_permission(p: &SecurityProviderPermission) -> ProviderPermission 
         }
     };
 
-    let target = match &p.external_target {
-        CryptoExternalTarget::CloudProvider {
-            provider, regions, ..
-        } => ProviderExternalTarget::CloudProvider {
-            provider: format!("{:?}", provider),
-            regions: regions.clone(),
-        },
-        CryptoExternalTarget::ContainerPlatform {
-            platform, clusters, ..
-        } => ProviderExternalTarget::ContainerPlatform {
-            platform: format!("{:?}", platform),
-            clusters: clusters.clone(),
-        },
-        CryptoExternalTarget::ExternalTool {
-            tool_name,
-            api_endpoints,
-            ..
-        } => ProviderExternalTarget::ExternalTool {
-            tool_name: tool_name.clone(),
-            endpoints: api_endpoints.clone(),
-        },
-        // Map exotic targets to a generic ExternalTool representation
-        CryptoExternalTarget::QuantumProvider {
-            provider, backends, ..
-        } => ProviderExternalTarget::ExternalTool {
-            tool_name: format!("quantum:{:?}", provider),
-            endpoints: backends.clone(),
-        },
-        CryptoExternalTarget::HPCCluster {
-            cluster_name,
-            partitions,
-            ..
-        } => ProviderExternalTarget::ExternalTool {
-            tool_name: format!("hpc:{}", cluster_name),
-            endpoints: partitions.clone(),
-        },
-        CryptoExternalTarget::EnterpriseService {
-            service_name,
-            features,
-            ..
-        } => ProviderExternalTarget::ExternalTool {
-            tool_name: service_name.clone(),
-            endpoints: features.clone(),
-        },
-    };
+    // ExternalTarget is unified - same type in both domains
+    let target = p.external_target.clone();
 
     let scope = ProviderPermissionScope {
         operations: p.scope.feature_restrictions.clone(),

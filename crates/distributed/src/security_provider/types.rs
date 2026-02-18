@@ -23,25 +23,95 @@ pub struct PermissionRequest {
     pub delegation_info: Option<DelegationInfo>,
 }
 
-/// External target that needs permission
+// Re-export supporting enums (used by ExternalTarget)
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+pub enum CloudProvider {
+    AWS,
+    Azure,
+    GCP,
+    DigitalOcean,
+    Linode,
+    Vultr,
+    Hetzner,
+    OVH,
+    Scaleway,
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ContainerPlatform {
+    Docker,
+    Kubernetes,
+    Nomad,
+    OpenShift,
+    DockerSwarm,
+    Podman,
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+pub enum QuantumProvider {
+    IBM,
+    Google,
+    IonQ,
+    Rigetti,
+    AWSBraket,
+    AzureQuantum,
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+pub enum HPCScheduler {
+    SLURM,
+    PBS,
+    SGE,
+    LSF,
+    Custom,
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ServiceTier {
+    Basic,
+    Professional,
+    Enterprise,
+    Premium,
+}
+
+/// External target that needs permission (unified with crypto_lock)
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ExternalTarget {
-    /// Cloud provider
+    /// Cloud provider APIs
     CloudProvider {
-        provider: String,
+        provider: CloudProvider,
         regions: Vec<String>,
+        services: Vec<String>,
     },
-
-    /// Container platform
+    /// Container orchestration platforms
     ContainerPlatform {
-        platform: String,
+        platform: ContainerPlatform,
         clusters: Vec<String>,
+        namespaces: Vec<String>,
     },
-
-    /// Generic external tool
+    /// External tools and services
     ExternalTool {
         tool_name: String,
-        endpoints: Vec<String>,
+        api_endpoints: Vec<String>,
+        feature_set: Vec<String>,
+    },
+    /// Quantum computing platforms
+    QuantumProvider {
+        provider: QuantumProvider,
+        backends: Vec<String>,
+        qubit_limits: Option<u32>,
+    },
+    /// HPC and supercomputing clusters
+    HPCCluster {
+        cluster_name: String,
+        scheduler: HPCScheduler,
+        partitions: Vec<String>,
+    },
+    /// Enterprise and commercial services
+    EnterpriseService {
+        service_name: String,
+        tier: ServiceTier,
+        features: Vec<String>,
     },
 }
 
@@ -238,8 +308,9 @@ mod tests {
         let request = PermissionRequest {
             requester_id: "user123".to_string(),
             target: ExternalTarget::CloudProvider {
-                provider: "aws".to_string(),
+                provider: CloudProvider::AWS,
                 regions: vec!["us-east-1".to_string()],
+                services: vec![],
             },
             scope: PermissionScope {
                 operations: vec!["read".to_string()],
