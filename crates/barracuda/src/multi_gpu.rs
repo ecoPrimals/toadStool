@@ -94,6 +94,26 @@ pub enum GpuVendor {
     Unknown,
 }
 
+// PCI Vendor IDs for capability-based detection (no string matching)
+const VENDOR_ID_NVIDIA: u32 = 0x10DE;
+const VENDOR_ID_AMD: u32 = 0x1002;
+const VENDOR_ID_INTEL: u32 = 0x8086;
+
+impl GpuVendor {
+    /// Detect vendor from PCI vendor ID (preferred - no string matching)
+    ///
+    /// **Deep Debt Evolution**: Use vendor IDs for reliable detection
+    pub fn from_vendor_id(vendor_id: u32) -> Self {
+        match vendor_id {
+            VENDOR_ID_NVIDIA => Self::Nvidia,
+            VENDOR_ID_AMD => Self::Amd,
+            VENDOR_ID_INTEL => Self::Intel,
+            0 => Self::Software, // Software renderers report vendor 0
+            _ => Self::Unknown,
+        }
+    }
+}
+
 /// GPU driver type (affects f64 builtin support)
 ///
 /// **hotSpring finding (Feb 2026)**: Different drivers have different f64 capabilities:
