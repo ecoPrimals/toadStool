@@ -34,14 +34,6 @@ struct DiffParams {
 
 var<workgroup> shared_data: array<f64, 256>;
 
-// Helper: absolute value for f64
-fn abs_f64(x: f64) -> f64 {
-    if (x < f64(0.0)) {
-        return -x;
-    }
-    return x;
-}
-
 // Max absolute difference: output[wg_id] = max|a[i] - b[i]| for this workgroup's range
 // Dispatch: (ceil(size / 256), 1, 1)
 @compute @workgroup_size(256)
@@ -56,7 +48,7 @@ fn max_abs_diff_f64(
     // Load data — compute |a - b| for in-bounds, 0 for out-of-bounds
     if (gid < params.size) {
         let diff = input_a[gid] - input_b[gid];
-        shared_data[tid] = abs_f64(diff);
+        shared_data[tid] = abs(diff);
     } else {
         shared_data[tid] = f64(0.0);
     }

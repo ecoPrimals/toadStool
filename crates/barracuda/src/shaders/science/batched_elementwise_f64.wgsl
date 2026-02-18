@@ -95,21 +95,6 @@ fn exp_f64(x: f64) -> f64 {
     return exp_r;
 }
 
-fn sqrt_f64(x: f64) -> f64 {
-    let zero = x - x;
-    if (x <= zero) { return zero; }
-    
-    let one = zero + 1.0;
-    var r = (x + one) / (zero + 2.0);
-    let half = zero + 0.5;
-    r = half * (r + x / r);
-    r = half * (r + x / r);
-    r = half * (r + x / r);
-    r = half * (r + x / r);
-    r = half * (r + x / r);
-    return r;
-}
-
 fn pow_f64(base: f64, exp: f64) -> f64 {
     let zero = base - base;
     let one = zero + 1.0;
@@ -242,7 +227,7 @@ fn fao56_et0(
     let tmax_k = tmax + (zero + 273.16);
     let tmin_k = tmin + (zero + 273.16);
     let rnl = sigma * (pow_f64(tmax_k, zero + 4.0) + pow_f64(tmin_k, zero + 4.0)) / (zero + 2.0) *
-              ((zero + 0.34) - (zero + 0.14) * sqrt_f64(ea)) *
+              ((zero + 0.34) - (zero + 0.14) * sqrt(ea)) *
               ((zero + 1.35) * rs / rso - (zero + 0.35));
     
     // Net radiation
@@ -343,11 +328,11 @@ fn acos_simple(x: f64) -> f64 {
     
     if (x > half) {
         // acos(x) = 2 * asin(sqrt((1-x)/2))
-        let t = sqrt_f64((one - x) * half);
+        let t = sqrt((one - x) * half);
         return (zero + 2.0) * asin_core(t);
     } else if (x < -half) {
         // acos(x) = π - 2 * asin(sqrt((1+x)/2))
-        let t = sqrt_f64((one + x) * half);
+        let t = sqrt((one + x) * half);
         return pi - (zero + 2.0) * asin_core(t);
     } else {
         // acos(x) = π/2 - asin(x)

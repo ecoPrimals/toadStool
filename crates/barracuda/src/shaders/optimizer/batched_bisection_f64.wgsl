@@ -42,19 +42,6 @@ struct BisectionParams {
 @group(0) @binding(4) var<storage, read_write> iterations: array<u32>; // Iterations used [batch]
 @group(0) @binding(5) var<uniform> config: BisectionParams;
 
-// Helper: absolute value for f64
-fn abs_f64(x: f64) -> f64 {
-    if (x < f64(0.0)) {
-        return -x;
-    }
-    return x;
-}
-
-// Helper: sqrt for f64 (native builtin)
-fn sqrt_f64(x: f64) -> f64 {
-    return sqrt(x);
-}
-
 // BCS particle number function: Σ_k deg_k · v²_k(μ) - N
 // 
 // Params layout depends on use_degeneracy:
@@ -84,7 +71,7 @@ fn bcs_particle_number(mu: f64, problem_idx: u32) -> f64 {
     for (var k = 0u; k < n_levels; k = k + 1u) {
         let eps_k = params[base + k];
         let diff = eps_k - mu;
-        let e_k = sqrt_f64(diff * diff + delta * delta);
+        let e_k = sqrt(diff * diff + delta * delta);
         // v²_k = ½(1 - (ε_k - μ)/E_k)
         let v2_k = f64(0.5) * (f64(1.0) - diff / e_k);
         
@@ -127,7 +114,7 @@ fn batched_bisection(
         iter_count = iter + 1u;
         
         // Check convergence
-        if (abs_f64(f_mid) < config.tolerance || (hi - lo) < config.tolerance) {
+        if (abs(f_mid) < config.tolerance || (hi - lo) < config.tolerance) {
             roots[problem_idx] = mid;
             iterations[problem_idx] = iter_count;
             return;
@@ -178,7 +165,7 @@ fn batched_bisection_poly(
         
         iter_count = iter + 1u;
         
-        if (abs_f64(f_mid) < config.tolerance || (hi - lo) < config.tolerance) {
+        if (abs(f_mid) < config.tolerance || (hi - lo) < config.tolerance) {
             roots[problem_idx] = mid;
             iterations[problem_idx] = iter_count;
             return;

@@ -25,20 +25,6 @@
 // 2 = GAUSSIAN
 // 3 = LINEAR
 
-fn sqrt_f64(x: f64) -> f64 {
-    let zero = x - x;
-    if (x <= zero) { return zero; }
-    let one = zero + 1.0;
-    var r = (x + one) / (zero + 2.0);
-    let half = zero + 0.5;
-    r = half * (r + x / r);
-    r = half * (r + x / r);
-    r = half * (r + x / r);
-    r = half * (r + x / r);
-    r = half * (r + x / r);
-    return r;
-}
-
 fn exp_f64(x: f64) -> f64 {
     let zero = x - x;
     let one = zero + 1.0;
@@ -135,7 +121,7 @@ fn variogram(h: f64, nugget: f64, sill: f64, range_param: f64, model: u32) -> f6
 fn distance_2d(x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
     let dx = x2 - x1;
     let dy = y2 - y1;
-    return sqrt_f64(dx * dx + dy * dy);
+    return sqrt(dx * dx + dy * dy);
 }
 
 // ============================================================================
