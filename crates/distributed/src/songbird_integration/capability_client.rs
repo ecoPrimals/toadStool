@@ -196,7 +196,6 @@ impl CapabilityClient {
         let protocol_str = match self.preferred_protocol {
             SongbirdProtocol::HTTP => "http",
             SongbirdProtocol::GRPC => "grpc",
-            SongbirdProtocol::WebSocket => "websocket",
             SongbirdProtocol::MessageQueue => "messagequeue",
         };
 

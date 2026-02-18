@@ -632,7 +632,6 @@ fn test_feature_flags_default() {
     assert!(!flags.enable_beta);
     assert!(flags.enable_distributed);
     assert!(flags.enable_federation);
-    assert!(flags.enable_websocket);
     assert!(!flags.enable_graphql);
     assert!(!flags.enable_grpc);
     assert!(flags.enable_openapi);
@@ -653,7 +652,6 @@ fn test_feature_flags_custom() {
         enable_profiling: true,
         enable_distributed: false,
         enable_federation: false,
-        enable_websocket: false,
         enable_graphql: true,
         enable_grpc: true,
         enable_openapi: false,

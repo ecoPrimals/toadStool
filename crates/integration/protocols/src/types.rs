@@ -66,13 +66,12 @@ pub enum MessageFormat {
 }
 
 /// Transport types for message delivery
+/// WebSocket removed — use JSON-RPC 2.0 (biomeOS/songbird)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum TransportType {
     /// HTTP/HTTPS transport
     Http,
-    /// WebSocket transport
-    WebSocket,
-    /// Pure Rust tRPC transport (HTTP+WebSocket hybrid)
+    /// Pure Rust tRPC transport
     TRpc,
     /// TCP socket transport
     Tcp,

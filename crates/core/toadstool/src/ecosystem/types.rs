@@ -2,7 +2,7 @@
 //!
 //! Core type definitions for ecosystem coordination and service integration.
 
-#[cfg(any(feature = "networking", feature = "websocket"))]
+#[cfg(feature = "networking")]
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
@@ -189,20 +189,6 @@ pub enum ServiceClient {
     /// JSON-RPC 2.0 over unix sockets (PRIMARY - wateringHole standard!)
     #[cfg(feature = "networking")]
     UnixSocket(toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient),
-
-    /// WebSocket client (real-time bidirectional)
-    #[cfg(feature = "websocket")]
-    WebSocket(
-        Arc<
-            tokio::sync::Mutex<
-                Option<
-                    tokio_tungstenite::WebSocketStream<
-                        tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
-                    >,
-                >,
-            >,
-        >,
-    ),
 
     /// No-op client when networking feature is disabled.
     /// Intentional degraded-mode fallback for builds without networking.

@@ -260,6 +260,7 @@ fn test_match_all_error_variants() {
             ClientError::Http(_) => {}
             ClientError::Serialization(_) => {}
             ClientError::UrlParse(_) => {}
+            ClientError::Io(_) => {}
         }
     }
 }

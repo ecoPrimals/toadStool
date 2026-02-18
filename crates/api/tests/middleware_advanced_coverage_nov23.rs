@@ -26,13 +26,11 @@ fn create_test_state() -> ApiState {
     let executions = Arc::new(RwLock::new(HashMap::new()));
     let metrics = Arc::new(RwLock::new(ApiMetrics::default()));
     let (tx, _) = broadcast::channel(100);
-    let websocket_manager = Arc::new(toadstool_api::websocket::WebSocketManager::new());
 
     ApiState {
         executions,
         metrics,
         event_broadcaster: tx,
-        websocket_manager,
         capability_provider: None,
     }
 }

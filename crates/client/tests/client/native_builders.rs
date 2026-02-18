@@ -347,19 +347,25 @@ fn test_execution_metrics_clone() {
 // ============================================================================
 
 #[test]
-fn test_event_execution_started() {
-    let event = ToadStoolEvent::ExecutionStarted {
-        execution_id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+fn test_event_execution_status_changed() {
+    let event = ToadStoolEvent::ExecutionStatusChanged {
+        execution_id: Uuid::new_v4().to_string(),
+        status: "running".to_string(),
     };
 
-    match event {
-        ToadStoolEvent::ExecutionStarted { execution_id, .. } => {
-            assert_ne!(execution_id, Uuid::nil());
+    match &event {
+        ToadStoolEvent::ExecutionStatusChanged { execution_id, .. } => {
+            assert!(!execution_id.is_empty());
         }
-        _ => panic!("Expected ExecutionStarted event"),
+        _ => panic!("Expected ExecutionStatusChanged event"),
     }
 }
 
 #[test]
-fn test_event_execution_completed() {
+fn test_event_cluster_health_changed() {
+    let event = ToadStoolEvent::ClusterHealthChanged { healthy: true };
+    match &event {
+        ToadStoolEvent::ClusterHealthChanged { healthy } => assert!(*healthy),
+        _ => panic!("Expected ClusterHealthChanged"),
+    }
+}

@@ -132,9 +132,9 @@ pub mod network {
     #[deprecated(note = "Use capability-based discovery for AI services")]
     pub const AI_FALLBACK_PORT: u16 = 8083;
 
-    /// Default websocket port for ToadStool
+    /// Port for JSON-RPC event streaming (replaces deprecated WebSocket)
     /// ✅ Self-configuration
-    pub const WEBSOCKET_PORT: u16 = 8086;
+    pub const EVENTS_PORT: u16 = 8086;
 
     /// Default ToadStool API port
     /// ✅ Self-configuration - valid to use for our own port

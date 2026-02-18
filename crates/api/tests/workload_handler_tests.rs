@@ -8,7 +8,7 @@ use axum::{
 };
 use std::collections::HashMap;
 use std::sync::Arc;
-use toadstool_api::{create_router, websocket, ApiMetrics, ApiState};
+use toadstool_api::{create_router, ApiMetrics, ApiState};
 use toadstool_distributed::primal_capabilities::workload::{
     WorkloadRequest, WorkloadResourceRequirements, WorkloadResponse, WorkloadStatus, WorkloadType,
 };
@@ -22,7 +22,6 @@ fn create_test_app() -> Router {
         executions: Arc::new(RwLock::new(HashMap::new())),
         metrics: Arc::new(RwLock::new(ApiMetrics::default())),
         event_broadcaster,
-        websocket_manager: Arc::new(websocket::WebSocketManager::new()),
         capability_provider: None,
     };
     create_router(state)

@@ -244,7 +244,7 @@ fn test_execution_response_creation() {
             status_url: "http://localhost/status".to_string(),
             logs_url: "http://localhost/logs".to_string(),
             metrics_url: "http://localhost/metrics".to_string(),
-            websocket_url: "ws://localhost/ws".to_string(),
+            events_poll_url: "http://localhost/jsonrpc".to_string(),
         },
     };
 
@@ -511,7 +511,6 @@ fn test_api_config_default() {
     let config = ApiConfig::default();
 
     assert!(config.enable_rest);
-    assert!(config.enable_websocket);
     assert!(config.cors_enabled);
     assert_eq!(config.api_version, "2.0.0");
     assert!(config.enable_metrics);

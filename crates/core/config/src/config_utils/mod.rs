@@ -149,12 +149,12 @@ impl ConfigUtils {
         loader.get_u16("HEALTH_PORT", config.network.health_port)
     }
 
-    /// Get WebSocket port from environment or default
+    /// Get events port from environment or default (JSON-RPC event streaming; replaces deprecated WebSocket)
     #[must_use]
-    pub fn get_websocket_port() -> u16 {
+    pub fn get_events_port() -> u16 {
         let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
-        loader.get_u16("WEBSOCKET_PORT", config.network.websocket_port)
+        loader.get_u16("EVENTS_PORT", config.network.events_port)
     }
 
     /// Get bind address from environment or default
@@ -482,7 +482,7 @@ impl ConfigUtils {
         ports.insert("federation".to_string(), Self::get_federation_port());
         ports.insert("metrics".to_string(), Self::get_metrics_port());
         ports.insert("health".to_string(), Self::get_health_port());
-        ports.insert("websocket".to_string(), Self::get_websocket_port());
+        ports.insert("events".to_string(), Self::get_events_port());
         ports
     }
 

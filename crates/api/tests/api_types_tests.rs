@@ -309,11 +309,11 @@ fn test_monitoring_endpoints_creation() {
         status_url: "http://api/status/123".to_string(),
         logs_url: "http://api/logs/123".to_string(),
         metrics_url: "http://api/metrics/123".to_string(),
-        websocket_url: "ws://api/ws/123".to_string(),
+        events_poll_url: "http://api/jsonrpc".to_string(),
     };
 
     assert!(endpoints.status_url.contains("status"));
-    assert!(endpoints.websocket_url.starts_with("ws://"));
+    assert!(endpoints.events_poll_url.contains("jsonrpc"));
 }
 
 #[test]
@@ -322,11 +322,11 @@ fn test_monitoring_endpoints_https() {
         status_url: "https://secure-api/status".to_string(),
         logs_url: "https://secure-api/logs".to_string(),
         metrics_url: "https://secure-api/metrics".to_string(),
-        websocket_url: "wss://secure-api/ws".to_string(),
+        events_poll_url: "https://secure-api/jsonrpc".to_string(),
     };
 
     assert!(endpoints.status_url.starts_with("https://"));
-    assert!(endpoints.websocket_url.starts_with("wss://"));
+    assert!(endpoints.events_poll_url.starts_with("https://"));
 }
 
 // ============================================================================
@@ -396,7 +396,7 @@ fn test_execution_response_submitted() {
             status_url: "http://api/status".to_string(),
             logs_url: "http://api/logs".to_string(),
             metrics_url: "http://api/metrics".to_string(),
-            websocket_url: "ws://api/ws".to_string(),
+            events_poll_url: "http://api/jsonrpc".to_string(),
         },
     };
 
@@ -425,7 +425,7 @@ fn test_execution_response_running() {
             status_url: "http://api/status".to_string(),
             logs_url: "http://api/logs".to_string(),
             metrics_url: "http://api/metrics".to_string(),
-            websocket_url: "ws://api/ws".to_string(),
+            events_poll_url: "http://api/jsonrpc".to_string(),
         },
     };
 

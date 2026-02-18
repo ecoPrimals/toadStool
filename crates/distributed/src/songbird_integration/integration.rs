@@ -117,10 +117,6 @@ impl ToadStoolSongbirdIntegration {
                 self.submit_via_grpc(songbird_request, &self.connection.active_endpoint)
                     .await?
             }
-            SongbirdProtocol::WebSocket => {
-                self.submit_via_websocket(songbird_request, &self.connection.active_endpoint)
-                    .await?
-            }
             SongbirdProtocol::MessageQueue => {
                 self.submit_via_message_queue(songbird_request, "global")
                     .await?
@@ -184,36 +180,6 @@ impl ToadStoolSongbirdIntegration {
             status: "accepted".to_string(),
             message: "Job submitted successfully via gRPC".to_string(),
             estimated_completion: Some(chrono::Utc::now() + chrono::Duration::minutes(5)),
-        })
-    }
-
-    async fn submit_via_websocket(
-        &self,
-        _request: SongbirdJobRequest,
-        endpoint: &str,
-    ) -> ToadStoolResult<SongbirdJobResponse> {
-        debug!("Submitting job via WebSocket to: {}", endpoint);
-
-        // Parse WebSocket endpoint
-        let _ws_url = if endpoint.starts_with("ws://") || endpoint.starts_with("wss://") {
-            endpoint.to_string()
-        } else {
-            format!("ws://{endpoint}")
-        };
-
-        // In a real implementation, this would establish WebSocket connection
-        // and send the job request over the persistent connection
-        // ✅ MODERNIZED: No fake work
-        // NOTE: WebSocket client for real-time event streaming
-        // Current: Polling-based updates work for most use cases
-        // Future: WebSocket for sub-second latency requirements
-        // Priority: P2 (real-time features)
-
-        Ok(SongbirdJobResponse::Success {
-            job_id: uuid::Uuid::new_v4(),
-            status: "accepted".to_string(),
-            message: "Job submitted successfully via WebSocket".to_string(),
-            estimated_completion: Some(chrono::Utc::now() + chrono::Duration::minutes(3)),
         })
     }
 

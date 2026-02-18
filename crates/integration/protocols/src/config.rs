@@ -41,7 +41,7 @@ impl Default for ProtocolConfig {
         Self {
             service_id: format!("toadstool-{}", uuid::Uuid::new_v4()),
             default_format: MessageFormat::Json,
-            supported_transports: vec![TransportType::Http, TransportType::WebSocket],
+            supported_transports: vec![TransportType::Http, TransportType::TRpc], // WebSocket removed — use JSON-RPC 2.0
             auth_config: None,
             request_timeout: Duration::from_secs(30),
             connection_pool: ConnectionPoolConfig::default(),

@@ -58,8 +58,8 @@ fn test_transport_type_http() {
 
 #[test]
 fn test_transport_type_websocket() {
-    let transport = TransportType::WebSocket;
-    assert_eq!(transport, TransportType::WebSocket);
+    let transport = TransportType::TRpc;
+    assert_eq!(transport, TransportType::TRpc);
 }
 
 #[test]
@@ -311,7 +311,7 @@ fn test_service_endpoint_http() {
 fn test_service_endpoint_websocket() {
     let endpoint = ServiceEndpoint {
         id: "endpoint-2".to_string(),
-        transport: TransportType::WebSocket,
+        transport: TransportType::TRpc,
         address: "ws.example.com".to_string(),
         port: 8080,
         path: Some("/ws".to_string()),
@@ -319,7 +319,7 @@ fn test_service_endpoint_websocket() {
         health_status: HealthStatus::Healthy,
     };
 
-    assert_eq!(endpoint.transport, TransportType::WebSocket);
+    assert_eq!(endpoint.transport, TransportType::TRpc);
     assert!(!endpoint.tls_enabled);
 }
 
@@ -405,7 +405,7 @@ fn test_all_message_formats() {
 fn test_all_transport_types() {
     let transports = [
         TransportType::Http,
-        TransportType::WebSocket,
+        TransportType::TRpc,
         TransportType::TRpc,
         TransportType::Tcp,
         TransportType::Udp,

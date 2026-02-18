@@ -375,12 +375,7 @@ fn test_songbird_protocol_grpc() {
     assert!(matches!(protocol, SongbirdProtocol::GRPC));
 }
 
-#[test]
-fn test_songbird_protocol_websocket() {
-    let protocol = SongbirdProtocol::WebSocket;
-
-    assert!(matches!(protocol, SongbirdProtocol::WebSocket));
-}
+// WebSocket removed — use JSON-RPC 2.0 (biomeOS/songbird)
 
 #[test]
 fn test_songbird_protocol_message_queue() {

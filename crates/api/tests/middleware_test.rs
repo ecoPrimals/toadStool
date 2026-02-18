@@ -14,7 +14,7 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use tower::ServiceExt;
 
-use toadstool_api::{middleware::*, websocket, ApiMetrics, ApiState};
+use toadstool_api::{middleware::*, ApiMetrics, ApiState};
 
 // ============================================================================
 // Helper Functions
@@ -27,7 +27,6 @@ fn create_test_state() -> ApiState {
         event_broadcaster,
         executions: Arc::new(RwLock::new(HashMap::new())),
         metrics: Arc::new(RwLock::new(ApiMetrics::default())),
-        websocket_manager: Arc::new(websocket::WebSocketManager::new()),
         capability_provider: None,
     }
 }

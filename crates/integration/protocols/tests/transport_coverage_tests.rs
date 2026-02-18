@@ -132,7 +132,7 @@ fn test_http_transport_supports_http_endpoint() {
 #[test]
 fn test_http_transport_rejects_websocket_endpoint() {
     let transport = HttpTransport::new();
-    let endpoint = create_test_endpoint(TransportType::WebSocket);
+    let endpoint = create_test_endpoint(TransportType::TRpc);
     assert!(!transport.supports_endpoint(&endpoint));
 }
 
@@ -169,40 +169,40 @@ async fn test_http_transport_with_tls() {
 
 #[test]
 fn test_websocket_transport_new() {
-    let transport = WebSocketTransport::new();
+    let transport = TRpcTransport::new();
     let _ = format!("{:?}", transport);
 }
 
 #[test]
 fn test_websocket_transport_default() {
-    let transport = WebSocketTransport::default();
+    let transport = TRpcTransport::default();
     let _ = format!("{:?}", transport);
 }
 
 #[test]
 fn test_websocket_transport_supports_websocket_endpoint() {
-    let transport = WebSocketTransport::new();
-    let endpoint = create_test_endpoint(TransportType::WebSocket);
+    let transport = TRpcTransport::new();
+    let endpoint = create_test_endpoint(TransportType::TRpc);
     assert!(transport.supports_endpoint(&endpoint));
 }
 
 #[test]
 fn test_websocket_transport_rejects_http_endpoint() {
-    let transport = WebSocketTransport::new();
+    let transport = TRpcTransport::new();
     let endpoint = create_test_endpoint(TransportType::Http);
     assert!(!transport.supports_endpoint(&endpoint));
 }
 
 #[test]
 fn test_websocket_transport_type() {
-    let transport = WebSocketTransport::new();
-    assert_eq!(transport.transport_type(), TransportType::WebSocket);
+    let transport = TRpcTransport::new();
+    assert_eq!(transport.transport_type(), TransportType::TRpc);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_transport_send_message_not_implemented() {
-    let transport = WebSocketTransport::new();
-    let endpoint = create_test_endpoint(TransportType::WebSocket);
+    let transport = TRpcTransport::new();
+    let endpoint = create_test_endpoint(TransportType::TRpc);
     let message = create_test_message();
 
     let result = transport.send_message(&message, &endpoint).await;
@@ -281,8 +281,8 @@ fn test_transport_enum_http_variant() {
 
 #[test]
 fn test_transport_enum_websocket_variant() {
-    let transport = Transport::WebSocket(WebSocketTransport::new());
-    assert_eq!(transport.transport_type(), TransportType::WebSocket);
+    let transport = Transport::TRpc(TRpcTransport::new());
+    assert_eq!(transport.transport_type(), TransportType::TRpc);
 }
 
 #[test]
@@ -324,8 +324,8 @@ async fn test_transport_enum_send_message_http() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_transport_enum_send_message_websocket() {
-    let transport = Transport::WebSocket(WebSocketTransport::new());
-    let endpoint = create_test_endpoint(TransportType::WebSocket);
+    let transport = Transport::TRpc(TRpcTransport::new());
+    let endpoint = create_test_endpoint(TransportType::TRpc);
     let message = create_test_message();
 
     let result = transport.send_message(&message, &endpoint).await;
@@ -353,7 +353,7 @@ fn test_transport_manager_new() {
 
     assert!(supported.len() >= 3);
     assert!(supported.contains(&TransportType::Http));
-    assert!(supported.contains(&TransportType::WebSocket));
+    assert!(supported.contains(&TransportType::TRpc));
     assert!(supported.contains(&TransportType::TRpc));
 }
 

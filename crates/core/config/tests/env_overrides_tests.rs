@@ -399,19 +399,16 @@ fn test_env_override_feature_flags() {
     clear_toadstool_env_vars();
 
     let mut config = ToadStoolConfig::default();
-    config.features.enable_websocket = false;
     config.features.enable_federation = false;
     config.features.enable_distributed = false;
     config.features.enable_auto_config = false;
 
-    std::env::set_var("TOADSTOOL_ENABLE_WEBSOCKET", "true");
     std::env::set_var("TOADSTOOL_ENABLE_FEDERATION", "true");
     std::env::set_var("TOADSTOOL_ENABLE_DISTRIBUTED", "true");
     std::env::set_var("TOADSTOOL_ENABLE_AUTO_CONFIG", "true");
 
     config.apply_env_overrides().unwrap();
 
-    assert!(config.features.enable_websocket);
     assert!(config.features.enable_federation);
     assert!(config.features.enable_distributed);
     assert!(config.features.enable_auto_config);

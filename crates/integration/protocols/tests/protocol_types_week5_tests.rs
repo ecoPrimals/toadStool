@@ -14,7 +14,7 @@ use toadstool_integration_protocols::types::{
 fn test_transport_type_variants() {
     let types = vec![
         TransportType::Http,
-        TransportType::WebSocket,
+        TransportType::TRpc,
         TransportType::TRpc,
         TransportType::Tcp,
         TransportType::Custom("test".to_string()),
@@ -33,10 +33,10 @@ fn test_transport_type_clone() {
 
 #[test]
 fn test_transport_type_debug() {
-    let transport = TransportType::WebSocket;
+    let transport = TransportType::TRpc;
     let debug_str = format!("{:?}", transport);
 
-    assert!(debug_str.contains("WebSocket"));
+    assert!(debug_str.contains("TRpc"));
 }
 
 #[test]
@@ -179,10 +179,10 @@ fn test_transport_http_flow() {
 
 #[test]
 fn test_transport_websocket_flow() {
-    let transport = TransportType::WebSocket;
+    let transport = TransportType::TRpc;
     let format = MessageFormat::MessagePack;
 
-    assert!(matches!(transport, TransportType::WebSocket));
+    assert!(matches!(transport, TransportType::TRpc));
     assert_eq!(format, MessageFormat::MessagePack);
 }
 
@@ -258,7 +258,7 @@ fn test_transport_type_hash() {
 
     let mut set = HashSet::new();
     set.insert(TransportType::Http);
-    set.insert(TransportType::WebSocket);
+    set.insert(TransportType::TRpc);
     set.insert(TransportType::Http); // Duplicate
 
     assert_eq!(set.len(), 2);

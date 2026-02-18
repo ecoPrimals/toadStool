@@ -19,7 +19,7 @@ use toadstool_api::types::{
     ExecutionFilter, ExecutionInfo, ExecutionRequest, ExecutionStatus, ResourceRequirements,
     WorkloadSpec,
 };
-use toadstool_api::{websocket, ApiState};
+use toadstool_api::ApiState;
 
 /// Create test API state
 fn create_test_state() -> ApiState {
@@ -29,7 +29,6 @@ fn create_test_state() -> ApiState {
         executions: Arc::new(RwLock::new(HashMap::new())),
         metrics: Arc::new(RwLock::new(toadstool_api::ApiMetrics::default())),
         event_broadcaster,
-        websocket_manager: Arc::new(websocket::WebSocketManager::new()),
         capability_provider: None,
     }
 }

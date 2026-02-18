@@ -41,5 +41,4 @@ pub use types::{
     SongbirdIntegrationConfig, SongbirdJobMessage, SongbirdJobRequest, SongbirdJobResponse,
     SongbirdLoadBalancer, SongbirdNetworkDiscovery, SongbirdProtocol, SplittingStrategyType,
     SubTask, SubTaskHandle, SubTaskPlan, SubTaskStatus, SubscriptionManager, UniversalJobProcessor,
-    WebSocketProtocolConfig,
 };

@@ -17,17 +17,7 @@ fn test_http_transport_default() {
     assert_eq!(transport.transport_type(), TransportType::Http);
 }
 
-#[test]
-fn test_websocket_transport_creation() {
-    let transport = WebSocketTransport::new();
-    assert_eq!(transport.transport_type(), TransportType::WebSocket);
-}
-
-#[test]
-fn test_websocket_transport_default() {
-    let transport = WebSocketTransport::default();
-    assert_eq!(transport.transport_type(), TransportType::WebSocket);
-}
+// WebSocket removed — use JSON-RPC 2.0 (biomeOS/songbird)
 
 #[test]
 fn test_trpc_transport_creation() {
@@ -58,11 +48,11 @@ fn test_http_transport_supports_http_endpoint() {
 }
 
 #[test]
-fn test_http_transport_does_not_support_websocket_endpoint() {
+fn test_http_transport_does_not_support_trpc_endpoint() {
     let transport = HttpTransport::new();
     let endpoint = ServiceEndpoint {
         id: "endpoint-2".to_string(),
-        transport: TransportType::WebSocket,
+        transport: TransportType::TRpc,
         address: "localhost".to_string(),
         port: 8080,
         path: None,
@@ -74,11 +64,11 @@ fn test_http_transport_does_not_support_websocket_endpoint() {
 }
 
 #[test]
-fn test_websocket_transport_supports_websocket_endpoint() {
-    let transport = WebSocketTransport::new();
+fn test_trpc_transport_supports_trpc_endpoint() {
+    let transport = TRpcTransport::new();
     let endpoint = ServiceEndpoint {
         id: "endpoint-3".to_string(),
-        transport: TransportType::WebSocket,
+        transport: TransportType::TRpc,
         address: "localhost".to_string(),
         port: 9000,
         path: None,
@@ -90,7 +80,7 @@ fn test_websocket_transport_supports_websocket_endpoint() {
 }
 
 #[test]
-fn test_trpc_transport_supports_trpc_endpoint() {
+fn test_trpc_transport_supports_trpc_endpoint_with_path() {
     let transport = TRpcTransport::new();
     let endpoint = ServiceEndpoint {
         id: "endpoint-4".to_string(),
@@ -110,9 +100,9 @@ fn test_transport_manager_creation() {
     let manager = TransportManager::new();
     let transports = manager.get_supported_transports();
 
-    assert_eq!(transports.len(), 3);
+    assert_eq!(transports.len(), 2); // Http, TRpc (WebSocket removed)
     assert!(transports.contains(&TransportType::Http));
-    assert!(transports.contains(&TransportType::WebSocket));
+    assert!(transports.contains(&TransportType::TRpc));
     assert!(transports.contains(&TransportType::TRpc));
 }
 
@@ -189,8 +179,8 @@ fn test_transport_enum_http() {
 
 #[test]
 fn test_transport_enum_websocket() {
-    let transport = Transport::WebSocket(WebSocketTransport::new());
-    assert_eq!(transport.transport_type(), TransportType::WebSocket);
+    let transport = Transport::TRpc(TRpcTransport::new());
+    assert_eq!(transport.transport_type(), TransportType::TRpc);
 }
 
 #[test]
@@ -241,7 +231,7 @@ fn test_http_transport_with_tls() {
 fn test_websocket_transport_with_path() {
     let endpoint = ServiceEndpoint {
         id: "ws-path".to_string(),
-        transport: TransportType::WebSocket,
+        transport: TransportType::TRpc,
         address: "localhost".to_string(),
         port: 8080,
         path: Some("/socket.io".to_string()),
@@ -249,7 +239,7 @@ fn test_websocket_transport_with_path() {
         health_status: HealthStatus::Healthy,
     };
 
-    let transport = WebSocketTransport::new();
+    let transport = TRpcTransport::new();
     assert!(transport.supports_endpoint(&endpoint));
     assert_eq!(endpoint.path, Some("/socket.io".to_string()));
 }
@@ -258,7 +248,7 @@ fn test_websocket_transport_with_path() {
 fn test_websocket_transport_secure() {
     let endpoint = ServiceEndpoint {
         id: "wss-endpoint".to_string(),
-        transport: TransportType::WebSocket,
+        transport: TransportType::TRpc,
         address: "wss.example.com".to_string(),
         port: 443,
         path: None,
@@ -266,7 +256,7 @@ fn test_websocket_transport_secure() {
         health_status: HealthStatus::Healthy,
     };
 
-    let transport = WebSocketTransport::new();
+    let transport = TRpcTransport::new();
     assert!(transport.supports_endpoint(&endpoint));
     assert!(endpoint.tls_enabled);
 }
@@ -393,7 +383,7 @@ fn test_transport_manager_websocket_support() {
     let manager = TransportManager::new();
     let transports = manager.get_supported_transports();
 
-    assert!(transports.contains(&TransportType::WebSocket));
+    assert!(transports.contains(&TransportType::TRpc));
 }
 
 #[test]
@@ -521,11 +511,11 @@ fn test_http_transport_multiple_endpoints() {
 
 #[test]
 fn test_websocket_transport_mixed_security() {
-    let transport = WebSocketTransport::new();
+    let transport = TRpcTransport::new();
 
     let secure_ep = ServiceEndpoint {
         id: "secure".to_string(),
-        transport: TransportType::WebSocket,
+        transport: TransportType::TRpc,
         address: "wss.example.com".to_string(),
         port: 443,
         path: None,
@@ -535,7 +525,7 @@ fn test_websocket_transport_mixed_security() {
 
     let insecure_ep = ServiceEndpoint {
         id: "insecure".to_string(),
-        transport: TransportType::WebSocket,
+        transport: TransportType::TRpc,
         address: "ws.example.com".to_string(),
         port: 8080,
         path: None,
@@ -587,9 +577,9 @@ fn test_endpoint_path_optional() {
 #[test]
 fn test_transport_type_equality() {
     assert_eq!(TransportType::Http, TransportType::Http);
-    assert_eq!(TransportType::WebSocket, TransportType::WebSocket);
     assert_eq!(TransportType::TRpc, TransportType::TRpc);
-    assert_ne!(TransportType::Http, TransportType::WebSocket);
+    assert_eq!(TransportType::TRpc, TransportType::TRpc);
+    assert_ne!(TransportType::Http, TransportType::TRpc);
 }
 
 #[test]

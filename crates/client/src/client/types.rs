@@ -161,39 +161,20 @@ pub struct ExecutionMetrics {
     pub network_bytes_received: u64,
 }
 
-/// Real-time event from ToadStool server
+/// Real-time execution events.
+///
+/// These events are NOT delivered via WebSocket (deprecated, used C-FFI ring).
+/// Use JSON-RPC 2.0 polling (`compute.status` method) or biomeOS/songbird
+/// coordination for event streaming over Unix sockets.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ToadStoolEvent {
-    ExecutionStarted {
-        execution_id: Uuid,
-        timestamp: DateTime<Utc>,
+    /// Execution status changed — poll via `compute.status` JSON-RPC call
+    ExecutionStatusChanged {
+        execution_id: String,
+        status: String,
     },
-
-    ExecutionCompleted {
-        execution_id: Uuid,
-        status: ExecutionStatus,
-        timestamp: DateTime<Utc>,
-    },
-
-    ExecutionProgress {
-        execution_id: Uuid,
-        progress_percent: f64,
-        message: Option<String>,
-        timestamp: DateTime<Utc>,
-    },
-
-    ClusterEvent {
-        event_type: String,
-        node_id: Option<String>,
-        message: String,
-        timestamp: DateTime<Utc>,
-    },
-
-    Alert {
-        severity: String,
-        message: String,
-        timestamp: DateTime<Utc>,
-    },
+    /// Cluster health changed — poll via `toadstool.health` JSON-RPC call
+    ClusterHealthChanged { healthy: bool },
 }
 
 /// ToadStool cluster status information

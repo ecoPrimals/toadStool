@@ -87,7 +87,7 @@ impl toadstool::universal::UniversalPrimalProvider for MockPrimalProvider {
             health: format!("http://{}/health", self.instance_id),
             metrics: Some(format!("http://{}/metrics", self.instance_id)),
             admin: None,
-            websocket: None,
+            events_endpoint: None,
             custom: HashMap::new(),
         }
     }

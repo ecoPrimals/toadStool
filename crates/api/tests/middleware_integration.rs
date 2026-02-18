@@ -14,7 +14,6 @@ fn create_test_api_state() -> ApiState {
         event_broadcaster: event_sender,
         executions: Arc::new(RwLock::new(std::collections::HashMap::new())),
         metrics: Arc::new(RwLock::new(ApiMetrics::default())),
-        websocket_manager: Arc::new(toadstool_api::websocket::WebSocketManager::new()),
         capability_provider: None,
     }
 }
@@ -317,16 +316,6 @@ async fn test_api_config_defaults() {
     // Verify config has sensible defaults
     assert!(!config.bind_address.is_empty());
     assert!(config.request_timeout_secs > 0);
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_websocket_manager_creation() {
-    // Test WebSocket manager creation
-    let manager = toadstool_api::websocket::WebSocketManager::new();
-
-    // Verify manager is created (no panics)
-    let count = manager.get_connection_count().await;
-    assert_eq!(count, 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

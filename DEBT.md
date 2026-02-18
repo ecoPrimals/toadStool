@@ -104,6 +104,7 @@ validated reference implementation. Each stage may have subtle bugs.
 | R-008 | `reqwest` C-FFI dep in toadstool-client — migrated to Unix JSON-RPC | Feb 18, 2026 |
 | R-009 | `crates/client` excluded from workspace — re-included | Feb 18, 2026 |
 | R-010 | 9 files over 1000 LOC — smart-refactored: cg_gpu, multi_gpu, production_hardening, graph_types, handlers, graph_types, handlers | Feb 18, 2026 |
+| R-011 | WebSocket (tungstenite/ring C-FFI) removed from entire codebase — pure Rust | Feb 18, 2026 |
 
 ---
 

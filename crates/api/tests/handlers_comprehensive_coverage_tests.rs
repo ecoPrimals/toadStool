@@ -16,13 +16,11 @@ use uuid::Uuid;
 /// Helper to create test API state
 fn create_test_state() -> ApiState {
     let (event_tx, _) = tokio::sync::broadcast::channel(100);
-    let websocket_manager = Arc::new(toadstool_api::websocket::WebSocketManager::new());
 
     ApiState {
         executions: Arc::new(RwLock::new(HashMap::new())),
         metrics: Arc::new(RwLock::new(toadstool_api::ApiMetrics::default())),
         event_broadcaster: event_tx,
-        websocket_manager,
         capability_provider: None,
     }
 }

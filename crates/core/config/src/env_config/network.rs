@@ -30,8 +30,8 @@ pub struct NetworkEnvConfig {
     pub metrics_port: u16,
     /// Health check port
     pub health_port: u16,
-    /// WebSocket port
-    pub websocket_port: u16,
+    /// Port for JSON-RPC event streaming (replaces deprecated WebSocket)
+    pub events_port: u16,
     /// Bind address
     pub bind_address: String,
     /// External hostname (our identity)
@@ -106,8 +106,7 @@ impl NetworkEnvConfig {
                 .get_u16("FEDERATION_PORT", crate::defaults::network::FEDERATION_PORT),
             metrics_port: loader.get_u16("METRICS_PORT", crate::defaults::network::METRICS_PORT),
             health_port: loader.get_u16("HEALTH_PORT", crate::defaults::network::DISCOVERY_PORT),
-            websocket_port: loader
-                .get_u16("WEBSOCKET_PORT", crate::defaults::network::WEBSOCKET_PORT),
+            events_port: loader.get_u16("EVENTS_PORT", crate::defaults::network::EVENTS_PORT),
             bind_address: loader.get_string("BIND_ADDRESS", "127.0.0.1"),
             external_hostname: loader.get_string("EXTERNAL_HOSTNAME", "localhost"),
             tls_enabled: loader.get_bool("TLS_ENABLED", false),

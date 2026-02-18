@@ -153,7 +153,6 @@ pub mod rpc_types; // Pure RPC types (deep debt solution - no HTTP deps)
 pub mod state;
 pub mod tarpc_server;
 pub mod unibin; // UniBin server entry point (shared between binaries)
-pub mod websocket; // NEW: Resource optimization for graphs
 
 // Re-export background services for tests
 pub use background::start_background_services;
@@ -332,11 +331,6 @@ impl ToadStoolServer {
                     "/api/runtime-engines",
                     get(handlers::list_runtime_engines_handler),
                 );
-        }
-
-        // WebSocket endpoint
-        if self.config.enable_websocket {
-            router = router.route("/ws", get(websocket::websocket_handler));
         }
 
         // Dashboard

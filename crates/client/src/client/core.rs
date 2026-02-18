@@ -1,21 +1,14 @@
 //! ToadStool client implementation
 //!
 //! Uses JSON-RPC 2.0 over Unix sockets (local) per biomeOS networking policy.
-//! NO reqwest/hyper/ring/openssl.
+//! NO reqwest/hyper/ring/openssl. Real-time events via JSON-RPC polling (no WebSocket).
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-#[cfg(feature = "websocket")]
 use std::time::Duration;
 
-#[cfg(feature = "websocket")]
-use futures_util::stream::StreamExt;
-#[cfg(feature = "websocket")]
-use futures_util::SinkExt;
 use tokio::sync::{mpsc, RwLock};
-#[cfg(feature = "websocket")]
-use tokio_tungstenite::{connect_async, tungstenite::Message};
 use tracing::{debug, info};
 use url::Url;
 use uuid::Uuid;
@@ -25,7 +18,8 @@ use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use super::config::ClientConfig;
 use super::error::{ClientError, ClientResult};
 use super::types::{
-    ClusterStatus, EventHandlers, ExecutionInfo, ToadStoolEvent, WorkloadSubmission,
+    ClusterStatus, EventHandlers, ExecutionInfo, ExecutionStatus, ToadStoolEvent,
+    WorkloadSubmission,
 };
 
 /// Resolve socket path from config.
@@ -65,35 +59,6 @@ pub struct ToadStoolClient {
     rpc_client: UnixJsonRpcClient,
     active_executions: Arc<RwLock<HashMap<Uuid, ExecutionInfo>>>,
     event_handlers: Arc<RwLock<EventHandlers>>,
-}
-
-/// Server events received via WebSocket
-#[derive(Debug, Clone, serde::Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ServerEvent {
-    ExecutionStarted {
-        execution_id: Uuid,
-        runtime_type: String,
-        timestamp: chrono::DateTime<chrono::Utc>,
-    },
-    ExecutionCompleted {
-        execution_id: Uuid,
-        status: String,
-        duration_ms: u64,
-        timestamp: chrono::DateTime<chrono::Utc>,
-    },
-    ResourceUsageUpdate {
-        cpu_usage_percent: f64,
-        memory_usage_percent: f64,
-        active_executions: u32,
-        timestamp: chrono::DateTime<chrono::Utc>,
-    },
-    ErrorOccurred {
-        error_type: String,
-        message: String,
-        execution_id: Option<Uuid>,
-        timestamp: chrono::DateTime<chrono::Utc>,
-    },
 }
 
 impl ToadStoolClient {
@@ -189,74 +154,72 @@ impl ToadStoolClient {
         Ok(())
     }
 
-    /// Wait for execution completion (event-driven with polling fallback)
+    /// Wait for execution completion via JSON-RPC polling (`compute.status` method).
     pub async fn wait_for_completion(&self, execution_id: Uuid) -> ClientResult<ExecutionInfo> {
-        debug!("Waiting for execution completion: {}", execution_id);
-
-        #[cfg(feature = "websocket")]
-        {
-            if self.config.enable_websocket {
-                if let Ok(info) = self.wait_for_completion_via_events(execution_id).await {
-                    return Ok(info);
-                }
-                warn!("WebSocket event subscription failed, falling back to NotImplemented");
-            }
-        }
-
-        // get_execution_status returns NotImplemented for workload executions
-        Err(ClientError::Http(
-            "wait_for_completion requires get_execution_status; use compute.status for GPU jobs"
-                .to_string(),
-        ))
-    }
-
-    /// Wait for completion using WebSocket events (no polling!)
-    #[cfg(feature = "websocket")]
-    async fn wait_for_completion_via_events(
-        &self,
-        execution_id: Uuid,
-    ) -> ClientResult<ExecutionInfo> {
         debug!(
-            "Waiting for execution via WebSocket events: {}",
+            "Waiting for execution completion via polling: {}",
             execution_id
         );
 
-        let max_wait_time = Duration::from_secs(300);
-        let mut event_rx = self.subscribe_to_events().await?;
+        let max_wait = Duration::from_secs(300);
+        let poll_interval = Duration::from_millis(500);
+        let start = std::time::Instant::now();
 
-        tokio::time::timeout(max_wait_time, async {
-            while let Some(event) = event_rx.recv().await {
-                match event {
-                    ServerEvent::ExecutionCompleted {
-                        execution_id: event_id,
-                        ..
-                    } if event_id == execution_id => {
-                        info!("Execution completed via event: {}", execution_id);
-                        return self.get_execution_status(execution_id).await;
+        while start.elapsed() < max_wait {
+            let status_result = self
+                .rpc_client
+                .call(
+                    "compute.status",
+                    serde_json::json!({ "job_id": execution_id.to_string() }),
+                )
+                .await;
+
+            match status_result {
+                Ok(status) => {
+                    let status_str = status
+                        .get("status")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_lowercase();
+                    if matches!(status_str.as_str(), "completed" | "failed" | "cancelled") {
+                        info!(
+                            "Execution {} completed with status: {}",
+                            execution_id, status_str
+                        );
+                        let exec_status = match status_str.as_str() {
+                            "completed" => ExecutionStatus::Completed,
+                            "failed" => ExecutionStatus::Failed,
+                            "cancelled" => ExecutionStatus::Cancelled,
+                            _ => ExecutionStatus::Failed,
+                        };
+                        return Ok(ExecutionInfo {
+                            execution_id,
+                            status: exec_status,
+                            submitted_at: chrono::Utc::now(),
+                            started_at: None,
+                            completed_at: Some(chrono::Utc::now()),
+                            runtime_type: None,
+                            error_message: status
+                                .get("error")
+                                .and_then(|v| v.as_str())
+                                .map(String::from),
+                            output: None,
+                            metrics: None,
+                        });
                     }
-                    ServerEvent::ErrorOccurred {
-                        execution_id: Some(event_id),
-                        error_type,
-                        message,
-                        ..
-                    } if event_id == execution_id => {
-                        warn!("Execution error via event: {} - {}", error_type, message);
-                        return self.get_execution_status(execution_id).await;
-                    }
-                    _ => continue,
+                }
+                Err(_) => {
+                    // compute.status may not exist or job not found - workload executions use different path
+                    break;
                 }
             }
-            Err(ClientError::WebSocket(
-                "Event stream closed before completion".to_string(),
-            ))
-        })
-        .await
-        .map_err(|_| {
-            ClientError::Timeout(format!(
-                "Execution {} did not complete within {:?}",
-                execution_id, max_wait_time
-            ))
-        })?
+
+            tokio::time::sleep(poll_interval).await;
+        }
+
+        Err(ClientError::Http(
+            "wait_for_completion: use compute.status polling for GPU jobs; workload executions not exposed via JSON-RPC".to_string(),
+        ))
     }
 
     /// Get cluster status
@@ -340,121 +303,21 @@ impl ToadStoolClient {
         handlers.push(Box::new(handler));
     }
 
-    /// Subscribe to server events via WebSocket
+    /// Subscribe to server events.
     ///
-    /// Note: Requires "websocket" feature. WebSocket needs HTTP server.
-    #[cfg(feature = "websocket")]
-    pub async fn subscribe_to_events(&self) -> ClientResult<mpsc::UnboundedReceiver<ServerEvent>> {
-        let ws_url = self
-            .config
-            .base_url
-            .replace("http://", "ws://")
-            .replace("https://", "wss://");
-        let ws_url = format!("{ws_url}/ws");
-
-        debug!("Connecting to WebSocket: {}", ws_url);
-
-        let url = Url::parse(&ws_url)
-            .map_err(|e| ClientError::WebSocket(format!("Invalid WebSocket URL: {}", e)))?;
-        let (ws_stream, _) = connect_async(url)
-            .await
-            .map_err(|e| ClientError::WebSocket(format!("Connection failed: {}", e)))?;
-
-        let (mut write, mut read) = ws_stream.split();
-
-        let (tx, rx) = mpsc::unbounded_channel();
-
-        let subscribe_msg = serde_json::json!({ "type": "subscribe" });
-        write
-            .send(Message::Text(subscribe_msg.to_string()))
-            .await
-            .map_err(|e| ClientError::WebSocket(format!("Failed to subscribe: {}", e)))?;
-
-        tokio::spawn(async move {
-            while let Some(msg_result) = read.next().await {
-                match msg_result {
-                    Ok(Message::Text(text)) => {
-                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) {
-                            if let Ok(event) = serde_json::from_value::<ServerEvent>(value) {
-                                if tx.send(event).is_err() {
-                                    debug!("Event receiver dropped, closing WebSocket");
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    Ok(Message::Close(_)) => {
-                        debug!("WebSocket closed by server");
-                        break;
-                    }
-                    Err(e) => {
-                        error!("WebSocket error: {}", e);
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-        });
-
-        info!("WebSocket event subscription established");
-        Ok(rx)
-    }
-
-    /// Subscribe to events (stub when websocket feature disabled)
-    #[cfg(not(feature = "websocket"))]
-    pub async fn subscribe_to_events(&self) -> ClientResult<mpsc::UnboundedReceiver<ServerEvent>> {
-        Err(ClientError::WebSocket(
-            "WebSocket support requires 'websocket' feature".to_string(),
+    /// WebSocket deprecated. Use JSON-RPC 2.0 polling: `compute.status` for execution
+    /// status, `toadstool.health` for cluster health. biomeOS/songbird coordination.
+    pub async fn subscribe_to_events(
+        &self,
+    ) -> ClientResult<mpsc::UnboundedReceiver<ToadStoolEvent>> {
+        Err(ClientError::Http(
+            "Real-time events use JSON-RPC 2.0 polling (compute.status, toadstool.health)"
+                .to_string(),
         ))
     }
 
-    /// Start event stream (stub when websocket feature disabled)
-    #[cfg(not(feature = "websocket"))]
+    /// Start event stream. No-op; use JSON-RPC polling instead.
     pub fn start_event_stream(&self) -> ClientResult<()> {
-        Ok(())
-    }
-
-    /// Start WebSocket connection for real-time events (legacy method)
-    #[cfg(feature = "websocket")]
-    pub fn start_event_stream(&self) -> ClientResult<()> {
-        if !self.config.enable_websocket {
-            return Ok(());
-        }
-
-        let ws_url = self
-            .config
-            .base_url
-            .replace("http://", "ws://")
-            .replace("https://", "wss://");
-        let ws_url = format!("{ws_url}/ws");
-
-        debug!("Connecting to WebSocket: {}", ws_url);
-
-        let event_handlers = Arc::clone(&self.event_handlers);
-
-        tokio::spawn(async move {
-            if let Ok(url) = Url::parse(&ws_url) {
-                if let Ok((ws_stream, _)) = connect_async(url).await {
-                    info!("WebSocket connected: {}", ws_url);
-
-                    let (_, mut read) = ws_stream.split();
-
-                    while let Ok(Some(message)) = read.next().await.transpose() {
-                        if let Message::Text(text) = message {
-                            if let Ok(event) = serde_json::from_str::<ToadStoolEvent>(&text) {
-                                let handlers = event_handlers.read().await;
-                                for handler in handlers.iter() {
-                                    handler(event.clone());
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    error!("Failed to connect to WebSocket: {}", ws_url);
-                }
-            }
-        });
-
         Ok(())
     }
 }

@@ -55,7 +55,7 @@ impl SongbirdConnection {
             discovery: discovery.clone(),
             required_capabilities,
             timeout: timeouts::DEFAULT_REQUEST_TIMEOUT,
-            preferred_protocol: SongbirdProtocol::Http,
+            preferred_protocol: SongbirdProtocol::HTTP,
             cached_services: Arc::new(RwLock::new(Vec::new())),
             last_discovery: Arc::new(RwLock::new(None)),
         };
@@ -173,9 +173,9 @@ impl SongbirdConnection {
 
         // Filter by protocol compatibility
         let protocol_str = match self.preferred_protocol {
-            SongbirdProtocol::Http => "http",
-            SongbirdProtocol::Grpc => "grpc",
-            SongbirdProtocol::WebSocket => "websocket",
+            SongbirdProtocol::HTTP => "http",
+            SongbirdProtocol::GRPC => "grpc",
+            SongbirdProtocol::MessageQueue => "messagequeue",
         };
 
         let compatible_services: Vec<_> = services

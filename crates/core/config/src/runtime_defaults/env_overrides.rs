@@ -140,10 +140,6 @@ impl ToadStoolConfig {
             self.security.sandbox.enabled = enabled.to_lowercase() == "true";
         }
 
-        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_WEBSOCKET") {
-            self.features.enable_websocket = enabled.to_lowercase() == "true";
-        }
-
         if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_FEDERATION") {
             self.features.enable_federation = enabled.to_lowercase() == "true";
         }
@@ -544,12 +540,10 @@ mod tests {
     fn apply_env_overrides_feature_flags() {
         let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
         clear_toadstool_env();
-        env::set_var("TOADSTOOL_ENABLE_WEBSOCKET", "true");
         env::set_var("TOADSTOOL_ENABLE_FEDERATION", "true");
         env::set_var("TOADSTOOL_ENABLE_GRPC", "true");
         let mut c = ToadStoolConfig::default();
         c.apply_env_overrides().unwrap();
-        assert!(c.features.enable_websocket);
         assert!(c.features.enable_federation);
         assert!(c.features.enable_grpc);
         clear_toadstool_env();

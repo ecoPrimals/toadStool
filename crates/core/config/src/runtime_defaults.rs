@@ -150,7 +150,6 @@ impl ToadStoolConfig {
         );
         info!("  Execution Timeout: {:?}", self.runtime.execution_timeout);
         info!("  Features:");
-        info!("    WebSocket: {}", self.features.enable_websocket);
         info!("    Federation: {}", self.features.enable_federation);
         info!("    Distributed: {}", self.features.enable_distributed);
         info!("    Auto-Config: {}", self.features.enable_auto_config);

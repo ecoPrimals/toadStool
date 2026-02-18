@@ -299,7 +299,6 @@ mod tests {
         assert_eq!(config.app.name, app::DEFAULT_APP_NAME);
         assert_eq!(config.app.environment, app::DEFAULT_ENVIRONMENT);
         assert_eq!(config.logging.level, app::DEFAULT_LOG_LEVEL);
-        assert!(config.features.enable_websocket);
         assert!(config.features.enable_federation);
     }
 

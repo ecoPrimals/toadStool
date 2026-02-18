@@ -13,7 +13,7 @@ fn test_toadstool_config_default() {
     let config = ToadStoolConfig::default();
     assert!(!config.app.name.is_empty());
     assert!(!config.logging.level.is_empty());
-    assert!(config.features.enable_websocket);
+    assert!(config.features.enable_federation);
 }
 
 #[test]
@@ -199,21 +199,18 @@ fn test_security_config_sandbox_enabled() {
 #[test]
 fn test_feature_flags_default() {
     let flags = FeatureFlags::default();
-    assert!(flags.enable_websocket);
     assert!(flags.enable_federation);
 }
 
 #[test]
 fn test_feature_flags_all_disabled() {
     let flags = FeatureFlags {
-        enable_websocket: false,
         enable_federation: false,
         enable_debug: false,
         enable_hot_reload: false,
         ..Default::default()
     };
 
-    assert!(!flags.enable_websocket);
     assert!(!flags.enable_federation);
     assert!(!flags.enable_debug);
     assert!(!flags.enable_hot_reload);

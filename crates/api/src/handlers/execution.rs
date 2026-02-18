@@ -103,11 +103,7 @@ pub async fn submit_execution(
         status_url: format!("{base_url}/api/v2/executions/{execution_id}"),
         logs_url: format!("{base_url}/api/v2/executions/{execution_id}/logs"),
         metrics_url: format!("{base_url}/api/v2/executions/{execution_id}/metrics"),
-        websocket_url: format!(
-            "{}/api/v2/executions/{}/ws",
-            base_url.replace("http", "ws"),
-            execution_id
-        ),
+        events_poll_url: format!("{base_url}/jsonrpc"), // Use compute.status JSON-RPC method
     };
 
     // Create response

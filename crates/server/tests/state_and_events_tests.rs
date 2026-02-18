@@ -69,6 +69,21 @@ impl ResourceMonitor for MockResourceMonitor {
 // =============================================================================
 
 #[test]
+fn test_server_event_to_json() {
+    let execution_id = Uuid::new_v4();
+    let timestamp = Utc::now();
+    let event = ServerEvent::ExecutionStarted {
+        execution_id,
+        runtime_type: RuntimeType::Native,
+        timestamp,
+    };
+    let json = event.to_json();
+    let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed["type"], "execution_started");
+    assert!(parsed["data"]["execution_id"].is_string());
+}
+
+#[test]
 fn test_server_event_execution_started() {
     let execution_id = Uuid::new_v4();
     let timestamp = Utc::now();

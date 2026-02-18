@@ -132,10 +132,6 @@ impl ToadStoolConfig {
             self.security.sandbox.enabled = enabled.to_lowercase() == "true";
         }
 
-        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_WEBSOCKET") {
-            self.features.enable_websocket = enabled.to_lowercase() == "true";
-        }
-
         if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_FEDERATION") {
             self.features.enable_federation = enabled.to_lowercase() == "true";
         }

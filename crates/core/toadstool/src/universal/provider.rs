@@ -95,7 +95,7 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
             health: format!("http://{host}:{port}/health"),
             metrics: Some(format!("http://{host}:{port}/metrics")),
             admin: Some(format!("http://{host}:{port}/admin")),
-            websocket: Some(format!("ws://{host}:{port}/ws")),
+            events_endpoint: Some(format!("http://{host}:{port}/events")),
             custom: HashMap::new(),
         }
     }

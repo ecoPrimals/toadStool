@@ -31,7 +31,7 @@ toadstool-distributed = { path = "../distributed" }
 toadstool-integration-protocols = { path = "../integration/protocols" }
 
 # HTTP server framework (optional)
-axum = { version = "0.7", features = ["ws"], optional = true }
+axum = { version = "0.7", optional = true }
 tower = { version = "0.4", optional = true }
 tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
 
@@ -52,7 +52,6 @@ base64 = "0.22"
 tokio = { version = "1.0", features = ["full"] }
 
 # Async utilities
-futures-util = "0.3"
 async-trait = "0.1"
 
 # HTTP client - REMOVED: Legacy artifact from old Songbird HTTP registration
@@ -95,9 +94,8 @@ wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdo
 futures = "0.3"
 
 [features]
-default = ["api", "websocket", "gpu-discovery"]
+default = ["api", "gpu-discovery"]
 api = ["axum", "tower", "tower-http"]
-websocket = ["axum/ws"]
 gpu-discovery = ["wgpu"]
 
 # UNIBIN EVOLUTION (Feb 2, 2026):
@@ -121,5 +119,4 @@ gpu-discovery = ["wgpu"]
 tokio-test = "0.4"
 tempfile = "3.8"
 toadstool-testing = { path = "../testing" }
-tokio-tungstenite = "0.21"
 proptest = { workspace = true }

@@ -145,8 +145,8 @@ fn test_transport_type_http() {
 
 #[test]
 fn test_transport_type_websocket() {
-    let transport = TransportType::WebSocket;
-    assert_eq!(transport, TransportType::WebSocket);
+    let transport = TransportType::TRpc;
+    assert_eq!(transport, TransportType::TRpc);
 }
 
 #[test]
@@ -277,7 +277,7 @@ fn test_service_info_multiple_endpoints() {
 
     let ep2 = ServiceEndpoint {
         id: "ep-2".to_string(),
-        transport: TransportType::WebSocket,
+        transport: TransportType::TRpc,
         address: "localhost".to_string(),
         port: 9000,
         path: Some("/ws".to_string()),
@@ -298,7 +298,7 @@ fn test_service_info_multiple_endpoints() {
 
     assert_eq!(service.endpoints.len(), 2);
     assert_eq!(service.endpoints[0].transport, TransportType::Http);
-    assert_eq!(service.endpoints[1].transport, TransportType::WebSocket);
+    assert_eq!(service.endpoints[1].transport, TransportType::TRpc);
 }
 
 // ============================================================================

@@ -5,6 +5,7 @@
 //! ## Features
 //!
 //! - **Multi-Protocol**: JSON-RPC 2.0 (PRIMARY), tarpc (OPTIONAL), HTTP (DEPRECATED)
+//! - **Real-time events**: use JSON-RPC 2.0 over Unix sockets (biomeOS/songbird)
 //! - **Trait-Based**: Polymorphic communication via `ServiceCommunication` trait
 //! - **Connection Management**: Automatic reconnection and health checks
 //! - **Message Routing**: Type-safe ecosystem messaging
@@ -15,6 +16,10 @@
 //! - JSON-RPC 2.0 is the PRIMARY protocol for inter-primal communication
 //! - tarpc is OPTIONAL for performance-critical internal paths
 //! - HTTP is DEPRECATED (use Songbird for HTTP/TLS)
+//!
+//! ## Real-time events
+//!
+//! Real-time events: use JSON-RPC 2.0 over Unix sockets (biomeOS/songbird)
 //!
 //! ## Usage
 //!
@@ -134,17 +139,6 @@ impl CommunicationManager {
                 self.send_via_unix_socket(rpc_client, message).await
             }
 
-            #[cfg(feature = "websocket")]
-            ServiceClient::WebSocket(_ws) => {
-                debug!(
-                    "WebSocket transport not yet available for message sending; use JSON-RPC path for {}. Pending: realtime WebSocket messaging implementation.",
-                    channel.service_name
-                );
-                Err(ToadStoolError::runtime(
-                    "WebSocket messaging not yet implemented",
-                ))
-            }
-
             #[cfg(not(feature = "networking"))]
             ServiceClient::Disabled => {
                 debug!("📤 Degraded-mode: no networking, returning fallback response");
@@ -179,13 +173,6 @@ impl CommunicationManager {
                     "tarpc transport not yet configured for {}; use JSON-RPC path",
                     channel.service_name
                 )))
-            }
-
-            #[cfg(feature = "websocket")]
-            ServiceClient::WebSocket(_) => {
-                // WebSocket health is implicit (connected = healthy)
-                debug!("✅ WebSocket health check (connected)");
-                Ok(())
             }
 
             #[cfg(not(feature = "networking"))]

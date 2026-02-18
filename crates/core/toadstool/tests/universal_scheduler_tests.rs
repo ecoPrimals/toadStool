@@ -57,7 +57,7 @@ impl UniversalPrimalProvider for FailingMockProvider {
             health: "http://localhost:8080/health".to_string(),
             metrics: None,
             admin: None,
-            websocket: None,
+            events_endpoint: None,
             custom: HashMap::new(),
         }
     }

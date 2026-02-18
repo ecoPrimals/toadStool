@@ -190,7 +190,9 @@ pub struct MonitoringEndpoints {
     pub status_url: String,
     pub logs_url: String,
     pub metrics_url: String,
-    pub websocket_url: String,
+    /// Real-time events use JSON-RPC 2.0 polling via biomeOS/songbird coordination.
+    /// Use `compute.status` method over Unix socket. No WebSocket (deprecated, used C-FFI ring).
+    pub events_poll_url: String,
 }
 
 /// Modern execution information with comprehensive data
@@ -568,7 +570,8 @@ pub struct ApiConfig {
     pub bind_address: String,
     /// Enable REST API endpoints
     pub enable_rest: bool,
-    /// Enable WebSocket real-time updates
+    /// Ignored; real-time events use JSON-RPC 2.0 polling via biomeOS/songbird coordination
+    #[allow(dead_code)]
     pub enable_websocket: bool,
     /// Enable CORS support
     pub cors_enabled: bool,
@@ -602,7 +605,7 @@ impl Default for ApiConfig {
                 config.network.bind_address, config.network.songbird_port
             ),
             enable_rest: true,
-            enable_websocket: true,
+            enable_websocket: false, // Deprecated; use JSON-RPC 2.0 polling
             cors_enabled: true,
             request_timeout_secs: 30,
             enable_openapi: true,

@@ -603,63 +603,54 @@ fn test_execution_metrics_debug() {
 // ============================================================================
 
 #[test]
-fn test_event_execution_started() {
-    let execution_id = Uuid::new_v4();
-    let event = ToadStoolEvent::ExecutionStarted {
-        execution_id,
-        timestamp: Utc::now(),
+fn test_event_execution_status_changed() {
+    let event = ToadStoolEvent::ExecutionStatusChanged {
+        execution_id: Uuid::new_v4().to_string(),
+        status: "completed".to_string(),
     };
-
-    assert!(matches!(event, ToadStoolEvent::ExecutionStarted { .. }));
+    assert!(matches!(
+        event,
+        ToadStoolEvent::ExecutionStatusChanged { .. }
+    ));
 }
 
 #[test]
-fn test_event_execution_completed() {
-    let execution_id = Uuid::new_v4();
-    let event = ToadStoolEvent::ExecutionCompleted {
-        execution_id,
-        status: ExecutionStatus::Completed,
-        timestamp: Utc::now(),
-    };
-
-    assert!(matches!(event, ToadStoolEvent::ExecutionCompleted { .. }));
+fn test_event_cluster_health_changed() {
+    let event = ToadStoolEvent::ClusterHealthChanged { healthy: true };
+    assert!(matches!(event, ToadStoolEvent::ClusterHealthChanged { .. }));
 }
 
 #[test]
 fn test_event_clone() {
-    let execution_id = Uuid::new_v4();
-    let event = ToadStoolEvent::ExecutionStarted {
-        execution_id,
-        timestamp: Utc::now(),
+    let event = ToadStoolEvent::ExecutionStatusChanged {
+        execution_id: "id-123".to_string(),
+        status: "running".to_string(),
     };
-
     let cloned = event.clone();
-    assert!(matches!(cloned, ToadStoolEvent::ExecutionStarted { .. }));
+    assert!(matches!(
+        cloned,
+        ToadStoolEvent::ExecutionStatusChanged { .. }
+    ));
 }
 
 #[test]
 fn test_event_serialization() {
-    let execution_id = Uuid::new_v4();
-    let event = ToadStoolEvent::ExecutionCompleted {
-        execution_id,
-        status: ExecutionStatus::Failed,
-        timestamp: Utc::now(),
+    let event = ToadStoolEvent::ExecutionStatusChanged {
+        execution_id: Uuid::new_v4().to_string(),
+        status: "failed".to_string(),
     };
-
     let serialized = serde_json::to_string(&event);
     assert!(serialized.is_ok());
 }
 
 #[test]
 fn test_event_debug() {
-    let execution_id = Uuid::new_v4();
-    let event = ToadStoolEvent::ExecutionStarted {
-        execution_id,
-        timestamp: Utc::now(),
+    let event = ToadStoolEvent::ExecutionStatusChanged {
+        execution_id: "id".to_string(),
+        status: "running".to_string(),
     };
-
     let debug_str = format!("{:?}", event);
-    assert!(debug_str.contains("ExecutionStarted"));
+    assert!(debug_str.contains("ExecutionStatusChanged"));
 }
 
 // ============================================================================

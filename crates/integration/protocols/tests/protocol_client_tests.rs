@@ -74,7 +74,7 @@ async fn test_protocol_client_with_multiple_transports() {
     let mut config = create_test_config();
     config.supported_transports = vec![
         TransportType::Http,
-        TransportType::WebSocket,
+        TransportType::TRpc,
         TransportType::TRpc,
     ];
 
@@ -384,7 +384,7 @@ async fn test_register_service_with_multiple_endpoints() {
         },
         ServiceEndpoint {
             id: "endpoint-2".to_string(),
-            transport: TransportType::WebSocket,
+            transport: TransportType::TRpc,
             address: "localhost".to_string(),
             port: 8081,
             path: Some("/ws".to_string()),

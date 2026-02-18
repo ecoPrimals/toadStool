@@ -76,14 +76,6 @@ impl SongbirdConnection {
                     Err(ToadStoolError::runtime("Invalid gRPC endpoint"))
                 }
             }
-            SongbirdProtocol::WebSocket => {
-                // For WebSocket, test if the endpoint looks valid
-                if endpoint.starts_with("ws://") || endpoint.starts_with("wss://") {
-                    Ok(())
-                } else {
-                    Err(ToadStoolError::runtime("Invalid WebSocket endpoint"))
-                }
-            }
             SongbirdProtocol::MessageQueue => {
                 // For message queues, we'll assume it's healthy if configured
                 Ok(())

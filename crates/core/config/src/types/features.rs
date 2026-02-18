@@ -33,9 +33,6 @@ pub struct FeatureFlags {
     /// Enable federation across instances
     pub enable_federation: bool,
 
-    /// Enable WebSocket API
-    pub enable_websocket: bool,
-
     /// Enable GraphQL API
     pub enable_graphql: bool,
 
@@ -70,7 +67,6 @@ impl Default for FeatureFlags {
             enable_profiling: false,
             enable_distributed: true,
             enable_federation: true,
-            enable_websocket: true,
             enable_graphql: false,
             enable_grpc: false,
             enable_openapi: true,
@@ -110,7 +106,6 @@ mod tests {
         let flags = FeatureFlags::default();
         assert!(!flags.enable_experimental);
         assert!(flags.enable_distributed);
-        assert!(flags.enable_websocket);
     }
 
     #[test]

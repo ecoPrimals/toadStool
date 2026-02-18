@@ -60,6 +60,98 @@ pub enum ServerEvent {
     },
 }
 
+impl ServerEvent {
+    /// Serialize event to JSON string for transport.
+    /// Used when events need to be forwarded (e.g. via JSON-RPC or logging).
+    #[must_use]
+    pub fn to_json(&self) -> String {
+        match self {
+            Self::ExecutionStarted {
+                execution_id,
+                runtime_type,
+                timestamp,
+            } => serde_json::json!({
+                "type": "execution_started",
+                "data": {
+                    "execution_id": execution_id,
+                    "runtime_type": runtime_type,
+                    "timestamp": timestamp,
+                }
+            })
+            .to_string(),
+            Self::ExecutionCompleted {
+                execution_id,
+                status,
+                duration_ms,
+                timestamp,
+            } => serde_json::json!({
+                "type": "execution_completed",
+                "data": {
+                    "execution_id": execution_id,
+                    "status": status,
+                    "duration_ms": duration_ms,
+                    "timestamp": timestamp,
+                }
+            })
+            .to_string(),
+            Self::RuntimeEngineRegistered {
+                runtime_type,
+                timestamp,
+            } => serde_json::json!({
+                "type": "runtime_engine_registered",
+                "data": {
+                    "runtime_type": runtime_type,
+                    "timestamp": timestamp,
+                }
+            })
+            .to_string(),
+            Self::ResourceUsageUpdate {
+                cpu_usage_percent,
+                memory_usage_percent,
+                active_executions,
+                timestamp,
+            } => serde_json::json!({
+                "type": "resource_usage_update",
+                "data": {
+                    "cpu_usage_percent": cpu_usage_percent,
+                    "memory_usage_percent": memory_usage_percent,
+                    "active_executions": active_executions,
+                    "timestamp": timestamp,
+                }
+            })
+            .to_string(),
+            Self::HealthStatusChanged {
+                healthy,
+                message,
+                timestamp,
+            } => serde_json::json!({
+                "type": "health_status_changed",
+                "data": {
+                    "healthy": healthy,
+                    "message": message,
+                    "timestamp": timestamp,
+                }
+            })
+            .to_string(),
+            Self::ErrorOccurred {
+                error_type,
+                message,
+                execution_id,
+                timestamp,
+            } => serde_json::json!({
+                "type": "error_occurred",
+                "data": {
+                    "error_type": error_type,
+                    "message": message,
+                    "execution_id": execution_id,
+                    "timestamp": timestamp,
+                }
+            })
+            .to_string(),
+        }
+    }
+}
+
 /// Information about an active execution
 #[derive(Debug, Clone)]
 pub struct ActiveExecution {
@@ -89,7 +181,7 @@ pub struct ServerState {
     /// Active executions
     pub active_executions: Arc<RwLock<HashMap<Uuid, ActiveExecution>>>,
 
-    /// Event broadcaster for WebSocket clients
+    /// Event broadcaster (real-time events via JSON-RPC 2.0 polling, no WebSocket)
     pub event_broadcaster: broadcast::Sender<ServerEvent>,
 
     /// Server configuration

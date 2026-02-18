@@ -57,8 +57,8 @@ fn test_get_health_port() {
 }
 
 #[test]
-fn test_get_websocket_port() {
-    let port = ConfigUtils::get_websocket_port();
+fn test_get_events_port() {
+    let port = ConfigUtils::get_events_port();
     assert!(port > 0);
 }
 

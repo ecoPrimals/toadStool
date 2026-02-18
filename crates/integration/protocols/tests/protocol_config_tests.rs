@@ -16,9 +16,7 @@ fn test_protocol_config_default() {
     assert!(!config.service_id.is_empty());
     assert_eq!(config.default_format, MessageFormat::Json);
     assert!(config.supported_transports.contains(&TransportType::Http));
-    assert!(config
-        .supported_transports
-        .contains(&TransportType::WebSocket));
+    assert!(config.supported_transports.contains(&TransportType::TRpc));
 }
 
 #[test]
@@ -65,7 +63,7 @@ fn test_protocol_config_multiple_transports() {
         default_format: MessageFormat::Json,
         supported_transports: vec![
             TransportType::Http,
-            TransportType::WebSocket,
+            TransportType::TRpc,
             TransportType::TRpc,
             TransportType::Tcp,
         ],

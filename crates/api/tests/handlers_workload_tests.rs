@@ -11,7 +11,7 @@ use tokio::sync::{broadcast, Barrier, RwLock};
 use uuid::Uuid;
 
 use toadstool_api::handlers::workload::execute_workload;
-use toadstool_api::{websocket, ApiState};
+use toadstool_api::ApiState;
 use toadstool_distributed::primal_capabilities::workload::{
     WorkloadResourceRequirements, WorkloadType,
 };
@@ -25,7 +25,6 @@ fn create_test_state_no_provider() -> ApiState {
         executions: Arc::new(RwLock::new(HashMap::new())),
         metrics: Arc::new(RwLock::new(toadstool_api::ApiMetrics::default())),
         event_broadcaster,
-        websocket_manager: Arc::new(websocket::WebSocketManager::new()),
         capability_provider: None, // No provider
     }
 }

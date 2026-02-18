@@ -19,7 +19,7 @@ use toadstool_api::handlers::{
     get_execution_status, health_check, list_executions, submit_execution,
 };
 use toadstool_api::types::*;
-use toadstool_api::{websocket, ApiState};
+use toadstool_api::ApiState;
 
 /// Helper function to create a test API state
 fn create_test_state() -> ApiState {
@@ -29,7 +29,6 @@ fn create_test_state() -> ApiState {
         event_broadcaster,
         executions: Arc::new(RwLock::new(HashMap::new())),
         metrics: Arc::new(RwLock::new(toadstool_api::ApiMetrics::default())),
-        websocket_manager: Arc::new(websocket::WebSocketManager::new()),
         capability_provider: None,
     }
 }

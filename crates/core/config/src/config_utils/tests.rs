@@ -107,16 +107,16 @@ fn test_port_ranges() {
 }
 
 #[test]
-fn test_get_federation_metrics_health_websocket_ports() {
+fn test_get_federation_metrics_health_events_ports() {
     let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
     let fed = ConfigUtils::get_federation_port();
     let metrics = ConfigUtils::get_metrics_port();
     let health = ConfigUtils::get_health_port();
-    let ws = ConfigUtils::get_websocket_port();
+    let events = ConfigUtils::get_events_port();
     assert!(fed > 0);
     assert!(metrics > 0);
     assert!(health > 0);
-    assert!(ws > 0);
+    assert!(events > 0);
 }
 
 #[test]

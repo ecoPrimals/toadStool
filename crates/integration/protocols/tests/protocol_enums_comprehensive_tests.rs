@@ -102,8 +102,8 @@ fn test_transport_type_http() {
 
 #[test]
 fn test_transport_type_websocket() {
-    let transport = TransportType::WebSocket;
-    assert!(matches!(transport, TransportType::WebSocket));
+    let transport = TransportType::TRpc;
+    assert!(matches!(transport, TransportType::TRpc));
 }
 
 #[test]
@@ -136,14 +136,14 @@ fn test_transport_type_custom() {
 #[test]
 fn test_transport_type_equality() {
     assert_eq!(TransportType::Http, TransportType::Http);
-    assert_eq!(TransportType::WebSocket, TransportType::WebSocket);
+    assert_eq!(TransportType::TRpc, TransportType::TRpc);
     assert_eq!(TransportType::TRpc, TransportType::TRpc);
 }
 
 #[test]
 fn test_transport_type_inequality() {
-    assert_ne!(TransportType::Http, TransportType::WebSocket);
-    assert_ne!(TransportType::WebSocket, TransportType::TRpc);
+    assert_ne!(TransportType::Http, TransportType::TRpc);
+    assert_ne!(TransportType::TRpc, TransportType::Tcp);
     assert_ne!(TransportType::Tcp, TransportType::Udp);
 }
 
@@ -151,13 +151,13 @@ fn test_transport_type_inequality() {
 fn test_transport_type_hash() {
     let mut set = HashSet::new();
     set.insert(TransportType::Http);
-    set.insert(TransportType::WebSocket);
     set.insert(TransportType::TRpc);
+    set.insert(TransportType::Tcp);
 
     assert_eq!(set.len(), 3);
     assert!(set.contains(&TransportType::Http));
-    assert!(set.contains(&TransportType::WebSocket));
     assert!(set.contains(&TransportType::TRpc));
+    assert!(set.contains(&TransportType::Tcp));
 }
 
 #[test]
@@ -174,7 +174,6 @@ fn test_transport_type_hash_no_duplicates() {
 fn test_transport_type_serialization() {
     let transports = vec![
         TransportType::Http,
-        TransportType::WebSocket,
         TransportType::TRpc,
         TransportType::Tcp,
         TransportType::Udp,
@@ -337,7 +336,7 @@ fn test_transport_type_custom_various_names() {
 fn test_transport_type_in_collection() {
     let transports = [
         TransportType::Http,
-        TransportType::WebSocket,
+        TransportType::TRpc,
         TransportType::TRpc,
     ];
 
@@ -356,7 +355,7 @@ fn test_enum_combinations() {
         (MessageFormat::Json, TransportType::Http, AuthType::Bearer),
         (
             MessageFormat::MessagePack,
-            TransportType::WebSocket,
+            TransportType::TRpc,
             AuthType::ApiKey,
         ),
         (MessageFormat::Cbor, TransportType::TRpc, AuthType::Jwt),

@@ -311,88 +311,29 @@ fn test_execution_metrics() {
 // ==================== ToadStool Event Tests ====================
 
 #[test]
-fn test_execution_started_event() {
-    let event = ToadStoolEvent::ExecutionStarted {
-        execution_id: Uuid::new_v4(),
-        timestamp: Utc::now(),
+fn test_execution_status_changed_event() {
+    let event = ToadStoolEvent::ExecutionStatusChanged {
+        execution_id: Uuid::new_v4().to_string(),
+        status: "completed".to_string(),
     };
 
-    match event {
-        ToadStoolEvent::ExecutionStarted { .. } => {
-            // Success
+    match &event {
+        ToadStoolEvent::ExecutionStatusChanged { status, .. } => {
+            assert_eq!(status, "completed");
         }
-        _ => panic!("Expected ExecutionStarted event"),
+        _ => panic!("Expected ExecutionStatusChanged event"),
     }
 }
 
 #[test]
-fn test_execution_completed_event() {
-    let event = ToadStoolEvent::ExecutionCompleted {
-        execution_id: Uuid::new_v4(),
-        status: ExecutionStatus::Completed,
-        timestamp: Utc::now(),
-    };
+fn test_cluster_health_changed_event() {
+    let event = ToadStoolEvent::ClusterHealthChanged { healthy: true };
 
-    match event {
-        ToadStoolEvent::ExecutionCompleted { status, .. } => {
-            assert!(matches!(status, ExecutionStatus::Completed));
+    match &event {
+        ToadStoolEvent::ClusterHealthChanged { healthy } => {
+            assert!(*healthy);
         }
-        _ => panic!("Expected ExecutionCompleted event"),
-    }
-}
-
-#[test]
-fn test_execution_progress_event() {
-    let event = ToadStoolEvent::ExecutionProgress {
-        execution_id: Uuid::new_v4(),
-        progress_percent: 50.0,
-        message: Some("Processing...".to_string()),
-        timestamp: Utc::now(),
-    };
-
-    match event {
-        ToadStoolEvent::ExecutionProgress {
-            progress_percent,
-            message,
-            ..
-        } => {
-            assert_eq!(progress_percent, 50.0);
-            assert!(message.is_some());
-        }
-        _ => panic!("Expected ExecutionProgress event"),
-    }
-}
-
-#[test]
-fn test_cluster_event() {
-    let event = ToadStoolEvent::ClusterEvent {
-        event_type: "node_joined".to_string(),
-        node_id: Some("node-123".to_string()),
-        message: "New node joined cluster".to_string(),
-        timestamp: Utc::now(),
-    };
-
-    match event {
-        ToadStoolEvent::ClusterEvent { event_type, .. } => {
-            assert_eq!(event_type, "node_joined");
-        }
-        _ => panic!("Expected ClusterEvent"),
-    }
-}
-
-#[test]
-fn test_alert_event() {
-    let event = ToadStoolEvent::Alert {
-        severity: "warning".to_string(),
-        message: "High CPU usage detected".to_string(),
-        timestamp: Utc::now(),
-    };
-
-    match event {
-        ToadStoolEvent::Alert { severity, .. } => {
-            assert_eq!(severity, "warning");
-        }
-        _ => panic!("Expected Alert event"),
+        _ => panic!("Expected ClusterHealthChanged event"),
     }
 }
 

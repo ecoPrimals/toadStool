@@ -41,7 +41,6 @@ pub mod handlers;
 pub mod jsonrpc;
 pub mod middleware;
 pub mod types;
-pub mod websocket;
 
 /// API server state
 #[derive(Clone)]
@@ -49,7 +48,6 @@ pub struct ApiState {
     pub executions: Arc<RwLock<HashMap<Uuid, ExecutionInfo>>>,
     pub metrics: Arc<RwLock<ApiMetrics>>,
     pub event_broadcaster: broadcast::Sender<ApiEvent>,
-    pub websocket_manager: Arc<websocket::WebSocketManager>,
     /// Capability provider for primal integration (optional for backwards compatibility)
     pub capability_provider:
         Option<Arc<toadstool_distributed::primal_capabilities::CapabilityProvider>>,
@@ -156,7 +154,6 @@ mod tests {
             executions,
             metrics,
             event_broadcaster: tx,
-            websocket_manager: Arc::new(websocket::WebSocketManager::new()),
             capability_provider: None,
         };
 

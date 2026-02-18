@@ -33,8 +33,8 @@ fn test_get_health_port() {
 }
 
 #[test]
-fn test_get_websocket_port() {
-    let port = ConfigUtils::get_websocket_port();
+fn test_get_events_port() {
+    let port = ConfigUtils::get_events_port();
     assert!(port > 0);
 }
 
@@ -381,7 +381,7 @@ fn test_all_ports_are_positive() {
         ConfigUtils::get_federation_port(),
         ConfigUtils::get_metrics_port(),
         ConfigUtils::get_health_port(),
-        ConfigUtils::get_websocket_port(),
+        ConfigUtils::get_events_port(),
     ];
 
     for port in ports {

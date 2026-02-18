@@ -453,21 +453,21 @@ pub struct RegistrationResponse {
 // Protocol Configuration
 // ============================================================================
 
+/// WebSocket removed — use JSON-RPC 2.0 (biomeOS/songbird)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SongbirdProtocol {
     HTTP,
     GRPC,
-    WebSocket,
     MessageQueue,
 }
 
 /// Protocol configuration for Songbird communication
+/// WebSocket removed — use JSON-RPC 2.0
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProtocolConfig {
     pub protocol: SongbirdProtocol,
     pub http: HttpProtocolConfig,
     pub grpc: GrpcProtocolConfig,
-    pub websocket: WebSocketProtocolConfig,
     pub message_queue: MessageQueueProtocolConfig,
 }
 
@@ -484,14 +484,6 @@ pub struct HttpProtocolConfig {
 pub struct GrpcProtocolConfig {
     pub timeout_ms: u64,
     pub max_message_size: usize,
-    pub compression: bool,
-}
-
-/// WebSocket protocol configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WebSocketProtocolConfig {
-    pub ping_interval_ms: u64,
-    pub max_frame_size: usize,
     pub compression: bool,
 }
 

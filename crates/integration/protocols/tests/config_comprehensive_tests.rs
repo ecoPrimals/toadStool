@@ -28,9 +28,7 @@ fn test_protocol_config_default_transports() {
 
     assert_eq!(config.supported_transports.len(), 2);
     assert!(config.supported_transports.contains(&TransportType::Http));
-    assert!(config
-        .supported_transports
-        .contains(&TransportType::WebSocket));
+    assert!(config.supported_transports.contains(&TransportType::TRpc));
 }
 
 #[test]

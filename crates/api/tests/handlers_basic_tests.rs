@@ -21,7 +21,6 @@ fn create_test_state() -> ApiState {
         executions: Arc::new(RwLock::new(HashMap::new())),
         metrics: Arc::new(RwLock::new(toadstool_api::ApiMetrics::default())),
         event_broadcaster: tx,
-        websocket_manager: Arc::new(toadstool_api::websocket::WebSocketManager::new()),
         capability_provider: None,
     }
 }

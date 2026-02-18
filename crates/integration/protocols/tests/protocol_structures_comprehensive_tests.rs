@@ -383,7 +383,7 @@ fn test_service_endpoint_https() {
 fn test_service_endpoint_websocket() {
     let endpoint = ServiceEndpoint {
         id: "endpoint-ws".to_string(),
-        transport: TransportType::WebSocket,
+        transport: TransportType::TRpc,
         address: "ws.example.com".to_string(),
         port: 8080,
         path: Some("/ws".to_string()),
@@ -391,7 +391,7 @@ fn test_service_endpoint_websocket() {
         health_status: HealthStatus::Healthy,
     };
 
-    assert_eq!(endpoint.transport, TransportType::WebSocket);
+    assert_eq!(endpoint.transport, TransportType::TRpc);
     assert_eq!(endpoint.path, Some("/ws".to_string()));
 }
 
@@ -480,7 +480,7 @@ fn test_service_with_multiple_endpoints() {
         },
         ServiceEndpoint {
             id: "ws-endpoint".to_string(),
-            transport: TransportType::WebSocket,
+            transport: TransportType::TRpc,
             address: "localhost".to_string(),
             port: 8081,
             path: Some("/ws".to_string()),
@@ -502,7 +502,7 @@ fn test_service_with_multiple_endpoints() {
 
     assert_eq!(service.endpoints.len(), 2);
     assert_eq!(service.endpoints[0].transport, TransportType::Http);
-    assert_eq!(service.endpoints[1].transport, TransportType::WebSocket);
+    assert_eq!(service.endpoints[1].transport, TransportType::TRpc);
 }
 
 #[test]

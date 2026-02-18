@@ -182,7 +182,7 @@ fn test_connection_with_websocket_transport() {
         service_id: "ws-service".to_string(),
         endpoint: create_test_endpoint(
             "ws-endpoint",
-            TransportType::WebSocket,
+            TransportType::TRpc,
             "localhost",
             8080,
             Some("/ws".to_string()),
@@ -193,7 +193,7 @@ fn test_connection_with_websocket_transport() {
         active_requests: 0,
     };
 
-    assert_eq!(conn.endpoint.transport, TransportType::WebSocket);
+    assert_eq!(conn.endpoint.transport, TransportType::TRpc);
 }
 
 #[test]
@@ -474,8 +474,8 @@ fn test_transport_http_variant() {
 
 #[test]
 fn test_transport_websocket_variant() {
-    let transport = Transport::WebSocket(WebSocketTransport::new());
-    assert_eq!(transport.transport_type(), TransportType::WebSocket);
+    let transport = Transport::TRpc(TRpcTransport::new());
+    assert_eq!(transport.transport_type(), TransportType::TRpc);
 }
 
 #[test]
@@ -493,9 +493,9 @@ fn test_transport_clone_http() {
 
 #[test]
 fn test_transport_clone_websocket() {
-    let transport = Transport::WebSocket(WebSocketTransport::new());
+    let transport = Transport::TRpc(TRpcTransport::new());
     let cloned = transport.clone();
-    assert_eq!(cloned.transport_type(), TransportType::WebSocket);
+    assert_eq!(cloned.transport_type(), TransportType::TRpc);
 }
 
 #[test]
@@ -514,9 +514,9 @@ fn test_transport_debug_http() {
 
 #[test]
 fn test_transport_debug_websocket() {
-    let transport = Transport::WebSocket(WebSocketTransport::new());
+    let transport = Transport::TRpc(TRpcTransport::new());
     let debug_str = format!("{:?}", transport);
-    assert!(debug_str.contains("WebSocket"));
+    assert!(debug_str.contains("TRpc"));
 }
 
 #[test]
@@ -546,7 +546,7 @@ fn test_transport_rejects_mismatched_endpoint() {
     let transport = Transport::Http(HttpTransport::new());
     let endpoint = create_test_endpoint(
         "test",
-        TransportType::WebSocket,
+        TransportType::TRpc,
         "localhost",
         8080,
         Some("/".to_string()),
@@ -571,7 +571,7 @@ fn test_transport_http_supports_http_only() {
 
     let ws_endpoint = create_test_endpoint(
         "ws",
-        TransportType::WebSocket,
+        TransportType::TRpc,
         "localhost",
         8080,
         Some("/".to_string()),
@@ -584,7 +584,7 @@ fn test_transport_http_supports_http_only() {
 
 #[test]
 fn test_transport_websocket_supports_ws_only() {
-    let transport = Transport::WebSocket(WebSocketTransport::new());
+    let transport = Transport::TRpc(TRpcTransport::new());
 
     let http_endpoint = create_test_endpoint(
         "http",
@@ -597,7 +597,7 @@ fn test_transport_websocket_supports_ws_only() {
 
     let ws_endpoint = create_test_endpoint(
         "ws",
-        TransportType::WebSocket,
+        TransportType::TRpc,
         "localhost",
         8080,
         Some("/".to_string()),
@@ -611,11 +611,11 @@ fn test_transport_websocket_supports_ws_only() {
 #[test]
 fn test_transport_type_consistency() {
     let http = Transport::Http(HttpTransport::new());
-    let ws = Transport::WebSocket(WebSocketTransport::new());
+    let ws = Transport::TRpc(TRpcTransport::new());
     let trpc = Transport::TRpc(TRpcTransport::new());
 
     assert_eq!(http.transport_type(), TransportType::Http);
-    assert_eq!(ws.transport_type(), TransportType::WebSocket);
+    assert_eq!(ws.transport_type(), TransportType::TRpc);
     assert_eq!(trpc.transport_type(), TransportType::TRpc);
 }
 

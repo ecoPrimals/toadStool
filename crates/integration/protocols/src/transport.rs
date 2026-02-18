@@ -18,10 +18,10 @@ pub struct Connection {
 }
 
 /// Transport implementations enum
+/// WebSocket removed — use JSON-RPC 2.0 (biomeOS/songbird)
 #[derive(Debug, Clone)]
 pub enum Transport {
     Http(HttpTransport),
-    WebSocket(WebSocketTransport),
     TRpc(TRpcTransport),
 }
 
@@ -34,7 +34,6 @@ impl Transport {
     ) -> ProtocolResult<ProtocolMessage> {
         match self {
             Transport::Http(transport) => transport.send_message(message, endpoint).await,
-            Transport::WebSocket(transport) => transport.send_message(message, endpoint).await,
             Transport::TRpc(transport) => transport.send_message(message, endpoint).await,
         }
     }
@@ -43,7 +42,6 @@ impl Transport {
     pub fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
         match self {
             Transport::Http(transport) => transport.supports_endpoint(endpoint),
-            Transport::WebSocket(transport) => transport.supports_endpoint(endpoint),
             Transport::TRpc(transport) => transport.supports_endpoint(endpoint),
         }
     }
@@ -52,7 +50,6 @@ impl Transport {
     pub fn transport_type(&self) -> TransportType {
         match self {
             Transport::Http(transport) => transport.transport_type(),
-            Transport::WebSocket(transport) => transport.transport_type(),
             Transport::TRpc(transport) => transport.transport_type(),
         }
     }
@@ -97,44 +94,6 @@ impl HttpTransport {
 
     pub fn transport_type(&self) -> TransportType {
         TransportType::Http
-    }
-}
-
-/// WebSocket transport implementation
-#[derive(Debug, Clone)]
-pub struct WebSocketTransport {
-    // WebSocket client would be implemented here
-}
-
-impl Default for WebSocketTransport {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl WebSocketTransport {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub async fn send_message(
-        &self,
-        _message: &ProtocolMessage,
-        _endpoint: &ServiceEndpoint,
-    ) -> ProtocolResult<ProtocolMessage> {
-        // WebSocket implementation would go here
-        // For now, return a placeholder response
-        Err(ProtocolError::Transport(
-            "WebSocket not implemented".to_string(),
-        ))
-    }
-
-    pub fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
-        matches!(endpoint.transport, TransportType::WebSocket)
-    }
-
-    pub fn transport_type(&self) -> TransportType {
-        TransportType::WebSocket
     }
 }
 
@@ -194,12 +153,8 @@ impl TransportManager {
     pub fn new() -> Self {
         let mut transports = HashMap::new();
 
-        // Register default transports
+        // Register default transports (WebSocket removed — use JSON-RPC 2.0)
         transports.insert(TransportType::Http, Transport::Http(HttpTransport::new()));
-        transports.insert(
-            TransportType::WebSocket,
-            Transport::WebSocket(WebSocketTransport::new()),
-        );
         transports.insert(TransportType::TRpc, Transport::TRpc(TRpcTransport::new()));
 
         Self { transports }
