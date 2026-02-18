@@ -225,18 +225,7 @@ impl ShaderTemplate {
     /// let safe_shader = ShaderTemplate::for_device(user_shader, &device);
     /// ```
     pub fn for_device(shader_body: &str, device: &crate::device::WgpuDevice) -> String {
-        let patched = if device.is_nvk() {
-            // Replace native f64 builtins that crash NAK with software equivalents
-            // Only exp/log are problematic; sqrt/abs/floor/ceil work fine
-            shader_body
-                .replace("exp(", "exp_f64(")
-                .replace("log(", "log_f64(")
-        } else {
-            shader_body.to_string()
-        };
-
-        // Always include math_f64 preamble for the _f64 functions
-        Self::with_math_f64(&patched)
+        Self::for_driver_auto(shader_body, device.needs_f64_exp_log_workaround())
     }
 
     /// Auto-patch shader for driver compatibility with auto-detection of needed functions.
@@ -244,7 +233,24 @@ impl ShaderTemplate {
     /// Like `for_device`, but only includes the math_f64 functions that are actually used.
     /// This provides both portability and minimal shader compilation time.
     pub fn for_device_auto(shader_body: &str, device: &crate::device::WgpuDevice) -> String {
-        let patched = if device.is_nvk() {
+        Self::for_driver_auto(shader_body, device.needs_f64_exp_log_workaround())
+    }
+
+    /// Apply driver-aware patching without requiring a WgpuDevice reference.
+    ///
+    /// When `needs_exp_log_workaround` is true (NVK/NAK, RADV/ACO), replaces
+    /// native f64 `exp()`/`log()` with software `exp_f64()`/`log_f64()`.
+    ///
+    /// Then injects ONLY the math_f64 functions that are called but not
+    /// already defined in the shader. This handles shaders that have their
+    /// own partial math_f64 implementations (e.g., their own `f64_const`).
+    ///
+    /// **Deep Debt Note**: This workaround exists because open-source GPU
+    /// compiler backends (NAK, ACO) don't fully implement f64 transcendentals.
+    /// The long-term solution is upstream contributions to these compilers.
+    /// Workarounds are tracked as debt and should shrink over time.
+    pub fn for_driver_auto(shader_body: &str, needs_exp_log_workaround: bool) -> String {
+        let patched = if needs_exp_log_workaround {
             shader_body
                 .replace("exp(", "exp_f64(")
                 .replace("log(", "log_f64(")
@@ -252,7 +258,80 @@ impl ShaderTemplate {
             shader_body.to_string()
         };
 
-        Self::with_math_f64_auto(&patched)
+        Self::inject_missing_math_f64(&patched)
+    }
+
+    /// Inject only the math_f64 functions that are called but not defined.
+    ///
+    /// Unlike `with_math_f64_auto` (which always prepends), this method
+    /// respects existing definitions and only fills gaps. This prevents
+    /// "redefinition" errors for shaders with partial math_f64 implementations.
+    fn inject_missing_math_f64(shader_body: &str) -> String {
+        let mut missing_functions: Vec<&str> = Vec::new();
+
+        for func_name in F64_FUNCTION_ORDER {
+            let call_pattern = format!("{func_name}(");
+            let is_called = shader_body.contains(&call_pattern);
+            let is_defined = Self::shader_defines_function(shader_body, func_name);
+
+            if is_called && !is_defined {
+                missing_functions.push(func_name);
+            }
+        }
+
+        if missing_functions.is_empty() {
+            return shader_body.to_string();
+        }
+
+        // Build the subset of missing functions with their dependencies
+        let full_lib = Self::math_f64_preamble();
+        let mut preamble = String::from("// math_f64 driver workaround - auto-injected\n");
+
+        // Inject f64_const if needed and not already defined
+        let needs_f64_const = !Self::shader_defines_function(shader_body, "f64_const");
+        if needs_f64_const {
+            preamble.push_str(
+                "fn f64_const(x: f64, c: f32) -> f64 {\n    \
+                     return x - x + f64(c);\n\
+                 }\n\n",
+            );
+        }
+
+        // Collect all needed functions via transitive deps
+        let mut all_needed = std::collections::HashSet::new();
+        for func in &missing_functions {
+            Self::collect_deps(func, &mut all_needed);
+        }
+
+        // Inject in dependency order, skipping already-defined ones
+        for func_name in F64_FUNCTION_ORDER {
+            if all_needed.contains(*func_name)
+                && !Self::shader_defines_function(shader_body, func_name)
+            {
+                if let Some(func_code) = extract_wgsl_function(&full_lib, func_name) {
+                    preamble.push_str(&func_code);
+                    preamble.push_str("\n\n");
+                }
+            }
+        }
+
+        format!("{preamble}\n{shader_body}")
+    }
+
+    /// Collect transitive dependencies for a math_f64 function.
+    fn collect_deps<'a>(name: &'a str, needed: &mut std::collections::HashSet<&'a str>) {
+        if needed.contains(name) {
+            return;
+        }
+        needed.insert(name);
+        for (func, func_deps) in F64_FUNCTION_DEPS {
+            if *func == name {
+                for dep in func_deps.iter().copied() {
+                    Self::collect_deps(dep, needed);
+                }
+                break;
+            }
+        }
     }
 
     /// Auto-detects which math_f64 functions are used in a shader and includes only those.
@@ -407,45 +486,36 @@ impl ShaderTemplate {
             let trimmed = line.trim();
             // Skip function bodies (start with spaces/tabs in well-formatted WGSL)
             // Module-scope definitions are at column 0 or after comments
-            if (line.starts_with("let ")
-                || line.starts_with("var ")
-                || line.starts_with("const "))
+            if (line.starts_with("let ") || line.starts_with("var ") || line.starts_with("const "))
                 && (trimmed.contains(&format!("{var_name} "))
                     || trimmed.contains(&format!("{var_name}="))
                     || trimmed.contains(&format!("{var_name}:")))
-                {
-                    return true;
-                }
+            {
+                return true;
+            }
         }
         false
     }
 
-    /// Prepends math_f64 library with conflict detection
+    /// Prepends math_f64 functions with conflict-safe injection.
     ///
-    /// Like `with_math_f64()` but skips injection if the shader already
-    /// defines `f64_const` or other math_f64 functions. This prevents
-    /// "redefinition" errors in WGSL compilation.
+    /// Delegates to `inject_missing_math_f64` which only injects functions
+    /// that are called but not already defined. Handles partial definitions
+    /// (e.g., shader defines `f64_const` but needs `exp_f64`).
     ///
     /// # Example
     /// ```rust,ignore
     /// let shader = include_str!("my_shader.wgsl");
     /// let full = ShaderTemplate::with_math_f64_safe(shader);
-    /// // If my_shader.wgsl already has f64_const, won't cause redefinition
     /// ```
     pub fn with_math_f64_safe(shader_body: &str) -> String {
-        // If shader already defines f64_const, assume it has its own math lib
-        if Self::shader_defines_function(shader_body, "f64_const") {
-            log::debug!("Shader already defines f64_const, skipping preamble injection");
-            return shader_body.to_string();
-        }
-
-        Self::with_math_f64(shader_body)
+        Self::inject_missing_math_f64(shader_body)
     }
 
-    /// Auto-detect and prepend math_f64 with conflict detection
+    /// Auto-detect and prepend math_f64 with conflict-safe injection.
     ///
-    /// Like `with_math_f64_auto()` but skips injection if conflicts detected.
-    /// This is the safest method for use with user shaders.
+    /// Delegates to `inject_missing_math_f64` which only injects functions
+    /// that are called but not already defined.
     ///
     /// # Example
     /// ```rust,ignore
@@ -453,13 +523,7 @@ impl ShaderTemplate {
     /// let full = ShaderTemplate::with_math_f64_auto_safe(shader);
     /// ```
     pub fn with_math_f64_auto_safe(shader_body: &str) -> String {
-        // If shader already defines f64_const, skip auto-injection
-        if Self::shader_defines_function(shader_body, "f64_const") {
-            log::debug!("Shader already defines f64_const, skipping auto-injection");
-            return shader_body.to_string();
-        }
-
-        Self::with_math_f64_auto(shader_body)
+        Self::inject_missing_math_f64(shader_body)
     }
 }
 
@@ -1034,7 +1098,10 @@ mod tests {
 
         // Test with space before paren
         let shader_space = r#"fn sqrt_f64 (x: f64) -> f64 { return x; }"#;
-        assert!(ShaderTemplate::shader_defines_function(shader_space, "sqrt_f64"));
+        assert!(ShaderTemplate::shader_defines_function(
+            shader_space,
+            "sqrt_f64"
+        ));
     }
 
     #[test]
@@ -1055,17 +1122,44 @@ fn main() {
     let zero = x - x;
 }
 "#;
-        assert!(!ShaderTemplate::shader_defines_module_var(shader_local, "zero"));
+        assert!(!ShaderTemplate::shader_defines_module_var(
+            shader_local,
+            "zero"
+        ));
 
         // Const at module scope
         let shader_const = r#"
 const EPSILON: f64 = 1e-15;
 "#;
-        assert!(ShaderTemplate::shader_defines_module_var(shader_const, "EPSILON"));
+        assert!(ShaderTemplate::shader_defines_module_var(
+            shader_const,
+            "EPSILON"
+        ));
     }
 
     #[test]
-    fn test_with_math_f64_safe_no_conflict() {
+    fn test_safe_injects_only_called_functions() {
+        let shader = r#"
+            @compute @workgroup_size(256)
+            fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+                output[id.x] = sqrt_f64(input[id.x]);
+            }
+        "#;
+
+        let result = ShaderTemplate::with_math_f64_safe(shader);
+        assert!(result.contains("fn sqrt_f64"), "should inject sqrt_f64");
+        assert!(
+            result.contains("fn f64_const"),
+            "should inject f64_const dep"
+        );
+        assert!(
+            !result.contains("fn exp_f64"),
+            "should not inject unused exp_f64"
+        );
+    }
+
+    #[test]
+    fn test_safe_no_injection_for_native_calls() {
         let shader = r#"
             @compute @workgroup_size(256)
             fn main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -1074,14 +1168,40 @@ const EPSILON: f64 = 1e-15;
         "#;
 
         let result = ShaderTemplate::with_math_f64_safe(shader);
-        // Should include the full library (no conflict)
-        assert!(result.contains("fn f64_const"));
+        assert!(
+            !result.contains("fn f64_const"),
+            "no math_f64 called, none injected"
+        );
     }
 
     #[test]
-    fn test_with_math_f64_safe_conflict() {
+    fn test_safe_partial_definitions_respected() {
         let shader = r#"
-            // User shader already has f64_const
+            fn f64_const(x: f64, c: f32) -> f64 {
+                return x - x + f64(c);
+            }
+
+            @compute @workgroup_size(256)
+            fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+                output[id.x] = exp_f64(f64_const(input[id.x], 1.0));
+            }
+        "#;
+
+        let result = ShaderTemplate::with_math_f64_safe(shader);
+        assert_eq!(
+            result.matches("fn f64_const").count(),
+            1,
+            "no duplicate f64_const"
+        );
+        assert!(
+            result.contains("fn exp_f64"),
+            "should inject missing exp_f64"
+        );
+    }
+
+    #[test]
+    fn test_safe_all_defined_no_injection() {
+        let shader = r#"
             fn f64_const(x: f64, c: f32) -> f64 {
                 return x - x + f64(c);
             }
@@ -1093,9 +1213,58 @@ const EPSILON: f64 = 1e-15;
         "#;
 
         let result = ShaderTemplate::with_math_f64_safe(shader);
-        // Should return shader as-is (detected conflict)
-        assert!(result.contains("User shader already has f64_const"));
-        // Should NOT have duplicate f64_const
-        assert_eq!(result.matches("fn f64_const").count(), 1);
+        assert_eq!(result.matches("fn f64_const").count(), 1, "no duplicate");
+    }
+
+    #[test]
+    fn test_driver_workaround_with_partial_definitions() {
+        // Simulates coulomb_f64.wgsl: has f64_const, uses native exp() which
+        // gets replaced to exp_f64() by the RADV/NVK workaround.
+        let shader = r#"
+            fn f64_const(x: f64, c: f32) -> f64 {
+                return x - x + f64(c);
+            }
+            fn erfc_f64(x: f64) -> f64 {
+                return f64_const(x, 1.0) - erf_f64(x);
+            }
+            @compute @workgroup_size(256)
+            fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+                let v = exp(-input[id.x]);
+                output[id.x] = erfc_f64(v);
+            }
+        "#;
+
+        let result = ShaderTemplate::for_driver_auto(shader, true);
+        assert!(
+            result.contains("exp_f64("),
+            "exp should be replaced with exp_f64"
+        );
+        assert!(result.contains("fn exp_f64"), "exp_f64 must be injected");
+        assert!(result.contains("fn erf_f64"), "erf_f64 must be injected");
+        assert_eq!(
+            result.matches("fn f64_const").count(),
+            1,
+            "no duplicate f64_const"
+        );
+    }
+
+    #[test]
+    fn test_driver_workaround_disabled() {
+        let shader = r#"
+            @compute @workgroup_size(256)
+            fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+                output[id.x] = exp(input[id.x]);
+            }
+        "#;
+
+        let result = ShaderTemplate::for_driver_auto(shader, false);
+        assert!(
+            result.contains("exp("),
+            "native exp preserved when workaround disabled"
+        );
+        assert!(
+            !result.contains("exp_f64("),
+            "no replacement when workaround disabled"
+        );
     }
 }

@@ -157,9 +157,9 @@ impl Default for EndpointConfig {
             format!("http://{}:{}", config.network.bind_address, port)
         });
         let squirrel = std::env::var("TOADSTOOL_AI_SERVICE_URL").unwrap_or_else(|_| {
-            // Squirrel uses port 6000 as its known default; discovered at runtime in production
-            // TODO(Phase 3): Replace with capability-based discovery via Songbird
-            format!("http://{}:6000", config.network.bind_address)
+            #[allow(deprecated)]
+            let port = crate::ports::fallback::SQUIRREL;
+            format!("http://{}:{}", config.network.bind_address, port)
         });
 
         Self {

@@ -142,7 +142,7 @@ impl GemmF64 {
         let params_buffer = device.create_uniform_buffer("GEMM Params", &params);
 
         // Compile shader and create pipeline
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("GEMM f64"));
+        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("GEMM f64"));
 
         let bgl = device
             .device
@@ -207,8 +207,8 @@ impl GemmF64 {
                 layout: Some(&pl),
                 module: &shader,
                 entry_point: "gemm_f64",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -259,52 +259,7 @@ impl GemmF64 {
         }
 
         // Read back results
-        Self::read_f64_buffer(&device, &c_buffer, c_size)
-    }
-
-    /// Helper: Read f64 buffer from GPU
-    fn read_f64_buffer(
-        device: &Arc<WgpuDevice>,
-        buffer: &wgpu::Buffer,
-        count: usize,
-    ) -> Result<Vec<f64>> {
-        let staging = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("GEMM f64 staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("GEMM readback"),
-            });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        device.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            // Channel send should not fail since receiver is alive during poll
-            let _ = sender.send(result);
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .map_err(|_| BarracudaError::execution_failed("GPU buffer mapping channel closed"))?
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = slice.get_mapped_range();
-        // SAFETY: chunks_exact(8) guarantees exactly 8-byte chunks
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().expect("chunks_exact(8) invariant")))
-            .collect();
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
+        device.read_f64_buffer(&c_buffer, c_size)
     }
 }
 

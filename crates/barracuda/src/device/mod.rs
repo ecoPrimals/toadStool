@@ -59,7 +59,7 @@ pub use cache_hierarchy::{
 };
 pub use capabilities::{
     CompilerKind, DeviceCapabilities, DriverKind, EigensolveStrategy, Fp64Rate, GpuArch,
-    GpuDriverProfile, WorkloadType, Workaround,
+    GpuDriverProfile, Workaround, WorkloadType,
 };
 pub use kernel_router::{ComputeWorkload, KernelRouter, KernelTarget, NpuModelInfo};
 pub use registry::{

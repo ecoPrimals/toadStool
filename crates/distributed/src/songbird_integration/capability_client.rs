@@ -9,6 +9,7 @@ use chrono::{DateTime, Utc};
 use std::sync::Arc;
 use std::time::Duration;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
+use toadstool_common::constants::timeouts;
 use toadstool_common::infant_discovery::{
     DiscoveredService, DiscoveryEngine, DiscoverySource, ServiceHealth, ServiceMetadata,
 };
@@ -78,7 +79,7 @@ impl CapabilityClient {
         let client = Self {
             discovery: Arc::clone(&discovery),
             required_capabilities,
-            timeout: Duration::from_secs(30),
+            timeout: timeouts::DEFAULT_REQUEST_TIMEOUT,
             preferred_protocol: SongbirdProtocol::HTTP,
             cached_services: Arc::new(RwLock::new(Vec::new())),
             last_discovery: Arc::new(RwLock::new(None)),

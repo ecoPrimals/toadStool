@@ -643,11 +643,37 @@ impl WgpuDevice {
         driver.contains("radv") || driver_info.contains("radv")
     }
 
+    /// Whether this device needs software workarounds for f64 exp/log builtins.
+    ///
+    /// Known broken drivers:
+    /// - NVK/NAK: crashes on native exp(f64), log(f64)
+    /// - RADV/ACO (AMD open-source): `fexp2` unimplemented for f64,
+    ///   triggers `ACO ERROR: Unimplemented NIR instr bit size: 64`
+    ///
+    /// Proprietary NVIDIA and AMD drivers handle f64 exp/log natively.
+    ///
+    /// **Debt**: This is a workaround, not a solution. The root cause is
+    /// incomplete f64 transcendental support in open-source GPU compiler
+    /// backends (NAK for NVIDIA, ACO for AMD). Long-term solutions:
+    /// 1. Upstream NAK contributions (Mesa/freedreno)
+    /// 2. Upstream ACO contributions (Mesa/RADV)
+    /// 3. Evolve to capability-based shader specialization where each
+    ///    device's actual f64 op support is probed at startup
+    ///
+    /// When either compiler backend gains native f64 exp/log, remove
+    /// the corresponding check here. The software fallbacks are ~2x slower.
+    pub fn needs_f64_exp_log_workaround(&self) -> bool {
+        self.is_nvk() || self.is_radv()
+    }
+
     /// Check if this device uses a proprietary NVIDIA driver
     pub fn is_nvidia_proprietary(&self) -> bool {
         let name = self.adapter_info.name.to_lowercase();
         let driver = self.adapter_info.driver.to_lowercase();
-        (name.contains("nvidia") || name.contains("geforce") || name.contains("rtx") || name.contains("gtx"))
+        (name.contains("nvidia")
+            || name.contains("geforce")
+            || name.contains("rtx")
+            || name.contains("gtx"))
             && !self.is_nvk()
             && !driver.contains("mesa")
     }
@@ -815,6 +841,73 @@ impl WgpuDevice {
             })
     }
 
+    /// Compile an f64 WGSL shader with automatic driver-aware patching.
+    ///
+    /// Applies NVK workarounds (exp/log -> software fallback) and prepends
+    /// only the math_f64 functions actually used by the shader.
+    ///
+    /// All f64 shader compilation should use this method to ensure
+    /// cross-driver compatibility (NVK, RADV, proprietary).
+    pub fn compile_shader_f64(&self, source: &str, label: Option<&str>) -> wgpu::ShaderModule {
+        let patched = crate::shaders::precision::ShaderTemplate::for_driver_auto(
+            source,
+            self.needs_f64_exp_log_workaround(),
+        );
+        self.compile_shader(&patched, label)
+    }
+
+    /// Read typed values from a GPU buffer.
+    ///
+    /// Creates a staging buffer, copies data, maps it, and extracts via bytemuck.
+    /// All typed read variants delegate here.
+    fn read_buffer<T: bytemuck::Pod>(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<T>> {
+        if count == 0 {
+            return Ok(Vec::new());
+        }
+        let byte_size = (count * std::mem::size_of::<T>()) as u64;
+        let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("readback staging"),
+            size: byte_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("readback"),
+            });
+        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, byte_size);
+        self.queue.submit(Some(encoder.finish()));
+
+        let slice = staging.slice(..);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |result| {
+            let _ = sender.send(result);
+        });
+        self.device.poll(wgpu::Maintain::Wait);
+        receiver
+            .recv()
+            .map_err(|_| BarracudaError::execution_failed("GPU buffer mapping channel closed"))?
+            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
+
+        let data = slice.get_mapped_range();
+        let result: Vec<T> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging.unmap();
+
+        Ok(result)
+    }
+
+    /// Read f64 values from a GPU buffer.
+    ///
+    /// Creates a staging buffer, copies data, maps it, and converts to `Vec<f64>`.
+    /// This is the canonical readback path — all GPU ops should use this instead
+    /// of duplicating the staging + map + channel + poll pattern.
+    pub fn read_f64_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<f64>> {
+        self.read_buffer::<f64>(buffer, count)
+    }
+
     /// Execute WGSL compute shader
     pub fn execute_compute(
         &self,
@@ -833,8 +926,8 @@ impl WgpuDevice {
                 layout: None,
                 module: &shader,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         // Encode and submit
@@ -866,50 +959,7 @@ impl WgpuDevice {
 impl WgpuDevice {
     /// Read buffer to host memory
     pub fn read_buffer_f32(&self, buffer: &wgpu::Buffer, size: usize) -> Result<Vec<f32>> {
-        if size == 0 {
-            return Ok(Vec::new());
-        }
-        // Create staging buffer
-        let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Staging Buffer"),
-            size: (size * std::mem::size_of::<f32>()) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        // Copy GPU -> staging
-        let mut encoder = self.device.create_command_encoder(&Default::default());
-        encoder.copy_buffer_to_buffer(
-            buffer,
-            0,
-            &staging_buffer,
-            0,
-            (size * std::mem::size_of::<f32>()) as u64,
-        );
-        self.queue.submit(Some(encoder.finish()));
-
-        // Map and read
-        let buffer_slice = staging_buffer.slice(..);
-        let (sender, receiver) = futures::channel::oneshot::channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            sender.send(result).ok();
-        });
-
-        self.device.poll(wgpu::Maintain::Wait);
-
-        // Wait for mapping
-        futures::executor::block_on(receiver)
-            .map_err(|_| BarracudaError::gpu("Failed to map buffer"))?
-            .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
-
-        // Copy data
-        let data = buffer_slice.get_mapped_range();
-        let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
-
-        drop(data);
-        staging_buffer.unmap();
-
-        Ok(result)
+        self.read_buffer::<f32>(buffer, size)
     }
 
     /// Write data to buffer
@@ -923,95 +973,12 @@ impl WgpuDevice {
     ///
     /// Used for high-precision operations (PPPM, FFT f64, sparse solvers)
     pub fn read_buffer_f64(&self, buffer: &wgpu::Buffer, size: usize) -> Result<Vec<f64>> {
-        if size == 0 {
-            return Ok(Vec::new());
-        }
-        // Create staging buffer
-        let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Staging Buffer f64"),
-            size: (size * std::mem::size_of::<f64>()) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        // Copy GPU -> staging
-        let mut encoder = self.device.create_command_encoder(&Default::default());
-        encoder.copy_buffer_to_buffer(
-            buffer,
-            0,
-            &staging_buffer,
-            0,
-            (size * std::mem::size_of::<f64>()) as u64,
-        );
-        self.queue.submit(Some(encoder.finish()));
-
-        // Map and read
-        let buffer_slice = staging_buffer.slice(..);
-        let (sender, receiver) = futures::channel::oneshot::channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            sender.send(result).ok();
-        });
-
-        self.device.poll(wgpu::Maintain::Wait);
-
-        // Wait for mapping
-        futures::executor::block_on(receiver)
-            .map_err(|_| BarracudaError::gpu("Failed to map buffer"))?
-            .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
-
-        // Copy data
-        let data = buffer_slice.get_mapped_range();
-        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
-
-        drop(data);
-        staging_buffer.unmap();
-
-        Ok(result)
+        self.read_buffer::<f64>(buffer, size)
     }
 
     /// Read u32 buffer to host memory
     pub fn read_buffer_u32(&self, buffer: &wgpu::Buffer, size: usize) -> Result<Vec<u32>> {
-        // Create staging buffer
-        let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Staging Buffer"),
-            size: (size * std::mem::size_of::<u32>()) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        // Copy GPU -> staging
-        let mut encoder = self.device.create_command_encoder(&Default::default());
-        encoder.copy_buffer_to_buffer(
-            buffer,
-            0,
-            &staging_buffer,
-            0,
-            (size * std::mem::size_of::<u32>()) as u64,
-        );
-        self.queue.submit(Some(encoder.finish()));
-
-        // Map and read
-        let buffer_slice = staging_buffer.slice(..);
-        let (sender, receiver) = futures::channel::oneshot::channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            sender.send(result).ok();
-        });
-
-        self.device.poll(wgpu::Maintain::Wait);
-
-        // Wait for mapping
-        futures::executor::block_on(receiver)
-            .map_err(|_| BarracudaError::gpu("Failed to map buffer"))?
-            .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
-
-        // Copy data
-        let data = buffer_slice.get_mapped_range();
-        let result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-
-        drop(data);
-        staging_buffer.unmap();
-
-        Ok(result)
+        self.read_buffer::<u32>(buffer, size)
     }
 
     // =========================================================================
@@ -1165,7 +1132,11 @@ mod tests {
         // "auto" should work like the default new()
         match WgpuDevice::with_adapter_selector("auto").await {
             Ok(device) => {
-                println!("Auto-selected: {} ({:?})", device.name(), device.device_type());
+                println!(
+                    "Auto-selected: {} ({:?})",
+                    device.name(),
+                    device.device_type()
+                );
             }
             Err(e) => {
                 println!("No adapter available: {e}");
@@ -1204,7 +1175,11 @@ mod tests {
 
         // Get first 3 chars of first adapter name (lowercase)
         let first_name = &adapters[0].name;
-        let partial = first_name.chars().take(4).collect::<String>().to_lowercase();
+        let partial = first_name
+            .chars()
+            .take(4)
+            .collect::<String>()
+            .to_lowercase();
 
         println!("Testing name match with partial: '{partial}'");
 
@@ -1251,7 +1226,11 @@ mod tests {
 
         match WgpuDevice::from_env().await {
             Ok(device) => {
-                println!("Env default: {} ({:?})", device.name(), device.device_type());
+                println!(
+                    "Env default: {} ({:?})",
+                    device.name(),
+                    device.device_type()
+                );
             }
             Err(e) => {
                 println!("No adapter available: {e}");
@@ -1308,17 +1287,14 @@ mod tests {
         assert!(contains_radv_markers("radv"));
         assert!(!contains_radv_markers("NVIDIA"));
     }
-}
 
-// Helper functions for testing driver detection logic
-#[cfg(test)]
-fn contains_nvk_markers(driver: &str) -> bool {
-    let lower = driver.to_lowercase();
-    lower.contains("nvk") || lower.contains("nouveau") || lower.contains("mesa")
-}
+    fn contains_nvk_markers(driver: &str) -> bool {
+        let lower = driver.to_lowercase();
+        lower.contains("nvk") || lower.contains("nouveau") || lower.contains("mesa")
+    }
 
-#[cfg(test)]
-fn contains_radv_markers(driver: &str) -> bool {
-    let lower = driver.to_lowercase();
-    lower.contains("radv")
+    fn contains_radv_markers(driver: &str) -> bool {
+        let lower = driver.to_lowercase();
+        lower.contains("radv")
+    }
 }

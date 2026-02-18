@@ -648,8 +648,8 @@ async fn execute_gpu_polynomial_add(device: &WgpuDevice, degree: usize) -> Resul
             layout: None,
             module: &shader_module,
             entry_point: "main",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
     // Create bind group

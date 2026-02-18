@@ -350,8 +350,8 @@ impl PipelineCache {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point,
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
                 Arc::new(pipeline)

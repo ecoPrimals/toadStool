@@ -169,9 +169,8 @@ impl LegendreF64 {
         for l in (m + 2)..=n {
             let l_f64 = l as f64;
             let m_f64 = m as f64;
-            let pl =
-                ((2.0 * l_f64 - 1.0) * x * pl_minus1 - (l_f64 + m_f64 - 1.0) * pl_minus2)
-                    / (l_f64 - m_f64);
+            let pl = ((2.0 * l_f64 - 1.0) * x * pl_minus1 - (l_f64 + m_f64 - 1.0) * pl_minus2)
+                / (l_f64 - m_f64);
             pl_minus2 = pl_minus1;
             pl_minus1 = pl;
         }
@@ -225,7 +224,7 @@ impl LegendreF64 {
 
         let shader_module = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("Legendre f64"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("Legendre f64"));
 
         let bind_group_layout =
             self.device
@@ -305,16 +304,16 @@ impl LegendreF64 {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Legendre f64 Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Legendre f64 Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -374,7 +373,9 @@ mod tests {
 
     #[test]
     fn test_legendre_p0() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let leg = LegendreF64::new(device)?;
 
         let x = vec![-1.0, -0.5, 0.0, 0.5, 1.0];
@@ -389,7 +390,9 @@ mod tests {
 
     #[test]
     fn test_legendre_p1() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let leg = LegendreF64::new(device)?;
 
         let x = vec![-1.0, -0.5, 0.0, 0.5, 1.0];
@@ -410,7 +413,9 @@ mod tests {
 
     #[test]
     fn test_legendre_p2() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let leg = LegendreF64::new(device)?;
 
         let x = vec![-1.0, 0.0, 1.0];
@@ -433,7 +438,9 @@ mod tests {
 
     #[test]
     fn test_assoc_legendre_p11() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let leg = LegendreF64::new(device)?;
 
         let x = vec![0.0, 0.5, 0.8660254]; // cos(90°), cos(60°), cos(30°)
@@ -455,7 +462,9 @@ mod tests {
 
     #[test]
     fn test_assoc_legendre_boundary() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let leg = LegendreF64::new(device)?;
 
         // At x = ±1, Pₙᵐ = 0 for m > 0
@@ -463,19 +472,16 @@ mod tests {
         let result = leg.assoc_legendre(&x, 3, 2)?;
 
         for (i, &val) in result.iter().enumerate() {
-            assert!(
-                val.abs() < 1e-10,
-                "P₃²({}) should be 0, got {}",
-                x[i],
-                val
-            );
+            assert!(val.abs() < 1e-10, "P₃²({}) should be 0, got {}", x[i], val);
         }
         Ok(())
     }
 
     #[test]
     fn test_legendre_large() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let leg = LegendreF64::new(device)?;
 
         // Large input to trigger GPU path

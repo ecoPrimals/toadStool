@@ -231,8 +231,8 @@ impl TriangularSolve {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         // Create command encoder
@@ -462,8 +462,8 @@ impl TriangularSolveF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "triangular_solve_f64",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let mut encoder = device
@@ -647,8 +647,8 @@ impl TriangularSolveF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "triangular_solve_transpose_f64",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let mut encoder = device
@@ -704,7 +704,9 @@ impl TriangularSolveF64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::{get_test_device_if_f64_gpu_available, get_test_device_if_gpu_available};
+    use crate::device::test_pool::{
+        get_test_device_if_f64_gpu_available, get_test_device_if_gpu_available,
+    };
 
     #[tokio::test]
     async fn test_forward_substitution_2x2() {

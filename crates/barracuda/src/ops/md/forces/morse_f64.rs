@@ -198,7 +198,12 @@ impl MorseForceF64 {
         // Energy: U = D·[1 - exp(-a(r-r₀))]²
         let energy = bond.dissociation_energy * one_minus_exp * one_minus_exp;
 
-        (force_over_r * dx, force_over_r * dy, force_over_r * dz, energy)
+        (
+            force_over_r * dx,
+            force_over_r * dy,
+            force_over_r * dz,
+            energy,
+        )
     }
 }
 
@@ -212,7 +217,9 @@ mod tests {
 
     #[test]
     fn test_morse_equilibrium() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = MorseForceF64::new(device).unwrap();
 
         // Two particles at equilibrium distance
@@ -228,13 +235,21 @@ mod tests {
         let forces = op.compute_forces(&positions, &bonds).unwrap();
 
         // At equilibrium, force should be zero
-        assert!(forces[0].abs() < 1e-10, "Force at equilibrium should be zero");
-        assert!(forces[3].abs() < 1e-10, "Force at equilibrium should be zero");
+        assert!(
+            forces[0].abs() < 1e-10,
+            "Force at equilibrium should be zero"
+        );
+        assert!(
+            forces[3].abs() < 1e-10,
+            "Force at equilibrium should be zero"
+        );
     }
 
     #[test]
     fn test_morse_stretched() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = MorseForceF64::new(device).unwrap();
 
         // Two particles stretched beyond equilibrium
@@ -250,13 +265,21 @@ mod tests {
         let forces = op.compute_forces(&positions, &bonds).unwrap();
 
         // Stretched bond should pull particles together
-        assert!(forces[0] > 0.0, "Particle 0 should be pulled toward particle 1");
-        assert!(forces[3] < 0.0, "Particle 1 should be pulled toward particle 0");
+        assert!(
+            forces[0] > 0.0,
+            "Particle 0 should be pulled toward particle 1"
+        );
+        assert!(
+            forces[3] < 0.0,
+            "Particle 1 should be pulled toward particle 0"
+        );
     }
 
     #[test]
     fn test_morse_compressed() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = MorseForceF64::new(device).unwrap();
 
         // Two particles compressed below equilibrium
@@ -272,13 +295,21 @@ mod tests {
         let forces = op.compute_forces(&positions, &bonds).unwrap();
 
         // Compressed bond should push particles apart
-        assert!(forces[0] < 0.0, "Particle 0 should be pushed away from particle 1");
-        assert!(forces[3] > 0.0, "Particle 1 should be pushed away from particle 0");
+        assert!(
+            forces[0] < 0.0,
+            "Particle 0 should be pushed away from particle 1"
+        );
+        assert!(
+            forces[3] > 0.0,
+            "Particle 1 should be pushed away from particle 0"
+        );
     }
 
     #[test]
     fn test_morse_energy_minimum() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = MorseForceF64::new(device).unwrap();
 
         // At equilibrium

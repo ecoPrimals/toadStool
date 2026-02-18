@@ -7,6 +7,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 use chrono::Utc;
+use toadstool_common::constants::timeouts;
 use tokio::sync::RwLock;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_common::infant_discovery::{
@@ -53,7 +54,7 @@ impl SongbirdConnection {
         let connection = Self {
             discovery: discovery.clone(),
             required_capabilities,
-            timeout: Duration::from_secs(30),
+            timeout: timeouts::DEFAULT_REQUEST_TIMEOUT,
             preferred_protocol: SongbirdProtocol::Http,
             cached_services: Arc::new(RwLock::new(Vec::new())),
             last_discovery: Arc::new(RwLock::new(None)),

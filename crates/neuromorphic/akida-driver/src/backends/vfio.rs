@@ -291,7 +291,9 @@ impl Drop for DmaBuffer {
     fn drop(&mut self) {
         // Unlock memory using rustix (pure Rust)
         // SAFETY: vaddr was locked in new()
-        unsafe { let _ = munlock(self.vaddr.cast(), self.size); };
+        unsafe {
+            let _ = munlock(self.vaddr.cast(), self.size);
+        };
 
         // Unmap DMA
         let dma_unmap = VfioDmaUnmap {

@@ -265,36 +265,39 @@ impl CrankNicolson {
                 push_constant_ranges: &[],
             });
 
-        let rhs_pipeline = self
-            .device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("CN RHS Pipeline"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "compute_rhs",
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let rhs_pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("CN RHS Pipeline"),
+                    layout: Some(&pl),
+                    module: &shader,
+                    entry_point: "compute_rhs",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
 
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("CN BG"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: u_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: rhs_buf.as_entire_binding(),
-                },
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("CN BG"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: u_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: rhs_buf.as_entire_binding(),
+                    },
+                ],
+            });
 
         let workgroup_size = 256;
         let n_workgroups = n.div_ceil(workgroup_size);
@@ -309,15 +312,17 @@ impl CrankNicolson {
 
         for _step in 0..n_steps {
             // Compute RHS on GPU
-            let mut encoder = self
-                .device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("CN RHS Encoder"),
-                });
+            let mut encoder =
+                self.device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("CN RHS Encoder"),
+                    });
 
             // Upload current u
-            self.device.queue.write_buffer(&u_buf, 0, bytemuck::cast_slice(&u));
+            self.device
+                .queue
+                .write_buffer(&u_buf, 0, bytemuck::cast_slice(&u));
 
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -339,12 +344,12 @@ impl CrankNicolson {
                 mapped_at_creation: false,
             });
 
-            let mut encoder2 = self
-                .device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Copy Encoder"),
-                });
+            let mut encoder2 =
+                self.device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Copy Encoder"),
+                    });
             encoder2.copy_buffer_to_buffer(&rhs_buf, 0, &staging, 0, (n * 4) as u64);
             self.device.queue.submit(Some(encoder2.finish()));
 

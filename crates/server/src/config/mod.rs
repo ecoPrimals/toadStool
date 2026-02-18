@@ -4,9 +4,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 // Centralized timeout constants (Deep Debt evolution)
-use toadstool_common::constants::timeouts::{
-    HEALTH_CHECK_INTERVAL, WORKLOAD_EXECUTION_TIMEOUT,
-};
+use toadstool_common::constants::timeouts::{HEALTH_CHECK_INTERVAL, WORKLOAD_EXECUTION_TIMEOUT};
 
 /// `ToadStool` server configuration
 #[derive(Debug, Clone)]

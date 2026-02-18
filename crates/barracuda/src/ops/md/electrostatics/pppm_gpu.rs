@@ -23,6 +23,7 @@
 //! Extracted layouts to `pppm_layouts.rs` and buffers to `pppm_buffers.rs`
 //! for modularity. Reduced this file from 1834 to ~800 lines.
 
+use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use crate::linalg::sparse::SparseBuffers;
 use crate::shaders::precision::ShaderTemplate;
@@ -38,51 +39,84 @@ use super::{GreensFunction, PppmParams};
 ///
 /// Contains compiled pipelines and precomputed data for GPU execution.
 /// Pipelines are created once and reused for all compute calls.
-///
-/// # Refactoring (Feb 14, 2026)
-/// Now uses extracted `PppmPipelines` and `PppmBindGroupLayouts` for modularity.
 pub struct PppmGpu {
     device: Arc<wgpu::Device>,
     queue: Arc<wgpu::Queue>,
     params: PppmParams,
     greens: GreensFunction,
 
-    /// Compute pipelines (extracted to pppm_layouts.rs)
     pipelines: PppmPipelines,
-
-    /// Bind group layouts (extracted to pppm_layouts.rs)
     layouts: PppmBindGroupLayouts,
 }
 
 impl PppmGpu {
-    /// Create a new GPU PPPM solver
+    /// Create from a WgpuDevice (preferred - driver-aware f64 compilation).
+    pub async fn from_device(wgpu_device: &WgpuDevice, params: PppmParams) -> Result<Self> {
+        let greens = GreensFunction::new(&params);
+
+        let bspline_module =
+            wgpu_device.compile_shader_f64(include_str!("bspline.wgsl"), Some("pppm_bspline"));
+        let charge_spread_module = wgpu_device.compile_shader_f64(
+            include_str!("charge_spread.wgsl"),
+            Some("pppm_charge_spread"),
+        );
+        let greens_apply_module = wgpu_device
+            .compile_shader_f64(include_str!("greens_apply.wgsl"), Some("pppm_greens_apply"));
+        let force_interp_module = wgpu_device
+            .compile_shader_f64(include_str!("force_interp.wgsl"), Some("pppm_force_interp"));
+        let erfc_forces_module = wgpu_device
+            .compile_shader_f64(include_str!("erfc_forces.wgsl"), Some("pppm_erfc_forces"));
+
+        Self::build_from_modules(
+            wgpu_device.device_arc(),
+            wgpu_device.queue_arc(),
+            params,
+            greens,
+            bspline_module,
+            charge_spread_module,
+            greens_apply_module,
+            force_interp_module,
+            erfc_forces_module,
+        )
+        .await
+    }
+
+    /// Create from raw wgpu device/queue (legacy API, no NVK workarounds).
     pub async fn new(
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
         params: PppmParams,
     ) -> Result<Self> {
-        // Precompute Green's function
+        Self::new_with_driver(device, queue, params, false).await
+    }
+
+    /// Create with explicit driver awareness.
+    pub async fn new_with_driver(
+        device: Arc<wgpu::Device>,
+        queue: Arc<wgpu::Queue>,
+        params: PppmParams,
+        is_nvk: bool,
+    ) -> Result<Self> {
         let greens = GreensFunction::new(&params);
 
-        // Compile shaders with math_f64 preamble
-        let bspline_shader = ShaderTemplate::with_math_f64(include_str!("bspline.wgsl"));
+        let bspline_shader = ShaderTemplate::for_driver_auto(include_str!("bspline.wgsl"), is_nvk);
         let charge_spread_shader =
-            ShaderTemplate::with_math_f64(include_str!("charge_spread.wgsl"));
-        let greens_apply_shader = ShaderTemplate::with_math_f64(include_str!("greens_apply.wgsl"));
-        let force_interp_shader = ShaderTemplate::with_math_f64(include_str!("force_interp.wgsl"));
-        let erfc_forces_shader = ShaderTemplate::with_math_f64(include_str!("erfc_forces.wgsl"));
+            ShaderTemplate::for_driver_auto(include_str!("charge_spread.wgsl"), is_nvk);
+        let greens_apply_shader =
+            ShaderTemplate::for_driver_auto(include_str!("greens_apply.wgsl"), is_nvk);
+        let force_interp_shader =
+            ShaderTemplate::for_driver_auto(include_str!("force_interp.wgsl"), is_nvk);
+        let erfc_forces_shader =
+            ShaderTemplate::for_driver_auto(include_str!("erfc_forces.wgsl"), is_nvk);
 
-        // Create shader modules
         let bspline_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("pppm_bspline"),
             source: wgpu::ShaderSource::Wgsl(bspline_shader.into()),
         });
-
         let charge_spread_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("pppm_charge_spread"),
             source: wgpu::ShaderSource::Wgsl(charge_spread_shader.into()),
         });
-
         let greens_apply_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("pppm_greens_apply"),
             source: wgpu::ShaderSource::Wgsl(greens_apply_shader.into()),
@@ -98,10 +132,32 @@ impl PppmGpu {
             source: wgpu::ShaderSource::Wgsl(erfc_forces_shader.into()),
         });
 
-        // Create bind group layouts (extracted to pppm_layouts.rs)
-        let layouts = PppmBindGroupLayouts::new(&device);
+        Self::build_from_modules(
+            device,
+            queue,
+            params,
+            greens,
+            bspline_module,
+            charge_spread_module,
+            greens_apply_module,
+            force_interp_module,
+            erfc_forces_module,
+        )
+        .await
+    }
 
-        // Create pipelines (extracted to pppm_layouts.rs)
+    async fn build_from_modules(
+        device: Arc<wgpu::Device>,
+        queue: Arc<wgpu::Queue>,
+        params: PppmParams,
+        greens: GreensFunction,
+        bspline_module: wgpu::ShaderModule,
+        charge_spread_module: wgpu::ShaderModule,
+        greens_apply_module: wgpu::ShaderModule,
+        force_interp_module: wgpu::ShaderModule,
+        erfc_forces_module: wgpu::ShaderModule,
+    ) -> Result<Self> {
+        let layouts = PppmBindGroupLayouts::new(&device);
         let pipelines = PppmPipelines::new(
             &device,
             &layouts,
@@ -1167,13 +1223,13 @@ mod tests {
         assert_eq!(params.alpha, 1.0);
     }
 
-    /// Test that two opposite charges have negative (attractive) energy
-    /// This was a bug reported by hotSpring - GPU was returning positive energy
     #[tokio::test]
     async fn test_pppm_gpu_opposite_charges_energy() {
-        use crate::device::test_pool::get_test_device;
+        use crate::device::test_pool::get_test_device_if_f64_gpu_available;
 
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return;
+        };
 
         let params = PppmParams::custom(
             2,
@@ -1184,7 +1240,7 @@ mod tests {
             4,   // order
         );
 
-        let pppm = PppmGpu::new(device.device_arc(), device.queue_arc(), params)
+        let pppm = PppmGpu::from_device(&device, params)
             .await
             .expect("Failed to create PppmGpu");
 
@@ -1192,9 +1248,11 @@ mod tests {
         let positions: Vec<f64> = vec![4.0, 5.0, 5.0, 6.0, 5.0, 5.0];
         let charges: Vec<f64> = vec![1.0, -1.0];
 
-        let (_forces, energy) = pppm.compute_with_kspace(&positions, &charges).await.unwrap();
+        let (_forces, energy) = pppm
+            .compute_with_kspace(&positions, &charges)
+            .await
+            .unwrap();
 
-        // Energy should be negative (attractive)
         assert!(
             energy < 0.0,
             "Opposite charges should have negative energy, got {}",
@@ -1202,32 +1260,27 @@ mod tests {
         );
     }
 
-    /// Test Newton's 3rd law: forces should sum to approximately zero
     #[tokio::test]
     async fn test_pppm_gpu_newtons_third_law() {
-        use crate::device::test_pool::get_test_device;
+        use crate::device::test_pool::get_test_device_if_f64_gpu_available;
 
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return;
+        };
 
-        let params = PppmParams::custom(
-            2,
-            [10.0, 10.0, 10.0],
-            [8, 8, 8],
-            2.0,
-            3.0,
-            4,
-        );
+        let params = PppmParams::custom(2, [10.0, 10.0, 10.0], [8, 8, 8], 2.0, 3.0, 4);
 
-        let pppm = PppmGpu::new(device.device_arc(), device.queue_arc(), params)
+        let pppm = PppmGpu::from_device(&device, params)
             .await
             .expect("Failed to create PppmGpu");
 
         let positions: Vec<f64> = vec![4.0, 5.0, 5.0, 6.0, 5.0, 5.0];
         let charges: Vec<f64> = vec![1.0, -1.0];
 
-        let (forces, _energy) = pppm.compute_with_kspace(&positions, &charges).await.unwrap();
-
-        // Forces should sum to zero (Newton's 3rd law)
+        let (forces, _energy) = pppm
+            .compute_with_kspace(&positions, &charges)
+            .await
+            .unwrap();
         let fx_sum = forces[0] + forces[3];
         let fy_sum = forces[1] + forces[4];
         let fz_sum = forces[2] + forces[5];
@@ -1242,23 +1295,17 @@ mod tests {
         );
     }
 
-    /// Test that like charges have repulsive forces
     #[tokio::test]
     async fn test_pppm_gpu_like_charges_repel() {
-        use crate::device::test_pool::get_test_device;
+        use crate::device::test_pool::get_test_device_if_f64_gpu_available;
 
-        let device = get_test_device().await;
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return;
+        };
 
-        let params = PppmParams::custom(
-            2,
-            [10.0, 10.0, 10.0],
-            [8, 8, 8],
-            2.0,
-            3.0,
-            4,
-        );
+        let params = PppmParams::custom(2, [10.0, 10.0, 10.0], [8, 8, 8], 2.0, 3.0, 4);
 
-        let pppm = PppmGpu::new(device.device_arc(), device.queue_arc(), params)
+        let pppm = PppmGpu::from_device(&device, params)
             .await
             .expect("Failed to create PppmGpu");
 
@@ -1266,7 +1313,10 @@ mod tests {
         let positions: Vec<f64> = vec![4.0, 5.0, 5.0, 6.0, 5.0, 5.0];
         let charges: Vec<f64> = vec![1.0, 1.0];
 
-        let (forces, _energy) = pppm.compute_with_kspace(&positions, &charges).await.unwrap();
+        let (forces, _energy) = pppm
+            .compute_with_kspace(&positions, &charges)
+            .await
+            .unwrap();
 
         // Force on particle 0 (at x=4) should be negative x (pushed away from x=6)
         assert!(

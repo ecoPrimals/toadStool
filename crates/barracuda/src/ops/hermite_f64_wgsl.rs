@@ -209,28 +209,31 @@ impl HermiteF64 {
                 ],
             });
 
-        let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Hermite f64 Bind Group"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: input_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buf.as_entire_binding(),
-                },
-            ],
-        });
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Hermite f64 Bind Group"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: input_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: output_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                ],
+            });
 
         let shader = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("Hermite f64"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("Hermite f64"));
 
         let pipeline_layout =
             self.device
@@ -241,24 +244,24 @@ impl HermiteF64 {
                     push_constant_ranges: &[],
                 });
 
-        let pipeline = self
-            .device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Hermite f64 Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point,
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Hermite f64 Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader,
+                    entry_point,
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Hermite f64 Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Hermite f64 Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -318,7 +321,9 @@ mod tests {
 
     #[test]
     fn test_hermite_f64_h0() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = HermiteF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, -1.0, 0.5];
@@ -332,7 +337,9 @@ mod tests {
 
     #[test]
     fn test_hermite_f64_h1() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = HermiteF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, -1.0, 0.5];
@@ -353,7 +360,9 @@ mod tests {
 
     #[test]
     fn test_hermite_f64_h2() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = HermiteF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, -1.0, 0.5];
@@ -375,7 +384,9 @@ mod tests {
 
     #[test]
     fn test_hermite_f64_h10() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = HermiteF64::new(device).unwrap();
 
         // H₁₀(0) = -30240 (from tables)
@@ -390,7 +401,9 @@ mod tests {
 
     #[test]
     fn test_hermite_function_normalization() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = HermiteF64::new(device).unwrap();
 
         // Test that ψ₀(0) = π^(-1/4) ≈ 0.7511

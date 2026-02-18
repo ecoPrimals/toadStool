@@ -17,6 +17,7 @@ use tokio::time::{sleep, Instant, interval, timeout};
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool load testing"]
 async fn test_e2e_sustained_load_100_requests() {
     // Verify system handles sustained load
     
@@ -42,6 +43,7 @@ async fn test_e2e_sustained_load_100_requests() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool load testing"]
 async fn test_e2e_sustained_load_with_monitoring() {
     // Monitor system health during sustained load
     
@@ -83,6 +85,7 @@ async fn test_e2e_sustained_load_with_monitoring() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool load testing"]
 async fn test_e2e_burst_load_handling() {
     // Sudden burst of requests
     
@@ -111,6 +114,7 @@ async fn test_e2e_burst_load_handling() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool load testing"]
 async fn test_e2e_repeated_bursts() {
     // Multiple bursts with recovery time
     
@@ -153,6 +157,7 @@ async fn test_e2e_repeated_bursts() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool load testing"]
 async fn test_e2e_maximum_throughput() {
     // Measure maximum sustainable throughput
     
@@ -188,6 +193,7 @@ async fn test_e2e_maximum_throughput() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool load testing"]
 async fn test_e2e_memory_stability_under_load() {
     // Verify memory doesn't leak under sustained load
     
@@ -210,6 +216,7 @@ async fn test_e2e_memory_stability_under_load() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool load testing"]
 async fn test_e2e_memory_cleanup_after_load() {
     // Verify memory is cleaned up after load
     
@@ -239,6 +246,7 @@ async fn test_e2e_memory_cleanup_after_load() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool load testing"]
 async fn test_e2e_many_concurrent_clients() {
     // Simulate many clients connecting simultaneously
     
@@ -270,7 +278,7 @@ async fn test_e2e_many_concurrent_clients() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore] // Long-running test
+#[ignore = "long-running; stub implementation - replace with real toadstool load testing"]
 async fn test_e2e_long_running_load_stability() {
     // Run load for 5 minutes
     
@@ -294,12 +302,17 @@ async fn test_e2e_long_running_load_stability() {
 }
 
 // ============================================================================
-// Mock System (Simplified)
+// Stub System
 // ============================================================================
+//
+// Placeholder implementation — replace with real toadstool load testing when available.
+// Real load tests would use RuntimeOrchestrator, actual request execution, and
+// real memory/health monitoring.
 
-struct MockSystem {}
+/// Placeholder implementation — replace with real toadstool load testing when available
+struct StubSystem {}
 
-impl MockSystem {
+impl StubSystem {
     async fn execute_request(&self, _id: &str) -> Result<(), String> {
         Ok(())
     }
@@ -325,7 +338,7 @@ impl MockSystem {
     }
 }
 
-async fn create_test_system() -> MockSystem {
-    MockSystem {}
+async fn create_test_system() -> StubSystem {
+    StubSystem {}
 }
 

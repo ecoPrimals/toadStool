@@ -119,7 +119,7 @@ impl SsfGpu {
         let params_buffer = device.create_uniform_buffer("SSF params", &params);
 
         // Compile shader
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("SSF f64"));
+        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("SSF f64"));
 
         // Create bind group layout
         let bgl = device
@@ -190,8 +190,8 @@ impl SsfGpu {
                 layout: Some(&pl),
                 module: &shader,
                 entry_point,
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -236,7 +236,7 @@ impl SsfGpu {
         device.queue.submit(Some(encoder.finish()));
 
         // Read back results
-        Self::read_f64_buffer(&device, &output_buffer, n_k_vectors)
+        device.read_f64_buffer(&output_buffer, n_k_vectors)
     }
 
     /// Compute S(k) along radial shells (spherically averaged)
@@ -375,58 +375,6 @@ impl SsfGpu {
 
         Ok(results)
     }
-
-    /// Helper: Read f64 buffer from GPU
-    fn read_f64_buffer(
-        device: &Arc<WgpuDevice>,
-        buffer: &wgpu::Buffer,
-        count: usize,
-    ) -> Result<Vec<f64>> {
-        let staging = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("SSF staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("SSF readback"),
-            });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        device.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(
-            wgpu::MapMode::Read,
-            move |result: std::result::Result<(), wgpu::BufferAsyncError>| {
-                let _ = sender.send(result);
-            },
-        );
-        device.device.poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| {
-                f64::from_le_bytes(
-                    chunk
-                        .try_into()
-                        .expect("chunks_exact(8) yields 8-byte chunks"),
-                )
-            })
-            .collect();
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
-    }
 }
 
 #[cfg(test)]
@@ -534,12 +482,7 @@ mod tests {
 
         assert_eq!(ssf.len(), 3);
         for (i, &s) in ssf.iter().enumerate() {
-            assert!(
-                s > 0.0,
-                "S(k)[{}] should be > 0, got {}",
-                i,
-                s
-            );
+            assert!(s > 0.0, "S(k)[{}] should be > 0, got {}", i, s);
         }
     }
 

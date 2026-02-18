@@ -149,8 +149,8 @@ pub(super) fn execute_scaled_dot_product_attention(
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -256,8 +256,8 @@ pub(super) fn execute_scaled_dot_product_attention(
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -373,8 +373,8 @@ pub(super) fn execute_scaled_dot_product_attention(
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {

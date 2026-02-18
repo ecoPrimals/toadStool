@@ -373,8 +373,10 @@ mod tests {
             return; // Skip if no GPU available
         };
 
-        let submitter =
-            AsyncSubmitter::new(Arc::clone(&wgpu_device.device), Arc::clone(&wgpu_device.queue));
+        let submitter = AsyncSubmitter::new(
+            Arc::clone(&wgpu_device.device),
+            Arc::clone(&wgpu_device.queue),
+        );
         assert_eq!(submitter.pending_count(), 0);
         assert_eq!(submitter.current_index(), 0);
     }

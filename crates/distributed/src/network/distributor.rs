@@ -2,6 +2,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
+use toadstool_common::constants::timeouts;
 use uuid::Uuid;
 
 use crate::network::{FaultToleranceManager, NetworkLoadBalancer, NetworkMetricsCollector};
@@ -25,7 +26,7 @@ impl Default for NetworkDistributorConfig {
         Self {
             enabled: true,
             max_concurrent_distributions: 10,
-            distribution_timeout: Duration::from_secs(300),
+            distribution_timeout: timeouts::WORKLOAD_EXECUTION_TIMEOUT,
         }
     }
 }

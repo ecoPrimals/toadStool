@@ -17,6 +17,7 @@ use tokio::time::timeout;
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool integration"]
 async fn test_e2e_discover_all_primals() {
     // Complete primal discovery workflow
     
@@ -33,6 +34,7 @@ async fn test_e2e_discover_all_primals() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool integration"]
 async fn test_e2e_primal_capability_discovery() {
     // Discover capabilities across all primals
     
@@ -52,6 +54,7 @@ async fn test_e2e_primal_capability_discovery() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool integration"]
 async fn test_e2e_toadstool_to_songbird_message() {
     // ToadStool sends message to Songbird
     
@@ -70,6 +73,7 @@ async fn test_e2e_toadstool_to_songbird_message() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool integration"]
 async fn test_e2e_toadstool_to_nestgate_storage() {
     // ToadStool stores data in NestGate
     
@@ -87,6 +91,7 @@ async fn test_e2e_toadstool_to_nestgate_storage() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool integration"]
 async fn test_e2e_workload_with_all_primals() {
     // Complete workload using all primals
     
@@ -115,6 +120,7 @@ async fn test_e2e_workload_with_all_primals() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool integration"]
 async fn test_e2e_coordinated_deployment() {
     // Deploy application with coordination
     
@@ -138,6 +144,7 @@ async fn test_e2e_coordinated_deployment() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool integration"]
 async fn test_e2e_distributed_job_execution() {
     // Execute distributed job across primals
     
@@ -172,6 +179,7 @@ async fn test_e2e_distributed_job_execution() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool integration"]
 async fn test_e2e_primal_failure_recovery() {
     // One primal fails, others compensate
     
@@ -218,6 +226,7 @@ async fn test_e2e_primal_failure_recovery() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool integration"]
 async fn test_e2e_cascading_failure_prevention() {
     // Prevent failures from cascading across primals
     
@@ -239,6 +248,7 @@ async fn test_e2e_cascading_failure_prevention() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool integration"]
 async fn test_e2e_load_distribution() {
     // Distribute load across multiple ToadStool instances
     
@@ -279,6 +289,7 @@ async fn test_e2e_load_distribution() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "stub implementation - replace with real toadstool integration"]
 async fn test_e2e_data_pipeline() {
     // Complete data pipeline across all primals
     
@@ -300,12 +311,17 @@ async fn test_e2e_data_pipeline() {
 }
 
 // ============================================================================
-// Mock Ecosystem (Simplified)
+// Stub Ecosystem
 // ============================================================================
+//
+// Placeholder implementation — replace with real toadstool calls when available.
+// Real toadstool Execution / RuntimeEngine / UniversalScheduler APIs exist but
+// full multi-primal ecosystem integration is not yet wired for E2E tests.
 
-struct MockEcosystem {}
+/// Placeholder implementation — replace with real toadstool calls when available
+struct StubEcosystem {}
 
-impl MockEcosystem {
+impl StubEcosystem {
     async fn discover_primals(&self) -> Result<Vec<String>, String> {
         Ok(vec![
             "songbird".to_string(),
@@ -325,55 +341,55 @@ impl MockEcosystem {
         }
     }
     
-    async fn get_primal(&self, name: &str) -> Result<MockPrimal, String> {
-        Ok(MockPrimal { name: name.to_string() })
+    async fn get_primal(&self, name: &str) -> Result<StubPrimal, String> {
+        Ok(StubPrimal { name: name.to_string() })
     }
     
-    async fn create_workload(&self, _name: &str) -> Result<MockWorkload, String> {
-        Ok(MockWorkload {})
+    async fn create_workload(&self, _name: &str) -> Result<StubWorkload, String> {
+        Ok(StubWorkload {})
     }
     
-    async fn coordinate_via_songbird(&self, _workload: &MockWorkload) -> Result<(), String> {
+    async fn coordinate_via_songbird(&self, _workload: &StubWorkload) -> Result<(), String> {
         Ok(())
     }
     
-    async fn attach_storage_via_nestgate(&self, _workload: &MockWorkload) -> Result<(), String> {
+    async fn attach_storage_via_nestgate(&self, _workload: &StubWorkload) -> Result<(), String> {
         Ok(())
     }
     
-    async fn allocate_resources_via_squirrel(&self, _workload: &MockWorkload) -> Result<(), String> {
+    async fn allocate_resources_via_squirrel(&self, _workload: &StubWorkload) -> Result<(), String> {
         Ok(())
     }
     
-    async fn plan_deployment(&self, _name: &str, _components: Vec<&str>) -> Result<MockDeploymentPlan, String> {
-        Ok(MockDeploymentPlan {})
+    async fn plan_deployment(&self, _name: &str, _components: Vec<&str>) -> Result<StubDeploymentPlan, String> {
+        Ok(StubDeploymentPlan {})
     }
     
-    async fn allocate_for_deployment(&self, _plan: &MockDeploymentPlan) -> Result<(), String> {
+    async fn allocate_for_deployment(&self, _plan: &StubDeploymentPlan) -> Result<(), String> {
         Ok(())
     }
     
-    async fn setup_storage_for_deployment(&self, _plan: &MockDeploymentPlan) -> Result<(), String> {
+    async fn setup_storage_for_deployment(&self, _plan: &StubDeploymentPlan) -> Result<(), String> {
         Ok(())
     }
     
-    async fn execute_deployment(&self, _plan: &MockDeploymentPlan) -> Result<MockDeployment, String> {
-        Ok(MockDeployment {})
+    async fn execute_deployment(&self, _plan: &StubDeploymentPlan) -> Result<StubDeployment, String> {
+        Ok(StubDeployment {})
     }
     
-    async fn create_distributed_job(&self, _name: &str) -> Result<MockJob, String> {
-        Ok(MockJob {})
+    async fn create_distributed_job(&self, _name: &str) -> Result<StubJob, String> {
+        Ok(StubJob {})
     }
     
-    async fn submit_job(&self, _job: &MockJob) -> Result<MockExecution, String> {
-        Ok(MockExecution {})
+    async fn submit_job(&self, _job: &StubJob) -> Result<StubExecution, String> {
+        Ok(StubExecution {})
     }
     
-    async fn coordinate_workers(&self, _execution: &MockExecution) -> Result<(), String> {
+    async fn coordinate_workers(&self, _execution: &StubExecution) -> Result<(), String> {
         Ok(())
     }
     
-    async fn start_workload(&self, _workload: &MockWorkload) -> Result<(), String> {
+    async fn start_workload(&self, _workload: &StubWorkload) -> Result<(), String> {
         Ok(())
     }
     
@@ -422,12 +438,12 @@ impl MockEcosystem {
     }
 }
 
-struct MockPrimal {
+struct StubPrimal {
     name: String,
 }
 
-impl MockPrimal {
-    async fn send_message(&self, _target: &MockPrimal, _msg: &str) -> Result<(), String> {
+impl StubPrimal {
+    async fn send_message(&self, _target: &StubPrimal, _msg: &str) -> Result<(), String> {
         Ok(())
     }
     
@@ -435,7 +451,7 @@ impl MockPrimal {
         vec!["hello".to_string()]
     }
     
-    async fn store_in_nestgate(&self, _nestgate: &MockPrimal, _key: &str, _data: &[u8]) -> Result<(), String> {
+    async fn store_in_nestgate(&self, _nestgate: &StubPrimal, _key: &str, _data: &[u8]) -> Result<(), String> {
         Ok(())
     }
     
@@ -444,9 +460,9 @@ impl MockPrimal {
     }
 }
 
-struct MockWorkload {}
+struct StubWorkload {}
 
-impl MockWorkload {
+impl StubWorkload {
     async fn has_coordinator(&self) -> bool {
         true
     }
@@ -464,10 +480,10 @@ impl MockWorkload {
     }
 }
 
-struct MockDeploymentPlan {}
-struct MockDeployment {}
+struct StubDeploymentPlan {}
+struct StubDeployment {}
 
-impl MockDeployment {
+impl StubDeployment {
     async fn component_count(&self) -> usize {
         3
     }
@@ -477,24 +493,24 @@ impl MockDeployment {
     }
 }
 
-struct MockJob {}
-struct MockExecution {}
+struct StubJob {}
+struct StubExecution {}
 
-impl MockExecution {
-    async fn result(&self) -> Result<MockJobResult, String> {
-        Ok(MockJobResult {})
+impl StubExecution {
+    async fn result(&self) -> Result<StubJobResult, String> {
+        Ok(StubJobResult {})
     }
 }
 
-struct MockJobResult {}
+struct StubJobResult {}
 
-impl MockJobResult {
+impl StubJobResult {
     fn is_success(&self) -> bool {
         true
     }
 }
 
-async fn create_test_ecosystem() -> MockEcosystem {
-    MockEcosystem {}
+async fn create_test_ecosystem() -> StubEcosystem {
+    StubEcosystem {}
 }
 

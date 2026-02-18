@@ -127,16 +127,16 @@ mod mixing_unit {
         };
         let mixer = LinearMixer::new(device, 128, params).unwrap();
 
-        let x_old = vec![3.14159; 128];
+        let x_old = vec![std::f64::consts::PI; 128];
         let x_computed = vec![99.0; 128];
 
         let result = mixer.mix(&x_old, &x_computed).await.unwrap();
 
-        // Expected: 1.0 * 3.14159 + 0.0 * 99.0 = 3.14159
+        // Expected: 1.0 * PI + 0.0 * 99.0 = PI
         for (i, val) in result.iter().enumerate() {
             assert!(
-                (val - 3.14159).abs() < 1e-10,
-                "At index {}: expected 3.14159, got {}",
+                (val - std::f64::consts::PI).abs() < 1e-10,
+                "At index {}: expected PI, got {}",
                 i,
                 val
             );
@@ -1118,7 +1118,7 @@ mod special_functions {
     /// Test Hermite H_0(x) = 1
     #[test]
     fn test_hermite_n0() {
-        for x in [-2.0_f64, -1.0, 0.0, 0.5, 1.0, 2.0, 3.14] {
+        for x in [-2.0_f64, -1.0, 0.0, 0.5, 1.0, 2.0, 2.72] {
             assert!((hermite_cpu(0, x) - 1.0).abs() < 1e-15);
         }
     }

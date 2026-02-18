@@ -131,8 +131,8 @@ pub(super) fn compute_prefix_sum_gpu(
             layout: Some(&pipeline_layout),
             module: &shader,
             entry_point: "inclusive_scan",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
     let mut encoder = device
@@ -264,8 +264,8 @@ pub(super) fn convert_mask_gpu(
             layout: Some(&pipeline_layout),
             module: &shader,
             entry_point: "main",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
     let mut encoder = device
@@ -501,8 +501,8 @@ pub(super) fn execute_masked_select(op: MaskedSelect) -> Result<Tensor> {
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
     // Execute compute shader

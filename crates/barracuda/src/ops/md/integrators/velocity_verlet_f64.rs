@@ -143,7 +143,9 @@ mod tests {
 
     #[test]
     fn test_free_particle() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let vv = VelocityVerletF64::new(device)?;
 
         // Particle moving with constant velocity (no force)
@@ -170,7 +172,9 @@ mod tests {
 
     #[test]
     fn test_constant_acceleration() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let vv = VelocityVerletF64::new(device)?;
 
         // Particle under constant force
@@ -193,7 +197,9 @@ mod tests {
 
     #[test]
     fn test_symplectic_energy_conservation() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let vv = VelocityVerletF64::new(device)?;
 
         // Simple harmonic oscillator: F = -kx, k=1
@@ -208,7 +214,7 @@ mod tests {
         // Run for many steps
         for _ in 0..1000 {
             let forces_old = vec![-pos[0], 0.0, 0.0]; // F = -x
-            // Half step for position
+                                                      // Half step for position
             let half_vel = vv.velocity_half_step(&vel, &forces_old, &masses, dt)?;
             pos = vv.position_update(&pos, &half_vel, dt)?;
             let forces_new = vec![-pos[0], 0.0, 0.0];
@@ -221,7 +227,7 @@ mod tests {
         let rel_err = (final_energy - initial_energy).abs() / initial_energy;
 
         assert!(
-            rel_err < 1e-4,  // 0.01% tolerance for 1000-step integration
+            rel_err < 1e-4, // 0.01% tolerance for 1000-step integration
             "Energy drift {} too large ({}% error)",
             final_energy - initial_energy,
             rel_err * 100.0

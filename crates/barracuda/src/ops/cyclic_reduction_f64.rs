@@ -159,7 +159,7 @@ impl CyclicReductionF64 {
 
         let shader = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("Cyclic Serial f64"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("Cyclic Serial f64"));
 
         // Create GPU buffers
         let a_buf = self
@@ -277,8 +277,8 @@ impl CyclicReductionF64 {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "solve_serial_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let params = CyclicParams {
@@ -297,39 +297,42 @@ impl CyclicReductionF64 {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Serial BG"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: a_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: b_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: c_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: d_buf.as_entire_binding(),
-                },
-            ],
-        });
-
-        let mut encoder = self
+        let bg = self
             .device
             .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Serial Encoder"),
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Serial BG"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: a_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: b_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: c_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: d_buf.as_entire_binding(),
+                    },
+                ],
             });
+
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Serial Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -393,7 +396,7 @@ impl CyclicReductionF64 {
 
         let shader = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("Cyclic Reduction f64"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("Cyclic Reduction f64"));
 
         // Create mutable GPU buffers
         let a_buf = self
@@ -512,8 +515,8 @@ impl CyclicReductionF64 {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "reduction_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let substitution_pipeline =
@@ -524,8 +527,8 @@ impl CyclicReductionF64 {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "substitution_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Multi-pass cyclic reduction
@@ -540,51 +543,54 @@ impl CyclicReductionF64 {
                 _pad: 0,
             };
 
-            let params_buf = self
-                .device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+            let params_buf =
+                self.device
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Params"),
+                        contents: bytemuck::bytes_of(&params),
+                        usage: wgpu::BufferUsages::UNIFORM,
+                    });
 
-            let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Reduction BG"),
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: a_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: b_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: c_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: d_buf.as_entire_binding(),
-                    },
-                ],
-            });
+            let bg = self
+                .device
+                .device
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("Reduction BG"),
+                    layout: &bgl,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: params_buf.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: a_buf.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 2,
+                            resource: b_buf.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 3,
+                            resource: c_buf.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 4,
+                            resource: d_buf.as_entire_binding(),
+                        },
+                    ],
+                });
 
             let n_threads = n_padded >> (step + 1);
             let n_workgroups = n_threads.div_ceil(workgroup_size);
 
-            let mut encoder = self
-                .device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Reduction Encoder"),
-                });
+            let mut encoder =
+                self.device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Reduction Encoder"),
+                    });
 
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -608,51 +614,54 @@ impl CyclicReductionF64 {
                 _pad: 0,
             };
 
-            let params_buf = self
-                .device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+            let params_buf =
+                self.device
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Params"),
+                        contents: bytemuck::bytes_of(&params),
+                        usage: wgpu::BufferUsages::UNIFORM,
+                    });
 
-            let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Substitution BG"),
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: a_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: b_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: c_buf.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: d_buf.as_entire_binding(),
-                    },
-                ],
-            });
+            let bg = self
+                .device
+                .device
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("Substitution BG"),
+                    layout: &bgl,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: params_buf.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: a_buf.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 2,
+                            resource: b_buf.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 3,
+                            resource: c_buf.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 4,
+                            resource: d_buf.as_entire_binding(),
+                        },
+                    ],
+                });
 
             let n_threads = n_padded >> (step + 1);
             let n_workgroups = n_threads.div_ceil(workgroup_size);
 
-            let mut encoder = self
-                .device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Substitution Encoder"),
-                });
+            let mut encoder =
+                self.device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Substitution Encoder"),
+                    });
 
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -675,12 +684,12 @@ impl CyclicReductionF64 {
             mapped_at_creation: false,
         });
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Copy Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Copy Encoder"),
+                });
         encoder.copy_buffer_to_buffer(&d_buf, 0, &staging, 0, (n * 8) as u64);
         self.device.queue.submit(Some(encoder.finish()));
 
@@ -700,7 +709,6 @@ impl CyclicReductionF64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
         crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
@@ -708,7 +716,9 @@ mod tests {
 
     #[test]
     fn test_simple_system() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let solver = CyclicReductionF64::new(device).unwrap();
 
         // 4x₀ + x₁ = 5
@@ -723,12 +733,7 @@ mod tests {
         let x = solver.solve(&a, &b, &c, &d).unwrap();
 
         for (i, xi) in x.iter().enumerate() {
-            assert!(
-                (*xi - 1.0).abs() < 1e-10,
-                "x[{}] = {}, expected 1.0",
-                i,
-                xi
-            );
+            assert!((*xi - 1.0).abs() < 1e-10, "x[{}] = {}, expected 1.0", i, xi);
         }
     }
 
@@ -736,7 +741,9 @@ mod tests {
     fn test_heat_equation_stencil() {
         // Discretized 1D heat equation: -u'' = f with u(0)=u(1)=0
         // Standard 3-point stencil: [-1, 2, -1]
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let solver = CyclicReductionF64::new(device).unwrap();
 
         let n = 100;
@@ -781,7 +788,9 @@ mod tests {
 
     #[test]
     fn test_large_system() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let solver = CyclicReductionF64::new(device).unwrap();
 
         // Large system to exercise GPU path

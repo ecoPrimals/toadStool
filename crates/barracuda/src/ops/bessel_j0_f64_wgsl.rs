@@ -73,12 +73,10 @@ impl BesselJ0F64 {
             let z6 = z4 * z2;
             let z8 = z4 * z4;
 
-            let pv = 1.0 - 1.098628627e-3 * z2 + 2.734510407e-5 * z4
-                - 2.073370639e-6 * z6
+            let pv = 1.0 - 1.098628627e-3 * z2 + 2.734510407e-5 * z4 - 2.073370639e-6 * z6
                 + 2.093887211e-7 * z8;
 
-            let qv = -1.562499995e-2 * z + 1.430488765e-4 * z * z2
-                - 6.911147651e-6 * z * z4
+            let qv = -1.562499995e-2 * z + 1.430488765e-4 * z * z2 - 6.911147651e-6 * z * z4
                 + 7.621095161e-7 * z * z6
                 - 9.349451520e-8 * z * z8;
 
@@ -95,12 +93,13 @@ impl BesselJ0F64 {
             let z4 = z2 * z2;
             let z5 = z2 * z3;
 
-            let p = 57568490574.0 - 13362590354.0 * z + 651619640.7 * z2
-                - 11214424.18 * z3
+            let p = 57568490574.0 - 13362590354.0 * z + 651619640.7 * z2 - 11214424.18 * z3
                 + 77392.33017 * z4
                 - 184.9052456 * z5;
 
-            let q = 57568490411.0 + 1029532985.0 * z + 9494680.718 * z2
+            let q = 57568490411.0
+                + 1029532985.0 * z
+                + 9494680.718 * z2
                 + 59272.64853 * z3
                 + 267.8532712 * z4
                 + z5;
@@ -144,18 +143,18 @@ impl BesselJ0F64 {
             _pad2: 0,
         };
 
-        let metadata_buf = self
-            .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Bessel J0 f64 Metadata"),
-                contents: bytemuck::bytes_of(&metadata),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let metadata_buf =
+            self.device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Bessel J0 f64 Metadata"),
+                    contents: bytemuck::bytes_of(&metadata),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
         let shader_module = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("Bessel J0 f64"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("Bessel J0 f64"));
 
         let bind_group_layout =
             self.device
@@ -235,16 +234,16 @@ impl BesselJ0F64 {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Bessel J0 f64 Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Bessel J0 f64 Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -304,7 +303,9 @@ mod tests {
 
     #[test]
     fn test_j0_at_zero() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let bessel = BesselJ0F64::new(device)?;
 
         let x = vec![0.0];
@@ -321,14 +322,16 @@ mod tests {
 
     #[test]
     fn test_j0_known_values() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let bessel = BesselJ0F64::new(device)?;
 
         // Known values from tables
         let x = vec![1.0, 2.0, 5.0, 10.0];
         let expected = vec![
-            0.7651976865579666, // J₀(1)
-            0.2238907791412357, // J₀(2)
+            0.7651976865579666,  // J₀(1)
+            0.2238907791412357,  // J₀(2)
             -0.1775967713143383, // J₀(5)
             -0.2459357644513483, // J₀(10)
         ];
@@ -349,31 +352,26 @@ mod tests {
 
     #[test]
     fn test_j0_symmetry() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let bessel = BesselJ0F64::new(device)?;
 
         // J₀(-x) = J₀(x) (even function)
         let x = vec![-3.0, -2.0, -1.0, 1.0, 2.0, 3.0];
         let result = bessel.j0(&x)?;
 
-        assert!(
-            (result[0] - result[5]).abs() < 1e-10,
-            "J₀(-3) != J₀(3)"
-        );
-        assert!(
-            (result[1] - result[4]).abs() < 1e-10,
-            "J₀(-2) != J₀(2)"
-        );
-        assert!(
-            (result[2] - result[3]).abs() < 1e-10,
-            "J₀(-1) != J₀(1)"
-        );
+        assert!((result[0] - result[5]).abs() < 1e-10, "J₀(-3) != J₀(3)");
+        assert!((result[1] - result[4]).abs() < 1e-10, "J₀(-2) != J₀(2)");
+        assert!((result[2] - result[3]).abs() < 1e-10, "J₀(-1) != J₀(1)");
         Ok(())
     }
 
     #[test]
     fn test_j0_large() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let bessel = BesselJ0F64::new(device)?;
 
         // Large input to trigger GPU path

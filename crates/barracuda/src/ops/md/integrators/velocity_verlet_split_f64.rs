@@ -15,7 +15,6 @@
 //! - ✅ f64 precision
 
 use crate::error::{BarracudaError, Result};
-use crate::shaders::precision::ShaderTemplate;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
@@ -116,16 +115,8 @@ impl VelocityVerletKickDrift {
                 usage: wgpu::BufferUsages::STORAGE,
             });
 
-        // Compile shader with math_f64 preamble
         let shader_body = include_str!("velocity_verlet_split.wgsl");
-        let full_shader = ShaderTemplate::with_math_f64(shader_body);
-
-        let shader = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("VV KickDrift Shader"),
-                source: wgpu::ShaderSource::Wgsl(full_shader.into()),
-            });
+        let shader = device.compile_shader_f64(shader_body, Some("VV KickDrift Shader"));
 
         let bind_group_layout =
             device
@@ -196,8 +187,8 @@ impl VelocityVerletKickDrift {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -315,12 +306,10 @@ impl VelocityVerletHalfKick {
                 usage: wgpu::BufferUsages::STORAGE,
             });
 
-        let shader = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("VV HalfKick Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("vv_half_kick_f64.wgsl").into()),
-            });
+        let shader = device.compile_shader_f64(
+            include_str!("vv_half_kick_f64.wgsl"),
+            Some("VV HalfKick Shader"),
+        );
 
         let bind_group_layout =
             device
@@ -380,8 +369,8 @@ impl VelocityVerletHalfKick {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {

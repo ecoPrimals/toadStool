@@ -147,8 +147,10 @@ impl CgGpu {
 
         // Compile separate shader modules to avoid binding conflicts
         let spmv_shader = device.compile_shader(Self::spmv_shader(), Some("CG SpMV"));
-        let dot_reduce_shader = device.compile_shader(Self::dot_reduce_shader(), Some("CG Dot/Reduce"));
-        let cg_kernels_shader = device.compile_shader(Self::cg_kernels_shader(), Some("CG Kernels"));
+        let dot_reduce_shader =
+            device.compile_shader(Self::dot_reduce_shader(), Some("CG Dot/Reduce"));
+        let cg_kernels_shader =
+            device.compile_shader(Self::cg_kernels_shader(), Some("CG Kernels"));
 
         // Create all bind group layouts
         let spmv_bgl = SparseBindGroupLayouts::spmv(&device);
@@ -174,8 +176,8 @@ impl CgGpu {
                     )),
                     module: &spmv_shader,
                     entry_point: "spmv_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let dot_pipeline =
@@ -192,8 +194,8 @@ impl CgGpu {
                     )),
                     module: &dot_reduce_shader,
                     entry_point: "dot_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let reduce_pipeline =
@@ -210,8 +212,8 @@ impl CgGpu {
                     )),
                     module: &dot_reduce_shader,
                     entry_point: "final_reduce_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let update_xr_pipeline =
@@ -228,8 +230,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "cg_update_xr",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let update_p_pipeline =
@@ -246,8 +248,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "cg_update_p",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_alpha_pipeline =
@@ -264,8 +266,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "compute_alpha",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_beta_pipeline =
@@ -282,8 +284,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "compute_beta",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Create bind groups
@@ -816,10 +818,15 @@ impl CgGpu {
         let beta_buffer = SparseBuffers::f64_zeros(&device, "PCG beta", 1);
 
         // Compile separate shader modules to avoid binding conflicts
-        let spmv_shader = device.compile_shader(Self::spmv_shader(), Some("PCG SpMV"));
-        let dot_reduce_shader = device.compile_shader(Self::dot_reduce_shader(), Some("PCG Dot/Reduce"));
-        let cg_kernels_shader = device.compile_shader(Self::cg_kernels_shader(), Some("PCG Kernels"));
-        let vector_ops_shader = device.compile_shader(include_str!("../../shaders/sparse/vector_ops_f64.wgsl"), Some("PCG VecOps"));
+        let spmv_shader = device.compile_shader_f64(Self::spmv_shader(), Some("PCG SpMV"));
+        let dot_reduce_shader =
+            device.compile_shader_f64(Self::dot_reduce_shader(), Some("PCG Dot/Reduce"));
+        let cg_kernels_shader =
+            device.compile_shader_f64(Self::cg_kernels_shader(), Some("PCG Kernels"));
+        let vector_ops_shader = device.compile_shader_f64(
+            include_str!("../../shaders/sparse/vector_ops_f64.wgsl"),
+            Some("PCG VecOps"),
+        );
 
         // Create bind group layouts
         let spmv_bgl = SparseBindGroupLayouts::spmv(&device);
@@ -846,8 +853,8 @@ impl CgGpu {
                     )),
                     module: &spmv_shader,
                     entry_point: "spmv_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let dot_pipeline =
@@ -864,8 +871,8 @@ impl CgGpu {
                     )),
                     module: &dot_reduce_shader,
                     entry_point: "dot_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let reduce_pipeline =
@@ -882,8 +889,8 @@ impl CgGpu {
                     )),
                     module: &dot_reduce_shader,
                     entry_point: "final_reduce_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let update_xr_pipeline =
@@ -900,8 +907,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "cg_update_xr",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let update_p_pipeline =
@@ -918,8 +925,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "cg_update_p",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_alpha_pipeline =
@@ -936,8 +943,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "compute_alpha",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_beta_pipeline =
@@ -954,8 +961,8 @@ impl CgGpu {
                     )),
                     module: &cg_kernels_shader,
                     entry_point: "compute_beta",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let precond_pipeline =
@@ -972,8 +979,8 @@ impl CgGpu {
                     )),
                     module: &vector_ops_shader,
                     entry_point: "precond_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Create bind groups
@@ -1585,9 +1592,13 @@ impl CgGpu {
         let partial_sums_buffer = SparseBuffers::f64_zeros(&device, "CG partial", num_workgroups);
 
         // Compile separate shader modules to avoid binding conflicts
-        let spmv_shader = device.compile_shader(Self::spmv_shader(), Some("CG SpMV"));
-        let dot_reduce_shader = device.compile_shader(Self::dot_reduce_shader(), Some("CG Dot"));
-        let vector_ops_shader = device.compile_shader(include_str!("../../shaders/sparse/vector_ops_f64.wgsl"), Some("CG VecOps"));
+        let spmv_shader = device.compile_shader_f64(Self::spmv_shader(), Some("CG SpMV"));
+        let dot_reduce_shader =
+            device.compile_shader_f64(Self::dot_reduce_shader(), Some("CG Dot"));
+        let vector_ops_shader = device.compile_shader_f64(
+            include_str!("../../shaders/sparse/vector_ops_f64.wgsl"),
+            Some("CG VecOps"),
+        );
 
         // Create bind group layouts
         let spmv_bgl = SparseBindGroupLayouts::spmv(&device);
@@ -1627,8 +1638,8 @@ impl CgGpu {
                     layout: Some(&spmv_pl),
                     module: &spmv_shader,
                     entry_point: "spmv_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let dot_pipeline =
@@ -1639,8 +1650,8 @@ impl CgGpu {
                     layout: Some(&dot_pl),
                     module: &dot_reduce_shader,
                     entry_point: "dot_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let _axpy_pipeline =
@@ -1651,8 +1662,8 @@ impl CgGpu {
                     layout: Some(&axpy_pl),
                     module: &vector_ops_shader,
                     entry_point: "axpy_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // SpMV bind group

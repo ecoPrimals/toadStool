@@ -145,10 +145,18 @@ impl RkIntegrator {
 
             // RK4 stages
             let k1 = f(t, &y);
-            let y1: Vec<f64> = y.iter().zip(&k1).map(|(yi, k)| yi + 0.5 * h_actual * k).collect();
+            let y1: Vec<f64> = y
+                .iter()
+                .zip(&k1)
+                .map(|(yi, k)| yi + 0.5 * h_actual * k)
+                .collect();
 
             let k2 = f(t + 0.5 * h_actual, &y1);
-            let y2: Vec<f64> = y.iter().zip(&k2).map(|(yi, k)| yi + 0.5 * h_actual * k).collect();
+            let y2: Vec<f64> = y
+                .iter()
+                .zip(&k2)
+                .map(|(yi, k)| yi + 0.5 * h_actual * k)
+                .collect();
 
             let k3 = f(t + 0.5 * h_actual, &y2);
             let y3: Vec<f64> = y.iter().zip(&k3).map(|(yi, k)| yi + h_actual * k).collect();
@@ -196,9 +204,7 @@ impl RkIntegrator {
             // RK45 Dormand-Prince stages
             let k1 = f(t, &y);
 
-            let y1: Vec<f64> = (0..n)
-                .map(|i| y[i] + h * DP_C[1] * k1[i])
-                .collect();
+            let y1: Vec<f64> = (0..n).map(|i| y[i] + h * DP_C[1] * k1[i]).collect();
             let k2 = f(t + h * DP_C[1], &y1);
 
             let y2: Vec<f64> = (0..n)

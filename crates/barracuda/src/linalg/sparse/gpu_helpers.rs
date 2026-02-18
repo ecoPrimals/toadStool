@@ -431,8 +431,8 @@ impl SparsePipelines {
                 )),
                 module: shader,
                 entry_point: "spmv_f64",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let dot = device
@@ -448,8 +448,8 @@ impl SparsePipelines {
                 )),
                 module: shader,
                 entry_point: "dot_f64",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let reduce = device
@@ -465,8 +465,8 @@ impl SparsePipelines {
                 )),
                 module: shader,
                 entry_point: "final_reduce_f64",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         Self { spmv, dot, reduce }

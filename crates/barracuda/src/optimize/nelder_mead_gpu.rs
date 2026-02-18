@@ -130,7 +130,7 @@ impl NelderMeadGpu {
 
         // Initial function evaluation (all n+1 vertices)
         f_gpu(&simplex_buffer, &f_vals_buffer, n_vertices)?;
-        let mut f_vals = self.read_f64_buffer(&f_vals_buffer, n_vertices)?;
+        let mut f_vals = self.device.read_f64_buffer(&f_vals_buffer, n_vertices)?;
         let mut n_evals = n_vertices;
 
         // Main optimization loop
@@ -176,7 +176,7 @@ impl NelderMeadGpu {
             let reflect_buffer = self.create_point_buffer(&x_reflect);
             let reflect_f_buffer = self.create_f64_buffer(1);
             f_gpu(&reflect_buffer, &reflect_f_buffer, 1)?;
-            let f_reflect = self.read_f64_buffer(&reflect_f_buffer, 1)?[0];
+            let f_reflect = self.device.read_f64_buffer(&reflect_f_buffer, 1)?[0];
             n_evals += 1;
 
             if f_reflect < f_vals[best_idx] {
@@ -187,7 +187,7 @@ impl NelderMeadGpu {
                 let expand_buffer = self.create_point_buffer(&x_expand);
                 let expand_f_buffer = self.create_f64_buffer(1);
                 f_gpu(&expand_buffer, &expand_f_buffer, 1)?;
-                let f_expand = self.read_f64_buffer(&expand_f_buffer, 1)?[0];
+                let f_expand = self.device.read_f64_buffer(&expand_f_buffer, 1)?[0];
                 n_evals += 1;
 
                 if f_expand < f_reflect {
@@ -215,7 +215,7 @@ impl NelderMeadGpu {
                 let contract_buffer = self.create_point_buffer(&x_contract);
                 let contract_f_buffer = self.create_f64_buffer(1);
                 f_gpu(&contract_buffer, &contract_f_buffer, 1)?;
-                let f_contract = self.read_f64_buffer(&contract_f_buffer, 1)?[0];
+                let f_contract = self.device.read_f64_buffer(&contract_f_buffer, 1)?[0];
                 n_evals += 1;
 
                 if f_contract < f_vals[worst_idx] {
@@ -236,7 +236,7 @@ impl NelderMeadGpu {
                     // Batch re-evaluate all shrunk vertices
                     let shrunk_buffer = self.create_simplex_buffer(&simplex, n);
                     f_gpu(&shrunk_buffer, &f_vals_buffer, n_vertices)?;
-                    f_vals = self.read_f64_buffer(&f_vals_buffer, n_vertices)?;
+                    f_vals = self.device.read_f64_buffer(&f_vals_buffer, n_vertices)?;
                     n_evals += n; // Only non-best vertices re-evaluated
                 }
             }
@@ -387,52 +387,6 @@ impl NelderMeadGpu {
                     | wgpu::BufferUsages::COPY_SRC
                     | wgpu::BufferUsages::COPY_DST,
             })
-    }
-
-    /// Read f64 buffer from GPU
-    fn read_f64_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<f64>> {
-        let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("NM staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("NM readback"),
-                });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        self.device.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
-        self.device.device.poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| {
-                f64::from_le_bytes(
-                    chunk
-                        .try_into()
-                        .expect("chunks_exact(8) yields 8-byte chunks"),
-                )
-            })
-            .collect();
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
     }
 }
 

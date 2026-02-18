@@ -228,28 +228,29 @@ impl SquirrelBackend {
         use toadstool_common::primal_identity::Capability;
 
         // CAPABILITY-BASED: Discover ANY ML service (not hardcoded "squirrel")
-        let socket_path = toadstool_common::primal_sockets::discover_socket_for_capability(
-            Capability::Custom {
+        let socket_path =
+            toadstool_common::primal_sockets::discover_socket_for_capability(Capability::Custom {
                 name: "ml.agent".to_string(),
                 version: "1.0".to_string(),
-            },
-        )
-        .await
-        .or_else(|_| {
-            // Fallback: Try MCP capability
-            futures::executor::block_on(
-                toadstool_common::primal_sockets::discover_socket_for_capability(Capability::Custom {
-                    name: "mcp".to_string(),
-                    version: "1.0".to_string(),
-                }),
-            )
-        })
-        .map_err(|e| {
-            ToadStoolError::configuration(format!(
-                "No ML/MCP service discovered: {}. Ensure a ML provider is running.",
-                e
-            ))
-        })?;
+            })
+            .await
+            .or_else(|_| {
+                // Fallback: Try MCP capability
+                futures::executor::block_on(
+                    toadstool_common::primal_sockets::discover_socket_for_capability(
+                        Capability::Custom {
+                            name: "mcp".to_string(),
+                            version: "1.0".to_string(),
+                        },
+                    ),
+                )
+            })
+            .map_err(|e| {
+                ToadStoolError::configuration(format!(
+                    "No ML/MCP service discovered: {}. Ensure a ML provider is running.",
+                    e
+                ))
+            })?;
 
         Ok(Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
@@ -265,7 +266,10 @@ impl SquirrelBackend {
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
     #[must_use]
-    #[deprecated(since = "0.3.0", note = "Use new_async() for capability-based discovery")]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use new_async() for capability-based discovery"
+    )]
     #[allow(deprecated)]
     pub fn new(
         _endpoint: impl Into<String>,

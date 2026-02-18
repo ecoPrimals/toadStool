@@ -283,8 +283,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
             layout: Some(&pl),
             module: &shader,
             entry_point: "main",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         let workgroups = (size as u32).div_ceil(workgroup_size).min(65535);
@@ -402,8 +402,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
             layout: Some(&pl),
             module: &shader,
             entry_point: "main",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         let workgroups = (size as u32).div_ceil(workgroup_size);

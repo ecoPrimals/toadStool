@@ -186,8 +186,8 @@ impl Cholesky {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         // Create command encoder
@@ -341,7 +341,7 @@ impl CholeskyF64 {
         });
 
         // Compile f64 shader
-        let shader = device.compile_shader(Cholesky::wgsl_shader_f64(), Some("Cholesky F64"));
+        let shader = device.compile_shader_f64(Cholesky::wgsl_shader_f64(), Some("Cholesky F64"));
 
         let pipeline_layout =
             device
@@ -359,8 +359,8 @@ impl CholeskyF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "cholesky_f64",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let mut encoder = device
@@ -479,7 +479,8 @@ impl CholeskyF64 {
             ],
         });
 
-        let shader = device.compile_shader(Cholesky::wgsl_shader_f64(), Some("Cholesky F64 Batch"));
+        let shader =
+            device.compile_shader_f64(Cholesky::wgsl_shader_f64(), Some("Cholesky F64 Batch"));
 
         let pipeline_layout =
             device
@@ -497,8 +498,8 @@ impl CholeskyF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "cholesky_f64_batched",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let mut encoder = device
@@ -554,7 +555,9 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::{get_test_device_if_f64_gpu_available, get_test_device_if_gpu_available};
+    use crate::device::test_pool::{
+        get_test_device_if_f64_gpu_available, get_test_device_if_gpu_available,
+    };
 
     #[tokio::test]
     async fn test_cholesky_2x2() {

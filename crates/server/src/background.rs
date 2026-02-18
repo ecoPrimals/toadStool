@@ -9,9 +9,9 @@ use tracing::{debug, info, warn};
 use crate::state::{ServerEvent, ServerState};
 
 // Centralized timeout/interval constants (Deep Debt evolution)
-use toadstool_common::constants::timeouts::{DEFAULT_CACHE_TTL, HEALTH_CHECK_INTERVAL};
 #[cfg(test)]
 use toadstool_common::constants::timeouts::WORKLOAD_EXECUTION_TIMEOUT;
+use toadstool_common::constants::timeouts::{DEFAULT_CACHE_TTL, HEALTH_CHECK_INTERVAL};
 
 /// Start all background services
 pub async fn start_background_services(state: ServerState) {

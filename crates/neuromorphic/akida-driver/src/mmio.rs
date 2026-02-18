@@ -202,8 +202,7 @@ impl MappedRegion {
             .map_err(|e| {
                 AkidaError::capability_query_failed(format!(
                     "Failed to mmap BAR{}: {}",
-                    bar as u32,
-                    e
+                    bar as u32, e
                 ))
             })?
         };

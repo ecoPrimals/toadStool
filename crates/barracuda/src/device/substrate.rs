@@ -100,55 +100,36 @@ impl Substrate {
         Ok(substrates)
     }
 
-    /// Classify substrate type from adapter info
+    /// Classify substrate type from adapter info using PCI vendor IDs.
     ///
-    /// **Deep Debt**: Self-discovery based on vendor/name patterns
+    /// Primary detection uses standard PCI vendor IDs (reliable across drivers).
+    /// Falls back to name-based detection for non-PCI devices (Apple, NPU).
     fn classify_substrate(info: &wgpu::AdapterInfo) -> SubstrateType {
-        let name_lower = info.name.to_lowercase();
+        const VENDOR_NVIDIA: u32 = 0x10DE;
+        const VENDOR_AMD: u32 = 0x1002;
+        const VENDOR_INTEL: u32 = 0x8086;
+        const VENDOR_APPLE: u32 = 0x106B;
 
-        // NVIDIA detection
-        if name_lower.contains("nvidia")
-            || name_lower.contains("geforce")
-            || name_lower.contains("quadro")
-            || name_lower.contains("tesla")
-        {
-            return SubstrateType::NvidiaGpu;
+        match info.vendor {
+            VENDOR_NVIDIA => SubstrateType::NvidiaGpu,
+            VENDOR_AMD => SubstrateType::AmdGpu,
+            VENDOR_INTEL => SubstrateType::IntelGpu,
+            VENDOR_APPLE => SubstrateType::AppleGpu,
+            _ => {
+                let name_lower = info.name.to_lowercase();
+                if name_lower.contains("apple")
+                    || name_lower.contains("m1")
+                    || name_lower.contains("m2")
+                    || name_lower.contains("m3")
+                {
+                    SubstrateType::AppleGpu
+                } else if name_lower.contains("npu") || name_lower.contains("akida") {
+                    SubstrateType::Npu
+                } else {
+                    SubstrateType::Other
+                }
+            }
         }
-
-        // AMD detection
-        if name_lower.contains("amd")
-            || name_lower.contains("radeon")
-            || name_lower.contains("rx ")
-            || name_lower.contains("vega")
-            || name_lower.contains("navi")
-        {
-            return SubstrateType::AmdGpu;
-        }
-
-        // Intel detection
-        if name_lower.contains("intel")
-            || name_lower.contains("hd graphics")
-            || name_lower.contains("iris")
-            || name_lower.contains("arc")
-        {
-            return SubstrateType::IntelGpu;
-        }
-
-        // Apple detection
-        if name_lower.contains("apple")
-            || name_lower.contains("m1")
-            || name_lower.contains("m2")
-            || name_lower.contains("m3")
-        {
-            return SubstrateType::AppleGpu;
-        }
-
-        // NPU detection (placeholder - needs custom detection)
-        if name_lower.contains("npu") || name_lower.contains("akida") {
-            return SubstrateType::Npu;
-        }
-
-        SubstrateType::Other
     }
 
     /// Create WgpuDevice on this specific substrate

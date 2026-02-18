@@ -354,8 +354,8 @@ impl OctaveConv2D {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         // Create bind group entries - use dummy buffers for None inputs

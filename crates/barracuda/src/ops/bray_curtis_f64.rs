@@ -72,13 +72,7 @@ impl BrayCurtisF64 {
     /// Create a new Bray-Curtis GPU operator
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
         let shader_source = include_str!("../shaders/math/bray_curtis_f64.wgsl");
-
-        let shader_module = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("BrayCurtisF64 Shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-            });
+        let shader_module = device.compile_shader_f64(shader_source, Some("BrayCurtisF64 Shader"));
 
         let pipeline = device
             .device
@@ -87,8 +81,8 @@ impl BrayCurtisF64 {
                 layout: None,
                 module: &shader_module,
                 entry_point: "bray_curtis_pairs",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         Ok(Self { device, pipeline })
@@ -342,7 +336,12 @@ mod tests {
         let samples = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let bc = bray_curtis_cpu(&samples, 1, 0, 3);
         let expected = 9.0 / 21.0;
-        assert!((bc - expected).abs() < 1e-10, "Got {}, expected {}", bc, expected);
+        assert!(
+            (bc - expected).abs() < 1e-10,
+            "Got {}, expected {}",
+            bc,
+            expected
+        );
     }
 
     #[test]

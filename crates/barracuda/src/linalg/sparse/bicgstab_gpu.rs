@@ -139,8 +139,9 @@ impl BiCgStabGpu {
             Self::create_zero_f64_buffer(&device, "BiCG partial", num_workgroups);
 
         // Compile separate shader modules to avoid binding conflicts
-        let spmv_shader = device.compile_shader(Self::spmv_shader(), Some("BiCGSTAB SpMV"));
-        let dot_reduce_shader = device.compile_shader(Self::dot_reduce_shader(), Some("BiCGSTAB Dot"));
+        let spmv_shader = device.compile_shader_f64(Self::spmv_shader(), Some("BiCGSTAB SpMV"));
+        let dot_reduce_shader =
+            device.compile_shader_f64(Self::dot_reduce_shader(), Some("BiCGSTAB Dot"));
 
         // Create bind group layouts
         let spmv_bgl = Self::create_spmv_bgl(&device);
@@ -171,8 +172,8 @@ impl BiCgStabGpu {
                     layout: Some(&spmv_pl),
                     module: &spmv_shader,
                     entry_point: "spmv_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let _dot_pipeline =
@@ -183,8 +184,8 @@ impl BiCgStabGpu {
                     layout: Some(&dot_pl),
                     module: &dot_reduce_shader,
                     entry_point: "dot_f64",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // SpMV params
@@ -215,14 +216,14 @@ impl BiCgStabGpu {
         // BiCGSTAB iteration
         for iter in 0..max_iter {
             // Read current r
-            let r_data = Self::read_f64_buffer(&device, &r_buffer, n)?;
+            let r_data = device.read_f64_buffer(&r_buffer, n)?;
 
             // ρ_new = r̂ᵀr (use CPU for now - could use GPU dot product)
-            let r_hat_data = Self::read_f64_buffer(&device, &r_hat_buffer, n)?;
+            let r_hat_data = device.read_f64_buffer(&r_hat_buffer, n)?;
             let rho_new: f64 = r_data.iter().zip(&r_hat_data).map(|(a, b)| a * b).sum();
 
             if rho_new.abs() < 1e-14 {
-                let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
+                let x_data = device.read_f64_buffer(&x_buffer, n)?;
                 let r_norm: f64 = r_data.iter().map(|x| x * x).sum::<f64>().sqrt();
                 return Ok(BiCgStabGpuResult {
                     x: x_data,
@@ -237,8 +238,8 @@ impl BiCgStabGpu {
             rho = rho_new;
 
             // p = r + β(p - ω*v)
-            let p_data = Self::read_f64_buffer(&device, &p_buffer, n)?;
-            let v_data = Self::read_f64_buffer(&device, &v_buffer, n)?;
+            let p_data = device.read_f64_buffer(&p_buffer, n)?;
+            let v_data = device.read_f64_buffer(&v_buffer, n)?;
             let new_p: Vec<f64> = r_data
                 .iter()
                 .zip(&p_data)
@@ -297,10 +298,10 @@ impl BiCgStabGpu {
             device.queue.submit(Some(encoder.finish()));
 
             // α = ρ / (r̂ᵀv)
-            let v_data = Self::read_f64_buffer(&device, &v_buffer, n)?;
+            let v_data = device.read_f64_buffer(&v_buffer, n)?;
             let rv: f64 = r_hat_data.iter().zip(&v_data).map(|(a, b)| a * b).sum();
             if rv.abs() < 1e-14 {
-                let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
+                let x_data = device.read_f64_buffer(&x_buffer, n)?;
                 let r_norm: f64 = r_data.iter().map(|x| x * x).sum::<f64>().sqrt();
                 return Ok(BiCgStabGpuResult {
                     x: x_data,
@@ -322,7 +323,7 @@ impl BiCgStabGpu {
             let s_norm: f64 = s_data.iter().map(|x| x * x).sum::<f64>().sqrt();
             if s_norm / b_norm < tol {
                 // x = x + α*p
-                let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
+                let x_data = device.read_f64_buffer(&x_buffer, n)?;
                 let new_x: Vec<f64> = x_data
                     .iter()
                     .zip(&new_p)
@@ -388,14 +389,14 @@ impl BiCgStabGpu {
             device.queue.submit(Some(encoder.finish()));
 
             // ω = (tᵀs) / (tᵀt)
-            let t_data = Self::read_f64_buffer(&device, &t_buffer, n)?;
+            let t_data = device.read_f64_buffer(&t_buffer, n)?;
             let ts: f64 = t_data.iter().zip(&s_data).map(|(ti, si)| ti * si).sum();
             let tt: f64 = t_data.iter().map(|ti| ti * ti).sum();
 
             omega = if tt.abs() < 1e-14 { 0.0 } else { ts / tt };
 
             // x = x + α*p + ω*s
-            let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
+            let x_data = device.read_f64_buffer(&x_buffer, n)?;
             let new_x: Vec<f64> = x_data
                 .iter()
                 .zip(&new_p)
@@ -435,8 +436,8 @@ impl BiCgStabGpu {
         }
 
         // Did not converge
-        let x_data = Self::read_f64_buffer(&device, &x_buffer, n)?;
-        let r_data = Self::read_f64_buffer(&device, &r_buffer, n)?;
+        let x_data = device.read_f64_buffer(&x_buffer, n)?;
+        let r_data = device.read_f64_buffer(&r_buffer, n)?;
         let r_norm: f64 = r_data.iter().map(|x| x * x).sum::<f64>().sqrt();
 
         Ok(BiCgStabGpuResult {
@@ -482,54 +483,6 @@ impl BiCgStabGpu {
                 contents: bytemuck::cast_slice(&u32_data),
                 usage: wgpu::BufferUsages::STORAGE,
             })
-    }
-
-    fn read_f64_buffer(
-        device: &Arc<WgpuDevice>,
-        buffer: &wgpu::Buffer,
-        count: usize,
-    ) -> Result<Vec<f64>> {
-        let staging = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("f64 staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("f64 readback"),
-            });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        device.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| {
-                f64::from_le_bytes(
-                    chunk
-                        .try_into()
-                        .expect("chunks_exact(8) yields 8-byte chunks"),
-                )
-            })
-            .collect();
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
     }
 
     fn write_f64_buffer(device: &Arc<WgpuDevice>, buffer: &wgpu::Buffer, data: &[f64]) {

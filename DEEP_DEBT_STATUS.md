@@ -21,7 +21,51 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **Test Concurrency FIXED** — tensor tests pass with full parallelism.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 18, 2026 — Capability-Based Dispatch & Test Fixes)
+### Latest Updates (Feb 18, 2026 — Cross-Vendor GPU Sovereignty & Shader Injection Evolution)
+
+**RADV/ACO f64 Workaround (AMD Open-Source Driver) ✓**
+
+Discovered and fixed AMD RADV driver bug: `ACO ERROR: Unimplemented NIR instr bit size: 64`
+for `fexp2(f64)`. This parallels the existing NVK/NAK crash on `exp(f64)`.
+
+| Driver | Bug | Workaround | Performance Impact |
+|--------|-----|------------|--------------------|
+| NVK/NAK (NVIDIA open-source) | Native `exp(f64)` crashes | `exp()` → `exp_f64()` software | ~2x slower for exp/log |
+| RADV/ACO (AMD open-source) | `fexp2(f64)` unimplemented | `exp()` → `exp_f64()` software | ~2x slower for exp/log |
+| NVIDIA proprietary | Native f64 works | None needed | Full speed |
+| AMDGPU-PRO (AMD proprietary) | Untested | TBD | TBD |
+
+**NOTE**: These are workarounds, not solutions. See `DEBT.md` for evolution path.
+
+**Shader Injection Architecture Evolution ✓**
+
+Replaced fragile all-or-nothing `_safe` injection with precise `inject_missing_math_f64`:
+
+| Before | After |
+|--------|-------|
+| `with_math_f64_safe`: skip ALL if ANY func defined | `inject_missing_math_f64`: inject ONLY called-but-not-defined |
+| `coulomb_f64.wgsl` crashed (had `f64_const`, needed `exp_f64`) | Handles partial definitions correctly |
+| `for_driver_auto` → `with_math_f64_auto_safe` (fragile chain) | `for_driver_auto` → `inject_missing_math_f64` (precise) |
+
+Key changes:
+- `ShaderTemplate::inject_missing_math_f64()`: scans shader for called-but-not-defined functions
+- `ShaderTemplate::collect_deps()`: transitive dependency resolution
+- `WgpuDevice::needs_f64_exp_log_workaround()`: unified NVK + RADV detection
+- `WgpuDevice::compile_shader_f64()`: single entry point for all f64 shader compilation
+- 40+ ops migrated from manual `compile_shader` to `compile_shader_f64`
+
+**Vendor-ID Based Hardware Detection ✓**
+
+| Before | After |
+|--------|-------|
+| `info.name.contains("nvidia")` | `info.vendor == 0x10DE` (PCI vendor ID) |
+| String matching fragile | Standards-based, vendor-agnostic |
+
+**Test Results**: 178 f64 tests pass, 91 GPU tests pass (3 PPPM physics failures pre-existing).
+
+---
+
+### Previous Updates (Feb 18, 2026 — Capability-Based Dispatch & Test Fixes)
 
 **Hardcoded Workgroup Sizes → WORKGROUP_SIZE_1D ✓**
 
@@ -168,11 +212,13 @@ Absorbed validation findings from hotSpring's full BarraCUDA GPU pass on RTX 407
 | `WorkloadType` | ✅ | **NEW** — Streaming/Iterative/F64Builtins enum |
 | `GpuDriver` | ✅ | **NEW** — Driver detection for routing |
 
-**NVK exp(f64) Workaround**
+**Open-Source Driver f64 Transcendental Workaround**
 
-The NVK (nouveau) Vulkan driver has a NAK compiler bug that crashes on native `exp(f64)` builtins.
-The `ShaderTemplate::for_device()` method auto-replaces `exp(` with `exp_f64(` when running on NVK,
-using the software implementation from `math_f64.wgsl`.
+Both NVK (NVIDIA/nouveau) and RADV (AMD) open-source Vulkan drivers have compiler bugs
+with f64 transcendentals. `ShaderTemplate::for_driver_auto()` replaces `exp()`/`log()` with
+software `exp_f64()`/`log_f64()` when running on affected drivers. The new
+`inject_missing_math_f64()` handles partial shader definitions (e.g., shader defines
+`f64_const` but needs `exp_f64`). See `DEBT.md` for evolution path.
 
 **Known Issues (Documented)**
 

@@ -151,12 +151,10 @@ impl GpuRingBuffer {
         // Determine buffer usage based on direction
         let usage = match config.direction {
             BufferDirection::HostToDevice => {
-                wgpu::BufferUsages::STORAGE
-                    | wgpu::BufferUsages::COPY_DST // CPU can write
+                wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST // CPU can write
             }
             BufferDirection::DeviceToHost => {
-                wgpu::BufferUsages::STORAGE
-                    | wgpu::BufferUsages::COPY_SRC // Can copy to staging
+                wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC // Can copy to staging
             }
         };
 

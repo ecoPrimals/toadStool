@@ -58,11 +58,7 @@ impl CosineSimilarityF64 {
     pub fn similarity(&self, a: &[f64], b: &[f64]) -> Result<f64> {
         if a.len() != b.len() {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Vector dimensions must match: a={}, b={}",
-                    a.len(),
-                    b.len()
-                ),
+                message: format!("Vector dimensions must match: a={}, b={}", a.len(), b.len()),
             });
         }
 
@@ -172,7 +168,7 @@ impl CosineSimilarityF64 {
 
         let shader = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("Cosine Similarity f64"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("Cosine Similarity f64"));
 
         // Create buffers
         let a_buf = self
@@ -276,48 +272,51 @@ impl CosineSimilarityF64 {
                 push_constant_ranges: &[],
             });
 
-        let pipeline = self
-            .device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Cosine Pipeline"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Cosine Pipeline"),
+                    layout: Some(&pl),
+                    module: &shader,
+                    entry_point: "main",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
 
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Cosine BG"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: a_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: b_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: output_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buf.as_entire_binding(),
-                },
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Cosine BG"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: a_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: b_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: output_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                ],
+            });
 
         // Dispatch: workgroup size is 16x16
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Cosine Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Cosine Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -341,12 +340,12 @@ impl CosineSimilarityF64 {
             mapped_at_creation: false,
         });
 
-        let mut encoder2 = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Copy Encoder"),
-            });
+        let mut encoder2 =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Copy Encoder"),
+                });
         encoder2.copy_buffer_to_buffer(&output_buf, 0, &staging, 0, (output_size * 8) as u64);
         self.device.queue.submit(Some(encoder2.finish()));
 
@@ -366,7 +365,6 @@ impl CosineSimilarityF64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
         crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
@@ -374,7 +372,9 @@ mod tests {
 
     #[test]
     fn test_identical_vectors() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = CosineSimilarityF64::new(device).unwrap();
 
         let a = vec![1.0, 2.0, 3.0, 4.0];
@@ -389,19 +389,27 @@ mod tests {
 
     #[test]
     fn test_orthogonal_vectors() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = CosineSimilarityF64::new(device).unwrap();
 
         let a = vec![1.0, 0.0, 0.0];
         let b = vec![0.0, 1.0, 0.0];
 
         let sim = op.similarity(&a, &b).unwrap();
-        assert!(sim.abs() < 1e-10, "Expected 0 for orthogonal vectors, got {}", sim);
+        assert!(
+            sim.abs() < 1e-10,
+            "Expected 0 for orthogonal vectors, got {}",
+            sim
+        );
     }
 
     #[test]
     fn test_opposite_vectors() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = CosineSimilarityF64::new(device).unwrap();
 
         let a = vec![1.0, 2.0, 3.0];
@@ -417,7 +425,9 @@ mod tests {
 
     #[test]
     fn test_all_pairs() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = CosineSimilarityF64::new(device).unwrap();
 
         let vectors_a = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
@@ -434,7 +444,9 @@ mod tests {
 
     #[test]
     fn test_large_vectors() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = CosineSimilarityF64::new(device).unwrap();
 
         let n = 1000;

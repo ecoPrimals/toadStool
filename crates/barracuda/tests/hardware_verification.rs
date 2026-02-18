@@ -341,7 +341,7 @@ async fn test_cross_vendor_cholesky_parity() {
     let mut devices: Vec<(String, Arc<WgpuDevice>)> = Vec::new();
     for gpu in &inventory.gpus {
         if let Ok(device) = WgpuDevice::from_adapter_index(gpu.adapter_index).await {
-            devices.push((format!("{}", gpu.name), Arc::new(device)));
+            devices.push((gpu.name.clone(), Arc::new(device)));
         }
     }
 
@@ -507,16 +507,13 @@ fn test_kernel_router_small_workloads_to_cpu() {
 
     for workload in small_workloads {
         let target = router.route(&workload).unwrap();
-        match target {
-            KernelTarget::Wgsl { device, .. } => {
-                assert_eq!(
-                    device,
-                    DeviceSelection::Cpu,
-                    "Small workload {:?} should route to CPU",
-                    workload
-                );
-            }
-            _ => {}
+        if let KernelTarget::Wgsl { device, .. } = target {
+            assert_eq!(
+                device,
+                DeviceSelection::Cpu,
+                "Small workload {:?} should route to CPU",
+                workload
+            );
         }
     }
 

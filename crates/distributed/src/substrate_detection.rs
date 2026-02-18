@@ -528,3 +528,142 @@ impl SubstrateCapabilities {
             .any(|p| matches!(p, PlatformType::WebAssembly { .. }))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn substrate_detector_new() {
+        let detector = SubstrateDetector::new();
+        // Detector is unit struct, just verify construction
+        let _ = detector;
+    }
+
+    #[test]
+    fn substrate_detector_default() {
+        let detector = SubstrateDetector::default();
+        let from_new = SubstrateDetector::new();
+        // Both produce valid detectors (unit struct)
+        let _ = detector;
+        let _ = from_new;
+    }
+
+    #[test]
+    fn substrate_capabilities_total_platforms() {
+        let caps = SubstrateCapabilities {
+            traditional_platforms: vec![PlatformType::Linux {
+                distribution: "ubuntu".to_string(),
+                architecture: "x86_64".to_string(),
+            }],
+            container_platforms: vec![PlatformType::Docker],
+            language_runtimes: vec![],
+            gpu_platforms: vec![PlatformType::GPU {
+                vendor: "NVIDIA".to_string(),
+                framework: "CUDA".to_string(),
+            }],
+            specialized_platforms: vec![],
+            experimental_platforms: vec![],
+        };
+        assert_eq!(caps.total_platforms(), 3);
+    }
+
+    #[test]
+    fn substrate_capabilities_has_containers() {
+        let caps_empty = SubstrateCapabilities {
+            traditional_platforms: vec![],
+            container_platforms: vec![],
+            language_runtimes: vec![],
+            gpu_platforms: vec![],
+            specialized_platforms: vec![],
+            experimental_platforms: vec![],
+        };
+        assert!(!caps_empty.has_containers());
+
+        let caps_with_docker = SubstrateCapabilities {
+            traditional_platforms: vec![],
+            container_platforms: vec![PlatformType::Docker],
+            language_runtimes: vec![],
+            gpu_platforms: vec![],
+            specialized_platforms: vec![],
+            experimental_platforms: vec![],
+        };
+        assert!(caps_with_docker.has_containers());
+    }
+
+    #[test]
+    fn substrate_capabilities_has_gpu() {
+        let caps_no_gpu = SubstrateCapabilities {
+            traditional_platforms: vec![],
+            container_platforms: vec![],
+            language_runtimes: vec![],
+            gpu_platforms: vec![],
+            specialized_platforms: vec![],
+            experimental_platforms: vec![],
+        };
+        assert!(!caps_no_gpu.has_gpu());
+
+        let caps_with_gpu = SubstrateCapabilities {
+            traditional_platforms: vec![],
+            container_platforms: vec![],
+            language_runtimes: vec![],
+            gpu_platforms: vec![PlatformType::GPU {
+                vendor: "NVIDIA".to_string(),
+                framework: "CUDA".to_string(),
+            }],
+            specialized_platforms: vec![],
+            experimental_platforms: vec![],
+        };
+        assert!(caps_with_gpu.has_gpu());
+    }
+
+    #[test]
+    fn substrate_capabilities_has_wasm() {
+        let caps_no_wasm = SubstrateCapabilities {
+            traditional_platforms: vec![],
+            container_platforms: vec![],
+            language_runtimes: vec![],
+            gpu_platforms: vec![],
+            specialized_platforms: vec![],
+            experimental_platforms: vec![],
+        };
+        assert!(!caps_no_wasm.has_wasm());
+
+        let caps_with_wasm = SubstrateCapabilities {
+            traditional_platforms: vec![],
+            container_platforms: vec![],
+            language_runtimes: vec![],
+            gpu_platforms: vec![],
+            specialized_platforms: vec![PlatformType::WebAssembly {
+                runtime: "Wasmtime".to_string(),
+            }],
+            experimental_platforms: vec![],
+        };
+        assert!(caps_with_wasm.has_wasm());
+    }
+
+    #[test]
+    fn platform_type_variants() {
+        let _linux = PlatformType::Linux {
+            distribution: "arch".to_string(),
+            architecture: "aarch64".to_string(),
+        };
+        let _docker = PlatformType::Docker;
+        let _gpu = PlatformType::GPU {
+            vendor: "AMD".to_string(),
+            framework: "ROCm".to_string(),
+        };
+        let _lang = PlatformType::Language {
+            name: "Python".to_string(),
+            command: "python3".to_string(),
+        };
+        let _quantum = PlatformType::Quantum {
+            framework: "Qiskit".to_string(),
+            simulator: true,
+        };
+        let _edge = PlatformType::EdgeDevice {
+            device_type: "Raspberry Pi".to_string(),
+            architecture: "arm64".to_string(),
+        };
+    }
+}

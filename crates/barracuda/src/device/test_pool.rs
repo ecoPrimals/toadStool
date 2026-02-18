@@ -216,7 +216,7 @@ pub mod test_prelude {
         use rand::Rng;
         let size: usize = shape.iter().product();
         let mut rng = rand::thread_rng();
-        
+
         // Box-Muller for normal distribution
         let mut data = Vec::with_capacity(size);
         for _ in 0..(size / 2) {
@@ -233,7 +233,7 @@ pub mod test_prelude {
             data.push((-2.0 * u1.ln()).sqrt() * (2.0 * std::f32::consts::PI * u2).cos());
         }
         data.truncate(size);
-        
+
         Tensor::from_vec_on(data, shape.to_vec(), Arc::clone(device))
             .await
             .expect("Failed to create randn tensor")
@@ -244,7 +244,7 @@ pub mod test_prelude {
         use rand::Rng;
         let size: usize = shape.iter().product();
         let data: Vec<f32> = (0..size).map(|_| rand::thread_rng().gen()).collect();
-        
+
         Tensor::from_vec_on(data, shape.to_vec(), Arc::clone(device))
             .await
             .expect("Failed to create rand tensor")

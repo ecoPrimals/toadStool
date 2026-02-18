@@ -294,15 +294,16 @@ impl ProtocolClient {
                                     false
                                 }
                                 Err(_) => {
-                                    debug!(
-                                        "⚠️ Service {} endpoint {} timed out",
-                                        service_id, addr
-                                    );
+                                    debug!("⚠️ Service {} endpoint {} timed out", service_id, addr);
                                     false
                                 }
                             };
 
-                            health_updates.push((service_id.clone(), endpoint.id.clone(), is_healthy));
+                            health_updates.push((
+                                service_id.clone(),
+                                endpoint.id.clone(),
+                                is_healthy,
+                            ));
                         }
                     }
 

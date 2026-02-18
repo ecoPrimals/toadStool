@@ -6,6 +6,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::pin::Pin;
+use toadstool_common::constants::timeouts;
 use uuid::Uuid;
 
 use crate::ToadStoolResult;
@@ -43,7 +44,7 @@ impl Default for ExecutionRequest {
             runtime_hint: None,
             resources: crate::resources::ResourceRequirements::default(),
             security_context: crate::SecurityContext::default(),
-            timeout: Some(Duration::from_secs(300)),
+            timeout: Some(timeouts::WORKLOAD_EXECUTION_TIMEOUT),
             environment: HashMap::new(),
             input_data: ExecutionInput::default(),
             callback_config: None,

@@ -227,7 +227,7 @@ impl SpinOrbitGpu {
     ) -> Result<Vec<f64>> {
         let shader = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("SpinOrbit f64"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("SpinOrbit f64"));
 
         // Create bind group layout
         let mut entries = vec![
@@ -338,8 +338,8 @@ impl SpinOrbitGpu {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point,
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Create buffers
@@ -480,46 +480,8 @@ impl SpinOrbitGpu {
         }
 
         // Read back results
-        self.read_f64_buffer(&output_buffer, batch_size * n_states)
-    }
-
-    fn read_f64_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<f64>> {
-        let staging_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("SpinOrbit Staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-
-        {
-            let mut encoder =
-                self.device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("SpinOrbit Copy"),
-                    });
-            encoder.copy_buffer_to_buffer(buffer, 0, &staging_buffer, 0, (count * 8) as u64);
-            self.device.queue.submit(Some(encoder.finish()));
-        }
-
-        let slice = staging_buffer.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            // Use .ok() instead of .unwrap() - receiver may be dropped on early return
-            let _ = tx.send(result);
-        });
-        self.device.device.poll(wgpu::Maintain::Wait);
-
-        rx.recv()
-            .map_err(|e| BarracudaError::Device(format!("Buffer mapping channel closed: {}", e)))?
-            .map_err(|e| BarracudaError::Device(format!("Buffer map error: {:?}", e)))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging_buffer.unmap();
-
-        Ok(result)
+        self.device
+            .read_f64_buffer(&output_buffer, batch_size * n_states)
     }
 }
 
@@ -569,6 +531,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires GPU hardware"]
     async fn test_spin_orbit_basic() {
         let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {
@@ -592,9 +555,9 @@ mod tests {
         for i in 0..n_grid {
             let r = r_grid[i];
             // State 0: peaked at r=1
-            wf_squared[0 * n_grid + i] = (-((r - 1.0).powi(2))).exp();
+            wf_squared[i] = (-((r - 1.0).powi(2))).exp();
             // State 1: peaked at r=1.5
-            wf_squared[1 * n_grid + i] = (-((r - 1.5).powi(2))).exp();
+            wf_squared[n_grid + i] = (-((r - 1.5).powi(2))).exp();
         }
 
         // Density gradient (increasing)
@@ -618,6 +581,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires GPU hardware"]
     async fn test_spin_orbit_with_density() {
         let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
         else {

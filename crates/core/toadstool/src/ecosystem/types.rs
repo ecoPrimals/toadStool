@@ -9,6 +9,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use toadstool_common::constants::timeouts;
 use toadstool_common::primal_identity::Capability;
 use toadstool_common::service_discovery::DiscoveredService;
 
@@ -34,7 +35,7 @@ impl Default for EcosystemConfig {
     fn default() -> Self {
         Self {
             auto_discovery: true,
-            discovery_timeout: std::time::Duration::from_secs(30),
+            discovery_timeout: timeouts::DEFAULT_REQUEST_TIMEOUT,
             discovery_method: DiscoveryMethodConfig::Auto,
             // No hardcoded primal names - discover by capability instead
             required_capabilities: vec![],

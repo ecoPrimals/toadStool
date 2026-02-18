@@ -95,7 +95,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
 #[allow(deprecated)]
-use crate::interned_strings::primals;
+use crate::interned_strings::capabilities;
 
 /// Service endpoint discovered at runtime
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,20 +155,16 @@ pub async fn discover_encryption_service() -> DiscoveryResult {
     discover_service_by_capability("encryption").await
 }
 
-/// Discover bearDog at specific path (for external/custom deployments)
+/// Discover encryption service at a specific filesystem base path.
 ///
-/// **Capability-based resolution**:
-/// 1. First checks `TOADSTOOL_CRYPTO_SERVICE_SUBDIR` env var (explicit override)
-/// 2. Then queries capability metadata if available (future: service registry)
-/// 3. Falls back to well-known primal name constant
+/// **Capability-based resolution** — toadStool has no knowledge of which primal
+/// provides encryption. It discovers by capability, not by name:
 ///
-/// This follows the "primal self-knowledge" principle: the service name comes
-/// from the primal's own identity (primals::BEARDOG), not hardcoded strings.
+/// 1. `TOADSTOOL_CRYPTO_SERVICE_SUBDIR` env var (explicit deployment override)
+/// 2. Canonical capability subdirectory `"security"` (any service may publish here)
 pub async fn discover_beardog_at(base_path: &str) -> DiscoveryResult {
-    // Priority 1: Explicit env var override (for custom deployments)
     let subdir = std::env::var("TOADSTOOL_CRYPTO_SERVICE_SUBDIR")
-        // Priority 2: Use primal's self-knowledge constant (capability-based)
-        .unwrap_or_else(|_| primals::BEARDOG.to_string());
+        .unwrap_or_else(|_| capabilities::SECURITY.to_string());
 
     discover_filesystem_service(base_path, &subdir).await
 }
@@ -193,20 +189,16 @@ pub async fn discover_storage_service() -> DiscoveryResult {
     discover_service_by_capability("storage").await
 }
 
-/// Discover nestGate at specific path (for external/custom deployments)
+/// Discover storage service at a specific filesystem base path.
 ///
-/// **Capability-based resolution**:
-/// 1. First checks `TOADSTOOL_STORAGE_SERVICE_SUBDIR` env var (explicit override)
-/// 2. Then queries capability metadata if available (future: service registry)
-/// 3. Falls back to well-known primal name constant
+/// **Capability-based resolution** — toadStool has no knowledge of which primal
+/// provides storage. It discovers by capability, not by name:
 ///
-/// This follows the "primal self-knowledge" principle: the service name comes
-/// from the primal's own identity (primals::NESTGATE), not hardcoded strings.
+/// 1. `TOADSTOOL_STORAGE_SERVICE_SUBDIR` env var (explicit deployment override)
+/// 2. Canonical capability subdirectory `"storage"` (any service may publish here)
 pub async fn discover_nestgate_at(base_path: &str) -> DiscoveryResult {
-    // Priority 1: Explicit env var override (for custom deployments)
     let subdir = std::env::var("TOADSTOOL_STORAGE_SERVICE_SUBDIR")
-        // Priority 2: Use primal's self-knowledge constant (capability-based)
-        .unwrap_or_else(|_| primals::NESTGATE.to_string());
+        .unwrap_or_else(|_| capabilities::STORAGE.to_string());
 
     discover_filesystem_service(base_path, &subdir).await
 }

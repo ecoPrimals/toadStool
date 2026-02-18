@@ -54,7 +54,7 @@ impl Op {
     /// Number of input elements per batch item
     pub fn stride(&self) -> usize {
         match self {
-            Op::Fao56Et0 => 9, // [tmax, tmin, rh_max, rh_min, wind, Rs, elev, lat, doy]
+            Op::Fao56Et0 => 9,     // [tmax, tmin, rh_max, rh_min, wind, Rs, elev, lat, doy]
             Op::WaterBalance => 7, // [Dr_prev, P, I, ETc, TAW, RAW, p]
             Op::Custom => 1,
         }
@@ -91,13 +91,8 @@ impl BatchedElementwiseF64 {
     /// Create a new batched elementwise executor
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
         let shader_source = include_str!("../shaders/science/batched_elementwise_f64.wgsl");
-
-        let shader_module = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("BatchedElementwiseF64 Shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-            });
+        let shader_module =
+            device.compile_shader_f64(shader_source, Some("BatchedElementwiseF64 Shader"));
 
         let pipeline = device
             .device
@@ -106,8 +101,8 @@ impl BatchedElementwiseF64 {
                 layout: None,
                 module: &shader_module,
                 entry_point: "batched_compute",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         Ok(Self { device, pipeline })
@@ -345,7 +340,7 @@ impl BatchedElementwiseF64 {
     pub fn fao56_et0_batch(&self, station_days: &[StationDayInput]) -> Result<Vec<f64>> {
         let batch_size = station_days.len();
         let mut data = Vec::with_capacity(batch_size * 9);
-        
+
         for &(tmax, tmin, rh_max, rh_min, wind, rs, elev, lat, doy) in station_days {
             data.push(tmax);
             data.push(tmin);
@@ -371,7 +366,7 @@ impl BatchedElementwiseF64 {
     pub fn water_balance_batch(&self, fields: &[WaterBalanceInput]) -> Result<Vec<f64>> {
         let batch_size = fields.len();
         let mut data = Vec::with_capacity(batch_size * 7);
-        
+
         for &(dr_prev, precip, irrig, etc, taw, raw, p_frac) in fields {
             data.push(dr_prev);
             data.push(precip);
@@ -428,7 +423,7 @@ fn fao56_et0_cpu(
     let lat_rad = lat * PI / 180.0;
     let dr = 1.0 + 0.033 * (2.0 * PI * doy as f64 / 365.0).cos();
     let decl = 0.409 * (2.0 * PI * doy as f64 / 365.0 - 1.39).sin();
-    
+
     let tan_lat = lat_rad.tan();
     let tan_decl = decl.tan();
     let ws_arg = -tan_lat * tan_decl;
@@ -439,7 +434,9 @@ fn fao56_et0_cpu(
     };
 
     let gsc = 0.0820;
-    let ra = 24.0 * 60.0 / PI * gsc * dr
+    let ra = 24.0 * 60.0 / PI
+        * gsc
+        * dr
         * (ws * lat_rad.sin() * decl.sin() + lat_rad.cos() * decl.cos() * ws.sin());
 
     // Clear-sky radiation
@@ -493,7 +490,7 @@ mod tests {
         // Uccle, Belgium (50°48'N, 4°21'E, 100m elevation)
         // July 6: tmax=21.5°C, tmin=12.3°C, RHmax=84%, RHmin=63%, u2=2.78m/s, Rs=22.07 MJ/m²/day
         let et0 = fao56_et0_cpu(21.5, 12.3, 84.0, 63.0, 2.78, 22.07, 100.0, 50.8, 187);
-        
+
         // Expected: ~3.88 mm/day (FAO-56 Example 18)
         assert!(
             (et0 - 3.88).abs() < 0.1,

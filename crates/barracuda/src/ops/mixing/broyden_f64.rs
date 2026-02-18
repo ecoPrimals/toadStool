@@ -48,13 +48,7 @@ impl LinearMixer {
     /// Create a new linear mixer
     pub fn new(device: Arc<WgpuDevice>, vec_dim: usize, params: MixingParams) -> Result<Self> {
         let shader_source = include_str!("../../shaders/mixing/broyden_f64.wgsl");
-
-        let shader_module = device
-            .device()
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("linear_mixer_shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-            });
+        let shader_module = device.compile_shader_f64(shader_source, Some("linear_mixer_shader"));
 
         let bind_group_layout =
             device
@@ -125,8 +119,8 @@ impl LinearMixer {
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "mix_linear",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         Ok(Self {
@@ -246,7 +240,11 @@ impl LinearMixer {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(self.vec_dim.div_ceil(WORKGROUP_SIZE_1D as usize) as u32, 1, 1);
+            pass.dispatch_workgroups(
+                self.vec_dim.div_ceil(WORKGROUP_SIZE_1D as usize) as u32,
+                1,
+                1,
+            );
         }
 
         // Read back

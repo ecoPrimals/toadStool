@@ -59,8 +59,8 @@ impl Default for UnidirectionalConfig {
     fn default() -> Self {
         Self {
             input_bandwidth_fraction: 0.9,
-            input_buffer_size: 128 * 1024 * 1024,  // 128 MB
-            output_buffer_size: 16 * 1024 * 1024,  // 16 MB
+            input_buffer_size: 128 * 1024 * 1024, // 128 MB
+            output_buffer_size: 16 * 1024 * 1024, // 16 MB
             target_input_bandwidth: None,
             target_output_bandwidth: None,
             strict_mode: false,
@@ -366,8 +366,7 @@ impl UnidirectionalPipeline {
             } else {
                 // Rolling average
                 let n = self.stats.completed;
-                self.stats.avg_latency_ns =
-                    (self.stats.avg_latency_ns * (n - 1) + latency_ns) / n;
+                self.stats.avg_latency_ns = (self.stats.avg_latency_ns * (n - 1) + latency_ns) / n;
             }
             self.stats.max_latency_ns = self.stats.max_latency_ns.max(latency_ns);
 
@@ -466,10 +465,9 @@ mod tests {
     #[test]
     fn test_config_throttling() {
         let gbps_10 = 10_000_000_000u64; // 10 GB/s
-        let gbps_1 = 1_000_000_000u64;   // 1 GB/s
+        let gbps_1 = 1_000_000_000u64; // 1 GB/s
 
-        let config = UnidirectionalConfig::default()
-            .with_throttling(gbps_10, gbps_1);
+        let config = UnidirectionalConfig::default().with_throttling(gbps_10, gbps_1);
 
         assert_eq!(config.target_input_bandwidth, Some(gbps_10));
         assert_eq!(config.target_output_bandwidth, Some(gbps_1));

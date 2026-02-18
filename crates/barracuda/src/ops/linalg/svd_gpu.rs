@@ -307,7 +307,7 @@ impl SvdGpu {
         let cs_buffer = Self::create_zero_f64_buffer(&device, "SVD cs f64", 2); // [c, s] for Jacobi
 
         // Compile f64 shader
-        let shader = device.compile_shader(Self::wgsl_shader_f64(), Some("SVD f64"));
+        let shader = device.compile_shader_f64(Self::wgsl_shader_f64(), Some("SVD f64"));
 
         // Main bind group layout (5 bindings: params, A, B, V, sigma)
         let main_bgl = device
@@ -480,8 +480,8 @@ impl SvdGpu {
                     layout: Some(&main_pl),
                     module: &shader,
                     entry_point: "compute_AtA",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let init_v_pipeline =
@@ -492,8 +492,8 @@ impl SvdGpu {
                     layout: Some(&main_pl),
                     module: &shader,
                     entry_point: "init_V",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_jacobi_pipeline =
@@ -504,8 +504,8 @@ impl SvdGpu {
                     layout: Some(&jac_pl),
                     module: &shader,
                     entry_point: "compute_jacobi_rotation",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let jacobi_rotate_b_pipeline =
@@ -516,8 +516,8 @@ impl SvdGpu {
                     layout: Some(&rot_pl),
                     module: &shader,
                     entry_point: "jacobi_rotate_B",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let jacobi_update_block_pipeline =
@@ -528,8 +528,8 @@ impl SvdGpu {
                     layout: Some(&rot_pl),
                     module: &shader,
                     entry_point: "jacobi_update_block",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let jacobi_rotate_v_pipeline =
@@ -540,8 +540,8 @@ impl SvdGpu {
                     layout: Some(&rot_pl),
                     module: &shader,
                     entry_point: "jacobi_rotate_V",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let extract_sigma_pipeline =
@@ -552,8 +552,8 @@ impl SvdGpu {
                     layout: Some(&main_pl),
                     module: &shader,
                     entry_point: "extract_sigma",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Create params buffer
@@ -796,8 +796,8 @@ impl SvdGpu {
         device.queue.submit(Some(encoder.finish()));
 
         // Read back results
-        let sigma_data = Self::read_f64_buffer(&device, &sigma_buffer, n)?;
-        let v_data = Self::read_f64_buffer(&device, &v_buffer, n * n)?;
+        let sigma_data = device.read_f64_buffer(&sigma_buffer, n)?;
+        let v_data = device.read_f64_buffer(&v_buffer, n * n)?;
 
         Ok((sigma_data, v_data))
     }
@@ -824,58 +824,6 @@ impl SvdGpu {
                 | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         })
-    }
-
-    /// Helper: Read f64 buffer from GPU
-    fn read_f64_buffer(
-        device: &Arc<WgpuDevice>,
-        buffer: &wgpu::Buffer,
-        count: usize,
-    ) -> Result<Vec<f64>> {
-        let staging = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("f64 staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("f64 readback"),
-            });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        device.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(
-            wgpu::MapMode::Read,
-            move |result: std::result::Result<(), wgpu::BufferAsyncError>| {
-                let _ = sender.send(result);
-            },
-        );
-        device.device.poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| {
-                f64::from_le_bytes(
-                    chunk
-                        .try_into()
-                        .expect("chunks_exact(8) yields 8-byte chunks"),
-                )
-            })
-            .collect();
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
     }
 
     // Helper: Create bind group layout
@@ -961,8 +909,8 @@ impl SvdGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point,
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         })
     }
 }

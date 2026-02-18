@@ -4,6 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use toadstool_common::constants::timeouts;
 
 /// Capacity information for a resource
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,7 +102,7 @@ pub struct CapacityConfig {
 impl Default for CapacityConfig {
     fn default() -> Self {
         Self {
-            monitoring_interval: Duration::from_secs(10),
+            monitoring_interval: timeouts::METRICS_INTERVAL,
             reserve_percent: 10.0,
             auto_scale: true,
             scale_up_threshold: 0.8,

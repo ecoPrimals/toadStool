@@ -242,8 +242,8 @@ impl FilterResponseNorm {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "compute_sum_sq",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_pipeline_pass2 =
@@ -254,8 +254,8 @@ impl FilterResponseNorm {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "normalize_and_scale",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Execute compute shader (two passes)

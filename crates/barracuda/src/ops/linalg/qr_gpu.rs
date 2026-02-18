@@ -336,7 +336,7 @@ impl QrGpu {
         let w_buffer = Self::create_zero_f64_buffer(&device, "QR w f64", n); // Work buffer for vᵀA
 
         // Compile f64 shader
-        let shader = device.compile_shader(Self::wgsl_shader_f64(), Some("QR f64"));
+        let shader = device.compile_shader_f64(Self::wgsl_shader_f64(), Some("QR f64"));
 
         // Create bind group layout for main kernels (4 bindings)
         let main_bgl = device
@@ -538,8 +538,8 @@ impl QrGpu {
                     layout: Some(&main_pl),
                     module: &shader,
                     entry_point: "column_norm",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_hh_pipeline =
@@ -550,8 +550,8 @@ impl QrGpu {
                     layout: Some(&hh_pl),
                     module: &shader,
                     entry_point: "compute_householder",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_vta_pipeline =
@@ -562,8 +562,8 @@ impl QrGpu {
                     layout: Some(&apply_pl),
                     module: &shader,
                     entry_point: "compute_vTA",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let apply_hh_pipeline =
@@ -574,8 +574,8 @@ impl QrGpu {
                     layout: Some(&apply_pl),
                     module: &shader,
                     entry_point: "apply_householder",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let update_col_pipeline =
@@ -586,8 +586,8 @@ impl QrGpu {
                     layout: Some(&apply_pl),
                     module: &shader,
                     entry_point: "update_column_k",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Main loop: process each column
@@ -778,8 +778,8 @@ impl QrGpu {
         }
 
         // Read back results
-        let r_data = Self::read_f64_buffer(&device, &a_buffer, m * n)?;
-        let tau_data = Self::read_f64_buffer(&device, &tau_buffer, k_max as usize)?;
+        let r_data = device.read_f64_buffer(&a_buffer, m * n)?;
+        let tau_data = device.read_f64_buffer(&tau_buffer, k_max as usize)?;
 
         Ok((r_data, tau_data))
     }
@@ -806,58 +806,6 @@ impl QrGpu {
                 | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         })
-    }
-
-    /// Helper: Read f64 buffer from GPU
-    fn read_f64_buffer(
-        device: &Arc<WgpuDevice>,
-        buffer: &wgpu::Buffer,
-        count: usize,
-    ) -> Result<Vec<f64>> {
-        let staging = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("f64 staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("f64 readback"),
-            });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        device.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(
-            wgpu::MapMode::Read,
-            move |result: std::result::Result<(), wgpu::BufferAsyncError>| {
-                let _ = sender.send(result);
-            },
-        );
-        device.device.poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| {
-                f64::from_le_bytes(
-                    chunk
-                        .try_into()
-                        .expect("chunks_exact(8) yields 8-byte chunks"),
-                )
-            })
-            .collect();
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
     }
 
     // Helper: Create bind group layout
@@ -932,8 +880,8 @@ impl QrGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point,
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         })
     }
 }

@@ -139,7 +139,9 @@ mod tests {
 
     #[test]
     fn test_two_particles() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let rdf = RdfHistogramF64::new(device)?;
 
         // Two particles at distance 1.0
@@ -156,7 +158,9 @@ mod tests {
 
     #[test]
     fn test_pbc() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let rdf = RdfHistogramF64::new(device)?;
 
         // Two particles at opposite corners - should see minimum image
@@ -180,7 +184,9 @@ mod tests {
 
     #[test]
     fn test_gr_ideal_gas() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let rdf = RdfHistogramF64::new(device)?;
 
         // Random positions (approximating ideal gas)

@@ -114,7 +114,10 @@ impl EntropyClient {
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
             .await
             .unwrap_or_else(|e| {
-                tracing::debug!("Capability discovery failed: {}, using biomeOS standard path", e);
+                tracing::debug!(
+                    "Capability discovery failed: {}, using biomeOS standard path",
+                    e
+                );
                 // Fallback to biomeOS standard path for crypto services (no hardcoded name)
                 toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock")
             });

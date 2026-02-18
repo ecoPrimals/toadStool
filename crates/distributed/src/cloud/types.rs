@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
+use toadstool_common::constants::timeouts;
 use uuid::Uuid;
 
 use crate::common::distribution::DistributionStrategy as CommonDistributionStrategy;
@@ -601,8 +602,8 @@ impl CloudHealthChecker {
     pub fn new(provider: String) -> Self {
         Self {
             endpoint: format!("https://{}.amazonaws.com", provider),
-            check_interval: Duration::from_secs(30),
-            timeout: Duration::from_secs(5),
+            check_interval: timeouts::HEALTH_CHECK_INTERVAL,
+            timeout: timeouts::TCP_CONNECT_TIMEOUT,
         }
     }
 }

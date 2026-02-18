@@ -388,7 +388,7 @@ impl LuGpu {
         });
 
         // Compile f64 shader
-        let shader = device.compile_shader(Self::wgsl_shader_f64(), Some("LU f64"));
+        let shader = device.compile_shader_f64(Self::wgsl_shader_f64(), Some("LU f64"));
 
         // Create pipelines (same layout as f32 but shader uses f64)
         let bgl = device
@@ -445,8 +445,8 @@ impl LuGpu {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "row_swap",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_mult_pipeline =
@@ -457,8 +457,8 @@ impl LuGpu {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "compute_multipliers",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let row_elim_pipeline =
@@ -469,8 +469,8 @@ impl LuGpu {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point: "row_elimination",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Find pivot has different layout (read-only matrix, read-write result)
@@ -528,8 +528,8 @@ impl LuGpu {
                     layout: Some(&pivot_pl),
                     module: &shader,
                     entry_point: "find_pivot",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Main LU loop
@@ -679,62 +679,10 @@ impl LuGpu {
         }
 
         // Read back f64 results
-        let lu_data = Self::read_f64_buffer(&device, &lu_buffer, n * n)?;
+        let lu_data = device.read_f64_buffer(&lu_buffer, n * n)?;
         let perm_data = device.read_buffer_u32(&perm_buffer, n)?;
 
         Ok((lu_data, perm_data))
-    }
-
-    /// Helper: Read f64 buffer from GPU
-    fn read_f64_buffer(
-        device: &Arc<WgpuDevice>,
-        buffer: &wgpu::Buffer,
-        count: usize,
-    ) -> Result<Vec<f64>> {
-        let staging = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("f64 staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("f64 readback"),
-            });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        device.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(
-            wgpu::MapMode::Read,
-            move |result: std::result::Result<(), wgpu::BufferAsyncError>| {
-                let _ = sender.send(result);
-            },
-        );
-        device.device.poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| {
-                f64::from_le_bytes(
-                    chunk
-                        .try_into()
-                        .expect("chunks_exact(8) yields 8-byte chunks"),
-                )
-            })
-            .collect();
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
     }
 
     // Helper: Create find_pivot pipeline
@@ -790,8 +738,8 @@ impl LuGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point: "find_pivot",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         (pipeline, layout)
@@ -850,8 +798,8 @@ impl LuGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point: "row_swap",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         (pipeline, layout)
@@ -911,8 +859,8 @@ impl LuGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point: "compute_multipliers",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         (pipeline, layout)
@@ -971,8 +919,8 @@ impl LuGpu {
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point: "row_elimination",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         (pipeline, layout)

@@ -86,7 +86,8 @@ impl LaguerreF64 {
         for k in 1..n {
             let kf = k as f64;
             // Three-term recurrence: n·Lₙ = (2n-1+α-x)·L_{n-1} - (n-1+α)·L_{n-2}
-            let l_next = ((2.0 * kf + 1.0 + alpha - x) * l_curr - (kf + alpha) * l_prev) / (kf + 1.0);
+            let l_next =
+                ((2.0 * kf + 1.0 + alpha - x) * l_curr - (kf + alpha) * l_prev) / (kf + 1.0);
             l_prev = l_curr;
             l_curr = l_next;
         }
@@ -180,28 +181,31 @@ impl LaguerreF64 {
                 ],
             });
 
-        let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Laguerre f64 Bind Group"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: input_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buf.as_entire_binding(),
-                },
-            ],
-        });
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Laguerre f64 Bind Group"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: input_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: output_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                ],
+            });
 
         let shader = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("Laguerre f64"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("Laguerre f64"));
 
         let pipeline_layout =
             self.device
@@ -212,24 +216,24 @@ impl LaguerreF64 {
                     push_constant_ranges: &[],
                 });
 
-        let pipeline = self
-            .device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Laguerre f64 Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Laguerre f64 Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader,
+                    entry_point: "main",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Laguerre f64 Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Laguerre f64 Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -289,7 +293,9 @@ mod tests {
 
     #[test]
     fn test_laguerre_f64_l0() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = LaguerreF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, -1.0, 0.5];
@@ -303,7 +309,9 @@ mod tests {
 
     #[test]
     fn test_laguerre_f64_l1() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = LaguerreF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, 0.5];
@@ -324,7 +332,9 @@ mod tests {
 
     #[test]
     fn test_laguerre_f64_l2() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = LaguerreF64::new(device).unwrap();
 
         let x = vec![0.0, 1.0, 2.0, 0.5];
@@ -346,7 +356,9 @@ mod tests {
 
     #[test]
     fn test_laguerre_f64_generalized() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = LaguerreF64::new(device).unwrap();
 
         // L₁^(1)(x) = 2 - x (α = 1)
@@ -367,7 +379,9 @@ mod tests {
 
     #[test]
     fn test_laguerre_f64_at_zero() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = LaguerreF64::new(device).unwrap();
 
         // L_n^(α)(0) = C(n+α, n) = (n+α)! / (n! α!)

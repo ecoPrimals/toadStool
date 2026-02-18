@@ -189,7 +189,9 @@ mod tests {
 
     #[test]
     fn test_born_mayer_two_particles() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let bm = BornMayerForceF64::new(device)?;
 
         // Two particles along x-axis
@@ -203,13 +205,18 @@ mod tests {
         assert!(forces[0] > 0.0, "Particle 0 should be pushed in -x");
         assert!(forces[3] < 0.0, "Particle 1 should be pushed in +x");
         // Newton's third law
-        assert!((forces[0] + forces[3]).abs() < 1e-10, "Forces should be equal and opposite");
+        assert!(
+            (forces[0] + forces[3]).abs() < 1e-10,
+            "Forces should be equal and opposite"
+        );
         Ok(())
     }
 
     #[test]
     fn test_born_mayer_energy_positive() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let bm = BornMayerForceF64::new(device)?;
 
         let positions = vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0];
@@ -225,7 +232,9 @@ mod tests {
 
     #[test]
     fn test_born_mayer_cutoff() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let bm = BornMayerForceF64::new(device)?;
 
         let positions = vec![0.0, 0.0, 0.0, 5.0, 0.0, 0.0];

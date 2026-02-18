@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use toadstool_common::constants::timeouts;
 
 /// Performance hardening configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -122,7 +123,7 @@ impl Default for CachingConfig {
     fn default() -> Self {
         Self {
             max_size: 1000,
-            default_ttl: Duration::from_secs(300),
+            default_ttl: timeouts::DEFAULT_CACHE_TTL,
             cleanup_interval: Duration::from_secs(60),
             hit_rate_threshold: 0.8,
         }

@@ -256,48 +256,51 @@ impl Correlation {
                 push_constant_ranges: &[],
             });
 
-        let pipeline = self
-            .device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Correlation Pipeline"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Correlation Pipeline"),
+                    layout: Some(&pl),
+                    module: &shader,
+                    entry_point: "main",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
 
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Correlation BG"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: x_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: y_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: output_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buf.as_entire_binding(),
-                },
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Correlation BG"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: x_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: y_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: output_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                ],
+            });
 
         // Dispatch
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Correlation Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Correlation Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -320,12 +323,12 @@ impl Correlation {
             mapped_at_creation: false,
         });
 
-        let mut encoder2 = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Copy Encoder"),
-            });
+        let mut encoder2 =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Copy Encoder"),
+                });
         encoder2.copy_buffer_to_buffer(&output_buf, 0, &staging, 0, (num_pairs * 4) as u64);
         self.device.queue.submit(Some(encoder2.finish()));
 
@@ -381,12 +384,8 @@ mod tests {
 
         // Sin and cos are orthogonal
         let n = 1000;
-        let x: Vec<f32> = (0..n)
-            .map(|i| (i as f32 * 0.01).sin())
-            .collect();
-        let y: Vec<f32> = (0..n)
-            .map(|i| (i as f32 * 0.01).cos())
-            .collect();
+        let x: Vec<f32> = (0..n).map(|i| (i as f32 * 0.01).sin()).collect();
+        let y: Vec<f32> = (0..n).map(|i| (i as f32 * 0.01).cos()).collect();
 
         let r = op.correlate(&x, &y).unwrap();
         assert!(r.abs() < 0.1, "Expected r≈0, got {}", r);

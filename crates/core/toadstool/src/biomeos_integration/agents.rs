@@ -134,10 +134,7 @@ impl AgentDeploymentManager {
 
         // Priority 3: Check if endpoint is already configured
         if !config.squirrel_endpoint.is_empty() {
-            tracing::debug!(
-                "Using configured endpoint: {}",
-                config.squirrel_endpoint
-            );
+            tracing::debug!("Using configured endpoint: {}", config.squirrel_endpoint);
             #[allow(deprecated)]
             return Ok(Self::with_squirrel(config));
         }
@@ -170,7 +167,10 @@ impl AgentDeploymentManager {
     ///
     /// **DEPRECATED**: Use `with_ml_service()` or `discover()` for capability-based discovery.
     #[must_use]
-    #[deprecated(since = "0.3.0", note = "Use with_ml_service() or discover() for capability-based discovery")]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use with_ml_service() or discover() for capability-based discovery"
+    )]
     #[allow(deprecated)]
     pub fn with_squirrel(config: AgentDeploymentConfig) -> Self {
         let backend = super::agent_backend::SquirrelBackend::new(

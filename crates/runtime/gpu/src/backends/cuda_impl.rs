@@ -159,11 +159,14 @@ impl CudaBackend {
         let (major, minor) = context.compute_capability().ok()?;
 
         // Query device attributes via attribute() method
-        let total_memory = Self::query_attribute(context, CUdevice_attribute::CU_DEVICE_ATTRIBUTE_TOTAL_CONSTANT_MEMORY)
-            .or_else(|| {
-                // Fallback: estimate from compute capability
-                Some(Self::estimate_memory_from_cc(major, minor))
-            })?;
+        let total_memory = Self::query_attribute(
+            context,
+            CUdevice_attribute::CU_DEVICE_ATTRIBUTE_TOTAL_CONSTANT_MEMORY,
+        )
+        .or_else(|| {
+            // Fallback: estimate from compute capability
+            Some(Self::estimate_memory_from_cc(major, minor))
+        })?;
 
         let multiprocessor_count = Self::query_attribute(
             context,
@@ -182,11 +185,9 @@ impl CudaBackend {
         )
         .unwrap_or(2048);
 
-        let clock_rate = Self::query_attribute(
-            context,
-            CUdevice_attribute::CU_DEVICE_ATTRIBUTE_CLOCK_RATE,
-        )
-        .unwrap_or(1500000);
+        let clock_rate =
+            Self::query_attribute(context, CUdevice_attribute::CU_DEVICE_ATTRIBUTE_CLOCK_RATE)
+                .unwrap_or(1500000);
 
         let memory_clock = Self::query_attribute(
             context,
@@ -378,7 +379,11 @@ impl CudaBackend {
     ///
     /// ## cudarc 0.19 API
     /// Uses `CudaContext::load_module()` with `Ptx::from_src()`
-    pub async fn load_ptx(&self, ptx_code: &str, module_name: &str) -> ToadStoolResult<Arc<CudaModule>> {
+    pub async fn load_ptx(
+        &self,
+        ptx_code: &str,
+        module_name: &str,
+    ) -> ToadStoolResult<Arc<CudaModule>> {
         // Check cache first
         {
             let cache = self.module_cache.read().await;
@@ -432,9 +437,10 @@ impl CudaBackend {
         // Load module (or get from cache)
         let module = self.load_ptx("", module_name).await.or_else(|_| {
             // If empty PTX fails, module should already be cached
-            let cache = self.module_cache.try_read().map_err(|_| {
-                ToadStoolError::runtime("Failed to acquire module cache lock")
-            })?;
+            let cache = self
+                .module_cache
+                .try_read()
+                .map_err(|_| ToadStoolError::runtime("Failed to acquire module cache lock"))?;
             cache.get(module_name).cloned().ok_or_else(|| {
                 ToadStoolError::runtime(format!("Module '{}' not found in cache", module_name))
             })
@@ -458,9 +464,10 @@ impl CudaBackend {
         }
 
         // Allocate output buffer (zero-initialized on GPU)
-        let mut output_buffer: CudaSlice<T> = self.stream.alloc_zeros(output_size).map_err(|e| {
-            ToadStoolError::runtime(format!("Failed to allocate output buffer: {}", e))
-        })?;
+        let mut output_buffer: CudaSlice<T> =
+            self.stream.alloc_zeros(output_size).map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to allocate output buffer: {}", e))
+            })?;
 
         // Launch kernel with proper configuration (cudarc 0.19 launch_builder API)
         let cfg = LaunchConfig {

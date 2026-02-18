@@ -176,7 +176,7 @@ mod tests {
         let result = corr.correlation(&x, &y).unwrap();
 
         assert!(
-            result >= -1.0 && result <= 1.0,
+            (-1.0..=1.0).contains(&result),
             "Correlation must be in [-1, 1], got {}",
             result
         );

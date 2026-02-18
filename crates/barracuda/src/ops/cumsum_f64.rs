@@ -117,7 +117,7 @@ impl CumsumF64 {
         let params_buffer = device.create_uniform_buffer("CumsumF64 Params", &params);
 
         // Compile shader
-        let shader = device.compile_shader(Self::shader(), Some("CumsumF64"));
+        let shader = device.compile_shader_f64(Self::shader(), Some("CumsumF64"));
 
         // Create bind group layout
         let bind_group_layout =
@@ -201,8 +201,8 @@ impl CumsumF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         // Dispatch

@@ -10,9 +10,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 // Centralized timeout constants (Deep Debt evolution)
-use toadstool_common::constants::timeouts::{
-    TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL,
-};
+use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
 
 use super::auth_backend::AuthBackend;
 use super::types::{
@@ -311,10 +309,7 @@ impl AuthenticationManager {
 
         // Priority 3: Check if endpoint is already configured
         if !config.beardog_endpoint.is_empty() {
-            tracing::debug!(
-                "Using configured endpoint: {}",
-                config.beardog_endpoint
-            );
+            tracing::debug!("Using configured endpoint: {}", config.beardog_endpoint);
             #[allow(deprecated)]
             return Ok(Self::with_beardog(config));
         }
@@ -344,7 +339,10 @@ impl AuthenticationManager {
     ///
     /// **DEPRECATED**: Use `with_crypto_service()` or `discover()` for capability-based discovery.
     #[must_use]
-    #[deprecated(since = "0.3.0", note = "Use with_crypto_service() or discover() for capability-based discovery")]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use with_crypto_service() or discover() for capability-based discovery"
+    )]
     #[allow(deprecated)]
     pub fn with_beardog(config: AuthManagerConfig) -> Self {
         let backend = super::auth_backend::BearDogBackend::new(config.beardog_endpoint.clone());

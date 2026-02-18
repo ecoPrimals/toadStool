@@ -69,7 +69,7 @@ impl GpuInfo {
     /// Returns false for NVK driver due to NAK compiler bugs with exp(f64)
     pub fn supports_f64_builtins(&self) -> bool {
         match self.driver {
-            GpuDriver::Nvk => false, // NAK compiler crash on exp(f64)
+            GpuDriver::Nvk => false,      // NAK compiler crash on exp(f64)
             GpuDriver::Software => false, // Usually limited precision
             _ => true,
         }
@@ -401,9 +401,7 @@ impl GpuPool {
         match workload {
             WorkloadType::Streaming => {
                 // Any device works for streaming, prefer fastest
-                self.devices
-                    .first()
-                    .map(|d| (d.clone(), &self.info[0]))
+                self.devices.first().map(|d| (d.clone(), &self.info[0]))
             }
 
             WorkloadType::Iterative => {
@@ -414,9 +412,7 @@ impl GpuPool {
                     }
                 }
                 // Fallback to fastest available
-                self.devices
-                    .first()
-                    .map(|d| (d.clone(), &self.info[0]))
+                self.devices.first().map(|d| (d.clone(), &self.info[0]))
             }
 
             WorkloadType::F64Builtins => {
@@ -427,12 +423,8 @@ impl GpuPool {
                     }
                 }
                 // No suitable device - f64 builtins not available
-                tracing::warn!(
-                    "No GPU with f64 builtin support found - workload may fail on NVK"
-                );
-                self.devices
-                    .first()
-                    .map(|d| (d.clone(), &self.info[0]))
+                tracing::warn!("No GPU with f64 builtin support found - workload may fail on NVK");
+                self.devices.first().map(|d| (d.clone(), &self.info[0]))
             }
         }
     }
@@ -450,9 +442,9 @@ impl GpuPool {
             .await
             .map_err(|e| BarracudaError::device(format!("Semaphore error: {e}")))?;
 
-        let (device, info) = self.route(workload).ok_or_else(|| {
-            BarracudaError::device_not_found("No GPU available for workload")
-        })?;
+        let (device, info) = self
+            .route(workload)
+            .ok_or_else(|| BarracudaError::device_not_found("No GPU available for workload"))?;
 
         Ok((device, info.clone(), permit))
     }
@@ -745,7 +737,7 @@ impl DeviceInfo {
     /// Returns false for NVK driver due to NAK compiler bugs with exp(f64)
     pub fn supports_f64_builtins(&self) -> bool {
         match self.driver {
-            GpuDriver::Nvk => false, // NAK compiler crash on exp(f64)
+            GpuDriver::Nvk => false,      // NAK compiler crash on exp(f64)
             GpuDriver::Software => false, // Usually limited precision
             _ => true,
         }

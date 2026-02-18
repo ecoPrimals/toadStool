@@ -162,7 +162,7 @@ impl CumprodF64 {
         let params_buffer = device.create_uniform_buffer("CumprodF64 Params", &params);
 
         // Compile shader
-        let shader = device.compile_shader(Self::shader(), Some("CumprodF64"));
+        let shader = device.compile_shader_f64(Self::shader(), Some("CumprodF64"));
 
         // Create bind group layout
         let bind_group_layout =

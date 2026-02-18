@@ -238,8 +238,8 @@ async fn main() -> Result<()> {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
             pipeline_times.push(start.elapsed().as_micros() as f64);
         }
@@ -258,8 +258,8 @@ async fn main() -> Result<()> {
             layout: Some(&pipeline_layout),
             module: &shader,
             entry_point: "main",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -358,8 +358,8 @@ async fn main() -> Result<()> {
                 layout: Some(&pl),
                 module: &shader,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
             let mut encoder =

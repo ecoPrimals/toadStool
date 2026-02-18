@@ -479,7 +479,9 @@ mod tests {
 
     #[test]
     fn test_kriging_simple_case() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let kriging = KrigingF64::new(device)?;
 
         // Simple 4-point case
@@ -515,7 +517,9 @@ mod tests {
 
     #[test]
     fn test_kriging_at_known_point() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let kriging = KrigingF64::new(device)?;
 
         let known = vec![(0.0, 0.0, 1.0), (10.0, 0.0, 2.0), (0.0, 10.0, 3.0)];

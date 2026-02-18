@@ -246,14 +246,14 @@ impl CoulombForceF64 {
                 usage: wgpu::BufferUsages::STORAGE,
             });
 
-        let charges_buf = self
-            .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Coulomb f64 Charges"),
-                contents: bytemuck::cast_slice(charges),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+        let charges_buf =
+            self.device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Coulomb f64 Charges"),
+                    contents: bytemuck::cast_slice(charges),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
 
         let forces_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Coulomb f64 Forces"),
@@ -340,32 +340,35 @@ impl CoulombForceF64 {
                 ],
             });
 
-        let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Coulomb f64 Bind Group"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: pos_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: charges_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: forces_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buf.as_entire_binding(),
-                },
-            ],
-        });
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Coulomb f64 Bind Group"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: pos_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: charges_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: forces_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                ],
+            });
 
         let shader = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("Coulomb f64"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("Coulomb f64"));
 
         let pipeline_layout =
             self.device
@@ -376,24 +379,24 @@ impl CoulombForceF64 {
                     push_constant_ranges: &[],
                 });
 
-        let pipeline = self
-            .device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Coulomb f64 Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point,
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Coulomb f64 Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader,
+                    entry_point,
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Coulomb f64 Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Coulomb f64 Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -461,14 +464,14 @@ impl CoulombForceF64 {
                 usage: wgpu::BufferUsages::STORAGE,
             });
 
-        let charges_buf = self
-            .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Coulomb f64 Charges"),
-                contents: bytemuck::cast_slice(charges),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+        let charges_buf =
+            self.device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Coulomb f64 Charges"),
+                    contents: bytemuck::cast_slice(charges),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
 
         let forces_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Coulomb f64 Forces"),
@@ -572,36 +575,39 @@ impl CoulombForceF64 {
                 ],
             });
 
-        let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Coulomb f64 Energy Bind Group"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: pos_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: charges_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: forces_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: energy_buf.as_entire_binding(),
-                },
-            ],
-        });
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Coulomb f64 Energy Bind Group"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: pos_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: charges_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: forces_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: energy_buf.as_entire_binding(),
+                    },
+                ],
+            });
 
         let shader = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("Coulomb f64 Energy"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("Coulomb f64 Energy"));
 
         let pipeline_layout =
             self.device
@@ -612,24 +618,24 @@ impl CoulombForceF64 {
                     push_constant_ranges: &[],
                 });
 
-        let pipeline = self
-            .device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Coulomb f64 Energy Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "coulomb_with_energy_f64",
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Coulomb f64 Energy Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader,
+                    entry_point: "coulomb_with_energy_f64",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Coulomb f64 Energy Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Coulomb f64 Energy Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -724,7 +730,9 @@ mod tests {
 
     #[test]
     fn test_coulomb_f64_two_particles() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = CoulombForceF64::new(device).unwrap();
 
         // Two particles with opposite charges
@@ -753,7 +761,9 @@ mod tests {
 
     #[test]
     fn test_coulomb_f64_repulsion() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = CoulombForceF64::new(device).unwrap();
 
         // Two particles with same charges
@@ -765,13 +775,21 @@ mod tests {
             .unwrap();
 
         // Force should repel: particle 0 pushed in negative x direction
-        assert!(forces[0] < 0.0, "F_x on particle 0 should be negative (repulsion)");
-        assert!(forces[3] > 0.0, "F_x on particle 1 should be positive (repulsion)");
+        assert!(
+            forces[0] < 0.0,
+            "F_x on particle 0 should be negative (repulsion)"
+        );
+        assert!(
+            forces[3] > 0.0,
+            "F_x on particle 1 should be positive (repulsion)"
+        );
     }
 
     #[test]
     fn test_coulomb_f64_distance_scaling() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = CoulombForceF64::new(device).unwrap();
 
         // Two particles at distance 1
@@ -799,7 +817,9 @@ mod tests {
 
     #[test]
     fn test_coulomb_f64_with_energy_gpu() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = CoulombForceF64::new(device).unwrap();
 
         // Need at least 32 particles to use GPU path
@@ -822,7 +842,10 @@ mod tests {
 
         // Total energy should be negative (attractive system with alternating charges)
         let total_energy: f64 = energies.iter().sum();
-        assert!(total_energy < 0.0, "Total energy should be negative for alternating charges");
+        assert!(
+            total_energy < 0.0,
+            "Total energy should be negative for alternating charges"
+        );
 
         // Forces on interior particles should be small (nearly balanced)
         // First and last particles see unbalanced forces
@@ -834,7 +857,8 @@ mod tests {
         assert!(
             fx_mid < fx_first,
             "Interior force {} should be less than boundary force {}",
-            fx_mid, fx_first
+            fx_mid,
+            fx_first
         );
     }
 }

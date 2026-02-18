@@ -6,8 +6,7 @@
 //! **Smart Refactoring**: Uses `fd_common` for shared infrastructure.
 
 use super::fd_common::{
-    create_staging_buffer, read_staging_f64 as read_staging, FdPipelineBuilder,
-    FD_WORKGROUP_SIZE,
+    create_staging_buffer, read_staging_f64 as read_staging, FdPipelineBuilder, FD_WORKGROUP_SIZE,
 };
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};

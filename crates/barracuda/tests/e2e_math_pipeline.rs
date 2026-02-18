@@ -476,7 +476,7 @@ async fn test_e2e_f32_precision() {
         let result = tensor.to_vec().expect("Read failed");
 
         let mut max_rel_error = 0.0f32;
-        for (_i, (got, exp)) in result.iter().zip(data.iter()).enumerate() {
+        for (got, exp) in result.iter().zip(data.iter()) {
             if *exp != 0.0 {
                 let rel_error = ((got - exp) / exp).abs();
                 max_rel_error = max_rel_error.max(rel_error);

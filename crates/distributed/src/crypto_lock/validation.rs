@@ -13,8 +13,14 @@ use serde::{Deserialize, Serialize};
 
 use toadstool::error::ToadStoolResult;
 
-use super::permissions::SecurityProviderPermission;
+use super::permissions::{ExternalTarget as CryptoExternalTarget, SecurityProviderPermission};
 use crate::security_provider::provider::SecurityProvider;
+use crate::security_provider::types::{
+    ExternalTarget as ProviderExternalTarget, PermissionScope as ProviderPermissionScope,
+    ProviderMetadata, ResourceLimits as ProviderResourceLimits,
+    SecurityPermission as ProviderPermission, SecurityProof as ProviderSecurityProof,
+    SignatureAlgorithm,
+};
 
 /// Security Permission Validator - validates crypto permissions
 ///
@@ -94,16 +100,29 @@ impl SecurityPermissionValidator {
             return Ok(PermissionValidationResult::Expired);
         }
 
-        // If we have a security provider, we COULD use it for validation
-        // For now, we demonstrate that the provider is available and can be used
-        if let Some(_provider) = &self.security_provider {
-            // Security provider is available!
-            // TODO: Once type conversion is complete, use provider.validate_permission()
-            // For now, use local validation
-            Ok(PermissionValidationResult::Valid)
+        // Route to discovered provider when available; fall back to local time-only validation.
+        if let Some(provider) = &self.security_provider {
+            let provider_permission = to_provider_permission(permission);
+            let provider_result = provider.validate_permission(&provider_permission).await?;
+            Ok(match provider_result {
+                crate::security_provider::provider::PermissionValidationResult::Valid => {
+                    PermissionValidationResult::Valid
+                }
+                crate::security_provider::provider::PermissionValidationResult::InvalidSignature
+                | crate::security_provider::provider::PermissionValidationResult::NotFound => {
+                    PermissionValidationResult::Invalid
+                }
+                crate::security_provider::provider::PermissionValidationResult::Expired => {
+                    PermissionValidationResult::Expired
+                }
+                crate::security_provider::provider::PermissionValidationResult::Revoked => {
+                    PermissionValidationResult::Revoked
+                }
+            })
         } else {
-            // Fallback: local validation (for when no security provider available)
-            // This ensures crypto_lock works even without a security provider
+            // No provider discovered — local time-validity check is all we can do.
+            // The caller already passed the time window check above, so the permission
+            // is structurally valid for this node.
             Ok(PermissionValidationResult::Valid)
         }
     }
@@ -111,6 +130,97 @@ impl SecurityPermissionValidator {
     pub async fn validate_delegation_proof(&self, _proof: &SecurityProof) -> ToadStoolResult<()> {
         // Validate delegation proof
         Ok(())
+    }
+}
+
+/// Convert a `SecurityProviderPermission` (crypto_lock domain type) into the
+/// provider-agnostic `SecurityPermission` expected by the `SecurityProvider` trait.
+///
+/// This is a bridge function that will be obsoleted once the two type systems are unified.
+fn to_provider_permission(p: &SecurityProviderPermission) -> ProviderPermission {
+    let holder_id = match &p.holder {
+        super::permissions::PermissionHolder::Individual { user_id, .. } => user_id.clone(),
+        super::permissions::PermissionHolder::Organization { org_id, .. } => org_id.clone(),
+        super::permissions::PermissionHolder::Delegated { delegated_to, .. } => {
+            delegated_to.clone()
+        }
+    };
+
+    let target = match &p.external_target {
+        CryptoExternalTarget::CloudProvider {
+            provider, regions, ..
+        } => ProviderExternalTarget::CloudProvider {
+            provider: format!("{:?}", provider),
+            regions: regions.clone(),
+        },
+        CryptoExternalTarget::ContainerPlatform {
+            platform, clusters, ..
+        } => ProviderExternalTarget::ContainerPlatform {
+            platform: format!("{:?}", platform),
+            clusters: clusters.clone(),
+        },
+        CryptoExternalTarget::ExternalTool {
+            tool_name,
+            api_endpoints,
+            ..
+        } => ProviderExternalTarget::ExternalTool {
+            tool_name: tool_name.clone(),
+            endpoints: api_endpoints.clone(),
+        },
+        // Map exotic targets to a generic ExternalTool representation
+        CryptoExternalTarget::QuantumProvider {
+            provider, backends, ..
+        } => ProviderExternalTarget::ExternalTool {
+            tool_name: format!("quantum:{:?}", provider),
+            endpoints: backends.clone(),
+        },
+        CryptoExternalTarget::HPCCluster {
+            cluster_name,
+            partitions,
+            ..
+        } => ProviderExternalTarget::ExternalTool {
+            tool_name: format!("hpc:{}", cluster_name),
+            endpoints: partitions.clone(),
+        },
+        CryptoExternalTarget::EnterpriseService {
+            service_name,
+            features,
+            ..
+        } => ProviderExternalTarget::ExternalTool {
+            tool_name: service_name.clone(),
+            endpoints: features.clone(),
+        },
+    };
+
+    let scope = ProviderPermissionScope {
+        operations: p.scope.feature_restrictions.clone(),
+        resource_limits: ProviderResourceLimits::default(),
+        geo_restrictions: p.scope.geographic_limits.clone(),
+    };
+
+    let proof = ProviderSecurityProof {
+        signature: p.crypto_proof.signature.clone(),
+        algorithm: SignatureAlgorithm::Ed25519,
+        public_key_id: p.crypto_proof.public_key_id.clone(),
+        signed_at: p.crypto_proof.timestamp,
+    };
+
+    let provider_metadata = ProviderMetadata {
+        provider_id: "crypto-lock".to_string(),
+        provider_type: "local".to_string(),
+        provider_version: "0.1.0".to_string(),
+        metadata: HashMap::new(),
+    };
+
+    ProviderPermission {
+        permission_id: p.permission_id,
+        holder_id,
+        target,
+        scope,
+        valid_from: p.valid_from,
+        valid_until: p.valid_until,
+        proof,
+        provider_metadata,
     }
 }
 

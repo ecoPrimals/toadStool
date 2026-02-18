@@ -100,13 +100,8 @@ impl FusedMapReduceF64 {
     /// Create a new fused map-reduce executor
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
         let shader_source = include_str!("../shaders/reduce/fused_map_reduce_f64.wgsl");
-
-        let shader_module = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("FusedMapReduceF64 Shader"),
-                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-            });
+        let shader_module =
+            device.compile_shader_f64(shader_source, Some("FusedMapReduceF64 Shader"));
 
         // Pipeline for main map-reduce pass
         let pipeline = device
@@ -116,8 +111,8 @@ impl FusedMapReduceF64 {
                 layout: None,
                 module: &shader_module,
                 entry_point: "fused_map_reduce",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         // Pipeline for reducing partials
@@ -129,8 +124,8 @@ impl FusedMapReduceF64 {
                     layout: None,
                     module: &shader_module,
                     entry_point: "reduce_partials",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         Ok(Self {
@@ -260,7 +255,8 @@ impl FusedMapReduceF64 {
             if n_workgroups <= 256 {
                 // Single workgroup can handle all partials
                 // TS-004 FIX: reduce_partials_pass now returns the output buffer
-                let final_buffer = self.reduce_partials_pass(&output_buffer, n_workgroups, reduce_op)?;
+                let final_buffer =
+                    self.reduce_partials_pass(&output_buffer, n_workgroups, reduce_op)?;
                 return self.read_result(&final_buffer);
             } else {
                 // Need multiple passes (rare for typical workloads)

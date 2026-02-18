@@ -55,7 +55,7 @@ pub async fn run_cache_probe() -> Result<(), Box<dyn std::error::Error>> {
                     label: Some("cache_probe"),
                     required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits::default(),
-                memory_hints: Default::default(),
+                    memory_hints: Default::default(),
                 },
                 None,
             )

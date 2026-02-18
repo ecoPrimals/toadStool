@@ -134,8 +134,8 @@ fn compute_prefix_sum_gpu(
             layout: Some(&pipeline_layout),
             module: &shader,
             entry_point: "inclusive_scan",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
     let mut encoder = device
@@ -341,8 +341,8 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
             layout: Some(&pipeline_layout),
             module: &shader,
             entry_point: "mark_unique",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
     let mut encoder = device
@@ -499,8 +499,8 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
                 layout: Some(&compact_pipeline_layout),
                 module: &shader,
                 entry_point: "compact_unique",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
     let mut compact_encoder =

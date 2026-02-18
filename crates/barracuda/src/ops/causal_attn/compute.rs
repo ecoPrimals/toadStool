@@ -150,8 +150,8 @@ impl CausalAttention {
                     layout: Some(&pipeline_layout_matmul),
                     module: &shader_matmul,
                     entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // ═══════════════════════════════════════════════════════════
@@ -241,8 +241,8 @@ impl CausalAttention {
                     layout: Some(&pipeline_layout_softmax),
                     module: &shader_softmax,
                     entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // ═══════════════════════════════════════════════════════════
@@ -344,8 +344,8 @@ impl CausalAttention {
                     layout: Some(&pipeline_layout_apply),
                     module: &shader_apply,
                     entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // ═══════════════════════════════════════════════════════════

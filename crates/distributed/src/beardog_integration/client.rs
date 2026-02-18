@@ -24,6 +24,8 @@ use toadstool_common::{ToadStoolError, ToadStoolResult};
 #[allow(unused_imports)] // Keep for discovery trait implementations
 use std::time::Duration;
 
+use toadstool_common::constants::timeouts;
+
 use super::types::{
     BearDogCapability, BearDogEndpoint, EncryptionRequest, EncryptionResponse,
     KeyManagementRequest, KeyManagementResponse, PermissionResponse, RevocationRequest,
@@ -88,12 +90,11 @@ impl BearDogDiscovery {
     async fn discover_via_mdns(&self) -> ToadStoolResult<Vec<BearDogEndpoint>> {
         // Use ToadStool's unified primal discovery system
         // This discovers services by capability, not by hardcoded name
-        use std::time::Duration;
         use toadstool_common::primal_discovery::{DiscoveryConfig, PrimalDiscovery};
 
         let discovery_config = DiscoveryConfig {
             enable_mdns: true,
-            cache_ttl: Duration::from_secs(300),
+            cache_ttl: timeouts::DEFAULT_CACHE_TTL,
             ..Default::default()
         };
 
@@ -130,12 +131,11 @@ impl BearDogDiscovery {
     /// **Design**: Query Songbird for BearDog capability
     async fn discover_via_songbird(&self) -> ToadStoolResult<Vec<BearDogEndpoint>> {
         // Use unified primal discovery with Songbird as source
-        use std::time::Duration;
         use toadstool_common::primal_discovery::{DiscoveryConfig, PrimalDiscovery};
 
         let mut discovery_config = DiscoveryConfig {
             enable_mdns: false, // Use Songbird, not mDNS
-            cache_ttl: Duration::from_secs(300),
+            cache_ttl: timeouts::DEFAULT_CACHE_TTL,
             ..Default::default()
         };
 
@@ -243,7 +243,10 @@ impl BearDogClient {
     ///
     /// # Errors
     /// Returns error if socket path discovery fails
-    #[deprecated(since = "0.3.0", note = "Use new_async() for capability-based discovery")]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use new_async() for capability-based discovery"
+    )]
     #[allow(deprecated)]
     pub fn new(config: BearDogConfig) -> ToadStoolResult<Self> {
         // Get unix socket path from environment-based discovery
@@ -280,10 +283,7 @@ impl BearDogClient {
             .await
             .map_err(|e| {
                 tracing::warn!("Beardog capabilities query failed: {}", e);
-                ToadStoolError::network(format!(
-                    "Beardog crypto capabilities query failed: {}",
-                    e
-                ))
+                ToadStoolError::network(format!("Beardog crypto capabilities query failed: {}", e))
             })?;
 
         // Parse the response into CryptoCapability

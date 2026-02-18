@@ -12,7 +12,6 @@
 //! - ✅ f64 precision
 
 use crate::error::{BarracudaError, Result};
-use crate::shaders::precision::ShaderTemplate;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
@@ -124,16 +123,8 @@ impl YukawaForceF64 {
                 usage: wgpu::BufferUsages::STORAGE,
             });
 
-        // Compile shader with math_f64 preamble
         let shader_body = include_str!("yukawa_f64.wgsl");
-        let full_shader = ShaderTemplate::with_math_f64(shader_body);
-
-        let shader = device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("Yukawa F64 Shader"),
-                source: wgpu::ShaderSource::Wgsl(full_shader.into()),
-            });
+        let shader = device.compile_shader_f64(shader_body, Some("Yukawa F64 Shader"));
 
         let bind_group_layout =
             device
@@ -204,8 +195,8 @@ impl YukawaForceF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {

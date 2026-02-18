@@ -297,7 +297,7 @@ impl BatchedBisectionGpu {
 
         let shader = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("Batched Bisection f64"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("Batched Bisection f64"));
 
         // Create bind group layout
         let bgl = self
@@ -392,8 +392,8 @@ impl BatchedBisectionGpu {
                     layout: Some(&pl),
                     module: &shader,
                     entry_point,
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Create buffers
@@ -509,51 +509,10 @@ impl BatchedBisectionGpu {
         }
 
         // Read back results
-        let roots = self.read_f64_buffer(&roots_buffer, batch_size)?;
+        let roots = self.device.read_f64_buffer(&roots_buffer, batch_size)?;
         let iterations = self.read_u32_buffer(&iterations_buffer, batch_size)?;
 
         Ok(BisectionResult { roots, iterations })
-    }
-
-    fn read_f64_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<f64>> {
-        let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("BatchedBisection f64 staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("BatchedBisection f64 readback"),
-                });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        self.device.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            // Channel send should not fail since receiver is alive during poll
-            let _ = sender.send(result);
-        });
-        self.device.device.poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .map_err(|_| BarracudaError::execution_failed("GPU buffer mapping channel closed"))?
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = slice.get_mapped_range();
-        // SAFETY: chunks_exact(8) guarantees exactly 8-byte chunks
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().expect("chunks_exact(8) invariant")))
-            .collect();
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
     }
 
     fn read_u32_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<u32>> {

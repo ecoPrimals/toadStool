@@ -62,6 +62,30 @@ struct ParallelSweepParams {
     current_q: u32,
 }
 
+/// Parameters for single-dispatch eigensolve (n ≤ 32)
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct SingleDispatchParams {
+    n: u32,
+    batch_size: u32,
+    max_sweeps: u32,
+    tolerance: f32,
+}
+
+/// Pipelines and bind group layouts for Jacobi eigh (shared by slices and buffer APIs)
+struct EighPipelines {
+    init_bgl: wgpu::BindGroupLayout,
+    _init_pl: wgpu::PipelineLayout,
+    init_v_pipeline: wgpu::ComputePipeline,
+    extract_pipeline: wgpu::ComputePipeline,
+    sweep_bgl: wgpu::BindGroupLayout,
+    _sweep_pl: wgpu::PipelineLayout,
+    compute_angles_pipeline: wgpu::ComputePipeline,
+    rotate_a_pipeline: wgpu::ComputePipeline,
+    update_blocks_pipeline: wgpu::ComputePipeline,
+    rotate_v_pipeline: wgpu::ComputePipeline,
+}
+
 /// GPU-accelerated batched eigenvalue decomposition
 ///
 /// Computes eigenvalue decomposition for multiple symmetric matrices simultaneously:
@@ -75,6 +99,231 @@ impl BatchedEighGpu {
 
     fn single_dispatch_shader() -> &'static str {
         include_str!("../../shaders/linalg/batched_eigh_single_dispatch_f64.wgsl")
+    }
+
+    fn create_eigh_pipelines(
+        device: &Arc<WgpuDevice>,
+        shader: &wgpu::ShaderModule,
+    ) -> EighPipelines {
+        let init_bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Batched Init V BGL"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let init_pl = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Batched Init V PL"),
+                bind_group_layouts: &[&init_bgl],
+                push_constant_ranges: &[],
+            });
+
+        let init_v_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Batched Init V"),
+                    layout: Some(&init_pl),
+                    module: shader,
+                    entry_point: "batched_init_V",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
+
+        let extract_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Batched Extract Eigenvalues"),
+                    layout: Some(&init_pl),
+                    module: shader,
+                    entry_point: "batched_extract_eigenvalues",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
+
+        let sweep_bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Parallel Sweep BGL"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let sweep_pl = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Parallel Sweep PL"),
+                bind_group_layouts: &[&sweep_bgl],
+                push_constant_ranges: &[],
+            });
+
+        let compute_angles_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Parallel Compute Angles"),
+                    layout: Some(&sweep_pl),
+                    module: shader,
+                    entry_point: "parallel_compute_angles",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
+
+        let rotate_a_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Parallel Rotate A"),
+                    layout: Some(&sweep_pl),
+                    module: shader,
+                    entry_point: "parallel_rotate_A",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
+
+        let update_blocks_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Parallel Update Blocks"),
+                    layout: Some(&sweep_pl),
+                    module: shader,
+                    entry_point: "parallel_update_blocks",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
+
+        let rotate_v_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Parallel Rotate V"),
+                    layout: Some(&sweep_pl),
+                    module: shader,
+                    entry_point: "parallel_rotate_V",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
+
+        EighPipelines {
+            init_bgl,
+            _init_pl: init_pl,
+            init_v_pipeline,
+            extract_pipeline,
+            sweep_bgl,
+            _sweep_pl: sweep_pl,
+            compute_angles_pipeline,
+            rotate_a_pipeline,
+            update_blocks_pipeline,
+            rotate_v_pipeline,
+        }
+    }
+
+    fn run_sweep_pass(
+        device: &Arc<WgpuDevice>,
+        sweep_bg: &wgpu::BindGroup,
+        pipeline: &wgpu::ComputePipeline,
+        dispatch: (u32, u32, u32),
+    ) {
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Jacobi sweep pass"),
+            });
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Jacobi sweep sub-pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(pipeline);
+            pass.set_bind_group(0, sweep_bg, &[]);
+            pass.dispatch_workgroups(dispatch.0, dispatch.1, dispatch.2);
+        }
+        device.queue.submit(Some(encoder.finish()));
     }
 
     /// Execute batched eigenvalue decomposition on GPU with full f64 precision
@@ -169,196 +418,8 @@ impl BatchedEighGpu {
             mapped_at_creation: false,
         });
 
-        // Compile shader
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("Batched Eigh f64"));
-
-        // Create bind group layouts and pipelines
-
-        // Init V layout (same as main params)
-        let init_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Batched Init V BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let init_pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Batched Init V PL"),
-                bind_group_layouts: &[&init_bgl],
-                push_constant_ranges: &[],
-            });
-
-        let init_v_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Batched Init V"),
-                    layout: Some(&init_pl),
-                    module: &shader,
-                    entry_point: "batched_init_V",
-                cache: None,
-                compilation_options: Default::default(),
-                });
-
-        let extract_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Batched Extract Eigenvalues"),
-                    layout: Some(&init_pl),
-                    module: &shader,
-                    entry_point: "batched_extract_eigenvalues",
-                cache: None,
-                compilation_options: Default::default(),
-                });
-
-        // Parallel sweep layout (A, V, cs buffers)
-        let sweep_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Parallel Sweep BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let sweep_pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Parallel Sweep PL"),
-                bind_group_layouts: &[&sweep_bgl],
-                push_constant_ranges: &[],
-            });
-
-        let compute_angles_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Parallel Compute Angles"),
-                    layout: Some(&sweep_pl),
-                    module: &shader,
-                    entry_point: "parallel_compute_angles",
-                cache: None,
-                compilation_options: Default::default(),
-                });
-
-        let rotate_a_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Parallel Rotate A"),
-                    layout: Some(&sweep_pl),
-                    module: &shader,
-                    entry_point: "parallel_rotate_A",
-                cache: None,
-                compilation_options: Default::default(),
-                });
-
-        let update_blocks_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Parallel Update Blocks"),
-                    layout: Some(&sweep_pl),
-                    module: &shader,
-                    entry_point: "parallel_update_blocks",
-                cache: None,
-                compilation_options: Default::default(),
-                });
-
-        let rotate_v_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Parallel Rotate V"),
-                    layout: Some(&sweep_pl),
-                    module: &shader,
-                    entry_point: "parallel_rotate_V",
-                cache: None,
-                compilation_options: Default::default(),
-                });
+        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("Batched Eigh f64"));
+        let pipelines = Self::create_eigh_pipelines(&device, &shader);
 
         // Create params buffer
         let params = BatchedEighParams {
@@ -372,7 +433,7 @@ impl BatchedEighGpu {
         // Create init bind group
         let init_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Batched Init BG"),
-            layout: &init_bgl,
+            layout: &pipelines.init_bgl,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -406,7 +467,7 @@ impl BatchedEighGpu {
                     label: Some("Init V Pass"),
                     timestamp_writes: None,
                 });
-                pass.set_pipeline(&init_v_pipeline);
+                pass.set_pipeline(&pipelines.init_v_pipeline);
                 pass.set_bind_group(0, &init_bg, &[]);
                 // Dispatch (n/16, n/16, batch_size) workgroups
                 let wg_xy = nu.div_ceil(16);
@@ -433,7 +494,7 @@ impl BatchedEighGpu {
                     // Create sweep bind group
                     let sweep_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                         label: Some("Sweep BG"),
-                        layout: &sweep_bgl,
+                        layout: &pipelines.sweep_bgl,
                         entries: &[
                             wgpu::BindGroupEntry {
                                 binding: 0,
@@ -454,89 +515,31 @@ impl BatchedEighGpu {
                         ],
                     });
 
-                    // 2a: Compute rotation angles for all batches
-                    {
-                        let mut encoder =
-                            device
-                                .device
-                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                    label: Some("Compute Angles"),
-                                });
-                        {
-                            let mut pass =
-                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                                    label: Some("Compute Angles Pass"),
-                                    timestamp_writes: None,
-                                });
-                            pass.set_pipeline(&compute_angles_pipeline);
-                            pass.set_bind_group(0, &sweep_bg, &[]);
-                            pass.dispatch_workgroups(batch_u.div_ceil(64), 1, 1);
-                        }
-                        device.queue.submit(Some(encoder.finish()));
-                    }
-
-                    // 2b: Rotate A for all batches
-                    {
-                        let mut encoder =
-                            device
-                                .device
-                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                    label: Some("Rotate A"),
-                                });
-                        {
-                            let mut pass =
-                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                                    label: Some("Rotate A Pass"),
-                                    timestamp_writes: None,
-                                });
-                            pass.set_pipeline(&rotate_a_pipeline);
-                            pass.set_bind_group(0, &sweep_bg, &[]);
-                            pass.dispatch_workgroups(nu.div_ceil(64), batch_u, 1);
-                        }
-                        device.queue.submit(Some(encoder.finish()));
-                    }
-
-                    // 2c: Update 2×2 blocks for all batches
-                    {
-                        let mut encoder =
-                            device
-                                .device
-                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                    label: Some("Update Blocks"),
-                                });
-                        {
-                            let mut pass =
-                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                                    label: Some("Update Blocks Pass"),
-                                    timestamp_writes: None,
-                                });
-                            pass.set_pipeline(&update_blocks_pipeline);
-                            pass.set_bind_group(0, &sweep_bg, &[]);
-                            pass.dispatch_workgroups(batch_u.div_ceil(64), 1, 1);
-                        }
-                        device.queue.submit(Some(encoder.finish()));
-                    }
-
-                    // 2d: Rotate V for all batches
-                    {
-                        let mut encoder =
-                            device
-                                .device
-                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                    label: Some("Rotate V"),
-                                });
-                        {
-                            let mut pass =
-                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                                    label: Some("Rotate V Pass"),
-                                    timestamp_writes: None,
-                                });
-                            pass.set_pipeline(&rotate_v_pipeline);
-                            pass.set_bind_group(0, &sweep_bg, &[]);
-                            pass.dispatch_workgroups(nu.div_ceil(64), batch_u, 1);
-                        }
-                        device.queue.submit(Some(encoder.finish()));
-                    }
+                    // 2a–2d: Compute angles, rotate A, update blocks, rotate V
+                    Self::run_sweep_pass(
+                        &device,
+                        &sweep_bg,
+                        &pipelines.compute_angles_pipeline,
+                        (batch_u.div_ceil(64), 1, 1),
+                    );
+                    Self::run_sweep_pass(
+                        &device,
+                        &sweep_bg,
+                        &pipelines.rotate_a_pipeline,
+                        (nu.div_ceil(64), batch_u, 1),
+                    );
+                    Self::run_sweep_pass(
+                        &device,
+                        &sweep_bg,
+                        &pipelines.update_blocks_pipeline,
+                        (batch_u.div_ceil(64), 1, 1),
+                    );
+                    Self::run_sweep_pass(
+                        &device,
+                        &sweep_bg,
+                        &pipelines.rotate_v_pipeline,
+                        (nu.div_ceil(64), batch_u, 1),
+                    );
                 }
             }
         }
@@ -554,7 +557,7 @@ impl BatchedEighGpu {
                     label: Some("Extract Eigenvalues Pass"),
                     timestamp_writes: None,
                 });
-                pass.set_pipeline(&extract_pipeline);
+                pass.set_pipeline(&pipelines.extract_pipeline);
                 pass.set_bind_group(0, &init_bg, &[]);
                 pass.dispatch_workgroups(nu.div_ceil(WORKGROUP_SIZE_1D), batch_u, 1);
             }
@@ -562,8 +565,8 @@ impl BatchedEighGpu {
         }
 
         // Read back results
-        let eigenvalues = Self::read_f64_buffer(&device, &eig_buffer, batch_size * n)?;
-        let eigenvectors = Self::read_f64_buffer(&device, &v_buffer, batch_size * n * n)?;
+        let eigenvalues = device.read_f64_buffer(&eig_buffer, batch_size * n)?;
+        let eigenvectors = device.read_f64_buffer(&v_buffer, batch_size * n * n)?;
 
         Ok((eigenvalues, eigenvectors))
     }
@@ -659,16 +662,6 @@ impl BatchedEighGpu {
             mapped_at_creation: false,
         });
 
-        // Params buffer
-        #[repr(C)]
-        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-        struct SingleDispatchParams {
-            n: u32,
-            batch_size: u32,
-            max_sweeps: u32,
-            tolerance: f32,
-        }
-
         let params = SingleDispatchParams {
             n: n as u32,
             batch_size: batch_size as u32,
@@ -678,7 +671,7 @@ impl BatchedEighGpu {
         let params_buffer = device.create_uniform_buffer("SingleDispatch Params", &params);
 
         // Compile shader
-        let shader = device.compile_shader(
+        let shader = device.compile_shader_f64(
             Self::single_dispatch_shader(),
             Some("Batched Eigh Single-Dispatch f64"),
         );
@@ -748,8 +741,8 @@ impl BatchedEighGpu {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "batched_eigh_single_dispatch",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -796,8 +789,8 @@ impl BatchedEighGpu {
         device.queue.submit(Some(encoder.finish()));
 
         // Read back results
-        let eigenvalues = Self::read_f64_buffer(&device, &eig_buffer, batch_size * n)?;
-        let eigenvectors = Self::read_f64_buffer(&device, &v_buffer, batch_size * n * n)?;
+        let eigenvalues = device.read_f64_buffer(&eig_buffer, batch_size * n)?;
+        let eigenvectors = device.read_f64_buffer(&v_buffer, batch_size * n * n)?;
 
         Ok((eigenvalues, eigenvectors))
     }
@@ -839,15 +832,6 @@ impl BatchedEighGpu {
             });
         }
 
-        #[repr(C)]
-        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-        struct SingleDispatchParams {
-            n: u32,
-            batch_size: u32,
-            max_sweeps: u32,
-            tolerance: f32,
-        }
-
         let params = SingleDispatchParams {
             n: n as u32,
             batch_size: batch_size as u32,
@@ -857,7 +841,7 @@ impl BatchedEighGpu {
         let params_buffer =
             device.create_uniform_buffer("SingleDispatch Params (buffers)", &params);
 
-        let shader = device.compile_shader(
+        let shader = device.compile_shader_f64(
             Self::single_dispatch_shader(),
             Some("Batched Eigh Single-Dispatch f64 (buffers)"),
         );
@@ -926,8 +910,8 @@ impl BatchedEighGpu {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "batched_eigh_single_dispatch",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -1164,196 +1148,9 @@ impl BatchedEighGpu {
             mapped_at_creation: false,
         });
 
-        // Compile shader
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("Batched Eigh f64 (buffers)"));
-
-        // Create bind group layouts and pipelines (same as execute_f64)
-
-        // Init V layout
-        let init_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Batched Init V BGL (buffers)"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let init_pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Batched Init V PL (buffers)"),
-                bind_group_layouts: &[&init_bgl],
-                push_constant_ranges: &[],
-            });
-
-        let init_v_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Batched Init V (buffers)"),
-                    layout: Some(&init_pl),
-                    module: &shader,
-                    entry_point: "batched_init_V",
-                cache: None,
-                compilation_options: Default::default(),
-                });
-
-        let extract_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Batched Extract Eigenvalues (buffers)"),
-                    layout: Some(&init_pl),
-                    module: &shader,
-                    entry_point: "batched_extract_eigenvalues",
-                cache: None,
-                compilation_options: Default::default(),
-                });
-
-        // Parallel sweep layout
-        let sweep_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Parallel Sweep BGL (buffers)"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let sweep_pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Parallel Sweep PL (buffers)"),
-                bind_group_layouts: &[&sweep_bgl],
-                push_constant_ranges: &[],
-            });
-
-        let compute_angles_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Parallel Compute Angles (buffers)"),
-                    layout: Some(&sweep_pl),
-                    module: &shader,
-                    entry_point: "parallel_compute_angles",
-                cache: None,
-                compilation_options: Default::default(),
-                });
-
-        let rotate_a_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Parallel Rotate A (buffers)"),
-                    layout: Some(&sweep_pl),
-                    module: &shader,
-                    entry_point: "parallel_rotate_A",
-                cache: None,
-                compilation_options: Default::default(),
-                });
-
-        let update_blocks_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Parallel Update Blocks (buffers)"),
-                    layout: Some(&sweep_pl),
-                    module: &shader,
-                    entry_point: "parallel_update_blocks",
-                cache: None,
-                compilation_options: Default::default(),
-                });
-
-        let rotate_v_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Parallel Rotate V (buffers)"),
-                    layout: Some(&sweep_pl),
-                    module: &shader,
-                    entry_point: "parallel_rotate_V",
-                cache: None,
-                compilation_options: Default::default(),
-                });
+        let shader =
+            device.compile_shader_f64(Self::wgsl_shader(), Some("Batched Eigh f64 (buffers)"));
+        let pipelines = Self::create_eigh_pipelines(device, &shader);
 
         // Create params buffer
         let params = BatchedEighParams {
@@ -1367,7 +1164,7 @@ impl BatchedEighGpu {
         // Create init bind group using provided buffers
         let init_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Batched Init BG (buffers)"),
-            layout: &init_bgl,
+            layout: &pipelines.init_bgl,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -1401,7 +1198,7 @@ impl BatchedEighGpu {
                     label: Some("Init V Pass (buffers)"),
                     timestamp_writes: None,
                 });
-                pass.set_pipeline(&init_v_pipeline);
+                pass.set_pipeline(&pipelines.init_v_pipeline);
                 pass.set_bind_group(0, &init_bg, &[]);
                 let wg_xy = nu.div_ceil(16);
                 pass.dispatch_workgroups(wg_xy, wg_xy, batch_u);
@@ -1424,7 +1221,7 @@ impl BatchedEighGpu {
 
                     let sweep_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                         label: Some("Sweep BG (buffers)"),
-                        layout: &sweep_bgl,
+                        layout: &pipelines.sweep_bgl,
                         entries: &[
                             wgpu::BindGroupEntry {
                                 binding: 0,
@@ -1445,89 +1242,31 @@ impl BatchedEighGpu {
                         ],
                     });
 
-                    // 2a: Compute rotation angles
-                    {
-                        let mut encoder =
-                            device
-                                .device
-                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                    label: Some("Compute Angles (buffers)"),
-                                });
-                        {
-                            let mut pass =
-                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                                    label: Some("Compute Angles Pass (buffers)"),
-                                    timestamp_writes: None,
-                                });
-                            pass.set_pipeline(&compute_angles_pipeline);
-                            pass.set_bind_group(0, &sweep_bg, &[]);
-                            pass.dispatch_workgroups(batch_u.div_ceil(64), 1, 1);
-                        }
-                        device.queue.submit(Some(encoder.finish()));
-                    }
-
-                    // 2b: Rotate A
-                    {
-                        let mut encoder =
-                            device
-                                .device
-                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                    label: Some("Rotate A (buffers)"),
-                                });
-                        {
-                            let mut pass =
-                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                                    label: Some("Rotate A Pass (buffers)"),
-                                    timestamp_writes: None,
-                                });
-                            pass.set_pipeline(&rotate_a_pipeline);
-                            pass.set_bind_group(0, &sweep_bg, &[]);
-                            pass.dispatch_workgroups(nu.div_ceil(64), batch_u, 1);
-                        }
-                        device.queue.submit(Some(encoder.finish()));
-                    }
-
-                    // 2c: Update 2×2 blocks
-                    {
-                        let mut encoder =
-                            device
-                                .device
-                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                    label: Some("Update Blocks (buffers)"),
-                                });
-                        {
-                            let mut pass =
-                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                                    label: Some("Update Blocks Pass (buffers)"),
-                                    timestamp_writes: None,
-                                });
-                            pass.set_pipeline(&update_blocks_pipeline);
-                            pass.set_bind_group(0, &sweep_bg, &[]);
-                            pass.dispatch_workgroups(batch_u.div_ceil(64), 1, 1);
-                        }
-                        device.queue.submit(Some(encoder.finish()));
-                    }
-
-                    // 2d: Rotate V
-                    {
-                        let mut encoder =
-                            device
-                                .device
-                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                    label: Some("Rotate V (buffers)"),
-                                });
-                        {
-                            let mut pass =
-                                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                                    label: Some("Rotate V Pass (buffers)"),
-                                    timestamp_writes: None,
-                                });
-                            pass.set_pipeline(&rotate_v_pipeline);
-                            pass.set_bind_group(0, &sweep_bg, &[]);
-                            pass.dispatch_workgroups(nu.div_ceil(64), batch_u, 1);
-                        }
-                        device.queue.submit(Some(encoder.finish()));
-                    }
+                    // 2a–2d: Compute angles, rotate A, update blocks, rotate V
+                    Self::run_sweep_pass(
+                        device,
+                        &sweep_bg,
+                        &pipelines.compute_angles_pipeline,
+                        (batch_u.div_ceil(64), 1, 1),
+                    );
+                    Self::run_sweep_pass(
+                        device,
+                        &sweep_bg,
+                        &pipelines.rotate_a_pipeline,
+                        (nu.div_ceil(64), batch_u, 1),
+                    );
+                    Self::run_sweep_pass(
+                        device,
+                        &sweep_bg,
+                        &pipelines.update_blocks_pipeline,
+                        (batch_u.div_ceil(64), 1, 1),
+                    );
+                    Self::run_sweep_pass(
+                        device,
+                        &sweep_bg,
+                        &pipelines.rotate_v_pipeline,
+                        (nu.div_ceil(64), batch_u, 1),
+                    );
                 }
             }
         }
@@ -1545,7 +1284,7 @@ impl BatchedEighGpu {
                     label: Some("Extract Eigenvalues Pass (buffers)"),
                     timestamp_writes: None,
                 });
-                pass.set_pipeline(&extract_pipeline);
+                pass.set_pipeline(&pipelines.extract_pipeline);
                 pass.set_bind_group(0, &init_bg, &[]);
                 pass.dispatch_workgroups(nu.div_ceil(WORKGROUP_SIZE_1D), batch_u, 1);
             }
@@ -1575,7 +1314,7 @@ impl BatchedEighGpu {
         n: usize,
         batch_size: usize,
     ) -> Result<Vec<f64>> {
-        Self::read_f64_buffer(device, eigenvalues_buffer, batch_size * n)
+        device.read_f64_buffer(eigenvalues_buffer, batch_size * n)
     }
 
     /// Read eigenvectors from a GPU buffer to CPU (optional, only when needed)
@@ -1594,59 +1333,7 @@ impl BatchedEighGpu {
         n: usize,
         batch_size: usize,
     ) -> Result<Vec<f64>> {
-        Self::read_f64_buffer(device, eigenvectors_buffer, batch_size * n * n)
-    }
-
-    /// Helper: Read f64 buffer from GPU
-    fn read_f64_buffer(
-        device: &Arc<WgpuDevice>,
-        buffer: &wgpu::Buffer,
-        count: usize,
-    ) -> Result<Vec<f64>> {
-        let staging = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("f64 staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("f64 readback"),
-            });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        device.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(
-            wgpu::MapMode::Read,
-            move |result: std::result::Result<(), wgpu::BufferAsyncError>| {
-                let _ = sender.send(result);
-            },
-        );
-        device.device.poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .map_err(|_| BarracudaError::execution_failed("buffer mapping channel closed"))?
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| {
-                f64::from_le_bytes(
-                    chunk
-                        .try_into()
-                        .expect("chunks_exact(8) yields 8-byte chunks"),
-                )
-            })
-            .collect();
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
+        device.read_f64_buffer(eigenvectors_buffer, batch_size * n * n)
     }
 }
 

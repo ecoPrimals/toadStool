@@ -192,7 +192,7 @@ impl LennardJonesF64 {
         });
 
         // Compile shader
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("LJ F64"));
+        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("LJ F64"));
 
         let pipeline_layout =
             device
@@ -210,8 +210,8 @@ impl LennardJonesF64 {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "lennard_jones_f64",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         let mut encoder = device

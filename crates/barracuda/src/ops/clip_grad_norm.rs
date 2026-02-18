@@ -179,8 +179,8 @@ impl ClipGradNorm {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "compute_norm",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_pipeline_norm_final =
@@ -191,8 +191,8 @@ impl ClipGradNorm {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "compute_norm_final",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_pipeline_clip =
@@ -203,8 +203,8 @@ impl ClipGradNorm {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "clip_gradients",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Execute compute shaders

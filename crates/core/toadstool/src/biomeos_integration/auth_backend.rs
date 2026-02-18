@@ -84,10 +84,12 @@ impl BearDogBackend {
         // CAPABILITY-BASED: Discover ANY crypto service (not hardcoded "beardog")
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
             .await
-            .map_err(|e| ToadStoolError::configuration(format!(
-                "No crypto service discovered: {}. Ensure a crypto provider is running.",
-                e
-            )))?;
+            .map_err(|e| {
+                ToadStoolError::configuration(format!(
+                    "No crypto service discovered: {}. Ensure a crypto provider is running.",
+                    e
+                ))
+            })?;
 
         Ok(Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
@@ -100,7 +102,10 @@ impl BearDogBackend {
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
     #[must_use]
-    #[deprecated(since = "0.3.0", note = "Use new_async() for capability-based discovery")]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use new_async() for capability-based discovery"
+    )]
     #[allow(deprecated)]
     pub fn new(_endpoint: impl Into<String>) -> Self {
         // LEGACY: Uses primal name for backward compatibility

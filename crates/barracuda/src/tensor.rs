@@ -455,11 +455,8 @@ impl Tensor {
     pub fn mul_scalar(&self, scalar: f32) -> Result<Tensor> {
         // Create broadcasted scalar tensor with same shape (sync - no executor needed)
         let data = vec![scalar; self.len()];
-        let scalar_tensor = Tensor::from_vec_on_sync(
-            data,
-            self.shape.clone(),
-            self.device.clone(),
-        )?;
+        let scalar_tensor =
+            Tensor::from_vec_on_sync(data, self.shape.clone(), self.device.clone())?;
 
         // Use existing element-wise multiplication
         self.mul(&scalar_tensor)
@@ -478,11 +475,8 @@ impl Tensor {
     pub fn add_scalar(&self, scalar: f32) -> Result<Tensor> {
         // Create broadcasted scalar tensor with same shape (sync - no executor needed)
         let data = vec![scalar; self.len()];
-        let scalar_tensor = Tensor::from_vec_on_sync(
-            data,
-            self.shape.clone(),
-            self.device.clone(),
-        )?;
+        let scalar_tensor =
+            Tensor::from_vec_on_sync(data, self.shape.clone(), self.device.clone())?;
 
         // Use existing element-wise addition
         self.add(&scalar_tensor)

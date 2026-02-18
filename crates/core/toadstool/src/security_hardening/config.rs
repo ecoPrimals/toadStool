@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use toadstool_common::constants::network::LOCALHOST_IPV4;
+use toadstool_common::constants::timeouts;
 
 /// Security hardening configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,7 +65,7 @@ impl Default for RateLimitingConfig {
             max_requests_per_minute: 60,
             max_requests_per_hour: 3600,
             max_requests_per_day: 86400,
-            sliding_window: Duration::from_secs(60),
+            sliding_window: timeouts::HEARTBEAT_INTERVAL,
             burst_allowance: 10,
         }
     }

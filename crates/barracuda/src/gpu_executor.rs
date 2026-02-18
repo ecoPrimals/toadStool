@@ -48,10 +48,13 @@ impl GpuExecutor {
         }
     }
 
-    /// Create from shared Arc<WgpuDevice> (for test pool usage)
+    /// Create from shared `Arc<WgpuDevice>` (for test pool usage)
     pub fn from_device_arc(device: Arc<WgpuDevice>) -> Self {
         let capabilities = Self::detect_capabilities(&device);
-        Self { device, capabilities }
+        Self {
+            device,
+            capabilities,
+        }
     }
 
     /// Detect GPU capabilities
@@ -363,7 +366,7 @@ mod tests {
         // Use shared device pool to avoid resource exhaustion
         let device = crate::device::test_pool::get_test_device().await;
         let executor = GpuExecutor::from_device_arc(device);
-        
+
         // Verify executor was created with capabilities
         assert!(executor.capabilities().memory.total_bytes > 0);
     }

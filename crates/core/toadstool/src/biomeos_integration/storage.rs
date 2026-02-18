@@ -64,7 +64,10 @@ impl StorageProvisioningManager {
     ///
     /// **DEPRECATED**: Use `with_storage_service()` for capability-based discovery.
     #[must_use]
-    #[deprecated(since = "0.3.0", note = "Use with_storage_service() for capability-based discovery")]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use with_storage_service() for capability-based discovery"
+    )]
     #[allow(deprecated)]
     pub fn with_nestgate(config: StorageProvisioningConfig) -> Self {
         let backend = super::storage_backend::NestGateBackend::new(

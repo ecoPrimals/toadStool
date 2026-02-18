@@ -140,8 +140,8 @@ pub(super) fn execute_projection(
             layout: Some(&pipeline_layout),
             module: &shader_module,
             entry_point: "main",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
     let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -284,8 +284,8 @@ pub(super) fn execute_output_projection(
             layout: Some(&pipeline_layout),
             module: &shader_module,
             entry_point: "main",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
     let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {

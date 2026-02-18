@@ -186,8 +186,8 @@ impl FheModulusSwitch {
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "modulus_switch",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         Ok(Self {

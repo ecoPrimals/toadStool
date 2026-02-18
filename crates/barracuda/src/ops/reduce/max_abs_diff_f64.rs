@@ -80,7 +80,7 @@ impl MaxAbsDiffF64 {
             return Ok((a[0] - b[0]).abs());
         }
 
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("Max Abs Diff f64"));
+        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("Max Abs Diff f64"));
 
         // Bind group layout for pass 1 (two inputs + output + params)
         let bgl = device
@@ -326,59 +326,16 @@ impl MaxAbsDiffF64 {
 
         // For very large inputs, may need CPU fallback
         if n_workgroups2 > 1 {
-            let partials = Self::read_f64_buffer(&device, &final_buffer, n_workgroups2)?;
+            let partials = device.read_f64_buffer(&final_buffer, n_workgroups2)?;
             return Ok(partials.iter().cloned().fold(0.0_f64, f64::max));
         }
 
         Self::read_f64_scalar(&device, &final_buffer)
     }
 
-    fn read_f64_scalar(device: &Arc<WgpuDevice>, buffer: &wgpu::Buffer) -> Result<f64> {
-        let values = Self::read_f64_buffer(device, buffer, 1)?;
+    fn read_f64_scalar(device: &WgpuDevice, buffer: &wgpu::Buffer) -> Result<f64> {
+        let values = device.read_f64_buffer(buffer, 1)?;
         Ok(values[0])
-    }
-
-    fn read_f64_buffer(
-        device: &Arc<WgpuDevice>,
-        buffer: &wgpu::Buffer,
-        count: usize,
-    ) -> Result<Vec<f64>> {
-        let staging = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("MaxAbsDiff staging"),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder =
-            device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("MaxAbsDiff readback"),
-                });
-        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
-        device.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            sender.send(result).unwrap();
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-        receiver
-            .recv()
-            .unwrap()
-            .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
-
-        let data = slice.get_mapped_range();
-        let result: Vec<f64> = data
-            .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
-            .collect();
-        drop(data);
-        staging.unmap();
-
-        Ok(result)
     }
 }
 

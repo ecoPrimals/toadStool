@@ -24,6 +24,7 @@
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 use std::time::Duration;
+use toadstool_common::constants::timeouts;
 use tokio::process::Command;
 use tracing::info;
 
@@ -48,8 +49,8 @@ impl Default for LaunchConfig {
             binary_path: PathBuf::from("toadstool"),
             args: vec!["daemon".to_string()],
             env: Vec::new(),
-            startup_timeout: Duration::from_secs(10),
-            health_check_interval: Duration::from_secs(5),
+            startup_timeout: timeouts::WS_CONNECT_TIMEOUT,
+            health_check_interval: timeouts::TCP_CONNECT_TIMEOUT,
         }
     }
 }

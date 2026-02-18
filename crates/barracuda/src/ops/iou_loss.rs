@@ -205,8 +205,8 @@ impl IoULoss {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let compute_pipeline_pass2 =
@@ -217,8 +217,8 @@ impl IoULoss {
                     layout: Some(&pipeline_layout),
                     module: &shader_module,
                     entry_point: "compute_loss",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         // Execute compute shader (two passes)

@@ -615,7 +615,7 @@ mod e2e {
         // All values should be in valid VWC range
         for (i, &v) in result.values.iter().enumerate() {
             assert!(
-                v >= 0.0 && v <= 1.0,
+                (0.0..=1.0).contains(&v),
                 "VWC at point {} out of range: {}",
                 i,
                 v
@@ -1274,9 +1274,7 @@ mod precision {
         let small = 1.0;
 
         let mut data = vec![large];
-        for _ in 0..n {
-            data.push(small);
-        }
+        data.extend(std::iter::repeat_n(small, n));
         data.push(-large); // Should cancel with first element
 
         let result = fmr.sum(&data).unwrap();

@@ -588,9 +588,7 @@ impl GpuDriverProfile {
             (CompilerKind::Aco, GpuArch::Rdna2 | GpuArch::Rdna3) => {
                 EigensolveStrategy::WavePacked { wave_size: 64 }
             }
-            (CompilerKind::Aco, GpuArch::Cdna2) => {
-                EigensolveStrategy::WavePacked { wave_size: 64 }
-            }
+            (CompilerKind::Aco, GpuArch::Cdna2) => EigensolveStrategy::WavePacked { wave_size: 64 },
             (CompilerKind::NvidiaPtxas, _) => {
                 // Proprietary scheduler handles wg1 efficiently,
                 // but warp-packing is neutral so we use it uniformly
@@ -701,7 +699,7 @@ impl GpuDriverProfile {
                 // A100: Full, consumer RTX 3000: Throttled but accessible via Vulkan
                 Fp64Rate::Throttled
             }
-            GpuArch::Ada => Fp64Rate::Throttled,   // 1:64 hardware but ~1:2 via Vulkan
+            GpuArch::Ada => Fp64Rate::Throttled, // 1:64 hardware but ~1:2 via Vulkan
             GpuArch::Turing => Fp64Rate::Throttled, // Similar to Ada
             GpuArch::Rdna2 | GpuArch::Rdna3 => Fp64Rate::Throttled,
             GpuArch::Cdna2 => Fp64Rate::Full,
@@ -735,11 +733,7 @@ impl fmt::Display for GpuDriverProfile {
         if !self.workarounds.is_empty() {
             writeln!(f, "  Workarounds: {:?}", self.workarounds)?;
         }
-        writeln!(
-            f,
-            "  Eigensolve: {:?}",
-            self.optimal_eigensolve_strategy()
-        )?;
+        writeln!(f, "  Eigensolve: {:?}", self.optimal_eigensolve_strategy())?;
         Ok(())
     }
 }

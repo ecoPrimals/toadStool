@@ -35,20 +35,12 @@ impl KineticEnergyF64 {
     ///
     /// # Returns
     /// Per-particle kinetic energies [N]
-    pub fn per_particle(
-        &self,
-        velocities: &[f64],
-        masses: &[f64],
-    ) -> Result<Vec<f64>> {
+    pub fn per_particle(&self, velocities: &[f64], masses: &[f64]) -> Result<Vec<f64>> {
         Ok(self.per_particle_cpu(velocities, masses))
     }
 
     /// Compute total kinetic energy
-    pub fn total(
-        &self,
-        velocities: &[f64],
-        masses: &[f64],
-    ) -> Result<f64> {
+    pub fn total(&self, velocities: &[f64], masses: &[f64]) -> Result<f64> {
         let per_particle = self.per_particle(velocities, masses)?;
         Ok(per_particle.iter().sum())
     }
@@ -61,12 +53,7 @@ impl KineticEnergyF64 {
     /// * `velocities` - Particle velocities [N*3]
     /// * `masses` - Particle masses [N]
     /// * `k_b` - Boltzmann constant (in appropriate units)
-    pub fn temperature(
-        &self,
-        velocities: &[f64],
-        masses: &[f64],
-        k_b: f64,
-    ) -> Result<f64> {
+    pub fn temperature(&self, velocities: &[f64], masses: &[f64], k_b: f64) -> Result<f64> {
         let n = masses.len();
         if n == 0 {
             return Ok(0.0);
@@ -102,7 +89,9 @@ mod tests {
 
     #[test]
     fn test_single_particle() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let ke_calc = KineticEnergyF64::new(device)?;
 
         let velocities = vec![1.0, 0.0, 0.0];
@@ -118,7 +107,9 @@ mod tests {
 
     #[test]
     fn test_3d_velocity() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let ke_calc = KineticEnergyF64::new(device)?;
 
         let velocities = vec![1.0, 2.0, 2.0]; // |v| = 3
@@ -134,7 +125,9 @@ mod tests {
 
     #[test]
     fn test_total_energy() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let ke_calc = KineticEnergyF64::new(device)?;
 
         let velocities = vec![
@@ -153,7 +146,9 @@ mod tests {
 
     #[test]
     fn test_temperature() -> Result<()> {
-        let Some(device) = create_test_device() else { return Ok(()); };
+        let Some(device) = create_test_device() else {
+            return Ok(());
+        };
         let ke_calc = KineticEnergyF64::new(device)?;
 
         // Ideal gas: equipartition gives each DOF ½k_B T
@@ -180,7 +175,12 @@ mod tests {
         let temp = ke_calc.temperature(&velocities, &masses, k_b)?;
 
         let rel_err = (temp - target_temp).abs() / target_temp;
-        assert!(rel_err < 0.01, "Temperature {} not close to {}", temp, target_temp);
+        assert!(
+            rel_err < 0.01,
+            "Temperature {} not close to {}",
+            temp,
+            target_temp
+        );
 
         Ok(())
     }

@@ -120,17 +120,17 @@ impl WeightedDotF64 {
         let n = weights.len();
         let shader = self
             .device
-            .compile_shader(Self::wgsl_shader(), Some("Weighted Dot f64"));
+            .compile_shader_f64(Self::wgsl_shader(), Some("Weighted Dot f64"));
 
         // Create buffers
-        let weights_buf = self
-            .device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Weights"),
-                contents: bytemuck::cast_slice(weights),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+        let weights_buf =
+            self.device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Weights"),
+                    contents: bytemuck::cast_slice(weights),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
 
         let a_buf = self
             .device
@@ -246,52 +246,55 @@ impl WeightedDotF64 {
                 push_constant_ranges: &[],
             });
 
-        let pipeline = self
-            .device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Weighted Dot Pipeline"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "weighted_dot_parallel",
-            cache: None,
-            compilation_options: Default::default(),
-            });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Weighted Dot Pipeline"),
+                    layout: Some(&pl),
+                    module: &shader,
+                    entry_point: "weighted_dot_parallel",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
 
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Weighted Dot BG"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: weights_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: a_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: b_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: result_buf.as_entire_binding(),
-                },
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Weighted Dot BG"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: weights_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: a_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: b_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: result_buf.as_entire_binding(),
+                    },
+                ],
+            });
 
         // Dispatch
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Weighted Dot Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Weighted Dot Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -313,12 +316,12 @@ impl WeightedDotF64 {
             mapped_at_creation: false,
         });
 
-        let mut encoder2 = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Copy Encoder"),
-            });
+        let mut encoder2 =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Copy Encoder"),
+                });
         encoder2.copy_buffer_to_buffer(&result_buf, 0, &staging, 0, (n_workgroups * 8) as u64);
         self.device.queue.submit(Some(encoder2.finish()));
 
@@ -339,7 +342,6 @@ impl WeightedDotF64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
         crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
@@ -347,7 +349,9 @@ mod tests {
 
     #[test]
     fn test_weighted_dot_small() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = WeightedDotF64::new(device).unwrap();
 
         let w = vec![1.0, 2.0, 3.0];
@@ -361,7 +365,9 @@ mod tests {
 
     #[test]
     fn test_dot_product() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = WeightedDotF64::new(device).unwrap();
 
         let a = vec![1.0, 2.0, 3.0, 4.0];
@@ -373,7 +379,9 @@ mod tests {
 
     #[test]
     fn test_norm_squared() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = WeightedDotF64::new(device).unwrap();
 
         let a = vec![3.0, 4.0];
@@ -384,7 +392,9 @@ mod tests {
 
     #[test]
     fn test_weighted_dot_large() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = WeightedDotF64::new(device).unwrap();
 
         let n = 10000;

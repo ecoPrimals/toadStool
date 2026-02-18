@@ -1,8 +1,8 @@
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::RwLock;
 
 use toadstool::ToadStoolResult;
+use toadstool_common::constants::timeouts;
 
 use crate::ecosystem::EcosystemCaller;
 use crate::hosting::RecursiveHostingManager;
@@ -147,7 +147,7 @@ impl UniversalScheduler {
         let network_config = crate::network::distributor::NetworkDistributorConfig {
             enabled: config.network_effects.enabled,
             max_concurrent_distributions: 10,
-            distribution_timeout: Duration::from_secs(300),
+            distribution_timeout: timeouts::WORKLOAD_EXECUTION_TIMEOUT,
         };
         let network_distributor = Arc::new(NetworkDistributor::new(network_config));
 

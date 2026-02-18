@@ -321,10 +321,12 @@ impl NestGateBackend {
         // CAPABILITY-BASED: Discover ANY storage service (not hardcoded "nestgate")
         let socket_path = toadstool_common::primal_sockets::discover_storage_socket()
             .await
-            .map_err(|e| ToadStoolError::configuration(format!(
-                "No storage service discovered: {}. Ensure a storage provider is running.",
-                e
-            )))?;
+            .map_err(|e| {
+                ToadStoolError::configuration(format!(
+                    "No storage service discovered: {}. Ensure a storage provider is running.",
+                    e
+                ))
+            })?;
 
         Ok(Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
@@ -340,7 +342,10 @@ impl NestGateBackend {
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
     #[must_use]
-    #[deprecated(since = "0.3.0", note = "Use new_async() for capability-based discovery")]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use new_async() for capability-based discovery"
+    )]
     #[allow(deprecated)]
     pub fn new(
         _endpoint: impl Into<String>,

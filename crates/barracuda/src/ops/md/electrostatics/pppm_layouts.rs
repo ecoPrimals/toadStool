@@ -203,8 +203,8 @@ impl PppmPipelines {
             ),
             module: bspline_module,
             entry_point: "main",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         let charge_spread = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -218,8 +218,8 @@ impl PppmPipelines {
             ),
             module: charge_spread_module,
             entry_point: "spread_per_particle",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         let greens_apply = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -233,8 +233,8 @@ impl PppmPipelines {
             ),
             module: greens_apply_module,
             entry_point: "main",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         let force_interp = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -248,8 +248,8 @@ impl PppmPipelines {
             ),
             module: force_interp_module,
             entry_point: "main",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         let erfc_forces = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -263,8 +263,8 @@ impl PppmPipelines {
             ),
             module: erfc_forces_module,
             entry_point: "main",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         // Self-energy uses same layout as erfc_forces
@@ -279,8 +279,8 @@ impl PppmPipelines {
             ),
             module: erfc_forces_module,
             entry_point: "self_energy",
-        cache: None,
-        compilation_options: Default::default(),
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         Self {

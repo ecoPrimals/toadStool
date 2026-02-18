@@ -189,8 +189,8 @@ impl Ifft1D {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let pipeline_bit_reverse =
@@ -201,8 +201,8 @@ impl Ifft1D {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "bit_reverse",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         let pipeline_normalize =
@@ -213,8 +213,8 @@ impl Ifft1D {
                     layout: Some(&normalize_pipeline_layout),
                     module: &normalize_shader,
                     entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
+                    cache: None,
+                    compilation_options: Default::default(),
                 });
 
         Ok(Self {

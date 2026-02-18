@@ -175,8 +175,8 @@ async fn measure_true_throughput(
         layout: Some(&pipeline_layout),
         module: &shader,
         entry_point: "main",
-    cache: None,
-    compilation_options: Default::default(),
+        cache: None,
+        compilation_options: Default::default(),
     });
 
     let workgroups = (size as u32).div_ceil(workgroup_size).min(65535);
@@ -383,8 +383,8 @@ async fn autotune_batch_size(
         layout: Some(&pl),
         module: &shader_mod,
         entry_point: "main",
-    cache: None,
-    compilation_options: Default::default(),
+        cache: None,
+        compilation_options: Default::default(),
     });
 
     let workgroups = (test_size as u32).div_ceil(workgroup_size);

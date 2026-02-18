@@ -291,7 +291,9 @@ mod tests {
 
     #[test]
     fn test_cell_list_two_particles() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = YukawaCellListF64::new(device).unwrap();
 
         let positions = vec![0.5, 0.5, 0.5, 1.5, 0.5, 0.5]; // Two particles, 1 unit apart
@@ -322,7 +324,9 @@ mod tests {
 
     #[test]
     fn test_cell_list_pbc() {
-        let Some(device) = get_test_device() else { return; };
+        let Some(device) = get_test_device() else {
+            return;
+        };
         let op = YukawaCellListF64::new(device).unwrap();
 
         // Two particles on opposite sides of box - should interact via PBC
@@ -340,10 +344,7 @@ mod tests {
         let (forces, energies) = op.compute_forces(&positions, &params).unwrap();
 
         // Should have non-zero energy due to PBC wrapping
-        assert!(
-            energies[0].abs() > 1e-10,
-            "Should have interaction via PBC"
-        );
+        assert!(energies[0].abs() > 1e-10, "Should have interaction via PBC");
 
         // Particle 0 should be pushed in negative x direction (away from particle 1 via PBC)
         assert!(

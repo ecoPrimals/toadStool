@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 
+use toadstool_common::constants::timeouts;
 use toadstool_common::primal_identity::{Capability, ServiceEndpoint};
 use toadstool_common::service_discovery::{DiscoveredService, DiscoveryMethod, ServiceDiscovery};
 use toadstool_common::{NetworkError, ToadStoolError, ToadStoolResult};
@@ -152,7 +153,7 @@ impl CoordinationClient {
         Ok(Self {
             rpc_client,
             _service_endpoint: endpoint.clone(),
-            timeout: Duration::from_secs(30),
+            timeout: timeouts::DEFAULT_REQUEST_TIMEOUT,
         })
     }
 

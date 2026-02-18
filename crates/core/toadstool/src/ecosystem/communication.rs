@@ -39,6 +39,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_common::constants::timeouts;
 use toadstool_common::service_discovery::DiscoveredService;
 
 use super::types::{EcosystemMessage, ServiceChannel, ServiceClient, ServiceStatus};
@@ -55,7 +56,7 @@ pub struct CommunicationManager {
 impl CommunicationManager {
     /// Create a new communication manager
     pub fn new() -> Self {
-        Self::with_timeout(Duration::from_secs(30))
+        Self::with_timeout(timeouts::DEFAULT_REQUEST_TIMEOUT)
     }
 
     /// Create a communication manager with custom timeout
@@ -341,7 +342,7 @@ impl CommunicationManager {
 
     // DEPRECATED HTTP METHODS REMOVED (Feb 17, 2026 — Deep Debt Evolution)
     // - send_via_http: Removed (placeholder parameter, always returned error)
-    // - send_via_jsonrpc: Removed (placeholder parameter, always returned error)  
+    // - send_via_jsonrpc: Removed (placeholder parameter, always returned error)
     // - send_via_http_fallback: Removed (always returned error)
     // Use send_via_unix_socket instead (pure Rust, no external dependencies)
 
@@ -427,7 +428,7 @@ mod tests {
             let response = _manager.fallback_response(_original.clone());
             assert_eq!(response.to, _original.from);
             assert_eq!(response.from, "toadstool_local"); // Evolved: indicates local-only mode
-            // Verify structured status payload
+                                                          // Verify structured status payload
             let status = response.payload.get("status").and_then(|v| v.as_str());
             assert_eq!(status, Some("networking_disabled"));
         }

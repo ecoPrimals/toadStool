@@ -8,6 +8,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use toadstool_common::auth::{AuthType, ServiceAuthConfig};
 use toadstool_common::config_bases::ConnectionPoolConfig;
+use toadstool_common::constants::timeouts;
 use tokio::sync::{mpsc, RwLock};
 use uuid::Uuid;
 
@@ -1033,7 +1034,7 @@ impl Default for NetworkHealthMonitor {
         Self {
             health_checks: HashMap::new(),
             last_check: None,
-            check_interval: Duration::from_secs(30),
+            check_interval: timeouts::HEALTH_CHECK_INTERVAL,
         }
     }
 }

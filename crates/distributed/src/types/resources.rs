@@ -398,3 +398,140 @@ pub enum ResourceValue {
     String(String),
     Boolean(bool),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resource_requirements_default_validation() {
+        let req = ResourceRequirements::default();
+        assert_eq!(req.cpu.min_cores, 1.0);
+        assert_eq!(req.memory.min_bytes, 1024 * 1024 * 1024);
+        assert_eq!(req.storage.min_bytes, 1024 * 1024 * 1024);
+        assert!(req.network.bandwidth_mbps.is_none());
+        assert!(req.gpu.is_none());
+    }
+
+    #[test]
+    fn cpu_requirements_construction() {
+        let cpu = CpuRequirements {
+            min_cores: 4.0,
+            max_cores: Some(8.0),
+        };
+        assert_eq!(cpu.min_cores, 4.0);
+        assert_eq!(cpu.max_cores, Some(8.0));
+    }
+
+    #[test]
+    fn memory_requirements_construction() {
+        let mem = MemoryRequirements {
+            min_bytes: 2 * 1024 * 1024 * 1024,
+            max_bytes: Some(16 * 1024 * 1024 * 1024),
+        };
+        assert_eq!(mem.min_bytes, 2 * 1024 * 1024 * 1024);
+    }
+
+    #[test]
+    fn storage_requirements_construction() {
+        let st = StorageRequirements {
+            min_bytes: 10 * 1024 * 1024 * 1024,
+            max_bytes: None,
+        };
+        assert_eq!(st.min_bytes, 10 * 1024 * 1024 * 1024);
+    }
+
+    #[test]
+    fn gpu_requirements_construction() {
+        let gpu = GpuRequirements {
+            min_memory_gb: 8.0,
+            compute_capability: Some("8.0".to_string()),
+        };
+        assert_eq!(gpu.min_memory_gb, 8.0);
+        assert_eq!(gpu.compute_capability.as_deref(), Some("8.0"));
+    }
+
+    #[test]
+    fn resource_requirements_to_from_core() {
+        let distributed = ResourceRequirements {
+            cpu: CpuRequirements {
+                min_cores: 2.0,
+                max_cores: Some(4.0),
+            },
+            memory: MemoryRequirements {
+                min_bytes: 4 * 1024 * 1024 * 1024,
+                max_bytes: None,
+            },
+            storage: StorageRequirements {
+                min_bytes: 20 * 1024 * 1024 * 1024,
+                max_bytes: None,
+            },
+            network: NetworkRequirements {
+                bandwidth_mbps: Some(100),
+                latency_ms: Some(50),
+            },
+            gpu: Some(GpuRequirements {
+                min_memory_gb: 4.0,
+                compute_capability: Some("7.5".to_string()),
+            }),
+        };
+        let core_req: toadstool::resources::ResourceRequirements = distributed.clone().into();
+        let back: ResourceRequirements = core_req.into();
+        assert_eq!(back.cpu.min_cores, distributed.cpu.min_cores);
+        assert_eq!(back.memory.min_bytes, distributed.memory.min_bytes);
+        assert_eq!(back.gpu.as_ref().map(|g| g.min_memory_gb), Some(4.0));
+    }
+
+    #[test]
+    fn distributed_retry_config_default() {
+        let config = DistributedRetryConfig::default();
+        assert_eq!(config.max_attempts, 3);
+        assert!(!config.retry_conditions.is_empty());
+    }
+
+    #[test]
+    fn resource_allocation_default() {
+        let alloc = ResourceAllocation::default();
+        assert_eq!(alloc.cpu_cores, 1.0);
+        assert_eq!(alloc.memory_bytes, 1024 * 1024 * 1024);
+        assert_eq!(alloc.storage_bytes, 10 * 1024 * 1024 * 1024);
+        assert!(alloc.gpu_allocation.is_none());
+    }
+
+    #[test]
+    fn network_config_default() {
+        let config = NetworkConfig::default();
+        assert_eq!(config.port_range.0, 8000);
+        assert_eq!(config.port_range.1, 9000);
+        assert!(matches!(
+            config.security_level,
+            NetworkSecurityLevel::Medium
+        ));
+    }
+
+    #[test]
+    fn resource_limits_default() {
+        let limits = ResourceLimits::default();
+        assert_eq!(limits.max_cpu_cores, 4.0);
+        assert_eq!(limits.max_memory_bytes, 8 * 1024 * 1024 * 1024);
+    }
+
+    #[test]
+    fn resource_value_variants() {
+        let _i = ResourceValue::Integer(42);
+        let _f = ResourceValue::Float(3.14);
+        let _s = ResourceValue::String("test".to_string());
+        let _b = ResourceValue::Boolean(true);
+    }
+
+    #[test]
+    fn gpu_allocation_construction() {
+        let alloc = GpuAllocation {
+            device_id: 0,
+            memory_bytes: 8 * 1024 * 1024 * 1024,
+            compute_units: 40,
+        };
+        assert_eq!(alloc.device_id, 0);
+        assert_eq!(alloc.memory_bytes, 8 * 1024 * 1024 * 1024);
+    }
+}

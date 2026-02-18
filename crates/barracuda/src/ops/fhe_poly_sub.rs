@@ -156,8 +156,8 @@ impl FhePolySub {
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "fhe_poly_sub",
-            cache: None,
-            compilation_options: Default::default(),
+                cache: None,
+                compilation_options: Default::default(),
             });
 
         Ok(Self {

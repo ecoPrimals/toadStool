@@ -41,13 +41,14 @@ async fn test_reduced_functionality_mode() {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "not yet implemented — test is a placeholder; replace with real RuntimeOrchestrator/restart when available"]
 async fn test_automatic_restart_after_crash() {
     // Test service automatically restarts after crash
     let service_crashed = true;
     let auto_restart_enabled = true;
     
     if service_crashed && auto_restart_enabled {
-        let service_restarted = true; // Mock restart
+        let service_restarted = false; // Not yet implemented — test is a placeholder
         assert!(service_restarted, "Should automatically restart");
     }
 }
@@ -84,24 +85,26 @@ async fn test_health_check_recovery_trigger() {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "not yet implemented — test is a placeholder; replace with real transaction rollback when available"]
 async fn test_transaction_rollback_recovery() {
     // Test transaction rollback on failure
     let transaction_failed = true;
     
     if transaction_failed {
-        let rolled_back = true; // Mock rollback
+        let rolled_back = false; // Not yet implemented — test is a placeholder
         assert!(rolled_back, "Should rollback on failure");
     }
 }
 
 #[tokio::test]
+#[ignore = "not yet implemented — test is a placeholder; replace with real data repair when available"]
 async fn test_data_repair_after_corruption() {
     // Test data repair mechanisms
     let data_corrupted = true;
     let backup_available = true;
     
     if data_corrupted && backup_available {
-        let repaired = true; // Mock repair
+        let repaired = false; // Not yet implemented — test is a placeholder
         assert!(repaired, "Should repair from backup");
     }
 }
@@ -136,6 +139,7 @@ async fn test_connection_pool_recovery() {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "not yet implemented — test is a placeholder; replace with real GC/memory pressure handling when available"]
 async fn test_memory_pressure_recovery() {
     // Test recovery from memory pressure
     let memory_usage_percent = 95.0;
@@ -144,12 +148,13 @@ async fn test_memory_pressure_recovery() {
     let memory_pressure = memory_usage_percent > high_memory_threshold;
     
     if memory_pressure {
-        let garbage_collected = true; // Mock GC
+        let garbage_collected = false; // Not yet implemented — test is a placeholder
         assert!(garbage_collected, "Should trigger garbage collection");
     }
 }
 
 #[tokio::test]
+#[ignore = "not yet implemented — test is a placeholder; replace with real disk cleanup when available"]
 async fn test_disk_space_recovery() {
     // Test recovery when disk space low
     let disk_usage_percent = 95.0;
@@ -158,7 +163,7 @@ async fn test_disk_space_recovery() {
     let disk_pressure = disk_usage_percent > cleanup_threshold;
     
     if disk_pressure {
-        let old_data_purged = true; // Mock cleanup
+        let old_data_purged = false; // Not yet implemented — test is a placeholder
         assert!(old_data_purged, "Should purge old data");
     }
 }
@@ -251,12 +256,13 @@ async fn test_timeout_recovery_with_retry() {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "not yet implemented — test is a placeholder; replace with real leader election when available"]
 async fn test_leader_failure_reelection() {
     // Test new leader elected after failure
     let leader_failed = true;
     
     if leader_failed {
-        let new_leader_elected = true; // Mock election
+        let new_leader_elected = false; // Not yet implemented — test is a placeholder
         assert!(new_leader_elected, "Should elect new leader");
     }
 }
@@ -266,13 +272,14 @@ async fn test_leader_failure_reelection() {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "not yet implemented — test is a placeholder; replace with real failover when available"]
 async fn test_failover_to_backup_system() {
     // Test failover to backup
     let primary_failed = true;
     let backup_available = true;
     
     if primary_failed && backup_available {
-        let failed_over = true; // Mock failover
+        let failed_over = false; // Not yet implemented — test is a placeholder
         assert!(failed_over, "Should failover to backup");
     }
 }
@@ -282,6 +289,7 @@ async fn test_failover_to_backup_system() {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "not yet implemented — test is a placeholder; replace with real alert-triggered recovery when available"]
 async fn test_alert_triggered_recovery() {
     // Test alerts trigger recovery actions
     let metric_value = 95.0;
@@ -290,7 +298,7 @@ async fn test_alert_triggered_recovery() {
     let alert_triggered = metric_value > alert_threshold;
     
     if alert_triggered {
-        let recovery_action_taken = true; // Mock action
+        let recovery_action_taken = false; // Not yet implemented — test is a placeholder
         assert!(recovery_action_taken, "Should take recovery action");
     }
 }
@@ -300,24 +308,26 @@ async fn test_alert_triggered_recovery() {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "not yet implemented — test is a placeholder; replace with real post-recovery cleanup when available"]
 async fn test_cleanup_after_recovery() {
     // Test cleanup of temporary resources after recovery
     let recovery_complete = true;
     let temp_resources_exist = true;
     
     if recovery_complete && temp_resources_exist {
-        let cleaned_up = true; // Mock cleanup
+        let cleaned_up = false; // Not yet implemented — test is a placeholder
         assert!(cleaned_up, "Should cleanup temporary resources");
     }
 }
 
 #[tokio::test]
+#[ignore = "not yet implemented — test is a placeholder; replace with real state validation when available"]
 async fn test_state_validation_after_recovery() {
     // Test state is valid after recovery
     let recovery_complete = true;
     
     if recovery_complete {
-        let state_valid = true; // Mock validation
+        let state_valid = false; // Not yet implemented — test is a placeholder
         assert!(state_valid, "State should be valid after recovery");
     }
 }

@@ -858,7 +858,7 @@ mod tests {
     use crate::device::test_pool::get_test_device;
 
     /// Get shared test device (uses pool to prevent GPU exhaustion)
-    /// 
+    ///
     /// **Deep Debt Evolution**: Tests now share a single wgpu device via LazyLock pool.
     /// This prevents "Maximum number of clients reached" errors when running many tests.
     async fn create_test_device() -> Arc<wgpu::Device> {
