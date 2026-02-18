@@ -543,9 +543,13 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
         // Self-announcement via mDNS TXT records.
         // We log the intent; full registration is handled by `infant_discovery`
         // when the caller opts into the full biomeOS advertise loop.
+        // Self-announcement via mDNS TXT records is handled by calling code that
+        // uses `primal_discovery_mdns::MdnsAdapter` or `infant_discovery`.
+        // `ServiceDiscovery` focuses on *finding* services; callers that want to
+        // announce themselves should use the biomeOS MdnsAdapter directly.
         debug!(
-            "announce_self: {} capabilities={} — for full mDNS registration use \
-             infant_discovery::AnnouncementLoop",
+            "announce_self: {} ({} capabilities) — use MdnsAdapter::announce() \
+             from primal_discovery_mdns for full mDNS registration",
             identity.primal_name(),
             identity.capabilities().len()
         );

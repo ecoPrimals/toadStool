@@ -235,7 +235,11 @@ impl AuthenticationManager {
                     seed_bytes.len()
                 )));
             }
-            let seed: [u8; 32] = seed_bytes.try_into().expect("length verified above");
+            let seed: [u8; 32] = seed_bytes.try_into().map_err(|_: Vec<u8>| {
+                crate::ToadStoolError::configuration(
+                    "seed byte conversion failed (length invariant violated)",
+                )
+            })?;
             let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed);
             use ed25519_dalek::Signer;
             let signature = signing_key.sign(payload.as_bytes());

@@ -17,7 +17,6 @@
 
 mod connection;
 mod framing;
-mod pool;
 
 use crate::semantic_methods::SemanticMethodRegistry;
 use std::sync::OnceLock;

@@ -188,13 +188,49 @@ impl ShaderTemplate {
         // Upgrade any legacy fossil calls to native WGSL builtins first.
         let substituted = Self::substitute_fossil_f64(shader_body);
         let patched = if needs_exp_log_workaround {
-            substituted
-                .replace("exp(", "exp_f64(")
-                .replace("log(", "log_f64(")
+            Self::apply_transcendental_workaround(&substituted)
         } else {
             substituted
         };
         Self::inject_missing_math_f64(&patched)
+    }
+
+    /// Replace `exp(` → `exp_f64(` and `log(` → `log_f64(` while preserving
+    /// WGSL comments so generated shader source stays readable.
+    ///
+    /// Processes the shader line-by-line:
+    /// - Pure comment lines (`//…`) are passed through unchanged.
+    /// - Lines with inline comments have only the code portion patched.
+    /// - Block comments `/* … */` are not yet handled (rare in WGSL compute
+    ///   shaders; revisit when encountered).
+    fn apply_transcendental_workaround(shader: &str) -> String {
+        shader
+            .lines()
+            .map(|line| {
+                let trimmed = line.trim_start();
+                // Skip whole-line comments unchanged
+                if trimmed.starts_with("//") {
+                    return line.to_string();
+                }
+                // Split at the first inline comment marker
+                if let Some(comment_start) = line.find("//") {
+                    let code = &line[..comment_start];
+                    let comment = &line[comment_start..];
+                    let patched = Self::patch_exp_log_in_code(code);
+                    format!("{patched}{comment}")
+                } else {
+                    Self::patch_exp_log_in_code(line)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// Apply the `exp`/`log` rename within a single non-comment code fragment.
+    #[inline]
+    fn patch_exp_log_in_code(code: &str) -> String {
+        code.replace("exp(", "exp_f64(")
+            .replace("log(", "log_f64(")
     }
 
     fn inject_missing_math_f64(shader_body: &str) -> String {

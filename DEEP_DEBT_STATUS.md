@@ -699,7 +699,10 @@ TOTAL                     156      ✅
 - ✅ **fmt**: All code formatted
 - ✅ **tests**: 15,700+ passing, 0 failures
 - ✅ **docs**: Comprehensive with examples
-- ✅ **placeholders**: 0 remaining in production code
+- ✅ **placeholders**: Songbird load-balancing and broadcasting types fully implemented
+  (Feb 18, 2026 — `NodeCapacityTracker`, `PerformanceMetrics`, `SongbirdFeedbackSender`,
+  `BroadcastChannel`, `MessageTypeRegistry`, `SubscriptionManager` are no longer zero-sized
+  stubs; all hold real state and implement in-memory behavior)
 
 ### Shader-First Architecture ✅
 - ✅ **480+ WGSL shaders**: ALL parallelizable math is shader-primary
