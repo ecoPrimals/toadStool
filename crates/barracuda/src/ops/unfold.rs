@@ -249,16 +249,12 @@ impl Unfold {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
     use std::sync::Arc;
-
-    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
-        crate::device::test_pool::get_test_device_if_gpu_available().await
-    }
 
     #[tokio::test]
     async fn test_unfold_basic() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data: Vec<f32> = (0..48).map(|i| i as f32).collect();
@@ -274,7 +270,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_unfold_with_padding() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data: Vec<f32> = (0..32).map(|i| i as f32).collect();
@@ -289,7 +285,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_unfold_invalid_shape() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
@@ -299,7 +295,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_unfold_dilation() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data: Vec<f32> = (0..64).map(|i| i as f32).collect();
@@ -314,7 +310,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_unfold_stride() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data: Vec<f32> = (0..128).map(|i| i as f32).collect();

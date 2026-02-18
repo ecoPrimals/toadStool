@@ -68,10 +68,11 @@ validated reference implementation. Each stage may have subtle bugs.
 
 ## Tracked Debt (Not Workarounds)
 
-### D-001: ~227 ops test modules create per-test GPU devices
+### D-001: ~218 remaining ops test modules still create per-test GPU devices
 
 **Impact**: GPU resource exhaustion under concurrent testing
-**Evolution**: Migrate to shared `test_pool::get_test_device()` pattern
+**Progress**: `device/test_pool.rs` foundation exists; 9 modules migrated (upsample, unfold, tile, tensor_split, take, squeeze, split, tanh, swish_wgsl)
+**Evolution**: Continue migrating remaining ops modules to `test_pool::get_test_device_if_gpu_available()`
 
 ### D-002: Hardcoded timeouts in distributed/capability crates
 
@@ -108,6 +109,8 @@ validated reference implementation. Each stage may have subtle bugs.
 | R-012 | 10 more files over 1000 LOC refactored: batched_eigh, wgpu_device, tensor_context, workload_migration, deployment_layer, songbird/types, analyzer, three_springs tests, hotspring tests, capabilities/tests | Feb 18, 2026 |
 | R-013 | D-002 hardcoded timeouts replaced with toadstool_common constants | Feb 18, 2026 |
 | R-014 | D-004 stale docs updated (cudarc 0.11→0.19, WebSocket refs removed) | Feb 18, 2026 |
+| R-015 | sparsity.rs (1242L), fd_gradient_f64.rs (1175L), manual_jsonrpc.rs (1100L) split | Feb 18, 2026 |
+| R-016 | D-001 partial: test_pool foundation + 9 ops modules migrated to shared GPU device | Feb 18, 2026 |
 
 ---
 

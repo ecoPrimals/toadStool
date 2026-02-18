@@ -12,6 +12,7 @@ pub use pool::{BufferDescriptor, BufferPool, PooledBuffer, SolverBufferSet};
 mod tests {
     use super::*;
     use crate::device::test_pool::get_test_device;
+    use std::sync::Arc;
 
     async fn create_test_device() -> Arc<wgpu::Device> {
         Arc::clone(&get_test_device().await.device)

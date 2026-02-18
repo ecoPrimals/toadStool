@@ -149,12 +149,8 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
     use std::sync::Arc;
-
-    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
-        crate::device::test_pool::get_test_device_if_gpu_available().await
-    }
 
     // NOTE: tanh.wgsl shader is incomplete (missing 'main' entry point)
     // Tests verify operation structure, not GPU execution
@@ -162,7 +158,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tanh_basic() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let input = Tensor::from_vec_on(vec![1.0; 5], vec![5], device)
@@ -174,7 +170,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tanh_edge_cases() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let input = Tensor::from_vec_on(vec![0.0], vec![1], device)
@@ -185,7 +181,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tanh_boundary() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let input = Tensor::from_vec_on(vec![-1.0, 0.0, 1.0], vec![3], device)
@@ -196,7 +192,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tanh_large_batch() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let input = Tensor::from_vec_on(vec![0.5; 1000], vec![1000], device)
@@ -207,7 +203,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tanh_precision() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device)

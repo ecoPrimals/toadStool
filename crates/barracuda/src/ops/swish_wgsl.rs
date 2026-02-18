@@ -186,13 +186,11 @@ impl Tensor {
 mod tests {
     use super::*;
 
-    async fn get_test_device() -> Option<std::sync::Arc<crate::device::WgpuDevice>> {
-        crate::device::test_pool::get_test_device_if_gpu_available().await
-    }
+    use crate::device::test_pool::get_test_device_if_gpu_available;
 
     #[tokio::test]
     async fn test_swish_zero() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data = vec![0.0];
@@ -207,7 +205,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_swish_positive() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data = vec![1.0, 2.0];
@@ -224,7 +222,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_swish_negative() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data = vec![-1.0, -2.0];

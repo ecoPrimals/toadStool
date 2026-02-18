@@ -324,16 +324,12 @@ impl Tile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
     use std::sync::Arc;
-
-    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
-        crate::device::test_pool::get_test_device_if_gpu_available().await
-    }
 
     #[tokio::test]
     async fn test_tile_basic() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
@@ -344,7 +340,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tile_2d() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data: Vec<f32> = (0..6).map(|i| i as f32).collect();
@@ -356,7 +352,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tile_invalid_length() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let input = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
@@ -366,7 +362,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tile_zero_repeat() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let input = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
@@ -376,7 +372,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tile_multiple_dims() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data: Vec<f32> = (0..12).map(|i| i as f32).collect();

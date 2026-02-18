@@ -164,16 +164,12 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
     use std::sync::Arc;
-
-    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
-        crate::device::test_pool::get_test_device_if_gpu_available().await
-    }
 
     #[tokio::test]
     async fn test_split_basic() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         // Simple 1D split
@@ -194,7 +190,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_split_edge_cases() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         // Split at start
@@ -214,7 +210,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_split_boundary() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         // Equal split
@@ -234,7 +230,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_split_large_batch() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         // 10000 elements
@@ -247,7 +243,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_split_precision() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         // Verify data preservation

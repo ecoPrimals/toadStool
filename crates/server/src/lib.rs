@@ -133,7 +133,6 @@ pub mod handlers;
 
 // ✅ PURE RUST: Manual JSON-RPC 2.0 over Unix sockets (no jsonrpsee!)
 pub mod manual_jsonrpc;
-mod manual_jsonrpc_handlers;
 
 // ✅ PURE RUST: Ollama integration client (ollama.list_models/inference/load/unload)
 pub mod ollama;

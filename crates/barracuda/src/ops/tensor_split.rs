@@ -243,16 +243,12 @@ impl TensorSplit {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
     use std::sync::Arc;
-
-    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
-        crate::device::test_pool::get_test_device_if_gpu_available().await
-    }
 
     #[tokio::test]
     async fn test_tensor_split_basic() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data: Vec<f32> = (0..12).map(|i| i as f32).collect();
@@ -270,7 +266,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_split_single() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data: Vec<f32> = (0..20).map(|i| i as f32).collect();
@@ -287,7 +283,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_split_invalid_dim() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
@@ -297,7 +293,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_split_invalid_index() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
@@ -307,7 +303,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tensor_split_empty() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         let data: Vec<f32> = (0..10).map(|i| i as f32).collect();

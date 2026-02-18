@@ -142,16 +142,12 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
+    use crate::device::test_pool::get_test_device_if_gpu_available;
     use std::sync::Arc;
-
-    async fn get_test_device() -> Option<Arc<WgpuDevice>> {
-        crate::device::test_pool::get_test_device_if_gpu_available().await
-    }
 
     #[tokio::test]
     async fn test_squeeze_basic() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         // Shape [1, 3, 1] should become [3]
@@ -167,7 +163,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_squeeze_edge_cases() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         // All dimensions = 1 (scalar)
@@ -187,7 +183,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_squeeze_boundary() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         // Multiple singleton dimensions
@@ -207,7 +203,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_squeeze_large_batch() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         // Large tensor with singleton dim
@@ -221,7 +217,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_squeeze_precision() {
-        let Some(device) = get_test_device().await else {
+        let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
         // Verify data preservation
