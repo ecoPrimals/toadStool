@@ -874,14 +874,13 @@ See: `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.md` and `NEXT_STEPS.md`
 
 ### Future Dependency Upgrades
 
-| Dependency | Current | Latest | Notes |
-|------------|---------|--------|-------|
-| `cudarc` | 0.11 | 0.19.2 | API migration needed (CudaDevice → CudaContext) |
+| Dependency | Current | Status |
+|------------|---------|--------|
+| `cudarc` | 0.19 | ✅ Upgraded Feb 2026 (was 0.11); CudaContext + CudaStream API |
 
-**cudarc Upgrade Path:**
-- New API uses `CudaContext` + `CudaStream` instead of `CudaDevice`
-- Will expose proper device name, compute capability, memory info
-- Currently using safe defaults; upgrade when CUDA testing available
+**cudarc 0.19 (Complete):**
+- Uses `CudaContext` + `CudaStream` instead of `CudaDevice`
+- Real device name, compute capability, memory info via `ctx.attribute()`
 
 ### Infrastructure (Ongoing)
 1. ✅ **VFIO NPU backend** -- Pure Rust implementation (926 LOC, no C kernel module)

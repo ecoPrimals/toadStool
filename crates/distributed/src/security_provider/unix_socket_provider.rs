@@ -30,6 +30,7 @@ use tokio::net::UnixStream;
 
 use super::provider::*;
 use super::types::*;
+use toadstool_common::constants::timeouts;
 
 /// Unix socket security provider
 ///
@@ -49,7 +50,7 @@ impl UnixSocketSecurityProvider {
         Self {
             socket_path: socket_path.as_ref().to_path_buf(),
             request_id: AtomicU64::new(1),
-            timeout_secs: 30,
+            timeout_secs: timeouts::DEFAULT_REQUEST_TIMEOUT.as_secs(),
         }
     }
 

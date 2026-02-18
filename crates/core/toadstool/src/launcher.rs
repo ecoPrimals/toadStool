@@ -49,7 +49,7 @@ impl Default for LaunchConfig {
             binary_path: PathBuf::from("toadstool"),
             args: vec!["daemon".to_string()],
             env: Vec::new(),
-            startup_timeout: timeouts::WS_CONNECT_TIMEOUT,
+            startup_timeout: timeouts::CONNECTION_STARTUP_TIMEOUT,
             health_check_interval: timeouts::TCP_CONNECT_TIMEOUT,
         }
     }

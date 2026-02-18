@@ -1,0 +1,302 @@
+//! Buffer pool for zero-overhead tensor operations
+
+use crate::error::{BarracudaError, Result};
+use dashmap::DashMap;
+use std::collections::HashMap;
+use std::ops::Deref;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, RwLock, Weak};
+
+/// A buffer that automatically returns to its pool when dropped.
+pub struct PooledBuffer {
+    buffer: Option<wgpu::Buffer>,
+    pool: Weak<BufferPoolInner>,
+    bucket: usize,
+}
+
+impl PooledBuffer {
+    pub(crate) fn new(buffer: wgpu::Buffer, pool: Weak<BufferPoolInner>, bucket: usize) -> Self {
+        Self {
+            buffer: Some(buffer),
+            pool,
+            bucket,
+        }
+    }
+
+    /// Get the underlying wgpu buffer
+    pub fn buffer(&self) -> &wgpu::Buffer {
+        self.buffer.as_ref().expect("Buffer already taken")
+    }
+
+    /// Get the buffer size in bytes
+    pub fn size(&self) -> u64 {
+        self.buffer().size()
+    }
+
+    /// Convert to a regular wgpu::Buffer (removes from pool management)
+    pub fn into_buffer(mut self) -> wgpu::Buffer {
+        self.buffer.take().expect("Buffer already taken")
+    }
+}
+
+impl Deref for PooledBuffer {
+    type Target = wgpu::Buffer;
+
+    fn deref(&self) -> &Self::Target {
+        self.buffer()
+    }
+}
+
+impl Drop for PooledBuffer {
+    fn drop(&mut self) {
+        if let Some(buffer) = self.buffer.take() {
+            if let Some(pool) = self.pool.upgrade() {
+                pool.return_buffer(buffer, self.bucket);
+            }
+        }
+    }
+}
+
+/// Inner pool structure (separate to allow Weak references)
+pub(crate) struct BufferPoolInner {
+    pub pools: DashMap<usize, Vec<wgpu::Buffer>>,
+    pub device: Arc<wgpu::Device>,
+    pub allocations: AtomicUsize,
+    pub reuses: AtomicUsize,
+    pub solver_buffers: RwLock<HashMap<String, SolverBufferSet>>,
+}
+
+impl BufferPoolInner {
+    fn return_buffer(&self, buffer: wgpu::Buffer, bucket: usize) {
+        self.pools.entry(bucket).or_default().push(buffer);
+        self.reuses.fetch_add(1, Ordering::Relaxed);
+    }
+}
+
+/// Descriptor for creating a pinned solver buffer
+#[derive(Debug, Clone)]
+pub struct BufferDescriptor {
+    pub size: u64,
+    pub usage: wgpu::BufferUsages,
+    pub label: Option<String>,
+}
+
+impl BufferDescriptor {
+    pub fn new(size: u64) -> Self {
+        Self {
+            size,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+            label: None,
+        }
+    }
+
+    pub fn f64_array(count: usize) -> Self {
+        Self::new((count * std::mem::size_of::<f64>()) as u64)
+    }
+
+    pub fn f32_array(count: usize) -> Self {
+        Self::new((count * std::mem::size_of::<f32>()) as u64)
+    }
+
+    pub fn with_label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
+        self
+    }
+
+    pub fn with_usage(mut self, usage: wgpu::BufferUsages) -> Self {
+        self.usage = usage;
+        self
+    }
+}
+
+/// A set of buffers pinned for the lifetime of a solver
+#[derive(Debug)]
+pub struct SolverBufferSet {
+    solver_id: String,
+    buffers: HashMap<String, Arc<wgpu::Buffer>>,
+}
+
+impl SolverBufferSet {
+    pub fn get(&self, name: &str) -> Option<&wgpu::Buffer> {
+        self.buffers.get(name).map(|b| b.as_ref())
+    }
+
+    pub fn get_arc(&self, name: &str) -> Option<Arc<wgpu::Buffer>> {
+        self.buffers.get(name).cloned()
+    }
+
+    pub fn solver_id(&self) -> &str {
+        &self.solver_id
+    }
+
+    pub fn buffer_names(&self) -> impl Iterator<Item = &str> {
+        self.buffers.keys().map(|s| s.as_str())
+    }
+
+    pub fn len(&self) -> usize {
+        self.buffers.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.buffers.is_empty()
+    }
+}
+
+/// Memory pool for buffer reuse
+pub struct BufferPool {
+    inner: Arc<BufferPoolInner>,
+}
+
+impl BufferPool {
+    pub fn new(device: Arc<wgpu::Device>) -> Self {
+        Self {
+            inner: Arc::new(BufferPoolInner {
+                pools: DashMap::new(),
+                device,
+                allocations: AtomicUsize::new(0),
+                reuses: AtomicUsize::new(0),
+                solver_buffers: RwLock::new(HashMap::new()),
+            }),
+        }
+    }
+
+    fn bucket_size(size: usize) -> usize {
+        let min_size = 256;
+        let size = size.max(min_size);
+        size.next_power_of_two()
+    }
+
+    pub fn acquire_pooled(&self, size_bytes: usize) -> PooledBuffer {
+        let bucket = Self::bucket_size(size_bytes);
+        let buffer = if let Some(mut pool) = self.inner.pools.get_mut(&bucket) {
+            pool.pop().unwrap_or_else(|| self.allocate_new(bucket))
+        } else {
+            self.allocate_new(bucket)
+        };
+        PooledBuffer::new(buffer, Arc::downgrade(&self.inner), bucket)
+    }
+
+    pub fn acquire(&self, size_bytes: usize) -> wgpu::Buffer {
+        let bucket = Self::bucket_size(size_bytes);
+        if let Some(mut pool) = self.inner.pools.get_mut(&bucket) {
+            if let Some(buffer) = pool.pop() {
+                self.inner.reuses.fetch_add(1, Ordering::Relaxed);
+                return buffer;
+            }
+        }
+        self.allocate_new(bucket)
+    }
+
+    fn allocate_new(&self, bucket: usize) -> wgpu::Buffer {
+        self.inner.allocations.fetch_add(1, Ordering::Relaxed);
+        self.inner.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Pooled Buffer"),
+            size: bucket as u64,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })
+    }
+
+    pub fn release(&self, buffer: wgpu::Buffer) {
+        let bucket = Self::bucket_size(buffer.size() as usize);
+        self.inner.pools.entry(bucket).or_default().push(buffer);
+    }
+
+    pub fn stats(&self) -> (usize, usize) {
+        (
+            self.inner.allocations.load(Ordering::Relaxed),
+            self.inner.reuses.load(Ordering::Relaxed),
+        )
+    }
+
+    pub fn pin_solver_buffers(
+        &self,
+        solver_id: &str,
+        buffers: &[(&str, BufferDescriptor)],
+    ) -> Result<SolverBufferSet> {
+        let mut solver_buffers = self
+            .inner
+            .solver_buffers
+            .write()
+            .expect("solver_buffers lock poisoned");
+
+        if solver_buffers.contains_key(solver_id) {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "Solver '{}' already has pinned buffers. Call release_solver_buffers() first.",
+                    solver_id
+                ),
+            });
+        }
+
+        let mut buffer_map = HashMap::new();
+        for (name, desc) in buffers {
+            let label = desc
+                .label
+                .clone()
+                .unwrap_or_else(|| format!("{}:{}", solver_id, name));
+            let buffer = self.inner.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(&label),
+                size: desc.size,
+                usage: desc.usage,
+                mapped_at_creation: false,
+            });
+            self.inner.allocations.fetch_add(1, Ordering::Relaxed);
+            buffer_map.insert(name.to_string(), Arc::new(buffer));
+        }
+
+        let buffer_set = SolverBufferSet {
+            solver_id: solver_id.to_string(),
+            buffers: buffer_map.clone(),
+        };
+        solver_buffers.insert(solver_id.to_string(), buffer_set);
+
+        Ok(SolverBufferSet {
+            solver_id: solver_id.to_string(),
+            buffers: buffer_map,
+        })
+    }
+
+    pub fn release_solver_buffers(&self, solver_id: &str) -> bool {
+        let mut solver_buffers = self
+            .inner
+            .solver_buffers
+            .write()
+            .expect("solver_buffers lock poisoned");
+        solver_buffers.remove(solver_id).is_some()
+    }
+
+    pub fn get_solver_buffers(&self, solver_id: &str) -> Option<SolverBufferSet> {
+        let solver_buffers = self
+            .inner
+            .solver_buffers
+            .read()
+            .expect("solver_buffers lock poisoned");
+        solver_buffers.get(solver_id).map(|set| SolverBufferSet {
+            solver_id: set.solver_id.clone(),
+            buffers: set.buffers.clone(),
+        })
+    }
+
+    pub fn has_solver_buffers(&self, solver_id: &str) -> bool {
+        let solver_buffers = self
+            .inner
+            .solver_buffers
+            .read()
+            .expect("solver_buffers lock poisoned");
+        solver_buffers.contains_key(solver_id)
+    }
+
+    pub fn solver_ids(&self) -> Vec<String> {
+        let solver_buffers = self
+            .inner
+            .solver_buffers
+            .read()
+            .expect("solver_buffers lock poisoned");
+        solver_buffers.keys().cloned().collect()
+    }
+}

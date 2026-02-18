@@ -23,9 +23,10 @@ use tokio::time::timeout;
 use tracing::{debug, info}; // EVOLVED: Pure Rust UID detection!
 
 use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_common::constants::timeouts;
 
-/// Request timeout for IPC operations
-const IPC_TIMEOUT: Duration = Duration::from_secs(5);
+/// Request timeout for IPC operations (from config defaults)
+const IPC_TIMEOUT: Duration = timeouts::TCP_CONNECT_TIMEOUT;
 
 /// Get default Songbird socket path using biomeOS standard
 ///

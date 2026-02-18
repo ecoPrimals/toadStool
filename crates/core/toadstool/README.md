@@ -140,7 +140,7 @@ toadstool = { version = "0.1", features = ["full-ecosystem"] }
 ```
 
 Available features:
-- `websocket` - WebSocket support
+- Real-time events via JSON-RPC 2.0 polling (WebSocket removed)
 - `full-ecosystem` - All ecosystem integrations
 - `wgpu` - GPU compute via wgpu
 

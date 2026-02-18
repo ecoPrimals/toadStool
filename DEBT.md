@@ -78,10 +78,10 @@ validated reference implementation. Each stage may have subtle bugs.
 **Impact**: Non-configurable behavior
 **Evolution**: Move to capability-based or config-driven timeouts
 
-### D-003: `batched_eigh_gpu.rs` at 1772 lines (was 2085)
+### D-003: `batched_eigh_gpu.rs` split into 6-module dir (was 2085→1772→split)
 
-**Impact**: Still over 1000-line limit; remaining bulk is 5 distinct eigenvalue sweep variants
-**Evolution**: Extract each sweep variant (standard, deflation, shift-invert, blocked, banded) as a trait impl
+**Status**: Module-split complete (standard.rs, single_dispatch.rs, pipelines.rs, sweep.rs, params.rs, mod.rs)
+**Remaining**: deflation, shift-invert, blocked, banded variants still to implement when needed
 
 ### D-004: cudarc version outdated in docs
 
@@ -105,6 +105,9 @@ validated reference implementation. Each stage may have subtle bugs.
 | R-009 | `crates/client` excluded from workspace — re-included | Feb 18, 2026 |
 | R-010 | 9 files over 1000 LOC — smart-refactored: cg_gpu, multi_gpu, production_hardening, graph_types, handlers, graph_types, handlers | Feb 18, 2026 |
 | R-011 | WebSocket (tungstenite/ring C-FFI) removed from entire codebase — pure Rust | Feb 18, 2026 |
+| R-012 | 10 more files over 1000 LOC refactored: batched_eigh, wgpu_device, tensor_context, workload_migration, deployment_layer, songbird/types, analyzer, three_springs tests, hotspring tests, capabilities/tests | Feb 18, 2026 |
+| R-013 | D-002 hardcoded timeouts replaced with toadstool_common constants | Feb 18, 2026 |
+| R-014 | D-004 stale docs updated (cudarc 0.11→0.19, WebSocket refs removed) | Feb 18, 2026 |
 
 ---
 
