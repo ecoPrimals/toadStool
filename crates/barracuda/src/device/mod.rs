@@ -57,7 +57,10 @@ pub use async_submit::{AsyncReadback, AsyncSubmitter};
 pub use cache_hierarchy::{
     CacheAwareTiler, CacheLevel, CacheResidency, MainMemory, SubstrateMemoryHierarchy, TileConfig,
 };
-pub use capabilities::{DeviceCapabilities, WorkloadType};
+pub use capabilities::{
+    CompilerKind, DeviceCapabilities, DriverKind, EigensolveStrategy, Fp64Rate, GpuArch,
+    GpuDriverProfile, WorkloadType, Workaround,
+};
 pub use kernel_router::{ComputeWorkload, KernelRouter, KernelTarget, NpuModelInfo};
 pub use registry::{
     BackendInfo, DeviceCapabilities as PhysicalDeviceCapabilities, DeviceRegistry, DeviceVendor,
