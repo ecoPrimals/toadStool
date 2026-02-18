@@ -1,0 +1,285 @@
+//! Authentication management for cross-Primal token propagation
+
+mod permissions;
+mod tokens;
+
+use std::sync::Arc;
+use std::time::Duration;
+
+use serde::{Deserialize, Serialize};
+
+use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
+
+use super::auth_backend::AuthBackend;
+use crate::ToadStoolResult;
+
+pub use permissions::{
+    PrimalTypeConfig, PropagationResult, TokenPropagationRequest, TokenPropagationStatus,
+    VerificationResult,
+};
+pub use tokens::{
+    AuthenticationToken, TokenRefreshRequest, TokenRequest, TokenVerificationRequest,
+    TokenVerificationResponse, TokenVerificationStatus,
+};
+
+/// Configuration for authentication manager
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthManagerConfig {
+    #[serde(default)]
+    pub beardog_endpoint: String,
+    pub token_refresh_interval: Duration,
+    pub signature_validation: bool,
+    pub timestamp_window: Duration,
+    pub replay_protection: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signing_key_seed: Option<String>,
+}
+
+impl Default for AuthManagerConfig {
+    fn default() -> Self {
+        Self {
+            beardog_endpoint: String::new(),
+            token_refresh_interval: TOKEN_REFRESH_INTERVAL,
+            signature_validation: true,
+            timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
+            replay_protection: true,
+            signing_key_seed: None,
+        }
+    }
+}
+
+/// Authentication manager for cross-Primal token propagation
+pub struct AuthenticationManager {
+    config: AuthManagerConfig,
+    current_token: Option<AuthenticationToken>,
+    backend: Arc<dyn AuthBackend>,
+    refresh_task: Option<tokio::task::JoinHandle<()>>,
+}
+
+impl AuthenticationManager {
+    #[must_use]
+    pub fn new(config: AuthManagerConfig, backend: Arc<dyn AuthBackend>) -> Self {
+        Self {
+            config,
+            current_token: None,
+            backend,
+            refresh_task: None,
+        }
+    }
+
+    pub async fn discover() -> crate::ToadStoolResult<Self> {
+        Self::discover_with_config(AuthManagerConfig::default()).await
+    }
+
+    pub async fn discover_with_config(config: AuthManagerConfig) -> crate::ToadStoolResult<Self> {
+        match Self::with_crypto_service(config.clone()).await {
+            Ok(manager) => {
+                tracing::info!("Discovered crypto service via capability-based discovery");
+                return Ok(manager);
+            }
+            Err(e) => tracing::debug!("Capability discovery failed: {}, trying fallbacks", e),
+        }
+
+        if let Ok(endpoint) = std::env::var("BEARDOG_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_SECURITY_ENDPOINT"))
+        {
+            tracing::info!("Discovered crypto service via environment: {}", endpoint);
+            let mut config = config;
+            config.beardog_endpoint = endpoint;
+            #[allow(deprecated)]
+            return Ok(Self::with_beardog(config));
+        }
+
+        if !config.beardog_endpoint.is_empty() {
+            #[allow(deprecated)]
+            return Ok(Self::with_beardog(config));
+        }
+
+        tracing::warn!(
+            "No crypto provider discovered, using in-memory backend. \
+             Ensure a crypto provider is running or set BEARDOG_ENDPOINT."
+        );
+        Ok(Self::with_inmemory(config))
+    }
+
+    pub async fn with_crypto_service(config: AuthManagerConfig) -> ToadStoolResult<Self> {
+        let backend = super::auth_backend::BearDogBackend::new_async().await?;
+        Ok(Self {
+            config,
+            current_token: None,
+            backend: Arc::new(backend),
+            refresh_task: None,
+        })
+    }
+
+    #[must_use]
+    #[deprecated(since = "0.3.0", note = "Use with_crypto_service() or discover()")]
+    #[allow(deprecated)]
+    pub fn with_beardog(config: AuthManagerConfig) -> Self {
+        let backend = super::auth_backend::BearDogBackend::new(config.beardog_endpoint.clone());
+        Self {
+            config,
+            current_token: None,
+            backend: Arc::new(backend),
+            refresh_task: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_inmemory(config: AuthManagerConfig) -> Self {
+        let backend = crate::biomeos_integration::InMemoryAuthBackend::new();
+        Self {
+            config,
+            current_token: None,
+            backend: Arc::new(backend),
+            refresh_task: None,
+        }
+    }
+
+    pub async fn initialize_beardog_connection(&self) -> ToadStoolResult<()> {
+        self.backend.initialize().await
+    }
+
+    pub async fn get_current_token(&self) -> ToadStoolResult<AuthenticationToken> {
+        if let Some(token) = &self.current_token {
+            if token.expires_at > chrono::Utc::now() + chrono::Duration::seconds(30) {
+                return Ok(token.clone());
+            }
+        }
+        self.request_new_token().await
+    }
+
+    async fn request_new_token(&self) -> ToadStoolResult<AuthenticationToken> {
+        let token_request = TokenRequest {
+            requesting_primal: "toadstool".to_string(),
+            scope: vec!["cross-primal".to_string(), "propagation".to_string()],
+            audience: vec![
+                "songbird".to_string(),
+                "nestgate".to_string(),
+                "squirrel".to_string(),
+                "biomeos".to_string(),
+            ],
+            timestamp: chrono::Utc::now(),
+        };
+        self.backend.request_token(&token_request).await
+    }
+
+    pub async fn sign_token_request(
+        &self,
+        token: &AuthenticationToken,
+        target_primal: &str,
+    ) -> ToadStoolResult<String> {
+        if !self.config.signature_validation {
+            return Ok("signature_disabled".to_string());
+        }
+        let payload = format!(
+            "{}:{}:{}",
+            token.id,
+            target_primal,
+            chrono::Utc::now().timestamp()
+        );
+        self.sign_payload(&payload).await
+    }
+
+    pub async fn sign_verification_request(&self, primal_name: &str) -> ToadStoolResult<String> {
+        if !self.config.signature_validation {
+            return Ok("signature_disabled".to_string());
+        }
+        let payload = format!("verify:{}:{}", primal_name, chrono::Utc::now().timestamp());
+        self.sign_payload(&payload).await
+    }
+
+    async fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
+        use base64::{engine::general_purpose, Engine as _};
+
+        if let Some(ref seed_b64) = self.config.signing_key_seed {
+            let seed_bytes = general_purpose::STANDARD.decode(seed_b64).map_err(|e| {
+                crate::ToadStoolError::configuration(format!(
+                    "Invalid signing key seed (base64 decode error): {}",
+                    e
+                ))
+            })?;
+            if seed_bytes.len() != 32 {
+                return Err(crate::ToadStoolError::configuration(format!(
+                    "Invalid signing key seed length: expected 32 bytes, got {}",
+                    seed_bytes.len()
+                )));
+            }
+            let seed: [u8; 32] = seed_bytes.try_into().expect("length verified above");
+            let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed);
+            use ed25519_dalek::Signer;
+            let signature = signing_key.sign(payload.as_bytes());
+            Ok(format!(
+                "ed25519:{}",
+                general_purpose::STANDARD.encode(signature.to_bytes())
+            ))
+        } else {
+            #[cfg(any(test, feature = "dev-mock-auth"))]
+            {
+                #[cfg(all(feature = "dev-mock-auth", not(debug_assertions)))]
+                compile_error!(
+                    "dev-mock-auth feature must not be enabled in release builds! \
+                     Use TOADSTOOL_SIGNING_KEY_SEED environment variable for production."
+                );
+                tracing::warn!(
+                    "⚠️ INSECURE: No signing key configured, using mock signature. \
+                     This is acceptable ONLY in tests."
+                );
+                Ok(format!(
+                    "ed25519:mock:{}",
+                    general_purpose::STANDARD.encode(payload.as_bytes())
+                ))
+            }
+            #[cfg(not(any(test, feature = "dev-mock-auth")))]
+            {
+                Err(crate::ToadStoolError::configuration(
+                    "No signing key configured. Set TOADSTOOL_SIGNING_KEY_SEED or configure signing_key_seed in auth config.",
+                ))
+            }
+        }
+    }
+
+    pub fn get_public_key(&self) -> Option<String> {
+        use base64::{engine::general_purpose, Engine as _};
+        let seed_b64 = self.config.signing_key_seed.as_ref()?;
+        let seed_bytes = general_purpose::STANDARD.decode(seed_b64).ok()?;
+        if seed_bytes.len() != 32 {
+            return None;
+        }
+        let seed: [u8; 32] = seed_bytes.try_into().ok()?;
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed);
+        let verifying_key = signing_key.verifying_key();
+        Some(general_purpose::STANDARD.encode(verifying_key.as_bytes()))
+    }
+
+    pub async fn start_token_refresh(&mut self) -> ToadStoolResult<()> {
+        let refresh_interval = self.config.token_refresh_interval;
+        let backend = Arc::clone(&self.backend);
+        let refresh_task = tokio::spawn(async move {
+            let mut interval = tokio::time::interval(refresh_interval);
+            loop {
+                interval.tick().await;
+                tracing::debug!("Refreshing authentication token");
+                let refresh_request = TokenRefreshRequest {
+                    requesting_primal: "toadstool".to_string(),
+                    timestamp: chrono::Utc::now(),
+                };
+                match backend.refresh_token(&refresh_request).await {
+                    Ok(_) => tracing::info!("Authentication token refreshed successfully"),
+                    Err(e) => tracing::error!("Failed to refresh authentication token: {}", e),
+                }
+            }
+        });
+        self.refresh_task = Some(refresh_task);
+        Ok(())
+    }
+
+    pub fn stop_token_refresh(&mut self) {
+        if let Some(task) = self.refresh_task.take() {
+            task.abort();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests;

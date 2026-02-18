@@ -79,10 +79,11 @@ validated reference implementation. Each stage may have subtle bugs.
 **Impact**: Non-configurable behavior
 **Evolution**: Move to capability-based or config-driven timeouts
 
-### D-003: `batched_eigh_gpu.rs` split into 6-module dir (was 2085→1772→split)
+### D-003: RESOLVED — All files now under 1000 lines
 
-**Status**: Module-split complete (standard.rs, single_dispatch.rs, pipelines.rs, sweep.rs, params.rs, mod.rs)
-**Remaining**: deflation, shift-invert, blocked, banded variants still to implement when needed
+**Status**: RESOLVED Feb 18, 2026
+All non-showcase Rust files are under 1000 lines.
+Deflation, shift-invert, blocked, banded eigh variants are future additions (new files when implemented).
 
 ### D-004: cudarc version outdated in docs
 
@@ -111,6 +112,8 @@ validated reference implementation. Each stage may have subtle bugs.
 | R-014 | D-004 stale docs updated (cudarc 0.11→0.19, WebSocket refs removed) | Feb 18, 2026 |
 | R-015 | sparsity.rs (1242L), fd_gradient_f64.rs (1175L), manual_jsonrpc.rs (1100L) split | Feb 18, 2026 |
 | R-016 | D-001 partial: test_pool foundation + 9 ops modules migrated to shared GPU device | Feb 18, 2026 |
+| R-017 | cg_gpu (1519L), pppm_gpu (1337L), precision (1270L), primal_sockets (1154L), service_discovery (1135L), cuda_impl (1093L), ipc_helpers (1091L), unibin (1059L), composition_constraints (1051L), resource_optimizer (1036L), biomeos/auth (1033L) all split | Feb 18, 2026 |
+| R-018 | D-003 resolved: ALL non-showcase files now under 1000 lines | Feb 18, 2026 |
 
 ---
 

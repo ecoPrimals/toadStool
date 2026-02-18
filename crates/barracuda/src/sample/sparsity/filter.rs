@@ -48,7 +48,7 @@ pub fn filter_training_data(
             }
             let mut sorted: Vec<f64> = y_data.to_vec();
             sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            let median = if sorted.len() % 2 == 0 {
+            let median = if sorted.len().is_multiple_of(2) {
                 (sorted[sorted.len() / 2 - 1] + sorted[sorted.len() / 2]) / 2.0
             } else {
                 sorted[sorted.len() / 2]
@@ -56,7 +56,7 @@ pub fn filter_training_data(
 
             let mut deviations: Vec<f64> = y_data.iter().map(|&y| (y - median).abs()).collect();
             deviations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            let mad = if deviations.len() % 2 == 0 {
+            let mad = if deviations.len().is_multiple_of(2) {
                 (deviations[deviations.len() / 2 - 1] + deviations[deviations.len() / 2]) / 2.0
             } else {
                 deviations[deviations.len() / 2]
