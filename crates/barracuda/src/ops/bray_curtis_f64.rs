@@ -45,6 +45,7 @@
 //! // ...
 //! ```
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
@@ -206,7 +207,7 @@ impl BrayCurtisF64 {
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             // Dispatch: ceil(n_pairs / 256) workgroups
-            let n_workgroups = n_pairs.div_ceil(256);
+            let n_workgroups = n_pairs.div_ceil(WORKGROUP_SIZE_1D as usize);
             pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
         }
 

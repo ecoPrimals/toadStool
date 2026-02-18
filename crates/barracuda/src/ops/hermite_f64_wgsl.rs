@@ -13,6 +13,7 @@
 //! - Gaussian quadrature weights
 //! - Gaussian-Hermite basis functions
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
@@ -266,7 +267,7 @@ impl HermiteF64 {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (size as u32).div_ceil(256);
+            let workgroups = (size as u32).div_ceil(WORKGROUP_SIZE_1D);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

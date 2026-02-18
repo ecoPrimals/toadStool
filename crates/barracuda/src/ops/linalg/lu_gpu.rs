@@ -29,6 +29,7 @@
 //!
 //! - Golub & Van Loan, "Matrix Computations", Algorithm 3.4.1
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
@@ -221,7 +222,7 @@ impl LuGpu {
                     });
                     pass.set_pipeline(&row_swap_pipeline);
                     pass.set_bind_group(0, &swap_bg, &[]);
-                    pass.dispatch_workgroups(n.div_ceil(256), 1, 1);
+                    pass.dispatch_workgroups(n.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
                 }
                 device.queue.submit(Some(encoder.finish()));
             }
@@ -260,7 +261,7 @@ impl LuGpu {
                 pass.set_pipeline(&compute_mult_pipeline);
                 pass.set_bind_group(0, &mult_bg, &[]);
                 let rows_to_process = n - k - 1;
-                pass.dispatch_workgroups(rows_to_process.div_ceil(256), 1, 1);
+                pass.dispatch_workgroups(rows_to_process.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
             }
             device.queue.submit(Some(encoder.finish()));
 
@@ -629,7 +630,7 @@ impl LuGpu {
                     });
                     pass.set_pipeline(&row_swap_pipeline);
                     pass.set_bind_group(0, &main_bg, &[]);
-                    pass.dispatch_workgroups(nu.div_ceil(256), 1, 1);
+                    pass.dispatch_workgroups(nu.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
                 }
                 device.queue.submit(Some(encoder.finish()));
             }
@@ -650,7 +651,7 @@ impl LuGpu {
                     pass.set_pipeline(&compute_mult_pipeline);
                     pass.set_bind_group(0, &main_bg, &[]);
                     let rows = nu - k - 1;
-                    pass.dispatch_workgroups(rows.div_ceil(256), 1, 1);
+                    pass.dispatch_workgroups(rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
                 }
                 device.queue.submit(Some(encoder.finish()));
             }

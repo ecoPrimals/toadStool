@@ -3,6 +3,7 @@
 //! GPU-accelerated vector mixing for SCF convergence.
 //! Uses WGSL shaders for f64 precision on all GPU hardware.
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
@@ -245,7 +246,7 @@ impl LinearMixer {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(self.vec_dim.div_ceil(256) as u32, 1, 1);
+            pass.dispatch_workgroups(self.vec_dim.div_ceil(WORKGROUP_SIZE_1D as usize) as u32, 1, 1);
         }
 
         // Read back

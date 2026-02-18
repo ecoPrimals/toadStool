@@ -714,7 +714,7 @@ impl CylindricalGradient {
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             // Workgroup size is 256, processing flat index
-            pass.dispatch_workgroups(total.div_ceil(256) as u32, 1, 1);
+            pass.dispatch_workgroups(total.div_ceil(FD_WORKGROUP_SIZE as usize) as u32, 1, 1);
         }
 
         // Read back
@@ -908,7 +908,7 @@ impl CylindricalLaplacian {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(total.div_ceil(256) as u32, 1, 1);
+            pass.dispatch_workgroups(total.div_ceil(FD_WORKGROUP_SIZE as usize) as u32, 1, 1);
         }
 
         // Read back

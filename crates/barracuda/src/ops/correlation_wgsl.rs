@@ -10,6 +10,7 @@
 //!
 //! **Note**: f32 precision. For f64, use manual computation with weighted_dot_f64.
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
@@ -305,7 +306,7 @@ impl Correlation {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bg, &[]);
-            let n_workgroups = num_pairs.div_ceil(256);
+            let n_workgroups = num_pairs.div_ceil(WORKGROUP_SIZE_1D as usize);
             pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
         }
 

@@ -15,6 +15,7 @@
 //! - Nuclear physics (fine structure constant precision)
 //! - Long timescale simulations
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
@@ -401,7 +402,7 @@ impl CoulombForceF64 {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (n as u32).div_ceil(256);
+            let workgroups = (n as u32).div_ceil(WORKGROUP_SIZE_1D);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -637,7 +638,7 @@ impl CoulombForceF64 {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (n as u32).div_ceil(256);
+            let workgroups = (n as u32).div_ceil(WORKGROUP_SIZE_1D);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

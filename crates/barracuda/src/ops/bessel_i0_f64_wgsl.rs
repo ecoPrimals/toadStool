@@ -4,6 +4,7 @@
 //!
 //! Applications: Kaiser windows, cylindrical heat conduction, neutron diffusion
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
@@ -120,7 +121,7 @@ impl BesselI0F64 {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("Bessel I0 f64 Pass"), timestamp_writes: None });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32).div_ceil(256), 1, 1);
+            pass.dispatch_workgroups((size as u32).div_ceil(WORKGROUP_SIZE_1D), 1, 1);
         }
 
         let staging_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {

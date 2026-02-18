@@ -10,6 +10,7 @@
 //! - Uses `math_f64.wgsl` for sin/cos (prepended via `ShaderTemplate`)
 //! - Double precision throughout for energy conservation
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::error::{BarracudaError, Result};
 use crate::shaders::precision::ShaderTemplate;
 use crate::tensor::Tensor;
@@ -334,7 +335,7 @@ impl Fft1DF64 {
             });
             pass.set_pipeline(&self.pipeline_bit_reverse);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(n.div_ceil(256), 1, 1);
+            pass.dispatch_workgroups(n.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
         }
 
         // Copy result back to working buffer
@@ -392,7 +393,7 @@ impl Fft1DF64 {
                 });
                 pass.set_pipeline(&self.pipeline_butterfly);
                 pass.set_bind_group(0, &stage_bind_group, &[]);
-                pass.dispatch_workgroups((n / 2).div_ceil(256), 1, 1);
+                pass.dispatch_workgroups((n / 2).div_ceil(WORKGROUP_SIZE_1D), 1, 1);
             }
 
             // Ping-pong: copy output to working for next stage

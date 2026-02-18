@@ -35,6 +35,7 @@
 //! - Demmel & Veselic (1992), "Jacobi's Method is More Accurate than QR"
 //! - hotSpring HFB Hamiltonian requirements
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
@@ -555,7 +556,7 @@ impl BatchedEighGpu {
                 });
                 pass.set_pipeline(&extract_pipeline);
                 pass.set_bind_group(0, &init_bg, &[]);
-                pass.dispatch_workgroups(nu.div_ceil(256), batch_u, 1);
+                pass.dispatch_workgroups(nu.div_ceil(WORKGROUP_SIZE_1D), batch_u, 1);
             }
             device.queue.submit(Some(encoder.finish()));
         }
@@ -1544,7 +1545,7 @@ impl BatchedEighGpu {
                 });
                 pass.set_pipeline(&extract_pipeline);
                 pass.set_bind_group(0, &init_bg, &[]);
-                pass.dispatch_workgroups(nu.div_ceil(256), batch_u, 1);
+                pass.dispatch_workgroups(nu.div_ceil(WORKGROUP_SIZE_1D), batch_u, 1);
             }
             device.queue.submit(Some(encoder.finish()));
         }

@@ -51,7 +51,7 @@ impl GLU {
 
         let params_data = [
             size as u32,
-            0u32, // split_dim (placeholder)
+            0u32, // split_dim: last dim (standard GLU behavior)
         ];
         let params_buffer = device.create_uniform_buffer("Params", &params_data);
 

@@ -29,6 +29,7 @@
 //!
 //! - Golub & Van Loan, "Matrix Computations", Algorithm 5.2.1
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
@@ -221,7 +222,7 @@ impl QrGpu {
                 pass.set_pipeline(&compute_householder_pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
                 let rows = m - k;
-                pass.dispatch_workgroups(rows.div_ceil(256), 1, 1);
+                pass.dispatch_workgroups(rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
             }
             device.queue.submit(Some(encoder.finish()));
 
@@ -268,7 +269,7 @@ impl QrGpu {
                 pass.set_pipeline(&update_column_k_pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
                 let rows = m - k;
-                pass.dispatch_workgroups(rows.div_ceil(256), 1, 1);
+                pass.dispatch_workgroups(rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
             }
             device.queue.submit(Some(encoder.finish()));
         }
@@ -685,7 +686,7 @@ impl QrGpu {
                 pass.set_pipeline(&compute_hh_pipeline);
                 pass.set_bind_group(0, &hh_bg, &[]);
                 let rows = mu - k;
-                pass.dispatch_workgroups(rows.div_ceil(256), 1, 1);
+                pass.dispatch_workgroups(rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
             }
             device.queue.submit(Some(encoder.finish()));
 
@@ -771,7 +772,7 @@ impl QrGpu {
                 pass.set_pipeline(&update_col_pipeline);
                 pass.set_bind_group(0, &apply_bg, &[]);
                 let rows = mu - k;
-                pass.dispatch_workgroups(rows.div_ceil(256), 1, 1);
+                pass.dispatch_workgroups(rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
             }
             device.queue.submit(Some(encoder.finish()));
         }
