@@ -9,6 +9,7 @@
 //! - ✅ Zero unsafe code
 //! - ✅ Agnostic (no hardcoded system)
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -298,7 +299,7 @@ impl VelocityVerlet {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups = (n_particles as u32).div_ceil(256);
+            let workgroups = (n_particles as u32).div_ceil(WORKGROUP_SIZE_1D);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

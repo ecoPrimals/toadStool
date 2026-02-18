@@ -10,6 +10,7 @@
 //! **Potential**: U(r) = 4ε[(σ/r)^12 - (σ/r)^6]
 //! **Force**: F = 24ε/r * [2(σ/r)^12 - (σ/r)^6] * r̂
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
@@ -227,7 +228,7 @@ impl LennardJonesF64 {
 
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((n as u32).div_ceil(256), 1, 1);
+            pass.dispatch_workgroups((n as u32).div_ceil(WORKGROUP_SIZE_1D), 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
