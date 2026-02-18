@@ -18,6 +18,7 @@ use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 use uuid::Uuid;
 
+use toadstool_common::constants::network::{BIND_ALL_IPV4, BYOB_DEFAULT_PORT};
 use toadstool::{
     byob::{
         create_byob_executor, ByobDeploymentRequest, ByobDeploymentResponse, ByobExecutor,
@@ -39,7 +40,7 @@ struct Args {
     bind: String,
 
     /// Server port
-    #[arg(short, long, default_value_t = 8084)]
+    #[arg(short, long, default_value_t = BYOB_DEFAULT_PORT)]
     port: u16,
 
     /// Enable verbose logging
@@ -65,8 +66,8 @@ pub struct ServerConfig {
 impl Default for ServerConfig {
     fn default() -> Self {
         Self {
-            bind_address: "0.0.0.0".to_string(),
-            port: 8084,
+            bind_address: BIND_ALL_IPV4.to_string(),
+            port: BYOB_DEFAULT_PORT,
             byob_config: ByobExecutorConfig::default(),
         }
     }

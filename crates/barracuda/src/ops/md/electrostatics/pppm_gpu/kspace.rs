@@ -8,6 +8,20 @@ use super::super::pppm_buffers::PppmCpuFft;
 use super::super::short_range::dipole_correction;
 use super::PppmGpu;
 
+/// Wrap positions to [0, L) for periodic boundary conditions (matches CPU)
+fn wrap_positions(positions: &[f64], box_dims: [f64; 3]) -> Vec<f64> {
+    positions
+        .chunks_exact(3)
+        .flat_map(|c| {
+            [
+                c[0] - (c[0] / box_dims[0]).floor() * box_dims[0],
+                c[1] - (c[1] / box_dims[1]).floor() * box_dims[1],
+                c[2] - (c[2] / box_dims[2]).floor() * box_dims[2],
+            ]
+        })
+        .collect()
+}
+
 /// Full PPPM with CPU FFT
 pub async fn compute_with_kspace(
     pppm: &PppmGpu,
@@ -24,6 +38,8 @@ pub async fn compute_with_kspace(
             ),
         });
     }
+    // Wrap positions to box (matches CPU charge_spread/force_interpolation)
+    let positions = wrap_positions(positions, pppm.params().box_dims);
     let order = pppm.params().interpolation_order;
     let [kx, ky, kz] = pppm.params().mesh_dims;
     let mesh_size = kx * ky * kz;
@@ -36,7 +52,8 @@ pub async fn compute_with_kspace(
         pppm.pipelines(),
     );
 
-    let positions_buffer = SparseBuffers::f64_from_slice_raw(device, "positions", positions);
+    let positions_buffer =
+        SparseBuffers::f64_from_slice_raw(device, "positions", &positions);
     let charges_buffer = SparseBuffers::f64_from_slice_raw(device, "charges", charges);
     let coeffs_size = n * order * 3;
     let coeffs_buffer = SparseBuffers::f64_zeros_raw(device, "coeffs", coeffs_size);
@@ -299,10 +316,7 @@ pub async fn compute_with_kspace(
 
     let forces = SparseBuffers::read_f64_raw(device, queue, &forces_buffer, n * 3)?;
     let pe_values = SparseBuffers::read_f64_raw(device, queue, &pe_buffer, n)?;
-    let pos_arrays: Vec<[f64; 3]> = positions
-        .chunks_exact(3)
-        .map(|c| [c[0], c[1], c[2]])
-        .collect();
+    let pos_arrays: Vec<[f64; 3]> = positions.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     let e_dipole = dipole_correction(
         &pos_arrays,
         charges,

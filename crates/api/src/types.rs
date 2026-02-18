@@ -14,7 +14,9 @@ use uuid::Uuid;
 use validator::Validate;
 
 use toadstool::RuntimeType;
-use toadstool_common::{ToadStoolError, ToadStoolErrorWithCode};
+use toadstool_common::{
+    constants::timeouts::DEFAULT_REQUEST_TIMEOUT, ToadStoolError, ToadStoolErrorWithCode,
+};
 
 /// Modern execution status enum
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
@@ -607,7 +609,7 @@ impl Default for ApiConfig {
             enable_rest: true,
             enable_websocket: false, // Deprecated; use JSON-RPC 2.0 polling
             cors_enabled: true,
-            request_timeout_secs: 30,
+            request_timeout_secs: DEFAULT_REQUEST_TIMEOUT.as_secs(),
             enable_openapi: true,
             api_version: "2.0.0".to_string(),
             enable_auth: false,

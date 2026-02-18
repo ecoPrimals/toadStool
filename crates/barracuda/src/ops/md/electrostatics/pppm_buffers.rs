@@ -87,113 +87,130 @@ impl PppmCpuFft {
         let mut complex = phi_k.to_vec();
         Self::fft_3d(&mut complex, kx, ky, kz, true);
 
-        // Extract real part and normalize
-        let norm = 1.0 / (size as f64);
-        (0..size).map(|i| complex[i * 2] * norm).collect()
+        // Extract real part (fft_3d already applied 1/N normalization)
+        (0..size).map(|i| complex[i * 2]).collect()
     }
 
     /// 3D FFT via 1D transforms along each axis
-    fn fft_3d(data: &mut [f64], kx: usize, ky: usize, kz: usize, inverse: bool) {
-        // Transform along z
-        for ix in 0..kx {
-            for iy in 0..ky {
-                let mut row: Vec<f64> = (0..kz)
-                    .flat_map(|iz| {
-                        let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                        vec![data[idx], data[idx + 1]]
-                    })
-                    .collect();
-                Self::fft_1d(&mut row, kz, inverse);
-                for iz in 0..kz {
-                    let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                    data[idx] = row[iz * 2];
-                    data[idx + 1] = row[iz * 2 + 1];
+    ///
+    /// Matches CPU Pppm's fft_3d_cpu exactly so GPU path produces same e_kspace/forces.
+    fn fft_3d(data: &mut [f64], nx: usize, ny: usize, nz: usize, inverse: bool) {
+        // FFT along Z (innermost)
+        for ix in 0..nx {
+            for iy in 0..ny {
+                let mut pencil = vec![0.0; nz * 2];
+                for iz in 0..nz {
+                    let idx = ((ix * ny + iy) * nz + iz) * 2;
+                    pencil[iz * 2] = data[idx];
+                    pencil[iz * 2 + 1] = data[idx + 1];
+                }
+
+                Self::fft_1d(&mut pencil, nz, inverse);
+
+                for iz in 0..nz {
+                    let idx = ((ix * ny + iy) * nz + iz) * 2;
+                    data[idx] = pencil[iz * 2];
+                    data[idx + 1] = pencil[iz * 2 + 1];
                 }
             }
         }
 
-        // Transform along y
-        for ix in 0..kx {
-            for iz in 0..kz {
-                let mut row: Vec<f64> = (0..ky)
-                    .flat_map(|iy| {
-                        let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                        vec![data[idx], data[idx + 1]]
-                    })
-                    .collect();
-                Self::fft_1d(&mut row, ky, inverse);
-                for iy in 0..ky {
-                    let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                    data[idx] = row[iy * 2];
-                    data[idx + 1] = row[iy * 2 + 1];
+        // FFT along Y
+        for ix in 0..nx {
+            for iz in 0..nz {
+                let mut pencil = vec![0.0; ny * 2];
+                for iy in 0..ny {
+                    let idx = ((ix * ny + iy) * nz + iz) * 2;
+                    pencil[iy * 2] = data[idx];
+                    pencil[iy * 2 + 1] = data[idx + 1];
+                }
+
+                Self::fft_1d(&mut pencil, ny, inverse);
+
+                for iy in 0..ny {
+                    let idx = ((ix * ny + iy) * nz + iz) * 2;
+                    data[idx] = pencil[iy * 2];
+                    data[idx + 1] = pencil[iy * 2 + 1];
                 }
             }
         }
 
-        // Transform along x
-        for iy in 0..ky {
-            for iz in 0..kz {
-                let mut row: Vec<f64> = (0..kx)
-                    .flat_map(|ix| {
-                        let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                        vec![data[idx], data[idx + 1]]
-                    })
-                    .collect();
-                Self::fft_1d(&mut row, kx, inverse);
-                for ix in 0..kx {
-                    let idx = (ix * ky * kz + iy * kz + iz) * 2;
-                    data[idx] = row[ix * 2];
-                    data[idx + 1] = row[ix * 2 + 1];
+        // FFT along X (outermost)
+        for iy in 0..ny {
+            for iz in 0..nz {
+                let mut pencil = vec![0.0; nx * 2];
+                for ix in 0..nx {
+                    let idx = ((ix * ny + iy) * nz + iz) * 2;
+                    pencil[ix * 2] = data[idx];
+                    pencil[ix * 2 + 1] = data[idx + 1];
                 }
+
+                Self::fft_1d(&mut pencil, nx, inverse);
+
+                for ix in 0..nx {
+                    let idx = ((ix * ny + iy) * nz + iz) * 2;
+                    data[idx] = pencil[ix * 2];
+                    data[idx + 1] = pencil[ix * 2 + 1];
+                }
+            }
+        }
+
+        // Normalize for inverse FFT
+        if inverse {
+            let scale = 1.0 / (nx * ny * nz) as f64;
+            for v in data.iter_mut() {
+                *v *= scale;
             }
         }
     }
 
-    /// Cooley-Tukey radix-2 1D FFT
+    /// CPU 1D FFT (Cooley-Tukey radix-2) - matches Pppm::fft_1d_cpu exactly
     fn fft_1d(data: &mut [f64], n: usize, inverse: bool) {
         use std::f64::consts::PI;
 
         // Bit-reversal permutation
-        let mut j = 0usize;
+        let mut j = 0;
         for i in 0..n {
             if i < j {
                 data.swap(i * 2, j * 2);
                 data.swap(i * 2 + 1, j * 2 + 1);
             }
-            let mut m = n / 2;
-            while m >= 1 && j >= m {
+            let mut m = n >> 1;
+            while m > 0 && j >= m {
                 j -= m;
-                m /= 2;
+                m >>= 1;
             }
             j += m;
         }
 
-        // Cooley-Tukey iterations
+        // Cooley-Tukey butterfly
         let sign = if inverse { 1.0 } else { -1.0 };
         let mut len = 2;
         while len <= n {
             let half = len / 2;
-            let mut angle: f64 = 0.0;
-            let angle_step = sign * PI / half as f64;
+            let angle_step = sign * 2.0 * PI / len as f64;
 
-            for _ in 0..half {
-                let (cos_a, sin_a) = (angle.cos(), angle.sin());
-                for i in (0..n).step_by(len) {
-                    let a_idx = (i + half) * 2;
-                    let b_idx = i * 2;
+            for start in (0..n).step_by(len) {
+                let mut angle: f64 = 0.0;
+                for k in 0..half {
+                    let i = start + k;
+                    let j_idx = start + k + half;
 
-                    let a_re = data[a_idx];
-                    let a_im = data[a_idx + 1];
+                    // Twiddle factor
+                    let tw_re = angle.cos();
+                    let tw_im = angle.sin();
 
-                    let t_re = cos_a * a_re - sin_a * a_im;
-                    let t_im = sin_a * a_re + cos_a * a_im;
+                    // Butterfly
+                    let t_re = tw_re * data[j_idx * 2] - tw_im * data[j_idx * 2 + 1];
+                    let t_im = tw_re * data[j_idx * 2 + 1] + tw_im * data[j_idx * 2];
 
-                    data[a_idx] = data[b_idx] - t_re;
-                    data[a_idx + 1] = data[b_idx + 1] - t_im;
-                    data[b_idx] += t_re;
-                    data[b_idx + 1] += t_im;
+                    data[j_idx * 2] = data[i * 2] - t_re;
+                    data[j_idx * 2 + 1] = data[i * 2 + 1] - t_im;
+                    data[i * 2] += t_re;
+                    data[i * 2 + 1] += t_im;
+
+                    angle += angle_step;
                 }
-                angle += angle_step;
             }
             len *= 2;
         }

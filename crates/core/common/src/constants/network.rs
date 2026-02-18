@@ -28,6 +28,9 @@ pub const METRICS_PORT: u16 = 9090;
 /// Default health check port
 pub const HEALTH_CHECK_PORT: u16 = 8082;
 
+/// Default BYOB (Bring Your Own Biome) coordinator/daemon port
+pub const BYOB_DEFAULT_PORT: u16 = 8084;
+
 // ============================================================================
 // REMOVED: Primal-Specific Ports
 // ============================================================================

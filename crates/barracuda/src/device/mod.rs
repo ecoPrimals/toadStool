@@ -25,6 +25,7 @@ pub mod cache_hierarchy;
 pub mod capabilities;
 pub mod kernel_router; // Unified Math → Hardware routing (Feb 15, 2026)
 pub mod pipeline_cache;
+pub mod probe; // Runtime f64 exp/log capability probing (W-001 evolution)
 pub mod registry; // Physical device tracking with backend preference (Feb 16, 2026)
 pub mod substrate;
 pub mod tensor_context;

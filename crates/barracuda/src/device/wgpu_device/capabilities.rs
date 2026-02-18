@@ -33,8 +33,21 @@ impl WgpuDevice {
     /// - RADV/ACO (AMD open-source): `fexp2` unimplemented for f64
     ///
     /// Proprietary NVIDIA and AMD drivers handle f64 exp/log natively.
+    ///
+    /// **Evolution (W-001)**: For definitive detection, use `probe_f64_exp_capable().await`
+    /// which dispatches a test shader and verifies empirically. This name-based method
+    /// remains as a synchronous fallback; probe results override when available.
     pub fn needs_f64_exp_log_workaround(&self) -> bool {
         self.is_nvk() || self.is_radv()
+    }
+
+    /// Probe and cache whether this device supports native f64 exp/log.
+    ///
+    /// This is the deep-debt evolution of `needs_f64_exp_log_workaround()`:
+    /// instead of name-matching, it dispatches a tiny shader and verifies
+    /// the result empirically. First call is async; subsequent calls use cache.
+    pub async fn probe_f64_exp_capable(&self) -> bool {
+        crate::device::probe::probe_f64_exp_capable(self).await
     }
 
     /// Check if this device uses a proprietary NVIDIA driver

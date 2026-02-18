@@ -60,7 +60,8 @@ impl Default for SandboxConfig {
             sandbox_root,
             temp_dir,
             max_concurrent_sandboxes: 100,
-            cleanup_timeout_secs: 30,
+            cleanup_timeout_secs: toadstool_common::constants::timeouts::BIOME_SHUTDOWN_TIMEOUT
+                .as_secs(),
             enable_monitoring: true,
             monitoring_interval_ms: 1000,
         }

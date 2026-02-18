@@ -11,30 +11,32 @@ capability-based solutions.
 
 ### W-001: Open-Source GPU Driver f64 Transcendental Workaround
 
-**Status**: ACTIVE — First solution, scheduled for evolution
+**Status**: ACTIVE — First solution implemented, capability probe live
 **Impact**: ~2x performance penalty for exp/log on affected drivers
 **Files**:
-- `crates/barracuda/src/device/wgpu_device.rs` — `needs_f64_exp_log_workaround()`
-- `crates/barracuda/src/shaders/precision.rs` — `for_driver_auto()`, `inject_missing_math_f64()`
+- `crates/barracuda/src/device/wgpu_device/capabilities.rs` — `needs_f64_exp_log_workaround()`, `probe_f64_exp_capable()`
+- `crates/barracuda/src/device/probe.rs` — runtime capability probing, global cache
+- `crates/barracuda/src/shaders/precision/mod.rs` — `for_driver_auto()`, `inject_missing_math_f64()`
 
 **Problem**: Open-source GPU compiler backends crash on f64 transcendentals:
 - **NVK/NAK** (NVIDIA nouveau): `exp(f64)` crashes the NAK compiler
 - **RADV/ACO** (AMD open-source): `fexp2` unimplemented for bit size 64
 
 **Current Solution**: Text replacement `exp()` → `exp_f64()`, `log()` → `log_f64()`
-with software implementations from `math_f64.wgsl`. Detection is driver-name based.
+with software implementations from `math_f64.wgsl`. Detection is driver-name based,
+with async `probe_f64_exp_capable()` now available for definitive runtime verification.
 
 **Why This Is Debt**:
 1. Text replacement is fragile (could match comments, variable names)
-2. Driver detection is heuristic (name matching, not capability probing)
+2. Driver detection is heuristic (name matching) — **DONE: capability probing implemented**
 3. Software fallbacks are ~2x slower than native hardware
 4. Applies blanket workaround rather than per-op capability check
 
 **Evolution Path** (ordered by priority):
-1. **Capability probing**: At startup, dispatch a tiny `exp(f64)` test shader.
-   If it succeeds, skip the workaround. This makes detection vendor-agnostic.
-   Foundation: `GpuDriverProfile::from_device()` in `device/capabilities.rs` already
-   detects driver/compiler via runtime adapter info — capability probing is the next step.
+1. **DONE: Capability probing** — `probe::probe_f64_exp_capable()` dispatches a tiny
+   `exp(f64)` test shader, caches results per adapter (name:backend:vendor). Async
+   callers can use this for definitive detection; synchronous `for_device()` keeps
+   heuristic fallback. `seed_cache_from_heuristics()` primes cache at device creation.
 2. **Upstream NAK fix**: Contribute `exp(f64)` lowering to Mesa NAK compiler.
    Track: https://gitlab.freedesktop.org/mesa/mesa — see W-003 for full NAK roadmap.
 3. **Upstream ACO fix**: Contribute `fexp2(f64)` implementation to Mesa ACO.
@@ -47,24 +49,21 @@ Titan V (NVK), RTX 4070 (proprietary).
 
 ---
 
-### W-002: PPPM GPU Physics Validation
+### W-002: PPPM GPU Physics Validation — RESOLVED
 
-**Status**: ACTIVE — Pre-existing bug, never validated on GPU
-**Impact**: 3 PPPM GPU tests fail with wrong physics values
-**Files**: `crates/barracuda/src/ops/md/electrostatics/pppm_gpu.rs`
+**Status**: RESOLVED Feb 18, 2026
+**Impact**: ~~3 PPPM GPU tests fail~~ — All physics tests now pass.
 
-**Problem**: The PPPM (Particle-Particle Particle-Mesh) electrostatics solver
-produces incorrect force directions and energy signs. Tests were previously
-masked by f64 capability errors (wrong device pool).
+**Root Cause**: `PppmCpuFft` (used by GPU k-space path) had a buggy 1D Cooley-Tukey
+FFT that only paired `(start, start+half)` instead of `(start+k, start+k+half)` for
+each butterfly index k. This produced ~36× inflated e_kspace, wrong energy sign,
+and violated Newton's 3rd law.
 
-**Why This Is Debt**: Complex multi-stage algorithm (charge spreading → FFT →
-Green's function → force interpolation → short-range correction) with no
-validated reference implementation. Each stage may have subtle bugs.
+**Fix**: Replaced `PppmCpuFft` fft_1d and fft_3d with exact CPU `Pppm::fft_1d_cpu`
+implementation. Added inverse FFT normalization in fft_3d (was missing, causing
+double-normalization in inverse_3d).
 
-**Evolution Path**:
-1. **CPU reference**: Implement CPU PPPM and validate against known benchmarks
-2. **Stage-by-stage validation**: Test each pipeline stage independently
-3. **Cross-check**: Compare with established MD codes (LAMMPS PPPM values)
+**Files**: `crates/barracuda/src/ops/md/electrostatics/pppm_buffers.rs`
 
 ---
 
@@ -110,16 +109,28 @@ a second target once NVK baseline is established.
 
 ## Tracked Debt (Not Workarounds)
 
-### D-001: ~218 remaining ops test modules still create per-test GPU devices
+### D-001: RESOLVED — All ops test modules migrated to shared device pool
 
-**Impact**: GPU resource exhaustion under concurrent testing
-**Progress**: `device/test_pool.rs` foundation exists; 9 modules migrated (upsample, unfold, tile, tensor_split, take, squeeze, split, tanh, swish_wgsl)
-**Evolution**: Continue migrating remaining ops modules to `test_pool::get_test_device_if_gpu_available()`
+**Status**: RESOLVED Feb 18, 2026
+`test_pool::get_test_device*()` used 1,616 times across the codebase.
+The only `WgpuDevice::new()` calls outside the pool are:
+- Production code legitimately creating devices per job (gpu_executor, unified.rs, benchmarks)
+- `bench_wgsize_nvk.rs` binary — intentional per-run device
+- `cyclic_reduction_wgsl.rs` — dead code (not in module system, comment: "API drift")
 
-### D-002: Hardcoded timeouts in distributed/capability crates
+### D-002: RESOLVED — Hardcoded values in production code (Feb 18, 2026)
 
-**Impact**: Non-configurable behavior
-**Evolution**: Move to capability-based or config-driven timeouts
+**Status**: RESOLVED Feb 18, 2026
+**What was fixed**:
+- `api/types.rs`: `request_timeout_secs: 30` → `DEFAULT_REQUEST_TIMEOUT.as_secs()`
+- `server/ollama.rs`: `timeout_secs: 30` → `DEFAULT_REQUEST_TIMEOUT.as_secs()`
+- `security/sandbox/types.rs`: `cleanup_timeout_secs: 30` → `BIOME_SHUTDOWN_TIMEOUT.as_secs()`
+- `runtime/specialty/mainframe/as400.rs`: `"127.0.0.1"` fallback → `LOCALHOST_IPV4`
+- `runtime/container/bin/toadstool-byob-server.rs`: `"0.0.0.0"`/`8084` → `BIND_ALL_IPV4`/`BYOB_DEFAULT_PORT`
+- `cli/daemon/config.rs`: `port: 8084` → `BYOB_DEFAULT_PORT`
+- Added `BYOB_DEFAULT_PORT` (8084) to `toadstool_common::constants::network`
+
+**Remaining**: Test fixtures and example code may still use hardcoded values — acceptable per audit rules.
 
 ### D-003: RESOLVED — All files now under 1000 lines
 
@@ -157,6 +168,8 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 | R-017 | cg_gpu (1519L), pppm_gpu (1337L), precision (1270L), primal_sockets (1154L), service_discovery (1135L), cuda_impl (1093L), ipc_helpers (1091L), unibin (1059L), composition_constraints (1051L), resource_optimizer (1036L), biomeos/auth (1033L) all split | Feb 18, 2026 |
 | R-018 | D-003 resolved: ALL non-showcase files now under 1000 lines | Feb 18, 2026 |
 | R-019 | Warp-packed eigensolve (`@workgroup_size(32,1,1)`, 2.2x NVK speedup), `GpuDriverProfile`, `EigensolveStrategy`, `bench_wgsize_nvk.rs` diagnostic binary — hotSpring Phase 1 handoff absorbed | Feb 18, 2026 |
+| R-020 | D-002 full audit: production hardcodes (timeouts, IPs, ports) replaced with constants — api, server/ollama, security/sandbox, runtime/specialty, runtime/container, cli/daemon | Feb 18, 2026 |
+| R-021 | W-002 PPPM GPU physics: fixed PppmCpuFft FFT (Cooley-Tukey butterfly bug), aligned e_kspace/forces with CPU reference — all 3 physics tests pass | Feb 18, 2026 |
 
 ---
 

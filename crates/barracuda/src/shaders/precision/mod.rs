@@ -133,6 +133,11 @@ impl ShaderTemplate {
         )
     }
 
+    /// Generate f64 shader with driver-aware exp/log patching (synchronous).
+    ///
+    /// Uses `needs_f64_exp_log_workaround()` (name-based heuristic). For definitive
+    /// detection, async callers should use `device.probe_f64_exp_capable().await` and
+    /// pass `!capable` as the workaround flag — probe overrides heuristic when run.
     pub fn for_device(shader_body: &str, device: &crate::device::WgpuDevice) -> String {
         Self::for_driver_auto(shader_body, device.needs_f64_exp_log_workaround())
     }

@@ -257,7 +257,7 @@ impl Terminal3270 {
         Self {
             connection: ConnectionSettings {
                 host: std::env::var("TOADSTOOL_MAINFRAME_3270_HOST")
-                    .unwrap_or_else(|_| std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string())),
+                    .unwrap_or_else(|_| std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| toadstool_common::constants::network::LOCALHOST_IPV4.to_string())),
                 port: 3270,
                 connection_type: crate::MainframeConnectionType::IBM3270,
                 authentication: AuthenticationSettings {
@@ -367,7 +367,7 @@ impl Terminal5250 {
         Self {
             connection: ConnectionSettings {
                 host: std::env::var("TOADSTOOL_MAINFRAME_5250_HOST")
-                    .unwrap_or_else(|_| std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string())),
+                    .unwrap_or_else(|_| std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| toadstool_common::constants::network::LOCALHOST_IPV4.to_string())),
                 port: 5250,
                 connection_type: crate::MainframeConnectionType::IBM5250,
                 authentication: AuthenticationSettings {

@@ -19,7 +19,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::io;
-use toadstool_common::constants::network::LOCALHOST_IPV4;
+use toadstool_common::constants::{
+    network::LOCALHOST_IPV4,
+    timeouts::DEFAULT_REQUEST_TIMEOUT,
+};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tracing::debug;
@@ -46,7 +49,7 @@ impl Default for OllamaConfig {
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(DEFAULT_OLLAMA_PORT),
-            timeout_secs: 30,
+            timeout_secs: DEFAULT_REQUEST_TIMEOUT.as_secs(),
         }
     }
 }

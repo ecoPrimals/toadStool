@@ -1,6 +1,7 @@
 //! Device creation and adapter selection
 
 use super::WgpuDevice;
+use crate::device::probe;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
 
@@ -82,12 +83,14 @@ impl WgpuDevice {
             actual_limits.max_buffer_size / (1 << 20),
         );
 
-        Ok(Self {
+        let wgpu_device = Self {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info: info,
             calibration: None,
-        })
+        };
+        probe::seed_cache_from_heuristics(&wgpu_device);
+        Ok(wgpu_device)
     }
 
     /// Create device from ToadStool hardware selection
@@ -301,12 +304,14 @@ impl WgpuDevice {
             .await
             .map_err(|e| BarracudaError::device(format!("Failed to create device: {e}")))?;
 
-        Ok(Self {
+        let wgpu_device = Self {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info: info,
             calibration: None,
-        })
+        };
+        probe::seed_cache_from_heuristics(&wgpu_device);
+        Ok(wgpu_device)
     }
 
     /// Create with custom filter (for specific GPU selection)
@@ -351,12 +356,14 @@ impl WgpuDevice {
             .await
             .map_err(|e| BarracudaError::device(format!("Failed to create device: {e}")))?;
 
-        Ok(Self {
+        let wgpu_device = Self {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info,
             calibration: None,
-        })
+        };
+        probe::seed_cache_from_heuristics(&wgpu_device);
+        Ok(wgpu_device)
     }
 
     /// Create WgpuDevice from existing wgpu device and queue
@@ -365,17 +372,19 @@ impl WgpuDevice {
         queue: Arc<wgpu::Queue>,
         adapter_info: wgpu::AdapterInfo,
     ) -> Self {
-        Self {
+        let wgpu_device = Self {
             device,
             queue,
             adapter_info,
             calibration: None,
-        }
+        };
+        probe::seed_cache_from_heuristics(&wgpu_device);
+        wgpu_device
     }
 
     /// Create WgpuDevice from existing device/queue with synthetic adapter info
     pub fn from_existing_simple(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>) -> Self {
-        Self {
+        let wgpu_device = Self {
             device,
             queue,
             adapter_info: wgpu::AdapterInfo {
@@ -388,6 +397,8 @@ impl WgpuDevice {
                 backend: wgpu::Backend::Vulkan,
             },
             calibration: None,
-        }
+        };
+        probe::seed_cache_from_heuristics(&wgpu_device);
+        wgpu_device
     }
 }

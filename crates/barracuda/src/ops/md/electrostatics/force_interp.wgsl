@@ -95,9 +95,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
                 let midx = mesh_index(ix, iy, iz, kx, ky, kz);
                 let phi = potential[midx];
                 
-                // Gradient components:
-                // ∂φ/∂x ≈ Σ φ(n) * dW_x/dx * W_y * W_z
-                // Scale derivatives by mesh spacing: dW/dx = dW/du * du/dx = dW/du * K/L
+                // Gradient components: ∂φ/∂x ≈ Σ φ(n) * dW_x/dx * W_y * W_z
+                // Scale: dW/dx = dW/du * du/dx = dW/du * K/L
                 grad_x = grad_x + phi * dwx * wy * wz * f64(kx) / box_x;
                 grad_y = grad_y + phi * wx * dwy * wz * f64(ky) / box_y;
                 grad_z = grad_z + phi * wx * wy * dwz * f64(kz) / box_z;

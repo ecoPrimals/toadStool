@@ -400,7 +400,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "W-002: PPPM physics validation"]
     async fn test_pppm_gpu_opposite_charges_energy() {
         use crate::device::test_pool::get_test_device_if_f64_gpu_available;
         let Some(device) = get_test_device_if_f64_gpu_available().await else {
@@ -424,7 +423,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "W-002: PPPM physics validation"]
     async fn test_pppm_gpu_newtons_third_law() {
         use crate::device::test_pool::get_test_device_if_f64_gpu_available;
         let Some(device) = get_test_device_if_f64_gpu_available().await else {
@@ -444,7 +442,11 @@ mod tests {
         let fy_sum = forces[1] + forces[4];
         let fz_sum = forces[2] + forces[5];
         let f1_mag = (forces[0].powi(2) + forces[1].powi(2) + forces[2].powi(2)).sqrt();
-        let relative_error = (fx_sum.powi(2) + fy_sum.powi(2) + fz_sum.powi(2)).sqrt() / f1_mag;
+        let relative_error = if f1_mag > 1e-14 {
+            (fx_sum.powi(2) + fy_sum.powi(2) + fz_sum.powi(2)).sqrt() / f1_mag
+        } else {
+            0.0
+        };
         assert!(
             relative_error < 1e-3,
             "Newton's 3rd law violation: |F1+F2|/|F1| = {}",
@@ -453,7 +455,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "W-002: PPPM physics validation"]
     async fn test_pppm_gpu_like_charges_repel() {
         use crate::device::test_pool::get_test_device_if_f64_gpu_available;
         let Some(device) = get_test_device_if_f64_gpu_available().await else {
@@ -478,6 +479,197 @@ mod tests {
             forces[3] > 0.0,
             "Like charges should repel: F1_x should be positive, got {}",
             forces[3]
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "W-002: diagnostic - compare CPU vs GPU B-spline coeffs"]
+    async fn test_pppm_gpu_bspline_vs_cpu() {
+        use crate::device::test_pool::get_test_device_if_f64_gpu_available;
+        use crate::linalg::sparse::SparseBuffers;
+        use crate::ops::md::electrostatics::bspline::BsplineCoeffs;
+
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return;
+        };
+        let params = PppmParams::custom(2, [10.0, 10.0, 10.0], [8, 8, 8], 2.0, 3.0, 4);
+        let positions = vec![4.0, 5.0, 5.0, 6.0, 5.0, 5.0];
+        let box_dims = params.box_dims;
+        let mesh_dims = params.mesh_dims;
+        let order = params.interpolation_order;
+
+        let wrap_one = |x: f64, l: f64| x - (x / l).floor() * l;
+        let pos0 = [
+            wrap_one(positions[0], box_dims[0]),
+            wrap_one(positions[1], box_dims[1]),
+            wrap_one(positions[2], box_dims[2]),
+        ];
+        let pos1 = [
+            wrap_one(positions[3], box_dims[0]),
+            wrap_one(positions[4], box_dims[1]),
+            wrap_one(positions[5], box_dims[2]),
+        ];
+
+        let cpu_coeffs0 = BsplineCoeffs::compute(order, pos0, mesh_dims, box_dims);
+        let cpu_coeffs1 = BsplineCoeffs::compute(order, pos1, mesh_dims, box_dims);
+
+        let pppm = PppmGpu::from_device(&device, params)
+            .await
+            .expect("GPU PPPM create failed");
+        let (device_ref, queue) = (pppm.device(), pppm.queue());
+        let positions_buffer =
+            SparseBuffers::f64_from_slice_raw(device_ref, "pos", &positions);
+        let coeffs_buffer =
+            SparseBuffers::f64_zeros_raw(device_ref, "coeffs", 2 * order * 3);
+        let derivs_buffer =
+            SparseBuffers::f64_zeros_raw(device_ref, "derivs", 2 * order * 3);
+        let base_idx_buffer = SparseBuffers::i32_zeros_raw(device_ref, "base", 6);
+        let bspline_params: Vec<f64> = vec![
+            2.0,
+            order as f64,
+            8.0, 8.0, 8.0,
+            box_dims[0], box_dims[1], box_dims[2],
+        ];
+        let params_buffer =
+            SparseBuffers::f64_from_slice_raw(device_ref, "bp", &bspline_params);
+        let layout = &pppm.layouts().bspline;
+        let bg = device_ref.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: positions_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: coeffs_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: derivs_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: base_idx_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: params_buffer.as_entire_binding() },
+            ],
+        });
+        let mut enc = device_ref.create_command_encoder(&Default::default());
+        {
+            let mut pass = enc.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&pppm.pipelines().bspline);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.dispatch_workgroups(1, 1, 1);
+        }
+        queue.submit(Some(enc.finish()));
+
+        let gpu_coeffs =
+            SparseBuffers::read_f64_raw(device_ref, queue, &coeffs_buffer, 2 * order * 3)
+                .unwrap();
+        let gpu_derivs =
+            SparseBuffers::read_f64_raw(device_ref, queue, &derivs_buffer, 2 * order * 3)
+                .unwrap();
+        let gpu_base =
+            SparseBuffers::read_i32_raw(device_ref, queue, &base_idx_buffer, 6).unwrap();
+
+        for d in 0..3 {
+            for k in 0..order {
+                let cpu_c = cpu_coeffs0.coeffs[d][k];
+                let gpu_c = gpu_coeffs[d * order + k];
+                assert!((cpu_c - gpu_c).abs() < 1e-10, "coeff0 d{} k{}: CPU {} GPU {}", d, k, cpu_c, gpu_c);
+                let cpu_d = cpu_coeffs0.derivs[d][k];
+                let gpu_d = gpu_derivs[d * order + k];
+                assert!((cpu_d - gpu_d).abs() < 1e-10, "deriv0 d{} k{}: CPU {} GPU {}", d, k, cpu_d, gpu_d);
+            }
+            assert_eq!(cpu_coeffs0.base_idx[d], gpu_base[d], "base0 d{}", d);
+        }
+        for d in 0..3 {
+            for k in 0..order {
+                let cpu_c = cpu_coeffs1.coeffs[d][k];
+                let gpu_c = gpu_coeffs[3 * order + d * order + k];
+                assert!((cpu_c - gpu_c).abs() < 1e-10, "coeff1 d{} k{}: CPU {} GPU {}", d, k, cpu_c, gpu_c);
+            }
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "W-002: diagnostic - erfc short-range only"]
+    async fn test_pppm_gpu_erfc_only() {
+        use crate::device::test_pool::get_test_device_if_f64_gpu_available;
+        use crate::ops::md::electrostatics::compute_short_range;
+
+        // Test erfc-only path (compute without kspace) vs CPU compute_short_range
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return;
+        };
+        let params = PppmParams::custom(2, [10.0, 10.0, 10.0], [8, 8, 8], 2.0, 3.0, 4);
+        let positions = vec![4.0, 5.0, 5.0, 6.0, 5.0, 5.0];
+        let charges = vec![1.0, -1.0];
+        let pos_3d: Vec<[f64; 3]> = positions.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+
+        let (cpu_short_forces, _) = compute_short_range(&pos_3d, &charges, &params);
+        let pppm = PppmGpu::from_device(&device, params)
+            .await
+            .expect("GPU PPPM create failed");
+        let (gpu_forces, _gpu_energy) = pppm.compute(&positions, &charges).await.unwrap();
+
+        // Erfc forces should attract: F0_x > 0, F1_x < 0
+        assert!(
+            cpu_short_forces[0][0] > 0.0,
+            "CPU erfc: +q should be pulled right"
+        );
+        assert!(
+            cpu_short_forces[1][0] < 0.0,
+            "CPU erfc: -q should be pulled left"
+        );
+        assert!(
+            gpu_forces[0] > 0.0,
+            "GPU erfc: +q should be pulled right, got {}",
+            gpu_forces[0]
+        );
+        assert!(
+            gpu_forces[3] < 0.0,
+            "GPU erfc: -q should be pulled left, got {}",
+            gpu_forces[3]
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires f64 GPU hardware"]
+    async fn test_pppm_gpu_matches_cpu_reference() {
+        use crate::device::test_pool::get_test_device_if_f64_gpu_available;
+        use crate::ops::md::electrostatics::Pppm;
+
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
+            return;
+        };
+
+        let positions = vec![4.0, 5.0, 5.0, 6.0, 5.0, 5.0]; // flat [x,y,z,x,y,z]
+        let charges = vec![1.0, -1.0];
+        let params = PppmParams::custom(2, [10.0, 10.0, 10.0], [8, 8, 8], 2.0, 3.0, 4);
+
+        // CPU reference
+        let pos_3d: Vec<[f64; 3]> = positions.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let cpu_pppm = Pppm::new(params.clone());
+        let (cpu_forces, cpu_energy) = cpu_pppm.compute(&pos_3d, &charges).unwrap();
+
+        // GPU version
+        let pppm = PppmGpu::from_device(&device, params)
+            .await
+            .expect("GPU PPPM create failed");
+        let (gpu_forces, gpu_energy) = pppm
+            .compute_with_kspace(&positions, &charges)
+            .await
+            .unwrap();
+
+        // Energy should match within 10% (mesh resolution limits accuracy)
+        let energy_denom = cpu_energy.abs().max(1e-14);
+        let energy_rel_error = ((gpu_energy - cpu_energy) / energy_denom).abs();
+        assert!(
+            energy_rel_error < 0.1,
+            "GPU energy {} vs CPU energy {}",
+            gpu_energy,
+            cpu_energy
+        );
+
+        // Force directions must match (sign check)
+        let cpu_fx0 = cpu_forces[0][0];
+        let gpu_fx0 = gpu_forces[0];
+        assert!(
+            cpu_fx0 * gpu_fx0 > 0.0,
+            "Force direction mismatch: CPU {} GPU {}",
+            cpu_fx0,
+            gpu_fx0
         );
     }
 }

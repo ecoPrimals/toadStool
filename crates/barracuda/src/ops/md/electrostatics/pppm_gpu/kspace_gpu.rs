@@ -11,6 +11,20 @@ use wgpu::util::DeviceExt;
 use super::super::short_range::dipole_correction;
 use super::PppmGpu;
 
+/// Wrap positions to [0, L) for periodic boundary conditions (matches CPU)
+fn wrap_positions(positions: &[f64], box_dims: [f64; 3]) -> Vec<f64> {
+    positions
+        .chunks_exact(3)
+        .flat_map(|c| {
+            [
+                c[0] - (c[0] / box_dims[0]).floor() * box_dims[0],
+                c[1] - (c[1] / box_dims[1]).floor() * box_dims[1],
+                c[2] - (c[2] / box_dims[2]).floor() * box_dims[2],
+            ]
+        })
+        .collect()
+}
+
 /// Full PPPM with GPU FFT
 pub async fn compute_with_kspace_gpu(
     pppm: &PppmGpu,
@@ -27,6 +41,8 @@ pub async fn compute_with_kspace_gpu(
             ),
         });
     }
+    // Wrap positions to box (matches CPU)
+    let positions = wrap_positions(positions, pppm.params().box_dims);
     let order = pppm.params().interpolation_order;
     let [kx, ky, kz] = pppm.params().mesh_dims;
     let mesh_size = kx * ky * kz;
@@ -52,7 +68,8 @@ pub async fn compute_with_kspace_gpu(
         pppm.pipelines(),
     );
 
-    let positions_buffer = SparseBuffers::f64_from_slice_raw(device, "positions", positions);
+    let positions_buffer =
+        SparseBuffers::f64_from_slice_raw(device, "positions", &positions);
     let charges_buffer = SparseBuffers::f64_from_slice_raw(device, "charges", charges);
     let coeffs_size = n * order * 3;
     let coeffs_buffer = SparseBuffers::f64_zeros_raw(device, "coeffs", coeffs_size);

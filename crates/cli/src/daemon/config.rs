@@ -117,7 +117,7 @@ impl DaemonConfig {
 impl Default for DaemonConfig {
     fn default() -> Self {
         Self {
-            port: 8084,
+            port: toadstool_common::constants::network::BYOB_DEFAULT_PORT,
             register_with_biomeos: false,
             socket_path: None,
             config_file: None,
