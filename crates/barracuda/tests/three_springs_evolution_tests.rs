@@ -14,8 +14,8 @@
 //! License: AGPL-3.0-or-later
 
 use barracuda::device::WgpuDevice;
-use barracuda::ops::fused_map_reduce_f64::{FusedMapReduceF64, MapOp, ReduceOp};
-use barracuda::ops::kriging_f64::{KrigingF64, KrigingResult, VariogramModel};
+use barracuda::ops::fused_map_reduce_f64::FusedMapReduceF64;
+use barracuda::ops::kriging_f64::{KrigingF64, VariogramModel};
 use std::sync::Arc;
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -1,7 +1,6 @@
 //! Tests for Transpose operation
 
 use crate::tensor::Tensor;
-use std::sync::Arc;
 
 #[tokio::test]
 async fn test_transpose_basic() {

@@ -320,6 +320,19 @@ impl Tensor {
         shape: Vec<usize>,
         device: Arc<WgpuDevice>,
     ) -> Result<Self> {
+        // Delegate to sync version - no actual async needed
+        Self::from_vec_on_sync(data, shape, device)
+    }
+
+    /// Create tensor on specific device (synchronous version)
+    ///
+    /// Use this when you already have a device reference and need to create
+    /// a tensor without async context (e.g., in scalar operations).
+    pub fn from_vec_on_sync(
+        data: Vec<f32>,
+        shape: Vec<usize>,
+        device: Arc<WgpuDevice>,
+    ) -> Result<Self> {
         // Validate shape
         let expected_size: usize = shape.iter().product();
         if data.len() != expected_size {
@@ -440,13 +453,13 @@ impl Tensor {
     /// let y = x.mul_scalar(2.0)?;  // [2.0, 4.0, 6.0]
     /// ```
     pub fn mul_scalar(&self, scalar: f32) -> Result<Tensor> {
-        // Create broadcasted scalar tensor with same shape
+        // Create broadcasted scalar tensor with same shape (sync - no executor needed)
         let data = vec![scalar; self.len()];
-        let scalar_tensor = futures::executor::block_on(Tensor::from_vec_on(
+        let scalar_tensor = Tensor::from_vec_on_sync(
             data,
             self.shape.clone(),
             self.device.clone(),
-        ))?;
+        )?;
 
         // Use existing element-wise multiplication
         self.mul(&scalar_tensor)
@@ -463,13 +476,13 @@ impl Tensor {
     /// let y = x.add_scalar(10.0)?;  // [11.0, 12.0, 13.0]
     /// ```
     pub fn add_scalar(&self, scalar: f32) -> Result<Tensor> {
-        // Create broadcasted scalar tensor with same shape
+        // Create broadcasted scalar tensor with same shape (sync - no executor needed)
         let data = vec![scalar; self.len()];
-        let scalar_tensor = futures::executor::block_on(Tensor::from_vec_on(
+        let scalar_tensor = Tensor::from_vec_on_sync(
             data,
             self.shape.clone(),
             self.device.clone(),
-        ))?;
+        )?;
 
         // Use existing element-wise addition
         self.add(&scalar_tensor)

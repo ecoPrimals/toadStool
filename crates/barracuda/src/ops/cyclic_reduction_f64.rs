@@ -700,7 +700,7 @@ impl CyclicReductionF64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
+    
 
     fn get_test_device() -> Option<Arc<crate::device::WgpuDevice>> {
         crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
