@@ -34,9 +34,9 @@ impl Default for NetworkDistributorConfig {
 /// Network distributor for distributed execution
 pub struct NetworkDistributor {
     /// Configuration
-    _config: NetworkDistributorConfig,
-    /// Load balancer
-    _load_balancer: Arc<NetworkLoadBalancer>,
+    config: NetworkDistributorConfig,
+    /// Load balancer — also serves as the live node registry
+    load_balancer: Arc<NetworkLoadBalancer>,
     /// Fault tolerance manager
     _fault_tolerance: Arc<FaultToleranceManager>,
     /// Metrics collector
@@ -48,25 +48,97 @@ impl NetworkDistributor {
     #[must_use]
     pub fn new(config: NetworkDistributorConfig) -> Self {
         Self {
-            _config: config,
-            _load_balancer: Arc::new(NetworkLoadBalancer::new()),
+            config,
+            load_balancer: Arc::new(NetworkLoadBalancer::new()),
             _fault_tolerance: Arc::new(FaultToleranceManager::new()),
             _metrics: Arc::new(NetworkMetricsCollector::new()),
         }
     }
 
-    /// Distribute a job across the network
-    pub fn distribute_job(&self, _job: UniversalJob) -> ToadStoolResult<DistributedExecution> {
-        // Create distributed execution
-        let distributed_execution = DistributedExecution {
-            execution_id: Uuid::new_v4(),
-            distribution_time: Utc::now(),
-            node_assignments: Vec::new(),
-            resource_allocations: Vec::new(),
-            status: crate::types::execution::DistributedExecutionStatus::Pending,
+    /// Register a discovered node so future `distribute_job` calls can reach it.
+    ///
+    /// Call this from Songbird capability discovery whenever a peer primal
+    /// announces itself via mDNS-SD or the Songbird registry.
+    pub async fn register_peer_node(&self, node_id: String, health: crate::network::NodeHealth) {
+        self.load_balancer.register_node(node_id, health).await;
+    }
+
+    /// Deregister a node (e.g. on failed health probe).
+    pub async fn deregister_peer_node(&self, node_id: &str) {
+        self.load_balancer.deregister_node(node_id).await;
+    }
+
+    /// Distribute a job across the network.
+    ///
+    /// Selects the least-loaded healthy remote node from the load balancer.
+    /// If no remote nodes are registered, falls back to a local-execution assignment
+    /// so the caller always gets a valid `DistributedExecution` to work with.
+    pub async fn distribute_job(&self, job: UniversalJob) -> ToadStoolResult<DistributedExecution> {
+        if !self.config.enabled {
+            tracing::debug!("Network distribution disabled; returning local-only execution.");
+            return Ok(self.local_execution(job));
+        }
+
+        let target_node = match self.load_balancer.select_node().await {
+            Some(node) => node,
+            None => {
+                tracing::debug!(
+                    "No remote nodes registered; falling back to local-node execution."
+                );
+                return Ok(self.local_execution(job));
+            }
         };
 
-        Ok(distributed_execution)
+        let req = &job.resource_requirements;
+        let assignment = crate::types::execution::NodeAssignment {
+            node_id: target_node,
+            resources: crate::types::resources::ResourceAllocation {
+                cpu_cores: req.cpu.min_cores,
+                memory_bytes: req.memory.min_bytes,
+                storage_bytes: req.storage.min_bytes,
+                network_bandwidth: 0,
+                gpu_allocation: None,
+                custom_resources: std::collections::HashMap::new(),
+            },
+            tasks: vec![job.job_id.to_string()],
+        };
+
+        Ok(DistributedExecution {
+            execution_id: Uuid::new_v4(),
+            distribution_time: Utc::now(),
+            node_assignments: vec![assignment],
+            resource_allocations: Vec::new(),
+            status: crate::types::execution::DistributedExecutionStatus::Pending,
+        })
+    }
+
+    /// Build a local-only execution plan (single self-assignment).
+    fn local_execution(&self, job: UniversalJob) -> DistributedExecution {
+        let req = &job.resource_requirements;
+        DistributedExecution {
+            execution_id: Uuid::new_v4(),
+            distribution_time: Utc::now(),
+            node_assignments: vec![crate::types::execution::NodeAssignment {
+                node_id: env!("CARGO_PKG_NAME").to_string(),
+                resources: crate::types::resources::ResourceAllocation {
+                    cpu_cores: req.cpu.min_cores,
+                    memory_bytes: req.memory.min_bytes,
+                    storage_bytes: req.storage.min_bytes,
+                    network_bandwidth: 0,
+                    gpu_allocation: None,
+                    custom_resources: std::collections::HashMap::new(),
+                },
+                tasks: vec![job.job_id.to_string()],
+            }],
+            resource_allocations: Vec::new(),
+            status: crate::types::execution::DistributedExecutionStatus::Pending,
+        }
+    }
+
+    /// Expose the load balancer so Songbird integration can register discovered nodes.
+    #[must_use]
+    pub fn load_balancer(&self) -> Arc<NetworkLoadBalancer> {
+        Arc::clone(&self.load_balancer)
     }
 }
 
@@ -122,9 +194,7 @@ mod tests {
     fn test_distributor_creation() {
         let config = NetworkDistributorConfig::default();
         let distributor = NetworkDistributor::new(config);
-
-        // Verify distributor was created successfully
-        assert!(distributor._config.enabled);
+        assert!(distributor.config.enabled);
     }
 
     #[test]
@@ -136,23 +206,22 @@ mod tests {
         };
 
         let distributor = NetworkDistributor::new(config);
-        assert_eq!(distributor._config.max_concurrent_distributions, 50);
+        assert_eq!(distributor.config.max_concurrent_distributions, 50);
         assert_eq!(
-            distributor._config.distribution_timeout,
+            distributor.config.distribution_timeout,
             Duration::from_secs(120)
         );
     }
 
-    #[test]
-    fn test_distribute_job() {
+    #[tokio::test]
+    async fn test_distribute_job_no_remote_nodes_falls_back_to_local() {
         use crate::types::{
             DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
         };
         use chrono::Utc;
         use toadstool::ExecutionRequest;
 
-        let config = NetworkDistributorConfig::default();
-        let distributor = NetworkDistributor::new(config);
+        let distributor = NetworkDistributor::new(NetworkDistributorConfig::default());
 
         let job = UniversalJob {
             job_id: Uuid::new_v4(),
@@ -166,26 +235,36 @@ mod tests {
             created_at: Utc::now(),
         };
 
-        let result = distributor.distribute_job(job);
-        assert!(result.is_ok());
-
-        let execution = result.unwrap();
-        assert!(execution.node_assignments.is_empty());
+        let execution = distributor.distribute_job(job).await.unwrap();
+        // Without registered nodes the local fallback assigns to self.
+        assert_eq!(execution.node_assignments.len(), 1);
+        assert_eq!(execution.node_assignments[0].node_id, env!("CARGO_PKG_NAME"));
         assert!(execution.resource_allocations.is_empty());
     }
 
-    #[test]
-    fn test_distribute_job_creates_unique_ids() {
+    #[tokio::test]
+    async fn test_distribute_job_routes_to_registered_node() {
+        use crate::network::NodeHealth;
         use crate::types::{
             DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
         };
         use chrono::Utc;
         use toadstool::ExecutionRequest;
 
-        let config = NetworkDistributorConfig::default();
-        let distributor = NetworkDistributor::new(config);
+        let distributor = NetworkDistributor::new(NetworkDistributorConfig::default());
+        distributor
+            .register_peer_node(
+                "peer-a".to_string(),
+                NodeHealth {
+                    healthy: true,
+                    cpu_usage: 30.0,
+                    memory_usage: 40.0,
+                    response_time_ms: 10,
+                },
+            )
+            .await;
 
-        let job1 = UniversalJob {
+        let job = UniversalJob {
             job_id: Uuid::new_v4(),
             job_type: None,
             execution_request: ExecutionRequest::default(),
@@ -197,7 +276,22 @@ mod tests {
             created_at: Utc::now(),
         };
 
-        let job2 = UniversalJob {
+        let execution = distributor.distribute_job(job).await.unwrap();
+        assert_eq!(execution.node_assignments.len(), 1);
+        assert_eq!(execution.node_assignments[0].node_id, "peer-a");
+    }
+
+    #[tokio::test]
+    async fn test_distribute_job_creates_unique_ids() {
+        use crate::types::{
+            DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
+        };
+        use chrono::Utc;
+        use toadstool::ExecutionRequest;
+
+        let distributor = NetworkDistributor::new(NetworkDistributorConfig::default());
+
+        let make_job = || UniversalJob {
             job_id: Uuid::new_v4(),
             job_type: None,
             execution_request: ExecutionRequest::default(),
@@ -209,8 +303,8 @@ mod tests {
             created_at: Utc::now(),
         };
 
-        let exec1 = distributor.distribute_job(job1).unwrap();
-        let exec2 = distributor.distribute_job(job2).unwrap();
+        let exec1 = distributor.distribute_job(make_job()).await.unwrap();
+        let exec2 = distributor.distribute_job(make_job()).await.unwrap();
 
         assert_ne!(exec1.execution_id, exec2.execution_id);
     }

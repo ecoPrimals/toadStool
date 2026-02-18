@@ -58,21 +58,16 @@ pub struct SongbirdConnection {
 // ============================================================================
 
 pub struct ToadStoolSongbirdIntegration {
-    #[allow(dead_code)]
     pub(super) instance_id: String,
     pub(super) connection: SongbirdConnection,
     pub(super) local_capacity: Arc<LocalCapacityManager>,
-    #[allow(dead_code)]
     pub(super) workload_scheduler: Arc<crate::universal::UniversalScheduler>,
 }
 
 pub struct MassiveJobDistributor {
     pub(super) splitting_strategies: HashMap<crate::UniversalJobType, JobSplittingStrategy>,
-    #[allow(dead_code)]
     pub(super) distribution_algorithms: Vec<DistributionAlgorithm>,
-    #[allow(dead_code)]
     pub(super) load_estimator: LoadEstimator,
-    #[allow(dead_code)]
     pub(super) job_coordinator: JobCoordinator,
 }
 

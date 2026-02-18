@@ -6,7 +6,7 @@ use crate::types::{BackoffStrategy, LoadBalancingStrategy};
 /// Network load balancer for distributed execution
 pub struct NetworkLoadBalancer {
     _strategies: Vec<LoadBalancingStrategy>,
-    _node_health: Arc<tokio::sync::RwLock<HashMap<String, NodeHealth>>>,
+    node_health: Arc<tokio::sync::RwLock<HashMap<String, NodeHealth>>>,
 }
 
 /// Node health information
@@ -23,8 +23,40 @@ impl NetworkLoadBalancer {
     pub fn new() -> Self {
         Self {
             _strategies: vec![LoadBalancingStrategy::RoundRobin],
-            _node_health: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            node_health: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
         }
+    }
+
+    /// Register or update a node's health metrics. Called by Songbird capability discovery.
+    pub async fn register_node(&self, node_id: String, health: NodeHealth) {
+        self.node_health.write().await.insert(node_id, health);
+    }
+
+    /// Deregister a node (e.g. after health probe failure).
+    pub async fn deregister_node(&self, node_id: &str) {
+        self.node_health.write().await.remove(node_id);
+    }
+
+    /// Select the least-loaded healthy node. Returns `None` if no remote nodes are registered.
+    pub async fn select_node(&self) -> Option<String> {
+        let health = self.node_health.read().await;
+        health
+            .iter()
+            .filter(|(_, h)| h.healthy)
+            .min_by(|(_, a), (_, b)| {
+                // Combined load score: 60 % CPU + 40 % memory pressure
+                let score_a = 0.6 * a.cpu_usage + 0.4 * a.memory_usage;
+                let score_b = 0.6 * b.cpu_usage + 0.4 * b.memory_usage;
+                score_a
+                    .partial_cmp(&score_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map(|(id, _)| id.clone())
+    }
+
+    /// Snapshot of current node health for diagnostics.
+    pub async fn node_health_snapshot(&self) -> HashMap<String, NodeHealth> {
+        self.node_health.read().await.clone()
     }
 }
 
@@ -91,13 +123,13 @@ mod tests {
     #[test]
     fn test_load_balancer_creation() {
         let lb = NetworkLoadBalancer::new();
-        assert!(lb._node_health.try_read().is_ok());
+        assert!(lb.node_health.try_read().is_ok());
     }
 
     #[test]
     fn test_load_balancer_default() {
         let lb = NetworkLoadBalancer::default();
-        assert!(lb._node_health.try_read().is_ok());
+        assert!(lb.node_health.try_read().is_ok());
     }
 
     #[test]

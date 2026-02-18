@@ -68,16 +68,23 @@ impl MassiveJobDistributor {
         job: &UniversalJob,
         analysis: &JobAnalysis,
     ) -> ToadStoolResult<Vec<SubTask>> {
+        let load = self.load_estimator.estimate_load(job).await;
+        let algo = self.select_algorithm(job);
         debug!(
-            "Splitting job {} with complexity {:?}",
-            job.job_id, analysis.complexity
+            job_id = %job.job_id,
+            complexity = ?analysis.complexity,
+            algorithm = ?algo,
+            cpu_load = load.cpu_load,
+            mem_load = load.memory_load,
+            "splitting job"
         );
 
         let job_type = Self::determine_job_type(job);
+        let default_strategy = JobSplittingStrategy::default();
         let _strategy = self
             .splitting_strategies
             .get(&job_type)
-            .unwrap_or(&JobSplittingStrategy::default());
+            .unwrap_or(&default_strategy);
 
         match analysis.complexity {
             JobComplexity::Simple => {
@@ -110,6 +117,31 @@ impl MassiveJobDistributor {
                 self.create_subtasks(job, subtask_count, &analysis.resource_requirements)
             }
         }
+    }
+
+    /// Choose the distribution algorithm best suited to this job.
+    ///
+    /// Prefers `CapabilityMatched` for ML/simulation workloads so that nodes
+    /// with matching accelerators are preferred, and falls back to `LoadBased`
+    /// for general compute, or `RoundRobin` if the configured list is empty.
+    fn select_algorithm(&self, job: &UniversalJob) -> DistributionAlgorithm {
+        let job_type = Self::determine_job_type(job);
+        let prefer_capability_match = matches!(
+            job_type,
+            UniversalJobType::MachineLearning | UniversalJobType::Simulation
+        );
+        if prefer_capability_match {
+            self.distribution_algorithms
+                .iter()
+                .find(|a| matches!(a, DistributionAlgorithm::CapabilityMatched))
+                .cloned()
+        } else {
+            self.distribution_algorithms
+                .iter()
+                .find(|a| matches!(a, DistributionAlgorithm::LoadBased))
+                .cloned()
+        }
+        .unwrap_or(DistributionAlgorithm::RoundRobin)
     }
 
     fn determine_job_type(job: &UniversalJob) -> UniversalJobType {
@@ -197,6 +229,35 @@ impl MassiveJobDistributor {
             JobPriority::Critical => 10,
             JobPriority::Emergency => 15,
         }
+    }
+
+    /// Split a job and build a `CoordinationJob` that describes how the subtasks
+    /// should be executed together. This is the primary entry point for callers
+    /// that need both splitting and coordination in one call.
+    pub async fn plan_distribution(
+        &self,
+        job: &UniversalJob,
+        analysis: &JobAnalysis,
+    ) -> ToadStoolResult<(Vec<SubTask>, super::types::CoordinationJob)> {
+        let subtasks = self.split_job(job, analysis).await?;
+
+        let plan = super::types::DistributionPlan {
+            plan_id: Uuid::new_v4(),
+            job_id: job.job_id,
+            subtasks: subtasks
+                .iter()
+                .map(|st| super::types::SubTaskPlan {
+                    subtask_id: st.id,
+                    target_nodes: vec![],
+                    resource_allocation: st.resource_requirements.clone(),
+                    dependencies: vec![],
+                })
+                .collect(),
+            coordination_strategy: super::types::CoordinationStrategy::Parallel,
+        };
+
+        let coordination = self.job_coordinator.coordinate(&plan).await;
+        Ok((subtasks, coordination))
     }
 }
 

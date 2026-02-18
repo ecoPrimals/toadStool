@@ -107,7 +107,7 @@ mod tests {
             health: "http://health".to_string(),
             metrics: Some("http://metrics".to_string()),
             admin: Some("http://admin".to_string()),
-            websocket: Some("ws://websocket".to_string()),
+            events_endpoint: Some("http://events".to_string()),
             custom,
         };
         assert_eq!(eps.primary, "http://primary");
@@ -126,7 +126,7 @@ mod tests {
             health: "http://health".to_string(),
             metrics: None,
             admin: None,
-            websocket: None,
+            events_endpoint: None,
             custom: HashMap::new(),
         };
         let b = PrimalEndpoints {
@@ -134,7 +134,7 @@ mod tests {
             health: "http://health".to_string(),
             metrics: None,
             admin: None,
-            websocket: None,
+            events_endpoint: None,
             custom: HashMap::new(),
         };
         assert_eq!(a, b);
@@ -147,7 +147,7 @@ mod tests {
             health: "http://api/health".to_string(),
             metrics: Some("http://api/metrics".to_string()),
             admin: None,
-            websocket: None,
+            events_endpoint: None,
             custom: HashMap::new(),
         };
         let json = serde_json::to_string(&eps).expect("serialize");

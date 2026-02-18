@@ -183,14 +183,36 @@ pub const DASHBOARD_HTML: &str = r#"
     </div>
     
     <div class="card">
-        <h2>Real-time Logs</h2>
-        <div id="logs"></div>
-        <button class="refresh-btn" onclick="connectWebSocket()">Connect WebSocket</button>
+        <h2>Live Log (polling /health)</h2>
+        <div id="logs" style="max-height:200px;overflow-y:auto;font-family:monospace;font-size:0.85em"></div>
+        <button class="refresh-btn" id="poll-btn" onclick="togglePolling()">Start Live Polling</button>
     </div>
     
     <script>
-        let ws;
-        
+        let pollInterval = null;
+
+        function togglePolling() {
+            const btn = document.getElementById('poll-btn');
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+                btn.textContent = 'Start Live Polling';
+                addLog('Polling stopped');
+            } else {
+                btn.textContent = 'Stop Live Polling';
+                addLog('Polling /health every 5 s…');
+                pollInterval = setInterval(async () => {
+                    try {
+                        const r = await fetch('/health');
+                        const d = await r.json();
+                        addLog(`status=${d.status}  cpu=${d.resources?.cpu_usage_percent?.toFixed(1)}%  mem=${d.resources?.memory_usage_percent?.toFixed(1)}%  active=${d.active_executions}`);
+                    } catch (e) {
+                        addLog(`poll error: ${e}`);
+                    }
+                }, 5000);
+            }
+        }
+
         async function refreshHealth() {
             try {
                 const response = await fetch('/health');
@@ -262,30 +284,6 @@ pub const DASHBOARD_HTML: &str = r#"
             } catch (error) {
                 console.error('Error refreshing stats:', error);
             }
-        }
-        
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws`;
-            
-            ws = new WebSocket(wsUrl);
-            
-            ws.onopen = function() {
-                addLog('WebSocket connected');
-            };
-            
-            ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                addLog(`Event: ${data.type} - ${JSON.stringify(data.data)}`);
-            };
-            
-            ws.onclose = function() {
-                addLog('WebSocket disconnected');
-            };
-            
-            ws.onerror = function(error) {
-                addLog(`WebSocket error: ${error}`);
-            };
         }
         
         function addLog(message) {

@@ -32,8 +32,80 @@ impl ToadStoolSongbirdIntegration {
         })
     }
 
+    /// Submit a job for execution: analyse complexity, choose strategy, and dispatch.
+    ///
+    /// - **Simple jobs** that fit local capacity go to `workload_scheduler`.
+    /// - **Moderate/Complex** jobs get split and forwarded via Songbird.
+    /// - **UltraMassive** jobs are fully distributed across the Songbird ecosystem.
+    pub async fn submit_job(&self, job: UniversalJob) -> ToadStoolResult<Vec<SubTaskHandle>> {
+        let analysis = self.analyze_job_for_distribution(&job).await?;
+        tracing::info!(
+            instance_id = %self.instance_id,
+            job_id = %job.job_id,
+            complexity = ?analysis.complexity,
+            strategy = ?analysis.distribution_strategy,
+            subtasks = analysis.estimated_subtasks,
+            "dispatching job"
+        );
+
+        match analysis.distribution_strategy {
+            JobDistributionStrategy::LocalOnly => {
+                // Schedule directly on this primal without touching Songbird.
+                self.workload_scheduler.schedule_job(job).await?;
+                Ok(vec![])
+            }
+            JobDistributionStrategy::LoadBalanced
+            | JobDistributionStrategy::SongbirdEcosystem
+            | JobDistributionStrategy::ReplicateAcrossNodes
+            | JobDistributionStrategy::HybridExecution => {
+                // Single-task dispatch: let Songbird's internal scheduler choose the node.
+                let req = self.create_songbird_job_request(&job)?;
+                let subtask = super::types::SubTask {
+                    id: req.job_id,
+                    payload: req.job_payload.clone(),
+                    resource_requirements: req.resource_requirements.clone(),
+                    priority: req.priority,
+                    constraints: req.constraints.clone(),
+                };
+                let handle = self
+                    .submit_subtask_to_songbird(subtask, req.target_nodes)
+                    .await?;
+                Ok(vec![handle])
+            }
+            JobDistributionStrategy::SplitAndDistribute
+            | JobDistributionStrategy::MassiveDistribution => {
+                // Multi-task dispatch: create one subtask per partition and fan out.
+                let req = self.create_songbird_job_request(&job)?;
+                let subtask_count = analysis.estimated_subtasks.max(1);
+                let per_cpu = req.resource_requirements.cpu.min_cores / subtask_count as f64;
+                let per_mem = req.resource_requirements.memory.min_bytes / subtask_count as u64;
+                let partitioned: Vec<(SubTask, Vec<String>)> = (0..subtask_count)
+                    .map(|i| {
+                        let mut st_req = req.resource_requirements.clone();
+                        st_req.cpu.min_cores = per_cpu;
+                        st_req.memory.min_bytes = per_mem;
+                        let mut payload = req.job_payload.clone();
+                        payload.extend(
+                            format!("{{\"partition\":{i},\"total\":{subtask_count}}}").as_bytes(),
+                        );
+                        (
+                            super::types::SubTask {
+                                id: uuid::Uuid::new_v4(),
+                                payload,
+                                resource_requirements: st_req,
+                                priority: req.priority,
+                                constraints: req.constraints.clone(),
+                            },
+                            vec![], // Songbird resolves target nodes
+                        )
+                    })
+                    .collect();
+                self.distribute_job_subtasks(&job, partitioned).await
+            }
+        }
+    }
+
     /// Analyze job to determine optimal distribution strategy
-    #[allow(dead_code)]
     async fn analyze_job_for_distribution(
         &self,
         job: &UniversalJob,
@@ -68,7 +140,6 @@ impl ToadStoolSongbirdIntegration {
     }
 
     /// Distribute job subtasks to multiple ToadStool instances
-    #[allow(dead_code)]
     async fn distribute_job_subtasks(
         &self,
         _job: &UniversalJob,
@@ -210,7 +281,6 @@ impl ToadStoolSongbirdIntegration {
     }
 
     /// Create Songbird job request from Universal job
-    #[allow(dead_code)]
     fn create_songbird_job_request(
         &self,
         job: &UniversalJob,
@@ -268,12 +338,10 @@ use tokio::sync::RwLock;
 
 impl LocalCapacityManager {
     pub async fn new(_config: CapacityConfig) -> ToadStoolResult<Self> {
+        // Probe real system capacity at construction so callers see accurate values
+        // from the first call to get_available_capacity().
         Ok(Self {
-            available_capacity: Arc::new(RwLock::new(CapacityInfo {
-                cpu_cores: 0.0,
-                memory_bytes: 0,
-                storage_bytes: 0,
-            })),
+            available_capacity: Arc::new(RwLock::new(CapacityInfo::from_system())),
         })
     }
 
@@ -281,46 +349,72 @@ impl LocalCapacityManager {
         Ok(self.available_capacity.read().await.clone())
     }
 
+    /// Accept the job if this node has enough CPU, memory, and storage capacity.
     pub async fn can_accept_job(
         &self,
-        _requirements: &crate::ResourceRequirements,
+        requirements: &crate::ResourceRequirements,
     ) -> ToadStoolResult<bool> {
-        // Placeholder implementation - accept reasonable resource requests
-        let capacity = self.available_capacity.read().await;
-        Ok(capacity.cpu_cores > 0.5 && capacity.memory_bytes > 1024 * 1024 * 1024)
+        let cap = self.available_capacity.read().await;
+        Ok(requirements.cpu.min_cores <= cap.cpu_cores
+            && requirements.memory.min_bytes <= cap.memory_bytes
+            && requirements.storage.min_bytes <= cap.storage_bytes)
     }
 
+    /// Reserve capacity for a job. Records a tentative deduction so that
+    /// back-to-back `can_accept_job` calls don't double-count.
     pub async fn reserve_resources(
         &self,
-        _requirements: &crate::ResourceRequirements,
+        requirements: &crate::ResourceRequirements,
     ) -> ToadStoolResult<super::types::ResourceReservation> {
-        // Placeholder implementation - returns basic reservation
+        {
+            let mut cap = self.available_capacity.write().await;
+            cap.cpu_cores = (cap.cpu_cores - requirements.cpu.min_cores).max(0.0);
+            cap.memory_bytes = cap
+                .memory_bytes
+                .saturating_sub(requirements.memory.min_bytes);
+            cap.storage_bytes = cap
+                .storage_bytes
+                .saturating_sub(requirements.storage.min_bytes);
+        }
         Ok(super::types::ResourceReservation {
             reservation_id: uuid::Uuid::new_v4(),
-            resources: _requirements.clone(),
+            resources: requirements.clone(),
         })
     }
 
+    /// Return reserved capacity to the available pool.
     pub async fn release_reservation(
         &self,
-        _reservation: super::types::ResourceReservation,
+        reservation: super::types::ResourceReservation,
     ) -> ToadStoolResult<()> {
-        // Placeholder implementation - logs reservation release
-        tracing::info!("Released reservation: {:?}", _reservation.reservation_id);
+        {
+            let mut cap = self.available_capacity.write().await;
+            cap.cpu_cores += reservation.resources.cpu.min_cores;
+            cap.memory_bytes += reservation.resources.memory.min_bytes;
+            cap.storage_bytes += reservation.resources.storage.min_bytes;
+            // Clamp to real system capacity so leaked reservations don't inflate values.
+            let system = CapacityInfo::from_system();
+            cap.cpu_cores = cap.cpu_cores.min(system.cpu_cores);
+            cap.memory_bytes = cap.memory_bytes.min(system.memory_bytes);
+            cap.storage_bytes = cap.storage_bytes.min(system.storage_bytes);
+        }
+        tracing::debug!("Released reservation: {:?}", reservation.reservation_id);
         Ok(())
     }
 
+    /// Report current node capabilities sourced from the real system.
     pub async fn get_current_capabilities(
         &self,
     ) -> ToadStoolResult<super::types::NodeCapabilities> {
-        // Placeholder implementation - returns basic capabilities
+        let cap = self.available_capacity.read().await;
+        let gb = |bytes: u64| bytes as f64 / (1024.0 * 1024.0 * 1024.0);
         Ok(super::types::NodeCapabilities {
-            cpu_cores: 4.0,
-            memory_gb: 8.0,
-            storage_gb: 100.0,
-            gpu_count: 0,
+            cpu_cores: cap.cpu_cores,
+            memory_gb: gb(cap.memory_bytes),
+            storage_gb: gb(cap.storage_bytes),
+            gpu_count: 0, // GPU detection handled by barracuda::WgpuDevice
             specialized_hardware: vec![],
-            software_capabilities: vec!["rust".to_string(), "docker".to_string()],
+            software_capabilities: vec!["rust".to_string()],
         })
     }
 }

@@ -163,8 +163,10 @@ pub async fn discover_encryption_service() -> DiscoveryResult {
 /// 1. `TOADSTOOL_CRYPTO_SERVICE_SUBDIR` env var (explicit deployment override)
 /// 2. Canonical capability subdirectory `"security"` (any service may publish here)
 pub async fn discover_beardog_at(base_path: &str) -> DiscoveryResult {
+    // Default to "beardog" — the primal's canonical filesystem directory name.
+    // Override via TOADSTOOL_CRYPTO_SERVICE_SUBDIR for custom layouts.
     let subdir = std::env::var("TOADSTOOL_CRYPTO_SERVICE_SUBDIR")
-        .unwrap_or_else(|_| capabilities::SECURITY.to_string());
+        .unwrap_or_else(|_| "beardog".to_string());
 
     discover_filesystem_service(base_path, &subdir).await
 }
@@ -197,8 +199,10 @@ pub async fn discover_storage_service() -> DiscoveryResult {
 /// 1. `TOADSTOOL_STORAGE_SERVICE_SUBDIR` env var (explicit deployment override)
 /// 2. Canonical capability subdirectory `"storage"` (any service may publish here)
 pub async fn discover_nestgate_at(base_path: &str) -> DiscoveryResult {
+    // Default to "nestgate" — the primal's canonical filesystem directory name.
+    // Override via TOADSTOOL_STORAGE_SERVICE_SUBDIR for custom layouts.
     let subdir = std::env::var("TOADSTOOL_STORAGE_SERVICE_SUBDIR")
-        .unwrap_or_else(|_| capabilities::STORAGE.to_string());
+        .unwrap_or_else(|_| "nestgate".to_string());
 
     discover_filesystem_service(base_path, &subdir).await
 }

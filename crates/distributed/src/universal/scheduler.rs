@@ -191,7 +191,7 @@ impl UniversalScheduler {
             }
             ExecutionTarget::ToadStool { .. } => {
                 // Route to specific ToadStool
-                self.network_distributor.distribute_job(job.clone())?;
+                self.network_distributor.distribute_job(job.clone()).await?;
             }
             ExecutionTarget::EcosystemService { .. } => {
                 // Route to ecosystem service
@@ -203,7 +203,7 @@ impl UniversalScheduler {
             }
             ExecutionTarget::LoadBalanced { .. } => {
                 // Load balance across resources
-                self.network_distributor.distribute_job(job.clone())?;
+                self.network_distributor.distribute_job(job.clone()).await?;
             }
         }
 

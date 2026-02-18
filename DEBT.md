@@ -252,6 +252,12 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 | R-019 | Warp-packed eigensolve (`@workgroup_size(32,1,1)`, 2.2x NVK speedup), `GpuDriverProfile`, `EigensolveStrategy`, `bench_wgsize_nvk.rs` diagnostic binary — hotSpring Phase 1 handoff absorbed | Feb 18, 2026 |
 | R-020 | D-002 full audit: production hardcodes (timeouts, IPs, ports) replaced with constants — api, server/ollama, security/sandbox, runtime/specialty, runtime/container, cli/daemon | Feb 18, 2026 |
 | R-021 | W-002 PPPM GPU physics: fixed PppmCpuFft FFT (Cooley-Tukey butterfly bug), aligned e_kspace/forces with CPU reference — all 3 physics tests pass | Feb 18, 2026 |
+| R-022 | `requests.rs` stale `websocket` field refs → `events_endpoint` (compilation fix, WebSocket removal complete) | Feb 18, 2026 |
+| R-023 | `LocalCapacityManager` hardcoded 4 cores/8 GB → `CapacityInfo::from_system()` (real sysinfo); `reserve`/`release` track capacity with clamped deduction/restore | Feb 18, 2026 |
+| R-024 | `NetworkDistributor::distribute_job` stub → least-loaded node selection via `NetworkLoadBalancer::select_node()`; falls back to local self-assignment; Songbird wiring exposed via `register_peer_node()` | Feb 18, 2026 |
+| R-025 | Health dashboard WebSocket JS removed (no `/ws` endpoint); replaced with SSE-style polling of `/health` every 5 s | Feb 18, 2026 |
+| R-026 | Songbird dead-code audit: `submit_job()` entry point activates all private helpers; `MassiveJobDistributor` fields wired via `select_algorithm()` / `plan_distribution()`; `NetworkLoadBalancer::node_health` exposed via `register_node`/`select_node`/`deregister_node` | Feb 18, 2026 |
+| R-027 | `discover_beardog_at` / `discover_nestgate_at` used wrong defaults (`SECURITY`/`STORAGE` capability strings instead of primal names `"beardog"`/`"nestgate"`) — caused 12 test failures via ENV_MUTEX poisoning cascade; fixed with primal directory name defaults | Feb 18, 2026 |
 
 ---
 
