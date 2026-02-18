@@ -94,10 +94,32 @@ loop-heavy f64 Jacobi kernels. Root cause is five specific NAK deficiencies:
 - `bench_wgsize_nvk.rs` — permanent diagnostic binary
 
 **Evolution Path** (NAK contribution — all Rust, AGPL-aligned):
-1. **Phase 1**: SM70 latency tables in `nak/src/calc_instr_deps.rs` — use envytools ISA data
-2. **Phase 2**: f64 FMA pattern matching in `nak/src/from_nir.rs` — fold `mul+add` → `DFMA`
-3. **Phase 3**: Loop unrolling for bounded nested loops — targets our Jacobi pattern
-4. **Phase 4**: Dual-issue exploitation for Volta (SM70) — paired execution units
+
+1. **Phase 1**: SM70 latency tables in `nak/src/calc_instr_deps.rs`
+   - Template: Lorenzo Rossi's SM32 (Kepler) MR — Mesa 25.2, July 2025, same file/pattern
+   - Data sources: arXiv:1804.06826 (public SM70 microbenchmarks) + Red Hat NDA docs
+     (contact `karolherbst`/`airlied` on `irc.oftc.net #nouveau` or `#nouveau:matrix.org`)
+   - Known SM70 latencies: FP32 FFMA=4cy, FP64 DFMA≈8cy, INT=6cy, shared-mem≈23cy
+   - Expected impact: **3-4x improvement** on Titan V Jacobi kernel
+   - Detailed plan: `docs/planning/NAK_CONTRIBUTION_PLAN_FEB18_2026.md`
+
+2. **Phase 2**: f64 FMA selection — `mul+add` → `DFMA`
+   - SM70 has native `DFMA` (same latency as DMUL+DADD but 1 instruction vs 2)
+   - Investigation: Godbolt CUDA→SASS to check if PTXAS fuses, then naga/NAK path
+   - Target file: naga SPIR-V emitter or `nak/src/from_nir.rs`
+   - Impact on Jacobi: ~500M `c*akp - s*akq` patterns per large batch run
+
+3. **Phase 3**: Loop unrolling for bounded nested loops (Jacobi `for k in 0..n, n≤32`)
+   - MR 26626 (Dec 2023) added basic unrolling; status for nested loops unknown
+   - Expected impact: **1.5-2x** additional
+
+4. **Phase 4**: Dual-issue exploitation for SM70 (highest complexity)
+   - Requires per-SM execution unit model + instruction pairing pass
+   - Kepler SM32 work deferred this — SM70 would be first implementation
+   - Expected impact: **~2x** additional
+
+**Cumulative target**: After all 4 phases: ~3-6ms for n=30 batch=512
+(from 69.8ms current, approaching 7.4ms proprietary baseline)
 
 **Why This Matters**: NAK is written in Rust, same language as BarraCUDA. Every improvement
 benefits all NVK users — this is the open-source multiplier. AMD RDNA3 with RADV/ACO is
