@@ -33,6 +33,13 @@ pub struct AuthManagerConfig {
     pub replay_protection: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signing_key_seed: Option<String>,
+    /// Primals this node is allowed to request tokens for.
+    ///
+    /// Defaults to the full peer set discovered from environment variable
+    /// `TOADSTOOL_AUTH_AUDIENCE` (comma-separated) or the canonical
+    /// cross-primal peer list. Override via config to narrow token scope.
+    #[serde(default)]
+    pub token_audience: Vec<String>,
 }
 
 impl Default for AuthManagerConfig {
@@ -44,8 +51,34 @@ impl Default for AuthManagerConfig {
             timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
             replay_protection: true,
             signing_key_seed: None,
+            token_audience: default_token_audience(),
         }
     }
+}
+
+/// Resolve the token audience at runtime: env override → config defaults.
+///
+/// Reads `TOADSTOOL_AUTH_AUDIENCE` (comma-separated primal names).
+/// Falls back to the canonical biomeOS peer set when the variable is absent.
+fn default_token_audience() -> Vec<String> {
+    if let Ok(val) = std::env::var("TOADSTOOL_AUTH_AUDIENCE") {
+        let list: Vec<String> = val
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect();
+        if !list.is_empty() {
+            return list;
+        }
+    }
+    // Canonical peer set — override via TOADSTOOL_AUTH_AUDIENCE for isolated deployments
+    vec![
+        "songbird".to_string(),
+        "nestgate".to_string(),
+        "squirrel".to_string(),
+        "biomeos".to_string(),
+    ]
 }
 
 /// Authentication manager for cross-Primal token propagation
@@ -151,14 +184,11 @@ impl AuthenticationManager {
 
     async fn request_new_token(&self) -> ToadStoolResult<AuthenticationToken> {
         let token_request = TokenRequest {
-            requesting_primal: "toadstool".to_string(),
+            // Self-knowledge: this primal's identity is fixed and knowable without discovery.
+            requesting_primal: env!("CARGO_PKG_NAME").to_string(),
             scope: vec!["cross-primal".to_string(), "propagation".to_string()],
-            audience: vec![
-                "songbird".to_string(),
-                "nestgate".to_string(),
-                "squirrel".to_string(),
-                "biomeos".to_string(),
-            ],
+            // Audience sourced from config (env TOADSTOOL_AUTH_AUDIENCE or defaults).
+            audience: self.config.token_audience.clone(),
             timestamp: chrono::Utc::now(),
         };
         self.backend.request_token(&token_request).await

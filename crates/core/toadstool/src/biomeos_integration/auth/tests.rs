@@ -14,6 +14,7 @@ fn test_config() -> AuthManagerConfig {
         timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
         replay_protection: true,
         signing_key_seed: None,
+        token_audience: vec!["songbird".to_string(), "nestgate".to_string()],
     }
 }
 
@@ -27,6 +28,7 @@ fn test_config_with_signing_key() -> AuthManagerConfig {
         timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
         replay_protection: true,
         signing_key_seed: Some(general_purpose::STANDARD.encode(seed)),
+        token_audience: vec!["songbird".to_string(), "nestgate".to_string()],
     }
 }
 

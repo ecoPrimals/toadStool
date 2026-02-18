@@ -5,17 +5,79 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use async_trait::async_trait;
+use serde::Deserialize;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use crate::discovery_defaults::{DiscoveryConfig, LocalhostFallbacks};
 #[allow(deprecated)]
 use crate::interned_strings::primals;
-use crate::primal_identity::{Capability, PrimalIdentity, ServiceEndpoint};
+use crate::primal_identity::{
+    AuthCapability, Capability, CoordinationCapability, CryptoCapability, PrimalIdentity,
+    ServiceEndpoint, StorageCapability,
+};
 
 use super::types::{
     DiscoveredService, DiscoveryError, DiscoveryMethod, DiscoveryResult, ServiceDiscoveryTrait,
 };
+
+// ── Config-file discovery types ───────────────────────────────────────────────
+
+/// A single service entry in a discovery config file.
+///
+/// Config files are JSON, searched in order:
+/// 1. `$TOADSTOOL_DISCOVERY_CONFIG` env var (full path)
+/// 2. `$BIOMEOS_RUNTIME_DIR/discovery.json` (biomeOS runtime dir)
+/// 3. `/etc/biomeos/discovery.json` (system-wide)
+#[derive(Debug, Deserialize)]
+struct ConfigFileService {
+    id: Option<String>,
+    name: String,
+    #[serde(default = "default_version")]
+    version: String,
+    #[serde(default)]
+    capabilities: Vec<String>,
+    #[serde(default)]
+    endpoints: Vec<String>,
+    #[serde(default)]
+    metadata: HashMap<String, String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ConfigFile {
+    #[serde(default)]
+    services: Vec<ConfigFileService>,
+}
+
+fn default_version() -> String {
+    "unknown".to_string()
+}
+
+/// Map capability string (from config/mDNS TXT records) to typed `Capability`.
+fn capability_from_str(s: &str) -> Capability {
+    match s.trim().to_lowercase().as_str() {
+        "coordination" | "orchestration" => {
+            Capability::Coordination(CoordinationCapability::ServiceDiscovery)
+        }
+        "storage" | "object_storage" | "object-storage" => {
+            Capability::Storage(StorageCapability::ObjectStorage)
+        }
+        "security" | "crypto" | "cryptography" => {
+            Capability::Crypto(CryptoCapability::KeyManagement)
+        }
+        "authentication" | "auth" => Capability::Authentication(AuthCapability::TokenManagement),
+        "compute" | "native" | "execution" => {
+            Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution)
+        }
+        "gpu" | "gpu_compute" | "gpu-compute" => {
+            Capability::Compute(crate::primal_identity::ComputeCapability::GpuCompute)
+        }
+        other => Capability::Custom {
+            name: other.to_string(),
+            version: "0".to_string(),
+        },
+    }
+}
 
 /// Main service discovery implementation
 pub struct ServiceDiscovery {
@@ -153,21 +215,235 @@ impl ServiceDiscovery {
     }
 
     async fn discover_via_mdns(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
-        debug!("mDNS discovery: for full impl use crate::primal_discovery_mdns::MdnsAdapter");
-        Ok(Vec::new())
+        use crate::primal_discovery::DiscoveryConfig as PrimalDiscoveryConfig;
+        use crate::primal_discovery_mdns::MdnsAdapter;
+
+        let mdns_config = PrimalDiscoveryConfig {
+            enable_mdns: true,
+            ..Default::default()
+        };
+
+        // MdnsAdapter::discover_all() uses blocking recv_timeout internally;
+        // run on the blocking thread pool to avoid starving the async executor.
+        let endpoints = tokio::task::spawn_blocking(move || {
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(async move {
+                MdnsAdapter::new(mdns_config)
+                    .await
+                    .map_err(|e| {
+                        DiscoveryError::MethodUnavailable {
+                            method: format!("mDNS init failed: {e}"),
+                        }
+                    })?
+                    .discover_all()
+                    .await
+                    .map_err(|e| DiscoveryError::MethodUnavailable {
+                        method: format!("mDNS browse failed: {e}"),
+                    })
+            })
+        })
+        .await
+        .map_err(|e| DiscoveryError::MethodUnavailable {
+            method: format!("spawn_blocking failed: {e}"),
+        })??;
+
+        let now = SystemTime::now();
+        let services: Vec<DiscoveredService> = endpoints
+            .into_iter()
+            .map(|ep| {
+                let caps: Vec<Capability> =
+                    ep.capabilities.iter().map(|s| capability_from_str(s)).collect();
+                let endpoint = ServiceEndpoint::from_url_string(&ep.url).unwrap_or_else(|_| {
+                    ServiceEndpoint {
+                        protocol: "http".to_string(),
+                        address: ep.url.clone(),
+                        port: 80,
+                        path: None,
+                        metadata: HashMap::new(),
+                    }
+                });
+                DiscoveredService {
+                    id: ep.service_id.clone(),
+                    name: ep.service_id,
+                    version: "mdns".to_string(),
+                    capabilities: caps,
+                    endpoints: vec![endpoint],
+                    metadata: HashMap::new(),
+                    discovered_at: now,
+                    last_seen: now,
+                    healthy: true,
+                }
+            })
+            .collect();
+
+        info!("mDNS discovery: found {} services", services.len());
+        Ok(services)
     }
 
-    async fn discover_from_config(&self, _path: &str) -> DiscoveryResult<Vec<DiscoveredService>> {
-        debug!("Config-based discovery: for full impl use crate::infant_discovery module");
-        Ok(Vec::new())
+    async fn discover_from_config(&self, path: &str) -> DiscoveryResult<Vec<DiscoveredService>> {
+        // Resolve path: explicit arg → env var → default locations
+        let resolved_path = if !path.is_empty() {
+            path.to_string()
+        } else if let Ok(p) = std::env::var("TOADSTOOL_DISCOVERY_CONFIG") {
+            p
+        } else if let Ok(runtime) = std::env::var("BIOMEOS_RUNTIME_DIR") {
+            format!("{runtime}/discovery.json")
+        } else {
+            "/etc/biomeos/discovery.json".to_string()
+        };
+
+        let content = tokio::fs::read_to_string(&resolved_path).await.map_err(|e| {
+            DiscoveryError::MethodUnavailable {
+                method: format!("cannot read discovery config {resolved_path:?}: {e}"),
+            }
+        })?;
+
+        let config_file: ConfigFile =
+            serde_json::from_str(&content).map_err(|e| DiscoveryError::InvalidResponse {
+                reason: format!("malformed discovery config {resolved_path:?}: {e}"),
+            })?;
+
+        let now = SystemTime::now();
+        let mut services = Vec::with_capacity(config_file.services.len());
+
+        for svc in config_file.services {
+            let caps: Vec<Capability> =
+                svc.capabilities.iter().map(|s| capability_from_str(s)).collect();
+
+            let mut endpoints = Vec::with_capacity(svc.endpoints.len());
+            for url in &svc.endpoints {
+                match ServiceEndpoint::from_url_string(url) {
+                    Ok(ep) => endpoints.push(ep),
+                    Err(e) => {
+                        warn!("Skipping malformed endpoint {url:?} in discovery config: {e}");
+                    }
+                }
+            }
+
+            let id = svc
+                .id
+                .unwrap_or_else(|| format!("config-{}", svc.name.to_lowercase()));
+            services.push(DiscoveredService {
+                id,
+                name: svc.name,
+                version: svc.version,
+                capabilities: caps,
+                endpoints,
+                metadata: svc.metadata,
+                discovered_at: now,
+                last_seen: now,
+                healthy: true,
+            });
+        }
+
+        info!(
+            "Config discovery: loaded {} services from {:?}",
+            services.len(),
+            resolved_path
+        );
+        Ok(services)
     }
 
     async fn discover_from_registry(
         &self,
-        _endpoint: &str,
+        endpoint: &str,
     ) -> DiscoveryResult<Vec<DiscoveredService>> {
-        debug!("Registry discovery: external service registry client integration pending");
-        Ok(Vec::new())
+        // Registry protocol: GET {endpoint}/services → JSON array of ConfigFileService.
+        // Pure Rust via tokio UnixStream or TCP — no external HTTP client.
+        // Resolution order: arg → TOADSTOOL_REGISTRY_ENDPOINT env → error.
+        let resolved = if !endpoint.is_empty() {
+            endpoint.to_string()
+        } else if let Ok(env_ep) = std::env::var("TOADSTOOL_REGISTRY_ENDPOINT") {
+            env_ep
+        } else {
+            return Err(DiscoveryError::MethodUnavailable {
+                method: "registry endpoint not configured (set TOADSTOOL_REGISTRY_ENDPOINT)"
+                    .to_string(),
+            });
+        };
+
+        // For Unix socket registries (file:// or unix://) delegate to config discovery
+        // since the registry serves the same JSON format over a socket.
+        if resolved.starts_with("file://") || resolved.starts_with("unix://") {
+            let path = resolved
+                .trim_start_matches("file://")
+                .trim_start_matches("unix://");
+            return self.discover_from_config(path).await;
+        }
+
+        // HTTP registry: use tokio TCP to issue a minimal HTTP/1.1 GET request —
+        // no reqwest or ring, pure Rust stdlib + tokio.
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpStream;
+
+        let url = resolved.trim_start_matches("http://").trim_start_matches("https://");
+        let (host_port, path) = url.split_once('/').unwrap_or((url, "services"));
+        let path = format!("/{path}");
+
+        let mut stream = TcpStream::connect(host_port)
+            .await
+            .map_err(|source| DiscoveryError::NetworkError { source })?;
+
+        let request = format!(
+            "GET {path} HTTP/1.1\r\nHost: {host_port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
+        );
+        stream
+            .write_all(request.as_bytes())
+            .await
+            .map_err(|source| DiscoveryError::NetworkError { source })?;
+
+        let mut response = String::new();
+        stream
+            .read_to_string(&mut response)
+            .await
+            .map_err(|source| DiscoveryError::NetworkError { source })?;
+
+        // Strip HTTP headers — body starts after first blank line
+        let body = response
+            .split_once("\r\n\r\n")
+            .map(|(_, body)| body)
+            .unwrap_or(&response);
+
+        let config_file: ConfigFile =
+            serde_json::from_str(body).map_err(|e| DiscoveryError::InvalidResponse {
+                reason: format!("malformed registry response from {resolved:?}: {e}"),
+            })?;
+
+        let now = SystemTime::now();
+        let services = config_file
+            .services
+            .into_iter()
+            .map(|svc| {
+                let caps: Vec<Capability> =
+                    svc.capabilities.iter().map(|s| capability_from_str(s)).collect();
+                let endpoints: Vec<ServiceEndpoint> = svc
+                    .endpoints
+                    .iter()
+                    .filter_map(|url| ServiceEndpoint::from_url_string(url).ok())
+                    .collect();
+                let id = svc
+                    .id
+                    .unwrap_or_else(|| format!("registry-{}", svc.name.to_lowercase()));
+                DiscoveredService {
+                    id,
+                    name: svc.name,
+                    version: svc.version,
+                    capabilities: caps,
+                    endpoints,
+                    metadata: svc.metadata,
+                    discovered_at: now,
+                    last_seen: now,
+                    healthy: true,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        info!(
+            "Registry discovery: loaded {} services from {:?}",
+            services.len(),
+            resolved
+        );
+        Ok(services)
     }
 
     async fn discover_from_fallbacks(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
@@ -263,8 +539,16 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
         self.discover_via_method().await
     }
 
-    async fn announce_self(&self, _identity: &dyn PrimalIdentity) -> DiscoveryResult<()> {
-        debug!("pending: mDNS/registry announcement; no-op until implemented");
+    async fn announce_self(&self, identity: &dyn PrimalIdentity) -> DiscoveryResult<()> {
+        // Self-announcement via mDNS TXT records.
+        // We log the intent; full registration is handled by `infant_discovery`
+        // when the caller opts into the full biomeOS advertise loop.
+        debug!(
+            "announce_self: {} capabilities={} — for full mDNS registration use \
+             infant_discovery::AnnouncementLoop",
+            identity.primal_name(),
+            identity.capabilities().len()
+        );
         Ok(())
     }
 

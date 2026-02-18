@@ -59,27 +59,70 @@ impl SongbirdConnection {
     ) -> ToadStoolResult<()> {
         match protocol_config.protocol {
             SongbirdProtocol::HTTP => {
-                // PURE RUST: HTTP removed - use Unix sockets!
-                tracing::warn!(
-                    "HTTP health check deprecated for endpoint: {} - use Unix sockets instead",
-                    endpoint
-                );
-                // Stub: Return success for backward compatibility
-                // Real health checks should use Unix socket RPC
-                Ok(())
+                // HTTP is deprecated in ecoPrimals — Unix socket RPC is the correct path.
+                // If the caller passes a unix:// endpoint with HTTP protocol, honour it.
+                // Otherwise reject: HTTP carries C-FFI (ring/openssl) risk and is not in uniBin.
+                if let Some(sock_path) = endpoint
+                    .strip_prefix("unix://")
+                    .or_else(|| endpoint.strip_prefix("file://"))
+                {
+                    return Self::probe_unix_socket(sock_path).await;
+                }
+                // Plain HTTP URL — refuse with a clear error so callers migrate.
+                Err(ToadStoolError::runtime(format!(
+                    "HTTP health check rejected for {endpoint:?}: \
+                     HTTP is deprecated in ecoPrimals; use Unix socket RPC (unix://…) or gRPC"
+                )))
             }
             SongbirdProtocol::GRPC => {
-                // For gRPC, we'll assume the endpoint is healthy if it's a valid URL
+                if endpoint.starts_with("unix://") || endpoint.starts_with("file://") {
+                    let path = endpoint
+                        .trim_start_matches("unix://")
+                        .trim_start_matches("file://");
+                    return Self::probe_unix_socket(path).await;
+                }
                 if endpoint.starts_with("http://") || endpoint.starts_with("https://") {
                     Ok(())
                 } else {
-                    Err(ToadStoolError::runtime("Invalid gRPC endpoint"))
+                    Err(ToadStoolError::runtime(format!(
+                        "Invalid gRPC endpoint: {endpoint:?}"
+                    )))
                 }
             }
             SongbirdProtocol::MessageQueue => {
-                // For message queues, we'll assume it's healthy if configured
-                Ok(())
+                // Message queue brokers are assumed healthy if reachable; a full
+                // broker ping would require protocol-specific frames. Accept as-is
+                // unless the endpoint is explicitly a Unix socket we can probe.
+                if let Some(path) = endpoint
+                    .strip_prefix("unix://")
+                    .or_else(|| endpoint.strip_prefix("file://"))
+                {
+                    Self::probe_unix_socket(path).await
+                } else {
+                    Ok(())
+                }
             }
+        }
+    }
+
+    /// Verify a Unix domain socket is reachable by opening a connection.
+    ///
+    /// Only available on Unix targets. On non-Unix builds the probe always
+    /// succeeds (Windows/WASM environments don't use Unix sockets).
+    async fn probe_unix_socket(path: &str) -> ToadStoolResult<()> {
+        #[cfg(unix)]
+        {
+            use tokio::net::UnixStream;
+            UnixStream::connect(path).await.map(|_| ()).map_err(|e| {
+                ToadStoolError::runtime(format!(
+                    "Unix socket health check failed for {path:?}: {e}"
+                ))
+            })
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = path;
+            Ok(())
         }
     }
 }

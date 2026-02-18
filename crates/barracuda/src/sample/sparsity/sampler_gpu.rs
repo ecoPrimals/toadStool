@@ -55,7 +55,12 @@ where
             let device = config
                 .gpu_device
                 .as_ref()
-                .expect("GPU device required when should_use_gpu is true")
+                .ok_or_else(|| BarracudaError::InvalidInput {
+                    message: "gpu_device must be set when should_use_gpu returns true; \
+                              set SparsitySamplerConfig::gpu_device before calling \
+                              sparsity_sampler_gpu"
+                        .to_string(),
+                })?
                 .clone();
             match train_adaptive_gpu(&x_data, &y_data, config.kernel, config.smoothing, device)
                 .await

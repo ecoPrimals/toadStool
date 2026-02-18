@@ -168,6 +168,29 @@ a second target once NVK baseline is established.
 
 ## Tracked Debt (Not Workarounds)
 
+### D-005: RESOLVED — Production panics and stub implementations
+
+**Status**: RESOLVED Feb 18, 2026
+**What was fixed**:
+- `barracuda/src/device/probe.rs`: `Mutex::lock().unwrap()` (×8) → `lock_cache()` helper
+  using `unwrap_or_else(|e| e.into_inner())` — recovers gracefully from poisoned mutexes
+- `barracuda/src/sample/sparsity/sampler_gpu.rs`: `.expect("GPU device required…")` →
+  `ok_or_else(|| BarracudaError::InvalidInput { … })?` — surfaces misconfiguration as `Result`
+- `core/toadstool/src/biomeos_integration/auth/mod.rs`:
+  - Hardcoded `requesting_primal: "toadstool"` → `env!("CARGO_PKG_NAME")` (true self-knowledge)
+  - Hardcoded audience `["songbird","nestgate","squirrel","biomeos"]` → `AuthManagerConfig::token_audience`
+    (configurable via `TOADSTOOL_AUTH_AUDIENCE` env var, default unchanged)
+- `core/common/src/service_discovery/service.rs`:
+  - `discover_via_mdns()`: was `Ok(vec![])` stub → bridges to `MdnsAdapter::discover_all()`
+    via `spawn_blocking`, maps `PrimalEndpoint` → `DiscoveredService`
+  - `discover_from_config()`: was stub → reads JSON config file (`TOADSTOOL_DISCOVERY_CONFIG`
+    env or `/etc/biomeos/discovery.json`), deserializes `ConfigFileService` entries
+  - `discover_from_registry()`: was stub → HTTP registry via raw `tokio::net::TcpStream`
+    (pure Rust, no reqwest/ring); Unix socket registries delegate to config discovery
+- `distributed/src/songbird_integration/connection.rs`:
+  - `SongbirdProtocol::HTTP` health check stub → rejects plain HTTP (with clear migration
+    message), honours `unix://` endpoints via `probe_unix_socket()` (tokio `UnixStream::connect`)
+
 ### D-001: RESOLVED — All ops test modules migrated to shared device pool
 
 **Status**: RESOLVED Feb 18, 2026

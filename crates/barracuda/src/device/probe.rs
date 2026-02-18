@@ -27,7 +27,19 @@
 
 use crate::device::WgpuDevice;
 use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
+use std::sync::{LazyLock, Mutex, MutexGuard};
+
+// ── Mutex helpers ────────────────────────────────────────────────────────────
+
+/// Acquire a mutex lock, recovering from poison by taking the poisoned data.
+///
+/// Poison occurs only when another thread panicked while holding the lock.
+/// Recovering is correct here because the cache data is always consistent
+/// (insertions are atomic) — a poisoned lock just means the inserting thread
+/// panicked after writing, which is safe to read.
+fn lock_cache<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
+}
 
 // ── Capability cache ─────────────────────────────────────────────────────────
 
@@ -278,7 +290,7 @@ const PROBES: &[ProbeShader] = &[
 pub async fn probe_f64_builtins(device: &WgpuDevice) -> F64BuiltinCapabilities {
     let key = adapter_key(device);
 
-    if let Some(cached) = F64_CAPS_CACHE.lock().unwrap().get(&key).copied() {
+    if let Some(cached) = lock_cache(&F64_CAPS_CACHE).get(&key).copied() {
         return cached;
     }
 
@@ -300,12 +312,9 @@ pub async fn probe_f64_builtins(device: &WgpuDevice) -> F64BuiltinCapabilities {
     }
 
     // Update legacy exp-only cache for backwards compat
-    F64_EXP_PROBE_CACHE
-        .lock()
-        .unwrap()
-        .insert(key.clone(), caps.exp);
+    lock_cache(&F64_EXP_PROBE_CACHE).insert(key.clone(), caps.exp);
 
-    F64_CAPS_CACHE.lock().unwrap().insert(key, caps);
+    lock_cache(&F64_CAPS_CACHE).insert(key, caps);
     caps
 }
 
@@ -317,27 +326,23 @@ pub async fn probe_f64_exp_capable(device: &WgpuDevice) -> bool {
     let key = adapter_key(device);
 
     // Full caps already cached?
-    if let Some(caps) = F64_CAPS_CACHE.lock().unwrap().get(&key).copied() {
+    if let Some(caps) = lock_cache(&F64_CAPS_CACHE).get(&key).copied() {
         return caps.exp;
     }
 
     // Legacy cache?
-    if let Some(&cached) = F64_EXP_PROBE_CACHE.lock().unwrap().get(&key) {
+    if let Some(&cached) = lock_cache(&F64_EXP_PROBE_CACHE).get(&key) {
         return cached;
     }
 
     let capable = run_single_probe(device.device(), device.queue(), &PROBES[0]).await;
-    F64_EXP_PROBE_CACHE.lock().unwrap().insert(key, capable);
+    lock_cache(&F64_EXP_PROBE_CACHE).insert(key, capable);
     capable
 }
 
 /// Read cached full capability result, if available.
 pub fn cached_f64_builtins(device: &WgpuDevice) -> Option<F64BuiltinCapabilities> {
-    F64_CAPS_CACHE
-        .lock()
-        .unwrap()
-        .get(&adapter_key(device))
-        .copied()
+    lock_cache(&F64_CAPS_CACHE).get(&adapter_key(device)).copied()
 }
 
 /// Unique key for caching probe results per physical adapter
@@ -350,10 +355,10 @@ pub(crate) fn adapter_key(device: &WgpuDevice) -> String {
 pub fn cached_probe_result(device: &WgpuDevice) -> Option<bool> {
     let key = adapter_key(device);
     // Check full caps first
-    if let Some(caps) = F64_CAPS_CACHE.lock().unwrap().get(&key).copied() {
+    if let Some(caps) = lock_cache(&F64_CAPS_CACHE).get(&key).copied() {
         return Some(caps.exp);
     }
-    F64_EXP_PROBE_CACHE.lock().unwrap().get(&key).copied()
+    lock_cache(&F64_EXP_PROBE_CACHE).get(&key).copied()
 }
 
 /// Pre-populate probe cache from device name heuristics before any GPU dispatch.
@@ -362,7 +367,7 @@ pub fn cached_probe_result(device: &WgpuDevice) -> Option<bool> {
 /// waiting for an async probe. The async probe overrides this when run.
 pub fn seed_cache_from_heuristics(device: &WgpuDevice) {
     let key = adapter_key(device);
-    let mut cache = F64_CAPS_CACHE.lock().unwrap();
+    let mut cache = lock_cache(&F64_CAPS_CACHE);
     cache.entry(key.clone()).or_insert_with(|| {
         // Heuristic: NVK/RADV have broken transcendentals; proprietary is capable
         let exp_log_works = !device.needs_f64_exp_log_workaround();
@@ -380,13 +385,10 @@ pub fn seed_cache_from_heuristics(device: &WgpuDevice) {
             abs_min_max: true,
         }
     });
-    // Also seed legacy cache
-    let caps = *cache.get(&key).unwrap();
-    F64_EXP_PROBE_CACHE
-        .lock()
-        .unwrap()
-        .entry(key)
-        .or_insert(caps.exp);
+    // Also seed legacy cache — key was just inserted above so get() is infallible here
+    let exp_capable = cache.get(&key).is_some_and(|c| c.exp);
+    drop(cache);
+    lock_cache(&F64_EXP_PROBE_CACHE).entry(key).or_insert(exp_capable);
 }
 
 // ── Core probe runner ─────────────────────────────────────────────────────────
