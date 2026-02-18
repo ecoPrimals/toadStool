@@ -1,6 +1,6 @@
 # Deep Debt Status Report
 
-**Date**: February 17, 2026  
+**Date**: February 18, 2026  
 **Status**: ✅ PRODUCTION-GRADE  
 **Quality**: ALL GATES GREEN
 
@@ -17,9 +17,43 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **Multi-GPU Evolution COMPLETE** — adapter selection, ShaderTemplate conflict detection.
 **Dependency Unification COMPLETE** — sysinfo API consolidated across workspace.
 **Production Mock Hardening COMPLETE** — removed fake capabilities/models from production paths.
+**Capability-Based Dispatch COMPLETE** — all hardcoded workgroup sizes centralized.
+**Test Concurrency FIXED** — tensor tests pass with full parallelism.
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 17, 2026 — wgpu v22 Migration & Test Infrastructure)
+### Latest Updates (Feb 18, 2026 — Capability-Based Dispatch & Test Fixes)
+
+**Hardcoded Workgroup Sizes → WORKGROUP_SIZE_1D ✓**
+
+Replaced all hardcoded `div_ceil(256)` calls with centralized `WORKGROUP_SIZE_1D` constant:
+
+| Category | Files Updated |
+|----------|---------------|
+| Special functions | bessel_i0, bessel_j0, bessel_j1, bessel_k0, hermite, laguerre, legendre, spherical_harmonics |
+| Distance/correlation | bray_curtis_f64, correlation_wgsl |
+| FFT | fft_1d_f64 |
+| Linear algebra | batched_eigh_gpu, lu_gpu, qr_gpu, svd_gpu |
+| Mixing | broyden_f64 |
+| MD forces | coulomb_f64 |
+| Grid ops | fd_gradient_f64 |
+
+**Tensor Test Buffer Lifetime Fix ✓**
+
+Fixed concurrent test failures caused by global context interference:
+
+| Issue | Root Cause | Fix |
+|-------|------------|-----|
+| Buffer[Id] is no longer alive | `clear_global_contexts()` in test_global_context_registry | Removed calls, test isolation preserved |
+| block_on() in async context | scalar ops used `futures::executor::block_on()` | Added `from_vec_on_sync()` for sync tensor creation |
+
+**Unused Imports Cleanup ✓**
+
+Auto-fixed 8 unused import warnings via `cargo fix`:
+- `crates/barracuda/src/ops/`: weighted_dot_f64, cosine_similarity_f64, cyclic_reduction_f64, concat, gt, unsqueeze, where_op, transpose/tests
+
+---
+
+### Previous Updates (Feb 17, 2026 — wgpu v22 Migration & Test Infrastructure)
 
 **wgpu 0.19 → v22 Workspace Migration ✓**
 

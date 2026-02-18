@@ -11,7 +11,7 @@
 
 ---
 
-## Quality Gates (February 17, 2026)
+## Quality Gates (February 18, 2026)
 
 | Gate | Status |
 |------|--------|

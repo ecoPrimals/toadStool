@@ -1,4 +1,4 @@
-# Status -- February 17, 2026 (cudarc 0.19 Upgrade + Clippy Cleanup)
+# Status -- February 18, 2026 (Capability-Based Dispatch + Test Fixes)
 
 ## Quality Gates
 

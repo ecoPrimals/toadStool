@@ -1,7 +1,7 @@
 # ToadStool/BarraCUDA — Next Steps
 
-**Updated**: February 17, 2026 (cudarc 0.19 Upgrade + Clippy Cleanup)  
-**Status**: cudarc 0.19 COMPLETE, Clippy Cleanup COMPLETE, Unidirectional Pipeline COMPLETE
+**Updated**: February 18, 2026 (Capability-Based Dispatch + Test Fixes)  
+**Status**: Capability-Based Dispatch COMPLETE, Test Concurrency FIXED, Unidirectional Pipeline COMPLETE
 
 ---
 
@@ -163,7 +163,14 @@ From `DEEP_DEBT_STATUS.md` and `docs/planning/GPU_RESIDENT_PIPELINE_FEB16_2026.m
 
 ---
 
-## Recent Deep Debt (Feb 17 Complete)
+## Recent Deep Debt (Feb 18 Complete)
+
+- [x] **Capability-Based Dispatch** — All hardcoded `div_ceil(256)` → `WORKGROUP_SIZE_1D` (19 files)
+- [x] **Test Concurrency Fix** — Removed `clear_global_contexts()` that broke parallel tests
+- [x] **Sync Tensor Creation** — Added `from_vec_on_sync()` to eliminate `block_on()` in async contexts
+- [x] **Unused Imports Cleanup** — Auto-fixed 8 warnings via `cargo fix`
+
+## Previous Deep Debt (Feb 17 Complete)
 
 - [x] **cudarc 0.11 → 0.19 Upgrade** — Real device queries, stream-based memory ops, modern kernel launch
 - [x] **Clippy Cleanup** — 44 warnings fixed (div_ceil, is_multiple_of, type alias for CellSortResult)

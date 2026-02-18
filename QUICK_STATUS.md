@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 17, 2026 (cudarc 0.19 Upgrade + Clippy Cleanup)
+**Date**: February 18, 2026 (Capability-Based Dispatch + Test Fixes)
 
 ---
 
