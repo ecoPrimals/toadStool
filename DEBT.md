@@ -33,8 +33,10 @@ with software implementations from `math_f64.wgsl`. Detection is driver-name bas
 **Evolution Path** (ordered by priority):
 1. **Capability probing**: At startup, dispatch a tiny `exp(f64)` test shader.
    If it succeeds, skip the workaround. This makes detection vendor-agnostic.
+   Foundation: `GpuDriverProfile::from_device()` in `device/capabilities.rs` already
+   detects driver/compiler via runtime adapter info — capability probing is the next step.
 2. **Upstream NAK fix**: Contribute `exp(f64)` lowering to Mesa NAK compiler.
-   Track: https://gitlab.freedesktop.org/mesa/mesa
+   Track: https://gitlab.freedesktop.org/mesa/mesa — see W-003 for full NAK roadmap.
 3. **Upstream ACO fix**: Contribute `fexp2(f64)` implementation to Mesa ACO.
    Track: https://gitlab.freedesktop.org/mesa/mesa
 4. **Remove workaround**: When both compilers support f64 transcendentals
@@ -63,6 +65,46 @@ validated reference implementation. Each stage may have subtle bugs.
 1. **CPU reference**: Implement CPU PPPM and validate against known benchmarks
 2. **Stage-by-stage validation**: Test each pipeline stage independently
 3. **Cross-check**: Compare with established MD codes (LAMMPS PPPM values)
+
+---
+
+### W-003: NAK Compiler 149x Performance Gap (Sovereign FP64 Compute)
+
+**Status**: ACTIVE — Contribution roadmap defined, first solution absorbed
+**Impact**: NVK/NAK Jacobi eigensolve ~9x slower than NVIDIA proprietary after warp-packing
+**Files**:
+- `crates/barracuda/src/shaders/linalg/batched_eigh_single_dispatch_f64.wgsl` — warp-packed (done)
+- `crates/barracuda/src/device/capabilities.rs` — `GpuDriverProfile`, `EigensolveStrategy` (done)
+- `crates/barracuda/src/bin/bench_wgsize_nvk.rs` — diagnostic binary (done)
+
+**Problem**: hotSpring analysis (Feb 18, 2026) found a 149x compiler efficiency gap
+between NAK (Mesa open-source NVIDIA compiler, Rust) and proprietary PTXAS for
+loop-heavy f64 Jacobi kernels. Root cause is five specific NAK deficiencies:
+
+| # | Deficiency | Gap factor | NAK status |
+|---|-----------|------------|------------|
+| 1 | No SM70 instruction scheduling | ~3-4x | Only SM32 (Kepler) has real scheduling |
+| 2 | No dual-issue exploitation | ~2x | Not implemented for any arch |
+| 3 | Limited loop unrolling | ~1.5-2x | MR 26626 (Dec 2023), may miss nested loops |
+| 4 | Missing f64 FMA selection | ~1.3-1.5x | Not confirmed, needs IR dump |
+| 5 | Generic shared-mem scheduling | ~1.5-2x | No bank-conflict awareness |
+
+**First Solution Already Absorbed** (R-019):
+- Warp-packed eigensolve (`@workgroup_size(32,1,1)`) — 2.2x NVK speedup, neutral on proprietary
+- `GpuDriverProfile::optimal_eigensolve_strategy()` — data-driven strategy selection
+- `bench_wgsize_nvk.rs` — permanent diagnostic binary
+
+**Evolution Path** (NAK contribution — all Rust, AGPL-aligned):
+1. **Phase 1**: SM70 latency tables in `nak/src/calc_instr_deps.rs` — use envytools ISA data
+2. **Phase 2**: f64 FMA pattern matching in `nak/src/from_nir.rs` — fold `mul+add` → `DFMA`
+3. **Phase 3**: Loop unrolling for bounded nested loops — targets our Jacobi pattern
+4. **Phase 4**: Dual-issue exploitation for Volta (SM70) — paired execution units
+
+**Why This Matters**: NAK is written in Rust, same language as BarraCUDA. Every improvement
+benefits all NVK users — this is the open-source multiplier. AMD RDNA3 with RADV/ACO is
+a second target once NVK baseline is established.
+
+**Tracking**: https://gitlab.freedesktop.org/mesa/mesa/-/tree/main/src/nouveau/compiler
 
 ---
 
@@ -114,6 +156,7 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 | R-016 | D-001 partial: test_pool foundation + 9 ops modules migrated to shared GPU device | Feb 18, 2026 |
 | R-017 | cg_gpu (1519L), pppm_gpu (1337L), precision (1270L), primal_sockets (1154L), service_discovery (1135L), cuda_impl (1093L), ipc_helpers (1091L), unibin (1059L), composition_constraints (1051L), resource_optimizer (1036L), biomeos/auth (1033L) all split | Feb 18, 2026 |
 | R-018 | D-003 resolved: ALL non-showcase files now under 1000 lines | Feb 18, 2026 |
+| R-019 | Warp-packed eigensolve (`@workgroup_size(32,1,1)`, 2.2x NVK speedup), `GpuDriverProfile`, `EigensolveStrategy`, `bench_wgsize_nvk.rs` diagnostic binary — hotSpring Phase 1 handoff absorbed | Feb 18, 2026 |
 
 ---
 
