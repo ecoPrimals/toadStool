@@ -21,20 +21,23 @@ description = "Universal compute platform with multi-runtime execution"
 primary_role = "compute"
 
 capabilities = [
-    # Core compute capabilities
+    # biomeOS Node Atomic capabilities (node_atomic_compute.toml)
+    "compute",
+    "workload",
+    "orchestration",
+    "ai_local",
+
+    # Implementation-level capabilities
+    "gpu-compute",
+    "wasm-execution",
+    "container-execution",
     "universal-compute",
     "multi-runtime-execution",
     "workload-scheduling",
     "resource-management",
-    
-    # Runtime engines
     "native-execution",
-    "wasm-execution",
-    "container-execution",
-    "python-execution",
-    "gpu-compute",
     "edge-compute",
-    
+
     # Platform features
     "sandboxing",
     "isolation",
@@ -44,10 +47,11 @@ capabilities = [
     "audit-logging",
 ]
 
-protocols = ["http", "grpc", "websocket"]
-default_port = 8080  # Discovered, not hardcoded in code!
-health_endpoint = "/health"
-metrics_endpoint = "/metrics"
+# Transport: Unix socket (XDG-compliant biomeOS standard)
+# Socket path: $XDG_RUNTIME_DIR/biomeos/toadstool.sock
+# Env override: TOADSTOOL_SOCKET
+protocols = ["unix-socket", "json-rpc-2.0", "tarpc"]
+# Note: WebSocket removed (was C-FFI tungstenite/ring). Use compute.status polling.
 
 # =============================================================================
 # BEARDOG - Cryptographic Operations & Key Management
@@ -204,7 +208,7 @@ capabilities = [
     "plugin-management",
 ]
 
-protocols = ["http", "grpc", "websocket", "mcp"]
+protocols = ["http", "grpc", "mcp"]
 default_port = 8084
 health_endpoint = "/health"
 

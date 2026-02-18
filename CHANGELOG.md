@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Unreleased] - February 18, 2026
+
+### biomeOS Node Atomic Alignment
+- Added `resources.*` method aliases (`resources.estimate`, `resources.validate_availability`, `resources.suggest_optimizations`) — biomeOS neural API routes `compute.estimate` → `resources.estimate` before calling our socket
+- Added `ai.local_inference` and `ai.local_execute` aliases routing to resource estimation handlers
+- Added `compute.health`, `compute.version`, `compute.capabilities` biomeOS aliases
+- Updated Songbird `ipc.register` capability list to include biomeOS Node Atomic set: `["compute","workload","orchestration","ai_local","gpu","wasm","container"]`
+- Socket endpoint now auto-derives XDG-compliant path: `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`
+
+### Deep Debt Wave 3 (Feb 18)
+- Smart-refactored 10 files: `batched_eigh_gpu`, `wgpu_device`, `tensor_context`, `workload_migration`, `deployment_layer`, `songbird/types`, `workload/analyzer`, test files (`three_springs`, `hotspring`, `capabilities/tests`)
+- D-002: Hardcoded timeouts replaced with `toadstool_common::constants::timeouts` throughout
+- D-004: Stale docs updated (cudarc 0.11→0.19, WebSocket refs removed)
+
+### Deep Debt Wave 4 (Feb 18)
+- Smart-refactored: `sparsity` (1242L), `fd_gradient_f64` (1175L), `manual_jsonrpc` (1100L)
+- D-001 partial: `device/test_pool.rs` shared GPU device foundation + 9 ops modules migrated
+
+### Deep Debt Wave 5 (Feb 18) — D-003 RESOLVED
+- **ALL non-showcase files now ≤ 1000 lines**
+- Split: `cg_gpu`, `pppm_gpu`, `precision`, `primal_sockets`, `service_discovery`, `cuda_impl`, `ipc_helpers`, `composition_constraints`, `biomeos/auth`, `unibin`, `resource_optimizer`
+- Fixed collapsible-if and is_multiple_of clippy warnings
+- Zero clippy warnings across entire workspace
+
+---
+
 ### [2026-02-17] - cudarc 0.19 Upgrade + Clippy Cleanup
 
 **Impact**: CUDA backend modernized with real device queries; workspace clippy-clean.

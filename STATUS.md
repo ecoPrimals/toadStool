@@ -1347,7 +1347,7 @@ All shader TODOs resolved:
 - 0 failed tests
 - 0 production `todo!()` or `unimplemented!()`
 - 0 `unsafe` blocks without `// SAFETY:` documentation
-- 0 files over 1000 lines
+- All files ≤ 1000 lines (D-003 resolved Feb 18, 2026)
 - 0 `#[serial]` test annotations (replaced with scoped Mutex)
 - 0 sleep-based synchronization in server tests
 - 0 misleading dependency comments
@@ -1364,6 +1364,7 @@ All shader TODOs resolved:
 
 ### Remaining
 
+- W-001, W-002 (active debt)
 - `unibin.rs` 18% coverage (socket helpers tested, server startup requires running server)
 - `manual_jsonrpc.rs` 27% coverage (async I/O requires integration tests)
 - `websocket.rs` needs integration tests (live WebSocket connections)

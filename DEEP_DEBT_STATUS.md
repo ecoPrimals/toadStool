@@ -6,6 +6,13 @@
 
 ---
 
+## Active Workarounds
+
+- **W-001**: f64 transcendental (exp/log) text-replacement workaround for NVK/RADV open-source GPU drivers (~2x performance penalty). Evolution: capability probing at startup. See DEBT.md.
+- **W-002**: PPPM GPU solver produces incorrect force directions/energy signs — 3 tests ignored pending CPU reference validation. See DEBT.md.
+
+---
+
 ## Summary
 
 All deep debt elimination objectives achieved. Scientific middleware extracted and production-ready.
@@ -124,7 +131,7 @@ Fixed GPU resource exhaustion in tests using idiomatic Rust patterns:
 
 **Remaining Test Migration (Deep Debt)**
 
-~227 ops/ test modules still create per-test devices. Pattern to migrate:
+~218 ops/ test modules still create per-test devices. Pattern to migrate:
 
 ```rust
 // Current (causes exhaustion)
@@ -645,6 +652,12 @@ interpolate::cubic_spline  11      ✅
 ──────────────────────────────────────────
 TOTAL                     156      ✅
 ```
+
+---
+
+## D-003 RESOLVED
+
+**D-003 RESOLVED Feb 18, 2026** — All non-showcase files now ≤ 1000 lines.
 
 ---
 

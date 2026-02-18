@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**February 16, 2026**
+**February 18, 2026**
 
 ---
 
@@ -101,12 +101,30 @@ cd showcase/neuromorphic/01-akida-detection && ./demo.sh
 
 | Method | Description |
 |--------|-------------|
+| `compute.health` | Health check |
+| `compute.version` | Version info |
+| `compute.capabilities` | Capability listing |
 | `compute.discover_capabilities` | List all available methods |
 | `compute.submit` | Submit job (inference/transform/custom) with routing |
 | `compute.status` | Check job status |
 | `compute.result` | Get completed job result |
 | `compute.cancel` | Cancel pending/running job |
 | `compute.list` | List all jobs (optional state filter) |
+
+### Resources (`resources.*`) — biomeOS neural API aliases
+
+| Method | Description |
+|--------|-------------|
+| `resources.estimate` | Estimate resource requirements |
+| `resources.validate_availability` | Validate system can execute graph |
+| `resources.suggest_optimizations` | Suggest graph optimizations |
+
+### AI (`ai.*`) — biomeOS ai_local capability
+
+| Method | Description |
+|--------|-------------|
+| `ai.local_inference` | Local inference |
+| `ai.local_execute` | Local execution |
 
 ### GPU (`gpu.*`)
 
@@ -186,6 +204,22 @@ let env = SocketPathEnv {
     ..Default::default()
 };
 ```
+
+---
+
+## biomeOS Socket Standard
+
+Socket path: `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`
+
+Environment variables:
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `TOADSTOOL_SOCKET` | `$XDG_RUNTIME_DIR/biomeos/toadstool.sock` | Own socket path |
+| `BEARDOG_SOCKET` | `$XDG_RUNTIME_DIR/biomeos/beardog.sock` | Security provider |
+| `SONGBIRD_SOCKET` | `$XDG_RUNTIME_DIR/biomeos/songbird.sock` | Discovery |
+| `FAMILY_ID` | (from `.family.seed`) | Deployment family |
+
+Real-time events: WebSocket removed. Use `compute.status` polling.
 
 ---
 

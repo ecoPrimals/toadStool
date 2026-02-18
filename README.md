@@ -11,6 +11,21 @@
 
 ---
 
+## Ecosystem Role
+
+```
+NUCLEUS = BearDog + Songbird + ToadStool + NestGate
+Tower   = BearDog + Songbird          ← communication + crypto
+Node    = Tower  + ToadStool          ← us — sovereign compute
+Nest    = Tower  + NestGate           ← storage
+```
+
+**biomeOS grade (Jan 30, 2026)**: Node Atomic READY — ToadStool A++ socket-standardized.
+
+**Deployment**: Tower starts first (BearDog → Songbird), then ToadStool. Socket: `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`. Env vars: `TOADSTOOL_SOCKET`, `BEARDOG_SOCKET`, `SONGBIRD_SOCKET`.
+
+---
+
 ## Quality Gates (February 18, 2026)
 
 | Gate | Status |
@@ -127,17 +142,22 @@ ToadStool: Hardware Discovery + Orchestration + Dispatch
 - **Capability-based discovery** -- primals discover each other at runtime by capability, not name
 - **biomeOS socket standard**: `/run/user/$UID/biomeos/{primal}.sock`
 - **Multi-family support**: `--family-id` flag for `toadstool-{family_id}.sock`
+- **Songbird registration**: on startup, registers with `ipc.register` advertising capabilities `["compute","workload","orchestration","ai_local","gpu","wasm","container"]`
+- **BearDog**: security provider via `BEARDOG_SOCKET` — authenticated workload operations
+- **Real-time events**: WebSocket removed (was C-FFI via tungstenite/ring). Use `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming.
 
-### JSON-RPC Methods (26 total)
+### JSON-RPC Methods (36 total)
 
-| Domain | Methods |
-|--------|---------|
-| `toadstool.*` | `health`, `version`, `query_capabilities` |
-| `toadstool.resources.*` | `estimate`, `validate_availability`, `suggest_optimizations` |
-| `compute.*` | `discover_capabilities`, `submit`, `status`, `result`, `cancel`, `list` |
-| `gpu.*` | `info`, `memory` |
-| `ollama.*` | `list_models`, `inference`, `load`, `unload` |
-| `gate.*` | `update`, `remove`, `list`, `route` |
+| Domain | Methods | Notes |
+|--------|---------|-------|
+| `toadstool.*` | `health`, `version`, `query_capabilities` | Canonical namespace |
+| `toadstool.resources.*` | `estimate`, `validate_availability`, `suggest_optimizations` | Canonical namespace |
+| `resources.*` | `estimate`, `validate_availability`, `suggest_optimizations` | biomeOS neural API routing aliases |
+| `compute.*` | `health`, `version`, `capabilities`, `discover_capabilities`, `submit`, `status`, `result`, `cancel`, `list` | biomeOS Node Atomic aliases + GPU queue |
+| `ai.*` | `local_inference`, `local_execute` | biomeOS ai_local capability |
+| `gpu.*` | `info`, `memory` | Hardware info |
+| `ollama.*` | `list_models`, `inference`, `load`, `unload` | Local LLM lifecycle |
+| `gate.*` | `update`, `remove`, `list`, `route` | Distributed routing |
 
 ---
 
@@ -617,6 +637,18 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
+## Active Debt
+
+| ID | Description | Status |
+|----|-------------|--------|
+| W-001 | f64 transcendental workaround for NVK/RADV (exp/log text replacement) | Active — evolution: capability probing |
+| W-002 | PPPM GPU physics validation — 3 tests produce wrong force directions | Active — under investigation |
+| D-001 | ~218 barracuda test modules still create per-test GPU devices | Partial — 9 migrated, shared `test_pool` foundation exists |
+
+See [DEBT.md](DEBT.md) for full debt register and evolution paths.
+
+---
+
 ## Documentation
 
 - **[STATUS.md](STATUS.md)** -- Current honest status
@@ -626,4 +658,4 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 
 ---
 
-**Last Updated**: February 17, 2026 (cudarc 0.19 Upgrade + Clippy Cleanup)
+**Last Updated**: February 18, 2026 (biomeOS Node Atomic alignment, D-003 resolved — all files ≤1000 lines)

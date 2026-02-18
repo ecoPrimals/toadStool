@@ -83,6 +83,8 @@
 
 **[STATUS.md](STATUS.md)** -- Detailed technical status: quality gates, new features, code quality evolution, shader coverage, evolution gaps, deep debt.
 
+**[DEBT.md](DEBT.md)** -- Active debt register, workarounds, and evolution paths.
+
 ---
 
 ## Architecture and Specs
