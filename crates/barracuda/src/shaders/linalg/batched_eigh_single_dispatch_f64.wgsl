@@ -5,23 +5,31 @@
 // Previous implementation: 4 dispatches × n(n-1)/2 rotations × max_sweeps = ~8000 submits
 // This implementation: 1 dispatch total
 //
-// Architecture:
-// - One WORKGROUP processes ONE matrix from the batch
-// - Matrix A and eigenvectors V stored in workgroup shared memory
+// Architecture (Warp-Packed):
+// - 32 threads per workgroup, each thread processes ONE independent matrix
+// - No barriers, no cooperation — each thread owns its own matrix in global memory
 // - ALL Jacobi sweeps run in a loop INSIDE the shader
 // - Only ONE queue.submit() needed for the entire batch
 //
-// Memory: For n=12, each matrix needs 12×12×8 = 1152 bytes
-//         A + V = 2304 bytes, well within 16KB shared memory limit
-//         Can support up to n≈40 with 16KB, n≈64 with 48KB
+// Warp-packing rationale (hotSpring cross-GPU analysis Feb 18, 2026):
+// - @workgroup_size(1,1,1) wastes 31/32 SIMD lanes on NVIDIA GPUs
+// - @workgroup_size(32,1,1) fills the full warp with independent work
+// - Measured 2.2x NVK speedup (Titan V), neutral on proprietary drivers
+// - Dispatch: batch.div_ceil(32) workgroups instead of batch workgroups
+//
+// Memory: Each thread accesses its own n×n matrix in global memory.
+//         No shared memory used — avoids shared memory size limits entirely.
+//         Supports MAX_N=32 regardless of warp size.
 //
 // Use case: hotSpring HFB (n=12, batch=40) completes in 1 dispatch vs 7920 dispatches
 //
 // Reference: hotSpring handoff Feb 12, 2026 - TIER 1.1
+//            hotSpring GPU sovereignty analysis Feb 18, 2026
 
-// Maximum matrix dimension supported (limited by shared memory)
-// 32×32 matrices = 32×32×8×2 = 16KB for A+V
+// Maximum matrix dimension supported
+// Each thread works directly in global memory (no shared memory needed)
 const MAX_N: u32 = 32u;
+const WARP_SIZE: u32 = 32u;
 
 struct SingleDispatchParams {
     n: u32,           // Matrix dimension (must be <= MAX_N)
@@ -35,12 +43,10 @@ struct SingleDispatchParams {
 @group(0) @binding(2) var<storage, read_write> V_batch: array<f64>;  // [batch × n × n]
 @group(0) @binding(3) var<storage, read_write> eigenvalues: array<f64>;  // [batch × n]
 
-// Workgroup shared memory for one matrix
-// Using MAX_N to allow static allocation
-var<workgroup> A_shared: array<f64, 1024>;  // 32×32 = 1024 elements
-var<workgroup> V_shared: array<f64, 1024>;  // 32×32 = 1024 elements
+// Each thread works on its own matrix directly in global memory.
+// No shared memory needed — each lane is fully independent.
 
-// Helper: 2D to 1D index for shared memory
+// Helper: 2D to 1D index
 fn idx2d(row: u32, col: u32, n: u32) -> u32 {
     return row * n + col;
 }
@@ -50,14 +56,14 @@ fn batch_offset(batch_idx: u32, n: u32) -> u32 {
     return batch_idx * n * n;
 }
 
-// Single-dispatch eigensolve: ONE workgroup processes ONE matrix
-// Dispatch with (batch_size, 1, 1) workgroups
-@compute @workgroup_size(1, 1, 1)
+// Warp-packed eigensolve: 32 threads per workgroup, each owns one matrix
+// Dispatch with (batch_size.div_ceil(32), 1, 1) workgroups
+@compute @workgroup_size(32, 1, 1)
 fn batched_eigh_single_dispatch(
     @builtin(workgroup_id) wg_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
 ) {
-    let batch_idx = wg_id.x;
+    let batch_idx = wg_id.x * WARP_SIZE + local_id.x;
     let n = params.n;
     
     if (batch_idx >= params.batch_size || n > MAX_N) {
@@ -67,31 +73,26 @@ fn batched_eigh_single_dispatch(
     let base = batch_offset(batch_idx, n);
     let tol = f64(params.tolerance);
     
-    // Step 1: Load matrix A from global to shared memory
-    for (var i = 0u; i < n; i = i + 1u) {
-        for (var j = 0u; j < n; j = j + 1u) {
-            A_shared[idx2d(i, j, n)] = A_batch[base + idx2d(i, j, n)];
-        }
-    }
-    
-    // Step 2: Initialize V = Identity in shared memory
+    // Step 1: Initialize V = Identity directly in global memory
+    // (A_batch already contains input matrices)
     for (var i = 0u; i < n; i = i + 1u) {
         for (var j = 0u; j < n; j = j + 1u) {
             if (i == j) {
-                V_shared[idx2d(i, j, n)] = f64(1.0);
+                V_batch[base + idx2d(i, j, n)] = f64(1.0);
             } else {
-                V_shared[idx2d(i, j, n)] = f64(0.0);
+                V_batch[base + idx2d(i, j, n)] = f64(0.0);
             }
         }
     }
     
-    // Step 3: Jacobi sweeps - ALL iterations run here
+    // Step 2: Jacobi sweeps - ALL iterations run here
+    // Each thread operates on its own matrix in global memory (no shared memory needed)
     for (var sweep = 0u; sweep < params.max_sweeps; sweep = sweep + 1u) {
         // Check convergence: max off-diagonal element
         var max_off = f64(0.0);
         for (var i = 0u; i < n; i = i + 1u) {
             for (var j = i + 1u; j < n; j = j + 1u) {
-                let off = abs(A_shared[idx2d(i, j, n)]);
+                let off = abs(A_batch[base + idx2d(i, j, n)]);
                 if (off > max_off) {
                     max_off = off;
                 }
@@ -106,15 +107,15 @@ fn batched_eigh_single_dispatch(
         // Cyclic Jacobi: iterate through all (p, q) pairs
         for (var p = 0u; p < n - 1u; p = p + 1u) {
             for (var q = p + 1u; q < n; q = q + 1u) {
-                let apq = A_shared[idx2d(p, q, n)];
+                let apq = A_batch[base + idx2d(p, q, n)];
                 
                 // Skip if already zero
                 if (abs(apq) < 1e-14) {
                     continue;
                 }
                 
-                let app = A_shared[idx2d(p, p, n)];
-                let aqq = A_shared[idx2d(q, q, n)];
+                let app = A_batch[base + idx2d(p, p, n)];
+                let aqq = A_batch[base + idx2d(q, q, n)];
                 
                 // Compute rotation angle
                 let diff = aqq - app;
@@ -140,16 +141,16 @@ fn batched_eigh_single_dispatch(
                 // Apply rotation to A (rows and columns p, q)
                 for (var k = 0u; k < n; k = k + 1u) {
                     if (k != p && k != q) {
-                        let akp = A_shared[idx2d(k, p, n)];
-                        let akq = A_shared[idx2d(k, q, n)];
+                        let akp = A_batch[base + idx2d(k, p, n)];
+                        let akq = A_batch[base + idx2d(k, q, n)];
                         
                         let new_akp = c * akp - s * akq;
                         let new_akq = s * akp + c * akq;
                         
-                        A_shared[idx2d(k, p, n)] = new_akp;
-                        A_shared[idx2d(k, q, n)] = new_akq;
-                        A_shared[idx2d(p, k, n)] = new_akp;  // Symmetric
-                        A_shared[idx2d(q, k, n)] = new_akq;
+                        A_batch[base + idx2d(k, p, n)] = new_akp;
+                        A_batch[base + idx2d(k, q, n)] = new_akq;
+                        A_batch[base + idx2d(p, k, n)] = new_akp;  // Symmetric
+                        A_batch[base + idx2d(q, k, n)] = new_akq;
                     }
                 }
                 
@@ -157,33 +158,26 @@ fn batched_eigh_single_dispatch(
                 let app_new = c * c * app - 2.0 * c * s * apq + s * s * aqq;
                 let aqq_new = s * s * app + 2.0 * c * s * apq + c * c * aqq;
                 
-                A_shared[idx2d(p, p, n)] = app_new;
-                A_shared[idx2d(q, q, n)] = aqq_new;
-                A_shared[idx2d(p, q, n)] = f64(0.0);
-                A_shared[idx2d(q, p, n)] = f64(0.0);
+                A_batch[base + idx2d(p, p, n)] = app_new;
+                A_batch[base + idx2d(q, q, n)] = aqq_new;
+                A_batch[base + idx2d(p, q, n)] = f64(0.0);
+                A_batch[base + idx2d(q, p, n)] = f64(0.0);
                 
                 // Apply rotation to V (columns p, q)
                 for (var k = 0u; k < n; k = k + 1u) {
-                    let vkp = V_shared[idx2d(k, p, n)];
-                    let vkq = V_shared[idx2d(k, q, n)];
+                    let vkp = V_batch[base + idx2d(k, p, n)];
+                    let vkq = V_batch[base + idx2d(k, q, n)];
                     
-                    V_shared[idx2d(k, p, n)] = c * vkp - s * vkq;
-                    V_shared[idx2d(k, q, n)] = s * vkp + c * vkq;
+                    V_batch[base + idx2d(k, p, n)] = c * vkp - s * vkq;
+                    V_batch[base + idx2d(k, q, n)] = s * vkp + c * vkq;
                 }
             }
         }
     }
     
-    // Step 4: Extract eigenvalues (diagonal of A) to global memory
+    // Step 3: Extract eigenvalues (diagonal of A) to eigenvalue buffer
     let eig_base = batch_idx * n;
     for (var i = 0u; i < n; i = i + 1u) {
-        eigenvalues[eig_base + i] = A_shared[idx2d(i, i, n)];
-    }
-    
-    // Step 5: Write eigenvectors back to global memory
-    for (var i = 0u; i < n; i = i + 1u) {
-        for (var j = 0u; j < n; j = j + 1u) {
-            V_batch[base + idx2d(i, j, n)] = V_shared[idx2d(i, j, n)];
-        }
+        eigenvalues[eig_base + i] = A_batch[base + idx2d(i, i, n)];
     }
 }
