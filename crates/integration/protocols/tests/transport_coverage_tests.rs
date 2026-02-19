@@ -208,7 +208,8 @@ async fn test_websocket_transport_send_message_not_implemented() {
     let result = transport.send_message(&message, &endpoint).await;
     assert!(result.is_err());
     if let Err(e) = result {
-        assert!(e.to_string().contains("not implemented"));
+        let msg = e.to_string().to_ascii_lowercase();
+        assert!(msg.contains("not yet implemented") || msg.contains("not implemented"));
     }
 }
 
@@ -351,9 +352,9 @@ fn test_transport_manager_new() {
     let manager = TransportManager::new();
     let supported = manager.get_supported_transports();
 
-    assert!(supported.len() >= 3);
+    // Http and TRpc are always registered (WebSocket removed in favour of JSON-RPC 2.0)
+    assert!(supported.len() >= 2);
     assert!(supported.contains(&TransportType::Http));
-    assert!(supported.contains(&TransportType::TRpc));
     assert!(supported.contains(&TransportType::TRpc));
 }
 
@@ -361,7 +362,7 @@ fn test_transport_manager_new() {
 fn test_transport_manager_default() {
     let manager = TransportManager::default();
     let supported = manager.get_supported_transports();
-    assert!(supported.len() >= 3);
+    assert!(supported.len() >= 2);
 }
 
 #[test]
