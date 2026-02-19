@@ -486,7 +486,19 @@ mod tests {
 
     /// Helper function to create a test protocol config
     fn create_test_config() -> ProtocolConfig {
-        ProtocolConfig::default()
+        use crate::config::HealthConfig;
+        ProtocolConfig {
+            // Disable background health probing — tests use fake port 9000
+            // which fails TCP connect and would race to mark services unhealthy.
+            health_config: HealthConfig {
+                base: toadstool_common::config_bases::HealthCheckConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        }
     }
 
     /// Helper function to create a test service info
