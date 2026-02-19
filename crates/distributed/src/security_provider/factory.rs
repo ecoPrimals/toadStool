@@ -157,12 +157,20 @@ impl SecurityProviderFactory {
             }
         }
 
-        // TODO(future): Try LocalKeyringProvider
-        // TODO(future): Try SoftwareHSMProvider
+        // Try LocalKeyringProvider — uses OS keyring when D-Bus is available,
+        // falls back to in-memory gracefully.
+        use crate::security_provider::local_keyring::LocalKeyringProvider;
+        let keyring = LocalKeyringProvider::new();
+        if keyring.backend() != &crate::security_provider::local_keyring::KeyringBackend::InMemory {
+            tracing::info!("LocalKeyringProvider available (OS keyring)");
+            return Ok(Arc::new(keyring) as Arc<dyn SecurityProvider>);
+        }
 
-        Err(ToadStoolError::not_found(
-            "No in-process security provider available (tried BearDog)".to_string(),
-        ))
+        // SoftwareHsmProvider — pure in-process fallback, always succeeds.
+        // Keys are ephemeral (lost on restart) — suitable for development/CI.
+        use crate::security_provider::software_hsm::SoftwareHsmProvider;
+        tracing::info!("Using SoftwareHsmProvider (in-memory, ephemeral keys)");
+        Ok(Arc::new(SoftwareHsmProvider::new()) as Arc<dyn SecurityProvider>)
     }
 
     /// Create custom protocol provider

@@ -43,7 +43,9 @@
 //! ```
 
 pub mod factory;
+pub mod local_keyring;
 pub mod provider;
+pub mod software_hsm;
 pub mod types;
 pub mod unix_socket_provider;
 
@@ -56,3 +58,5 @@ pub use types::*;
 
 // Re-export BearDog implementation
 pub use beardog_impl::BearDogSecurityProvider;
+pub use local_keyring::LocalKeyringProvider;
+pub use software_hsm::SoftwareHsmProvider;

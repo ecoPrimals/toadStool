@@ -443,5 +443,30 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 
 ---
 
+## Session 6 Resolutions — Feb 19, 2026
+
+| ID | Resolution |
+|---|---|
+| S6-001 | `storage.rs`: `StorageProvisioningConfig::nestgate_endpoint` marked `#[deprecated(since="0.3.0")]`, `impl Default` added with `String::new()` — matches `agents.rs` pattern |
+| S6-002 | `security_provider`: `SoftwareHsmProvider` implemented — AES-256-GCM + ed25519-dalek + in-process key store; satisfies full `SecurityProvider` trait |
+| S6-003 | `security_provider`: `LocalKeyringProvider` implemented — wraps `SoftwareHsmProvider`, probes D-Bus Secret Service at construction; SecretService or InMemory backend |
+| S6-004 | `security_provider/factory.rs`: factory fallback chain now tries `LocalKeyringProvider` (OS keyring) then `SoftwareHsmProvider` (ephemeral) — TODOs resolved |
+| S6-005 | `runtime/orchestration/load_balancer.rs`: `LoadBalancer` fully implemented — Equal (round-robin), Weighted (capacity × utilisation), Dynamic (least-loaded); 6 unit tests pass |
+| S6-006 | `runtime/gpu/src/cpu_resource.rs`: RISC-V 'V' extension detected via `/proc/cpuinfo` ISA string — 16 lanes on RVV, 1 on scalar RISC-V |
+| S6-007 | `auto_config/hardware/cpu.rs`: `CpuFeatures::supports_riscv_v: bool` field added + probe implemented — duplicate of S6-006 resolved |
+| S6-008 | `docs/reference/SERVER_METHODS.md` created — clarifies `compute.*` (GPU job queue) vs `toadstool.*` (workload executor) as distinct, intentional namespaces |
+| S6-009 | `cargo fmt --all` + `cargo clippy` — zero errors across all modified crates |
+| S6-010 | `aes-gcm` and `hmac` added to workspace `Cargo.toml` as pure-Rust crypto primitives (no C/FFI) |
+
+| ID | Resolved Issue |  Date |
+|---|---|---|
+| R-033 | F-004: `storage.rs` hardcoded default endpoint — deprecated field + Default impl | Feb 19, 2026 |
+| R-034 | F-005: `factory.rs` TODOs — LocalKeyringProvider + SoftwareHsmProvider both implemented and wired | Feb 19, 2026 |
+| R-035 | F-005: `load_balancer.rs` TODO — fully implemented with 3 strategies and 6 tests | Feb 19, 2026 |
+| R-036 | F-005: RISC-V vector extension detection — implemented in both `cpu_resource.rs` and `auto_config/hardware/cpu.rs` | Feb 19, 2026 |
+| R-037 | F-007: `compute.*` vs `toadstool.*` — documented in `docs/reference/SERVER_METHODS.md`; namespaces confirmed intentional and distinct | Feb 19, 2026 |
+
+---
+
 *Debt is tracked, not ignored. Each workaround has an evolution path.*
 *The goal is zero workarounds — vendor-agnostic, capability-based code.*

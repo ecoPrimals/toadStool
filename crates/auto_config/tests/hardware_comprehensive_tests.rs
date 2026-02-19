@@ -553,6 +553,7 @@ fn test_cpu_features_all_enabled() {
         supports_sse4_1: true,
         supports_sse4_2: true,
         supports_neon: true,
+        ..Default::default()
     };
 
     assert!(features.supports_avx);

@@ -56,6 +56,10 @@ http = "0.2"
 
 # Clustering and load balancing
 rand = "0.8"
+aes-gcm = { workspace = true }
+ed25519-dalek = { workspace = true }
+hmac = { workspace = true }
+sha2 = { workspace = true }
 
 # Database - REMOVED: Unused dependency with ring/TLS
 # PURE RUST: sqlx removed - was bringing in ring via rustls for DB TLS

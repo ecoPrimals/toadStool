@@ -45,6 +45,9 @@ pub struct CpuFeatures {
     pub supports_sse4_1: bool,
     pub supports_sse4_2: bool,
     pub supports_neon: bool,
+    /// RISC-V 'V' vector extension (RVV 1.0).
+    /// `true` when the running hart advertises the ISA flag `_v` in `/proc/cpuinfo`.
+    pub supports_riscv_v: bool,
 }
 
 /// Detect CPU capabilities and characteristics
@@ -274,8 +277,17 @@ fn detect_cpu_features() -> ToadStoolResult<CpuFeatures> {
     // RISC-V: Future extension detection
     #[cfg(target_arch = "riscv64")]
     {
-        debug!("RISC-V CPU features: (detection not yet implemented)");
-        // TODO: Detect RISC-V vector extensions when stable
+        // Probe the 'V' (vector) extension from the ISA string in /proc/cpuinfo.
+        // Examples of ISA strings that include V: "rv64imafdc_v", "rva22u64v"
+        let has_v = std::fs::read_to_string("/proc/cpuinfo")
+            .unwrap_or_default()
+            .lines()
+            .any(|l| {
+                let lower = l.to_ascii_lowercase();
+                lower.starts_with("isa") && (lower.contains("_v") || lower.ends_with('v'))
+            });
+        features.supports_riscv_v = has_v;
+        debug!(supports_riscv_v = has_v, "RISC-V CPU features detected");
     }
 
     Ok(features)

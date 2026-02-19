@@ -145,12 +145,26 @@ impl CpuComputeResource {
             }
         }
 
-        // RISC-V: Vector extension detection (future)
+        // RISC-V: detect the 'V' (vector) extension via /proc/cpuinfo.
+        // The `V` extension enables 128-512 bit SIMD; its VLEN (vector register length
+        // in bits) is readable via the `vlenb` CSR but not from user-space without
+        // a privileged helper. We probe via cpuinfo and report VLEN/8 as the lane
+        // width in bytes (128-bit minimum → 16 B/lane).
         #[cfg(target_arch = "riscv64")]
         {
-            // TODO: Detect RISC-V 'V' vector extension when stable
-            // For now, assume scalar-only
-            return Some(1); // Scalar (no SIMD yet)
+            let has_v_ext = std::fs::read_to_string("/proc/cpuinfo")
+                .unwrap_or_default()
+                .lines()
+                .any(|l| {
+                    // ISA string examples: "rv64imafdc_v", "rva22u64v", "rv64gcv"
+                    let lower = l.to_ascii_lowercase();
+                    lower.starts_with("isa") && (lower.contains("_v") || lower.ends_with('v'))
+                });
+            if has_v_ext {
+                // Minimum VLEN for the 'V' extension is 128 bits = 16 bytes/lane
+                return Some(16);
+            }
+            return Some(1); // Scalar-only RISC-V
         }
 
         None // Fallback: no SIMD detected
