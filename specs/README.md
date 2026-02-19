@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA Specifications
 
-## Current Status (February 17, 2026)
+## Current Status (February 18, 2026)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
@@ -16,7 +16,16 @@
 - **wetSpring validated**: 48/48 life science checks (Shannon, Simpson, Bray-Curtis)
 - Pure-GPU f64 math library with 27+ transcendental functions
 
-**Latest Updates (Feb 17):**
+**Latest Updates (Feb 18):**
+
+| Update | Impact |
+|--------|--------|
+| **Sovereign Compute spec** | WGSL optimizer roadmap — Phases 0-5, LatencyModel trait, mycelial deployment |
+| **f64 fossil functions removed** | `math_f64.wgsl` calls native WGSL builtins for abs/sqrt/min/max/floor/ceil/round/fract/sign |
+| **SM70 latency tables** | DFMA=8cy corrected — Phase 0 NAK contribution complete |
+| **Root tracker doc** | `SOVEREIGN_COMPUTE.md` — phase status dashboard |
+
+**Previous (Feb 17):**
 
 | Update | Impact |
 |--------|--------|
@@ -44,12 +53,20 @@
 
 ## Active Specifications
 
-### Performance & Evolution (Primary Focus)
+### Sovereign Compute (Current Priority)
+
+| Document | Purpose | Updated | Status |
+|----------|---------|---------|--------|
+| **[SOVEREIGN_COMPUTE_EVOLUTION.md](./SOVEREIGN_COMPUTE_EVOLUTION.md)** | WGSL optimizer, LatencyModel, mycelial ToadStool — master roadmap | **Feb 18** | 🔄 Active |
+
+**Tracker**: [`../SOVEREIGN_COMPUTE.md`](../SOVEREIGN_COMPUTE.md) — root-level phase/status dashboard
+
+### Performance & Evolution
 
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
 | **[BARRACUDA_PARITY_ROADMAP.md](./BARRACUDA_PARITY_ROADMAP.md)** | Performance evolution, benchmarks, validated results | **Feb 16** | ✅ Current |
-| **[FP64_GPU_EVOLUTION.md](./FP64_GPU_EVOLUTION.md)** | Pure-GPU f64 math, Naga/WGSL gotchas, log_f64 bug fix | **Feb 16** | ✅ Current |
+| **[FP64_GPU_EVOLUTION.md](./FP64_GPU_EVOLUTION.md)** | Pure-GPU f64 math, fossil functions, log_f64 bug fix | **Feb 18** | ✅ Current |
 | **[CROSS_PLATFORM_WORKLOADS.md](./CROSS_PLATFORM_WORKLOADS.md)** | Cross-vendor workload strategy (GPU + NPU) | Feb 13 | ✅ Current |
 | **[CROSS_VENDOR_BENCHMARK_SPEC.md](./CROSS_VENDOR_BENCHMARK_SPEC.md)** | Benchmark methodology and validation | Feb 13 | ✅ Current |
 
