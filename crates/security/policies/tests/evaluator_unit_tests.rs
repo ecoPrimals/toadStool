@@ -383,15 +383,17 @@ async fn test_evaluate_capability_no_match() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_resource_usage() {
     let evaluator = ConditionEvaluator::new();
+    // Use ceilings that always pass on any real machine:
+    // 100% CPU and 1 TiB memory. This validates that the evaluator reads
+    // actual sysinfo and returns Ok(true) when below these generous bounds.
     let condition = PolicyCondition::ResourceUsage {
-        cpu_percent: Some(50.0),
-        memory_mb: Some(1024),
+        cpu_percent: Some(100.0),
+        memory_mb: Some(1_000_000), // 1 TiB in MB — exceeds any real machine
     };
     let context = create_test_context_native();
 
     let result = evaluator.evaluate_condition(&condition, &context).await;
     assert!(result.is_ok());
-    // Currently returns true as placeholder
     assert!(result.unwrap());
 }
 
