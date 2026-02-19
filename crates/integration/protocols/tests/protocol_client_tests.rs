@@ -23,7 +23,16 @@ fn create_test_config() -> ProtocolConfig {
         connection_pool: ConnectionPoolConfig::default(),
         discovery_config: None,
         routing_config: RoutingConfig::default(),
-        health_config: HealthConfig::default(),
+        // Disable background health probing — tests use fake endpoints that
+        // fail TCP connection, which would race with service registration and
+        // mark services unhealthy before get_service_health can be called.
+        health_config: HealthConfig {
+            base: toadstool_common::config_bases::HealthCheckConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
     }
 }
 
