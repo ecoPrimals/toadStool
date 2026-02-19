@@ -307,3 +307,67 @@ pub async fn verify_service(service: &ServiceEndpoint) -> Result<bool> {
 
 // health_check() removed - was unused. Service health is checked via
 // is_service_reachable() and verify_service() which are actively used.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_discover_from_environment_found() {
+        std::env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://10.0.0.5:9876");
+        let result = discover_from_environment("crypto");
+        std::env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
+        assert_eq!(result, Some("http://10.0.0.5:9876".to_string()));
+    }
+
+    #[test]
+    fn test_discover_from_environment_not_found() {
+        std::env::remove_var("TOADSTOOL_TESTCAP_SERVICE_URL");
+        let result = discover_from_environment("testcap");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_discover_from_environment_empty_value() {
+        std::env::set_var("TOADSTOOL_EMPTY_SERVICE_URL", "");
+        let result = discover_from_environment("empty");
+        std::env::remove_var("TOADSTOOL_EMPTY_SERVICE_URL");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_discover_from_environment_uppercase() {
+        std::env::set_var(
+            "TOADSTOOL_STORAGE_SERVICE_URL",
+            "http://nestgate.local:8082",
+        );
+        let result = discover_from_environment("storage");
+        std::env::remove_var("TOADSTOOL_STORAGE_SERVICE_URL");
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_parse_service_url_with_http_prefix() {
+        let addr = parse_service_url("http://127.0.0.1:8080").unwrap();
+        assert_eq!(addr.port(), 8080);
+    }
+
+    #[test]
+    fn test_parse_service_url_plain_socket_addr() {
+        let addr = parse_service_url("127.0.0.1:9090").unwrap();
+        assert_eq!(addr.port(), 9090);
+    }
+
+    #[test]
+    fn test_parse_service_url_invalid_returns_err() {
+        let result = parse_service_url("not_a_url");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_discover_from_config_no_config_returns_none() {
+        // When no config file exists at expected paths, returns None
+        let result = discover_from_config("nonexistent_capability_xyz");
+        assert!(result.is_none());
+    }
+}

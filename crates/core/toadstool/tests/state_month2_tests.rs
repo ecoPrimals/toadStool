@@ -247,14 +247,15 @@ async fn test_state_can_transition() {
     assert!(!state.can_transition_to(BiomeStatus::Stopped));
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_state_uptime_tracking() {
     let mut state = BiomeState::default();
 
     state.transition_to_starting().await.unwrap();
     state.transition_to_running().await.unwrap();
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Advance mock time — no sleep needed; tokio::time::Instant tracks paused time.
+    tokio::time::advance(tokio::time::Duration::from_millis(100)).await;
 
     let uptime = state.uptime().await;
     assert!(uptime.as_millis() >= 100);

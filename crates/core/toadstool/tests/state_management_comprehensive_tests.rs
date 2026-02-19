@@ -285,7 +285,7 @@ fn test_execution_input_creation() {
 fn test_execution_input_with_data() {
     let data = vec![1u8, 2, 3, 4, 5];
     let input = ExecutionInput {
-        data: data.clone(),
+        data: data.clone().into(),
         ..ExecutionInput::default()
     };
 
@@ -329,7 +329,7 @@ fn test_execution_output_creation() {
 fn test_execution_output_with_data() {
     let data = vec![10u8, 20, 30];
     let output = ExecutionOutput {
-        data: data.clone(),
+        data: data.clone().into(),
         ..ExecutionOutput::default()
     };
 
@@ -741,7 +741,7 @@ fn test_runtime_type_serialization() {
 #[test]
 fn test_empty_execution_input() {
     let input = ExecutionInput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         format: None,
         metadata: HashMap::new(),
     };
@@ -755,7 +755,7 @@ fn test_empty_execution_input() {
 fn test_large_execution_input() {
     let large_data = vec![0u8; 1024 * 1024]; // 1 MB
     let input = ExecutionInput {
-        data: large_data.clone(),
+        data: large_data.clone().into(),
         ..ExecutionInput::default()
     };
 

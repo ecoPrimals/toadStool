@@ -382,3 +382,155 @@ impl DisplayCapabilities {
 // 4. Add capability versioning
 // 5. Add capability expiry (TTL)
 // 6. Add health check mechanism
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn make_caps() -> DisplayCapabilities {
+        DisplayCapabilities {
+            primal_id: "toadstool-display-test".to_string(),
+            primal_type: "toadstool".to_string(),
+            socket_path: PathBuf::from("/tmp/test.sock"),
+            max_windows: 4,
+            supported_formats: vec!["RGBA8888".to_string(), "RGB565".to_string()],
+            has_gpu_acceleration: true,
+            vsync_available: false,
+            displays: vec![DisplayInfo {
+                name: "eDP-1".to_string(),
+                width: 1920,
+                height: 1080,
+                refresh_rate: 60.0,
+                connected: true,
+            }],
+            input_devices: vec![InputDeviceInfo {
+                name: "keyboard0".to_string(),
+                device_type: "Keyboard".to_string(),
+            }],
+            metadata: CapabilityMetadata {
+                version: "0.1.0".to_string(),
+                pure_rust: true,
+                timestamp: "2026-02-19T00:00:00Z".to_string(),
+            },
+        }
+    }
+
+    #[test]
+    fn test_display_capabilities_clone() {
+        let caps = make_caps();
+        let cloned = caps.clone();
+        assert_eq!(caps.primal_id, cloned.primal_id);
+        assert_eq!(caps.max_windows, cloned.max_windows);
+    }
+
+    #[test]
+    fn test_display_capabilities_serialization() {
+        let caps = make_caps();
+        let json = serde_json::to_string(&caps).unwrap();
+        let deserialized: DisplayCapabilities = serde_json::from_str(&json).unwrap();
+        assert_eq!(caps.primal_id, deserialized.primal_id);
+        assert_eq!(caps.displays.len(), deserialized.displays.len());
+        assert_eq!(
+            caps.supported_formats.len(),
+            deserialized.supported_formats.len()
+        );
+    }
+
+    #[test]
+    fn test_display_info_fields() {
+        let info = DisplayInfo {
+            name: "HDMI-1".to_string(),
+            width: 2560,
+            height: 1440,
+            refresh_rate: 144.0,
+            connected: true,
+        };
+        assert_eq!(info.name, "HDMI-1");
+        assert_eq!(info.width, 2560);
+        assert!((info.refresh_rate - 144.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_input_device_info_fields() {
+        let dev = InputDeviceInfo {
+            name: "mouse0".to_string(),
+            device_type: "Mouse".to_string(),
+        };
+        assert_eq!(dev.name, "mouse0");
+        assert_eq!(dev.device_type, "Mouse");
+    }
+
+    #[test]
+    fn test_capability_metadata_fields() {
+        let meta = CapabilityMetadata {
+            version: "1.0.0".to_string(),
+            pure_rust: true,
+            timestamp: "2026-01-01T00:00:00Z".to_string(),
+        };
+        assert!(meta.pure_rust);
+        assert_eq!(meta.version, "1.0.0");
+    }
+
+    #[test]
+    fn test_socket_path_uses_xdg() {
+        // Set XDG_RUNTIME_DIR and verify the function uses it
+        std::env::set_var("XDG_RUNTIME_DIR", "/tmp/test_xdg_runtime");
+        let path = DisplayCapabilities::get_socket_path().unwrap();
+        assert!(path.to_string_lossy().contains("toadstool"));
+        assert!(path.to_string_lossy().contains("display.sock"));
+        std::env::remove_var("XDG_RUNTIME_DIR");
+    }
+
+    #[test]
+    fn test_discovery_dir_uses_xdg() {
+        std::env::set_var("XDG_RUNTIME_DIR", "/tmp/test_xdg_runtime");
+        let dir = DisplayCapabilities::get_discovery_dir().unwrap();
+        assert!(dir.to_string_lossy().contains("ecoPrimals/discovery"));
+        std::env::remove_var("XDG_RUNTIME_DIR");
+    }
+
+    #[test]
+    fn test_discovery_dir_fallback() {
+        std::env::remove_var("XDG_RUNTIME_DIR");
+        let dir = DisplayCapabilities::get_discovery_dir().unwrap();
+        assert!(dir.to_string_lossy().contains("/tmp/ecoPrimals/discovery"));
+    }
+
+    #[tokio::test]
+    async fn test_find_all_empty_dir_returns_empty() {
+        // Point to a non-existent dir to get an empty list
+        std::env::set_var("XDG_RUNTIME_DIR", "/tmp/nonexistent_dir_toadstool_test");
+        let result = DisplayCapabilities::find_all().await.unwrap();
+        assert!(result.is_empty());
+        std::env::remove_var("XDG_RUNTIME_DIR");
+    }
+
+    #[tokio::test]
+    async fn test_serialization_roundtrip() {
+        // Tests the announce/find serialization logic without using shared env vars.
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        let discovery_dir = tmp.path().join("ecoPrimals/discovery");
+        tokio::fs::create_dir_all(&discovery_dir).await.unwrap();
+
+        let caps = make_caps();
+
+        // Serialize and write like announce() does
+        let filename = format!("{}.json", caps.primal_id);
+        let filepath = discovery_dir.join(&filename);
+        let json = serde_json::to_string_pretty(&caps).unwrap();
+        tokio::fs::write(&filepath, &json).await.unwrap();
+        assert!(filepath.exists());
+
+        // Read back like find_all() does
+        let content = tokio::fs::read_to_string(&filepath).await.unwrap();
+        let found: DisplayCapabilities = serde_json::from_str(&content).unwrap();
+        assert_eq!(found.primal_id, caps.primal_id);
+        assert_eq!(found.displays.len(), 1);
+
+        // Cleanup
+        tokio::fs::remove_file(&filepath).await.unwrap();
+        assert!(!filepath.exists());
+    }
+}

@@ -36,7 +36,7 @@ pub mod thermostats;
 pub use electrostatics::{PppmAccuracy, PppmParams};
 pub use forces::*;
 pub use integrators::*;
-pub use neighbor::CellList;
+pub use neighbor::{CellList, CellListGpu};
 pub use observables::{
     compute_msd, compute_rdf, compute_ssf, compute_vacf, KineticEnergy, Msd, Rdf, Vacf,
 };

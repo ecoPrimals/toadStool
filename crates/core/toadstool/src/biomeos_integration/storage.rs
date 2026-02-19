@@ -205,11 +205,11 @@ mod tests {
 
     fn test_config() -> StorageProvisioningConfig {
         StorageProvisioningConfig {
-            nestgate_endpoint: "http://localhost:9090".to_string(),
             storage_tier: "hot".to_string(),
             backup_enabled: true,
             replication_enabled: true,
             replication_factor: 3,
+            ..StorageProvisioningConfig::default()
         }
     }
 

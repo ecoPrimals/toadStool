@@ -7,10 +7,10 @@ use barracuda::ops::grid::{
     CylindricalGradient, CylindricalLaplacian, Gradient1D, Gradient2D, Laplacian2D,
 };
 use barracuda::ops::mixing::{BroydenMixer, LinearMixer, MixingParams};
-use std::sync::Arc;
 
 mod mixing_unit {
     use super::*;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_linear_mixer_alpha_half() {
@@ -195,6 +195,7 @@ mod mixing_unit {
 
 mod grid_unit {
     use super::*;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_gradient_1d_linear() {
@@ -207,12 +208,10 @@ mod grid_unit {
         let grad = Gradient1D::new(device, n, dx).unwrap();
         let input: Vec<f64> = (0..n).map(|i| i as f64 * dx).collect();
         let result = grad.compute(&input).await.unwrap();
-        for i in 1..n - 1 {
+        for (i, &val) in result.iter().enumerate().take(n - 1).skip(1) {
             assert!(
-                (result[i] - 1.0).abs() < 1e-10,
-                "At i={}: expected 1.0, got {}",
-                i,
-                result[i]
+                (val - 1.0).abs() < 1e-10,
+                "At i={i}: expected 1.0, got {val}",
             );
         }
     }
@@ -228,17 +227,13 @@ mod grid_unit {
         let grad = Gradient1D::new(device, n, dx).unwrap();
         let input: Vec<f64> = (0..n).map(|i| (i as f64 * dx).powi(2)).collect();
         let result = grad.compute(&input).await.unwrap();
-        for i in 1..n - 1 {
+        for (i, &val) in result.iter().enumerate().take(n - 1).skip(1) {
             let x = i as f64 * dx;
             let expected = 2.0 * x;
-            let error = (result[i] - expected).abs();
+            let error = (val - expected).abs();
             assert!(
                 error < 0.02,
-                "At i={}: expected {}, got {}, error={}",
-                i,
-                expected,
-                result[i],
-                error
+                "At i={i}: expected {expected}, got {val}, error={error}",
             );
         }
     }
@@ -254,15 +249,15 @@ mod grid_unit {
         let grad = Gradient1D::new(device, n, dx).unwrap();
         let input: Vec<f64> = (0..n).map(|i| (i as f64 * dx).powi(3)).collect();
         let result = grad.compute(&input).await.unwrap();
-        for i in 2..n - 2 {
+        for (i, &val) in result.iter().enumerate().take(n - 2).skip(2) {
             let x = i as f64 * dx;
             let expected = 3.0 * x * x;
             let rel_error = if expected.abs() > 1e-10 {
-                (result[i] - expected).abs() / expected.abs()
+                (val - expected).abs() / expected.abs()
             } else {
-                (result[i] - expected).abs()
+                (val - expected).abs()
             };
-            assert!(rel_error < 0.05, "At i={}: rel_error={}", i, rel_error);
+            assert!(rel_error < 0.05, "At i={i}: rel_error={rel_error}");
         }
     }
 
@@ -277,17 +272,11 @@ mod grid_unit {
         let grad = Gradient1D::new(device, n, dx).unwrap();
         let input: Vec<f64> = (0..n).map(|i| (i as f64 * dx).sin()).collect();
         let result = grad.compute(&input).await.unwrap();
-        for i in 5..n - 5 {
+        for (i, &val) in result.iter().enumerate().take(n - 5).skip(5) {
             let x = i as f64 * dx;
             let expected = x.cos();
-            let error = (result[i] - expected).abs();
-            assert!(
-                error < 0.01,
-                "At i={}: expected {}, got {}",
-                i,
-                expected,
-                result[i]
-            );
+            let error = (val - expected).abs();
+            assert!(error < 0.01, "At i={i}: expected {expected}, got {val}",);
         }
     }
 

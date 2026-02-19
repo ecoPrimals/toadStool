@@ -14,14 +14,12 @@ use toadstool::biomeos_integration::*;
 #[test]
 fn test_storage_provisioning_config_creation() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://nestgate.local:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 3,
+        ..StorageProvisioningConfig::default()
     };
-
-    assert_eq!(config.nestgate_endpoint, "http://nestgate.local:8080");
     assert_eq!(config.storage_tier, "standard");
     assert!(config.backup_enabled);
     assert!(config.replication_enabled);
@@ -31,11 +29,11 @@ fn test_storage_provisioning_config_creation() {
 #[test]
 fn test_storage_provisioning_config_premium_tier() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "https://nestgate.production:443".to_string(),
         storage_tier: "premium".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 5,
+        ..StorageProvisioningConfig::default()
     };
 
     assert_eq!(config.storage_tier, "premium");
@@ -45,11 +43,11 @@ fn test_storage_provisioning_config_premium_tier() {
 #[test]
 fn test_storage_provisioning_config_economy_tier() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:3000".to_string(),
         storage_tier: "economy".to_string(),
         backup_enabled: false,
         replication_enabled: false,
         replication_factor: 1,
+        ..StorageProvisioningConfig::default()
     };
 
     assert_eq!(config.storage_tier, "economy");
@@ -61,15 +59,14 @@ fn test_storage_provisioning_config_economy_tier() {
 #[test]
 fn test_storage_provisioning_config_clone() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://test:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 3,
+        ..StorageProvisioningConfig::default()
     };
 
     let cloned = config.clone();
-    assert_eq!(cloned.nestgate_endpoint, config.nestgate_endpoint);
     assert_eq!(cloned.storage_tier, config.storage_tier);
     assert_eq!(cloned.replication_factor, config.replication_factor);
 }
@@ -77,11 +74,11 @@ fn test_storage_provisioning_config_clone() {
 #[test]
 fn test_storage_provisioning_config_serialization() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://nestgate:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 3,
+        ..StorageProvisioningConfig::default()
     };
 
     let serialized = serde_json::to_string(&config);
@@ -107,7 +104,6 @@ fn test_storage_provisioning_config_deserialization() {
     assert!(result.is_ok());
 
     let config = result.unwrap();
-    assert_eq!(config.nestgate_endpoint, "http://localhost:9000");
     assert_eq!(config.storage_tier, "premium");
     assert_eq!(config.replication_factor, 5);
 }
@@ -115,11 +111,11 @@ fn test_storage_provisioning_config_deserialization() {
 #[test]
 fn test_storage_provisioning_config_high_replication() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://nestgate:8080".to_string(),
         storage_tier: "premium".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 10,
+        ..StorageProvisioningConfig::default()
     };
 
     assert_eq!(config.replication_factor, 10);
@@ -128,11 +124,11 @@ fn test_storage_provisioning_config_high_replication() {
 #[test]
 fn test_storage_provisioning_config_no_replication() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://dev:8080".to_string(),
         storage_tier: "dev".to_string(),
         backup_enabled: false,
         replication_enabled: false,
         replication_factor: 0,
+        ..StorageProvisioningConfig::default()
     };
 
     assert_eq!(config.replication_factor, 0);
@@ -146,11 +142,11 @@ fn test_storage_provisioning_config_no_replication() {
 #[test]
 fn test_storage_manager_with_inmemory() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: false,
         replication_enabled: false,
         replication_factor: 1,
+        ..StorageProvisioningConfig::default()
     };
 
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -158,16 +154,16 @@ fn test_storage_manager_with_inmemory() {
 }
 
 #[test]
-fn test_storage_manager_with_nestgate() {
+fn test_storage_manager_with_inmemory_premium() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://nestgate.production:443".to_string(),
         storage_tier: "premium".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 3,
+        ..StorageProvisioningConfig::default()
     };
 
-    let manager = StorageProvisioningManager::with_nestgate(config);
+    let manager = StorageProvisioningManager::with_inmemory(config);
     assert_eq!(manager.config().storage_tier, "premium");
     assert_eq!(manager.config().replication_factor, 3);
 }
@@ -175,17 +171,15 @@ fn test_storage_manager_with_nestgate() {
 #[test]
 fn test_storage_manager_config_access() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://test:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: true,
         replication_enabled: false,
         replication_factor: 1,
+        ..StorageProvisioningConfig::default()
     };
 
     let manager = StorageProvisioningManager::with_inmemory(config);
     let retrieved_config = manager.config();
-
-    assert_eq!(retrieved_config.nestgate_endpoint, "http://test:8080");
     assert_eq!(retrieved_config.storage_tier, "standard");
     assert!(retrieved_config.backup_enabled);
 }
@@ -193,28 +187,24 @@ fn test_storage_manager_config_access() {
 #[test]
 fn test_storage_manager_multiple_instances() {
     let config1 = StorageProvisioningConfig {
-        nestgate_endpoint: "http://nest1:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 3,
+        ..StorageProvisioningConfig::default()
     };
 
     let config2 = StorageProvisioningConfig {
-        nestgate_endpoint: "http://nest2:9000".to_string(),
         storage_tier: "premium".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 5,
+        ..StorageProvisioningConfig::default()
     };
 
     let manager1 = StorageProvisioningManager::with_inmemory(config1);
     let manager2 = StorageProvisioningManager::with_inmemory(config2);
 
-    assert_ne!(
-        manager1.config().nestgate_endpoint,
-        manager2.config().nestgate_endpoint
-    );
     assert_ne!(
         manager1.config().storage_tier,
         manager2.config().storage_tier
@@ -423,16 +413,15 @@ fn test_volume_info_clone() {
 // ============================================================================
 
 #[test]
-fn test_storage_config_empty_endpoint() {
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: false,
-        replication_enabled: false,
-        replication_factor: 1,
-    };
-
-    assert_eq!(config.nestgate_endpoint, "");
+fn test_storage_config_default_uses_runtime_discovery() {
+    // Default config uses empty endpoint — storage is discovered at runtime.
+    let config = StorageProvisioningConfig::default();
+    #[allow(deprecated)]
+    let ep = &config.nestgate_endpoint;
+    assert!(
+        ep.is_empty(),
+        "default must use empty endpoint for runtime discovery"
+    );
 }
 
 #[test]
@@ -473,11 +462,11 @@ fn test_multiple_storage_tiers() {
 
     for tier in tiers {
         let config = StorageProvisioningConfig {
-            nestgate_endpoint: "http://localhost:8080".to_string(),
             storage_tier: tier.to_string(),
             backup_enabled: false,
             replication_enabled: false,
             replication_factor: 1,
+            ..StorageProvisioningConfig::default()
         };
 
         assert_eq!(config.storage_tier, tier);

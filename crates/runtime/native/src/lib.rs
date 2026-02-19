@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::PathBuf;
@@ -332,7 +333,7 @@ impl NativeRuntimeEngine {
             execution_id: request.execution_id,
             status,
             output: ExecutionOutput {
-                data: output.stdout.clone(),
+                data: Bytes::from(output.stdout.clone()),
                 stdout: Some(String::from_utf8_lossy(&output.stdout).to_string()),
                 stderr: Some(String::from_utf8_lossy(&output.stderr).to_string()),
                 exit_code: output.status.code(),

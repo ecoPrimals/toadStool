@@ -212,6 +212,7 @@ name = "unified_memory_demo"
 path = "unified_memory_demo.rs"
 
 [dependencies]
+bytes = { workspace = true }
 # Core ToadStool
 toadstool = { path = "../crates/core/toadstool" }
 toadstool-common = { path = "../crates/core/common" }

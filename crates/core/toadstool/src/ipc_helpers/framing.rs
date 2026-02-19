@@ -54,3 +54,75 @@ pub(crate) async fn read_json_rpc(stream: &mut UnixStream) -> ToadStoolResult<Va
     serde_json::from_slice(line.as_bytes())
         .map_err(|e| ToadStoolError::integration(format!("Failed to parse JSON-RPC: {}", e)))
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use tokio::net::UnixStream;
+
+    /// Create a connected pair of Unix sockets for testing.
+    async fn socket_pair() -> (UnixStream, UnixStream) {
+        // std::os::unix::net::UnixStream::pair gives us a connected pair.
+        let (a, b) = std::os::unix::net::UnixStream::pair().unwrap();
+        a.set_nonblocking(true).unwrap();
+        b.set_nonblocking(true).unwrap();
+        (
+            UnixStream::from_std(a).unwrap(),
+            UnixStream::from_std(b).unwrap(),
+        )
+    }
+
+    #[tokio::test]
+    async fn test_write_and_read_roundtrip() {
+        let (mut writer, mut reader) = socket_pair().await;
+        let msg = json!({"jsonrpc": "2.0", "method": "test", "id": 1});
+        write_json_rpc(&mut writer, &msg).await.unwrap();
+
+        let received = read_json_rpc(&mut reader).await.unwrap();
+        assert_eq!(received["method"], "test");
+        assert_eq!(received["id"], 1);
+    }
+
+    #[tokio::test]
+    async fn test_write_complex_message() {
+        let (mut writer, mut reader) = socket_pair().await;
+        let msg = json!({
+            "jsonrpc": "2.0",
+            "method": "compute.execute",
+            "params": {"workload": "test", "data": [1, 2, 3]},
+            "id": "abc-123"
+        });
+        write_json_rpc(&mut writer, &msg).await.unwrap();
+
+        let received = read_json_rpc(&mut reader).await.unwrap();
+        assert_eq!(received["method"], "compute.execute");
+        assert_eq!(received["params"]["workload"], "test");
+    }
+
+    #[tokio::test]
+    async fn test_write_notification_no_id() {
+        let (mut writer, mut reader) = socket_pair().await;
+        let msg = json!({"jsonrpc": "2.0", "method": "notify", "params": {}});
+        write_json_rpc(&mut writer, &msg).await.unwrap();
+
+        let received = read_json_rpc(&mut reader).await.unwrap();
+        assert_eq!(received["method"], "notify");
+        assert!(received.get("id").is_none());
+    }
+
+    #[tokio::test]
+    async fn test_multiple_messages_sequential() {
+        let (mut writer, mut reader) = socket_pair().await;
+
+        // Write 3 messages and then immediately read them — keep writer alive
+        for i in 0u32..3 {
+            let msg = json!({"jsonrpc": "2.0", "method": "seq", "id": i});
+            write_json_rpc(&mut writer, &msg).await.unwrap();
+            let received = read_json_rpc(&mut reader).await.unwrap();
+            assert_eq!(received["id"], i, "message order mismatch at i={i}");
+        }
+    }
+}

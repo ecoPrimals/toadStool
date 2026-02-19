@@ -1,11 +1,9 @@
-//! Comprehensive tests for BiomeOS Backend Implementations
+//! Comprehensive tests for BiomeOS Backend Implementations.
 //!
-//! This test file provides comprehensive coverage for production backend implementations:
-//! - BearDogBackend (authentication)
-//! - NestGateBackend (storage)
-//! - SquirrelBackend (agent deployment)
-//!
-//! Tests cover construction, API integration patterns, error handling, and validation logic.
+//! Covers legacy sync constructors for unit testing without real services.
+//! Production code must use the `new_async()` capability-based constructors.
+//! See `*_evolved.rs` and `new_async()` for the current production path.
+#![allow(deprecated)]
 
 use std::sync::Arc;
 use toadstool::biomeos_integration::agent_backend::*;

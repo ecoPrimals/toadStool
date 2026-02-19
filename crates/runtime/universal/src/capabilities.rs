@@ -199,3 +199,81 @@ impl WorkloadProfile {
         best_unit
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_workload(n: usize) -> Workload {
+        Workload {
+            operation: OperationType::Map,
+            data_type: DataType::F32,
+            num_operations: n,
+            required_memory: 0,
+            input: WorkloadData::F32Vec(vec![]),
+            params: WorkloadParams::default(),
+        }
+    }
+
+    #[test]
+    fn test_workload_size_small() {
+        let w = make_workload(500);
+        let profile = WorkloadProfile::from_workload(&w);
+        assert_eq!(profile.size, WorkloadSize::Small);
+    }
+
+    #[test]
+    fn test_workload_size_medium() {
+        let w = make_workload(50_000);
+        let profile = WorkloadProfile::from_workload(&w);
+        assert_eq!(profile.size, WorkloadSize::Medium);
+    }
+
+    #[test]
+    fn test_workload_size_large() {
+        let w = make_workload(2_000_000);
+        let profile = WorkloadProfile::from_workload(&w);
+        assert_eq!(profile.size, WorkloadSize::Large);
+    }
+
+    #[test]
+    fn test_select_best_unit_empty_returns_none() {
+        let w = make_workload(10);
+        let profile = WorkloadProfile::from_workload(&w);
+        let units: Vec<Box<dyn ComputeUnit>> = vec![];
+        assert!(profile.select_best_unit(&units, &w).is_none());
+    }
+
+    #[test]
+    fn test_select_best_unit_with_cpu() {
+        let cpu = crate::backends::CpuComputeUnit::discover();
+        let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+        let w = make_workload(100);
+        let profile = WorkloadProfile::from_workload(&w);
+        let best = profile.select_best_unit(&units, &w);
+        // CPU supports Map/F32, so we should get a result
+        assert!(best.is_some());
+    }
+
+    #[test]
+    fn test_latency_requirement_variants() {
+        let _ = LatencyRequirement::Critical;
+        let _ = LatencyRequirement::Important;
+        let _ = LatencyRequirement::Relaxed;
+    }
+
+    #[test]
+    fn test_power_constraint_variants() {
+        let _ = PowerConstraint::UltraLow;
+        let _ = PowerConstraint::Low;
+        let _ = PowerConstraint::Medium;
+        let _ = PowerConstraint::Unconstrained;
+    }
+
+    #[test]
+    fn test_throughput_requirement_variants() {
+        let _ = ThroughputRequirement::Low;
+        let _ = ThroughputRequirement::Medium;
+        let _ = ThroughputRequirement::High;
+    }
+}

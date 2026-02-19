@@ -565,8 +565,8 @@ mod tests {
             let _ = writer.flush().await;
         });
 
-        // Give server time to bind
-        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        // UnixListener::bind() creates the socket file and calls listen() before
+        // returning, so clients can connect immediately — no sleep needed.
         (socket_path, handle)
     }
 

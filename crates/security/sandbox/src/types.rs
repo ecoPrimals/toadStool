@@ -200,7 +200,10 @@ impl Default for NetworkConfig {
             isolation_mode: NetworkIsolationMode::Firewall,
             allowed_hosts: Vec::new(),
             allowed_ports: Vec::new(),
-            dns_servers: vec!["8.8.8.8".to_string(), "8.8.4.4".to_string()],
+            // Empty by default: network is disabled. When enabled, operators provide
+            // DNS resolvers via config or they are discovered from the host system's
+            // /etc/resolv.conf. Never hardcode external DNS addresses.
+            dns_servers: Vec::new(),
             bandwidth_limits: None,
         }
     }

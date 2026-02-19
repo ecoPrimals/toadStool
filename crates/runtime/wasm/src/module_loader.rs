@@ -140,7 +140,7 @@ mod tests {
         let loader = ModuleLoader::new(engine, config);
 
         let source = WasmModuleSource::Bytes {
-            data: vec![0, 97, 115, 109], // WASM magic bytes
+            data: bytes::Bytes::from(vec![0, 97, 115, 109]), // WASM magic bytes
         };
 
         let key = loader.generate_cache_key(&source);

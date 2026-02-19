@@ -189,8 +189,7 @@ impl IntegrationTestManager {
             .metrics_collector
             .record_metric("workload_count", workload_count as f64);
 
-        // Simulate deployment time
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        // No artificial delay: elapsed time is measured from actual async ops above.
 
         let elapsed = start.elapsed();
         context
@@ -219,8 +218,7 @@ impl IntegrationTestManager {
             .metrics_collector
             .record_metric("message_count", message_count as f64);
 
-        // Simulate message processing
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        // No artificial delay: real elapsed time measured below.
 
         let elapsed = start.elapsed();
         context
@@ -242,8 +240,7 @@ impl IntegrationTestManager {
             .metrics_collector
             .record_metric("max_concurrent_operations", max_concurrent as f64);
 
-        // Simulate concurrent operations
-        tokio::time::sleep(std::time::Duration::from_millis(15)).await;
+        // No artificial delay: real elapsed time measured below.
 
         let elapsed = start.elapsed();
         context
@@ -272,8 +269,7 @@ impl IntegrationTestManager {
             .metrics_collector
             .record_metric("operations_per_biome", operations_per_biome as f64);
 
-        // Simulate operations
-        tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+        // No artificial delay: real elapsed time measured below.
 
         let elapsed = start.elapsed();
         context
@@ -330,14 +326,12 @@ impl IntegrationTestManager {
 
         // Simulate high load scenario
         let load_multiplier = 10;
-        let duration_ms = 50;
 
         context
             .metrics_collector
             .record_metric("load_multiplier", load_multiplier as f64);
 
-        // Simulate load
-        tokio::time::sleep(std::time::Duration::from_millis(duration_ms)).await;
+        // No artificial delay: real elapsed time measured below.
 
         // Simulated resource metrics
         let cpu_usage = 75.5;

@@ -148,10 +148,10 @@ async fn test_shared_input_data_across_runtimes() {
     let shared_data = vec![1u8, 2, 3, 4, 5];
 
     let mut input1 = ExecutionInput::default();
-    input1.data = shared_data.clone();
+    input1.data = shared_data.clone().into();
 
     let mut input2 = ExecutionInput::default();
-    input2.data = shared_data.clone();
+    input2.data = shared_data.clone().into();
 
     assert_eq!(input1.data, input2.data);
 }
@@ -179,7 +179,7 @@ async fn test_output_data_transfer_between_runtimes() {
     let output_data = vec![10u8, 20, 30];
 
     let mut next_input = ExecutionInput::default();
-    next_input.data = output_data.clone();
+    next_input.data = output_data.clone().into();
 
     assert_eq!(next_input.data, output_data);
 }
@@ -194,7 +194,7 @@ async fn test_native_to_wasm_interop() {
     let native_output = "native_result".as_bytes().to_vec();
 
     let mut wasm_input = ExecutionInput::default();
-    wasm_input.data = native_output.clone();
+    wasm_input.data = native_output.clone().into();
 
     assert!(!wasm_input.data.is_empty());
 }
@@ -205,7 +205,7 @@ async fn test_wasm_to_container_interop() {
     let wasm_output = vec![1, 2, 3, 4];
 
     let mut container_input = ExecutionInput::default();
-    container_input.data = wasm_output.clone();
+    container_input.data = wasm_output.clone().into();
 
     assert_eq!(container_input.data.len(), 4);
 }
@@ -216,7 +216,7 @@ async fn test_container_to_python_interop() {
     let container_output = "{'key': 'value'}".as_bytes().to_vec();
 
     let mut python_input = ExecutionInput::default();
-    python_input.data = container_output.clone();
+    python_input.data = container_output.clone().into();
 
     assert!(!python_input.data.is_empty());
 }
@@ -228,7 +228,7 @@ async fn test_python_to_gpu_interop() {
     let output_bytes: Vec<u8> = python_output.iter().flat_map(|f| f.to_le_bytes()).collect();
 
     let mut gpu_input = ExecutionInput::default();
-    gpu_input.data = output_bytes;
+    gpu_input.data = output_bytes.into();
 
     assert!(!gpu_input.data.is_empty());
 }
@@ -420,7 +420,7 @@ async fn test_binary_data_across_runtimes() {
     let binary_data = vec![0xFF, 0x00, 0xAB, 0xCD];
 
     let mut input = ExecutionInput::default();
-    input.data = binary_data.clone();
+    input.data = binary_data.clone().into();
 
     assert_eq!(input.data, binary_data);
 }
@@ -431,9 +431,9 @@ async fn test_text_data_across_runtimes() {
     let text_data = "Hello from runtime".as_bytes().to_vec();
 
     let mut input = ExecutionInput::default();
-    input.data = text_data.clone();
+    input.data = text_data.clone().into();
 
-    let decoded = String::from_utf8(input.data).unwrap();
+    let decoded = String::from_utf8(input.data.to_vec()).unwrap();
     assert_eq!(decoded, "Hello from runtime");
 }
 
@@ -444,7 +444,7 @@ async fn test_json_data_across_runtimes() {
     let json_data = json_str.as_bytes().to_vec();
 
     let mut input = ExecutionInput::default();
-    input.data = json_data.clone();
+    input.data = json_data.clone().into();
 
     // Verify JSON can be parsed
     let parsed = serde_json::from_slice::<serde_json::Value>(&input.data);
@@ -480,7 +480,7 @@ async fn test_fan_out_execution_pattern() {
     ] {
         let mut request = ExecutionRequest::default();
         request.runtime_hint = Some(runtime.clone());
-        request.input_data.data = input_data.clone();
+        request.input_data.data = input_data.clone().into();
         requests.push(request);
     }
 

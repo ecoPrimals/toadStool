@@ -62,3 +62,53 @@ impl Bert {
         Ok(vec![0.0; self.config.hidden_size])
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bert_config_default() {
+        let cfg = BertConfig::default();
+        assert_eq!(cfg.vocab_size, 30522);
+        assert_eq!(cfg.hidden_size, 768);
+        assert_eq!(cfg.num_hidden_layers, 12);
+        assert_eq!(cfg.num_attention_heads, 12);
+        assert_eq!(cfg.intermediate_size, 3072);
+        assert_eq!(cfg.max_position_embeddings, 512);
+    }
+
+    #[test]
+    fn test_bert_new_and_parameters() {
+        let bert = Bert::new(BertConfig::default());
+        assert_eq!(bert.num_parameters(), 110_000_000);
+    }
+
+    #[test]
+    fn test_bert_from_pretrained() {
+        let bert = Bert::from_pretrained("bert-base-uncased").unwrap();
+        assert_eq!(bert.config.hidden_size, 768);
+    }
+
+    #[test]
+    fn test_bert_forward_output_shape() {
+        let bert = Bert::new(BertConfig::default());
+        let output = bert.forward(&[101, 7592, 1010, 2088, 102]).unwrap();
+        assert_eq!(output.len(), 768);
+    }
+
+    #[test]
+    fn test_bert_custom_config() {
+        let cfg = BertConfig {
+            vocab_size: 10000,
+            hidden_size: 256,
+            num_hidden_layers: 4,
+            num_attention_heads: 4,
+            intermediate_size: 512,
+            max_position_embeddings: 128,
+        };
+        let bert = Bert::new(cfg.clone());
+        let output = bert.forward(&[0, 1, 2]).unwrap();
+        assert_eq!(output.len(), cfg.hidden_size);
+    }
+}

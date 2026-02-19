@@ -394,9 +394,14 @@ async fn test_partial_failure_low_rate() {
         }
     }
 
-    // Should be around 80% success rate
+    // Should be around 80% success rate; allow ±15pp to avoid flakiness on loaded machines
+    // (100 trials, p=0.8 → σ=4; ±15pp is ±3.75σ, P(outside) ≈ 0.02%)
     let success_rate = successes as f32 / (successes + failures) as f32;
-    assert!((0.70..=0.90).contains(&success_rate));
+    assert!(
+        (0.65..=0.95).contains(&success_rate),
+        "expected ~80% success rate, got {:.1}%",
+        success_rate * 100.0
+    );
 }
 
 #[tokio::test]

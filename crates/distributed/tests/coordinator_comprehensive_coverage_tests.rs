@@ -13,7 +13,6 @@ use toadstool::{ExecutionRequest, SecurityContext, WorkloadSpec};
 use toadstool_distributed::core::{
     DistributedConfig, DistributedCoordinator, SongbirdConfig, StandaloneConfig,
 };
-use tokio::time::sleep;
 use uuid::Uuid;
 
 /// Test coordinator initialization with default config
@@ -135,7 +134,7 @@ async fn test_sequential_executions() {
         let request = create_execution_request();
         let result = coordinator.submit_execution(request).await;
         assert!(result.is_ok(), "Sequential execution should succeed");
-        sleep(Duration::from_millis(10)).await;
+        // No sleep: submit_execution is async and awaits naturally.
     }
 }
 
@@ -482,14 +481,20 @@ async fn test_transient_failure_recovery() {
     let config = DistributedConfig::default();
     let coordinator = Arc::new(DistributedCoordinator::new(config).await.unwrap());
 
-    // Simulate multiple attempts
-    for _ in 0..3 {
-        let request = create_execution_request();
-        let _ = coordinator.submit_execution(request).await;
-        sleep(Duration::from_millis(50)).await;
-    }
+    // Fire all three attempts concurrently — recovery logic must be race-safe.
+    let handles: Vec<_> = (0..3)
+        .map(|_| {
+            let c = Arc::clone(&coordinator);
+            tokio::spawn(async move {
+                let request = create_execution_request();
+                let _ = c.submit_execution(request).await;
+            })
+        })
+        .collect();
 
-    // Test resilience
+    for h in handles {
+        h.await.unwrap();
+    }
 }
 
 /// Test zero-copy execution request handling

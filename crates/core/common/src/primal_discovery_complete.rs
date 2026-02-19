@@ -676,8 +676,11 @@ mod tests {
             metadata: HashMap::new(),
         };
 
+        // Duration::ZERO TTL means every entry is immediately stale —
+        // is_fresh() checks `elapsed < ttl`, and elapsed >= ZERO always, so
+        // with ttl=ZERO `elapsed < ZERO` is always false. No sleep required.
         let config = DiscoveryConfig {
-            cache_ttl: Duration::from_nanos(1),
+            cache_ttl: Duration::ZERO,
             ..Default::default()
         };
 
@@ -687,8 +690,6 @@ mod tests {
         engine_with_short_ttl
             .cache_service("stale_key", service.clone())
             .await;
-
-        tokio::time::sleep(Duration::from_millis(2)).await;
 
         let stats = engine_with_short_ttl.cache_stats().await;
         assert_eq!(stats.total_entries, 1);

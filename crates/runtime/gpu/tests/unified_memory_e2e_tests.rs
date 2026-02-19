@@ -119,8 +119,7 @@ async fn test_e2e_concurrent_operations() {
         handle.await.expect("Task panicked");
     }
 
-    // All buffers should be deallocated after tasks complete
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // All buffers freed synchronously when tasks complete — no sleep needed.
     let stats = memory.stats();
     assert_eq!(
         stats.active_allocations, 0,
@@ -241,7 +240,7 @@ async fn test_e2e_memory_pressure() {
 
     // Drop all buffers
     drop(buffers);
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Drop is synchronous; stats update immediately.
 
     let stats = memory.stats();
     assert_eq!(stats.active_allocations, 0, "All buffers should be freed");
@@ -381,7 +380,7 @@ async fn test_e2e_buffer_lifecycle() {
         assert_eq!(stats.active_allocations, 1);
     } // buffer dropped here
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    // Drop is synchronous; stats update immediately.
 
     let stats = memory.stats();
     assert_eq!(
@@ -429,7 +428,7 @@ async fn test_e2e_rapid_alloc_dealloc() {
         drop(buffer);
     }
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Drop is synchronous; stats update immediately.
 
     let stats = memory.stats();
     assert_eq!(stats.active_allocations, 0);

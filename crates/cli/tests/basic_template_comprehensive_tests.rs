@@ -172,8 +172,15 @@ fn test_basic_template_networking() {
 fn test_basic_template_networking_dns() {
     let (_, _, _, _, _, _, networking, _) = create_basic_template();
 
-    // Should have DNS servers configured
-    assert!(!networking.dns_servers.is_empty());
+    // DNS defaults to empty — resolved from the host/orchestrator at runtime
+    // (capability-based: no hardcoded server IPs in the template).
+    // If the runtime injects servers they will be non-empty; the template itself
+    // is agnostic to resolver choice.
+    assert!(
+        networking.dns_servers.is_empty(),
+        "template DNS should be empty (host-inherited), found: {:?}",
+        networking.dns_servers
+    );
 }
 
 #[test]

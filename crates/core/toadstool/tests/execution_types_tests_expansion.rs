@@ -83,7 +83,7 @@ fn test_execution_status_ordering() {
 #[test]
 fn test_execution_input_empty_format() {
     let input = ExecutionInput {
-        data: vec![1, 2, 3],
+        data: bytes::Bytes::from(vec![1, 2, 3]),
         format: Some(String::new()),
         metadata: HashMap::new(),
     };
@@ -97,7 +97,7 @@ fn test_execution_input_various_formats() {
 
     for format in formats {
         let input = ExecutionInput {
-            data: vec![],
+            data: bytes::Bytes::new(),
             format: Some(format.to_string()),
             metadata: HashMap::new(),
         };
@@ -114,7 +114,7 @@ fn test_execution_input_many_metadata_entries() {
     }
 
     let input = ExecutionInput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         format: None,
         metadata: metadata.clone(),
     };
@@ -128,7 +128,7 @@ fn test_execution_input_serialization_roundtrip() {
     metadata.insert("key".to_string(), "value".to_string());
 
     let input = ExecutionInput {
-        data: vec![1, 2, 3, 4, 5],
+        data: bytes::Bytes::from(vec![1, 2, 3, 4, 5]),
         format: Some("json".to_string()),
         metadata,
     };
@@ -150,7 +150,7 @@ fn test_execution_input_debug_format() {
 #[test]
 fn test_execution_input_zero_size_data() {
     let input = ExecutionInput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         format: Some("empty".to_string()),
         metadata: HashMap::new(),
     };
@@ -162,7 +162,7 @@ fn test_execution_input_zero_size_data() {
 fn test_execution_input_very_large_data() {
     let data = vec![0u8; 100 * 1024 * 1024]; // 100MB
     let input = ExecutionInput {
-        data,
+        data: data.into(),
         format: Some("binary".to_string()),
         metadata: HashMap::new(),
     };
@@ -177,7 +177,7 @@ fn test_execution_input_very_large_data() {
 #[test]
 fn test_execution_output_empty_streams() {
     let output = ExecutionOutput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         stdout: Some(String::new()),
         stderr: Some(String::new()),
         exit_code: Some(0),
@@ -194,7 +194,7 @@ fn test_execution_output_empty_streams() {
 fn test_execution_output_large_stdout() {
     let large_stdout = "line\n".repeat(100000);
     let output = ExecutionOutput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         stdout: Some(large_stdout.clone()),
         stderr: None,
         exit_code: Some(0),
@@ -212,7 +212,7 @@ fn test_execution_output_negative_exit_codes() {
 
     for code in codes {
         let output = ExecutionOutput {
-            data: vec![],
+            data: bytes::Bytes::new(),
             stdout: None,
             stderr: None,
             exit_code: Some(code),
@@ -231,7 +231,7 @@ fn test_execution_output_serialization_roundtrip() {
     result.insert("status".to_string(), "ok".to_string());
 
     let output = ExecutionOutput {
-        data: vec![1, 2, 3],
+        data: bytes::Bytes::from(vec![1, 2, 3]),
         stdout: Some("output".to_string()),
         stderr: Some("error".to_string()),
         exit_code: Some(42),
@@ -256,7 +256,7 @@ fn test_execution_output_debug_format() {
 #[test]
 fn test_execution_output_both_streams_and_data() {
     let output = ExecutionOutput {
-        data: vec![1, 2, 3, 4, 5],
+        data: bytes::Bytes::from(vec![1, 2, 3, 4, 5]),
         stdout: Some("Standard output".to_string()),
         stderr: Some("Standard error".to_string()),
         exit_code: Some(0),
@@ -273,7 +273,7 @@ fn test_execution_output_both_streams_and_data() {
 #[test]
 fn test_execution_output_unicode_streams() {
     let output = ExecutionOutput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         stdout: Some("Hello 世界 🌍".to_string()),
         stderr: Some("Error: été ñoño".to_string()),
         exit_code: Some(0),
@@ -702,7 +702,7 @@ fn test_callback_with_all_events() {
 #[test]
 fn test_execution_with_input_and_output() {
     let input = ExecutionInput {
-        data: b"input data".to_vec(),
+        data: bytes::Bytes::from_static(b"input data"),
         format: Some("text".to_string()),
         metadata: HashMap::new(),
     };
@@ -713,7 +713,7 @@ fn test_execution_with_input_and_output() {
     };
 
     let output = ExecutionOutput {
-        data: b"output data".to_vec(),
+        data: bytes::Bytes::from_static(b"output data"),
         stdout: Some("Processing complete".to_string()),
         exit_code: Some(0),
         ..Default::default()
@@ -725,6 +725,6 @@ fn test_execution_with_input_and_output() {
         ..Default::default()
     };
 
-    assert_eq!(request.input_data.data, b"input data");
-    assert_eq!(response.output.data, b"output data");
+    assert_eq!(request.input_data.data, &b"input data"[..]);
+    assert_eq!(response.output.data, &b"output data"[..]);
 }

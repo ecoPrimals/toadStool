@@ -40,8 +40,9 @@ async fn test_handler() -> impl IntoResponse {
 }
 
 async fn long_running_handler() -> impl IntoResponse {
-    // Simulate long-running request (>1000ms for slow request logging)
-    tokio::time::sleep(tokio::time::Duration::from_millis(1100)).await;
+    // Advance tokio time instead of sleeping — the metrics middleware uses
+    // tokio::time::Instant so this makes the request appear to take 1100ms.
+    tokio::time::advance(tokio::time::Duration::from_millis(1100)).await;
     (StatusCode::OK, "completed")
 }
 
@@ -101,7 +102,7 @@ async fn test_request_id_with_post_request() {
 // Metrics Middleware - Advanced Tests
 // ============================================================================
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(start_paused = true)]
 async fn test_metrics_tracks_slow_requests() {
     let state = create_test_state();
     let app = Router::new()

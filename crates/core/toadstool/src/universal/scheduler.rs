@@ -235,7 +235,7 @@ impl UniversalScheduler {
                     }
                 },
                 output: crate::execution::ExecutionOutput {
-                    data: response.payload.to_string().into_bytes(),
+                    data: response.payload.to_string().into_bytes().into(),
                     stdout: response
                         .payload
                         .get("stdout")
@@ -319,7 +319,7 @@ impl UniversalScheduler {
                         execution_id,
                         status,
                         output: crate::execution::ExecutionOutput {
-                            data: output.stdout,
+                            data: output.stdout.into(),
                             stdout: Some(stdout_text),
                             stderr: if stderr_text.is_empty() {
                                 None
@@ -347,7 +347,7 @@ impl UniversalScheduler {
                             error: error_msg.clone(),
                         },
                         output: crate::execution::ExecutionOutput {
-                            data: Vec::new(),
+                            data: bytes::Bytes::new(),
                             stdout: None,
                             stderr: Some(error_msg),
                             exit_code: Some(127),
@@ -383,7 +383,7 @@ impl UniversalScheduler {
                 execution_id: Uuid::new_v4(),
                 workload: WorkloadSpec::Wasm {
                     module: WasmModuleSource::Bytes {
-                        data: module.to_vec(),
+                        data: bytes::Bytes::copy_from_slice(module),
                     },
                     args: Some(args.to_vec()),
                     wasi_config: Some(WasiConfig {
@@ -421,7 +421,7 @@ impl UniversalScheduler {
                 error: error_msg.clone(),
             },
             output: crate::execution::ExecutionOutput {
-                data: Vec::new(),
+                data: bytes::Bytes::new(),
                 stdout: None,
                 stderr: Some(error_msg),
                 exit_code: Some(126), // Command not executable
@@ -499,7 +499,7 @@ impl UniversalScheduler {
                         execution_id,
                         status,
                         output: crate::execution::ExecutionOutput {
-                            data: response.payload.to_string().into_bytes(),
+                            data: response.payload.to_string().into_bytes().into(),
                             stdout: Some(format!("Primal '{}' executed successfully", primal_type)),
                             stderr: None,
                             exit_code: Some(0),
@@ -523,7 +523,7 @@ impl UniversalScheduler {
                             error: error_msg.clone(),
                         },
                         output: crate::execution::ExecutionOutput {
-                            data: Vec::new(),
+                            data: bytes::Bytes::new(),
                             stdout: None,
                             stderr: Some(error_msg),
                             exit_code: Some(1),
@@ -560,7 +560,7 @@ impl UniversalScheduler {
                     error: error_msg.clone(),
                 },
                 output: crate::execution::ExecutionOutput {
-                    data: Vec::new(),
+                    data: bytes::Bytes::new(),
                     stdout: None,
                     stderr: Some(error_msg),
                     exit_code: Some(127),
@@ -640,7 +640,7 @@ impl UniversalScheduler {
                         execution_id,
                         status,
                         output: crate::execution::ExecutionOutput {
-                            data: response.payload.to_string().into_bytes(),
+                            data: response.payload.to_string().into_bytes().into(),
                             stdout: Some(format!(
                                 "BiomeOS execution for team '{}' completed",
                                 team_id
@@ -668,7 +668,7 @@ impl UniversalScheduler {
                             error: error_msg.clone(),
                         },
                         output: crate::execution::ExecutionOutput {
-                            data: Vec::new(),
+                            data: bytes::Bytes::new(),
                             stdout: None,
                             stderr: Some(error_msg),
                             exit_code: Some(1),
@@ -696,7 +696,7 @@ impl UniversalScheduler {
                     error: error_msg.clone(),
                 },
                 output: crate::execution::ExecutionOutput {
-                    data: Vec::new(),
+                    data: bytes::Bytes::new(),
                     stdout: None,
                     stderr: Some(error_msg),
                     exit_code: Some(127),

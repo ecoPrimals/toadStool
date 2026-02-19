@@ -320,7 +320,9 @@ fn create_wasm_request() -> anyhow::Result<ExecutionRequest> {
     Ok(ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: minimal_wasm },
+            module: WasmModuleSource::Bytes {
+                data: bytes::Bytes::from(minimal_wasm),
+            },
             args: Some(vec!["wasm_module".to_string()]),
             wasi_config: Some(WasiConfig {
                 inherit_env: false,

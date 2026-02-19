@@ -1,5 +1,6 @@
 //! Workload types and specifications
 
+use bytes::Bytes;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -301,24 +302,30 @@ pub enum WorkloadType {
     Cuda,
 }
 
-/// Source of an executable
+/// Source of an executable.
+///
+/// The `Bytes` variant uses [`bytes::Bytes`] (an `Arc<[u8]>`) so that in-memory
+/// binary payloads flowing from the RPC layer to the executor are never copied.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExecutableSource {
     /// File on disk
     File { path: PathBuf },
     /// URL to download from
     Url { url: String },
-    /// Raw bytes
-    Bytes { data: Vec<u8> },
+    /// Raw bytes (zero-copy: clone bumps refcount, not a memcpy)
+    Bytes { data: Bytes },
 }
 
-/// Source of a WASM module
+/// Source of a WASM module.
+///
+/// The `Bytes` variant uses [`bytes::Bytes`] so that compiled WASM payloads
+/// can be shared across concurrent executions without copying.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WasmModuleSource {
     /// File on disk
     File { path: PathBuf },
-    /// Raw bytes
-    Bytes { data: Vec<u8> },
+    /// Raw bytes (zero-copy: clone bumps refcount, not a memcpy)
+    Bytes { data: Bytes },
     /// URL to download from
     Url { url: String },
 }
@@ -458,7 +465,7 @@ mod tests {
 
         let wasm = WorkloadSpec::Wasm {
             module: WasmModuleSource::Bytes {
-                data: vec![0, 97, 115, 109],
+                data: bytes::Bytes::from(vec![0, 97, 115, 109]),
             },
             args: None,
             wasi_config: None,
@@ -577,7 +584,9 @@ mod tests {
     #[test]
     fn test_validate_executable_empty_bytes() {
         let spec = WorkloadSpec::Native {
-            executable: ExecutableSource::Bytes { data: vec![] },
+            executable: ExecutableSource::Bytes {
+                data: bytes::Bytes::new(),
+            },
             args: None,
             working_dir: None,
             env_vars: HashMap::new(),
@@ -603,7 +612,9 @@ mod tests {
     #[test]
     fn test_validate_wasm_empty_bytes() {
         let spec = WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: vec![] },
+            module: WasmModuleSource::Bytes {
+                data: bytes::Bytes::new(),
+            },
             args: None,
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -626,7 +637,7 @@ mod tests {
     fn test_validate_wasm_bytes_ok() {
         let spec = WorkloadSpec::Wasm {
             module: WasmModuleSource::Bytes {
-                data: vec![0, 97, 115, 109],
+                data: bytes::Bytes::from(vec![0, 97, 115, 109]),
             },
             args: None,
             wasi_config: None,

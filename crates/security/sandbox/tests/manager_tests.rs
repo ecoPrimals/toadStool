@@ -464,10 +464,8 @@ mod tests {
         ));
         assert!(config.allowed_hosts.is_empty());
         assert!(config.allowed_ports.is_empty());
-        assert_eq!(
-            config.dns_servers,
-            vec!["8.8.8.8".to_string(), "8.8.4.4".to_string()]
-        );
+        // Capability-based DNS: defaults to empty (host-inherited at runtime)
+        assert!(config.dns_servers.is_empty());
         assert!(config.bandwidth_limits.is_none());
     }
 

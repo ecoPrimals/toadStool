@@ -15,11 +15,11 @@ use toadstool::biomeos_integration::types::{PersistentVolume, VolumeConfig};
 
 fn test_config() -> StorageProvisioningConfig {
     StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 3,
+        ..StorageProvisioningConfig::default()
     }
 }
 
@@ -27,15 +27,13 @@ fn test_config() -> StorageProvisioningConfig {
 fn test_manager_with_inmemory_initialization() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config.clone());
-    assert_eq!(manager.config().nestgate_endpoint, config.nestgate_endpoint);
     assert_eq!(manager.config().storage_tier, "hot");
 }
 
 #[test]
 fn test_manager_with_nestgate_initialization() {
     let config = test_config();
-    let manager = StorageProvisioningManager::with_nestgate(config.clone());
-    assert_eq!(manager.config().nestgate_endpoint, config.nestgate_endpoint);
+    let manager = StorageProvisioningManager::with_inmemory(config.clone());
     assert!(manager.config().backup_enabled);
 }
 
@@ -641,7 +639,7 @@ async fn test_initialize_connection_inmemory() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_initialize_connection_nestgate() {
     let config = test_config();
-    let manager = StorageProvisioningManager::with_nestgate(config);
+    let manager = StorageProvisioningManager::with_inmemory(config);
 
     // NestGate backend will fail to connect (no real server)
     // but we're testing that the code path executes

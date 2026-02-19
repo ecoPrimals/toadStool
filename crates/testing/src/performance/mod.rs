@@ -239,7 +239,8 @@ mod tests {
         let manager = PerformanceTestManager::new(config);
         let result = manager
             .benchmark(|| async {
-                tokio::time::sleep(Duration::from_micros(100)).await;
+                let _ = (0..1000u64).fold(0u64, |a, b| a.wrapping_add(b));
+                tokio::task::yield_now().await;
                 Ok(())
             })
             .await

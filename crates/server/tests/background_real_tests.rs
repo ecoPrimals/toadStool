@@ -25,34 +25,38 @@ async fn test_background_task_creation() {
     assert_eq!(counter.load(Ordering::SeqCst), 1);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+// Periodic-execution test uses paused tokio time so no real wall-clock time
+// elapses. The task counts exactly TICK_COUNT ticks and then signals completion,
+// making the test instantaneous, deterministic, and race-free.
+#[tokio::test(start_paused = true)]
 async fn test_background_task_periodic_execution() {
-    // Test periodic task execution (event-driven with ticker)
+    use tokio::sync::Notify;
+
+    const TICK_COUNT: usize = 5;
     let counter = Arc::new(AtomicUsize::new(0));
     let counter_clone = Arc::clone(&counter);
-    let should_stop = Arc::new(AtomicBool::new(false));
-    let should_stop_clone = Arc::clone(&should_stop);
+    let done = Arc::new(Notify::new());
+    let done_clone = Arc::clone(&done);
 
     let handle = tokio::spawn(async move {
         let mut ticker = interval(Duration::from_millis(10));
-        while !should_stop_clone.load(Ordering::SeqCst) {
+        for _ in 0..TICK_COUNT {
             ticker.tick().await;
             counter_clone.fetch_add(1, Ordering::SeqCst);
         }
+        done_clone.notify_one();
     });
 
-    // ✅ LEGITIMATE TEST: Wait for multiple ticks - testing periodic execution timing
-    // This tests that the interval actually ticks multiple times, which requires time passage
-    tokio::time::sleep(Duration::from_millis(50)).await;
-
-    should_stop.store(true, Ordering::SeqCst);
-
+    // Advance time past TICK_COUNT intervals; the spawned task processes all
+    // ticks in burst mode then signals done.
+    tokio::time::advance(Duration::from_millis(60)).await;
+    done.notified().await;
     handle.await.unwrap();
-    let count = counter.load(Ordering::SeqCst);
-    assert!(
-        count >= 3,
-        "Task should have run multiple times, got {}",
-        count
+
+    assert_eq!(
+        counter.load(Ordering::SeqCst),
+        TICK_COUNT,
+        "Task should have run exactly {TICK_COUNT} times"
     );
 }
 

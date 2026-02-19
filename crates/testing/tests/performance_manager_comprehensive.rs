@@ -86,8 +86,8 @@ async fn test_benchmark_with_custom_metrics() {
 
     let result = manager
         .benchmark(|| async {
-            // Simulate work with custom metrics
-            tokio::time::sleep(Duration::from_micros(100)).await;
+            let _ = (0..1000u64).fold(0u64, |a, b| a.wrapping_add(b));
+            tokio::task::yield_now().await;
             Ok(())
         })
         .await;
@@ -164,7 +164,9 @@ async fn test_benchmark_with_warm_up() {
     assert_eq!(call_count.load(Ordering::SeqCst), 15);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+// Uses paused tokio time + advance() so this runs in microseconds
+// and is fully deterministic regardless of system load.
+#[tokio::test(start_paused = true)]
 async fn test_benchmark_duration_accuracy() {
     let config = PerformanceTestConfig {
         test_name: "duration_test".to_string(),
@@ -178,10 +180,10 @@ async fn test_benchmark_duration_accuracy() {
 
     let manager = PerformanceTestManager::new(config);
 
-    let sleep_duration = Duration::from_millis(10);
     let result = manager
-        .benchmark(|| async move {
-            tokio::time::sleep(sleep_duration).await;
+        .benchmark(|| async {
+            // Advance mock time exactly 10ms — deterministic, no real wait.
+            tokio::time::advance(Duration::from_millis(10)).await;
             Ok(())
         })
         .await;
@@ -189,19 +191,19 @@ async fn test_benchmark_duration_accuracy() {
     assert!(result.is_ok());
     let benchmark_result = result.unwrap();
 
-    // Total duration should be at least 3 * 10ms = 30ms
-    assert!(benchmark_result.total_duration >= Duration::from_millis(30));
-
-    // Average should be around 10ms (with some tolerance)
-    let avg_millis = benchmark_result.average_duration.as_millis();
+    // Total duration should be exactly 3 * 10ms = 30ms of mock time.
     assert!(
-        (8..=15).contains(&avg_millis),
-        "Average was {}ms",
-        avg_millis
+        benchmark_result.total_duration >= Duration::from_millis(30),
+        "total was {:?}",
+        benchmark_result.total_duration
     );
+
+    let avg_millis = benchmark_result.average_duration.as_millis();
+    assert!((8..=15).contains(&avg_millis), "Average was {avg_millis}ms");
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+// Uses paused time + advance() for deterministic variable-duration percentile test.
+#[tokio::test(start_paused = true)]
 async fn test_percentile_metrics() {
     let config = PerformanceTestConfig {
         test_name: "percentile_test".to_string(),
@@ -223,10 +225,9 @@ async fn test_percentile_metrics() {
         .benchmark(|| {
             let c = Arc::clone(&counter);
             async move {
-                // Variable duration to test percentiles
+                // Advance mock time by a variable amount — deterministic and instant.
                 let n = c.fetch_add(1, Ordering::Relaxed);
-                let duration = Duration::from_micros(10 + (n % 990));
-                tokio::time::sleep(duration).await;
+                tokio::time::advance(Duration::from_micros(10 + (n % 990))).await;
                 Ok(())
             }
         })

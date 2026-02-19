@@ -32,7 +32,7 @@ Nest    = Tower  + NestGate           ← storage
 |------|--------|
 | `cargo build --workspace` | ✅ Clean |
 | `cargo fmt --all -- --check` | ✅ Clean |
-| `cargo clippy --workspace -- -D warnings` | ✅ Clean |
+| `cargo clippy --workspace --tests -- -D warnings` | ✅ Clean |
 | `cargo doc --workspace --no-deps` | ✅ Clean |
 | `cargo test --workspace` | ✅ 15,700+ passed, 0 failed |
 | hotSpring validation | ✅ 195/195 nuclear physics + MD checks |
@@ -54,7 +54,11 @@ Nest    = Tower  + NestGate           ← storage
 | GPU sovereignty (FP64) | ✅ f64 fossil functions removed, capability matrix probed |
 | Node routing | ✅ Distributed node selection via least-loaded `NetworkLoadBalancer` |
 | Sovereign Compute | ✅ Phases 0–3 done — `WgslOptimizer` wired into `ShaderTemplate` |
-| Line coverage (non-GPU) | ✅ 61.35% — gap in async networking paths; target 90% |
+| Sleep-free tests | ✅ 27 sleep calls removed — `advance()`, `Barrier`, `Notify`, arithmetic |
+| Zero-copy hot paths | ✅ `bytes::Bytes` on all binary RPC payloads (O(1) clone) |
+| Hardcoded values | ✅ DNS, IPs, endpoints all capability-based or env-driven |
+| `llvm-cov` (non-GPU) | ✅ Clean — no SIGSEGV, exit 0 across workspace |
+| Line coverage (non-GPU) | ✅ 63.02% (+1.67 pp) — target 90% |
 
 *All quality gates green. Workspace fully clean. Clippy -D warnings compliant.*
 
@@ -236,18 +240,18 @@ toadStool/
 
 | Metric | Value |
 |--------|-------|
-| Clippy warnings | 0 (was 166) |
+| Clippy warnings | 0 |
 | Tests passing | 15,700+ |
 | Tests failing | 0 |
 | Build warnings | 0 |
-| Server line coverage | ~85% |
-| Common line coverage | ~84% |
-| Config line coverage | ~85% |
+| Line coverage (non-GPU) | 63.02% (+1.67 pp from 61.35%) |
 | `unsafe` blocks | FFI only — 100% documented |
 | Production placeholders | 0 (all evolved) |
 | Production mocks | 0 (TestExecutor in test-only code) |
+| Sleep-based sync in tests | 0 (27 removed) |
+| Hardcoded IPs/DNS | 0 (all capability-based or env-driven) |
 | WGSL shaders | 480+ (shader-first architecture) |
-| hotSpring validation | 169/169 acceptance checks |
+| Three springs validation | 313+ acceptance checks |
 
 ---
 
@@ -275,6 +279,64 @@ toadStool/
 ### Infrastructure (Next)
 - **NPU model pipeline** -- train/compile/deploy from Rust
 - **burn-inference models** -- Full BERT/Whisper/YOLO implementations
+
+---
+
+## Recent Evolutions (Feb 19, 2026 — Sessions 9–11: Concurrency Hardening + Zero-Copy + Coverage)
+
+### Zero-Copy Binary Payloads ✅
+
+All binary payload types on the hot RPC path migrated from `Vec<u8>` to `bytes::Bytes`:
+`WorkloadSubmission.data`, `WorkloadResult.data`, `ExecutionInput.data`, `ExecutionOutput.data`,
+`ExecutableSource::Bytes`, `WasmModuleSource::Bytes`, `TarpcWorkloadSubmission.payload`.
+`.clone()` on these types is now O(1) refcount bump regardless of payload size.
+
+### Sleep Elimination — 27 calls removed ✅
+
+Systematic audit removed all unjustified `sleep`/`thread::sleep` calls from tests and production:
+
+| Category | Fix |
+|----------|-----|
+| Circuit breaker + metrics middleware | Migrated to `tokio::time::Instant` → `start_paused + advance()` |
+| Cache staleness test | `Duration::ZERO` TTL — `is_fresh()` returns false immediately |
+| `MemoryTracker` leak detection | Migrated to `tokio::time::Instant`; test uses `advance()` |
+| `PerformanceTestManager::benchmark()` | Migrated to `tokio::time::Instant`; benchmark tests use `advance()` |
+| `AsyncBatcher` queue-full test | `Barrier` for concurrent arrival + `timeout` for blocked submitter |
+| Integration helpers (5 sleeps) | "Simulate X time" stubs removed — no behavioral assertions |
+| `MultiDevicePool` test hold | `DeviceLease::drop()` is atomic; no hold/cleanup delay needed |
+| Distributed coordinator polls | Replaced sequential + `sleep(50ms)` with concurrent `tokio::spawn` fan-out |
+
+### Hardcoding Removed ✅
+
+- DNS servers in sandbox types and container configs: removed hardcoded `8.8.8.8` / `1.1.1.1` — inherit from host
+- Ollama IP: reads `$OLLAMA_HOST` or discovers via capability
+- `TelemetryConfig`: `enabled: false` by default (opt-in)
+- `DnsConfig`: derives `Default` (empty, inherits from orchestrator)
+
+### Code Structure ✅
+
+- `pure_jsonrpc.rs` (979 lines) → `pure_jsonrpc/` module (types.rs, handler.rs, mod.rs, tests.rs)
+- `SemanticMethodRegistry` wired into `JsonRpcHandler` — semantic routes resolve to implementation names
+- `biomeos_integration/storage_backend/mod.rs` (987 lines) → 4 files: mod.rs (64), nestgate.rs (306), inmemory.rs (210), tests.rs (68)
+- `DualChipEnsemble` parallel ensemble state: `rayon::join` replaces sequential calls
+
+### Production Bug Fix ✅
+
+`UnifiedBuffer::drop()` — `metrics.total_allocated` was never decremented (only the atomic counter was).
+Both are now updated atomically in a single `RwLock` write. Eliminated 6 stale `sleep()` calls
+in GPU memory tests that had been masking this inconsistency.
+
+### CLI Executor Coverage ✅
+
+15 inline `#[cfg(test)]` tests added directly to executor sub-modules:
+- `display.rs`: `get_log_path`, `show_log_file`, `tail_log_file` (6 tests)
+- `signals.rs`: SIGCONT-to-self, invalid signal name, dead-PID, kill command (4 tests)
+- `resources.rs`: `biome_exists`, `get_biome_info`, `find_process_pid`, error path, concurrent reads (5 tests)
+
+### Coverage ✅
+
+`cargo llvm-cov` workspace-wide run now completes with exit 0 (no SIGSEGV).
+Line coverage: **61.35% → 63.02%** (+1.67 pp), Functions: **66.47% → 68.58%** (+2.11 pp).
 
 ---
 
@@ -723,4 +785,4 @@ All other tracked debt resolved. See [DEBT.md](DEBT.md) for full register and ev
 
 ---
 
-**Last Updated**: February 19, 2026 — Sessions 4–8: Sovereign Compute Phases 0–3 complete (WgslOptimizer live), audit wave F-001/F-003/F-005/F-007/F-009 resolved, 61.35% coverage baseline, Mesa NAK patches prepared
+**Last Updated**: February 19, 2026 — Sessions 9–11: Zero-copy bytes::Bytes hot paths, 27 sleep calls eliminated, hardcoding removed (DNS/IPs), pure_jsonrpc + storage_backend smart-split, CLI executor coverage, llvm-cov SIGSEGV resolved, 63.02% line coverage (+1.67 pp)

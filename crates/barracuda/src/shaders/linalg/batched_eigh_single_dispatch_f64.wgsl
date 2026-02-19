@@ -169,6 +169,14 @@ fn batched_eigh_single_dispatch(
                 // in parallel, hardware can coalesce or dual-issue them.
                 // The DFMA for new_akp is computed while new_akq loads resolve,
                 // eliminating back-to-back DFMA stalls on SM70.
+                //
+                // @unroll_hint 32: WgslLoopUnroller expands this into 32 guarded copies
+                // (each guarded by `if (k < n)`). With MAX_N=32, the guard is evaluated
+                // once from a uniform value — zero stall overhead. All 32 iterations are
+                // visible to the hardware scheduler simultaneously, enabling inter-iteration
+                // ILP: while iteration i waits 8cy for DFMA, iterations i+1..i+3 feed
+                // independent load/FMA pairs that fill the scoreboard window.
+                // @unroll_hint 32
                 for (var k = 0u; k < n; k = k + 1u) {
                     if (k != p && k != q) {
                         let akp     = A_batch[base + idx2d(k, p, n)];

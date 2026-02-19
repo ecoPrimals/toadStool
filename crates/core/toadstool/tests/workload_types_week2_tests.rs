@@ -91,7 +91,9 @@ fn test_executable_source_url() {
 #[test]
 fn test_executable_source_bytes() {
     let data = vec![0x7f, 0x45, 0x4c, 0x46]; // ELF magic
-    let source = ExecutableSource::Bytes { data: data.clone() };
+    let source = ExecutableSource::Bytes {
+        data: data.clone().into(),
+    };
 
     match source {
         ExecutableSource::Bytes { data: d } => {
@@ -138,7 +140,7 @@ fn test_wasm_module_source_file() {
 fn test_wasm_module_source_bytes() {
     let wasm_bytes = vec![0x00, 0x61, 0x73, 0x6d]; // WASM magic
     let source = WasmModuleSource::Bytes {
-        data: wasm_bytes.clone(),
+        data: wasm_bytes.clone().into(),
     };
 
     match source {
@@ -166,7 +168,7 @@ fn test_wasm_module_source_url() {
 #[test]
 fn test_wasm_module_source_clone() {
     let source = WasmModuleSource::Bytes {
-        data: vec![1, 2, 3, 4],
+        data: bytes::Bytes::from(vec![1, 2, 3, 4]),
     };
     let cloned = source.clone();
 
@@ -586,7 +588,7 @@ fn test_workload_spec_native() {
 fn test_workload_spec_wasm() {
     let spec = WorkloadSpec::Wasm {
         module: WasmModuleSource::Bytes {
-            data: vec![0x00, 0x61, 0x73, 0x6d],
+            data: bytes::Bytes::from(vec![0x00, 0x61, 0x73, 0x6d]),
         },
         args: None,
         wasi_config: None,

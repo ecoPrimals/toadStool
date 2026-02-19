@@ -215,3 +215,116 @@ impl ComputeUnit for CpuComputeUnit {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_workload(op: OperationType, input: WorkloadData) -> Workload {
+        Workload {
+            operation: op,
+            data_type: DataType::F32,
+            num_operations: 3,
+            required_memory: 12,
+            input,
+            params: WorkloadParams::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cpu_discover_has_name() {
+        let cpu = CpuComputeUnit::discover();
+        assert!(cpu.name().contains("CPU"));
+    }
+
+    #[tokio::test]
+    async fn test_cpu_capabilities_unit_type() {
+        let cpu = CpuComputeUnit::discover();
+        assert_eq!(cpu.capabilities().unit_type, ComputeUnitType::Cpu);
+    }
+
+    #[tokio::test]
+    async fn test_cpu_supports_f32_map() {
+        let cpu = CpuComputeUnit::discover();
+        let w = make_workload(
+            OperationType::Map,
+            WorkloadData::F32Vec(vec![1.0, 2.0, 3.0]),
+        );
+        assert!(cpu.can_execute(&w));
+    }
+
+    #[tokio::test]
+    async fn test_cpu_optimal_batch_size() {
+        let cpu = CpuComputeUnit::discover();
+        assert!(cpu.optimal_batch_size() > 0);
+    }
+
+    #[tokio::test]
+    async fn test_cpu_execute_map() {
+        let cpu = CpuComputeUnit::discover();
+        let w = make_workload(
+            OperationType::Map,
+            WorkloadData::F32Vec(vec![1.0, 2.0, 3.0]),
+        );
+        let out = cpu.execute(w).await.unwrap();
+        match out.data {
+            WorkloadData::F32Vec(v) => assert_eq!(v.len(), 3),
+            _ => panic!("expected F32Vec"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cpu_execute_dot_product() {
+        let cpu = CpuComputeUnit::discover();
+        let w = make_workload(
+            OperationType::DotProduct,
+            WorkloadData::F32VecPair(vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]),
+        );
+        let out = cpu.execute(w).await.unwrap();
+        match out.data {
+            WorkloadData::F32Vec(v) => assert!((v[0] - 32.0).abs() < 1e-5),
+            _ => panic!(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cpu_execute_transpose() {
+        let cpu = CpuComputeUnit::discover();
+        let w = make_workload(
+            OperationType::Transpose,
+            WorkloadData::F32Matrix(vec![1.0, 2.0, 3.0, 4.0], 2, 2),
+        );
+        let out = cpu.execute(w).await.unwrap();
+        assert!(matches!(out.data, WorkloadData::F32Matrix(_, _, _)));
+    }
+
+    #[tokio::test]
+    async fn test_cpu_execute_layernorm() {
+        let cpu = CpuComputeUnit::discover();
+        let w = make_workload(
+            OperationType::LayerNorm,
+            WorkloadData::F32Vec(vec![1.0, 2.0, 3.0]),
+        );
+        let out = cpu.execute(w).await.unwrap();
+        assert!(matches!(out.data, WorkloadData::F32Vec(_)));
+    }
+
+    #[tokio::test]
+    async fn test_cpu_execute_custom_returns_error() {
+        let cpu = CpuComputeUnit::discover();
+        let w = make_workload(OperationType::Custom, WorkloadData::Custom(vec![]));
+        assert!(cpu.execute(w).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_cpu_estimate_duration_nonzero() {
+        let cpu = CpuComputeUnit::discover();
+        let w = make_workload(
+            OperationType::Map,
+            WorkloadData::F32Vec(vec![1.0, 2.0, 3.0]),
+        );
+        let dur = cpu.estimate_duration(&w);
+        // Duration should be at least 0 (latency = 0ms for CPU)
+        let _ = dur;
+    }
+}

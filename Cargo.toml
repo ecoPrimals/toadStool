@@ -98,6 +98,11 @@ wgpu = { version = "22", default-features = false, features = [
 etcetera = "0.8"
 
 
+# Zero-copy binary payload transport (already a transitive dep via tokio/hyper/axum)
+# Use bytes::Bytes instead of Vec<u8> for data that is cloned across threads/tasks.
+# bytes::Bytes is Arc<[u8]>: clone() bumps a refcount, not a memcpy.
+bytes = { version = "1", features = ["serde"] }
+
 # Core dependencies
 tokio = { version = "1.35", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }

@@ -160,7 +160,9 @@ impl<'a> ProcessSpawner<'a> {
                     .load_wasm_with_verification(_wasm_source, &Some(checksum.clone()))
                     .await?;
                 Ok(WorkloadSpec::Wasm {
-                    module: toadstool::workload::WasmModuleSource::Bytes { data: module_data },
+                    module: toadstool::workload::WasmModuleSource::Bytes {
+                        data: module_data.into(),
+                    },
                     args: None,
                     wasi_config: None, // WASI config conversion not implemented
                     env_vars: HashMap::new(),

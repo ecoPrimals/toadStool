@@ -261,7 +261,7 @@ impl ContainerRuntimeEngine {
                 execution_id: request.execution_id,
                 status: ExecutionStatus::Success,
                 output: ExecutionOutput {
-                    data: b"Container execution completed".to_vec(),
+                    data: bytes::Bytes::from_static(b"Container execution completed"),
                     result: HashMap::new(),
                     stdout: Some("Container execution completed".to_string()),
                     stderr: None,

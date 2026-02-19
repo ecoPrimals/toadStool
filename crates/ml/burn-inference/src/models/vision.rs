@@ -113,3 +113,95 @@ impl ResNet {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_yolo_config_default() {
+        let cfg = YoloConfig::default();
+        assert_eq!(cfg.num_classes, 80);
+        assert_eq!(cfg.input_size, (640, 640));
+    }
+
+    #[test]
+    fn test_yolo_num_parameters() {
+        assert_eq!(
+            Yolo::new(YoloConfig {
+                version: YoloVersion::V8Nano,
+                ..YoloConfig::default()
+            })
+            .num_parameters(),
+            3_200_000
+        );
+        assert_eq!(
+            Yolo::new(YoloConfig {
+                version: YoloVersion::V8Small,
+                ..YoloConfig::default()
+            })
+            .num_parameters(),
+            11_200_000
+        );
+        assert_eq!(
+            Yolo::new(YoloConfig {
+                version: YoloVersion::V8Medium,
+                ..YoloConfig::default()
+            })
+            .num_parameters(),
+            25_900_000
+        );
+        assert_eq!(
+            Yolo::new(YoloConfig {
+                version: YoloVersion::V8Large,
+                ..YoloConfig::default()
+            })
+            .num_parameters(),
+            43_700_000
+        );
+    }
+
+    #[test]
+    fn test_yolo_from_pretrained() {
+        let yolo = Yolo::from_pretrained("yolov8n").unwrap();
+        let detections = yolo.detect(&[], 0, 0).unwrap();
+        assert!(detections.is_empty());
+    }
+
+    #[test]
+    fn test_resnet_num_parameters() {
+        assert_eq!(
+            ResNet::new(ResNetVariant::ResNet18).num_parameters(),
+            11_700_000
+        );
+        assert_eq!(
+            ResNet::new(ResNetVariant::ResNet50).num_parameters(),
+            25_600_000
+        );
+        assert_eq!(
+            ResNet::new(ResNetVariant::ResNet152).num_parameters(),
+            60_200_000
+        );
+    }
+
+    #[test]
+    fn test_resnet_classify_returns_empty() {
+        let model = ResNet::new(ResNetVariant::ResNet101);
+        let classes = model.classify(&[]).unwrap();
+        assert!(classes.is_empty());
+    }
+
+    #[test]
+    fn test_detection_fields() {
+        let det = Detection {
+            x1: 10.0,
+            y1: 20.0,
+            x2: 100.0,
+            y2: 200.0,
+            confidence: 0.95,
+            class_id: 0,
+        };
+        assert!((det.confidence - 0.95).abs() < 1e-5);
+        assert_eq!(det.class_id, 0);
+    }
+}

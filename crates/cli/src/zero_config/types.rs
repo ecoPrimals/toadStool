@@ -404,7 +404,8 @@ impl Default for NetworkConfig {
         Self {
             mode: String::from("bridge"),
             port_mappings: Vec::new(),
-            dns_servers: vec![String::from("8.8.8.8"), String::from("8.8.4.4")],
+            // Empty: DNS servers are provided by the environment or operator config.
+            dns_servers: Vec::new(),
             songbird_enabled: false,
         }
     }

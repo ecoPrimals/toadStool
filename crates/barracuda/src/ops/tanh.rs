@@ -150,7 +150,6 @@ impl Tensor {
 mod tests {
     use super::*;
     use crate::device::test_pool::get_test_device_if_gpu_available;
-    use std::sync::Arc;
 
     // NOTE: tanh.wgsl shader is incomplete (missing 'main' entry point)
     // Tests verify operation structure, not GPU execution

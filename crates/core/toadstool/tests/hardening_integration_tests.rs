@@ -218,7 +218,7 @@ async fn test_circuit_breaker_concurrent_executions() {
     assert_eq!(success_count, 10);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(start_paused = true)]
 async fn test_circuit_breaker_recovery_scenario() {
     let config = CircuitBreakerConfig {
         failure_threshold: 2,
@@ -238,8 +238,8 @@ async fn test_circuit_breaker_recovery_scenario() {
 
     assert_eq!(breaker.get_state().await, CircuitState::Open);
 
-    // ✅ INTENTIONAL DELAY: Wait for circuit breaker timeout (necessary for state transition)
-    tokio::time::sleep(Duration::from_millis(150)).await;
+    // Advance time past the circuit breaker timeout — no sleep required.
+    tokio::time::advance(Duration::from_millis(150)).await;
 
     // Should transition to half-open and allow requests
     let result = breaker

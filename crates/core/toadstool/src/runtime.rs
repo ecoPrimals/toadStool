@@ -388,7 +388,7 @@ mod tests {
     fn wasm_workload_spec() -> WorkloadSpec {
         WorkloadSpec::Wasm {
             module: crate::WasmModuleSource::Bytes {
-                data: vec![0x00, 0x61, 0x73, 0x6d],
+                data: bytes::Bytes::from(vec![0x00, 0x61, 0x73, 0x6d]),
             },
             args: None,
             wasi_config: None,

@@ -1,12 +1,28 @@
-//! Comprehensive tests for biomeOS storage integration
+//! Tests for biomeOS storage integration.
 //!
-//! Tests for StorageProvisioningManager, volume management,
-//! and NestGate integration.
+//! All configs use capability-based discovery: no hardcoded primal endpoints.
+//! Storage services are discovered at runtime via `with_storage_service()`.
 
 use toadstool::biomeos_integration::{
     PersistentVolume, ReplicationSettings, StorageProvisioningConfig, StorageProvisioningManager,
     VolumeConfig, VolumeStatus,
 };
+
+/// Returns a test config with capability-based discovery (no hardcoded endpoint).
+fn make_config(
+    tier: &str,
+    backup: bool,
+    replicate: bool,
+    factor: u32,
+) -> StorageProvisioningConfig {
+    StorageProvisioningConfig {
+        storage_tier: tier.to_string(),
+        backup_enabled: backup,
+        replication_enabled: replicate,
+        replication_factor: factor,
+        ..StorageProvisioningConfig::default()
+    }
+}
 
 // ============================================================================
 // StorageProvisioningConfig Tests
@@ -14,15 +30,8 @@ use toadstool::biomeos_integration::{
 
 #[test]
 fn test_storage_provisioning_config_creation() {
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: true,
-        replication_enabled: true,
-        replication_factor: 3,
-    };
+    let config = make_config("standard", true, true, 3);
 
-    assert_eq!(config.nestgate_endpoint, "http://localhost:8080");
     assert_eq!(config.storage_tier, "standard");
     assert!(config.backup_enabled);
     assert!(config.replication_enabled);
@@ -30,18 +39,23 @@ fn test_storage_provisioning_config_creation() {
 }
 
 #[test]
-fn test_storage_provisioning_config_clone() {
-    let config1 = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "premium".to_string(),
-        backup_enabled: false,
-        replication_enabled: false,
-        replication_factor: 1,
-    };
+fn test_storage_provisioning_config_uses_runtime_discovery() {
+    // Default config must use empty endpoint so the runtime discovers storage
+    // capability at runtime rather than relying on a hardcoded address.
+    let config = StorageProvisioningConfig::default();
+    #[allow(deprecated)]
+    let ep = &config.nestgate_endpoint;
+    assert!(
+        ep.is_empty(),
+        "default config must use empty endpoint for runtime discovery"
+    );
+}
 
+#[test]
+fn test_storage_provisioning_config_clone() {
+    let config1 = make_config("premium", false, false, 1);
     let config2 = config1.clone();
 
-    assert_eq!(config1.nestgate_endpoint, config2.nestgate_endpoint);
     assert_eq!(config1.storage_tier, config2.storage_tier);
     assert_eq!(config1.backup_enabled, config2.backup_enabled);
     assert_eq!(config1.replication_enabled, config2.replication_enabled);
@@ -50,17 +64,10 @@ fn test_storage_provisioning_config_clone() {
 
 #[test]
 fn test_storage_provisioning_config_different_tiers() {
-    let tiers = vec!["standard", "premium", "archive", "high-performance"];
+    let tiers = ["standard", "premium", "archive", "high-performance"];
 
     for tier in tiers {
-        let config = StorageProvisioningConfig {
-            nestgate_endpoint: "http://localhost:8080".to_string(),
-            storage_tier: tier.to_string(),
-            backup_enabled: true,
-            replication_enabled: true,
-            replication_factor: 3,
-        };
-
+        let config = make_config(tier, true, true, 3);
         assert_eq!(config.storage_tier, tier);
     }
 }
@@ -68,28 +75,14 @@ fn test_storage_provisioning_config_different_tiers() {
 #[test]
 fn test_storage_provisioning_config_replication_factors() {
     for factor in 1..=5 {
-        let config = StorageProvisioningConfig {
-            nestgate_endpoint: "http://localhost:8080".to_string(),
-            storage_tier: "standard".to_string(),
-            backup_enabled: true,
-            replication_enabled: true,
-            replication_factor: factor,
-        };
-
+        let config = make_config("standard", true, true, factor);
         assert_eq!(config.replication_factor, factor);
     }
 }
 
 #[test]
 fn test_storage_provisioning_config_backup_disabled() {
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: false,
-        replication_enabled: true,
-        replication_factor: 3,
-    };
-
+    let config = make_config("standard", false, true, 3);
     assert!(!config.backup_enabled);
 }
 
@@ -160,7 +153,7 @@ fn test_volume_status_clone() {
 
 #[test]
 fn test_volume_status_error_messages() {
-    let error_messages = vec![
+    let error_messages = [
         "Disk full",
         "Permission denied",
         "Network error",
@@ -185,53 +178,24 @@ fn test_volume_status_error_messages() {
 
 #[test]
 fn test_storage_provisioning_manager_creation() {
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: true,
-        replication_enabled: true,
-        replication_factor: 3,
-    };
-
+    let config = make_config("standard", true, true, 3);
     let _manager = StorageProvisioningManager::with_inmemory(config.clone());
-
-    // Manager should be created successfully (verified by not panicking)
-    assert_eq!(config.nestgate_endpoint, "http://localhost:8080");
+    // Manager created with capability-based config (no hardcoded endpoint)
+    assert_eq!(config.storage_tier, "standard");
 }
 
 #[test]
-fn test_storage_provisioning_manager_with_different_endpoints() {
-    let endpoints = vec![
-        "http://localhost:8080",
-        "http://nestgate.local:9090",
-        "https://nestgate.example.com",
-        "http://127.0.0.1:8000",
-    ];
-
-    for endpoint in endpoints {
-        let config = StorageProvisioningConfig {
-            nestgate_endpoint: endpoint.to_string(),
-            storage_tier: "standard".to_string(),
-            backup_enabled: true,
-            replication_enabled: true,
-            replication_factor: 3,
-        };
-
-        let _manager = StorageProvisioningManager::with_inmemory(config);
-        // Should create successfully
-    }
+fn test_storage_provisioning_manager_default_config_uses_discovery() {
+    // Verify that the default config produces a manager that will use
+    // runtime service discovery rather than a hardcoded endpoint.
+    let config = StorageProvisioningConfig::default();
+    let _manager = StorageProvisioningManager::with_inmemory(config);
+    // Creating with default (empty endpoint) should succeed
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_provision_volume_mock() {
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: true,
-        replication_enabled: true,
-        replication_factor: 3,
-    };
-
+async fn test_provision_volume_inmemory() {
+    let config = make_config("standard", true, true, 3);
     let manager = StorageProvisioningManager::with_inmemory(config);
 
     let volume_config = VolumeConfig {
@@ -243,10 +207,7 @@ async fn test_provision_volume_mock() {
         backup_policy: None,
     };
 
-    // This uses in-memory backend for testing
     let result = manager.provision_volume(&volume_config).await;
-
-    // In-memory backend should always succeed
     assert!(result.is_ok());
     let volume_info = result.unwrap();
     assert_eq!(volume_info.name, "test-volume");
@@ -254,15 +215,8 @@ async fn test_provision_volume_mock() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_provision_persistent_volume_mock() {
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: true,
-        replication_enabled: true,
-        replication_factor: 3,
-    };
-
+async fn test_provision_persistent_volume_inmemory() {
+    let config = make_config("standard", true, true, 3);
     let manager = StorageProvisioningManager::with_inmemory(config);
 
     let pv_config = PersistentVolume {
@@ -274,46 +228,22 @@ async fn test_provision_persistent_volume_mock() {
     };
 
     let result = manager.provision_persistent_volume(&pv_config).await;
-
-    // In-memory backend should always succeed
     assert!(result.is_ok());
     let volume_info = result.unwrap();
     assert_eq!(volume_info.name, "persistent-vol-1");
     assert!(volume_info.id.starts_with("test-pv-"));
-
-    #[cfg(feature = "networking")]
-    {
-        // Real mode might fail if NestGate not running
-        let _ = result;
-    }
 }
 
 #[test]
 fn test_storage_provisioning_manager_with_backup_disabled() {
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: false,
-        replication_enabled: true,
-        replication_factor: 3,
-    };
-
+    let config = make_config("standard", false, true, 3);
     let _manager = StorageProvisioningManager::with_inmemory(config);
-    // Should create successfully with backup disabled
 }
 
 #[test]
 fn test_storage_provisioning_manager_with_replication_disabled() {
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: true,
-        replication_enabled: false,
-        replication_factor: 1,
-    };
-
+    let config = make_config("standard", true, false, 1);
     let _manager = StorageProvisioningManager::with_inmemory(config);
-    // Should create successfully with replication disabled
 }
 
 // ============================================================================
@@ -322,17 +252,10 @@ fn test_storage_provisioning_manager_with_replication_disabled() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_with_different_sizes() {
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: true,
-        replication_enabled: true,
-        replication_factor: 3,
-    };
-
+    let config = make_config("standard", true, true, 3);
     let manager = StorageProvisioningManager::with_inmemory(config);
 
-    let sizes = vec!["1Gi", "10Gi", "100Gi", "1Ti"];
+    let sizes = ["1Gi", "10Gi", "100Gi", "1Ti"];
 
     for size in sizes {
         let volume_config = VolumeConfig {
@@ -361,17 +284,10 @@ async fn test_provision_volume_with_different_sizes() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_with_different_storage_classes() {
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: true,
-        replication_enabled: true,
-        replication_factor: 3,
-    };
-
+    let config = make_config("standard", true, true, 3);
     let manager = StorageProvisioningManager::with_inmemory(config);
 
-    let storage_classes = vec!["standard", "premium", "fast-ssd", "archive"];
+    let storage_classes = ["standard", "premium", "fast-ssd", "archive"];
 
     for storage_class in storage_classes {
         let volume_config = VolumeConfig {
@@ -400,17 +316,10 @@ async fn test_provision_volume_with_different_storage_classes() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_with_different_access_modes() {
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: true,
-        replication_enabled: true,
-        replication_factor: 3,
-    };
-
+    let config = make_config("standard", true, true, 3);
     let manager = StorageProvisioningManager::with_inmemory(config);
 
-    let access_modes = vec![
+    let access_modes = [
         vec!["ReadWriteOnce"],
         vec!["ReadOnlyMany"],
         vec!["ReadWriteMany"],
@@ -471,7 +380,7 @@ fn test_replication_settings_disabled() {
 
 #[test]
 fn test_replication_settings_different_strategies() {
-    let strategies = vec!["sync", "async", "hybrid", "chain"];
+    let strategies = ["sync", "async", "hybrid", "chain"];
 
     for strategy in strategies {
         let settings = ReplicationSettings {
@@ -505,18 +414,9 @@ fn test_replication_settings_clone() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_complete_volume_provisioning_workflow() {
-    // Create config with replication enabled
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "premium".to_string(),
-        backup_enabled: true,
-        replication_enabled: true,
-        replication_factor: 3,
-    };
-
+    let config = make_config("premium", true, true, 3);
     let manager = StorageProvisioningManager::with_inmemory(config);
 
-    // Provision a regular volume
     let volume_config = VolumeConfig {
         name: "app-data".to_string(),
         size: "20Gi".to_string(),
@@ -545,8 +445,7 @@ async fn test_complete_volume_provisioning_workflow() {
 
 #[test]
 fn test_volume_status_lifecycle() {
-    // Test typical volume status lifecycle
-    let statuses = vec![
+    let statuses = [
         VolumeStatus::Creating,
         VolumeStatus::Available,
         VolumeStatus::Attaching,
@@ -557,7 +456,6 @@ fn test_volume_status_lifecycle() {
     ];
 
     for status in statuses {
-        // Should be able to create all lifecycle statuses
         let _cloned = status.clone();
     }
 }
@@ -565,16 +463,6 @@ fn test_volume_status_lifecycle() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_volume_provisioning() {
     use tokio::task::JoinSet;
-
-    let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
-        storage_tier: "standard".to_string(),
-        backup_enabled: true,
-        replication_enabled: true,
-        replication_factor: 3,
-    };
-
-    let _manager = StorageProvisioningManager::with_inmemory(config);
 
     let mut set = JoinSet::new();
 
@@ -589,36 +477,11 @@ async fn test_concurrent_volume_provisioning() {
         };
 
         set.spawn(async move {
-            #[cfg(not(feature = "networking"))]
-            {
-                let config = StorageProvisioningConfig {
-                    nestgate_endpoint: "http://localhost:8080".to_string(),
-                    storage_tier: "standard".to_string(),
-                    backup_enabled: true,
-                    replication_enabled: true,
-                    replication_factor: 3,
-                };
-                let manager = StorageProvisioningManager::with_inmemory(config);
-                manager.provision_volume(&volume_config).await
-            }
-
-            #[cfg(feature = "networking")]
-            {
-                let config = StorageProvisioningConfig {
-                    nestgate_endpoint: "http://localhost:8080".to_string(),
-                    storage_tier: "standard".to_string(),
-                    backup_enabled: true,
-                    replication_enabled: true,
-                    replication_factor: 3,
-                };
-                let manager = StorageProvisioningManager::with_inmemory(config);
-                manager.provision_volume(&volume_config).await
-            }
+            let config = make_config("standard", true, true, 3);
+            let manager = StorageProvisioningManager::with_inmemory(config);
+            manager.provision_volume(&volume_config).await
         });
     }
 
-    // Wait for all to complete
-    while set.join_next().await.is_some() {
-        // Continue until all tasks complete
-    }
+    while set.join_next().await.is_some() {}
 }

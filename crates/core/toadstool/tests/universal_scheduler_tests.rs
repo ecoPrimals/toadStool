@@ -806,7 +806,7 @@ async fn test_scheduler_schedule_primal_job() {
             .output
             .stdout
             .as_ref()
-            .map_or(false, |s| s.contains("executed successfully")),
+            .is_some_and(|s| s.contains("executed successfully")),
         "stdout should confirm execution"
     );
     assert_eq!(

@@ -193,3 +193,241 @@ pub(super) fn execute_scatter(workload: Workload) -> Result<WorkloadData, Comput
         _ => Err(ComputeError::UnsupportedWorkload),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{DataType, OperationType, WorkloadParams};
+
+    fn make_workload(input: WorkloadData) -> Workload {
+        Workload {
+            operation: OperationType::DotProduct,
+            data_type: DataType::F32,
+            num_operations: 0,
+            required_memory: 0,
+            input,
+            params: WorkloadParams::default(),
+        }
+    }
+
+    fn workload_with_op(input: WorkloadData, op: &str) -> Workload {
+        let mut params = WorkloadParams::default();
+        params
+            .params
+            .insert("op".into(), crate::types::ParamValue::String(op.into()));
+        Workload {
+            operation: OperationType::ElementwiseBinary,
+            data_type: DataType::F32,
+            num_operations: 0,
+            required_memory: 0,
+            input,
+            params,
+        }
+    }
+
+    #[test]
+    fn test_dot_product_f32() {
+        let w = make_workload(WorkloadData::F32VecPair(
+            vec![1.0, 2.0, 3.0],
+            vec![4.0, 5.0, 6.0],
+        ));
+        match execute_dot_product(w).unwrap() {
+            WorkloadData::F32Vec(v) => assert!((v[0] - 32.0f32).abs() < 1e-5),
+            _ => panic!("unexpected variant"),
+        }
+    }
+
+    #[test]
+    fn test_dot_product_f64() {
+        let w = make_workload(WorkloadData::F64VecPair(
+            vec![1.0f64, 2.0, 3.0],
+            vec![4.0, 5.0, 6.0],
+        ));
+        match execute_dot_product(w).unwrap() {
+            WorkloadData::F64Vec(v) => assert!((v[0] - 32.0f64).abs() < 1e-10),
+            _ => panic!("unexpected variant"),
+        }
+    }
+
+    #[test]
+    fn test_dot_product_mismatched_lengths() {
+        let w = make_workload(WorkloadData::F32VecPair(vec![1.0, 2.0], vec![1.0]));
+        assert!(matches!(
+            execute_dot_product(w),
+            Err(ComputeError::ExecutionFailed(_))
+        ));
+    }
+
+    #[test]
+    fn test_dot_product_unsupported_input() {
+        let w = make_workload(WorkloadData::I32Vec(vec![1, 2, 3]));
+        assert!(matches!(
+            execute_dot_product(w),
+            Err(ComputeError::UnsupportedWorkload)
+        ));
+    }
+
+    #[test]
+    fn test_elementwise_add_f32() {
+        let w = workload_with_op(
+            WorkloadData::F32VecPair(vec![1.0, 2.0], vec![3.0, 4.0]),
+            "add",
+        );
+        match execute_elementwise_binary(w).unwrap() {
+            WorkloadData::F32Vec(v) => {
+                assert!((v[0] - 4.0).abs() < 1e-5);
+                assert!((v[1] - 6.0).abs() < 1e-5);
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_elementwise_sub_f32() {
+        let w = workload_with_op(
+            WorkloadData::F32VecPair(vec![5.0, 3.0], vec![2.0, 1.0]),
+            "sub",
+        );
+        match execute_elementwise_binary(w).unwrap() {
+            WorkloadData::F32Vec(v) => {
+                assert!((v[0] - 3.0).abs() < 1e-5);
+                assert!((v[1] - 2.0).abs() < 1e-5);
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_elementwise_mul_f64() {
+        let w = workload_with_op(
+            WorkloadData::F64VecPair(vec![2.0f64, 3.0], vec![4.0, 5.0]),
+            "mul",
+        );
+        match execute_elementwise_binary(w).unwrap() {
+            WorkloadData::F64Vec(v) => {
+                assert!((v[0] - 8.0).abs() < 1e-10);
+                assert!((v[1] - 15.0).abs() < 1e-10);
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_elementwise_max_f32() {
+        let w = workload_with_op(
+            WorkloadData::F32VecPair(vec![1.0, 5.0], vec![3.0, 2.0]),
+            "max",
+        );
+        match execute_elementwise_binary(w).unwrap() {
+            WorkloadData::F32Vec(v) => {
+                assert!((v[0] - 3.0).abs() < 1e-5);
+                assert!((v[1] - 5.0).abs() < 1e-5);
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_elementwise_min_f32() {
+        let w = workload_with_op(
+            WorkloadData::F32VecPair(vec![1.0, 5.0], vec![3.0, 2.0]),
+            "min",
+        );
+        match execute_elementwise_binary(w).unwrap() {
+            WorkloadData::F32Vec(v) => {
+                assert!((v[0] - 1.0).abs() < 1e-5);
+                assert!((v[1] - 2.0).abs() < 1e-5);
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_elementwise_mismatched_lengths() {
+        let w = workload_with_op(WorkloadData::F32VecPair(vec![1.0, 2.0], vec![1.0]), "add");
+        assert!(matches!(
+            execute_elementwise_binary(w),
+            Err(ComputeError::ExecutionFailed(_))
+        ));
+    }
+
+    #[test]
+    fn test_elementwise_unsupported_input() {
+        let w = workload_with_op(WorkloadData::I32Vec(vec![1, 2]), "add");
+        assert!(matches!(
+            execute_elementwise_binary(w),
+            Err(ComputeError::UnsupportedWorkload)
+        ));
+    }
+
+    #[test]
+    fn test_gather_f32() {
+        let w = make_workload(WorkloadData::F32VecIndexed(
+            vec![10.0, 20.0, 30.0],
+            vec![2, 0, 1],
+        ));
+        match execute_gather(w).unwrap() {
+            WorkloadData::F32Vec(v) => {
+                assert!((v[0] - 30.0).abs() < 1e-5);
+                assert!((v[1] - 10.0).abs() < 1e-5);
+                assert!((v[2] - 20.0).abs() < 1e-5);
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_gather_out_of_bounds_returns_zero() {
+        let w = make_workload(WorkloadData::F32VecIndexed(vec![1.0, 2.0], vec![5]));
+        match execute_gather(w).unwrap() {
+            WorkloadData::F32Vec(v) => assert!((v[0] - 0.0).abs() < 1e-5),
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_gather_i32() {
+        let w = make_workload(WorkloadData::I32VecIndexed(vec![7, 8, 9], vec![1, 2]));
+        match execute_gather(w).unwrap() {
+            WorkloadData::I32Vec(v) => {
+                assert_eq!(v[0], 8);
+                assert_eq!(v[1], 9);
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_scatter_f32() {
+        let w = make_workload(WorkloadData::F32VecIndexed(
+            vec![100.0, 200.0, 300.0],
+            vec![2, 0, 1],
+        ));
+        match execute_scatter(w).unwrap() {
+            WorkloadData::F32Vec(v) => {
+                assert!((v[0] - 200.0).abs() < 1e-5);
+                assert!((v[1] - 300.0).abs() < 1e-5);
+                assert!((v[2] - 100.0).abs() < 1e-5);
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_scatter_f64_empty() {
+        let w = make_workload(WorkloadData::F64VecIndexed(vec![], vec![]));
+        match execute_scatter(w).unwrap() {
+            WorkloadData::F64Vec(v) => assert!(v.is_empty()),
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_scatter_unsupported() {
+        let w = make_workload(WorkloadData::I32Vec(vec![1]));
+        assert!(matches!(
+            execute_scatter(w),
+            Err(ComputeError::UnsupportedWorkload)
+        ));
+    }
+}

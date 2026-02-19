@@ -1,33 +1,34 @@
 # ToadStool + BarraCUDA — Quick Status
 
-**Date**: February 19, 2026 — Session 8 (Sovereign Phases 0–3 Complete + Audit Wave F-001/F-009)
+**Date**: February 19, 2026 — Sessions 9–11 (Zero-Copy + Sleep Elimination + Coverage)
 
 ---
 
 ## Quality Gates
 
 ```
-cargo build --workspace          CLEAN
-cargo fmt --all -- --check       CLEAN
-cargo clippy --workspace -- -D warnings   CLEAN
-cargo test --workspace           15,700+ passed / 0 failed
-unsafe blocks                    FFI only (VFIO, DRM) — SAFETY documented
-error handling                   No panic paths — Mutex poison recovery via lock_cache
-production stubs                 0 remaining — all service discovery, routing, capacity live
-middleware tests                 400+ passed (linalg, sparse, numerical, special, stats, optimize, surrogate, sample, pde, pipeline, mixing, grid)
-hotSpring evolution tests        47 tests (unit, E2E, chaos, fault)
-three springs evolution tests    37 tests (unit, E2E, chaos, fault, precision)
-GPU sovereignty                  f64 fossils removed, capability matrix probed per-GPU
-Sovereign Phase 0-3              WgslOptimizer live in ShaderTemplate::for_driver_auto()
-LatencyModel                     Sm70 (DFMA=8cy), Rdna2 (VFMA64≈4cy), Conservative, Measured
-WgslDependencyGraph              let-binding DAG parser, op classification, 7 tests
-IlpReorderer                     ASAP list scheduling (BinaryHeap), 5 tests
-WgslLoopUnroller                 @unroll_hint N bounded unrolling ≤32 iters, 7 tests
-Mesa NAK patches                 sm70_instr_latencies.rs + rdna2_instr_latencies.rs ready
-node routing                     least-loaded selection, local fallback, Songbird wiring
-timeout constants                Centralized in toadstool_common::constants::timeouts
-SIMD detection                   Runtime via std::arch::is_x86_feature_detected!
-line coverage (non-GPU)          61.35% — baseline established via llvm-cov
+cargo build --workspace               CLEAN
+cargo fmt --all -- --check            CLEAN
+cargo clippy --workspace --tests      CLEAN (0 warnings, -D warnings)
+cargo test --workspace                15,700+ passed / 0 failed
+cargo llvm-cov (non-GPU)              CLEAN — exit 0, no SIGSEGV
+unsafe blocks                         FFI only (VFIO, DRM) — SAFETY documented
+error handling                        No panic paths — Mutex poison recovery via lock_cache
+production stubs                      0 — all service discovery, routing, capacity live
+middleware tests                      400+ passed
+hotSpring evolution tests             47 tests (unit, E2E, chaos, fault)
+three springs evolution tests         37 tests (unit, E2E, chaos, fault, precision)
+GPU sovereignty                       f64 fossils removed, capability matrix probed per-GPU
+Sovereign Phase 0-3                   WgslOptimizer live in ShaderTemplate::for_driver_auto()
+LatencyModel                          Sm70 (DFMA=8cy), Rdna2 (VFMA64≈4cy), Conservative, Measured
+Mesa NAK patches                      sm70_instr_latencies.rs + rdna2_instr_latencies.rs ready
+node routing                          least-loaded selection, local fallback, Songbird wiring
+timeout constants                     Centralized in toadstool_common::constants::timeouts
+SIMD detection                        Runtime via std::arch::is_x86_feature_detected!
+sleep-based sync in tests             0 — 27 sleep calls removed (advance(), Barrier, Notify)
+zero-copy hot paths                   bytes::Bytes on all binary RPC payloads (O(1) clone)
+hardcoded IPs/DNS                     0 — capability-based or env-driven
+line coverage (non-GPU)               63.02% (+1.67 pp) — target 90%
 ```
 
 *All quality gates green. Clippy -D warnings compliant. Zero panic paths in library code.*
@@ -128,13 +129,13 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 | Tests passing | 15,700+ |
 | Tests failing | 0 |
 | WGSL shaders | 480+ (shader-first) |
-| Server line coverage | ~85% |
-| Common line coverage | ~84% |
-| Config line coverage | ~85% |
+| Line coverage (non-GPU) | 63.02% (+1.67 pp) |
 | Unsafe blocks | FFI only (VFIO, DRM) |
 | Production placeholders | 0 (all evolved) |
 | Production mocks | 0 |
-| Server metrics | Real sysinfo values |
+| Sleep-based sync in tests | 0 (27 removed) |
+| Hardcoded IPs/DNS | 0 |
+| Zero-copy hot paths | bytes::Bytes on all binary payloads |
 | **hotSpring validation** | 195/195 nuclear physics |
 | **wetSpring validation** | 48/48 life science |
 | **airSpring validation** | 70/70 precision agriculture |
@@ -549,4 +550,4 @@ See `UNIDIRECTIONAL_PIPELINE.md` for tracking and `DEEP_DEBT_STATUS.md` for full
 
 ---
 
-**Last Updated**: February 17, 2026
+**Last Updated**: February 19, 2026 — Sessions 9–11: Zero-copy bytes::Bytes, 27 sleeps removed, hardcoding eliminated, pure_jsonrpc + storage_backend split, CLI executor coverage, llvm-cov clean, 63.02% coverage

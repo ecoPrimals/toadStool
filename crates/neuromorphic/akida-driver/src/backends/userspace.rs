@@ -30,6 +30,10 @@ mod registers {
     pub const REG_CMD_LOAD_MODEL: usize = 0x24;
     pub const REG_CMD_INFER: usize = 0x30;
 
+    // Output registers (written by hardware after inference)
+    /// Number of output floats produced by the last inference (in 32-bit words).
+    pub const REG_OUTPUT_SIZE: usize = 0x34;
+
     // Status bits
     pub const STATUS_READY: u32 = 1 << 0;
     pub const STATUS_MODEL_LOADED: u32 = 1 << 1;
@@ -42,7 +46,7 @@ mod registers {
 
 use registers::{
     AKIDA_AKD1000_ID, REG_CMD_INFER, REG_CMD_LOAD_MODEL, REG_DEVICE_ID, REG_NPU_COUNT,
-    REG_SRAM_SIZE, REG_STATUS, REG_VERSION, STATUS_ERROR, STATUS_INFERENCE_DONE,
+    REG_OUTPUT_SIZE, REG_SRAM_SIZE, REG_STATUS, REG_VERSION, STATUS_ERROR, STATUS_INFERENCE_DONE,
     STATUS_MODEL_LOADED, STATUS_READY,
 };
 
@@ -153,9 +157,22 @@ impl NpuBackend for UserspaceBackend {
         // Poll for completion
         self.poll_status(STATUS_INFERENCE_DONE, Duration::from_secs(1))?;
 
-        // Read output from BAR2
-        // TODO(hardware): Read actual output size from status register
-        let mut output_bytes = vec![0u8; 40]; // 10 floats placeholder
+        // Read the number of output floats from the hardware status register.
+        // REG_OUTPUT_SIZE is written by the hardware after inference completes.
+        let n_output_floats = self.bar0.read_u32(REG_OUTPUT_SIZE)? as usize;
+
+        // Validate: reject implausibly large values that could indicate a stale/corrupt register.
+        let n_output_floats = if n_output_floats == 0 || n_output_floats > 65_536 {
+            tracing::warn!(
+                n_output_floats,
+                "REG_OUTPUT_SIZE out of range; falling back to input length",
+            );
+            input.len()
+        } else {
+            n_output_floats
+        };
+
+        let mut output_bytes = vec![0u8; n_output_floats * std::mem::size_of::<f32>()];
         self.bar2.read_bytes(0, &mut output_bytes)?;
 
         let output: Vec<f32> = bytemuck::cast_slice::<u8, f32>(&output_bytes).to_vec();

@@ -554,15 +554,20 @@ impl Drop for UnifiedBuffer {
             // Remove from tracking
             self.allocations.remove(&self.id);
 
-            // Update total allocated
-            self.total_allocated
-                .fetch_sub(self.size as u64, Ordering::Relaxed);
+            // Update total allocated atomically
+            let new_total = self
+                .total_allocated
+                .fetch_sub(self.size as u64, Ordering::Relaxed)
+                .saturating_sub(self.size as u64);
 
-            // Update metrics
+            // Update metrics in a single lock acquisition so stats() is always
+            // consistent: active_allocations, total_allocated, and
+            // deallocation_count are all updated atomically under the write lock.
             {
                 let mut metrics = self.metrics.write();
                 metrics.deallocation_count += 1;
                 metrics.active_allocations = metrics.active_allocations.saturating_sub(1);
+                metrics.total_allocated = new_total;
             }
 
             // DEEP DEBT FIX: Actually free the memory!

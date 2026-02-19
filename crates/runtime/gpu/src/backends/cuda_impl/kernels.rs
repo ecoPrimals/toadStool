@@ -86,6 +86,13 @@ impl CudaBackend {
             shared_mem_bytes: 0,
         };
 
+        // SAFETY: cudarc kernel launch invariants:
+        // - `func` is a valid compiled CUDA function loaded from the module above.
+        // - `input_buffers` and `output_buffer` were allocated on the same CUDA device
+        //   via `self.stream.htod_copy()` and `self.stream.alloc_zeros()`.
+        // - `cfg` dimensions are computed from the validated input sizes.
+        // - The stream lives as long as `self`, which outlives this call.
+        // - cudarc handles the underlying CUDA API calls and validates argument types.
         unsafe {
             match inputs.len() {
                 1 => {

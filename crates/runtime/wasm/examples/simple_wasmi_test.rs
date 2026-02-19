@@ -76,7 +76,9 @@ async fn main() -> ToadStoolResult<()> {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm_bytes },
+            module: WasmModuleSource::Bytes {
+                data: wasm_bytes.into(),
+            },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: std::collections::HashMap::new(),

@@ -176,8 +176,11 @@ pub struct PortRange {
     pub end: u16,
 }
 
-/// DNS configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// DNS configuration.
+///
+/// Defaults to all-empty: containers inherit the host DNS configuration.
+/// Operators supply explicit `nameservers` when network isolation is required.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DnsConfig {
     /// DNS servers
     pub nameservers: Vec<String>,
@@ -185,16 +188,6 @@ pub struct DnsConfig {
     pub search_domains: Vec<String>,
     /// DNS options
     pub options: Vec<String>,
-}
-
-impl Default for DnsConfig {
-    fn default() -> Self {
-        Self {
-            nameservers: vec!["8.8.8.8".to_string(), "8.8.4.4".to_string()],
-            search_domains: Vec::new(),
-            options: Vec::new(),
-        }
-    }
 }
 
 /// Volume policy configuration

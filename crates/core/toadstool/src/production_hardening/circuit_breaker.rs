@@ -1,10 +1,11 @@
 //! Circuit breaker pattern for fault tolerance.
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, Semaphore};
+use tokio::time::Instant;
 use tracing::{error, info, warn};
 
 /// Circuit breaker states

@@ -8,8 +8,9 @@
 //! - Reduces O(N²) to O(N) for large N
 //!
 //! **Architecture**:
-//! - CPU builds cell list: assigns particles → sorts → computes offsets
-//! - GPU uses cell metadata: iterates only over 27 neighbors per particle
+//! - CPU builds cell list ([`CellList`]): assigns particles → sorts → computes offsets
+//! - GPU-resident cell list ([`CellListGpu`]): 3-pass atomic pipeline, no CPU round-trip
+//! - Force kernel uses cell metadata: iterates only over 27 neighbors per particle
 //!
 //! **Usage Pattern**:
 //! ```text
@@ -39,5 +40,7 @@
 //! - ✅ Modular design (works with any force kernel)
 
 mod cell_list;
+mod cell_list_gpu;
 
 pub use cell_list::CellList;
+pub use cell_list_gpu::CellListGpu;

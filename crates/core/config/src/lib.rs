@@ -1,8 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(clippy::mixed_attributes_style)]
-#![allow(clippy::only_used_in_recursion)]
-#![allow(clippy::wrong_self_convention)]
 // ToadStool - Universal Compute Platform
 // Copyright (C) 2025 ToadStool Development Team
 //

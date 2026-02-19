@@ -113,7 +113,7 @@ pub fn create_test_native_workload() -> WorkloadSpec {
 pub fn create_test_wasm_workload() -> WorkloadSpec {
     WorkloadSpec::Wasm {
         module: WasmModuleSource::Bytes {
-            data: b"test wasm module".to_vec(),
+            data: bytes::Bytes::from_static(b"test wasm module"),
         },
         args: Some(vec!["--version".to_string()]),
         wasi_config: None,
@@ -219,7 +219,7 @@ pub fn create_test_environment() -> HashMap<String, String> {
 #[must_use]
 pub fn create_test_execution_input() -> ExecutionInput {
     ExecutionInput {
-        data: b"test input data".to_vec(),
+        data: bytes::Bytes::from_static(b"test input data"),
         format: Some("text/plain".to_string()),
         metadata: {
             let mut map = HashMap::new();
@@ -233,7 +233,7 @@ pub fn create_test_execution_input() -> ExecutionInput {
 #[must_use]
 pub fn create_test_execution_output() -> ExecutionOutput {
     ExecutionOutput {
-        data: b"test output data".to_vec(),
+        data: bytes::Bytes::from_static(b"test output data"),
         result: {
             let mut result = HashMap::new();
             result.insert("status".to_string(), "success".to_string());
@@ -348,7 +348,7 @@ pub mod random {
     pub fn random_wasm_workload() -> WorkloadSpec {
         WorkloadSpec::Wasm {
             module: WasmModuleSource::Bytes {
-                data: Faker.fake::<Vec<u8>>(),
+                data: bytes::Bytes::from(Faker.fake::<Vec<u8>>()),
             },
             args: Some(vec![Faker.fake::<String>()]),
             wasi_config: None,
@@ -414,7 +414,7 @@ pub mod random {
     #[must_use]
     pub fn random_execution_input() -> ExecutionInput {
         ExecutionInput {
-            data: Faker.fake::<Vec<u8>>(),
+            data: bytes::Bytes::from(Faker.fake::<Vec<u8>>()),
             format: Some("application/octet-stream".to_string()),
             metadata: {
                 let mut params = HashMap::new();

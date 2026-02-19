@@ -220,3 +220,114 @@ impl std::fmt::Display for RuntimeStats {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{DataType, OperationType, WorkloadData, WorkloadParams};
+
+    fn simple_f32_workload(op: OperationType, input: WorkloadData) -> Workload {
+        Workload {
+            operation: op,
+            data_type: DataType::F32,
+            num_operations: 3,
+            required_memory: 12,
+            input,
+            params: WorkloadParams::default(),
+        }
+    }
+
+    #[test]
+    fn test_runtime_stats_default() {
+        let stats = RuntimeStats::default();
+        assert_eq!(stats.num_cpu, 0);
+        assert_eq!(stats.num_gpu, 0);
+        assert_eq!(stats.num_neuromorphic, 0);
+        assert_eq!(stats.num_custom, 0);
+        assert_eq!(stats.total_memory, 0);
+        assert_eq!(stats.total_compute_throughput, 0.0);
+    }
+
+    #[test]
+    fn test_runtime_stats_display() {
+        let stats = RuntimeStats {
+            num_cpu: 2,
+            num_gpu: 1,
+            total_memory: 8_000_000_000,
+            total_compute_throughput: 800e9,
+            ..Default::default()
+        };
+        let s = format!("{stats}");
+        assert!(s.contains("CPU units: 2"));
+        assert!(s.contains("GPU units: 1"));
+        assert!(s.contains("8.00 GB"));
+        assert!(s.contains("800.00 GFLOPS"));
+    }
+
+    #[tokio::test]
+    async fn test_universal_runtime_discover_has_cpu() {
+        let runtime = UniversalRuntime::discover().await.unwrap();
+        assert!(runtime.num_units() > 0);
+        let stats = runtime.stats();
+        assert!(stats.num_cpu > 0);
+    }
+
+    #[tokio::test]
+    async fn test_execute_on_cpu_unit() {
+        let runtime = UniversalRuntime::discover().await.unwrap();
+        let w = simple_f32_workload(
+            OperationType::Map,
+            WorkloadData::F32Vec(vec![1.0, 2.0, 3.0]),
+        );
+        let out = runtime.execute_on(0, w).await.unwrap();
+        assert!(matches!(out.data, WorkloadData::F32Vec(_)));
+    }
+
+    #[tokio::test]
+    async fn test_execute_optimal_dispatches() {
+        let runtime = UniversalRuntime::discover().await.unwrap();
+        let w = simple_f32_workload(
+            OperationType::Map,
+            WorkloadData::F32Vec(vec![1.0, 2.0, 3.0]),
+        );
+        let out = runtime.execute_optimal(w).await.unwrap();
+        assert!(matches!(out.data, WorkloadData::F32Vec(_)));
+    }
+
+    #[tokio::test]
+    async fn test_execute_on_invalid_index_returns_error() {
+        let runtime = UniversalRuntime::discover().await.unwrap();
+        let w = simple_f32_workload(OperationType::Map, WorkloadData::F32Vec(vec![]));
+        let result = runtime.execute_on(9999, w).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_execute_on_type_cpu() {
+        let runtime = UniversalRuntime::discover().await.unwrap();
+        let w = simple_f32_workload(OperationType::Map, WorkloadData::F32Vec(vec![1.0, 2.0]));
+        let out = runtime
+            .execute_on_type(ComputeUnitType::Cpu, w)
+            .await
+            .unwrap();
+        assert!(matches!(out.data, WorkloadData::F32Vec(_)));
+    }
+
+    #[tokio::test]
+    async fn test_units_by_type_cpu() {
+        let runtime = UniversalRuntime::discover().await.unwrap();
+        let cpu_units = runtime.units_by_type(ComputeUnitType::Cpu);
+        assert!(!cpu_units.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_execute_map_f32() {
+        let runtime = UniversalRuntime::discover().await.unwrap();
+        let input = vec![1.0f32, 2.0, 3.0];
+        let out = runtime
+            .execute_map_f32(input.clone(), |x| x * 2.0)
+            .await
+            .unwrap();
+        assert_eq!(out.len(), 3);
+    }
+}

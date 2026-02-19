@@ -7,7 +7,146 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [Unreleased] - February 19, 2026
+## [Unreleased] - February 19, 2026 (hotSpring → ToadStool Absorption)
+
+### NAK-Optimized Eigensolve Shader
+
+#### Added
+- **`shaders/linalg/batched_eigh_nak_optimized_f64.wgsl`** — drop-in replacement for
+  `batched_eigh_single_dispatch_f64.wgsl` with 5 NAK compiler workarounds:
+  identical bind group layout and entry point, no Rust changes required.
+  Validated: 2–4× speedup on NVK (Mesa nouveau), neutral on proprietary drivers,
+  eigenvalues ≡ CPU reference to 1e-3 relative, NAK-optimized ≡ baseline to 1e-15.
+
+### StatefulPipeline (Iterative Simulation Pattern)
+
+#### Added
+- **`staging/stateful.rs`**: `StatefulPipeline`, `KernelDispatch`, `StatefulConfig` —
+  companion to `UnidirectionalPipeline` for MD/HFB/PDE workloads where state stays
+  GPU-resident and only a scalar (KE, PE, temperature) crosses back per iteration.
+  `run_iterations(chain, buf, n)` encodes N dispatches in one GPU submit, reads back
+  exactly `convergence_scalars × 8` bytes via persistent staging buffer.
+  `run_until_converged()` provides tolerance-based stopping with configurable readback cadence.
+- Exported from `staging::` alongside `UnidirectionalPipeline`.
+
+### ReduceScalarPipeline (GPU Sum-Reduction First-Class Primitive)
+
+#### Added
+- **`pipeline/reduce.rs`**: `ReduceScalarPipeline` — two-pass `sum_reduce_f64` /
+  `max_reduce_f64` / `min_reduce_f64` returning a single f64 scalar (8 bytes readback).
+  Eliminates 12+ lines of bind-group boilerplate per use site.
+  `scalar_buffer()` returns the GPU-side result for zero-readback pipeline chaining.
+  At N=10,000 this reduces energy readback from 80,000 bytes to 8 bytes per dump (10,000×).
+- Exported from `pipeline::` as `ReduceScalarPipeline`.
+
+### GPU-Resident Cell-List Construction
+
+#### Added
+- **`shaders/misc/atomic_cell_bin.wgsl`** — pass 1: one thread per particle,
+  `atomicAdd` to count particles per cell; outputs `cell_ids[N]`.
+- **`shaders/misc/cell_list_scatter.wgsl`** — pass 3: scatter particle indices
+  into `sorted_indices[N]` using `cell_start[Nc]` prefix-sum offsets;
+  uses `atomicAdd` on per-cell write cursors for conflict-free concurrent scatter.
+- **`ops/md/neighbor/cell_list_gpu.rs`**: `CellListGpu` — Rust orchestrator:
+  allocates all GPU buffers once, encodes 3-pass build (bin + prefix-sum + scatter)
+  into a single `queue.submit()`. Exposes `sorted_indices()`, `cell_start()`,
+  `cell_count()` as GPU buffer references for direct force-kernel binding.
+  No CPU readback during rebuild. Eliminates 240 KB readback + 240 KB re-upload
+  every 20 MD steps at N=10,000.
+- Exported from `ops::md` as `CellListGpu` alongside existing `CellList`.
+
+### NAK Deficiency Documentation
+
+#### Added
+- **`contrib/mesa-nak/NAK_DEFICIENCIES.md`** — formal decomposition of the 5 NAK
+  compiler deficiencies responsible for the 149× NVK vs proprietary gap on SM70
+  f64 loop-heavy kernels: loop unrolling (~4×), register allocation (~2×),
+  instruction scheduling (~1.5×), FMA fusion (~1.3×), branch predicates (~1.1×).
+  Includes Mesa Rust patch locations, proposed fixes, validation strategy,
+  contribution priority table, and cross-references to WGSL workarounds.
+
+---
+
+## [Unreleased] - February 19, 2026 (Sessions 9–11)
+
+### Zero-Copy Binary Payloads
+
+#### Changed
+- **`WorkloadSubmission.data`**, **`WorkloadResult.data`**: `Vec<u8>` → `bytes::Bytes`
+- **`ExecutionInput.data`**, **`ExecutionOutput.data`**: `Vec<u8>` → `bytes::Bytes`
+- **`ExecutableSource::Bytes { data }`**, **`WasmModuleSource::Bytes { data }`**: `Vec<u8>` → `bytes::Bytes`
+- **`TarpcWorkloadSubmission.payload`**: `Vec<u8>` → `bytes::Bytes`
+- All `.clone()` calls on hot binary payloads now O(1) refcount bumps
+
+#### Added
+- `bytes = "1"` workspace dependency; added to `core/toadstool`, `server`, `testing`, `runtime/native`, `runtime/wasm`, `distributed`
+
+### Sleep Elimination (27 calls)
+
+#### Changed
+- **`circuit_breaker.rs`**, **`metrics_middleware.rs`**: `std::time::Instant` → `tokio::time::Instant`; tests use `#[tokio::test(start_paused = true)]` + `advance()`
+- **`memory/tracker.rs`**: `AllocationInfo.allocated_at` → `tokio::time::Instant`; `test_memory_leak_detection` uses `advance()`
+- **`performance/manager.rs`**: per-iteration timing uses `tokio::time::Instant::now()`; benchmark tests use `advance()`
+- **`performance_hardening/async_ops.rs`**: `test_async_batcher_queue_full` uses `tokio::sync::Barrier` + `timeout` — eliminates 5ms ordering sleep
+- **`primal_discovery_complete.rs`**: `test_cache_stats_stale_entries` sets `cache_ttl: Duration::ZERO` — no sleep needed
+- **`capability_provider.rs`**: removed 50ms sleep after socket bind (bind is synchronous)
+- **`integration/helpers.rs`**: removed all 5 artificial duration sleeps from simulation helpers
+- **`multi_device_integration.rs`**: removed 3 GPU hold/cleanup sleeps (`DeviceLease::drop()` is atomic)
+- **`coordinator_executor.rs`**: replaced `sleep(50ms)` with `tokio::spawn` + `Notify` + `AtomicBool` fan-out
+
+#### Removed
+- All `tokio::time::sleep` calls from test code except chaos tests
+
+### Hardcoding Eliminated
+
+#### Changed
+- **`sandbox/src/types.rs`**: removed hardcoded `["8.8.8.8", "1.1.1.1"]` DNS servers; default is empty (inherits from host)
+- **`DnsConfig`**: derives `Default` (empty, host-inherited)
+- **`ollama.rs`**: reads `$OLLAMA_HOST` or discovers via Songbird capability (no hardcoded `127.0.0.1`)
+- **`TelemetryConfig.enabled`**: `true` → `false` (opt-in telemetry)
+
+#### Added
+- `system_dns_resolvers()` helper in `configurator/core.rs` — reads system resolver for discovery DNS
+
+### Code Structure
+
+#### Changed
+- **`crates/server/src/pure_jsonrpc.rs`** (979 lines) → **`crates/server/src/pure_jsonrpc/`** module:
+  - `types.rs` — request/response types and traits
+  - `handler.rs` — `JsonRpcHandler` with `SemanticMethodRegistry` wired
+  - `mod.rs` — public API
+  - `tests.rs` — integration tests
+- **`biomeos_integration/storage_backend/mod.rs`** (987 lines) → 4 focused files:
+  - `mod.rs` (64 lines) — `StorageBackend` trait + `VolumeStatus` enum
+  - `nestgate.rs` (306 lines) — `NestGateBackend`
+  - `inmemory.rs` (210 lines) — `InMemoryBackend`
+  - `tests.rs` (68 lines) — shared backend test suite
+
+#### Added
+- `SemanticMethodRegistry` wired into `JsonRpcHandler::handle_method()` — semantic routes resolve before dispatch
+
+### Bug Fixes
+
+#### Fixed
+- **`UnifiedBuffer::drop()`**: `metrics.total_allocated` now decremented (was only updating the outer `AtomicUsize`); both fields updated in single `RwLock` write
+- **`DualChipEnsemble::get_ensemble_state()`**: sequential device queries → `rayon::join` parallel execution
+
+### CLI Executor Coverage
+
+#### Added
+- 15 inline `#[cfg(test)]` tests across `executor/display.rs` (6), `executor/signals.rs` (4), `executor/resources.rs` (5)
+- `test_send_signal_to_dead_process_returns_err` — reliable dead-PID test via spawn+wait
+
+### Coverage
+
+#### Changed
+- Line coverage (non-GPU): **61.35% → 63.02%** (+1.67 pp)
+- Function coverage (non-GPU): **66.47% → 68.58%** (+2.11 pp)
+- `cargo llvm-cov` workspace run: SIGSEGV resolved — exits 0 consistently
+
+---
+
+## [Unreleased] - February 19, 2026 (Sessions 4–8)
 
 ### Sovereign Compute — Phases 0–3 Complete
 

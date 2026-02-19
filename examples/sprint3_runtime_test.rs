@@ -189,7 +189,9 @@ async fn test_runtime_orchestrator() -> ToadStoolResult<()> {
 
     // Test execution request creation (basic validation)
     let wasm_workload = WorkloadSpec::Wasm {
-        module: WasmModuleSource::Bytes { data: vec![] },
+        module: WasmModuleSource::Bytes {
+            data: bytes::Bytes::new(),
+        },
         args: Some(vec![]),
         wasi_config: None,
         env_vars: HashMap::new(),

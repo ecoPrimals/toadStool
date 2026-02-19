@@ -103,35 +103,62 @@ fn find_next_for_loop(lines: &[&str], start_idx: usize) -> Option<usize> {
     None
 }
 
-/// Parse a `for (var k = 0u; k < Nu; k = k + 1u)` header.
-/// Returns `(loop_var, trip_count)` if this matches the expected pattern.
-fn parse_for_header(line: &str) -> Option<(String, u32)> {
+/// The upper bound extracted from a `for` loop header.
+///
+/// - `Literal(n)` — a numeric literal like `32u`; the unroller substitutes `k` with
+///   integers 0..n and emits no runtime guards.
+/// - `Variable(name)` — a runtime identifier like `n` from `k < n`; the unroller
+///   emits N copies of the body each wrapped in `if (<iter>u < <name>)` so the
+///   shader is correct for any runtime value while still exposing full ILP.
+#[derive(Debug, PartialEq, Eq)]
+enum ForBound {
+    Literal(u32),
+    Variable(String),
+}
+
+/// Parse a `for (var k = 0u; k < BOUND; k = k + 1u)` header.
+///
+/// `BOUND` may be either a numeric literal (`32u`, `8`) or an identifier (`n`).
+/// Returns `(loop_var, bound)` on success.
+fn parse_for_header(line: &str) -> Option<(String, ForBound)> {
     let t = line.trim();
-    // Expect: for (var IDENT = 0u; IDENT < Nu; IDENT = IDENT + 1u)
-    // We do a lightweight string scan rather than a full parser.
     let after_for = t
         .strip_prefix("for (var ")
         .or_else(|| t.strip_prefix("for(var "))?;
-    // Find the variable name
+    // Extract variable name (before " = 0")
     let eq_pos = after_for.find(" = 0")?;
     let var_name = after_for[..eq_pos].trim().to_string();
     if var_name.is_empty() {
         return None;
     }
-    // Find the bound: `; VAR < Nu;`
+    // Find the bound after `; VAR < `
     let lt_pat = format!("{var_name} < ");
     let lt_pos = after_for.find(&lt_pat)?;
     let after_lt = &after_for[lt_pos + lt_pat.len()..];
-    // Parse the bound value (e.g. `8u` or `8`)
-    let bound_str: String = after_lt
+
+    // Try numeric literal first (e.g. `8u` or `8`)
+    let num_str: String = after_lt
         .chars()
         .take_while(|c| c.is_ascii_digit())
         .collect();
-    let bound: u32 = bound_str.parse().ok()?;
-    if bound == 0 || bound > MAX_UNROLL_TRIP_COUNT {
-        return None;
+    if !num_str.is_empty() {
+        let bound: u32 = num_str.parse().ok()?;
+        if bound == 0 || bound > MAX_UNROLL_TRIP_COUNT {
+            return None;
+        }
+        return Some((var_name, ForBound::Literal(bound)));
     }
-    Some((var_name, bound))
+
+    // Try identifier (e.g. `n`, `size`, `params_n`) — runtime variable bound
+    let id_str: String = after_lt
+        .chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+        .collect();
+    if !id_str.is_empty() {
+        return Some((var_name, ForBound::Variable(id_str)));
+    }
+
+    None
 }
 
 /// Find the index of the closing `}` that matches the `for` loop starting at `for_idx`.
@@ -189,12 +216,20 @@ fn collect_body(lines: &[&str], for_idx: usize) -> Vec<String> {
 
 /// Try to unroll a loop annotated with `@unroll_hint N`.
 ///
-/// Returns the unrolled source or `None` if the loop doesn't match the pattern.
+/// Returns the unrolled source or `None` if the loop doesn't match the expected pattern.
+///
+/// ## Literal bound
+/// Emits `trip_count = min(hint, declared)` unrolled copies with the loop variable
+/// substituted by its integer value. No runtime guard is needed.
+///
+/// ## Variable bound
+/// Emits exactly `hint_n` copies each wrapped in `if (<iter>u < <bound_var>) { … }`.
+/// This keeps the shader correct for any runtime value of `bound_var` while exposing
+/// all `hint_n` iterations simultaneously to the hardware instruction scheduler,
+/// which can predicate-out iterations where `iter ≥ bound_var` cheaply via uniform
+/// branch elimination (the bound is uniform across the warp/subgroup).
 fn try_unroll_loop(lines: &[&str], for_idx: usize, hint_n: u32) -> Option<String> {
-    let (var_name, declared_n) = parse_for_header(lines[for_idx])?;
-    // Only unroll if declared bound matches the hint (or hint ≤ declared — partial unroll
-    // falls through to the hint count, which is conservative).
-    let trip_count = hint_n.min(declared_n);
+    let (var_name, bound) = parse_for_header(lines[for_idx])?;
     let body_lines = collect_body(lines, for_idx);
 
     // Detect indentation from the for-line
@@ -204,20 +239,65 @@ fn try_unroll_loop(lines: &[&str], for_idx: usize, hint_n: u32) -> Option<String
         .collect();
 
     let mut out = String::new();
-    for iter in 0..trip_count {
-        out.push_str(&format!("{indent}{{\n"));
-        // Emit `let <var> = <iter>u;` at the top of each unrolled block
-        out.push_str(&format!("{indent}    let {var_name} = {iter}u;\n"));
-        for body_line in &body_lines {
-            // Substitute bare loop variable with literal iteration index.
-            // Only replace whole-word occurrences to avoid mangling `k_p` etc.
-            let subst = substitute_loop_var(body_line, &var_name, iter);
+    match bound {
+        ForBound::Literal(declared_n) => {
+            // Conservative: unroll min(hint, declared) iterations — no guard needed.
+            let trip_count = hint_n.min(declared_n);
+            for iter in 0..trip_count {
+                emit_unrolled_block(&mut out, &indent, &var_name, iter, &body_lines, None);
+            }
+        }
+        ForBound::Variable(ref bound_var) => {
+            // Runtime bound: unroll hint_n times, each guarded by `if (iter < bound_var)`.
+            // The guard is uniform (bound_var is the same for all invocations in a warp),
+            // so the GPU eliminates the dead iterations at no scoreboard cost.
+            for iter in 0..hint_n {
+                let guard = format!("if ({iter}u < {bound_var})");
+                emit_unrolled_block(
+                    &mut out,
+                    &indent,
+                    &var_name,
+                    iter,
+                    &body_lines,
+                    Some(&guard),
+                );
+            }
+        }
+    }
+    Some(out)
+}
+
+/// Emit one unrolled iteration block into `out`.
+///
+/// If `guard` is `Some("if (2u < n)")`, the block body is wrapped inside that condition.
+fn emit_unrolled_block(
+    out: &mut String,
+    indent: &str,
+    var_name: &str,
+    iter: u32,
+    body_lines: &[String],
+    guard: Option<&str>,
+) {
+    out.push_str(&format!("{indent}{{\n"));
+    // Bind the loop variable to its literal value so the body can reference it.
+    out.push_str(&format!("{indent}    let {var_name} = {iter}u;\n"));
+
+    if let Some(cond) = guard {
+        out.push_str(&format!("{indent}    {cond} {{\n"));
+        for body_line in body_lines {
+            let subst = substitute_loop_var(body_line, var_name, iter);
+            out.push_str(&format!("    {subst}\n"));
+        }
+        out.push_str(&format!("{indent}    }}\n"));
+    } else {
+        for body_line in body_lines {
+            let subst = substitute_loop_var(body_line, var_name, iter);
             out.push_str(&subst);
             out.push('\n');
         }
-        out.push_str(&format!("{indent}}}\n"));
     }
-    Some(out)
+
+    out.push_str(&format!("{indent}}}\n"));
 }
 
 /// Replace whole-word occurrences of `var_name` in `line` with the literal `iter`.
@@ -271,15 +351,76 @@ mod tests {
     }
 
     #[test]
-    fn test_for_header_parsed() {
+    fn test_for_header_parsed_literal() {
         assert_eq!(
             parse_for_header("    for (var k = 0u; k < 4u; k = k + 1u) {"),
-            Some(("k".to_string(), 4))
+            Some(("k".to_string(), ForBound::Literal(4)))
         );
         assert_eq!(
             parse_for_header("    for (var i = 0u; i < 8u; i = i + 1u) {"),
-            Some(("i".to_string(), 8))
+            Some(("i".to_string(), ForBound::Literal(8)))
         );
+    }
+
+    #[test]
+    fn test_for_header_parsed_variable_bound() {
+        // Jacobi inner loop: `for (var k = 0u; k < n; k = k + 1u)`
+        assert_eq!(
+            parse_for_header("                for (var k = 0u; k < n; k = k + 1u) {"),
+            Some(("k".to_string(), ForBound::Variable("n".to_string())))
+        );
+        // Compound identifier: `for (var i = 0u; i < matrix_size; i = i + 1u)`
+        assert_eq!(
+            parse_for_header("    for (var i = 0u; i < matrix_size; i = i + 1u) {"),
+            Some((
+                "i".to_string(),
+                ForBound::Variable("matrix_size".to_string())
+            ))
+        );
+    }
+
+    #[test]
+    fn test_variable_bound_loop_unrolled_with_guards() {
+        // Mirrors the Jacobi k-loop pattern: bound is runtime `n`
+        let shader = concat!(
+            "            // @unroll_hint 4\n",
+            "            for (var k = 0u; k < n; k = k + 1u) {\n",
+            "                let v = k;\n",
+            "            }\n",
+        );
+        let result = WgslLoopUnroller::unroll(shader);
+        // Four unrolled blocks should appear
+        assert_eq!(result.matches("let k = 0u;").count(), 1);
+        assert_eq!(result.matches("let k = 1u;").count(), 1);
+        assert_eq!(result.matches("let k = 2u;").count(), 1);
+        assert_eq!(result.matches("let k = 3u;").count(), 1);
+        assert_eq!(
+            result.matches("let k = 4u;").count(),
+            0,
+            "should only emit 4 iters"
+        );
+        // Each iteration should be guarded
+        assert!(result.contains("if (0u < n)"));
+        assert!(result.contains("if (1u < n)"));
+        assert!(result.contains("if (3u < n)"));
+        // Original for-loop header must be gone
+        assert!(!result.contains("for (var k"));
+    }
+
+    #[test]
+    fn test_variable_bound_unroll_32() {
+        // Full 32-hint (the Jacobi MAX_N case)
+        let shader = concat!(
+            "                // @unroll_hint 32\n",
+            "                for (var k = 0u; k < n; k = k + 1u) {\n",
+            "                    let x = k * 2u;\n",
+            "                }\n",
+        );
+        let result = WgslLoopUnroller::unroll(shader);
+        assert_eq!(result.matches("if (0u < n)").count(), 1);
+        assert_eq!(result.matches("if (31u < n)").count(), 1);
+        assert_eq!(result.matches("if (32u < n)").count(), 0);
+        assert!(!result.contains("for (var k"));
     }
 
     #[test]
@@ -317,13 +458,14 @@ mod tests {
     }
 
     #[test]
-    fn test_non_matching_bound_no_unroll() {
-        // Hint says 4 but loop says 8 — trip_count = min(4,8) = 4, still unrolls 4 iters
+    fn test_hint_smaller_than_literal_bound() {
+        // Hint=4, declared=8 → unrolls min(4,8)=4 iterations without guards (literal bound)
         let shader = "    // @unroll_hint 4\n    for (var k = 0u; k < 8u; k = k + 1u) {\n        x = k;\n    }\n";
         let result = WgslLoopUnroller::unroll(shader);
-        // Should have 4 unrolled blocks (min of hint and declared)
         assert_eq!(result.matches("let k = 0u;").count(), 1);
         assert_eq!(result.matches("let k = 3u;").count(), 1);
-        assert_eq!(result.matches("let k = 4u;").count(), 0); // only 4 iters
+        assert_eq!(result.matches("let k = 4u;").count(), 0);
+        // No guards needed for literal bounds
+        assert!(!result.contains("if (0u <"));
     }
 }

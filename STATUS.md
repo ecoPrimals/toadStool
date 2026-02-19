@@ -1,4 +1,4 @@
-# Status -- February 18, 2026 (Capability-Based Dispatch + Test Fixes)
+# Status -- February 19, 2026 (Sessions 9–11: Concurrency + Zero-Copy + Coverage)
 
 ## Quality Gates
 
@@ -6,19 +6,107 @@
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | Clean |
-| `cargo clippy --workspace -- -D warnings` | PASS | **Clean** |
+| `cargo clippy --workspace --tests -- -D warnings` | PASS | **Clean (including test code)** |
 | `cargo doc --workspace --no-deps` | PASS | **Clean** |
-| `cargo test --workspace --lib` | PASS | **15,700+ tests passed** |
+| `cargo test --workspace` | PASS | **15,700+ tests passed** |
+| `cargo llvm-cov` (non-GPU) | PASS | **Exit 0 — no SIGSEGV** |
 | hotSpring validation | PASS | **195/195 acceptance checks** |
 | Pure Rust syscalls | PASS | **mmap/mlock via rustix** |
 | biomeOS networking | PASS | **No reqwest/hyper** |
-| Timeout constants | PASS | **Centralized in toadstool_common** |
-| SIMD detection | PASS | **Runtime via std::arch** |
-| Unidirectional pipeline | PASS | **Phases 0-4 complete** |
+| Sleep-free tests | PASS | **27 sleep calls removed** |
+| Zero-copy hot paths | PASS | **bytes::Bytes on all binary RPC payloads** |
+| Hardcoded IPs/DNS | PASS | **0 remaining — capability-based** |
+| Line coverage (non-GPU) | PASS | **63.02% (+1.67 pp from 61.35%)** |
 
-*All clippy warnings resolved. Workspace fully clean. Pure Rust syscalls in akida-driver.*
+*All clippy warnings resolved. Workspace fully clean. Tested with `--tests` flag.*
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). `crates/client` excluded (pending reqwest migration to biomeOS tower).
+
+---
+
+## Sessions 9–11 Evolutions (Feb 19, 2026) ✅
+
+### Zero-Copy Binary Payloads ✅
+
+All hot-path binary types migrated from `Vec<u8>` → `bytes::Bytes`:
+
+| Type | Location | Impact |
+|------|----------|--------|
+| `WorkloadSubmission.data` | `core/toadstool` | O(1) clone across RPC boundary |
+| `WorkloadResult.data` | `core/toadstool` | O(1) result propagation |
+| `ExecutionInput.data` | `core/toadstool` | O(1) dispatch to runtime |
+| `ExecutionOutput.data` | `core/toadstool` | O(1) result collection |
+| `ExecutableSource::Bytes` | `core/toadstool` | O(1) binary payload hand-off |
+| `WasmModuleSource::Bytes` | `core/toadstool` | O(1) WASM module hand-off |
+| `TarpcWorkloadSubmission.payload` | `server` | O(1) tarpc transport |
+
+**Crates updated**: `core/toadstool`, `server`, `testing`, `runtime/native`, `runtime/wasm`, `distributed`.
+
+### Sleep Elimination (27 calls) ✅
+
+Systematic audit of all `tokio::time::sleep` and `std::thread::sleep` calls in non-hardware code:
+
+| File | Fix | Count |
+|------|-----|-------|
+| `circuit_breaker.rs` | `tokio::time::Instant`, `start_paused + advance()` | 2 |
+| `metrics_middleware.rs` | `tokio::time::Instant`, `start_paused + advance()` | 1 |
+| `memory/tracker.rs` | `tokio::time::Instant`, `start_paused + advance()` | 2 |
+| `performance/manager.rs` | `tokio::time::Instant`, `start_paused + advance()` | 4 |
+| `performance_hardening/async_ops.rs` | `tokio::sync::Barrier` + `timeout` | 1 |
+| `primal_discovery_complete.rs` | `cache_ttl: Duration::ZERO` | 1 |
+| `capability_provider.rs` | Removed (socket bind is synchronous) | 1 |
+| `integration/helpers.rs` | Removed (no behavioral assertions) | 5 |
+| `multi_device_integration.rs` | Removed (`DeviceLease::drop()` is atomic) | 3 |
+| `performance/mod.rs` tests | CPU-bound fold + `yield_now()` | 4 |
+| `coordinator_executor.rs` | `Notify` + `AtomicBool` fan-out | 3 |
+
+**Total removed**: 27 sleep calls across 11 files.
+
+### Hardcoding Eliminated ✅
+
+- **DNS servers** (`sandbox/src/types.rs`, container configs, CLI templates): removed `8.8.8.8`/`1.1.1.1` — containers inherit from host/orchestrator
+- **Ollama IP**: reads `$OLLAMA_HOST` or discovers via Songbird capability
+- **`TelemetryConfig.enabled`**: changed to `false` (opt-in, was always-on)
+- **`DnsConfig`**: derives `Default` (empty by default)
+- **Discovery DNS** (`configurator/core.rs`): reads system resolver via `system_dns_resolvers()`
+
+### Code Structure Improvements ✅
+
+- **`pure_jsonrpc.rs`** (979 lines) split into `pure_jsonrpc/` module:
+  - `types.rs` — request/response types, traits
+  - `handler.rs` — `JsonRpcHandler` with `SemanticMethodRegistry` wired
+  - `mod.rs` — public API and re-exports
+  - `tests.rs` — inline integration tests
+- **`SemanticMethodRegistry`** wired into `JsonRpcHandler` — semantic routes (e.g. `runtime.workload.submit`) resolve to implementation names before dispatch
+- **`biomeos_integration/storage_backend/mod.rs`** (987 lines) split:
+  - `mod.rs` — trait + `VolumeStatus` enum + re-exports (64 lines)
+  - `nestgate.rs` — `NestGateBackend` (306 lines)
+  - `inmemory.rs` — `InMemoryBackend` (210 lines)
+  - `tests.rs` — shared backend test suite (68 lines)
+
+### Bug Fix: `UnifiedBuffer::drop()` ✅
+
+`metrics.total_allocated` was not decremented on drop — only the outer `AtomicUsize` counter was decremented. Both the `RwLock<Metrics>` field and the atomic are now updated in a single write, ensuring metric consistency. This also eliminated 6 stale `sleep()` calls in GPU memory tests that had been masking the inconsistency.
+
+### CLI Executor Coverage ✅
+
+15 inline `#[cfg(test)]` tests added to previously untested executor sub-modules:
+
+| Module | Tests Added |
+|--------|-------------|
+| `executor/display.rs` | `get_log_path`, `show_log_file` (tempfile), `tail_log_file` (tempfile) — 6 tests |
+| `executor/signals.rs` | SIGCONT-to-self, invalid signal, dead-PID (spawn+wait), kill command — 4 tests |
+| `executor/resources.rs` | `biome_exists`, `get_biome_info`, `find_process_pid`, error path, concurrent reads — 5 tests |
+
+### `llvm-cov` SIGSEGV Resolved ✅
+
+The `toadstool-server` SIGSEGV under `cargo llvm-cov` is resolved as a side-effect of the sleep
+elimination and concurrency hardening work. Workspace-wide `llvm-cov` (excluding GPU crates) now
+completes with exit 0 consistently.
+
+**Coverage progression**:
+- Session 8: 61.35% lines, 66.47% functions
+- Session 11: **63.02% lines (+1.67 pp)**, **68.58% functions (+2.11 pp)**
 
 ---
 
@@ -498,26 +586,26 @@ Evolved `unified_memory/backends/cpu.rs` unsafe code:
 
 ## Test Coverage
 
-| Crate | Line Coverage | Function Coverage | Notes |
-|-------|--------------|-------------------|-------|
-| **Combined (5 core crates)** | **~90%** | **~88%** | Up from 80% baseline. 3,688 tests across core crates. |
-| `toadstool` | ~88% | ~86% | Ecosystem, encryption, deployment, security, workload all well covered. |
-| `toadstool-server` | ~85% | ~87% | `unibin.rs` now 18% (socket helpers tested). |
-| `toadstool-common` | ~84% | ~83% | Discovery, IPC, capability providers, primal sockets. |
-| `toadstool-config` | ~85% | ~80% | Builder patterns, validation, env config, services. |
+| Metric | Value | Change |
+|--------|-------|--------|
+| Line coverage (non-GPU, workspace) | **63.02%** | +1.67 pp from Session 8 |
+| Function coverage (non-GPU, workspace) | **68.58%** | +2.11 pp from Session 8 |
+| `toadstool-server` | ~85% | — |
+| `toadstool-common` | ~84% | — |
+| `toadstool-config` | ~85% | — |
 
-Coverage tool: `cargo-llvm-cov`. Target: 90% (reached).
+Coverage tool: `cargo-llvm-cov`. Target: 90%.
 
-**Highest coverage**: `state.rs` 100%, `graph_types.rs` 99%, `semantic_methods.rs` 99%, `self_identity.rs` 98%, `mocks.rs` 98%, `handlers.rs` 96%, `cross_gate.rs` 95%, `performance_hardening.rs` 96%, `layer_adaptation.rs` 94%.
+**Highest coverage**: `state.rs` 100%, `graph_types.rs` 99%, `semantic_methods.rs` 99%, `self_identity.rs` 98%, `handlers.rs` 96%, `performance_hardening.rs` 96%, `cross_gate.rs` 95%, `layer_adaptation.rs` 94%.
 
-**Lowest coverage** (improved Feb 16, 2026):
-- `unibin.rs`: 18% → ~35% (added tests for `ensure_biomeos_directory`, `write_tcp_discovery_file`, `exit_codes`)
-- `manual_jsonrpc.rs`: 27% → ~45% (added tests for all uncovered method dispatch paths)
-- `websocket.rs`: 52% (requires live connections - inherently hard to unit test)
+**Lowest coverage** (inherently limited):
+- `unibin.rs`: ~35% (server startup requires running server)
+- `websocket.rs`: ~52% (requires live WebSocket connections)
+- GPU execution paths: 0% (hardware required)
 
-**Coverage evolution**: 80% -> ~90% (+10pp) via 600+ new tests covering encryption, ecosystem, security, deployment, workload analysis, biomeos integration, auth, agents, BYOB types, graph types, capabilities, and handlers.
+**Sessions 9–11 additions**: 15 new inline tests in `executor/display.rs`, `executor/signals.rs`, `executor/resources.rs`; concurrency hardening exposed and fixed several previously untested error paths.
 
-**Feb 16, 2026 coverage additions**: 18 new tests across `unibin.rs` and `manual_jsonrpc.rs`.
+**Coverage evolution**: 61.35% (Session 8) → **63.02%** (Session 11) via 15 new CLI executor tests + concurrency hardening surfacing new paths.
 
 ---
 
@@ -1518,4 +1606,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 17, 2026 (cudarc 0.19 Upgrade + Clippy Cleanup)
+**Last Updated**: February 19, 2026 — Sessions 9–11: Zero-copy bytes::Bytes, 27 sleeps removed, hardcoding eliminated, pure_jsonrpc + storage_backend split, CLI executor coverage, llvm-cov SIGSEGV resolved, 63.02% coverage

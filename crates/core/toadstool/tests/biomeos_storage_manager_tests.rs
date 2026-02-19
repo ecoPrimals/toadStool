@@ -12,11 +12,11 @@ use toadstool::biomeos_integration::{StorageProvisioningConfig, StorageProvision
 #[test]
 fn test_storage_provisioning_manager_new() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 3,
+        ..StorageProvisioningConfig::default()
     };
 
     let _manager = StorageProvisioningManager::with_inmemory(config.clone());
@@ -26,11 +26,11 @@ fn test_storage_provisioning_manager_new() {
 #[test]
 fn test_storage_provisioning_manager_with_hot_tier() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://nestgate:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 3,
+        ..StorageProvisioningConfig::default()
     };
 
     let _manager = StorageProvisioningManager::with_inmemory(config.clone());
@@ -40,11 +40,11 @@ fn test_storage_provisioning_manager_with_hot_tier() {
 #[test]
 fn test_storage_provisioning_manager_with_cold_tier() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://nestgate:9090".to_string(),
         storage_tier: "cold".to_string(),
         backup_enabled: false,
         replication_enabled: false,
         replication_factor: 1,
+        ..StorageProvisioningConfig::default()
     };
 
     let _manager = StorageProvisioningManager::with_inmemory(config.clone());
@@ -54,11 +54,11 @@ fn test_storage_provisioning_manager_with_cold_tier() {
 #[test]
 fn test_storage_provisioning_manager_replication_disabled() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://nestgate:9090".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: true,
         replication_enabled: false,
         replication_factor: 1,
+        ..StorageProvisioningConfig::default()
     };
 
     let manager = StorageProvisioningManager::with_inmemory(config.clone());
@@ -74,11 +74,11 @@ fn test_storage_provisioning_manager_replication_disabled() {
 #[cfg(not(feature = "networking"))] // Only run in mock mode
 async fn test_provision_volume_basic() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 2,
+        ..StorageProvisioningConfig::default()
     };
 
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -101,11 +101,11 @@ async fn test_provision_volume_basic() {
 #[cfg(not(feature = "networking"))]
 async fn test_list_volumes_basic() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 2,
+        ..StorageProvisioningConfig::default()
     };
 
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -119,11 +119,11 @@ async fn test_list_volumes_basic() {
 #[cfg(not(feature = "networking"))]
 async fn test_delete_volume_basic() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 2,
+        ..StorageProvisioningConfig::default()
     };
 
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -141,11 +141,11 @@ async fn test_delete_volume_basic() {
 #[test]
 fn test_manager_with_backup_disabled() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: false,
         replication_enabled: true,
         replication_factor: 2,
+        ..StorageProvisioningConfig::default()
     };
 
     let manager = StorageProvisioningManager::with_inmemory(config.clone());
@@ -155,11 +155,11 @@ fn test_manager_with_backup_disabled() {
 #[test]
 fn test_manager_with_replication_disabled() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
         storage_tier: "standard".to_string(),
         backup_enabled: true,
         replication_enabled: false,
         replication_factor: 1,
+        ..StorageProvisioningConfig::default()
     };
 
     let manager = StorageProvisioningManager::with_inmemory(config.clone());
@@ -170,11 +170,11 @@ fn test_manager_with_replication_disabled() {
 #[test]
 fn test_manager_with_high_replication() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:8080".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 5,
+        ..StorageProvisioningConfig::default()
     };
 
     let manager = StorageProvisioningManager::with_inmemory(config.clone());

@@ -26,6 +26,7 @@ mutex_atomic = "warn"
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
+bytes = { workspace = true }
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }

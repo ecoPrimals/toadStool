@@ -170,3 +170,46 @@ pub struct UniversalCloudOrchestrator {
     #[allow(dead_code)]
     pub(crate) federation_manager: CloudFederationManager,
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cloud_provider_default_is_aws() {
+        let provider = CloudProvider::default();
+        assert!(matches!(provider, CloudProvider::AWS { .. }));
+    }
+
+    #[test]
+    fn test_cloud_provider_default_us_east_1() {
+        if let CloudProvider::AWS {
+            region,
+            cost_budget,
+            ..
+        } = CloudProvider::default()
+        {
+            assert_eq!(region, "us-east-1");
+            assert!(cost_budget.is_none());
+        } else {
+            panic!("expected AWS variant");
+        }
+    }
+
+    #[test]
+    fn test_cloud_provider_variants_constructible() {
+        let do_provider = CloudProvider::DigitalOcean {
+            token: "test-token".to_string(),
+            region: "nyc1".to_string(),
+        };
+        assert!(matches!(do_provider, CloudProvider::DigitalOcean { .. }));
+
+        let hetzner = CloudProvider::Hetzner {
+            token: "hetzner-token".to_string(),
+            location: "nbg1".to_string(),
+        };
+        assert!(matches!(hetzner, CloudProvider::Hetzner { .. }));
+    }
+}

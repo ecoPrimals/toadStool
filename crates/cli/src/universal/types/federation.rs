@@ -111,6 +111,115 @@ where
     Ok(Arc::from(s.as_str()))
 }
 
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+    fn make_peer(status: FederationStatus, trust: TrustLevel) -> FederationPeer {
+        FederationPeer {
+            peer_id: Uuid::new_v4(),
+            endpoint: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9001),
+            capabilities: vec![Arc::from("compute"), Arc::from("storage")],
+            shared_resources: vec![Arc::from("cpu")],
+            status,
+            last_heartbeat: Utc::now(),
+            trust_level: trust,
+        }
+    }
+
+    #[test]
+    fn test_federation_peer_clone_is_cheap() {
+        let peer = make_peer(FederationStatus::Connected, TrustLevel::Verified);
+        let cloned = peer.clone();
+        // Arc<str> clone bumps refcount; both should point to same data
+        assert_eq!(peer.peer_id, cloned.peer_id);
+        assert_eq!(peer.capabilities.len(), cloned.capabilities.len());
+        assert!(Arc::ptr_eq(&peer.capabilities[0], &cloned.capabilities[0]));
+    }
+
+    #[test]
+    fn test_federation_status_variants() {
+        let statuses = [
+            FederationStatus::Connecting,
+            FederationStatus::Connected,
+            FederationStatus::Syncing,
+            FederationStatus::Ready,
+            FederationStatus::Disconnected,
+            FederationStatus::Error("timeout".to_string()),
+        ];
+        assert_eq!(statuses.len(), 6);
+        assert!(matches!(statuses[5], FederationStatus::Error(_)));
+    }
+
+    #[test]
+    fn test_trust_level_variants() {
+        let levels = [
+            TrustLevel::Unknown,
+            TrustLevel::Untrusted,
+            TrustLevel::Verified,
+            TrustLevel::Sovereign,
+        ];
+        assert_eq!(levels.len(), 4);
+    }
+
+    #[test]
+    fn test_federation_peer_serialization_roundtrip() {
+        let peer = make_peer(FederationStatus::Ready, TrustLevel::Sovereign);
+        let json = serde_json::to_string(&peer).unwrap();
+        let restored: FederationPeer = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.peer_id, peer.peer_id);
+        assert_eq!(restored.capabilities.len(), peer.capabilities.len());
+        assert_eq!(restored.capabilities[0].as_ref(), "compute");
+    }
+
+    #[test]
+    fn test_federation_request_arc_str_fields() {
+        let req = FederationRequest {
+            peer_id: Uuid::new_v4(),
+            mode: Arc::from("sync"),
+            capabilities: vec![Arc::from("compute")],
+            shared_resources: vec![],
+            protocol_version: Arc::from("1.0"),
+        };
+        assert_eq!(req.mode.as_ref(), "sync");
+        assert_eq!(req.protocol_version.as_ref(), "1.0");
+    }
+
+    #[test]
+    fn test_federation_request_serialization() {
+        let req = FederationRequest {
+            peer_id: Uuid::new_v4(),
+            mode: Arc::from("full-mesh"),
+            capabilities: vec![Arc::from("wasm"), Arc::from("native")],
+            shared_resources: vec![Arc::from("gpu-compute")],
+            protocol_version: Arc::from("2.1"),
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("full-mesh"));
+        assert!(json.contains("wasm"));
+        assert!(json.contains("2.1"));
+    }
+
+    #[test]
+    fn test_federation_response_arc_clones_cheaply() {
+        let resp = FederationResponse {
+            peer_id: Uuid::new_v4(),
+            protocol_version: Arc::from("1.0"),
+            capabilities: vec![Arc::from("compute")],
+            accepted_resources: vec![Arc::from("gpu")],
+        };
+        let cloned = resp.clone();
+        assert!(Arc::ptr_eq(
+            &resp.protocol_version,
+            &cloned.protocol_version
+        ));
+    }
+}
+
 /// Federation protocol response
 ///
 /// **Zero-Copy**: Uses `Arc<str>` for all string fields.

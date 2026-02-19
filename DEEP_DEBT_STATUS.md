@@ -1,15 +1,48 @@
 # Deep Debt Status Report
 
-**Date**: February 19, 2026 — Session 8
-**Status**: ✅ PRODUCTION-GRADE | Sovereign Phases 0–3 Complete
-**Quality**: ALL GATES GREEN | 61.35% coverage baseline
+**Date**: February 19, 2026 — Sessions 9–11 + hotSpring Absorption
+**Status**: ✅ PRODUCTION-GRADE | Zero-Copy + Sleep-Free + GPU-Resident Cell-List + NAK Documented
+**Quality**: ALL GATES GREEN | 63.02% coverage | 12/12 hotSpring validation suites pass
 
 ---
 
 ## Active Workarounds
 
 - **W-001**: f64 transcendental (exp/log) text-replacement workaround for NVK/RADV open-source GPU drivers (~2x penalty for exp/log only). Fossil functions removed (sqrt/abs/min/max now native). Comment-aware replacement prevents source corruption. Capability matrix probed per-GPU. Upstream NAK/ACO contributions in progress. See DEBT.md.
-- **W-003**: NAK compiler 149× performance gap on Titan V (SM70/Volta) — Phase 1 SM70 latency tables written (DFMA 8cy corrected), wired into sm70.rs. Hardware validation pending on Titan V. See DEBT.md.
+- **W-003**: NAK compiler 149× performance gap on Titan V (SM70/Volta) — Phase 1 SM70 latency tables written (DFMA 8cy corrected), wired into sm70.rs. WGSL workarounds live in `batched_eigh_nak_optimized_f64.wgsl` (2–4× on NVK). All 5 deficiencies formally documented in `contrib/mesa-nak/NAK_DEFICIENCIES.md`. Hardware validation + Mesa MRs pending. See DEBT.md.
+
+## hotSpring Absorption (Feb 19 2026) ✅
+
+hotSpring wired barracuda's unidirectional pattern into full MD production loops
+(N=10,000, 82× GPU speedup, 6/6 CPU/GPU parity, 9/9 transport, 12/12 validation suites).
+Key findings absorbed back into barracuda:
+
+### GPU Sum-Reduction (10,000× readback reduction)
+- `ReduceScalarPipeline` (`pipeline/reduce.rs`) — two-pass `sum/max/min` f64 reduction returning
+  8 bytes instead of N×8 bytes.  `scalar_buffer()` for zero-copy chaining.
+- At N=10,000: KE + PE + thermostat readback collapses from 240 KB/dump → 24 bytes/dump.
+
+### StatefulPipeline (iterative simulation pattern)
+- `StatefulPipeline` + `KernelDispatch` (`staging/stateful.rs`) — encodes the MD/HFB/PDE
+  pattern: upload once, iterate N kernels per GPU submit, read back scalar only.
+  `run_until_converged(tolerance)` for SCF-style stopping.  Persistent staging buffer,
+  zero per-iteration allocation.
+
+### NAK-Optimized Eigensolve
+- `batched_eigh_nak_optimized_f64.wgsl` — drop-in replacement with 5 NAK workarounds
+  (manual 4× unroll, hoisted locals, load-before-compute grouping, explicit `fma()`, `select()`).
+  Validated 2–4× NVK speedup, identical math to baseline (1e-15 parity).
+
+### GPU-Resident Cell-List (3-pass atomic pipeline)
+- `atomic_cell_bin.wgsl` + `cell_list_scatter.wgsl` + `CellListGpu` (`ops/md/neighbor/`) —
+  3-pass GPU build: atomic bin → prefix-sum (existing) → scatter.  Single `queue.submit()`.
+  Eliminates 240 KB readback + 240 KB re-upload every 20 MD steps at N=10,000.
+  Output buffers bind directly to force kernel — zero CPU involvement in rebuild.
+
+### NAK Deficiency Documentation
+- `contrib/mesa-nak/NAK_DEFICIENCIES.md` — formal decomposition of all 5 NAK deficiencies
+  with Mesa Rust patch locations, contribution priority, and per-deficiency expected gains.
+  Fix #1 (loop unrolling) alone closes ~4× of the 9× recoverable NVK gap.
 
 ---
 
@@ -32,7 +65,25 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **Songbird Integration COMPLETE** — load balancing, broadcasting, types all stateful (no stubs).
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 18, 2026 — Session 3: Distributed Compute, GPU Sovereignty, Dead-Code Audit)
+### Latest Updates (Feb 19, 2026 — Sessions 9–11: Concurrency Hardening + Zero-Copy + Coverage)
+
+**Zero-Copy Binary Payloads ✓** — `WorkloadSubmission.data`, `WorkloadResult.data`, `ExecutionInput.data`, `ExecutionOutput.data`, `ExecutableSource::Bytes`, `WasmModuleSource::Bytes`, `TarpcWorkloadSubmission.payload` all migrated from `Vec<u8>` to `bytes::Bytes`. `.clone()` on these types is now O(1) regardless of payload size. 7 crates updated.
+
+**27 Sleep Calls Eliminated ✓** — Systematic audit removed all unjustified `sleep` calls from tests and async production code. Replacements: `tokio::time::Instant` + `start_paused + advance()` for `MemoryTracker`, `PerformanceTestManager`, `CircuitBreaker`, `metrics_middleware`; `Barrier` + `timeout` for `AsyncBatcher`; `Notify` + `AtomicBool` for `DistributedCoordinator`; `Duration::ZERO` TTL for cache staleness; direct removal for artificial integration test delays. Hardware-level `thread::sleep` in neuromorphic drivers retained (legitimate polling).
+
+**Hardcoding Eliminated ✓** — Hardcoded DNS servers (`8.8.8.8`, `1.1.1.1`) removed from sandbox types, container configs, and CLI templates. Containers now inherit DNS from host/orchestrator. `$OLLAMA_HOST` env var for Ollama. `TelemetryConfig.enabled` defaults to `false` (opt-in). System DNS readable via `system_dns_resolvers()`.
+
+**Code Structure ✓** — `pure_jsonrpc.rs` (979 lines) smart-split into focused module (types, handler, mod, tests). `storage_backend/mod.rs` (987 lines) smart-split into 4 files (mod 64, nestgate 306, inmemory 210, tests 68). `SemanticMethodRegistry` wired into `JsonRpcHandler` for semantic routing. `DualChipEnsemble` uses `rayon::join` for parallel device state collection.
+
+**UnifiedBuffer::drop() Bug Fixed ✓** — `metrics.total_allocated` was not decremented on buffer drop. Both the `RwLock<Metrics>` field and the `AtomicUsize` counter now updated atomically in drop. Eliminated 6 stale sleep calls in GPU memory tests masking this inconsistency.
+
+**CLI Executor Coverage ✓** — 15 inline `#[cfg(test)]` tests added to `display.rs` (6), `signals.rs` (4), `resources.rs` (5). Previously these public-facing modules had zero unit test coverage.
+
+**llvm-cov SIGSEGV Resolved ✓** — Workspace-wide `cargo llvm-cov` (non-GPU crates) completes with exit 0 consistently. The SIGSEGV was caused by a race condition exacerbated by llvm-cov instrumentation; eliminated by the concurrency hardening work. Coverage: 61.35% → **63.02%** lines (+1.67 pp), 66.47% → **68.58%** functions (+2.11 pp).
+
+---
+
+### Previous Updates (Feb 18, 2026 — Session 3: Distributed Compute, GPU Sovereignty, Dead-Code Audit)
 
 **Distributed Node Routing ✓** — `NetworkDistributor::distribute_job` now performs least-loaded node selection via `NetworkLoadBalancer::select_node()` (60% CPU + 40% memory score). Falls back to local self-assignment; `register_peer_node` wires Songbird. `NetworkLoadBalancer.node_health` exposed via `register_node` / `select_node` / `deregister_node`.
 

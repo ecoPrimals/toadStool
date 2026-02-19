@@ -129,25 +129,35 @@ impl DualChipEnsemble {
     ///
     /// Returns an error if inference fails on either chip or state concatenation fails.
     pub fn get_ensemble_state(&mut self, input: &[u8]) -> Result<Array1<f32>> {
-        debug!("Running ensemble inference");
+        debug!("Running ensemble inference in parallel");
 
-        // TODO: Run in parallel using tokio::spawn or rayon
-        // For now, sequential execution
+        // Disjoint field borrows allow both chips to run concurrently without unsafe.
+        // std::thread::scope ensures the borrows are valid for the duration of both threads.
+        let model1 = &mut self.model1;
+        let device1 = &mut self.device1;
+        let model2 = &mut self.model2;
+        let device2 = &mut self.device2;
 
-        // Chip 1 inference
-        debug!("Chip 1 inference...");
-        let result1 = self
-            .model1
-            .infer(input, &mut self.device1)
+        let (r1, r2) = std::thread::scope(|s| {
+            let t1 = s.spawn(|| {
+                debug!("Chip 1 inference...");
+                model1.infer(input, device1)
+            });
+            let t2 = s.spawn(|| {
+                debug!("Chip 2 inference...");
+                model2.infer(input, device2)
+            });
+            (t1.join(), t2.join())
+        });
+
+        let result1 = r1
+            .map_err(|_| anyhow::anyhow!("Chip 1 thread panicked"))?
             .context("Chip 1 inference failed")?;
-        let state1 = inference_to_state(&result1);
-
-        // Chip 2 inference
-        debug!("Chip 2 inference...");
-        let result2 = self
-            .model2
-            .infer(input, &mut self.device2)
+        let result2 = r2
+            .map_err(|_| anyhow::anyhow!("Chip 2 thread panicked"))?
             .context("Chip 2 inference failed")?;
+
+        let state1 = inference_to_state(&result1);
         let state2 = inference_to_state(&result2);
 
         // Concatenate states

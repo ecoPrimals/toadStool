@@ -338,7 +338,7 @@ fn test_workload_spec_native_with_url() {
 fn test_workload_spec_native_with_bytes() {
     let workload = WorkloadSpec::Native {
         executable: ExecutableSource::Bytes {
-            data: vec![0x7f, 0x45, 0x4c, 0x46],
+            data: bytes::Bytes::from(vec![0x7f, 0x45, 0x4c, 0x46]),
         },
         args: None,
         working_dir: None,
@@ -375,7 +375,9 @@ fn test_executable_source_file_path() {
 #[test]
 fn test_executable_source_bytes_data() {
     let data = vec![0x7f, 0x45, 0x4c, 0x46]; // ELF magic
-    let source = ExecutableSource::Bytes { data: data.clone() };
+    let source = ExecutableSource::Bytes {
+        data: data.clone().into(),
+    };
 
     if let ExecutableSource::Bytes { data: d } = source {
         assert_eq!(d, data);

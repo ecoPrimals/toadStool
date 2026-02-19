@@ -32,18 +32,23 @@
 //! └─────────────────────────────────────────┘
 //! ```
 
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Workload submission for compute execution
+/// Workload submission for compute execution.
+///
+/// `data` uses [`bytes::Bytes`] — an `Arc<[u8]>` — so passing a submission
+/// through multiple handler layers or threads costs a single refcount bump
+/// rather than copying potentially megabyte-sized payloads.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkloadSubmission {
     /// Unique workload identifier
     pub workload_id: String,
     /// Workload type (gpu_compute, cpu_compute, wasm, etc.)
     pub workload_type: String,
-    /// Binary workload data
-    pub data: Vec<u8>,
+    /// Binary workload data (zero-copy: clone bumps refcount, not a memcpy)
+    pub data: Bytes,
     /// Workload metadata
     pub metadata: HashMap<String, String>,
     /// Priority level
@@ -74,15 +79,18 @@ pub struct ResourceRequirements {
     pub timeout_secs: Option<u64>,
 }
 
-/// Workload execution result
+/// Workload execution result.
+///
+/// `data` uses [`bytes::Bytes`] so result payloads can be shared across
+/// multiple consumers (e.g. cache + caller) without copying.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkloadResult {
     /// Workload identifier
     pub workload_id: String,
     /// Execution status
     pub status: WorkloadStatus,
-    /// Result data (if successful)
-    pub data: Option<Vec<u8>>,
+    /// Result data (if successful; zero-copy clone)
+    pub data: Option<Bytes>,
     /// Error message (if failed)
     pub error: Option<String>,
     /// Execution metrics
@@ -370,7 +378,7 @@ mod tests {
         let submission = WorkloadSubmission {
             workload_id: "work-123".to_string(),
             workload_type: "gpu_compute".to_string(),
-            data: vec![1, 2, 3, 4],
+            data: bytes::Bytes::from(vec![1, 2, 3, 4]),
             metadata: HashMap::new(),
             priority: WorkloadPriority::Normal,
             requirements: ResourceRequirements {

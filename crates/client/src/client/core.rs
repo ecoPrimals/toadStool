@@ -321,3 +321,39 @@ impl ToadStoolClient {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resolve_socket_path_unix_double_slash() {
+        let path = resolve_socket_path("unix:///run/toadstool.sock").unwrap();
+        assert!(path.to_string_lossy().contains("run/toadstool.sock"));
+    }
+
+    #[test]
+    fn test_resolve_socket_path_unix_single() {
+        let path = resolve_socket_path("unix:/run/toadstool.sock").unwrap();
+        assert!(path.to_string_lossy().contains("run/toadstool.sock"));
+    }
+
+    #[test]
+    fn test_resolve_socket_path_env_override() {
+        std::env::set_var("TOADSTOOL_SOCKET", "/tmp/test_toadstool.sock");
+        let path = resolve_socket_path("http://localhost:8080").unwrap();
+        assert_eq!(path, std::path::PathBuf::from("/tmp/test_toadstool.sock"));
+        std::env::remove_var("TOADSTOOL_SOCKET");
+    }
+
+    #[test]
+    fn test_resolve_socket_path_default_fallback() {
+        std::env::remove_var("TOADSTOOL_SOCKET");
+        let path = resolve_socket_path("http://localhost:8080").unwrap();
+        // Should return some reasonable socket path
+        assert!(
+            path.to_string_lossy().ends_with(".sock")
+                || path.to_string_lossy().contains("toadstool")
+        );
+    }
+}

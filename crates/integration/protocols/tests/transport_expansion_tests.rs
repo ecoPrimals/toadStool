@@ -441,8 +441,8 @@ fn test_connection_with_high_active_requests() {
 #[test]
 fn test_connection_timestamp_ordering() {
     let created = std::time::Instant::now();
-    std::thread::sleep(std::time::Duration::from_millis(10));
-    let used = std::time::Instant::now();
+    // Add 1ms directly — no thread::sleep needed for ordering.
+    let used = created + std::time::Duration::from_millis(1);
 
     let conn = Connection {
         service_id: "time-test".to_string(),

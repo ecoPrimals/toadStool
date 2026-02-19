@@ -6,7 +6,6 @@
 //! **Refactored Dec 18, 2025**: Complete rewrite to match current API patterns
 
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tempfile::TempDir;
@@ -40,6 +39,7 @@ fn create_test_config_in(dir: &TempDir) -> PolicyManagerConfig {
 
 /// Convenience wrapper that allocates a fresh unique temp directory.
 fn create_test_config() -> (TempDir, PolicyManagerConfig) {
+    #[allow(clippy::expect_used)]
     let dir = tempfile::tempdir().expect("temp dir");
     let config = create_test_config_in(&dir);
     (dir, config)

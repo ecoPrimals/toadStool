@@ -10,6 +10,7 @@
 //! 3. **Solution**: Consolidate to single source in `tarpc_service.rs` with semantic method naming
 //! 4. **Current**: Re-export from protocols crate (single source of truth)
 
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -27,18 +28,18 @@ pub use toadstool_integration_protocols::tarpc_service::ToadStoolComputeRpcClien
 // Re-export semantic method mapping utilities
 pub use toadstool_integration_protocols::tarpc_service::semantic_methods;
 
-/// Tarpc-specific workload submission (with serialized data)
+/// Tarpc-specific workload submission (with serialized data).
 ///
-/// This is a server-specific type that extends WorkloadSubmission
-/// for tarpc-specific serialization needs.
+/// `payload` uses [`bytes::Bytes`] so the serialized workload can be forwarded
+/// to multiple handler layers without copying.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TarpcWorkloadSubmission {
     /// Workload identifier
     pub workload_id: String,
     /// Runtime type
     pub runtime_type: String,
-    /// Serialized workload data
-    pub payload: Vec<u8>,
+    /// Serialized workload data (zero-copy: clone bumps refcount, not a memcpy)
+    pub payload: Bytes,
     /// Resource requirements
     pub resources: ResourceRequirements,
     /// Metadata

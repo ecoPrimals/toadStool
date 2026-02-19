@@ -327,9 +327,7 @@ async fn test_stats_after_deallocation() {
         let _buffer = memory.allocate(4096).await.expect("Failed to allocate");
         let stats = memory.stats();
         assert_eq!(stats.active_allocations, 1);
-    } // buffer dropped here
-
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    } // Drop is synchronous; stats update immediately — no sleep needed.
 
     let stats = memory.stats();
     assert_eq!(stats.active_allocations, 0);
@@ -357,9 +355,7 @@ async fn test_peak_allocated() {
         let _large = memory.allocate(8192).await.expect("Failed");
         let stats = memory.stats();
         assert!(stats.peak_allocated >= 8192);
-    }
-
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    } // Drop is synchronous — assert immediately.
 
     let stats = memory.stats();
     assert_eq!(stats.active_allocations, 0);
@@ -471,11 +467,11 @@ async fn test_buffer_drop_cleanup() {
     let memory = create_test_memory().await;
 
     for _ in 0..10 {
+        // Each buffer is dropped at the end of the loop body — synchronously.
         let _buffer = memory.allocate(1024).await.expect("Failed to allocate");
     }
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
+    // Drop is synchronous; no sleep required.
     let stats = memory.stats();
     assert_eq!(stats.active_allocations, 0, "All buffers should be freed");
 }

@@ -175,9 +175,8 @@ fn test_network_mode_clone() {
 fn test_dns_config_default() {
     let config = DnsConfig::default();
 
-    assert_eq!(config.nameservers.len(), 2);
-    assert_eq!(config.nameservers[0], "8.8.8.8");
-    assert_eq!(config.nameservers[1], "8.8.4.4");
+    // Capability-based DNS: defaults to empty so the host/orchestrator resolves at runtime
+    assert!(config.nameservers.is_empty());
     assert!(config.search_domains.is_empty());
     assert!(config.options.is_empty());
 }

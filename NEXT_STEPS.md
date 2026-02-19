@@ -1,11 +1,46 @@
 # ToadStool/BarraCUDA — Next Steps
 
-**Updated**: February 19, 2026 — Session 8
-**Status**: Sovereign Phases 0–3 ✅ | LatencyModel ✅ | WgslOptimizer ✅ | Mesa NAK patches ✅
+**Updated**: February 19, 2026 — Sessions 9–11
+**Status**: Sovereign Phases 0–3 ✅ | Zero-copy ✅ | Sleep elimination ✅ | 63.02% coverage ✅
 
 ---
 
 ## Active Work
+
+### W-004: NAK Mesa Patches (5 Deficiencies → Mesa MRs)
+
+**hotSpring analysis (Feb 19 2026)** identified and documented the 5 NAK compiler
+deficiencies responsible for the 149× NVK gap.  WGSL workarounds are live in
+`batched_eigh_nak_optimized_f64.wgsl` (2–4× on NVK already).  Mesa patches are the
+next step for universal sovereign GPU compute.
+
+| Priority | Deficiency | Expected Gain | Mesa Location |
+|----------|-----------|---------------|--------------|
+| 1 | Loop unrolling | ~4× | `nak/opt_instr.rs` / `lower_vec.rs` |
+| 2 | Register allocation | ~2× | `nak/ra.rs` |
+| 3 | Instruction scheduling | ~1.5× | `nak/sched.rs` |
+| 4 | FMA fusion | ~1.3× | `nak/lower_fma.rs` |
+| 5 | Branch predicates | ~1.1× | `nak/opt_pred.rs` |
+
+See `contrib/mesa-nak/NAK_DEFICIENCIES.md` for full decomposition, patch locations,
+and validation strategy.
+
+**Fix #1 alone closes ~4× of the 9× recoverable gap** — every consumer GPU running
+NVK becomes a sovereign compute node without proprietary drivers.
+
+---
+
+### W-005: GPU-Resident VACF
+
+With `CellListGpu` eliminating the 240 KB rebuild readback, the only remaining
+CPU round-trip is position/velocity snapshots for VACF (velocity autocorrelation)
+computation.  GPU-resident VACF would make production MD 100% unidirectional.
+
+**Approach**: accumulate the velocity autocorrelation sum inline on GPU using a
+running dot-product reduction shader after each `vel_snapshot_interval` iterations.
+Output: `D*` scalar, no snapshot readback needed.
+
+---
 
 ### W-003: NAK Compiler — Titan V Hardware Validation
 
@@ -72,13 +107,50 @@ Prerequisites:
 - [ ] YOLO (object detection)
 
 ### Test Coverage (target 90%)
-- [ ] Current: 61.35% line (non-GPU crates)
-- [ ] Gap: async networking paths, F-003 placeholder modules now resolved
+- [ ] Current: 63.02% line (non-GPU crates) — up from 61.35%
+- [ ] Gap: async networking paths (`websocket.rs`, `unibin.rs` server startup), GPU-gated paths
 - [ ] Add test suites for security monitoring, migration coordinator, display input
 
 ---
 
 ## Completed (All Sessions)
+
+### hotSpring Absorption (Feb 19, 2026) ✅ — Unidirectional Pipeline Feedback + NAK Universal Solution
+
+- [x] `batched_eigh_nak_optimized_f64.wgsl` — NAK-optimized eigensolve shader (5 workarounds:
+      manual 4× unroll, hoisted locals, load-before-compute, explicit fma(), select() branchless).
+      Drop-in for `batched_eigh_single_dispatch_f64.wgsl`. 2–4× speedup on NVK.
+- [x] `StatefulPipeline` — iterative simulation abstraction for MD/HFB/PDE; GPU-resident state,
+      scalar-only readback, single `queue.submit()` per N iterations.  `run_until_converged()` variant.
+- [x] `ReduceScalarPipeline` — first-class two-pass `sum/max/min` f64 reduction (8 bytes readback
+      vs N×8 previously); `scalar_buffer()` for zero-copy pipeline chaining.  At N=10,000: 10,000× 
+      reduction in energy readback bandwidth.
+- [x] `atomic_cell_bin.wgsl` + `cell_list_scatter.wgsl` + `CellListGpu` — 3-pass GPU-resident
+      cell-list rebuild (bin + prefix-sum + scatter); eliminates 240 KB readback + 240 KB re-upload
+      every 20 MD steps at N=10,000.  Entirely GPU-resident; `sorted_indices` / `cell_start` bind
+      directly to force kernel.
+- [x] `contrib/mesa-nak/NAK_DEFICIENCIES.md` — formal decomposition of 5 NAK deficiencies for
+      f64 loop-heavy kernels with Mesa Rust patch locations, priority table, validation strategy.
+
+### Sessions 9–11 (Feb 19, 2026) ✅ — Concurrency + Zero-Copy + Coverage
+- [x] `bytes::Bytes` on all binary RPC/execution payloads (7 types migrated) — O(1) clone
+- [x] 27 `sleep` calls eliminated across 11 files (advance, Barrier, Notify, arithmetic, removal)
+- [x] `MemoryTracker` → `tokio::time::Instant` (leak detection test uses `advance()`)
+- [x] `PerformanceTestManager::benchmark()` → `tokio::time::Instant` (benchmark tests use `advance()`)
+- [x] `CircuitBreaker` + `metrics_middleware` → `tokio::time::Instant`
+- [x] `AsyncBatcher` queue-full test → `Barrier` + `timeout` (eliminates 5ms ordering hack)
+- [x] `DistributedCoordinator` → `tokio::spawn` fan-out with `Notify` (no 50ms sleep)
+- [x] Hardcoded DNS servers removed — containers inherit from host/orchestrator
+- [x] `TelemetryConfig.enabled: false` default (opt-in)
+- [x] `DnsConfig` derives `Default`
+- [x] `pure_jsonrpc.rs` (979 lines) → `pure_jsonrpc/` module (4 focused files)
+- [x] `SemanticMethodRegistry` wired into `JsonRpcHandler`
+- [x] `storage_backend/mod.rs` (987 lines) → 4 files (mod, nestgate, inmemory, tests)
+- [x] `DualChipEnsemble` → `rayon::join` parallel ensemble state
+- [x] `UnifiedBuffer::drop()` bug fixed (both metrics fields decremented)
+- [x] CLI executor inline tests: `display.rs` (6), `signals.rs` (4), `resources.rs` (5) = 15 tests
+- [x] `llvm-cov` workspace SIGSEGV resolved (exit 0 consistently)
+- [x] Coverage: 61.35% → **63.02%** lines, 66.47% → **68.58%** functions
 
 ### Session 8 (Feb 19, 2026) ✅ — Sovereign Phase 3 + Mesa NAK patches
 - [x] `WgslDependencyGraph` — let-binding DAG parser, `classify_op()` heuristic

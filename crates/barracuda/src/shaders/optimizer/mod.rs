@@ -288,4 +288,74 @@ fn jacobi() {\n\
         let result = opt.optimize("// @ilp_region begin\nlet x = 1.0;\n// @ilp_region end\n");
         assert!(result.contains("let x ="));
     }
+
+    /// Validates the Phase 1 SOVEREIGN optimization: the Jacobi k-loop with a variable
+    /// bound `n` and `@unroll_hint 32` produces 32 guarded copies.
+    /// This mirrors the pattern in `batched_eigh_single_dispatch_f64.wgsl`.
+    #[test]
+    fn test_jacobi_kloop_variable_bound_unroll() {
+        let shader = concat!(
+            "                // @unroll_hint 32\n",
+            "                for (var k = 0u; k < n; k = k + 1u) {\n",
+            "                    if (k != p && k != q) {\n",
+            "                        let akp = A_batch[k * p];\n",
+            "                        let akq = A_batch[k * q];\n",
+            "                        let new_akp = c * akp - s * akq;\n",
+            "                        let new_akq = s * akp + c * akq;\n",
+            "                        A_batch[k * p] = new_akp;\n",
+            "                        A_batch[k * q] = new_akq;\n",
+            "                    }\n",
+            "                }\n",
+        );
+        let opt = WgslOptimizer::default();
+        let result = opt.optimize(shader);
+
+        // Original for-loop replaced
+        assert!(
+            !result.contains("for (var k"),
+            "for-loop should be unrolled"
+        );
+
+        // 32 guarded iterations, 0..31
+        assert_eq!(result.matches("let k = 0u;").count(), 1);
+        assert_eq!(result.matches("let k = 31u;").count(), 1);
+        assert_eq!(result.matches("let k = 32u;").count(), 0);
+
+        // Each guarded with `if (<iter>u < n)`
+        assert!(result.contains("if (0u < n)"), "iteration 0 needs guard");
+        assert!(result.contains("if (31u < n)"), "iteration 31 needs guard");
+
+        // Body expressions still present (substituted k → literals)
+        assert!(result.contains("A_batch[0 * p]"), "k=0 substitution");
+        assert!(result.contains("A_batch[31 * p]"), "k=31 substitution");
+    }
+
+    /// Verifies that an `@ilp_region` block followed immediately by a `@unroll_hint`
+    /// loop are both handled correctly without interference.
+    #[test]
+    fn test_ilp_region_then_unroll_coexist() {
+        let shader = concat!(
+            "    // @ilp_region begin\n",
+            "    let cc = c * c;\n",
+            "    let ss = s * s;\n",
+            "    // @ilp_region end\n",
+            "    // @unroll_hint 2\n",
+            "    for (var k = 0u; k < 2u; k = k + 1u) {\n",
+            "        let x = k;\n",
+            "    }\n",
+        );
+        let opt = WgslOptimizer::default();
+        let result = opt.optimize(shader);
+
+        // ILP region preserved
+        assert!(result.contains(ILP_BEGIN));
+        assert!(result.contains("let cc ="));
+        assert!(result.contains("let ss ="));
+        assert!(result.contains(ILP_END));
+
+        // Loop unrolled
+        assert!(!result.contains("for (var k"));
+        assert!(result.contains("let k = 0u;"));
+        assert!(result.contains("let k = 1u;"));
+    }
 }

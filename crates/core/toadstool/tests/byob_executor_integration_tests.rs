@@ -66,7 +66,7 @@ impl RuntimeEngine for MockRuntimeEngine {
                     execution_id: Uuid::new_v4(),
                     status: ExecutionStatus::Success,
                     output: ExecutionOutput {
-                        data: Vec::new(),
+                        data: bytes::Bytes::new(),
                         stdout: Some("Mock execution success".to_string()),
                         stderr: None,
                         exit_code: Some(0),

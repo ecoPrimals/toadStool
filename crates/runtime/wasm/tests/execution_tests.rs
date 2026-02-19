@@ -34,7 +34,7 @@ async fn test_simple_module_execution() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -85,7 +85,7 @@ async fn test_module_with_return_value() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -115,7 +115,7 @@ async fn test_module_execution_timing() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -157,7 +157,7 @@ async fn test_fuel_metering_enabled() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -194,7 +194,7 @@ async fn test_fuel_exhaustion() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -234,7 +234,7 @@ async fn test_fuel_disabled() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -270,7 +270,7 @@ async fn test_memory_intensive_module() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -315,7 +315,7 @@ async fn test_module_with_large_memory() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -349,7 +349,7 @@ async fn test_invalid_wasm_module() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -390,7 +390,7 @@ async fn test_missing_entry_point() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -431,7 +431,7 @@ async fn test_module_trap() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -467,7 +467,7 @@ async fn test_wasi_hello_world() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -516,7 +516,9 @@ async fn test_concurrent_executions() {
         let request = ExecutionRequest {
             execution_id: Uuid::new_v4(),
             workload: WorkloadSpec::Wasm {
-                module: WasmModuleSource::Bytes { data: wasm_clone },
+                module: WasmModuleSource::Bytes {
+                    data: wasm_clone.into(),
+                },
                 args: Some(vec![]),
                 wasi_config: None,
                 env_vars: HashMap::new(),
@@ -559,7 +561,9 @@ async fn test_parallel_different_modules() {
     let simple_req = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: simple_wasm },
+            module: WasmModuleSource::Bytes {
+                data: simple_wasm.into(),
+            },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -577,7 +581,9 @@ async fn test_parallel_different_modules() {
     let compute_req = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: compute_wasm },
+            module: WasmModuleSource::Bytes {
+                data: compute_wasm.into(),
+            },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -595,7 +601,9 @@ async fn test_parallel_different_modules() {
     let memory_req = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: memory_wasm },
+            module: WasmModuleSource::Bytes {
+                data: memory_wasm.into(),
+            },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -658,7 +666,7 @@ async fn test_engine_metrics() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -699,7 +707,9 @@ async fn test_module_reuse() {
     let request1 = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm.clone() },
+            module: WasmModuleSource::Bytes {
+                data: wasm.clone().into(),
+            },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),
@@ -717,7 +727,7 @@ async fn test_module_reuse() {
     let request2 = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: wasm },
+            module: WasmModuleSource::Bytes { data: wasm.into() },
             args: Some(vec![]),
             wasi_config: None,
             env_vars: HashMap::new(),

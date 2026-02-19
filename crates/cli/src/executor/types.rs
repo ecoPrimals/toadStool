@@ -66,6 +66,74 @@ impl BiomeProcess {
     }
 }
 
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_process_type_primal_name() {
+        let pt = ProcessType::Primal("toadstool".to_string());
+        assert_eq!(pt.name(), "toadstool");
+    }
+
+    #[test]
+    fn test_process_type_service_name() {
+        let pt = ProcessType::Service("nginx".to_string());
+        assert_eq!(pt.name(), "nginx");
+    }
+
+    #[test]
+    fn test_process_type_type_str() {
+        assert_eq!(ProcessType::Primal("x".to_string())._type_str(), "primal");
+        assert_eq!(ProcessType::Service("x".to_string())._type_str(), "service");
+        assert_eq!(
+            ProcessType::_HealthCheck("x".to_string())._type_str(),
+            "healthcheck"
+        );
+    }
+
+    #[test]
+    fn test_biome_process_type_name() {
+        let bp = BiomeProcess {
+            name: "web".to_string(),
+            process_type: ProcessType::Service("web-service".to_string()),
+            execution_id: Uuid::new_v4(),
+            pid: Some(1234),
+            _started_at: Utc::now(),
+        };
+        assert_eq!(bp.process_type_name(), "service");
+    }
+
+    #[test]
+    fn test_biome_process_display_name() {
+        let id = Uuid::new_v4();
+        let bp = BiomeProcess {
+            name: "api".to_string(),
+            process_type: ProcessType::Primal("toadstool".to_string()),
+            execution_id: id,
+            pid: None,
+            _started_at: Utc::now(),
+        };
+        let display = bp._display_name();
+        assert!(display.contains("toadstool"));
+        assert!(display.contains(&id.to_string()));
+    }
+
+    #[test]
+    fn test_biome_process_no_pid() {
+        let bp = BiomeProcess {
+            name: "worker".to_string(),
+            process_type: ProcessType::Service("worker".to_string()),
+            execution_id: Uuid::new_v4(),
+            pid: None,
+            _started_at: Utc::now(),
+        };
+        assert!(bp.pid.is_none());
+    }
+}
+
 // Additional structs for improved functionality
 #[derive(Debug, Clone)]
 pub struct WasmModule {

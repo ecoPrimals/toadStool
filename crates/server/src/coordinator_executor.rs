@@ -300,7 +300,7 @@ mod tests {
         let submission = WorkloadSubmission {
             workload_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
             workload_type: "gpu_compute".to_string(),
-            data: vec![1, 2, 3, 4, 5],
+            data: vec![1, 2, 3, 4, 5].into(),
             metadata: HashMap::from([
                 ("key1".to_string(), "value1".to_string()),
                 ("key2".to_string(), "value2".to_string()),
@@ -337,7 +337,7 @@ mod tests {
         let submission = WorkloadSubmission {
             workload_id: "not-a-valid-uuid".to_string(),
             workload_type: "cpu_compute".to_string(),
-            data: vec![],
+            data: bytes::Bytes::new(),
             metadata: HashMap::new(),
             priority: WorkloadPriority::Normal,
             requirements: ResourceRequirements {
@@ -359,7 +359,7 @@ mod tests {
         let submission = WorkloadSubmission {
             workload_id: uuid::Uuid::new_v4().to_string(),
             workload_type: "neural_compute".to_string(),
-            data: vec![1, 2, 3],
+            data: vec![1, 2, 3].into(),
             metadata: HashMap::new(),
             priority: WorkloadPriority::Normal,
             requirements: ResourceRequirements {
@@ -379,7 +379,7 @@ mod tests {
         let submission = WorkloadSubmission {
             workload_id: uuid::Uuid::new_v4().to_string(),
             workload_type: "wasm".to_string(),
-            data: vec![],
+            data: bytes::Bytes::new(),
             metadata: HashMap::new(),
             priority: WorkloadPriority::Low,
             requirements: ResourceRequirements {

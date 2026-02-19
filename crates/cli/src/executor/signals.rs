@@ -73,3 +73,53 @@ impl SignalManager {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_send_sigcont_to_self() {
+        // SIGCONT to our own PID is a no-op and always succeeds.
+        let own_pid = std::process::id();
+        let result = SignalManager::send_signal(own_pid, "CONT");
+        assert!(
+            result.is_ok(),
+            "SIGCONT to self should succeed: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_send_invalid_signal_name_returns_err() {
+        // "NOTASIGNAL" is not a valid signal name; kill should fail.
+        let own_pid = std::process::id();
+        let result = SignalManager::send_signal(own_pid, "NOTASIGNAL");
+        assert!(result.is_err(), "Invalid signal name should return error");
+    }
+
+    #[test]
+    fn test_send_signal_to_dead_process_returns_err() {
+        // Spawn a child, wait for it to exit, then its PID is released.
+        // SIGKILL to the dead PID should fail with "No such process".
+        let mut child = std::process::Command::new("true")
+            .spawn()
+            .expect("Failed to spawn");
+        let dead_pid = child.id();
+        child.wait().expect("Failed to wait");
+        // PID is now free; SIGKILL to it should fail.
+        let result = SignalManager::send_signal(dead_pid, "KILL");
+        assert!(
+            result.is_err(),
+            "Signal to dead PID {dead_pid} should return error"
+        );
+    }
+
+    #[test]
+    fn test_send_signal_uses_kill_command() {
+        // Verify that SIGTERM to self does not panic or crash the test runner.
+        // We use SIGCONT (no-op) to avoid actually terminating.
+        let own_pid = std::process::id();
+        assert!(SignalManager::send_signal(own_pid, "CONT").is_ok());
+    }
+}

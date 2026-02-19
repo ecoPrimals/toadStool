@@ -320,7 +320,6 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use std::sync::Arc;
-    use std::time::Duration;
     use tokio::sync::{broadcast, RwLock};
 
     use crate::config::{HealthCheckConfig, ServerConfig};

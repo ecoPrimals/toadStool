@@ -71,11 +71,7 @@ pub mod universal;
 pub mod workload;
 pub mod workload_migration;
 // biomeOS integration is now handled as a primal through the ecosystem module
-// No longer need hard integration - biomeOS interacts as a primal like Songbird
-
 // Re-export core types
-// BiomeOS integration is now handled as a primal - only export specific types if needed
-// pub use biomeos_integration::*; // Commented out to avoid ambiguous glob with toadstool_common::auth
 pub use ecosystem::{
     DiscoveryMethodConfig, EcosystemConfig, EcosystemCoordinator,
     EcosystemMessage as EcosystemCoreMessage, EcosystemMessageType as EcosystemCoreMessageType,

@@ -388,10 +388,11 @@ async fn test_concurrent_device_acquisition() {
 
             match pool_clone.acquire(&reqs).await {
                 Ok(lease) => {
-                    println!("Task {} acquired: {}", i, lease.info().name);
-                    // Simulate some work
-                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                    Ok(lease.info().name.clone())
+                    let name = lease.info().name.clone();
+                    println!("Task {} acquired: {}", i, name);
+                    // Drop the lease — release is atomic, no hold time needed.
+                    drop(lease);
+                    Ok(name)
                 }
                 Err(e) => {
                     println!("Task {} failed: {}", i, e);
@@ -564,11 +565,9 @@ async fn test_rapid_acquire_release_cycles() {
     for i in 0..cycles {
         let lease = pool.acquire_any().await.expect("Should acquire device");
         println!("Cycle {}: acquired {}", i, lease.info().name);
-        // Very short hold time
-        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+        // DeviceLease::drop() releases atomically via AtomicBool::store().
+        // No sleep needed — release is visible immediately after drop.
         drop(lease);
-        // Small delay to ensure cleanup
-        tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
     }
 
     println!("Completed {} cycles", cycles);

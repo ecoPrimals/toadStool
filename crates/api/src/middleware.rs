@@ -1,6 +1,6 @@
 //! Modern API middleware for cross-cutting concerns
 
-use std::time::Instant;
+use tokio::time::Instant;
 
 use axum::{
     extract::{Request, State},

@@ -327,9 +327,8 @@ pub mod bce_loss;
 pub mod contrastive_loss;
 pub mod cosine_embedding_loss;
 pub mod hinge_loss;
-pub mod kl_divergence; // WGSL implementation (not kl_divergence_wgsl.rs)
-pub mod kldiv_loss; // Alternative KL divergence loss implementation
-                    // pub mod kl_divergence_wgsl; // REMOVED - duplicate of kl_divergence.rs
+pub mod kl_divergence;
+pub mod kldiv_loss;
 pub mod margin_ranking_loss;
 pub mod multi_margin_loss;
 pub mod multilabel_margin_loss;

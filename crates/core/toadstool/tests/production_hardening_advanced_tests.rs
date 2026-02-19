@@ -8,7 +8,6 @@
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-// ✅ FULLY MODERNIZED: Removed unused tokio::time::sleep import
 use uuid::Uuid;
 
 use toadstool::production_hardening::*;
@@ -81,7 +80,7 @@ async fn test_circuit_breaker_timeout_recovery() {
     assert!(result.is_ok() || matches!(result, Err(CircuitBreakerError::CircuitOpen { .. })));
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(start_paused = true)]
 async fn test_circuit_breaker_half_open_to_closed_transition() {
     let config = CircuitBreakerConfig {
         failure_threshold: 2,
@@ -100,26 +99,22 @@ async fn test_circuit_breaker_half_open_to_closed_transition() {
 
     assert_eq!(breaker.get_state().await, CircuitState::Open);
 
-    // ✅ LEGITIMATE TEST: Wait for circuit breaker timeout - testing time-based state transitions
-    // Circuit breakers require actual time passage to transition states
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Advance time past the timeout — deterministic, no sleep required.
+    tokio::time::advance(Duration::from_millis(100)).await;
 
-    // Execute successful operations to transition back to closed
+    // Execute successful operations; no spacing needed — the state machine
+    // is deterministic once time is advanced.
     for _ in 0..3 {
-        tokio::time::sleep(Duration::from_millis(10)).await; // ✅ LEGITIMATE: Small delay for execution spacing
         let _ = breaker
             .execute(async { Ok::<_, std::io::Error>("success".to_string()) })
             .await;
     }
 
-    // ✅ LEGITIMATE TEST: Give time for state transition - testing timing behavior
-    tokio::time::sleep(Duration::from_millis(50)).await;
-
     let final_state = breaker.get_state().await;
-    // Should eventually transition to HalfOpen or Closed
     assert!(
         final_state == CircuitState::Closed || final_state == CircuitState::HalfOpen,
-        "Circuit should recover after successes"
+        "Circuit should recover after successes, got {:?}",
+        final_state
     );
 }
 
@@ -152,7 +147,7 @@ async fn test_circuit_breaker_mixed_success_failure_pattern() {
     assert!(count < 5, "Failure count should be less than threshold");
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(start_paused = true)]
 async fn test_circuit_breaker_rapid_state_changes() {
     let config = CircuitBreakerConfig {
         failure_threshold: 2,
@@ -171,23 +166,21 @@ async fn test_circuit_breaker_rapid_state_changes() {
 
     assert_eq!(breaker.get_state().await, CircuitState::Open);
 
-    // ✅ MODERNIZED: Wait for circuit breaker timeout (necessary for half-open transition)
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Advance time past the timeout — no sleep needed.
+    tokio::time::advance(Duration::from_millis(100)).await;
 
-    // Successes to close
+    // Successes to close — no spacing between them needed.
     for _ in 0..2 {
         let _ = breaker
             .execute(async { Ok::<_, std::io::Error>("success".to_string()) })
             .await;
-        tokio::time::sleep(Duration::from_millis(10)).await; // ✅ MODERNIZED: Small delay for execution spacing
     }
-
-    tokio::time::sleep(Duration::from_millis(50)).await; // ✅ MODERNIZED: Give time for final state transition
 
     let final_state = breaker.get_state().await;
     assert!(
         final_state == CircuitState::Closed || final_state == CircuitState::HalfOpen,
-        "Circuit should recover after rapid changes"
+        "Circuit should recover after rapid changes, got {:?}",
+        final_state
     );
 }
 

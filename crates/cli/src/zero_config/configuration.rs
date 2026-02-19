@@ -134,7 +134,12 @@ impl ZeroConfigDeployment {
                 container_port: host_port,
                 protocol: "tcp".to_string(),
             }],
-            dns_servers: vec!["8.8.8.8".to_string(), "8.8.4.4".to_string()],
+            // Discover DNS servers from TOADSTOOL_DNS_SERVERS env var or inherit
+            // from the host. Never assume specific public resolvers.
+            dns_servers: std::env::var("TOADSTOOL_DNS_SERVERS")
+                .ok()
+                .map(|v| v.split(',').map(str::trim).map(String::from).collect())
+                .unwrap_or_default(),
             songbird_enabled: coordination_provider_available,
         })
     }

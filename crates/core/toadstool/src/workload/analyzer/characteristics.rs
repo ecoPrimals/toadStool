@@ -113,3 +113,84 @@ impl fmt::Display for GpuAdvantage {
         }
     }
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_characteristics() {
+        let wc = WorkloadCharacteristics::default();
+        assert_eq!(wc.compute_intensity, ComputeIntensity::Medium);
+        assert_eq!(wc.memory_requirement, MemoryRequirement::Medium);
+        assert_eq!(wc.parallelism_level, ParallelismLevel::Medium);
+        assert_eq!(wc.gpu_advantage, GpuAdvantage::Moderate);
+        assert!(wc.cpu_viable);
+        assert!(wc.estimated_flops.is_none());
+    }
+
+    #[test]
+    fn test_compute_intensity_display() {
+        assert!(ComputeIntensity::Minimal.to_string().contains("Minimal"));
+        assert!(ComputeIntensity::Low.to_string().contains("Low"));
+        assert!(ComputeIntensity::Medium.to_string().contains("Medium"));
+        assert!(ComputeIntensity::High.to_string().contains("High"));
+        assert!(ComputeIntensity::VeryHigh.to_string().contains("Very High"));
+        assert!(ComputeIntensity::Extreme.to_string().contains("Extreme"));
+    }
+
+    #[test]
+    fn test_memory_requirement_display() {
+        assert!(MemoryRequirement::Tiny.to_string().contains("Tiny"));
+        assert!(MemoryRequirement::Small.to_string().contains("Small"));
+        assert!(MemoryRequirement::Large.to_string().contains("Large"));
+        assert!(MemoryRequirement::Huge.to_string().contains("Huge"));
+    }
+
+    #[test]
+    fn test_parallelism_level_display() {
+        assert!(ParallelismLevel::Sequential
+            .to_string()
+            .contains("Sequential"));
+        assert!(ParallelismLevel::High.to_string().contains("High"));
+        assert!(ParallelismLevel::VeryHigh.to_string().contains("Very High"));
+    }
+
+    #[test]
+    fn test_gpu_advantage_display() {
+        assert!(GpuAdvantage::Minimal.to_string().contains("Minimal"));
+        assert!(GpuAdvantage::Critical.to_string().contains("Critical"));
+        assert!(GpuAdvantage::VeryHigh.to_string().contains("Very High"));
+    }
+
+    #[test]
+    fn test_compute_intensity_ordering() {
+        assert!(ComputeIntensity::Minimal < ComputeIntensity::Low);
+        assert!(ComputeIntensity::Low < ComputeIntensity::Medium);
+        assert!(ComputeIntensity::High < ComputeIntensity::VeryHigh);
+        assert!(ComputeIntensity::VeryHigh < ComputeIntensity::Extreme);
+    }
+
+    #[test]
+    fn test_gpu_advantage_ordering() {
+        assert!(GpuAdvantage::Minimal < GpuAdvantage::Critical);
+        assert!(GpuAdvantage::Moderate < GpuAdvantage::Significant);
+    }
+
+    #[test]
+    fn test_characteristics_with_flops() {
+        let wc = WorkloadCharacteristics {
+            compute_intensity: ComputeIntensity::Extreme,
+            memory_requirement: MemoryRequirement::Huge,
+            parallelism_level: ParallelismLevel::VeryHigh,
+            gpu_advantage: GpuAdvantage::Critical,
+            cpu_viable: false,
+            estimated_flops: Some(10_000_000_000_000),
+        };
+        assert_eq!(wc.compute_intensity, ComputeIntensity::Extreme);
+        assert!(!wc.cpu_viable);
+        assert_eq!(wc.estimated_flops, Some(10_000_000_000_000));
+    }
+}

@@ -193,3 +193,89 @@ pub enum RecommendationType {
     /// Other optimization
     Other,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_performance_config_default() {
+        let cfg = PerformanceConfig::default();
+        assert!(cfg.enable_runtime_selection);
+        assert!(cfg.enable_profiling);
+        assert!(cfg.enable_prediction);
+        assert!(cfg.enable_recommendations);
+        assert_eq!(cfg.metrics_interval_ms, 1000);
+        assert_eq!(cfg.history_retention_hours, 24);
+        assert_eq!(cfg.min_prediction_samples, 10);
+        assert!((cfg.performance_threshold_percentile - 95.0).abs() < 1e-9);
+        assert!((cfg.target_utilization_percent - 75.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_selection_weights_default_sums_to_one() {
+        let w = SelectionWeights::default();
+        let sum = w.execution_time
+            + w.memory_usage
+            + w.cpu_usage
+            + w.resource_availability
+            + w.historical_success_rate;
+        assert!(
+            (sum - 1.0).abs() < 1e-9,
+            "weights should sum to 1.0, got {sum}"
+        );
+    }
+
+    #[test]
+    fn test_runtime_selection_strategy_variants() {
+        let _ = RuntimeSelectionStrategy::FastestExecution;
+        let _ = RuntimeSelectionStrategy::LowestResourceUsage;
+        let _ = RuntimeSelectionStrategy::BestEfficiency;
+        let _ = RuntimeSelectionStrategy::LoadBalance;
+        let _ = RuntimeSelectionStrategy::WorkloadOptimized;
+        let _ = RuntimeSelectionStrategy::Custom {
+            weights: SelectionWeights::default(),
+        };
+    }
+
+    #[test]
+    fn test_recommendation_type_variants() {
+        let _ = RecommendationType::RuntimeSwitch;
+        let _ = RecommendationType::ResourceIncrease;
+        let _ = RecommendationType::ResourceDecrease;
+        let _ = RecommendationType::FeatureEnable;
+        let _ = RecommendationType::ConfigurationAdjustment;
+        let _ = RecommendationType::HorizontalScaling;
+        let _ = RecommendationType::Other;
+    }
+
+    #[test]
+    fn test_resource_prediction_fields() {
+        let pred = ResourcePrediction {
+            timestamp: chrono::Utc::now(),
+            execution_time: std::time::Duration::from_secs(5),
+            memory_mb: 256.0,
+            cpu_percent: 30.0,
+            confidence: 80.0,
+            model_type: "test".to_string(),
+        };
+        assert!((pred.memory_mb - 256.0).abs() < 1e-9);
+        assert!((pred.confidence - 80.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_optimization_recommendation_fields() {
+        let rec = OptimizationRecommendation {
+            id: "rec-001".to_string(),
+            recommendation_type: RecommendationType::RuntimeSwitch,
+            priority: 5,
+            expected_improvement: 15.0,
+            description: "Switch runtimes".to_string(),
+            actions: vec!["action1".to_string()],
+            timestamp: chrono::Utc::now(),
+        };
+        assert_eq!(rec.id, "rec-001");
+        assert_eq!(rec.priority, 5);
+        assert_eq!(rec.actions.len(), 1);
+    }
+}

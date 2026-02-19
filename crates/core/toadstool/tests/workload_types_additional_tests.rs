@@ -80,7 +80,9 @@ fn test_executable_source_url() {
 #[test]
 fn test_executable_source_bytes() {
     let data = vec![0x7F, 0x45, 0x4C, 0x46]; // ELF header
-    let source = ExecutableSource::Bytes { data: data.clone() };
+    let source = ExecutableSource::Bytes {
+        data: data.clone().into(),
+    };
     assert!(matches!(source, ExecutableSource::Bytes { .. }));
 }
 
@@ -115,7 +117,9 @@ fn test_wasm_module_source_file() {
 #[test]
 fn test_wasm_module_source_bytes() {
     let data = vec![0x00, 0x61, 0x73, 0x6D]; // WASM magic number
-    let source = WasmModuleSource::Bytes { data: data.clone() };
+    let source = WasmModuleSource::Bytes {
+        data: data.clone().into(),
+    };
     assert!(matches!(source, WasmModuleSource::Bytes { .. }));
 }
 
@@ -130,7 +134,7 @@ fn test_wasm_module_source_url() {
 #[test]
 fn test_wasm_module_source_serialization() {
     let source = WasmModuleSource::Bytes {
-        data: vec![1, 2, 3, 4],
+        data: bytes::Bytes::from(vec![1, 2, 3, 4]),
     };
     let serialized = serde_json::to_string(&source).expect("Failed to serialize");
     let deserialized: WasmModuleSource =

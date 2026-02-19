@@ -144,7 +144,7 @@ fn test_execution_input_default() {
 #[test]
 fn test_execution_input_with_data() {
     let input = ExecutionInput {
-        data: vec![1, 2, 3, 4],
+        data: bytes::Bytes::from(vec![1, 2, 3, 4]),
         format: Some("binary".to_string()),
         metadata: HashMap::new(),
     };
@@ -159,7 +159,7 @@ fn test_execution_input_with_metadata() {
     metadata.insert("key1".to_string(), "value1".to_string());
 
     let input = ExecutionInput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         format: None,
         metadata,
     };
@@ -211,7 +211,7 @@ fn test_execution_output_default() {
 #[test]
 fn test_execution_output_with_stdout() {
     let output = ExecutionOutput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         stdout: Some("Hello World".to_string()),
         stderr: None,
         exit_code: Some(0),
@@ -227,7 +227,7 @@ fn test_execution_output_with_stdout() {
 #[test]
 fn test_execution_output_with_stderr() {
     let output = ExecutionOutput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         stdout: None,
         stderr: Some("Error occurred".to_string()),
         exit_code: Some(1),
@@ -243,7 +243,7 @@ fn test_execution_output_with_stderr() {
 #[test]
 fn test_execution_output_with_data() {
     let output = ExecutionOutput {
-        data: vec![5, 6, 7, 8],
+        data: bytes::Bytes::from(vec![5, 6, 7, 8]),
         stdout: None,
         stderr: None,
         exit_code: None,
@@ -587,7 +587,7 @@ fn test_callback_event_round_trip() {
 fn test_execution_input_large_data() {
     let large_data = vec![0u8; 1024 * 1024]; // 1MB
     let input = ExecutionInput {
-        data: large_data.clone(),
+        data: large_data.clone().into(),
         format: None,
         metadata: HashMap::new(),
     };

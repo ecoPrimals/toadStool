@@ -542,7 +542,7 @@ mod tests {
 
     #[test]
     fn substrate_detector_default() {
-        let detector = SubstrateDetector::default();
+        let detector = SubstrateDetector;
         let from_new = SubstrateDetector::new();
         // Both produce valid detectors (unit struct)
         let _ = detector;

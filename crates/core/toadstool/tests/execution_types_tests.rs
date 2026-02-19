@@ -274,7 +274,7 @@ fn execution_input_with_data() {
     let mut metadata = HashMap::new();
     metadata.insert("key".to_string(), "value".to_string());
     let input = ExecutionInput {
-        data: vec![1, 2, 3],
+        data: bytes::Bytes::from(vec![1, 2, 3]),
         format: Some("json".to_string()),
         metadata,
     };
@@ -299,7 +299,7 @@ fn execution_output_default() {
 #[test]
 fn execution_output_with_fields() {
     let output = ExecutionOutput {
-        data: vec![42u8],
+        data: bytes::Bytes::from(vec![42u8]),
         stdout: Some("out".to_string()),
         stderr: Some("err".to_string()),
         exit_code: Some(0),
@@ -440,7 +440,7 @@ fn runtime_config_serialization_roundtrip() {
 #[test]
 fn execution_input_serialization_roundtrip() {
     let input = ExecutionInput {
-        data: vec![1, 2, 3],
+        data: bytes::Bytes::from(vec![1, 2, 3]),
         format: Some("bin".to_string()),
         ..Default::default()
     };

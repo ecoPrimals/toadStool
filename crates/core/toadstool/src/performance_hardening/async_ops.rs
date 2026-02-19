@@ -201,7 +201,12 @@ mod tests {
         assert_eq!(r2.unwrap(), "WORLD");
     }
 
-    #[tokio::test]
+    // Queue-full test: both submitters race simultaneously via Barrier so
+    // neither has ordering priority. One wins the 1-slot queue and the other
+    // gets "queue full". The winner's submit blocks waiting for batch processing
+    // (batch_size=100 never fills), so we use per-task timeouts to let the
+    // test proceed without a sleep.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_async_batcher_queue_full() {
         let config = AsyncOptimizationConfig {
             batch_size: 100,
@@ -212,30 +217,33 @@ mod tests {
         let batcher = Arc::new(AsyncBatcher::new(config, |v: Vec<i32>| {
             Box::pin(async move { v.into_iter().map(|x| x + 1).collect() })
         }));
+
+        // Barrier ensures both submitters enter submit() concurrently.
+        let barrier = Arc::new(tokio::sync::Barrier::new(2));
+
+        let b1 = Arc::clone(&barrier);
+        let batcher1 = Arc::clone(&batcher);
+        let h1 = tokio::spawn(async move {
+            b1.wait().await;
+            batcher1.submit(1).await
+        });
+
+        let b2 = Arc::clone(&barrier);
         let batcher2 = Arc::clone(&batcher);
-        let second_handle = tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_millis(5)).await;
+        let h2 = tokio::spawn(async move {
+            b2.wait().await;
             batcher2.submit(2).await
         });
-        let first_handle = tokio::spawn(async move { batcher.submit(1).await });
-        let second_result = tokio::time::timeout(Duration::from_millis(200), second_handle)
-            .await
-            .unwrap()
-            .unwrap();
-        let first_result = tokio::time::timeout(Duration::from_millis(50), first_handle)
-            .await
-            .ok()
-            .and_then(|h| h.ok());
-        let first_err = first_result.as_ref().and_then(|r| match r {
-            Ok(_) => None,
-            Err(e) => Some(e.to_string()),
-        });
-        let has_queue_full = first_err.map(|s| s.contains("queue full")).unwrap_or(false)
-            || second_result
-                .err()
-                .map(|e| e.to_string().contains("queue full"))
-                .unwrap_or(false);
-        assert!(has_queue_full, "Expected at least one queue full error");
+
+        // Timeout both handles: the "queue full" one returns fast, the queued
+        // one blocks (waiting for batch) and times out — that's fine.
+        let r1 = tokio::time::timeout(Duration::from_millis(200), h1).await;
+        let r2 = tokio::time::timeout(Duration::from_millis(200), h2).await;
+
+        let any_queue_full = [&r1, &r2]
+            .iter()
+            .any(|r| matches!(r, Ok(Ok(Err(e))) if e.to_string().contains("queue full")));
+        assert!(any_queue_full, "Expected at least one queue full error");
     }
 
     #[tokio::test]

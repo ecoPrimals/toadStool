@@ -273,10 +273,13 @@ fn test_collector_basic() {
 
 #[test]
 fn test_collector_timeout_check() {
-    let collector = PartialResultCollector::new(3, std::time::Duration::from_millis(1));
-
-    std::thread::sleep(std::time::Duration::from_millis(2));
-
+    // Create a collector whose start time is 100ms in the past, so any
+    // non-zero timeout is already exceeded — no thread::sleep required.
+    let past = std::time::Instant::now()
+        .checked_sub(std::time::Duration::from_millis(100))
+        .unwrap_or_else(std::time::Instant::now);
+    let collector =
+        PartialResultCollector::new_with_start(3, std::time::Duration::from_millis(1), past);
     assert!(collector.is_timeout_exceeded());
 }
 

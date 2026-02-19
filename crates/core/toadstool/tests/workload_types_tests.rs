@@ -235,7 +235,7 @@ fn test_executable_source_url() {
 fn test_executable_source_bytes() {
     let code = "#!/bin/bash\necho 'Hello'";
     let source = ExecutableSource::Bytes {
-        data: code.as_bytes().to_vec(),
+        data: bytes::Bytes::from(code.as_bytes().to_vec()),
     };
 
     match source {
@@ -297,7 +297,7 @@ fn test_wasm_module_source_url() {
 fn test_wasm_module_source_bytes() {
     let bytes = vec![0x00, 0x61, 0x73, 0x6d]; // WASM magic number
     let source = WasmModuleSource::Bytes {
-        data: bytes.clone(),
+        data: bytes.clone().into(),
     };
 
     match source {

@@ -48,7 +48,7 @@ fn create_test_execution_request(id: usize) -> ExecutionRequest {
         timeout: Some(Duration::from_secs(10)),
         environment: HashMap::new(),
         input_data: ExecutionInput {
-            data: Vec::new(),
+            data: bytes::Bytes::new(),
             format: None,
             metadata: HashMap::new(),
         },

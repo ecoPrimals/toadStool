@@ -325,7 +325,6 @@ impl Tile {
 mod tests {
     use super::*;
     use crate::device::test_pool::get_test_device_if_gpu_available;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_tile_basic() {

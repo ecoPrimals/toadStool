@@ -396,8 +396,15 @@ fn test_template_networking_is_configured() {
     // Should have network mode defined
     assert!(!networking.mode.is_empty());
 
-    // DNS servers should be configured
-    assert!(!networking.dns_servers.is_empty() || networking.mode == "host");
+    // DNS is capability-based: defaults to empty so the runtime/orchestrator
+    // can inject resolvers from the host. An explicit "host" mode is also valid.
+    // The template itself should never embed hardcoded DNS IPs.
+    assert!(
+        networking.dns_servers.is_empty() || networking.mode == "host",
+        "template DNS should be empty (host-inherited) or mode==host, found: {:?} / {:?}",
+        networking.dns_servers,
+        networking.mode
+    );
 
     // At least one port should be exposed (if services exist)
     // This is implicit through service port configurations and port_mappings

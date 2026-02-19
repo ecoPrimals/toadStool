@@ -99,9 +99,9 @@ impl ReadoutTrainer {
         debug!("Computing X^T Y");
         let xt_y = states_f64.t().dot(&targets_f64);
 
-        // Solve (X^T X + αI) W = X^T Y
-        // For now, use pseudo-inverse (TODO: proper Cholesky solve)
-        debug!("Solving linear system");
+        // Solve (X^T X + αI) W = X^T Y via Cholesky decomposition.
+        // A = X^T X + αI is symmetric positive definite (α > 0), so Cholesky is stable.
+        debug!("Solving linear system via Cholesky");
         let weights = Self::solve_ridge(xt_x_reg, xt_y);
 
         // Convert back to f32

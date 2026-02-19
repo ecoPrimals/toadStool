@@ -109,7 +109,9 @@ impl ExecutionRequestBuilder {
     #[must_use]
     pub fn wasm_workload(mut self, module_data: Vec<u8>) -> Self {
         self.workload = Some(WorkloadSpec::Wasm {
-            module: WasmModuleSource::Bytes { data: module_data },
+            module: WasmModuleSource::Bytes {
+                data: module_data.into(),
+            },
             args: None,
             wasi_config: None,
             env_vars: HashMap::new(),

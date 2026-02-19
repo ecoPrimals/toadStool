@@ -31,7 +31,7 @@ fn test_workload_spec_validate_native_success() {
 fn test_workload_spec_validate_wasm_success() {
     let workload = WorkloadSpec::Wasm {
         module: WasmModuleSource::Bytes {
-            data: vec![0x00, 0x61, 0x73, 0x6d, 1, 0, 0, 0],
+            data: bytes::Bytes::from(vec![0x00, 0x61, 0x73, 0x6d, 1, 0, 0, 0]),
         },
         args: Some(vec![]),
         wasi_config: None,
@@ -262,7 +262,9 @@ fn test_workload_spec_wasm_with_large_module() {
     extended.extend(vec![0; 10000]); // 10KB module
 
     let workload = WorkloadSpec::Wasm {
-        module: WasmModuleSource::Bytes { data: extended },
+        module: WasmModuleSource::Bytes {
+            data: extended.into(),
+        },
         args: None,
         wasi_config: None,
         env_vars: HashMap::new(),
@@ -663,7 +665,7 @@ fn test_workload_spec_wasm_with_wasi_full() {
 
     let workload = WorkloadSpec::Wasm {
         module: WasmModuleSource::Bytes {
-            data: vec![0x00, 0x61, 0x73, 0x6d, 1, 0, 0, 0],
+            data: bytes::Bytes::from(vec![0x00, 0x61, 0x73, 0x6d, 1, 0, 0, 0]),
         },
         args: Some(vec!["main".to_string()]),
         wasi_config: Some(wasi),
@@ -801,7 +803,7 @@ fn test_executable_source_empty_url() {
 fn test_executable_source_large_bytes() {
     let large_data = vec![0u8; 1024 * 1024]; // 1MB
     let source = ExecutableSource::Bytes {
-        data: large_data.clone(),
+        data: large_data.clone().into(),
     };
 
     match source {

@@ -3,6 +3,7 @@
 //! Implements complete WASM module execution with WASI support, fuel metering,
 //! and memory limits - all in 100% Pure Rust!
 
+use bytes::Bytes;
 use std::time::Instant;
 use tracing::{debug, info};
 use wasmi::{Engine, Instance, Linker, Module, Store};
@@ -139,7 +140,7 @@ impl ModuleExecutor {
         metadata.insert("version".to_string(), "1.0.7".to_string());
 
         Ok(ExecutionOutput {
-            data: Vec::new(), // WASM functions can return data here
+            data: Bytes::new(), // WASM functions can return data here
             // Note: wasmi_wasi doesn't expose easy buffer capture APIs.
             // For full capture, would need custom Write implementation.
             // Current: outputs inherit to host (safe for now)

@@ -1,5 +1,6 @@
 //! Execution types and runtime engine interface
 
+use bytes::Bytes;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -103,22 +104,28 @@ pub enum ExecutionStatus {
     Pending,
 }
 
-/// Input data for execution
+/// Input data for execution.
+///
+/// `data` is [`bytes::Bytes`] (an `Arc<[u8]>`): cloning the struct across
+/// handlers or threads is a refcount bump, not a memcpy.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExecutionInput {
-    /// Binary data
-    pub data: Vec<u8>,
+    /// Binary input data (zero-copy: clone bumps refcount, not a memcpy)
+    pub data: Bytes,
     /// Input format
     pub format: Option<String>,
     /// Metadata
     pub metadata: HashMap<String, String>,
 }
 
-/// Output from execution
+/// Output from execution.
+///
+/// `data` is [`bytes::Bytes`] so result payloads can be shared with a cache
+/// layer and the original caller simultaneously without copying.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExecutionOutput {
-    /// Binary output data
-    pub data: Vec<u8>,
+    /// Binary output data (zero-copy: clone bumps refcount, not a memcpy)
+    pub data: Bytes,
     /// Standard output (text)
     pub stdout: Option<String>,
     /// Standard error (text)

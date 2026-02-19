@@ -38,7 +38,7 @@ use toadstool_common::ToadStoolResult;
 // implementation that provides the interface for future enhancement.
 
 /// mDNS service type for ecoPrimals services
-const MDNS_SERVICE_TYPE: &str = "_ecoprimals._tcp.local.";
+pub(crate) const MDNS_SERVICE_TYPE: &str = "_ecoprimals._tcp.local.";
 
 /// Cache entry for discovered services
 #[derive(Debug, Clone)]
@@ -46,6 +46,15 @@ struct CachedService {
     service: DiscoveredService,
     discovered_at: SystemTime,
     last_seen: SystemTime,
+}
+
+impl CachedService {
+    /// Returns how long this entry has been in the cache.
+    fn age(&self) -> std::time::Duration {
+        self.discovered_at
+            .elapsed()
+            .unwrap_or(std::time::Duration::ZERO)
+    }
 }
 
 /// mDNS-based discovery client
@@ -124,7 +133,12 @@ impl MdnsDiscoveryClient {
 
         cache.retain(|id, entry| match now.duration_since(entry.last_seen) {
             Ok(age) if age > self.cache_ttl => {
-                debug!("Removing stale service from cache: {}", id);
+                debug!(
+                    "Removing stale service from cache: {} (age: {:?}, last_seen: {:?} ago)",
+                    id,
+                    entry.age(),
+                    age,
+                );
                 false
             }
             _ => true,
@@ -313,7 +327,7 @@ impl DiscoveryClient for MdnsDiscoveryClient {
         // 3. Respond to mDNS queries automatically
         //
         // For now, we track advertised services for future integration
-        if let Some(endpoint) = service.endpoints.first() {
+        if !service.endpoints.is_empty() {
             let hostname = format!("{}.local", service_id);
 
             self.advertised_services
@@ -321,7 +335,10 @@ impl DiscoveryClient for MdnsDiscoveryClient {
                 .await
                 .insert(service_id.to_string(), hostname.clone());
 
-            info!("Service {} registered (hostname: {})", service_id, hostname);
+            info!(
+                "Service {} registered (hostname: {}, type: {})",
+                service_id, hostname, MDNS_SERVICE_TYPE,
+            );
             debug!("Full mDNS advertisement will be enabled when mdns-sd is integrated");
         }
 

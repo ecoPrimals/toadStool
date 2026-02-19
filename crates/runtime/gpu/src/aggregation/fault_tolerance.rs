@@ -181,6 +181,23 @@ impl PartialResultCollector {
         }
     }
 
+    /// Create a collector with an explicit start time.
+    ///
+    /// Useful when reconstructing collector state from a checkpoint or when
+    /// the collection window began before the collector object was created.
+    pub fn new_with_start(
+        expected_count: usize,
+        timeout: std::time::Duration,
+        started_at: Instant,
+    ) -> Self {
+        Self {
+            expected_count,
+            results: Vec::with_capacity(expected_count),
+            timeout,
+            started_at,
+        }
+    }
+
     /// Add a successful result
     pub fn add_success(&mut self, result: PartialResult) {
         self.results.push(PartialResultStatus::Success(result));

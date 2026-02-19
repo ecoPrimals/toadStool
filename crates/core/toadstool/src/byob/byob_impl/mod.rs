@@ -358,8 +358,7 @@ impl ByobComputeExecutor {
         }
     }
 
-    /// Update resource usage for deployment
-    #[allow(dead_code)]
+    /// Update resource usage for deployment by polling service metrics
     async fn update_resource_usage(&self, deployment_id: Uuid) -> ToadStoolResult<()> {
         debug!(
             "📊 Updating resource usage for deployment {}",
@@ -419,8 +418,7 @@ impl ByobComputeExecutor {
                 );
             }
 
-            // Update deployment resource usage
-            deployment.resource_usage = ResourceUsage {
+            deployment.update_resource_usage(ResourceUsage {
                 cpu_usage: total_cpu,
                 memory_usage: total_memory,
                 storage_usage: total_storage,
@@ -431,9 +429,7 @@ impl ByobComputeExecutor {
                     packets_sent: total_network_sent / 1024, // Rough estimate
                     packets_received: total_network_received / 1024,
                 },
-            };
-
-            deployment.updated_at = std::time::Instant::now();
+            });
 
             debug!("📊 Updated resource usage for deployment {}: CPU: {:.2}, Memory: {}MB, Storage: {}MB", 
                    deployment_id, total_cpu, total_memory / (1024 * 1024), total_storage / (1024 * 1024));
@@ -645,6 +641,16 @@ impl ByobExecutor for ByobComputeExecutor {
 
         let responses = deployments
             .values()
+            .inspect(|d| {
+                if d.is_completed() {
+                    debug!(
+                        "Deployment {} is completed (age: {:?})",
+                        d.request.deployment_id,
+                        d.elapsed()
+                    );
+                }
+            })
+            .filter(|d| d.is_active() || d.is_completed())
             .map(|deployment| deployment.to_response())
             .collect();
 
@@ -652,8 +658,10 @@ impl ByobExecutor for ByobComputeExecutor {
     }
 
     async fn get_resource_usage(&self, deployment_id: Uuid) -> ToadStoolResult<ResourceUsage> {
-        let deployments = self.active_deployments.read().await;
+        // Refresh usage metrics before returning so callers always see current stats.
+        self.update_resource_usage(deployment_id).await?;
 
+        let deployments = self.active_deployments.read().await;
         if let Some(deployment) = deployments.get(&deployment_id) {
             Ok(deployment.resource_usage.clone())
         } else {

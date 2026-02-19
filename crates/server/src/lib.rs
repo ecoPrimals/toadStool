@@ -79,9 +79,6 @@ pub use state::*;
     note = "Use ManualJsonRpcServer instead - no TCP hardcoding"
 )]
 #[allow(deprecated)]
-// ⚠️ DEPRECATED: jsonrpc_server module removed (used jsonrpsee with ring)
-// Use manual_jsonrpc::ManualJsonRpcServer or pure_jsonrpc::JsonRpcHandler instead
-// pub use jsonrpc_server::{start_jsonrpc_server, start_jsonrpc_unix_server};
 pub use tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 
 // EVOLVED: TestExecutor isolated to testing (deep debt principle)
@@ -108,9 +105,9 @@ pub use mocks::*;
 
 // Module declarations
 pub mod background;
-pub mod capabilities; // EVOLVED: Self-knowledge & peer discovery (deep debt!)
+pub mod capabilities; // Self-knowledge & peer discovery
 pub mod config;
-pub mod coordinator_executor; // NEW: Distributed coordinator integration
+pub mod coordinator_executor;
 pub mod cross_gate; // Cross-gate compute delegation (job routing across mesh)
 pub mod errors;
 pub mod gpu_job_queue; // GPU compute job queue (compute.submit/status/result/cancel/list)
@@ -122,14 +119,6 @@ pub mod graph_node;
 pub mod graph_types; // Main graph types (ExecutionGraph, builders)
 
 pub mod handlers;
-// ⚠️ DEPRECATED: Uses jsonrpsee which pulls ring (C dependency)
-// Use manual_jsonrpc.rs or pure_jsonrpc.rs instead (Pure Rust!)
-// Commented out to prevent compilation errors (kept for reference only)
-// #[deprecated(
-//     since = "4.18.0",
-//     note = "Use manual_jsonrpc or pure_jsonrpc instead - jsonrpsee pulls ring (C dependency)"
-// )]
-// pub mod jsonrpc_server;
 
 // ✅ PURE RUST: Manual JSON-RPC 2.0 over Unix sockets (no jsonrpsee!)
 pub mod manual_jsonrpc;
@@ -143,12 +132,10 @@ pub mod mocks;
 
 // ✅ PURE RUST: BearDog's pattern for JSON-RPC 2.0 (no jsonrpsee!)
 pub mod pure_jsonrpc;
-pub mod resource_estimator; // NEW: Resource estimation for graphs
+pub mod resource_estimator;
 pub mod resource_optimizer;
-pub mod resource_validator; // NEW: Resource validation for graphs
-pub mod rpc_types; // Pure RPC types (deep debt solution - no HTTP deps)
-                   // REMOVED: pub mod songbird_client; - EVOLVED to capabilities module!
-                   // Deep debt evolution: External registration → Self-knowledge + Peer discovery
+pub mod resource_validator;
+pub mod rpc_types; // Pure RPC types (no HTTP deps)
 pub mod state;
 pub mod tarpc_server;
 pub mod unibin; // UniBin server entry point (shared between binaries)
@@ -167,10 +154,6 @@ pub use coordinator_executor::CoordinatorExecutor;
 
 // Re-export manual JSON-RPC server
 pub use manual_jsonrpc::ManualJsonRpcServer;
-
-// Re-export Songbird client
-// DISABLED: HTTP-based Songbird client (legacy)
-// pub use songbird_client::{ServiceLocation, SongbirdClient, SongbirdRegistration, SystemResources};
 
 // Re-export collaborative intelligence types
 pub use graph_types::{

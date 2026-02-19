@@ -78,3 +78,54 @@ impl Whisper {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_whisper_config_tiny() {
+        let cfg = WhisperConfig::tiny();
+        assert_eq!(cfg.d_model, 384);
+        assert_eq!(cfg.encoder_layers, 4);
+        assert_eq!(cfg.vocab_size, 51865);
+    }
+
+    #[test]
+    fn test_whisper_config_base() {
+        let cfg = WhisperConfig::base();
+        assert_eq!(cfg.d_model, 512);
+        assert_eq!(cfg.encoder_layers, 6);
+    }
+
+    #[test]
+    fn test_whisper_config_default_is_tiny() {
+        let cfg = WhisperConfig::default();
+        assert_eq!(cfg.d_model, 384);
+    }
+
+    #[test]
+    fn test_whisper_num_parameters_tiny() {
+        let w = Whisper::new(WhisperConfig::tiny());
+        assert_eq!(w.num_parameters(), 39_000_000);
+    }
+
+    #[test]
+    fn test_whisper_num_parameters_base() {
+        let w = Whisper::new(WhisperConfig::base());
+        assert_eq!(w.num_parameters(), 74_000_000);
+    }
+
+    #[test]
+    fn test_whisper_from_pretrained() {
+        let w = Whisper::from_pretrained("openai/whisper-tiny").unwrap();
+        assert_eq!(w.config.d_model, 384);
+    }
+
+    #[test]
+    fn test_whisper_transcribe_placeholder() {
+        let w = Whisper::new(WhisperConfig::default());
+        let result = w.transcribe(&[0.0f32; 16000], 16000).unwrap();
+        assert!(!result.is_empty());
+    }
+}

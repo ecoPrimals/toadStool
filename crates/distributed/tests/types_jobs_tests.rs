@@ -519,7 +519,9 @@ fn test_universal_job_creation() {
         job_type: Some(UniversalJobType::Local),
         execution_request: ExecutionRequest {
             workload: WorkloadSpec::Native {
-                executable: ExecutableSource::Bytes { data: vec![] },
+                executable: ExecutableSource::Bytes {
+                    data: bytes::Bytes::new(),
+                },
                 args: Some(vec!["test".to_string()]),
                 working_dir: None,
                 env_vars: HashMap::new(),

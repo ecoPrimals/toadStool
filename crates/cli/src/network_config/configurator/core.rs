@@ -145,11 +145,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
             },
             dns_discovery: DnsDiscoveryConfig {
                 enabled: true,
-                dns_servers: vec![
-                    "8.8.8.8".to_string(),
-                    "8.8.4.4".to_string(),
-                    "1.1.1.1".to_string(),
-                ],
+                dns_servers: system_dns_resolvers(),
                 search_domains: vec![
                     "toadstool.local".to_string(),
                     "ecosystem.local".to_string(),
@@ -568,4 +564,42 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
         info!("✅ Songbird network configuration validation completed");
         Ok(())
     }
+}
+
+/// Discover DNS resolvers from the environment or host system.
+///
+/// Resolution order:
+/// 1. `TOADSTOOL_DNS_RESOLVERS` env var (comma-separated IP list)
+/// 2. Host system `/etc/resolv.conf` nameserver entries (Linux/macOS)
+/// 3. Empty list — fall back to the OS-level resolver
+fn system_dns_resolvers() -> Vec<String> {
+    if let Ok(val) = std::env::var("TOADSTOOL_DNS_RESOLVERS") {
+        let servers: Vec<String> = val
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect();
+        if !servers.is_empty() {
+            return servers;
+        }
+    }
+
+    // Parse /etc/resolv.conf on POSIX systems
+    if let Ok(contents) = std::fs::read_to_string("/etc/resolv.conf") {
+        let servers: Vec<String> = contents
+            .lines()
+            .filter_map(|line| {
+                let line = line.trim();
+                line.strip_prefix("nameserver")
+                    .map(|rest| rest.trim().to_string())
+            })
+            .filter(|s| !s.is_empty())
+            .collect();
+        if !servers.is_empty() {
+            return servers;
+        }
+    }
+
+    Vec::new()
 }

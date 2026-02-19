@@ -23,11 +23,13 @@
 //! - Capability-based configuration
 
 mod ring_buffer;
+mod stateful;
 mod unidirectional;
 
 pub use ring_buffer::{
     BufferDirection, GpuRingBuffer, RingBufferConfig, RingBufferStats, WriteHandle,
 };
+pub use stateful::{KernelDispatch, StatefulConfig, StatefulPipeline};
 pub use unidirectional::{
     CompletedWork, PipelineStats, UnidirectionalConfig, UnidirectionalPipeline, WorkHandle,
     WorkUnit,

@@ -21,7 +21,9 @@ pub struct MemoryTracker {
 pub struct AllocationInfo {
     pub id: String,
     pub size_bytes: usize,
-    pub allocated_at: std::time::Instant,
+    /// Uses `tokio::time::Instant` so tests can mock time with
+    /// `tokio::time::pause()` / `tokio::time::advance()`.
+    pub allocated_at: tokio::time::Instant,
     pub purpose: String,
     pub stack_trace: Option<String>,
 }
@@ -51,7 +53,7 @@ impl MemoryTracker {
         let info = AllocationInfo {
             id: id.clone(),
             size_bytes: size,
-            allocated_at: std::time::Instant::now(),
+            allocated_at: tokio::time::Instant::now(),
             purpose,
             stack_trace: None, // Could capture backtrace in debug builds
         };
@@ -108,7 +110,7 @@ impl MemoryTracker {
     /// Returns allocations that have been alive for longer than threshold
     pub async fn check_leaks(&self, threshold: std::time::Duration) -> Vec<AllocationInfo> {
         let allocations = self.allocations.read().await;
-        let now = std::time::Instant::now();
+        let now = tokio::time::Instant::now();
 
         allocations
             .values()
@@ -186,20 +188,28 @@ mod tests {
         assert_eq!(stats.free_count, 1);
     }
 
-    #[tokio::test]
+    // Leak detection test uses paused tokio time so no real wall-clock time
+    // elapses. allocated_at uses tokio::time::Instant, so advance() is precise.
+    #[tokio::test(start_paused = true)]
     async fn test_memory_leak_detection() {
         let tracker = MemoryTracker::new();
 
-        tracker.track_allocation("buf1".to_string(), 1024, "test".to_string()).await;
+        tracker
+            .track_allocation("buf1".to_string(), 1024, "test".to_string())
+            .await;
 
-        // Check immediately - should find no leaks
-        let leaks = tracker.check_leaks(std::time::Duration::from_secs(1)).await;
+        // Check immediately — allocation is fresh (1s threshold not exceeded).
+        let leaks = tracker
+            .check_leaks(std::time::Duration::from_secs(1))
+            .await;
         assert_eq!(leaks.len(), 0);
 
-        // Wait and check again
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        let leaks = tracker.check_leaks(std::time::Duration::from_millis(50)).await;
-        assert_eq!(leaks.len(), 1); // Our allocation is now considered a leak
+        // Advance time past the threshold — no sleep required.
+        tokio::time::advance(std::time::Duration::from_millis(100)).await;
+        let leaks = tracker
+            .check_leaks(std::time::Duration::from_millis(50))
+            .await;
+        assert_eq!(leaks.len(), 1, "Allocation should now be detected as a leak");
     }
 
     #[tokio::test]

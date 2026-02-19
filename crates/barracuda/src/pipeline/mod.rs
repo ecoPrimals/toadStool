@@ -58,6 +58,9 @@
 //! - Composable stages
 //! - Capability-based buffer management
 
+pub mod reduce;
+pub use reduce::ReduceScalarPipeline;
+
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::collections::HashMap;

@@ -138,7 +138,11 @@ pub fn create_basic_template() -> TemplateComponents {
 
     let networking = BiomeNetworking {
         mode: "bridge".to_string(),
-        dns_servers: vec!["8.8.8.8".to_string(), "8.8.4.4".to_string()],
+        // Empty: inherit from the host or configure per-deployment via TOADSTOOL_DNS_SERVERS.
+        dns_servers: std::env::var("TOADSTOOL_DNS_SERVERS")
+            .ok()
+            .map(|v| v.split(',').map(str::trim).map(String::from).collect())
+            .unwrap_or_default(),
         port_mappings: vec![],
         network_policies: vec!["default-deny".to_string()],
     };

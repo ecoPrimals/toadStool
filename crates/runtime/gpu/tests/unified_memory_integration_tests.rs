@@ -148,7 +148,7 @@ async fn test_many_small_allocations() {
     assert_eq!(stats.active_allocations, 100);
 
     drop(buffers);
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Drop is synchronous — stats update immediately.
 
     let stats = memory.stats();
     assert_eq!(stats.active_allocations, 0);
@@ -164,14 +164,14 @@ async fn test_allocation_deallocation_patterns() {
         buffers.push(memory.allocate(1024).await.expect("Allocate failed"));
     }
     drop(buffers);
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    // Drop is synchronous — stats update immediately.
 
     // Pattern 2: Interleaved allocate/deallocate
     for _ in 0..20 {
         let _buffer = memory.allocate(1024).await.expect("Allocate failed");
         // Immediately dropped
     }
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    // Drop is synchronous — stats update immediately.
 
     let stats = memory.stats();
     assert_eq!(stats.active_allocations, 0);

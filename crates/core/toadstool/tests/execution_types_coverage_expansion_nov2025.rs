@@ -96,7 +96,7 @@ fn test_execution_input_default() {
 fn test_execution_input_with_data() {
     let data = vec![1, 2, 3, 4, 5];
     let input = ExecutionInput {
-        data: data.clone(),
+        data: data.clone().into(),
         format: Some("binary".to_string()),
         metadata: HashMap::new(),
     };
@@ -111,7 +111,7 @@ fn test_execution_input_with_metadata() {
     metadata.insert("version".to_string(), "1.0".to_string());
 
     let input = ExecutionInput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         format: None,
         metadata: metadata.clone(),
     };
@@ -123,7 +123,7 @@ fn test_execution_input_with_metadata() {
 #[test]
 fn test_execution_input_clone() {
     let input = ExecutionInput {
-        data: vec![1, 2, 3],
+        data: bytes::Bytes::from(vec![1, 2, 3]),
         format: Some("json".to_string()),
         metadata: HashMap::new(),
     };
@@ -138,7 +138,7 @@ fn test_execution_input_serialization() {
     metadata.insert("key".to_string(), "value".to_string());
 
     let input = ExecutionInput {
-        data: vec![10, 20, 30],
+        data: bytes::Bytes::from(vec![10, 20, 30]),
         format: Some("protobuf".to_string()),
         metadata,
     };
@@ -170,7 +170,7 @@ fn test_execution_output_default() {
 #[test]
 fn test_execution_output_with_stdout() {
     let output = ExecutionOutput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         stdout: Some("Hello, World!".to_string()),
         stderr: None,
         exit_code: Some(0),
@@ -185,7 +185,7 @@ fn test_execution_output_with_stdout() {
 #[test]
 fn test_execution_output_with_stderr() {
     let output = ExecutionOutput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         stdout: None,
         stderr: Some("Error: File not found".to_string()),
         exit_code: Some(1),
@@ -206,7 +206,7 @@ fn test_execution_output_with_result_metadata() {
     metadata.insert("runtime".to_string(), "native".to_string());
 
     let output = ExecutionOutput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         stdout: None,
         stderr: None,
         exit_code: Some(0),
@@ -222,7 +222,7 @@ fn test_execution_output_with_result_metadata() {
 #[test]
 fn test_execution_output_clone() {
     let output = ExecutionOutput {
-        data: vec![1, 2, 3],
+        data: bytes::Bytes::from(vec![1, 2, 3]),
         stdout: Some("output".to_string()),
         stderr: None,
         exit_code: Some(0),
@@ -238,7 +238,7 @@ fn test_execution_output_clone() {
 #[test]
 fn test_execution_output_serialization() {
     let output = ExecutionOutput {
-        data: vec![255, 254],
+        data: bytes::Bytes::from(vec![255, 254]),
         stdout: Some("Done".to_string()),
         stderr: Some("Warning".to_string()),
         exit_code: Some(0),

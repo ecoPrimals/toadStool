@@ -119,3 +119,85 @@ impl DisplayManager {
         PathBuf::from(format!("/tmp/toadstool/logs/{biome_name}/{component}.log"))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn test_get_log_path_format() {
+        let path = DisplayManager::get_log_path("my-biome", "stdout");
+        assert_eq!(
+            path,
+            PathBuf::from("/tmp/toadstool/logs/my-biome/stdout.log")
+        );
+    }
+
+    #[test]
+    fn test_get_log_path_separates_components() {
+        let stdout = DisplayManager::get_log_path("biome", "stdout");
+        let stderr = DisplayManager::get_log_path("biome", "stderr");
+        assert_ne!(stdout, stderr);
+        assert!(stdout.to_string_lossy().ends_with("stdout.log"));
+        assert!(stderr.to_string_lossy().ends_with("stderr.log"));
+    }
+
+    #[test]
+    fn test_get_log_path_special_chars() {
+        let path = DisplayManager::get_log_path("my-biome-123", "out");
+        assert!(path.to_string_lossy().contains("my-biome-123"));
+    }
+
+    #[tokio::test]
+    async fn test_show_log_file_reads_contents() {
+        let mut tmp = NamedTempFile::new().unwrap();
+        writeln!(tmp, "line one").unwrap();
+        writeln!(tmp, "line two").unwrap();
+        tmp.flush().unwrap();
+
+        // show_log_file reads and prints; just verify it succeeds without error.
+        let result = DisplayManager::show_log_file(tmp.path()).await;
+        assert!(result.is_ok(), "show_log_file should succeed: {:?}", result);
+    }
+
+    #[tokio::test]
+    async fn test_show_log_file_nonexistent_returns_err() {
+        let result = DisplayManager::show_log_file(Path::new("/nonexistent_log.log")).await;
+        assert!(result.is_err(), "Missing log file should return error");
+    }
+
+    #[tokio::test]
+    async fn test_tail_log_file_returns_last_n_lines() {
+        let mut tmp = NamedTempFile::new().unwrap();
+        for i in 1..=20 {
+            writeln!(tmp, "line {i}").unwrap();
+        }
+        tmp.flush().unwrap();
+
+        // tail 5 lines — just verify no error; output goes to stdout.
+        let result = DisplayManager::tail_log_file(tmp.path(), 5).await;
+        assert!(result.is_ok(), "tail_log_file should succeed: {:?}", result);
+    }
+
+    #[tokio::test]
+    async fn test_tail_log_file_empty_file() {
+        let tmp = NamedTempFile::new().unwrap();
+        let result = DisplayManager::tail_log_file(tmp.path(), 10).await;
+        assert!(result.is_ok(), "Tailing empty file should succeed");
+    }
+
+    #[tokio::test]
+    async fn test_tail_log_file_fewer_lines_than_requested() {
+        let mut tmp = NamedTempFile::new().unwrap();
+        writeln!(tmp, "only line").unwrap();
+        tmp.flush().unwrap();
+
+        let result = DisplayManager::tail_log_file(tmp.path(), 100).await;
+        assert!(
+            result.is_ok(),
+            "tail_log_file should handle oversized request"
+        );
+    }
+}

@@ -502,7 +502,7 @@ impl WorkloadExecutor for StandaloneExecutor {
         Ok(WorkloadResult {
             workload_id: submission.workload_id,
             status: WorkloadStatus::Completed,
-            data: Some(result_data),
+            data: Some(result_data.into()),
             error: None,
             metrics: ExecutionMetrics {
                 queued_duration_secs: 0.0, // Immediate execution (no queue)
@@ -560,7 +560,7 @@ mod tests {
         WorkloadSubmission {
             workload_id: workload_id.to_string(),
             workload_type: "cpu_compute".to_string(),
-            data: vec![1, 2, 3],
+            data: vec![1, 2, 3].into(),
             metadata: std::collections::HashMap::new(),
             priority: crate::rpc_types::WorkloadPriority::Normal,
             requirements: ResourceRequirements {

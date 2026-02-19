@@ -25,6 +25,7 @@ mutex_atomic = "warn"
 
 [dependencies]
 toadstool = { path = "../../core/toadstool" }
+bytes = { workspace = true }
 tokio = { workspace = true, features = ["full", "process"] }
 tracing = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

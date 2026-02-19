@@ -265,7 +265,10 @@ async fn test_manager_simple_async_benchmark() {
     let manager = PerformanceTestManager::new(config);
     let result = manager
         .benchmark(|| async {
-            tokio::time::sleep(Duration::from_micros(1)).await;
+            // Minimal CPU work ensures non-zero wall-clock measurement
+            // without blocking the async executor.
+            let _ = (0..100u64).fold(0u64, |a, b| a.wrapping_add(b));
+            tokio::task::yield_now().await;
             Ok(())
         })
         .await

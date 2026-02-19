@@ -259,7 +259,7 @@ fn test_execution_input_default() {
 #[test]
 fn test_execution_input_with_data() {
     let mut input = ExecutionInput::default();
-    input.data = b"test data".to_vec();
+    input.data = bytes::Bytes::from_static(b"test data");
 
     assert!(!input.data.is_empty());
     assert_eq!(input.data, b"test data".to_vec());
@@ -331,7 +331,7 @@ fn test_execution_output_with_exit_code() {
 #[test]
 fn test_execution_output_with_data() {
     let mut output = ExecutionOutput::default();
-    output.data = b"binary data".to_vec();
+    output.data = bytes::Bytes::from_static(b"binary data");
 
     assert!(!output.data.is_empty());
 }

@@ -545,26 +545,26 @@ fn test_e2e_workload_routing_correctness() {
     for (name, workload, expected) in test_cases {
         let target = router.route(&workload).expect("Routing failed");
 
-        let matches = match (&target, expected) {
-            (KernelTarget::Wgsl { device: _, .. }, "wgsl") => true,
-            (
-                KernelTarget::Wgsl {
-                    device: DeviceSelection::Cpu,
-                    ..
-                },
-                "wgsl_cpu",
-            ) => true,
-            (KernelTarget::Npu { .. }, "npu") => true,
-            _ => false,
-        };
+        let is_match = matches!(
+            (&target, expected),
+            (KernelTarget::Wgsl { device: _, .. }, "wgsl")
+                | (
+                    KernelTarget::Wgsl {
+                        device: DeviceSelection::Cpu,
+                        ..
+                    },
+                    "wgsl_cpu",
+                )
+                | (KernelTarget::Npu { .. }, "npu")
+        );
 
         let target_str = match &target {
-            KernelTarget::Wgsl { device, .. } => format!("WGSL({:?})", device),
-            KernelTarget::Npu { model_id, .. } => format!("NPU({})", model_id),
+            KernelTarget::Wgsl { device, .. } => format!("WGSL({device:?})"),
+            KernelTarget::Npu { model_id, .. } => format!("NPU({model_id})"),
             KernelTarget::Hybrid { .. } => "Hybrid".to_string(),
         };
 
-        if matches || expected == "wgsl" && matches!(target, KernelTarget::Wgsl { .. }) {
+        if is_match || expected == "wgsl" && matches!(target, KernelTarget::Wgsl { .. }) {
             println!("  ✓ {} -> {}", name, target_str);
         } else {
             println!("  ? {} -> {} (expected {})", name, target_str, expected);

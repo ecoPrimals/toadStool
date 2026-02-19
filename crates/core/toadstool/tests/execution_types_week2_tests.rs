@@ -161,7 +161,7 @@ fn test_execution_input_default() {
 fn test_execution_input_with_data() {
     let data = b"Hello, World!".to_vec();
     let input = ExecutionInput {
-        data: data.clone(),
+        data: data.clone().into(),
         format: Some("text/plain".to_string()),
         metadata: HashMap::new(),
     };
@@ -177,7 +177,7 @@ fn test_execution_input_with_metadata() {
     metadata.insert("version".to_string(), "1.0".to_string());
 
     let input = ExecutionInput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         format: Some("application/json".to_string()),
         metadata,
     };
@@ -189,7 +189,7 @@ fn test_execution_input_with_metadata() {
 #[test]
 fn test_execution_input_clone() {
     let input = ExecutionInput {
-        data: b"test".to_vec(),
+        data: bytes::Bytes::from_static(b"test"),
         format: Some("text".to_string()),
         metadata: HashMap::new(),
     };
@@ -218,7 +218,7 @@ fn test_execution_output_default() {
 #[test]
 fn test_execution_output_success() {
     let output = ExecutionOutput {
-        data: b"output data".to_vec(),
+        data: bytes::Bytes::from_static(b"output data"),
         stdout: Some("Success message".to_string()),
         stderr: None,
         exit_code: Some(0),
@@ -227,7 +227,7 @@ fn test_execution_output_success() {
         metadata: HashMap::new(),
     };
 
-    assert_eq!(output.data, b"output data");
+    assert_eq!(output.data, &b"output data"[..]);
     assert_eq!(output.stdout, Some("Success message".to_string()));
     assert_eq!(output.exit_code, Some(0));
 }
@@ -235,7 +235,7 @@ fn test_execution_output_success() {
 #[test]
 fn test_execution_output_failure() {
     let output = ExecutionOutput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         stdout: Some("Partial output".to_string()),
         stderr: Some("Error: something went wrong".to_string()),
         exit_code: Some(1),
@@ -258,7 +258,7 @@ fn test_execution_output_with_result_metadata() {
     metadata.insert("worker_id".to_string(), "worker-1".to_string());
 
     let output = ExecutionOutput {
-        data: vec![],
+        data: bytes::Bytes::new(),
         stdout: None,
         stderr: None,
         exit_code: Some(0),
@@ -278,7 +278,7 @@ fn test_execution_output_with_result_metadata() {
 #[test]
 fn test_execution_output_clone() {
     let output = ExecutionOutput {
-        data: b"test".to_vec(),
+        data: bytes::Bytes::from_static(b"test"),
         stdout: Some("output".to_string()),
         stderr: None,
         exit_code: Some(0),
@@ -658,7 +658,7 @@ fn test_execution_request_to_response_workflow() {
         execution_id: request_id,
         status: ExecutionStatus::Success,
         output: ExecutionOutput {
-            data: b"result".to_vec(),
+            data: bytes::Bytes::from_static(b"result"),
             stdout: Some("Execution completed".to_string()),
             stderr: None,
             exit_code: Some(0),

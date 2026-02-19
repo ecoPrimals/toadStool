@@ -646,10 +646,15 @@ pub struct TelemetryConfig {
 
 impl Default for TelemetryConfig {
     fn default() -> Self {
+        // Sovereignty principle: all data collection is opt-in, never opt-out.
+        // Operators explicitly enable telemetry via config or TOADSTOOL_TELEMETRY=1.
+        let opt_in = std::env::var("TOADSTOOL_TELEMETRY")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
         Self {
-            metrics_enabled: true,
-            tracing_enabled: true,
-            access_logs: true,
+            metrics_enabled: opt_in,
+            tracing_enabled: opt_in,
+            access_logs: opt_in,
             metrics_port: default_metrics_port(),
             tracing_endpoint: None,
         }

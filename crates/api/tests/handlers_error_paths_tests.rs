@@ -417,18 +417,21 @@ mod timeout_error_tests {
 
     use std::time::Duration;
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    // Timeout test uses paused time + a never-completing future. A concurrent
+    // task advances time past the timeout boundary so the assertion is
+    // deterministic and completes in zero real time.
+    #[tokio::test(start_paused = true)]
     async fn test_request_timeout() {
         let timeout_duration = Duration::from_millis(100);
 
-        let result = tokio::time::timeout(timeout_duration, async {
-            // ✅ INTENTIONAL DELAY: Testing timeout behavior requires exceeding the limit
-            tokio::time::sleep(Duration::from_millis(200)).await;
-            Ok::<(), ()>(())
-        })
-        .await;
+        // Advance time past the timeout from a concurrent task.
+        tokio::spawn(async {
+            tokio::time::advance(Duration::from_millis(200)).await;
+        });
 
-        assert!(result.is_err()); // Should timeout
+        let result = tokio::time::timeout(timeout_duration, std::future::pending::<()>()).await;
+
+        assert!(result.is_err(), "timeout should fire"); // Should timeout
     }
 
     #[test]

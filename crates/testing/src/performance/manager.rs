@@ -65,11 +65,12 @@ impl PerformanceTestManager {
             let _ = test_fn().await;
         }
 
-        // Measurement phase
+        // Measurement phase — uses tokio::time::Instant so tests can use
+        // start_paused = true + tokio::time::advance() for deterministic timing.
         let mut iteration_times = Vec::new();
 
         for i in 0..self.config.measurement_iterations {
-            let start = Instant::now();
+            let start = tokio::time::Instant::now();
 
             match test_fn().await {
                 Ok(()) => {

@@ -104,3 +104,104 @@ impl CloudCostModel {
         }
     }
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cloud::types::{
+        CloudCapabilities, ComputeType, NetworkingFeature, SecurityFeature, StorageType,
+    };
+
+    fn empty_capabilities() -> CloudCapabilities {
+        CloudCapabilities {
+            compute_types: vec![ComputeType::VM],
+            storage_types: vec![StorageType::BlockStorage],
+            networking_features: vec![NetworkingFeature::VPC],
+            security_features: vec![SecurityFeature::Encryption],
+            compliance_certifications: vec![],
+            regions: vec![],
+            max_cpu_cores: None,
+            max_memory_gb: None,
+            gpu_support: false,
+            kubernetes_support: false,
+            serverless_support: false,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_new_optimizer() {
+        let cfg = CostConfig {
+            budget_limit: Some(100.0),
+            cost_tracking_enabled: true,
+            spot_instance_preference: 0.5,
+        };
+        let optimizer = CloudCostOptimizer::new(cfg).await.unwrap();
+        assert!(optimizer._cost_models.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_add_provider_cost_model() {
+        let cfg = CostConfig {
+            budget_limit: None,
+            cost_tracking_enabled: false,
+            spot_instance_preference: 0.0,
+        };
+        let mut optimizer = CloudCostOptimizer::new(cfg).await.unwrap();
+        let caps = empty_capabilities();
+        optimizer
+            .add_provider_cost_model("aws", &caps)
+            .await
+            .unwrap();
+        assert!(optimizer._cost_models.contains_key("aws"));
+    }
+
+    #[test]
+    fn test_cost_model_rates_aws() {
+        let model = CloudCostModel::new_aws();
+        assert!(model.cpu_rate > 0.0);
+        assert!(model.memory_rate > 0.0);
+        assert!(model.storage_rate > 0.0);
+        assert!(model.network_rate > 0.0);
+    }
+
+    #[test]
+    fn test_cost_model_rates_azure_lower_than_aws() {
+        let aws = CloudCostModel::new_aws();
+        let azure = CloudCostModel::new_azure();
+        // Azure advertised slightly lower than AWS in the model
+        assert!(azure.cpu_rate < aws.cpu_rate);
+    }
+
+    #[test]
+    fn test_cost_model_rates_gcp_lower_than_azure() {
+        let azure = CloudCostModel::new_azure();
+        let gcp = CloudCostModel::new_gcp();
+        assert!(gcp.cpu_rate < azure.cpu_rate);
+    }
+
+    #[test]
+    fn test_cost_model_localhost_zero_storage_and_network() {
+        let local = CloudCostModel::new_localhost();
+        assert_eq!(local.storage_rate, 0.0);
+        assert_eq!(local.network_rate, 0.0);
+        assert!(local.cpu_rate > 0.0);
+    }
+
+    #[test]
+    fn test_cost_model_hetzner_lowest_cpu() {
+        let models = [
+            CloudCostModel::new_aws(),
+            CloudCostModel::new_azure(),
+            CloudCostModel::new_gcp(),
+            CloudCostModel::new_digitalocean(),
+            CloudCostModel::new_hetzner(),
+        ];
+        let min_cpu = models
+            .iter()
+            .map(|m| m.cpu_rate)
+            .fold(f64::INFINITY, f64::min);
+        assert_eq!(CloudCostModel::new_hetzner().cpu_rate, min_cpu);
+    }
+}

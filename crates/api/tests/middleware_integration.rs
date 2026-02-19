@@ -123,14 +123,12 @@ async fn test_request_id_string_conversion() {
     assert_eq!(id_string.len(), 36); // UUID string length with hyphens
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+// The metrics middleware uses tokio::time::Instant so that tests can control
+// time without real delays. This test verifies the same type under paused time.
+#[tokio::test(start_paused = true)]
 async fn test_instant_elapsed_measurement() {
-    use std::time::Instant;
-
-    // ✅ MODERNIZED: Test duration measurement (used in metrics middleware)
-    // Small sleep needed to actually measure elapsed time
-    let start = Instant::now();
-    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    let start = tokio::time::Instant::now();
+    tokio::time::advance(std::time::Duration::from_millis(10)).await;
     let elapsed = start.elapsed();
 
     assert!(elapsed.as_millis() >= 10);

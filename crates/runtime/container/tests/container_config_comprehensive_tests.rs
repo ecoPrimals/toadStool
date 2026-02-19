@@ -133,7 +133,8 @@ fn test_network_policy_default() {
     assert!(matches!(policy.default_network, NetworkMode::Bridge));
     assert!(!policy.allow_custom_networks);
     assert_eq!(policy.allowed_port_ranges.len(), 2);
-    assert_eq!(policy.dns_config.nameservers.len(), 2);
+    // DNS defaults to empty — capability-based, resolved from host at runtime
+    assert!(policy.dns_config.nameservers.is_empty());
 }
 
 #[test]
@@ -468,7 +469,8 @@ fn test_container_runtime_config_deserialization() {
 fn test_dns_config_default() {
     let config = DnsConfig::default();
 
-    assert_eq!(config.nameservers.len(), 2);
+    // Capability-based: no hardcoded nameservers — host/orchestrator provides them
+    assert!(config.nameservers.is_empty());
     assert!(config.search_domains.is_empty());
     assert!(config.options.is_empty());
 }
