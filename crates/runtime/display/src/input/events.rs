@@ -154,7 +154,86 @@ impl KeyCode {
     /// Right Meta/Super/Windows
     pub const RIGHT_META: Self = Self(126);
 
-    // TODO: Add more key codes as needed
+    // ── Navigation ──────────────────────────────────────────────────────────
+    /// Arrow Up
+    pub const UP: Self = Self(103);
+    /// Arrow Down
+    pub const DOWN: Self = Self(108);
+    /// Arrow Left
+    pub const LEFT: Self = Self(105);
+    /// Arrow Right
+    pub const RIGHT: Self = Self(106);
+    /// Home
+    pub const HOME: Self = Self(102);
+    /// End
+    pub const END: Self = Self(107);
+    /// Page Up
+    pub const PAGE_UP: Self = Self(104);
+    /// Page Down
+    pub const PAGE_DOWN: Self = Self(109);
+    /// Insert
+    pub const INSERT: Self = Self(110);
+    /// Delete (forward delete)
+    pub const DELETE: Self = Self(111);
+    /// Backspace
+    pub const BACKSPACE: Self = Self(14);
+    /// Tab
+    pub const TAB: Self = Self(15);
+    /// Caps Lock
+    pub const CAPS_LOCK: Self = Self(58);
+
+    // ── Function keys ────────────────────────────────────────────────────────
+    pub const F1: Self = Self(59);
+    pub const F2: Self = Self(60);
+    pub const F3: Self = Self(61);
+    pub const F4: Self = Self(62);
+    pub const F5: Self = Self(63);
+    pub const F6: Self = Self(64);
+    pub const F7: Self = Self(65);
+    pub const F8: Self = Self(66);
+    pub const F9: Self = Self(67);
+    pub const F10: Self = Self(68);
+    pub const F11: Self = Self(87);
+    pub const F12: Self = Self(88);
+
+    // ── Alphanumeric ─────────────────────────────────────────────────────────
+    pub const A: Self = Self(30);
+    pub const B: Self = Self(48);
+    pub const C: Self = Self(46);
+    pub const D: Self = Self(32);
+    pub const E: Self = Self(18);
+    pub const F: Self = Self(33);
+    pub const G: Self = Self(34);
+    pub const H: Self = Self(35);
+    pub const I: Self = Self(23);
+    pub const J: Self = Self(36);
+    pub const K: Self = Self(37);
+    pub const L: Self = Self(38);
+    pub const M: Self = Self(50);
+    pub const N: Self = Self(49);
+    pub const O: Self = Self(24);
+    pub const P: Self = Self(25);
+    pub const Q: Self = Self(16);
+    pub const R: Self = Self(19);
+    pub const S: Self = Self(31);
+    pub const T: Self = Self(20);
+    pub const U: Self = Self(22);
+    pub const V: Self = Self(47);
+    pub const W: Self = Self(17);
+    pub const X: Self = Self(45);
+    pub const Y: Self = Self(21);
+    pub const Z: Self = Self(44);
+
+    pub const KEY_0: Self = Self(11);
+    pub const KEY_1: Self = Self(2);
+    pub const KEY_2: Self = Self(3);
+    pub const KEY_3: Self = Self(4);
+    pub const KEY_4: Self = Self(5);
+    pub const KEY_5: Self = Self(6);
+    pub const KEY_6: Self = Self(7);
+    pub const KEY_7: Self = Self(8);
+    pub const KEY_8: Self = Self(9);
+    pub const KEY_9: Self = Self(10);
 }
 
 /// Keyboard modifiers

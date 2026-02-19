@@ -38,7 +38,10 @@ mod planner;
 mod tests;
 mod validation;
 
-pub use validation::validate_recommendation;
+pub use validation::{
+    validate_migration, validate_preflight, validate_recommendation, PreMigrationSnapshot,
+    PreflightOutcome, ResourceRequirements,
+};
 
 use crate::cloud_provider_trait::*;
 use crate::composition_engine::CompositionEngine;

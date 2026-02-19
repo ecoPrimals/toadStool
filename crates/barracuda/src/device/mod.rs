@@ -24,6 +24,7 @@ pub mod autotune;
 pub mod cache_hierarchy;
 pub mod capabilities;
 pub mod kernel_router; // Unified Math → Hardware routing (Feb 15, 2026)
+pub mod latency; // Phase 2: LatencyModel trait + Sm70/Rdna2/Conservative/Measured (Feb 2026)
 pub mod pipeline_cache;
 pub mod probe; // Runtime f64 exp/log capability probing (W-001 evolution)
 pub mod registry; // Physical device tracking with backend preference (Feb 16, 2026)

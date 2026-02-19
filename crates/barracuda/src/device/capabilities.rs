@@ -633,6 +633,22 @@ impl GpuDriverProfile {
         matches!(self.driver, DriverKind::Nvk | DriverKind::Radv)
     }
 
+    /// Return the latency model appropriate for this GPU architecture.
+    ///
+    /// The model provides per-operation cycle counts used by the WGSL ILP
+    /// scheduler (`@ilp_region` reorderer, Phase 3 WgslDependencyGraph).
+    ///
+    /// - NVIDIA Volta/Turing/Ampere/Ada → `Sm70LatencyModel` (DFMA = 8cy)
+    /// - AMD RDNA2/RDNA3/CDNA2 → `Rdna2LatencyModel` (VFMA64 ≈ 4cy)
+    /// - Unknown/Intel/Software → `ConservativeModel` (safe overestimate)
+    ///
+    /// To use empirical measurements from `bench_f64_builtins`, construct a
+    /// `MeasuredModel` from the benchmark output and use it directly.
+    #[must_use]
+    pub fn latency_model(&self) -> Box<dyn crate::device::latency::LatencyModel> {
+        crate::device::latency::model_for_arch(self.arch)
+    }
+
     fn detect_driver(device: &WgpuDevice) -> DriverKind {
         if device.is_nvk() {
             DriverKind::Nvk

@@ -472,6 +472,27 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 | R-042 | `security/policies/tests/evaluator_unit_tests.rs`: `test_evaluate_resource_usage` thresholds raised to 100%/1TiB — were failing on loaded machines | Feb 19, 2026 |
 | R-043 | `integration/protocols/tests/transport_coverage_tests.rs`: `>= 3` transports assertion lowered to `>= 2` (WebSocket removed); "not implemented" substring match fixed | Feb 19, 2026 |
 
+## Session 7 Resolutions — Feb 19, 2026
+
+| ID | Resolution |
+|---|---|
+| S7-001 | **SOVEREIGN Phase 2**: `crates/barracuda/src/device/latency.rs` — `LatencyModel` trait + `WgslOpClass` enum + `Sm70LatencyModel` (DFMA=8cy, arXiv:1804.06826), `Rdna2LatencyModel` (VFMA64≈4cy, AMD ISA docs), `ConservativeModel` (safe fallback), `MeasuredModel` (bench-driven); `model_for_arch()` dispatch; 7 unit tests all pass |
+| S7-002 | `GpuDriverProfile::latency_model()` added — returns the correct `LatencyModel` for the detected arch; eliminates ad-hoc cycle estimates from shader scheduling code |
+| S7-003 | `workload_migration/validation.rs` rewritten — `validate_recommendation()` preserved; `ResourceRequirements`, `PreflightOutcome`, `validate_preflight()`, `validate_migration()`, `PreMigrationSnapshot` all implemented; `check_local_capacity()` uses sysinfo; 11 unit tests all pass; rollback pattern documented |
+| S7-004 | `workload_migration/mod.rs` exports expanded — `validate_migration`, `validate_preflight`, `PreMigrationSnapshot`, `PreflightOutcome`, `ResourceRequirements` all public |
+| S7-005 | `display/input/events.rs` — full Linux keymap added: navigation (arrows, Home/End/PgUp/PgDn/Ins/Del/BS/Tab/CapsLock), F1–F12, A–Z, 0–9 (Linux input codes). TODO removed |
+| S7-006 | `display/input/mod.rs` — focus TODO resolved: `shared_focus: Arc<RwLock<Option<WindowId>>>` threads focus state from `InputManager` into spawned device tasks; `read_device_events` updates `EventParser::set_focused_window` before each event batch; `set_focus` correctly emits `WindowUnfocused` for prior window (previous bug: emitted after overwrite) |
+| S7-007 | `cargo fmt --all` + `cargo clippy` — zero errors |
+
+| ID | Resolved Issue | Date |
+|---|---|---|
+| R-044 | SOVEREIGN-Phase2: `LatencyModel` trait implemented with 4 concrete models + `GpuDriverProfile::latency_model()` | Feb 19, 2026 |
+| R-045 | F-003: `workload_migration/validation.rs` — pre-flight capacity check + rollback snapshot pattern | Feb 19, 2026 |
+| R-046 | F-005: `display/input/events.rs` full key map (nav + F-keys + alpha + digits) | Feb 19, 2026 |
+| R-047 | F-005: `display/input/mod.rs` focus TODO resolved via shared Arc<RwLock> — all 5 input tests pass | Feb 19, 2026 |
+
+---
+
 ## Coverage Measurement — Session 6 (Feb 19, 2026)
 
 `cargo llvm-cov --workspace --exclude barracuda --exclude toadstool-neuromorphic --exclude ml-inference-showcase --exclude toadstool-runtime-gpu --summary-only`

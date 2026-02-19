@@ -42,6 +42,7 @@ pub use touch::{touch_events_to_input_events, TouchTracker};
 
 use crate::window::WindowId;
 use crate::{DisplayError, Result};
+use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc;
 
 /// Input manager for device enumeration and event handling
@@ -54,9 +55,11 @@ use tokio::sync::mpsc;
 /// - ✅ Modern async: Event streams using tokio channels
 /// - ✅ Complete implementation: Real evdev integration
 /// - ✅ Safe abstractions: No unsafe in public API
+/// - ✅ Focus state shared with device tasks via `Arc<RwLock<_>>`
 pub struct InputManager {
     devices: Vec<Device>,
-    focused_window: Option<WindowId>,
+    /// Shared focus state: also read by spawned device event tasks.
+    shared_focus: Arc<RwLock<Option<WindowId>>>,
     event_tx: mpsc::Sender<InputEvent>,
     event_rx: Option<mpsc::Receiver<InputEvent>>,
 }
@@ -86,16 +89,20 @@ impl InputManager {
         // Create event channel
         let (event_tx, event_rx) = mpsc::channel(1000);
 
+        // Shared focus state — device tasks read this to tag events with the
+        // correct target window without needing a back-channel to InputManager.
+        let shared_focus: Arc<RwLock<Option<WindowId>>> = Arc::new(RwLock::new(None));
+
         // Open devices and spawn async event tasks
         for info in device_infos {
             match Device::open(&info.path) {
                 Ok(device) => {
-                    // Spawn async task to read events from this device
                     let tx = event_tx.clone();
+                    let focus = Arc::clone(&shared_focus);
                     let device_path = info.path.clone();
 
                     tokio::spawn(async move {
-                        if let Err(e) = Self::read_device_events(device, tx).await {
+                        if let Err(e) = Self::read_device_events(device, tx, focus).await {
                             tracing::warn!("Device {} stopped: {}", device_path.display(), e);
                         }
                     });
@@ -110,7 +117,7 @@ impl InputManager {
 
         Ok(Self {
             devices: vec![], // Devices owned by async tasks
-            focused_window: None,
+            shared_focus,
             event_tx,
             event_rx: Some(event_rx),
         })
@@ -128,15 +135,20 @@ impl InputManager {
     ///
     /// Note: Currently uses blocking fetch_events() in tokio::spawn_blocking.
     /// Future evolution: Use EventStream for true async.
-    async fn read_device_events(mut device: Device, tx: mpsc::Sender<InputEvent>) -> Result<()> {
-        // Create parser for this device
+    async fn read_device_events(
+        mut device: Device,
+        tx: mpsc::Sender<InputEvent>,
+        shared_focus: Arc<RwLock<Option<WindowId>>>,
+    ) -> Result<()> {
         let mut parser = EventParser::new();
-
-        // TODO: Get focused window somehow (need to share state)
-        // For now, events won't be routed until we implement focus management
 
         // Read events in a blocking loop (inside tokio::spawn_blocking for now)
         loop {
+            // Sync current focus into parser before parsing each batch.
+            // Uses a brief read lock — no async boundary needed here.
+            let current_focus = shared_focus.read().map(|g| *g).unwrap_or(None);
+            parser.set_focused_window(current_focus);
+
             // Use spawn_blocking for synchronous evdev calls
             let events_result = tokio::task::spawn_blocking(move || {
                 let events: std::io::Result<Vec<_>> = device
@@ -211,18 +223,29 @@ impl InputManager {
         self.set_focus(Some(window));
     }
 
-    /// Set focused window for input routing
+    /// Set focused window for input routing.
+    ///
+    /// Updates the shared focus state visible to all device event tasks so
+    /// that subsequent events are tagged with the new target window.
     pub fn set_focus(&mut self, window: Option<WindowId>) {
-        if self.focused_window != window {
-            tracing::debug!("Input focus changed: {:?}", window);
-            self.focused_window = window;
+        let previous = self
+            .shared_focus
+            .write()
+            .map(|mut g| {
+                let old = *g;
+                *g = window;
+                old
+            })
+            .unwrap_or(None);
 
-            // Send focus events
+        if previous != window {
+            tracing::debug!("Input focus changed: {:?} → {:?}", previous, window);
+
             if let Some(window_id) = window {
                 let _ = self
                     .event_tx
                     .try_send(InputEvent::WindowFocused { window: window_id });
-            } else if let Some(old_window) = self.focused_window {
+            } else if let Some(old_window) = previous {
                 let _ = self
                     .event_tx
                     .try_send(InputEvent::WindowUnfocused { window: old_window });
@@ -230,9 +253,9 @@ impl InputManager {
         }
     }
 
-    /// Get currently focused window
+    /// Get currently focused window.
     pub fn focused_window(&self) -> Option<WindowId> {
-        self.focused_window
+        self.shared_focus.read().map(|g| *g).unwrap_or(None)
     }
 
     /// Get number of devices
