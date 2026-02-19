@@ -1,5 +1,280 @@
-//! `ToadStool` monitoring component
+//! Security monitoring for ToadStool.
 //!
-//! This module will be implemented in future iterations.
+//! Tracks security-relevant events (auth failures, policy denials, anomalous
+//! resource usage) in a bounded in-process ring buffer. No external dependency
+//! required — all telemetry stays local unless an exporter is explicitly wired.
 
-// Placeholder for future implementation
+use std::collections::VecDeque;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
+use tracing::{info, warn};
+
+/// Maximum events held in the ring buffer before oldest are dropped.
+const DEFAULT_RING_CAPACITY: usize = 1_000;
+
+/// Severity level for a security event.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum Severity {
+    Info,
+    Warning,
+    Critical,
+}
+
+/// A single monitored security event.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityEvent {
+    /// Unix timestamp (milliseconds).
+    pub timestamp_ms: u64,
+    pub severity: Severity,
+    pub category: EventCategory,
+    pub message: String,
+    /// Optional workload or request identifier.
+    pub correlation_id: Option<String>,
+}
+
+impl SecurityEvent {
+    fn new(severity: Severity, category: EventCategory, message: impl Into<String>) -> Self {
+        let timestamp_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or(Duration::ZERO)
+            .as_millis() as u64;
+        Self {
+            timestamp_ms,
+            severity,
+            category,
+            message: message.into(),
+            correlation_id: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_correlation(mut self, id: impl Into<String>) -> Self {
+        self.correlation_id = Some(id.into());
+        self
+    }
+}
+
+/// Coarse category for quick filtering.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EventCategory {
+    AuthFailure,
+    PolicyDenial,
+    ResourceAnomaly,
+    NetworkAnomaly,
+    IntegrityViolation,
+    Operational,
+}
+
+/// Snapshot of system resource usage, sampled periodically for anomaly detection.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceSnapshot {
+    pub timestamp_ms: u64,
+    pub cpu_usage_percent: f32,
+    pub memory_used_bytes: u64,
+    pub memory_total_bytes: u64,
+}
+
+/// In-process security monitor — zero external dependencies.
+///
+/// Emit events via the `record_*` methods. The internal ring buffer holds the
+/// last `capacity` events; older events are silently dropped. Attach a
+/// `SecurityEventExporter` if you need to forward events elsewhere.
+pub struct SecurityMonitor {
+    capacity: usize,
+    events: Arc<RwLock<VecDeque<SecurityEvent>>>,
+    resource_history: Arc<RwLock<VecDeque<ResourceSnapshot>>>,
+}
+
+impl SecurityMonitor {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::with_capacity(DEFAULT_RING_CAPACITY)
+    }
+
+    #[must_use]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            capacity,
+            events: Arc::new(RwLock::new(VecDeque::with_capacity(capacity))),
+            resource_history: Arc::new(RwLock::new(VecDeque::with_capacity(64))),
+        }
+    }
+
+    // ── Recording ─────────────────────────────────────────────────────────────
+
+    /// Record an authentication failure.
+    pub async fn record_auth_failure(&self, message: impl Into<String>) {
+        let event = SecurityEvent::new(Severity::Warning, EventCategory::AuthFailure, message);
+        warn!(category = "auth_failure", "{}", &event.message);
+        self.push_event(event).await;
+    }
+
+    /// Record a policy denial.
+    pub async fn record_policy_denial(&self, message: impl Into<String>) {
+        let event = SecurityEvent::new(Severity::Warning, EventCategory::PolicyDenial, message);
+        warn!(category = "policy_denial", "{}", &event.message);
+        self.push_event(event).await;
+    }
+
+    /// Record a critical integrity violation.
+    pub async fn record_integrity_violation(&self, message: impl Into<String>) {
+        let event = SecurityEvent::new(
+            Severity::Critical,
+            EventCategory::IntegrityViolation,
+            message,
+        );
+        tracing::error!(category = "integrity_violation", "{}", &event.message);
+        self.push_event(event).await;
+    }
+
+    /// Record a generic operational notice.
+    pub async fn record_operational(&self, message: impl Into<String>) {
+        let event = SecurityEvent::new(Severity::Info, EventCategory::Operational, message);
+        info!(category = "operational", "{}", &event.message);
+        self.push_event(event).await;
+    }
+
+    /// Record a resource anomaly (e.g. unexpected CPU spike).
+    pub async fn record_resource_anomaly(&self, message: impl Into<String>) {
+        let event = SecurityEvent::new(Severity::Warning, EventCategory::ResourceAnomaly, message);
+        warn!(category = "resource_anomaly", "{}", &event.message);
+        self.push_event(event).await;
+    }
+
+    // ── Querying ──────────────────────────────────────────────────────────────
+
+    /// Return a snapshot of all buffered events (newest last).
+    pub async fn events(&self) -> Vec<SecurityEvent> {
+        self.events.read().await.iter().cloned().collect()
+    }
+
+    /// Return events at or above the given severity.
+    pub async fn events_above(&self, min: Severity) -> Vec<SecurityEvent> {
+        self.events
+            .read()
+            .await
+            .iter()
+            .filter(|e| e.severity >= min)
+            .cloned()
+            .collect()
+    }
+
+    /// Count events in the buffer by category.
+    pub async fn count_by_category(&self, category: EventCategory) -> usize {
+        self.events
+            .read()
+            .await
+            .iter()
+            .filter(|e| e.category == category)
+            .count()
+    }
+
+    // ── Resource sampling ─────────────────────────────────────────────────────
+
+    /// Sample current system resources and store them in the history buffer.
+    /// Detects anomalies (CPU > 90 %, memory > 95 %) and raises events.
+    pub async fn sample_resources(&self) {
+        use sysinfo::System;
+        let mut sys = System::new_all();
+        sys.refresh_all();
+
+        let cpus = sys.cpus();
+        let cpu = if cpus.is_empty() {
+            0.0_f32
+        } else {
+            cpus.iter().map(|c| c.cpu_usage()).sum::<f32>() / cpus.len() as f32
+        };
+        let mem_used = sys.used_memory();
+        let mem_total = sys.total_memory();
+        let timestamp_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or(Duration::ZERO)
+            .as_millis() as u64;
+
+        let snapshot = ResourceSnapshot {
+            timestamp_ms,
+            cpu_usage_percent: cpu,
+            memory_used_bytes: mem_used,
+            memory_total_bytes: mem_total,
+        };
+
+        let mut history = self.resource_history.write().await;
+        if history.len() >= 64 {
+            history.pop_front();
+        }
+        history.push_back(snapshot);
+        drop(history);
+
+        if mem_total > 0 {
+            let mem_pct = mem_used as f64 / mem_total as f64 * 100.0;
+            if mem_pct > 95.0 {
+                self.record_resource_anomaly(format!(
+                    "Memory usage critical: {mem_pct:.1}% ({mem_used} / {mem_total} bytes)"
+                ))
+                .await;
+            }
+        }
+        if cpu > 90.0 {
+            self.record_resource_anomaly(format!("CPU usage critical: {cpu:.1}%"))
+                .await;
+        }
+    }
+
+    // ── Internal ──────────────────────────────────────────────────────────────
+
+    async fn push_event(&self, event: SecurityEvent) {
+        let mut buf = self.events.write().await;
+        if buf.len() >= self.capacity {
+            buf.pop_front();
+        }
+        buf.push_back(event);
+    }
+}
+
+impl Default for SecurityMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_event_recording_and_query() {
+        let monitor = SecurityMonitor::new();
+        monitor.record_auth_failure("bad token").await;
+        monitor.record_policy_denial("denied write").await;
+        monitor.record_operational("node started").await;
+
+        let all = monitor.events().await;
+        assert_eq!(all.len(), 3);
+
+        let warnings = monitor.events_above(Severity::Warning).await;
+        assert_eq!(warnings.len(), 2);
+
+        let auth_count = monitor.count_by_category(EventCategory::AuthFailure).await;
+        assert_eq!(auth_count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_ring_buffer_drops_oldest() {
+        let monitor = SecurityMonitor::with_capacity(3);
+        for i in 0..5 {
+            monitor.record_operational(format!("event {i}")).await;
+        }
+        let events = monitor.events().await;
+        assert_eq!(events.len(), 3);
+        assert!(events[0].message.contains("event 2"));
+    }
+
+    #[test]
+    fn test_severity_ordering() {
+        assert!(Severity::Critical > Severity::Warning);
+        assert!(Severity::Warning > Severity::Info);
+    }
+}

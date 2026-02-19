@@ -342,7 +342,9 @@ pub async fn probe_f64_exp_capable(device: &WgpuDevice) -> bool {
 
 /// Read cached full capability result, if available.
 pub fn cached_f64_builtins(device: &WgpuDevice) -> Option<F64BuiltinCapabilities> {
-    lock_cache(&F64_CAPS_CACHE).get(&adapter_key(device)).copied()
+    lock_cache(&F64_CAPS_CACHE)
+        .get(&adapter_key(device))
+        .copied()
 }
 
 /// Unique key for caching probe results per physical adapter
@@ -388,7 +390,9 @@ pub fn seed_cache_from_heuristics(device: &WgpuDevice) {
     // Also seed legacy cache — key was just inserted above so get() is infallible here
     let exp_capable = cache.get(&key).is_some_and(|c| c.exp);
     drop(cache);
-    lock_cache(&F64_EXP_PROBE_CACHE).entry(key).or_insert(exp_capable);
+    lock_cache(&F64_EXP_PROBE_CACHE)
+        .entry(key)
+        .or_insert(exp_capable);
 }
 
 // ── Core probe runner ─────────────────────────────────────────────────────────

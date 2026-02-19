@@ -50,7 +50,13 @@ pub const F64_FUNCTION_DEPS: &[(&str, &[&str])] = &[
     ("log_f64", &[]),
     (
         "pow_f64",
-        &["cbrt_f64", "pow_two_thirds", "exp_f64", "log_f64", "ipow_f64"],
+        &[
+            "cbrt_f64",
+            "pow_two_thirds",
+            "exp_f64",
+            "log_f64",
+            "ipow_f64",
+        ],
     ),
     ("sin_f64", &[]),
     ("cos_f64", &["sin_f64"]),
@@ -59,7 +65,10 @@ pub const F64_FUNCTION_DEPS: &[(&str, &[&str])] = &[
     ("cosh_f64", &["exp_f64"]),
     ("tanh_f64", &["exp_f64"]),
     ("lanczos_core_f64", &["pow_f64", "exp_f64"]),
-    ("gamma_f64", &["sin_f64", "pow_f64", "exp_f64", "lanczos_core_f64"]),
+    (
+        "gamma_f64",
+        &["sin_f64", "pow_f64", "exp_f64", "lanczos_core_f64"],
+    ),
     ("erf_f64", &["exp_f64"]),
     ("bessel_j0_f64", &["cos_f64", "sin_f64"]),
 ];

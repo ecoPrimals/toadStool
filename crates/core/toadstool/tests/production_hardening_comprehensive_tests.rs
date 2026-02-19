@@ -298,6 +298,7 @@ fn test_production_hardening_config_custom() {
         default_circuit_config: CircuitBreakerConfig::default(),
         memory_pressure_config: MemoryPressureConfig::default(),
         leak_detection_threshold: Duration::from_secs(1800),
+        ..Default::default()
     };
 
     assert!(config.enable_circuit_breakers);
@@ -426,6 +427,7 @@ fn test_production_hardening_config_all_disabled() {
         default_circuit_config: CircuitBreakerConfig::default(),
         memory_pressure_config: MemoryPressureConfig::default(),
         leak_detection_threshold: Duration::from_secs(3600),
+        ..Default::default()
     };
 
     assert!(!config.enable_circuit_breakers);

@@ -394,7 +394,6 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
                 info!("   Family ID: {}", fid);
             }
 
-            // TODO: UniBin Phase 3 - Full server daemon integration
             run_server_daemon(family_id.clone()).await?;
         }
 

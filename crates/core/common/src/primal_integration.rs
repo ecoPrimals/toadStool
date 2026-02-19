@@ -165,8 +165,8 @@ pub async fn discover_encryption_service() -> DiscoveryResult {
 pub async fn discover_beardog_at(base_path: &str) -> DiscoveryResult {
     // Default to "beardog" — the primal's canonical filesystem directory name.
     // Override via TOADSTOOL_CRYPTO_SERVICE_SUBDIR for custom layouts.
-    let subdir = std::env::var("TOADSTOOL_CRYPTO_SERVICE_SUBDIR")
-        .unwrap_or_else(|_| "beardog".to_string());
+    let subdir =
+        std::env::var("TOADSTOOL_CRYPTO_SERVICE_SUBDIR").unwrap_or_else(|_| "beardog".to_string());
 
     discover_filesystem_service(base_path, &subdir).await
 }

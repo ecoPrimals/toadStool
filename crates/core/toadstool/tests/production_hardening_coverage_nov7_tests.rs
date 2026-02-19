@@ -286,12 +286,13 @@ fn test_production_hardening_config_creation() {
         enable_memory_pressure: true,
         default_circuit_config: CircuitBreakerConfig::default(),
         memory_pressure_config: MemoryPressureConfig {
-            warning_threshold: 0.7,
-            critical_threshold: 0.9,
-            emergency_threshold: 0.95,
+            warning_threshold: 70.0,
+            critical_threshold: 90.0,
+            emergency_threshold: 95.0,
             check_interval: Duration::from_secs(10),
         },
         leak_detection_threshold: Duration::from_secs(300),
+        ..Default::default()
     };
 
     assert!(config.enable_circuit_breakers);
@@ -307,12 +308,13 @@ fn test_production_hardening_config_minimal() {
         enable_memory_pressure: false,
         default_circuit_config: CircuitBreakerConfig::default(),
         memory_pressure_config: MemoryPressureConfig {
-            warning_threshold: 0.8,
-            critical_threshold: 0.9,
-            emergency_threshold: 0.95,
+            warning_threshold: 80.0,
+            critical_threshold: 90.0,
+            emergency_threshold: 95.0,
             check_interval: Duration::from_secs(30),
         },
         leak_detection_threshold: Duration::from_secs(600),
+        ..Default::default()
     };
 
     assert!(!config.enable_circuit_breakers);
@@ -328,12 +330,13 @@ fn test_production_hardening_config_selective() {
         enable_memory_pressure: true,
         default_circuit_config: CircuitBreakerConfig::default(),
         memory_pressure_config: MemoryPressureConfig {
-            warning_threshold: 0.75,
-            critical_threshold: 0.92,
-            emergency_threshold: 0.97,
+            warning_threshold: 75.0,
+            critical_threshold: 92.0,
+            emergency_threshold: 97.0,
             check_interval: Duration::from_secs(15),
         },
         leak_detection_threshold: Duration::from_secs(400),
+        ..Default::default()
     };
 
     assert!(config.enable_circuit_breakers);
@@ -349,12 +352,13 @@ fn test_production_hardening_config_clone() {
         enable_memory_pressure: true,
         default_circuit_config: CircuitBreakerConfig::default(),
         memory_pressure_config: MemoryPressureConfig {
-            warning_threshold: 0.7,
-            critical_threshold: 0.9,
-            emergency_threshold: 0.95,
+            warning_threshold: 70.0,
+            critical_threshold: 90.0,
+            emergency_threshold: 95.0,
             check_interval: Duration::from_secs(10),
         },
         leak_detection_threshold: Duration::from_secs(300),
+        ..Default::default()
     };
 
     let cloned = config.clone();

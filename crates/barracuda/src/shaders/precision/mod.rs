@@ -229,8 +229,7 @@ impl ShaderTemplate {
     /// Apply the `exp`/`log` rename within a single non-comment code fragment.
     #[inline]
     fn patch_exp_log_in_code(code: &str) -> String {
-        code.replace("exp(", "exp_f64(")
-            .replace("log(", "log_f64(")
+        code.replace("exp(", "exp_f64(").replace("log(", "log_f64(")
     }
 
     fn inject_missing_math_f64(shader_body: &str) -> String {
@@ -524,8 +523,14 @@ const EPSILON: f64 = 1e-15;
             }
         "#;
         let fossil_result = ShaderTemplate::with_math_f64_safe(fossil_shader);
-        assert!(!fossil_result.contains("fn sqrt_f64"), "fossil must not be injected");
-        assert!(!fossil_result.contains("fn f64_const"), "no injection means no preamble");
+        assert!(
+            !fossil_result.contains("fn sqrt_f64"),
+            "fossil must not be injected"
+        );
+        assert!(
+            !fossil_result.contains("fn f64_const"),
+            "no injection means no preamble"
+        );
 
         let active_shader = r#"
             @compute @workgroup_size(256)
@@ -534,7 +539,10 @@ const EPSILON: f64 = 1e-15;
             }
         "#;
         let active_result = ShaderTemplate::with_math_f64_safe(active_shader);
-        assert!(active_result.contains("fn cbrt_f64"), "active fallback must be injected");
+        assert!(
+            active_result.contains("fn cbrt_f64"),
+            "active fallback must be injected"
+        );
         assert!(active_result.contains("fn f64_const"));
         assert!(!active_result.contains("fn exp_f64"));
     }
@@ -581,11 +589,17 @@ const EPSILON: f64 = 1e-15;
         "#;
         let result = ShaderTemplate::for_driver_auto(legacy_shader, true);
         // sqrt_f64 → sqrt (fossil substitution)
-        assert!(result.contains("sqrt("), "fossil sqrt_f64 must become native sqrt");
+        assert!(
+            result.contains("sqrt("),
+            "fossil sqrt_f64 must become native sqrt"
+        );
         assert!(!result.contains("sqrt_f64("), "fossil name must be gone");
         // exp → exp_f64 (workaround)
         assert!(result.contains("exp_f64("));
-        assert!(result.contains("fn exp_f64"), "exp fallback must be injected");
+        assert!(
+            result.contains("fn exp_f64"),
+            "exp fallback must be injected"
+        );
     }
 
     #[test]

@@ -189,6 +189,7 @@ fn test_auth_manager_config_creation() {
         timestamp_window: Duration::from_secs(60),
         replay_protection: true,
         signing_key_seed: None,
+        ..Default::default()
     };
 
     assert_eq!(config.beardog_endpoint, "https://beardog.example.com");
@@ -207,6 +208,7 @@ fn test_auth_manager_config_no_validation() {
         timestamp_window: Duration::from_secs(300),
         replay_protection: false,
         signing_key_seed: None,
+        ..Default::default()
     };
 
     assert!(!config.signature_validation);
@@ -222,6 +224,7 @@ fn test_auth_manager_config_clone() {
         timestamp_window: Duration::from_secs(60),
         replay_protection: true,
         signing_key_seed: None,
+        ..Default::default()
     };
     let config2 = config1.clone();
 
@@ -241,6 +244,7 @@ fn test_auth_manager_config_serialization() {
         timestamp_window: Duration::from_secs(60),
         replay_protection: true,
         signing_key_seed: None,
+        ..Default::default()
     };
 
     let json = serde_json::to_string(&config);
@@ -630,6 +634,7 @@ fn test_authentication_manager_creation() {
         timestamp_window: Duration::from_secs(60),
         replay_protection: true,
         signing_key_seed: None,
+        ..Default::default()
     };
 
     let _manager = AuthenticationManager::with_inmemory(config);
@@ -646,6 +651,7 @@ fn test_authentication_manager_no_validation() {
         timestamp_window: Duration::from_secs(300),
         replay_protection: false,
         signing_key_seed: None,
+        ..Default::default()
     };
 
     let _manager = AuthenticationManager::with_inmemory(config);

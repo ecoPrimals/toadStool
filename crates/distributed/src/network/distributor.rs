@@ -238,7 +238,10 @@ mod tests {
         let execution = distributor.distribute_job(job).await.unwrap();
         // Without registered nodes the local fallback assigns to self.
         assert_eq!(execution.node_assignments.len(), 1);
-        assert_eq!(execution.node_assignments[0].node_id, env!("CARGO_PKG_NAME"));
+        assert_eq!(
+            execution.node_assignments[0].node_id,
+            env!("CARGO_PKG_NAME")
+        );
         assert!(execution.resource_allocations.is_empty());
     }
 

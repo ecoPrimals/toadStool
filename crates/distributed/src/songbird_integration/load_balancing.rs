@@ -98,7 +98,10 @@ impl SongbirdLoadBalancer {
         if overloaded {
             debug!(
                 "Rebalance needed: {} nodes above {:.0}% load threshold",
-                snapshot.values().filter(|&&l| l > REBALANCE_THRESHOLD).count(),
+                snapshot
+                    .values()
+                    .filter(|&&l| l > REBALANCE_THRESHOLD)
+                    .count(),
                 REBALANCE_THRESHOLD * 100.0
             );
         }

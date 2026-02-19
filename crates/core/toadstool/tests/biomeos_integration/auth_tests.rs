@@ -14,7 +14,8 @@ fn test_auth_manager_config_creation() {
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
-        replay_protection: true,
+        replay_protection: true,,
+        ..Default::default()
     };
     
     assert_eq!(config.beardog_endpoint, "http://localhost:8080");
@@ -31,7 +32,8 @@ fn test_auth_manager_config_clone() {
         token_refresh_interval: Duration::from_secs(600),
         signature_validation: false,
         timestamp_window: Duration::from_secs(120),
-        replay_protection: false,
+        replay_protection: false,,
+        ..Default::default()
     };
     
     let config2 = config1.clone();
@@ -47,7 +49,8 @@ fn test_auth_manager_config_serialization() {
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
-        replay_protection: true,
+        replay_protection: true,,
+        ..Default::default()
     };
     
     let json = serde_json::to_string(&config).unwrap();
@@ -293,7 +296,8 @@ fn test_authentication_manager_creation() {
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
-        replay_protection: true,
+        replay_protection: true,,
+        ..Default::default()
     };
     
     let _manager = AuthenticationManager::new(config);
@@ -307,7 +311,8 @@ fn test_authentication_manager_without_validation() {
         token_refresh_interval: Duration::from_secs(600),
         signature_validation: false,
         timestamp_window: Duration::from_secs(120),
-        replay_protection: false,
+        replay_protection: false,,
+        ..Default::default()
     };
     
     let _manager = AuthenticationManager::new(config);
@@ -325,7 +330,8 @@ fn test_auth_config_short_refresh_interval() {
         token_refresh_interval: Duration::from_secs(60),
         signature_validation: true,
         timestamp_window: Duration::from_secs(30),
-        replay_protection: true,
+        replay_protection: true,,
+        ..Default::default()
     };
     
     assert_eq!(config.token_refresh_interval, Duration::from_secs(60));
@@ -338,7 +344,8 @@ fn test_auth_config_long_refresh_interval() {
         token_refresh_interval: Duration::from_secs(3600),
         signature_validation: true,
         timestamp_window: Duration::from_secs(300),
-        replay_protection: true,
+        replay_protection: true,,
+        ..Default::default()
     };
     
     assert_eq!(config.token_refresh_interval, Duration::from_secs(3600));
@@ -351,7 +358,8 @@ fn test_auth_config_wide_timestamp_window() {
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(300),
-        replay_protection: true,
+        replay_protection: true,,
+        ..Default::default()
     };
     
     assert_eq!(config.timestamp_window, Duration::from_secs(300));
@@ -364,7 +372,8 @@ fn test_auth_config_narrow_timestamp_window() {
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(10),
-        replay_protection: true,
+        replay_protection: true,,
+        ..Default::default()
     };
     
     assert_eq!(config.timestamp_window, Duration::from_secs(10));

@@ -10,3 +10,7 @@ keywords = ["security", "monitoring", "audit", "compliance"]
 categories = ["development-tools::profiling"]
 
 [dependencies]
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["sync", "time"] }
+tracing = { workspace = true }
+sysinfo = { workspace = true }

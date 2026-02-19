@@ -658,15 +658,16 @@ impl NodeCapacityTracker {
 
     /// Return the node with the lowest tracked load, or `None` if no data.
     pub fn least_loaded(&self) -> Option<NodeId> {
-        self.inner
-            .lock()
-            .ok()
-            .and_then(|guard| {
-                guard
-                    .iter()
-                    .min_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap_or(std::cmp::Ordering::Equal))
-                    .map(|(id, _)| id.clone())
-            })
+        self.inner.lock().ok().and_then(|guard| {
+            guard
+                .iter()
+                .min_by(|a, b| {
+                    a.1 .0
+                        .partial_cmp(&b.1 .0)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .map(|(id, _)| id.clone())
+        })
     }
 
     /// Current load snapshot: `node_id → load_fraction`.
@@ -904,10 +905,7 @@ impl SubscriptionManager {
 
     /// Subscribe to a named channel, creating it if it does not yet exist.
     pub fn subscribe(&self, channel: &str) -> broadcast::Receiver<SongbirdBroadcastMessage> {
-        let mut guard = self
-            .channels
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let mut guard = self.channels.lock().unwrap_or_else(|e| e.into_inner());
         guard
             .entry(channel.to_string())
             .or_insert_with(|| broadcast::channel(64).0)

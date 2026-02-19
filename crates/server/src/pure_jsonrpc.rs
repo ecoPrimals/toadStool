@@ -285,7 +285,11 @@ impl JsonRpcHandler {
             // Version info
             "toadstool.version" => self.version_info().await,
 
-            // GPU Compute Job Queue methods
+            // GPU job-queue methods (`compute.*` namespace).
+            // These address the low-level GPU batch queue (JobType + priority).
+            // `toadstool.*` methods address the high-level workload executor
+            // (WorkloadSpec). Both namespaces are intentional and serve
+            // different clients — they are not aliases of each other.
             "compute.submit" => self.compute_submit(params).await,
             "compute.status" => self.compute_status(params).await,
             "compute.result" => self.compute_result(params).await,

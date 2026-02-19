@@ -113,12 +113,28 @@ impl ConditionEvaluator {
                 .any(|cap| context.requested_capabilities.contains(cap))),
 
             PolicyCondition::ResourceUsage {
-                cpu_percent: _,
-                memory_mb: _,
+                cpu_percent,
+                memory_mb,
             } => {
-                // This would typically check current resource usage
-                // For now, return true as a placeholder
-                Ok(true)
+                use sysinfo::System;
+                let mut sys = System::new_all();
+                sys.refresh_all();
+
+                let cpus = sys.cpus();
+                let current_cpu = if cpus.is_empty() {
+                    0.0_f32
+                } else {
+                    cpus.iter().map(|c| c.cpu_usage()).sum::<f32>() / cpus.len() as f32
+                };
+                let current_mem_mb = (sys.used_memory() / (1024 * 1024)) as u32;
+
+                let cpu_ok =
+                    cpu_percent.map_or(true, |threshold| f64::from(current_cpu) <= threshold);
+                let mem_ok = memory_mb.map_or(true, |threshold_mb| {
+                    u64::from(current_mem_mb) <= threshold_mb
+                });
+
+                Ok(cpu_ok && mem_ok)
             }
 
             PolicyCondition::TimeWindow {

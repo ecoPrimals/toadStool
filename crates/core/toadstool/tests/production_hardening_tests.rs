@@ -550,6 +550,7 @@ async fn test_disabled_features_config() {
         default_circuit_config: CircuitBreakerConfig::default(),
         memory_pressure_config: MemoryPressureConfig::default(),
         leak_detection_threshold: Duration::from_secs(300),
+        ..Default::default()
     };
 
     let manager = ProductionHardeningManager::new(config);

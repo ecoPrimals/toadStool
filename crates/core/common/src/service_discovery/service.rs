@@ -230,10 +230,8 @@ impl ServiceDiscovery {
             rt.block_on(async move {
                 MdnsAdapter::new(mdns_config)
                     .await
-                    .map_err(|e| {
-                        DiscoveryError::MethodUnavailable {
-                            method: format!("mDNS init failed: {e}"),
-                        }
+                    .map_err(|e| DiscoveryError::MethodUnavailable {
+                        method: format!("mDNS init failed: {e}"),
                     })?
                     .discover_all()
                     .await
@@ -251,17 +249,19 @@ impl ServiceDiscovery {
         let services: Vec<DiscoveredService> = endpoints
             .into_iter()
             .map(|ep| {
-                let caps: Vec<Capability> =
-                    ep.capabilities.iter().map(|s| capability_from_str(s)).collect();
-                let endpoint = ServiceEndpoint::from_url_string(&ep.url).unwrap_or_else(|_| {
-                    ServiceEndpoint {
+                let caps: Vec<Capability> = ep
+                    .capabilities
+                    .iter()
+                    .map(|s| capability_from_str(s))
+                    .collect();
+                let endpoint =
+                    ServiceEndpoint::from_url_string(&ep.url).unwrap_or_else(|_| ServiceEndpoint {
                         protocol: "http".to_string(),
                         address: ep.url.clone(),
                         port: 80,
                         path: None,
                         metadata: HashMap::new(),
-                    }
-                });
+                    });
                 DiscoveredService {
                     id: ep.service_id.clone(),
                     name: ep.service_id,
@@ -292,11 +292,11 @@ impl ServiceDiscovery {
             "/etc/biomeos/discovery.json".to_string()
         };
 
-        let content = tokio::fs::read_to_string(&resolved_path).await.map_err(|e| {
-            DiscoveryError::MethodUnavailable {
+        let content = tokio::fs::read_to_string(&resolved_path)
+            .await
+            .map_err(|e| DiscoveryError::MethodUnavailable {
                 method: format!("cannot read discovery config {resolved_path:?}: {e}"),
-            }
-        })?;
+            })?;
 
         let config_file: ConfigFile =
             serde_json::from_str(&content).map_err(|e| DiscoveryError::InvalidResponse {
@@ -307,8 +307,11 @@ impl ServiceDiscovery {
         let mut services = Vec::with_capacity(config_file.services.len());
 
         for svc in config_file.services {
-            let caps: Vec<Capability> =
-                svc.capabilities.iter().map(|s| capability_from_str(s)).collect();
+            let caps: Vec<Capability> = svc
+                .capabilities
+                .iter()
+                .map(|s| capability_from_str(s))
+                .collect();
 
             let mut endpoints = Vec::with_capacity(svc.endpoints.len());
             for url in &svc.endpoints {
@@ -376,7 +379,9 @@ impl ServiceDiscovery {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use tokio::net::TcpStream;
 
-        let url = resolved.trim_start_matches("http://").trim_start_matches("https://");
+        let url = resolved
+            .trim_start_matches("http://")
+            .trim_start_matches("https://");
         let (host_port, path) = url.split_once('/').unwrap_or((url, "services"));
         let path = format!("/{path}");
 
@@ -414,8 +419,11 @@ impl ServiceDiscovery {
             .services
             .into_iter()
             .map(|svc| {
-                let caps: Vec<Capability> =
-                    svc.capabilities.iter().map(|s| capability_from_str(s)).collect();
+                let caps: Vec<Capability> = svc
+                    .capabilities
+                    .iter()
+                    .map(|s| capability_from_str(s))
+                    .collect();
                 let endpoints: Vec<ServiceEndpoint> = svc
                     .endpoints
                     .iter()
