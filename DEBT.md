@@ -472,6 +472,25 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 | R-042 | `security/policies/tests/evaluator_unit_tests.rs`: `test_evaluate_resource_usage` thresholds raised to 100%/1TiB — were failing on loaded machines | Feb 19, 2026 |
 | R-043 | `integration/protocols/tests/transport_coverage_tests.rs`: `>= 3` transports assertion lowered to `>= 2` (WebSocket removed); "not implemented" substring match fixed | Feb 19, 2026 |
 
+## Session 8 Resolutions — Feb 19, 2026
+
+| ID | Resolution |
+|---|---|
+| S8-001 | **SOVEREIGN Phase 3**: `crates/barracuda/src/shaders/optimizer/` (new module) — `WgslDependencyGraph` (parse `@ilp_region` blocks into DAG), `IlpReorderer` (ASAP list scheduling guided by `LatencyModel`), `WgslLoopUnroller` (`@unroll_hint N` bounded loop unrolling ≤ 32 iterations), `WgslOptimizer` top-level integrator. 24 unit tests all pass. |
+| S8-002 | `ShaderTemplate::for_driver_auto()` wired to run `WgslOptimizer::default()` on every compiled shader — Phase 3 active end-to-end. |
+| S8-003 | `ShaderTemplate::for_driver_profile()` added — variant that uses the precise `LatencyModel` from a `GpuDriverProfile` for hardware-tuned ILP scheduling. |
+| S8-004 | `contrib/mesa-nak/sm70_instr_latencies.rs` — prepared Mesa MR patch for `calc_instr_deps.rs`: SM70/SM72/SM75/SM80/SM86/SM89 match arm with FP64=8cy, FP32=4cy, INT=6cy, SFU=16cy, SMEM=23cy. Includes validation harness + latency summary table for MR description. |
+| S8-005 | `contrib/mesa-nak/rdna2_instr_latencies.rs` — prepared RDNA2 ACO contribution: VFMA64=4cy, VALU=4cy, LDS=20cy. Complements SM70 patch as second open-source GPU target. |
+| S8-006 | `cargo fmt --all` + `cargo clippy` — zero errors |
+
+| ID | Resolved Issue | Date |
+|---|---|---|
+| R-048 | SOVEREIGN-Phase3: WgslOptimizer + IlpReorderer + WgslDependencyGraph + WgslLoopUnroller — 24 tests pass | Feb 19, 2026 |
+| R-049 | ShaderTemplate::for_driver_auto now applies ILP reordering and loop unrolling automatically | Feb 19, 2026 |
+| R-050 | contrib/mesa-nak/: SM70 + RDNA2 latency table patches prepared for Mesa upstream | Feb 19, 2026 |
+
+---
+
 ## Session 7 Resolutions — Feb 19, 2026
 
 | ID | Resolution |

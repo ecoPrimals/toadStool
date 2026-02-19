@@ -192,7 +192,29 @@ impl ShaderTemplate {
         } else {
             substituted
         };
-        Self::inject_missing_math_f64(&patched)
+        let injected = Self::inject_missing_math_f64(&patched);
+        // Phase 3: ILP reorder @ilp_region blocks + unroll @unroll_hint loops.
+        // Uses ConservativeModel when no driver profile is available (safe fallback).
+        crate::shaders::optimizer::WgslOptimizer::default().optimize(&injected)
+    }
+
+    /// Variant of `for_driver_auto` that uses the accurate `LatencyModel` from
+    /// a `GpuDriverProfile` for precise ILP scheduling.
+    ///
+    /// Prefer this when a `GpuDriverProfile` is available at shader-compile time.
+    pub fn for_driver_profile(
+        shader_body: &str,
+        needs_exp_log_workaround: bool,
+        profile: &crate::device::capabilities::GpuDriverProfile,
+    ) -> String {
+        let substituted = Self::substitute_fossil_f64(shader_body);
+        let patched = if needs_exp_log_workaround {
+            Self::apply_transcendental_workaround(&substituted)
+        } else {
+            substituted
+        };
+        let injected = Self::inject_missing_math_f64(&patched);
+        crate::shaders::optimizer::WgslOptimizer::new(profile.latency_model()).optimize(&injected)
     }
 
     /// Replace `exp(` → `exp_f64(` and `log(` → `log_f64(` while preserving

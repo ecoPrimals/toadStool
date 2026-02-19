@@ -33,7 +33,9 @@
 //! cpu::elementwise_add(&[1.0, 2.0, 3.0], &[4.0, 5.0, 6.0], &mut out);
 //! ```
 
+pub mod optimizer; // Phase 3: WgslDependencyGraph + IlpReorderer + WgslLoopUnroller
 pub mod precision;
 pub mod quantized;
 
+pub use optimizer::WgslOptimizer;
 pub use precision::{Precision, ShaderTemplate};
