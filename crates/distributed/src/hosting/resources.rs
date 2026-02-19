@@ -139,9 +139,15 @@ impl HostingResourceManager {
         }
 
         for (resource, amount) in requirements {
+            // When no total is declared for a resource type, treat it as
+            // unlimited — the manager has no basis to deny the allocation.
+            let total = self.total_resources.get(resource).copied();
+            if total.is_none() {
+                // No capacity declared → skip limit check for this resource
+                continue;
+            }
             let available = self.available(resource);
-            let buffer = (self.total_resources.get(resource).copied().unwrap_or(0) as f64
-                * self.config.reservation_buffer) as u64;
+            let buffer = (total.unwrap_or(0) as f64 * self.config.reservation_buffer) as u64;
 
             if *amount > available.saturating_sub(buffer) {
                 debug!(
