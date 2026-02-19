@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: February 18, 2026
+**Date**: February 19, 2026
 **Philosophy**: Workarounds are short-term solutions that increase debt.
 We aim to solve deep debt over iterations, evolving toward vendor-agnostic,
 capability-based solutions.
@@ -237,6 +237,164 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 | R-004 | `futures::executor::block_on` in async test context | Feb 18, 2026 |
 | R-005 | wgpu 0.19 pinned dependency | Feb 17, 2026 |
 | R-006 | NVK-only exp workaround (now covers NVK + RADV) | Feb 18, 2026 |
+| R-007 | Duplicate `ExternalTarget` enums in crypto_lock vs security_provider | Feb 18, 2026 |
+| R-008 | `reqwest` C-FFI dep in toadstool-client — migrated to Unix JSON-RPC | Feb 18, 2026 |
+| R-009 | `crates/client` excluded from workspace — re-included | Feb 18, 2026 |
+| R-010 | 9 files over 1000 LOC — smart-refactored: cg_gpu, multi_gpu, production_hardening, graph_types, handlers, graph_types, handlers | Feb 18, 2026 |
+| R-011 | WebSocket (tungstenite/ring C-FFI) removed from entire codebase — pure Rust | Feb 18, 2026 |
+| R-012 | 10 more files over 1000 LOC refactored: batched_eigh, wgpu_device, tensor_context, workload_migration, deployment_layer, songbird/types, analyzer, three_springs tests, hotspring tests, capabilities/tests | Feb 18, 2026 |
+| R-013 | D-002 hardcoded timeouts replaced with toadstool_common constants | Feb 18, 2026 |
+| R-014 | D-004 stale docs updated (cudarc 0.11→0.19, WebSocket refs removed) | Feb 18, 2026 |
+| R-015 | sparsity.rs (1242L), fd_gradient_f64.rs (1175L), manual_jsonrpc.rs (1100L) split | Feb 18, 2026 |
+| R-016 | D-001 partial: test_pool foundation + 9 ops modules migrated to shared GPU device | Feb 18, 2026 |
+| R-017 | cg_gpu (1519L), pppm_gpu (1337L), precision (1270L), primal_sockets (1154L), service_discovery (1135L), cuda_impl (1093L), ipc_helpers (1091L), unibin (1059L), composition_constraints (1051L), resource_optimizer (1036L), biomeos/auth (1033L) all split | Feb 18, 2026 |
+| R-018 | D-003 resolved: ALL non-showcase files now under 1000 lines | Feb 18, 2026 |
+| R-019 | Warp-packed eigensolve (`@workgroup_size(32,1,1)`, 2.2x NVK speedup), `GpuDriverProfile`, `EigensolveStrategy`, `bench_wgsize_nvk.rs` diagnostic binary — hotSpring Phase 1 handoff absorbed | Feb 18, 2026 |
+| R-020 | D-002 full audit: production hardcodes (timeouts, IPs, ports) replaced with constants — api, server/ollama, security/sandbox, runtime/specialty, runtime/container, cli/daemon | Feb 18, 2026 |
+| R-021 | W-002 PPPM GPU physics: fixed PppmCpuFft FFT (Cooley-Tukey butterfly bug), aligned e_kspace/forces with CPU reference — all 3 physics tests pass | Feb 18, 2026 |
+| R-022 | `requests.rs` stale `websocket` field refs → `events_endpoint` (compilation fix, WebSocket removal complete) | Feb 18, 2026 |
+| R-023 | `LocalCapacityManager` hardcoded 4 cores/8 GB → `CapacityInfo::from_system()` (real sysinfo); `reserve`/`release` track capacity with clamped deduction/restore | Feb 18, 2026 |
+| R-024 | `NetworkDistributor::distribute_job` stub → least-loaded node selection via `NetworkLoadBalancer::select_node()`; falls back to local self-assignment; Songbird wiring exposed via `register_peer_node()` | Feb 18, 2026 |
+| R-025 | Health dashboard WebSocket JS removed (no `/ws` endpoint); replaced with SSE-style polling of `/health` every 5 s | Feb 18, 2026 |
+| R-026 | Songbird dead-code audit: `submit_job()` entry point activates all private helpers; `MassiveJobDistributor` fields wired via `select_algorithm()` / `plan_distribution()`; `NetworkLoadBalancer::node_health` exposed via `register_node`/`select_node`/`deregister_node` | Feb 18, 2026 |
+| R-027 | `discover_beardog_at` / `discover_nestgate_at` used wrong defaults (`SECURITY`/`STORAGE` capability strings instead of primal names `"beardog"`/`"nestgate"`) — caused 12 test failures via ENV_MUTEX poisoning cascade; fixed with primal directory name defaults | Feb 18, 2026 |
+
+---
+
+---
+
+## New Active Issues — Session 4 Audit (Feb 19, 2026)
+
+### F-001: Test Compilation Failures (3 test targets)
+
+**Priority**: CRITICAL — breaks `cargo test --workspace`
+**Files**:
+- `crates/core/toadstool/tests/production_hardening_comprehensive_tests.rs`
+- `crates/core/toadstool/tests/hardening_integration_tests.rs`
+- `crates/core/toadstool/tests/biomeos_integration/auth_tests.rs`
+- `crates/core/toadstool/tests/biomeos_auth_types_tests.rs`
+- `crates/core/toadstool/tests/biomeos_auth_tests.rs`
+
+**Root causes**:
+1. **`CircuitBreakerError` not exported** — tests do `use toadstool::production_hardening::*` and use `CircuitBreakerError`, but `mod.rs` only re-exports `CircuitBreaker`, `CircuitBreakerConfig`, `CircuitState`. Fix: add `pub use circuit_breaker::CircuitBreakerError` to the `pub use` block.
+2. **`ProductionHardeningManager` missing methods** — tests call `initialize()`, `update_resource_access()`, `track_resource()`, `remove_resource()`, `update_memory_usage()`, `get_state()`. These are tested but never implemented. Fix: implement stubs that delegate to existing `get_or_create_circuit_breaker` + `ResourceLeakDetector` / `MemoryPressureHandler`.
+3. **`AuthManagerConfig` missing `token_audience`** — 19+ test struct literals built without the `token_audience: Vec<String>` field added in a recent refactor. Fix: add `token_audience: vec![]` to each literal, or add `#[serde(default)]` + `..Default::default()` spread.
+
+**Evolution path**: Fix F-001 first. All 3 targets are pure test files — no production logic change needed.
+
+---
+
+### F-002: `cargo fmt` Divergence (21 diffs)
+
+**Priority**: HIGH — CI/pre-commit should enforce fmt
+**Files with diffs**:
+- `crates/barracuda/src/device/probe.rs` (2 diffs — method chain line wrapping)
+- `crates/barracuda/src/shaders/precision/math_f64.rs` (1 diff — array literal wrapping)
+- (18 more diffs across codebase — run `cargo fmt --all` to resolve all at once)
+
+**Evolution path**: `cargo fmt --all` — mechanical, zero risk.
+
+---
+
+### F-003: Production Placeholder Code
+
+**Priority**: HIGH — placeholder evaluation always returns `true` (SECURITY IMPACT)
+**Files**:
+- `crates/security/monitoring/src/lib.rs` — entire file is an empty placeholder ("This module will be implemented in future iterations.")
+- `crates/security/policies/src/evaluator.rs:120` — `return true as a placeholder` — **policy evaluation always permits** regardless of policy content
+- `crates/core/toadstool/src/workload_migration/validation.rs:6` — empty placeholder ("Placeholder for pre-migration validation and rollback logic.")
+
+**Evolution path**:
+- `security/monitoring` → implement using `tracing` subscriber + local metrics ring buffer; no external dependency
+- `policies/evaluator` → implement actual rule evaluation (regex cache already present at line 35, unused)
+- `workload_migration/validation` → implement pre-flight capacity check + snapshot-before-migrate pattern
+
+---
+
+### F-004: Hardcoded Endpoints in Production Code
+
+**Priority**: MEDIUM — violates capability-based discovery principle
+**Files**:
+- `crates/core/toadstool/src/biomeos_integration/storage.rs:187` — `nestgate_endpoint: "http://localhost:9090"` in struct default
+- `crates/core/toadstool/src/biomeos_integration/agents.rs:269` — `squirrel_endpoint: "http://localhost:8080"` in test struct
+
+**Note**: Both `storage_backend_evolved.rs` and `agent_backend_evolved.rs` already use capability-based discovery correctly. The `storage.rs` and `agents.rs` files are the older, non-evolved versions.
+**Evolution path**: Replace hardcoded defaults with `discover_storage_service()` / `discover_ml_service()` calls from `primal_integration.rs`. Or deprecate these files in favour of the `*_evolved` variants that already do this correctly.
+
+---
+
+### F-005: Production TODOs
+
+**Priority**: MEDIUM — gaps in implemented functionality
+**Items** (production files only, not research/examples):
+- `crates/security_provider/factory.rs:160-161` — `TODO: LocalKeyringProvider`, `SoftwareHSMProvider` — security key storage backends missing
+- `crates/runtime/gpu/src/cpu_resource.rs:151` — `TODO: Detect RISC-V 'V' vector extension` — CPU capability incomplete for RISC-V targets
+- `crates/runtime/display/src/input/events.rs:157` — `TODO: Add more key codes` — input handling incomplete
+- `crates/runtime/display/src/input/mod.rs:135` — `TODO: Get focused window somehow` — window focus state unimplemented
+- `crates/runtime/orchestration/src/load_balancer.rs:11` — `TODO: multi-instance load balancing` — field exists but dynamic balancing not wired
+- `crates/auto_config/src/hardware/cpu.rs:278` — RISC-V vector extension detection duplicate of above
+- `crates/cli/src/main.rs:397` — `TODO: UniBin Phase 3 - Full server daemon integration` — server/daemon subcommand partially wired
+
+---
+
+### F-006: Unsafe Code — `mlock` via libc (not rustix)
+
+**Priority**: LOW — functionality correct, but ecoBin standard prefers `rustix` over raw `libc` for system calls
+**Files**:
+- `crates/runtime/secure_enclave/src/isolated_memory.rs` — uses `mlock`/`munlock`/`alloc` via `libc::mlock`, `libc::munlock`, `std::alloc`
+- `crates/runtime/gpu/src/unified_memory/backends/cpu.rs` — uses `std::alloc` for aligned memory
+
+**Context**: The logic is sound (mlock for secure memory, proper Drop for munlock). The debt is that `rustix` provides safe `mlock`/`munlock` wrappers with proper error handling, eliminating the raw `unsafe` blocks.
+**Evolution path**: Replace `libc::mlock` with `rustix::mm::mlock`, `libc::munlock` with `rustix::mm::munlock`. Remove `unsafe` block entirely (rustix is safe API). Consistent with the `akida-driver` migration completed in R-018.
+
+---
+
+### F-007: `compute.*` vs `toadstool.*` Method Dual Registration
+
+**Priority**: LOW — technical confusion, not a bug
+**File**: `crates/server/src/pure_jsonrpc.rs:289-293`
+**Issue**: `compute.submit`, `compute.status`, `compute.result`, `compute.cancel`, `compute.list` each map to a private method (`compute_submit`, etc.) while `toadstool.submit_workload`, `toadstool.query_status`, etc. map to different methods doing the same thing. Consumers might call either, getting inconsistent response shapes.
+**Evolution path**: Deprecate `compute.*` aliases or make them strict forwarding wrappers to the `toadstool.*` implementations. Document the migration path in a `methods.md` near the server.
+
+---
+
+### F-008: Test Coverage — 3 Non-Compiling Targets Hide Gap
+
+**Priority**: MEDIUM — cannot measure true coverage until F-001 resolved
+**Known state**:
+- `cargo llvm-cov --workspace` fails due to F-001 compilation errors
+- README claims 15,700+ tests but 3 test compilation units (25+ test functions) are silently excluded from the count
+- `security/monitoring/src/lib.rs` is an empty placeholder — 0% coverage by definition (F-003)
+- `security/policies/src/evaluator.rs` placeholder logic — coverage meaningless without real logic
+**Target**: 90% line coverage. Unblocked by resolving F-001 first.
+
+---
+
+### F-009: Sovereign Compute Phase 1 Not Started
+
+**Priority**: MEDIUM — see `specs/SOVEREIGN_COMPUTE_EVOLUTION.md`
+**Gap**: Jacobi eigensolve kernel (`batched_eigh_single_dispatch_f64.wgsl`) has not yet been restructured for ILP (Phase 1 of the WGSL Optimizer plan). The 8-cycle DFMA latency gap on SM70 (Titan V) is still unaddressed at source level.
+**Evolution path**: See `SOVEREIGN_COMPUTE.md` Phase 1 — restructure rotation kernel + `// @unroll_hint 32` annotation + validate on Titan V.
+
+---
+
+### F-010: `#[allow(dead_code)]` Remnants in neuromorphic
+
+**Priority**: LOW
+**Files**: `crates/neuromorphic/akida-reservoir-research/` — research crate, many fields and structs have `#[allow(dead_code)]` because the research API is exploratory. Acceptable as a research crate; should be documented as such.
+
+---
+
+## Resolved Issues
+
+| ID | Resolution | Date |
+|---|---|---|
+| R-001 | IPC pool `Arc<Mutex<Vec<Box<dyn Handler>>>>` → `Arc<RwLock<...>>` + capability map | Feb 18, 2026 |
+| R-002 | `probe_f64_exp_capable()` async runtime check replaces driver-name heuristic | Feb 18, 2026 |
+| R-003 | `NodeCapacityTracker` / `PerformanceMetrics` stubs replaced with sysinfo impl | Feb 18, 2026 |
+| R-004 | `sampler_gpu.rs` panics replaced with `map_err` + `tracing::warn` | Feb 18, 2026 |
+| R-005 | `auth/mod.rs` hardcoded primal names → capability-based discovery | Feb 18, 2026 |
+| R-006 | `service_discovery/service.rs` stubs → full mDNS-SD + HTTP + env-var discovery | Feb 18, 2026 |
 | R-007 | Duplicate `ExternalTarget` enums in crypto_lock vs security_provider | Feb 18, 2026 |
 | R-008 | `reqwest` C-FFI dep in toadstool-client — migrated to Unix JSON-RPC | Feb 18, 2026 |
 | R-009 | `crates/client` excluded from workspace — re-included | Feb 18, 2026 |
