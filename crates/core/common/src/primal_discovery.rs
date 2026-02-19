@@ -324,7 +324,7 @@ impl PrimalDiscovery {
     // See: docs/architecture/INFANT_DISCOVERY.md for full architecture
     // ========================================================================
 
-    #[allow(dead_code)] // Will be used when mDNS is wired up
+    #[allow(dead_code)] // Legacy compatibility layer — modern code uses infant_discovery::InfantDiscoveryEngine
     fn select_best(&self, endpoints: &[PrimalEndpoint]) -> Option<PrimalEndpoint> {
         // Selection criteria (in order of priority):
         // 1. Trust level (Verified > Local > Unverified)

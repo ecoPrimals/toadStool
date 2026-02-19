@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 use crate::self_identity::{CapabilityRequirement, DiscoveredService, SelfIdentity};
@@ -74,7 +74,7 @@ struct DiscoveryState {
     running: bool,
 
     /// Last discovery time
-    #[allow(dead_code)] // Will be used when full discovery is implemented
+    #[allow(dead_code)] // Timestamped for future stale-service reporting
     last_discovery: Option<chrono::DateTime<chrono::Utc>>,
 
     /// Discovery statistics
@@ -256,36 +256,6 @@ impl RuntimeDiscovery {
         }
 
         Ok(())
-    }
-
-    /// Clean up stale services
-    #[allow(dead_code)] // Will be used when mDNS/DNS-SD is implemented
-    async fn cleanup_stale_services(&self) {
-        let mut services = self.services.write().await;
-        let now = chrono::Utc::now();
-        let timeout =
-            chrono::Duration::from_std(self.config.service_timeout).unwrap_or_else(|_| {
-                // Fallback to 5 minutes if conversion fails (unlikely but safe)
-                chrono::Duration::seconds(300)
-            });
-
-        let stale: Vec<Uuid> = services
-            .iter()
-            .filter(|(_, service)| now.signed_duration_since(service.last_seen) > timeout)
-            .map(|(id, _)| *id)
-            .collect();
-
-        if !stale.is_empty() {
-            warn!("🧹 Cleaning up {} stale services", stale.len());
-
-            for id in &stale {
-                services.remove(id);
-            }
-
-            let mut state = self.state.write().await;
-            state.stats.timeouts += stale.len() as u64;
-            state.stats.active_services = services.len();
-        }
     }
 
     /// Spawn background discovery tasks

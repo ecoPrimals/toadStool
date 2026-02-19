@@ -59,7 +59,7 @@ pub struct ByobHealthMonitor {
 
 impl ByobHealthMonitor {
     /// Create a new health monitor (internal constructor)
-    #[allow(dead_code)] // Will be used when integrating into byob_impl.rs
+    #[allow(dead_code)] // Used in unit tests; production wiring via ByobExecutor
     pub(super) fn new(active_deployments: Arc<RwLock<HashMap<Uuid, ActiveDeployment>>>) -> Self {
         Self { active_deployments }
     }

@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA — Quick Status
 
-**Date**: February 18, 2026 — Session 3 (Distributed Compute + GPU Sovereignty + Dead-Code Audit)
+**Date**: February 19, 2026 — Session 8 (Sovereign Phases 0–3 Complete + Audit Wave F-001/F-009)
 
 ---
 
@@ -18,10 +18,16 @@ middleware tests                 400+ passed (linalg, sparse, numerical, special
 hotSpring evolution tests        47 tests (unit, E2E, chaos, fault)
 three springs evolution tests    37 tests (unit, E2E, chaos, fault, precision)
 GPU sovereignty                  f64 fossils removed, capability matrix probed per-GPU
-NAK Phase 1                      SM70 Volta latency tables written (DFMA=8cy, wired)
+Sovereign Phase 0-3              WgslOptimizer live in ShaderTemplate::for_driver_auto()
+LatencyModel                     Sm70 (DFMA=8cy), Rdna2 (VFMA64≈4cy), Conservative, Measured
+WgslDependencyGraph              let-binding DAG parser, op classification, 7 tests
+IlpReorderer                     ASAP list scheduling (BinaryHeap), 5 tests
+WgslLoopUnroller                 @unroll_hint N bounded unrolling ≤32 iters, 7 tests
+Mesa NAK patches                 sm70_instr_latencies.rs + rdna2_instr_latencies.rs ready
 node routing                     least-loaded selection, local fallback, Songbird wiring
 timeout constants                Centralized in toadstool_common::constants::timeouts
 SIMD detection                   Runtime via std::arch::is_x86_feature_detected!
+line coverage (non-GPU)          61.35% — baseline established via llvm-cov
 ```
 
 *All quality gates green. Clippy -D warnings compliant. Zero panic paths in library code.*
@@ -61,11 +67,13 @@ BarraCUDA (Universal Compute Engine — SHADER-FIRST F64)
   400+ tests (RBF, LU/QR/SVD, RK45, Crank-Nicolson, BFGS, Sobol, Broyden mixing, FD gradients)
   Smart auto-routing with user device preference override
 
-NAK Compiler Contribution (Mesa open-source)
-  SM70/Volta latency tables: DFMA=8cy, FFMA=4cy, WAR/WAW per-category
-  Wired into sm70.rs at all 6 dispatch points
-  Expected ~3-4× scheduler improvement on Titan V (hardware validation pending)
-  Titan V (hotSpring) + RTX 4070 (Tower) available for testing
+Sovereign Compute (WgslOptimizer — Phases 0–3 complete)
+  Phase 0: fossil f64 functions removed → native WGSL builtins, F64BuiltinCapabilities probe
+  Phase 1: Jacobi @ilp_region restructure, warp-packing 32x1x1 (2.2× NVK speedup)
+  Phase 2: LatencyModel trait — Sm70 (DFMA=8cy), Rdna2 (VFMA64≈4cy), Conservative, Measured
+  Phase 3: WgslOptimizer (DAG + ASAP scheduler + loop unroller) wired into ShaderTemplate
+  Next: Phase 4 (full naga-IR SSA optimizer) — Q3 2026
+  Mesa NAK patches: contrib/mesa-nak/ — ready to submit post Titan V validation
 ```
 
 ---

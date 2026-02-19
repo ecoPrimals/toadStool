@@ -129,10 +129,9 @@ impl ConditionEvaluator {
                 let current_mem_mb = (sys.used_memory() / (1024 * 1024)) as u32;
 
                 let cpu_ok =
-                    cpu_percent.map_or(true, |threshold| f64::from(current_cpu) <= threshold);
-                let mem_ok = memory_mb.map_or(true, |threshold_mb| {
-                    u64::from(current_mem_mb) <= threshold_mb
-                });
+                    cpu_percent.is_none_or(|threshold| f64::from(current_cpu) <= threshold);
+                let mem_ok =
+                    memory_mb.is_none_or(|threshold_mb| u64::from(current_mem_mb) <= threshold_mb);
 
                 Ok(cpu_ok && mem_ok)
             }

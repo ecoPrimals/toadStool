@@ -183,56 +183,104 @@ impl KeyCode {
     pub const CAPS_LOCK: Self = Self(58);
 
     // ── Function keys ────────────────────────────────────────────────────────
+    /// Function key F1.
     pub const F1: Self = Self(59);
+    /// Function key F2.
     pub const F2: Self = Self(60);
+    /// Function key F3.
     pub const F3: Self = Self(61);
+    /// Function key F4.
     pub const F4: Self = Self(62);
+    /// Function key F5.
     pub const F5: Self = Self(63);
+    /// Function key F6.
     pub const F6: Self = Self(64);
+    /// Function key F7.
     pub const F7: Self = Self(65);
+    /// Function key F8.
     pub const F8: Self = Self(66);
+    /// Function key F9.
     pub const F9: Self = Self(67);
+    /// Function key F10.
     pub const F10: Self = Self(68);
+    /// Function key F11.
     pub const F11: Self = Self(87);
+    /// Function key F12.
     pub const F12: Self = Self(88);
 
     // ── Alphanumeric ─────────────────────────────────────────────────────────
+    /// Letter A.
     pub const A: Self = Self(30);
+    /// Letter B.
     pub const B: Self = Self(48);
+    /// Letter C.
     pub const C: Self = Self(46);
+    /// Letter D.
     pub const D: Self = Self(32);
+    /// Letter E.
     pub const E: Self = Self(18);
+    /// Letter F.
     pub const F: Self = Self(33);
+    /// Letter G.
     pub const G: Self = Self(34);
+    /// Letter H.
     pub const H: Self = Self(35);
+    /// Letter I.
     pub const I: Self = Self(23);
+    /// Letter J.
     pub const J: Self = Self(36);
+    /// Letter K.
     pub const K: Self = Self(37);
+    /// Letter L.
     pub const L: Self = Self(38);
+    /// Letter M.
     pub const M: Self = Self(50);
+    /// Letter N.
     pub const N: Self = Self(49);
+    /// Letter O.
     pub const O: Self = Self(24);
+    /// Letter P.
     pub const P: Self = Self(25);
+    /// Letter Q.
     pub const Q: Self = Self(16);
+    /// Letter R.
     pub const R: Self = Self(19);
+    /// Letter S.
     pub const S: Self = Self(31);
+    /// Letter T.
     pub const T: Self = Self(20);
+    /// Letter U.
     pub const U: Self = Self(22);
+    /// Letter V.
     pub const V: Self = Self(47);
+    /// Letter W.
     pub const W: Self = Self(17);
+    /// Letter X.
     pub const X: Self = Self(45);
+    /// Letter Y.
     pub const Y: Self = Self(21);
+    /// Letter Z.
     pub const Z: Self = Self(44);
 
+    /// Digit row key 0.
     pub const KEY_0: Self = Self(11);
+    /// Digit row key 1.
     pub const KEY_1: Self = Self(2);
+    /// Digit row key 2.
     pub const KEY_2: Self = Self(3);
+    /// Digit row key 3.
     pub const KEY_3: Self = Self(4);
+    /// Digit row key 4.
     pub const KEY_4: Self = Self(5);
+    /// Digit row key 5.
     pub const KEY_5: Self = Self(6);
+    /// Digit row key 6.
     pub const KEY_6: Self = Self(7);
+    /// Digit row key 7.
     pub const KEY_7: Self = Self(8);
+    /// Digit row key 8.
     pub const KEY_8: Self = Self(9);
+    /// Digit row key 9.
     pub const KEY_9: Self = Self(10);
 }
 

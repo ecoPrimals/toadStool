@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Unreleased] - February 19, 2026
+
+### Sovereign Compute — Phases 0–3 Complete
+
+#### Added
+- **`crates/barracuda/src/device/latency.rs`** (Phase 2): `LatencyModel` trait, `WgslOpClass` enum,
+  `Sm70LatencyModel` (DFMA=8cy, based on arXiv:1804.06826), `Rdna2LatencyModel` (VFMA64≈4cy),
+  `ConservativeModel` (unknown GPU fallback), `MeasuredModel` (from bench_f64_builtins probe).
+  `model_for_arch(GpuArch)` dispatch. 7 unit tests.
+- **`GpuDriverProfile::latency_model()`** (`capabilities.rs`): returns arch-specific `LatencyModel`.
+- **`crates/barracuda/src/shaders/optimizer/mod.rs`** (Phase 3): `WgslOptimizer` struct,
+  `new()`, `for_arch()`, `Default` (ConservativeModel), `optimize()` orchestrator, `reorder_ilp_regions()`.
+- **`crates/barracuda/src/shaders/optimizer/dependency_graph.rs`**: `WgslDependencyGraph::parse()`
+  builds a let-binding DAG from `@ilp_region` blocks; `classify_op()` heuristic for high-latency ops.
+- **`crates/barracuda/src/shaders/optimizer/ilp_reorderer.rs`**: `IlpReorderer::reorder()` —
+  ASAP list scheduling via `BinaryHeap<Schedulable>`, release_cycle propagation.
+- **`crates/barracuda/src/shaders/optimizer/loop_unroller.rs`**: `WgslLoopUnroller::unroll()` —
+  processes `// @unroll_hint N` annotations, word-boundary-safe variable substitution, max 32 iters.
+- **`ShaderTemplate::for_driver_auto()`** wired: fossil substitution → transcendental workaround →
+  `WgslOptimizer::default().optimize()`. All compiled shaders pass through the optimizer.
+- **`ShaderTemplate::for_driver_profile()`**: hardware-accurate variant using `GpuDriverProfile::latency_model()`.
+- **`contrib/mesa-nak/sm70_instr_latencies.rs`**: Mesa NVK MR patch — SM70–SM89 DFMA=8cy match arm.
+- **`contrib/mesa-nak/rdna2_instr_latencies.rs`**: Mesa ACO/RADV MR patch — RDNA2/3 VFMA64=4cy.
+
+### Audit Wave — F-001 through F-009
+
+#### Fixed
+- **F-001**: Universal scheduler test compilation failures (primal routing dead-code wired in 5 tests).
+- **F-003**: `workload_migration/validation.rs` rewritten — `ResourceRequirements` derives from
+  `WorkloadSpec`, `PreflightOutcome` enum, `validate_preflight()` with sysinfo CPU/memory check,
+  `PreMigrationSnapshot::capture()` / `rollback()`. 11 unit tests.
+- **F-004**: `StorageProvisioningConfig` hardcoded endpoint deprecated; `Default` impl added.
+- **F-005**: `SoftwareHsmProvider` (AES-256-GCM + ed25519-dalek) and `LocalKeyringProvider`
+  (D-Bus Secret Service probe + software fallback) implemented. Display input full Linux keymap
+  (nav keys, F1–F12, A–Z, 0–9). Window focus via `Arc<RwLock<Option<WindowId>>>` threading across
+  async tasks; `WindowUnfocused` event bug fixed (was reading stale focus before overwrite).
+- **F-007**: `compute.*` vs `toadstool.*` namespace contract documented in `docs/reference/SERVER_METHODS.md`.
+- **F-009**: Phases 1–3 complete (see above).
+
+#### Added
+- **`LoadBalancer`**: Equal (round-robin), Weighted, Dynamic (least-loaded with health decay). 6 tests.
+- **RISC-V `V` extension detection** in `cpu_resource.rs` and `auto_config/hardware/cpu.rs`.
+- **`llvm-cov` baseline**: 61.35% line coverage across non-GPU crates.
+
+---
+
 ## [Unreleased] - February 18, 2026
 
 ### biomeOS Node Atomic Alignment

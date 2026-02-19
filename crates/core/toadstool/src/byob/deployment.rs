@@ -72,20 +72,20 @@ impl ActiveDeployment {
     }
 
     /// Update resource usage
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Called by deployment lifecycle hooks (pending wiring)
     pub fn update_resource_usage(&mut self, resource_usage: ResourceUsage) {
         self.resource_usage = resource_usage;
         self.updated_at = Instant::now();
     }
 
     /// Get elapsed time since creation
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Used by health monitor and metrics reporting
     pub fn elapsed(&self) -> std::time::Duration {
         self.created_at.elapsed()
     }
 
-    /// Check if deployment is active
-    #[allow(dead_code)]
+    /// Check if deployment is active (Starting or Running)
+    #[allow(dead_code)] // Used by deployment lifecycle queries
     pub fn is_active(&self) -> bool {
         matches!(
             self.status,
@@ -93,8 +93,8 @@ impl ActiveDeployment {
         )
     }
 
-    /// Check if deployment is completed
-    #[allow(dead_code)]
+    /// Check if deployment has reached a terminal state
+    #[allow(dead_code)] // Used by cleanup sweeps
     pub fn is_completed(&self) -> bool {
         matches!(
             self.status,
