@@ -291,31 +291,77 @@ impl UniversalScheduler {
                 return native_engine.execute(request).await;
             }
 
-            // No primal and no native engine - return proper error
-            let error_msg = format!(
-                "No execution capability available for '{}': no matching primal provider and no local native runtime engine registered",
-                executable
-            );
-            warn!("{}", error_msg);
-            Ok(ExecutionResponse {
-                execution_id: Uuid::new_v4(),
-                status: crate::execution::ExecutionStatus::Failed {
-                    error: error_msg.clone(),
-                },
-                output: crate::execution::ExecutionOutput {
-                    data: Vec::new(),
-                    stdout: None,
-                    stderr: Some(error_msg),
-                    exit_code: Some(127), // Command not found
-                    format: Some("text/plain".to_string()),
-                    result: HashMap::new(),
-                    metadata: HashMap::new(),
-                },
-                metrics: crate::RuntimeMetrics::default(),
-                duration: Duration::from_millis(0),
-                runtime_used: crate::execution::RuntimeType::Native,
-                warnings: vec!["Register a native runtime engine or primal provider with NativeExecution capability".to_string()],
-            })
+            // No primal provider and no registered runtime engine.
+            // Sovereign fallback: attempt direct local process execution.
+            // This preserves autonomy — the scheduler can run binaries itself
+            // without requiring any registered capability provider.
+            let start = std::time::Instant::now();
+            let execution_id = Uuid::new_v4();
+            match tokio::process::Command::new(executable)
+                .args(args)
+                .envs(env)
+                .output()
+                .await
+            {
+                Ok(output) => {
+                    let duration = start.elapsed();
+                    let stdout_text = String::from_utf8_lossy(&output.stdout).into_owned();
+                    let stderr_text = String::from_utf8_lossy(&output.stderr).into_owned();
+                    let exit_code = output.status.code().unwrap_or(-1);
+                    let status = if output.status.success() {
+                        crate::execution::ExecutionStatus::Success
+                    } else {
+                        crate::execution::ExecutionStatus::Failed {
+                            error: format!("process exited with code {exit_code}"),
+                        }
+                    };
+                    Ok(ExecutionResponse {
+                        execution_id,
+                        status,
+                        output: crate::execution::ExecutionOutput {
+                            data: output.stdout,
+                            stdout: Some(stdout_text),
+                            stderr: if stderr_text.is_empty() {
+                                None
+                            } else {
+                                Some(stderr_text)
+                            },
+                            exit_code: Some(exit_code),
+                            format: Some("text/plain".to_string()),
+                            result: HashMap::new(),
+                            metadata: HashMap::new(),
+                        },
+                        metrics: crate::RuntimeMetrics::default(),
+                        duration,
+                        runtime_used: crate::execution::RuntimeType::Native,
+                        warnings: Vec::new(),
+                    })
+                }
+                Err(e) => {
+                    let duration = start.elapsed();
+                    let error_msg = format!("Failed to spawn '{}': {}", executable, e);
+                    warn!("{}", error_msg);
+                    Ok(ExecutionResponse {
+                        execution_id,
+                        status: crate::execution::ExecutionStatus::Failed {
+                            error: error_msg.clone(),
+                        },
+                        output: crate::execution::ExecutionOutput {
+                            data: Vec::new(),
+                            stdout: None,
+                            stderr: Some(error_msg),
+                            exit_code: Some(127),
+                            format: Some("text/plain".to_string()),
+                            result: HashMap::new(),
+                            metadata: HashMap::new(),
+                        },
+                        metrics: crate::RuntimeMetrics::default(),
+                        duration,
+                        runtime_used: crate::execution::RuntimeType::Native,
+                        warnings: Vec::new(),
+                    })
+                }
+            }
         }
     }
 
@@ -407,7 +453,7 @@ impl UniversalScheduler {
         let providers = self.primal_registry.get_all_providers().await;
         let matching_provider = providers
             .iter()
-            .find(|p| format!("{:?}", p.primal_type()) == primal_type);
+            .find(|p| p.primal_type().as_str() == primal_type);
 
         if let Some(provider) = matching_provider {
             // Build and route the request through the primal registry
@@ -502,7 +548,7 @@ impl UniversalScheduler {
                 } else {
                     providers
                         .iter()
-                        .map(|p| format!("{:?}", p.primal_type()))
+                        .map(|p| p.primal_type().as_str().to_string())
                         .collect::<Vec<_>>()
                         .join(", ")
                 }
@@ -543,9 +589,7 @@ impl UniversalScheduler {
 
         // BiomeOS integration: Look for a BiomeOS primal provider
         let providers = self.primal_registry.get_all_providers().await;
-        let biome_provider = providers
-            .iter()
-            .find(|p| format!("{:?}", p.primal_type()).contains("BiomeOS"));
+        let biome_provider = providers.iter().find(|p| p.primal_type().as_str() == "os");
 
         if let Some(provider) = biome_provider {
             // Route to BiomeOS primal

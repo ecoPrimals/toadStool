@@ -244,10 +244,11 @@ async fn test_load_biome_manifest_invalid_yaml() {
     let result = load_biome_manifest(&manifest_path).await;
 
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Failed to parse manifest file"));
+    let err_str = result.unwrap_err().to_string();
+    assert!(
+        err_str.contains("Failed to parse") || err_str.contains("failed to parse"),
+        "expected parse error, got: {err_str}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

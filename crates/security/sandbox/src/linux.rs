@@ -19,16 +19,59 @@ use crate::types::{FilesystemMount, ResourceUsage, SandboxConfig, SandboxSpec};
 pub struct LinuxSandboxManager {
     _config: SandboxConfig,
     processes: RwLock<HashMap<String, u32>>, // sandbox_id -> pid
+    /// Kernel capabilities detected at construction time.
+    platform_caps: LinuxPlatformCaps,
+}
+
+/// Detected Linux kernel capabilities, probed once at startup.
+#[derive(Debug, Clone)]
+pub struct LinuxPlatformCaps {
+    pub cgroups_v2: bool,
+    pub seccomp: bool,
+    pub namespaces: bool,
+    pub available_ns: Vec<String>,
+}
+
+impl LinuxPlatformCaps {
+    /// Probe the running kernel for available isolation features.
+    #[must_use]
+    pub fn probe() -> Self {
+        let cgroups_v2 = has_cgroups_v2();
+        let seccomp = has_seccomp();
+        let namespaces = has_namespaces();
+        let available_ns = get_available_namespaces();
+        tracing::info!(
+            cgroups_v2,
+            seccomp,
+            namespaces,
+            ns = ?available_ns,
+            "Linux sandbox capabilities probed"
+        );
+        Self {
+            cgroups_v2,
+            seccomp,
+            namespaces,
+            available_ns,
+        }
+    }
 }
 
 impl LinuxSandboxManager {
-    /// Create a new Linux sandbox manager
+    /// Create a new Linux sandbox manager, probing kernel capabilities immediately.
     #[must_use]
     pub fn new(config: SandboxConfig) -> Self {
+        let platform_caps = LinuxPlatformCaps::probe();
         Self {
             _config: config,
             processes: RwLock::new(HashMap::new()),
+            platform_caps,
         }
+    }
+
+    /// Return the detected kernel capabilities for this node.
+    #[must_use]
+    pub fn capabilities(&self) -> &LinuxPlatformCaps {
+        &self.platform_caps
     }
 
     /// Create sandbox using Linux namespaces
@@ -185,25 +228,21 @@ impl LinuxSandboxManager {
 }
 
 /// Linux capability detection
-#[allow(dead_code)]
 pub fn has_cgroups_v2() -> bool {
     std::path::Path::new("/sys/fs/cgroup/cgroup.controllers").exists()
 }
 
 /// Check if Linux supports seccomp
-#[allow(dead_code)]
 pub fn has_seccomp() -> bool {
     std::path::Path::new("/proc/sys/kernel/seccomp").exists()
 }
 
 /// Check if Linux supports namespaces
-#[allow(dead_code)]
 pub fn has_namespaces() -> bool {
     std::path::Path::new("/proc/self/ns").exists()
 }
 
 /// Get available namespace types
-#[allow(dead_code)]
 pub fn get_available_namespaces() -> Vec<String> {
     let mut namespaces = Vec::new();
 

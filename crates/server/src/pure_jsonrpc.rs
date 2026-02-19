@@ -163,7 +163,7 @@ pub struct JsonWorkloadSubmission {
 
 impl JsonWorkloadSubmission {
     /// Convert into tarpc submission (decode base64, consumes self)
-    fn into_tarpc(self) -> Result<TarpcWorkloadSubmission, String> {
+    pub fn into_tarpc(self) -> Result<TarpcWorkloadSubmission, String> {
         use base64::{engine::general_purpose::STANDARD, Engine as _};
 
         let data = STANDARD

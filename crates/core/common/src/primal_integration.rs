@@ -94,9 +94,6 @@
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
-#[allow(deprecated)]
-use crate::interned_strings::capabilities;
-
 /// Service endpoint discovered at runtime
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalEndpoint {

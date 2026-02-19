@@ -65,6 +65,38 @@ pub enum PrimalType {
     Custom(String),
 }
 
+impl PrimalType {
+    /// Canonical lowercase name for routing and discovery.
+    ///
+    /// Use this instead of `format!("{:?}", …)` to avoid coupling to Debug output.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        match self {
+            PrimalType::Compute => "compute",
+            PrimalType::Security => "security",
+            PrimalType::Storage => "storage",
+            PrimalType::AI => "ai",
+            PrimalType::Network => "network",
+            PrimalType::OS => "os",
+            PrimalType::Custom(name) => name.as_str(),
+        }
+    }
+
+    /// Parse from a string (case-insensitive).
+    #[must_use]
+    pub fn from_str_lossy(s: &str) -> Self {
+        match s.to_ascii_lowercase().as_str() {
+            "compute" => PrimalType::Compute,
+            "security" => PrimalType::Security,
+            "storage" => PrimalType::Storage,
+            "ai" => PrimalType::AI,
+            "network" => PrimalType::Network,
+            "os" => PrimalType::OS,
+            other => PrimalType::Custom(other.to_string()),
+        }
+    }
+}
+
 /// Primal capabilities
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrimalCapability {

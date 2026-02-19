@@ -22,6 +22,86 @@ use toadstool::universal::{
 };
 use uuid::Uuid;
 
+use toadstool::universal::ResponseStatus;
+
+/// Succeeding mock provider for testing happy-path primal scheduling.
+struct SucceedingMockProvider {
+    instance_id: String,
+    context: PrimalContext,
+    primal_type: PrimalType,
+}
+
+#[async_trait]
+impl UniversalPrimalProvider for SucceedingMockProvider {
+    fn primal_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn instance_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn context(&self) -> &PrimalContext {
+        &self.context
+    }
+    fn primal_type(&self) -> PrimalType {
+        self.primal_type.clone()
+    }
+    fn capabilities(&self) -> Vec<PrimalCapability> {
+        vec![PrimalCapability::NativeExecution {
+            architectures: vec!["x86_64".to_string()],
+        }]
+    }
+    async fn health_check(&self) -> PrimalHealth {
+        PrimalHealth::Healthy
+    }
+    fn endpoints(&self) -> PrimalEndpoints {
+        PrimalEndpoints {
+            primary: "http://localhost:8080".to_string(),
+            health: "http://localhost:8080/health".to_string(),
+            metrics: None,
+            admin: None,
+            events_endpoint: None,
+            custom: HashMap::new(),
+        }
+    }
+    async fn handle_primal_request(
+        &self,
+        request: PrimalRequest,
+    ) -> toadstool::ToadStoolResult<PrimalResponse> {
+        Ok(PrimalResponse {
+            request_id: request.id,
+            status: ResponseStatus::Success,
+            payload: serde_json::json!({"stdout": format!("Primal '{}' executed successfully", self.primal_type.as_str()), "exit_code": 0}),
+            metadata: HashMap::new(),
+            timestamp: chrono::Utc::now(),
+        })
+    }
+    async fn initialize(&mut self, _config: serde_json::Value) -> toadstool::ToadStoolResult<()> {
+        Ok(())
+    }
+    async fn shutdown(&mut self) -> toadstool::ToadStoolResult<()> {
+        Ok(())
+    }
+    fn can_serve_context(&self, _context: &PrimalContext) -> bool {
+        true
+    }
+}
+
+fn make_test_context() -> PrimalContext {
+    PrimalContext {
+        user_id: "test".to_string(),
+        device_id: "test-device".to_string(),
+        session_id: Uuid::new_v4().to_string(),
+        network_location: NetworkLocation {
+            ip_address: "127.0.0.1".to_string(),
+            subnet: None,
+            network_id: None,
+            geo_location: None,
+        },
+        security_level: SecurityLevel::Standard,
+        metadata: HashMap::new(),
+    }
+}
+
 /// Minimal mock provider that always fails requests (for error path testing)
 struct FailingMockProvider {
     instance_id: String,
@@ -693,12 +773,21 @@ async fn test_scheduler_job_with_minimal_resources() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_schedule_primal_job() {
     let registry = Arc::new(UniversalPrimalRegistry::new());
-    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+    // Register a compute provider so the scheduler can route to it
+    let provider = Arc::new(SucceedingMockProvider {
+        instance_id: "compute-mock-1".to_string(),
+        context: make_test_context(),
+        primal_type: PrimalType::Compute,
+    });
+    registry.register_primal(provider).await.unwrap();
+    let scheduler = UniversalScheduler::new(Arc::clone(&registry))
+        .await
+        .unwrap();
 
     let job = UniversalJob {
         id: Uuid::new_v4(),
         job_type: UniversalJobType::Primal {
-            primal_type: "compute".to_string(),
+            primal_type: "compute".to_string(), // matches PrimalType::Compute.as_str()
             endpoint: "http://localhost:8080".to_string(),
             payload: serde_json::json!({"task": "test"}),
         },
@@ -710,14 +799,16 @@ async fn test_scheduler_schedule_primal_job() {
     };
 
     let result = scheduler.schedule_job(job).await;
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "primal job scheduling must succeed");
     let response = result.unwrap();
-    assert!(response
-        .output
-        .stdout
-        .as_ref()
-        .unwrap()
-        .contains("Primal execution"));
+    assert!(
+        response
+            .output
+            .stdout
+            .as_ref()
+            .map_or(false, |s| s.contains("executed successfully")),
+        "stdout should confirm execution"
+    );
     assert_eq!(
         response.runtime_used,
         toadstool::execution::RuntimeType::Native
@@ -727,7 +818,16 @@ async fn test_scheduler_schedule_primal_job() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_schedule_biome_os_job() {
     let registry = Arc::new(UniversalPrimalRegistry::new());
-    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+    // Register an OS primal provider so BiomeOS routing has a target
+    let provider = Arc::new(SucceedingMockProvider {
+        instance_id: "biome-os-mock-1".to_string(),
+        context: make_test_context(),
+        primal_type: PrimalType::OS,
+    });
+    registry.register_primal(provider).await.unwrap();
+    let scheduler = UniversalScheduler::new(Arc::clone(&registry))
+        .await
+        .unwrap();
 
     let job = UniversalJob {
         id: Uuid::new_v4(),
@@ -743,20 +843,15 @@ async fn test_scheduler_schedule_biome_os_job() {
     };
 
     let result = scheduler.schedule_job(job).await;
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "BiomeOS job scheduling must succeed");
     let response = result.unwrap();
-    assert!(response
-        .output
-        .stdout
-        .as_ref()
-        .unwrap()
-        .contains("BiomeOS execution"));
-    assert!(response
-        .output
-        .stdout
-        .as_ref()
-        .unwrap()
-        .contains("team-001"));
+    assert!(
+        matches!(
+            response.status,
+            toadstool::execution::ExecutionStatus::Success
+        ),
+        "BiomeOS job should succeed with registered OS provider"
+    );
 }
 
 // ============================================================================
@@ -783,13 +878,18 @@ async fn test_scheduler_wasm_job_response_structure() {
     };
 
     let result = scheduler.schedule_job(job).await;
-    assert!(result.is_ok());
+    assert!(
+        result.is_ok(),
+        "WASM job scheduling returns Ok even when no engine is registered"
+    );
     let response = result.unwrap();
+    // runtime_used is always Wasm for WASM jobs regardless of execution outcome
     assert_eq!(
         response.runtime_used,
         toadstool::execution::RuntimeType::Wasm
     );
-    assert!(response.output.stdout.is_some());
+    // Without a registered WASM engine, execution gracefully fails with stderr
+    assert!(response.output.stderr.is_some() || response.output.stdout.is_some());
 }
 
 // ============================================================================

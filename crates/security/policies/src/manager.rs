@@ -22,14 +22,20 @@ use crate::evaluator::ConditionEvaluator;
 use crate::executor::ActionExecutor;
 use crate::types::*;
 
-/// Cached policy with metadata
+/// Cached policy with LRU metadata.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 struct CachedPolicy {
     policy: SecurityPolicy,
     cached_at: SystemTime,
     access_count: u64,
     last_accessed: SystemTime,
+}
+
+impl CachedPolicy {
+    fn touch(&mut self) {
+        self.access_count += 1;
+        self.last_accessed = SystemTime::now();
+    }
 }
 
 /// Policy manager trait
@@ -226,12 +232,17 @@ impl PolicyManager for FilePolicyManager {
     async fn load_policy(&self, policy_id: &str) -> ToadStoolResult<SecurityPolicy> {
         debug!("Loading policy: {}", policy_id);
 
-        // Check cache first
+        // Check cache first; update LRU metadata on hit.
         {
-            let cache = self.policy_cache.read().await;
-            if let Some(cached) = cache.get(policy_id) {
+            let mut cache = self.policy_cache.write().await;
+            if let Some(cached) = cache.get_mut(policy_id) {
                 if self.is_cache_valid(cached) {
-                    debug!("Policy {} found in cache", policy_id);
+                    debug!(
+                        "Policy {} found in cache (hits: {})",
+                        policy_id,
+                        cached.access_count + 1
+                    );
+                    cached.touch();
                     return Ok(cached.policy.clone());
                 }
             }

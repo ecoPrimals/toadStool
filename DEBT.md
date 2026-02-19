@@ -263,6 +263,25 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 
 ---
 
+## Session 5 Resolutions — Feb 19, 2026
+
+| ID | Resolution |
+|---|---|
+| S5-001 | `execution.rs` (992 L): tests extracted → `tests/execution_types_tests.rs`; production file now 472 L |
+| S5-002 | `pure_jsonrpc.rs` (979 L): tests extracted → `tests/pure_jsonrpc_unit_tests.rs`; production file now 513 L |
+| S5-003 | `storage_backend.rs` (986 L): converted to directory module (`storage_backend/mod.rs`), tests stay inline (private field access) |
+| S5-004 | `security/policies/src/manager.rs`: `CachedPolicy.access_count`/`last_accessed` were never updated on cache hit — implemented `CachedPolicy::touch()`, upgraded read-lock to write-lock on cache hit |
+| S5-005 | `security/sandbox/src/linux.rs`: 4 dead capability-detection functions evolved into `LinuxPlatformCaps::probe()` struct, called at `LinuxSandboxManager::new()` — now used, `#[allow(dead_code)]` removed |
+| S5-006 | `universal/types.rs`: `PrimalType::as_str()` and `from_str_lossy()` added — removes fragile `format!("{:?}", p.primal_type())` pattern in scheduler matching |
+| S5-007 | `universal/scheduler.rs`: all 3 Debug-format primal-type comparisons replaced with `p.primal_type().as_str()` — correct case-normalized routing |
+| S5-008 | `universal/scheduler.rs`: native job fallback now runs `tokio::process::Command` directly (sovereign local execution) — no longer returns `Failed` when no primal or engine registered |
+| S5-009 | `universal_scheduler_tests.rs`: added `SucceedingMockProvider`, registered OS/Compute providers in primal/BiomeOS tests — 5 previously-failing tests now pass (49 total pass) |
+| S5-010 | `primal_integration.rs`: removed unused `#[allow(deprecated)] use crate::interned_strings::capabilities` import |
+| S5-011 | `cargo clippy --workspace` — zero errors after all above changes |
+| S5-012 | `cargo fmt --all` — all files clean |
+
+---
+
 ## New Active Issues — Session 4 Audit (Feb 19, 2026)
 
 ### F-001: Test Compilation Failures (3 test targets)
@@ -416,6 +435,11 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 | R-025 | Health dashboard WebSocket JS removed (no `/ws` endpoint); replaced with SSE-style polling of `/health` every 5 s | Feb 18, 2026 |
 | R-026 | Songbird dead-code audit: `submit_job()` entry point activates all private helpers; `MassiveJobDistributor` fields wired via `select_algorithm()` / `plan_distribution()`; `NetworkLoadBalancer::node_health` exposed via `register_node`/`select_node`/`deregister_node` | Feb 18, 2026 |
 | R-027 | `discover_beardog_at` / `discover_nestgate_at` used wrong defaults (`SECURITY`/`STORAGE` capability strings instead of primal names `"beardog"`/`"nestgate"`) — caused 12 test failures via ENV_MUTEX poisoning cascade; fixed with primal directory name defaults | Feb 18, 2026 |
+| R-028 | F-001 through F-009 all resolved (see commit b80a377a): test compilation, fmt, security monitoring, policy evaluation, dead_code, ILP restructure, CLI stub | Feb 19, 2026 |
+| R-029 | F-001 remaining: 5 universal_scheduler_tests failures — sovereign native fallback + `PrimalType::as_str()` routing fix; all 49 tests pass | Feb 19, 2026 |
+| R-030 | F-010 partial: `security/sandbox/src/linux.rs` dead capability functions evolved to `LinuxPlatformCaps::probe()`, called at construction | Feb 19, 2026 |
+| R-031 | Policy cache LRU metadata (`access_count`, `last_accessed`) now updated on cache hit — `CachedPolicy::touch()` + write-lock upgrade | Feb 19, 2026 |
+| R-032 | 3 large files (execution.rs 992L, pure_jsonrpc.rs 979L, storage_backend.rs 986L) refactored: tests extracted or module-directorized | Feb 19, 2026 |
 
 ---
 
