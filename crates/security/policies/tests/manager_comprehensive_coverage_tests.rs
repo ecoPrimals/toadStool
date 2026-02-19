@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
+use tempfile::TempDir;
 
 use toadstool::security::{
     FilesystemSecurity, IsolationLevel, NetworkSecurity, SecurityContext, UserContext,
@@ -21,10 +22,13 @@ use toadstool_security_policies::types::*;
 // Helper Functions - Modern, Idiomatic Rust
 // ============================================================================
 
-/// Create test configuration with modern defaults
-fn create_test_config() -> PolicyManagerConfig {
+/// Create test configuration using a caller-supplied temp directory.
+///
+/// Pass the `TempDir` value into the test to keep it alive for the
+/// duration — when it drops, the directory is cleaned up automatically.
+fn create_test_config_in(dir: &TempDir) -> PolicyManagerConfig {
     PolicyManagerConfig {
-        policy_dir: PathBuf::from("/tmp/test-policies-modern"),
+        policy_dir: dir.path().to_path_buf(),
         cache_enabled: true,
         cache_ttl_hours: 1,
         strict_enforcement: true,
@@ -32,6 +36,13 @@ fn create_test_config() -> PolicyManagerConfig {
         max_composition_depth: 5,
         validation_timeout_ms: 1000,
     }
+}
+
+/// Convenience wrapper that allocates a fresh unique temp directory.
+fn create_test_config() -> (TempDir, PolicyManagerConfig) {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let config = create_test_config_in(&dir);
+    (dir, config)
 }
 
 /// Create a test policy with proper structure
@@ -121,7 +132,7 @@ fn create_test_system_info() -> SystemInfo {
 
 #[tokio::test]
 async fn test_policy_manager_creation() {
-    let config = create_test_config();
+    let (_tmp, config) = create_test_config();
     let result = FilePolicyManager::new(config);
 
     assert!(result.is_ok(), "Manager creation should succeed");
@@ -131,8 +142,9 @@ async fn test_policy_manager_creation() {
 
 #[tokio::test]
 async fn test_policy_manager_with_custom_config() {
+    let _tmp = tempfile::tempdir().expect("temp dir");
     let config = PolicyManagerConfig {
-        policy_dir: PathBuf::from("/tmp/test-policies-custom"),
+        policy_dir: _tmp.path().to_path_buf(),
         cache_enabled: false,
         cache_ttl_hours: 24,
         strict_enforcement: false,
@@ -150,9 +162,10 @@ async fn test_policy_manager_with_custom_config() {
 
 #[tokio::test]
 async fn test_policy_manager_default_config() {
+    let _tmp = tempfile::tempdir().expect("temp dir");
     // Modern idiomatic pattern: struct initialization with defaults
     let config = PolicyManagerConfig {
-        policy_dir: PathBuf::from("/tmp/test-policies-default"),
+        policy_dir: _tmp.path().to_path_buf(),
         ..PolicyManagerConfig::default()
     };
 
@@ -170,7 +183,7 @@ async fn test_policy_manager_default_config() {
 
 #[tokio::test]
 async fn test_policy_save_and_load() {
-    let config = create_test_config();
+    let (_tmp, config) = create_test_config();
     let manager = FilePolicyManager::new(config).expect("Manager creation should succeed");
 
     let policy = create_test_policy("save-load-test");
@@ -193,7 +206,7 @@ async fn test_policy_save_and_load() {
 
 #[tokio::test]
 async fn test_load_multiple_policies() {
-    let config = create_test_config();
+    let (_tmp, config) = create_test_config();
     let manager = FilePolicyManager::new(config).expect("Manager creation should succeed");
 
     // Save multiple policies
@@ -218,7 +231,7 @@ async fn test_load_multiple_policies() {
 
 #[tokio::test]
 async fn test_policy_deletion() {
-    let config = create_test_config();
+    let (_tmp, config) = create_test_config();
     let manager = FilePolicyManager::new(config).expect("Manager creation should succeed");
 
     let policy = create_test_policy("delete-test");
@@ -251,7 +264,7 @@ async fn test_policy_deletion() {
 
 #[tokio::test]
 async fn test_policy_with_inheritance() {
-    let config = create_test_config();
+    let (_tmp, config) = create_test_config();
     let manager = FilePolicyManager::new(config).expect("Manager creation should succeed");
 
     // Create and save parent policy
@@ -283,7 +296,7 @@ async fn test_policy_with_inheritance() {
 
 #[tokio::test]
 async fn test_policy_composition() {
-    let config = create_test_config();
+    let (_tmp, config) = create_test_config();
     let manager = FilePolicyManager::new(config).expect("Manager creation should succeed");
 
     // Create multiple policies
@@ -317,7 +330,7 @@ async fn test_policy_composition() {
 
 #[tokio::test]
 async fn test_evaluate_policy_allow() {
-    let config = create_test_config();
+    let (_tmp, config) = create_test_config();
     let manager = FilePolicyManager::new(config).expect("Manager creation should succeed");
 
     let mut policy = create_test_policy("allow-policy");
@@ -356,7 +369,7 @@ async fn test_evaluate_policy_allow() {
 
 #[tokio::test]
 async fn test_evaluate_policy_deny() {
-    let config = create_test_config();
+    let (_tmp, config) = create_test_config();
     let manager = FilePolicyManager::new(config).expect("Manager creation should succeed");
 
     let mut policy = create_test_policy("deny-policy");
@@ -399,7 +412,7 @@ async fn test_evaluate_policy_deny() {
 
 #[tokio::test]
 async fn test_concurrent_policy_access() {
-    let config = create_test_config();
+    let (_tmp, config) = create_test_config();
     let manager =
         Arc::new(FilePolicyManager::new(config).expect("Manager creation should succeed"));
 
@@ -432,7 +445,7 @@ async fn test_concurrent_policy_access() {
 
 #[tokio::test]
 async fn test_policy_validation() {
-    let config = create_test_config();
+    let (_tmp, config) = create_test_config();
     let manager = FilePolicyManager::new(config).expect("Manager creation should succeed");
 
     let policy = create_test_policy("validation-test");
@@ -451,7 +464,7 @@ async fn test_policy_validation() {
 
 #[tokio::test]
 async fn test_list_policies() {
-    let config = create_test_config();
+    let (_tmp, config) = create_test_config();
     let manager = FilePolicyManager::new(config).expect("Manager creation should succeed");
 
     // Save several policies

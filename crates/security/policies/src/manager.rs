@@ -341,7 +341,8 @@ impl PolicyManager for FilePolicyManager {
             ToadStoolError::configuration(format!("Failed to read directory entry: {e}"))
         })? {
             let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("yaml") {
+            // Policies are persisted as TOML (see save_policy_to_file).
+            if path.extension().and_then(|s| s.to_str()) == Some("toml") {
                 if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
                     policies.push(stem.to_string());
                 }
