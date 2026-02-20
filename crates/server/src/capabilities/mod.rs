@@ -499,17 +499,11 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
 }
 
 /// Capability name constants (avoids repeated literal allocations)
-#[allow(dead_code)] // used by tests
 pub(crate) const CAP_COMPUTE: &str = "compute";
-#[allow(dead_code)]
 pub(crate) const CAP_ORCHESTRATION: &str = "orchestration";
-#[allow(dead_code)]
 pub(crate) const CAP_JSON_RPC: &str = "json-rpc";
-#[allow(dead_code)]
 pub(crate) const CAP_MEMORY_LARGE: &str = "memory-large";
-#[allow(dead_code)]
 pub(crate) const CAP_MEMORY_MEDIUM: &str = "memory-medium";
-#[allow(dead_code)]
 pub(crate) const CAP_MEMORY_SMALL: &str = "memory-small";
 
 /// Build capabilities list from resources

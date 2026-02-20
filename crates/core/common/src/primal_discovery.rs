@@ -324,31 +324,6 @@ impl PrimalDiscovery {
     // See: docs/architecture/INFANT_DISCOVERY.md for full architecture
     // ========================================================================
 
-    #[allow(dead_code)] // Legacy compatibility layer — modern code uses infant_discovery::InfantDiscoveryEngine
-    fn select_best(&self, endpoints: &[PrimalEndpoint]) -> Option<PrimalEndpoint> {
-        // Selection criteria (in order of priority):
-        // 1. Trust level (Verified > Local > Unverified)
-        // 2. Latency (lower is better)
-        // 3. Recency (more recent is better)
-
-        endpoints
-            .iter()
-            .min_by_key(|e| {
-                (
-                    // Trust level as sortable key
-                    match e.trust_level {
-                        TrustLevel::Verified => 0,
-                        TrustLevel::Local => 1,
-                        TrustLevel::Unverified => 2,
-                    },
-                    // Latency
-                    e.latency_ms,
-                    // Age (older = larger value)
-                    e.last_seen.elapsed().as_secs(),
-                )
-            })
-            .cloned()
-    }
 }
 
 /// Discovery errors

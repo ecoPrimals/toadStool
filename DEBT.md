@@ -1264,6 +1264,16 @@ updated.  All four sites plus HTTP semantic wiring fixed:
 | `crates/server/src/errors.rs` | Added `ServerError::NotFound(String)` variant; wired `ToadStoolError::Runtime → ServerError::Execution` and `ToadStoolError::NotFound → ServerError::NotFound`; added reverse `ServerError::NotFound → ToadStoolError::NotFound`; added 3 new tests |
 | `crates/server/tests/error_tests.rs` | Added `ServerError::NotFound` to exhaustive match enumeration test |
 
+**Archive sweep** — false-positive `dead_code` and dead private code removed:
+
+- `crates/server/src/capabilities/mod.rs`: 6 `#[allow(dead_code)]` annotations removed from
+  `CAP_COMPUTE`/`CAP_ORCHESTRATION`/`CAP_JSON_RPC`/`CAP_MEMORY_LARGE`/`CAP_MEMORY_MEDIUM`/
+  `CAP_MEMORY_SMALL` — all six constants ARE used in `build_capabilities()`. The suppression
+  was preemptive.
+- `crates/core/common/src/primal_discovery.rs`: private method `select_best` deleted —
+  annotated "Legacy compatibility layer", genuinely unreachable since `InfantDiscoveryEngine`
+  replaced it. 26 lines of dead code removed. WGSL shader sources: zero `TODO`/`FIXME` found.
+
 ### Resolved Debt in Session 25
 
 | ID | Item | Status |
@@ -1273,6 +1283,8 @@ updated.  All four sites plus HTTP semantic wiring fixed:
 | (new) | `fft_1d_f64.wgsl` `params.inverse` never read — twiddle conjugation missing — fixed | ✅ |
 | (new) | `Fft1DF64` had no GPU roundtrip test; impulse-only test hides broken inverse — 3 tests added | ✅ |
 | (new) | `ToadStoolError::Runtime`/`NotFound` exhaustiveness gap in server + api — 4 sites fixed | ✅ |
+| (new) | False-positive `dead_code` on 6 used constants in `capabilities/mod.rs` — annotations removed | ✅ |
+| (new) | Dead private `select_best` in legacy `primal_discovery.rs` — method deleted | ✅ |
 
 ### Remaining Debt after Session 25
 
