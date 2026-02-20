@@ -812,6 +812,9 @@ evolution, smart structural refactoring, capability-based dispatch, and mock iso
 | D-S18-002 | cubecl transitive `dirs-sys`: `cubecl v0.4.0 → dirs v5.0.1 → dirs-sys v0.4.1`. Fix: PR to cubecl replacing `dirs` with `etcetera`. | Low |
 | D-S18-003 | 12 pending integration tests in `crates/integration-tests/tests/pending/` — unblock by implementing missing `toadstool::ecosystem::discovery`, `SecurityContext`, `WorkloadType` APIs. | Medium |
 | D-S19-001 | `GpuExecutor::build_tensor` still does CPU round-trip for input tensors (reads GPU→CPU then re-uploads). Full fix: zero-copy input path via `Arc<wgpu::Buffer>` views (same as output zero-copy in S18-003). | Medium |
+| D-S20-001 | `TensorSession::matmul` compiles all 4 tier pipelines per `run()` call even when only one tier is used. Optimise: lazy-compile or pre-compile once at session construction and cache. | Low |
+| D-S20-002 | `TensorSession` has no attention (`scaled_dot_product_attention`) or head-split/concat ops — these are needed for full Transformer fused dispatch. Blocked by: correct `mha_projections` dispatch and a `transpose` op. | Medium |
+| D-S20-003 | neuralSpring `src/evolved/` (~2075 lines) can now be retired. All 11 shortcomings resolved. Coordinate with neuralSpring team to delete the evolved/ workarounds and wire barracuda APIs directly. | Medium |
 
 ---
 
@@ -846,3 +849,47 @@ to the architecture capability matrix. The last major CPU round-trip in
 | D-S16-003 | `ParallelFilter` 16M limit | → D-S19 |
 | D-S18-002 | cubecl `dirs-sys` | → D-S19 |
 | D-S18-003 | 12 pending integration tests | → D-S19 |
+
+---
+
+## Session 20 — neuralSpring Clone + 11-Shortcoming Absorption (Feb 20, 2026)
+
+`neuralSpring` cloned from `git@github.com:syntheticChemistry/neuralSpring.git`
+into `ecoPrimals/neuralSpring/`. Audit of the 11-item `NEURALSPRING_TOADSTOOL_HANDOFF_FEB20_2026.md`
+against current ToadStool HEAD revealed **10 of 11 already resolved** in prior sessions.
+The remaining item (S-01/S-11: `TensorSession` ML ops) was implemented in this session.
+
+### Shortcoming Audit vs ToadStool HEAD
+
+| Shortcoming | Status | Resolved In |
+|---|---|---|
+| S-01 — Per-op submission (46–78× penalty) | ✅ | S20 (TensorSession ML ops) |
+| S-02 — Naive matmul, zero cache reuse | ✅ | S19 (4-tier KernelRouter, matmul_cpu_tiled + matmul_gpu_evolved) |
+| S-03 — MHA z-dispatch bug | ✅ | Prior session (workgroups_z = seq_len / d_model) |
+| S-04 — Softmax on oversized pooled buffers | ✅ | Prior session (params.size uniform in softmax_simple.wgsl) |
+| S-05 — `leaky_relu` Params mismatch | ✅ | S14 (negative_slope field added) |
+| S-06 — `elu` Params mismatch | ✅ | S14 (alpha field added) |
+| S-07 — `Tensor::from_buffer` is pub(crate) | ✅ | Already pub in current HEAD |
+| S-08 — `layer_norm_wgsl` GPU→CPU→GPU round-trip | ✅ | Prior session (from_pooled_buffer) |
+| S-09 — `log_softmax_wgsl` GPU→CPU→GPU round-trip | ✅ | Prior session (from_pooled_buffer) |
+| S-10 — `new_cpu()` always fails on llvmpipe | ✅ | Prior session (new_cpu_relaxed() added) |
+| S-11 — `TensorSession` limited to {Add, Mul, Fma, Scale} | ✅ | S20 (see below) |
+
+### Resolved Issues (Session 20)
+
+| ID | Resolved Issue | Date |
+|---|---|---|
+| S20-001 | **S-01/S-11 resolved — `TensorSession` ML ops**: Extended `SessionOp` enum with `MatMul` (4-tier device-aware), `ReLU`, `GELU`, `Softmax`, `LayerNorm`. Added public record methods (`matmul`, `relu`, `gelu`, `softmax`, `layer_norm`, `reshape`). Pre-compilation via `compile_auto_pipeline` (auto-layout, no manual BGL). `auto_bind_group` helper for zero-boilerplate bind groups. `run()` updated to encode all new ops in the existing single-encoder batch. 6 new tests (2×2 matmul, relu, gelu, softmax, layer_norm, end-to-end MLP fused) all PASS. Equivalent to the 46–78× fused pipeline in `neuralSpring/src/evolved/`. | Feb 20, 2026 |
+
+### Remaining Debt after Session 20
+
+| ID | Item | Status |
+|---|---|---|
+| D-S16-003 | `ParallelFilter` 16M limit | Carried |
+| D-S17-002 | `capabilities.rs` large | Carried |
+| D-S18-002 | cubecl `dirs-sys` | Carried |
+| D-S18-003 | 12 pending integration tests | Carried |
+| D-S19-001 | `GpuExecutor` input CPU round-trip | Carried |
+| D-S20-001 | `TensorSession` compiles all 4 matmul tiers per `run()` | New |
+| D-S20-002 | `TensorSession` missing attention + head-split ops | New |
+| D-S20-003 | neuralSpring `evolved/` can be retired (all 11 shortcomings resolved) | New |
