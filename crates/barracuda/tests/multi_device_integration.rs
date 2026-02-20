@@ -404,7 +404,10 @@ async fn test_concurrent_device_acquisition() {
     }
 
     // Wait for all tasks
-    let results: Vec<_> = futures::future::join_all(handles).await;
+    let mut results = Vec::with_capacity(handles.len());
+    for h in handles {
+        results.push(h.await);
+    }
 
     let successes = results.iter().filter(|r| r.is_ok()).count();
     println!("\n{}/{} acquisitions succeeded", successes, results.len());

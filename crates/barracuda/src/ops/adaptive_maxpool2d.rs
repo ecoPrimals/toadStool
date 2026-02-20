@@ -20,7 +20,7 @@
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! # use barracuda::tensor::Tensor;
 //! # use barracuda::device::test_pool;
-//! # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
 //! # let input = Tensor::from_data(&[1.0f32; 196], vec![1, 1, 14, 14], device).unwrap();
 //! // Input: [batch, channels, 14, 14]
 //! // Output: [batch, channels, 7, 7] (adaptive to target size)
@@ -243,7 +243,7 @@ impl Tensor {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # use barracuda::tensor::Tensor;
     /// # use barracuda::device::test_pool;
-    /// # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
     /// # let input = Tensor::from_data(&[1.0f32; 49], vec![1, 1, 7, 7], device).unwrap();
     /// // Adaptive max pool to 7x7 (regardless of input size)
     /// let _pooled = input.adaptive_maxpool2d((7, 7))?;

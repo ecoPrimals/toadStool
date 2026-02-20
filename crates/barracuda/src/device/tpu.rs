@@ -65,21 +65,27 @@ pub enum TpuGeneration {
     Custom(u32),
 }
 
-/// TPU backend implementation
+/// TPU backend implementation.
+///
+/// `CloudTpu` and `CoralEdge` are real hardware variants (FFI pending hardware
+/// availability). `Mock` is isolated behind the `mock-tpu` feature flag and
+/// never compiled into production builds.
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // Variants will be used when hardware is available
+#[allow(dead_code)] // Variants used when hardware features are enabled
 enum TpuBackend {
-    /// Google Cloud TPU (via libtpu)
+    /// Google Cloud TPU (via libtpu FFI — enabled by `cloud-tpu` feature)
     CloudTpu {
         // Reserved for libtpu FFI handle
     },
 
-    /// Coral Edge TPU (via libedgetpu)
+    /// Coral Edge TPU (via libedgetpu — enabled by `coral-tpu` feature)
     CoralEdge {
         // Reserved for Coral API handle
     },
 
-    /// Mock TPU (for testing without hardware)
+    /// Test-only: not compiled into production builds.
+    /// Gate behind `mock-tpu` feature; never use without the feature flag.
+    #[cfg(feature = "mock-tpu")]
     Mock { mock_device_name: String },
 }
 
@@ -225,8 +231,8 @@ impl TpuDevice {
         &self,
         _a: &[f32],
         _b: &[f32],
-        m: usize,
-        n: usize,
+        _m: usize,
+        _n: usize,
         _k: usize,
     ) -> Result<Vec<f32>> {
         match &*self.backend {
@@ -270,10 +276,10 @@ impl TpuDevice {
                     })
                 }
             }
+            #[cfg(feature = "mock-tpu")]
             TpuBackend::Mock { .. } => {
-                // Mock implementation for testing (ISOLATED from production)
-                // Returns zeros for predictable test behavior
-                Ok(vec![0.0; m * n])
+                // Test-only: returns zeros for predictable test behaviour.
+                Ok(vec![0.0; _m * _n])
             }
         }
     }

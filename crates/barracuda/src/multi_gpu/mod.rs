@@ -249,8 +249,6 @@ impl GpuPool {
         R: Send + 'static,
         F: Fn(Arc<WgpuDevice>, T) -> Result<R> + Send + Sync + Clone + 'static,
     {
-        use futures::future::join_all;
-
         let num_devices = self.devices.len().max(1);
         let mut handles = Vec::new();
 
@@ -267,7 +265,12 @@ impl GpuPool {
             handles.push(handle);
         }
 
-        let results: Vec<_> = join_all(handles).await;
+        // Await handles sequentially — tasks were spawned in parallel above;
+        // sequential await just collects results without blocking the GPU work.
+        let mut results = Vec::with_capacity(handles.len());
+        for h in handles {
+            results.push(h.await);
+        }
         let mut output = Vec::new();
         for result in results {
             match result {

@@ -787,6 +787,39 @@ production files.
 
 ---
 
+## Session 19 — Deep Debt: futures eliminated, async fix, tensor refactor, vendor-ID-first, mock isolation (Feb 20, 2026)
+
+Systematic pass across all debt categories: external dependency elimination, idiomatic async
+evolution, smart structural refactoring, capability-based dispatch, and mock isolation.
+
+### Resolved Issues (Session 19)
+
+| ID | Resolved Issue | Date |
+|---|---|---|
+| S19-001 | **D-S17-001 resolved — `futures` dep eliminated**: `futures` removed from `Cargo.toml`. All 5 production sites replaced: `multi_gpu::join_all` → sequential tokio await (tasks already spawned in parallel; sequential collect is correct); `gpu_executor`, `nms/compute`, `dispatch/benchmark`, `dispatch/config` `block_on` calls → `pollster::block_on`. Two test files (`fault_injection.rs`, `multi_device_integration.rs`) also patched. Doc examples in 8 ops files updated. `pollster` promoted from dev-dep to regular dep (replaces `futures::executor::block_on` across the codebase). | Feb 20, 2026 |
+| S19-002 | **D-S18-001 resolved — last `block_on` in critical path eliminated**: `GpuExecutor::build_tensor` sync closure converted to `async fn build_tensor(storage, device)`. Called with `.await` from the already-async `execute()`. No more `pollster::block_on` in the hot GPU dispatch path. | Feb 20, 2026 |
+| S19-003 | **D-S17-002 partially resolved — `tensor.rs` smart refactor**: `tensor.rs` (979 lines) converted to `tensor/` module. `TensorBuffer` (buffer pool management) extracted to `tensor/buffer.rs` with a new `try_arc()` method. `Tensor` stays in `tensor/mod.rs`. `try_arc_buffer()` now delegates to `buffer.try_arc()`. Stale "Phase 2/3" comments updated. | Feb 20, 2026 |
+| S19-004 | **Hardcoding → capability-based: vendor-ID-first classification**: `cache_hierarchy.rs::classify_substrate()` evolved from string-name matching to vendor-ID-first (`VENDOR_NVIDIA`, `VENDOR_AMD`, `VENDOR_INTEL`, `VENDOR_APPLE`, `VENDOR_ARM`, `VENDOR_QUALCOMM`). String heuristics retained as fallback for zero-vendor-ID configurations (some Mesa/software drivers). | Feb 20, 2026 |
+| S19-005 | **Mock isolation: `TpuBackend::Mock` variant gated**: `#[cfg(feature = "mock-tpu")]` applied to the `Mock` variant in the `TpuBackend` enum and its match arm in `matmul()`. The variant no longer compiles into production binaries. `TpuBackend::CloudTpu` and `CoralEdge` correctly left as production variants (real hardware scaffolding, not mocks). | Feb 20, 2026 |
+| S19-006 | **Duplicate GPU probe functions consolidated**: `dispatch/benchmark.rs::check_gpu()` and `dispatch/config.rs::check_gpu_available()` each duplicated raw wgpu adapter setup. Both evolved to use `WgpuDevice::new()` — a consistent, tested, capability-aware probe — eliminating duplicated low-level wgpu boilerplate. | Feb 20, 2026 |
+
+### Remaining Debt (carried forward)
+
+| ID | Item | Priority |
+|---|---|---|
+| D-S16-003 | `ParallelFilter` max 16M elements; second-level scan hierarchy for genome-scale. | Low |
+| D-S17-002 | `capabilities.rs` (~930 lines) still large. Smart refactor deferred. | Low |
+| D-S18-002 | cubecl transitive `dirs-sys`: `cubecl v0.4.0 → dirs v5.0.1 → dirs-sys v0.4.1`. Fix: PR to cubecl replacing `dirs` with `etcetera`. | Low |
+| D-S18-003 | 12 pending integration tests in `crates/integration-tests/tests/pending/` — unblock by implementing missing `toadstool::ecosystem::discovery`, `SecurityContext`, `WorkloadType` APIs. | Medium |
+| D-S19-001 | `GpuExecutor::build_tensor` still does CPU round-trip for input tensors (reads GPU→CPU then re-uploads). Full fix: zero-copy input path via `Arc<wgpu::Buffer>` views (same as output zero-copy in S18-003). | Medium |
+
+---
+
+*Debt is tracked, not ignored. Each workaround has an evolution path.*
+*The goal is zero workarounds — vendor-agnostic, capability-based code.*
+
+---
+
 ## Session 18 — Phase 3 Integration, Apple GPU, GpuExecutor Zero-Copy, Integration Tests (Feb 20, 2026)
 
 Sovereign Compute Evolution Phase 3 activated: the `WgslOptimizer` is now
@@ -803,18 +836,13 @@ to the architecture capability matrix. The last major CPU round-trip in
 | S18-003 | **D-S16-001 resolved — `GpuExecutor` zero-copy output**: `GpuTensorStorage.buffer` changed to `Arc<wgpu::Buffer>`. Added `Tensor::from_arc_buffer(Arc<wgpu::Buffer>, ...)` and `Tensor::try_arc_buffer()`. `GpuTensorStorage::from_tensor()`: Owned buffers → `Arc::clone()` (zero copies); pooled → `copy_buffer_to_buffer()` (GPU-to-GPU). `execute()` no longer calls `to_vec()` + `write_from_cpu()`. The GPU→CPU→GPU round-trip eliminated. | Feb 20, 2026 |
 | S18-004 | **D-S16-004 resolved — `crates/integration-tests` created**. 21 orphan workspace-root `tests/*.rs` files migrated. 3 active suites (13 tests pass, 7 ignored — live cluster or dep debt). 12 files with unimplemented-API deps quarantined to `tests/pending/` with tracking `README.md`. Workspace-root `tests/` is now `.rs`-free. | Feb 20, 2026 |
 
-### Remaining Debt (carried forward)
+### Remaining Debt after Session 18 (resolved in Session 19 where noted)
 
-| ID | Item | Priority |
+| ID | Item | Resolved |
 |---|---|---|
-| D-S16-003 | `ParallelFilter` max 16M elements; second-level scan hierarchy for genome-scale. | Low |
-| D-S17-001 | `futures` dep: `multi_gpu::join_all`, `dispatch/benchmark.rs`, `dispatch/config.rs`. Evolution: `tokio::JoinSet` for multi-GPU; inline async for dispatch. | Low |
-| D-S17-002 | `tensor.rs` (~980 lines) and `capabilities.rs` (~930 lines) remain large. Smart refactor deferred. | Low |
-| D-S18-001 | `GpuExecutor::build_tensor` input: last `futures::executor::block_on` in critical path. Fix: make `execute()` fully async, remove sync closure, use `.await` on `read_to_cpu()`. | Low |
-| D-S18-002 | cubecl transitive `dirs-sys`: `cubecl v0.4.0 → dirs v5.0.1 → dirs-sys v0.4.1`. Fix: PR to cubecl replacing `dirs` with `etcetera`. | Low |
-| D-S18-003 | 12 pending integration tests in `crates/integration-tests/tests/pending/` — unblock by implementing missing `toadstool::ecosystem::discovery`, `SecurityContext`, `WorkloadType` APIs. | Medium |
-
----
-
-*Debt is tracked, not ignored. Each workaround has an evolution path.*
-*The goal is zero workarounds — vendor-agnostic, capability-based code.*
+| D-S17-001 | `futures` dep: `multi_gpu::join_all`, dispatch files | ✅ S19-001 |
+| D-S17-002 | `tensor.rs` (~980 lines) large | ✅ S19-003 (partially) |
+| D-S18-001 | Last `block_on` in critical path | ✅ S19-002 |
+| D-S16-003 | `ParallelFilter` 16M limit | → D-S19 |
+| D-S18-002 | cubecl `dirs-sys` | → D-S19 |
+| D-S18-003 | 12 pending integration tests | → D-S19 |

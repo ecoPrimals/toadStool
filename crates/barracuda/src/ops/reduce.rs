@@ -21,7 +21,7 @@
 //! # use barracuda::tensor::Tensor;
 //! # use barracuda::ops::reduce::ReduceOperation;
 //! # use barracuda::device::test_pool;
-//! # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
 //! let input = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device)?;
 //! let _sum_tensor = input.reduce(ReduceOperation::Sum)?;
 //! # Ok(())
@@ -243,7 +243,7 @@ impl Tensor {
     /// # use barracuda::tensor::Tensor;
     /// # use barracuda::ops::reduce::ReduceOperation;
     /// # use barracuda::device::test_pool;
-    /// # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
     /// # let input = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device).unwrap();
     /// // Sum all elements
     /// let partial_sums = input.clone().reduce(ReduceOperation::Sum)?;

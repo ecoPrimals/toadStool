@@ -426,40 +426,53 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         Self::estimate(device)
     }
 
-    /// Classify substrate type from adapter info
+    /// Classify substrate type from adapter info.
+    ///
+    /// Strategy: vendor ID first (authoritative, set by driver), then name
+    /// substring matching as a fallback for unknown/zero vendor IDs.
     fn classify_substrate(info: &wgpu::AdapterInfo) -> SubstrateType {
+        use crate::device::vendor::{
+            VENDOR_AMD, VENDOR_APPLE, VENDOR_ARM, VENDOR_INTEL, VENDOR_NVIDIA, VENDOR_QUALCOMM,
+        };
+
         match info.device_type {
             wgpu::DeviceType::Cpu => SubstrateType::Cpu,
+
             wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu => {
-                // Classify GPU vendor from adapter info
-                let name_lower = info.name.to_lowercase();
-                if name_lower.contains("nvidia")
-                    || name_lower.contains("geforce")
-                    || name_lower.contains("quadro")
-                    || name_lower.contains("tesla")
-                {
-                    SubstrateType::NvidiaGpu
-                } else if name_lower.contains("amd")
-                    || name_lower.contains("radeon")
-                    || name_lower.contains("rx ")
-                    || name_lower.contains("navi")
-                {
-                    SubstrateType::AmdGpu
-                } else if name_lower.contains("intel")
-                    || name_lower.contains("arc")
-                    || name_lower.contains("iris")
-                {
-                    SubstrateType::IntelGpu
-                } else if name_lower.contains("apple")
-                    || name_lower.contains("m1")
-                    || name_lower.contains("m2")
-                    || name_lower.contains("m3")
-                {
-                    SubstrateType::AppleGpu
-                } else {
-                    SubstrateType::Other
+                // Primary: vendor ID is authoritative when the driver reports it.
+                match info.vendor {
+                    VENDOR_NVIDIA => SubstrateType::NvidiaGpu,
+                    VENDOR_AMD    => SubstrateType::AmdGpu,
+                    VENDOR_INTEL  => SubstrateType::IntelGpu,
+                    VENDOR_APPLE  => SubstrateType::AppleGpu,
+                    VENDOR_ARM | VENDOR_QUALCOMM => SubstrateType::Other,
+                    _ => {
+                        // Fallback: name-based heuristic for drivers that report
+                        // vendor_id = 0 (e.g. some Mesa/software configurations).
+                        let n = info.name.to_lowercase();
+                        if n.contains("nvidia") || n.contains("geforce")
+                            || n.contains("quadro") || n.contains("tesla")
+                        {
+                            SubstrateType::NvidiaGpu
+                        } else if n.contains("amd") || n.contains("radeon")
+                            || n.contains("rx ") || n.contains("navi")
+                        {
+                            SubstrateType::AmdGpu
+                        } else if n.contains("intel") || n.contains("arc")
+                            || n.contains("iris")
+                        {
+                            SubstrateType::IntelGpu
+                        } else if n.contains("apple") || n.contains("m1")
+                            || n.contains("m2")   || n.contains("m3")
+                        {
+                            SubstrateType::AppleGpu
+                        } else {
+                            SubstrateType::Other
+                        }
+                    }
                 }
             }
+
             _ => SubstrateType::Other,
         }
     }

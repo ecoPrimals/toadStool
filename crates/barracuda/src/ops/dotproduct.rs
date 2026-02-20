@@ -20,7 +20,7 @@
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! # use barracuda::tensor::Tensor;
 //! # use barracuda::device::test_pool;
-//! # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
 //! let a = Tensor::from_data(&[1.0f32, 2.0, 3.0], vec![3], device.clone())?;
 //! let b = Tensor::from_data(&[4.0f32, 5.0, 6.0], vec![3], device)?;
 //! let _partial_sums = a.dotproduct(&b)?;
@@ -224,7 +224,7 @@ impl Tensor {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// # use barracuda::tensor::Tensor;
     /// # use barracuda::device::test_pool;
-    /// # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
     /// # let a = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
     /// # let b = Tensor::from_data(&[1.0f32, 1.0, 1.0, 1.0], vec![4], device).unwrap();
     /// // Compute a · b

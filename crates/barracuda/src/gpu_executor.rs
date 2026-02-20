@@ -257,12 +257,15 @@ impl ComputeExecutor for GpuExecutor {
         // ── Build Tensors from storage ──────────────────────────────────────
         // Each input must have been placed on this GPU by `transfer()`.
         // We upload via CPU roundtrip since `Tensor` currently requires owned buffers.
-        // This is a known evolution target: once Tensor supports Arc<Buffer> views
-        // the round-trip can be eliminated.
-        // Dtype-aware deserialization: convert raw bytes to f32 for the Tensor API.
-        // Each dtype is reinterpreted at its native width then widened/narrowed to f32.
-        let build_tensor = |storage: &Arc<dyn TensorStorage>| -> Result<crate::tensor::Tensor> {
-            let data_bytes = futures::executor::block_on(storage.read_to_cpu())?;
+        // Evolution target (D-S18-001): once Tensor supports Arc<Buffer> views the
+        // round-trip can be eliminated and this becomes zero-copy.
+        //
+        // `build_tensor` is now a proper async helper — no pollster::block_on needed.
+        async fn build_tensor(
+            storage: &Arc<dyn TensorStorage>,
+            device: &Arc<crate::device::WgpuDevice>,
+        ) -> Result<crate::tensor::Tensor> {
+            let data_bytes = storage.read_to_cpu().await?;
             let desc  = storage.descriptor();
             let numel = desc.numel;
             let elem  = desc.dtype.size_bytes();
@@ -299,52 +302,66 @@ impl ComputeExecutor for GpuExecutor {
                     .chunks_exact(8)
                     .map(|c| u64::from_ne_bytes(c.try_into().unwrap()) as f32)
                     .collect(),
-                DType::Bool => data_bytes.iter().map(|&b| if b != 0 { 1.0f32 } else { 0.0 }).collect(),
+                DType::Bool => data_bytes
+                    .iter()
+                    .map(|&b| if b != 0 { 1.0f32 } else { 0.0 })
+                    .collect(),
             };
-            crate::tensor::Tensor::from_data(&floats, desc.shape.clone(), self.device.clone())
-        };
+            crate::tensor::Tensor::from_data(&floats, desc.shape.clone(), device.clone())
+        }
 
         let output_tensor: crate::tensor::Tensor = match op {
             // ── Unary ops ───────────────────────────────────────────────────
             MathOp::Negate => {
-                let t = build_tensor(&inputs[0])?;
-                // mul_scalar is on WgpuDevice, not on Tensor — negate via sub(0) or element-wise
+                let t = build_tensor(&inputs[0], &self.device).await?;
                 t.mul_scalar(-1.0f32)?
             }
-            MathOp::Abs    => build_tensor(&inputs[0])?.abs_wgsl()?,
-            MathOp::Sqrt   => build_tensor(&inputs[0])?.sqrt_wgsl()?,
-            MathOp::Exp    => build_tensor(&inputs[0])?.exp_wgsl()?,
+            MathOp::Abs    => build_tensor(&inputs[0], &self.device).await?.abs_wgsl()?,
+            MathOp::Sqrt   => build_tensor(&inputs[0], &self.device).await?.sqrt_wgsl()?,
+            MathOp::Exp    => build_tensor(&inputs[0], &self.device).await?.exp_wgsl()?,
 
             // ── Binary ops ──────────────────────────────────────────────────
             MathOp::Add => {
-                let (a, b) = (build_tensor(&inputs[0])?, build_tensor(&inputs[1])?);
+                let (a, b) = (
+                    build_tensor(&inputs[0], &self.device).await?,
+                    build_tensor(&inputs[1], &self.device).await?,
+                );
                 a.add(&b)?
             }
             MathOp::Sub => {
-                let (a, b) = (build_tensor(&inputs[0])?, build_tensor(&inputs[1])?);
+                let (a, b) = (
+                    build_tensor(&inputs[0], &self.device).await?,
+                    build_tensor(&inputs[1], &self.device).await?,
+                );
                 a.sub(&b)?
             }
             MathOp::Mul => {
-                let (a, b) = (build_tensor(&inputs[0])?, build_tensor(&inputs[1])?);
+                let (a, b) = (
+                    build_tensor(&inputs[0], &self.device).await?,
+                    build_tensor(&inputs[1], &self.device).await?,
+                );
                 a.mul(&b)?
             }
 
             // ── Matrix multiply ─────────────────────────────────────────────
             MathOp::MatMul { .. } => {
-                let (a, b) = (build_tensor(&inputs[0])?, build_tensor(&inputs[1])?);
+                let (a, b) = (
+                    build_tensor(&inputs[0], &self.device).await?,
+                    build_tensor(&inputs[1], &self.device).await?,
+                );
                 a.matmul(&b)?
             }
 
             // ── Activation ops ──────────────────────────────────────────────
-            MathOp::Softmax { .. } => build_tensor(&inputs[0])?.softmax()?,
-            MathOp::ReLU           => build_tensor(&inputs[0])?.relu()?,
-            MathOp::Sigmoid        => build_tensor(&inputs[0])?.sigmoid()?,
-            MathOp::Tanh           => build_tensor(&inputs[0])?.tanh()?,
-            MathOp::GELU           => build_tensor(&inputs[0])?.gelu_wgsl()?,
+            MathOp::Softmax { .. } => build_tensor(&inputs[0], &self.device).await?.softmax()?,
+            MathOp::ReLU           => build_tensor(&inputs[0], &self.device).await?.relu()?,
+            MathOp::Sigmoid        => build_tensor(&inputs[0], &self.device).await?.sigmoid()?,
+            MathOp::Tanh           => build_tensor(&inputs[0], &self.device).await?.tanh()?,
+            MathOp::GELU           => build_tensor(&inputs[0], &self.device).await?.gelu_wgsl()?,
 
             // ── Reductions ──────────────────────────────────────────────────
-            MathOp::ReduceSum  { .. } => build_tensor(&inputs[0])?.sum()?,
-            MathOp::ReduceMean { .. } => build_tensor(&inputs[0])?.mean()?,
+            MathOp::ReduceSum  { .. } => build_tensor(&inputs[0], &self.device).await?.sum()?,
+            MathOp::ReduceMean { .. } => build_tensor(&inputs[0], &self.device).await?.mean()?,
 
             // ── Unsupported ─────────────────────────────────────────────────
             other => {

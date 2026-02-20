@@ -122,28 +122,28 @@ pub async fn get_test_device_if_f64_gpu_available() -> Option<Arc<WgpuDevice>> {
 // Sync helpers - always available for test modules across crate
 // ============================================================================
 
-/// Sync wrapper for get_test_device (uses futures executor)
+/// Sync wrapper for `get_test_device`.
 ///
 /// **Prefer async**: Use `get_test_device().await` in `#[tokio::test]` when possible.
 /// This sync helper exists for test functions that can't be async.
 ///
-/// **Thread-safe**: Multiple tests can call this concurrently - they all get the same device.
+/// **Thread-safe**: Multiple tests can call this concurrently — they all get the same device.
 pub fn get_test_device_sync() -> Arc<WgpuDevice> {
-    futures::executor::block_on(get_test_device())
+    pollster::block_on(get_test_device())
 }
 
-/// Sync wrapper for get_test_device_if_gpu_available
+/// Sync wrapper for `get_test_device_if_gpu_available`.
 ///
-/// Returns None if only software adapter available. Use for tests requiring real GPU.
+/// Returns `None` if only a software adapter is available. Use for tests requiring real GPU.
 pub fn get_test_device_if_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
-    futures::executor::block_on(get_test_device_if_gpu_available())
+    pollster::block_on(get_test_device_if_gpu_available())
 }
 
-/// Sync wrapper for get_test_device_if_f64_gpu_available
+/// Sync wrapper for `get_test_device_if_f64_gpu_available`.
 ///
-/// Returns None if no f64-capable GPU. Use for double-precision shader tests.
+/// Returns `None` if no f64-capable GPU is present. Use for double-precision shader tests.
 pub fn get_test_device_if_f64_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
-    futures::executor::block_on(get_test_device_if_f64_gpu_available())
+    pollster::block_on(get_test_device_if_f64_gpu_available())
 }
 
 // ============================================================================
@@ -199,7 +199,7 @@ pub mod test_prelude {
 
     /// Create test tensor (sync version)
     pub fn test_tensor_blocking(data: &[f32], shape: &[usize], device: &Arc<WgpuDevice>) -> Tensor {
-        futures::executor::block_on(test_tensor(data, shape, device))
+        pollster::block_on(test_tensor(data, shape, device))
     }
 
     /// Create zeros tensor on shared device
@@ -274,11 +274,10 @@ mod tests {
         // Multiple concurrent accesses should all get same device
         let handles: Vec<_> = (0..10).map(|_| tokio::spawn(get_test_device())).collect();
 
-        let devices: Vec<_> = futures::future::join_all(handles)
-            .await
-            .into_iter()
-            .map(|r| r.unwrap())
-            .collect();
+        let mut devices = Vec::with_capacity(handles.len());
+        for h in handles {
+            devices.push(h.await.unwrap());
+        }
 
         // All should point to same device
         let first_ptr = Arc::as_ptr(&devices[0]);

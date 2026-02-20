@@ -18,7 +18,10 @@ thiserror = "1.0"
 # GPU compute (WebGPU - hardware agnostic, handles CPU/GPU/NPU/TPU!)
 # Uses workspace wgpu v22 - Pure Rust, no renderdoc C dependency
 wgpu = { workspace = true }
-futures = "0.3"
+# pollster: minimal single-threaded executor for sync→async bridge points.
+# Pure Rust, no runtime overhead. Replaces the removed `futures` crate.
+# futures dep eliminated: join_all → sequential tokio await, block_on → pollster.
+pollster = "0.3"
 bytemuck = { version = "1.14", features = ["derive"] }
 
 # Async runtime (needed for all async operations)
@@ -52,7 +55,6 @@ chrono = { version = "0.4", optional = true }
 [dev-dependencies]
 tokio = { version = "1.35", features = ["full"] }
 approx = "0.5"
-pollster = "0.3"
 proptest = { workspace = true }
 
 [features]

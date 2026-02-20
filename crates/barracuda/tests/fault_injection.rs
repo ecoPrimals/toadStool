@@ -499,11 +499,10 @@ async fn test_concurrent_error_handling() {
     }
 
     // All tasks should complete (no panics)
-    let results: Vec<_> = futures::future::join_all(handles)
-        .await
-        .into_iter()
-        .map(|r| r.unwrap())
-        .collect();
+    let mut results = Vec::with_capacity(handles.len());
+    for h in handles {
+        results.push(h.await.unwrap());
+    }
 
     let _expected_errors = num_tasks / 3 + if num_tasks % 3 > 0 { 1 } else { 0 };
     let _actual_errors = results.iter().filter(|&&x| x).count();

@@ -28,7 +28,7 @@ impl NMS {
         }
 
         // Create device (use test pool when available, skip when no GPU)
-        let device = futures::executor::block_on(
+        let device = pollster::block_on(
             crate::device::test_pool::get_test_device_if_gpu_available(),
         )
         .ok_or_else(|| crate::error::BarracudaError::device("No GPU available for NMS"))?;

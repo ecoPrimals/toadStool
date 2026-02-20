@@ -21,7 +21,7 @@
 //! # use barracuda::tensor::Tensor;
 //! # use barracuda::ops::map::MapOperation;
 //! # use barracuda::device::test_pool;
-//! # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+//! # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
 //! let input = Tensor::from_data(&[1.0f32, 2.0, 3.0], vec![3], device)?;
 //! let _squared = input.map(MapOperation::Square)?;
 //! # Ok(())
@@ -231,7 +231,7 @@ impl Tensor {
     /// # use barracuda::tensor::Tensor;
     /// # use barracuda::ops::map::MapOperation;
     /// # use barracuda::device::test_pool;
-    /// # let device = futures::executor::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
+    /// # let device = pollster::block_on(test_pool::get_test_device_if_gpu_available()).unwrap();
     /// # let input = Tensor::from_data(&[1.0f32, 2.0, 3.0, 4.0], vec![4], device).unwrap();
     /// // Square all elements
     /// let _squared = input.clone().map(MapOperation::Square)?;

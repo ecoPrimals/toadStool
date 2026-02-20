@@ -170,25 +170,12 @@ fn default_thresholds() -> HashMap<&'static str, usize> {
     m
 }
 
-/// Check if GPU is available (via wgpu)
+/// Check if a hardware GPU is available at runtime.
+///
+/// Uses `WgpuDevice::new()` for a consistent probe rather than duplicating
+/// low-level wgpu setup code.  Returns `false` on software/CPU adapters.
 fn check_gpu_available() -> bool {
-    // Use futures::executor::block_on for blocking async in non-async context
-    futures::executor::block_on(async {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
-
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: None,
-                force_fallback_adapter: false,
-            })
-            .await;
-
-        adapter.is_some()
-    })
+    pollster::block_on(crate::device::WgpuDevice::new()).is_ok()
 }
 
 /// Get global dispatch config (lazy-initialized)

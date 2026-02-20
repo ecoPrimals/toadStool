@@ -1,46 +1,18 @@
-//! Unified Tensor abstraction - hardware-agnostic tensor compute
+//! Unified Tensor abstraction — hardware-agnostic tensor compute.
 //!
-//! **Deep Debt Excellence**:
-//! - Single Tensor type works on any device
-//! - Self-knowledge: Tensor knows its device
-//! - Automatic operations dispatch based on device
+//! - Single `Tensor` type works on any device
+//! - Self-knowledge: every `Tensor` carries its `WgpuDevice`
+//! - Operations dispatch automatically to the owning device
 //! - Zero duplication across backends
 //! - Buffer pooling for zero-allocation steady state
+
+pub(crate) mod buffer;
+use buffer::TensorBuffer;
 
 use crate::device::tensor_context::PooledBuffer;
 use crate::device::{Auto, Device, WgpuDevice, WorkloadHint};
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
-
-/// Buffer storage for Tensor - either owned or pooled
-///
-/// Pooled buffers automatically return to their pool when dropped,
-/// enabling zero-allocation steady state for tensor operations.
-pub(crate) enum TensorBuffer {
-    /// Owned buffer - dropped normally
-    Owned(Arc<wgpu::Buffer>),
-    /// Pooled buffer - returns to pool on drop
-    Pooled(Arc<PooledBuffer>),
-}
-
-impl TensorBuffer {
-    /// Get reference to the underlying wgpu buffer
-    pub fn as_ref(&self) -> &wgpu::Buffer {
-        match self {
-            TensorBuffer::Owned(buf) => buf.as_ref(),
-            TensorBuffer::Pooled(buf) => buf.buffer(),
-        }
-    }
-}
-
-impl Clone for TensorBuffer {
-    fn clone(&self) -> Self {
-        match self {
-            TensorBuffer::Owned(buf) => TensorBuffer::Owned(Arc::clone(buf)),
-            TensorBuffer::Pooled(buf) => TensorBuffer::Pooled(Arc::clone(buf)),
-        }
-    }
-}
 
 /// Tensor - hardware-agnostic tensor via WGSL/WebGPU
 ///
@@ -128,12 +100,9 @@ impl Tensor {
     /// (non-pooled) buffer, otherwise `None`.
     ///
     /// Callers that need direct buffer access for zero-copy bridge code use this
-    /// to avoid cloning the buffer contents.
+    /// to avoid copying buffer contents.
     pub fn try_arc_buffer(&self) -> Option<Arc<wgpu::Buffer>> {
-        match &self.buffer {
-            TensorBuffer::Owned(arc) => Some(Arc::clone(arc)),
-            TensorBuffer::Pooled(_) => None,
-        }
+        self.buffer.try_arc()
     }
 
     /// Create tensor from pooled buffer (internal use)
@@ -163,12 +132,11 @@ impl Tensor {
         matches!(self.buffer, TensorBuffer::Pooled(_))
     }
 
-    /// Query which unified Device type this tensor is conceptually on
+    /// Query which unified Device type this tensor is on.
     ///
-    /// **Phase 2**: Maps WgpuDevice to unified Device enum
+    /// Maps the runtime `wgpu::DeviceType` to the canonical `Device` enum.
     pub fn query_device(&self) -> Device {
-        // For Phase 2, all tensors use WgpuDevice
-        // Check device type to determine if GPU or CPU backend
+        // All tensors use WgpuDevice; map hardware type to Device variant.
         match self.device.device_type() {
             wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu => Device::GPU,
             wgpu::DeviceType::VirtualGpu => Device::GPU,
@@ -179,23 +147,20 @@ impl Tensor {
 
     /// Create a routing preference for this tensor's operations
     ///
-    /// **Phase 2 Note**: This sets an execution hint for future operations.
-    /// Full device migration comes in Phase 3.
+    /// Record a routing preference; live tensor migration is deferred (D-S18-003).
     ///
     /// # Example
     /// ```ignore
     /// let tensor = Tensor::randn(vec![1000, 1000]).await?;
-    /// let gpu_tensor = tensor.prefer_device(Device::GPU); // Hint for GPU
+    /// let gpu_tensor = tensor.prefer_device(Device::GPU);
     /// ```
     pub fn prefer_device(&self, _device: Device) -> Self {
         // Routing hint recorded; live device migration deferred (tracked as D-S18-003).
-        log::debug!("Device preference noted; migration not yet implemented");
+        log::debug!("Device preference noted; migration deferred (D-S18-003)");
         self.clone()
     }
 
-    /// Create tensor with workload hint for smart routing
-    ///
-    /// **Phase 2**: Adds metadata about workload characteristics
+    /// Create tensor with workload hint for smart routing.
     ///
     /// # Example
     /// ```ignore

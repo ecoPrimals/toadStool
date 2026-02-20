@@ -498,30 +498,15 @@ impl BenchmarkSuite {
     }
 }
 
-/// Check GPU availability and get name
+/// Probe GPU availability and return `(is_available, adapter_name)`.
+///
+/// Uses `WgpuDevice::new()` for a consistent probe rather than duplicating
+/// low-level wgpu setup code.
 fn check_gpu() -> (bool, Option<String>) {
-    futures::executor::block_on(async {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
-
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: None,
-                force_fallback_adapter: false,
-            })
-            .await;
-
-        match adapter {
-            Some(a) => {
-                let info = a.get_info();
-                (true, Some(info.name))
-            }
-            None => (false, None),
-        }
-    })
+    match pollster::block_on(crate::device::WgpuDevice::new()) {
+        Ok(device) => (true, Some(device.adapter_info().name.clone())),
+        Err(_) => (false, None),
+    }
 }
 
 /// Test data for benchmarking
