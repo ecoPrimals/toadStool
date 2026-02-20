@@ -56,8 +56,14 @@ impl GemmParams {
 pub struct GemmF64;
 
 impl GemmF64 {
+    /// The raw WGSL source for the GEMM f64 shader.
+    ///
+    /// Exposed so downstream crates can include this source in their own fused pipelines
+    /// without fragile cross-crate `include_str!` paths.
+    pub const WGSL: &'static str = include_str!("../../shaders/linalg/gemm_f64.wgsl");
+
     fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/linalg/gemm_f64.wgsl")
+        Self::WGSL
     }
 
     /// Execute batched matrix multiply: C = A * B

@@ -431,6 +431,10 @@ pub mod md;
 // complex_f64 + SU(3) WGSL libraries, Wilson plaquette, U(1) Higgs HMC, SU(3) HMC force
 pub mod lattice;
 
+// Life-science + analytical chemistry GPU primitives (wetSpring handoff v4, Feb 2026)
+// Smith-Waterman banded alignment, Gillespie SSA, decision-tree inference, Felsenstein pruning
+pub mod bio;
+
 // Quantization
 pub mod dequantize;
 pub mod fake_quantize;

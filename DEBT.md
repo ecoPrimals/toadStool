@@ -890,6 +890,111 @@ The remaining item (S-01/S-11: `TensorSession` ML ops) was implemented in this s
 | D-S18-002 | cubecl `dirs-sys` | Carried |
 | D-S18-003 | 12 pending integration tests | Carried |
 | D-S19-001 | `GpuExecutor` input CPU round-trip | Carried |
-| D-S20-001 | `TensorSession` compiles all 4 matmul tiers per `run()` | New |
-| D-S20-002 | `TensorSession` missing attention + head-split ops | New |
-| D-S20-003 | neuralSpring `evolved/` can be retired (all 11 shortcomings resolved) | New |
+| D-S20-001 | `TensorSession` compiles all 4 matmul tiers per `run()` | Carried |
+| D-S20-002 | `TensorSession` missing attention + head-split ops | Carried |
+| D-S20-003 | neuralSpring `evolved/` can be retired (all 11 shortcomings resolved) | Carried |
+
+---
+
+## Session 21 — wetSpring Handoff v4 Absorption (Feb 20, 2026)
+
+**Scope**: Absorb wetSpring handoff v4 (Feb 2026, Life Science & Analytical Chemistry).
+6 original requests; 3 already addressed by prior ToadStool sessions (RK4/RK45, GPU PRNG,
+LogSumExp). Remaining 3 + 2 absorption items implemented this session.
+
+### What Was Already Addressed (confirmed by wetSpring handoff)
+
+| Item | ToadStool API | Status |
+|------|---------------|--------|
+| BatchedRK4F64 | `numerical::rk45`, `ops::rk_stage::RkIntegrator`, `ops::md::integrators::rk4` | ✅ |
+| GPU PRNG | `ops::prng_xoshiro_wgsl::PrngXoshiro` | ✅ |
+| LogSumExp | `ops::logsumexp_wgsl::LogsumexpWgsl` | ✅ |
+
+### What Was Implemented This Session
+
+#### 1. `ops::bio` — New Bio GPU Primitives Module
+
+New `crates/barracuda/src/ops/bio/` with 4 new GPU primitives + WGSL shaders:
+
+| Primitive | Shader | API | Priority |
+|-----------|--------|-----|----------|
+| Banded Smith-Waterman local alignment | `shaders/bio/smith_waterman_banded_f64.wgsl` | `SmithWatermanGpu::align()` | P1 |
+| Parallel Gillespie SSA | `shaders/bio/gillespie_ssa_f64.wgsl` | `GillespieGpu::simulate()` | P1 |
+| Decision Tree / RF inference | `shaders/bio/tree_inference_f64.wgsl` | `TreeInferenceGpu::predict()` | P2 |
+| Felsenstein pruning likelihood | `shaders/bio/felsenstein_f64.wgsl` | `FelsensteinGpu::prune()` | P2 |
+
+**Smith-Waterman**: Anti-diagonal wavefront (one dispatch per diagonal), banded DP
+O(n·w), affine gap penalties (H/E/F matrices). Params in storage buffer (f64 not
+allowed in WGSL uniform). 3 tests pass.
+
+**Gillespie SSA**: Each thread = one independent trajectory. Inline xoshiro128**
+PRNG (4×u32 state per trajectory). Mass-action propensities, exponential waiting
+times, linear reaction selection. All f64 zeros via `f64(0.0)` (naga requires
+explicit f64 casts — abstract `0.0` resolves to f32). 2 tests pass.
+
+**Decision Tree**: Each thread = one (sample, tree) pair. Traverses flat-array
+tree from root to leaf. `tree_offsets` buffer enables random forest (M trees in
+one dispatch). 100% parity with wetSpring's 65-node / 28-feature sklearn export.
+2 tests pass.
+
+**Felsenstein**: Level-order parallelism (one dispatch per tree depth, bottom-up).
+Each thread handles (site, node) pair. Works with DNA (4-state) and protein (20-state).
+`log_likelihood()` on CPU using `FelsensteinResult::root_likelihoods()`. Compose
+with `LogsumexpWgsl` for GPU final reduction. 2 tests pass.
+
+#### 2. `GemmF64::WGSL` public constant
+
+Added `pub const WGSL: &'static str` to `GemmF64` impl in `ops/linalg/gemm_f64.rs`.
+Eliminates wetSpring's fragile cross-crate `include_str!` path
+(`../../../../phase1/toadstool/crates/barracuda/src/shaders/linalg/gemm_f64.wgsl`).
+wetSpring can now `use barracuda::linalg::GemmCachedF64` and delete `gemm_cached.rs`.
+
+#### WGSL Engineering Notes (naga f64 constraints)
+
+The WGSL/naga toolchain imposes non-obvious constraints for f64:
+1. `f64` not allowed in `var<uniform>` — use `var<storage, read>` for params structs containing f64
+2. Abstract float literal `0.0` resolves to f32 in `max()`, `select()`, and assignments — use `f64(0.0)` explicitly
+3. `max(0.0, f64_expr)` rejected — use explicit `if/else` branch or `f64(0.0)` cast
+4. All f64 shaders must use `compile_shader_f64()` (not raw `create_shader_module`) for exp/log patching
+
+These constraints are now documented in the bio shader headers.
+
+### Tests
+
+| Test | Status |
+|------|--------|
+| `ops::bio::smith_waterman::test_identical_sequences` | ✅ |
+| `ops::bio::smith_waterman::test_single_base_match` | ✅ |
+| `ops::bio::smith_waterman::test_no_match` | ✅ |
+| `ops::bio::gillespie::test_irreversible_decay_mean` | ✅ |
+| `ops::bio::gillespie::test_absorbing_state` | ✅ |
+| `ops::bio::tree_inference::test_stump_two_samples` | ✅ |
+| `ops::bio::tree_inference::test_deeper_tree` | ✅ |
+| `ops::bio::felsenstein::test_root_inherits_identical_tips` | ✅ |
+| `ops::bio::felsenstein::test_log_likelihood_two_sites` | ✅ |
+
+### Resolved Issues (Session 21)
+
+| ID | Item | Status |
+|----|------|--------|
+| wetSpring P1 | Smith-Waterman GPU alignment | ✅ Implemented |
+| wetSpring P1 | Gillespie SSA orchestration kernel | ✅ Implemented |
+| wetSpring P2 | Decision tree / RF GPU inference | ✅ Implemented |
+| wetSpring P2 | Felsenstein pruning likelihood | ✅ Implemented |
+| wetSpring Absorb | `GemmF64::WGSL` public constant (retire fragile include_str) | ✅ Implemented |
+
+### Remaining Debt after Session 21
+
+| ID | Item | Status |
+|----|------|--------|
+| D-S16-003 | `ParallelFilter` 16M element limit | Carried |
+| D-S17-002 | `capabilities.rs` ~930 lines; smart refactor deferred | Carried |
+| D-S18-002 | cubecl transitive `dirs-sys` | Carried |
+| D-S18-003 | 12 pending integration tests | Carried |
+| D-S19-001 | `GpuExecutor` input CPU round-trip | Carried |
+| D-S20-001 | `TensorSession` compiles all 4 matmul tiers per `run()` | Carried |
+| D-S20-002 | `TensorSession` missing attention + head-split ops | Carried |
+| D-S20-003 | neuralSpring `evolved/` can be retired | Carried |
+| D-S21-001 | `BatchedRK4F64` SSA wrapper: `RkIntegrator` + N-trajectory orchestration layer missing | New |
+| D-S21-002 | `GillespieGpu` reaction limit 32 (inline array); extend via dynamic dispatch for R>32 | New |
+| D-S21-003 | wetSpring `gemm_cached.rs` + `ParallelFilter` local workarounds can now be retired (GemmCachedF64 API + GemmF64::WGSL available) | New |
