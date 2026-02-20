@@ -150,11 +150,16 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let a = load_complex_from_input(idx_a);
     let b = load_complex_from_input(idx_b);
     
-    // Load twiddle factor (precomputed exp(-2πik/N))
+    // Load twiddle factor (precomputed exp(-2πik/N) for forward FFT).
+    // For the inverse FFT we need exp(+2πik/N) = conj(exp(-2πik/N)):
+    // negate the imaginary part so the same kernel serves both directions.
     let twiddle_stride = params.degree / (2u * stride);
     let twiddle_idx = local_idx * twiddle_stride;
-    let twiddle = load_twiddle(twiddle_idx);
-    
+    var twiddle = load_twiddle(twiddle_idx);
+    if params.inverse == 1u {
+        twiddle.im = -twiddle.im;
+    }
+
     // Perform butterfly (complex f64 arithmetic)
     let result = butterfly64(a, b, twiddle);
     

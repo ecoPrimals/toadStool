@@ -1,16 +1,16 @@
-//! Device Capability Detection - Runtime Hardware Limits
+//! Device Capability Detection — Runtime Hardware Limits.
 //!
-//! **Deep Debt Compliance**: Zero hardcoding, runtime discovery
+//! Answers the question **"what can this wgpu device do?"** by querying the
+//! adapter at construction time and providing typed, zero-hardcoded accessors.
 //!
-//! This module provides runtime detection of device capabilities,
-//! enabling optimal configuration for any GPU/hardware.
+//! For driver/compiler identity and shader strategy (the "who is driving?"
+//! question), see [`crate::device::driver_profile`].
 //!
 //! # Philosophy
 //!
-//! - ✅ **Query, don't hardcode**: Ask device for limits
-//! - ✅ **Adapt to hardware**: Different optimal configs per vendor
-//! - ✅ **Performance**: Use device-specific optimal values
-//! - ✅ **Portability**: Works on any WebGPU device
+//! - ✅ **Query, don't hardcode**: ask the device for limits
+//! - ✅ **Adapt to hardware**: different optimal configs per vendor
+//! - ✅ **Portability**: works on any WebGPU device
 //!
 //! # Example
 //!
@@ -21,17 +21,17 @@
 //! let device = WgpuDevice::new().await?;
 //! let caps = DeviceCapabilities::from_device(&device);
 //!
-//! // Optimal workgroup size for this specific GPU
 //! let workgroup_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-//! println!("Optimal workgroup size: {}", workgroup_size);
-//!
-//! // Check if operation is supported
-//! if caps.max_buffer_size >= required_size {
-//!     // Proceed with operation
-//! }
+//! println!("Optimal workgroup size: {workgroup_size}");
 //! # Ok(())
 //! # }
 //! ```
+
+// Re-export driver/compiler types so callers that previously imported them
+// from `capabilities` continue to compile without path changes.
+pub use crate::device::driver_profile::{
+    CompilerKind, DriverKind, EigensolveStrategy, Fp64Rate, GpuArch, GpuDriverProfile, Workaround,
+};
 
 use crate::device::vendor::{VENDOR_AMD, VENDOR_INTEL, VENDOR_NVIDIA};
 use crate::device::WgpuDevice;
@@ -503,338 +503,6 @@ impl fmt::Display for DeviceCapabilities {
     }
 }
 
-// ============================================================================
-// GPU Driver Profile — data-driven shader specialization
-// ============================================================================
-//
-// Unifies driver detection (is_nvk, is_radv, is_nvidia_proprietary),
-// compiler quality knowledge, and known workarounds into a single
-// queryable profile. Enables shader strategy selection without
-// string matching at dispatch time.
-//
-// Sovereign Compute Evolution (hotSpring analysis, Feb 2026 — all three phases complete):
-//   Phase 1 ✓  Profile detection + eigensolve strategy (this module)
-//   Phase 2 ✓  NAK contribution (SM70/RDNA2/AppleM latency tables, f64 FMA)
-//   Phase 3 ✓  ILP reorderer + loop unroller wired into compile_shader_f64()
-//   Phase 4    Specialized codegen — optional, deferred until upstream bottleneck confirmed
-
-/// GPU driver/compiler identity
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum DriverKind {
-    NvidiaProprietary,
-    Nvk,
-    Radv,
-    Intel,
-    Software,
-    Unknown,
-}
-
-/// GPU shader compiler backend
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CompilerKind {
-    /// NVIDIA proprietary PTX assembler
-    NvidiaPtxas,
-    /// Mesa NAK (Rust-based NVIDIA compiler)
-    Nak,
-    /// Mesa ACO (AMD compiler)
-    Aco,
-    /// Intel ANV compiler
-    Anv,
-    /// Software rasterizer (llvmpipe, swiftshader)
-    Software,
-    Unknown,
-}
-
-/// GPU microarchitecture generation
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum GpuArch {
-    /// NVIDIA Volta (SM70) — Titan V, Quadro GV100
-    Volta,
-    /// NVIDIA Turing (SM75) — RTX 2000 series
-    Turing,
-    /// NVIDIA Ampere (SM80/86) — RTX 3000 series
-    Ampere,
-    /// NVIDIA Ada Lovelace (SM89) — RTX 4000 series
-    Ada,
-    /// AMD RDNA 2 — RX 6000 series
-    Rdna2,
-    /// AMD RDNA 3 — RX 7000 series
-    Rdna3,
-    /// AMD CDNA 2 — MI200 series
-    Cdna2,
-    /// Intel Arc (Alchemist/Battlemage)
-    IntelArc,
-    /// Apple M-series GPU (Apple Silicon — M1/M2/M3/M4 family)
-    ///
-    /// Runs via Metal + wgpu's Metal backend. FP64 is emulated in software
-    /// (Apple GPUs only have f32 hardware). ILP window empirically ~4 cycles.
-    AppleM,
-    /// Software rasterizer
-    Software,
-    Unknown,
-}
-
-/// FP64 hardware rate classification
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Fp64Rate {
-    /// Full rate: FP64:FP32 = 1:2 (Titan V, MI250, etc.)
-    Full,
-    /// Throttled by vendor SDK but accessible via Vulkan
-    Throttled,
-    /// Hardware rate 1:64 (consumer Ada, Turing)
-    Minimal,
-    /// Software emulated
-    Software,
-}
-
-/// Known driver/compiler workaround
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Workaround {
-    /// NVK exp(f64) crashes — substitute with polynomial approximation
-    NvkExpF64Crash,
-    /// NVK log(f64) crashes — substitute with polynomial approximation
-    NvkLogF64Crash,
-}
-
-/// Eigensolve dispatch strategy
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EigensolveStrategy {
-    /// Warp-packed: 32 independent matrices per workgroup (NVIDIA)
-    WarpPacked { wg_size: u32 },
-    /// Wave-packed: 64 independent matrices per workgroup (AMD)
-    WavePacked { wave_size: u32 },
-    /// Standard: one matrix per workgroup
-    Standard,
-}
-
-/// Unified GPU driver profile for data-driven shader specialization.
-///
-/// Consolidates driver detection, compiler quality knowledge, and
-/// known workarounds. Query this instead of string-matching at dispatch time.
-#[derive(Debug, Clone)]
-pub struct GpuDriverProfile {
-    pub driver: DriverKind,
-    pub compiler: CompilerKind,
-    pub arch: GpuArch,
-    pub fp64_rate: Fp64Rate,
-    pub workarounds: Vec<Workaround>,
-}
-
-impl GpuDriverProfile {
-    /// Build a driver profile from a WgpuDevice using runtime detection.
-    pub fn from_device(device: &WgpuDevice) -> Self {
-        let driver = Self::detect_driver(device);
-        let compiler = Self::detect_compiler(driver);
-        let arch = Self::detect_arch(device);
-        let fp64_rate = Self::detect_fp64_rate(&arch, driver);
-        let workarounds = Self::detect_workarounds(driver);
-
-        Self {
-            driver,
-            compiler,
-            arch,
-            fp64_rate,
-            workarounds,
-        }
-    }
-
-    /// Optimal eigensolve dispatch strategy for this driver/arch combination.
-    ///
-    /// hotSpring measured 2.2x NVK speedup with warp-packing (Titan V, Feb 2026).
-    /// Neutral on proprietary NVIDIA (scheduler already handles wg1 efficiently).
-    ///
-    /// ## AMD RDNA2/RDNA3 (ACO compiler)
-    ///
-    /// Empirically measured on RX 6950 XT (RDNA2/NAVI21, Feb 2026):
-    /// - `wg_size=32`: 67.7ms  ← optimal
-    /// - `wg_size=64`: 117.1ms ← 1.7× slower
-    ///
-    /// Root cause: ACO targets **wave32 mode** for compute shaders on RDNA2.
-    /// A `@workgroup_size(64)` becomes 2 wave32s per workgroup rather than
-    /// 1 wave64, halving workgroup count (8 vs 16 for batch=512) and reducing
-    /// CU utilisation with no offsetting benefit. Use `WarpPacked { wg_size: 32 }`
-    /// for all current ACO targets. Revisit for CDNA (wave64 compute) or very
-    /// large batch sizes where 64-thread workgroups improve occupancy.
-    pub fn optimal_eigensolve_strategy(&self) -> EigensolveStrategy {
-        match (self.compiler, self.arch) {
-            (CompilerKind::Nak, _) => EigensolveStrategy::WarpPacked { wg_size: 32 },
-            // ACO on RDNA2/3: wave32 mode for compute — wg_size=32 is empirically optimal
-            (CompilerKind::Aco, GpuArch::Rdna2 | GpuArch::Rdna3) => {
-                EigensolveStrategy::WarpPacked { wg_size: 32 }
-            }
-            // CDNA2 uses wave64 natively for compute — WavePacked may help at large batch
-            (CompilerKind::Aco, GpuArch::Cdna2) => EigensolveStrategy::WavePacked { wave_size: 64 },
-            (CompilerKind::NvidiaPtxas, _) => {
-                // Proprietary scheduler handles wg1 efficiently,
-                // but warp-packing is neutral so we use it uniformly
-                EigensolveStrategy::WarpPacked { wg_size: 32 }
-            }
-            _ => EigensolveStrategy::Standard,
-        }
-    }
-
-    /// Whether exp(f64) needs software substitution on this driver.
-    pub fn needs_exp_f64_workaround(&self) -> bool {
-        self.workarounds.contains(&Workaround::NvkExpF64Crash)
-    }
-
-    /// Whether log(f64) needs software substitution on this driver.
-    pub fn needs_log_f64_workaround(&self) -> bool {
-        self.workarounds.contains(&Workaround::NvkLogF64Crash)
-    }
-
-    /// Whether this driver supports f64 builtins (exp, log, etc.) natively.
-    pub fn supports_f64_builtins(&self) -> bool {
-        !matches!(self.driver, DriverKind::Nvk | DriverKind::Software)
-    }
-
-    /// Whether this is an open-source driver (NVK or RADV).
-    pub fn is_open_source(&self) -> bool {
-        matches!(self.driver, DriverKind::Nvk | DriverKind::Radv)
-    }
-
-    /// Return the latency model appropriate for this GPU architecture.
-    ///
-    /// The model provides per-operation cycle counts used by the WGSL ILP
-    /// scheduler (`@ilp_region` reorderer, Phase 3 WgslDependencyGraph).
-    ///
-    /// - NVIDIA Volta/Turing/Ampere/Ada → `Sm70LatencyModel` (DFMA = 8cy)
-    /// - AMD RDNA2/RDNA3/CDNA2 → `Rdna2LatencyModel` (VFMA64 ≈ 4cy)
-    /// - Unknown/Intel/Software → `ConservativeModel` (safe overestimate)
-    ///
-    /// To use empirical measurements from `bench_f64_builtins`, construct a
-    /// `MeasuredModel` from the benchmark output and use it directly.
-    #[must_use]
-    pub fn latency_model(&self) -> Box<dyn crate::device::latency::LatencyModel> {
-        crate::device::latency::model_for_arch(self.arch)
-    }
-
-    fn detect_driver(device: &WgpuDevice) -> DriverKind {
-        if device.is_nvk() {
-            DriverKind::Nvk
-        } else if device.is_nvidia_proprietary() {
-            DriverKind::NvidiaProprietary
-        } else if device.is_radv() {
-            DriverKind::Radv
-        } else {
-            let name = device.adapter_info().name.to_lowercase();
-            if name.contains("intel") || name.contains("iris") {
-                DriverKind::Intel
-            } else if name.contains("llvmpipe")
-                || name.contains("swiftshader")
-                || name.contains("software")
-            {
-                DriverKind::Software
-            } else {
-                DriverKind::Unknown
-            }
-        }
-    }
-
-    fn detect_compiler(driver: DriverKind) -> CompilerKind {
-        match driver {
-            DriverKind::NvidiaProprietary => CompilerKind::NvidiaPtxas,
-            DriverKind::Nvk => CompilerKind::Nak,
-            DriverKind::Radv => CompilerKind::Aco,
-            DriverKind::Intel => CompilerKind::Anv,
-            DriverKind::Software => CompilerKind::Software,
-            DriverKind::Unknown => CompilerKind::Unknown,
-        }
-    }
-
-    fn detect_arch(device: &WgpuDevice) -> GpuArch {
-        let name = device.adapter_info().name.to_lowercase();
-
-        // NVIDIA architectures (by product name heuristics)
-        if name.contains("titan v") || name.contains("gv100") || name.contains("v100") {
-            return GpuArch::Volta;
-        }
-        if name.contains("rtx 20") || name.contains("rtx20") || name.contains("tu1") {
-            return GpuArch::Turing;
-        }
-        if name.contains("rtx 30") || name.contains("rtx30") || name.contains("a100") {
-            return GpuArch::Ampere;
-        }
-        if name.contains("rtx 40") || name.contains("rtx40") || name.contains("l40") {
-            return GpuArch::Ada;
-        }
-
-        // AMD architectures
-        if name.contains("rx 6") || name.contains("rx6") {
-            return GpuArch::Rdna2;
-        }
-        if name.contains("rx 7") || name.contains("rx7") {
-            return GpuArch::Rdna3;
-        }
-        if name.contains("mi2") || name.contains("mi3") {
-            return GpuArch::Cdna2;
-        }
-
-        // Intel
-        if name.contains("arc") || name.contains("a770") || name.contains("a750") {
-            return GpuArch::IntelArc;
-        }
-
-        // Apple Silicon GPU — wgpu reports these as "Apple M*" via Metal
-        if name.contains("apple m") || name.contains("apple paravirtual") {
-            return GpuArch::AppleM;
-        }
-
-        // Software
-        if name.contains("llvmpipe") || name.contains("swiftshader") {
-            return GpuArch::Software;
-        }
-
-        GpuArch::Unknown
-    }
-
-    fn detect_fp64_rate(arch: &GpuArch, driver: DriverKind) -> Fp64Rate {
-        match arch {
-            GpuArch::Volta => Fp64Rate::Full, // Titan V: 1:2
-            GpuArch::Ampere => {
-                // A100: Full, consumer RTX 3000: Throttled but accessible via Vulkan
-                Fp64Rate::Throttled
-            }
-            GpuArch::Ada => Fp64Rate::Throttled, // 1:64 hardware but ~1:2 via Vulkan
-            GpuArch::Turing => Fp64Rate::Throttled, // Similar to Ada
-            GpuArch::Rdna2 | GpuArch::Rdna3 => Fp64Rate::Throttled,
-            GpuArch::Cdna2 => Fp64Rate::Full,
-            GpuArch::IntelArc => Fp64Rate::Minimal,
-            // Apple M-series has no hardware FP64 — all f64 ops are software emulated
-            GpuArch::AppleM => Fp64Rate::Software,
-            GpuArch::Software => Fp64Rate::Software,
-            GpuArch::Unknown => {
-                if matches!(driver, DriverKind::Software) {
-                    Fp64Rate::Software
-                } else {
-                    Fp64Rate::Throttled
-                }
-            }
-        }
-    }
-
-    fn detect_workarounds(driver: DriverKind) -> Vec<Workaround> {
-        match driver {
-            DriverKind::Nvk => vec![Workaround::NvkExpF64Crash, Workaround::NvkLogF64Crash],
-            _ => vec![],
-        }
-    }
-}
-
-impl fmt::Display for GpuDriverProfile {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "GPU Driver Profile:")?;
-        writeln!(f, "  Driver:   {:?}", self.driver)?;
-        writeln!(f, "  Compiler: {:?}", self.compiler)?;
-        writeln!(f, "  Arch:     {:?}", self.arch)?;
-        writeln!(f, "  FP64:     {:?}", self.fp64_rate)?;
-        if !self.workarounds.is_empty() {
-            writeln!(f, "  Workarounds: {:?}", self.workarounds)?;
-        }
-        writeln!(f, "  Eigensolve: {:?}", self.optimal_eigensolve_strategy())?;
-        Ok(())
-    }
-}
 
 #[cfg(test)]
 mod tests {

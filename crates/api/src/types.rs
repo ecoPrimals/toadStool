@@ -492,7 +492,8 @@ impl ApiError {
     /// Create from ToadStoolError (legacy support)
     #[must_use]
     pub fn from_toadstool_error(err: ToadStoolError) -> Self {
-        // Use generic code for legacy errors
+        // Capture the display string before consuming `err` in the match.
+        let message = err.to_string();
         let error_code = match err {
             ToadStoolError::Execution(_) => "EXECUTION_ERROR",
             ToadStoolError::Configuration(_) => "CONFIG_ERROR",
@@ -501,8 +502,11 @@ impl ApiError {
             ToadStoolError::Security(_) => "SECURITY_ERROR",
             ToadStoolError::Network(_) => "NETWORK_ERROR",
             ToadStoolError::System(_) => "SYSTEM_ERROR",
+            // Lightweight variants added in Session 24 (error_context.rs helpers)
+            ToadStoolError::Runtime(_) => "RUNTIME_ERROR",
+            ToadStoolError::NotFound(_) => "NOT_FOUND_ERROR",
         };
-        Self::new(error_code, &err.to_string())
+        Self::new(error_code, &message)
     }
 }
 

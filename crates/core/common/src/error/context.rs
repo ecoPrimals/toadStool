@@ -24,15 +24,11 @@ impl ToadStoolError {
         .into()
     }
 
-    /// Create a runtime error (convenience method)
+    /// Create a runtime error (convenience method).
     ///
-    /// Delegates to `ExecutionError::WorkloadFailure`
+    /// Returns `ToadStoolError::Runtime(message)` — matchable directly as a variant.
     pub fn runtime(message: impl Into<String>) -> Self {
-        ExecutionError::WorkloadFailure {
-            workload_id: "unknown".to_string(),
-            reason: message.into(),
-        }
-        .into()
+        ToadStoolError::Runtime(message.into())
     }
 
     /// Create a security error (convenience method)
@@ -90,13 +86,9 @@ impl ToadStoolError {
 
     /// Create a not found error (convenience method)
     ///
-    /// Delegates to `ResourceError::NotFound`
+    /// Returns `ToadStoolError::NotFound(message)` — matchable directly as a variant.
     pub fn not_found(message: impl Into<String>) -> Self {
-        ResourceError::NotFound {
-            resource: "unknown".to_string(),
-            id: message.into(),
-        }
-        .into()
+        ToadStoolError::NotFound(message.into())
     }
 
     /// Create a permission denied error (convenience method)

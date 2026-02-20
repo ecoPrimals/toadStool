@@ -23,6 +23,7 @@ pub mod async_submit;
 pub mod autotune;
 pub mod cache_hierarchy;
 pub mod capabilities;
+pub mod driver_profile; // GPU driver/compiler identity + shader strategies (D-S17-002 refactor)
 pub mod kernel_router; // Unified Math → Hardware routing (Feb 15, 2026)
 pub mod latency; // LatencyModel trait + Sm70/Rdna2/AppleM/Conservative/Measured (SOVEREIGN Phase 2, Feb 2026)
 pub mod pipeline_cache;

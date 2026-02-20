@@ -105,6 +105,26 @@ struct LayerNormParams {
     epsilon: f32,
 }
 
+// ─── Attention uniform params structs ────────────────────────────────────────
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct AttentionParams {
+    batch_size: u32,
+    num_heads:  u32,
+    seq_len:    u32,
+    head_dim:   u32,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct HeadReshapeParams {
+    batch_size: u32,
+    seq_len:    u32,
+    num_heads:  u32,
+    head_dim:   u32,
+}
+
 /// Handle to a tensor within a session
 ///
 /// This is a lightweight reference that tracks tensors created/computed
@@ -196,30 +216,205 @@ enum SessionOp {
         output: usize,
         feature_size: u32,
     },
+
+    // ── Attention ─────────────────────────────────────────────────────────────
+    /// Scaled dot-product attention: output = softmax(QK^T / √d) · V
+    ///
+    /// Encoded as 3 sequential passes in the command encoder:
+    ///   1. `sdpa_scores`  : QK^T/√d → intermediate scores buffer
+    ///   2. `attention_softmax` : row-wise softmax of scores
+    ///   3. `attention_apply`   : softmax_weights · V → output
+    Attention {
+        q: usize,
+        k: usize,
+        v: usize,
+        output: usize,
+        batch_size: u32,
+        num_heads: u32,
+        seq_len: u32,
+        head_dim: u32,
+    },
+
+    // ── Head split / concat (MHA projection reshape) ─────────────────────────
+    /// Reshape [B, S, H*D] → [B, H, S, D] for multi-head attention
+    HeadSplit {
+        input: usize,
+        output: usize,
+        batch_size: u32,
+        seq_len: u32,
+        num_heads: u32,
+        head_dim: u32,
+    },
+    /// Reshape [B, H, S, D] → [B, S, H*D] after multi-head attention
+    HeadConcat {
+        input: usize,
+        output: usize,
+        batch_size: u32,
+        seq_len: u32,
+        num_heads: u32,
+        head_dim: u32,
+    },
 }
 
-/// Session for batching tensor operations
+// ─── Pipeline cache ───────────────────────────────────────────────────────────
+
+/// All compute pipelines used by a `TensorSession`.
+///
+/// Built **once** at session construction and reused across every `run()` call
+/// (resolves D-S20-001 — previously 8+ SPIR-V translations per `run()`).
+///
+/// Using `wgpu::PipelineCache` (`layout: None`) auto-derives the bind-group
+/// layout from the shader, eliminating manual `BindGroupLayoutDescriptor`
+/// boilerplate.
+struct SessionPipelines {
+    // ── Elementwise (inline shaders, workgroup_size baked in) ────────────────
+    add_mod:   wgpu::ShaderModule,
+    mul_mod:   wgpu::ShaderModule,
+    fma_mod:   wgpu::ShaderModule,
+    scale_mod: wgpu::ShaderModule,
+    // ── ML activations / norms ───────────────────────────────────────────────
+    relu_pl:   wgpu::ComputePipeline,
+    gelu_pl:   wgpu::ComputePipeline,
+    sfmx_pl:   wgpu::ComputePipeline,
+    lnrm_pl:   wgpu::ComputePipeline,
+    // ── Matmul tiers — all compiled once; tier selected per-op by dimension ──
+    mm_naive_pl: wgpu::ComputePipeline,
+    mm_t16_pl:   wgpu::ComputePipeline,
+    mm_cpu_pl:   wgpu::ComputePipeline,
+    mm_gpu_pl:   wgpu::ComputePipeline,
+    // ── Attention (3-pass SDPA + head reshape) ────────────────────────────────
+    sdpa_scores_pl:   wgpu::ComputePipeline,
+    attn_softmax_pl:  wgpu::ComputePipeline,
+    attn_apply_pl:    wgpu::ComputePipeline,
+    head_split_pl:    wgpu::ComputePipeline,
+    head_concat_pl:   wgpu::ComputePipeline,
+}
+
+impl SessionPipelines {
+    fn build(device: &wgpu::Device, workgroup_size: u32) -> Self {
+        let compile_module = |src: &str, label: &str| {
+            device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some(label),
+                source: wgpu::ShaderSource::Wgsl(src.into()),
+            })
+        };
+        let auto_pipeline = |src: &str, label: &str| {
+            let module = compile_module(src, label);
+            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(label),
+                layout: None,
+                module: &module,
+                entry_point: "main",
+                cache: None,
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            })
+        };
+
+        // Inline elementwise shaders with workgroup_size embedded
+        let add_src = format!(
+            "@group(0) @binding(0) var<storage, read> a: array<f32>;\n\
+             @group(0) @binding(1) var<storage, read> b: array<f32>;\n\
+             @group(0) @binding(2) var<storage, read_write> output: array<f32>;\n\
+             @compute @workgroup_size({workgroup_size})\n\
+             fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{\n\
+                 let idx = gid.x;\n\
+                 if idx >= arrayLength(&output) {{ return; }}\n\
+                 output[idx] = a[idx] + b[idx];\n\
+             }}"
+        );
+        let mul_src = format!(
+            "@group(0) @binding(0) var<storage, read> a: array<f32>;\n\
+             @group(0) @binding(1) var<storage, read> b: array<f32>;\n\
+             @group(0) @binding(2) var<storage, read_write> output: array<f32>;\n\
+             @compute @workgroup_size({workgroup_size})\n\
+             fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{\n\
+                 let idx = gid.x;\n\
+                 if idx >= arrayLength(&output) {{ return; }}\n\
+                 output[idx] = a[idx] * b[idx];\n\
+             }}"
+        );
+        let fma_src = format!(
+            "@group(0) @binding(0) var<storage, read> a: array<f32>;\n\
+             @group(0) @binding(1) var<storage, read> b: array<f32>;\n\
+             @group(0) @binding(2) var<storage, read> c: array<f32>;\n\
+             @group(0) @binding(3) var<storage, read_write> output: array<f32>;\n\
+             @compute @workgroup_size({workgroup_size})\n\
+             fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{\n\
+                 let idx = gid.x;\n\
+                 if idx >= arrayLength(&output) {{ return; }}\n\
+                 output[idx] = fma(a[idx], b[idx], c[idx]);\n\
+             }}"
+        );
+        let scale_src = format!(
+            "struct Params {{ scalar: f32 }}\n\
+             @group(0) @binding(0) var<storage, read> a: array<f32>;\n\
+             @group(0) @binding(1) var<uniform> params: Params;\n\
+             @group(0) @binding(2) var<storage, read_write> output: array<f32>;\n\
+             @compute @workgroup_size({workgroup_size})\n\
+             fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{\n\
+                 let idx = gid.x;\n\
+                 if idx >= arrayLength(&output) {{ return; }}\n\
+                 output[idx] = a[idx] * params.scalar;\n\
+             }}"
+        );
+
+        Self {
+            add_mod:   compile_module(&add_src,   "Session Add"),
+            mul_mod:   compile_module(&mul_src,   "Session Mul"),
+            fma_mod:   compile_module(&fma_src,   "Session FMA"),
+            scale_mod: compile_module(&scale_src, "Session Scale"),
+            relu_pl:   auto_pipeline(include_str!("shaders/activation/relu.wgsl"),                  "Session ReLU"),
+            gelu_pl:   auto_pipeline(include_str!("shaders/activation/gelu.wgsl"),                  "Session GELU"),
+            sfmx_pl:   auto_pipeline(include_str!("shaders/activation/softmax_simple.wgsl"),        "Session Softmax"),
+            lnrm_pl:   auto_pipeline(include_str!("shaders/norm/layer_norm.wgsl"),                  "Session LayerNorm"),
+            mm_naive_pl: auto_pipeline(include_str!("shaders/math/matmul.wgsl"),                    "Session MatMul Naive"),
+            mm_t16_pl:   auto_pipeline(include_str!("shaders/math/matmul_tiled.wgsl"),              "Session MatMul Tiled16"),
+            mm_cpu_pl:   auto_pipeline(include_str!("shaders/math/matmul_cpu_tiled.wgsl"),          "Session MatMul CpuTiled32"),
+            mm_gpu_pl:   auto_pipeline(include_str!("shaders/math/matmul_gpu_evolved.wgsl"),        "Session MatMul GpuEvolved32"),
+            // Attention
+            sdpa_scores_pl:  auto_pipeline(include_str!("shaders/attention/sdpa_scores.wgsl"),                      "Session SDPA Scores"),
+            attn_softmax_pl: auto_pipeline(include_str!("shaders/activation/attention_softmax.wgsl"),               "Session Attn Softmax"),
+            attn_apply_pl:   auto_pipeline(include_str!("shaders/attention/attention_apply.wgsl"),                   "Session Attn Apply"),
+            head_split_pl:   auto_pipeline(include_str!("shaders/tensor/head_split.wgsl"),                          "Session Head Split"),
+            head_concat_pl:  auto_pipeline(include_str!("shaders/tensor/head_concat.wgsl"),                         "Session Head Concat"),
+        }
+    }
+}
+
+// ─── TensorSession ─────────────────────────────────────────────────────────────
+
+/// Session for batching tensor operations.
 ///
 /// Operations are recorded without execution until `run()` is called.
-/// This amortizes the ~250μs per-operation overhead across all operations.
+/// This amortises the ~250 μs per-operation overhead across all operations.
+///
+/// Pipelines are compiled **once** at session construction and reused
+/// across every `run()` call and every `reset()`/re-record cycle.
+/// Use `reset()` to clear recorded ops without discarding pipelines.
 pub struct TensorSession {
-    device: Arc<WgpuDevice>,
+    device:         Arc<WgpuDevice>,
     /// All buffers in the session (inputs and outputs)
-    buffers: Vec<Arc<wgpu::Buffer>>,
+    buffers:        Vec<Arc<wgpu::Buffer>>,
     /// Shapes for each buffer
-    shapes: Vec<Vec<usize>>,
+    shapes:         Vec<Vec<usize>>,
     /// Recorded operations
-    ops: Vec<SessionOp>,
-    /// Optimal workgroup size (from calibration)
+    ops:            Vec<SessionOp>,
+    /// Optimal workgroup size (from device calibration)
     workgroup_size: u32,
     /// Has the session been executed?
-    executed: bool,
+    executed:       bool,
+    /// All compute pipelines — compiled once, reused forever (D-S20-001)
+    pipelines:      SessionPipelines,
 }
 
 impl TensorSession {
-    /// Create a new session for a device
+    /// Create a new session for a device.
+    ///
+    /// All pipelines are compiled here — subsequent `run()` calls pay only
+    /// GPU command-encoding cost, not SPIR-V translation.
     pub fn new(device: &WgpuDevice) -> Self {
-        let wg_size = device.optimal_workgroup_size();
+        let wg_size   = device.optimal_workgroup_size();
+        let pipelines = SessionPipelines::build(&device.device, wg_size);
         Self {
             device: Arc::new(device.clone()),
             buffers: Vec::new(),
@@ -227,20 +422,32 @@ impl TensorSession {
             ops: Vec::new(),
             workgroup_size: wg_size,
             executed: false,
+            pipelines,
         }
     }
 
-    /// Create session with explicit device Arc
+    /// Create session with explicit device Arc.
     pub fn with_device(device: Arc<WgpuDevice>) -> Self {
-        let wg_size = device.optimal_workgroup_size();
+        let wg_size   = device.optimal_workgroup_size();
+        let pipelines = SessionPipelines::build(&device.device, wg_size);
         Self {
-            device,
             buffers: Vec::new(),
             shapes: Vec::new(),
             ops: Vec::new(),
             workgroup_size: wg_size,
             executed: false,
+            pipelines,
+            device,
         }
+    }
+
+    /// Clear all recorded ops (but retain buffers, shapes, and compiled pipelines).
+    ///
+    /// Allows the same session to be used for a new recording/run cycle without
+    /// paying the pipeline-compilation cost again.
+    pub fn reset(&mut self) {
+        self.ops.clear();
+        self.executed = false;
     }
 
     /// Create a tensor from data within the session
@@ -553,6 +760,134 @@ impl TensorSession {
         })
     }
 
+    // ── Attention ops ──────────────────────────────────────────────────────────
+
+    /// Reshape `[batch, seq, n_heads * head_dim]` → `[batch, n_heads, seq, head_dim]`.
+    ///
+    /// Prepares a QKV projection output for multi-head attention input.
+    pub fn head_split(
+        &mut self,
+        a: &SessionTensor,
+        batch_size: usize,
+        seq_len: usize,
+        n_heads: usize,
+        head_dim: usize,
+    ) -> Result<SessionTensor> {
+        let expected = batch_size * seq_len * n_heads * head_dim;
+        if a.len() != expected {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "head_split: input len {} ≠ B×S×H×D = {batch_size}×{seq_len}×{n_heads}×{head_dim}={expected}",
+                    a.len()
+                ),
+            });
+        }
+        let out_shape = vec![batch_size, n_heads, seq_len, head_dim];
+        let output_id = self.alloc_output(out_shape.clone());
+        self.ops.push(SessionOp::HeadSplit {
+            input: a.buffer_id,
+            output: output_id,
+            batch_size: batch_size as u32,
+            seq_len: seq_len as u32,
+            num_heads: n_heads as u32,
+            head_dim: head_dim as u32,
+        });
+        Ok(SessionTensor {
+            buffer_id: output_id,
+            shape: out_shape,
+            device: self.device.clone(),
+            buffer: Some(self.buffers[output_id].clone()),
+        })
+    }
+
+    /// Reshape `[batch, n_heads, seq, head_dim]` → `[batch, seq, n_heads * head_dim]`.
+    ///
+    /// Merges multi-head attention output for the output linear projection.
+    pub fn head_concat(
+        &mut self,
+        a: &SessionTensor,
+        batch_size: usize,
+        seq_len: usize,
+        n_heads: usize,
+        head_dim: usize,
+    ) -> Result<SessionTensor> {
+        let expected = batch_size * n_heads * seq_len * head_dim;
+        if a.len() != expected {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "head_concat: input len {} ≠ B×H×S×D = {batch_size}×{n_heads}×{seq_len}×{head_dim}={expected}",
+                    a.len()
+                ),
+            });
+        }
+        let out_shape = vec![batch_size, seq_len, n_heads * head_dim];
+        let output_id = self.alloc_output(out_shape.clone());
+        self.ops.push(SessionOp::HeadConcat {
+            input: a.buffer_id,
+            output: output_id,
+            batch_size: batch_size as u32,
+            seq_len: seq_len as u32,
+            num_heads: n_heads as u32,
+            head_dim: head_dim as u32,
+        });
+        Ok(SessionTensor {
+            buffer_id: output_id,
+            shape: out_shape,
+            device: self.device.clone(),
+            buffer: Some(self.buffers[output_id].clone()),
+        })
+    }
+
+    /// Scaled dot-product attention: `output = softmax(QK^T / √head_dim) · V`
+    ///
+    /// Inputs Q/K/V must be in `[batch, n_heads, seq_len, head_dim]` layout
+    /// (use `head_split` after your QKV projection).
+    ///
+    /// Encoded as 3 sequential GPU passes within a single command encoder batch:
+    /// 1. Scores: `QK^T / √d` → intermediate [B, H, S, S] buffer
+    /// 2. Row-wise softmax of scores
+    /// 3. Weighted sum: `softmax_weights · V` → output [B, H, S, D]
+    pub fn attention(
+        &mut self,
+        q: &SessionTensor,
+        k: &SessionTensor,
+        v: &SessionTensor,
+        batch_size: usize,
+        n_heads: usize,
+        seq_len: usize,
+        head_dim: usize,
+    ) -> Result<SessionTensor> {
+        let expected = batch_size * n_heads * seq_len * head_dim;
+        for (name, t) in [("q", q), ("k", k), ("v", v)] {
+            if t.len() != expected {
+                return Err(BarracudaError::InvalidInput {
+                    message: format!(
+                        "attention: {name} len {} ≠ B×H×S×D={expected}",
+                        t.len()
+                    ),
+                });
+            }
+        }
+        let out_shape = vec![batch_size, n_heads, seq_len, head_dim];
+        let output_id = self.alloc_output(out_shape.clone());
+        self.ops.push(SessionOp::Attention {
+            q: q.buffer_id,
+            k: k.buffer_id,
+            v: v.buffer_id,
+            output: output_id,
+            batch_size: batch_size as u32,
+            num_heads: n_heads as u32,
+            seq_len: seq_len as u32,
+            head_dim: head_dim as u32,
+        });
+        Ok(SessionTensor {
+            buffer_id: output_id,
+            shape: out_shape,
+            device: self.device.clone(),
+            buffer: Some(self.buffers[output_id].clone()),
+        })
+    }
+
     /// Number of recorded operations
     pub fn num_ops(&self) -> usize {
         self.ops.len()
@@ -567,30 +902,8 @@ impl TensorSession {
             return Ok(());
         }
 
-        // Pre-compile shaders — compiled once per run(), shared across all ops
-        // of the same type.  This amortises SPIR-V translation for repeated ops.
-        let add_shader   = self.compile_inline_shader("add");
-        let mul_shader   = self.compile_inline_shader("mul");
-        let fma_shader   = self.compile_inline_shader("fma");
-        let scale_shader = self.compile_inline_shader("scale");
-        // ML op shaders compiled from `include_str!` sources:
-        let relu_pl  = self.compile_auto_pipeline(
-            include_str!("shaders/activation/relu.wgsl"), "Session ReLU");
-        let gelu_pl  = self.compile_auto_pipeline(
-            include_str!("shaders/activation/gelu.wgsl"), "Session GELU");
-        let sfmx_pl  = self.compile_auto_pipeline(
-            include_str!("shaders/activation/softmax_simple.wgsl"), "Session Softmax");
-        let lnrm_pl  = self.compile_auto_pipeline(
-            include_str!("shaders/norm/layer_norm.wgsl"), "Session LayerNorm");
-        // Matmul: compile all tiers upfront; only the needed ones are used.
-        let mm_naive_pl  = self.compile_auto_pipeline(
-            include_str!("shaders/math/matmul.wgsl"), "Session MatMul Naive");
-        let mm_t16_pl    = self.compile_auto_pipeline(
-            include_str!("shaders/math/matmul_tiled.wgsl"), "Session MatMul Tiled16");
-        let mm_cpu_pl    = self.compile_auto_pipeline(
-            include_str!("shaders/math/matmul_cpu_tiled.wgsl"), "Session MatMul CpuTiled32");
-        let mm_gpu_pl    = self.compile_auto_pipeline(
-            include_str!("shaders/math/matmul_gpu_evolved.wgsl"), "Session MatMul GpuEvolved32");
+        // Pipelines are pre-compiled at session construction (D-S20-001 resolved).
+        // This run() call pays only GPU command-encoding cost.
 
         // Create single command encoder for ALL operations
         let mut encoder =
@@ -603,11 +916,11 @@ impl TensorSession {
         // Encode all operations into the single encoder
         for op in &self.ops {
             match op {
-                // ── Elementwise ──────────────────────────────────────────────
+                // ── Elementwise (pipelines cached in self.pipelines) ─────────
                 SessionOp::Add { input_a, input_b, output } => {
                     let size = self.shapes[*output].iter().product::<usize>();
                     self.encode_binary_op(
-                        &mut encoder, &add_shader,
+                        &mut encoder, &self.pipelines.add_mod,
                         &self.buffers[*input_a], &self.buffers[*input_b],
                         &self.buffers[*output], size,
                     );
@@ -615,7 +928,7 @@ impl TensorSession {
                 SessionOp::Mul { input_a, input_b, output } => {
                     let size = self.shapes[*output].iter().product::<usize>();
                     self.encode_binary_op(
-                        &mut encoder, &mul_shader,
+                        &mut encoder, &self.pipelines.mul_mod,
                         &self.buffers[*input_a], &self.buffers[*input_b],
                         &self.buffers[*output], size,
                     );
@@ -623,7 +936,7 @@ impl TensorSession {
                 SessionOp::Fma { input_a, input_b, input_c, output } => {
                     let size = self.shapes[*output].iter().product::<usize>();
                     self.encode_ternary_op(
-                        &mut encoder, &fma_shader,
+                        &mut encoder, &self.pipelines.fma_mod,
                         &self.buffers[*input_a], &self.buffers[*input_b],
                         &self.buffers[*input_c], &self.buffers[*output], size,
                     );
@@ -631,19 +944,19 @@ impl TensorSession {
                 SessionOp::Scale { input, scalar, output } => {
                     let size = self.shapes[*output].iter().product::<usize>();
                     self.encode_scale_op(
-                        &mut encoder, &scale_shader,
+                        &mut encoder, &self.pipelines.scale_mod,
                         &self.buffers[*input], *scalar,
                         &self.buffers[*output], size,
                     );
                 }
 
-                // ── Matrix multiply ───────────────────────────────────────────
+                // ── Matrix multiply (all 4 tier pipelines pre-compiled) ───────
                 SessionOp::MatMul { input_a, input_b, output, m, k, n, tier } => {
                     let pipeline = match tier {
-                        MatMulTier::Naive       => &mm_naive_pl,
-                        MatMulTier::Tiled16     => &mm_t16_pl,
-                        MatMulTier::CpuTiled32  => &mm_cpu_pl,
-                        MatMulTier::GpuEvolved32=> &mm_gpu_pl,
+                        MatMulTier::Naive        => &self.pipelines.mm_naive_pl,
+                        MatMulTier::Tiled16      => &self.pipelines.mm_t16_pl,
+                        MatMulTier::CpuTiled32   => &self.pipelines.mm_cpu_pl,
+                        MatMulTier::GpuEvolved32 => &self.pipelines.mm_gpu_pl,
                     };
                     let params_buf = self.device.device.create_buffer_init(
                         &wgpu::util::BufferInitDescriptor {
@@ -673,43 +986,40 @@ impl TensorSession {
 
                 // ── Activations ───────────────────────────────────────────────
                 SessionOp::ReLU { input, output } => {
-                    // relu.wgsl: (input, output) — no uniform, uses arrayLength
                     let bg = self.auto_bind_group(
-                        &relu_pl,
+                        &self.pipelines.relu_pl,
                         &[&self.buffers[*input], &self.buffers[*output]],
                     );
                     let size = self.shapes[*output].iter().product::<usize>() as u32;
                     let mut pass = encoder.begin_compute_pass(
                         &wgpu::ComputePassDescriptor::default());
-                    pass.set_pipeline(&relu_pl);
+                    pass.set_pipeline(&self.pipelines.relu_pl);
                     pass.set_bind_group(0, &bg, &[]);
                     pass.dispatch_workgroups(size.div_ceil(256), 1, 1);
                 }
                 SessionOp::GELU { input, output } => {
-                    // gelu.wgsl: (input, output, size: u32 uniform)
                     let size = self.shapes[*output].iter().product::<usize>() as u32;
                     let size_buf = self.make_uniform_u32(size, "Session GELU Size");
                     let bg = self.auto_bind_group(
-                        &gelu_pl,
+                        &self.pipelines.gelu_pl,
                         &[&self.buffers[*input], &self.buffers[*output], &size_buf],
                     );
                     let mut pass = encoder.begin_compute_pass(
                         &wgpu::ComputePassDescriptor::default());
-                    pass.set_pipeline(&gelu_pl);
+                    pass.set_pipeline(&self.pipelines.gelu_pl);
                     pass.set_bind_group(0, &bg, &[]);
                     pass.dispatch_workgroups(size.div_ceil(256), 1, 1);
                 }
                 SessionOp::Softmax { input, output } => {
-                    // softmax_simple.wgsl: (input, output, Params { size })
                     let size = self.shapes[*output].iter().product::<usize>() as u32;
                     let params_buf = self.make_uniform_u32(size, "Session Softmax Params");
                     let bg = self.auto_bind_group(
-                        &sfmx_pl,
+                        &self.pipelines.sfmx_pl,
                         &[&self.buffers[*input], &self.buffers[*output], &params_buf],
                     );
                     let mut pass = encoder.begin_compute_pass(
                         &wgpu::ComputePassDescriptor::default());
-                    pass.set_pipeline(&sfmx_pl);
+                    pass.set_pipeline(&self.pipelines.sfmx_pl);
                     pass.set_bind_group(0, &bg, &[]);
                     pass.dispatch_workgroups(1, 1, 1);  // single-workgroup reduction
                 }
@@ -730,15 +1040,149 @@ impl TensorSession {
                         },
                     );
                     let bg = self.auto_bind_group(
-                        &lnrm_pl,
+                        &self.pipelines.lnrm_pl,
                         &[&self.buffers[*input], &self.buffers[*output], &params_buf],
                     );
                     let rows = (total / feature_size).max(1);
                     let mut pass = encoder.begin_compute_pass(
                         &wgpu::ComputePassDescriptor::default());
-                    pass.set_pipeline(&lnrm_pl);
+                    pass.set_pipeline(&self.pipelines.lnrm_pl);
                     pass.set_bind_group(0, &bg, &[]);
                     pass.dispatch_workgroups(rows.div_ceil(256), 1, 1);
+                }
+
+                // ── Attention (3-pass SDPA) ───────────────────────────────────
+                SessionOp::Attention { q, k, v, output, batch_size, num_heads, seq_len, head_dim } => {
+                    let attn_params = AttentionParams {
+                        batch_size: *batch_size,
+                        num_heads: *num_heads,
+                        seq_len: *seq_len,
+                        head_dim: *head_dim,
+                    };
+                    let attn_params_buf = self.device.device.create_buffer_init(
+                        &wgpu::util::BufferInitDescriptor {
+                            label: Some("Session Attn Params"),
+                            contents: bytemuck::bytes_of(&attn_params),
+                            usage: wgpu::BufferUsages::UNIFORM,
+                        },
+                    );
+                    // Intermediate buffers: scores [B×H×S×S] and weights [B×H×S×S]
+                    let attn_ss_size = ((*batch_size * *num_heads * *seq_len * *seq_len) as usize
+                        * std::mem::size_of::<f32>()) as u64;
+                    let scores_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some("Session Attn Scores"),
+                        size: attn_ss_size.max(4),
+                        usage: wgpu::BufferUsages::STORAGE,
+                        mapped_at_creation: false,
+                    });
+                    // Separate weights buffer avoids aliasing conflict (scores=READ, weights=READ_WRITE)
+                    let weights_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some("Session Attn Weights"),
+                        size: attn_ss_size.max(4),
+                        usage: wgpu::BufferUsages::STORAGE,
+                        mapped_at_creation: false,
+                    });
+
+                    // Pass 1: QK^T / sqrt(d) → scores
+                    let bg1 = self.auto_bind_group(
+                        &self.pipelines.sdpa_scores_pl,
+                        &[
+                            &self.buffers[*q],
+                            &self.buffers[*k],
+                            &scores_buf,
+                            &attn_params_buf,
+                        ],
+                    );
+                    let total1 = *batch_size * *num_heads * *seq_len * *seq_len;
+                    {
+                        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+                        pass.set_pipeline(&self.pipelines.sdpa_scores_pl);
+                        pass.set_bind_group(0, &bg1, &[]);
+                        pass.dispatch_workgroups(total1.div_ceil(256), 1, 1);
+                    }
+
+                    // Pass 2: row-wise softmax: scores → weights (separate buffers, no alias)
+                    let bg2 = self.auto_bind_group(
+                        &self.pipelines.attn_softmax_pl,
+                        &[&scores_buf, &weights_buf, &attn_params_buf],
+                    );
+                    let total2 = *batch_size * *num_heads * *seq_len;
+                    {
+                        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+                        pass.set_pipeline(&self.pipelines.attn_softmax_pl);
+                        pass.set_bind_group(0, &bg2, &[]);
+                        pass.dispatch_workgroups(total2.div_ceil(256), 1, 1);
+                    }
+
+                    // Pass 3: weighted sum weights · V → output
+                    let bg3 = self.auto_bind_group(
+                        &self.pipelines.attn_apply_pl,
+                        &[
+                            &weights_buf,
+                            &self.buffers[*v],
+                            &self.buffers[*output],
+                            &attn_params_buf,
+                        ],
+                    );
+                    let (wg3_x, wg3_y, wg3_z) = (
+                        (*head_dim).div_ceil(16),
+                        (*seq_len).div_ceil(16),
+                        *batch_size * *num_heads,
+                    );
+                    {
+                        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+                        pass.set_pipeline(&self.pipelines.attn_apply_pl);
+                        pass.set_bind_group(0, &bg3, &[]);
+                        pass.dispatch_workgroups(wg3_x, wg3_y, wg3_z);
+                    }
+                }
+
+                // ── Head reshape ─────────────────────────────────────────────
+                SessionOp::HeadSplit { input, output, batch_size, seq_len, num_heads, head_dim } => {
+                    let params_buf = self.device.device.create_buffer_init(
+                        &wgpu::util::BufferInitDescriptor {
+                            label: Some("Session HeadSplit Params"),
+                            contents: bytemuck::bytes_of(&HeadReshapeParams {
+                                batch_size: *batch_size,
+                                seq_len: *seq_len,
+                                num_heads: *num_heads,
+                                head_dim: *head_dim,
+                            }),
+                            usage: wgpu::BufferUsages::UNIFORM,
+                        },
+                    );
+                    let bg = self.auto_bind_group(
+                        &self.pipelines.head_split_pl,
+                        &[&self.buffers[*input], &self.buffers[*output], &params_buf],
+                    );
+                    let total = *batch_size * *num_heads * *seq_len * *head_dim;
+                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+                    pass.set_pipeline(&self.pipelines.head_split_pl);
+                    pass.set_bind_group(0, &bg, &[]);
+                    pass.dispatch_workgroups(total.div_ceil(256), 1, 1);
+                }
+                SessionOp::HeadConcat { input, output, batch_size, seq_len, num_heads, head_dim } => {
+                    let params_buf = self.device.device.create_buffer_init(
+                        &wgpu::util::BufferInitDescriptor {
+                            label: Some("Session HeadConcat Params"),
+                            contents: bytemuck::bytes_of(&HeadReshapeParams {
+                                batch_size: *batch_size,
+                                seq_len: *seq_len,
+                                num_heads: *num_heads,
+                                head_dim: *head_dim,
+                            }),
+                            usage: wgpu::BufferUsages::UNIFORM,
+                        },
+                    );
+                    let bg = self.auto_bind_group(
+                        &self.pipelines.head_concat_pl,
+                        &[&self.buffers[*input], &self.buffers[*output], &params_buf],
+                    );
+                    let total = *batch_size * *num_heads * *seq_len * *head_dim;
+                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+                    pass.set_pipeline(&self.pipelines.head_concat_pl);
+                    pass.set_bind_group(0, &bg, &[]);
+                    pass.dispatch_workgroups(total.div_ceil(256), 1, 1);
                 }
             }
         }
@@ -749,34 +1193,6 @@ impl TensorSession {
 
         self.executed = true;
         Ok(())
-    }
-
-    /// Reset session for reuse (clears operations but keeps device)
-    pub fn reset(&mut self) {
-        self.buffers.clear();
-        self.shapes.clear();
-        self.ops.clear();
-        self.executed = false;
-    }
-
-    /// Compile a compute pipeline with auto-derived bind group layout.
-    ///
-    /// Using `layout: None` lets wgpu derive the BGL from the shader — no manual
-    /// `BindGroupLayoutDescriptor` needed.  The bind group is then created via
-    /// `pipeline.get_bind_group_layout(0)` in `auto_bind_group`.
-    fn compile_auto_pipeline(&self, src: &str, label: &str) -> wgpu::ComputePipeline {
-        let module = self.device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some(label),
-            source: wgpu::ShaderSource::Wgsl(src.into()),
-        });
-        self.device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some(label),
-            layout: None,
-            module: &module,
-            entry_point: "main",
-            cache: None,
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-        })
     }
 
     /// Create a bind group matching a pipeline's auto-derived layout at group 0.
@@ -810,81 +1226,6 @@ impl TensorSession {
             contents: bytemuck::bytes_of(&value),
             usage: wgpu::BufferUsages::UNIFORM,
         })
-    }
-
-    fn compile_inline_shader(&self, op_type: &str) -> wgpu::ShaderModule {
-        let source = match op_type {
-            "add" => format!(
-                r#"
-@group(0) @binding(0) var<storage, read> a: array<f32>;
-@group(0) @binding(1) var<storage, read> b: array<f32>;
-@group(0) @binding(2) var<storage, read_write> output: array<f32>;
-
-@compute @workgroup_size({})
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
-    let idx = global_id.x;
-    if (idx >= arrayLength(&output)) {{ return; }}
-    output[idx] = a[idx] + b[idx];
-}}
-"#,
-                self.workgroup_size
-            ),
-            "mul" => format!(
-                r#"
-@group(0) @binding(0) var<storage, read> a: array<f32>;
-@group(0) @binding(1) var<storage, read> b: array<f32>;
-@group(0) @binding(2) var<storage, read_write> output: array<f32>;
-
-@compute @workgroup_size({})
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
-    let idx = global_id.x;
-    if (idx >= arrayLength(&output)) {{ return; }}
-    output[idx] = a[idx] * b[idx];
-}}
-"#,
-                self.workgroup_size
-            ),
-            "fma" => format!(
-                r#"
-@group(0) @binding(0) var<storage, read> a: array<f32>;
-@group(0) @binding(1) var<storage, read> b: array<f32>;
-@group(0) @binding(2) var<storage, read> c: array<f32>;
-@group(0) @binding(3) var<storage, read_write> output: array<f32>;
-
-@compute @workgroup_size({})
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
-    let idx = global_id.x;
-    if (idx >= arrayLength(&output)) {{ return; }}
-    output[idx] = fma(a[idx], b[idx], c[idx]);
-}}
-"#,
-                self.workgroup_size
-            ),
-            "scale" => format!(
-                r#"
-struct Params {{ scalar: f32 }}
-@group(0) @binding(0) var<storage, read> a: array<f32>;
-@group(0) @binding(1) var<uniform> params: Params;
-@group(0) @binding(2) var<storage, read_write> output: array<f32>;
-
-@compute @workgroup_size({})
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
-    let idx = global_id.x;
-    if (idx >= arrayLength(&output)) {{ return; }}
-    output[idx] = a[idx] * params.scalar;
-}}
-"#,
-                self.workgroup_size
-            ),
-            _ => unreachable!("Unknown op type: {op_type} - internal invariant violation"),
-        };
-
-        self.device
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(op_type),
-                source: wgpu::ShaderSource::Wgsl(source.into()),
-            })
     }
 
     fn encode_binary_op(
@@ -1407,5 +1748,79 @@ mod tests {
         let result = y.to_vec().unwrap();
         // W1×x = [1,2,1,2]; relu = [1,2,1,2]; W2×relu = 1+2+1+2 = 6
         assert!((result[0] - 6.0).abs() < 0.1, "MLP output should be 6.0, got {}", result[0]);
+    }
+
+    #[tokio::test]
+    async fn test_head_split_concat_roundtrip() {
+        // head_split then head_concat must be identity
+        let Some(device) = test_pool::get_test_device_if_gpu_available().await else { return };
+        let mut session = TensorSession::new(&device);
+
+        // [B=1, S=2, H*D=4]  →  split(H=2, D=2)  →  concat  → same layout
+        let data: Vec<f32> = (0..8).map(|x| x as f32).collect(); // [1, 2, 4]
+        let x = session.tensor_with_shape(&data, vec![1, 2, 4]).unwrap();
+        let split = session.head_split(&x, 1, 2, 2, 2).unwrap();   // [1,2,2,2]
+        let merged = session.head_concat(&split, 1, 2, 2, 2).unwrap(); // [1,2,4]
+
+        session.run().unwrap();
+        let result = merged.to_vec().unwrap();
+        for (i, (&got, &exp)) in result.iter().zip(data.iter()).enumerate() {
+            assert!(
+                (got - exp).abs() < 1e-5,
+                "roundtrip[{i}]: got={got}, expected={exp}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_session_attention_identity_v() {
+        // With Q=K=identity and V=data: output should approximate V (for matching Q/K)
+        // Simple smoke test: 1 batch, 1 head, 2 seq, 2 head_dim
+        let Some(device) = test_pool::get_test_device_if_gpu_available().await else { return };
+        let mut session = TensorSession::new(&device);
+
+        // Q = K = [[1,0],[0,1]]  →  QK^T = I  →  softmax(I/sqrt(2))  →  weighted V ≈ V
+        let qk_data: Vec<f32> = vec![1.0, 0.0,  0.0, 1.0]; // [1,1,2,2]
+        let v_data:  Vec<f32> = vec![3.0, 7.0,  5.0, 2.0]; // [1,1,2,2]
+
+        let q = session.tensor_with_shape(&qk_data, vec![1, 1, 2, 2]).unwrap();
+        let k = session.tensor_with_shape(&qk_data, vec![1, 1, 2, 2]).unwrap();
+        let v = session.tensor_with_shape(&v_data,  vec![1, 1, 2, 2]).unwrap();
+
+        let out = session.attention(&q, &k, &v, 1, 1, 2, 2).unwrap();
+        session.run().unwrap();
+
+        let result = out.to_vec().unwrap();
+        // Each output row = weighted avg of v rows; sum of weights = 1.0
+        // So sum of all outputs must equal sum of all v values
+        let sum_out: f32 = result.iter().sum();
+        let sum_v:   f32 = v_data.iter().sum();
+        assert!(
+            (sum_out - sum_v).abs() < 1e-3,
+            "sum_out={sum_out:.4} should equal sum_v={sum_v:.4}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_session_reset_reuse() {
+        // reset() retains pipelines; re-recording + re-running must succeed
+        let Some(device) = test_pool::get_test_device_if_gpu_available().await else { return };
+        let mut session = TensorSession::new(&device);
+
+        let a = session.tensor(&[1.0, 2.0]).unwrap();
+        let b = session.tensor(&[3.0, 4.0]).unwrap();
+        let c = session.add(&a, &b).unwrap();
+        session.run().unwrap();
+        let first = c.to_vec().unwrap();
+
+        session.reset();
+        let a2 = session.tensor(&[10.0, 20.0]).unwrap();
+        let b2 = session.tensor(&[1.0, 2.0]).unwrap();
+        let c2 = session.add(&a2, &b2).unwrap();
+        session.run().unwrap();
+        let second = c2.to_vec().unwrap();
+
+        assert_eq!(first, vec![4.0, 6.0]);
+        assert_eq!(second, vec![11.0, 22.0]);
     }
 }

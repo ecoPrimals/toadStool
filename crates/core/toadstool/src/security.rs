@@ -63,6 +63,29 @@ impl SecurityContext {
         self.capabilities.contains(capability)
     }
 
+    /// Check whether this context has the named permission.
+    ///
+    /// Maps common string names (`"read"`, `"write"`, `"execute"`, `"network_client"`,
+    /// `"network_server"`, `"system_info"`, `"process_management"`) to their
+    /// `Capability` counterparts. Wildcard `"*"` matches any non-empty capability
+    /// list. Unknown names return `false`.
+    pub fn has_permission(&self, name: &str) -> bool {
+        if name == "*" {
+            return !self.capabilities.is_empty();
+        }
+        let cap = match name {
+            "read" => Capability::Read,
+            "write" => Capability::Write,
+            "execute" => Capability::Execute,
+            "network_client" => Capability::NetworkClient,
+            "network_server" => Capability::NetworkServer,
+            "system_info" => Capability::SystemInfo,
+            "process_management" => Capability::ProcessManagement,
+            other => Capability::Custom(other.to_string()),
+        };
+        self.has_capability(&cap)
+    }
+
     /// Set user context
     #[must_use]
     pub fn with_user_context(mut self, user_context: UserContext) -> Self {

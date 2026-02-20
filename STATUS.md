@@ -1,4 +1,4 @@
-# Status -- February 20, 2026 (Session 18: Phase 3 Live + Apple GPU + Zero-Copy GpuExecutor + Integration Tests)
+# Status -- February 20, 2026 (Session 24: Test Graduation + Cross-Repo Debt)
 
 ## Quality Gates
 
@@ -8,19 +8,105 @@
 | `cargo fmt --all -- --check` | PASS | Clean |
 | `cargo clippy --workspace --tests -- -D warnings` | PASS | **Clean (including test code)** |
 | `cargo doc --workspace --no-deps` | PASS | **Clean** |
-| `cargo test --workspace` | PASS | **15,700+ tests passed** |
+| `cargo test --workspace` | PASS | **15,900+ tests passed** |
 | `cargo llvm-cov` (non-GPU) | PASS | **Exit 0 — no SIGSEGV** |
 | hotSpring validation | PASS | **195/195 acceptance checks** |
+| wetSpring validation | PASS | **48/48 life science checks** |
 | Pure Rust syscalls | PASS | **mmap/mlock via rustix** |
 | biomeOS networking | PASS | **No reqwest/hyper** |
 | Sleep-free tests | PASS | **27 sleep calls removed** |
 | Zero-copy hot paths | PASS | **bytes::Bytes on all binary RPC payloads** |
 | Hardcoded IPs/DNS | PASS | **0 remaining — capability-based** |
+| Integration test suites | PASS | **13 suites, 167 tests** |
 | Line coverage (non-GPU) | PASS | **63.02% (+1.67 pp from 61.35%)** |
 
 *All clippy warnings resolved. Workspace fully clean. Tested with `--tests` flag.*
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). `crates/client` excluded (pending reqwest migration to biomeOS tower).
+
+---
+
+## Session 24 Evolutions (Feb 20, 2026) ✅
+
+### Integration Test Graduation — 3 More Suites ✅ (D-S18-003 continued)
+
+**`error_paths_discovery_tests.rs`** (10 tests):
+- Rewrote using `toadstool::self_identity::{Capability, DiscoveredService}` (no `primal_identity` module exists)
+- `SelfIdentity::discover().await` → `SelfIdentity::new()` (sync constructor)
+- `DiscoveredService` fields aligned: added `version`, `protocols`, `last_seen`; removed `metadata`
+- `Capability::from("x")` → struct literal with `name`, `version`, `features`, `characteristics`
+
+**`fault_tests.rs`** (19 tests via `chaos/fault_injection.rs` + `chaos/resilience_tests.rs`):
+- Built against real `toadstool_testing::chaos::{ChaosScenario, FaultType, ResourceType, SystemState}`
+- `FaultType` variants corrected: `node_id`, `consumption_percent`, `loss_rate: f64`, `duration_ms`
+
+**`security_tests.rs`** (13 tests via `security/penetration_tests.rs`):
+- Capability boundary enforcement, privilege escalation resistance, `IsolationLevel` correctness
+- `IsolationLevel::Strict` → `IsolationLevel::Enhanced` (actual variant)
+- Empty-capabilities context: asserts `validate().is_err()` (correct; ≥1 cap required)
+
+**167 integration tests, 0 failures.** Stale `pending/` copies of 8 already-graduated suites removed.
+
+### D-S21-003 — wetSpring `gemm_cached.rs` Path Fragility ✅
+
+- `wetSpring/barracuda/Cargo.toml`: `../../phase1/toadstool` → `../../phase1/toadStool` (Linux case fix)
+- `gemm_cached.rs`: `include_str!("../../../../phase1/toadstool/...")` → `barracuda::ops::linalg::GemmF64::WGSL`
+- `cargo check --features gpu` passes cleanly in wetSpring
+
+---
+
+## Sessions 22–23 Evolutions (Feb 20, 2026) ✅
+
+### D-S17-002 — `capabilities.rs` Semantic Split ✅
+
+`GpuDriverProfile`, `DriverKind`, `CompilerKind`, `GpuArch`, `Fp64Rate`, `Workaround`,
+`EigensolveStrategy` extracted from the 929-line `capabilities.rs` into new `driver_profile.rs`.
+`capabilities.rs` (505 lines) now exclusively covers hardware limits + wgpu dispatch helpers.
+`pub use driver_profile::*` in `capabilities.rs` preserves all callers without path changes.
+
+### D-S16-003 — `ParallelFilter` Two-Level Scan ✅
+
+New `apply_l1_offsets` WGSL entry point (Pass C) in `prefix_sum.wgsl`.
+`filter.rs` `execute()` auto-selects:
+- n ≤ 65,536: existing 4-pass single-level (unchanged)
+- 65,536 < n ≤ 16,777,216: new 6-pass two-level (local scan → L1 scan → offsets → apply → scatter)
+- n > 16M: `BarracudaError::InvalidInput` (three-level left for genome-scale)
+
+### Integration Tests Graduated (Sessions 22–23)
+
+| Suite | Tests |
+|---|---|
+| `runtime_execution_tests.rs` | 20 |
+| `error_handling_tests.rs` | — |
+| `resource_requirements_tests.rs` | — |
+| `security_context_tests.rs` | — |
+| `config_management_tests.rs` | — |
+| `evolution_fault_tests.rs` + `evolution_chaos_tests.rs` | — |
+
+---
+
+## Sessions 19–21 Evolutions (Feb 20, 2026) ✅
+
+### neuralSpring Absorption (`TensorSession` ML ops)
+
+`TensorSession` extended with `matmul`, `relu`, `gelu`, `softmax`, `layer_norm`, `reshape`,
+`head_split`, `attention`, `head_concat` — covers all 11 neuralSpring handoff shortcomings.
+6 new fused MLP/transformer tests passing. Equivalent to the 46–78× fused pipeline in
+`neuralSpring/src/evolved/`. All session ops encode in one `CommandEncoder` / `queue.submit()`.
+
+### GPU Architecture + Dispatch Hardening
+
+- `capabilities.rs::classify_substrate()`: vendor-ID-first (VENDOR\_NVIDIA/AMD/INTEL/APPLE/ARM/QUALCOMM),
+  string-name fallback retained for zero-vendor-ID Mesa/software drivers.
+- `dispatch/benchmark.rs::check_gpu()` + `dispatch/config.rs::check_gpu_available()`:
+  duplicated raw wgpu adapter setup consolidated to `WgpuDevice::new()`.
+
+### `GemmCachedF64` Absorbed from wetSpring
+
+`ops/linalg/gemm_f64.rs`: pre-compiled GEMM pipeline with GPU-resident weight matrix B.
+Pipeline compiled once at `new()`, B uploaded once; subsequent `multiply()` calls dispatch per-A only.
+**Measured**: 60× speedup on taxonomy dispatch (first: 60 ms → subsequent: <1 ms).
+`GemmF64::WGSL` published as `pub const` — eliminates wetSpring's `include_str!` path hack.
 
 ---
 

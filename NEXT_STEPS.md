@@ -1,7 +1,7 @@
 # ToadStool/BarraCUDA — Next Steps
 
-**Updated**: February 20, 2026 — Session 18
-**Status**: Sovereign Phases 0–3 ✅ **Live** | Zero-copy ✅ | GpuExecutor round-trip ✅ | Integration tests ✅ | 63.02% coverage ✅
+**Updated**: February 20, 2026 — Session 24
+**Status**: Sovereign Phases 0–3 ✅ | Integration tests 13 suites/167 ✅ | TensorSession ML ops ✅ | ParallelFilter two-level ✅ | capabilities split ✅ | GemmCachedF64 ✅ | 63.02% coverage ✅
 
 ---
 
@@ -109,7 +109,12 @@ Prerequisites:
 ### Test Coverage (target 90%)
 - [ ] Current: 63.02% line (non-GPU crates) — up from 61.35%
 - [ ] Gap: async networking paths (`websocket.rs`, `unibin.rs` server startup), GPU-gated paths
-- [ ] Add test suites for security monitoring, migration coordinator, display input
+- [ ] Remaining pending test suites: `e2e`, `fhe`, `comprehensive` (require future APIs)
+
+### Cross-Repo Debt (neuralSpring + wetSpring)
+- [ ] **D-S20-003**: neuralSpring `evolved/` migration (~2075 lines) — API mapping table in `DEBT.md`; awaiting neuralSpring team effort
+- [ ] **D-S21-003 partial**: wetSpring `GemmCached` → `GemmCachedF64` session-cached type (semantically blocked: B matrix changes per-sample in streaming_gpu.rs)
+- [ ] **D-S18-002**: cubecl transitive `dirs-sys` — needs upstream PR replacing `dirs` with `etcetera`
 
 ---
 
@@ -131,6 +136,20 @@ Prerequisites:
       directly to force kernel.
 - [x] `contrib/mesa-nak/NAK_DEFICIENCIES.md` — formal decomposition of 5 NAK deficiencies for
       f64 loop-heavy kernels with Mesa Rust patch locations, priority table, validation strategy.
+
+### Sessions 19–24 (Feb 20, 2026) ✅ — Debt Sprint + Test Graduation + ML ops
+- [x] `TensorSession` extended: `matmul`, `relu`, `gelu`, `softmax`, `layer_norm`, `reshape`, `head_split`, `attention`, `head_concat` (all 11 neuralSpring handoff items)
+- [x] `GemmCachedF64` (`ops/linalg/gemm_f64.rs`): pre-compiled pipeline + GPU-resident B matrix; `GemmF64::WGSL` as `pub const`
+- [x] `capabilities.rs` → `driver_profile.rs` split (D-S17-002): 929 lines → 505 + 424; backward compat via re-exports
+- [x] `ParallelFilter` two-level scan (D-S16-003): `apply_l1_offsets` WGSL pass; 4-pass/6-pass auto-select up to 16 M elements
+- [x] `error_paths_discovery_tests.rs` graduated (10 tests): `self_identity` API correct, `SelfIdentity::new()` sync
+- [x] `fault_tests.rs` graduated (19 tests): `chaos/fault_injection.rs` + `chaos/resilience_tests.rs`; `FaultType` fields corrected
+- [x] `security_tests.rs` graduated (13 tests): `security/penetration_tests.rs`; `IsolationLevel::Enhanced`; empty-caps → `Err`
+- [x] 8 stale `pending/` test copies removed
+- [x] `wetSpring/barracuda/Cargo.toml` path case fixed (`toadstool` → `toadStool`)
+- [x] `wetSpring gemm_cached.rs`: `include_str!` → `barracuda::ops::linalg::GemmF64::WGSL`
+- [x] neuralSpring `evolved/` retirement plan documented in DEBT.md (API mapping table)
+- [x] Sessions 22–23: error\_handling, resource\_requirements, security\_context, config\_management, evolution\_fault/chaos, runtime\_execution tests graduated
 
 ### Sessions 9–11 (Feb 19, 2026) ✅ — Concurrency + Zero-Copy + Coverage
 - [x] `bytes::Bytes` on all binary RPC/execution payloads (7 types migrated) — O(1) clone

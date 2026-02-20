@@ -47,6 +47,20 @@ pub enum ToadStoolError {
     /// Errors related to system-level operations
     #[error("System error: {0}")]
     System(#[from] SystemError),
+
+    /// Runtime execution failure (lightweight variant for direct matching)
+    ///
+    /// Preferred over wrapping in `Execution(ExecutionError::WorkloadFailure {...})`
+    /// when the call-site only needs a string description.
+    #[error("Runtime error: {0}")]
+    Runtime(String),
+
+    /// Resource or entity not found (lightweight variant for direct matching)
+    ///
+    /// Preferred over wrapping in `Resource(ResourceError::NotFound {...})`
+    /// when the call-site only needs a string description.
+    #[error("Not found: {0}")]
+    NotFound(String),
 }
 
 // ============================================================================

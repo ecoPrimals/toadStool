@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA — Quick Status
 
-**Date**: February 20, 2026 — Session 18 (Phase 3 Live + Apple GPU + Zero-Copy + Integration Tests)
+**Date**: February 20, 2026 — Session 24 (Test Graduation + Cross-Repo Debt + TensorSession ML ops)
 
 ---
 
@@ -10,7 +10,7 @@
 cargo build --workspace               CLEAN
 cargo fmt --all -- --check            CLEAN
 cargo clippy --workspace --tests      CLEAN (0 warnings, -D warnings)
-cargo test --workspace                15,700+ passed / 0 failed
+cargo test --workspace                15,900+ passed / 0 failed
 cargo llvm-cov (non-GPU)              CLEAN — exit 0, no SIGSEGV
 unsafe blocks                         FFI only (VFIO, DRM) — SAFETY documented
 error handling                        No panic paths — Mutex poison recovery via lock_cache
@@ -22,7 +22,11 @@ GPU sovereignty                       f64 fossils removed, capability matrix pro
 Sovereign Phase 0-3                   WgslOptimizer LIVE in compile_shader_f64() hot path
 LatencyModel                          Sm70 (8cy), Rdna2 (4cy), AppleM (16cy SW), Conservative, Measured
 GpuExecutor zero-copy                 Arc<wgpu::Buffer> shared — GPU→CPU→GPU round-trip gone (D-S16-001)
-integration-tests crate               crates/integration-tests/ + workspace tests/ cleared (D-S16-004)
+integration-tests crate               13 active suites, 167 tests — workspace tests/ clean (D-S16-004)
+ParallelFilter two-level scan         up to 16,777,216 elements (WG²) — D-S16-003 resolved
+capabilities.rs semantic split        driver_profile.rs extracted — D-S17-002 resolved
+TensorSession ML ops                  matmul/relu/gelu/softmax/layer_norm/attention absorbed
+GemmCachedF64                         GPU-resident weight B, 60× dispatch speedup (wetSpring fix)
 Mesa NAK patches                      sm70_instr_latencies.rs + rdna2_instr_latencies.rs ready
 node routing                          least-loaded selection, local fallback, Songbird wiring
 timeout constants                     Centralized in toadstool_common::constants::timeouts
@@ -77,6 +81,13 @@ Sovereign Compute (WgslOptimizer — Phases 0–3 complete)
   Phase 3: WgslOptimizer (DAG + ASAP scheduler + loop unroller) WIRED into compile_shader_f64()
   Next: Phase 4 (full naga-IR SSA optimizer) — Q3 2026
   Mesa NAK patches: contrib/mesa-nak/ — ready to submit post Titan V validation
+
+Integration Tests (13 suites, 167 passing, 0 failed)
+  S16: chaos_engineering, error_paths_config, pure_rust_validation
+  S22: error_handling, resource_requirements, security_context, config_management
+  S22: evolution_fault, evolution_chaos
+  S23: runtime_execution
+  S24: error_paths_discovery, fault (fault_injection + resilience), security (penetration)
 ```
 
 ---
@@ -552,4 +563,4 @@ See `UNIDIRECTIONAL_PIPELINE.md` for tracking and `DEEP_DEBT_STATUS.md` for full
 
 ---
 
-**Last Updated**: February 19, 2026 — Sessions 9–11: Zero-copy bytes::Bytes, 27 sleeps removed, hardcoding eliminated, pure_jsonrpc + storage_backend split, CLI executor coverage, llvm-cov clean, 63.02% coverage
+**Last Updated**: February 20, 2026 — Session 24: error\_paths/fault/security suites graduated (167 tests), wetSpring cross-repo path fixed, neuralSpring retirement plan, TensorSession ML ops, ParallelFilter two-level, capabilities split

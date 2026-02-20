@@ -93,9 +93,14 @@ fn local_scan(
 //
 // A single workgroup computes the exclusive prefix sum of `wg_sums[]` and adds
 // the appropriate cumulative offset to every `scan_out` element.
-// Limitation: works for n_groups ≤ 256 (i.e. arrays up to 65,536 elements per
-// workgroup dimension → 16,777,216 total elements).  For larger arrays, extend
-// with an additional hierarchical level.
+//
+// Constraint: works for `n_groups ≤ WG` (i.e. n ≤ WG² = 65,536 elements).
+// For n > 65,536 and n ≤ WG³ = 16,777,216, use the two-level path:
+//   1. Pass A on input        → scan_out,       wg_sums1
+//   2. Pass A on wg_sums1     → wg_sums1_scan,  wg_sums2  (using separate bind group)
+//   3. Pass B on wg_sums2/1   → corrects wg_sums1_scan    (single workgroup)
+//   4. Pass C (apply_l1_offsets) using wg_sums1_scan → corrects scan_out
+//   5. scatter
 @compute @workgroup_size(256)
 fn add_wg_offsets(
     @builtin(global_invocation_id) global_id: vec3<u32>,
@@ -137,5 +142,30 @@ fn add_wg_offsets(
     let wg_offset = shmem[lid];
     for (var i = 0u; i < WG && (lid * WG + i) < config.n; i = i + 1u) {
         scan_out[lid * WG + i] = scan_out[lid * WG + i] + wg_offset;
+    }
+}
+
+// ── Pass C: apply level-1 offsets (two-level hierarchy only) ─────────────────
+//
+// Used when n > WG² (>65,536 elements).  After steps 2 + 3 have produced a
+// globally-correct `wg_sums1_scan[]`, this pass adds each workgroup's offset
+// to its 256-element segment of `scan_out`.
+//
+// Binding repurposing (same BGL as Pass A):
+//   flags_in  → wg_sums1_scan[] (globally-correct L1 prefix sums, read-only)
+//   scan_out  → the L0 exclusive scan to correct (read_write)
+//   wg_sums   → unused (bound but not read)
+//   config.n  → total element count N (same as Pass A)
+//
+// Dispatched with n_groups1 workgroups so each workgroup handles its own WG
+// elements.  Thread `lid` in workgroup `wgid` processes `scan_out[wgid*WG+lid]`.
+@compute @workgroup_size(256)
+fn apply_l1_offsets(
+    @builtin(global_invocation_id) global_id:   vec3<u32>,
+    @builtin(workgroup_id)         workgroup_id: vec3<u32>,
+) {
+    let offset = flags_in[workgroup_id.x];
+    if (global_id.x < config.n) {
+        scan_out[global_id.x] = scan_out[global_id.x] + offset;
     }
 }

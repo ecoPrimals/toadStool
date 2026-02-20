@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Unreleased] - February 20, 2026 (Sessions 19–24 — Debt Sprint + Test Graduation + ML Ops)
+
+### Added
+
+- **`TensorSession` ML ops** (`session.rs`) — `matmul`, `relu`, `gelu`, `softmax`, `layer_norm`,
+  `reshape`, `head_split`, `attention`, `head_concat`. Covers all 11 neuralSpring handoff items.
+  All ops encode in one `CommandEncoder` / `queue.submit()`. 6 new fused MLP/transformer tests.
+- **`GemmCachedF64`** (`ops/linalg/gemm_f64.rs`) — pre-compiled pipeline + GPU-resident weight matrix B.
+  `multiply(a)` only uploads A; B stays on GPU. 60× speedup for repeated-B workloads (taxonomy).
+  `GemmF64::WGSL` published as `pub const` — removes wetSpring's fragile `include_str!` path.
+- **`crates/barracuda/src/device/driver_profile.rs`** — extracted from `capabilities.rs` (D-S17-002):
+  `GpuDriverProfile`, `DriverKind`, `CompilerKind`, `GpuArch`, `Fp64Rate`, `Workaround`, `EigensolveStrategy`.
+  Re-exported via `capabilities.rs`; zero caller changes required.
+- **`apply_l1_offsets`** WGSL entry point (`prefix_sum.wgsl`) — two-level prefix scan up to 16M elements.
+  `ParallelFilter::execute()` auto-selects 4-pass (≤ 65 K) or 6-pass (≤ 16 M) path (D-S16-003).
+- **`crates/integration-tests/tests/chaos/fault_injection.rs`** (10 tests) — `ChaosScenario` fault injection.
+- **`crates/integration-tests/tests/chaos/resilience_tests.rs`** (9 tests) — fault recovery + system state.
+- **`crates/integration-tests/tests/security/penetration_tests.rs`** (13 tests) — `SecurityContext` boundary enforcement.
+- **`error_paths_discovery_tests.rs`** graduated to `tests/` (10 tests, rewritten for real API).
+
+### Changed
+
+- **`capabilities.rs`** (929 → 505 lines) — hardware limits + wgpu dispatch only; driver types moved to `driver_profile.rs`.
+- **`capabilities.rs::classify_substrate()`** — vendor-ID-first classification
+  (VENDOR_NVIDIA/AMD/INTEL/APPLE/ARM/QUALCOMM); string-name fallback for zero-vendor-ID Mesa adapters.
+- **`ParallelFilter::execute()`** — `n > 16M` now returns `BarracudaError::InvalidInput` instead of silently wrapping.
+
+### Fixed
+
+- **`wetSpring/barracuda/Cargo.toml`** — `path = "../../phase1/toadstool/crates/barracuda"` →
+  `path = "../../phase1/toadStool/crates/barracuda"` (Linux case-sensitive filesystem fix).
+- **`wetSpring/barracuda/src/bio/gemm_cached.rs`** — `include_str!("../../../../phase1/toadstool/...")` →
+  `barracuda::ops::linalg::GemmF64::WGSL` (removes cross-repo source path dependency).
+- **`fault_tests.rs`** / **`security_tests.rs`** graduated — `FaultType` field names corrected
+  (`node_id`, `consumption_percent`, `loss_rate`, `duration_ms`); `IsolationLevel::Enhanced` (not `Strict`);
+  empty-caps validation returns `Err`.
+
+### Removed
+
+- 8 stale duplicate test files from `crates/integration-tests/tests/pending/` (already graduated in S16–S23).
+
+---
+
 ## [Unreleased] - February 20, 2026 (Session 18 — Phase 3 Live + Apple GPU + Zero-Copy + Integration Tests)
 
 ### Added

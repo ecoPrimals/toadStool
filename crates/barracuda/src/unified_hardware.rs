@@ -242,6 +242,16 @@ pub trait TensorStorage: Send + Sync {
     fn is_tpu(&self) -> bool {
         self.hardware_type() == HardwareType::TPU
     }
+
+    /// Return the underlying `Arc<wgpu::Buffer>` if this storage lives on a wgpu GPU.
+    ///
+    /// Default: `None` (CPU and NPU storage return nothing).
+    /// `GpuTensorStorage` overrides this to enable zero-copy input paths —
+    /// callers can skip the GPU→CPU→GPU round-trip when the buffer is already
+    /// on the target device.
+    fn as_wgpu_buffer(&self) -> Option<Arc<::wgpu::Buffer>> {
+        None
+    }
 }
 
 /// Compute scheduler

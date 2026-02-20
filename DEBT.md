@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: February 19, 2026
+**Date**: February 20, 2026
 **Philosophy**: Workarounds are short-term solutions that increase debt.
 We aim to solve deep debt over iterations, evolving toward vendor-agnostic,
 capability-based solutions.
@@ -998,3 +998,289 @@ These constraints are now documented in the bio shader headers.
 | D-S21-001 | `BatchedRK4F64` SSA wrapper: `RkIntegrator` + N-trajectory orchestration layer missing | New |
 | D-S21-002 | `GillespieGpu` reaction limit 32 (inline array); extend via dynamic dispatch for R>32 | New |
 | D-S21-003 | wetSpring `gemm_cached.rs` + `ParallelFilter` local workarounds can now be retired (GemmCachedF64 API + GemmF64::WGSL available) | New |
+
+---
+
+## Session 22
+
+### Summary
+
+Continued D-S18-003: unblocked 6 integration test suites (51 net-new passing tests).
+
+**Production additions**:
+- `ResourceRequirements::validate()` — checks `cpu.min_cores > 0` and `memory.min_bytes > 0`
+- `SecurityContext::has_permission(name: &str) -> bool` — maps string names to `Capability`
+  enum variants; wildcard `"*"` matches any non-empty capability list
+
+**Tests graduated from `pending/` to `tests/`**:
+
+| File | Tests | How unblocked |
+|---|---|---|
+| `error_handling_tests.rs` | 10 | `ToadStoolError::Runtime` / `NotFound` variants added (S22 carry) |
+| `resource_requirements_tests.rs` | 16 | Rewritten to real nested API; `validate()` added |
+| `security_context_tests.rs` | 11 | Rewritten to real `SecurityContext` API; `has_permission()` added |
+| `config_management_tests.rs` | 8 | Rewritten to real `ToadStoolConfig` (non-optional `NetworkConfig`) |
+| `evolution_fault_tests.rs` | 24 | Self-contained; bogus assertion in signal test fixed |
+| `evolution_chaos_tests.rs` | 14 | Self-contained; zero-sum bug + health-drain overflow fixed |
+
+**Remaining blocked** (`pending/` still contains):
+- `runtime_execution_tests.rs` — needs `RuntimeOrchestrator`, `WorkloadType`, `ExecutionRequest`
+- `security_tests.rs` / `fault_tests.rs` — missing sub-module files (`security/`, `chaos/`)
+- `e2e_*` — ecosystem discovery + composition engine not yet built
+- `fhe_integration_example.rs` — `barracuda::ops::fhe_ntt` not yet implemented
+- `comprehensive_test_runner.rs` — multiple future APIs
+
+### Resolved Debt in Session 22
+
+| ID | Item | Status |
+|----|------|--------|
+| D-S20-001 | `TensorSession` pipeline cache (`SessionPipelines`) | ✅ Resolved S22 (carry from S20) |
+| D-S19-001 | `GpuExecutor` zero-copy input via `as_wgpu_buffer()` | ✅ Resolved S22 (carry from S19) |
+| D-S21-002 | `GillespieGpu` dynamic reaction limit (storage buffer) | ✅ Resolved S22 (carry from S21) |
+| D-S21-001 | `BatchedRK4F64` N-trajectory orchestration via `thread::scope` | ✅ Resolved S22 (carry from S21) |
+| D-S20-002 | `TensorSession` SDPA + `head_split` / `head_concat` ops | ✅ Resolved S22 (carry from S20) |
+| D-S18-003 (partial) | 6 of 12 pending test suites unblocked | ✅ Partial — see above |
+
+### Remaining Debt after Session 22
+
+| ID | Item | Status |
+|----|------|--------|
+| D-S16-003 | `ParallelFilter` 16M element limit | Carried |
+| D-S17-002 | `capabilities.rs` ~930 lines; smart refactor deferred | Carried |
+| D-S18-002 | cubecl transitive `dirs-sys` | Carried |
+| D-S18-003 | 6 remaining pending integration tests (runtime, e2e, fhe) | Carried (partial) |
+| D-S20-003 | neuralSpring `evolved/` can be retired | Carried |
+| D-S21-003 | wetSpring `gemm_cached.rs` + `ParallelFilter` local workarounds | Carried |
+
+---
+
+## Session 23
+
+### Summary
+
+Resolved three structural debt items and graduated one more integration test suite.
+
+**Sovereign Compute Evolution audit** (files reviewed): All three phases confirmed complete
+prior to this session — Jacobi ILP shader (Phase 1), `LatencyModel` trait (Phase 2), and
+`WgslDependencyGraph`/`IlpReorderer`/`WgslLoopUnroller` (Phase 3) are all live.
+
+**D-S17-002 — `capabilities.rs` semantic refactor**:
+- Extracted `GpuDriverProfile`, `DriverKind`, `CompilerKind`, `GpuArch`, `Fp64Rate`,
+  `Workaround`, `EigensolveStrategy` into new `crates/barracuda/src/device/driver_profile.rs`
+- `capabilities.rs` now exclusively covers `DeviceCapabilities` + `WorkloadType`
+  (wgpu hardware limits and dispatch helpers)
+- `capabilities.rs` re-exports all `driver_profile` types for backward compatibility
+- `mod.rs` registers `pub mod driver_profile`; all callers compile without path changes
+- File sizes: `capabilities.rs` 505 → driver_profile.rs 310 (929-line file split cleanly)
+
+**D-S16-003 — `ParallelFilter` two-level scan hierarchy**:
+- `prefix_sum.wgsl`: added `apply_l1_offsets` entry point (Pass C) that repurposes the
+  existing scan BGL (`flags_in` → pre-computed L1 prefix sums, dispatched per-workgroup)
+- `filter.rs`: added `SCAN_L2_THRESHOLD = WG³ = 16,777,216`; `execute()` auto-selects:
+  - `n_groups ≤ WG` (n ≤ 65,536): existing 4-pass single-level path (unchanged)
+  - `WG < n_groups ≤ WG²` (n ≤ 16M): new 6-pass two-level path
+    (local_scan → L1-local_scan → add_wg_offsets → apply_l1_offsets → scatter)
+  - `n > 16M`: returns `BarracudaError::InvalidInput` (three-level left for genome-scale)
+
+**D-S18-003 (continued) — `runtime_execution_tests.rs` graduated**:
+- Completely rewritten using actual production API:
+  `RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable)`,
+  `WorkloadSpec::Native { executable: ExecutableSource::Url {...}, ... }`,
+  `ExecutionRequest::default()` field names (`resources`, `workload`, etc.)
+- Removed fictitious variants (`RuntimeNotFound`, `ExecutionFailed`, `Timeout`)
+  in favour of real `ToadStoolError::NotFound(_)` and `Configuration(_)` matching
+- 20 tests passing, 0 failures
+
+**Tests graduated from `pending/` to `tests/`**:
+
+| File | Tests | How unblocked |
+|---|---|---|
+| `runtime_execution_tests.rs` | 20 | Rewritten to actual `RuntimeOrchestrator` + `WorkloadSpec` API |
+
+### Resolved Debt in Session 23
+
+| ID | Item | Status |
+|----|------|--------|
+| D-S17-002 | `capabilities.rs` semantic refactor → `driver_profile.rs` | ✅ Resolved S23 |
+| D-S16-003 | `ParallelFilter` two-level scan (n ≤ 16M) | ✅ Resolved S23 |
+| D-S18-003 (partial) | 1 more test suite unblocked (`runtime_execution_tests`) | ✅ Partial |
+
+### Remaining Debt after Session 23
+
+| ID | Item | Status |
+|----|------|--------|
+| D-S18-002 | cubecl transitive `dirs-sys` | Carried |
+| D-S18-003 | 5 remaining pending integration tests (security, fault, e2e, fhe) | Carried (partial) |
+| D-S20-003 | neuralSpring `evolved/` can be retired | Carried |
+| D-S21-003 | wetSpring `gemm_cached.rs` + `ParallelFilter` local workarounds | Carried |
+
+---
+
+## Session 24 — Test Graduation Sprint + Cross-Repo Debt Resolution (Feb 20, 2026)
+
+### Work performed
+
+**D-S18-003 (continued) — 3 more test suites graduated from `pending/`**:
+
+**`error_paths_discovery_tests.rs`**:
+- Rewrote to use actual module paths (`self_identity::Capability`, `self_identity::DiscoveredService`)
+  instead of the fictitious `primal_identity` module
+- `SelfIdentity::discover().await` → `SelfIdentity::new()` (sync, no async needed)
+- `DiscoveredService` struct fields aligned (`version`, `protocols`, `last_seen` added; `metadata` removed)
+- `Capability::from("x")` → struct literal with `name`, `version`, `features`, `characteristics`
+- 10 tests passing
+
+**`fault_tests.rs`** + sub-modules:
+- Created `tests/chaos/fault_injection.rs` (10 tests) and `tests/chaos/resilience_tests.rs` (9 tests)
+  using the real `toadstool_testing::chaos::{ChaosScenario, FaultType, ResourceType, SystemState}` API
+- Corrected `FaultType` field names (`node_id` not `process_name`, `consumption_percent` not
+  `exhaustion_percentage`, `loss_rate: f64` not `loss_percentage: u32`, `duration_ms` on all variants)
+- 19 tests passing
+
+**`security_tests.rs`** + sub-module:
+- Created `tests/security/penetration_tests.rs` (13 tests) using the real
+  `SecurityContext`, `Capability`, `IsolationLevel`, `SecuritySettings` API
+- Tested capability boundary enforcement, privilege escalation resistance,
+  isolation level correctness, wildcard permission matching, and validate() edge cases
+- `IsolationLevel::Strict` → `IsolationLevel::Enhanced` (actual variant)
+- Empty-capabilities assertion corrected: `validate()` requires ≥1 capability (test now asserts `is_err()`)
+- 13 tests passing
+
+**Pending cleanup**:
+- Stale `pending/` copies of already-graduated tests removed:
+  `config_management_tests.rs`, `error_handling_tests.rs`, `evolution_chaos_tests.rs`,
+  `evolution_fault_tests.rs`, `resource_requirements_tests.rs`, `security_context_tests.rs`,
+  `runtime_execution_tests.rs`, `error_paths_discovery_tests.rs`
+
+**Tests graduated from `pending/` to `tests/`**:
+
+| File | Tests | How unblocked |
+|---|---|---|
+| `error_paths_discovery_tests.rs` | 10 | Rewrote using `self_identity::*`; `SelfIdentity::new()` |
+| `fault_tests.rs` | 19 (via chaos/) | Created `chaos/fault_injection.rs` + `chaos/resilience_tests.rs` |
+| `security_tests.rs` | 13 (via security/) | Created `security/penetration_tests.rs` |
+
+**Total integration tests**: 167 (0 failures)
+
+**D-S21-003 — wetSpring `gemm_cached.rs` path fragility resolved**:
+- `wetSpring/barracuda/Cargo.toml`: fixed wrong-case path (`toadstool` → `toadStool`);
+  this path was always broken on Linux (case-sensitive FS)
+- `wetSpring/barracuda/src/bio/gemm_cached.rs`: replaced fragile
+  `include_str!("../../../../phase1/toadstool/...")` with `barracuda::ops::linalg::GemmF64::WGSL`
+  (the const published by barracuda since Session 15).  The `GemmCached` type itself is retained
+  since its API (A and B both per-call) differs from `GemmCachedF64` (B pre-uploaded). The streaming
+  taxonomy pipeline passes `t_compact` (B) per sample batch, making `GemmCachedF64` semantically wrong
+  for that use-case. A future session can introduce a session-scoped cached pipeline type.
+- `cargo check --features gpu` passes cleanly
+
+**D-S20-003 — neuralSpring `evolved/` retirement path documented**:
+
+The six binaries still using `evolved::` map to these barracuda APIs (all available since S20):
+
+| evolved type | barracuda TensorSession equivalent |
+|---|---|
+| `FusedMlp::forward(input)` | `session.tensor(input)` → `matmul` → `relu`/`gelu` → `run()` → `to_vec()` |
+| `FusedTransformer::forward(input)` | `session.head_split` → `attention` → `head_concat` → `layer_norm` → FFN (`matmul`+`gelu`+`matmul`) → `run()` |
+| `multi_head_attention_2d(q, k, v, ...)` | `session.head_split` + `attention` + `head_concat` |
+| `fused_pipeline::Dev` | `WgpuDevice` + `TensorSession::with_device(Arc::new(device))` |
+
+Action for neuralSpring team: update `bench_scaling.rs`, `bench_fused_inference.rs`,
+`bench_transformer_block.rs`, `validate_barracuda_ml_inference.rs`, `bench_barracuda_tensor.rs`,
+`validate_barracuda_tensor.rs` to use `barracuda::session::{TensorSession, SessionTensor}` directly,
+then remove `pub mod evolved` from `src/lib.rs` and delete `src/evolved/`.
+
+### Resolved Debt in Session 24
+
+| ID | Item | Status |
+|----|------|--------|
+| D-S18-003 (continued) | 3 more test suites unblocked (error_paths_discovery, fault, security) | ✅ Partial |
+| D-S21-003 (partial) | wetSpring `gemm_cached.rs` fragile path → `GemmF64::WGSL`; Cargo.toml path fixed | ✅ Partial |
+
+### Remaining Debt after Session 24
+
+| ID | Item | Status |
+|----|------|--------|
+| D-S18-002 | cubecl transitive `dirs-sys` (upstream PR needed) | Carried |
+| D-S18-003 | e2e, fhe, comprehensive pending tests (require future APIs) | Carried (partial) |
+| D-S20-003 | neuralSpring `evolved/` retirement (needs neuralSpring team migration) | Carried |
+| D-S21-003 | wetSpring `GemmCached` → barracuda session-cached type (future design) | Carried (partial) |
+
+---
+
+## Session 25 — GPU FFT f64 Validation + Error System Deep Debt (Feb 20, 2026)
+
+### Work performed
+
+**W-001 follow-up — `math_f64.wgsl` fossil dep-graph divergence fixed**:
+
+Three root-cause bugs found and resolved together:
+
+1. **`sin_f64`/`cos_f64` called fossil `floor_f64()`** — the dep-graph metadata had been
+   updated to mark `sin_f64` as having no deps (implying it uses native `floor()`), but
+   the function bodies in `math_f64.wgsl` still called `floor_f64(…)`.
+   Fix: replaced four `floor_f64(` calls with native `floor(` in the `sin_f64` and `cos_f64`
+   bodies (`math_f64.wgsl` lines 653, 660, 680, 684).
+
+2. **`sin_kernel_f64`/`cos_kernel_f64` not in dep graph or order list** — `sin_f64` and
+   `cos_f64` delegate their polynomial evaluation to these helper functions, but neither
+   function appeared in `F64_FUNCTION_DEPS` or `F64_FUNCTION_ORDER`, so
+   `inject_missing_math_f64` never injected them.
+   Fix: added `("sin_kernel_f64", &[])` and `("cos_kernel_f64", &[])` to `F64_FUNCTION_DEPS`;
+   updated `sin_f64` deps to `&["sin_kernel_f64", "cos_kernel_f64"]`; prepended both to
+   `F64_FUNCTION_ORDER` before `sin_f64`.
+   File: `crates/barracuda/src/shaders/precision/math_f64.rs`.
+
+3. **`fft_1d_f64.wgsl` `params.inverse` field was declared but never read** — the butterfly
+   kernel always applied forward-direction twiddle factors (`exp(-2πik/N)`) regardless of
+   the `inverse` flag.  An impulse roundtrip passes even with this bug because
+   `FFT(FFT(impulse))/N = impulse`.  Non-trivial signals fail.
+   Fix: added a conjugation branch in the butterfly kernel:
+   ```wgsl
+   if params.inverse == 1u { twiddle.im = -twiddle.im; }
+   ```
+   File: `crates/barracuda/src/ops/fft/fft_1d_f64.wgsl`.
+
+**`Fft1DF64` GPU validation — three tests added** (`fft_1d_f64.rs` `#[cfg(test)]`):
+
+All three are `#[tokio::test]` and skip gracefully when no f64-capable GPU is present
+(`get_test_device_if_f64_gpu_available` returns `None`). All passed on RTX 3090 (Vulkan).
+
+| Test | What it proves |
+|------|---------------|
+| `test_fft_1d_f64_impulse_spectrum_gpu` | Forward butterfly: impulse → flat spectrum, all bins magnitude 1.0 ± 1e-10 |
+| `test_fft_1d_f64_roundtrip_gpu` | Full FFT→IFFT on a multi-harmonic real signal; recovers original ± 1e-10 (non-degenerate — would catch broken inverse) |
+| `test_fft_1d_f64_single_frequency_gpu` | Pure tone at k=2 maps to single bin with magnitude N ± 1e-8; all others < 1e-8 |
+
+**`ToadStoolError::Runtime` / `NotFound` — exhaustiveness gap resolved across 4 sites**:
+
+`Runtime(String)` and `NotFound(String)` lightweight variants were added to
+`ToadStoolError` in Session 24 via `error_context.rs`, but four match sites were never
+updated.  All four sites plus HTTP semantic wiring fixed:
+
+| File | Fix |
+|------|-----|
+| `crates/api/src/types.rs` | Added `Runtime → "RUNTIME_ERROR"`, `NotFound → "NOT_FOUND_ERROR"` arms; fixed pre-existing use-after-move (compute `err.to_string()` before match consumes `err`) |
+| `crates/api/src/byob.rs` | Added `NotFound → StatusCode::NOT_FOUND` arm in `From<ToadStoolError> for ApiError` (test `test_api_error_conversion` was asserting 404; was returning 500) |
+| `crates/server/src/errors.rs` | Added `ServerError::NotFound(String)` variant; wired `ToadStoolError::Runtime → ServerError::Execution` and `ToadStoolError::NotFound → ServerError::NotFound`; added reverse `ServerError::NotFound → ToadStoolError::NotFound`; added 3 new tests |
+| `crates/server/tests/error_tests.rs` | Added `ServerError::NotFound` to exhaustive match enumeration test |
+
+### Resolved Debt in Session 25
+
+| ID | Item | Status |
+|----|------|--------|
+| W-001 follow-up | `math_f64.wgsl` `sin_f64`/`cos_f64` still called fossil `floor_f64` — fixed | ✅ |
+| W-001 follow-up | `sin_kernel_f64`/`cos_kernel_f64` absent from dep graph — fixed | ✅ |
+| (new) | `fft_1d_f64.wgsl` `params.inverse` never read — twiddle conjugation missing — fixed | ✅ |
+| (new) | `Fft1DF64` had no GPU roundtrip test; impulse-only test hides broken inverse — 3 tests added | ✅ |
+| (new) | `ToadStoolError::Runtime`/`NotFound` exhaustiveness gap in server + api — 4 sites fixed | ✅ |
+
+### Remaining Debt after Session 25
+
+| ID | Item | Status |
+|----|------|--------|
+| D-S18-002 | cubecl transitive `dirs-sys` (upstream PR needed) | Carried |
+| D-S18-003 | e2e, fhe, comprehensive pending tests (require future APIs) | Carried (partial) |
+| D-S20-003 | neuralSpring `evolved/` retirement (needs neuralSpring team migration) | Carried |
+| D-S21-003 | wetSpring `GemmCached` → barracuda session-cached type (future design) | Carried (partial) |
+| W-003 | NAK compiler Titan V hardware validation for ILP speedup | Carried |
+| W-005 | GPU-resident VACF (Velocity Autocorrelation Function) | Carried |

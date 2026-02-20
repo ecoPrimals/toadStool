@@ -86,15 +86,18 @@ async fn test_daemon_mode_handles_registration_failure() {
 #[tokio::test]
 async fn test_signal_manager_handles_invalid_signal() {
     // Test signal manager handles invalid signals
-    
+    let valid_unix_signals = [
+        "SIGTERM", "SIGINT", "SIGKILL", "SIGHUP",
+        "SIGUSR1", "SIGUSR2", "SIGALRM", "SIGCHLD",
+        "SIGQUIT", "SIGABRT",
+    ];
     let invalid_signals = vec!["INVALID", "SIG999", "", "123"];
-    
     for signal in invalid_signals {
-        // Should detect invalid signals
+        // Each entry must NOT appear in the known-valid set
         assert!(
-            !signal.starts_with("SIG") || 
-            signal.is_empty() ||
-            signal.chars().all(|c| c.is_numeric())
+            !valid_unix_signals.contains(&signal),
+            "Signal '{}' should be invalid but was found in the valid set",
+            signal
         );
     }
 }

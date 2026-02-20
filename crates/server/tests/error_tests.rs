@@ -262,6 +262,7 @@ fn test_match_server_error_variants() {
         ServerError::Configuration("config".to_string()),
         ServerError::Network("network".to_string()),
         ServerError::Execution("exec".to_string()),
+        ServerError::NotFound("not found".to_string()),
         ServerError::Internal("internal".to_string()),
     ];
 
@@ -275,6 +276,7 @@ fn test_match_server_error_variants() {
             ServerError::Configuration(_) => {}
             ServerError::Network(_) => {}
             ServerError::Execution(_) => {}
+            ServerError::NotFound(_) => {}
             ServerError::Internal(_) => {}
         }
     }

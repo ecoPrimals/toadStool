@@ -45,6 +45,9 @@ pub enum ServerError {
     #[error("Execution failed: {0}")]
     Execution(String),
 
+    #[error("Not found: {0}")]
+    NotFound(String),
+
     #[error("Internal server error: {0}")]
     Internal(String),
 }
@@ -93,6 +96,7 @@ impl From<ServerError> for ToadStoolError {
                     reason: msg,
                 })
             }
+            ServerError::NotFound(msg) => ToadStoolError::NotFound(msg),
             ServerError::Internal(msg) => {
                 ToadStoolError::System(SystemError::Internal { reason: msg })
             }
@@ -114,6 +118,9 @@ impl From<ToadStoolError> for ServerError {
             ToadStoolError::Network(_) => ServerError::Network(error.to_string()),
             ToadStoolError::System(_) => ServerError::Internal(error.to_string()),
             ToadStoolError::Integration(_) => ServerError::Internal(error.to_string()),
+            // Lightweight variants added in Session 24 (error_context.rs helpers)
+            ToadStoolError::Runtime(_) => ServerError::Execution(error.to_string()),
+            ToadStoolError::NotFound(_) => ServerError::NotFound(error.to_string()),
         }
     }
 }
@@ -183,6 +190,12 @@ mod tests {
     fn test_execution_error_display() {
         let error = ServerError::Execution("workload failed".to_string());
         assert_eq!(error.to_string(), "Execution failed: workload failed");
+    }
+
+    #[test]
+    fn test_not_found_error_display() {
+        let error = ServerError::NotFound("workload xyz".to_string());
+        assert_eq!(error.to_string(), "Not found: workload xyz");
     }
 
     #[test]
@@ -362,6 +375,34 @@ mod tests {
             ServerError::Internal(_) => {} // Expected
             _ => panic!("Expected Internal error"),
         }
+    }
+
+    #[test]
+    fn test_toadstool_runtime_to_server_error() {
+        let toadstool_error = ToadStoolError::Runtime("task panicked".to_string());
+        let server_error: ServerError = toadstool_error.into();
+        match server_error {
+            ServerError::Execution(_) => {}
+            _ => panic!("Expected Execution error"),
+        }
+    }
+
+    #[test]
+    fn test_toadstool_not_found_to_server_error() {
+        let toadstool_error = ToadStoolError::NotFound("workload-abc".to_string());
+        let server_error: ServerError = toadstool_error.into();
+        match server_error {
+            ServerError::NotFound(_) => {}
+            _ => panic!("Expected NotFound error"),
+        }
+    }
+
+    #[test]
+    fn test_not_found_roundtrip() {
+        let original = ServerError::NotFound("thing-123".to_string());
+        let toadstool: ToadStoolError = original.into();
+        assert!(matches!(toadstool, ToadStoolError::NotFound(_)));
+        assert!(toadstool.to_string().contains("thing-123"));
     }
 
     #[test]

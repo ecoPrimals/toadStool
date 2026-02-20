@@ -97,6 +97,27 @@ pub struct NetworkRequirements {
     pub max_latency_ms: Option<u64>,
 }
 
+impl ResourceRequirements {
+    /// Validate that the requirements are internally consistent.
+    ///
+    /// Returns `Err` if any mandatory field contains an obviously invalid value
+    /// (e.g. zero CPU cores or zero memory).
+    pub fn validate(&self) -> ToadStoolResult<()> {
+        use crate::ToadStoolError;
+        if self.cpu.min_cores <= 0.0 {
+            return Err(ToadStoolError::validation(
+                "cpu.min_cores must be greater than 0",
+            ));
+        }
+        if self.memory.min_bytes == 0 {
+            return Err(ToadStoolError::validation(
+                "memory.min_bytes must be greater than 0",
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// GPU requirements
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuRequirements {
@@ -275,6 +296,41 @@ impl Default for ResourceLimits {
             network_limits: NetworkLimits::default(),
             execution_timeout: Some(chrono::Duration::seconds(300)),
         }
+    }
+}
+
+/// Snapshot of actual resource consumption during or after execution.
+///
+/// Tracks observed resource usage in contrast to `ResourceRequirements` (requested)
+/// and `ResourceLimits` (maximum permitted).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ResourceUsage {
+    /// CPU usage percentage (0.0–100.0 × n_cores)
+    pub cpu_usage_percent: f64,
+    /// Memory currently in use, in megabytes
+    pub memory_used_mb: u64,
+    /// Disk I/O read bytes since start
+    pub disk_read_bytes: u64,
+    /// Disk I/O write bytes since start
+    pub disk_write_bytes: u64,
+    /// Network bytes received since start
+    pub network_rx_bytes: u64,
+    /// Network bytes transmitted since start
+    pub network_tx_bytes: u64,
+    /// Wall-clock execution time in milliseconds
+    pub wall_time_ms: u64,
+}
+
+impl ResourceUsage {
+    /// Returns `true` when all metrics are zero (freshly created or never measured).
+    pub fn is_empty(&self) -> bool {
+        self.cpu_usage_percent == 0.0
+            && self.memory_used_mb == 0
+            && self.disk_read_bytes == 0
+            && self.disk_write_bytes == 0
+            && self.network_rx_bytes == 0
+            && self.network_tx_bytes == 0
+            && self.wall_time_ms == 0
     }
 }
 

@@ -34,7 +34,7 @@ Nest    = Tower  + NestGate           ← storage
 | `cargo fmt --all -- --check` | ✅ Clean |
 | `cargo clippy --workspace --tests -- -D warnings` | ✅ Clean |
 | `cargo doc --workspace --no-deps` | ✅ Clean |
-| `cargo test --workspace` | ✅ 15,700+ passed, 0 failed |
+| `cargo test --workspace` | ✅ 15,900+ passed, 0 failed |
 | hotSpring validation | ✅ 195/195 nuclear physics + MD checks |
 | wetSpring validation | ✅ 48/48 life science checks |
 | airSpring validation | ✅ 70/70 Rust + 142 Python precision agriculture checks |
@@ -56,7 +56,7 @@ Nest    = Tower  + NestGate           ← storage
 | Sovereign Compute | ✅ Phases 0–3 built and **wired** — `WgslOptimizer` fires on every f64 shader compile |
 | Apple M-series GPU | ✅ `GpuArch::AppleM` detected, `AppleMLatencyModel` (16cy f64), full arch matrix |
 | GpuExecutor zero-copy | ✅ D-S16-001 resolved — `Arc<wgpu::Buffer>` shared, no CPU round-trip |
-| Integration tests crate | ✅ D-S16-004 resolved — `crates/integration-tests/` wired, workspace `tests/` clean |
+| Integration tests crate | ✅ 13 active suites, 167 tests — `crates/integration-tests/`; workspace `tests/` clean |
 | Sleep-free tests | ✅ 27 sleep calls removed — `advance()`, `Barrier`, `Notify`, arithmetic |
 | Zero-copy hot paths | ✅ `bytes::Bytes` on all binary RPC payloads (O(1) clone) |
 | Hardcoded values | ✅ DNS, IPs, endpoints all capability-based or env-driven |
@@ -244,7 +244,7 @@ toadStool/
 | Metric | Value |
 |--------|-------|
 | Clippy warnings | 0 |
-| Tests passing | 15,700+ |
+| Tests passing | 15,900+ |
 | Tests failing | 0 |
 | Build warnings | 0 |
 | Line coverage (non-GPU) | 63.02% (+1.67 pp from 61.35%) |
@@ -282,6 +282,48 @@ toadStool/
 ### Infrastructure (Next)
 - **NPU model pipeline** -- train/compile/deploy from Rust
 - **burn-inference models** -- Full BERT/Whisper/YOLO implementations
+
+---
+
+## Recent Evolutions (Feb 20, 2026 — Sessions 19–24: Debt Sprint + Test Graduation)
+
+### Session 24 — Integration Test Graduation Sprint ✅
+
+3 more test suites graduated from `pending/` to fully active:
+
+| Suite | Tests | How |
+|---|---|---|
+| `error_paths_discovery_tests.rs` | 10 | Rewrote using `self_identity::Capability/DiscoveredService`; `SelfIdentity::new()` (sync) |
+| `fault_tests.rs` | 19 | Created `chaos/fault_injection.rs` + `chaos/resilience_tests.rs` via `toadstool_testing::chaos` |
+| `security_tests.rs` | 13 | Created `security/penetration_tests.rs` — capability boundaries, privilege escalation, `IsolationLevel` |
+
+**167 integration tests, 0 failures.** Stale `pending/` copies of 8 already-graduated suites removed.
+
+**D-S21-003 (wetSpring `gemm_cached.rs`)**: Fixed case-wrong Cargo.toml path (`toadstool` → `toadStool`);
+replaced fragile `include_str!(...)` with `barracuda::ops::linalg::GemmF64::WGSL` published constant.
+`cargo check --features gpu` passes cleanly.
+
+### Sessions 22–23 — Capabilities Refactor + ParallelFilter Scale + Test Graduation ✅
+
+**D-S17-002** — `capabilities.rs` semantic split: `GpuDriverProfile`, `DriverKind`, `CompilerKind`,
+`GpuArch`, `Fp64Rate`, `Workaround`, `EigensolveStrategy` extracted to new `driver_profile.rs`.
+`capabilities.rs` exclusively covers hardware limits (`DeviceCapabilities`, `WorkloadType`).
+Re-exports preserve backward compatibility; all callers compile without path changes.
+
+**D-S16-003** — `ParallelFilter` two-level scan: supports up to 16,777,216 elements (WG²).
+New `apply_l1_offsets` WGSL entry point; `execute()` auto-selects 4-pass (n ≤ 65 K) or
+6-pass two-level path (n ≤ 16M); `InvalidInput` for genome-scale (three-level future).
+
+6 integration test suites graduated in Sessions 22–23 (error\_handling, resource\_requirements,
+security\_context, config\_management, evolution\_fault, evolution\_chaos, runtime\_execution).
+
+### Sessions 19–21 — neuralSpring Absorption + Sovereign GPU Hardening ✅
+
+- `TensorSession` extended with `matmul`, `relu`, `gelu`, `softmax`, `layer_norm`, `reshape`,
+  `head_split`, `attention`, `head_concat` — absorbs all 11 neuralSpring handoff items.
+- `capabilities.rs` → vendor-ID-first classification (VENDOR\_NVIDIA/AMD/INTEL/APPLE/ARM/QUALCOMM).
+- `dispatch/benchmark.rs` + `dispatch/config.rs` duplicate `check_gpu()` consolidated to `WgpuDevice::new()`.
+- `GemmCachedF64` absorbed from wetSpring (`ops/linalg/gemm_f64.rs`): pre-compiled pipeline + GPU-resident weight matrix B, 60× dispatch speedup for taxonomy workloads.
 
 ---
 
@@ -773,7 +815,9 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 | ID | Description | Status |
 |----|-------------|--------|
 | W-001 | f64 transcendental `exp`/`log` workaround for NVK/RADV | Active — fossil functions removed, workaround still in `for_driver_auto()`; upstream ACO/NAK fix pending Titan V validation |
-| W-003 | NAK compiler scheduling gap (SM70 Volta FP64) | Active — source-level ILP (Phases 0–3) **built and wired** into `compile_shader_f64()`; Titan V hardware benchmark pending to quantify actual speedup; Mesa MR ready when bench confirms ≥ 3× |
+| W-003 | NAK compiler scheduling gap (SM70 Volta FP64) | Active — source-level ILP (Phases 0–3) **built and wired** into `compile_shader_f64()`; Titan V hardware benchmark pending; Mesa MR ready when bench confirms ≥ 3× |
+| D-S18-002 | cubecl transitive `dirs-sys` | Low — external crate; needs upstream PR to cubecl replacing `dirs` with `etcetera` |
+| D-S20-003 | neuralSpring `evolved/` (~2075 lines) | Carried — ToadStool barracuda APIs ready; neuralSpring team migration pending (mapping table in DEBT.md) |
 
 All other tracked debt resolved. See [DEBT.md](DEBT.md) for full register and evolution paths.
 
@@ -788,4 +832,4 @@ All other tracked debt resolved. See [DEBT.md](DEBT.md) for full register and ev
 
 ---
 
-**Last Updated**: February 20, 2026 — Session 18: `WgslOptimizer` wired into `compile_shader_f64()` (Phase 3 activated), `AppleMLatencyModel` added (cross-vendor arch matrix complete), `GpuExecutor` zero-copy output via `Arc<wgpu::Buffer>` (D-S16-001), `crates/integration-tests` crate (D-S16-004, workspace `tests/` cleared)
+**Last Updated**: February 20, 2026 — Session 24: 3 more integration test suites graduated (error\_paths\_discovery, fault/chaos sub-modules, security/penetration); wetSpring `gemm_cached.rs` fragile `include_str!` path replaced with `barracuda::ops::linalg::GemmF64::WGSL`; neuralSpring `evolved/` retirement path documented.

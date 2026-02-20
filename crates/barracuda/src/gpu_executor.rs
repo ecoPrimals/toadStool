@@ -254,19 +254,32 @@ impl ComputeExecutor for GpuExecutor {
             });
         }
 
-        // ── Build Tensors from storage ──────────────────────────────────────
+        // ── Build Tensors from storage (zero-copy fast path) ──────────────────
         // Each input must have been placed on this GPU by `transfer()`.
-        // We upload via CPU roundtrip since `Tensor` currently requires owned buffers.
-        // Evolution target (D-S18-001): once Tensor supports Arc<Buffer> views the
-        // round-trip can be eliminated and this becomes zero-copy.
         //
-        // `build_tensor` is now a proper async helper — no pollster::block_on needed.
+        // Fast path (D-S19-001 resolved): if the storage is already a
+        // `GpuTensorStorage` on this device, reuse its `Arc<wgpu::Buffer>`
+        // directly via `Tensor::from_arc_buffer` — zero GPU↔CPU transfers.
+        //
+        // Slow path (fallback): CPU round-trip for cross-device or non-GPU storage.
         async fn build_tensor(
             storage: &Arc<dyn TensorStorage>,
             device: &Arc<crate::device::WgpuDevice>,
         ) -> Result<crate::tensor::Tensor> {
-            let data_bytes = storage.read_to_cpu().await?;
             let desc  = storage.descriptor();
+            let shape = desc.shape.clone();
+
+            // Zero-copy path: storage already has a wgpu::Buffer
+            if let Some(buffer) = storage.as_wgpu_buffer() {
+                return Ok(crate::tensor::Tensor::from_arc_buffer(
+                    buffer,
+                    shape,
+                    device.clone(),
+                ));
+            }
+
+            // Fallback: read from CPU and upload (cross-device or CPU storage)
+            let data_bytes = storage.read_to_cpu().await?;
             let numel = desc.numel;
             let elem  = desc.dtype.size_bytes();
             if data_bytes.len() < numel * elem {
@@ -476,6 +489,12 @@ impl TensorStorage for GpuTensorStorage {
     }
 
     /// Read GPU data back to CPU as raw bytes.
+    /// Zero-copy access to the GPU buffer — enables callers to skip the
+    /// GPU→CPU→GPU round-trip when the buffer is already on the right device.
+    fn as_wgpu_buffer(&self) -> Option<Arc<wgpu::Buffer>> {
+        Some(self.buffer.clone())
+    }
+
     async fn read_to_cpu(&self) -> Result<Vec<u8>> {
         let numel     = self.descriptor.numel;
         let elem_size = self.descriptor.dtype.size_bytes();

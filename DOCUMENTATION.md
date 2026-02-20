@@ -27,15 +27,18 @@
 
 ---
 
-## Current State (February 17, 2026)
+## Current State (February 20, 2026 — Session 24)
 
+- **Integration Tests** — 13 suites, 167 tests; error\_paths\_discovery, fault/chaos, security/penetration graduated (S24)
+- **GemmCachedF64** — GPU-resident weight matrix B; 60× dispatch speedup; `GemmF64::WGSL` as `pub const`
+- **TensorSession ML ops** — matmul, relu, gelu, softmax, layer\_norm, attention, head\_split/concat absorbed
+- **`capabilities.rs` semantic split** — `driver_profile.rs` extracted; 929 → 505 + 424 lines; backward compat (S23)
+- **ParallelFilter two-level** — 6-pass path up to 16M elements; `apply_l1_offsets` WGSL (S23)
+- **wetSpring cross-repo fix** — Cargo.toml case fix + `include_str!` → `GemmF64::WGSL` constant (S24)
+- **Sovereign Compute Phases 0–3** — `WgslOptimizer` live in `compile_shader_f64()` hot path (S18)
 - **cudarc 0.19 Upgrade** — CUDA backend modernized with real device queries, stream-based ops
-- **Clippy Cleanup** — 44 warnings fixed across workspace (div_ceil, is_multiple_of, type alias)
 - **Pure Rust Syscalls** — akida-driver mmap/mlock migrated from libc to rustix
 - **biomeOS Networking** — No reqwest/hyper; Songbird (TLS) + Beardog (crypto) + JSON-RPC
-- **Broadcast Error Handling** — Server/protocols log when sends fail (debug/trace)
-- **Placeholder Documentation** — FPGA, GPU remote, Akida parsing evolution paths documented
-- **Songbird Registry** — Evolved from stub to real JSON-RPC call
 - **Three Springs Validation** — 313+ checks across hotSpring (195), wetSpring (48), airSpring (70)
 - **Unified Math Library** — Fused Map-Reduce, Kriging, Cosine Similarity f64, Batched ET₀
 - **37 New Evolution Tests** — Unit, E2E, chaos, fault, precision coverage for unified primitives
@@ -53,13 +56,13 @@
 - **Math Primitives Absorbed** — Broyden mixing, FD gradients, weighted inner products, Hermite/Laguerre f64
 - **84 new evolution tests** — 47 hotSpring + 37 three springs (unit, E2E, chaos, fault, precision)
 - **0 clippy warnings with -D warnings**
-- **15,700+ tests passing**, 0 failing (500+ scientific middleware tests)
+- **15,900+ tests passing**, 0 failing (500+ scientific middleware, 167 integration)
 - **480+ WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
 - **Shader-first**: ALL math is WGSL primary, ToadStool dispatches to GPU/CPU
 - **Scientific middleware** (14 modules: linalg, linalg::sparse, numerical, special, stats, optimize, surrogate, sample, pde, interpolate, dispatch, pipeline, mixing, grid — 400+ tests, 0 unsafe)
 - **Auto-dispatch system** — CPU/GPU routing with benchmark suite
 - **17 WorkloadHint variants** with auto-routing (GPU, NPU, CPU) and user preference override
-- **26 JSON-RPC methods** across 6 domains (toadstool, compute, gpu, ollama, gate, resources)
+- **36 JSON-RPC methods** across 8 domains (toadstool, toadstool.resources, compute, resources, ai, gpu, ollama, gate)
 - GPU job queue with cross-gate routing
 - NPU detection: `/dev/akida*` and IOMMU/VFIO sysfs scan for BrainChip 0x1e7c
 - 100% `unsafe` block documentation (FFI only, all with `// SAFETY:`)
@@ -103,7 +106,7 @@
 
 **[docs/guides/TESTING.md](docs/guides/TESTING.md)** -- Testing strategy: unit, integration, property-based, fault, chaos testing.
 
-**[crates/integration-tests/](crates/integration-tests/)** -- Workspace integration test crate. Active suites: `chaos_engineering_scenarios`, `error_paths_config_tests`, `pure_rust_validation_tests`. Pending suites: `tests/pending/` with `README.md` tracking table.
+**[crates/integration-tests/](crates/integration-tests/)** -- Workspace integration test crate. 13 active suites, 167 tests (chaos, error paths, security, fault, runtime execution, and more). Pending suites tracked in `tests/pending/README.md`.
 
 **[docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)** -- NPU driver deployment.
 

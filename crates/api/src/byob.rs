@@ -222,7 +222,12 @@ impl From<ToadStoolError> for ApiError {
                 status: StatusCode::NOT_IMPLEMENTED,
                 message: err.to_string(),
             },
-            // All other errors -> INTERNAL_SERVER_ERROR
+            // Lightweight NotFound variant (Session 24) -> 404 Not Found
+            ToadStoolError::NotFound(_) => Self {
+                status: StatusCode::NOT_FOUND,
+                message: err.to_string(),
+            },
+            // All other errors (including Runtime) -> INTERNAL_SERVER_ERROR
             _ => Self {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 message: err.to_string(),

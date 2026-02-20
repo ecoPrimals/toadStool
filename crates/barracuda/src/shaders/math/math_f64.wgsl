@@ -650,14 +650,14 @@ fn sin_f64(x: f64) -> f64 {
     let pio2_lo     = zero + 6.07710050650619224e-11;
 
     // n = round(x * 2/π) as a float (exact for |n| < 2^53).
-    let n = floor_f64(x * two_over_pi + (zero + 0.5));
+    let n = floor(x * two_over_pi + (zero + 0.5));
 
     // Two-step Cody-Waite reduction (each step exact for the given pio2_* size):
     let r = (x - n * pio2_hi) - n * pio2_lo;
 
     // ── Quadrant dispatch ────────────────────────────────────────────────────
     // n mod 4, mapped to float {0,1,2,3}.  floor(n/4)*4 is exact.
-    let n4 = n - floor_f64(n * (zero + 0.25)) * (zero + 4.0);
+    let n4 = n - floor(n * (zero + 0.25)) * (zero + 4.0);
 
     if (n4 < (zero + 0.5)) { return sin_kernel_f64(r); }
     if (n4 < (zero + 1.5)) { return cos_kernel_f64(r); }
@@ -677,11 +677,11 @@ fn cos_f64(x: f64) -> f64 {
     let pio2_hi     = zero + 1.5707963267341256141;
     let pio2_lo     = zero + 6.07710050650619224e-11;
 
-    let n  = floor_f64(x * two_over_pi + (zero + 0.5));
+    let n  = floor(x * two_over_pi + (zero + 0.5));
     let r  = (x - n * pio2_hi) - n * pio2_lo;
 
     // Cosine is sin shifted by 1 quadrant: (n+1) mod 4.
-    let n4 = (n + (zero + 1.0)) - floor_f64((n + (zero + 1.0)) * (zero + 0.25)) * (zero + 4.0);
+    let n4 = (n + (zero + 1.0)) - floor((n + (zero + 1.0)) * (zero + 0.25)) * (zero + 4.0);
 
     if (n4 < (zero + 0.5)) { return sin_kernel_f64(r); }
     if (n4 < (zero + 1.5)) { return cos_kernel_f64(r); }

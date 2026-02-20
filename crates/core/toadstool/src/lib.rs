@@ -96,7 +96,7 @@ pub use os_layer::{
 pub use resources::ResourceRequirements as UniversalResourceRequirements;
 pub use resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, ResourceLimits,
-    ResourceMonitor, ResourceRequirements, RuntimeMetrics, StorageRequirements,
+    ResourceMonitor, ResourceRequirements, ResourceUsage, RuntimeMetrics, StorageRequirements,
     SystemResourceMonitor, SystemResources,
 };
 pub use runtime::*;

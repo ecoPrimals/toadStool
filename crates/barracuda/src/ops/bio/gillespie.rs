@@ -11,10 +11,10 @@
 //! Direct method (Gillespie 1977) with mass-action propensities:
 //!   `a_r = k_r × Π_s x_s! / (x_s - ν_r_s)!`  (ν_r_s = stoich_reactant[r,s])
 //!
-//! ## Limitations
+//! ## Limits
 //!
-//! - Up to 32 reactions (extend by increasing the local array bound in WGSL).
-//! - Up to 64 species in practical use (no static limit — uses storage buffers).
+//! - Reactions: unlimited (propensity scratch buffer [T × R] in storage; D-S21-002 resolved).
+//! - Species: unlimited (storage buffers throughout).
 //! - f64 throughout for species counts and times.
 //!
 //! ## Absorbed from
@@ -172,6 +172,13 @@ impl GillespieGpu {
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
+        // Per-thread propensity scratch: [T × R] f64 (replaces static array<f64,32>)
+        let prop_buf = dev.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Gillespie propensities"),
+            size: ((n_t * n_r) * std::mem::size_of::<f64>()).max(8) as u64,
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
 
         let params = GillespieParamsGpu {
             n_reactions:    n_r as u32,
@@ -215,6 +222,7 @@ impl GillespieGpu {
                     wgpu::BindGroupEntry { binding: 4, resource: states_buf.as_entire_binding() },
                     wgpu::BindGroupEntry { binding: 5, resource: prng_buf.as_entire_binding() },
                     wgpu::BindGroupEntry { binding: 6, resource: times_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 7, resource: prop_buf.as_entire_binding() },
                 ],
             })
         };

@@ -17,6 +17,12 @@
 // PRNG: inline xoshiro128** (32-bit state per trajectory, 4 × u32)
 //   State stored in prng_state[tid * 4 .. tid * 4 + 4].
 //
+// Propensities: stored in `propensities` storage buffer [T × R] — resolves
+//   D-S21-002 (was limited to 32 reactions by function-scope static array).
+//   Binding 7; Rust wrapper allocates T × R × 8 bytes.
+//
+// All f64 literals use f64() cast (naga rejects abstract 0.0/1.0 as f64).
+//
 // Absorbed from wetSpring handoff §P1 Gillespie (Feb 2026).
 
 // ─── Parameters ──────────────────────────────────────────────────────────────
@@ -34,13 +40,16 @@ struct GillespieParams {
 // ─── Bindings ─────────────────────────────────────────────────────────────────
 
 // Note: f64 not allowed in var<uniform>; pass as storage read buffer.
-@group(0) @binding(0) var<storage, read>      params:       GillespieParams;
-@group(0) @binding(1) var<storage, read>      rate_k:       array<f64>; // [R]  rate constants
-@group(0) @binding(2) var<storage, read>      stoich_react: array<u32>; // [R×S] reactant stoich (for propensity)
-@group(0) @binding(3) var<storage, read>      stoich_net:   array<i32>; // [R×S] net stoich (for update)
-@group(0) @binding(4) var<storage, read_write> states:      array<f64>; // [T×S] species counts (in/out)
-@group(0) @binding(5) var<storage, read_write> prng_state:  array<u32>; // [T×4] xoshiro128** state
-@group(0) @binding(6) var<storage, read_write> times:       array<f64>; // [T]   final simulation time
+@group(0) @binding(0) var<storage, read>       params:       GillespieParams;
+@group(0) @binding(1) var<storage, read>       rate_k:       array<f64>; // [R]
+@group(0) @binding(2) var<storage, read>       stoich_react: array<u32>; // [R×S]
+@group(0) @binding(3) var<storage, read>       stoich_net:   array<i32>; // [R×S]
+@group(0) @binding(4) var<storage, read_write> states:       array<f64>; // [T×S]
+@group(0) @binding(5) var<storage, read_write> prng_state:   array<u32>; // [T×4]
+@group(0) @binding(6) var<storage, read_write> times:        array<f64>; // [T]
+// Per-thread scratch propensity buffer — replaces static array<f64, 32>
+// Supports arbitrary R; Rust allocates T × R × sizeof(f64) bytes.
+@group(0) @binding(7) var<storage, read_write> propensities: array<f64>; // [T×R]
 
 // ─── PRNG: xoshiro128** ───────────────────────────────────────────────────────
 
@@ -72,28 +81,27 @@ fn uniform01(s: ptr<function, array<u32, 4>>) -> f64 {
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let tid = gid.x;
-    if (tid >= params.n_trajectories) { return; }
+    if tid >= params.n_trajectories { return; }
 
     let R = params.n_reactions;
     let S = params.n_species;
 
-    // Load PRNG state into local registers
+    // Load PRNG state into registers
     var rng: array<u32, 4>;
     rng[0] = prng_state[tid * 4u + 0u];
     rng[1] = prng_state[tid * 4u + 1u];
     rng[2] = prng_state[tid * 4u + 2u];
     rng[3] = prng_state[tid * 4u + 3u];
 
-    // Load species counts into local array (up to 64 species; extend if needed)
-    // Using dynamic indexing via the storage buffer directly for generality.
-    // f64(0.0): all f64 zeros use explicit f64() cast — naga rejects abstract 0.0 as f64.
+    // Base offset into the per-thread propensity scratch area
+    let prop_base = tid * R;
+
     var t: f64 = f64(0.0);
 
     for (var step = 0u; step < params.max_steps; step++) {
-        // Step 1: Compute propensities a_r = k_r × Π_s x_s!/(x_s-ν_rs)!
+        // Step 1: Compute propensities → propensities[prop_base + r]
         var a0: f64 = f64(0.0);
-        var a: array<f64, 32>;  // supports up to 32 reactions
-        for (var r = 0u; r < R && r < 32u; r++) {
+        for (var r = 0u; r < R; r++) {
             var prop: f64 = rate_k[r];
             for (var s = 0u; s < S; s++) {
                 let nu = stoich_react[r * S + s];
@@ -108,14 +116,14 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
                 }
             }
             if prop > f64(0.0) {
-                a[r] = prop;
+                propensities[prop_base + r] = prop;
             } else {
-                a[r] = f64(0.0);
+                propensities[prop_base + r] = f64(0.0);
             }
-            a0 = a0 + a[r];
+            a0 = a0 + propensities[prop_base + r];
         }
 
-        // Step 2: Check for absorbing state
+        // Step 2: Absorbing state check
         if a0 <= f64(0.0) { break; }
 
         // Step 3: Draw waiting time τ ~ Exp(a0)
@@ -128,20 +136,20 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             break;
         }
 
-        // Step 4: Select reaction μ via linear search on cumulative propensities
+        // Step 4: Select reaction μ via linear cumulative search
         let u2 = uniform01(&rng);
         let threshold: f64 = u2 * a0;
         var cumsum: f64 = f64(0.0);
         var mu = 0u;
-        for (var r = 0u; r < R && r < 32u; r++) {
-            cumsum = cumsum + a[r];
+        for (var r = 0u; r < R; r++) {
+            cumsum = cumsum + propensities[prop_base + r];
             if cumsum >= threshold {
                 mu = r;
                 break;
             }
         }
 
-        // Step 5: Apply net stoichiometry; clamp species counts to zero
+        // Step 5: Apply net stoichiometry; clamp species counts at zero
         for (var s = 0u; s < S; s++) {
             let delta = stoich_net[mu * S + s];
             let new_val = states[tid * S + s] + f64(delta);

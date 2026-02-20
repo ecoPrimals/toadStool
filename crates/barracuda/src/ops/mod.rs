@@ -208,8 +208,9 @@ pub mod covariance_wgsl; // Sample covariance
 
 // PDE/ODE infrastructure
 pub mod crank_nicolson; // Implicit PDE solver (Richards, heat, Schrödinger)
-pub mod batched_ode_rk4; // BatchedOdeRK4F64 — full-GPU QS/c-di-GMP parameter sweep
-pub mod rk_stage;        // RkIntegrator — single-trajectory CPU-orchestrated RK4/RK45
+pub mod batched_ode_rk4;   // BatchedOdeRK4F64 — full-GPU QS/c-di-GMP parameter sweep
+pub mod batched_rk4_sweep; // BatchedRK4F64   — general-purpose N-trajectory orchestration (D-S21-001)
+pub mod rk_stage;          // RkIntegrator    — single-trajectory CPU-orchestrated RK4/RK45
 pub mod hill_f64; // Hill kinetic activation (wetSpring QS/c-di-GMP + PFAS)
 pub mod batch_pair_reduce_f64; // O(N²) pairwise batch reduction (DADA2, BrayCurtis)
 pub mod batch_tolerance_search_f64; // PFAS ion batch tolerance search
