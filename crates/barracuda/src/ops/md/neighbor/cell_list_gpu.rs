@@ -80,7 +80,8 @@ pub struct CellListGpu {
     bufs: GpuBuffers,
     // Compiled pipelines
     bin_pl: wgpu::ComputePipeline,
-    scan_pl: wgpu::ComputePipeline,
+    scan_pass_a_pl: wgpu::ComputePipeline, // local_scan (per-workgroup Blelloch)
+    scan_pass_b_pl: wgpu::ComputePipeline, // add_wg_offsets (propagate totals)
     scatter_pl: wgpu::ComputePipeline,
     // Bind group layouts (for rebuild)
     bin_bgl: wgpu::BindGroupLayout,
@@ -127,11 +128,21 @@ impl CellListGpu {
                     storage_bgl(3, false),
                 ],
             });
+        // prefix_sum.wgsl layout (must match exactly):
+        //   binding 0 — uniform  ScanConfig  { n, n_groups, _pad, _pad }
+        //   binding 1 — storage  flags_in    (read-only input)
+        //   binding 2 — storage  scan_out    (read-write, exclusive scan result)
+        //   binding 3 — storage  wg_sums     (read-write, per-workgroup totals)
         let scan_bgl = device
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("CellListGpu:scan_bgl"),
-                entries: &[storage_bgl(0, true), storage_bgl(1, false), uniform_bgl(2)],
+                entries: &[
+                    uniform_bgl(0),
+                    storage_bgl(1, true),
+                    storage_bgl(2, false),
+                    storage_bgl(3, false),
+                ],
             });
         let scatter_bgl =
             device
@@ -149,7 +160,10 @@ impl CellListGpu {
 
         // ── Pipelines ────────────────────────────────────────────────────────
         let bin_pl = make_pipeline(&device, &bin_mod, &bin_bgl, "atomic_cell_bin", "bin_pl");
-        let scan_pl = make_pipeline(&device, &scan_mod, &scan_bgl, "inclusive_scan", "scan_pl");
+        let scan_pass_a_pl =
+            make_pipeline(&device, &scan_mod, &scan_bgl, "local_scan", "scan_pass_a_pl");
+        let scan_pass_b_pl =
+            make_pipeline(&device, &scan_mod, &scan_bgl, "add_wg_offsets", "scan_pass_b_pl");
         let scatter_pl = make_pipeline(
             &device,
             &scatter_mod,
@@ -184,8 +198,9 @@ impl CellListGpu {
         ];
         let bin_params = uniform_buf(&device, &u32_bytes(&bin_params_data), "bin_params");
 
-        // Pass 2 params (just nc for the scan)
-        let scan_params_data = [nc, 0u32, 0u32, 0u32];
+        // Pass 2 params: n = nc, n_groups = ceil(nc / SCAN_WG) (matches ScanConfig in WGSL)
+        let n_groups = nc.div_ceil(SCAN_WG);
+        let scan_params_data = [nc, n_groups, 0u32, 0u32];
         let scan_params = uniform_buf(&device, &u32_bytes(&scan_params_data), "scan_params");
 
         // Pass 3 params
@@ -214,7 +229,8 @@ impl CellListGpu {
             mz,
             bufs,
             bin_pl,
-            scan_pl,
+            scan_pass_a_pl,
+            scan_pass_b_pl,
             scatter_pl,
             bin_bgl,
             scan_bgl,
@@ -265,41 +281,59 @@ impl CellListGpu {
             ],
         });
 
-        // ── Pass 2 bind groups: cell_counts → cell_start (prefix sum) ────────
-        // Two-pass Blelloch scan: counts → partials → final start offsets.
+        // ── Pass 2 bind groups: cell_counts → cell_start (Blelloch prefix sum) ─
+        //
+        // Pass A (local_scan): each workgroup scans its 256-element segment.
+        //   flags_in  = cell_counts  (source counts, read-only)
+        //   scan_out  = cell_start   (per-element exclusive scan, written)
+        //   wg_sums   = scan_partial (per-workgroup totals, written)
+        //
+        // Pass B (add_wg_offsets): one workgroup propagates totals globally.
+        //   flags_in  = cell_counts  (read-only; not accessed in pass B but
+        //                             required by the shared BGL declaration)
+        //   scan_out  = cell_start   (gets global offsets added back)
+        //   wg_sums   = scan_partial (source of per-group offsets)
         let bg_scan1 = dev.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("CellListGpu:bg_scan1"),
+            label: Some("CellListGpu:bg_scan_pass_a"),
             layout: &self.scan_bgl,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: self.bufs.cell_counts.as_entire_binding(),
+                    resource: self.bufs.scan_params.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: self.bufs.scan_partial.as_entire_binding(),
+                    resource: self.bufs.cell_counts.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: self.bufs.scan_params.as_entire_binding(),
+                    resource: self.bufs.cell_start.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.bufs.scan_partial.as_entire_binding(),
                 },
             ],
         });
         let bg_scan2 = dev.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("CellListGpu:bg_scan2"),
+            label: Some("CellListGpu:bg_scan_pass_b"),
             layout: &self.scan_bgl,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: self.bufs.scan_partial.as_entire_binding(),
+                    resource: self.bufs.scan_params.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: self.bufs.cell_start.as_entire_binding(),
+                    resource: self.bufs.cell_counts.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: self.bufs.scan_params.as_entire_binding(),
+                    resource: self.bufs.cell_start.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.bufs.scan_partial.as_entire_binding(),
                 },
             ],
         });
@@ -348,14 +382,14 @@ impl CellListGpu {
         );
         dispatch_pass(
             &mut enc,
-            &self.scan_pl,
+            &self.scan_pass_a_pl,
             &bg_scan1,
-            "scan1",
+            "scan_local",
             self.nc.div_ceil(SCAN_WG),
             1,
             1,
         );
-        dispatch_pass(&mut enc, &self.scan_pl, &bg_scan2, "scan2", 1, 1, 1);
+        dispatch_pass(&mut enc, &self.scan_pass_b_pl, &bg_scan2, "scan_add_offsets", 1, 1, 1);
         dispatch_pass(
             &mut enc,
             &self.scatter_pl,

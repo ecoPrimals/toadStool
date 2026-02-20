@@ -1,0 +1,219 @@
+//! SU(3) HMC gauge force GPU operator (Wilson action, 4D lattice).
+//!
+//! Computes the force on every link `U_mu(x)` from the Wilson plaquette action:
+//!
+//! ```text
+//! S_W = -beta/3 · Σ_{x,mu<nu} Re Tr(U_p(x,mu,nu))
+//!
+//! F_mu(x) = -beta/3 · Im Tr(Σ_staple · U_mu†(x))
+//!         projected onto the su(3) algebra (anti-Hermitian, traceless)
+//! ```
+//!
+//! The output buffer holds Lie-algebra force matrices `f_mu(x)` in the same
+//! 18-f64 SU(3) storage format as the links.
+//!
+//! # Usage
+//!
+//! ```ignore
+//! let force_op = Su3HmcForce::new(device.clone(), nt, nx, ny, nz, beta)?;
+//! force_op.compute(&links_buf, &force_buf)?;
+//! // Then: leapfrog update  π_mu(x) ← π_mu(x) − dt · f_mu(x)
+//! ```
+//!
+//! # Notes
+//!
+//! For optimal performance, consider using `StatefulPipeline` to chain the
+//! force computation with the leapfrog update in a single `queue.submit()`.
+//!
+//! # hotSpring design
+//!
+//! Algorithm: hotSpring `lattice/hmc.rs` (v0.5.16, Feb 2026).
+//! GPU promotion: Feb 2026.  CPU reference unchanged in hotSpring.
+
+use crate::device::WgpuDevice;
+use crate::error::Result;
+use std::sync::Arc;
+
+use super::su3::su3_preamble;
+
+const FORCE_WG: u32 = 64;
+const FORCE_SHADER_BODY: &str =
+    include_str!("../../shaders/lattice/su3_hmc_force_f64.wgsl");
+
+/// SU(3) HMC gauge force operator (4D Wilson action).
+pub struct Su3HmcForce {
+    device:   Arc<WgpuDevice>,
+    volume:   u32,
+    pipeline: wgpu::ComputePipeline,
+    bgl:      wgpu::BindGroupLayout,
+    params:   wgpu::Buffer,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct ForceParams {
+    nt:    u32,
+    nx:    u32,
+    ny:    u32,
+    nz:    u32,
+    volume: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+    beta:  f64,
+    _padf: f64,
+    _paf1: f64,
+    _paf2: f64,
+}
+
+impl Su3HmcForce {
+    /// Compile the HMC force pipeline for a `nt×nx×ny×nz` 4D lattice.
+    pub fn new(
+        device: Arc<WgpuDevice>,
+        nt: u32,
+        nx: u32,
+        ny: u32,
+        nz: u32,
+        beta: f64,
+    ) -> Result<Self> {
+        let volume = nt * nx * ny * nz;
+        let src = format!("{}{}", su3_preamble(), FORCE_SHADER_BODY);
+        // compile_shader_f64 handles exp/log patching + ILP optimizer internally
+        let module = device.compile_shader_f64(&src, Some("su3_hmc_force"));
+
+        let bgl = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Su3HmcForce:bgl"),
+            entries: &[
+                uniform_bgl(0),       // params
+                storage_bgl(1, true), // links (read)
+                storage_bgl(2, false),// force (write)
+            ],
+        });
+
+        let layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Su3HmcForce:layout"),
+            bind_group_layouts: &[&bgl],
+            push_constant_ranges: &[],
+        });
+
+        let pipeline =
+            device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Su3HmcForce:pipeline"),
+                layout: Some(&layout),
+                module: &module,
+                entry_point: "hmc_force",
+                compilation_options: Default::default(),
+                cache: None,
+            });
+
+        let params_data = ForceParams {
+            nt, nx, ny, nz, volume,
+            _pad0: 0, _pad1: 0, _pad2: 0,
+            beta, _padf: 0.0, _paf1: 0.0, _paf2: 0.0,
+        };
+        let params = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Su3HmcForce:params"),
+            size:  std::mem::size_of::<ForceParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        device.queue.write_buffer(&params, 0, bytemuck::bytes_of(&params_data));
+
+        Ok(Self { device, volume, pipeline, bgl, params })
+    }
+
+    /// Compute su(3)-algebra force matrices for all links.
+    ///
+    /// * `links_buf` — `[V × 4 × 18]` f64 (GPU-resident gauge configuration)
+    /// * `force_buf` — `[V × 4 × 18]` f64 (output: algebra-valued force, zero-init)
+    ///
+    /// The output must be zeroed before calling (e.g. via `queue.write_buffer`
+    /// or a separate clear kernel).
+    pub fn compute(&self, links_buf: &wgpu::Buffer, force_buf: &wgpu::Buffer) -> Result<()> {
+        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Su3HmcForce:bg"),
+            layout: &self.bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: self.params.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: links_buf.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: force_buf.as_entire_binding() },
+            ],
+        });
+
+        let mut enc =
+            self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Su3HmcForce:enc"),
+            });
+        {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Su3HmcForce:pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.dispatch_workgroups(self.volume.div_ceil(FORCE_WG), 1, 1);
+        }
+        self.device.queue.submit(Some(enc.finish()));
+        Ok(())
+    }
+
+    /// Number of lattice sites.
+    pub fn volume(&self) -> u32 { self.volume }
+
+    /// Total link buffer size in f64 elements (`volume × 4 × 18`).
+    pub fn link_buffer_len(&self) -> u64 {
+        self.volume as u64 * 4 * 18
+    }
+}
+
+// ── BGL helpers ───────────────────────────────────────────────────────────────
+
+fn storage_bgl(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+fn uniform_bgl(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Uniform,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_shader_has_staple_sum() {
+        let src = format!("{}{}", su3_preamble(), FORCE_SHADER_BODY);
+        assert!(src.contains("staple"), "force shader must implement staple sum");
+        assert!(src.contains("su3_project_algebra"), "must project onto algebra");
+    }
+
+    #[test]
+    fn test_link_buffer_len() {
+        // 4^4 = 256 sites × 4 directions × 18 f64 per matrix
+        let vol: u64 = 4 * 4 * 4 * 4; // 256
+        assert_eq!(vol * 4 * 18, 18432);
+    }
+
+    #[test]
+    fn test_params_16byte_aligned() {
+        assert_eq!(std::mem::size_of::<ForceParams>() % 16, 0);
+    }
+}

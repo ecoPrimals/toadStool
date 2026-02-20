@@ -427,6 +427,10 @@ pub mod fft;
 // Molecular Dynamics primitives
 pub mod md;
 
+// Lattice QCD / gauge field theory (hotSpring v0.5.16 absorption, Feb 2026)
+// complex_f64 + SU(3) WGSL libraries, Wilson plaquette, U(1) Higgs HMC, SU(3) HMC force
+pub mod lattice;
+
 // Quantization
 pub mod dequantize;
 pub mod fake_quantize;
