@@ -14,6 +14,7 @@ use toadstool_testing::chaos::{ChaosScenario, FaultType, ResourceType};
 /// - State should be preserved
 /// - Recovery should be automatic when network returns
 #[tokio::test]
+#[ignore = "requires live ToadStool cluster"]
 async fn test_network_partition_during_execution() {
     let scenario = ChaosScenario::new("network_partition_during_execution")
         .with_fault(FaultType::NetworkPartition {
@@ -56,6 +57,7 @@ async fn test_network_partition_during_execution() {
 /// - New executions should queue properly
 /// - Metrics should be preserved
 #[tokio::test]
+#[ignore = "requires live ToadStool cluster"]
 async fn test_executor_crash_and_recovery() {
     let scenario = ChaosScenario::new("executor_crash_recovery")
         .with_fault(FaultType::ProcessCrash {
@@ -103,6 +105,7 @@ async fn test_executor_crash_and_recovery() {
 /// - Existing executions should complete if possible
 /// - No OOM kills of the orchestrator itself
 #[tokio::test]
+#[ignore = "requires live ToadStool cluster"]
 async fn test_memory_exhaustion() {
     let scenario = ChaosScenario::new("memory_exhaustion")
         .with_fault(FaultType::ResourceExhaustion {
@@ -131,6 +134,7 @@ async fn test_memory_exhaustion() {
 /// Tests resilience under multiple simultaneous failures.
 /// This is the "nightmare scenario" that validates overall system robustness.
 #[tokio::test]
+#[ignore = "requires live ToadStool cluster"]
 async fn test_combined_chaos() {
     let scenario = ChaosScenario::new("combined_chaos_nightmare")
         // Start with network latency
@@ -193,6 +197,7 @@ async fn test_combined_chaos() {
 ///
 /// Tests long-term stability under resource constraints.
 #[tokio::test]
+#[ignore = "requires live ToadStool cluster"]
 async fn test_sustained_resource_pressure() {
     let scenario = ChaosScenario::new("sustained_resource_pressure")
         // High CPU usage
@@ -227,6 +232,7 @@ async fn test_sustained_resource_pressure() {
 ///
 /// Tests behavior when failures trigger more failures (cascade).
 #[tokio::test]
+#[ignore = "requires live ToadStool cluster"]
 async fn test_cascading_failures() {
     let scenario = ChaosScenario::new("cascading_failures")
         // Initial failure

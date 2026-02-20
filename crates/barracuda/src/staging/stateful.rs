@@ -71,18 +71,22 @@ use std::sync::Arc;
 /// that wires your GPU-resident buffers.  The same chain can be reused across
 /// many calls to [`StatefulPipeline::run_iterations`].
 pub struct KernelDispatch {
-    pub pipeline:   Arc<wgpu::ComputePipeline>,
+    pub pipeline: Arc<wgpu::ComputePipeline>,
     pub bind_group: Arc<wgpu::BindGroup>,
     pub workgroups: (u32, u32, u32),
 }
 
 impl KernelDispatch {
     pub fn new(
-        pipeline:   Arc<wgpu::ComputePipeline>,
+        pipeline: Arc<wgpu::ComputePipeline>,
         bind_group: Arc<wgpu::BindGroup>,
         workgroups: (u32, u32, u32),
     ) -> Self {
-        Self { pipeline, bind_group, workgroups }
+        Self {
+            pipeline,
+            bind_group,
+            workgroups,
+        }
     }
 }
 
@@ -97,7 +101,10 @@ pub struct StatefulConfig {
 
 impl Default for StatefulConfig {
     fn default() -> Self {
-        Self { convergence_scalars: 1, label: None }
+        Self {
+            convergence_scalars: 1,
+            label: None,
+        }
     }
 }
 
@@ -114,8 +121,8 @@ impl Default for StatefulConfig {
 /// construction.  Each call to [`run_iterations`] reuses it — no allocation
 /// per iteration.
 pub struct StatefulPipeline {
-    device:            Arc<WgpuDevice>,
-    config:            StatefulConfig,
+    device: Arc<WgpuDevice>,
+    config: StatefulConfig,
     /// Persistent MAP_READ staging buffer for convergence scalar readback.
     convergence_staging: wgpu::Buffer,
 }
@@ -129,12 +136,16 @@ impl StatefulPipeline {
         let label = config.label.as_deref().unwrap_or("StatefulPipeline");
         let staging_size = (config.convergence_scalars * 8) as u64;
         let convergence_staging = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label:              Some(&format!("{label}:convergence_staging")),
-            size:               staging_size,
-            usage:              wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            label: Some(&format!("{label}:convergence_staging")),
+            size: staging_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        Self { device, config, convergence_staging }
+        Self {
+            device,
+            config,
+            convergence_staging,
+        }
     }
 
     /// Run `iterations` iterations of the kernel chain, reading back the
@@ -160,9 +171,9 @@ impl StatefulPipeline {
     /// iterations complete.
     pub fn run_iterations(
         &self,
-        chain:                &[KernelDispatch],
-        convergence_buffer:   &wgpu::Buffer,
-        iterations:           usize,
+        chain: &[KernelDispatch],
+        convergence_buffer: &wgpu::Buffer,
+        iterations: usize,
     ) -> Result<Vec<f64>> {
         if chain.is_empty() {
             return Err(BarracudaError::InvalidInput {
@@ -171,15 +182,18 @@ impl StatefulPipeline {
         }
 
         let label = self.config.label.as_deref().unwrap_or("StatefulPipeline");
-        let mut encoder = self.device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor { label: Some(&format!("{label}:iter")) },
-        );
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some(&format!("{label}:iter")),
+                });
 
         // All iterations encoded into one command buffer — single GPU submit.
         for _iter in 0..iterations {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label:             Some(&format!("{label}:pass")),
-                timestamp_writes:  None,
+                label: Some(&format!("{label}:pass")),
+                timestamp_writes: None,
             });
             for k in chain {
                 pass.set_pipeline(&k.pipeline);
@@ -192,8 +206,10 @@ impl StatefulPipeline {
         // Copy convergence scalar to staging after last iteration.
         let scalar_bytes = (self.config.convergence_scalars * 8) as u64;
         encoder.copy_buffer_to_buffer(
-            convergence_buffer, 0,
-            &self.convergence_staging, 0,
+            convergence_buffer,
+            0,
+            &self.convergence_staging,
+            0,
             scalar_bytes,
         );
 
@@ -211,11 +227,11 @@ impl StatefulPipeline {
     /// `(iterations_run, final_convergence_values)`.
     pub fn run_until_converged(
         &self,
-        chain:              &[KernelDispatch],
+        chain: &[KernelDispatch],
         convergence_buffer: &wgpu::Buffer,
-        max_iterations:     usize,
-        readback_every:     usize,
-        tolerance:          f64,
+        max_iterations: usize,
+        readback_every: usize,
+        tolerance: f64,
     ) -> Result<(usize, Vec<f64>)> {
         let step = readback_every.max(1);
         let mut total = 0usize;
@@ -234,10 +250,14 @@ impl StatefulPipeline {
     fn read_staging_scalars(&self) -> Result<Vec<f64>> {
         let slice = self.convergence_staging.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+        slice.map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
         self.device.device.poll(wgpu::Maintain::Wait);
         rx.recv()
-            .map_err(|_| BarracudaError::execution_failed("StatefulPipeline: staging channel closed"))?
+            .map_err(|_| {
+                BarracudaError::execution_failed("StatefulPipeline: staging channel closed")
+            })?
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
@@ -265,7 +285,10 @@ mod tests {
 
     #[test]
     fn test_stateful_config_custom() {
-        let cfg = StatefulConfig { convergence_scalars: 2, label: Some("MD".into()) };
+        let cfg = StatefulConfig {
+            convergence_scalars: 2,
+            label: Some("MD".into()),
+        };
         assert_eq!(cfg.convergence_scalars, 2);
         assert_eq!(cfg.label.as_deref(), Some("MD"));
     }
@@ -284,6 +307,9 @@ mod tests {
         // We can't create a real WgpuDevice in a unit test, so this is a
         // compile-time + API-shape check only.  The GPU integration path is
         // covered by the barracuda multi-device integration tests.
-        let _ = StatefulConfig { convergence_scalars: 1, label: None };
+        let _ = StatefulConfig {
+            convergence_scalars: 1,
+            label: None,
+        };
     }
 }

@@ -1,0 +1,104 @@
+# cargo-deny configuration for ToadStool
+#
+# Enforces license compliance, known vulnerability scanning, and
+# crate-level bans aligned with ecoBin (no C-FFI in core path).
+#
+# Run: cargo deny check
+# Docs: https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+]
+
+# ── Licenses ──────────────────────────────────────────────────────────────────
+[licenses]
+version = 2
+# Allow OSI-approved permissive / weak-copyleft licences.
+# AGPL-3.0 is ToadStool's own licence; it appears for workspace crates.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "OpenSSL",
+    "Zlib",
+    "AGPL-3.0-or-later",    # ToadStool own crates
+    "LGPL-2.0-or-later",    # wgpu indirect dep (optional)
+    "LGPL-2.1-or-later",
+]
+# Treat unlicensed crates as errors.
+unlicensed = "deny"
+# Warn on copyleft before deciding.
+copyleft = "warn"
+
+# Per-crate overrides for edge cases
+[[licenses.clarify]]
+name = "ring"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
+
+[[licenses.clarify]]
+name = "webpki"
+expression = "ISC"
+license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
+
+# ── Advisories (CVE / RUSTSEC) ────────────────────────────────────────────────
+[advisories]
+version = 2
+# Block any crate with an active security advisory.
+# Exceptions may be added below with justification.
+ignore = [
+    # Example (uncomment and justify if needed):
+    # { id = "RUSTSEC-2023-XXXX", reason = "Not reachable in our usage" },
+]
+
+# ── Bans ──────────────────────────────────────────────────────────────────────
+[bans]
+# Deny multiple versions of the same crate — keeps the dependency tree lean.
+multiple-versions = "warn"
+# Deny wildcard dependencies.
+wildcards = "deny"
+
+# Crates banned from the core binary path for ecoBin compliance.
+# These are C-FFI crates that must not appear in the toadstool / server / core
+# dependency graph. They are allowed in feature-gated GPU/neuromorphic crates.
+deny = [
+    # OpenSSL — use rustls + aws-lc-rs / *ring* instead
+    { name = "openssl", wrappers = ["openssl-sys"] },
+    { name = "openssl-sys" },
+    # tungstenite WebSocket — removed in R-011; must not return
+    { name = "tungstenite" },
+    { name = "tokio-tungstenite" },
+    # reqwest C-backend — migrated to pure Rust Unix IPC in R-008
+    # (reqwest itself is allowed for tests/examples only)
+    { name = "reqwest", reason = "Use unix-jsonrpc-client instead of reqwest in core paths" },
+]
+
+# Skip duplicate version check for crates where multiple major versions
+# coexist by design (e.g. wgpu requires specific sub-crate versions).
+skip = [
+    { name = "wgpu", reason = "Multi-version wgpu is intentional for vendor-specific backends" },
+    { name = "naga", reason = "wgpu dep" },
+]
+
+skip-tree = [
+    # CUDA / GPU backends bring a dense C-FFI tree that is separately audited.
+    { name = "cudarc", reason = "GPU backend — separately audited, feature-gated" },
+]
+
+# ── Sources ───────────────────────────────────────────────────────────────────
+[sources]
+# Only allow crates from crates.io and our own workspace.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

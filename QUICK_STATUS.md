@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA — Quick Status
 
-**Date**: February 19, 2026 — Sessions 9–11 (Zero-Copy + Sleep Elimination + Coverage)
+**Date**: February 20, 2026 — Session 18 (Phase 3 Live + Apple GPU + Zero-Copy + Integration Tests)
 
 ---
 
@@ -19,8 +19,10 @@ middleware tests                      400+ passed
 hotSpring evolution tests             47 tests (unit, E2E, chaos, fault)
 three springs evolution tests         37 tests (unit, E2E, chaos, fault, precision)
 GPU sovereignty                       f64 fossils removed, capability matrix probed per-GPU
-Sovereign Phase 0-3                   WgslOptimizer live in ShaderTemplate::for_driver_auto()
-LatencyModel                          Sm70 (DFMA=8cy), Rdna2 (VFMA64≈4cy), Conservative, Measured
+Sovereign Phase 0-3                   WgslOptimizer LIVE in compile_shader_f64() hot path
+LatencyModel                          Sm70 (8cy), Rdna2 (4cy), AppleM (16cy SW), Conservative, Measured
+GpuExecutor zero-copy                 Arc<wgpu::Buffer> shared — GPU→CPU→GPU round-trip gone (D-S16-001)
+integration-tests crate               crates/integration-tests/ + workspace tests/ cleared (D-S16-004)
 Mesa NAK patches                      sm70_instr_latencies.rs + rdna2_instr_latencies.rs ready
 node routing                          least-loaded selection, local fallback, Songbird wiring
 timeout constants                     Centralized in toadstool_common::constants::timeouts
@@ -71,8 +73,8 @@ BarraCUDA (Universal Compute Engine — SHADER-FIRST F64)
 Sovereign Compute (WgslOptimizer — Phases 0–3 complete)
   Phase 0: fossil f64 functions removed → native WGSL builtins, F64BuiltinCapabilities probe
   Phase 1: Jacobi @ilp_region restructure, warp-packing 32x1x1 (2.2× NVK speedup)
-  Phase 2: LatencyModel trait — Sm70 (DFMA=8cy), Rdna2 (VFMA64≈4cy), Conservative, Measured
-  Phase 3: WgslOptimizer (DAG + ASAP scheduler + loop unroller) wired into ShaderTemplate
+  Phase 2: LatencyModel trait — Sm70 (8cy), Rdna2 (4cy), AppleM (16cy SW), Conservative, Measured
+  Phase 3: WgslOptimizer (DAG + ASAP scheduler + loop unroller) WIRED into compile_shader_f64()
   Next: Phase 4 (full naga-IR SSA optimizer) — Q3 2026
   Mesa NAK patches: contrib/mesa-nak/ — ready to submit post Titan V validation
 ```

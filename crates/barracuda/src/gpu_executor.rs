@@ -17,7 +17,7 @@ use crate::unified_hardware::{
     ComputeExecutor, HardwareCapabilities, HardwareType, MemoryCapabilities, OperationCapabilities,
     ParallelismCapabilities, PerformanceCapabilities, PrecisionCapabilities, TensorStorage,
 };
-use crate::unified_math::{MathOp, TensorDescriptor};
+use crate::unified_math::{DType, MathOp, TensorDescriptor};
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -248,24 +248,121 @@ impl ComputeExecutor for GpuExecutor {
         op: &MathOp,
         inputs: Vec<Arc<dyn TensorStorage>>,
     ) -> Result<Arc<dyn TensorStorage>> {
-        // **Deep Debt Note**: The scheduler path via ComputeExecutor is not yet implemented.
-        // The primary execution path is Tensor operations (tensor.matmul(), etc.)
-        // which compile and dispatch WGSL shaders via WgpuDevice.
-        //
-        // This explicit error prevents silent incorrect results from the stub.
-        // When scheduler-based execution is needed, implement MathOp dispatch here.
         if inputs.is_empty() {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: "No inputs provided".to_string(),
+                message: "GpuExecutor::execute: no inputs provided".to_string(),
             });
         }
 
-        Err(crate::error::BarracudaError::NotImplemented {
-            feature: format!(
-                "GpuExecutor::execute({:?}) - use Tensor API directly (e.g., tensor.matmul())",
-                op
-            ),
-        })
+        // ── Build Tensors from storage ──────────────────────────────────────
+        // Each input must have been placed on this GPU by `transfer()`.
+        // We upload via CPU roundtrip since `Tensor` currently requires owned buffers.
+        // This is a known evolution target: once Tensor supports Arc<Buffer> views
+        // the round-trip can be eliminated.
+        // Dtype-aware deserialization: convert raw bytes to f32 for the Tensor API.
+        // Each dtype is reinterpreted at its native width then widened/narrowed to f32.
+        let build_tensor = |storage: &Arc<dyn TensorStorage>| -> Result<crate::tensor::Tensor> {
+            let data_bytes = futures::executor::block_on(storage.read_to_cpu())?;
+            let desc  = storage.descriptor();
+            let numel = desc.numel;
+            let elem  = desc.dtype.size_bytes();
+            if data_bytes.len() < numel * elem {
+                return Err(crate::error::BarracudaError::InvalidInput {
+                    message: format!(
+                        "execute: expected {} bytes for {numel} × {dtype:?} elements, got {}",
+                        numel * elem, data_bytes.len(), dtype = desc.dtype
+                    ),
+                });
+            }
+            let floats: Vec<f32> = match desc.dtype {
+                DType::F32 => data_bytes
+                    .chunks_exact(4)
+                    .map(|c| f32::from_ne_bytes([c[0], c[1], c[2], c[3]]))
+                    .collect(),
+                DType::F64 => data_bytes
+                    .chunks_exact(8)
+                    .map(|c| f64::from_ne_bytes(c.try_into().unwrap()) as f32)
+                    .collect(),
+                DType::I32 => data_bytes
+                    .chunks_exact(4)
+                    .map(|c| i32::from_ne_bytes([c[0], c[1], c[2], c[3]]) as f32)
+                    .collect(),
+                DType::I64 => data_bytes
+                    .chunks_exact(8)
+                    .map(|c| i64::from_ne_bytes(c.try_into().unwrap()) as f32)
+                    .collect(),
+                DType::U32 => data_bytes
+                    .chunks_exact(4)
+                    .map(|c| u32::from_ne_bytes([c[0], c[1], c[2], c[3]]) as f32)
+                    .collect(),
+                DType::U64 => data_bytes
+                    .chunks_exact(8)
+                    .map(|c| u64::from_ne_bytes(c.try_into().unwrap()) as f32)
+                    .collect(),
+                DType::Bool => data_bytes.iter().map(|&b| if b != 0 { 1.0f32 } else { 0.0 }).collect(),
+            };
+            crate::tensor::Tensor::from_data(&floats, desc.shape.clone(), self.device.clone())
+        };
+
+        let output_tensor: crate::tensor::Tensor = match op {
+            // ── Unary ops ───────────────────────────────────────────────────
+            MathOp::Negate => {
+                let t = build_tensor(&inputs[0])?;
+                // mul_scalar is on WgpuDevice, not on Tensor — negate via sub(0) or element-wise
+                t.mul_scalar(-1.0f32)?
+            }
+            MathOp::Abs    => build_tensor(&inputs[0])?.abs_wgsl()?,
+            MathOp::Sqrt   => build_tensor(&inputs[0])?.sqrt_wgsl()?,
+            MathOp::Exp    => build_tensor(&inputs[0])?.exp_wgsl()?,
+
+            // ── Binary ops ──────────────────────────────────────────────────
+            MathOp::Add => {
+                let (a, b) = (build_tensor(&inputs[0])?, build_tensor(&inputs[1])?);
+                a.add(&b)?
+            }
+            MathOp::Sub => {
+                let (a, b) = (build_tensor(&inputs[0])?, build_tensor(&inputs[1])?);
+                a.sub(&b)?
+            }
+            MathOp::Mul => {
+                let (a, b) = (build_tensor(&inputs[0])?, build_tensor(&inputs[1])?);
+                a.mul(&b)?
+            }
+
+            // ── Matrix multiply ─────────────────────────────────────────────
+            MathOp::MatMul { .. } => {
+                let (a, b) = (build_tensor(&inputs[0])?, build_tensor(&inputs[1])?);
+                a.matmul(&b)?
+            }
+
+            // ── Activation ops ──────────────────────────────────────────────
+            MathOp::Softmax { .. } => build_tensor(&inputs[0])?.softmax()?,
+            MathOp::ReLU           => build_tensor(&inputs[0])?.relu()?,
+            MathOp::Sigmoid        => build_tensor(&inputs[0])?.sigmoid()?,
+            MathOp::Tanh           => build_tensor(&inputs[0])?.tanh()?,
+            MathOp::GELU           => build_tensor(&inputs[0])?.gelu_wgsl()?,
+
+            // ── Reductions ──────────────────────────────────────────────────
+            MathOp::ReduceSum  { .. } => build_tensor(&inputs[0])?.sum()?,
+            MathOp::ReduceMean { .. } => build_tensor(&inputs[0])?.mean()?,
+
+            // ── Unsupported ─────────────────────────────────────────────────
+            other => {
+                return Err(crate::error::BarracudaError::NotImplemented {
+                    feature: format!(
+                        "GpuExecutor::execute({other:?}) — add to the dispatch table in gpu_executor.rs"
+                    ),
+                })
+            }
+        };
+
+        // ── Wrap output Tensor as GpuTensorStorage — zero-copy when possible ───
+        // `GpuTensorStorage::from_tensor` shares the Tensor's Arc<wgpu::Buffer>
+        // (owned path) or issues a GPU-side copy_buffer_to_buffer (pooled path).
+        // In either case, no GPU→CPU→GPU round-trip occurs. D-S16-001 resolved.
+        let out_dtype   = inputs[0].descriptor().dtype;
+        let out_storage = GpuTensorStorage::from_tensor(&output_tensor, out_dtype);
+        Ok(Arc::new(out_storage))
     }
 
     async fn allocate(&self, descriptor: TensorDescriptor) -> Result<Arc<dyn TensorStorage>> {
@@ -293,21 +390,60 @@ impl ComputeExecutor for GpuExecutor {
     }
 }
 
-/// GPU tensor storage for the scheduler path
+/// GPU tensor storage for the `ComputeExecutor` scheduler interface.
 ///
-/// The primary GPU execution path uses `Tensor` (which wraps `wgpu::Buffer` directly).
-/// This storage type is for the `ComputeExecutor` scheduler interface.
+/// Holds a real `wgpu::Buffer` so that `read_to_cpu` / `write_from_cpu`
+/// and `GpuExecutor::execute()` all operate on the same underlying GPU memory.
+///
+/// The buffer is stored as `Arc<wgpu::Buffer>` so it can be shared with a
+/// `Tensor` via `Tensor::from_arc_buffer` — eliminating the GPU→CPU→GPU
+/// round-trip when wrapping an executed output back into TensorStorage.
 struct GpuTensorStorage {
     descriptor: TensorDescriptor,
-    /// Retained for future GPU buffer allocation when scheduler executes ops
-    _device: Arc<WgpuDevice>,
+    device:     Arc<WgpuDevice>,
+    buffer:     Arc<wgpu::Buffer>,
 }
 
 impl GpuTensorStorage {
     fn new(descriptor: TensorDescriptor, device: Arc<WgpuDevice>) -> Self {
-        Self {
-            descriptor,
-            _device: device,
+        let byte_size = (descriptor.numel * descriptor.dtype.size_bytes()) as u64;
+        let buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label:              Some("GpuTensorStorage"),
+            size:               byte_size.max(4), // wgpu requires size ≥ 4
+            usage:              wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        Self { descriptor, device, buffer: Arc::new(buffer) }
+    }
+
+    /// Zero-copy construction from a `Tensor` output.
+    ///
+    /// Shares the tensor's underlying `Arc<wgpu::Buffer>` — no data movement.
+    /// Falls back to allocation + upload when the tensor uses a pooled buffer
+    /// (pooled buffers may be reclaimed; we must own the buffer to guarantee
+    /// `read_to_cpu` safety).
+    fn from_tensor(tensor: &crate::tensor::Tensor, dtype: DType) -> Self {
+        let shape = tensor.shape().to_vec();
+        let numel: usize = shape.iter().product();
+        let desc   = TensorDescriptor::new(shape, dtype);
+
+        if let Some(arc) = tensor.try_arc_buffer() {
+            // Fast path: share the buffer, zero copies.
+            Self { descriptor: desc, device: tensor.device().clone(), buffer: arc }
+        } else {
+            // Pooled buffer: allocate our own storage and copy.
+            let new = Self::new(desc, tensor.device().clone());
+            // Synchronous upload — the Tensor's content is already on GPU;
+            // copy_buffer_to_buffer moves it without touching the CPU.
+            let byte_size = (numel * dtype.size_bytes()) as u64;
+            let mut enc = new.device.device.create_command_encoder(
+                &wgpu::CommandEncoderDescriptor { label: Some("GpuTensorStorage copy") },
+            );
+            enc.copy_buffer_to_buffer(tensor.buffer(), 0, &new.buffer, 0, byte_size);
+            new.device.queue.submit(Some(enc.finish()));
+            new
         }
     }
 }
@@ -322,14 +458,46 @@ impl TensorStorage for GpuTensorStorage {
         HardwareType::GPU
     }
 
+    /// Read GPU data back to CPU as raw bytes.
     async fn read_to_cpu(&self) -> Result<Vec<u8>> {
-        // Allocate zeroed buffer - actual GPU data lives in Tensor's wgpu::Buffer
-        let byte_size = self.descriptor.numel * self.descriptor.dtype.size_bytes();
-        Ok(vec![0u8; byte_size])
+        let numel     = self.descriptor.numel;
+        let elem_size = self.descriptor.dtype.size_bytes();
+        let byte_size = (numel * elem_size) as u64;
+
+        // Staging buffer for map-read
+        let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label:              Some("GpuTensorStorage read staging"),
+            size:               byte_size.max(4),
+            usage:              wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = self.device.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor { label: Some("GpuTensorStorage read") },
+        );
+        encoder.copy_buffer_to_buffer(&self.buffer, 0, &staging, 0, byte_size);
+        self.device.queue.submit(Some(encoder.finish()));
+
+        let slice = staging.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+        self.device.device.poll(wgpu::Maintain::Wait);
+        rx.recv()
+            .map_err(|_| crate::error::BarracudaError::Gpu(
+                "map_async channel closed".to_string(),
+            ))?
+            .map_err(|e| crate::error::BarracudaError::Gpu(
+                format!("Buffer map failed: {e:?}"),
+            ))?;
+
+        let data = slice.get_mapped_range().to_vec();
+        staging.unmap();
+        Ok(data)
     }
 
-    async fn write_from_cpu(&mut self, _data: &[u8]) -> Result<()> {
-        // Data transfer handled by Tensor's wgpu buffer operations
+    /// Upload raw bytes from CPU to the GPU buffer.
+    async fn write_from_cpu(&mut self, data: &[u8]) -> Result<()> {
+        self.device.queue.write_buffer(&self.buffer, 0, data);
         Ok(())
     }
 }

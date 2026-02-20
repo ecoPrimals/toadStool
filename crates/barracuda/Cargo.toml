@@ -39,7 +39,7 @@ tracing = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 # once_cell, lazy_static removed: evolved to std::sync::LazyLock (Rust 1.80+, pure std)
-dashmap = "5.5"
+# dashmap removed: evolved to std::sync::RwLock<HashMap> — zero external dep, read-heavy access ideal fit
 rand = "0.8"
 rayon = "1.8"
 num-traits = "0.2"  # Generic numeric traits for CPU precision implementations

@@ -35,6 +35,65 @@ impl WgpuDevice {
         .map_err(|_| BarracudaError::device("No CPU software rasterizer available"))
     }
 
+    /// Create a CPU software-rasterizer device using the adapter's own supported limits.
+    ///
+    /// `new_cpu()` requests `science_limits()` (512 MB storage buffer binding), which
+    /// llvmpipe and other software rasterizers cannot satisfy (capped at 128 MB), causing
+    /// device creation to fail.  `new_cpu_relaxed()` instead asks for only
+    /// `wgpu::Limits::downlevel_defaults()`, which every compliant adapter supports.
+    ///
+    /// Use this constructor in tests and any pipeline that runs on CPU/llvmpipe.
+    pub async fn new_cpu_relaxed() -> Result<Self> {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
+        let adapters = instance.enumerate_adapters(wgpu::Backends::all());
+        let adapter = adapters
+            .into_iter()
+            .find(|a| a.get_info().device_type == wgpu::DeviceType::Cpu)
+            .ok_or_else(|| BarracudaError::device("No CPU software rasterizer available"))?;
+
+        let adapter_info = adapter.get_info();
+        log::info!(
+            "barraCUDA (cpu-relaxed): {} ({:?})",
+            adapter_info.name,
+            adapter_info.device_type
+        );
+
+        let adapter_features = adapter.features();
+        let mut required_features = wgpu::Features::empty();
+        if adapter_features.contains(wgpu::Features::SHADER_F64) {
+            required_features |= wgpu::Features::SHADER_F64;
+        }
+        if adapter_features.contains(wgpu::Features::SHADER_F16) {
+            required_features |= wgpu::Features::SHADER_F16;
+        }
+
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: Some("barraCUDA cpu-relaxed"),
+                    required_features,
+                    required_limits: wgpu::Limits::downlevel_defaults(),
+                    memory_hints: Default::default(),
+                },
+                None,
+            )
+            .await
+            .map_err(|e| BarracudaError::device(format!("Failed to create CPU device: {e}")))?;
+
+        let wgpu_device = Self {
+            device: Arc::new(device),
+            queue: Arc::new(queue),
+            adapter_info,
+            calibration: None,
+        };
+        probe::seed_cache_from_heuristics(&wgpu_device);
+        Ok(wgpu_device)
+    }
+
     /// Create device with high-capacity limits (1GB+ buffers)
     pub async fn new_high_capacity() -> Result<Self> {
         Self::new_with_limits(super::super::tensor_context::high_capacity_limits()).await

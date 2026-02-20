@@ -33,6 +33,7 @@
 //! # }
 //! ```
 
+use crate::device::vendor::{VENDOR_AMD, VENDOR_INTEL, VENDOR_NVIDIA};
 use crate::device::WgpuDevice;
 use std::fmt;
 
@@ -90,8 +91,12 @@ pub struct DeviceCapabilities {
     /// Backend (Vulkan, Metal, DX12, GL, etc.)
     pub backend: wgpu::Backend,
 
-    /// Vendor ID (e.g., NVIDIA=0x10DE, AMD=0x1002, Intel=0x8086)
+    /// Vendor ID (e.g., NVIDIA=VENDOR_NVIDIA, AMD=VENDOR_AMD, Intel=VENDOR_INTEL)
     pub vendor: u32,
+
+    /// Override for `gpu_dispatch_threshold()`. `None` uses the default per
+    /// device type. Set via `with_gpu_dispatch_threshold()`.
+    pub gpu_dispatch_threshold_override: Option<usize>,
 }
 
 impl DeviceCapabilities {
@@ -122,6 +127,7 @@ impl DeviceCapabilities {
             max_bind_groups: limits.max_bind_groups,
             backend: adapter_info.backend,
             vendor: adapter_info.vendor,
+            gpu_dispatch_threshold_override: None,
         }
     }
 
@@ -139,24 +145,24 @@ impl DeviceCapabilities {
             wgpu::DeviceType::DiscreteGpu => {
                 // Discrete GPU - optimize by vendor
                 match self.vendor {
-                    // NVIDIA (0x10DE)
-                    0x10DE => match workload {
+                    // NVIDIA (VENDOR_NVIDIA)
+                    VENDOR_NVIDIA => match workload {
                         WorkloadType::ElementWise => 256, // Full warp utilization
                         WorkloadType::MatMul => 256,      // Good for matrix tiles
                         WorkloadType::Reduction => 512,   // More threads for reduction trees
                         WorkloadType::FHE => 256,         // Balanced for U64 emulation
                         WorkloadType::Convolution => 128, // Cache-friendly for spatial locality
                     },
-                    // AMD (0x1002)
-                    0x1002 => match workload {
+                    // AMD (VENDOR_AMD)
+                    VENDOR_AMD => match workload {
                         WorkloadType::ElementWise => 256, // Wavefront-aligned
                         WorkloadType::MatMul => 256,
                         WorkloadType::Reduction => 256, // AMD prefers consistent sizes
                         WorkloadType::FHE => 256,
                         WorkloadType::Convolution => 128,
                     },
-                    // Intel (0x8086)
-                    0x8086 => match workload {
+                    // Intel (VENDOR_INTEL)
+                    VENDOR_INTEL => match workload {
                         WorkloadType::ElementWise => 128, // Conservative for Intel
                         WorkloadType::MatMul => 128,
                         WorkloadType::Reduction => 256,
@@ -307,9 +313,9 @@ impl DeviceCapabilities {
             wgpu::DeviceType::DiscreteGpu => {
                 // Larger tiles for discrete GPU (more shared memory)
                 match self.vendor {
-                    0x10DE => 32, // NVIDIA - 32x32 tiles (1024 threads)
-                    0x1002 => 32, // AMD - 32x32 tiles
-                    0x8086 => 16, // Intel - smaller tiles
+                    VENDOR_NVIDIA => 32, // NVIDIA - 32x32 tiles (1024 threads)
+                    VENDOR_AMD => 32, // AMD - 32x32 tiles
+                    VENDOR_INTEL => 16, // Intel - smaller tiles
                     _ => 16,      // Conservative default
                 }
             }
@@ -319,12 +325,61 @@ impl DeviceCapabilities {
         }
     }
 
+    /// Minimum element count below which CPU is faster than a GPU dispatch.
+    ///
+    /// Accounts for wgpu pipeline-creation overhead (~50–200 µs for first
+    /// dispatch) and command-submission latency (~200 µs per submit).  Below
+    /// this threshold the kernel launch cost exceeds arithmetic savings.
+    ///
+    /// Configurable via `DeviceCapabilities::with_gpu_dispatch_threshold()`.
+    ///
+    /// **WetSpring lesson**: wetSpring uses `GPU_DISPATCH_THRESHOLD = 10_000`.
+    /// Quality filtering at <10K reads/sample stays on CPU; DADA2 E-step at
+    /// >10K pairs/sample moves to GPU.
+    ///
+    /// # Default values (tuned empirically)
+    /// | Device type        | Default |
+    /// |--------------------|---------|
+    /// | Discrete GPU       | 4,096   |
+    /// | Integrated GPU     | 16,384  |
+    /// | CPU (llvmpipe)     | `usize::MAX` (always use CPU path) |
+    pub fn gpu_dispatch_threshold(&self) -> usize {
+        if let Some(t) = self.gpu_dispatch_threshold_override {
+            return t;
+        }
+        match self.device_type {
+            wgpu::DeviceType::DiscreteGpu => 4_096,
+            wgpu::DeviceType::IntegratedGpu => 16_384,
+            wgpu::DeviceType::Cpu => usize::MAX,
+            _ => 8_192,
+        }
+    }
+
+    /// Return a copy of this `DeviceCapabilities` with the GPU dispatch
+    /// threshold set to `threshold`.
+    ///
+    /// # Example
+    /// ```ignore
+    /// // wetSpring pipeline: route to GPU only for >10K element workloads
+    /// let caps = DeviceCapabilities::from_device(&device)
+    ///     .with_gpu_dispatch_threshold(10_000);
+    /// if data.len() >= caps.gpu_dispatch_threshold() {
+    ///     launch_gpu_kernel(data)?;
+    /// } else {
+    ///     run_cpu_fallback(data)?;
+    /// }
+    /// ```
+    pub fn with_gpu_dispatch_threshold(mut self, threshold: usize) -> Self {
+        self.gpu_dispatch_threshold_override = Some(threshold);
+        self
+    }
+
     /// Get vendor name (for logging/debugging)
     pub fn vendor_name(&self) -> &'static str {
         match self.vendor {
-            0x10DE => "NVIDIA",
-            0x1002 => "AMD",
-            0x8086 => "Intel",
+            VENDOR_NVIDIA => "NVIDIA",
+            VENDOR_AMD => "AMD",
+            VENDOR_INTEL => "Intel",
             0x13B5 => "ARM",
             0x5143 => "Qualcomm",
             0x1010 => "ImgTec",
@@ -457,11 +512,11 @@ impl fmt::Display for DeviceCapabilities {
 // queryable profile. Enables shader strategy selection without
 // string matching at dispatch time.
 //
-// Evolution path from hotSpring GPU sovereignty analysis (Feb 18, 2026):
-// Phase 1: Profile detection + eigensolve strategy (this)
-// Phase 2: NAK contribution (SM70 latency tables, f64 FMA)
-// Phase 3: AMD RADV as second open-source target
-// Phase 4: Specialized codegen (optional, if upstream too slow)
+// Sovereign Compute Evolution (hotSpring analysis, Feb 2026 — all three phases complete):
+//   Phase 1 ✓  Profile detection + eigensolve strategy (this module)
+//   Phase 2 ✓  NAK contribution (SM70/RDNA2/AppleM latency tables, f64 FMA)
+//   Phase 3 ✓  ILP reorderer + loop unroller wired into compile_shader_f64()
+//   Phase 4    Specialized codegen — optional, deferred until upstream bottleneck confirmed
 
 /// GPU driver/compiler identity
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -509,6 +564,11 @@ pub enum GpuArch {
     Cdna2,
     /// Intel Arc (Alchemist/Battlemage)
     IntelArc,
+    /// Apple M-series GPU (Apple Silicon — M1/M2/M3/M4 family)
+    ///
+    /// Runs via Metal + wgpu's Metal backend. FP64 is emulated in software
+    /// (Apple GPUs only have f32 hardware). ILP window empirically ~4 cycles.
+    AppleM,
     /// Software rasterizer
     Software,
     Unknown,
@@ -715,6 +775,11 @@ impl GpuDriverProfile {
             return GpuArch::IntelArc;
         }
 
+        // Apple Silicon GPU — wgpu reports these as "Apple M*" via Metal
+        if name.contains("apple m") || name.contains("apple paravirtual") {
+            return GpuArch::AppleM;
+        }
+
         // Software
         if name.contains("llvmpipe") || name.contains("swiftshader") {
             return GpuArch::Software;
@@ -735,6 +800,8 @@ impl GpuDriverProfile {
             GpuArch::Rdna2 | GpuArch::Rdna3 => Fp64Rate::Throttled,
             GpuArch::Cdna2 => Fp64Rate::Full,
             GpuArch::IntelArc => Fp64Rate::Minimal,
+            // Apple M-series has no hardware FP64 — all f64 ops are software emulated
+            GpuArch::AppleM => Fp64Rate::Software,
             GpuArch::Software => Fp64Rate::Software,
             GpuArch::Unknown => {
                 if matches!(driver, DriverKind::Software) {
@@ -787,7 +854,8 @@ mod tests {
             max_uniform_buffers_per_shader_stage: 12,
             max_bind_groups: 4,
             backend: wgpu::Backend::Vulkan,
-            vendor: 0x10DE, // NVIDIA
+            vendor: VENDOR_NVIDIA, // NVIDIA
+            gpu_dispatch_threshold_override: None,
         };
 
         // Test all workload types
@@ -835,7 +903,8 @@ mod tests {
             max_uniform_buffers_per_shader_stage: 12,
             max_bind_groups: 4,
             backend: wgpu::Backend::Vulkan,
-            vendor: 0x10DE,
+            vendor: VENDOR_NVIDIA,
+            gpu_dispatch_threshold_override: None,
         };
 
         assert!(caps_supported.supports_fhe());
@@ -851,7 +920,8 @@ mod tests {
             max_uniform_buffers_per_shader_stage: 12,
             max_bind_groups: 4,
             backend: wgpu::Backend::Vulkan,
-            vendor: 0x8086,
+            vendor: VENDOR_INTEL,
+            gpu_dispatch_threshold_override: None,
         };
 
         assert!(!caps_limited.supports_fhe());

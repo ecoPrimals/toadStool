@@ -446,7 +446,6 @@ pub struct DeviceLease {
     info: DeviceInfo,
     pool: Arc<MultiDevicePoolInner>,
     quota_tracker: Option<Arc<QuotaTracker>>,
-    #[allow(dead_code)]
     _permit: tokio::sync::OwnedSemaphorePermit,
 }
 

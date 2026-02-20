@@ -1,8 +1,29 @@
 //! MatMul operation - Matrix multiplication
 //! Pure WGSL implementation
+//!
+//! **4-tier kernel router** (absorbed from neuralSpring handoff #11):
+//!
+//! | Condition                          | Shader                   | Tile | Notes                       |
+//! |------------------------------------|--------------------------|------|-----------------------------|
+//! | M < 32 or N < 32 (small)          | `matmul.wgsl` (naive)    | n/a  | Low overhead, branch-free   |
+//! | CPU device (any size)              | `matmul_cpu_tiled.wgsl`  | 32   | Double-buffered, fma(), BLAS-style |
+//! | GPU, M < 256 or N < 256 (medium)  | `matmul_tiled.wgsl`      | 16   | High occupancy              |
+//! | GPU, M ≥ 256 and N ≥ 256 (large)  | `matmul_gpu_evolved.wgsl`| 32   | Double-buffered, 2×2 kernel |
 
+use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
+use crate::device::tensor_context::get_device_context;
+use crate::device::DeviceCapabilities;
 use crate::error::Result;
 use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// Large-matrix threshold for activating the evolved GPU shader.
+/// Below this, the 16×16 tiled shader maintains higher SM occupancy.
+const GPU_EVOLVED_THRESHOLD: usize = 256;
+
+/// Smallest dimension below which the naive shader is used.
+/// At these sizes, tile-fill overhead exceeds computation cost.
+const SMALL_MATRIX_THRESHOLD: usize = 32;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -11,6 +32,19 @@ struct MatMulParams {
     k: u32,
     n: u32,
     _padding: u32,
+}
+
+/// Which matmul implementation to dispatch
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum MatMulTier {
+    /// Naive single-output-per-thread, no shared memory (small matrices)
+    Naive,
+    /// Existing 16×16 tiled with single-buffer shared memory (medium GPU)
+    Tiled16,
+    /// New 32×32 double-buffered, 2×2 micro-kernel, fma() (CPU / llvmpipe)
+    CpuTiled32,
+    /// New 32×32 double-buffered, 2×2 micro-kernel (large GPU)
+    GpuEvolved32,
 }
 
 pub struct MatMul {
@@ -23,156 +57,132 @@ impl MatMul {
         Self { lhs, rhs }
     }
 
-    fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/math/matmul.wgsl")
+    /// Select the appropriate matmul kernel tier based on device and matrix size.
+    fn select_tier(caps: &DeviceCapabilities, m: usize, n: usize) -> MatMulTier {
+        if m < SMALL_MATRIX_THRESHOLD || n < SMALL_MATRIX_THRESHOLD {
+            return MatMulTier::Naive;
+        }
+        if caps.device_type == wgpu::DeviceType::Cpu {
+            return MatMulTier::CpuTiled32;
+        }
+        if m >= GPU_EVOLVED_THRESHOLD && n >= GPU_EVOLVED_THRESHOLD {
+            MatMulTier::GpuEvolved32
+        } else {
+            MatMulTier::Tiled16
+        }
+    }
+
+    fn shader_for_tier(tier: MatMulTier) -> &'static str {
+        match tier {
+            MatMulTier::Naive => include_str!("../shaders/math/matmul.wgsl"),
+            MatMulTier::Tiled16 => include_str!("../shaders/math/matmul_tiled.wgsl"),
+            MatMulTier::CpuTiled32 => include_str!("../shaders/math/matmul_cpu_tiled.wgsl"),
+            MatMulTier::GpuEvolved32 => include_str!("../shaders/math/matmul_gpu_evolved.wgsl"),
+        }
     }
 
     pub fn execute(self) -> Result<Tensor> {
         let device = self.lhs.device();
 
-        // Assume lhs: [m, k], rhs: [k, n] -> output: [m, n]
+        // lhs: [m, k], rhs: [k, n] → output: [m, n]
         let m = self.lhs.shape()[0];
         let k = self.lhs.shape()[1];
         let n = self.rhs.shape()[1];
         let output_size = m * n;
 
-        let output_buffer = device.create_buffer_f32(output_size)?;
+        let caps = DeviceCapabilities::from_device(device);
+        let tier = Self::select_tier(&caps, m, n);
+        log::debug!(
+            "MatMul [{m}×{k}]×[{k}×{n}] → tier {:?} (device: {:?})",
+            tier,
+            caps.device_type
+        );
 
-        let params = MatMulParams {
-            m: m as u32,
-            k: k as u32,
-            n: n as u32,
-            _padding: 0,
+        let ctx = get_device_context(device);
+        // Pooled output — zero allocation in steady state.
+        let output_buffer = ctx.acquire_pooled_output(output_size);
+
+        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("MatMul Params"),
+            contents: bytemuck::bytes_of(&MatMulParams {
+                m: m as u32,
+                k: k as u32,
+                n: n as u32,
+                _padding: 0,
+            }),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        // matmul() = (2 read-only, 1 read-write, 1 uniform)
+        let layout_sig = BindGroupLayoutSignature::matmul();
+        let adapter_info = device.adapter_info();
+        let bgl = GLOBAL_CACHE.get_or_create_layout(
+            device.device(),
+            adapter_info,
+            layout_sig,
+            Some("MatMul BGL"),
+        );
+
+        let bind_group = std::sync::Arc::new(device.device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                label: Some("MatMul BG"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.lhs.buffer().as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: self.rhs.buffer().as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                ],
+            },
+        ));
+
+        let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
+            device.device(),
+            adapter_info,
+            Self::shader_for_tier(tier),
+            layout_sig,
+            "main",
+            Some(match tier {
+                MatMulTier::Naive => "MatMul Naive",
+                MatMulTier::Tiled16 => "MatMul Tiled16",
+                MatMulTier::CpuTiled32 => "MatMul CpuTiled32",
+                MatMulTier::GpuEvolved32 => "MatMul GpuEvolved32",
+            }),
+        );
+
+        // Dispatch parameters (computed before the closure so they are Copy).
+        let (wg_x, wg_y) = match tier {
+            MatMulTier::Naive => ((m as u32).div_ceil(16), (n as u32).div_ceil(16)),
+            MatMulTier::Tiled16 => ((n as u32).div_ceil(16), (m as u32).div_ceil(16)),
+            MatMulTier::CpuTiled32 | MatMulTier::GpuEvolved32 => {
+                ((n as u32).div_ceil(32), (m as u32).div_ceil(32))
+            }
         };
 
-        let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("MatMul Params"),
-            size: std::mem::size_of::<MatMulParams>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        device
-            .queue
-            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
-
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("MatMul BGL"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("MatMul BG"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.lhs.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.rhs.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("MatMul"));
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("MatMul PL"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("MatMul Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("MatMul Encoder"),
-            });
-
-        {
+        ctx.record_operation(move |encoder| {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("MatMul Pass"),
                 timestamp_writes: None,
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups_x = (m as u32).div_ceil(16);
-            let workgroups_y = (n as u32).div_ceil(16);
-            pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
-        }
+            pass.dispatch_workgroups(wg_x, wg_y, 1);
+            drop(params_buf);
+        })?;
 
-        device.queue.submit(Some(encoder.finish()));
-
-        Ok(Tensor::from_buffer(
-            output_buffer,
-            vec![m, n],
-            device.clone(),
-        ))
+        Ok(Tensor::from_pooled_buffer(output_buffer, vec![m, n], device.clone()))
     }
 }
 
@@ -193,7 +203,7 @@ impl Tensor {
     /// let c = a.matmul(&b)?;  // Routes to best device!
     /// ```
     pub fn matmul(self, other: &Self) -> Result<Self> {
-        // Phase 3: Check if NPU should be used
+        // NPU routing: sparse tensors or energy-priority policy route to Akida.
         if self.should_use_npu_for_matmul(other) {
             log::debug!("Routing matmul to NPU (sparse or energy priority)");
             return self.matmul_npu(other);
@@ -243,7 +253,7 @@ impl Tensor {
     /// - Graceful fallback on error
     fn matmul_npu(&self, other: &Self) -> Result<Self> {
         use crate::npu::ops::matmul::npu_matmul;
-        use crate::ops::npu_bridge::{npu_data_to_tensor, tensor_to_npu_data, with_npu_backend};
+        use crate::ops::npu_bridge::{tensor_to_npu_data, with_npu_backend};
 
         // Extract dimensions
         let m = self.shape()[0];
@@ -257,12 +267,9 @@ impl Tensor {
         // Execute on NPU via bridge
         let result_data = with_npu_backend(|npu| npu_matmul(&a_data, &b_data, m, k, n, npu))?;
 
-        // Convert back to Tensor via bridge
+        // Convert NPU result back to a Tensor (sync — no block_on needed).
         let device = self.device().clone();
-        let shape = vec![m, n];
-
-        // Block on async operation using futures executor
-        futures::executor::block_on(npu_data_to_tensor(result_data, shape, device))
+        Tensor::from_vec_on_sync(result_data, vec![m, n], device)
     }
 }
 

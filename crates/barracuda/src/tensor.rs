@@ -86,17 +86,53 @@ pub struct Tensor {
 }
 
 impl Tensor {
-    /// Create tensor from existing buffer (internal use)
-    pub(crate) fn from_buffer(
-        buffer: wgpu::Buffer,
-        shape: Vec<usize>,
-        device: Arc<WgpuDevice>,
-    ) -> Self {
+    /// Create tensor from an existing `wgpu::Buffer`.
+    ///
+    /// This constructor lets callers build GPU-resident pipelines that skip the
+    /// GPU→CPU→GPU round-trip: dispatch a compute shader, then wrap its output
+    /// buffer directly into a `Tensor` without ever reading back to the CPU.
+    ///
+    /// # Example
+    /// ```ignore
+    /// // After dispatching a custom compute shader:
+    /// let t = Tensor::from_buffer(output_buffer, shape, device);
+    /// // `t` stays fully GPU-resident — no readback.
+    /// ```
+    pub fn from_buffer(buffer: wgpu::Buffer, shape: Vec<usize>, device: Arc<WgpuDevice>) -> Self {
         Self {
             buffer: TensorBuffer::Owned(Arc::new(buffer)),
             shape,
             device,
             name: None,
+        }
+    }
+
+    /// Create a tensor that **shares** an `Arc<wgpu::Buffer>` with the caller.
+    ///
+    /// This is the zero-copy path for bridge code (e.g. `GpuExecutor`) that
+    /// already holds an `Arc<wgpu::Buffer>` and wants to wrap it as a `Tensor`
+    /// without a GPU→CPU→GPU round-trip.
+    ///
+    /// The buffer's lifetime is shared: both the `Tensor` and the caller's `Arc`
+    /// keep it alive.
+    pub fn from_arc_buffer(buffer: Arc<wgpu::Buffer>, shape: Vec<usize>, device: Arc<WgpuDevice>) -> Self {
+        Self {
+            buffer: TensorBuffer::Owned(buffer),
+            shape,
+            device,
+            name: None,
+        }
+    }
+
+    /// Return the underlying `Arc<wgpu::Buffer>` if this tensor owns an unshared
+    /// (non-pooled) buffer, otherwise `None`.
+    ///
+    /// Callers that need direct buffer access for zero-copy bridge code use this
+    /// to avoid cloning the buffer contents.
+    pub fn try_arc_buffer(&self) -> Option<Arc<wgpu::Buffer>> {
+        match &self.buffer {
+            TensorBuffer::Owned(arc) => Some(Arc::clone(arc)),
+            TensorBuffer::Pooled(_) => None,
         }
     }
 
@@ -152,9 +188,8 @@ impl Tensor {
     /// let gpu_tensor = tensor.prefer_device(Device::GPU); // Hint for GPU
     /// ```
     pub fn prefer_device(&self, _device: Device) -> Self {
-        // Phase 2: For now, just return clone with routing hint logged
-        // Phase 3 will implement actual device migration
-        log::debug!("Device preference noted (Phase 3 will implement migration)");
+        // Routing hint recorded; live device migration deferred (tracked as D-S18-003).
+        log::debug!("Device preference noted; migration not yet implemented");
         self.clone()
     }
 

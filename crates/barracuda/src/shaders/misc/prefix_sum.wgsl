@@ -1,31 +1,141 @@
-// Prefix Sum - Inclusive scan (GPU parallel scan for masked_select/nonzero)
-// Computes running sum: output[i] = sum(input[0..=i])
+// prefix_sum.wgsl — GPU exclusive prefix sum (Blelloch scan)
 //
-// Algorithm: Blelloch scan (work-efficient parallel prefix sum)
-// 1. Up-sweep: Build reduction tree
-// 2. Down-sweep: Propagate sums
+// Hierarchical 2-pass scan for arrays of arbitrary length:
 //
-// Note: This is a simplified single-pass version.
-// Production implementation would use hierarchical scan for large inputs.
+//   Pass A — local_scan:
+//     Each workgroup of 256 threads scans its own 256-element segment using
+//     shared memory.  At the end of the scan the exclusive prefix sum for
+//     that segment is written to `scan_out[]`.  The workgroup total (sum of
+//     all elements in that segment) is written to `wg_sums[workgroup_id.x]`.
+//
+//   Pass B — add_wg_offsets:
+//     A second, single-workgroup pass computes the exclusive prefix sum of
+//     `wg_sums[]` and then adds the appropriate cumulative offset back to
+//     every element of `scan_out[]`.
+//
+// After both passes, `scan_out[i]` contains the exclusive prefix sum of the
+// original input, which is the scatter index for stream compaction:
+//
+//   output[scan_out[i]] = input[i]   iff   flags[i] == 1
+//
+// `total[0]` is set by the caller as `scan_out[N-1] + flags[N-1]`
+// (i.e. the total number of selected elements), or can be read from the
+// last wg_sums entry after Pass B.
 
-struct Params {
-    size: u32,
+const WG: u32 = 256u;
+
+var<workgroup> shmem: array<u32, 256>;
+
+struct ScanConfig {
+    n: u32,          // Total number of elements
+    n_groups: u32,   // ceil(n / WG) — number of workgroups for Pass A
+    _pad0: u32,
     _pad1: u32,
-    _pad2: u32,
-    _pad3: u32,
 }
 
-@group(0) @binding(0) var<uniform> params: Params;
-@group(0) @binding(1) var<storage, read> input: array<u32>;
-@group(0) @binding(2) var<storage, read_write> output: array<u32>;
-@group(0) @binding(3) var<storage, read_write> scratch: array<u32>;  // Working buffer
+@group(0) @binding(0) var<uniform>             config:   ScanConfig;
+@group(0) @binding(1) var<storage, read>       flags_in: array<u32>;  // predicate flags [N]
+@group(0) @binding(2) var<storage, read_write> scan_out: array<u32>;  // exclusive scan  [N]
+@group(0) @binding(3) var<storage, read_write> wg_sums:  array<u32>;  // workgroup totals [n_groups]
 
-// Simple inclusive scan (sequential for now, can be parallelized)
-@compute @workgroup_size(1)
-fn inclusive_scan(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    var sum = 0u;
-    for (var i = 0u; i < params.size; i++) {
-        sum += input[i];
-        output[i] = sum;
+// ── Pass A: intra-workgroup exclusive scan ────────────────────────────────────
+@compute @workgroup_size(256)
+fn local_scan(
+    @builtin(global_invocation_id) global_id:    vec3<u32>,
+    @builtin(local_invocation_id)  local_id:     vec3<u32>,
+    @builtin(workgroup_id)         workgroup_id: vec3<u32>,
+) {
+    let lid  = local_id.x;
+    let gid  = global_id.x;
+    let wgid = workgroup_id.x;
+
+    // Load into shared memory (zero-pad if out of bounds)
+    shmem[lid] = select(0u, flags_in[gid], gid < config.n);
+    workgroupBarrier();
+
+    // Up-sweep (reduce) phase
+    var stride = 1u;
+    while (stride < WG) {
+        if (lid >= stride && (lid + 1u) % (stride * 2u) == 0u) {
+            shmem[lid] = shmem[lid] + shmem[lid - stride];
+        }
+        stride = stride * 2u;
+        workgroupBarrier();
+    }
+
+    // Write total and clear root (convert inclusive to exclusive)
+    if (lid == WG - 1u) {
+        wg_sums[wgid] = shmem[lid];
+        shmem[lid] = 0u;
+    }
+    workgroupBarrier();
+
+    // Down-sweep phase
+    stride = WG / 2u;
+    while (stride >= 1u) {
+        if (lid >= stride && (lid + 1u) % (stride * 2u) == 0u) {
+            let left  = shmem[lid - stride];
+            let right = shmem[lid];
+            shmem[lid - stride] = right;
+            shmem[lid]          = left + right;
+        }
+        stride = stride / 2u;
+        workgroupBarrier();
+    }
+
+    // Write exclusive scan result
+    if (gid < config.n) {
+        scan_out[gid] = shmem[lid];
+    }
+}
+
+// ── Pass B: add workgroup offsets ─────────────────────────────────────────────
+//
+// A single workgroup computes the exclusive prefix sum of `wg_sums[]` and adds
+// the appropriate cumulative offset to every `scan_out` element.
+// Limitation: works for n_groups ≤ 256 (i.e. arrays up to 65,536 elements per
+// workgroup dimension → 16,777,216 total elements).  For larger arrays, extend
+// with an additional hierarchical level.
+@compute @workgroup_size(256)
+fn add_wg_offsets(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id)  local_id:  vec3<u32>,
+) {
+    let lid = local_id.x;
+
+    // Load workgroup sums
+    shmem[lid] = select(0u, wg_sums[lid], lid < config.n_groups);
+    workgroupBarrier();
+
+    // In-place exclusive prefix sum of wg_sums (same Blelloch algorithm)
+    var stride = 1u;
+    while (stride < WG) {
+        if (lid >= stride && (lid + 1u) % (stride * 2u) == 0u) {
+            shmem[lid] = shmem[lid] + shmem[lid - stride];
+        }
+        stride = stride * 2u;
+        workgroupBarrier();
+    }
+    if (lid == WG - 1u) { shmem[lid] = 0u; }
+    workgroupBarrier();
+    stride = WG / 2u;
+    while (stride >= 1u) {
+        if (lid >= stride && (lid + 1u) % (stride * 2u) == 0u) {
+            let left  = shmem[lid - stride];
+            let right = shmem[lid];
+            shmem[lid - stride] = right;
+            shmem[lid]          = left + right;
+        }
+        stride = stride / 2u;
+        workgroupBarrier();
+    }
+    workgroupBarrier();
+
+    // Write the workgroup offset back so Pass A's scan_out values become global.
+    // Each of the original `n_groups` workgroups owns WG consecutive scan_out entries.
+    // We add the cumulative offset for that workgroup to each element.
+    let wg_offset = shmem[lid];
+    for (var i = 0u; i < WG && (lid * WG + i) < config.n; i = i + 1u) {
+        scan_out[lid * WG + i] = scan_out[lid * WG + i] + wg_offset;
     }
 }

@@ -9,9 +9,9 @@
 //! Note: Each wgpu Device has its own cache because GPU objects are
 //! not transferable between devices.
 
-use dashmap::DashMap;
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use wgpu::{BindGroupLayout, ComputePipeline, Device, ShaderModule};
 
 /// Unique device identifier that works across wgpu instances
@@ -192,27 +192,30 @@ impl PipelineKey {
     }
 }
 
-/// Thread-safe pipeline cache
+/// Thread-safe pipeline cache — evolved from DashMap to stdlib RwLock<HashMap>.
 ///
-/// Note: Keys include device ID to ensure GPU objects are only used
+/// Access pattern: very frequent reads (cache hits), rare writes (first-use only).
+/// RwLock's read-write semantics are ideal: unlimited concurrent readers, exclusive writer.
+///
+/// Note: Keys include device fingerprint to ensure GPU objects are only used
 /// with the device that created them.
 pub struct PipelineCache {
     /// Cached shader modules (keyed by source hash + device)
-    shaders: DashMap<ShaderKey, Arc<ShaderModule>>,
+    shaders: RwLock<HashMap<ShaderKey, Arc<ShaderModule>>>,
 
     /// Cached bind group layouts (keyed by signature + device)
-    layouts: DashMap<BindGroupLayoutKey, Arc<BindGroupLayout>>,
+    layouts: RwLock<HashMap<BindGroupLayoutKey, Arc<BindGroupLayout>>>,
 
     /// Cached compute pipelines (keyed by shader + layout + entry + device)
-    pipelines: DashMap<PipelineKey, Arc<ComputePipeline>>,
+    pipelines: RwLock<HashMap<PipelineKey, Arc<ComputePipeline>>>,
 }
 
 impl PipelineCache {
     pub fn new() -> Self {
         Self {
-            shaders: DashMap::new(),
-            layouts: DashMap::new(),
-            pipelines: DashMap::new(),
+            shaders:   RwLock::new(HashMap::new()),
+            layouts:   RwLock::new(HashMap::new()),
+            pipelines: RwLock::new(HashMap::new()),
         }
     }
 
@@ -230,15 +233,20 @@ impl PipelineCache {
         let fingerprint = DeviceFingerprint::from_device_info(device, adapter_info);
         let key = ShaderKey::new(source, fingerprint);
 
+        // Fast path: already compiled.
+        if let Some(m) = self.shaders.read().expect("shaders poisoned").get(&key) {
+            return m.clone();
+        }
+        // Slow path: compile and cache.
+        let module = Arc::new(device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label,
+            source: wgpu::ShaderSource::Wgsl(source.into()),
+        }));
         self.shaders
+            .write()
+            .expect("shaders poisoned")
             .entry(key)
-            .or_insert_with(|| {
-                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label,
-                    source: wgpu::ShaderSource::Wgsl(source.into()),
-                });
-                Arc::new(module)
-            })
+            .or_insert(module)
             .clone()
     }
 
@@ -255,10 +263,13 @@ impl PipelineCache {
         let fingerprint = DeviceFingerprint::from_device_info(device, adapter_info);
         let key = BindGroupLayoutKey::new(signature, fingerprint);
 
-        self.layouts
-            .entry(key)
-            .or_insert_with(|| {
-                let mut entries = Vec::new();
+        // Fast path: already created.
+        if let Some(l) = self.layouts.read().expect("layouts poisoned").get(&key) {
+            return l.clone();
+        }
+        // Slow path: create from signature.
+        let layout = {
+            let mut entries = Vec::new();
                 let mut binding = 0u32;
 
                 // Read-only storage buffers
@@ -306,12 +317,17 @@ impl PipelineCache {
                     binding += 1;
                 }
 
-                let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label,
-                    entries: &entries,
-                });
-                Arc::new(layout)
-            })
+            let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label,
+                entries: &entries,
+            });
+            Arc::new(layout)
+        };
+        self.layouts
+            .write()
+            .expect("layouts poisoned")
+            .entry(key)
+            .or_insert(layout)
             .clone()
     }
 
@@ -330,49 +346,48 @@ impl PipelineCache {
         let fingerprint = DeviceFingerprint::from_device_info(device, adapter_info);
         let key = PipelineKey::new(shader_source, layout_signature, entry_point, fingerprint);
 
+        // Fast path: already compiled.
+        if let Some(p) = self.pipelines.read().expect("pipelines poisoned").get(&key) {
+            return p.clone();
+        }
+        // Slow path: compile shaders, build pipeline layout, create pipeline.
+        let shader = self.get_or_compile_shader(device, adapter_info, shader_source, label);
+        let layout = self.get_or_create_layout(device, adapter_info, layout_signature, label);
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label,
+            bind_group_layouts: &[&layout],
+            push_constant_ranges: &[],
+        });
+        let pipeline = Arc::new(device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label,
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point,
+            cache: None,
+            compilation_options: Default::default(),
+        }));
         self.pipelines
+            .write()
+            .expect("pipelines poisoned")
             .entry(key)
-            .or_insert_with(|| {
-                // Get cached shader and layout
-                let shader = self.get_or_compile_shader(device, adapter_info, shader_source, label);
-                let layout =
-                    self.get_or_create_layout(device, adapter_info, layout_signature, label);
-
-                let pipeline_layout =
-                    device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label,
-                        bind_group_layouts: &[&layout],
-                        push_constant_ranges: &[],
-                    });
-
-                let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label,
-                    layout: Some(&pipeline_layout),
-                    module: &shader,
-                    entry_point,
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-                Arc::new(pipeline)
-            })
+            .or_insert(pipeline)
             .clone()
     }
 
     /// Get cache statistics
     pub fn stats(&self) -> CacheStats {
         CacheStats {
-            shaders: self.shaders.len(),
-            layouts: self.layouts.len(),
-            pipelines: self.pipelines.len(),
+            shaders:   self.shaders.read().expect("shaders poisoned").len(),
+            layouts:   self.layouts.read().expect("layouts poisoned").len(),
+            pipelines: self.pipelines.read().expect("pipelines poisoned").len(),
         }
     }
 
     /// Clear all cached objects
     pub fn clear(&self) {
-        self.shaders.clear();
-        self.layouts.clear();
-        self.pipelines.clear();
+        self.shaders.write().expect("shaders poisoned").clear();
+        self.layouts.write().expect("layouts poisoned").clear();
+        self.pipelines.write().expect("pipelines poisoned").clear();
     }
 }
 

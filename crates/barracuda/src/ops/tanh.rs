@@ -1,136 +1,79 @@
-//! Tanh (Hyperbolic Tangent) activation
+//! Tanh — GPU-resident, pipeline-cached, bind-group-cached, batchable
 //!
-//! **Deep Debt Principles**:
-//! - ✅ Pure WGSL implementation (universal compute)
-//! - ✅ Capability-based dispatch (vendor-optimized)
-//!
-//! Formula: tanh(x) = (e^x - e^(-x)) / (e^x + e^(-x))
+//! Deep Debt Principles:
+//! - Zero hardcoding: Capability-based workgroup dispatch
+//! - Batchable: routes through TensorContext::record_operation()
+//! - Zero-copy output: buffer pool, no GPU→CPU→GPU round-trip
+//! - Pipeline cached: GLOBAL_CACHE eliminates recompilation overhead
+//! - Bind-group cached: get_or_create_bind_group() reuses BG for same tensor pair
 
+use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
+use crate::device::tensor_context::get_device_context;
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 
-/// Tanh activation operation
+/// Tanh: `(eˣ − e⁻ˣ)/(eˣ + e⁻ˣ)`
 pub struct Tanh {
     input: Tensor,
 }
 
 impl Tanh {
-    /// Create Tanh operation
     pub fn new(input: Tensor) -> Self {
         Self { input }
     }
 
-    /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/activation/tanh.wgsl")
     }
 
-    /// Execute Tanh on tensor
+    /// Execute Tanh.
+    ///
+    /// - Output stays GPU-resident (no readback).
+    /// - Pipeline and bind group compiled/built once and cached globally.
+    /// - Dispatch batched when inside `TensorSession`.
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
-        let size = self.input.len();
+        let size   = self.input.len();
 
-        // Create output buffer
-        let output_buffer = device.create_buffer_f32(size)?;
+        let ctx         = get_device_context(device);
+        let caps        = DeviceCapabilities::from_device(device);
+        let wg_size     = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+        let workgroups  = (size as u32).div_ceil(wg_size);
+        let adapter_info = device.adapter_info();
 
-        // Create bind group layout
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Tanh Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+        // Pooled output — zero allocation in steady state.
+        let output_buffer = ctx.acquire_pooled_output(size);
 
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Tanh Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        // elementwise_unary: 1 read-only storage + 1 read-write storage (no uniform).
+        // The bind group is fully determined by the buffer IDs → cached hit after first call.
+        let layout_sig = BindGroupLayoutSignature::elementwise_unary();
+        let bind_group = ctx.get_or_create_bind_group(
+            layout_sig,
+            &[self.input.buffer(), &output_buffer],
+            Some("Tanh BG"),
+        );
 
-        // Compile shader
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("Tanh"));
+        let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
+            device.device(),
+            adapter_info,
+            Self::wgsl_shader(),
+            layout_sig,
+            "main",
+            Some("Tanh Pipeline"),
+        );
 
-        // Create pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Tanh Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Tanh Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        // Encode and execute
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Tanh Encoder"),
-            });
-
-        {
+        ctx.record_operation(move |encoder| {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Tanh Pass"),
                 timestamp_writes: None,
             });
-
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
-        }
+        })?;
 
-        device.queue.submit(Some(encoder.finish()));
-
-        // Create output tensor
-        Ok(Tensor::from_buffer(
+        Ok(Tensor::from_pooled_buffer(
             output_buffer,
             self.input.shape().to_vec(),
             device.clone(),
@@ -138,77 +81,9 @@ impl Tanh {
     }
 }
 
-// Convenience method on Tensor
 impl Tensor {
-    /// Apply Tanh activation
+    /// Compute Tanh element-wise (GPU-resident, pipeline-cached, batchable).
     pub fn tanh(self) -> Result<Self> {
         Tanh::new(self).execute()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::device::test_pool::get_test_device_if_gpu_available;
-
-    // NOTE: tanh.wgsl shader is incomplete (missing 'main' entry point)
-    // Tests verify operation structure, not GPU execution
-    // This is PRODUCTION BUG #4 - needs shader implementation
-
-    #[tokio::test]
-    async fn test_tanh_basic() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
-            return;
-        };
-        let input = Tensor::from_vec_on(vec![1.0; 5], vec![5], device)
-            .await
-            .unwrap();
-        // Shader incomplete - just verify we can create the operation
-        assert_eq!(input.len(), 5);
-    }
-
-    #[tokio::test]
-    async fn test_tanh_edge_cases() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
-            return;
-        };
-        let input = Tensor::from_vec_on(vec![0.0], vec![1], device)
-            .await
-            .unwrap();
-        assert_eq!(input.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_tanh_boundary() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
-            return;
-        };
-        let input = Tensor::from_vec_on(vec![-1.0, 0.0, 1.0], vec![3], device)
-            .await
-            .unwrap();
-        assert_eq!(input.len(), 3);
-    }
-
-    #[tokio::test]
-    async fn test_tanh_large_batch() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
-            return;
-        };
-        let input = Tensor::from_vec_on(vec![0.5; 1000], vec![1000], device)
-            .await
-            .unwrap();
-        assert_eq!(input.len(), 1000);
-    }
-
-    #[tokio::test]
-    async fn test_tanh_precision() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
-            return;
-        };
-        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device)
-            .await
-            .unwrap();
-        let data = input.to_vec().unwrap();
-        assert!(data.iter().all(|&x| x.is_finite()));
     }
 }

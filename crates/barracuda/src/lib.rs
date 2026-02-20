@@ -77,10 +77,9 @@
 // Some if-blocks are structurally identical but semantically different (e.g., kldiv_loss)
 #![allow(clippy::if_same_then_else)]
 
+pub mod compute_graph; // Lazy execution for operation batching
 pub mod device;
 pub mod error;
-pub mod shaders; // Generic precision shader templates (f16/f32/f64)
-pub mod compute_graph; // Lazy execution for operation batching
 pub mod esn_v2; // High-level Echo State Network API
 pub mod genomics; // High-level Bioinformatics/Genomics API
 pub mod multi_gpu; // Multi-GPU workload distribution
@@ -89,6 +88,7 @@ pub mod npu;
 pub mod ops;
 pub mod resource_quota; // Resource quota management for multi-tenant compute
 pub mod session;
+pub mod shaders; // Generic precision shader templates (f16/f32/f64)
 pub mod snn; // High-level Spiking Neural Network API
 pub mod tensor;
 pub mod timeseries; // High-level Time Series API
@@ -128,12 +128,12 @@ pub mod prelude {
         GpuCalibration, WgpuDevice, WorkloadHint, GLOBAL_TUNER,
     };
     pub use crate::error::{BarracudaError, Result};
-    pub use crate::session::{SessionTensor, TensorSession};
     pub use crate::esn_v2::{ESNConfig, ESN};
     pub use crate::genomics::{
         CompositionReport, MotifMatch, QualityReport, SequenceAnalyzer, SequenceConfig,
     };
     pub use crate::nn::{Layer, LossFunction, Optimizer}; // NeuralNetwork removed - use direct ops
+    pub use crate::session::{SessionTensor, TensorSession};
     pub use crate::snn::{SNNConfig, SNNLayer, SpikingNetwork};
     pub use crate::tensor::Tensor;
 

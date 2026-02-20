@@ -283,4 +283,76 @@ mod tests {
         let decision = router.route("new_model", 4000);
         assert_eq!(decision.gate_id, "tower");
     }
+
+    #[test]
+    fn test_all_gates_unreachable_falls_back_to_local() {
+        let mut router = JobRouter::new("local".to_string());
+
+        let mut gate = tower_gpu();
+        gate.reachable = false;
+        router.update_gate(gate);
+
+        let decision = router.route("any_model", 1000);
+        assert_eq!(decision.gate_id, "local");
+        assert!(matches!(decision.reason, RoutingReason::OnlyOption));
+    }
+
+    #[test]
+    fn test_route_estimated_wait_ms_model_loaded() {
+        let mut router = JobRouter::new("tower".to_string());
+        let mut tower = tower_gpu();
+        tower.queue_depth = 3;
+        router.update_gate(tower);
+
+        let decision = router.route("tinyllama:latest", 100);
+        // Wait should be queue_depth * 100
+        assert_eq!(decision.estimated_wait_ms, 300);
+    }
+
+    #[test]
+    fn test_route_estimated_wait_ms_most_vram() {
+        let mut router = JobRouter::new("tower".to_string());
+        let mut gate2 = gate2_gpu();
+        gate2.queue_depth = 4;
+        gate2.loaded_models.clear();
+        router.update_gate(gate2);
+
+        let decision = router.route("new_model", 1000);
+        assert!(matches!(decision.reason, RoutingReason::MostVramAvailable));
+        assert_eq!(decision.estimated_wait_ms, 400);
+    }
+
+    #[test]
+    fn test_update_gate_replaces_existing() {
+        let mut router = JobRouter::new("tower".to_string());
+        router.update_gate(tower_gpu());
+
+        let mut updated = tower_gpu();
+        updated.vram_available_mb = 1234;
+        router.update_gate(updated);
+
+        // Should still be one gate (updated in-place)
+        assert_eq!(router.gates().len(), 1);
+        assert_eq!(router.gates()["tower"].vram_available_mb, 1234);
+    }
+
+    #[test]
+    fn test_remove_nonexistent_gate_is_noop() {
+        let mut router = JobRouter::new("tower".to_string());
+        router.remove_gate("nonexistent");
+        assert_eq!(router.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_route_prefers_model_loaded_over_more_vram() {
+        let mut router = JobRouter::new("tower".to_string());
+
+        // tower has less VRAM available but model is loaded
+        router.update_gate(tower_gpu()); // 8000 MB, tinyllama loaded
+        router.update_gate(gate2_gpu()); // 20000 MB, no tinyllama
+
+        let decision = router.route("tinyllama:latest", 2000);
+        assert_eq!(decision.gate_id, "tower");
+        assert!(matches!(decision.reason, RoutingReason::ModelLoaded));
+    }
 }

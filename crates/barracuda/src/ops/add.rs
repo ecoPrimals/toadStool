@@ -25,8 +25,7 @@ const SHADER_WG128: &str = include_str!("../shaders/math/elementwise_add_wg128.w
 const SHADER_DEFAULT: &str = include_str!("../shaders/math/elementwise_add.wgsl");
 
 // Vendor IDs for capability-based dispatch (no string matching)
-const VENDOR_NVIDIA: u32 = 0x10DE;
-const VENDOR_AMD: u32 = 0x1002;
+use crate::device::vendor::{VENDOR_AMD, VENDOR_NVIDIA};
 
 /// Element-wise addition operation
 pub struct Add {
@@ -132,28 +131,21 @@ impl Add {
             Some("Add Pipeline"),
         );
 
-        // Encode and execute (or queue if batching)
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Add Encoder"),
-            });
-
-        {
+        // Route through TensorContext::record_operation so that when a caller
+        // wraps multiple ops in begin_batch() / end_batch(), all compute passes
+        // are recorded into a single CommandEncoder and submitted once.
+        // When not batching, record_operation submits immediately (same behaviour
+        // as before).
+        let workgroups = (size as u32).div_ceil(workgroup_size);
+        ctx.record_operation(move |encoder| {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Add Pass"),
                 timestamp_writes: None,
             });
-
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-
-            // Use vendor-optimized workgroup size
-            let workgroups = (size as u32).div_ceil(workgroup_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
-        }
-
-        device.queue.submit(Some(encoder.finish()));
+        })?;
 
         // Create output tensor with pooled buffer (auto-returns to pool on drop!)
         Ok(Tensor::from_pooled_buffer(

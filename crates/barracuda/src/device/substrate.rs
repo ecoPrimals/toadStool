@@ -105,10 +105,7 @@ impl Substrate {
     /// Primary detection uses standard PCI vendor IDs (reliable across drivers).
     /// Falls back to name-based detection for non-PCI devices (Apple, NPU).
     fn classify_substrate(info: &wgpu::AdapterInfo) -> SubstrateType {
-        const VENDOR_NVIDIA: u32 = 0x10DE;
-        const VENDOR_AMD: u32 = 0x1002;
-        const VENDOR_INTEL: u32 = 0x8086;
-        const VENDOR_APPLE: u32 = 0x106B;
+        use super::vendor::{VENDOR_AMD, VENDOR_APPLE, VENDOR_INTEL, VENDOR_NVIDIA};
 
         match info.vendor {
             VENDOR_NVIDIA => SubstrateType::NvidiaGpu,

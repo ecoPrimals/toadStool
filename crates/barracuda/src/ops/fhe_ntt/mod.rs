@@ -331,14 +331,14 @@ pub fn compute_primitive_root(degree: u32, modulus: u64) -> u64 {
     if modulus < 2 || n == 0 {
         return 1;
     }
-    // Require q ≡ 1 (mod 2N) so (q-1) is divisible by N
+    // Require q ≡ 1 (mod N) so (q-1) is divisible by N.
     let q_minus_1 = modulus - 1;
     if !q_minus_1.is_multiple_of(n) {
         return 3; // Fallback: caller should use validated (degree, modulus) pairs
     }
     let exponent = q_minus_1 / n;
-    // Try small candidates as potential generators of Z_q*
-    for &g in &[2u64, 3, 5, 7, 11, 13] {
+    // Try small candidates as potential generators of Z_q*.
+    for &g in &[2u64, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31] {
         if g >= modulus {
             continue;
         }
@@ -346,10 +346,16 @@ pub fn compute_primitive_root(degree: u32, modulus: u64) -> u64 {
         if omega == 1 {
             continue;
         }
-        // Verify ω^N ≡ 1 (mod q)
-        if mod_pow(omega, n, modulus) == 1 {
-            return omega;
+        // omega^N must equal 1 (root of unity condition).
+        if mod_pow(omega, n, modulus) != 1 {
+            continue;
         }
+        // omega must be *primitive*: omega^(N/p) ≢ 1 for every prime factor p of N.
+        // For NTT, N is always a power of 2, so the only prime factor is 2.
+        if n > 1 && n.is_multiple_of(2) && mod_pow(omega, n / 2, modulus) == 1 {
+            continue;
+        }
+        return omega;
     }
     3 // Fallback when no small generator works (e.g. large/special moduli)
 }

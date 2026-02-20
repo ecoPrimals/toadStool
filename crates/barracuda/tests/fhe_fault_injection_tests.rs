@@ -101,7 +101,7 @@ async fn fault_ntt_coefficient_exceeds_modulus() {
             // If it accepts, verify it handles correctly
             let ntt = result.unwrap();
             let result_tensor = ntt.execute().unwrap();
-            let result_data = device.read_buffer_u32(result_tensor.buffer(), result_tensor.len()).unwrap();
+            let result_data = result_tensor.to_vec_u32().unwrap();
             // Verify all results are < modulus
             for chunk in result_data.chunks(2) {
                 let val = chunk[0] as u64 | ((chunk[1] as u64) << 32);
@@ -157,7 +157,7 @@ async fn fault_out_of_gpu_memory() {
         let size = 1024 * 1024; // 4MB per tensor
         let data: Vec<u32> = vec![0; size];
         
-        match Tensor::from_data(&data, vec![size], device.clone()) {
+        match Tensor::from_data_pod(&data, vec![size], device.clone()) {
             Ok(t) => tensors.push(t),
             Err(e) => {
                 // Should be clear OOM error
@@ -223,7 +223,7 @@ async fn fault_concurrent_tensor_access() {
     
     let device = Arc::new(WgpuDevice::new().await.unwrap());
     let data: Vec<u32> = vec![1; 1024];
-    let tensor = Arc::new(Tensor::from_data(&data, vec![1024], device.clone()).unwrap());
+    let tensor = Arc::new(Tensor::from_data_pod(&data, vec![1024], device.clone()).unwrap());
     
     let mut set = JoinSet::new();
     
@@ -233,7 +233,7 @@ async fn fault_concurrent_tensor_access() {
         let dev = device.clone();
         set.spawn(async move {
             // Read tensor data
-            let _data = dev.read_buffer_u32(t.buffer(), t.len());
+            let _data = t.to_vec_u32();
             Ok::<_, anyhow::Error>(i)
         });
     }
@@ -324,7 +324,7 @@ async fn fault_error_messages_are_actionable() {
     let input_tensor = create_fhe_poly_tensor(&[1u64; 5], device.clone()).await.unwrap();
     let result = FheNtt::new(input_tensor, 5, modulus, root);
     assert!(result.is_err());
-    let error_msg = format!("{:?}", result.unwrap_err());
+    let error_msg = format!("{:?}", result.err().expect("expected Err"));
     assert!(error_msg.contains("power of 2") || error_msg.contains("degree"), 
         "Error message should mention degree issue");
     
@@ -332,7 +332,7 @@ async fn fault_error_messages_are_actionable() {
     let input_tensor2 = create_fhe_poly_tensor(&[1u64; 4], device.clone()).await.unwrap();
     let result2 = FheNtt::new(input_tensor2, 4, 0, root);
     assert!(result2.is_err());
-    let error_msg2 = format!("{:?}", result2.unwrap_err());
+    let error_msg2 = format!("{:?}", result2.err().expect("expected Err"));
     assert!(error_msg2.contains("zero") || error_msg2.contains("modulus") || error_msg2.len() > 0,
         "Error message should be informative");
     

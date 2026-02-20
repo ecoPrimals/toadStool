@@ -146,7 +146,7 @@ async fn chaos_random_coefficients_near_modulus() {
         match FheNtt::new(input_tensor, degree as u32, modulus, root) {
             Ok(ntt) => {
                 let result_tensor = ntt.execute().unwrap();
-                let result_data = device.read_buffer_u32(result_tensor.buffer(), result_tensor.len()).unwrap();
+                let result_data = result_tensor.to_vec_u32().unwrap();
                 // Verify all results are valid
                 for chunk in result_data.chunks(2) {
                     let val = chunk[0] as u64 | ((chunk[1] as u64) << 32);
@@ -240,7 +240,7 @@ async fn chaos_rapid_alloc_dealloc() {
         let tensors: Vec<Tensor> = (0..10)
             .map(|_| {
                 let data: Vec<u32> = vec![0; 8192]; // 4KB each
-                Tensor::from_data(&data, vec![8192], device.clone()).unwrap()
+                Tensor::from_data_pod(&data, vec![8192], device.clone()).unwrap()
             })
             .collect();
         
@@ -336,7 +336,7 @@ async fn chaos_memory_limit() {
         let size = 1024 * 1024 / 4; // 1MB in u32s
         let data: Vec<u32> = vec![0; size];
         
-        match Tensor::from_data(&data, vec![size], device.clone()) {
+        match Tensor::from_data_pod(&data, vec![size], device.clone()) {
             Ok(t) => {
                 tensors.push(t);
                 total_mb += 1;

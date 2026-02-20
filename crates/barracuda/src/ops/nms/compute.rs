@@ -44,11 +44,11 @@ impl NMS {
         }
 
         // Create box tensor on GPU
-        let boxes_tensor = futures::executor::block_on(Tensor::from_vec_on(
+        let boxes_tensor = Tensor::from_vec_on_sync(
             box_data,
             vec![num_boxes, 5],
             device.clone(),
-        ))?;
+        )?;
 
         // ====================================================================
         // Pass 1: Compute IoU Matrix on GPU

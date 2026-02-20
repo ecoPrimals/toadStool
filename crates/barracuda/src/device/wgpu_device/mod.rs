@@ -88,13 +88,34 @@ impl WgpuDevice {
             })
     }
 
-    /// Compile an f64 WGSL shader with automatic driver-aware patching.
+    /// Compile an f64 WGSL shader with automatic driver-aware patching and ILP optimization.
+    ///
+    /// Pipeline:
+    /// 1. `ShaderTemplate::for_driver_auto` — patches exp/log for drivers that lack native f64
+    /// 2. `WgslOptimizer::optimize` — reorders `@ilp_region` blocks + unrolls `@unroll_hint` loops
+    ///    (Phase 3 SOVEREIGN_COMPUTE_EVOLUTION; only active when annotations are present)
+    ///
+    /// The optimizer is keyed to the actual GPU arch detected at device-creation time,
+    /// so the ILP fill width matches the hardware (8 cy on SM70, 4 cy on RDNA2, etc.).
     pub fn compile_shader_f64(&self, source: &str, label: Option<&str>) -> wgpu::ShaderModule {
+        // Step 1: driver-specific exp/log patching.
         let patched = crate::shaders::precision::ShaderTemplate::for_driver_auto(
             source,
             self.needs_f64_exp_log_workaround(),
         );
-        self.compile_shader(&patched, label)
+
+        // Step 2: ILP optimizer — fast-path skip when no annotations present.
+        let optimized = if patched.contains("@ilp_region") || patched.contains("@unroll_hint") {
+            use crate::device::capabilities::GpuDriverProfile;
+            use crate::shaders::optimizer::WgslOptimizer;
+            let profile  = GpuDriverProfile::from_device(self);
+            let optimizer = WgslOptimizer::new(profile.latency_model());
+            optimizer.optimize(&patched)
+        } else {
+            patched
+        };
+
+        self.compile_shader(&optimized, label)
     }
 
     /// Execute WGSL compute shader

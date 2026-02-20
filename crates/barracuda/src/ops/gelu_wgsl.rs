@@ -1,113 +1,84 @@
-//! GELU - Pure WGSL
+//! GELU — GPU-resident, pipeline-cached, batchable
 //!
 //! Deep Debt Principles:
 //! - Self-knowledge: Operation knows its computation
-//! - Zero hardcoding: Hardware-agnostic implementation
+//! - Zero hardcoding: Capability-based workgroup dispatch
 //! - Modern idiomatic Rust: Safe, zero unsafe code
-//! - Complete implementation: Production-ready, no mocks
-//! - Hardware-agnostic: Pure WGSL for universal compute
-//! - ✅ Capability-based dispatch (vendor-optimized workgroups)
+//! - Complete implementation: No mocks or stubs
+//! - Batchable: routes through TensorContext::record_operation()
+//! - Zero-copy output: buffer pool, no GPU→CPU→GPU round-trip
+//! - Pipeline cached: GLOBAL_CACHE eliminates recompilation overhead
 
+use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
+use crate::device::tensor_context::get_device_context;
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
+use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
-/// GELU operation
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct Params {
+    size: u32,
+}
+
+/// GELU activation: `x · Φ(x)` where Φ is the Gaussian CDF.
 pub struct GELU {
     input: Tensor,
 }
 
 impl GELU {
-    /// Create a new gelu operation
     pub fn new(input: Tensor) -> Self {
         Self { input }
     }
 
-    /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/activation/gelu.wgsl")
     }
 
-    /// Execute the gelu operation
+    /// Execute GELU.
+    ///
+    /// - Output stays GPU-resident (no readback).
+    /// - Pipeline compiled once, cached globally.
+    /// - Dispatch batched when inside `TensorSession`.
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let size: usize = self.input.shape().iter().product();
 
-        // Access input buffer directly (zero-copy)
-        let input_buffer = self.input.buffer();
+        let ctx = get_device_context(device);
+        let caps = DeviceCapabilities::from_device(device);
+        let wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+        let workgroups = (size as u32).div_ceil(wg_size);
 
-        // Create output buffer
-        let output_buffer = device.create_buffer_f32(size)?;
+        // Pooled output — zero allocation in steady state.
+        let output_buffer = ctx.acquire_pooled_output(size);
 
-        // Create uniform buffer for parameters
-        #[repr(C)]
-        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-        struct Params {
-            size: u32,
-        }
-
-        let params = Params { size: size as u32 };
-
-        let params_buffer = device
+        let params_buf = device
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("GELU Params"),
-                contents: bytemuck::cast_slice(&[params]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                contents: bytemuck::bytes_of(&Params { size: size as u32 }),
+                usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        // Compile shader
-        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("GELU Shader"));
+        // Cached BGL: reduction() = (1 read-only, 1 read-write, 1 uniform)
+        let layout_sig = BindGroupLayoutSignature::reduction();
+        let adapter_info = device.adapter_info();
+        let bgl = GLOBAL_CACHE.get_or_create_layout(
+            device.device(),
+            adapter_info,
+            layout_sig,
+            Some("GELU BGL"),
+        );
 
-        // Create bind group layout
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("GELU Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("GELU Bind Group"),
-            layout: &bind_group_layout,
+            label: Some("GELU BG"),
+            layout: &bgl,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: input_buffer.as_entire_binding(),
+                    resource: self.input.buffer().as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -115,58 +86,35 @@ impl GELU {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: params_buffer.as_entire_binding(),
+                    resource: params_buf.as_entire_binding(),
                 },
             ],
         });
+        let bind_group = std::sync::Arc::new(bind_group);
 
-        // Create compute pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("GELU Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        // Cached pipeline.
+        let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
+            device.device(),
+            adapter_info,
+            Self::wgsl_shader(),
+            layout_sig,
+            "main",
+            Some("GELU Pipeline"),
+        );
 
-        let compute_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("GELU Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        // Execute compute shader
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("GELU Encoder"),
-            });
-
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+        // Record into TensorContext — immediate when not batching, deferred otherwise.
+        ctx.record_operation(move |encoder| {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("GELU Pass"),
                 timestamp_writes: None,
             });
-            compute_pass.set_pipeline(&compute_pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
-        }
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(workgroups, 1, 1);
+            drop(params_buf); // keep alive until dispatch
+        })?;
 
-        device.queue.submit(Some(encoder.finish()));
-
-        // Return tensor without reading back (zero-copy)
-        Ok(Tensor::from_buffer(
+        Ok(Tensor::from_pooled_buffer(
             output_buffer,
             self.input.shape().to_vec(),
             device.clone(),
@@ -175,7 +123,7 @@ impl GELU {
 }
 
 impl Tensor {
-    /// Compute gelu element-wise
+    /// Compute GELU element-wise (GPU-resident, pipeline-cached, batchable).
     pub fn gelu_wgsl(self) -> Result<Self> {
         GELU::new(self).execute()
     }

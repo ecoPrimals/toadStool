@@ -255,9 +255,8 @@ impl ESN {
     /// let esn_npu = esn.prefer_device(Device::NPU);  // Force NPU
     /// ```
     pub fn prefer_device(self, _device: Device) -> Self {
-        // Phase 2: Log preference
-        // Phase 3: Actually migrate tensors
-        log::debug!("Device preference set (Phase 3 will implement migration)");
+        // Routing hint recorded; live tensor migration deferred (tracked as D-S18-003).
+        log::debug!("Device preference set; migration not yet implemented");
         self
     }
 

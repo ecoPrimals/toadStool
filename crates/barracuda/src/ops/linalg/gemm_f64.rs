@@ -263,6 +263,242 @@ impl GemmF64 {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GemmCachedF64 — Pre-compiled GEMM with resident weight matrix
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Pre-compiled GEMM with a GPU-resident weight matrix B.
+///
+/// Absorbed from wetSpring's `GemmCached` local extension.  Key insight:
+/// in taxonomy / ML inference pipelines, the weight matrix B is constant
+/// across thousands of samples.  Uploading it once and reusing it collapses
+/// per-sample overhead from ~2 ms (upload + pipeline compile) to <0.2 ms.
+///
+/// **Measured wetSpring improvement**: 60× speedup on taxonomy dispatch
+/// (first dispatch: 60 ms → subsequent: <1 ms).
+///
+/// # Example
+/// ```ignore
+/// // Pre-compile once at startup with constant weight matrix
+/// let gemm = GemmCachedF64::new(device, &weights, k, n, batch)?;
+/// // For each sample:
+/// let output = gemm.multiply(&sample_features, m)?;
+/// ```
+pub struct GemmCachedF64 {
+    device: Arc<WgpuDevice>,
+    pipeline: Arc<wgpu::ComputePipeline>,
+    bgl: Arc<wgpu::BindGroupLayout>,
+    b_buffer: Arc<wgpu::Buffer>,
+    /// Cols of B / Rows of A (K dimension)
+    pub k: usize,
+    /// Cols of C / Cols of B (N dimension)
+    pub n: usize,
+    /// Batch size
+    pub batch_size: usize,
+}
+
+impl GemmCachedF64 {
+    /// Pre-compile the GEMM pipeline and upload weight matrix B to GPU.
+    ///
+    /// # Arguments
+    /// * `device`     — GPU device
+    /// * `b`          — Weight matrix `[batch × K × N]` row-major f64
+    /// * `k`          — Inner dimension
+    /// * `n`          — Output columns
+    /// * `batch_size` — Number of independent GEMM operations
+    pub fn new(
+        device: Arc<WgpuDevice>,
+        b: &[f64],
+        k: usize,
+        n: usize,
+        batch_size: usize,
+    ) -> Result<Self> {
+        if b.len() != batch_size * k * n {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "GemmCachedF64: B has {} elements, expected batch×K×N={}",
+                    b.len(),
+                    batch_size * k * n
+                ),
+            });
+        }
+
+        let dev = &device;
+
+        // Upload B to GPU permanently — it stays resident across all multiply() calls.
+        let b_buffer = Arc::new(dev.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("GemmCached B (weight matrix)"),
+                contents: bytemuck::cast_slice(b),
+                usage: wgpu::BufferUsages::STORAGE,
+            },
+        ));
+
+        // Create shared bind group layout (reused for every bind group).
+        let bgl = Arc::new(
+            dev.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GemmCached BGL"),
+                    entries: &[
+                        bgl_storage_ro(0),
+                        bgl_storage_ro(1),
+                        bgl_storage_rw(2),
+                        bgl_uniform(3),
+                    ],
+                }),
+        );
+
+        // Compile the pipeline exactly once.
+        let pl = dev
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("GemmCached PL"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            });
+        let shader = dev.compile_shader(GemmF64::wgsl_shader(), Some("GemmCached"));
+        let pipeline = Arc::new(dev.device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("GemmCached Pipeline"),
+                layout: Some(&pl),
+                module: &shader,
+                entry_point: "gemm_f64",
+                cache: None,
+                compilation_options: Default::default(),
+            },
+        ));
+
+        Ok(Self { device, pipeline, bgl, b_buffer, k, n, batch_size })
+    }
+
+    /// Multiply input matrix A by the pre-loaded weight matrix B.
+    ///
+    /// # Arguments
+    /// * `a` — `[batch × M × K]` row-major f64 input
+    /// * `m` — Rows of A (varies per call; K must match the B dimensions)
+    ///
+    /// # Returns
+    /// `[batch × M × N]` row-major f64 output.
+    pub fn multiply(&self, a: &[f64], m: usize) -> Result<Vec<f64>> {
+        let k = self.k;
+        let n = self.n;
+        let batch_size = self.batch_size;
+
+        if a.len() != batch_size * m * k {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "GemmCachedF64::multiply: A has {} elements, expected batch×M×K={}",
+                    a.len(),
+                    batch_size * m * k
+                ),
+            });
+        }
+
+        let dev = &self.device;
+        let c_size = batch_size * m * n;
+
+        let params = GemmParams::new(m as u32, k as u32, n as u32, batch_size as u32, 1.0, 0.0);
+        let params_buf = dev
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("GemmCached Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let a_buf = dev
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("GemmCached A"),
+                contents: bytemuck::cast_slice(a),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let c_buf = dev.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("GemmCached C"),
+            size: (c_size * std::mem::size_of::<f64>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Bind group reuses the pre-resident B buffer — zero upload cost.
+        let bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("GemmCached BG"),
+            layout: &self.bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: a_buf.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: self.b_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: c_buf.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: params_buf.as_entire_binding() },
+            ],
+        });
+
+        let tile = 16u32;
+        let wg_x = (m as u32).div_ceil(tile);
+        let wg_y = (n as u32).div_ceil(tile);
+        let wg_z = batch_size as u32;
+
+        let mut encoder = dev
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("GemmCached Encoder"),
+            });
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("GemmCached Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.dispatch_workgroups(wg_x, wg_y, wg_z);
+        }
+        dev.queue.submit(Some(encoder.finish()));
+
+        dev.read_f64_buffer(&c_buf, c_size)
+    }
+}
+
+// ── bind group layout helpers ─────────────────────────────────────────────────
+
+fn bgl_storage_ro(idx: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding: idx,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+fn bgl_storage_rw(idx: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding: idx,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only: false },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+fn bgl_uniform(idx: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding: idx,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Uniform,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

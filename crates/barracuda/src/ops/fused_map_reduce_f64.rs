@@ -254,7 +254,6 @@ impl FusedMapReduceF64 {
         if n_workgroups > 1 {
             if n_workgroups <= 256 {
                 // Single workgroup can handle all partials
-                // TS-004 FIX: reduce_partials_pass now returns the output buffer
                 let final_buffer =
                     self.reduce_partials_pass(&output_buffer, n_workgroups, reduce_op)?;
                 return self.read_result(&final_buffer);
@@ -268,9 +267,9 @@ impl FusedMapReduceF64 {
         self.read_result(&output_buffer)
     }
 
-    /// Execute reduction of partial results
+    /// Execute reduction of partial results.
     ///
-    /// TS-004 FIX: Use separate input/output buffers to avoid buffer binding conflicts.
+    /// Uses separate input/output buffers to avoid buffer binding conflicts.
     /// The shader reads from input (binding 0) and writes to output (binding 1).
     fn reduce_partials_pass(
         &self,

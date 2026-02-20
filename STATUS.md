@@ -1,4 +1,4 @@
-# Status -- February 19, 2026 (Sessions 9–11: Concurrency + Zero-Copy + Coverage)
+# Status -- February 20, 2026 (Session 18: Phase 3 Live + Apple GPU + Zero-Copy GpuExecutor + Integration Tests)
 
 ## Quality Gates
 
@@ -21,6 +21,43 @@
 *All clippy warnings resolved. Workspace fully clean. Tested with `--tests` flag.*
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). `crates/client` excluded (pending reqwest migration to biomeOS tower).
+
+---
+
+## Session 18 Evolutions (Feb 20, 2026) ✅
+
+### Sovereign Compute Phase 3 — Now Live in Hot Path ✅
+
+`WgpuDevice::compile_shader_f64()` now runs a two-stage pipeline:
+1. `ShaderTemplate::for_driver_auto()` — NVK/RADV exp/log workaround (existing)
+2. `WgslOptimizer::optimize()` — `@ilp_region` ILP reorder + `@unroll_hint` loop unroll (new)
+
+Fast path: zero-overhead when no annotations present (single `contains()` guard). The Jacobi
+eigensolve shader fires the reorderer automatically on every compile, pre-scheduling DFMA
+pairs for the actual GPU's cycle count (`GpuDriverProfile::latency_model()`).
+
+### Apple M-Series GPU Architecture ✅
+
+- `GpuArch::AppleM` — detects `"apple m"` / `"apple paravirtual"` adapter names
+- `AppleMLatencyModel` — software-emulated f64 FMA ~16 cy, f32 ~4 cy (all WGSL ILP annotations honour this)
+- `Fp64Rate::Software` for AppleM (no native f64 silicon on M-series)
+- Cross-vendor latency matrix now complete: SM70–SM89, RDNA2/3/CDNA2, AppleM, Conservative
+
+### GpuExecutor Zero-Copy Output Path ✅ (D-S16-001)
+
+- `GpuTensorStorage.buffer: Arc<wgpu::Buffer>` — shared ownership instead of owned buffer
+- `Tensor::from_arc_buffer(Arc<wgpu::Buffer>, ...)` — zero-copy Tensor construction
+- `Tensor::try_arc_buffer() -> Option<Arc<wgpu::Buffer>>` — bridge for storage code
+- `GpuTensorStorage::from_tensor()` — Owned path: `Arc::clone()` (0 bytes); Pooled path: `copy_buffer_to_buffer()` (GPU-to-GPU, no CPU)
+- `execute()` no longer calls `to_vec()` + `write_from_cpu()` — the GPU→CPU→GPU round-trip is gone
+
+### Integration Tests Crate ✅ (D-S16-004)
+
+- `crates/integration-tests/` created and added to workspace
+- 21 orphan `tests/*.rs` files migrated from workspace root
+- 3 active suites: `chaos_engineering_scenarios`, `error_paths_config_tests`, `pure_rust_validation_tests` (13 pass, 7 ignored with explanations)
+- 12 files quarantined to `tests/pending/` with `README.md` tracking unimplemented APIs
+- Workspace `tests/` directory is now free of bare `.rs` files
 
 ---
 
@@ -1606,4 +1643,4 @@ See `specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md` for full roadmap.
 
 ---
 
-**Last Updated**: February 19, 2026 — Sessions 9–11: Zero-copy bytes::Bytes, 27 sleeps removed, hardcoding eliminated, pure_jsonrpc + storage_backend split, CLI executor coverage, llvm-cov SIGSEGV resolved, 63.02% coverage
+**Last Updated**: February 20, 2026 — Session 18: Phase 3 optimizer wired into `compile_shader_f64()`, `AppleMLatencyModel` (cross-vendor arch matrix complete), GpuExecutor `Arc<wgpu::Buffer>` zero-copy (D-S16-001), `crates/integration-tests` workspace (D-S16-004)

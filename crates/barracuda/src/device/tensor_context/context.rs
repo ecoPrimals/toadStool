@@ -4,14 +4,14 @@ use super::pool::{BufferDescriptor, BufferPool, SolverBufferSet};
 use crate::device::pipeline_cache::{BindGroupLayoutSignature, DeviceFingerprint, GLOBAL_CACHE};
 use crate::device::WgpuDevice;
 use crate::error::Result;
-use dashmap::DashMap;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
 type PendingOp = Box<dyn FnOnce(&mut wgpu::CommandEncoder) + Send>;
 
-static GLOBAL_CONTEXTS: LazyLock<DashMap<DeviceFingerprint, Arc<TensorContext>>> =
-    LazyLock::new(DashMap::new);
+static GLOBAL_CONTEXTS: LazyLock<RwLock<HashMap<DeviceFingerprint, Arc<TensorContext>>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
 
 #[derive(Clone, Hash, PartialEq, Eq)]
 struct BindGroupKey {
@@ -23,7 +23,7 @@ struct BindGroupKey {
 pub struct TensorContext {
     device: Arc<WgpuDevice>,
     buffer_pool: BufferPool,
-    bind_group_cache: DashMap<BindGroupKey, Arc<wgpu::BindGroup>>,
+    bind_group_cache: RwLock<HashMap<BindGroupKey, Arc<wgpu::BindGroup>>>,
     pending_ops: Mutex<Vec<PendingOp>>,
     batching: AtomicBool,
     cache_hits: AtomicUsize,
@@ -37,7 +37,7 @@ impl TensorContext {
         Self {
             buffer_pool: BufferPool::new(device.device_arc()),
             device,
-            bind_group_cache: DashMap::new(),
+            bind_group_cache: RwLock::new(HashMap::new()),
             pending_ops: Mutex::new(Vec::new()),
             batching: AtomicBool::new(false),
             cache_hits: AtomicUsize::new(0),
@@ -107,11 +107,13 @@ impl TensorContext {
             buffer_ids,
         };
 
-        if let Some(bg) = self.bind_group_cache.get(&key) {
+        // Fast path — read lock (the common case: already cached).
+        if let Some(bg) = self.bind_group_cache.read().expect("bind_group_cache poisoned").get(&key) {
             self.cache_hits.fetch_add(1, Ordering::Relaxed);
             return bg.clone();
         }
 
+        // Slow path — create and insert.
         self.cache_misses.fetch_add(1, Ordering::Relaxed);
         let layout = GLOBAL_CACHE.get_or_create_layout(
             self.device.device(),
@@ -136,8 +138,13 @@ impl TensorContext {
                 entries: &entries,
             },
         ));
-        self.bind_group_cache.insert(key, bind_group.clone());
-        bind_group
+        // Use `entry().or_insert()` so a concurrent insert wins gracefully.
+        self.bind_group_cache
+            .write()
+            .expect("bind_group_cache poisoned")
+            .entry(key)
+            .or_insert(bind_group)
+            .clone()
     }
 
     pub fn acquire_buffer(&self, size_elements: usize) -> wgpu::Buffer {
@@ -248,16 +255,32 @@ impl std::fmt::Display for TensorContextStats {
     }
 }
 
-/// Get or create the global TensorContext for a device
+/// Get or create the global TensorContext for a device.
+///
+/// Uses double-checked locking: fast read path for the common case,
+/// write path only when a new device is first seen.
 pub fn get_device_context(device: &Arc<WgpuDevice>) -> Arc<TensorContext> {
     let fingerprint = DeviceFingerprint::from_adapter_info(device.adapter_info());
+
+    // Fast path.
+    if let Some(ctx) = GLOBAL_CONTEXTS
+        .read()
+        .expect("GLOBAL_CONTEXTS poisoned")
+        .get(&fingerprint)
+    {
+        return ctx.clone();
+    }
+
+    // Slow path — first time this device is seen.
     GLOBAL_CONTEXTS
+        .write()
+        .expect("GLOBAL_CONTEXTS poisoned")
         .entry(fingerprint)
         .or_insert_with(|| Arc::new(TensorContext::new(device.clone())))
         .clone()
 }
 
-/// Clear all global contexts (for testing/benchmarking)
+/// Clear all global contexts (for testing/benchmarking).
 pub fn clear_global_contexts() {
-    GLOBAL_CONTEXTS.clear();
+    GLOBAL_CONTEXTS.write().expect("GLOBAL_CONTEXTS poisoned").clear();
 }

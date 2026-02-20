@@ -123,8 +123,7 @@ fn find_root_of_unity(degree: u32, modulus: u64) -> Option<u64> {
 
 /// Helper to read tensor back as u64 polynomial
 async fn read_poly_from_tensor(tensor: &Tensor) -> Vec<u64> {
-    let device = tensor.device();
-    let u32_data = device.read_buffer_u32(tensor.buffer(), tensor.len()).unwrap();
+    let u32_data = tensor.to_vec_u32().unwrap();
     u32_pairs_to_poly(&u32_data)
 }
 
@@ -561,8 +560,9 @@ fn naive_poly_multiply(a: &[u64], b: &[u64], degree: usize, modulus: u64) -> Vec
         for j in 0..degree {
             let k = (i + j) % degree;
             let sign = if i + j >= degree { modulus - 1 } else { 1 };
-            result[k] = (result[k] as u128 + 
-                (a[i] as u128 * b[j] as u128 % modulus as u128) * sign as u128) % modulus as u128 as u64;
+            result[k] = ((result[k] as u128
+                + (a[i] as u128 * b[j] as u128 % modulus as u128) * sign as u128)
+                % modulus as u128) as u64;
         }
     }
     
@@ -618,7 +618,7 @@ async fn test_fast_poly_mul_distributivity() {
     
     // Compute b + c (polynomial addition)
     let b_plus_c: Vec<u64> = b.iter().zip(c.iter())
-        .map(|(&bi, &ci)| (bi as u128 + ci as u128) % modulus as u128 as u64)
+        .map(|(&bi, &ci)| ((bi as u128 + ci as u128) % modulus as u128) as u64)
         .collect();
     
     let a_tensor = create_fhe_poly_tensor(&a, device.clone()).await.unwrap();
@@ -640,7 +640,7 @@ async fn test_fast_poly_mul_distributivity() {
     
     // a*b + a*c
     let ab_plus_ac: Vec<u64> = ab_result.iter().zip(ac_result.iter())
-        .map(|(&abi, &aci)| (abi as u128 + aci as u128) % modulus as u128 as u64)
+        .map(|(&abi, &aci)| ((abi as u128 + aci as u128) % modulus as u128) as u64)
         .collect();
     
     // Compare a*(b+c) with a*b + a*c

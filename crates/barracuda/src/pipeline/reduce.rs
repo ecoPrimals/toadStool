@@ -50,22 +50,20 @@ const WORKGROUP_SIZE: u32 = 256;
 /// maximum expected size; smaller inputs are handled correctly (extra threads
 /// contribute identity elements).
 pub struct ReduceScalarPipeline {
-    device:          Arc<WgpuDevice>,
-    n:               u32,
-    partial_buffer:  wgpu::Buffer,   // ⌈n/256⌉ × 8 bytes
-    scalar_staging:  wgpu::Buffer,   // 8 bytes, MAP_READ
-    sum_pipeline:    wgpu::ComputePipeline,
-    _sum_bg_pass1:   wgpu::BindGroup, // placeholder; pass-1 BG rebuilt per call against caller's input
-    sum_bg_pass2:    wgpu::BindGroup,
-    scalar_output:   wgpu::Buffer,   // 1 × 8 bytes STORAGE | COPY_SRC
-    params_buf:      wgpu::Buffer,
+    device: Arc<WgpuDevice>,
+    n: u32,
+    partial_buffer: wgpu::Buffer, // ⌈n/256⌉ × 8 bytes
+    scalar_staging: wgpu::Buffer, // 8 bytes, MAP_READ
+    sum_pipeline: wgpu::ComputePipeline,
+    _sum_bg_pass1: wgpu::BindGroup, // placeholder; pass-1 BG rebuilt per call against caller's input
+    sum_bg_pass2: wgpu::BindGroup,
+    scalar_output: wgpu::Buffer, // 1 × 8 bytes STORAGE | COPY_SRC
+    params_buf: wgpu::Buffer,
     _partial_params: wgpu::Buffer, // params for pass-2 dispatch (kept alive; used in sum_bg_pass2)
 }
 
 impl ReduceScalarPipeline {
-    const SHADER: &'static str = include_str!(
-        "../shaders/reduce/sum_reduce_f64.wgsl"
-    );
+    const SHADER: &'static str = include_str!("../shaders/reduce/sum_reduce_f64.wgsl");
 
     /// Build a reduction pipeline for arrays of up to `n` f64 elements.
     pub fn new(device: Arc<WgpuDevice>, n: usize) -> Result<Self> {
@@ -73,61 +71,68 @@ impl ReduceScalarPipeline {
         let n_partial = n_u32.div_ceil(WORKGROUP_SIZE) as usize;
 
         // Compile shader
-        let module = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label:  Some("sum_reduce_f64"),
-            source: wgpu::ShaderSource::Wgsl(Self::SHADER.into()),
-        });
+        let module = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("sum_reduce_f64"),
+                source: wgpu::ShaderSource::Wgsl(Self::SHADER.into()),
+            });
 
         // Bind group layout (matches sum_reduce_f64.wgsl group 0):
         //   binding 0: input (storage read)
         //   binding 1: output / partial (storage read_write)
         //   binding 2: params (uniform)
-        let bgl = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label:   Some("ReduceScalar:BGL"),
-            entries: &[
-                bgl_entry(0, wgpu::BufferBindingType::Storage { read_only: true }),
-                bgl_entry(1, wgpu::BufferBindingType::Storage { read_only: false }),
-                bgl_entry(2, wgpu::BufferBindingType::Uniform),
-            ],
-        });
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ReduceScalar:BGL"),
+                entries: &[
+                    bgl_entry(0, wgpu::BufferBindingType::Storage { read_only: true }),
+                    bgl_entry(1, wgpu::BufferBindingType::Storage { read_only: false }),
+                    bgl_entry(2, wgpu::BufferBindingType::Uniform),
+                ],
+            });
 
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label:                Some("ReduceScalar:PL"),
-                bind_group_layouts:   &[&bgl],
-                push_constant_ranges: &[],
-            },
-        );
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("ReduceScalar:PL"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
-        let sum_pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
-                label:               Some("sum_reduce_f64"),
-                layout:              Some(&pipeline_layout),
-                module:              &module,
-                entry_point:         "sum_reduce_f64",
-                compilation_options: Default::default(),
-                cache:               None,
-            },
-        );
+        let sum_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("sum_reduce_f64"),
+                    layout: Some(&pipeline_layout),
+                    module: &module,
+                    entry_point: "sum_reduce_f64",
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
 
         // Buffers
         let partial_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label:              Some("ReduceScalar:partial"),
-            size:               (n_partial * 8) as u64,
-            usage:              wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC
-                              | wgpu::BufferUsages::COPY_DST,
+            label: Some("ReduceScalar:partial"),
+            size: (n_partial * 8) as u64,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         let scalar_output = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label:              Some("ReduceScalar:scalar"),
-            size:               8,
-            usage:              wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            label: Some("ReduceScalar:scalar"),
+            size: 8,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
         let scalar_staging = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label:              Some("ReduceScalar:staging"),
-            size:               8,
-            usage:              wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            label: Some("ReduceScalar:staging"),
+            size: 8,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
@@ -135,9 +140,9 @@ impl ReduceScalarPipeline {
         let params_data: [u32; 4] = [n_u32, 0, 0, 0];
         let params_bytes: Vec<u8> = params_data.iter().flat_map(|v| v.to_le_bytes()).collect();
         let params_buf = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label:              Some("ReduceScalar:params"),
-            size:               16,
-            usage:              wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            label: Some("ReduceScalar:params"),
+            size: 16,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         device.queue.write_buffer(&params_buf, 0, &params_bytes);
@@ -145,35 +150,57 @@ impl ReduceScalarPipeline {
         let partial_size = n_partial as u32;
         let partial_params_data: [u32; 4] = [partial_size, 0, 0, 0];
         let partial_params_bytes: Vec<u8> = partial_params_data
-            .iter().flat_map(|v| v.to_le_bytes()).collect();
+            .iter()
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
         let partial_params = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label:              Some("ReduceScalar:partial_params"),
-            size:               16,
-            usage:              wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            label: Some("ReduceScalar:partial_params"),
+            size: 16,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&partial_params, 0, &partial_params_bytes);
+        device
+            .queue
+            .write_buffer(&partial_params, 0, &partial_params_bytes);
 
         // Pass 2 bind group (partial → scalar_output)
         let sum_bg_pass2 = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label:   Some("ReduceScalar:BG:pass2"),
-            layout:  &bgl,
+            label: Some("ReduceScalar:BG:pass2"),
+            layout: &bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: partial_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: scalar_output.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: partial_params.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: partial_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: scalar_output.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: partial_params.as_entire_binding(),
+                },
             ],
         });
 
         // Pass 1 bind group is input-dependent — rebuilt per call; stored as placeholder.
         // We use partial_buffer as a dummy here since the real bind group is created in sum_f64.
         let sum_bg_pass1 = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label:   Some("ReduceScalar:BG:pass1:placeholder"),
-            layout:  &bgl,
+            label: Some("ReduceScalar:BG:pass1:placeholder"),
+            layout: &bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: partial_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: partial_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: params_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: partial_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: partial_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buf.as_entire_binding(),
+                },
             ],
         });
 
@@ -226,15 +253,27 @@ impl ReduceScalarPipeline {
         // Rebuild pass-1 bind group against the caller's input buffer.
         // This is cheap (< 1 µs) and avoids storing a mutable bind group.
         let bgl = self.sum_pipeline.get_bind_group_layout(0);
-        let bg_pass1 = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label:   Some("ReduceScalar:BG:pass1"),
-            layout:  &bgl,
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: input.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: self.partial_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: self.params_buf.as_entire_binding() },
-            ],
-        });
+        let bg_pass1 = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ReduceScalar:BG:pass1"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: input.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: self.partial_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: self.params_buf.as_entire_binding(),
+                    },
+                ],
+            });
 
         // Recompile pass-2 pipeline if entry point differs from default.
         // For the common case (sum) we use the pre-built pipeline.
@@ -242,36 +281,48 @@ impl ReduceScalarPipeline {
         let pass2_pipeline = if entry == "sum_reduce_f64" {
             None // use self.sum_pipeline
         } else {
-            let module = self.device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label:  Some(entry),
-                source: wgpu::ShaderSource::Wgsl(Self::SHADER.into()),
-            });
-            let layout = self.device.device.create_pipeline_layout(
-                &wgpu::PipelineLayoutDescriptor {
-                    label:                Some("ReduceScalar:PL:alt"),
-                    bind_group_layouts:   &[&bgl],
-                    push_constant_ranges: &[],
-                },
-            );
-            Some(self.device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label:               Some(entry),
-                layout:              Some(&layout),
-                module:              &module,
-                entry_point:         entry,
-                compilation_options: Default::default(),
-                cache:               None,
-            }))
+            let module = self
+                .device
+                .device
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some(entry),
+                    source: wgpu::ShaderSource::Wgsl(Self::SHADER.into()),
+                });
+            let layout =
+                self.device
+                    .device
+                    .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                        label: Some("ReduceScalar:PL:alt"),
+                        bind_group_layouts: &[&bgl],
+                        push_constant_ranges: &[],
+                    });
+            Some(
+                self.device
+                    .device
+                    .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                        label: Some(entry),
+                        layout: Some(&layout),
+                        module: &module,
+                        entry_point: entry,
+                        compilation_options: Default::default(),
+                        cache: None,
+                    }),
+            )
         };
 
         let n_partial = self.n.div_ceil(WORKGROUP_SIZE);
 
-        let mut enc = self.device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor { label: Some("ReduceScalar") },
-        );
+        let mut enc = self
+            .device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ReduceScalar"),
+            });
 
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("reduce:pass1"), timestamp_writes: None,
+                label: Some("reduce:pass1"),
+                timestamp_writes: None,
             });
             let pl = pass2_pipeline.as_ref().unwrap_or(&self.sum_pipeline);
             pass.set_pipeline(pl);
@@ -280,7 +331,8 @@ impl ReduceScalarPipeline {
         }
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("reduce:pass2"), timestamp_writes: None,
+                label: Some("reduce:pass2"),
+                timestamp_writes: None,
             });
             let pl = pass2_pipeline.as_ref().unwrap_or(&self.sum_pipeline);
             pass.set_pipeline(pl);
@@ -293,7 +345,9 @@ impl ReduceScalarPipeline {
 
         let slice = self.scalar_staging.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+        slice.map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
         self.device.device.poll(wgpu::Maintain::Wait);
         rx.recv()
             .map_err(|_| BarracudaError::execution_failed("ReduceScalarPipeline: channel closed"))?
@@ -302,7 +356,9 @@ impl ReduceScalarPipeline {
         let data = slice.get_mapped_range();
         // SAFETY: chunks_exact(8) guarantees 8-byte chunk
         let v = f64::from_le_bytes(
-            data[..8].try_into().expect("scalar buffer is exactly 8 bytes"),
+            data[..8]
+                .try_into()
+                .expect("scalar buffer is exactly 8 bytes"),
         );
         drop(data);
         self.scalar_staging.unmap();
@@ -314,7 +370,11 @@ fn bgl_entry(binding: u32, ty: wgpu::BufferBindingType) -> wgpu::BindGroupLayout
     wgpu::BindGroupLayoutEntry {
         binding,
         visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer { ty, has_dynamic_offset: false, min_binding_size: None },
+        ty: wgpu::BindingType::Buffer {
+            ty,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
         count: None,
     }
 }

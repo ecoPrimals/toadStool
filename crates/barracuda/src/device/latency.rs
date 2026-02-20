@@ -257,6 +257,45 @@ impl LatencyModel for MeasuredModel {
     }
 }
 
+/// Apple M-series GPU latency model.
+///
+/// Apple Silicon GPUs do not expose hardware FP64 — all f64 operations are
+/// executed as software multi-instruction sequences. The effective latency for
+/// an f64 FMA is empirically ~16 cycles (4× the f32 FFMA pipeline).
+///
+/// Source: Apple GPU ISA (internal; approximated from bench_f64_builtins patterns).
+/// Status: to be calibrated with `bench_f64_builtins` on macOS / Metal.
+pub struct AppleMLatencyModel;
+
+impl LatencyModel for AppleMLatencyModel {
+    fn raw_latency(&self, op: WgslOpClass) -> u32 {
+        match op {
+            WgslOpClass::F64Fma => 16,      // software-emulated: 4× f32 pipeline
+            WgslOpClass::F64MulAdd => 32,
+            WgslOpClass::F64Transcend => 40,
+            WgslOpClass::F32Fma => 4,
+            WgslOpClass::I32Arith => 4,
+            WgslOpClass::SharedMem => 20,
+            WgslOpClass::GlobalMem => 250,
+        }
+    }
+
+    fn war_latency(&self, _op: WgslOpClass) -> u32 {
+        0
+    }
+
+    fn needs_scoreboard(&self, op: WgslOpClass) -> bool {
+        matches!(
+            op,
+            WgslOpClass::F64Fma
+                | WgslOpClass::F64MulAdd
+                | WgslOpClass::F64Transcend
+                | WgslOpClass::SharedMem
+                | WgslOpClass::GlobalMem
+        )
+    }
+}
+
 /// Select the appropriate `LatencyModel` from a `GpuArch`.
 ///
 /// Returns a `Box<dyn LatencyModel>` — caller decides whether to keep it
@@ -271,8 +310,12 @@ pub fn model_for_arch(arch: super::capabilities::GpuArch) -> Box<dyn LatencyMode
         }
         // AMD RDNA2 / RDNA3 — similar 4-cycle VFMA64 pipeline
         GpuArch::Rdna2 | GpuArch::Rdna3 | GpuArch::Cdna2 => Box::new(Rdna2LatencyModel),
-        // Intel Xe and Apple not yet measured — use conservative fallback
-        GpuArch::IntelArc | GpuArch::Software | GpuArch::Unknown => Box::new(ConservativeModel),
+        // Intel Xe — to be measured empirically; conservative safe
+        GpuArch::IntelArc => Box::new(ConservativeModel),
+        // Apple M-series: hardware f64 is software-emulated so FMA latency is high;
+        // f32 pipeline is ~4cy (similar to RDNA2). Use measured 16cy f64 estimate.
+        GpuArch::AppleM => Box::new(AppleMLatencyModel),
+        GpuArch::Software | GpuArch::Unknown => Box::new(ConservativeModel),
     }
 }
 

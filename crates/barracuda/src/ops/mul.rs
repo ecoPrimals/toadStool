@@ -25,8 +25,7 @@ const SHADER_WG128: &str = include_str!("../shaders/math/elementwise_mul_wg128.w
 const SHADER_DEFAULT: &str = include_str!("../shaders/math/elementwise_mul.wgsl");
 
 // Vendor IDs for capability-based dispatch (no string matching)
-const VENDOR_NVIDIA: u32 = 0x10DE;
-const VENDOR_AMD: u32 = 0x1002;
+use crate::device::vendor::{VENDOR_AMD, VENDOR_NVIDIA};
 
 /// Element-wise multiplication operation
 pub struct Mul {

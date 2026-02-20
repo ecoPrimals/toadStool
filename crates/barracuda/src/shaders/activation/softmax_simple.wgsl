@@ -1,15 +1,25 @@
 // Simple Softmax for small tensors (single workgroup)
 // Formula: softmax(x_i) = exp(x_i - max(x)) / sum(exp(x_j - max(x)))
+//
+// `size` is passed as a uniform (logical tensor element count) rather than
+// derived from `arrayLength(&input)`.  A pooled input buffer may be physically
+// larger than the tensor's logical size; using arrayLength would include
+// uninitialised padding elements in the reduction, breaking the normalisation.
+
+struct Params {
+    size: u32,
+}
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;
 @group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(2) var<uniform> params: Params;
 
 var<workgroup> shared_max: f32;
 var<workgroup> shared_sum: f32;
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(local_invocation_id) local_id: vec3<u32>) {
-    let size = arrayLength(&input);
+    let size = params.size;
     let idx = global_id.x;
     let tid = local_id.x;
     

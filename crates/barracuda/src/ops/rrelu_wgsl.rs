@@ -1,203 +1,110 @@
-//! RReLU - Randomized Leaky ReLU - Pure WGSL
+//! RReLU — Randomized Leaky ReLU, GPU-resident, pipeline-cached, batchable
+//!
+//! `rrelu(x) = x if x ≥ 0 else a·x` where `a ~ Uniform(lower, upper)` (per-element, seeded)
 //!
 //! Deep Debt Principles:
-//! - Self-knowledge: Operation knows its slope range
-//! - Zero hardcoding: All parameters passed at runtime
-//! - Modern idiomatic Rust: Safe, zero unsafe code
-//! - Complete implementation: Production-ready, no mocks
-//! - Hardware-agnostic: Pure WGSL for universal compute
+//! - Eliminated CPU readback — output stays GPU-resident via buffer pool
+//! - Pipeline cached: GLOBAL_CACHE eliminates recompilation overhead
+//! - Batchable: routes through TensorContext::record_operation()
 
+use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
+use crate::device::tensor_context::get_device_context;
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
+use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
-/// RReLU (Randomized Leaky ReLU) operation
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct Params {
+    size:  u32,
+    lower: f32,
+    upper: f32,
+    seed:  u32,
+}
+
+/// Randomized Leaky ReLU.
 pub struct RReLU {
     input: Tensor,
     lower: f32,
     upper: f32,
-    seed: u32,
+    seed:  u32,
 }
 
 impl RReLU {
-    /// Create a new RReLU operation
     pub fn new(input: Tensor, lower: f32, upper: f32, seed: u32) -> Self {
-        Self {
-            input,
-            lower,
-            upper,
-            seed,
-        }
+        Self { input, lower, upper, seed }
     }
 
-    /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/activation/rrelu.wgsl")
     }
 
-    /// Execute the RReLU operation
     pub fn execute(self) -> Result<Tensor> {
-        let device = self.input.device();
-        let size: usize = self.input.shape().iter().product();
+        let device       = self.input.device();
+        let size: usize  = self.input.shape().iter().product();
+        let ctx          = get_device_context(device);
+        let caps         = DeviceCapabilities::from_device(device);
+        let wg_size      = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+        let workgroups   = (size as u32).div_ceil(wg_size);
+        let adapter_info = device.adapter_info();
 
-        // Create buffers
-        // Access input buffer directly (zero-copy)
-        let input_buffer = self.input.buffer();
+        let output_buffer = ctx.acquire_pooled_output(size);
 
-        let output_buffer = device.create_buffer_f32(size)?;
-
-        // Create uniform buffer for parameters
-        #[repr(C)]
-        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-        struct Params {
-            size: u32,
-            lower: f32,
-            upper: f32,
-            seed: u32,
-        }
-
-        let params = Params {
-            size: size as u32,
-            lower: self.lower,
-            upper: self.upper,
-            seed: self.seed,
-        };
-
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("RReLU Params"),
-                contents: bytemuck::cast_slice(&[params]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
-
-        // Create bind group layout
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("RReLU Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("RReLU Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: input_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
+        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label:    Some("RReLU Params"),
+            contents: bytemuck::bytes_of(&Params {
+                size:  size as u32,
+                lower: self.lower,
+                upper: self.upper,
+                seed:  self.seed,
+            }),
+            usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        // Create compute pipeline
-        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Shader"));
+        let layout_sig = BindGroupLayoutSignature::reduction();
+        let bgl        = GLOBAL_CACHE.get_or_create_layout(
+            device.device(), adapter_info, layout_sig, Some("RReLU BGL"),
+        );
 
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("RReLU Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let bind_group = std::sync::Arc::new(device.device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                label:   Some("RReLU BG"),
+                layout:  &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: 0, resource: self.input.buffer().as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 1, resource: output_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 2, resource: params_buf.as_entire_binding() },
+                ],
+            },
+        ));
 
-        let compute_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("RReLU Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
+        let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
+            device.device(), adapter_info, Self::wgsl_shader(), layout_sig, "main",
+            Some("RReLU Pipeline"),
+        );
 
-        // Execute compute shader
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("RReLU Encoder"),
-            });
-
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+        ctx.record_operation(move |encoder| {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("RReLU Pass"),
                 timestamp_writes: None,
             });
-            compute_pass.set_pipeline(&compute_pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
-        }
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(workgroups, 1, 1);
+            drop(params_buf);
+        })?;
 
-        device.queue.submit(Some(encoder.finish()));
-
-        // Read back results
-        let output_data = crate::utils::read_buffer(device, &output_buffer, size)?;
-
-        Ok(Tensor::new(
-            output_data,
-            self.input.shape().to_vec(),
-            device.clone(),
-        ))
+        Ok(Tensor::from_pooled_buffer(output_buffer, self.input.shape().to_vec(), device.clone()))
     }
 }
 
 impl Tensor {
-    /// Apply Randomized Leaky ReLU
+    /// Apply Randomized Leaky ReLU (GPU-resident, pipeline-cached, batchable).
     ///
-    /// # Arguments
-    ///
-    /// * `lower` - Lower bound for random slope (default: 1/8)
-    /// * `upper` - Upper bound for random slope (default: 1/3)
-    /// * `seed` - Random seed for reproducibility
+    /// `lower`/`upper` bound the uniform slope for negative values.
+    /// Same `seed` always produces the same result — useful for evaluation mode.
     pub fn rrelu_wgsl(self, lower: f32, upper: f32, seed: u32) -> Result<Self> {
         RReLU::new(self, lower, upper, seed).execute()
     }
@@ -212,51 +119,27 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_rrelu_positive() {
-        let Some(device) = get_test_device().await else {
-            return;
-        };
-        let data = vec![1.0, 2.0, 3.0];
-        let input = Tensor::new(data.clone(), vec![3], device.clone());
-
-        let output = input.rrelu_wgsl(0.125, 0.333, 42).unwrap();
-
-        // Positive values should be unchanged
-        let result = output.to_vec().unwrap();
-        assert_eq!(result[0], 1.0);
-        assert_eq!(result[1], 2.0);
-        assert_eq!(result[2], 3.0);
+    async fn test_rrelu_positive_unchanged() {
+        let Some(device) = get_test_device().await else { return; };
+        let input = Tensor::new(vec![1.0f32, 2.0, 3.0], vec![3], device.clone());
+        let result = input.rrelu_wgsl(0.125, 0.333, 42).unwrap().to_vec().unwrap();
+        assert_eq!(result, [1.0, 2.0, 3.0]);
     }
 
     #[tokio::test]
-    async fn test_rrelu_negative() {
-        let Some(device) = get_test_device().await else {
-            return;
-        };
-        let data = vec![-1.0, -2.0];
-        let input = Tensor::new(data, vec![2], device.clone());
-
-        let output = input.rrelu_wgsl(0.125, 0.333, 42).unwrap();
-
-        // Negative values should be scaled by random slope in [0.125, 0.333]
-        let result = output.to_vec().unwrap();
-        assert!(result[0] > -0.333 && result[0] < -0.125);
-        assert!(result[1] > -0.666 && result[1] < -0.25);
+    async fn test_rrelu_negative_scaled() {
+        let Some(device) = get_test_device().await else { return; };
+        let input = Tensor::new(vec![-1.0f32, -2.0], vec![2], device.clone());
+        let result = input.rrelu_wgsl(0.125, 0.333, 42).unwrap().to_vec().unwrap();
+        // Each negative value multiplied by a ∈ [0.125, 0.333]
+        assert!(result[0] > -0.333 && result[0] < -0.125, "r[0]={}", result[0]);
+        assert!(result[1] > -0.666 && result[1] < -0.250, "r[1]={}", result[1]);
     }
 
     #[tokio::test]
-    async fn test_rrelu_deterministic() {
-        let Some(device) = get_test_device().await else {
-            return;
-        };
-        let data = vec![-1.0];
-        let input1 = Tensor::new(data.clone(), vec![1], device.clone());
-        let input2 = Tensor::new(data, vec![1], device.clone());
-
-        let output1 = input1.rrelu_wgsl(0.125, 0.333, 42).unwrap();
-        let output2 = input2.rrelu_wgsl(0.125, 0.333, 42).unwrap();
-
-        // Same seed should produce same results
-        assert_eq!(output1.to_vec().unwrap(), output2.to_vec().unwrap());
+    async fn test_rrelu_deterministic_seed() {
+        let Some(device) = get_test_device().await else { return; };
+        let make = || Tensor::new(vec![-1.0f32], vec![1], device.clone()).rrelu_wgsl(0.125, 0.333, 42).unwrap().to_vec().unwrap();
+        assert_eq!(make(), make(), "same seed must produce identical output");
     }
 }

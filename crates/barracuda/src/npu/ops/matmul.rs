@@ -108,9 +108,9 @@ pub fn npu_matmul(
 
     // Block on async tensor creation
     let tensor_a =
-        futures::executor::block_on(Tensor::from_vec_on(a.to_vec(), vec![m, k], device.clone()))?;
+        Tensor::from_vec_on_sync(a.to_vec(), vec![m, k], device.clone())?;
     let tensor_b =
-        futures::executor::block_on(Tensor::from_vec_on(b.to_vec(), vec![k, n], device))?;
+        Tensor::from_vec_on_sync(b.to_vec(), vec![k, n], device)?;
 
     // Execute matmul using WGSL shader (same as GPU/CPU!)
     // This uses ops/matmul.rs → shaders/matmul.wgsl

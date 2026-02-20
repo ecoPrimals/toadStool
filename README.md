@@ -26,7 +26,7 @@ Nest    = Tower  + NestGate           ← storage
 
 ---
 
-## Quality Gates (February 19, 2026)
+## Quality Gates (February 20, 2026)
 
 | Gate | Status |
 |------|--------|
@@ -53,7 +53,10 @@ Nest    = Tower  + NestGate           ← storage
 | Unidirectional pipeline | ✅ Phases 0-4 complete (staging, benchmark) |
 | GPU sovereignty (FP64) | ✅ f64 fossil functions removed, capability matrix probed |
 | Node routing | ✅ Distributed node selection via least-loaded `NetworkLoadBalancer` |
-| Sovereign Compute | ✅ Phases 0–3 done — `WgslOptimizer` wired into `ShaderTemplate` |
+| Sovereign Compute | ✅ Phases 0–3 built and **wired** — `WgslOptimizer` fires on every f64 shader compile |
+| Apple M-series GPU | ✅ `GpuArch::AppleM` detected, `AppleMLatencyModel` (16cy f64), full arch matrix |
+| GpuExecutor zero-copy | ✅ D-S16-001 resolved — `Arc<wgpu::Buffer>` shared, no CPU round-trip |
+| Integration tests crate | ✅ D-S16-004 resolved — `crates/integration-tests/` wired, workspace `tests/` clean |
 | Sleep-free tests | ✅ 27 sleep calls removed — `advance()`, `Barrier`, `Notify`, arithmetic |
 | Zero-copy hot paths | ✅ `bytes::Bytes` on all binary RPC payloads (O(1) clone) |
 | Hardcoded values | ✅ DNS, IPs, endpoints all capability-based or env-driven |
@@ -770,7 +773,7 @@ See `specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md` for full details.
 | ID | Description | Status |
 |----|-------------|--------|
 | W-001 | f64 transcendental `exp`/`log` workaround for NVK/RADV | Active — fossil functions removed, workaround still in `for_driver_auto()`; upstream ACO/NAK fix pending Titan V validation |
-| W-003 | NAK compiler scheduling gap (SM70 Volta FP64) | Active — source-level ILP (Phases 0–3) complete; Titan V hardware validation pending to quantify speedup |
+| W-003 | NAK compiler scheduling gap (SM70 Volta FP64) | Active — source-level ILP (Phases 0–3) **built and wired** into `compile_shader_f64()`; Titan V hardware benchmark pending to quantify actual speedup; Mesa MR ready when bench confirms ≥ 3× |
 
 All other tracked debt resolved. See [DEBT.md](DEBT.md) for full register and evolution paths.
 
@@ -785,4 +788,4 @@ All other tracked debt resolved. See [DEBT.md](DEBT.md) for full register and ev
 
 ---
 
-**Last Updated**: February 19, 2026 — Sessions 9–11: Zero-copy bytes::Bytes hot paths, 27 sleep calls eliminated, hardcoding removed (DNS/IPs), pure_jsonrpc + storage_backend smart-split, CLI executor coverage, llvm-cov SIGSEGV resolved, 63.02% line coverage (+1.67 pp)
+**Last Updated**: February 20, 2026 — Session 18: `WgslOptimizer` wired into `compile_shader_f64()` (Phase 3 activated), `AppleMLatencyModel` added (cross-vendor arch matrix complete), `GpuExecutor` zero-copy output via `Arc<wgpu::Buffer>` (D-S16-001), `crates/integration-tests` crate (D-S16-004, workspace `tests/` cleared)

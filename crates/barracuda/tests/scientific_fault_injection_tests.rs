@@ -223,7 +223,7 @@ async fn fault_fft_tiny_magnitude() {
     // Inject fault: Very small magnitude (near 0, potential underflow)
     let tiny_val = 1e-38f32;
     let data = vec![tiny_val, 0.0, tiny_val, 0.0, tiny_val, 0.0, tiny_val, 0.0];
-    let tensor = Tensor::from_data(&data, vec![4, 2], device.clone()).unwrap());
+    let tensor = Tensor::from_data(&data, vec![4, 2], device.clone()).unwrap();
     
     // Should not panic
     let result = Fft1D::new(tensor, 4);

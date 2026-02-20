@@ -59,7 +59,7 @@ async fn e2e_signal_processing_pipeline() {
     println!("   ✅ FFT: {:?}", start.elapsed());
     
     // Step 3: Apply filter (identity filter for simplicity)
-    let filter_data = vec![1.0f32, 0.0; degree]; // All-pass filter
+    let filter_data = (0..degree).flat_map(|_| [1.0f32, 0.0]).collect::<Vec<_>>(); // All-pass filter
     let filter = Tensor::from_data(&filter_data, vec![degree, 2], device.clone()).unwrap();
     
     let start = Instant::now();
@@ -318,7 +318,7 @@ async fn e2e_full_molecular_dynamics_simulation() {
     println!("   ✅ Step 2: FFT to reciprocal space");
     
     // Step 3: Apply Green's function (simplified: all ones)
-    let greens_data = vec![1.0f32, 0.0; total];
+    let greens_data = (0..total).flat_map(|_| [1.0f32, 0.0]).collect::<Vec<_>>();
     let greens = Tensor::from_data(&greens_data, vec![grid_size, grid_size, grid_size, 2], device.clone()).unwrap();
     
     let mul_op = ComplexMul::new(reciprocal, greens).unwrap();

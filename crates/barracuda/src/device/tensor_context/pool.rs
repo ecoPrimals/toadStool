@@ -1,7 +1,6 @@
 //! Buffer pool for zero-overhead tensor operations
 
 use crate::error::{BarracudaError, Result};
-use dashmap::DashMap;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -59,7 +58,7 @@ impl Drop for PooledBuffer {
 
 /// Inner pool structure (separate to allow Weak references)
 pub(crate) struct BufferPoolInner {
-    pub pools: DashMap<usize, Vec<wgpu::Buffer>>,
+    pub pools: RwLock<HashMap<usize, Vec<wgpu::Buffer>>>,
     pub device: Arc<wgpu::Device>,
     pub allocations: AtomicUsize,
     pub reuses: AtomicUsize,
@@ -68,7 +67,7 @@ pub(crate) struct BufferPoolInner {
 
 impl BufferPoolInner {
     fn return_buffer(&self, buffer: wgpu::Buffer, bucket: usize) {
-        self.pools.entry(bucket).or_default().push(buffer);
+        self.pools.write().expect("pools poisoned").entry(bucket).or_default().push(buffer);
         self.reuses.fetch_add(1, Ordering::Relaxed);
     }
 }
@@ -153,7 +152,7 @@ impl BufferPool {
     pub fn new(device: Arc<wgpu::Device>) -> Self {
         Self {
             inner: Arc::new(BufferPoolInner {
-                pools: DashMap::new(),
+                pools: RwLock::new(HashMap::new()),
                 device,
                 allocations: AtomicUsize::new(0),
                 reuses: AtomicUsize::new(0),
@@ -170,21 +169,29 @@ impl BufferPool {
 
     pub fn acquire_pooled(&self, size_bytes: usize) -> PooledBuffer {
         let bucket = Self::bucket_size(size_bytes);
-        let buffer = if let Some(mut pool) = self.inner.pools.get_mut(&bucket) {
-            pool.pop().unwrap_or_else(|| self.allocate_new(bucket))
-        } else {
-            self.allocate_new(bucket)
-        };
+        let buffer = self
+            .inner
+            .pools
+            .write()
+            .expect("pools poisoned")
+            .get_mut(&bucket)
+            .and_then(|v| v.pop())
+            .unwrap_or_else(|| self.allocate_new(bucket));
         PooledBuffer::new(buffer, Arc::downgrade(&self.inner), bucket)
     }
 
     pub fn acquire(&self, size_bytes: usize) -> wgpu::Buffer {
         let bucket = Self::bucket_size(size_bytes);
-        if let Some(mut pool) = self.inner.pools.get_mut(&bucket) {
-            if let Some(buffer) = pool.pop() {
-                self.inner.reuses.fetch_add(1, Ordering::Relaxed);
-                return buffer;
-            }
+        let recycled = self
+            .inner
+            .pools
+            .write()
+            .expect("pools poisoned")
+            .get_mut(&bucket)
+            .and_then(|v| v.pop());
+        if let Some(buf) = recycled {
+            self.inner.reuses.fetch_add(1, Ordering::Relaxed);
+            return buf;
         }
         self.allocate_new(bucket)
     }
@@ -203,7 +210,7 @@ impl BufferPool {
 
     pub fn release(&self, buffer: wgpu::Buffer) {
         let bucket = Self::bucket_size(buffer.size() as usize);
-        self.inner.pools.entry(bucket).or_default().push(buffer);
+        self.inner.pools.write().expect("pools poisoned").entry(bucket).or_default().push(buffer);
     }
 
     pub fn stats(&self) -> (usize, usize) {

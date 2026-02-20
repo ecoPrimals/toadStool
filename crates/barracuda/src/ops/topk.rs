@@ -259,12 +259,12 @@ impl TopK {
 
         // Map and read
         let buffer_slice = staging_buffer.slice(..);
-        let (tx, rx) = futures::channel::oneshot::channel();
+        let (tx, rx) = std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).ok();
         });
         device.device.poll(wgpu::Maintain::Wait);
-        futures::executor::block_on(rx)
+        rx.recv()
             .map_err(|_| BarracudaError::Gpu("Buffer map async wait canceled".into()))?
             .map_err(|e| BarracudaError::Gpu(format!("Buffer mapping failed: {}", e)))?;
 
@@ -277,11 +277,11 @@ impl TopK {
         let indices_f32: Vec<f32> = indices_u32.iter().map(|&x| x as f32).collect();
 
         // Create output tensor [k] as f32
-        let output_tensor = futures::executor::block_on(Tensor::from_vec_on(
+        let output_tensor = Tensor::from_vec_on_sync(
             indices_f32,
             vec![self.k],
             device.clone(),
-        ))?;
+        )?;
 
         Ok(output_tensor)
     }

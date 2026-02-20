@@ -52,16 +52,16 @@ const SCAN_WG: u32 = 256; // must match prefix_sum.wgsl workgroup size
 struct GpuBuffers {
     // Input (caller-owned; we borrow them via bind groups)
     // Output
-    cell_ids:       wgpu::Buffer, // [N] u32 — particle → cell assignment
-    cell_counts:    wgpu::Buffer, // [Nc] u32 — atom: count per cell (pass 1 output)
-    cell_start:     wgpu::Buffer, // [Nc] u32 — exclusive prefix sum (pass 2 output)
-    write_cursors:  wgpu::Buffer, // [Nc] u32 — per-cell write cursor (pass 3 scratch)
+    cell_ids: wgpu::Buffer,       // [N] u32 — particle → cell assignment
+    cell_counts: wgpu::Buffer,    // [Nc] u32 — atom: count per cell (pass 1 output)
+    cell_start: wgpu::Buffer,     // [Nc] u32 — exclusive prefix sum (pass 2 output)
+    write_cursors: wgpu::Buffer,  // [Nc] u32 — per-cell write cursor (pass 3 scratch)
     sorted_indices: wgpu::Buffer, // [N] u32  — sorted particle indices (pass 3 output)
     // Prefix-sum intermediate
-    scan_partial:   wgpu::Buffer, // [ceil(Nc/256)] u32 — partial scan results
+    scan_partial: wgpu::Buffer, // [ceil(Nc/256)] u32 — partial scan results
     // Params
-    bin_params:     wgpu::Buffer, // uniform for pass 1
-    scan_params:    wgpu::Buffer, // uniform for pass 2 (Nc)
+    bin_params: wgpu::Buffer,     // uniform for pass 1
+    scan_params: wgpu::Buffer,    // uniform for pass 2 (Nc)
     scatter_params: wgpu::Buffer, // uniform for pass 3
 }
 
@@ -72,27 +72,25 @@ struct GpuBuffers {
 /// (typically every 20 MD steps).
 pub struct CellListGpu {
     device: Arc<WgpuDevice>,
-    n:      u32,  // particle count
-    nc:     u32,  // total cell count (mx × my × mz)
-    mx:     u32,
-    my:     u32,
-    mz:     u32,
-    bufs:   GpuBuffers,
+    n: u32,  // particle count
+    nc: u32, // total cell count (mx × my × mz)
+    mx: u32,
+    my: u32,
+    mz: u32,
+    bufs: GpuBuffers,
     // Compiled pipelines
-    bin_pl:     wgpu::ComputePipeline,
-    scan_pl:    wgpu::ComputePipeline,
+    bin_pl: wgpu::ComputePipeline,
+    scan_pl: wgpu::ComputePipeline,
     scatter_pl: wgpu::ComputePipeline,
     // Bind group layouts (for rebuild)
-    bin_bgl:     wgpu::BindGroupLayout,
+    bin_bgl: wgpu::BindGroupLayout,
     scatter_bgl: wgpu::BindGroupLayout,
-    scan_bgl:    wgpu::BindGroupLayout,
+    scan_bgl: wgpu::BindGroupLayout,
 }
 
 impl CellListGpu {
-    const BIN_SHADER: &'static str =
-        include_str!("../../../shaders/misc/atomic_cell_bin.wgsl");
-    const SCAN_SHADER: &'static str =
-        include_str!("../../../shaders/misc/prefix_sum.wgsl");
+    const BIN_SHADER: &'static str = include_str!("../../../shaders/misc/atomic_cell_bin.wgsl");
+    const SCAN_SHADER: &'static str = include_str!("../../../shaders/misc/prefix_sum.wgsl");
     const SCATTER_SHADER: &'static str =
         include_str!("../../../shaders/misc/cell_list_scatter.wgsl");
 
@@ -104,13 +102,8 @@ impl CellListGpu {
     /// * `n` — number of particles (fixed for lifetime of this builder)
     /// * `box_l` — simulation box side length `[Lx, Ly, Lz]` in Å
     /// * `cutoff` — force cutoff radius; cell side = cutoff
-    pub fn new(
-        device:  Arc<WgpuDevice>,
-        n:       usize,
-        box_l:   [f64; 3],
-        cutoff:  f64,
-    ) -> Result<Self> {
-        let n_u32  = n as u32;
+    pub fn new(device: Arc<WgpuDevice>, n: usize, box_l: [f64; 3], cutoff: f64) -> Result<Self> {
+        let n_u32 = n as u32;
         let mx = ((box_l[0] / cutoff).floor() as u32).max(1);
         let my = ((box_l[1] / cutoff).floor() as u32).max(1);
         let mz = ((box_l[2] / cutoff).floor() as u32).max(1);
@@ -123,8 +116,9 @@ impl CellListGpu {
         let scatter_mod = compile(&device, Self::SCATTER_SHADER, "cell_list_scatter");
 
         // ── Bind group layouts ───────────────────────────────────────────────
-        let bin_bgl = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
+        let bin_bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("CellListGpu:bin_bgl"),
                 entries: &[
                     uniform_bgl(0),
@@ -132,45 +126,45 @@ impl CellListGpu {
                     storage_bgl(2, false),
                     storage_bgl(3, false),
                 ],
-            },
-        );
-        let scan_bgl = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
+            });
+        let scan_bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("CellListGpu:scan_bgl"),
-                entries: &[
-                    storage_bgl(0, true),
-                    storage_bgl(1, false),
-                    uniform_bgl(2),
-                ],
-            },
-        );
-        let scatter_bgl = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("CellListGpu:scatter_bgl"),
-                entries: &[
-                    uniform_bgl(0),
-                    storage_bgl(1, true),
-                    storage_bgl(2, true),
-                    storage_bgl(3, false),
-                    storage_bgl(4, false),
-                ],
-            },
-        );
+                entries: &[storage_bgl(0, true), storage_bgl(1, false), uniform_bgl(2)],
+            });
+        let scatter_bgl =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("CellListGpu:scatter_bgl"),
+                    entries: &[
+                        uniform_bgl(0),
+                        storage_bgl(1, true),
+                        storage_bgl(2, true),
+                        storage_bgl(3, false),
+                        storage_bgl(4, false),
+                    ],
+                });
 
         // ── Pipelines ────────────────────────────────────────────────────────
         let bin_pl = make_pipeline(&device, &bin_mod, &bin_bgl, "atomic_cell_bin", "bin_pl");
         let scan_pl = make_pipeline(&device, &scan_mod, &scan_bgl, "inclusive_scan", "scan_pl");
         let scatter_pl = make_pipeline(
-            &device, &scatter_mod, &scatter_bgl, "cell_list_scatter", "scatter_pl",
+            &device,
+            &scatter_mod,
+            &scatter_bgl,
+            "cell_list_scatter",
+            "scatter_pl",
         );
 
         // ── Buffers ──────────────────────────────────────────────────────────
-        let cell_ids       = buf(&device, n_u32 as u64 * 4, "cell_ids",      false);
-        let cell_counts    = buf(&device, nc    as u64 * 4, "cell_counts",   false);
-        let cell_start     = buf(&device, nc    as u64 * 4, "cell_start",    false);
-        let write_cursors  = buf(&device, nc    as u64 * 4, "write_cursors", false);
-        let sorted_indices = buf(&device, n_u32 as u64 * 4, "sorted_indices",false);
-        let scan_partial   = buf(
+        let cell_ids = buf(&device, n_u32 as u64 * 4, "cell_ids", false);
+        let cell_counts = buf(&device, nc as u64 * 4, "cell_counts", false);
+        let cell_start = buf(&device, nc as u64 * 4, "cell_start", false);
+        let write_cursors = buf(&device, nc as u64 * 4, "write_cursors", false);
+        let sorted_indices = buf(&device, n_u32 as u64 * 4, "sorted_indices", false);
+        let scan_partial = buf(
             &device,
             (nc.div_ceil(SCAN_WG)) as u64 * 4,
             "scan_partial",
@@ -179,7 +173,10 @@ impl CellListGpu {
 
         // Pass 1 params
         let bin_params_data = [
-            n_u32, mx, my, mz,
+            n_u32,
+            mx,
+            my,
+            mz,
             (box_l[0] as f32).to_bits(),
             (box_l[1] as f32).to_bits(),
             (box_l[2] as f32).to_bits(),
@@ -193,18 +190,35 @@ impl CellListGpu {
 
         // Pass 3 params
         let scatter_params_data = [n_u32, nc, 0u32, 0u32];
-        let scatter_params = uniform_buf(&device, &u32_bytes(&scatter_params_data), "scatter_params");
+        let scatter_params =
+            uniform_buf(&device, &u32_bytes(&scatter_params_data), "scatter_params");
 
         let bufs = GpuBuffers {
-            cell_ids, cell_counts, cell_start, write_cursors,
-            sorted_indices, scan_partial,
-            bin_params, scan_params, scatter_params,
+            cell_ids,
+            cell_counts,
+            cell_start,
+            write_cursors,
+            sorted_indices,
+            scan_partial,
+            bin_params,
+            scan_params,
+            scatter_params,
         };
 
         Ok(Self {
-            device, n: n_u32, nc, mx, my, mz, bufs,
-            bin_pl, scan_pl, scatter_pl,
-            bin_bgl, scan_bgl, scatter_bgl,
+            device,
+            n: n_u32,
+            nc,
+            mx,
+            my,
+            mz,
+            bufs,
+            bin_pl,
+            scan_pl,
+            scatter_pl,
+            bin_bgl,
+            scan_bgl,
+            scatter_bgl,
         })
     }
 
@@ -220,128 +234,218 @@ impl CellListGpu {
 
         // ── Zero cell_counts and write_cursors ───────────────────────────────
         let zeros: Vec<u8> = vec![0u8; self.nc as usize * 4];
-        self.device.queue.write_buffer(&self.bufs.cell_counts,   0, &zeros);
-        self.device.queue.write_buffer(&self.bufs.write_cursors, 0, &zeros);
+        self.device
+            .queue
+            .write_buffer(&self.bufs.cell_counts, 0, &zeros);
+        self.device
+            .queue
+            .write_buffer(&self.bufs.write_cursors, 0, &zeros);
 
         // ── Pass 1: atomic bin ───────────────────────────────────────────────
         let bg_bin = dev.create_bind_group(&wgpu::BindGroupDescriptor {
-            label:   Some("CellListGpu:bg_bin"),
-            layout:  &self.bin_bgl,
+            label: Some("CellListGpu:bg_bin"),
+            layout: &self.bin_bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: self.bufs.bin_params.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: positions_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: self.bufs.cell_counts.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: self.bufs.cell_ids.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.bufs.bin_params.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: positions_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.bufs.cell_counts.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.bufs.cell_ids.as_entire_binding(),
+                },
             ],
         });
 
         // ── Pass 2 bind groups: cell_counts → cell_start (prefix sum) ────────
         // Two-pass Blelloch scan: counts → partials → final start offsets.
         let bg_scan1 = dev.create_bind_group(&wgpu::BindGroupDescriptor {
-            label:   Some("CellListGpu:bg_scan1"),
-            layout:  &self.scan_bgl,
+            label: Some("CellListGpu:bg_scan1"),
+            layout: &self.scan_bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: self.bufs.cell_counts.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: self.bufs.scan_partial.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: self.bufs.scan_params.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.bufs.cell_counts.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.bufs.scan_partial.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.bufs.scan_params.as_entire_binding(),
+                },
             ],
         });
         let bg_scan2 = dev.create_bind_group(&wgpu::BindGroupDescriptor {
-            label:   Some("CellListGpu:bg_scan2"),
-            layout:  &self.scan_bgl,
+            label: Some("CellListGpu:bg_scan2"),
+            layout: &self.scan_bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: self.bufs.scan_partial.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: self.bufs.cell_start.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: self.bufs.scan_params.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.bufs.scan_partial.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.bufs.cell_start.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.bufs.scan_params.as_entire_binding(),
+                },
             ],
         });
 
         // ── Pass 3: scatter ──────────────────────────────────────────────────
         let bg_scatter = dev.create_bind_group(&wgpu::BindGroupDescriptor {
-            label:   Some("CellListGpu:bg_scatter"),
-            layout:  &self.scatter_bgl,
+            label: Some("CellListGpu:bg_scatter"),
+            layout: &self.scatter_bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: self.bufs.scatter_params.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: self.bufs.cell_ids.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: self.bufs.cell_start.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: self.bufs.write_cursors.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: self.bufs.sorted_indices.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.bufs.scatter_params.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.bufs.cell_ids.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.bufs.cell_start.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.bufs.write_cursors.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.bufs.sorted_indices.as_entire_binding(),
+                },
             ],
         });
 
         // ── Single submit ────────────────────────────────────────────────────
-        let mut enc = dev.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor { label: Some("CellListGpu:build") },
-        );
+        let mut enc = dev.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("CellListGpu:build"),
+        });
 
-        dispatch_pass(&mut enc, &self.bin_pl, &bg_bin,
-            "cell_bin", self.n.div_ceil(BIN_WG), 1, 1);
-        dispatch_pass(&mut enc, &self.scan_pl, &bg_scan1,
-            "scan1", self.nc.div_ceil(SCAN_WG), 1, 1);
-        dispatch_pass(&mut enc, &self.scan_pl, &bg_scan2,
-            "scan2", 1, 1, 1);
-        dispatch_pass(&mut enc, &self.scatter_pl, &bg_scatter,
-            "scatter", self.n.div_ceil(BIN_WG), 1, 1);
+        dispatch_pass(
+            &mut enc,
+            &self.bin_pl,
+            &bg_bin,
+            "cell_bin",
+            self.n.div_ceil(BIN_WG),
+            1,
+            1,
+        );
+        dispatch_pass(
+            &mut enc,
+            &self.scan_pl,
+            &bg_scan1,
+            "scan1",
+            self.nc.div_ceil(SCAN_WG),
+            1,
+            1,
+        );
+        dispatch_pass(&mut enc, &self.scan_pl, &bg_scan2, "scan2", 1, 1, 1);
+        dispatch_pass(
+            &mut enc,
+            &self.scatter_pl,
+            &bg_scatter,
+            "scatter",
+            self.n.div_ceil(BIN_WG),
+            1,
+            1,
+        );
 
         self.device.queue.submit(Some(enc.finish()));
         Ok(())
     }
 
     /// GPU buffer: `[N] u32` particle indices sorted by cell.
-    pub fn sorted_indices(&self) -> &wgpu::Buffer { &self.bufs.sorted_indices }
+    pub fn sorted_indices(&self) -> &wgpu::Buffer {
+        &self.bufs.sorted_indices
+    }
     /// GPU buffer: `[Nc] u32` exclusive prefix sum (cell start offsets).
-    pub fn cell_start(&self) -> &wgpu::Buffer { &self.bufs.cell_start }
+    pub fn cell_start(&self) -> &wgpu::Buffer {
+        &self.bufs.cell_start
+    }
     /// GPU buffer: `[Nc] u32` particle count per cell.
-    pub fn cell_count(&self) -> &wgpu::Buffer { &self.bufs.cell_counts }
+    pub fn cell_count(&self) -> &wgpu::Buffer {
+        &self.bufs.cell_counts
+    }
     /// Total number of cells.
-    pub fn n_cells(&self) -> u32 { self.nc }
+    pub fn n_cells(&self) -> u32 {
+        self.nc
+    }
     /// Cell grid dimensions.
-    pub fn grid(&self) -> (u32, u32, u32) { (self.mx, self.my, self.mz) }
+    pub fn grid(&self) -> (u32, u32, u32) {
+        (self.mx, self.my, self.mz)
+    }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 fn compile(device: &WgpuDevice, src: &str, label: &str) -> wgpu::ShaderModule {
-    device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label:  Some(label),
-        source: wgpu::ShaderSource::Wgsl(src.into()),
-    })
+    device
+        .device
+        .create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some(label),
+            source: wgpu::ShaderSource::Wgsl(src.into()),
+        })
 }
 
 fn make_pipeline(
-    device:  &WgpuDevice,
-    module:  &wgpu::ShaderModule,
-    bgl:     &wgpu::BindGroupLayout,
-    entry:   &str,
-    label:   &str,
+    device: &WgpuDevice,
+    module: &wgpu::ShaderModule,
+    bgl: &wgpu::BindGroupLayout,
+    entry: &str,
+    label: &str,
 ) -> wgpu::ComputePipeline {
-    let layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label:                Some(label),
-        bind_group_layouts:   &[bgl],
-        push_constant_ranges: &[],
-    });
-    device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label:               Some(label),
-        layout:              Some(&layout),
-        module,
-        entry_point:         entry,
-        compilation_options: Default::default(),
-        cache:               None,
-    })
+    let layout = device
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some(label),
+            bind_group_layouts: &[bgl],
+            push_constant_ranges: &[],
+        });
+    device
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            module,
+            entry_point: entry,
+            compilation_options: Default::default(),
+            cache: None,
+        })
 }
 
 fn buf(device: &WgpuDevice, size: u64, label: &str, read_back: bool) -> wgpu::Buffer {
     let mut usage = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
-    if read_back { usage |= wgpu::BufferUsages::COPY_SRC; }
+    if read_back {
+        usage |= wgpu::BufferUsages::COPY_SRC;
+    }
     device.device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some(label), size, usage, mapped_at_creation: false,
+        label: Some(label),
+        size,
+        usage,
+        mapped_at_creation: false,
     })
 }
 
 fn uniform_buf(device: &WgpuDevice, data: &[u8], label: &str) -> wgpu::Buffer {
     let buf = device.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
-        size:  data.len() as u64,
+        size: data.len() as u64,
         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
@@ -380,14 +484,17 @@ fn uniform_bgl(binding: u32) -> wgpu::BindGroupLayoutEntry {
 }
 
 fn dispatch_pass(
-    enc:  &mut wgpu::CommandEncoder,
-    pl:   &wgpu::ComputePipeline,
-    bg:   &wgpu::BindGroup,
+    enc: &mut wgpu::CommandEncoder,
+    pl: &wgpu::ComputePipeline,
+    bg: &wgpu::BindGroup,
     name: &str,
-    x:    u32, y: u32, z: u32,
+    x: u32,
+    y: u32,
+    z: u32,
 ) {
     let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-        label: Some(name), timestamp_writes: None,
+        label: Some(name),
+        timestamp_writes: None,
     });
     pass.set_pipeline(pl);
     pass.set_bind_group(0, bg, &[]);
@@ -401,7 +508,7 @@ mod tests {
     #[test]
     fn test_cell_grid_calculation() {
         // Verify cell count formula used in new()
-        let box_l  = [10.0f64, 10.0, 10.0];
+        let box_l = [10.0f64, 10.0, 10.0];
         let cutoff = 2.5f64;
         let mx = ((box_l[0] / cutoff).floor() as u32).max(1);
         let my = ((box_l[1] / cutoff).floor() as u32).max(1);
@@ -413,7 +520,7 @@ mod tests {
     #[test]
     fn test_cell_grid_small_box() {
         // Box smaller than cutoff → 1 cell per dimension
-        let box_l  = [2.0f64, 2.0, 2.0];
+        let box_l = [2.0f64, 2.0, 2.0];
         let cutoff = 2.5f64;
         let mx = ((box_l[0] / cutoff).floor() as u32).max(1);
         assert_eq!(mx, 1);
@@ -432,7 +539,8 @@ mod tests {
         let data = [42u32, 0, 1, 99];
         let bytes = u32_bytes(&data);
         assert_eq!(bytes.len(), 16);
-        let back: Vec<u32> = bytes.chunks_exact(4)
+        let back: Vec<u32> = bytes
+            .chunks_exact(4)
             .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
             .collect();
         assert_eq!(back, data);

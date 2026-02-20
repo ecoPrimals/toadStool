@@ -378,12 +378,12 @@ mod tests {
         device.queue.submit(Some(encoder.finish()));
 
         let buffer_slice = staging_buffer.slice(..);
-        let (tx, rx) = futures::channel::oneshot::channel();
+        let (tx, rx) = std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).unwrap();
         });
         device.device.poll(wgpu::Maintain::Wait);
-        rx.await.unwrap().unwrap();
+        rx.recv().expect("poll(Wait) ensures map completion").expect("Buffer map error");
 
         let data = buffer_slice.get_mapped_range();
         let result_u32: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
@@ -443,12 +443,12 @@ mod tests {
         device.queue.submit(Some(encoder.finish()));
 
         let buffer_slice = staging_buffer.slice(..);
-        let (tx, rx) = futures::channel::oneshot::channel();
+        let (tx, rx) = std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).unwrap();
         });
         device.device.poll(wgpu::Maintain::Wait);
-        rx.await.unwrap().unwrap();
+        rx.recv().expect("poll(Wait) ensures map completion").expect("Buffer map error");
 
         let data = buffer_slice.get_mapped_range();
         let result_u32: Vec<u32> = bytemuck::cast_slice(&data).to_vec();

@@ -1,7 +1,7 @@
 # ToadStool/BarraCUDA — Next Steps
 
-**Updated**: February 19, 2026 — Sessions 9–11
-**Status**: Sovereign Phases 0–3 ✅ | Zero-copy ✅ | Sleep elimination ✅ | 63.02% coverage ✅
+**Updated**: February 20, 2026 — Session 18
+**Status**: Sovereign Phases 0–3 ✅ **Live** | Zero-copy ✅ | GpuExecutor round-trip ✅ | Integration tests ✅ | 63.02% coverage ✅
 
 ---
 
@@ -44,9 +44,9 @@ Output: `D*` scalar, no snapshot readback needed.
 
 ### W-003: NAK Compiler — Titan V Hardware Validation
 
-**Phases 1–3 DONE** at source level (WGSL ILP reordering, loop unrolling, LatencyModel).
-**Pending**: Run `bench_wgsize_nvk` on Titan V with the patched Mesa NVK driver to measure
-the actual speedup and validate that the source-level ILP improvements eliminate scoreboard stalls.
+**Phases 0–3 COMPLETE**: source-level ILP reordering, loop unrolling, `LatencyModel`, Apple GPU arch, AND **optimizer wired into `compile_shader_f64()`** (Session 18). The Jacobi eigensolve now pre-schedules automatically on every compile.
+
+**Pending**: Run `bench_wgsize_nvk` on Titan V to **measure** the actual speedup from the ILP pre-scheduling and confirm ≥ 3× before submitting the Mesa MR.
 
 | Step | Action | Expected |
 |------|--------|----------|
@@ -151,6 +151,14 @@ Prerequisites:
 - [x] CLI executor inline tests: `display.rs` (6), `signals.rs` (4), `resources.rs` (5) = 15 tests
 - [x] `llvm-cov` workspace SIGSEGV resolved (exit 0 consistently)
 - [x] Coverage: 61.35% → **63.02%** lines, 66.47% → **68.58%** functions
+
+### Session 18 (Feb 20, 2026) ✅ — Phase 3 Activated + Apple GPU + Zero-Copy + Integration Tests
+- [x] `WgpuDevice::compile_shader_f64()` now runs `WgslOptimizer::optimize()` — Phase 3 live in the hot path
+- [x] `GpuArch::AppleM` + `AppleMLatencyModel` (software f64 ~16cy) — cross-vendor arch matrix complete
+- [x] `Tensor::from_arc_buffer()` + `Tensor::try_arc_buffer()` — zero-copy construction from existing Arc
+- [x] `GpuTensorStorage.buffer: Arc<wgpu::Buffer>` + `from_tensor()` — GPU→CPU→GPU round-trip eliminated (D-S16-001)
+- [x] `crates/integration-tests/` created, workspace `tests/*.rs` cleared (D-S16-004)
+- [x] 3 integration test suites active (13 pass, 7 ignored); 12 pending tests quarantined with `README.md` tracking
 
 ### Session 8 (Feb 19, 2026) ✅ — Sovereign Phase 3 + Mesa NAK patches
 - [x] `WgslDependencyGraph` — let-binding DAG parser, `classify_op()` heuristic

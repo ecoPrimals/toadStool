@@ -24,7 +24,7 @@ pub mod autotune;
 pub mod cache_hierarchy;
 pub mod capabilities;
 pub mod kernel_router; // Unified Math → Hardware routing (Feb 15, 2026)
-pub mod latency; // Phase 2: LatencyModel trait + Sm70/Rdna2/Conservative/Measured (Feb 2026)
+pub mod latency; // LatencyModel trait + Sm70/Rdna2/AppleM/Conservative/Measured (SOVEREIGN Phase 2, Feb 2026)
 pub mod pipeline_cache;
 pub mod probe; // Runtime f64 exp/log capability probing (W-001 evolution)
 pub mod registry; // Physical device tracking with backend preference (Feb 16, 2026)
@@ -33,6 +33,7 @@ pub mod tensor_context;
 pub mod toadstool_integration;
 pub mod tpu;
 pub mod unified;
+pub mod vendor; // Canonical GPU vendor ID constants (single source of truth)
 pub mod warmup;
 pub mod wgpu_device;
 
@@ -50,7 +51,7 @@ pub use pipeline_cache::clear_global_cache;
 // Re-export tensor context (zero-overhead Tensor operations)
 pub use tensor_context::{
     clear_global_contexts, get_device_context, high_capacity_limits, science_limits, BufferPool,
-    PooledBuffer, TensorContext, TensorContextStats,
+    PooledBuffer, TensorContext, TensorContextStats, TensorSession,
 };
 
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};

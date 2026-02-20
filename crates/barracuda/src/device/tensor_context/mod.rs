@@ -1,4 +1,25 @@
 //! TensorContext - Zero-overhead Tensor operations via internal pooling
+//!
+//! # Batched dispatch (neuralSpring handoff #4 / #10)
+//!
+//! Each Tensor op that routes through [`TensorContext::record_operation`] is
+//! added to a pending queue when batching mode is active.  A single
+//! `CommandEncoder` is flushed on [`TensorContext::end_batch`], collapsing N
+//! `queue.submit()` calls into one.
+//!
+//! The ergonomic entry point is [`TensorSession`]:
+//!
+//! ```ignore
+//! use barracuda::device::tensor_context::{get_device_context, TensorSession};
+//!
+//! let session = TensorSession::new(&device);
+//! let c = a.add(&b)?;   // queued, not yet submitted
+//! let d = c.add(&e)?;   // queued
+//! session.flush()?;     // single queue.submit() covering both ops
+//! ```
+//!
+//! **Note**: Only ops wired through `record_operation()` participate in
+//! batching.  The wiring is incremental; `add` is the first op to support it.
 
 mod context;
 mod limits;
@@ -7,6 +28,51 @@ mod pool;
 pub use context::{clear_global_contexts, get_device_context, TensorContext, TensorContextStats};
 pub use limits::{high_capacity_limits, science_limits};
 pub use pool::{BufferDescriptor, BufferPool, PooledBuffer, SolverBufferSet};
+
+use crate::device::WgpuDevice;
+use crate::error::Result;
+use std::sync::Arc;
+
+/// RAII guard for batched tensor dispatch.
+///
+/// Calls [`TensorContext::begin_batch`] on creation and
+/// [`TensorContext::end_batch`] (flushing all pending ops) on
+/// [`TensorSession::flush`] or [`Drop`].
+///
+/// # Example
+/// ```ignore
+/// let session = TensorSession::new(&device);
+/// let sum = a.add(&b)?;
+/// let out = sum.add(&c)?;
+/// session.flush()?;  // one queue.submit() instead of two
+/// ```
+pub struct TensorSession {
+    ctx: Arc<TensorContext>,
+}
+
+impl TensorSession {
+    /// Begin a batch session on `device`.
+    pub fn new(device: &Arc<WgpuDevice>) -> Self {
+        let ctx = get_device_context(device);
+        ctx.begin_batch();
+        Self { ctx }
+    }
+
+    /// Submit all queued ops in a single `queue.submit()` and end the session.
+    pub fn flush(self) -> Result<()> {
+        self.ctx.end_batch()
+    }
+}
+
+impl Drop for TensorSession {
+    /// Flush on drop so batched ops are not silently lost if `flush()` is
+    /// not called explicitly.
+    fn drop(&mut self) {
+        if self.ctx.is_batching() {
+            let _ = self.ctx.end_batch();
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

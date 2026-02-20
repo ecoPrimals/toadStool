@@ -50,6 +50,7 @@ members = [
     "crates/security/sandbox",
     "crates/distributed",             # Sprint 5
     "crates/testing",
+    "crates/integration-tests", # D-S16-004: Workspace orphan tests → proper crate (Feb 2026)
     "examples",
     # Showcases - Core working demonstrations
     "showcase/neuromorphic/01-akida-detection",  # Akida detection showcase

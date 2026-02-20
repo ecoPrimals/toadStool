@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 17, 2026
+**Last Updated**: February 20, 2026
 
 ---
 
@@ -85,6 +85,8 @@
 
 **[DEBT.md](DEBT.md)** -- Active debt register, workarounds, and evolution paths.
 
+**[SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md)** -- Sovereign Compute Evolution tracker: Phases 0–3 complete, Phase 4 roadmap, latency models, Mesa NAK contribution plan.
+
 ---
 
 ## Architecture and Specs
@@ -100,6 +102,8 @@
 ## Guides
 
 **[docs/guides/TESTING.md](docs/guides/TESTING.md)** -- Testing strategy: unit, integration, property-based, fault, chaos testing.
+
+**[crates/integration-tests/](crates/integration-tests/)** -- Workspace integration test crate. Active suites: `chaos_engineering_scenarios`, `error_paths_config_tests`, `pure_rust_validation_tests`. Pending suites: `tests/pending/` with `README.md` tracking table.
 
 **[docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)** -- NPU driver deployment.
 
@@ -160,4 +164,4 @@ specs/                     -- Technical specifications
 
 ---
 
-**Last Updated**: February 17, 2026
+**Last Updated**: February 20, 2026

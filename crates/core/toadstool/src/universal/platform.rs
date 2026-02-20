@@ -294,4 +294,74 @@ mod tests {
         let status = get_platform_status().await;
         assert_eq!(status, PlatformStatus::Running);
     }
+
+    #[tokio::test]
+    async fn test_new_platform_creation() {
+        let platform = UniversalComputePlatform::new().await.unwrap();
+        let config = platform.get_config();
+        assert!(config.recursive_hosting);
+        assert!(config.biomeos_integration);
+    }
+
+    #[tokio::test]
+    async fn test_new_with_custom_config() {
+        let config = UniversalPlatformConfig {
+            recursive_hosting: false,
+            ecosystem_integration: true,
+            biomeos_integration: false,
+            max_concurrent_jobs: 50,
+            pure_ecosystem: false,
+        };
+        let platform = UniversalComputePlatform::new_with_config(config)
+            .await
+            .unwrap();
+        assert!(!platform.is_recursive_hosting_enabled());
+        assert!(!platform.is_biomeos_integration_enabled());
+    }
+
+    #[tokio::test]
+    async fn test_is_recursive_hosting_enabled_default() {
+        let platform = UniversalComputePlatform::new().await.unwrap();
+        assert!(platform.is_recursive_hosting_enabled());
+    }
+
+    #[tokio::test]
+    async fn test_is_biomeos_integration_enabled_default() {
+        let platform = UniversalComputePlatform::new().await.unwrap();
+        assert!(platform.is_biomeos_integration_enabled());
+    }
+
+    #[tokio::test]
+    async fn test_get_available_runtimes_empty_initially() {
+        let platform = UniversalComputePlatform::new().await.unwrap();
+        let runtimes = platform.get_available_runtimes().await;
+        // May be empty or pre-seeded depending on config, but must not panic.
+        let _ = runtimes;
+    }
+
+    #[tokio::test]
+    async fn test_find_primals_by_capability_empty_registry() {
+        use crate::universal::types::PrimalCapability;
+        let platform = UniversalComputePlatform::new().await.unwrap();
+        let results = platform
+            .find_primals_by_capability(&PrimalCapability::NativeExecution {
+                architectures: vec!["x86_64".to_string()],
+            })
+            .await;
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_discover_ecosystem_succeeds() {
+        let platform = UniversalComputePlatform::new().await.unwrap();
+        // Should not panic; result may be Ok or a soft error.
+        let _ = platform.discover_ecosystem().await;
+    }
+
+    #[tokio::test]
+    async fn test_init_with_runtime_engines_empty_list() {
+        let platform = init_with_runtime_engines(vec![]).await.unwrap();
+        let runtimes = platform.get_available_runtimes().await;
+        let _ = runtimes; // Empty or default-seeded — just verify no panic.
+    }
 }

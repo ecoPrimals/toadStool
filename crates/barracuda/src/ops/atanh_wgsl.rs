@@ -1,17 +1,12 @@
-//! ATANH - Inverse hyperbolic tangent operation - Pure WGSL
+//! Atanh — inverse hyperbolic tangent, GPU-resident, pipeline-cached, batchable
 //!
-//! Deep Debt Principles:
-//! - Self-knowledge: Operation knows its computation
-//! - Zero hardcoding: Hardware-agnostic implementation
-//! - Modern idiomatic Rust: Safe, zero unsafe code
-//! - Complete implementation: Production-ready, no mocks
-//! - Hardware-agnostic: Pure WGSL for universal compute
-//! - ✅ Capability-based dispatch (vendor-optimized workgroups)
+//! `atanh(x) = 0.5 · ln((1+x)/(1−x))`, valid for x ∈ (−1, 1)
 
-use crate::device::DeviceCapabilities;
+use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
+use crate::device::tensor_context::get_device_context;
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
-use wgpu::util::DeviceExt;
 
 pub struct Atanh {
     input: Tensor,
@@ -27,129 +22,40 @@ impl Atanh {
     }
 
     pub fn execute(self) -> Result<Tensor> {
-        let device = self.input.device();
-        let size: usize = self.input.shape().iter().product();
+        let device       = self.input.device();
+        let size         = self.input.len();
+        let ctx          = get_device_context(device);
+        let caps         = DeviceCapabilities::from_device(device);
+        let wg_size      = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+        let workgroups   = (size as u32).div_ceil(wg_size);
+        let adapter_info = device.adapter_info();
 
-        let output_buffer = device.create_buffer_f32(size)?;
+        let output_buffer = ctx.acquire_pooled_output(size);
 
-        #[repr(C)]
-        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-        struct Metadata {
-            size: u32,
-        }
+        // elementwise_unary: 1 read-only + 1 read-write storage, no uniform.
+        let layout_sig = BindGroupLayoutSignature::elementwise_unary();
+        let bind_group = ctx.get_or_create_bind_group(
+            layout_sig,
+            &[self.input.buffer(), &output_buffer],
+            Some("Atanh BG"),
+        );
 
-        let metadata = Metadata { size: size as u32 };
-        let metadata_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("ATANH Metadata"),
-                contents: bytemuck::cast_slice(&[metadata]),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
+            device.device(), adapter_info, Self::wgsl_shader(), layout_sig, "main",
+            Some("Atanh Pipeline"),
+        );
 
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("ATANH Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ATANH Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: metadata_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("ATANH"));
-
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("ATANH Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("ATANH Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("ATANH Encoder"),
-            });
-
-        {
+        ctx.record_operation(move |encoder| {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("ATANH Pass"),
+                label: Some("Atanh Pass"),
                 timestamp_writes: None,
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-
-            // Dispatch using standard 1D shader workgroup size (256)
-            let caps = DeviceCapabilities::from_device(device);
-            let workgroups = caps.dispatch_1d(size as u32);
             pass.dispatch_workgroups(workgroups, 1, 1);
-        }
+        })?;
 
-        device.queue.submit(Some(encoder.finish()));
-
-        Ok(Tensor::from_buffer(
+        Ok(Tensor::from_pooled_buffer(
             output_buffer,
             self.input.shape().to_vec(),
             device.clone(),
@@ -172,17 +78,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_atanh() {
-        let Some(device) = get_test_device().await else {
-            return;
-        };
-        // atanh(x) is defined for x ∈ (-1, 1)
-        let data = vec![-0.9, -0.5, 0.0, 0.5, 0.9];
-        let input = Tensor::new(data, vec![5], device.clone());
+    async fn test_atanh_finite() {
+        let Some(device) = get_test_device().await else { return; };
+        let input = Tensor::new(vec![-0.9, -0.5, 0.0, 0.5, 0.9], vec![5], device.clone());
         let output = input.atanh().unwrap();
         let result = output.to_vec().unwrap();
-        assert!(result.iter().all(|&x| x.is_finite()));
-        // atanh(0) = 0
-        assert!((result[2]).abs() < 0.01);
+        assert!(result.iter().all(|&x| x.is_finite()), "atanh produced non-finite: {result:?}");
+        assert!(result[2].abs() < 1e-5, "atanh(0) should be 0, got {}", result[2]);
     }
 }

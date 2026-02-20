@@ -1,0 +1,37 @@
+[package]
+name = "toadstool-integration-tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Integration and end-to-end tests for the ToadStool platform"
+keywords = ["testing", "integration", "e2e", "toadstool"]
+categories = ["development-tools::testing"]
+publish = false
+
+[dependencies]
+toadstool         = { path = "../core/toadstool" }
+toadstool-common  = { path = "../core/common" }
+toadstool-config  = { path = "../core/config" }
+toadstool-testing = { path = "../testing" }
+barracuda         = { path = "../barracuda" }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Common test utilities
+uuid    = { version = "1.0", features = ["v4"] }
+serde   = { version = "1.0", features = ["derive"] }
+tracing = "0.1"
+anyhow  = "1.0"
+async-trait = "0.1"
+
+[dev-dependencies]
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde_json = "1.0"
+chrono     = "0.4"
+toml       = "0.8"

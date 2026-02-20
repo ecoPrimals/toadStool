@@ -294,12 +294,12 @@ impl MorseForce {
 
         // Read back and convert i32 -> f32
         let buffer_slice = staging_buffer.slice(..);
-        let (tx, rx) = futures::channel::oneshot::channel();
+        let (tx, rx) = std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).ok();
         });
         device.device.poll(wgpu::Maintain::Wait);
-        futures::executor::block_on(rx)
+        rx.recv()
             .map_err(|_| BarracudaError::Gpu("Buffer map async wait canceled".into()))?
             .map_err(|e| BarracudaError::Gpu(format!("Buffer mapping failed: {}", e)))?;
 

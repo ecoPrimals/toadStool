@@ -161,10 +161,14 @@ impl MultiHeadAttention {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch: one thread per (batch, head, seq) - each processes head_dim
+            // Dispatch: one thread per (batch, head, seq) - each processes head_dim.
+            // The shader uses @workgroup_size(16, 16, 1) — z tile is 1, so we need
+            // exactly `seq_len` workgroups in z (not seq_len/16).  Dividing by 16
+            // would skip all but the first workgroup's z-slice (positions 1..seq_len-1
+            // would stay zero).
             let workgroups_x = params.batch_size.div_ceil(16);
             let workgroups_y = params.num_heads.div_ceil(16);
-            let workgroups_z = params.seq_len.div_ceil(16);
+            let workgroups_z = params.seq_len; // @workgroup_size z=1
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 
@@ -326,10 +330,13 @@ impl MultiHeadAttention {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch: one thread per (batch, seq, output_dim)
+            // Dispatch: one thread per (batch, seq, output_dim).
+            // The shader uses @workgroup_size(16, 16, 1) — z tile is 1, so we need
+            // exactly `d_model` workgroups in z (not d_model/16).  Dividing by 16
+            // would cover only the first 16 output dimensions; the rest stay zero.
             let workgroups_x = params.batch_size.div_ceil(16);
             let workgroups_y = params.seq_len.div_ceil(16);
-            let workgroups_z = params.d_model.div_ceil(16);
+            let workgroups_z = params.d_model; // @workgroup_size z=1
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 

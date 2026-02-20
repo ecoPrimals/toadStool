@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Unreleased] - February 20, 2026 (Session 18 — Phase 3 Live + Apple GPU + Zero-Copy + Integration Tests)
+
+### Added
+
+- **`Tensor::from_arc_buffer(Arc<wgpu::Buffer>, shape, device)`** — zero-copy Tensor construction
+  from an existing shared buffer. Eliminates the GPU→CPU→GPU round-trip when bridge code wraps
+  a `wgpu::Buffer` back into a Tensor (D-S16-001 resolution).
+- **`Tensor::try_arc_buffer() -> Option<Arc<wgpu::Buffer>>`** — returns the inner Arc for
+  Owned buffers; used by `GpuTensorStorage::from_tensor()` to detect the fast path.
+- **`GpuArch::AppleM`** — Apple M-series GPU architecture variant in `capabilities.rs`.
+  Detected from adapter names `"apple m"` / `"apple paravirtual"`.
+- **`AppleMLatencyModel`** (`device/latency.rs`) — software-emulated f64 FMA ~16 cy, f32 ~4 cy.
+  `model_for_arch(GpuArch::AppleM)` returns this model.
+- **`crates/integration-tests/`** — Workspace integration test crate (D-S16-004).
+  3 active suites: `chaos_engineering_scenarios`, `error_paths_config_tests`,
+  `pure_rust_validation_tests` (13 pass, 7 ignored). 12 pending suites in `tests/pending/`
+  with `README.md` tracking table.
+
+### Changed
+
+- **`WgpuDevice::compile_shader_f64()`** — Phase 3 `WgslOptimizer` wired into the compilation
+  hot path. Pipeline: `ShaderTemplate::for_driver_auto()` → `WgslOptimizer::optimize()`.
+  Fast-path guard: optimizer is a no-op when `@ilp_region` / `@unroll_hint` annotations are
+  absent (zero overhead on shaders without annotations). Latency model from
+  `GpuDriverProfile::latency_model()` (SM70=8cy, RDNA2=4cy, AppleM=16cy, else Conservative).
+- **`GpuTensorStorage.buffer`** changed from `wgpu::Buffer` to `Arc<wgpu::Buffer>`.
+  `from_tensor()` selects zero-copy (`Arc::clone`) for Owned tensors or GPU-to-GPU copy
+  (`copy_buffer_to_buffer`) for pooled tensors — no CPU involvement in either path.
+- **`GpuExecutor::execute()`** — output wrapping now uses `GpuTensorStorage::from_tensor()`;
+  the old `to_vec()` + `write_from_cpu()` round-trip is removed.
+- **`detect_fp64_rate(GpuArch::AppleM)`** returns `Fp64Rate::Software` (no native f64 silicon).
+- Workspace root `tests/` cleared of all bare `.rs` files (migrated to `crates/integration-tests/`).
+
+### Fixed
+
+- Cross-vendor latency matrix now complete: SM70–SM89 (Sm70Model), RDNA2/3/CDNA2 (Rdna2Model),
+  Apple M (AppleMLatencyModel), Intel/Unknown (ConservativeModel). No GPU family falls through
+  to an incorrect model.
+- `model_for_arch()` exhaustive match — `GpuArch::AppleM` and `GpuArch::IntelArc` now have
+  dedicated arms instead of sharing a wildcard fallback.
+
+---
+
 ## [Unreleased] - February 19, 2026 (hotSpring → ToadStool Absorption)
 
 ### NAK-Optimized Eigensolve Shader

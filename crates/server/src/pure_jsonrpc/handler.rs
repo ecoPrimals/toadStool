@@ -162,8 +162,8 @@ impl JsonRpcHandler {
     ) -> Result<serde_json::Value, JsonRpcError> {
         let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
 
-        let submission: JsonWorkloadSubmission = serde_json::from_value(params.clone())
-            .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {}", e)))?;
+        let submission: JsonWorkloadSubmission = serde::Deserialize::deserialize(params)
+            .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {e}")))?;
 
         info!("Submitting workload: {}", submission.workload_id);
 
@@ -187,12 +187,13 @@ impl JsonRpcHandler {
     ) -> Result<serde_json::Value, JsonRpcError> {
         let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
 
-        let workload_id: String = serde_json::from_value(params.clone())
-            .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {}", e)))?;
+        let workload_id = params
+            .as_str()
+            .ok_or_else(|| JsonRpcError::invalid_params("workload_id must be a string"))?;
 
         info!("Querying status: {}", workload_id);
 
-        let job_id = uuid::Uuid::parse_str(&workload_id)
+        let job_id = uuid::Uuid::parse_str(workload_id)
             .map_err(|_| JsonRpcError::invalid_params("Invalid job ID format"))?;
 
         match self.job_queue.status(job_id).await {
@@ -208,13 +209,14 @@ impl JsonRpcHandler {
     ) -> Result<serde_json::Value, JsonRpcError> {
         let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
 
-        let workload_id: String = serde_json::from_value(params.clone())
-            .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {}", e)))?;
+        let workload_id = params
+            .as_str()
+            .ok_or_else(|| JsonRpcError::invalid_params("workload_id must be a string"))?;
 
         info!("Canceling workload: {}", workload_id);
 
         self.executor
-            .cancel(&workload_id)
+            .cancel(workload_id)
             .await
             .map_err(JsonRpcError::internal_error)?;
 
@@ -287,7 +289,7 @@ impl JsonRpcHandler {
     ) -> Result<serde_json::Value, JsonRpcError> {
         let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
 
-        let job_type: crate::gpu_job_queue::JobType = serde_json::from_value(params.clone())
+        let job_type: crate::gpu_job_queue::JobType = serde::Deserialize::deserialize(params)
             .map_err(|e| JsonRpcError::invalid_params(format!("Invalid job type: {e}")))?;
 
         let priority = params.get("priority").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
@@ -339,7 +341,7 @@ impl JsonRpcHandler {
     ) -> Result<serde_json::Value, JsonRpcError> {
         let state_filter = params
             .and_then(|p| p.get("state"))
-            .and_then(|v| serde_json::from_value(v.clone()).ok());
+            .and_then(|v| serde::Deserialize::deserialize(v).ok());
         let jobs = self.job_queue.list(state_filter).await;
         let counts = self.job_queue.counts().await;
         Ok(serde_json::json!({"jobs": jobs, "counts": counts}))

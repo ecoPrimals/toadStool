@@ -1,6 +1,6 @@
 //! IPC helpers tests
 
-use super::connection::IPC_TIMEOUT;
+use super::connection::{get_default_songbird_socket, IPC_TIMEOUT};
 use super::*;
 use serde_json::json;
 
@@ -11,6 +11,7 @@ fn test_constants() {
 
 #[tokio::test]
 async fn test_register_with_songbird_graceful_failure() {
+    let _guard = songbird_env_mutex().lock().await;
     let result = register_with_songbird().await;
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -20,18 +21,21 @@ async fn test_register_with_songbird_graceful_failure() {
 
 #[tokio::test]
 async fn test_resolve_primal_graceful_failure() {
+    let _guard = songbird_env_mutex().lock().await;
     let result = resolve_primal("beardog").await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn test_connect_to_primal_graceful_failure() {
+    let _guard = songbird_env_mutex().lock().await;
     let result = connect_to_primal("beardog").await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn test_find_by_capability_graceful_failure() {
+    let _guard = songbird_env_mutex().lock().await;
     let result = find_by_capability("crypto").await;
     assert!(result.is_err());
 }
@@ -260,4 +264,200 @@ fn test_edge_cases_semantic_resolution() {
     assert_eq!(resolve_method_name(" "), " ");
     assert_eq!(resolve_method_name("."), ".");
     assert!(is_semantic_method("."));
+}
+
+// ── Socket path helpers ───────────────────────────────────────────────────────
+
+#[test]
+fn test_get_default_songbird_socket_contains_songbird_sock() {
+    let path = get_default_songbird_socket();
+    assert!(
+        path.ends_with("songbird.sock"),
+        "socket path should end with songbird.sock, got: {}",
+        path
+    );
+}
+
+#[test]
+fn test_get_default_songbird_socket_with_xdg_runtime_dir() {
+    // When XDG_RUNTIME_DIR is set, the socket should be under that directory.
+    unsafe { std::env::set_var("XDG_RUNTIME_DIR", "/tmp/test-xdg-runtime") };
+    let path = get_default_songbird_socket();
+    unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
+    assert!(path.starts_with("/tmp/test-xdg-runtime"));
+    assert!(path.ends_with("songbird.sock"));
+}
+
+// ── Mock Unix socket happy-path tests ────────────────────────────────────────
+//
+// These tests spin up a temporary Unix socket server, point the connection
+// functions at it via SONGBIRD_SOCKET, and exercise the JSON-RPC send/receive
+// paths that are otherwise unreachable in a CI environment with no Songbird.
+//
+// We use a global tokio::sync::Mutex to serialize access to the SONGBIRD_SOCKET
+// env var so that mock tests don't race with the graceful-failure tests.
+
+use std::sync::OnceLock;
+
+fn songbird_env_mutex() -> &'static tokio::sync::Mutex<()> {
+    static M: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
+    M.get_or_init(|| tokio::sync::Mutex::new(()))
+}
+
+/// Spawn a mock Songbird socket that accepts one connection and replies with
+/// the given JSON response (NDJSON framing — newline-delimited), then returns.
+async fn spawn_mock_songbird(
+    socket_path: &str,
+    reply: serde_json::Value,
+) -> tokio::task::JoinHandle<()> {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    use tokio::net::UnixListener;
+
+    let listener = UnixListener::bind(socket_path).expect("bind mock socket");
+    let reply_line = format!("{}\n", reply);
+
+    tokio::spawn(async move {
+        if let Ok((stream, _)) = listener.accept().await {
+            let (read_half, mut write_half) = stream.into_split();
+            // Drain the incoming newline-terminated JSON frame.
+            let mut reader = BufReader::new(read_half);
+            let mut line = String::new();
+            let _ = reader.read_line(&mut line).await;
+            // Write the canned reply.
+            let _ = write_half.write_all(reply_line.as_bytes()).await;
+            let _ = write_half.flush().await;
+        }
+    })
+}
+
+#[tokio::test]
+async fn test_register_with_songbird_success_via_mock() {
+    let _guard = songbird_env_mutex().lock().await;
+    let dir = tempfile::TempDir::new().unwrap();
+    let socket_path = dir.path().join("songbird.sock");
+    let path_str = socket_path.to_str().unwrap().to_string();
+
+    let reply = json!({"jsonrpc": "2.0", "result": {"status": "registered"}, "id": 1});
+    let handle = spawn_mock_songbird(&path_str, reply).await;
+
+    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
+    let result = register_with_songbird().await;
+    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
+
+    handle.abort();
+    assert!(result.is_ok(), "registration should succeed: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_register_with_songbird_error_reply_via_mock() {
+    let _guard = songbird_env_mutex().lock().await;
+    let dir = tempfile::TempDir::new().unwrap();
+    let socket_path = dir.path().join("songbird_err.sock");
+    let path_str = socket_path.to_str().unwrap().to_string();
+
+    let reply = json!({"jsonrpc": "2.0", "error": {"code": -32000, "message": "already registered"}, "id": 1});
+    let handle = spawn_mock_songbird(&path_str, reply).await;
+
+    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
+    let result = register_with_songbird().await;
+    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
+
+    handle.abort();
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Songbird registration failed"));
+}
+
+#[tokio::test]
+async fn test_resolve_primal_success_via_mock() {
+    let _guard = songbird_env_mutex().lock().await;
+    let dir = tempfile::TempDir::new().unwrap();
+    let socket_path = dir.path().join("resolve.sock");
+    let path_str = socket_path.to_str().unwrap().to_string();
+
+    let reply = json!({
+        "jsonrpc": "2.0",
+        "result": {"endpoint": "/run/user/1000/biomeos/beardog.sock"},
+        "id": 1
+    });
+    let handle = spawn_mock_songbird(&path_str, reply).await;
+
+    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
+    let result = resolve_primal("beardog").await;
+    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
+
+    handle.abort();
+    assert!(result.is_ok());
+    assert!(result.unwrap().contains("beardog.sock"));
+}
+
+#[tokio::test]
+async fn test_resolve_primal_missing_endpoint_returns_error() {
+    let _guard = songbird_env_mutex().lock().await;
+    let dir = tempfile::TempDir::new().unwrap();
+    let socket_path = dir.path().join("resolve_bad.sock");
+    let path_str = socket_path.to_str().unwrap().to_string();
+
+    // Reply has result but no endpoint field
+    let reply = json!({"jsonrpc": "2.0", "result": {}, "id": 1});
+    let handle = spawn_mock_songbird(&path_str, reply).await;
+
+    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
+    let result = resolve_primal("beardog").await;
+    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
+
+    handle.abort();
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("missing endpoint"));
+}
+
+#[tokio::test]
+async fn test_find_by_capability_success_via_mock() {
+    let _guard = songbird_env_mutex().lock().await;
+    let dir = tempfile::TempDir::new().unwrap();
+    let socket_path = dir.path().join("cap.sock");
+    let path_str = socket_path.to_str().unwrap().to_string();
+
+    let reply = json!({
+        "jsonrpc": "2.0",
+        "result": {
+            "services": [
+                {"primal_name": "barracuda"},
+                {"primal_name": "hotspring"}
+            ]
+        },
+        "id": 1
+    });
+    let handle = spawn_mock_songbird(&path_str, reply).await;
+
+    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
+    let result = find_by_capability("compute").await;
+    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
+
+    handle.abort();
+    assert!(result.is_ok());
+    let primals = result.unwrap();
+    assert_eq!(primals.len(), 2);
+    assert!(primals.contains(&"barracuda".to_string()));
+}
+
+#[tokio::test]
+async fn test_find_by_capability_error_reply() {
+    let _guard = songbird_env_mutex().lock().await;
+    let dir = tempfile::TempDir::new().unwrap();
+    let socket_path = dir.path().join("cap_err.sock");
+    let path_str = socket_path.to_str().unwrap().to_string();
+
+    let reply =
+        json!({"jsonrpc": "2.0", "error": {"code": -1, "message": "no capabilities"}, "id": 1});
+    let handle = spawn_mock_songbird(&path_str, reply).await;
+
+    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
+    let result = find_by_capability("gpu").await;
+    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
+
+    handle.abort();
+    assert!(result.is_err());
 }

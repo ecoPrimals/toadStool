@@ -182,7 +182,6 @@ impl ComparisonResult {
 
 /// Benchmark suite for all operations
 pub struct BenchmarkSuite {
-    #[allow(dead_code)] // Used in run_all() implementation
     config: BenchmarkConfig,
     results: Vec<ComparisonResult>,
 }

@@ -79,7 +79,7 @@ pub mod tridiagonal;
 pub use batched_eigh_gpu::BatchedEighGpu;
 pub use cholesky::Cholesky;
 pub use eigh::Eigh;
-pub use gemm_f64::GemmF64;
+pub use gemm_f64::{GemmCachedF64, GemmF64};
 pub use gen_eigh_gpu::{GenEighDecompositionGpu, GenEighGpu};
 pub use grid_quadrature_gemm_f64::GridQuadratureGemm;
 pub use linsolve::LinSolve;

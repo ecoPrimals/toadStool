@@ -33,7 +33,7 @@ async fn test_tensor_creation() -> Result<(), Box<dyn std::error::Error>> {
     
     // Create a simple tensor
     let data: Vec<u32> = vec![1, 0, 2, 0, 3, 0, 4, 0]; // 4 coefficients as u32 pairs
-    let tensor = Tensor::from_data(&data, vec![8], device.clone())?;
+    let tensor = Tensor::from_data_pod(&data, vec![8], device.clone())?;
     
     assert_eq!(tensor.len(), 8);
     println!("✅ Tensor creation successful");
@@ -55,7 +55,7 @@ async fn test_polynomial_representation() -> Result<(), Box<dyn std::error::Erro
         4, 0,  // coeff 3 = 4
     ];
     
-    let tensor = Tensor::from_data(&poly_data, vec![8], device)?;
+    let tensor = Tensor::from_data_pod(&poly_data, vec![8], device)?;
     assert_eq!(tensor.len(), 8);
     
     println!("✅ FHE polynomial representation correct");
@@ -66,7 +66,7 @@ async fn test_polynomial_representation() -> Result<(), Box<dyn std::error::Erro
 #[tokio::test]
 async fn test_fhe_parameters() {
     // Test standard FHE parameters
-    let degrees = vec![16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
+    let degrees = vec![16u64, 32, 64, 128, 256, 512, 1024, 2048, 4096];
     let modulus = 12289u64; // FHE-friendly prime
     
     for degree in degrees {

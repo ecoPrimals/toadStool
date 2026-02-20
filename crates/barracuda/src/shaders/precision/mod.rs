@@ -193,8 +193,8 @@ impl ShaderTemplate {
             substituted
         };
         let injected = Self::inject_missing_math_f64(&patched);
-        // Phase 3: ILP reorder @ilp_region blocks + unroll @unroll_hint loops.
-        // Uses ConservativeModel when no driver profile is available (safe fallback).
+        // ILP-reorders @ilp_region blocks and unrolls @unroll_hint loops.
+        // ConservativeModel is used as the latency model (safe fallback when no driver profile).
         crate::shaders::optimizer::WgslOptimizer::default().optimize(&injected)
     }
 

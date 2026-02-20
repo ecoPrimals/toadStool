@@ -68,7 +68,7 @@ pub fn npu_relu(input: &[f32]) -> Result<Vec<f32>> {
     // Create tensor from raw data
     let input_len = input.len();
     let tensor =
-        futures::executor::block_on(Tensor::from_vec_on(input.to_vec(), vec![input_len], device))?;
+        Tensor::from_vec_on_sync(input.to_vec(), vec![input_len], device)?;
 
     // Execute ReLU using WGSL shader (same as GPU/CPU!)
     // This uses ops/relu.rs → shaders/relu.wgsl

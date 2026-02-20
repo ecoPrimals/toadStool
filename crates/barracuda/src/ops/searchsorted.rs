@@ -102,14 +102,15 @@ impl SearchSorted {
         device.queue.submit(Some(encoder.finish()));
 
         let buffer_slice = staging_buffer.slice(..);
-        let (sender, receiver) = futures::channel::oneshot::channel();
+        let (sender, receiver) = std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             let _ = sender.send(result);
         });
         device.device.poll(wgpu::Maintain::Wait);
 
-        futures::executor::block_on(receiver)
-            .map_err(|e| BarracudaError::gpu(format!("Failed to map buffer: {:?}", e)))?
+        receiver
+            .recv()
+            .map_err(|_| BarracudaError::gpu("Buffer map channel disconnected".to_string()))?
             .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
 
         let data = buffer_slice.get_mapped_range();

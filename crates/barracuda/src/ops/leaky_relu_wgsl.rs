@@ -1,172 +1,120 @@
-//! LeakyRelu - Pure WGSL
+//! LeakyReLU — GPU-resident, pipeline-cached, batchable
 //!
 //! Deep Debt Principles:
-//! - Self-knowledge: Operation knows its computation
-//! - Zero hardcoding: Hardware-agnostic implementation
-//! - Modern idiomatic Rust: Safe, zero unsafe code
-//! - Complete implementation: Production-ready, no mocks
-//! - Hardware-agnostic: Pure WGSL for universal compute
-//! - ✅ Capability-based dispatch (vendor-optimized workgroups)
+//! - Zero hardcoding: Capability-based workgroup dispatch
+//! - Batchable: routes through TensorContext::record_operation()
+//! - Zero-copy output: buffer pool, no GPU→CPU→GPU round-trip
+//! - Pipeline cached: GLOBAL_CACHE eliminates recompilation overhead
+//! - Params fixed (S14): Rust `Params` matches WGSL `{ size, negative_slope }`
 
+use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
+use crate::device::tensor_context::get_device_context;
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
+use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
-/// LeakyRelu operation
+/// Default negative slope for LeakyReLU (matches common framework defaults).
+pub const LEAKY_RELU_DEFAULT_SLOPE: f32 = 0.01;
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct Params {
+    size: u32,
+    negative_slope: f32,
+}
+
+/// LeakyReLU: `output = x if x ≥ 0 else α·x`
 pub struct LeakyRelu {
     input: Tensor,
+    negative_slope: f32,
 }
 
 impl LeakyRelu {
-    /// Create a new leaky_relu operation
     pub fn new(input: Tensor) -> Self {
-        Self { input }
+        Self { input, negative_slope: LEAKY_RELU_DEFAULT_SLOPE }
     }
 
-    /// Get the WGSL shader source
+    pub fn with_slope(input: Tensor, negative_slope: f32) -> Self {
+        Self { input, negative_slope }
+    }
+
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/activation/leaky_relu.wgsl")
     }
 
-    /// Execute the leaky_relu operation
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let size: usize = self.input.shape().iter().product();
 
-        // Access input buffer directly (zero-copy)
-        let input_buffer = self.input.buffer();
+        let ctx = get_device_context(device);
+        let caps = DeviceCapabilities::from_device(device);
+        let wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+        let workgroups = (size as u32).div_ceil(wg_size);
 
-        // Create output buffer
-        let output_buffer = device.create_buffer_f32(size)?;
+        let output_buffer = ctx.acquire_pooled_output(size);
 
-        // Create uniform buffer for parameters
-        #[repr(C)]
-        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-        struct Params {
-            size: u32,
-        }
-
-        let params = Params { size: size as u32 };
-
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("LeakyRelu Params"),
-                contents: bytemuck::cast_slice(&[params]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
-
-        // Compile shader
-        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("LeakyRelu Shader"));
-
-        // Create bind group layout
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("LeakyRelu Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
-
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("LeakyRelu Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: input_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
+        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("LeakyReLU Params"),
+            contents: bytemuck::bytes_of(&Params {
+                size: size as u32,
+                negative_slope: self.negative_slope,
+            }),
+            usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        // Create compute pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("LeakyRelu Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let layout_sig = BindGroupLayoutSignature::reduction();
+        let adapter_info = device.adapter_info();
+        let bgl = GLOBAL_CACHE.get_or_create_layout(
+            device.device(),
+            adapter_info,
+            layout_sig,
+            Some("LeakyReLU BGL"),
+        );
 
-        let compute_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("LeakyRelu Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
+        let bind_group = std::sync::Arc::new(device.device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                label: Some("LeakyReLU BG"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.input.buffer().as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                ],
+            },
+        ));
 
-        // Execute compute shader
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("LeakyRelu Encoder"),
-            });
+        let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
+            device.device(),
+            adapter_info,
+            Self::wgsl_shader(),
+            layout_sig,
+            "main",
+            Some("LeakyReLU Pipeline"),
+        );
 
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("LeakyRelu Pass"),
+        ctx.record_operation(move |encoder| {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("LeakyReLU Pass"),
                 timestamp_writes: None,
             });
-            compute_pass.set_pipeline(&compute_pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
-        }
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(workgroups, 1, 1);
+            drop(params_buf);
+        })?;
 
-        device.queue.submit(Some(encoder.finish()));
-
-        // Return tensor without reading back (zero-copy)
-        Ok(Tensor::from_buffer(
+        Ok(Tensor::from_pooled_buffer(
             output_buffer,
             self.input.shape().to_vec(),
             device.clone(),
@@ -175,8 +123,13 @@ impl LeakyRelu {
 }
 
 impl Tensor {
-    /// Compute leaky_relu element-wise
+    /// Compute LeakyReLU with default slope (0.01).
     pub fn leaky_relu_wgsl(self) -> Result<Self> {
         LeakyRelu::new(self).execute()
+    }
+
+    /// Compute LeakyReLU with a custom negative slope α.
+    pub fn leaky_relu_wgsl_with_slope(self, negative_slope: f32) -> Result<Self> {
+        LeakyRelu::with_slope(self, negative_slope).execute()
     }
 }

@@ -1,7 +1,7 @@
 # Deep Debt Status Report
 
-**Date**: February 19, 2026 — Sessions 9–11 + hotSpring Absorption
-**Status**: ✅ PRODUCTION-GRADE | Zero-Copy + Sleep-Free + GPU-Resident Cell-List + NAK Documented
+**Date**: February 20, 2026 — Session 18 + Sessions 9–11 + hotSpring Absorption
+**Status**: ✅ PRODUCTION-GRADE | Phase 3 Live + Apple GPU + GpuExecutor Zero-Copy + Integration Tests Crate
 **Quality**: ALL GATES GREEN | 63.02% coverage | 12/12 hotSpring validation suites pass
 
 ---
@@ -9,7 +9,7 @@
 ## Active Workarounds
 
 - **W-001**: f64 transcendental (exp/log) text-replacement workaround for NVK/RADV open-source GPU drivers (~2x penalty for exp/log only). Fossil functions removed (sqrt/abs/min/max now native). Comment-aware replacement prevents source corruption. Capability matrix probed per-GPU. Upstream NAK/ACO contributions in progress. See DEBT.md.
-- **W-003**: NAK compiler 149× performance gap on Titan V (SM70/Volta) — Phase 1 SM70 latency tables written (DFMA 8cy corrected), wired into sm70.rs. WGSL workarounds live in `batched_eigh_nak_optimized_f64.wgsl` (2–4× on NVK). All 5 deficiencies formally documented in `contrib/mesa-nak/NAK_DEFICIENCIES.md`. Hardware validation + Mesa MRs pending. See DEBT.md.
+- **W-003**: NAK compiler 149× performance gap on Titan V (SM70/Volta) — **Phases 0–3 complete and live** (latency tables, ILP restructure, `LatencyModel` trait + `AppleMLatencyModel`, `WgslOptimizer` wired into `compile_shader_f64()`). All 5 deficiencies documented. **Titan V hardware validation pending** — Mesa MR ready to submit once ≥ 3× speedup confirmed. See DEBT.md.
 
 ## hotSpring Absorption (Feb 19 2026) ✅
 
@@ -65,7 +65,15 @@ All deep debt elimination objectives achieved. Scientific middleware extracted a
 **Songbird Integration COMPLETE** — load balancing, broadcasting, types all stateful (no stubs).
 System health verified with 15,700+ tests passing across workspace.
 
-### Latest Updates (Feb 19, 2026 — Sessions 9–11: Concurrency Hardening + Zero-Copy + Coverage)
+### Latest Updates (Feb 20, 2026 — Session 18: Phase 3 Wired + Apple GPU + Zero-Copy GpuExecutor + Integration Tests)
+
+**Session 18 resolved**:
+- **D-S16-001** — `GpuExecutor` CPU round-trip eliminated: `GpuTensorStorage.buffer: Arc<wgpu::Buffer>`, `Tensor::from_arc_buffer()`, zero-copy output path
+- **D-S16-004** — `crates/integration-tests` wired to workspace; 21 orphan workspace `tests/*.rs` migrated; 3 suites active, 12 pending with tracking README
+- **Sovereign Phase 3 activated** — `WgslOptimizer` wired into `compile_shader_f64()` hot path; `AppleMLatencyModel` added; cross-vendor arch matrix complete
+- Zero new clippy warnings after all changes
+
+### Previous Updates (Feb 19, 2026 — Sessions 9–11: Concurrency Hardening + Zero-Copy + Coverage)
 
 **Zero-Copy Binary Payloads ✓** — `WorkloadSubmission.data`, `WorkloadResult.data`, `ExecutionInput.data`, `ExecutionOutput.data`, `ExecutableSource::Bytes`, `WasmModuleSource::Bytes`, `TarpcWorkloadSubmission.payload` all migrated from `Vec<u8>` to `bytes::Bytes`. `.clone()` on these types is now O(1) regardless of payload size. 7 crates updated.
 

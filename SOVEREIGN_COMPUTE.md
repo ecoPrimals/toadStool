@@ -33,8 +33,8 @@ When the optimizer is complete:
 |-------|-------------|--------|-----------|
 | **0** | Fossil functions removed, NAK SM70 latency tables, capability probe | ✅ Done | Feb 18, 2026 |
 | **1** | Manual ILP in Jacobi kernel — `@ilp_region` restructure, warp-packing | ✅ Done | Feb 18, 2026 |
-| **2** | `LatencyModel` trait, `Sm70Model`, `Rdna2Model`, `ConservativeModel`, `MeasuredModel` | ✅ Done | Feb 19, 2026 |
-| **3** | `WgslDependencyGraph` + `IlpReorderer` + `WgslLoopUnroller` wired into `ShaderTemplate` | ✅ Done | Feb 19, 2026 |
+| **2** | `LatencyModel` trait, Sm70/Rdna2/Conservative/Measured models + `AppleMLatencyModel` | ✅ Done | Feb 19–20, 2026 |
+| **3** | `WgslDependencyGraph` + `IlpReorderer` + `WgslLoopUnroller` built + **wired into `compile_shader_f64()`** | ✅ Done | Feb 20, 2026 |
 | **4** | Full naga-IR optimizer — SSA form, register pressure, loop pipelining | 📋 Planned | Q3 2026 |
 | **5** | `math_f64.wgsl` completeness — sin/cos/atan2/asin/acos full range, libm fuzz | 📋 Planned | Q3–Q4 2026 |
 
@@ -80,27 +80,39 @@ every GPU vendor, without waiting for any compiler to improve.
 ```
 crates/barracuda/src/device/latency.rs
   pub trait LatencyModel              ← raw_latency(), war_latency(), needs_scoreboard()
-  pub struct Sm70LatencyModel         ← DFMA=8cy, FFMA=4cy (arXiv:1804.06826)
-  pub struct Rdna2LatencyModel        ← VFMA64=~4cy (AMD ISA docs + empirical)
-  pub struct ConservativeModel        ← safe maximum fallback (unknown GPUs)
+  pub struct Sm70LatencyModel         ← DFMA=8cy, FFMA=4cy (arXiv:1804.06826) — SM70–SM89
+  pub struct Rdna2LatencyModel        ← VFMA64=~4cy (AMD ISA docs + empirical) — RDNA2/3/CDNA2
+  pub struct AppleMLatencyModel       ← software-emulated f64 ~16cy, f32 ~4cy — M1/M2/M3/M4
+  pub struct ConservativeModel        ← safe maximum fallback (unknown/Intel GPUs)
   pub struct MeasuredModel            ← populated from bench_f64_builtins probe
-  pub fn model_for_arch(GpuArch)      ← dispatch helper
+  pub fn model_for_arch(GpuArch)      ← dispatch helper (all known GPU families covered)
 
 crates/barracuda/src/device/capabilities.rs
+  pub enum GpuArch { Volta, Turing, Ampere, Ada, Rdna2, Rdna3, Cdna2, IntelArc, AppleM, Software, Unknown }
   impl GpuDriverProfile {
     pub fn latency_model(&self) -> Box<dyn LatencyModel>
   }
 ```
 
-7 unit tests covering all four models and the arch dispatch function.
+Cross-vendor latency table (complete as of Feb 20, 2026):
+
+| GPU Family | Arch | DFMA/FMA64 | FFMA | Model |
+|---|---|---|---|---|
+| SM70–SM89 (Volta → Ada) | NVIDIA | 8 cy | 4 cy | `Sm70LatencyModel` |
+| RDNA2/3, CDNA2 | AMD | ~4 cy | ~4 cy | `Rdna2LatencyModel` |
+| M1/M2/M3/M4 (software f64) | Apple | ~16 cy (SW) | ~4 cy | `AppleMLatencyModel` |
+| Intel Xe / Unknown | — | — | — | `ConservativeModel` |
+| Measured at runtime | Any | empirical | empirical | `MeasuredModel` |
+
+9 unit tests covering all five models and the arch dispatch function.
 
 ---
 
-## Phase 3 — Done ✅
+## Phase 3 — Done ✅ (built Feb 19, wired Feb 20)
 
-**Target**: `WgslOptimizer` in `crates/barracuda/src/shaders/optimizer/`
+**Target**: `WgslOptimizer` in `crates/barracuda/src/shaders/optimizer/` — **now live in the compilation hot path**
 
-**What was built**:
+**What was built (Feb 19)**:
 ```
 crates/barracuda/src/shaders/optimizer/
   mod.rs                ← WgslOptimizer::optimize(), for_arch(), Default (Conservative)
@@ -109,9 +121,18 @@ crates/barracuda/src/shaders/optimizer/
   loop_unroller.rs      ← WgslLoopUnroller: @unroll_hint N, word-boundary substitution
 ```
 
-24 unit tests. `ShaderTemplate::for_driver_auto()` wired — every compiled shader
-passes through the optimizer automatically. `for_driver_profile()` added for
-hardware-accurate scheduling via `GpuDriverProfile::latency_model()`.
+**Wired into compilation (Feb 20)**:
+`WgpuDevice::compile_shader_f64()` now runs the full two-stage pipeline:
+1. `ShaderTemplate::for_driver_auto()` — exp/log patches for NVK/RADV drivers
+2. `WgslOptimizer::optimize()` — `@ilp_region` reorder + `@unroll_hint` loop unroll
+
+Fast-path guard: optimizer is a no-op when neither annotation is present (single
+`contains()` call — zero overhead on the 480+ shaders without ILP regions). For the
+Jacobi eigensolve (`batched_eigh_single_dispatch_f64.wgsl`), the reorderer fires
+automatically, pre-scheduling DFMA pairs for the detected GPU's actual cycle count.
+
+The latency model is taken from `GpuDriverProfile::latency_model()` — hardware-accurate
+for SM70/RDNA2/AppleM; Conservative fallback for Intel/Unknown.
 
 **Annotation syntax in WGSL**:
 ```wgsl
@@ -222,4 +243,4 @@ Zero central coordinator required for network formation.
 
 *"The mycelium is the internet of the forest. ToadStool is the mycelium of compute."*
 
-*Last updated: February 19, 2026 — Phases 0–3 complete.*
+*Last updated: February 20, 2026 — Phases 0–3 complete and live. Phase 3 optimizer wired into `compile_shader_f64()`. Cross-vendor latency matrix complete (SM70/RDNA2/AppleM/Conservative).*

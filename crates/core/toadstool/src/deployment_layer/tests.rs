@@ -143,3 +143,229 @@ fn test_detection_error_from_io() {
         _ => panic!("expected Io variant"),
     }
 }
+
+// ── Full detection pipeline ───────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_detect_returns_a_layer() {
+    // On any real machine, detect() must succeed (never panic, never return Err
+    // for normal filesystem enumeration).
+    let mut detector = LayerDetector::new();
+    let layer = detector.detect().await.expect("detect should not fail");
+    // Verify the result is one of the known variants.
+    let description = layer.description();
+    assert!(!description.is_empty());
+}
+
+#[tokio::test]
+async fn test_detect_caches_result() {
+    let mut detector = LayerDetector::new();
+    assert!(detector.cached_layer.is_none());
+
+    let layer1 = detector
+        .detect()
+        .await
+        .expect("first detect should succeed");
+    assert!(detector.cached_layer.is_some(), "cache should be populated");
+
+    // Second call must return the same variant without re-detecting.
+    let layer2 = detector
+        .detect()
+        .await
+        .expect("second detect should succeed");
+    assert_eq!(layer1.description(), layer2.description());
+}
+
+#[tokio::test]
+async fn test_detect_reset_then_redetect() {
+    let mut detector = LayerDetector::new();
+    let _ = detector.detect().await.expect("detect should succeed");
+    assert!(detector.cached_layer.is_some());
+
+    detector.reset();
+    assert!(detector.cached_layer.is_none());
+
+    // Detecting again after reset must still work.
+    let _ = detector
+        .detect()
+        .await
+        .expect("re-detect after reset should succeed");
+    assert!(detector.cached_layer.is_some());
+}
+
+// ── Cloud detection via environment variables ─────────────────────────────────
+// Each test uses a distinct env var not shared with any other test, so they
+// are safe to run in parallel without a mutex guard across the await point.
+
+#[tokio::test]
+async fn test_detect_aws_via_env() {
+    unsafe { std::env::set_var("AWS_EXECUTION_ENV", "AWS_ECS_EC2") };
+    let mut detector = LayerDetector::new();
+    let layer = detector.detect().await.expect("detect should succeed");
+    unsafe { std::env::remove_var("AWS_EXECUTION_ENV") };
+
+    // On a machine that doesn't have /.dockerenv etc., AWS should win.
+    if let DeploymentLayer::CloudLayer { provider, .. } = &layer {
+        assert!(matches!(provider, CloudProvider::AWS));
+    }
+    // (On a machine that IS in a container, the container layer wins first —
+    // that's correct behaviour; just ensure no panic occurred.)
+}
+
+#[tokio::test]
+async fn test_detect_gcp_via_env() {
+    unsafe { std::env::set_var("GCP_PROJECT", "my-test-project") };
+    let mut detector = LayerDetector::new();
+    let _ = detector
+        .detect()
+        .await
+        .expect("detect with GCP env should succeed");
+    unsafe { std::env::remove_var("GCP_PROJECT") };
+}
+
+#[tokio::test]
+async fn test_detect_azure_via_env() {
+    unsafe {
+        std::env::set_var(
+            "AZURE_SUBSCRIPTION_ID",
+            "aaaaaaaa-0000-0000-0000-aaaaaaaaaaaa",
+        )
+    };
+    let mut detector = LayerDetector::new();
+    let _ = detector
+        .detect()
+        .await
+        .expect("detect with Azure env should succeed");
+    unsafe { std::env::remove_var("AZURE_SUBSCRIPTION_ID") };
+}
+
+// ── DeploymentLayer helper methods ────────────────────────────────────────────
+
+#[test]
+fn test_deployment_layer_guest_os() {
+    let layer = DeploymentLayer::ServiceLayer {
+        guest_os: vec![
+            "QEMU/KVM guests".to_string(),
+            "Docker containers".to_string(),
+        ],
+    };
+    let guests = layer.guest_os().expect("ServiceLayer should have guest_os");
+    assert_eq!(guests.len(), 2);
+    assert_eq!(guests[0], "QEMU/KVM guests");
+
+    assert!(DeploymentLayer::BareMetalOS.guest_os().is_none());
+}
+
+#[test]
+fn test_deployment_layer_is_not_virtualized_bare_metal() {
+    assert!(!DeploymentLayer::BareMetalOS.is_virtualized());
+    assert!(!DeploymentLayer::MiddlewareLayer {
+        host_os: "Ubuntu".to_string(),
+        host_version: None,
+    }
+    .is_virtualized());
+    assert!(!DeploymentLayer::ServiceLayer {
+        guest_os: vec!["Docker".to_string()],
+    }
+    .is_virtualized());
+}
+
+#[test]
+fn test_deployment_layer_vm_no_gpu_passthrough_lacks_direct_hardware() {
+    let layer = DeploymentLayer::VMLayer {
+        hypervisor: "VirtualBox".to_string(),
+        gpu_passthrough: false,
+    };
+    assert!(!layer.has_direct_hardware_access());
+    assert!(layer.is_virtualized());
+}
+
+#[test]
+fn test_container_layer_is_virtualized_and_lacks_direct_hardware() {
+    let layer = DeploymentLayer::ContainerLayer {
+        runtime: ContainerRuntime::Podman,
+        container_id: Some("abc123".to_string()),
+    };
+    assert!(layer.is_virtualized());
+    assert!(!layer.has_direct_hardware_access());
+}
+
+#[test]
+fn test_deployment_layer_display_all_variants() {
+    assert_eq!(
+        format!(
+            "{}",
+            DeploymentLayer::MiddlewareLayer {
+                host_os: "Pop!_OS".to_string(),
+                host_version: None,
+            }
+        ),
+        "Middleware on Pop!_OS"
+    );
+    assert_eq!(
+        format!(
+            "{}",
+            DeploymentLayer::ServiceLayer {
+                guest_os: vec!["Docker".to_string(), "QEMU".to_string()],
+            }
+        ),
+        "ServiceLayer (serving: Docker, QEMU)"
+    );
+    assert_eq!(
+        format!(
+            "{}",
+            DeploymentLayer::ContainerLayer {
+                runtime: ContainerRuntime::Docker,
+                container_id: None,
+            }
+        ),
+        "Container (Docker)"
+    );
+    assert_eq!(
+        format!(
+            "{}",
+            DeploymentLayer::VMLayer {
+                hypervisor: "QEMU/KVM".to_string(),
+                gpu_passthrough: false,
+            }
+        ),
+        "VM (QEMU/KVM)"
+    );
+}
+
+#[test]
+fn test_deployment_layer_serde_roundtrip_all_variants() {
+    let layers = vec![
+        DeploymentLayer::MiddlewareLayer {
+            host_os: "Ubuntu".to_string(),
+            host_version: Some("22.04".to_string()),
+        },
+        DeploymentLayer::ServiceLayer {
+            guest_os: vec!["Docker".to_string()],
+        },
+        DeploymentLayer::ContainerLayer {
+            runtime: ContainerRuntime::Containerd,
+            container_id: Some("deadbeef".to_string()),
+        },
+        DeploymentLayer::VMLayer {
+            hypervisor: "KVM".to_string(),
+            gpu_passthrough: true,
+        },
+        DeploymentLayer::CloudLayer {
+            provider: CloudProvider::GCP,
+            instance_type: Some("n1-standard-1".to_string()),
+            region: Some("us-central1".to_string()),
+        },
+    ];
+    for layer in layers {
+        let json = serde_json::to_string(&layer).unwrap();
+        let decoded: DeploymentLayer = serde_json::from_str(&json).unwrap();
+        assert_eq!(layer, decoded);
+    }
+}
+
+#[test]
+fn test_detection_error_http_disabled_display() {
+    let err = DetectionError::ExternalHttpDisabled;
+    assert!(err.to_string().contains("External HTTP detection disabled"));
+}

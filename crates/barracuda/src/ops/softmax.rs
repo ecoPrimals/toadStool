@@ -1,11 +1,21 @@
-//! Softmax activation
+//! Softmax activation — GPU-resident, pipeline-cached, batchable
 //!
-//! **Pure WGSL**: Single implementation via WebGPU shader
-//! Formula: softmax(x_i) = exp(x_i) / Σ exp(x_j)
+//! Formula: `softmax(x_i) = exp(x_i) / Σ exp(x_j)`
+//! Logical-size uniform prevents incorrect normalisation over pooled buffers (S14-007).
 
+use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
+use crate::device::tensor_context::get_device_context;
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
+use bytemuck::{Pod, Zeroable};
+use wgpu::util::DeviceExt;
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct Params {
+    size: u32,
+}
 
 /// Softmax activation operation
 pub struct Softmax {
@@ -30,112 +40,77 @@ impl Softmax {
         include_str!("../shaders/activation/softmax_simple.wgsl")
     }
 
-    /// Execute Softmax on tensor
+    /// Execute Softmax — GPU-resident, pipeline-cached, batchable.
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let size = self.input.len();
 
-        // Create output buffer
-        let output_buffer = device.create_buffer_f32(size)?;
+        let ctx = get_device_context(device);
+        let caps = DeviceCapabilities::from_device(device);
+        let wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+        let workgroups = (size as u32).div_ceil(wg_size).max(1);
 
-        // Create bind group layout
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Softmax Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+        // Pooled output prevents oversized-buffer bug (S14-007 fix stays correct
+        // because we pass `size` as the logical uniform, not arrayLength).
+        let output_buffer = ctx.acquire_pooled_output(size);
 
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Softmax Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-            ],
+        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Softmax Params"),
+            contents: bytemuck::bytes_of(&Params { size: size as u32 }),
+            usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        // Compile shader
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("Softmax"));
+        let layout_sig = BindGroupLayoutSignature::reduction();
+        let adapter_info = device.adapter_info();
+        let bgl = GLOBAL_CACHE.get_or_create_layout(
+            device.device(),
+            adapter_info,
+            layout_sig,
+            Some("Softmax BGL"),
+        );
 
-        // Create pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Softmax Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let bind_group = std::sync::Arc::new(device.device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                label: Some("Softmax BG"),
+                layout: &bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.input.buffer().as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                ],
+            },
+        ));
 
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Softmax Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
+        let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
+            device.device(),
+            adapter_info,
+            Self::wgsl_shader(),
+            layout_sig,
+            "main",
+            Some("Softmax Pipeline"),
+        );
 
-        // Encode and execute
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Softmax Encoder"),
-            });
-
-        {
+        ctx.record_operation(move |encoder| {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Softmax Pass"),
                 timestamp_writes: None,
             });
-
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(workgroups, 1, 1);
+            drop(params_buf);
+        })?;
 
-            // Deep Debt Evolution: Capability-based dispatch
-            // Softmax is a reduction operation over the last dimension
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (size as u32).div_ceil(optimal_wg_size);
-            pass.dispatch_workgroups(workgroups.max(1), 1, 1);
-        }
-
-        device.queue.submit(Some(encoder.finish()));
-
-        // Create output tensor
-        Ok(Tensor::from_buffer(
+        Ok(Tensor::from_pooled_buffer(
             output_buffer,
             self.input.shape().to_vec(),
             device.clone(),
@@ -145,11 +120,9 @@ impl Softmax {
 
 // Convenience method on Tensor
 impl Tensor {
-    /// Apply Softmax activation
-    ///
-    /// **Phase 3**: Now supports NPU routing!
+    /// Apply Softmax activation with automatic NPU routing.
     pub fn softmax(self) -> Result<Self> {
-        // Phase 3: Check if NPU should be used
+        // NPU routing: delegate to Akida when tensor shape and energy policy match.
         if crate::ops::npu_bridge::should_route_to_npu(&self, None) {
             log::debug!("Routing softmax to NPU");
             return self.softmax_npu();
@@ -163,7 +136,7 @@ impl Tensor {
     /// Execute Softmax on NPU
     fn softmax_npu(&self) -> Result<Self> {
         use crate::npu::ops::softmax::npu_softmax;
-        use crate::ops::npu_bridge::{npu_data_to_tensor, tensor_to_npu_data};
+        use crate::ops::npu_bridge::tensor_to_npu_data;
 
         let data = tensor_to_npu_data(self)?;
 
@@ -173,7 +146,7 @@ impl Tensor {
         let device = self.device().clone();
         let shape = self.shape().to_vec();
 
-        futures::executor::block_on(npu_data_to_tensor(result_data, shape, device))
+        Tensor::from_vec_on_sync(result_data, shape, device)
     }
 }
 

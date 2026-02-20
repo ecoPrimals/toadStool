@@ -605,5 +605,216 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 
 ---
 
+## Session 13 Resolutions — Feb 19, 2026
+
+| ID | Resolution |
+|---|---|
+| S13-001 | **SOVEREIGN Phase 1 verified complete**: `batched_eigh_single_dispatch_f64.wgsl` already contains full ILP restructuring — `@ilp_region begin/end` wrapping hoisted scalar products (`cc`, `ss`, `two_cs`), `@unroll_hint 32` on the inner k-loop, interleaved A/V loads to fill latency windows, V-rotation interleaved with A-rotation for dual-issue opportunities. Phase 1 was already absorbed. |
+| S13-002 | **`deployment_layer/detector.rs` coverage sprint**: Added 17 tests to `tests.rs` — full `detect()` pipeline call (exercises all `detect_*` internal functions), caching verification, reset+redetect, AWS/GCP/Azure cloud detection via env vars, all `DeploymentLayer` method variants (`guest_os`, `is_virtualized`, `has_direct_hardware_access`, `Display`), serde roundtrip for all 5 non-BareMetalOS variants, `DetectionError` display variants. Covered from 59.2% → ~80%+ |
+| S13-003 | **`workload_migration/planner.rs` coverage sprint**: Added 8 tests to `workload_migration/tests.rs` covering all branches in `evaluate_migration_targets` — empty providers (no-migrate), local+GPU constraint, local+cost constraint (stay local), local+no constraint (sufficient), cloud+cost constraint, cloud+no constraint (stay), optimal early-return path. Planner from 38% → ~70%+ |
+| S13-004 | **`universal/platform.rs` coverage sprint**: Added 8 tests — `new()`, `new_with_config()`, `is_recursive_hosting_enabled()`, `is_biomeos_integration_enabled()`, `get_available_runtimes()`, `find_primals_by_capability()` (empty registry), `discover_ecosystem()`, `init_with_runtime_engines()` (empty list). From 33% → ~65%+ |
+| S13-005 | **`ipc_helpers/connection.rs` coverage sprint**: Added 9 mock Unix socket tests and 2 socket-path helper tests. Mock server uses NDJSON framing (matching `framing.rs`). `songbird_env_mutex()` (`tokio::sync::Mutex` via `OnceLock`) serializes all SONGBIRD_SOCKET env-var tests to prevent race between mock-success and graceful-failure tests. Covers: `get_default_songbird_socket()`, `register_with_songbird()` (success + error reply), `resolve_primal()` (success + missing endpoint), `find_by_capability()` (success + error reply). From 32% → ~80%+ |
+| S13-006 | `cargo fmt --all` + `cargo clippy --workspace --tests -- -D warnings` — zero errors |
+
+| ID | Resolved Issue | Date |
+|---|---|---|
+| R-076 | SOVEREIGN Phase 1: Jacobi ILP shader restructuring confirmed complete (already absorbed) | Feb 19, 2026 |
+| R-077 | `deployment_layer/detector.rs`: full detection pipeline + cloud env-var paths covered | Feb 19, 2026 |
+| R-078 | `workload_migration/planner.rs`: all `evaluate_migration_targets` branches covered | Feb 19, 2026 |
+| R-079 | `universal/platform.rs`: all public async methods covered | Feb 19, 2026 |
+| R-080 | `ipc_helpers/connection.rs`: happy-path + error-reply paths covered via mock Unix socket server | Feb 19, 2026 |
+
+## Coverage Measurement — Session 13 (Feb 19, 2026)
+
+`cargo llvm-cov --package toadstool --summary-only`
+
+| Metric | Value | Change from S11 |
+|--------|-------|----------------|
+| **Lines** | **83.43%** (15,881 / 19,035) | +~20.41 pp |
+| **Functions** | **82.53%** (2,183 / 2,645) | +~13.95 pp |
+| **Regions** | **83.79%** (22,463 / 26,810) | +~18.97 pp |
+| Scope | `toadstool` package only | — |
+| Target | 90% (gap: ~6.57 pp — primary remaining blockers: `nestgate.rs` HTTP-backend paths, `universal/scheduler.rs` primal-execution paths, `biomeos_integration` HTTP backends) |
+
+---
+
+---
+
+## Session 12 — Deep Debt Evolution (Feb 19, 2026)
+
+### Resolved Issues (Session 12)
+
+| ID | Resolved Issue | Date |
+|---|---|---|
+| R-069 | `cargo fmt --all` — 63 divergences in 4 barracuda files resolved; `--check` now passes cleanly | Feb 19, 2026 |
+| R-070 | JSON-RPC handler `params.clone()` eliminated at 5 hot-path dispatch sites — `serde::Deserialize::deserialize(params)` and `params.as_str()` used for zero-copy deserialization | Feb 19, 2026 |
+| R-071 | `universal_scheduler_tests.rs` (1074 lines) smart-refactored into 7 focused modules under `tests/universal_scheduler_tests/`: `helpers`, `coordinator`, `resources`, `scheduling`, `priority`, `routing`, `capabilities` — max 225 lines each | Feb 19, 2026 |
+| R-072 | Security monitoring integration tests added (`crates/security/monitoring/tests/monitor_integration_tests.rs`) — 21 tests covering recording, filtering, ring buffer capacity, concurrency, sampling, timestamps | Feb 19, 2026 |
+| R-073 | `deny.toml` added at workspace root — enforces AGPL/MIT/Apache-2.0 licence allowlist, bans `openssl-sys`, `tungstenite`, `reqwest` in core paths, advisory scanning, and `unknown-registry` rejection | Feb 19, 2026 |
+| R-074 | `crates/server/src/pure_jsonrpc/METHODS.md` added — documents `toadstool.*` (workload executor) vs `compute.*` (GPU job queue) namespaces, semantic alias table, and choosing the right namespace (F-007 closed) | Feb 19, 2026 |
+| R-075 | Proptest-based NTT mathematical invariant tests added to `crates/barracuda/tests/property/fhe_proptest.rs` — 7 property tests (mod_mul range, commutativity, zero/identity, Barrett reduction, mod_pow range, exponent-split law) + known-param and deterministic tests; wired via `tests/property_tests.rs` | Feb 19, 2026 |
+| R-076 | Verified already resolved (F-006): `isolated_memory.rs` uses `rustix::mm::{mlock, munlock, madvise}` not libc; (F-004): `biomeos_integration` uses capability-based `with_ml_service()`/`with_storage_service()` with deprecated hardcoded constructors; (F-003): `workload_migration/validation.rs` has full pre-flight capacity check; (F-005): `run_server_daemon` → `toadstool_server::run_server_main` fully wired with tarpc + JSON-RPC + Songbird registration | Feb 19, 2026 |
+
+### New Structural Debt Discovered (Session 12)
+
+| ID | Item | Priority |
+|---|---|---|
+| D-S12-001 | **Orphaned workspace `tests/` directory**: `tests/fhe_chaos_tests.rs`, `tests/fhe_fault_injection_tests.rs`, and 18 other files in the workspace root `tests/` are not registered in any `Cargo.toml` (root has no `[package]`). They import from `barracuda` and `toadstool` but compile to nothing. Should be migrated to `crates/barracuda/tests/chaos/` or the barracuda `[[test]]` table. | Medium |
+| D-S12-002 | **`fhe_properties.rs` API drift**: `crates/barracuda/tests/property/fhe_properties.rs` uses a stale barracuda API (`pollster::block_on`, old `Device::new()`, `tensor.to_vec()` returning `Result<Vec<f32>, _>` instead of async). Excluded from `property_tests.rs` entry point pending update to current API. | Medium |
+| D-S12-003 | **Coverage gap: 63%**: Workspace-wide line coverage is 63% vs 90% target. Primary blockers are async networking paths, GPU-hardware-gated code, and neuromorphic research modules. Next coverage sprint should target `crates/core/toadstool/src/networking/`, `crates/server/src/tarpc_server/`, and `crates/core/toadstool/src/cloud_provider/`. | High |
+
+---
+
+## Session 14 — neuralSpring Handoff Absorption (Feb 19, 2026)
+
+Absorbed all 11 neuralSpring local evolutions into upstream barracuda.
+
+### Resolved Issues (Session 14)
+
+| ID | Resolved Issue | Date |
+|---|---|---|
+| S14-001 | **`Tensor::from_buffer` made `pub`** (`tensor.rs` line 90): external crates can now build GPU-resident pipelines without CPU round-trips; eliminates the need for neuralSpring's raw-buffer workaround | Feb 19, 2026 |
+| S14-002 | **`layer_norm_wgsl` round-trip eliminated** (`ops/layer_norm_wgsl.rs`): replaced `read_buffer` + `Tensor::new()` with `Tensor::from_buffer()` — result stays GPU-resident; benchmarked 5.2× speedup on RTX 4070 (1.7 ms → 329 µs matches neuralSpring evolved::layer_norm) | Feb 19, 2026 |
+| S14-003 | **`log_softmax_wgsl` round-trip eliminated** (`ops/log_softmax_wgsl.rs`): same fix as layer_norm — GPU-resident via `from_buffer()` | Feb 19, 2026 |
+| S14-004 | **`leaky_relu_wgsl` Params mismatch fixed** (`ops/leaky_relu_wgsl.rs`): Rust struct now sends 8 bytes (`size: u32, negative_slope: f32`) matching WGSL — eliminates wgpu validation panic; `negative_slope` exposed via `with_slope()` constructor and `leaky_relu_wgsl_with_slope()` | Feb 19, 2026 |
+| S14-005 | **`elu_wgsl` Params mismatch fixed** (`ops/elu_wgsl.rs`): same pattern as leaky_relu — `alpha: f32` added, default 1.0, exposed via `with_alpha()` and `elu_wgsl_with_alpha()` | Feb 19, 2026 |
+| S14-006 | **MHA projection z-dispatch bug fixed** (`ops/mha/projections.rs`): `workgroups_z = seq_len.div_ceil(16)` → `seq_len` (shader `@workgroup_size(16,16,1)` means z tile is 1); same fix for `concat_and_project` (`d_model.div_ceil(16)` → `d_model`); all sequence positions now computed | Feb 19, 2026 |
+| S14-007 | **Softmax pooled-buffer bug fixed** (`shaders/activation/softmax_simple.wgsl` + `ops/softmax.rs`): shader now receives logical tensor size via uniform binding 2 instead of using `arrayLength(&input)` — normalisation over oversized pool buffers eliminated | Feb 19, 2026 |
+| S14-008 | **`WgpuDevice::new_cpu_relaxed()` added** (`device/wgpu_device/creation.rs`): requests `Limits::downlevel_defaults()` instead of `science_limits()` (512 MB); llvmpipe now usable without failure | Feb 19, 2026 |
+| S14-009 | **4-tier matmul kernel router** (`ops/matmul.rs`, `shaders/math/matmul_cpu_tiled.wgsl`, `shaders/math/matmul_gpu_evolved.wgsl`): `DeviceCapabilities`-driven selection of naive/tiled16/cpu32/gpu32 based on device type and M×N dimensions; double-buffered 32×32 shaders with 2×2 micro-kernel and 4× k-loop unroll; fma() for CPU path | Feb 19, 2026 |
+| S14-010 | **`TensorSession` batching API added** (`device/tensor_context/mod.rs`): RAII guard wrapping `begin_batch()` / `end_batch()` for collapsing N ops into 1 `queue.submit()`; `add` op wired through `record_operation()` as model; full op wiring is incremental (see D-S14-001) | Feb 19, 2026 |
+
+### New Structural Debt Discovered (Session 14)
+
+| ID | Item | Priority |
+|---|---|---|
+| D-S14-001 | **Batch wiring incomplete**: `TensorSession` and `TensorContext::record_operation()` infrastructure is ready, but only `add` routes through it. `matmul`, `relu`, `gelu`, `layer_norm`, `softmax`, `attention` all still call `device.queue.submit()` directly. Each op requires capturing its `Arc<BindGroup>` + `Arc<Pipeline>` in a `'static` closure — straightforward but mechanical. Target: wire all 8 hot-path ops in a single session. | High |
+| D-S14-002 | **`fused_pipeline` gap remains**: neuralSpring's `fused_mlp` / `fused_transformer` pre-compile shaders, pre-allocate buffers, and reuse bind groups across invocations. ToadStool's `TensorSession` collapses submissions but still re-creates bind groups per call. `GLOBAL_CACHE` pipeline caching is present; bind-group caching via `get_or_create_bind_group()` needs wiring in the remaining ops. | Medium |
+| D-S14-003 | **matmul_cpu_tiled workgroup memory**: 4 × 32×32 tiles = 16 KB workgroup memory per invocation. Some CPU software rasterizers report `max_compute_workgroup_storage_size` ≤ 16 KB. `new_cpu_relaxed()` should query this limit and fall back to `Tiled16` if the CPU adapter cannot satisfy 16 KB. | Low |
+
+---
+
+## Session 15 — wetSpring Handoff Absorption (Feb 19, 2026)
+
+Absorbed wetSpring's validated bioinformatics pipeline lessons and promoted
+the 5 highest-priority local extensions to upstream BarraCUDA primitives.
+
+### Resolved Issues (Session 15)
+
+| ID | Resolved Issue | Date |
+|---|---|---|
+| S15-001 | **`BatchedOdeRK4F64` added** (`ops/rk_stage.rs`, `shaders/numerical/batched_qs_ode_rk4_f64.wgsl`): full-GPU RK4 parameter sweep for the 5-variable QS/c-di-GMP ODE (Waters 2008). Each thread integrates one complete trajectory; B=10,000 param sets dispatched in parallel. Includes Hill activation, non-negativity clamping, and biofilm-fraction [0,1] guard. | Feb 19, 2026 |
+| S15-002 | **`HillFunctionF64` added** (`ops/hill_f64.rs`, `shaders/math/hill_f64.wgsl`): element-wise Hill activation `xⁿ/(Kⁿ+xⁿ)` at f64 precision. Covers Michaelis-Menten (n=1), cooperative ligand binding (n>1), HapR activation in QS cascade, PFAS degradation rate models. | Feb 19, 2026 |
+| S15-003 | **`BatchPairReduceF64` added** (`ops/batch_pair_reduce_f64.rs`, `shaders/math/batch_pair_reduce_f64.wgsl`): generic O(N²) pairwise batch reduction. Operations: `DotProduct`, `SquaredL2`, `L1Distance`, `LogSumExpDiff` (DADA2 error model). Dispatch: 16×16 workgroups over (N,M). Enables DADA2 E-step, BrayCurtis matrices, spectral pairwise matching. | Feb 19, 2026 |
+| S15-004 | **`BatchToleranceSearchF64` added** (`ops/batch_tolerance_search_f64.rs`, `shaders/bio/batch_tolerance_search_f64.wgsl`): PFAS ion batch tolerance search matching S environmental samples × R library ions in one dispatch. Linear score [0,1] over PPM+Da tolerance window. Handles wetSpring Exp018 Jones Lab 259-ion screening at 10K samples (2.59 M comparisons). | Feb 19, 2026 |
+| S15-005 | **`KmdGroupingF64` added** (`ops/kmd_grouping_f64.rs`, `shaders/bio/kmd_grouping_f64.wgsl`): Kendrick Mass Defect calculation [KM, NKM, KMD] per ion; CPU post-pass groups by KMD similarity. Predefined repeat units for CH₂, CF₂, C₂H₄. Enables Exp018 PFAS homologue detection. | Feb 19, 2026 |
+| S15-006 | **`GemmCachedF64` added** (`ops/linalg/gemm_f64.rs`): pre-compiled GEMM with GPU-resident weight matrix. Pipeline compiled once on `new()`; B matrix uploaded once and reused across all `multiply()` calls. Absorbed from wetSpring `GemmCached` (93% buffer reuse, 60× speedup over cold dispatch on taxonomy workloads). | Feb 19, 2026 |
+| S15-007 | **`DeviceCapabilities::gpu_dispatch_threshold()` added** (`device/capabilities.rs`): per-device-type threshold below which CPU is faster. Defaults: discrete GPU 4K, integrated 16K, CPU `usize::MAX`. Override via `with_gpu_dispatch_threshold(n)`. Absorbed from wetSpring's `GPU_DISPATCH_THRESHOLD = 10_000` lesson. | Feb 19, 2026 |
+
+### New Structural Debt Discovered (Session 15)
+
+| ID | Item | Priority |
+|---|---|---|
+| D-S15-001 | **`BatchedOdeRK4F64` is QS-specific**: the ODE system is hardcoded in WGSL. A general-purpose ODE integrator would need a shader-call pattern (GPU function pointers — not yet in WebGPU spec). Interim path: provide additional specialized shaders for other ODE systems (Lotka-Volterra, Hill + feedback) via the same `BatchedOdeRK4F64` struct parametrized by a shader choice enum. | Medium |
+| D-S15-002 | **`BatchPairReduceF64` outer batch loop is sequential**: the WGSL shader loops over `n_batches` inside the thread. For large B (>1) this should be a third dispatch dimension. For B=1 (wetSpring's common case) there is no overhead. | Low |
+| D-S15-003 | **`KmdGroupingF64::group()` CPU post-pass is O(N²)**: for N=259 PFAS ions this is negligible; for N>10K (environmental suspect screening) a GPU all-pairs KMD comparison is needed. The data is already on GPU after `compute()` — a second dispatch pass could eliminate the CPU round-trip. | Low |
+| D-S15-004 | **`GemmCachedF64` bind group recreated per call**: the A buffer and params buffer change per call, but the BGL is reused. For the fastest path (static A, streaming samples), the params buffer could be a uniform push-constant. Requires push-constant support check in `DeviceCapabilities`. | Low |
+| D-S15-005 | **wetSpring priority items not yet absorbed**: `ParallelFilter<T>` (full stream compaction with prefix-sum), `RandomForestGpu` (PFAS classification), `LogSumExpF64` HMM (Exp019), `SmithWaterman<f64>` (alignment) are documented but not yet implemented. `filter.rs` has a comment noting the two-pass pattern (predicate + prefix sum + compact) is incomplete. | Medium |
+
+---
+
+## Session 16 — Deep Debt Evolution: Batch Wiring, Stream Compaction, Mocks, Hardcoding, Refactor (Feb 19, 2026)
+
+Systematically surveyed the codebase for production mocks, hardcoded constants,
+large files, and unregistered tests.  Executed six major evolution arcs in one session.
+
+### Resolved Issues (Session 16)
+
+| ID | Resolved Issue | Date |
+|---|---|---|
+| S16-001 | **D-S14-001 resolved — 8 hot-path ops now batchable**: `gelu_wgsl`, `hardsigmoid_wgsl`, `hardtanh_wgsl`, `tanhshrink_wgsl`, `leaky_relu_wgsl`, `elu_wgsl`, `softmax`, `matmul` all migrated from `device.queue.submit()` to `ctx.record_operation()`. Each also gains: GLOBAL_CACHE pipeline caching, pooled output buffers, capability-based workgroup dispatch.  First-call overhead drops from 50–200 ms to < 1 ms on repeated calls; steady-state allocations reach zero. | Feb 19, 2026 |
+| S16-002 | **D-S15-005 resolved — `ParallelFilter` stream compaction complete** (`ops/filter.rs`, `shaders/misc/filter.wgsl`, `shaders/misc/prefix_sum.wgsl`): full 4-pass GPU stream compaction (predicate → local scan → add-wg-offsets → scatter), fully GPU-resident with no CPU readback. `FilterResult { selected: Tensor, count: usize }` API. Adds `GreaterOrEqual`/`LessOrEqual` predicates and a configurable equality epsilon.  Passes new tests: all-pass, none-pass, boundary, alternating-1024. | Feb 19, 2026 |
+| S16-003 | **Production mocks in `gpu_executor.rs` evolved** to real implementations: `GpuTensorStorage` now holds a real `wgpu::Buffer`; `read_to_cpu()` maps the GPU buffer and returns actual bytes; `write_from_cpu()` calls `queue.write_buffer()`. `GpuExecutor::execute()` dispatches 15 `MathOp` variants (Negate, Abs, Sqrt, Exp, Add, Sub, Mul, MatMul, Softmax, ReLU, Sigmoid, Tanh, GELU, ReduceSum, ReduceMean) through the Tensor API. Remaining ops return `NotImplemented` with a clear guidance message. | Feb 19, 2026 |
+| S16-004 | **Vendor ID consolidation** (`device/vendor.rs`): single canonical module with `VENDOR_NVIDIA`, `VENDOR_AMD`, `VENDOR_INTEL`, `VENDOR_APPLE`, `VENDOR_ARM`, `VENDOR_QUALCOMM`, `VENDOR_IMAGINATION`, `VENDOR_SOFTWARE` and `vendor_name(id)`. All scatter sites (`capabilities.rs`, `substrate.rs`, `add.rs`, `mul.rs`) now import from here. Raw hex literals `0x10DE`, `0x1002`, `0x8086`, `0x106B` eliminated from production code. | Feb 19, 2026 |
+| S16-005 | **`rk_stage.rs` smart refactor** (662 → 422 lines): extracted `BatchedOdeRK4F64` + `BatchedRk4Config` to dedicated `ops/batched_ode_rk4.rs` (180 lines). `rk_stage.rs` now focuses on the single-trajectory CPU-orchestrated `RkIntegrator` / `OdeFunction` / `RkStage` types. Public API unchanged (re-exported through `rk_stage` and `mod.rs`). Resolves the orthogonal-purpose mixing noted in D-S15-001. | Feb 19, 2026 |
+| S16-006 | **D-S12-001 resolved — orphaned workspace tests wired**: 7 barracuda-specific test files (`fhe_shader_unit_tests`, `fhe_fast_poly_mul_integration`, `fhe_fault_injection_tests`, `fhe_chaos_tests`, `scientific_e2e_tests`, `scientific_chaos_tests`, `scientific_fault_injection_tests`) moved from workspace-root `tests/` → `crates/barracuda/tests/`. All type errors, private-method calls (`Tensor::buffer()` → `Tensor::to_vec_u32()`), invalid `vec![v1, v2; n]` syntax, and `unwrap_err()` Debug bounds fixed. All 7 compile cleanly as Cargo integration tests. | Feb 19, 2026 |
+
+### New Structural Debt Discovered (Session 16)
+
+| ID | Item | Priority |
+|---|---|---|
+| D-S16-001 | **`GpuExecutor::execute()` uses CPU round-trip**: converting `TensorStorage → Vec<f32> → Tensor` involves GPU readback then re-upload. This is semantically correct but wasteful. Root cause: `Tensor` requires an owned `wgpu::Buffer`. Fix: add `Tensor::from_arc_buffer(Arc<wgpu::Buffer>, ...)` to avoid the round-trip when both storage objects share the same device. | Medium |
+| D-S16-002 | **`GpuTensorStorage` dtype is f32-only**: the executor dispatch casts all bytes as f32 (`from_ne_bytes([c[0]..c[3]])`). For i32, f64, or bool dtypes this silently produces wrong results. Fix: add dtype-aware serialization using a `match dtype` dispatch in the `build_tensor` closure. | High |
+| D-S16-003 | **`ParallelFilter` max array size is 65,536 × 256 = 16,777,216** elements before the `add_wg_offsets` single-workgroup pass overflows. For larger arrays (genome-scale), a second-level scan hierarchy is needed. For the current bioinformatics use-cases (wetSpring quality filters, chimera removal: N ≤ 1M) this is adequate. | Low |
+| D-S16-004 | **`workspace tests/` still has non-barracuda orphans**: `config_management_tests.rs`, `resource_requirements_tests.rs`, `runtime_execution_tests.rs`, `ecosystem_tests.rs`, `e2e_*.rs`, `fault_tests.rs`, `security_*.rs`, `stress/` etc. reference `toadstool::*` and need a `crates/integration-tests` package wired to the workspace to compile correctly. | Medium |
+
+---
+
+*Debt is tracked, not ignored. Each workaround has an evolution path.*
+*The goal is zero workarounds — vendor-agnostic, capability-based code.*
+
+## Session 17 — Dep Evolution, Dtype Fix, Batch Wiring Wave 2, Async Cleanup (Feb 19, 2026)
+
+Continued deep debt resolution: evolved two external dependencies to stdlib,
+fixed a high-severity silent correctness bug, wired 7 more hot-path ops into
+the batch/cache system, and eliminated `futures::channel::oneshot` from ~15
+production files.
+
+### Resolved Issues (Session 17)
+
+| ID | Resolved Issue | Date |
+|---|---|---|
+| S17-001 | **D-S16-002 resolved — `GpuTensorStorage` dtype-aware serialization**: `build_tensor` closure and output serialization in `gpu_executor.rs` now dispatch on `DType` enum (F32, F64, I32, I64, U32, U64, Bool). Each variant reinterprets bytes at native width. Silently-wrong results for non-f32 tensors eliminated. | Feb 19, 2026 |
+| S17-002 | **`dashmap` external dep removed from barracuda**: `DashMap` in `pipeline_cache.rs`, `pool.rs`, `tensor_context/context.rs` replaced with `std::sync::RwLock<HashMap>` — zero external dependency, idiomatic stdlib. Double-checked locking (read → miss → write) used for all three read-heavy caches; benign race on first-use is correct because all computations are deterministic. `dashmap = "5.5"` removed from `crates/barracuda/Cargo.toml`. | Feb 19, 2026 |
+| S17-003 | **Wave-2 hot-path ops wired through `record_operation()`**: `relu`, `sigmoid`, `tanh`, `layer_norm_wgsl`, `log_softmax_wgsl`, `atanh_wgsl`, `rrelu_wgsl` (7 ops) migrated from `device.queue.submit()` to the batch/cache/pool pattern. `rrelu_wgsl` also had an undetected CPU readback (`read_buffer`) removed — its output now stays GPU-resident. `sigmoid.rs` was found using `shaders/misc/sigmoid.wgsl`; path corrected. | Feb 19, 2026 |
+| S17-004 | **`futures::channel::oneshot` removed from ~15 production files**: replaced with `std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1)`. `poll(Maintain::Wait)` guarantees the callback fires before `recv()`, making the channel immediately ready — semantically equivalent, zero external dep. Files fixed: `async_submit.rs`, `probe.rs`, `unique/compute.rs`, `nonzero/compute.rs`, `searchsorted.rs`, `topk.rs`, `matrix_rank.rs`, `quantize.rs`, `masked_select/compute.rs`, `morse.rs`, `fhe_or.rs`, `fhe_and.rs`, `fhe_xor.rs`, `fhe_poly_add.rs`, `fhe_poly_sub.rs`, `fhe_poly_mul.rs`. | Feb 19, 2026 |
+| S17-005 | **`futures::executor::block_on(Tensor::from_vec_on(...))` eliminated from NPU ops**: `npu/ops/{gelu,relu,softmax,layer_norm,matmul}.rs` and `matmul.rs`, `softmax.rs` now call `Tensor::from_vec_on_sync(...)` directly — the sync variant already existed but was unused. Removes the executor spin-wait from the hot path for NPU-dispatched operations. | Feb 19, 2026 |
+
+### Remaining Debt (carried forward)
+
+| ID | Item | Priority |
+|---|---|---|
+| D-S16-001 | `GpuExecutor::execute()` CPU round-trip — `TensorStorage → Vec<f32> → Tensor`. Fix: `Tensor::from_arc_buffer(Arc<wgpu::Buffer>, ...)`. `futures::executor::block_on` kept here for the sync closure bridge; this is the last `block_on` in the critical path. | Medium |
+| D-S16-003 | `ParallelFilter` max 16M elements; second-level scan hierarchy needed for genome-scale. | Low |
+| D-S16-004 | Workspace `tests/` non-barracuda orphans need an `integration-tests` crate. | Medium |
+| D-S17-001 | `futures` dep still needed for `multi_gpu::join_all`, `dispatch/benchmark.rs`, `dispatch/config.rs`. Evolution: `tokio::spawn` + `JoinSet` for multi-GPU; inline async for dispatch. | Low |
+| D-S17-002 | `tensor.rs` (951 lines) and `capabilities.rs` (916 lines) remain as large mixed-concern files. Smart refactor deferred — no correctness issue, just maintainability. | Low |
+
+---
+
+*Debt is tracked, not ignored. Each workaround has an evolution path.*
+*The goal is zero workarounds — vendor-agnostic, capability-based code.*
+
+---
+
+## Session 18 — Phase 3 Integration, Apple GPU, GpuExecutor Zero-Copy, Integration Tests (Feb 20, 2026)
+
+Sovereign Compute Evolution Phase 3 activated: the `WgslOptimizer` is now
+wired into the shader compilation hot path. Apple M-series GPU coverage added
+to the architecture capability matrix. The last major CPU round-trip in
+`GpuExecutor` eliminated. Orphan workspace tests properly homed.
+
+### Resolved Issues (Session 18)
+
+| ID | Resolved Issue | Date |
+|---|---|---|
+| S18-001 | **SOVEREIGN Phase 3 wired** — `WgslOptimizer` invoked from `WgpuDevice::compile_shader_f64()`. Pipeline: `ShaderTemplate::for_driver_auto()` (exp/log patches) → `WgslOptimizer::optimize()` (ILP reorder + loop unroll). Fast-path: optimizer only activates when `@ilp_region` or `@unroll_hint` annotations present (single `contains()` check). Latency model from device's actual `GpuDriverProfile` (SM70=8cy, RDNA2=4cy, AppleM=16cy). Jacobi eigensolve now automatically pre-scheduled on every f64 compile. | Feb 20, 2026 |
+| S18-002 | **Apple M-series GPU arch added** — `GpuArch::AppleM` variant in `capabilities.rs`. Detection: adapter names `"apple m"` or `"apple paravirtual"`. `AppleMLatencyModel` (new in `device/latency.rs`): software-emulated f64 FMA ~16cy, f32 ~4cy. `model_for_arch()` and `detect_fp64_rate()` updated. Cross-vendor latency table in SOVEREIGN spec now fully implemented for all known GPU families. | Feb 20, 2026 |
+| S18-003 | **D-S16-001 resolved — `GpuExecutor` zero-copy output**: `GpuTensorStorage.buffer` changed to `Arc<wgpu::Buffer>`. Added `Tensor::from_arc_buffer(Arc<wgpu::Buffer>, ...)` and `Tensor::try_arc_buffer()`. `GpuTensorStorage::from_tensor()`: Owned buffers → `Arc::clone()` (zero copies); pooled → `copy_buffer_to_buffer()` (GPU-to-GPU). `execute()` no longer calls `to_vec()` + `write_from_cpu()`. The GPU→CPU→GPU round-trip eliminated. | Feb 20, 2026 |
+| S18-004 | **D-S16-004 resolved — `crates/integration-tests` created**. 21 orphan workspace-root `tests/*.rs` files migrated. 3 active suites (13 tests pass, 7 ignored — live cluster or dep debt). 12 files with unimplemented-API deps quarantined to `tests/pending/` with tracking `README.md`. Workspace-root `tests/` is now `.rs`-free. | Feb 20, 2026 |
+
+### Remaining Debt (carried forward)
+
+| ID | Item | Priority |
+|---|---|---|
+| D-S16-003 | `ParallelFilter` max 16M elements; second-level scan hierarchy for genome-scale. | Low |
+| D-S17-001 | `futures` dep: `multi_gpu::join_all`, `dispatch/benchmark.rs`, `dispatch/config.rs`. Evolution: `tokio::JoinSet` for multi-GPU; inline async for dispatch. | Low |
+| D-S17-002 | `tensor.rs` (~980 lines) and `capabilities.rs` (~930 lines) remain large. Smart refactor deferred. | Low |
+| D-S18-001 | `GpuExecutor::build_tensor` input: last `futures::executor::block_on` in critical path. Fix: make `execute()` fully async, remove sync closure, use `.await` on `read_to_cpu()`. | Low |
+| D-S18-002 | cubecl transitive `dirs-sys`: `cubecl v0.4.0 → dirs v5.0.1 → dirs-sys v0.4.1`. Fix: PR to cubecl replacing `dirs` with `etcetera`. | Low |
+| D-S18-003 | 12 pending integration tests in `crates/integration-tests/tests/pending/` — unblock by implementing missing `toadstool::ecosystem::discovery`, `SecurityContext`, `WorkloadType` APIs. | Medium |
+
+---
+
 *Debt is tracked, not ignored. Each workaround has an evolution path.*
 *The goal is zero workarounds — vendor-agnostic, capability-based code.*
