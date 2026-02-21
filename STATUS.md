@@ -1,4 +1,4 @@
-# Status -- February 21, 2026 (Session 31c: Executor Wiring & Smart Refactoring)
+# Status -- February 21, 2026 (Session 31e: Deep Debt Evolution)
 
 ## Quality Gates
 
@@ -23,6 +23,53 @@
 *All clippy warnings resolved. Workspace fully clean.*
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). `crates/client` excluded (pending reqwest migration to biomeOS tower).
+
+---
+
+## Session 31e: Deep Debt Evolution (Feb 21, 2026) ✅
+
+### Executor Completeness ✅
+
+- **GPU executor** — All MathOp variants now have dispatch paths: `Pow` (scalar pow), `Max`/`Min` (elementwise fallback), `Squeeze`, `Unsqueeze`, `Broadcast`, `Concat`, `Split`. Only Conv2D/MaxPool2D/AvgPool2D remain as honest `NotImplemented`.
+- **CPU executor** — Full coverage: `Softmax`, `BatchMatMul`, `Reshape`, `Squeeze`, `Unsqueeze`, `Transpose`, `Broadcast`, `Concat`, `Split`. Only Conv ops remain `NotImplemented`.
+
+### Orphan Shader Wiring ✅
+
+- **6 new GPU op wrappers** connecting WGSL shaders to Rust APIs: `BatchIprGpu` (spectral/IPR), `LocusVarianceGpu` (bio/FST), `PairwiseHammingGpu`, `PairwiseJaccardGpu`, `SpatialPayoffGpu`, `BatchFitnessGpu`.
+- Extended `elementwise_binary.wgsl` with Pow/Max/Min operations.
+- Removed duplicate ODE shader (bio/ copy → numerical/ is canonical).
+- Removed genuinely unused `read_buffer_u32()` from searchsorted.
+- Fixed 3 lifetime elision warnings.
+
+---
+
+## Session 31d: Cross-Spring Absorption (Feb 21, 2026) ✅
+
+### hotSpring Absorption ✅
+
+- **Staggered Dirac operator** — `dirac_staggered_f64.wgsl` + `ops/lattice/dirac.rs`: Full GPU pipeline for Kogut-Susskind lattice QCD fermions. SU(3)×color multiplication, staggered phases, periodic boundaries. `DiracGpuLayout` for topology flattening.
+- **CG lattice kernels** — `cg_kernels_f64.wgsl` + `ops/lattice/cg.rs`: Three BLAS-like GPU kernels (`complex_dot_re`, `axpy`, `xpay`) for CG solver on complex fermion fields. Also exported as standalone WGSL constants.
+- **SubstrateCapability model** — `device/substrate.rs`: Capability-based dispatch enum (F64Compute, F32Compute, QuantizedInference, BatchInference, WeightMutation, ScalarReduce, SparseSpMV, Eigensolve, CG, ShaderDispatch, SimdVector, TimestampQuery). Runtime-probed from wgpu features. NPU discovery via `/dev/akida*`.
+
+### wetSpring Absorption ✅
+
+- **7 new bio GPU op wrappers** — Full `WgpuDevice` pipelines following `SmithWatermanGpu` pattern:
+  - `HmmBatchForwardF64` — Batch HMM forward algorithm (log-domain, f64)
+  - `AniBatchF64` — Pairwise Average Nucleotide Identity
+  - `SnpCallingF64` — Position-parallel SNP calling
+  - `DnDsBatchF64` — Batch Nei-Gojobori dN/dS with Jukes-Cantor
+  - `PangenomeClassifyGpu` — Gene family classification (core/accessory/unique)
+  - `QualityFilterGpu` — Per-read FASTQ quality trimming
+  - `Dada2EStepGpu` — DADA2 E-step batch log-probability
+- **ODE sweep shader** — `batched_qs_ode_rk4_f64.wgsl`: Full-GPU RK4 parameter sweep for QS/c-di-GMP ODE (5-variable system, 17 parameters per trajectory)
+
+### neuralSpring Confirmation ✅
+
+- **Householder+QR eigensolver** — Already absorbed as `ops/linalg/eigh_f64.rs`
+- **7 domain shaders** — Already present as WGSL files (batch_ipr, spatial_payoff, pairwise_hamming, pairwise_jaccard, locus_variance, batch_fitness_eval, rk4_parallel)
+- **GPU PRNG** — Already present as `shaders/misc/prng_xoshiro.wgsl`
+- **CPU math** — Already present (`special/erf.rs`, `special/gamma.rs`)
+- **NVVM Ada workaround** — Already complete (`NvvmAdaF64Transcendentals` in `driver_profile.rs`)
 
 ---
 

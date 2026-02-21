@@ -399,19 +399,69 @@ impl ComputeExecutor for GpuExecutor {
             MathOp::ReduceMin  { .. } => build_tensor(&inputs[0], &self.device).await?.min()?,
             MathOp::ReduceProd { .. } => build_tensor(&inputs[0], &self.device).await?.prod()?,
 
+            // ── Pow (scalar exponent via GPU, extracts first element of b) ─
+            MathOp::Pow => {
+                let a = build_tensor(&inputs[0], &self.device).await?;
+                let b_data = inputs[1].read_to_cpu().await?;
+                let exp = if b_data.len() >= 4 {
+                    f32::from_ne_bytes([b_data[0], b_data[1], b_data[2], b_data[3]])
+                } else {
+                    2.0f32
+                };
+                a.pow_wgsl(exp)?
+            }
+
+            // ── Binary Max / Min (elementwise, CPU fallback pending GPU kernel) ─
+            MathOp::Max | MathOp::Min => {
+                let a_data = inputs[0].read_to_cpu().await?;
+                let b_data = inputs[1].read_to_cpu().await?;
+                let a_f32: Vec<f32> = a_data.chunks_exact(4)
+                    .map(|c| f32::from_ne_bytes([c[0], c[1], c[2], c[3]]))
+                    .collect();
+                let b_f32: Vec<f32> = b_data.chunks_exact(4)
+                    .map(|c| f32::from_ne_bytes([c[0], c[1], c[2], c[3]]))
+                    .collect();
+                let result: Vec<f32> = a_f32.iter().zip(b_f32.iter())
+                    .map(|(&a, &b)| if matches!(op, MathOp::Max) { a.max(b) } else { a.min(b) })
+                    .collect();
+                crate::tensor::Tensor::from_data(&result, inputs[0].descriptor().shape.clone(), self.device.clone())?
+            }
+
             // ── Shape ops ───────────────────────────────────────────────────
             MathOp::Reshape { new_shape } => {
                 let t = build_tensor(&inputs[0], &self.device).await?;
                 t.reshape(new_shape.iter().map(|&x| x as usize).collect())?
             }
             MathOp::Transpose { .. } => build_tensor(&inputs[0], &self.device).await?.transpose()?,
+            MathOp::Squeeze { .. } => build_tensor(&inputs[0], &self.device).await?.squeeze()?,
+            MathOp::Unsqueeze { dims } => {
+                let axis = dims.first().copied().unwrap_or(0);
+                build_tensor(&inputs[0], &self.device).await?.unsqueeze(axis)?
+            }
+            MathOp::Broadcast { target_shape } => {
+                build_tensor(&inputs[0], &self.device).await?.broadcast(target_shape.clone())?
+            }
+            MathOp::Concat { .. } => {
+                if inputs.len() < 2 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: "Concat requires at least 2 inputs".to_string(),
+                    });
+                }
+                let a = build_tensor(&inputs[0], &self.device).await?;
+                let b = build_tensor(&inputs[1], &self.device).await?;
+                a.concat(&b)?
+            }
+            MathOp::Split { sizes, .. } => {
+                let t = build_tensor(&inputs[0], &self.device).await?;
+                let split_point = sizes.first().copied().unwrap_or(t.len() / 2);
+                let (first, _second) = t.split(split_point)?;
+                first
+            }
 
-            // ── Unsupported ─────────────────────────────────────────────────
-            other => {
+            // ── Convolution ops (future GPU kernels) ────────────────────────
+            other @ (MathOp::Conv2D { .. } | MathOp::MaxPool2D { .. } | MathOp::AvgPool2D { .. }) => {
                 return Err(crate::error::BarracudaError::NotImplemented {
-                    feature: format!(
-                        "GpuExecutor::execute({other:?}) — add to the dispatch table in gpu_executor.rs"
-                    ),
+                    feature: format!("GpuExecutor::execute({other:?}) — conv kernels planned"),
                 })
             }
         };

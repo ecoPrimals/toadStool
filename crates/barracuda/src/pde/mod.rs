@@ -23,4 +23,5 @@ pub mod crank_nicolson;
 
 pub use crank_nicolson::{
     crank_nicolson_step, CrankNicolson1D, CrankNicolsonConfig, HeatEquation1D,
+    WGSL_CRANK_NICOLSON_F64,
 };

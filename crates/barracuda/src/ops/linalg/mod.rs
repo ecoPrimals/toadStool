@@ -42,7 +42,9 @@
 //!
 //! ### Solvers
 //!
-//! - `LinSolve` - GPU linear system solve (A·x = b)
+//! - `LinSolve` - GPU linear system solve (A·x = b) (f32)
+//! - `LinSolveF64` - GPU linear system solve with f64 precision
+//! - `InverseF64` - GPU Gauss-Jordan matrix inverse (f64, N ≤ 32)
 //! - `TriangularSolve` - GPU forward/backward substitution (f32)
 //! - `TriangularSolveF64` - GPU triangular solve with f64 precision
 //!   - Forward/backward substitution
@@ -67,7 +69,9 @@ pub mod eigh_f64;
 pub mod gemm_f64;
 pub mod gen_eigh_gpu;
 pub mod grid_quadrature_gemm_f64; // EVOLVED: GPU Hamiltonian construction (Feb 16, 2026)
+pub mod inverse_f64;
 pub mod linsolve;
+pub mod linsolve_f64;
 pub mod lu;
 pub mod lu_gpu;
 pub mod qr;
@@ -84,7 +88,9 @@ pub use eigh_f64::{eigh_householder_qr, EighDecompositionF64};
 pub use gemm_f64::{GemmCachedF64, GemmF64};
 pub use gen_eigh_gpu::{GenEighDecompositionGpu, GenEighGpu};
 pub use grid_quadrature_gemm_f64::GridQuadratureGemm;
+pub use inverse_f64::InverseF64;
 pub use linsolve::LinSolve;
+pub use linsolve_f64::LinSolveF64;
 pub use lu::{lu_decompose, lu_det, lu_inverse, lu_solve, LuDecomposition};
 pub use lu_gpu::LuGpu;
 pub use qr::{qr_decompose, qr_least_squares, QrDecomposition};

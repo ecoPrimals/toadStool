@@ -34,6 +34,60 @@ pub enum SubstrateType {
     Other,
 }
 
+/// Runtime-discovered compute capability for substrate-level dispatch.
+///
+/// Inspired by hotSpring metalForge forge `Capability` enum. Code asks
+/// "can you do f64?" rather than "are you an RTX 4070?". Distinct from
+/// the `unified::Capability` (which covers wgpu feature flags) — this
+/// describes what the substrate can *do* at a higher abstraction level.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SubstrateCapability {
+    /// IEEE 754 f64 compute (GPU SHADER_F64 or CPU native)
+    F64Compute,
+    /// f32 compute
+    F32Compute,
+    /// Integer quantized inference at a given bit width (NPU)
+    QuantizedInference { bits: u8 },
+    /// Batch inference with amortized dispatch (NPU)
+    BatchInference { max_batch: u32 },
+    /// Weight mutation without full reprogramming (NPU)
+    WeightMutation,
+    /// Scalar reduction pipeline
+    ScalarReduce,
+    /// Sparse matrix-vector product
+    SparseSpMV,
+    /// Eigensolve (Lanczos, Jacobi, Householder)
+    Eigensolve,
+    /// Conjugate gradient solver
+    ConjugateGradient,
+    /// WGSL shader dispatch via wgpu
+    ShaderDispatch,
+    /// AVX2/SSE SIMD on CPU
+    SimdVector,
+    /// GPU timestamp query support
+    TimestampQuery,
+}
+
+impl SubstrateCapability {
+    /// Human-readable label for display.
+    pub const fn label(&self) -> &'static str {
+        match self {
+            Self::F64Compute => "f64",
+            Self::F32Compute => "f32",
+            Self::QuantizedInference { .. } => "quant",
+            Self::BatchInference { .. } => "batch",
+            Self::WeightMutation => "weight-mut",
+            Self::ScalarReduce => "reduce",
+            Self::SparseSpMV => "spmv",
+            Self::Eigensolve => "eigen",
+            Self::ConjugateGradient => "cg",
+            Self::ShaderDispatch => "shader",
+            Self::SimdVector => "simd",
+            Self::TimestampQuery => "timestamps",
+        }
+    }
+}
+
 /// Specific compute substrate instance
 ///
 /// **Deep Debt**: Capability-based (each substrate knows its capabilities)
@@ -47,6 +101,8 @@ pub struct Substrate {
     pub backend: String,
     /// Device index (for multiple instances of same type)
     pub index: usize,
+    /// Runtime-discovered capabilities
+    pub capabilities: Vec<SubstrateCapability>,
 }
 
 impl Substrate {
@@ -57,7 +113,22 @@ impl Substrate {
             name,
             backend,
             index,
+            capabilities: Vec::new(),
         }
+    }
+
+    /// Check if this substrate has a specific capability.
+    pub fn has(&self, cap: &SubstrateCapability) -> bool {
+        self.capabilities.contains(cap)
+    }
+
+    /// Summary of capabilities as a comma-separated string.
+    pub fn capability_summary(&self) -> String {
+        self.capabilities
+            .iter()
+            .map(SubstrateCapability::label)
+            .collect::<Vec<_>>()
+            .join(", ")
     }
 
     /// Discover all available substrates
@@ -89,11 +160,47 @@ impl Substrate {
             let index = type_counts.entry(substrate_type).or_insert(0);
             *index += 1;
 
+            let features = adapter.features();
+            let mut capabilities = vec![SubstrateCapability::F32Compute, SubstrateCapability::ShaderDispatch];
+            if features.contains(wgpu::Features::SHADER_F64) {
+                capabilities.extend_from_slice(&[
+                    SubstrateCapability::F64Compute,
+                    SubstrateCapability::ScalarReduce,
+                    SubstrateCapability::SparseSpMV,
+                    SubstrateCapability::Eigensolve,
+                    SubstrateCapability::ConjugateGradient,
+                ]);
+            }
+            if features.contains(wgpu::Features::TIMESTAMP_QUERY) {
+                capabilities.push(SubstrateCapability::TimestampQuery);
+            }
+
             substrates.push(Self {
                 substrate_type,
                 name: info.name.clone(),
                 backend: format!("{:?}", info.backend),
                 index: *index - 1,
+                capabilities,
+            });
+        }
+
+        // Probe for NPU devices (BrainChip AKD1000 via /dev/akida*)
+        let akida_path = std::path::Path::new("/dev/akida0");
+        if akida_path.exists() {
+            let npu_idx = type_counts.entry(SubstrateType::Npu).or_insert(0);
+            *npu_idx += 1;
+            substrates.push(Self {
+                substrate_type: SubstrateType::Npu,
+                name: String::from("BrainChip AKD1000"),
+                backend: String::from("PCIe"),
+                index: *npu_idx - 1,
+                capabilities: vec![
+                    SubstrateCapability::F32Compute,
+                    SubstrateCapability::QuantizedInference { bits: 8 },
+                    SubstrateCapability::QuantizedInference { bits: 4 },
+                    SubstrateCapability::BatchInference { max_batch: 8 },
+                    SubstrateCapability::WeightMutation,
+                ],
             });
         }
 

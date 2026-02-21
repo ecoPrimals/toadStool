@@ -36,6 +36,7 @@
 //! Absorbed from hotSpring v0.6.0 (Kachkovskiy spectral theory extension)
 
 mod anderson;
+pub mod batch_ipr;
 mod hofstadter;
 mod lanczos;
 mod sparse;
@@ -46,6 +47,7 @@ pub use anderson::{
     anderson_2d, anderson_3d, anderson_hamiltonian, anderson_potential, clean_2d_lattice,
     clean_3d_lattice, lyapunov_averaged, lyapunov_exponent,
 };
+pub use batch_ipr::BatchIprGpu;
 pub use hofstadter::{almost_mathieu_hamiltonian, gcd, hofstadter_butterfly, GOLDEN_RATIO};
 pub use lanczos::{lanczos, lanczos_eigenvalues, LanczosTridiag};
 pub use sparse::{SpectralCsrMatrix, WGSL_SPMV_CSR_F64};

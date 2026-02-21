@@ -5,6 +5,80 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - February 21, 2026 (Session 31e — Deep Debt Evolution)
+
+### Executor Completeness
+
+- **GPU executor** — Wired all remaining MathOp variants: `Pow` (scalar extraction from
+  second input → `pow_wgsl`), `Max` / `Min` (elementwise CPU fallback pending GPU kernel),
+  `Squeeze`, `Unsqueeze`, `Broadcast`, `Concat`, `Split` (all via existing Tensor API).
+  Conv2D/MaxPool2D/AvgPool2D now return honest `NotImplemented` instead of generic fallthrough.
+
+- **CPU executor** — Wired all remaining ops: `Softmax` (numerically stable),
+  `BatchMatMul` (delegating to existing matmul logic), `Reshape`, `Squeeze`, `Unsqueeze`,
+  `Transpose` (2D data rearrangement), `Broadcast`, `Concat`, `Split`. Conv ops return
+  honest `NotImplemented`.
+
+### Orphan Shader Wiring
+
+- **5 new GPU op wrappers** connecting previously orphan WGSL shaders to Rust APIs:
+  - `BatchIprGpu` (spectral) — Inverse Participation Ratio for eigenvector localization
+  - `LocusVarianceGpu` (bio) — Per-locus allele frequency variance (FST decomposition)
+  - `PairwiseHammingGpu` (bio) — Pairwise Hamming distance for N sequences
+  - `PairwiseJaccardGpu` (bio) — Pairwise Jaccard distance for pangenome PA matrices
+  - `SpatialPayoffGpu` (bio) — Spatial Prisoner's Dilemma payoff stencil (Moore neighborhood)
+  - `BatchFitnessGpu` (bio) — EA batch linear fitness evaluation
+
+### Shader Improvements
+
+- **Elementwise binary shader** — Extended `elementwise_binary.wgsl` to support
+  `Pow(4)`, `Max(5)`, `Min(6)` operations in addition to existing Add/Sub/Mul/Div.
+
+### Code Quality
+
+- Removed duplicate `shaders/bio/batched_qs_ode_rk4_f64.wgsl` (Rust uses `shaders/numerical/`).
+- Removed genuinely unused `read_buffer_u32()` from `searchsorted.rs` (duplicated by `WgpuDevice` API).
+- Fixed 3 lifetime elision warnings in bio op wrappers (`BindGroupEntry<'_>`).
+- Audited 36 `#[allow(dead_code)]` sites: 1 removed, 35 confirmed as legitimate reserves.
+
+---
+
+## [Unreleased] - February 21, 2026 (Session 31d — Cross-Spring Absorption)
+
+### hotSpring Absorption
+
+- **Staggered Dirac operator** — New `dirac_staggered_f64.wgsl` (122 lines) + `ops/lattice/dirac.rs`
+  GPU pipeline. Kogut-Susskind staggered fermions with SU(3)×color multiplication, f64 precision,
+  periodic boundaries. `DiracGpuLayout` for 4D lattice topology flattening. 5 CPU tests.
+
+- **CG lattice kernels** — New `cg_kernels_f64.wgsl` (3 entry points) + `ops/lattice/cg.rs`.
+  BLAS-like GPU kernels for Conjugate Gradient: `complex_dot_re`, `axpy`, `xpay`. Also exposed
+  as standalone `WGSL_*_F64` constants for pipeline composition.
+
+- **SubstrateCapability enum** — New capability-based dispatch model in `device/substrate.rs`:
+  12 variants (F64Compute, F32Compute, QuantizedInference, BatchInference, WeightMutation,
+  ScalarReduce, SparseSpMV, Eigensolve, ConjugateGradient, ShaderDispatch, SimdVector,
+  TimestampQuery). Auto-probed from wgpu adapter features. NPU discovery via `/dev/akida*`.
+
+### wetSpring Absorption
+
+- **7 bio GPU op wrappers** — Full `WgpuDevice` compute pipeline structs:
+  `HmmBatchForwardF64`, `AniBatchF64`, `SnpCallingF64`, `DnDsBatchF64`,
+  `PangenomeClassifyGpu`, `QualityFilterGpu` (with `QualityConfig`), `Dada2EStepGpu`.
+  Shared GPU helpers (`make_bgl`, `upload_uniform`, `submit`) via `snp.rs`.
+
+- **ODE sweep shader** — New `batched_qs_ode_rk4_f64.wgsl` (120 lines): full-GPU RK4
+  parameter sweep for QS/c-di-GMP ODE system (5 variables, 17 parameters per trajectory,
+  Hill function kinetics, clamped integration).
+
+### neuralSpring Confirmation
+
+- Verified all neuralSpring absorption targets already present: Householder+QR eigensolver
+  (`eigh_f64.rs`), 7 domain WGSL shaders, GPU PRNG (`xoshiro128ss`), CPU special functions
+  (`erf`, `ln_gamma`), NVVM Ada Lovelace workaround.
+
+---
+
 ## [Unreleased] - February 21, 2026 (Session 31c — Executor Wiring & Deep Refactoring)
 
 ### Executor Wiring

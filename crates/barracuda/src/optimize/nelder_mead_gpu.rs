@@ -47,6 +47,12 @@ pub struct NelderMeadGpuResult {
 /// GPU-resident Nelder-Mead optimizer
 ///
 /// Keeps simplex data on GPU and minimizes CPU↔GPU transfers.
+/// GPU shader for parallel simplex operations (centroid, reflect, expand, contract, shrink).
+///
+/// Entry points: `compute_centroid`, `reflect`, `expand`, `contract`, `shrink`,
+/// `project_bounds`, `bitonic_sort_step`.
+pub const WGSL_SIMPLEX_OPS: &str = include_str!("../shaders/optimizer/simplex_ops.wgsl");
+
 /// Only reads back the best solution at the end or periodically.
 pub struct NelderMeadGpu {
     device: Arc<WgpuDevice>,

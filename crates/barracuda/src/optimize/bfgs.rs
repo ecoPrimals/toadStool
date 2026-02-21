@@ -26,6 +26,16 @@
 
 use crate::error::{BarracudaError, Result};
 
+/// GPU shader for BFGS inverse Hessian update (O(n²) parallel).
+///
+/// Entry points: `bfgs_update`, `dot_product`, `mat_vec_mul`, `compute_Hy_and_yHy`.
+pub const WGSL_BFGS_UPDATE: &str = include_str!("../shaders/optimizer/bfgs_update.wgsl");
+
+/// GPU shader for batch numerical gradient via central/forward differences.
+///
+/// Entry points: `central_difference`, `forward_difference`, `generate_perturbed_points`.
+pub const WGSL_BATCH_GRADIENT: &str = include_str!("../shaders/optimizer/batch_gradient.wgsl");
+
 /// Configuration for the BFGS optimizer.
 #[derive(Debug, Clone)]
 pub struct BfgsConfig {

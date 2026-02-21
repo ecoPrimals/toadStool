@@ -1,13 +1,13 @@
 # ToadStool + BarraCUDA
 
-**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 31c — February 21, 2026
+**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 31e — February 21, 2026
 
 ---
 
 ## What Is This?
 
 - **ToadStool** -- Hardware infrastructure primal. Discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. Ollama model lifecycle management. Distributed workload dispatch across machines. ecoBin compliant: single binary, pure Rust, cross-architecture, cross-platform.
-- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: 480+ WGSL shaders as the primary math implementation. ToadStool dispatches to GPU or CPU based on hardware. When fp64 GPUs are available, seamless transition. 20 special function shaders (Hermite, Legendre, Laguerre, Bessel, f64 variants), 3 sampling shaders (Sobol, LHS, random_uniform). **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde) — same math for physics, ML, graphics, and audio. **Validated by three springs**: hotSpring (195/195 nuclear physics), wetSpring (48/48 life science), airSpring (70/70 precision agriculture). Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
+- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: 500+ WGSL shaders as the primary math implementation. ToadStool dispatches to GPU or CPU based on hardware. When fp64 GPUs are available, seamless transition. 20 special function shaders (Hermite, Legendre, Laguerre, Bessel, f64 variants), 3 sampling shaders (Sobol, LHS, random_uniform). **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde, lattice QCD, bio/genomics) — same math for physics, ML, life science, and audio. **Complete MathOp coverage**: GPU and CPU executors now handle all shape ops (squeeze, unsqueeze, broadcast, concat, split), binary ops (pow, max, min), activation (softmax), and batch matmul. **21 bio/evolution GPU ops**: ANI, dN/dS, HMM, DADA2, SNP, pangenome, quality filter, RF inference, ODE sweep, locus variance, pairwise Hamming/Jaccard, spatial PD payoff, batch fitness. **Spectral**: batch IPR for eigenvector localization. **Absorbed from three springs**: hotSpring (lattice QCD Dirac+CG, metalForge substrate model), wetSpring (9 bio ops), neuralSpring (eigensolver, 7 domain shaders). Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
 
 ---
 
@@ -26,7 +26,7 @@ Nest    = Tower  + NestGate           ← storage
 
 ---
 
-## Quality Gates (Session 31c — February 21, 2026)
+## Quality Gates (Session 31e — February 21, 2026)
 
 | Gate | Status |
 |------|--------|
@@ -34,12 +34,13 @@ Nest    = Tower  + NestGate           ← storage
 | `cargo fmt --all -- --check` | ✅ Clean |
 | `cargo clippy --workspace -- -D warnings` | ✅ Clean |
 | `cargo test --workspace` | ✅ 16,100+ passed |
-| Three springs validation | ✅ 313+ acceptance checks (hotSpring 195 + wetSpring 48 + airSpring 70) |
+| Three springs validation | ✅ 2,700+ acceptance checks (hotSpring 454 + wetSpring 1,742 + neuralSpring 966) |
 | `unsafe` blocks | ✅ FFI only (VFIO, DRM) — SAFETY documented |
 | Production panics | ✅ 0 — RwLock poison recovery, no `unwrap`/`expect` in library code |
 | Hardcoded values | ✅ 0 — XDG paths, env vars, `std::env::temp_dir()`, named constants |
 | External dep debt | ✅ 0 — 10 deps removed (S28-30): `which`, `glob`, `once_cell`, `lazy_static`, `tempdir`, `term_size`, `mdns`, `dashmap`, `base64 0.21` unified, `num_cpus` |
-| metalForge absorption | ✅ NPU mesh/clock/batch/weight-mutation, GPU f64 ratio probe, ESN state access |
+| metalForge absorption | ✅ Forge substrate model, NPU capabilities, SubstrateCapability enum |
+| Spring absorption | ✅ Dirac+CG (hotSpring), 9 bio ops (wetSpring), 7 domain shaders (neuralSpring) |
 | File size limit | ✅ All files under 1000 lines (S28-29: 5 files refactored) |
 | ML model placeholders | ✅ Honest `NotImplemented` (no fake empty results) |
 | Line coverage (non-GPU) | ✅ ~65% — target 90% |

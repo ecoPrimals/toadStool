@@ -71,7 +71,7 @@ pub use registry::{
     BackendInfo, DeviceCapabilities as PhysicalDeviceCapabilities, DeviceRegistry, DeviceVendor,
     PhysicalDevice, PhysicalDeviceId,
 };
-pub use substrate::{Substrate, SubstrateType};
+pub use substrate::{Substrate, SubstrateCapability, SubstrateType};
 pub use toadstool_integration::{
     discover_devices, hardware_report, has_gpu, has_npu, select_best_device, select_device_prefer,
     DeviceSelection, HardwareReport, HardwareWorkload,

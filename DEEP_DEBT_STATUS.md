@@ -1,6 +1,6 @@
 # Deep Debt Status Report
 
-**Session 31c — February 21, 2026**
+**Session 31e — February 21, 2026**
 **Status**: ✅ PRODUCTION-GRADE | All quality gates green | 16,100+ tests | ~65% line coverage
 
 ---
@@ -128,6 +128,8 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | GpuExecutor MathOps | ✅ S31c: Wired 16 more ops (Log/Sin/Cos/Tan/Div/Reshape/Transpose/ReduceMax/Min/Prod etc.) |
 | unified_hardware CpuExecutor | ✅ S31c: Delegated to standalone CpuExecutor (was `NotImplemented`) |
 | ProcessSpawner WASM loading | ✅ S31c: Delegated to BiomeExecutor (was returning empty bytes) |
+| GpuExecutor shape ops | ✅ S31e: Pow/Max/Min/Squeeze/Unsqueeze/Broadcast/Concat/Split (was `NotImplemented`) |
+| CpuExecutor completeness | ✅ S31e: Softmax/BatchMatMul/Transpose/Shape ops (Conv only remains `NotImplemented`) |
 
 ### Code Quality Standards ✅
 
@@ -146,7 +148,7 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 
 | Milestone | Status |
 |-----------|--------|
-| Shader-first architecture (480+ WGSL) | ✅ |
+| Shader-first architecture (500+ WGSL) | ✅ |
 | MD pipeline (thermostats + PPPM GPU) | ✅ |
 | GPU-Resident Pipeline (zero CPU round-trips) | ✅ |
 | Unidirectional Pipeline (fire-and-forget staging) | ✅ |
@@ -157,7 +159,13 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | Zero-Copy GpuExecutor (`Arc<wgpu::Buffer>`) | ✅ |
 | Integration Tests (13 suites, 167 tests) | ✅ |
 | TensorSession ML ops (neuralSpring absorption) | ✅ |
-| Three Springs Validation (313+ checks) | ✅ |
+| Three Springs Validation (2,700+ checks) | ✅ |
+| Lattice QCD Dirac+CG (hotSpring absorption) | ✅ S31d |
+| 9 Bio ops GPU pipelines (wetSpring absorption) | ✅ S31d |
+| SubstrateCapability model (forge absorption) | ✅ S31d |
+| NPU runtime discovery (AKD1000 /dev/akida*) | ✅ S31d |
+| Executor full MathOp coverage (GPU+CPU) | ✅ S31e |
+| 6 orphan shader wrappers (IPR, FST, Hamming, Jaccard, PD, fitness) | ✅ S31e |
 
 ---
 

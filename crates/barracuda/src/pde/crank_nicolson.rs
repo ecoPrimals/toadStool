@@ -32,6 +32,15 @@
 //! - Crank, J. & Nicolson, P. (1947)
 //! - Numerical Recipes, §19.2
 
+/// GPU shader for Crank-Nicolson PDE solver (f64).
+///
+/// Entry points: `compute_rhs`, `build_matrix`, `apply_source`,
+/// `adi_rhs_x_sweep`, `adi_rhs_y_sweep`, `compute_laplacian`.
+///
+/// Pairs with `cyclic_reduction_f64.wgsl` for O(log n) parallel tridiagonal solve.
+pub const WGSL_CRANK_NICOLSON_F64: &str =
+    include_str!("../shaders/pde/crank_nicolson_f64.wgsl");
+
 use crate::error::{BarracudaError, Result};
 use crate::ops::linalg::tridiagonal::tridiagonal_solve;
 

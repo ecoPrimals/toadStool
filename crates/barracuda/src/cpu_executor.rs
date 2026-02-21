@@ -399,9 +399,152 @@ impl ComputeExecutor for CpuExecutor {
                 Ok(Self::pack_f32(result, desc))
             }
 
-            _ => Err(crate::error::BarracudaError::NotImplemented {
-                feature: format!("CpuExecutor::execute({op:?})"),
-            }),
+            // Softmax (special: not elementwise)
+            Softmax { .. } => {
+                let data = Self::read_f32(inputs[0].as_ref())?;
+                let max_val = data.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+                let exp_vals: Vec<f32> = data.iter().map(|&x| (x - max_val).exp()).collect();
+                let sum: f32 = exp_vals.iter().sum();
+                let result: Vec<f32> = exp_vals.iter().map(|&x| x / sum).collect();
+                let desc = inputs[0].descriptor().clone();
+                Ok(Self::pack_f32(result, desc))
+            }
+
+            // BatchMatMul — delegate to MatMul logic (single batch)
+            BatchMatMul { transpose_a, transpose_b } => {
+                if inputs.len() < 2 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: "BatchMatMul requires 2 inputs".to_string(),
+                    });
+                }
+                let a_desc = inputs[0].descriptor();
+                let b_desc = inputs[1].descriptor();
+                let a_data = Self::read_f32(inputs[0].as_ref())?;
+                let b_data = Self::read_f32(inputs[1].as_ref())?;
+
+                let (m, k_a) = if a_desc.shape.len() >= 2 {
+                    let r = a_desc.shape.len();
+                    if *transpose_a { (a_desc.shape[r-1], a_desc.shape[r-2]) }
+                    else { (a_desc.shape[r-2], a_desc.shape[r-1]) }
+                } else {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: "BatchMatMul requires 2D+ tensors".to_string(),
+                    });
+                };
+
+                let (k_b, n) = if b_desc.shape.len() >= 2 {
+                    let r = b_desc.shape.len();
+                    if *transpose_b { (b_desc.shape[r-1], b_desc.shape[r-2]) }
+                    else { (b_desc.shape[r-2], b_desc.shape[r-1]) }
+                } else {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: "BatchMatMul requires 2D+ tensors".to_string(),
+                    });
+                };
+
+                if k_a != k_b {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: format!("BatchMatMul inner dimension mismatch: {k_a} vs {k_b}"),
+                    });
+                }
+
+                let result = self.execute_matmul_cpu(&a_data, &b_data, m, k_a, n)?;
+                let desc = TensorDescriptor::new(vec![m, n], a_desc.dtype);
+                Ok(Self::pack_f32(result, desc))
+            }
+
+            // Shape ops — metadata only, no data change
+            Reshape { new_shape } => {
+                let data = Self::read_f32(inputs[0].as_ref())?;
+                let shape: Vec<usize> = new_shape.iter().map(|&x| x as usize).collect();
+                let desc = TensorDescriptor::new(shape, inputs[0].descriptor().dtype);
+                Ok(Self::pack_f32(data, desc))
+            }
+
+            Squeeze { .. } => {
+                let data = Self::read_f32(inputs[0].as_ref())?;
+                let shape: Vec<usize> = inputs[0].descriptor().shape.iter()
+                    .copied()
+                    .filter(|&d| d != 1)
+                    .collect();
+                let shape = if shape.is_empty() { vec![1] } else { shape };
+                let desc = TensorDescriptor::new(shape, inputs[0].descriptor().dtype);
+                Ok(Self::pack_f32(data, desc))
+            }
+
+            Unsqueeze { dims } => {
+                let data = Self::read_f32(inputs[0].as_ref())?;
+                let mut shape = inputs[0].descriptor().shape.clone();
+                for &d in dims.iter().rev() {
+                    let pos = d.min(shape.len());
+                    shape.insert(pos, 1);
+                }
+                let desc = TensorDescriptor::new(shape, inputs[0].descriptor().dtype);
+                Ok(Self::pack_f32(data, desc))
+            }
+
+            Transpose { .. } => {
+                let desc = inputs[0].descriptor();
+                let data = Self::read_f32(inputs[0].as_ref())?;
+                if desc.shape.len() == 2 {
+                    let (rows, cols) = (desc.shape[0], desc.shape[1]);
+                    let mut transposed = vec![0.0f32; data.len()];
+                    for r in 0..rows {
+                        for c in 0..cols {
+                            transposed[c * rows + r] = data[r * cols + c];
+                        }
+                    }
+                    let new_desc = TensorDescriptor::new(vec![cols, rows], desc.dtype);
+                    Ok(Self::pack_f32(transposed, new_desc))
+                } else {
+                    Ok(Self::pack_f32(data, desc.clone()))
+                }
+            }
+
+            Concat { .. } => {
+                if inputs.len() < 2 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: "Concat requires at least 2 inputs".to_string(),
+                    });
+                }
+                let a = Self::read_f32(inputs[0].as_ref())?;
+                let b = Self::read_f32(inputs[1].as_ref())?;
+                let mut result = a;
+                result.extend_from_slice(&b);
+                let total = result.len();
+                let desc = TensorDescriptor::new(vec![total], inputs[0].descriptor().dtype);
+                Ok(Self::pack_f32(result, desc))
+            }
+
+            Split { sizes, .. } => {
+                let data = Self::read_f32(inputs[0].as_ref())?;
+                let split_at = sizes.first().copied().unwrap_or(data.len() / 2);
+                let first = data[..split_at.min(data.len())].to_vec();
+                let desc = TensorDescriptor::new(vec![first.len()], inputs[0].descriptor().dtype);
+                Ok(Self::pack_f32(first, desc))
+            }
+
+            Broadcast { target_shape } => {
+                let data = Self::read_f32(inputs[0].as_ref())?;
+                let target_size: usize = target_shape.iter().product();
+                let mut result = Vec::with_capacity(target_size);
+                if data.is_empty() {
+                    result.resize(target_size, 0.0);
+                } else {
+                    for i in 0..target_size {
+                        result.push(data[i % data.len()]);
+                    }
+                }
+                let desc = TensorDescriptor::new(target_shape.clone(), inputs[0].descriptor().dtype);
+                Ok(Self::pack_f32(result, desc))
+            }
+
+            // Convolution ops — CPU fallback pending
+            other @ (Conv2D { .. } | MaxPool2D { .. } | AvgPool2D { .. }) => {
+                Err(crate::error::BarracudaError::NotImplemented {
+                    feature: format!("CpuExecutor::execute({other:?}) — conv ops planned"),
+                })
+            }
         }
     }
 

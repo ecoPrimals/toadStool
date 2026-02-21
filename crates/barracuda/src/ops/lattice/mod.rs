@@ -13,13 +13,18 @@
 //! | `plaquette` | Wilson plaquette GPU op (SU(3), 4D) |
 //! | `higgs_u1` | U(1) Abelian Higgs HMC force (2D) |
 //! | `hmc_force_su3` | SU(3) HMC gauge force (4D, Wilson action) |
+//! | `dirac` | Staggered Dirac operator (Kogut-Susskind, 4D SU(3)) |
+//! | `cg` | CG vector ops (complex dot, axpy, xpay) for fermion solves |
 //!
 //! # hotSpring absorption
 //!
-//! Validated CPU implementations in hotSpring v0.5.16 (`lattice/` module).
+//! Validated CPU implementations in hotSpring v0.5.16+ (`lattice/` module).
 //! GPU promotion: Feb 2026 — barracuda first-class primitives.
+//! Dirac + CG absorbed from hotSpring v0.6.1 (Feb 21, 2026).
 
+pub mod cg;
 pub mod complex_f64;
+pub mod dirac;
 pub mod higgs_u1;
 pub mod hmc_force_su3;
 pub mod plaquette;
