@@ -379,6 +379,10 @@ mod tests {
             },
             power_mw: None,
             temperature_c: None,
+            mesh: None,
+            clock_mode: None,
+            batch: None,
+            weight_mutation: crate::capabilities::WeightMutationSupport::None,
         };
 
         let config = LoadConfig::from_capabilities(&caps, 0);

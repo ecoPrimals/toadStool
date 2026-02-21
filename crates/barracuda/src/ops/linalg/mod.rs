@@ -63,6 +63,7 @@
 pub mod batched_eigh_gpu;
 pub mod cholesky;
 pub mod eigh;
+pub mod eigh_f64;
 pub mod gemm_f64;
 pub mod gen_eigh_gpu;
 pub mod grid_quadrature_gemm_f64; // EVOLVED: GPU Hamiltonian construction (Feb 16, 2026)
@@ -79,6 +80,7 @@ pub mod tridiagonal;
 pub use batched_eigh_gpu::BatchedEighGpu;
 pub use cholesky::Cholesky;
 pub use eigh::Eigh;
+pub use eigh_f64::{eigh_householder_qr, EighDecompositionF64};
 pub use gemm_f64::{GemmCachedF64, GemmF64};
 pub use gen_eigh_gpu::{GenEighDecompositionGpu, GenEighGpu};
 pub use grid_quadrature_gemm_f64::GridQuadratureGemm;

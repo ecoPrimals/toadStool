@@ -69,849 +69,181 @@ impl SvdGpu {
         include_str!("../../shaders/linalg/svd_f64.wgsl")
     }
 
-    /// Execute SVD decomposition on GPU
-    ///
-    /// # Returns
-    /// Tuple (sigma, V) where:
-    /// - sigma: Singular values (sorted descending)
-    /// - V: Right singular vectors [N, N]
-    ///
-    /// Note: U computation is optional and can be derived from A, V, sigma.
-    ///
-    /// # Errors
-    /// - Returns error if input is not 2D
+    /// Build bind group layout from a list of buffer binding types.
+    fn make_bgl(device: &wgpu::Device, types: &[wgpu::BufferBindingType]) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: None,
+            entries: &types.iter().enumerate().map(|(i, ty)| wgpu::BindGroupLayoutEntry {
+                binding: i as u32, visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer { ty: *ty, has_dynamic_offset: false, min_binding_size: None },
+                count: None,
+            }).collect::<Vec<_>>(),
+        })
+    }
+
+    fn make_pipe(device: &wgpu::Device, shader: &wgpu::ShaderModule, bgl: &wgpu::BindGroupLayout, entry: &str) -> wgpu::ComputePipeline {
+        let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None, bind_group_layouts: &[bgl], push_constant_ranges: &[],
+        });
+        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some(entry), layout: Some(&pl), module: shader,
+            entry_point: entry, cache: None, compilation_options: Default::default(),
+        })
+    }
+
+    fn make_bg(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, bufs: &[&wgpu::Buffer]) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None, layout,
+            entries: &bufs.iter().enumerate().map(|(i, b)| wgpu::BindGroupEntry {
+                binding: i as u32, resource: b.as_entire_binding(),
+            }).collect::<Vec<_>>(),
+        })
+    }
+
+    fn dispatch(dev: &WgpuDevice, pipeline: &wgpu::ComputePipeline, bg: &wgpu::BindGroup, wg: (u32, u32, u32)) {
+        let mut enc = dev.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        { let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+          p.set_pipeline(pipeline); p.set_bind_group(0, bg, &[]); p.dispatch_workgroups(wg.0, wg.1, wg.2); }
+        dev.queue.submit(Some(enc.finish()));
+    }
+
+    fn create_zero_buffer(device: &Arc<WgpuDevice>, count: usize, elem_size: usize) -> wgpu::Buffer {
+        device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: None, size: (count * elem_size) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })
+    }
+
+    /// Execute SVD decomposition (f32 via Tensor API)
     pub fn execute(self) -> Result<(Vec<f32>, Tensor)> {
         let device = self.input.device();
         let shape = self.input.shape();
-
-        // Validate 2D matrix
         if shape.len() != 2 {
-            return Err(BarracudaError::InvalidShape {
-                expected: vec![0, 0],
-                actual: shape.to_vec(),
-            });
+            return Err(BarracudaError::InvalidShape { expected: vec![0, 0], actual: shape.to_vec() });
         }
+        let (m, n) = (shape[0] as u32, shape[1] as u32);
 
-        let m = shape[0] as u32;
-        let n = shape[1] as u32;
-
-        // Create buffers
         let input_data = self.input.to_vec()?;
-        let a_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("SVD A Buffer"),
-                contents: bytemuck::cast_slice(&input_data),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
-
-        // B = AᵀA [n × n]
-        let b_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("SVD B Buffer"),
-            size: (n * n * 4) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
+        let a_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SVD A"), contents: bytemuck::cast_slice(&input_data),
+            usage: wgpu::BufferUsages::STORAGE,
         });
+        let b_buf = Self::create_zero_buffer(&device, (n * n) as usize, 4);
+        let v_buf = Self::create_zero_buffer(&device, (n * n) as usize, 4);
+        let sigma_buf = Self::create_zero_buffer(&device, n as usize, 4);
 
-        // V [n × n] - right singular vectors
-        let v_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("SVD V Buffer"),
-            size: (n * n * 4) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-
-        // sigma [n] - singular values
-        let sigma_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("SVD Sigma Buffer"),
-            size: (n * 4) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-
-        // Compile shader
-        // Compile f32 shader (for Tensor-based API)
         let shader = device.compile_shader(Self::wgsl_shader_f32(), Some("SVD f32"));
 
-        // Create bind group layout
-        let bind_group_layout = self.create_bind_group_layout(&device.device);
+        use wgpu::BufferBindingType::{Uniform, Storage};
+        let bgl = Self::make_bgl(&device.device, &[
+            Uniform, Storage { read_only: true }, Storage { read_only: false },
+            Storage { read_only: false }, Storage { read_only: false },
+        ]);
+        let ata_pipe = Self::make_pipe(&device.device, &shader, &bgl, "compute_AtA");
+        let init_pipe = Self::make_pipe(&device.device, &shader, &bgl, "init_V");
+        let sigma_pipe = Self::make_pipe(&device.device, &shader, &bgl, "extract_sigma");
 
-        // Create pipelines
-        let compute_ata_pipeline =
-            self.create_pipeline(&device.device, &shader, &bind_group_layout, "compute_AtA");
-        let init_v_pipeline =
-            self.create_pipeline(&device.device, &shader, &bind_group_layout, "init_V");
-        let extract_sigma_pipeline =
-            self.create_pipeline(&device.device, &shader, &bind_group_layout, "extract_sigma");
-
-        // Create params buffer
-        let params = [m, n, 0u32, 0u32];
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("SVD Params"),
-                contents: bytemuck::cast_slice(&params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        // Create bind group
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("SVD Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: a_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: b_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: v_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: sigma_buffer.as_entire_binding(),
-                },
-            ],
+        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None, contents: bytemuck::cast_slice(&[m, n, 0u32, 0u32]),
+            usage: wgpu::BufferUsages::UNIFORM,
         });
+        let bg = Self::make_bg(&device.device, &bgl, &[&params_buf, &a_buf, &b_buf, &v_buf, &sigma_buf]);
 
-        // Step 1: Compute B = AᵀA
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Compute AtA Encoder"),
-            });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Compute AtA Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&compute_ata_pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            let wg = n.div_ceil(16);
-            pass.dispatch_workgroups(wg, wg, 1);
-        }
-        device.queue.submit(Some(encoder.finish()));
+        let wg2d = n.div_ceil(16);
+        Self::dispatch(device, &ata_pipe, &bg, (wg2d, wg2d, 1));
+        Self::dispatch(device, &init_pipe, &bg, (wg2d, wg2d, 1));
+        Self::dispatch(device, &sigma_pipe, &bg, (n.div_ceil(WORKGROUP_SIZE_1D), 1, 1));
 
-        // Step 2: Initialize V = I
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Init V Encoder"),
-            });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Init V Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&init_v_pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            let wg = n.div_ceil(16);
-            pass.dispatch_workgroups(wg, wg, 1);
-        }
-        device.queue.submit(Some(encoder.finish()));
-
-        // Step 3: Jacobi sweeps (simplified - extract directly for small matrices)
-        // For production, this would iterate jacobi_rotate_B + jacobi_rotate_V
-        // For now, we rely on initial B being close to diagonal for small test cases
-
-        // Step 4: Extract singular values (sqrt of diagonal of B)
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Extract Sigma Encoder"),
-            });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Extract Sigma Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&extract_sigma_pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(n.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-        }
-        device.queue.submit(Some(encoder.finish()));
-
-        // Read back results
-        let sigma_data = device.read_buffer_f32(&sigma_buffer, n as usize)?;
-        let v_data = device.read_buffer_f32(&v_buffer, (n * n) as usize)?;
-
-        // Create output tensor for V
-        let v_output_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("SVD V Output"),
-                contents: bytemuck::cast_slice(&v_data),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            });
-
-        let v_tensor = Tensor::from_buffer(
-            v_output_buffer,
-            vec![n as usize, n as usize],
-            device.clone(),
-        );
-
+        let sigma_data = device.read_buffer_f32(&sigma_buf, n as usize)?;
+        let v_data = device.read_buffer_f32(&v_buf, (n * n) as usize)?;
+        let v_out = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SVD V Out"), contents: bytemuck::cast_slice(&v_data),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+        let v_tensor = Tensor::from_buffer(v_out, vec![n as usize, n as usize], device.clone());
         Ok((sigma_data, v_tensor))
     }
 
-    /// Execute SVD decomposition on GPU with full f64 precision
-    ///
-    /// This is the **preferred method** - uses native WGSL f64 via SPIR-V/Vulkan,
-    /// achieving 1:2-3 FP64 performance (not 1:32 like CUDA consumer GPUs).
-    ///
-    /// # Arguments
-    /// * `device` - WgpuDevice to execute on
-    /// * `data` - Matrix [M × N] in row-major order (f64)
-    /// * `m` - Number of rows
-    /// * `n` - Number of columns
-    /// * `max_sweeps` - Maximum Jacobi sweeps for convergence
-    ///
-    /// # Returns
-    /// Tuple (sigma, V) where:
-    /// - sigma: Singular values as `Vec<f64>`
-    /// - V: Right singular vectors \[N × N\] as `Vec<f64>`
+    /// Execute SVD with full f64 precision. Preferred method — native WGSL f64 via SPIR-V/Vulkan.
     pub fn execute_f64(
-        device: Arc<WgpuDevice>,
-        data: &[f64],
-        m: usize,
-        n: usize,
-        max_sweeps: u32,
+        device: Arc<WgpuDevice>, data: &[f64], m: usize, n: usize, max_sweeps: u32,
     ) -> Result<(Vec<f64>, Vec<f64>)> {
         if data.len() != m * n {
             return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Expected {} elements for {}x{} matrix, got {}",
-                    m * n,
-                    m,
-                    n,
-                    data.len()
-                ),
+                message: format!("Expected {} elements for {m}x{n} matrix, got {}", m * n, data.len()),
             });
         }
+        let (mu, nu) = (m as u32, n as u32);
 
-        let mu = m as u32;
-        let nu = n as u32;
+        let a_bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let a_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SVD A f64"), contents: &a_bytes,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+        let b_buf = Self::create_zero_buffer(&device, n * n, 8);
+        let v_buf = Self::create_zero_buffer(&device, n * n, 8);
+        let sigma_buf = Self::create_zero_buffer(&device, n, 8);
+        let cs_buf = Self::create_zero_buffer(&device, 2, 8);
 
-        // Create f64 buffers
-        let a_buffer = Self::create_f64_buffer(&device, "SVD A f64", data);
-        let b_buffer = Self::create_zero_f64_buffer(&device, "SVD B f64", n * n);
-        let v_buffer = Self::create_zero_f64_buffer(&device, "SVD V f64", n * n);
-        let sigma_buffer = Self::create_zero_f64_buffer(&device, "SVD sigma f64", n);
-        let cs_buffer = Self::create_zero_f64_buffer(&device, "SVD cs f64", 2); // [c, s] for Jacobi
-
-        // Compile f64 shader
         let shader = device.compile_shader_f64(Self::wgsl_shader_f64(), Some("SVD f64"));
 
-        // Main bind group layout (5 bindings: params, A, B, V, sigma)
-        let main_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("SVD f64 Main BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
+        use wgpu::BufferBindingType::{Uniform, Storage};
+        let main_bgl = Self::make_bgl(&device.device, &[
+            Uniform, Storage { read_only: true }, Storage { read_only: false },
+            Storage { read_only: false }, Storage { read_only: false },
+        ]);
+        let rot_bgl = Self::make_bgl(&device.device, &[
+            Uniform, Storage { read_only: false }, Storage { read_only: true },
+        ]);
+        let jac_bgl = Self::make_bgl(&device.device, &[
+            Uniform, Storage { read_only: true }, Storage { read_only: false },
+        ]);
 
-        // Jacobi rotation layout (3 bindings: rot_params, B_rot, cs)
-        let rot_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("SVD f64 Rot BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
+        let ata_pipe = Self::make_pipe(&device.device, &shader, &main_bgl, "compute_AtA");
+        let init_pipe = Self::make_pipe(&device.device, &shader, &main_bgl, "init_V");
+        let jac_pipe = Self::make_pipe(&device.device, &shader, &jac_bgl, "compute_jacobi_rotation");
+        let rot_b_pipe = Self::make_pipe(&device.device, &shader, &rot_bgl, "jacobi_rotate_B");
+        let blk_pipe = Self::make_pipe(&device.device, &shader, &rot_bgl, "jacobi_update_block");
+        let rot_v_pipe = Self::make_pipe(&device.device, &shader, &rot_bgl, "jacobi_rotate_V");
+        let sigma_pipe = Self::make_pipe(&device.device, &shader, &main_bgl, "extract_sigma");
 
-        // Jacobi computation layout (3 bindings for compute_jacobi_rotation)
-        let jac_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("SVD f64 Jac BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        // Create pipeline layouts
-        let main_pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("SVD f64 Main PL"),
-                bind_group_layouts: &[&main_bgl],
-                push_constant_ranges: &[],
-            });
-
-        let rot_pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("SVD f64 Rot PL"),
-                bind_group_layouts: &[&rot_bgl],
-                push_constant_ranges: &[],
-            });
-
-        let jac_pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("SVD f64 Jac PL"),
-                bind_group_layouts: &[&jac_bgl],
-                push_constant_ranges: &[],
-            });
-
-        // Create pipelines
-        let compute_ata_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Compute AtA f64"),
-                    layout: Some(&main_pl),
-                    module: &shader,
-                    entry_point: "compute_AtA",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let init_v_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Init V f64"),
-                    layout: Some(&main_pl),
-                    module: &shader,
-                    entry_point: "init_V",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let compute_jacobi_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Compute Jacobi f64"),
-                    layout: Some(&jac_pl),
-                    module: &shader,
-                    entry_point: "compute_jacobi_rotation",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let jacobi_rotate_b_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Jacobi Rotate B f64"),
-                    layout: Some(&rot_pl),
-                    module: &shader,
-                    entry_point: "jacobi_rotate_B",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let jacobi_update_block_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Jacobi Update Block f64"),
-                    layout: Some(&rot_pl),
-                    module: &shader,
-                    entry_point: "jacobi_update_block",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let jacobi_rotate_v_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Jacobi Rotate V f64"),
-                    layout: Some(&rot_pl),
-                    module: &shader,
-                    entry_point: "jacobi_rotate_V",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let extract_sigma_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Extract Sigma f64"),
-                    layout: Some(&main_pl),
-                    module: &shader,
-                    entry_point: "extract_sigma",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        // Create params buffer
-        let params = [mu, nu, 0u32, 0u32];
-        let params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("SVD Params"),
-                contents: bytemuck::cast_slice(&params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        // Main bind group
-        let main_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("SVD Main BG"),
-            layout: &main_bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: a_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: b_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: v_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: sigma_buffer.as_entire_binding(),
-                },
-            ],
+        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None, contents: bytemuck::cast_slice(&[mu, nu, 0u32, 0u32]),
+            usage: wgpu::BufferUsages::UNIFORM,
         });
+        let main_bg = Self::make_bg(&device.device, &main_bgl, &[&params_buf, &a_buf, &b_buf, &v_buf, &sigma_buf]);
 
-        // Step 1: Compute B = AᵀA
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Compute AtA"),
-            });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Compute AtA Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&compute_ata_pipeline);
-            pass.set_bind_group(0, &main_bg, &[]);
-            let wg = nu.div_ceil(16);
-            pass.dispatch_workgroups(wg, wg, 1);
-        }
-        device.queue.submit(Some(encoder.finish()));
+        let wg2d = nu.div_ceil(16);
+        Self::dispatch(&device, &ata_pipe, &main_bg, (wg2d, wg2d, 1));
+        Self::dispatch(&device, &init_pipe, &main_bg, (wg2d, wg2d, 1));
 
-        // Step 2: Initialize V = I
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Init V"),
-            });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Init V Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&init_v_pipeline);
-            pass.set_bind_group(0, &main_bg, &[]);
-            let wg = nu.div_ceil(16);
-            pass.dispatch_workgroups(wg, wg, 1);
-        }
-        device.queue.submit(Some(encoder.finish()));
-
-        // Step 3: Jacobi sweeps to diagonalize B
         for _sweep in 0..max_sweeps {
-            // Process all pairs (p, q) with p < q
             for p in 0..nu.saturating_sub(1) {
                 for q in (p + 1)..nu {
-                    // Create rotation params
-                    let rot_params = [nu, p, q, 0u32];
-                    let rot_params_buffer =
-                        device
-                            .device
-                            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                                label: Some("Rot Params"),
-                                contents: bytemuck::cast_slice(&rot_params),
-                                usage: wgpu::BufferUsages::UNIFORM,
-                            });
-
-                    // Compute Jacobi rotation (c, s)
-                    let jac_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("Jac BG"),
-                        layout: &jac_bgl,
-                        entries: &[
-                            wgpu::BindGroupEntry {
-                                binding: 0,
-                                resource: rot_params_buffer.as_entire_binding(),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 1,
-                                resource: b_buffer.as_entire_binding(),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 2,
-                                resource: cs_buffer.as_entire_binding(),
-                            },
-                        ],
+                    let rp_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: None, contents: bytemuck::cast_slice(&[nu, p, q, 0u32]),
+                        usage: wgpu::BufferUsages::UNIFORM,
                     });
+                    let jac_bg = Self::make_bg(&device.device, &jac_bgl, &[&rp_buf, &b_buf, &cs_buf]);
+                    Self::dispatch(&device, &jac_pipe, &jac_bg, (1, 1, 1));
 
-                    let mut encoder =
-                        device
-                            .device
-                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                label: Some("Compute Jacobi"),
-                            });
-                    {
-                        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                            label: Some("Compute Jacobi Pass"),
-                            timestamp_writes: None,
-                        });
-                        pass.set_pipeline(&compute_jacobi_pipeline);
-                        pass.set_bind_group(0, &jac_bg, &[]);
-                        pass.dispatch_workgroups(1, 1, 1);
-                    }
-                    device.queue.submit(Some(encoder.finish()));
+                    let rot_bg = Self::make_bg(&device.device, &rot_bgl, &[&rp_buf, &b_buf, &cs_buf]);
+                    let wg1d = nu.div_ceil(WORKGROUP_SIZE_1D);
+                    Self::dispatch(&device, &rot_b_pipe, &rot_bg, (wg1d, 1, 1));
+                    Self::dispatch(&device, &blk_pipe, &rot_bg, (1, 1, 1));
 
-                    // Apply rotation to B
-                    let rot_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("Rot BG"),
-                        layout: &rot_bgl,
-                        entries: &[
-                            wgpu::BindGroupEntry {
-                                binding: 0,
-                                resource: rot_params_buffer.as_entire_binding(),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 1,
-                                resource: b_buffer.as_entire_binding(),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 2,
-                                resource: cs_buffer.as_entire_binding(),
-                            },
-                        ],
-                    });
-
-                    let mut encoder =
-                        device
-                            .device
-                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                label: Some("Rotate B"),
-                            });
-                    {
-                        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                            label: Some("Rotate B Pass"),
-                            timestamp_writes: None,
-                        });
-                        pass.set_pipeline(&jacobi_rotate_b_pipeline);
-                        pass.set_bind_group(0, &rot_bg, &[]);
-                        pass.dispatch_workgroups(nu.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-                    }
-                    device.queue.submit(Some(encoder.finish()));
-
-                    // Update 2x2 block
-                    let mut encoder =
-                        device
-                            .device
-                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                label: Some("Update Block"),
-                            });
-                    {
-                        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                            label: Some("Update Block Pass"),
-                            timestamp_writes: None,
-                        });
-                        pass.set_pipeline(&jacobi_update_block_pipeline);
-                        pass.set_bind_group(0, &rot_bg, &[]);
-                        pass.dispatch_workgroups(1, 1, 1);
-                    }
-                    device.queue.submit(Some(encoder.finish()));
-
-                    // Apply rotation to V (need different bind group with V)
-                    let rot_v_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("Rot V BG"),
-                        layout: &rot_bgl,
-                        entries: &[
-                            wgpu::BindGroupEntry {
-                                binding: 0,
-                                resource: rot_params_buffer.as_entire_binding(),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 1,
-                                resource: v_buffer.as_entire_binding(),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 2,
-                                resource: cs_buffer.as_entire_binding(),
-                            },
-                        ],
-                    });
-
-                    let mut encoder =
-                        device
-                            .device
-                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                label: Some("Rotate V"),
-                            });
-                    {
-                        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                            label: Some("Rotate V Pass"),
-                            timestamp_writes: None,
-                        });
-                        pass.set_pipeline(&jacobi_rotate_v_pipeline);
-                        pass.set_bind_group(0, &rot_v_bg, &[]);
-                        pass.dispatch_workgroups(nu.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-                    }
-                    device.queue.submit(Some(encoder.finish()));
+                    let rv_bg = Self::make_bg(&device.device, &rot_bgl, &[&rp_buf, &v_buf, &cs_buf]);
+                    Self::dispatch(&device, &rot_v_pipe, &rv_bg, (wg1d, 1, 1));
                 }
             }
         }
 
-        // Step 4: Extract singular values
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Extract Sigma"),
-            });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Extract Sigma Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&extract_sigma_pipeline);
-            pass.set_bind_group(0, &main_bg, &[]);
-            pass.dispatch_workgroups(nu.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-        }
-        device.queue.submit(Some(encoder.finish()));
+        Self::dispatch(&device, &sigma_pipe, &main_bg, (nu.div_ceil(WORKGROUP_SIZE_1D), 1, 1));
 
-        // Read back results
-        let sigma_data = device.read_f64_buffer(&sigma_buffer, n)?;
-        let v_data = device.read_f64_buffer(&v_buffer, n * n)?;
-
+        let sigma_data = device.read_f64_buffer(&sigma_buf, n)?;
+        let v_data = device.read_f64_buffer(&v_buf, n * n)?;
         Ok((sigma_data, v_data))
-    }
-
-    /// Helper: Create f64 buffer from data
-    fn create_f64_buffer(device: &Arc<WgpuDevice>, label: &str, data: &[f64]) -> wgpu::Buffer {
-        let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
-        device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(label),
-                contents: &bytes,
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            })
-    }
-
-    /// Helper: Create zero-initialized f64 buffer
-    fn create_zero_f64_buffer(device: &Arc<WgpuDevice>, label: &str, count: usize) -> wgpu::Buffer {
-        device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(label),
-            size: (count * 8) as u64,
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_SRC
-                | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        })
-    }
-
-    // Helper: Create bind group layout
-    fn create_bind_group_layout(&self, device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("SVD BGL"),
-            entries: &[
-                // Params (uniform)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // A input (storage, read)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // B = AᵀA (storage, read-write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // V (storage, read-write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // sigma (storage, read-write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        })
-    }
-
-    // Helper: Create compute pipeline
-    fn create_pipeline(
-        &self,
-        device: &wgpu::Device,
-        shader: &wgpu::ShaderModule,
-        layout: &wgpu::BindGroupLayout,
-        entry_point: &str,
-    ) -> wgpu::ComputePipeline {
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some(&format!("SVD {} PL", entry_point)),
-            bind_group_layouts: &[layout],
-            push_constant_ranges: &[],
-        });
-
-        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some(&format!("SVD {} Pipeline", entry_point)),
-            layout: Some(&pipeline_layout),
-            module: shader,
-            entry_point,
-            cache: None,
-            compilation_options: Default::default(),
-        })
     }
 }
 

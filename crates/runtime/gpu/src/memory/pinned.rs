@@ -9,7 +9,6 @@
 //! Pinned memory is a limited resource - use judiciously
 
 use std::ptr::NonNull;
-use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
 /// Pinned host memory for fast GPU transfers
@@ -18,10 +17,11 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 pub struct PinnedMemory {
     ptr: NonNull<u8>,
     size: usize,
-    _marker: std::marker::PhantomData<Arc<()>>,
 }
 
-// SAFETY: PinnedMemory is thread-safe - pointer is owned and properly aligned
+// SAFETY: PinnedMemory owns its allocation exclusively. No interior mutability.
+// All access goes through &self (as_slice) or &mut self (as_mut_slice).
+// Drop deallocates with the same Layout used at allocation time.
 unsafe impl Send for PinnedMemory {}
 unsafe impl Sync for PinnedMemory {}
 
@@ -67,7 +67,6 @@ impl PinnedMemory {
         Ok(Self {
             ptr,
             size,
-            _marker: std::marker::PhantomData,
         })
     }
 

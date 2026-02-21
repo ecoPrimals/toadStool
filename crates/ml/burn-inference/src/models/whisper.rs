@@ -1,6 +1,7 @@
 //! Whisper speech recognition model
 //!
-//! Placeholder for Whisper ASR model.
+//! Type-safe API surface for Whisper ASR inference.
+//! Inference methods return `NotImplemented` until a model backend is integrated.
 
 use crate::Result;
 
@@ -47,7 +48,8 @@ impl Default for WhisperConfig {
     }
 }
 
-/// Whisper model (placeholder)
+/// Whisper model
+#[derive(Debug)]
 pub struct Whisper {
     config: WhisperConfig,
 }
@@ -58,15 +60,18 @@ impl Whisper {
         Self { config }
     }
 
-    /// Load from HuggingFace Hub (placeholder)
-    pub fn from_pretrained(_model_id: &str) -> Result<Self> {
-        Ok(Self::new(WhisperConfig::default()))
+    /// Load from HuggingFace Hub
+    pub fn from_pretrained(model_id: &str) -> Result<Self> {
+        Err(crate::Error::NotImplemented(format!(
+            "Whisper model loading not yet integrated (requested: {model_id})"
+        )))
     }
 
-    /// Transcribe audio (placeholder)
+    /// Transcribe audio
     pub fn transcribe(&self, _audio: &[f32], _sample_rate: u32) -> Result<String> {
-        // Placeholder
-        Ok("Placeholder transcription".to_string())
+        Err(crate::Error::NotImplemented(
+            "Whisper inference requires a model backend (burn/onnx/wgsl)".into(),
+        ))
     }
 
     /// Get number of parameters
@@ -117,15 +122,17 @@ mod tests {
     }
 
     #[test]
-    fn test_whisper_from_pretrained() {
-        let w = Whisper::from_pretrained("openai/whisper-tiny").unwrap();
-        assert_eq!(w.config.d_model, 384);
+    fn test_whisper_from_pretrained_not_implemented() {
+        let result = Whisper::from_pretrained("openai/whisper-tiny");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("not yet integrated"));
     }
 
     #[test]
-    fn test_whisper_transcribe_placeholder() {
+    fn test_whisper_transcribe_not_implemented() {
         let w = Whisper::new(WhisperConfig::default());
-        let result = w.transcribe(&[0.0f32; 16000], 16000).unwrap();
-        assert!(!result.is_empty());
+        let result = w.transcribe(&[0.0f32; 16000], 16000);
+        assert!(result.is_err());
     }
 }

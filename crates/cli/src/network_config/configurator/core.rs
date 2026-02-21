@@ -52,7 +52,6 @@ impl super::SongbirdNetworkConfigurator {
 impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
     fn new() -> Self {
         Self {
-            _stub: "UNIBIN_PHASE_1".to_string(), // Placeholder during migration
             config: Self::default_config(),
         }
     }
@@ -183,16 +182,12 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                     },
                     beardog_integration: BearDogIntegrationConfig {
                         enabled: true,
-                        // Use environment-configured endpoint or discover via PKI capability
                         endpoint: std::env::var("BEARDOG_ENDPOINT")
                             .or_else(|_| {
-                                // Fallback: construct from domain config
                                 let domains = ServiceDomainsConfig::from_env();
-                                Ok(format!("http://{}:8000", domains.beardog))
+                                Ok::<_, std::env::VarError>(format!("http://{}:8000", domains.beardog))
                             })
-                            .unwrap_or_else(|_: std::env::VarError| {
-                                "http://localhost:8000".to_string()
-                            }),
+                            .unwrap_or_default(),
                         auth_token: None,
                         signature_verification: true,
                         crypto_lock: true,

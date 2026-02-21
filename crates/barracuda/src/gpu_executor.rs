@@ -21,6 +21,23 @@ use crate::unified_math::{DType, MathOp, TensorDescriptor};
 use async_trait::async_trait;
 use std::sync::Arc;
 
+/// Conservative fallback estimates for GPU capabilities when runtime
+/// detection is not yet available. These are used as initial estimates
+/// and refined after actual device probing.
+mod capability_defaults {
+    pub const DISCRETE_MEMORY_GB: f64 = 8.0;
+    pub const DISCRETE_PEAK_TFLOPS: f64 = 10.0;
+    pub const INTEGRATED_MEMORY_GB: f64 = 2.0;
+    pub const INTEGRATED_PEAK_TFLOPS: f64 = 2.0;
+    pub const FALLBACK_MEMORY_GB: f64 = 1.0;
+    pub const FALLBACK_PEAK_TFLOPS: f64 = 0.5;
+    pub const GPU_MAX_PARALLEL_UNITS: usize = 2048;
+    pub const GPU_SIMD_WIDTH: usize = 32;
+    pub const MEMORY_AVAILABLE_FRACTION: f64 = 0.8;
+    pub const TYPICAL_BANDWIDTH_GB_S: u64 = 500;
+    pub const BYTES_PER_GB: f64 = 1024.0 * 1024.0 * 1024.0;
+}
+
 /// GPU executor wrapping WgpuDevice
 pub struct GpuExecutor {
     device: Arc<WgpuDevice>,
@@ -59,28 +76,29 @@ impl GpuExecutor {
 
     /// Detect GPU capabilities
     fn detect_capabilities(device: &WgpuDevice) -> HardwareCapabilities {
-        // Estimate GPU memory and performance based on device type
+        use capability_defaults::*;
+
         let (memory_gb, peak_tflops) = match device.device_type() {
-            wgpu::DeviceType::DiscreteGpu => (8.0, 10.0), // Typical discrete GPU
-            wgpu::DeviceType::IntegratedGpu => (2.0, 2.0), // Typical integrated GPU
-            _ => (1.0, 0.5),                              // Conservative fallback
+            wgpu::DeviceType::DiscreteGpu => (DISCRETE_MEMORY_GB, DISCRETE_PEAK_TFLOPS),
+            wgpu::DeviceType::IntegratedGpu => (INTEGRATED_MEMORY_GB, INTEGRATED_PEAK_TFLOPS),
+            _ => (FALLBACK_MEMORY_GB, FALLBACK_PEAK_TFLOPS),
         };
 
         HardwareCapabilities {
             hardware_type: HardwareType::GPU,
 
             parallelism: ParallelismCapabilities {
-                max_parallel_units: 2048, // Typical GPU has 1000s of cores
-                simd_width: 32,           // GPU warp/wavefront size
+                max_parallel_units: GPU_MAX_PARALLEL_UNITS,
+                simd_width: GPU_SIMD_WIDTH,
                 task_parallel: true,
                 data_parallel: true,
                 pipeline_parallel: true,
             },
 
             memory: MemoryCapabilities {
-                total_bytes: (memory_gb * 1024.0 * 1024.0 * 1024.0) as u64,
-                available_bytes: (memory_gb * 0.8 * 1024.0 * 1024.0 * 1024.0) as u64,
-                bandwidth_bytes_per_sec: 500 * 1024 * 1024 * 1024, // ~500 GB/s typical
+                total_bytes: (memory_gb * BYTES_PER_GB) as u64,
+                available_bytes: (memory_gb * MEMORY_AVAILABLE_FRACTION * BYTES_PER_GB) as u64,
+                bandwidth_bytes_per_sec: TYPICAL_BANDWIDTH_GB_S * 1024 * 1024 * 1024,
                 unified_memory: false,
                 zero_copy: false,
             },
@@ -299,7 +317,9 @@ impl ComputeExecutor for GpuExecutor {
                     .collect(),
                 DType::F64 => data_bytes
                     .chunks_exact(8)
-                    .map(|c| f64::from_ne_bytes(c.try_into().unwrap()) as f32)
+                    .map(|c| {
+                        f64::from_ne_bytes([c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]]) as f32
+                    })
                     .collect(),
                 DType::I32 => data_bytes
                     .chunks_exact(4)
@@ -307,7 +327,9 @@ impl ComputeExecutor for GpuExecutor {
                     .collect(),
                 DType::I64 => data_bytes
                     .chunks_exact(8)
-                    .map(|c| i64::from_ne_bytes(c.try_into().unwrap()) as f32)
+                    .map(|c| {
+                        i64::from_ne_bytes([c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]]) as f32
+                    })
                     .collect(),
                 DType::U32 => data_bytes
                     .chunks_exact(4)
@@ -315,7 +337,9 @@ impl ComputeExecutor for GpuExecutor {
                     .collect(),
                 DType::U64 => data_bytes
                     .chunks_exact(8)
-                    .map(|c| u64::from_ne_bytes(c.try_into().unwrap()) as f32)
+                    .map(|c| {
+                        u64::from_ne_bytes([c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]]) as f32
+                    })
                     .collect(),
                 DType::Bool => data_bytes
                     .iter()
@@ -327,43 +351,37 @@ impl ComputeExecutor for GpuExecutor {
 
         let output_tensor: crate::tensor::Tensor = match op {
             // ── Unary ops ───────────────────────────────────────────────────
-            MathOp::Negate => {
+            MathOp::Negate     => build_tensor(&inputs[0], &self.device).await?.mul_scalar(-1.0f32)?,
+            MathOp::Abs        => build_tensor(&inputs[0], &self.device).await?.abs_wgsl()?,
+            MathOp::Sqrt       => build_tensor(&inputs[0], &self.device).await?.sqrt_wgsl()?,
+            MathOp::Exp        => build_tensor(&inputs[0], &self.device).await?.exp_wgsl()?,
+            MathOp::Log        => build_tensor(&inputs[0], &self.device).await?.log_wgsl()?,
+            MathOp::Sin        => build_tensor(&inputs[0], &self.device).await?.sin_wgsl()?,
+            MathOp::Cos        => build_tensor(&inputs[0], &self.device).await?.cos_wgsl()?,
+            MathOp::Tan        => build_tensor(&inputs[0], &self.device).await?.tan_wgsl()?,
+            MathOp::Reciprocal => build_tensor(&inputs[0], &self.device).await?.reciprocal_wgsl()?,
+            MathOp::Square     => {
                 let t = build_tensor(&inputs[0], &self.device).await?;
-                t.mul_scalar(-1.0f32)?
+                t.mul(&t)?
             }
-            MathOp::Abs    => build_tensor(&inputs[0], &self.device).await?.abs_wgsl()?,
-            MathOp::Sqrt   => build_tensor(&inputs[0], &self.device).await?.sqrt_wgsl()?,
-            MathOp::Exp    => build_tensor(&inputs[0], &self.device).await?.exp_wgsl()?,
 
             // ── Binary ops ──────────────────────────────────────────────────
-            MathOp::Add => {
-                let (a, b) = (
-                    build_tensor(&inputs[0], &self.device).await?,
-                    build_tensor(&inputs[1], &self.device).await?,
-                );
-                a.add(&b)?
-            }
-            MathOp::Sub => {
-                let (a, b) = (
-                    build_tensor(&inputs[0], &self.device).await?,
-                    build_tensor(&inputs[1], &self.device).await?,
-                );
-                a.sub(&b)?
-            }
-            MathOp::Mul => {
-                let (a, b) = (
-                    build_tensor(&inputs[0], &self.device).await?,
-                    build_tensor(&inputs[1], &self.device).await?,
-                );
-                a.mul(&b)?
+            MathOp::Add | MathOp::Sub | MathOp::Mul | MathOp::Div => {
+                let a = build_tensor(&inputs[0], &self.device).await?;
+                let b = build_tensor(&inputs[1], &self.device).await?;
+                match op {
+                    MathOp::Add => a.add(&b)?,
+                    MathOp::Sub => a.sub(&b)?,
+                    MathOp::Mul => a.mul(&b)?,
+                    MathOp::Div => a.div(&b)?,
+                    _ => unreachable!(),
+                }
             }
 
             // ── Matrix multiply ─────────────────────────────────────────────
-            MathOp::MatMul { .. } => {
-                let (a, b) = (
-                    build_tensor(&inputs[0], &self.device).await?,
-                    build_tensor(&inputs[1], &self.device).await?,
-                );
+            MathOp::MatMul { .. } | MathOp::BatchMatMul { .. } => {
+                let a = build_tensor(&inputs[0], &self.device).await?;
+                let b = build_tensor(&inputs[1], &self.device).await?;
                 a.matmul(&b)?
             }
 
@@ -377,6 +395,16 @@ impl ComputeExecutor for GpuExecutor {
             // ── Reductions ──────────────────────────────────────────────────
             MathOp::ReduceSum  { .. } => build_tensor(&inputs[0], &self.device).await?.sum()?,
             MathOp::ReduceMean { .. } => build_tensor(&inputs[0], &self.device).await?.mean()?,
+            MathOp::ReduceMax  { .. } => build_tensor(&inputs[0], &self.device).await?.max()?,
+            MathOp::ReduceMin  { .. } => build_tensor(&inputs[0], &self.device).await?.min()?,
+            MathOp::ReduceProd { .. } => build_tensor(&inputs[0], &self.device).await?.prod()?,
+
+            // ── Shape ops ───────────────────────────────────────────────────
+            MathOp::Reshape { new_shape } => {
+                let t = build_tensor(&inputs[0], &self.device).await?;
+                t.reshape(new_shape.iter().map(|&x| x as usize).collect())?
+            }
+            MathOp::Transpose { .. } => build_tensor(&inputs[0], &self.device).await?.transpose()?,
 
             // ── Unsupported ─────────────────────────────────────────────────
             other => {

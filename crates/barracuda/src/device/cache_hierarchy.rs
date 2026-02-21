@@ -308,108 +308,52 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             source: wgpu::ShaderSource::Wgsl(shader_src.into()),
         });
 
+        let bgl_entry = |binding: u32, read_only: bool| wgpu::BindGroupLayoutEntry {
+            binding, visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only },
+                has_dynamic_offset: false, min_binding_size: None,
+            },
+            count: None,
+        };
         let bgl = wgpu_device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: None,
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
+            entries: &[bgl_entry(0, true), bgl_entry(1, true), bgl_entry(2, false)],
         });
 
+        let bufs = [&buf_a, &buf_b, &buf_out];
         let bind_group = wgpu_device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: buf_a.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: buf_b.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: buf_out.as_entire_binding(),
-                },
-            ],
+            label: None, layout: &bgl,
+            entries: &bufs.iter().enumerate().map(|(i, b)| wgpu::BindGroupEntry {
+                binding: i as u32, resource: b.as_entire_binding(),
+            }).collect::<Vec<_>>(),
         });
 
         let pl = wgpu_device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
+            label: None, bind_group_layouts: &[&bgl], push_constant_ranges: &[],
         });
-
         let pipeline = wgpu_device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: None,
-            layout: Some(&pl),
-            module: &shader,
-            entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
+            label: None, layout: Some(&pl), module: &shader,
+            entry_point: "main", cache: None, compilation_options: Default::default(),
         });
 
         let workgroups = (elements as u32).div_ceil(256).min(65535);
 
-        // Warmup passes
-        for _ in 0..3 {
-            let mut encoder =
-                wgpu_device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-                pass.set_pipeline(&pipeline);
-                pass.set_bind_group(0, &bind_group, &[]);
-                pass.dispatch_workgroups(workgroups, 1, 1);
-            }
-            queue.submit(Some(encoder.finish()));
-        }
+        let run_pass = |poll: bool| {
+            let mut enc = wgpu_device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            { let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+              p.set_pipeline(&pipeline); p.set_bind_group(0, &bind_group, &[]);
+              p.dispatch_workgroups(workgroups, 1, 1); }
+            queue.submit(Some(enc.finish()));
+            if poll { wgpu_device.poll(wgpu::Maintain::Wait); }
+        };
+
+        for _ in 0..3 { run_pass(false); }
         wgpu_device.poll(wgpu::Maintain::Wait);
 
-        // Timed passes
         let iterations = 10;
         let start = Instant::now();
-
-        for _ in 0..iterations {
-            let mut encoder =
-                wgpu_device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-                pass.set_pipeline(&pipeline);
-                pass.set_bind_group(0, &bind_group, &[]);
-                pass.dispatch_workgroups(workgroups, 1, 1);
-            }
-            queue.submit(Some(encoder.finish()));
-            wgpu_device.poll(wgpu::Maintain::Wait);
-        }
+        for _ in 0..iterations { run_pass(true); }
 
         let elapsed = start.elapsed();
         let time_per_op = elapsed.as_secs_f64() / iterations as f64;
@@ -449,30 +393,17 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                     _ => {
                         // Fallback: name-based heuristic for drivers that report
                         // vendor_id = 0 (e.g. some Mesa/software configurations).
+                        const NAME_TABLE: &[(&[&str], SubstrateType)] = &[
+                            (&["nvidia", "geforce", "quadro", "tesla"], SubstrateType::NvidiaGpu),
+                            (&["amd", "radeon", "rx ", "navi"],         SubstrateType::AmdGpu),
+                            (&["intel", "arc", "iris"],                 SubstrateType::IntelGpu),
+                            (&["apple", "m1", "m2", "m3"],             SubstrateType::AppleGpu),
+                        ];
                         let n = info.name.to_lowercase();
-                        if n.contains("nvidia")
-                            || n.contains("geforce")
-                            || n.contains("quadro")
-                            || n.contains("tesla")
-                        {
-                            SubstrateType::NvidiaGpu
-                        } else if n.contains("amd")
-                            || n.contains("radeon")
-                            || n.contains("rx ")
-                            || n.contains("navi")
-                        {
-                            SubstrateType::AmdGpu
-                        } else if n.contains("intel") || n.contains("arc") || n.contains("iris") {
-                            SubstrateType::IntelGpu
-                        } else if n.contains("apple")
-                            || n.contains("m1")
-                            || n.contains("m2")
-                            || n.contains("m3")
-                        {
-                            SubstrateType::AppleGpu
-                        } else {
-                            SubstrateType::Other
-                        }
+                        NAME_TABLE.iter()
+                            .find(|(patterns, _)| patterns.iter().any(|p| n.contains(p)))
+                            .map(|(_, st)| *st)
+                            .unwrap_or(SubstrateType::Other)
                     }
                 }
             }

@@ -111,6 +111,7 @@ pub mod pipeline; // Heterogeneous compute pipeline orchestration
 pub mod sample;
 pub mod scheduler;
 pub mod special;
+pub mod spectral; // Spectral theory: Lanczos, Anderson localization, Hofstadter (hotSpring v0.6.0)
 pub mod staging; // Unidirectional compute pipeline staging buffers
 pub mod stats;
 pub mod surrogate;

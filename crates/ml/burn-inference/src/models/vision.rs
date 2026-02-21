@@ -1,6 +1,8 @@
 //! Vision models (YOLO, ResNet, etc.)
 //!
-//! Placeholder for computer vision models.
+//! Type-safe API surface for computer vision inference.
+//! Inference methods return `NotImplemented` until a model backend
+//! (burn, onnxruntime, or custom WGSL) is integrated.
 
 use crate::Result;
 
@@ -42,7 +44,8 @@ pub struct Detection {
     pub class_id: usize,
 }
 
-/// YOLO model (placeholder)
+/// YOLO model
+#[derive(Debug)]
 pub struct Yolo {
     config: YoloConfig,
 }
@@ -53,15 +56,18 @@ impl Yolo {
         Self { config }
     }
 
-    /// Load from pretrained (placeholder)
-    pub fn from_pretrained(_model_id: &str) -> Result<Self> {
-        Ok(Self::new(YoloConfig::default()))
+    /// Load from pretrained model weights
+    pub fn from_pretrained(model_id: &str) -> Result<Self> {
+        Err(crate::Error::NotImplemented(format!(
+            "YOLO model loading not yet integrated (requested: {model_id})"
+        )))
     }
 
-    /// Detect objects in image (placeholder)
+    /// Detect objects in image
     pub fn detect(&self, _image: &[u8], _width: usize, _height: usize) -> Result<Vec<Detection>> {
-        // Placeholder - returns empty detections
-        Ok(Vec::new())
+        Err(crate::Error::NotImplemented(
+            "YOLO inference requires a model backend (burn/onnx/wgsl)".into(),
+        ))
     }
 
     /// Get number of parameters
@@ -85,7 +91,8 @@ pub enum ResNetVariant {
     ResNet152,
 }
 
-/// ResNet model (placeholder)
+/// ResNet model
+#[derive(Debug)]
 pub struct ResNet {
     variant: ResNetVariant,
 }
@@ -96,10 +103,11 @@ impl ResNet {
         Self { variant }
     }
 
-    /// Classify image (placeholder)
+    /// Classify image
     pub fn classify(&self, _image: &[u8]) -> Result<Vec<(usize, f32)>> {
-        // Placeholder - returns empty classifications
-        Ok(Vec::new())
+        Err(crate::Error::NotImplemented(
+            "ResNet inference requires a model backend (burn/onnx/wgsl)".into(),
+        ))
     }
 
     /// Get number of parameters
@@ -162,10 +170,18 @@ mod tests {
     }
 
     #[test]
-    fn test_yolo_from_pretrained() {
-        let yolo = Yolo::from_pretrained("yolov8n").unwrap();
-        let detections = yolo.detect(&[], 0, 0).unwrap();
-        assert!(detections.is_empty());
+    fn test_yolo_from_pretrained_not_implemented() {
+        let result = Yolo::from_pretrained("yolov8n");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("not yet integrated"));
+    }
+
+    #[test]
+    fn test_yolo_detect_not_implemented() {
+        let yolo = Yolo::new(YoloConfig::default());
+        let result = yolo.detect(&[], 0, 0);
+        assert!(result.is_err());
     }
 
     #[test]
@@ -185,10 +201,10 @@ mod tests {
     }
 
     #[test]
-    fn test_resnet_classify_returns_empty() {
+    fn test_resnet_classify_not_implemented() {
         let model = ResNet::new(ResNetVariant::ResNet101);
-        let classes = model.classify(&[]).unwrap();
-        assert!(classes.is_empty());
+        let result = model.classify(&[]);
+        assert!(result.is_err());
     }
 
     #[test]

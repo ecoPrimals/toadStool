@@ -57,7 +57,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Error handling
 anyhow = "1.0"
 thiserror = "1.0"
-lazy_static = "1.4"
+# lazy_static removed: evolved to std::sync::LazyLock (Rust 1.80+)
 
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
 [target.'cfg(target_os = "linux")'.dependencies]

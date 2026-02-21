@@ -124,7 +124,9 @@ impl ShaderTemplate {
     }
 
     pub fn math_f64_preamble() -> String {
-        include_str!("../math/math_f64.wgsl").to_string()
+        let core = include_str!("../math/math_f64.wgsl");
+        let special = include_str!("../math/math_f64_special.wgsl");
+        format!("{core}\n{special}")
     }
 
     pub fn with_math_f64(shader_body: &str) -> String {

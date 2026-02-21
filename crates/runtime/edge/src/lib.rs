@@ -575,7 +575,10 @@ mod tests {
             discovery_timeout_secs: 120,
             max_devices: 100,
             communication_timeout_ms: 15000,
-            cross_compile_cache_path: "/tmp/cache".to_string(),
+            cross_compile_cache_path: std::env::temp_dir()
+                .join("toadstool-edge-cache")
+                .to_string_lossy()
+                .to_string(),
             auto_provisioning: true,
             security_level: EdgeSecurityLevel::Standard,
             resource_strategy: ResourceAllocationStrategy::Adaptive,

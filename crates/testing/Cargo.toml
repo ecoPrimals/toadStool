@@ -57,7 +57,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # Temporary directories and files for testing
 tempfile = "3.0"
-tempdir = "0.3"
+# tempdir removed: deprecated crate, tests already use tempfile
 
 # HTTP client for integration tests
 # PURE RUST: reqwest removed even from testing (use unix sockets in tests too!)

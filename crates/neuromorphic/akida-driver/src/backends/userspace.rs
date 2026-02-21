@@ -6,6 +6,7 @@
 //! - Safe Rust (minimal unsafe, well-encapsulated)
 //! - Graceful fallbacks (handles missing hardware)
 
+use super::read_hwmon_power;
 use crate::backend::{BackendType, ModelHandle, NpuBackend};
 use crate::backends::mmap::MmapRegion;
 use crate::capabilities::Capabilities;
@@ -180,25 +181,9 @@ impl NpuBackend for UserspaceBackend {
     }
 
     fn measure_power(&self) -> Result<f32> {
-        // Query power via hwmon sysfs (runtime measurement, not hardcoded!)
-        let hwmon_path = format!(
-            "/sys/bus/pci/devices/{}/hwmon/hwmon*/power1_average",
-            self.pcie_address
-        );
-
-        // Try to read actual power
-        if let Ok(entries) = glob::glob(&hwmon_path) {
-            for entry in entries.flatten() {
-                if let Ok(content) = std::fs::read_to_string(&entry) {
-                    if let Ok(microwatts) = content.trim().parse::<u64>() {
-                        // Precision loss acceptable: power measurement is inherently imprecise
-                        #[allow(clippy::cast_precision_loss)]
-                        let watts = microwatts as f32 / 1_000_000.0;
-                        tracing::debug!("NPU power: {watts:.2}W (measured)");
-                        return Ok(watts);
-                    }
-                }
-            }
+        if let Some(watts) = read_hwmon_power(&self.pcie_address) {
+            tracing::debug!("NPU power: {watts:.2}W (measured)");
+            return Ok(watts);
         }
 
         // Graceful fallback with explicit warning
@@ -285,8 +270,12 @@ impl UserspaceBackend {
             npu_count,
             memory_mb,
             pcie,
-            power_mw: None,      // Runtime power query happens separately
-            temperature_c: None, // Runtime temp query happens separately
+            power_mw: None,
+            temperature_c: None,
+            mesh: crate::capabilities::MeshTopology::from_sysfs(pcie_address),
+            clock_mode: None,
+            batch: crate::capabilities::BatchCapabilities::from_sysfs(pcie_address),
+            weight_mutation: crate::capabilities::WeightMutationSupport::None,
         })
     }
 

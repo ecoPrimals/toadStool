@@ -543,22 +543,23 @@ pub fn build_capabilities(resources: &SystemResources) -> Vec<String> {
     capabilities
 }
 
+/// Runtime base directory: XDG_RUNTIME_DIR or platform temp dir.
+fn runtime_base_dir() -> PathBuf {
+    std::env::var("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| std::env::temp_dir())
+}
+
 /// Get discovery directory
 ///
-/// Deep debt principle: Standard location for peer discovery
+/// Prefers XDG_RUNTIME_DIR, falls back to platform temp directory.
 fn discovery_directory() -> PathBuf {
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| String::from("/tmp"));
-
-    PathBuf::from(runtime_dir)
-        .join("ecoPrimals")
-        .join("discovery")
+    runtime_base_dir().join("ecoPrimals").join("discovery")
 }
 
 /// Get default socket path for this primal
 fn default_socket_path(primal_id: &str) -> PathBuf {
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| String::from("/tmp"));
-
-    PathBuf::from(runtime_dir)
+    runtime_base_dir()
         .join("ecoPrimals")
         .join("sockets")
         .join(format!("{}.sock", primal_id))

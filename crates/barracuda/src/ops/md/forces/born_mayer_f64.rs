@@ -9,16 +9,19 @@
 //! - Hard-core repulsion in MD
 //! - Steric effects modeling
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
 
 /// f64 Born-Mayer force calculator
 ///
 /// Potential: U(r) = A * exp(-r/ρ)
 /// Force: F = (A/ρ) * exp(-r/ρ) * r̂
+///
+/// Two paths: GPU (N-body direct) for large particle counts, CPU fallback.
 pub struct BornMayerForceF64 {
-    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
 }
 
@@ -27,21 +30,12 @@ impl BornMayerForceF64 {
         Ok(Self { device })
     }
 
-    #[allow(dead_code)]
     fn wgsl_shader() -> &'static str {
         include_str!("born_mayer_f64.wgsl")
     }
 
-    /// Compute Born-Mayer forces on all particles
-    ///
-    /// # Arguments
-    /// * `positions` - Particle positions [N*3] as [x₀, y₀, z₀, x₁, y₁, z₁, ...]
-    /// * `a_params` - Per-particle A (repulsion strength) [N]
-    /// * `rho_params` - Per-particle ρ (softness) [N]
-    /// * `cutoff` - Cutoff radius
-    ///
-    /// # Returns
-    /// Forces [N*3] as [fx₀, fy₀, fz₀, ...]
+    const GPU_PARTICLE_THRESHOLD: usize = 32;
+
     pub fn compute_forces(
         &self,
         positions: &[f64],
@@ -49,12 +43,15 @@ impl BornMayerForceF64 {
         rho_params: &[f64],
         cutoff: f64,
     ) -> Result<Vec<f64>> {
-        // CPU implementation for now
-        // GPU path needs multi-pass for force reduction
+        let n = positions.len() / 3;
+        if n >= Self::GPU_PARTICLE_THRESHOLD {
+            if let Ok(forces) = self.compute_gpu(positions, a_params, rho_params, cutoff, n) {
+                return Ok(forces);
+            }
+        }
         Ok(self.compute_cpu(positions, a_params, rho_params, cutoff))
     }
 
-    /// Compute forces and total potential energy
     pub fn compute_forces_and_energy(
         &self,
         positions: &[f64],
@@ -63,6 +60,88 @@ impl BornMayerForceF64 {
         cutoff: f64,
     ) -> Result<(Vec<f64>, f64)> {
         Ok(self.compute_cpu_with_energy(positions, a_params, rho_params, cutoff))
+    }
+
+    fn compute_gpu(
+        &self,
+        positions: &[f64],
+        a_params: &[f64],
+        rho_params: &[f64],
+        cutoff: f64,
+        n: usize,
+    ) -> Result<Vec<f64>> {
+        let dev = &self.device;
+
+        let to_buf = |label: &str, data: &[f64], usage: wgpu::BufferUsages| -> wgpu::Buffer {
+            let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
+            dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label), contents: &bytes, usage,
+            })
+        };
+
+        let pos_buf = to_buf("bm pos", positions, wgpu::BufferUsages::STORAGE);
+        let a_buf = to_buf("bm A", a_params, wgpu::BufferUsages::STORAGE);
+        let rho_buf = to_buf("bm rho", rho_params, wgpu::BufferUsages::STORAGE);
+
+        let forces_buf = dev.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("bm forces"), size: (n * 3 * 8) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params { n_particles: u32, _pad0: u32, cutoff_lo: u32, cutoff_hi: u32 }
+
+        let cutoff_bits = cutoff.to_bits();
+        let params_buf = dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::bytes_of(&Params {
+                n_particles: n as u32, _pad0: 0,
+                cutoff_lo: cutoff_bits as u32, cutoff_hi: (cutoff_bits >> 32) as u32,
+            }),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let shader = dev.compile_shader_f64(Self::wgsl_shader(), Some("BornMayer f64"));
+
+        let bgl = dev.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: None,
+            entries: &(0..5u32).map(|i| wgpu::BindGroupLayoutEntry {
+                binding: i, visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: if i == 4 { wgpu::BufferBindingType::Uniform }
+                        else if i == 3 { wgpu::BufferBindingType::Storage { read_only: false } }
+                        else { wgpu::BufferBindingType::Storage { read_only: true } },
+                    has_dynamic_offset: false, min_binding_size: None,
+                },
+                count: None,
+            }).collect::<Vec<_>>(),
+        });
+
+        let pl = dev.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None, bind_group_layouts: &[&bgl], push_constant_ranges: &[],
+        });
+        let pipeline = dev.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("born_mayer_f64"), layout: Some(&pl), module: &shader,
+            entry_point: "main", cache: None, compilation_options: Default::default(),
+        });
+
+        let bufs: [&wgpu::Buffer; 5] = [&pos_buf, &a_buf, &rho_buf, &forces_buf, &params_buf];
+        let bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None, layout: &bgl,
+            entries: &bufs.iter().enumerate().map(|(i, b)| wgpu::BindGroupEntry {
+                binding: i as u32, resource: b.as_entire_binding(),
+            }).collect::<Vec<_>>(),
+        });
+
+        let wg = (n as u32).div_ceil(WORKGROUP_SIZE_1D);
+        let mut enc = dev.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        { let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+          p.set_pipeline(&pipeline); p.set_bind_group(0, &bg, &[]); p.dispatch_workgroups(wg, 1, 1); }
+        dev.queue.submit(Some(enc.finish()));
+
+        dev.read_f64_buffer(&forces_buf, n * 3)
     }
 
     fn compute_cpu(

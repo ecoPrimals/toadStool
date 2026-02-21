@@ -84,8 +84,11 @@ pub struct OpenClBackend {
 }
 
 impl OpenClBackend {
-    /// Create new OpenCL backend (stub - needs context)
-    pub fn new_stub() -> Self {
+    /// Create an uninitialized OpenCL backend with conservative capability defaults.
+    ///
+    /// Call `try_init()` or `try_init_with_wgpu()` to connect to actual hardware.
+    /// This exists for capability reporting before device initialization.
+    pub fn new_uninitialized() -> Self {
         // Default capabilities (conservative)
         let capabilities = UnifiedMemoryCapabilities {
             backend_type: BackendType::OpenCL,
@@ -434,8 +437,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_opencl_stub() {
-        let backend = OpenClBackend::new_stub();
+    async fn test_opencl_uninitialized() {
+        let backend = OpenClBackend::new_uninitialized();
 
         assert_eq!(backend.name(), "OpenCL");
         assert_eq!(backend.backend_type(), BackendType::OpenCL);

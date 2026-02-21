@@ -35,7 +35,7 @@ cc = { version = "1.0", optional = true }
 bindgen = { version = "0.69", optional = true }
 
 # Network and communication
-mdns = "3.0"
+# mdns removed: MDNSDiscovery is a stub with no mDNS usage; use mdns-sd for consistency
 # zeroconf = "0.12"  # Optional - not critical for core functionality
 # mqtt = "0.1"  # Using latest available version
 # coap = "0.10"  # Optional - not critical for core functionality

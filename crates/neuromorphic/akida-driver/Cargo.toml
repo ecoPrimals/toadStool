@@ -20,9 +20,9 @@ tracing = "0.1"
 # Safe byte casting (replaces unsafe f32<->u8 conversions)
 bytemuck = { version = "1", features = ["derive"] }
 
-# System utilities
-which = "6.0"
-glob = "0.3"  # For hwmon power discovery
+# System utilities — evolved to pure Rust (Feb 21, 2026)
+# `which` replaced by find_in_path() in setup.rs
+# `glob` replaced by read_hwmon_power() in backends/mod.rs
 
 # Async runtime (optional)
 tokio = { version = "1", features = ["fs", "io-util"], optional = true }

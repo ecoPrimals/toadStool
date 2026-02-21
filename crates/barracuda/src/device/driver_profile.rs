@@ -115,6 +115,10 @@ pub enum Workaround {
     NvkExpF64Crash,
     /// NVK log(f64) crashes — substitute with polynomial approximation
     NvkLogF64Crash,
+    /// NVIDIA proprietary driver (NVVM/PTXAS) on Ada Lovelace (SM89) fails to
+    /// compile native f64 transcendentals (pow, exp, log). Discovered by
+    /// wetSpring on RTX 4070 (Feb 2026). Workaround: inject polyfill functions.
+    NvvmAdaF64Transcendentals,
 }
 
 // ── Eigensolve strategy ───────────────────────────────────────────────────────
@@ -165,7 +169,7 @@ impl GpuDriverProfile {
         let compiler = Self::detect_compiler(driver);
         let arch = Self::detect_arch(device);
         let fp64_rate = Self::detect_fp64_rate(&arch, driver);
-        let workarounds = Self::detect_workarounds(driver);
+        let workarounds = Self::detect_workarounds(driver, arch);
 
         Self {
             driver,
@@ -204,16 +208,34 @@ impl GpuDriverProfile {
     /// Whether `exp(f64)` needs software substitution on this driver.
     pub fn needs_exp_f64_workaround(&self) -> bool {
         self.workarounds.contains(&Workaround::NvkExpF64Crash)
+            || self
+                .workarounds
+                .contains(&Workaround::NvvmAdaF64Transcendentals)
     }
 
     /// Whether `log(f64)` needs software substitution on this driver.
     pub fn needs_log_f64_workaround(&self) -> bool {
         self.workarounds.contains(&Workaround::NvkLogF64Crash)
+            || self
+                .workarounds
+                .contains(&Workaround::NvvmAdaF64Transcendentals)
     }
 
-    /// Whether this driver supports f64 builtins (exp, log, etc.) natively.
+    /// Whether `pow(f64, f64)` needs software substitution on this driver.
+    ///
+    /// Ada Lovelace (SM89) with the proprietary NVIDIA driver cannot compile
+    /// native f64 pow/exp/log. Discovered by wetSpring on RTX 4070 (Feb 2026).
+    pub fn needs_pow_f64_workaround(&self) -> bool {
+        self.workarounds
+            .contains(&Workaround::NvvmAdaF64Transcendentals)
+    }
+
+    /// Whether this driver supports f64 builtins (exp, log, pow) natively.
+    ///
+    /// Returns false for NVK, software renderers, and NVIDIA Ada Lovelace
+    /// proprietary (NVVM PTXAS fails on f64 transcendentals for SM89).
     pub fn supports_f64_builtins(&self) -> bool {
-        !matches!(self.driver, DriverKind::Nvk | DriverKind::Software)
+        self.workarounds.is_empty() && !matches!(self.driver, DriverKind::Software)
     }
 
     /// Whether this is an open-source driver (NVK or RADV).
@@ -331,11 +353,16 @@ impl GpuDriverProfile {
         }
     }
 
-    fn detect_workarounds(driver: DriverKind) -> Vec<Workaround> {
-        match driver {
-            DriverKind::Nvk => vec![Workaround::NvkExpF64Crash, Workaround::NvkLogF64Crash],
-            _ => vec![],
+    fn detect_workarounds(driver: DriverKind, arch: GpuArch) -> Vec<Workaround> {
+        let mut w = Vec::new();
+        if driver == DriverKind::Nvk {
+            w.push(Workaround::NvkExpF64Crash);
+            w.push(Workaround::NvkLogF64Crash);
         }
+        if driver == DriverKind::NvidiaProprietary && arch == GpuArch::Ada {
+            w.push(Workaround::NvvmAdaF64Transcendentals);
+        }
+        w
     }
 }
 

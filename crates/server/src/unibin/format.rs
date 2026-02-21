@@ -92,10 +92,10 @@ pub fn get_socket_path(
                                 .map(|uid| PathBuf::from(format!("/run/user/{}", uid)))
                         })
                 })
-                .unwrap_or_else(|| PathBuf::from("/tmp"))
+                .unwrap_or_else(std::env::temp_dir)
         }
     } else {
-        PathBuf::from("/tmp")
+        std::env::temp_dir()
     };
 
     if runtime_dir.exists() {
@@ -109,7 +109,7 @@ pub fn get_socket_path(
         return Ok(socket_path);
     }
 
-    let tmp_biomeos = PathBuf::from("/tmp/biomeos");
+    let tmp_biomeos = std::env::temp_dir().join("biomeos");
     std::fs::create_dir_all(&tmp_biomeos)?;
 
     #[cfg(unix)]

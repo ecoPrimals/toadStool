@@ -190,17 +190,12 @@ impl<'a> ProcessSpawner<'a> {
     /// - Checksum verification fails
     async fn load_wasm_with_verification(
         &self,
-        _source: &str,
-        _checksum: &Option<String>,
+        source: &str,
+        checksum: &Option<String>,
     ) -> Result<Vec<u8>> {
-        // For now, we'll just return empty bytes
-        // Full implementation would:
-        // 1. Load from URL/file/registry
-        // 2. Verify checksum
-        // 3. Validate WASM module
-
-        // Placeholder for actual implementation
-        Ok(Vec::new())
+        self.executor
+            .load_wasm_with_verification(source, checksum)
+            .await
     }
 
     /// Get the distributed coordinator

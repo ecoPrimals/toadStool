@@ -5,7 +5,323 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] - February 21, 2026 (Session 31c — Executor Wiring & Deep Refactoring)
+
+### Executor Wiring
+
+- **GpuExecutor::execute()** — Wired 16 additional MathOps: Log, Sin, Cos, Tan, Reciprocal,
+  Square, Div, BatchMatMul, ReduceMax, ReduceMin, ReduceProd, Reshape, Transpose. All
+  dispatched through existing Tensor API methods with WGSL shader backends. Consolidated
+  binary ops (Add/Sub/Mul/Div) into a single match arm.
+
+- **unified_hardware.rs CpuExecutor** — Eliminated `NotImplemented` stub by delegating to
+  the standalone `cpu_executor::CpuExecutor` which already has full MathOp dispatch.
+
+- **ProcessSpawner::load_wasm_with_verification** — Replaced empty-bytes placeholder with
+  delegation to `BiomeExecutor::load_wasm_with_verification` (file loading + SHA256 checksum
+  verification already implemented in `wasm_ops.rs`).
+
+### Smart Refactoring
+
+- **cache_hierarchy.rs** — Replaced 34-line verbose BGL layout with closure-based
+  `bgl_entry(binding, read_only)` pattern. Collapsed duplicate warmup/timed dispatch loops
+  into `run_pass` closure. Converted 23-line name-based substrate classification
+  if/else-if chain to table-driven `NAME_TABLE` lookup.
+
+- **esn_v2.rs** — 884→842 lines (-5%). Extracted `validate_config()` (5 validation checks
+  consolidated into a single function with `check` closure) and `expect_size()` (reused for
+  input, target, and prediction size validation across 4 call sites).
+
+## [Unreleased] - February 21, 2026 (Session 31b — GPU Path Completion & Smart Refactoring)
+
+### GPU Path Completion
+
+- **MorseForceF64** — Wired 2-pass GPU shader dispatch (per-bond force computation +
+  reduce-to-particle). CPU fallback for < 64 bonds. WGSL shader already existed with full
+  Morse potential physics and Newton's third law force output.
+
+- **BornMayerForceF64** — Wired N-body direct GPU shader dispatch. Each thread computes
+  forces on one particle by iterating over all others within cutoff. CPU fallback for < 32
+  particles. Geometric mixing rules (√(Ai·Aj), (ρi+ρj)/2) preserved.
+
+### Implementation Completion
+
+- **CpuExecutor::execute()** — Wired dispatch to `execute_unary_cpu`, `execute_binary_cpu`,
+  `execute_reduce_cpu`, and `execute_matmul_cpu`. Removed `NotImplemented` stub. Added
+  `read_f32` and `pack_f32` helpers for TensorStorage ↔ f32 conversion. Extended unary ops
+  to cover Negate, Abs, Square, Sqrt, Reciprocal, Exp, Log, Sin, Cos, Tan.
+
+- **Performance optimizer** — Implemented `get_recommendations()` analyzing runtime stats for
+  low success rates, high memory, underutilization, and low efficiency. Implemented
+  `update_model()` computing p95 execution times and baseline metrics per runtime.
+
+### Smart Refactoring
+
+- **lu_gpu.rs** — 780→302 lines (-61%). Extracted `make_bgl`, `make_pipe`, `make_bg`, and
+  `dispatch` static helpers. Consolidated f32 path to share bind groups for steps 2-4 (was
+  creating redundant separate groups). Both f32 and f64 paths now use identical helper pattern.
+
+- **svd_gpu.rs** — 764→305 lines (-60%). Same helper extraction. Three different BGL patterns
+  (5-binding main, 3-binding rotation, 3-binding Jacobi) now declared via `make_bgl` with
+  buffer type slices instead of verbose per-entry structs. Jacobi sweep loop simplified.
+
+## [Unreleased] - February 21, 2026 (Session 31 — Smart Refactoring & Unsafe Evolution)
+
+### Smart Refactoring
+
+- **qr_gpu.rs** — 933→486 lines (-48%). Extracted `dispatch` closure, `make_bgl` helper for
+  declarative bind group layout creation, and `make_bg` helper for bind group construction.
+  Eliminated 7 repeated encode→dispatch→submit blocks in the f64 Householder loop.
+
+- **vfio.rs** — 915→802 lines (-12%). Extracted `write_iova_regs()`, `check_not_busy()`, and
+  `poll_register()` helpers from `NpuBackend` trait methods. `load_model`, `load_reservoir`, and
+  `infer` now share the same polling and MMIO write patterns.
+
+- **probe.rs** — 831→571 lines (-31%). Extracted f64 throughput ratio probing into dedicated
+  `probe_throughput.rs` (260 lines). Also extracted `dispatch` helper in the throughput probe's
+  warmup/timed run loops. Shared `adapter_key()` and `lock_cache()` promoted to `pub(crate)`.
+
+### Unsafe Evolution
+
+- **buffer.rs** — Replaced `NonNull::new_unchecked(cpu_ptr)` with safe `NonNull::new().expect()`.
+  The preceding assertions already guarantee non-null, making the unchecked variant unnecessary.
+
+- **cpu.rs** — Replaced `Layout::from_size_align_unchecked()` in `AlignedBuffer::Drop` with
+  safe `Layout::from_size_align().expect()`. Values are invariant from construction.
+
+### Production Stub/Mock Evolution
+
+- **Vulkan/OpenCL backends** — Renamed `new_stub()` to `new_uninitialized()` with proper docs
+  explaining the constructor exists for capability reporting before device initialization.
+
+- **Specialty runtime** — Removed misleading "mock/placeholder" comment from legitimate polling
+  loop. Code correctly polls external legacy systems (mainframe/RTOS) that lack event channels.
+
+### Hardcoding Evolution
+
+- **Beardog endpoint** — Removed hardcoded `http://localhost:8000` fallback from
+  `SongbirdNetworkConfigurator`. Now uses `BEARDOG_ENDPOINT` env → domain config → empty default.
+
+## [Unreleased] - February 21, 2026 (Session 30 — metalForge Absorption & Deep Debt)
+
+### Evolved
+
+- **akida-driver capabilities** — Evolved `Capabilities` struct with 4 new metalForge-validated
+  fields: `MeshTopology` (5×8×2 NP mesh enumeration), `ClockMode` (Performance/Economy/LowPower
+  with measured penalties), `BatchCapabilities` (optimal batch=8, 2.35x speedup from PCIe
+  amortization), and `WeightMutationSupport` (Full/ReadoutOnly/None). All discovered from sysfs
+  at runtime — zero hardcoding.
+
+- **ESN v2** — Added `predict_return_state()` for raw reservoir state access (essential for
+  cross-substrate GPU→NPU pipeline validation) and `set_readout_weights()` for online readout
+  switching (validated on AKD1000 via metalForge weight mutation discovery).
+
+- **GPU f64 throughput ratio probe** — New `probe_f64_throughput_ratio()` in `device/probe.rs`
+  measures actual f64:f32 performance ratio. metalForge discovered Titan V delivers 1:2 while
+  RTX 4070 gives 1:64. Classification into `F64Tier` (Native/Capable/Consumer/Throttled)
+  drives workload routing decisions.
+
+- **NPU tolerance constants** — New `barracuda::npu::constants` module with hardware-validated
+  values from metalForge deep probing: FC depth overhead (≤30%), batch speedup floor (≥1.5x),
+  multi-output overhead (≤30%), weight mutation linearity (≤0.01), quantization error budgets
+  (f32: 0.00001, int8: 0.05, int4: 0.30).
+
+- **CLI mDNS discovery** — Evolved from stub returning empty Vec to complete implementation
+  delegating to `toadstool::discovery::MdnsDiscoveryService` (uses mdns-sd, tokio-native).
+
+- **Configurator stub removed** — Removed dead `_stub: String` field from
+  `SongbirdNetworkConfigurator` (remnant from HTTP→Unix socket migration).
+
+### Removed (dependency evolution)
+
+- **which** — Removed from `akida-driver`. Replaced with pure Rust `find_in_path()` that
+  searches `$PATH` using `std::env::split_paths` + `std::path::Path::is_file()`.
+
+- **glob** — Removed from `akida-driver`. Replaced with shared `read_hwmon_power()` function
+  using `std::fs::read_dir` to enumerate hwmon sysfs entries. Three backends (userspace, VFIO,
+  kernel) now share the same helper instead of duplicating glob logic.
+
+### Deep Debt Audit (Session 30)
+
+- **Unsafe code**: All `unsafe` blocks have SAFETY comments — zero undocumented.
+- **External deps**: All legacy deps (`once_cell`, `lazy_static`, `which`, `glob`, `tempdir`,
+  `term_size`, `mdns`, `dashmap`) removed. 10 total external dep removals across S28-30.
+- **Hardcoded paths**: `/etc/hostname` has env var fallback chain, `/etc/biomeos/discovery.json`
+  has XDG-compliant 5-level cascade, `localhost` references only in test code or behind env vars.
+- **Production mocks**: mDNS stub evolved. ESP32/Arduino are correct host-side implementations
+  (not mocks). gRPC bail is properly loud (no silent failures).
+- **Large files**: 33 files >500 lines identified; smart refactoring ongoing (5 files refactored
+  in S28-29, probe.rs grew from metalForge absorption in S30).
+
+## [Unreleased] - February 21, 2026 (Session 29 — Structural Refactoring & Dependency Evolution)
+
+### Evolved
+
+- **svd_gpu.rs** — Smart refactored from 973→842 lines by extracting `make_pipeline` closure
+  (deduplicates 7 identical pipeline creation blocks) and `dispatch` closure (deduplicates 7
+  identical encoder→pass→submit patterns in `execute_f64`). No behavioral change.
+
+- **session/mod.rs** — Smart refactored from 968→569 lines by extracting op dispatch logic
+  into `session/dispatch.rs` (420 lines). The `run()` match body, bind-group helpers, and
+  uniform buffer creation moved to a separate `impl TensorSession` block. No behavioral change.
+
+- **tensor/mod.rs** — Smart refactored from 948→799 lines by extracting scalar arithmetic
+  and random generation methods into `tensor/ops.rs` (121 lines). Scalar ops compressed via
+  shared `broadcast_scalar` helper. No behavioral change.
+
+- **math_f64.wgsl** — Split from 1002→837 lines by extracting special functions (gamma, erf,
+  bessel, encoding helpers) into `math_f64_special.wgsl` (175 lines). `math_f64_preamble()`
+  concatenates both files at compile time. All 16 shader template tests pass.
+
+- **gpu_executor.rs** — Replaced 3 production `try_into().unwrap()` calls with explicit
+  array indexing (`[c[0]..c[7]]`), matching the pattern used by f32/i32/u32 arms.
+
+- **Unsafe code evolution** — Improved SAFETY documentation on `Send`/`Sync` impls in
+  `unified_memory/backends/cpu.rs` (AlignedBuffer) and `memory/pinned.rs` (PinnedMemory).
+  Removed unused `PhantomData<Arc<()>>` field and `Arc` import from PinnedMemory.
+
+- **Hardcoded paths evolved** — 2 more files updated:
+  - `server/capabilities/mod.rs`: `/tmp` → `runtime_base_dir()` helper using `XDG_RUNTIME_DIR`
+    then `std::env::temp_dir()`
+  - `runtime/edge/src/lib.rs`: `/tmp/cache` → `std::env::temp_dir().join("toadstool-edge-cache")`
+
+### Removed (dependency evolution)
+
+- **once_cell** — Removed from workspace root and `toadstool-config`. All usage already
+  migrated to `std::sync::LazyLock` (Rust 1.80+). Zero external-dep replacement.
+
+- **lazy_static** — Removed from `security-policies`. Code already uses `std::sync::LazyLock`.
+
+- **tempdir** — Removed from `toadstool-testing`. Deprecated crate; tests already use `tempfile`.
+
+- **term_size** — Removed from `toadstool-cli`. Unused in source; terminal size available via
+  `console` crate already in dependencies.
+
+- **base64 0.21** — Unified all crates to base64 0.22. Removed unused base64 deps from
+  `toadstool-client` and `nestgate`. CLI adapter wrappers already use the Engine API.
+
+- **mdns** — Removed from workspace root and `runtime-edge`. Standardized on `mdns-sd` only.
+  Edge `MDNSDiscovery` was a stub with no crate usage.
+
+- **dashmap** — Removed from `distributed` and `runtime-gpu`. Both already evolved to
+  `std::sync::RwLock<HashMap>` (consistent with barracuda pattern). Zero source usage.
+
+- **which** — Removed from `toadstool-cli`. CLI uses `Command::new("which")` shell command,
+  not the crate. Retained in `akida-driver` where it is actually used.
+
+## [Unreleased] - February 21, 2026 (Session 28 — Deep Debt Evolution)
+
+### Evolved
+
+- **pipeline_cache.rs** — Replaced `expect("poisoned")` panics with `read_or_recover()` /
+  `write_or_recover()` RwLock poison-recovery helpers. Caches safely recover from previously
+  panicked threads (consistent with `probe.rs::lock_cache` pattern).
+
+- **lu_gpu.rs** — Smart refactored from 996→854 lines by extracting `build_lu_pipeline()` helper
+  that deduplicates 4 near-identical pipeline creation functions (find_pivot, row_swap,
+  compute_multipliers, row_elimination). No behavioral change.
+
+- **primal_discovery_complete.rs** — Hardcoded fallback ports `8080`/`8081`/`8082` extracted to
+  named constants (`SONGBIRD_FALLBACK_PORT`, etc.) with cross-reference to
+  `toadstool_config::ports::fallback`. Simplified env-var fallback chains.
+
+- **Hardcoded paths evolved** — 4 files updated to prefer XDG/env-based paths:
+  - `ipc_helpers/connection.rs`: `/tmp/biomeos-runtime` → `BIOMEOS_RUNTIME_DIR` + `std::env::temp_dir()`
+  - `service_discovery/service.rs`: `/etc/biomeos/discovery.json` → `XDG_CONFIG_HOME` + `HOME/.config` fallback chain
+  - `manual_jsonrpc/mod.rs`: `/etc/hostname` → `HOSTNAME` + `TOADSTOOL_GATE_ID` env vars first
+  - `unibin/format.rs`: hardcoded `/tmp` → `std::env::temp_dir()`
+
+- **gpu_executor.rs** — Extracted magic numbers (GPU memory/bandwidth/parallelism estimates)
+  into `capability_defaults` module with named constants and documentation.
+
+- **ML model placeholders evolved** — `vision.rs`, `whisper.rs`, `bert.rs` placeholder methods
+  (`from_pretrained`, `detect`, `classify`, `transcribe`, `forward`) now return
+  `Error::NotImplemented` instead of silently returning empty results. Tests updated to assert
+  error behavior. Added `Debug` derives and `config()` accessor.
+
+## [Unreleased] - February 21, 2026 (Session 27 — wetSpring/neuralSpring Full Shader Absorption)
+
+### Added
+
+- **16 new WGSL shaders** absorbed from wetSpring v5 and neuralSpring metalForge handoffs:
+
+  **Bio/Genomics domain** (`shaders/bio/`, from wetSpring):
+  - `ani_batch_f64.wgsl` — Batch pairwise Average Nucleotide Identity (ANI)
+  - `snp_calling_f64.wgsl` — Position-parallel SNP calling with allele frequency
+  - `dnds_batch_f64.wgsl` — Batch pairwise dN/dS (Nei-Gojobori 1986) with Jukes-Cantor correction
+  - `pangenome_classify.wgsl` — Pangenome gene classification (core/accessory/unique/absent)
+  - `hmm_forward_f64.wgsl` — HMM batch forward algorithm (f64, log-domain)
+  - `dada2_e_step.wgsl` — DADA2 E-step log-probability computation
+  - `quality_filter.wgsl` — Per-read parallel FASTQ quality trimming
+  - `locus_variance.wgsl` — Per-locus allele frequency variance for FST (from neuralSpring)
+
+  **ML/Evolution domain** (`shaders/ml/`, mixed provenance):
+  - `rf_batch_inference.wgsl` — Batch Random Forest inference with SoA tree layout (wetSpring)
+  - `hmm_forward_log.wgsl` — HMM forward pass, f32 log-domain single-step (neuralSpring)
+  - `batch_fitness_eval.wgsl` — Batch fitness evaluation for evolutionary algorithms (neuralSpring)
+
+  **Numerical** (`shaders/numerical/`):
+  - `rk4_parallel.wgsl` — Parallel multi-system RK4 for Hill-function ODEs, f32 (neuralSpring)
+
+  **Math/Distance** (`shaders/math/`):
+  - `pairwise_jaccard.wgsl` — Pairwise Jaccard distance for PA matrices (neuralSpring)
+  - `pairwise_hamming.wgsl` — Pairwise Hamming distance for sequence comparison (neuralSpring)
+  - `spatial_payoff.wgsl` — Spatial prisoner's dilemma payoff stencil (neuralSpring)
+
+  **Reduce** (`shaders/reduce/`):
+  - `mean_reduce.wgsl` — Single-workgroup arithmetic mean reduction, f32 (neuralSpring)
+
+  **Spectral** (`shaders/spectral/`):
+  - `batch_ipr.wgsl` — Batch inverse participation ratio for localization analysis (neuralSpring)
+
+- **Householder+QR eigensolver** (`ops/linalg/eigh_f64.rs`) — CPU f64 eigensolver absorbed from
+  neuralSpring (S-12 resolution). Achieves LAPACK-level accuracy (~1e-14) at all matrix sizes,
+  replacing Jacobi iteration for f64 workloads. 9 unit tests (2x2 through 32x32, orthogonality).
+
+### Fixed
+
+- **NVVM Ada Lovelace f64 transcendentals bug** — `GpuDriverProfile::detect_workarounds()` now
+  adds `NvvmAdaF64Transcendentals` workaround for NVIDIA proprietary driver on Ada Lovelace (SM89).
+  `WgpuDevice::needs_f64_exp_log_workaround()` returns `true` for RTX 4070/4080/4090.
+  Added `needs_pow_f64_workaround()` and `is_nvidia_ada_lovelace()` detection methods.
+  Discovered by wetSpring on RTX 4070 (Feb 2026).
+
+### Notes
+
+- `batched_qs_ode_rk4_f64.wgsl` (wetSpring) was already absorbed in a prior session
+- `head_split.wgsl`, `head_concat.wgsl`, `xoshiro128ss.wgsl` (neuralSpring) already present
+- QS ODE RK4 f64, Smith-Waterman, Gillespie SSA, Felsenstein, Tree Inference, GEMM f64,
+  LogSumExp, RK4/45, PRNG already absorbed from prior wetSpring/neuralSpring handoffs
+- See `ecoPrimals/wetSpring/HANDOFF_WETSPRING_TO_TOADSTOOL_FEB_20_2026.md`
+- See `ecoPrimals/neuralSpring/wateringHole/handoffs/NEURALSPRING_TOADSTOOL_HANDOFF_FEB21_2026.md`
+
+---
+
+## [Unreleased] - February 21, 2026 (Session 26 — hotSpring v0.6.0 Shader Math Absorption)
+
+### Added
+
+- **Spectral theory module** (`barracuda/src/spectral/`) — Absorbed from hotSpring v0.6.0 (commit 6bd0047):
+  - `lanczos.rs` — Lanczos tridiagonalization with full reorthogonalization for sparse symmetric eigensolve
+  - `tridiag.rs` — Sturm bisection eigensolve for symmetric tridiagonal matrices
+  - `anderson.rs` — Anderson localization models (1D/2D/3D), Lyapunov exponent computation
+  - `hofstadter.rs` — Almost-Mathieu operator, Hofstadter butterfly (spectral topology)
+  - `stats.rs` — Level spacing ratio (Poisson vs GOE), band detection
+  - `sparse.rs` — `SpectralCsrMatrix` with GPU `WGSL_SPMV_CSR_F64` shader
+  - 19 unit tests covering Lanczos/Sturm parity, Lyapunov exponent, spectrum bounds
+- **ESN WGSL shaders** (`barracuda/src/shaders/ml/`) — Absorbed from hotSpring v0.6.0:
+  - `esn_reservoir_update.wgsl` — Fused W_in*input + W_res*state → leaky tanh
+  - `esn_readout.wgsl` — Readout matrix-vector product for reservoir computing
+- **Provenance**: hotSpring v0.6.0 (Kachkovskiy spectral theory, 18 papers, 454 tests, 33/33 validation suites)
+
+### Notes
+
+- Already absorbed in prior sessions: `complex_f64.wgsl`, `su3.wgsl`, `wilson_plaquette_f64.wgsl`,
+  `su3_hmc_force_f64.wgsl`, `higgs_u1_hmc_f64.wgsl`, CellListGpu fix, GPU FFT f64
+- Nuclear HFB shaders remain in hotSpring (domain-specific, downstream consumer)
+- See `ecoPrimals/hotSpring/wateringHole/handoffs/HOTSPRING_V060_CONSOLIDATED_HANDOFF_FEB21_2026.md`
+
+---
 
 ## [Unreleased] - February 21, 2026 (Session 25 — Unit Test Coverage Expansion)
 

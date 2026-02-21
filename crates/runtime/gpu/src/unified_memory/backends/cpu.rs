@@ -83,15 +83,16 @@ impl AlignedBuffer {
 
 impl Drop for AlignedBuffer {
     fn drop(&mut self) {
-        // SAFETY: ptr from alloc with this exact layout; freed exactly once
-        unsafe {
-            let layout = Layout::from_size_align_unchecked(self.size, self.align);
-            dealloc(self.ptr.as_ptr(), layout);
-        }
+        let layout = Layout::from_size_align(self.size, self.align)
+            .expect("layout valid: matches original allocation");
+        // SAFETY: ptr was allocated with this exact layout; Drop runs exactly once.
+        unsafe { dealloc(self.ptr.as_ptr(), layout) };
     }
 }
 
-// SAFETY: AlignedBuffer owns its memory exclusively
+// SAFETY: AlignedBuffer owns its allocation exclusively. No interior mutability;
+// ptr/size/align are immutable after construction. Drop deallocates with the
+// same Layout used at allocation time.
 unsafe impl Send for AlignedBuffer {}
 unsafe impl Sync for AlignedBuffer {}
 

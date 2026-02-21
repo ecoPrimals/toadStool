@@ -268,7 +268,7 @@ mod tests {
     #[test]
     fn test_convenience_not_found() {
         let err = ToadStoolError::not_found("workload-123");
-        assert!(err.to_string().contains("Resource error"));
+        assert!(err.to_string().contains("Not found"));
         assert!(err.to_string().contains("workload-123"));
     }
 

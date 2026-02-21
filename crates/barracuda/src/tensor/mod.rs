@@ -7,6 +7,7 @@
 //! - Buffer pooling for zero-allocation steady state
 
 pub(crate) mod buffer;
+mod ops;
 use buffer::TensorBuffer;
 
 use crate::device::tensor_context::PooledBuffer;
@@ -446,158 +447,8 @@ impl Tensor {
         Self::from_vec_on(data, self.shape.clone(), target_device).await
     }
 
-    /// Scalar multiplication: C = A * scalar
-    ///
-    /// Multiplies each element by a scalar value.
-    /// Uses element-wise multiplication with broadcasted scalar.
-    ///
-    /// # Example
-    /// ```rust,ignore
-    /// let x = Tensor::from_vec(vec![1.0, 2.0, 3.0], vec![3]).await?;
-    /// let y = x.mul_scalar(2.0)?;  // [2.0, 4.0, 6.0]
-    /// ```
-    pub fn mul_scalar(&self, scalar: f32) -> Result<Tensor> {
-        // Create broadcasted scalar tensor with same shape (sync - no executor needed)
-        let data = vec![scalar; self.len()];
-        let scalar_tensor =
-            Tensor::from_vec_on_sync(data, self.shape.clone(), self.device.clone())?;
-
-        // Use existing element-wise multiplication
-        self.mul(&scalar_tensor)
-    }
-
-    /// Scalar addition: C = A + scalar
-    ///
-    /// Adds a scalar value to each element.
-    /// Uses element-wise addition with broadcasted scalar.
-    ///
-    /// # Example
-    /// ```rust,ignore
-    /// let x = Tensor::from_vec(vec![1.0, 2.0, 3.0], vec![3]).await?;
-    /// let y = x.add_scalar(10.0)?;  // [11.0, 12.0, 13.0]
-    /// ```
-    pub fn add_scalar(&self, scalar: f32) -> Result<Tensor> {
-        // Create broadcasted scalar tensor with same shape (sync - no executor needed)
-        let data = vec![scalar; self.len()];
-        let scalar_tensor =
-            Tensor::from_vec_on_sync(data, self.shape.clone(), self.device.clone())?;
-
-        // Use existing element-wise addition
-        self.add(&scalar_tensor)
-    }
-
-    /// Scalar division: C = A / scalar
-    ///
-    /// Divides each element by a scalar value.
-    /// Implemented as multiplication by reciprocal for efficiency.
-    ///
-    /// # Example
-    /// ```rust,ignore
-    /// let x = Tensor::from_vec(vec![10.0, 20.0, 30.0], vec![3]).await?;
-    /// let y = x.div_scalar(2.0)?;  // [5.0, 10.0, 15.0]
-    /// ```
-    pub fn div_scalar(&self, scalar: f32) -> Result<Tensor> {
-        // Multiply by reciprocal (faster than division)
-        self.mul_scalar(1.0 / scalar)
-    }
-
-    /// Create random tensor with normal distribution N(0, 1)
-    ///
-    /// Uses Box-Muller transform to generate samples from standard normal distribution.
-    /// For reproducible results, use `randn_seeded()` instead.
-    ///
-    /// # Example
-    /// ```rust,ignore
-    /// let x = Tensor::randn(vec![100, 100]).await?;
-    /// // Values distributed N(0, 1), mean ≈ 0, std ≈ 1
-    /// ```
-    pub async fn randn(shape: Vec<usize>) -> Result<Self> {
-        use rand::SeedableRng;
-        let mut rng = rand::rngs::StdRng::from_entropy();
-        Self::randn_with_rng(shape, &mut rng).await
-    }
-
-    /// Create random tensor with normal distribution using provided RNG
-    ///
-    /// Allows for reproducible random generation with seeded RNG.
-    ///
-    /// # Example
-    /// ```rust,ignore
-    /// use rand::SeedableRng;
-    /// let mut rng = rand::rngs::StdRng::seed_from_u64(42);
-    /// let x = Tensor::randn_with_rng(vec![10, 10], &mut rng).await?;
-    /// ```
-    pub async fn randn_with_rng<R: rand::Rng>(shape: Vec<usize>, rng: &mut R) -> Result<Self> {
-        let size: usize = shape.iter().product();
-
-        // Box-Muller transform for normal distribution
-        let mut data = Vec::with_capacity(size);
-        for _ in 0..(size / 2) {
-            let u1: f32 = rng.gen();
-            let u2: f32 = rng.gen();
-
-            // Guard against log(0)
-            let u1 = u1.max(1e-10);
-
-            let r = (-2.0 * u1.ln()).sqrt();
-            let theta = 2.0 * std::f32::consts::PI * u2;
-
-            data.push(r * theta.cos());
-            data.push(r * theta.sin());
-        }
-
-        // Handle odd size
-        if size % 2 == 1 {
-            let u1: f32 = rng.gen::<f32>().max(1e-10);
-            let u2: f32 = rng.gen();
-            data.push((-2.0 * u1.ln()).sqrt() * (2.0 * std::f32::consts::PI * u2).cos());
-        }
-
-        data.truncate(size);
-        Self::from_vec(data, shape).await
-    }
-
-    /// Create random tensor with uniform distribution U(0, 1)
-    ///
-    /// Generates values uniformly distributed between 0.0 (inclusive) and 1.0 (exclusive).
-    ///
-    /// # Example
-    /// ```rust,ignore
-    /// let x = Tensor::rand(vec![100, 100]).await?;
-    /// // Values in [0, 1), mean ≈ 0.5
-    /// ```
-    pub async fn rand(shape: Vec<usize>) -> Result<Self> {
-        use rand::SeedableRng;
-        let mut rng = rand::rngs::StdRng::from_entropy();
-        Self::rand_with_rng(shape, &mut rng).await
-    }
-
-    /// Create random tensor with uniform distribution using provided RNG
-    ///
-    /// # Example
-    /// ```rust,ignore
-    /// use rand::SeedableRng;
-    /// let mut rng = rand::rngs::StdRng::seed_from_u64(42);
-    /// let x = Tensor::rand_with_rng(vec![10, 10], &mut rng).await?;
-    /// ```
-    pub async fn rand_with_rng<R: rand::Rng>(shape: Vec<usize>, rng: &mut R) -> Result<Self> {
-        let size: usize = shape.iter().product();
-        let data: Vec<f32> = (0..size).map(|_| rng.gen()).collect();
-        Self::from_vec(data, shape).await
-    }
-
-    /// Create random tensor with uniform distribution U(min, max)
-    ///
-    /// # Example
-    /// ```rust,ignore
-    /// let x = Tensor::rand_range(vec![100], -1.0, 1.0).await?;
-    /// // Values in [-1, 1), mean ≈ 0
-    /// ```
-    pub async fn rand_range(shape: Vec<usize>, min: f32, max: f32) -> Result<Self> {
-        let uniform = Self::rand(shape).await?;
-        let range = max - min;
-        uniform.mul_scalar(range)?.add_scalar(min)
-    }
+    // Scalar ops (mul_scalar, add_scalar, div_scalar) and random generation
+    // (randn, rand, rand_range, etc.) are in tensor/ops.rs.
 
     /// Reshape tensor (zero-copy via Arc buffer sharing)
     ///

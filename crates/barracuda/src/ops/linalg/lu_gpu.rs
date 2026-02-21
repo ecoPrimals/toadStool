@@ -60,877 +60,183 @@ impl LuGpu {
         include_str!("../../shaders/linalg/lu_decomp_f64.wgsl")
     }
 
-    /// Execute LU decomposition on GPU
-    ///
-    /// # Returns
-    /// Tuple (lu_matrix, permutation) where:
-    /// - lu_matrix: Combined L and U in single matrix (L below diagonal, U on/above)
-    /// - permutation: Row permutation vector
-    ///
-    /// # Errors
-    /// - Returns error if input is not square
+    /// Build a 3-binding layout: binding 0 = uniform, binding 1 = storage, binding 2 = storage (rw).
+    fn make_bgl(device: &wgpu::Device, b1_read_only: bool) -> wgpu::BindGroupLayout {
+        let entry = |binding: u32, ty: wgpu::BufferBindingType| wgpu::BindGroupLayoutEntry {
+            binding, visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer { ty, has_dynamic_offset: false, min_binding_size: None },
+            count: None,
+        };
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: None,
+            entries: &[
+                entry(0, wgpu::BufferBindingType::Uniform),
+                entry(1, wgpu::BufferBindingType::Storage { read_only: b1_read_only }),
+                entry(2, wgpu::BufferBindingType::Storage { read_only: false }),
+            ],
+        })
+    }
+
+    fn make_pipe(
+        device: &wgpu::Device, shader: &wgpu::ShaderModule,
+        bgl: &wgpu::BindGroupLayout, entry_point: &str,
+    ) -> wgpu::ComputePipeline {
+        let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None, bind_group_layouts: &[bgl], push_constant_ranges: &[],
+        });
+        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some(entry_point), layout: Some(&pl), module: shader,
+            entry_point, cache: None, compilation_options: Default::default(),
+        })
+    }
+
+    fn make_bg(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, bufs: &[&wgpu::Buffer]) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None, layout,
+            entries: &bufs.iter().enumerate().map(|(i, b)| wgpu::BindGroupEntry {
+                binding: i as u32, resource: b.as_entire_binding(),
+            }).collect::<Vec<_>>(),
+        })
+    }
+
+    fn dispatch(dev: &WgpuDevice, pipeline: &wgpu::ComputePipeline, bg: &wgpu::BindGroup, wg: (u32, u32, u32)) {
+        let mut enc = dev.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        { let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+          p.set_pipeline(pipeline); p.set_bind_group(0, bg, &[]); p.dispatch_workgroups(wg.0, wg.1, wg.2); }
+        dev.queue.submit(Some(enc.finish()));
+    }
+
+    /// Execute LU decomposition (f32 via Tensor API)
     pub fn execute(self) -> Result<(Tensor, Vec<u32>)> {
         let device = self.input.device();
         let shape = self.input.shape();
-
-        // Validate square matrix
         if shape.len() != 2 || shape[0] != shape[1] {
-            return Err(BarracudaError::InvalidShape {
-                expected: vec![0, 0],
-                actual: shape.to_vec(),
-            });
+            return Err(BarracudaError::InvalidShape { expected: vec![0, 0], actual: shape.to_vec() });
         }
-
         let n = shape[0] as u32;
 
-        // Create working buffer (copy of input, will be modified in-place)
         let input_data = self.input.to_vec()?;
-        let lu_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("LU Matrix Buffer"),
-                contents: bytemuck::cast_slice(&input_data),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            });
-
-        // Create permutation buffer
+        let lu_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("LU Matrix"), contents: bytemuck::cast_slice(&input_data),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
         let perm_init: Vec<u32> = (0..n).collect();
-        let perm_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("LU Permutation Buffer"),
-                contents: bytemuck::cast_slice(&perm_init),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            });
-
-        // Create pivot result buffer [row_idx, max_val_bits]
-        let pivot_result_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Pivot Result Buffer"),
-            size: 8, // 2 × u32
+        let perm_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("LU Perm"), contents: bytemuck::cast_slice(&perm_init),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
+        });
+        let pivot_buf = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Pivot"), size: 8, mapped_at_creation: false,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         });
 
-        // Compile f32 shader (for Tensor-based API)
-        let shader = device.compile_shader(Self::wgsl_shader_f32(), Some("LU Decomp f32"));
+        let shader = device.compile_shader(Self::wgsl_shader_f32(), Some("LU f32"));
+        let pivot_bgl = Self::make_bgl(&device.device, true);
+        let main_bgl = Self::make_bgl(&device.device, false);
+        let find_pivot_pipe = Self::make_pipe(&device.device, &shader, &pivot_bgl, "find_pivot");
+        let row_swap_pipe = Self::make_pipe(&device.device, &shader, &main_bgl, "row_swap");
+        let mult_pipe = Self::make_pipe(&device.device, &shader, &main_bgl, "compute_multipliers");
+        let elim_pipe = Self::make_pipe(&device.device, &shader, &main_bgl, "row_elimination");
 
-        // Create pipelines for each kernel
-        let (find_pivot_pipeline, find_pivot_layout) =
-            self.create_find_pivot_pipeline(&device.device, &shader);
-        let (row_swap_pipeline, row_swap_layout) =
-            self.create_row_swap_pipeline(&device.device, &shader);
-        let (compute_mult_pipeline, compute_mult_layout) =
-            self.create_compute_mult_pipeline(&device.device, &shader);
-        let (row_elim_pipeline, row_elim_layout) =
-            self.create_row_elim_pipeline(&device.device, &shader);
-
-        // Main loop: process each column
         for k in 0..(n - 1) {
-            // Create params buffer for this iteration
-            let params = [n, k, 0u32, 0u32]; // n, k, pivot_row (updated after find_pivot), _pad
-            let params_buffer =
-                device
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("LU Params"),
-                        contents: bytemuck::cast_slice(&params),
-                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    });
-
-            // 1. Find pivot
-            let pivot_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Find Pivot BG"),
-                layout: &find_pivot_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: lu_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: pivot_result_buffer.as_entire_binding(),
-                    },
-                ],
+            let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None, contents: bytemuck::cast_slice(&[n, k, 0u32, 0u32]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Find Pivot Encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Find Pivot Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&find_pivot_pipeline);
-                pass.set_bind_group(0, &pivot_bg, &[]);
-                pass.dispatch_workgroups(1, 1, 1); // Single workgroup for reduction
-            }
-            device.queue.submit(Some(encoder.finish()));
+            let pivot_bg = Self::make_bg(&device.device, &pivot_bgl, &[&params_buf, &lu_buffer, &pivot_buf]);
+            Self::dispatch(device, &find_pivot_pipe, &pivot_bg, (1, 1, 1));
 
-            // Read back pivot row
-            let pivot_row = self.read_pivot_result(device, &pivot_result_buffer)?;
-
-            // Update params with pivot_row for row_swap
-            let params_with_pivot = [n, k, pivot_row, 0u32];
-            let params_buffer_swap =
-                device
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("LU Params Swap"),
-                        contents: bytemuck::cast_slice(&params_with_pivot),
-                        usage: wgpu::BufferUsages::UNIFORM,
-                    });
-
-            // 2. Row swap (if needed)
-            if pivot_row != k {
-                let swap_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("Row Swap BG"),
-                    layout: &row_swap_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: params_buffer_swap.as_entire_binding(),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: lu_buffer.as_entire_binding(),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 2,
-                            resource: perm_buffer.as_entire_binding(),
-                        },
-                    ],
-                });
-
-                let mut encoder =
-                    device
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                            label: Some("Row Swap Encoder"),
-                        });
-                {
-                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Row Swap Pass"),
-                        timestamp_writes: None,
-                    });
-                    pass.set_pipeline(&row_swap_pipeline);
-                    pass.set_bind_group(0, &swap_bg, &[]);
-                    pass.dispatch_workgroups(n.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-                }
-                device.queue.submit(Some(encoder.finish()));
-            }
-
-            // 3. Compute multipliers
-            let mult_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Compute Mult BG"),
-                layout: &compute_mult_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buffer_swap.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: lu_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: perm_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Compute Mult Encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Compute Mult Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&compute_mult_pipeline);
-                pass.set_bind_group(0, &mult_bg, &[]);
-                let rows_to_process = n - k - 1;
-                pass.dispatch_workgroups(rows_to_process.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-            }
-            device.queue.submit(Some(encoder.finish()));
-
-            // 4. Row elimination
-            let elim_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Row Elim BG"),
-                layout: &row_elim_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buffer_swap.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: lu_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: perm_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Row Elim Encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Row Elim Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&row_elim_pipeline);
-                pass.set_bind_group(0, &elim_bg, &[]);
-                let submatrix_size = n - k - 1;
-                let workgroups_x = submatrix_size.div_ceil(16);
-                let workgroups_y = submatrix_size.div_ceil(16);
-                pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
-            }
-            device.queue.submit(Some(encoder.finish()));
-        }
-
-        // Read back results
-        let lu_data = device.read_buffer_f32(&lu_buffer, (n * n) as usize)?;
-        let perm_data = device.read_buffer_u32(&perm_buffer, n as usize)?;
-
-        // Create output tensor
-        let output_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("LU Output"),
-                contents: bytemuck::cast_slice(&lu_data),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            });
-
-        let lu_tensor = Tensor::from_buffer(output_buffer, shape.to_vec(), device.clone());
-
-        Ok((lu_tensor, perm_data))
-    }
-
-    /// Execute LU decomposition on GPU with full f64 precision
-    ///
-    /// This is the **preferred method** - uses native WGSL f64 via SPIR-V/Vulkan,
-    /// achieving 1:2-3 FP64 performance (not 1:32 like CUDA consumer GPUs).
-    ///
-    /// # Arguments
-    /// * `device` - WgpuDevice to execute on
-    /// * `data` - Square matrix [N × N] in row-major order (f64)
-    /// * `n` - Matrix dimension
-    ///
-    /// # Returns
-    /// Tuple (lu_matrix, permutation) where:
-    /// - lu_matrix: Combined L and U in single matrix (L below diagonal, U on/above) as f64
-    /// - permutation: Row permutation vector
-    pub fn execute_f64(
-        device: Arc<WgpuDevice>,
-        data: &[f64],
-        n: usize,
-    ) -> Result<(Vec<f64>, Vec<u32>)> {
-        if data.len() != n * n {
-            return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Expected {} elements for {}x{} matrix, got {}",
-                    n * n,
-                    n,
-                    n,
-                    data.len()
-                ),
-            });
-        }
-
-        let nu = n as u32;
-
-        // Create f64 buffers using the same pattern as PppmGpu
-        let lu_buffer = {
-            let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("LU Matrix f64"),
-                    contents: &bytes,
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-                })
-        };
-
-        // Create permutation buffer
-        let perm_init: Vec<u32> = (0..nu).collect();
-        let perm_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("LU Perm"),
-                contents: bytemuck::cast_slice(&perm_init),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            });
-
-        // Pivot result buffer
-        let pivot_result_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Pivot Result"),
-            size: 4, // Single u32 for row index
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-
-        // Compile f64 shader
-        let shader = device.compile_shader_f64(Self::wgsl_shader_f64(), Some("LU f64"));
-
-        // Create pipelines (same layout as f32 but shader uses f64)
-        let bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("LU f64 BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("LU f64 PL"),
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
-            });
-
-        let row_swap_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Row Swap f64"),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point: "row_swap",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let compute_mult_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Compute Mult f64"),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point: "compute_multipliers",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let row_elim_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Row Elim f64"),
-                    layout: Some(&pl),
-                    module: &shader,
-                    entry_point: "row_elimination",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        // Find pivot has different layout (read-only matrix, read-write result)
-        let pivot_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Find Pivot f64 BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-
-        let pivot_pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Find Pivot f64 PL"),
-                bind_group_layouts: &[&pivot_bgl],
-                push_constant_ranges: &[],
-            });
-
-        let find_pivot_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Find Pivot f64"),
-                    layout: Some(&pivot_pl),
-                    module: &shader,
-                    entry_point: "find_pivot",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        // Main LU loop
-        for k in 0..(nu - 1) {
-            let params = [nu, k, 0u32, 0u32];
-            let params_buffer =
-                device
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("LU Params"),
-                        contents: bytemuck::cast_slice(&params),
-                        usage: wgpu::BufferUsages::UNIFORM,
-                    });
-
-            // 1. Find pivot
-            let pivot_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Find Pivot BG"),
-                layout: &pivot_bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: lu_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: pivot_result_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Find Pivot"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Find Pivot Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&find_pivot_pipeline);
-                pass.set_bind_group(0, &pivot_bg, &[]);
-                pass.dispatch_workgroups(1, 1, 1);
-            }
-            device.queue.submit(Some(encoder.finish()));
-
-            // Read pivot row
-            let pivot_data = device.read_buffer_u32(&pivot_result_buffer, 1)?;
+            let pivot_data = device.read_buffer_u32(&pivot_buf, 2)?;
             let pivot_row = pivot_data[0];
 
-            // Create params with pivot row
-            let params_with_pivot = [nu, k, pivot_row, 0u32];
-            let params_buffer_pivot =
-                device
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("LU Params Pivot"),
-                        contents: bytemuck::cast_slice(&params_with_pivot),
-                        usage: wgpu::BufferUsages::UNIFORM,
-                    });
-
-            let main_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("LU Main BG"),
-                layout: &bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buffer_pivot.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: lu_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: perm_buffer.as_entire_binding(),
-                    },
-                ],
+            let params_pivot = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None, contents: bytemuck::cast_slice(&[n, k, pivot_row, 0u32]),
+                usage: wgpu::BufferUsages::UNIFORM,
             });
+            let main_bg = Self::make_bg(&device.device, &main_bgl, &[&params_pivot, &lu_buffer, &perm_buffer]);
 
-            // 2. Row swap (if needed)
             if pivot_row != k {
-                let mut encoder =
-                    device
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                            label: Some("Row Swap"),
-                        });
-                {
-                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Row Swap Pass"),
-                        timestamp_writes: None,
-                    });
-                    pass.set_pipeline(&row_swap_pipeline);
-                    pass.set_bind_group(0, &main_bg, &[]);
-                    pass.dispatch_workgroups(nu.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-                }
-                device.queue.submit(Some(encoder.finish()));
+                Self::dispatch(device, &row_swap_pipe, &main_bg, (n.div_ceil(WORKGROUP_SIZE_1D), 1, 1));
             }
-
-            // 3. Compute multipliers
-            {
-                let mut encoder =
-                    device
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                            label: Some("Compute Mult"),
-                        });
-                {
-                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Compute Mult Pass"),
-                        timestamp_writes: None,
-                    });
-                    pass.set_pipeline(&compute_mult_pipeline);
-                    pass.set_bind_group(0, &main_bg, &[]);
-                    let rows = nu - k - 1;
-                    pass.dispatch_workgroups(rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-                }
-                device.queue.submit(Some(encoder.finish()));
-            }
-
-            // 4. Row elimination
-            {
-                let mut encoder =
-                    device
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                            label: Some("Row Elim"),
-                        });
-                {
-                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Row Elim Pass"),
-                        timestamp_writes: None,
-                    });
-                    pass.set_pipeline(&row_elim_pipeline);
-                    pass.set_bind_group(0, &main_bg, &[]);
-                    let sub_size = nu - k - 1;
-                    pass.dispatch_workgroups(sub_size.div_ceil(16), sub_size.div_ceil(16), 1);
-                }
-                device.queue.submit(Some(encoder.finish()));
-            }
+            Self::dispatch(device, &mult_pipe, &main_bg, ((n - k - 1).div_ceil(WORKGROUP_SIZE_1D), 1, 1));
+            let sub = n - k - 1;
+            Self::dispatch(device, &elim_pipe, &main_bg, (sub.div_ceil(16), sub.div_ceil(16), 1));
         }
 
-        // Read back f64 results
+        let lu_data = device.read_buffer_f32(&lu_buffer, (n * n) as usize)?;
+        let perm_data = device.read_buffer_u32(&perm_buffer, n as usize)?;
+        let output_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("LU Output"), contents: bytemuck::cast_slice(&lu_data),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+        Ok((Tensor::from_buffer(output_buffer, shape.to_vec(), device.clone()), perm_data))
+    }
+
+    /// Execute LU decomposition with full f64 precision.
+    /// Preferred method — native WGSL f64 via SPIR-V/Vulkan (1:2-3 FP64 ratio).
+    pub fn execute_f64(device: Arc<WgpuDevice>, data: &[f64], n: usize) -> Result<(Vec<f64>, Vec<u32>)> {
+        if data.len() != n * n {
+            return Err(BarracudaError::InvalidInput {
+                message: format!("Expected {} elements for {n}x{n} matrix, got {}", n * n, data.len()),
+            });
+        }
+        let nu = n as u32;
+
+        let lu_buffer = {
+            let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
+            device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("LU f64"), contents: &bytes,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            })
+        };
+        let perm_init: Vec<u32> = (0..nu).collect();
+        let perm_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("LU Perm"), contents: bytemuck::cast_slice(&perm_init),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+        let pivot_buf = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Pivot"), size: 4, mapped_at_creation: false,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+
+        let shader = device.compile_shader_f64(Self::wgsl_shader_f64(), Some("LU f64"));
+        let pivot_bgl = Self::make_bgl(&device.device, true);
+        let main_bgl = Self::make_bgl(&device.device, false);
+        let find_pivot_pipe = Self::make_pipe(&device.device, &shader, &pivot_bgl, "find_pivot");
+        let row_swap_pipe = Self::make_pipe(&device.device, &shader, &main_bgl, "row_swap");
+        let mult_pipe = Self::make_pipe(&device.device, &shader, &main_bgl, "compute_multipliers");
+        let elim_pipe = Self::make_pipe(&device.device, &shader, &main_bgl, "row_elimination");
+
+        for k in 0..(nu - 1) {
+            let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None, contents: bytemuck::cast_slice(&[nu, k, 0u32, 0u32]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+            let pivot_bg = Self::make_bg(&device.device, &pivot_bgl, &[&params_buf, &lu_buffer, &pivot_buf]);
+            Self::dispatch(&device, &find_pivot_pipe, &pivot_bg, (1, 1, 1));
+
+            let pivot_data = device.read_buffer_u32(&pivot_buf, 1)?;
+            let pivot_row = pivot_data[0];
+
+            let params_pivot = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None, contents: bytemuck::cast_slice(&[nu, k, pivot_row, 0u32]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+            let main_bg = Self::make_bg(&device.device, &main_bgl, &[&params_pivot, &lu_buffer, &perm_buffer]);
+
+            if pivot_row != k {
+                Self::dispatch(&device, &row_swap_pipe, &main_bg, (nu.div_ceil(WORKGROUP_SIZE_1D), 1, 1));
+            }
+            Self::dispatch(&device, &mult_pipe, &main_bg, ((nu - k - 1).div_ceil(WORKGROUP_SIZE_1D), 1, 1));
+            let sub = nu - k - 1;
+            Self::dispatch(&device, &elim_pipe, &main_bg, (sub.div_ceil(16), sub.div_ceil(16), 1));
+        }
+
         let lu_data = device.read_f64_buffer(&lu_buffer, n * n)?;
         let perm_data = device.read_buffer_u32(&perm_buffer, n)?;
-
         Ok((lu_data, perm_data))
-    }
-
-    // Helper: Create find_pivot pipeline
-    fn create_find_pivot_pipeline(
-        &self,
-        device: &wgpu::Device,
-        shader: &wgpu::ShaderModule,
-    ) -> (wgpu::ComputePipeline, wgpu::BindGroupLayout) {
-        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Find Pivot BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Find Pivot PL"),
-            bind_group_layouts: &[&layout],
-            push_constant_ranges: &[],
-        });
-
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Find Pivot Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: shader,
-            entry_point: "find_pivot",
-            cache: None,
-            compilation_options: Default::default(),
-        });
-
-        (pipeline, layout)
-    }
-
-    // Helper: Create row_swap pipeline
-    fn create_row_swap_pipeline(
-        &self,
-        device: &wgpu::Device,
-        shader: &wgpu::ShaderModule,
-    ) -> (wgpu::ComputePipeline, wgpu::BindGroupLayout) {
-        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Row Swap BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Row Swap PL"),
-            bind_group_layouts: &[&layout],
-            push_constant_ranges: &[],
-        });
-
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Row Swap Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: shader,
-            entry_point: "row_swap",
-            cache: None,
-            compilation_options: Default::default(),
-        });
-
-        (pipeline, layout)
-    }
-
-    // Helper: Create compute_multipliers pipeline
-    fn create_compute_mult_pipeline(
-        &self,
-        device: &wgpu::Device,
-        shader: &wgpu::ShaderModule,
-    ) -> (wgpu::ComputePipeline, wgpu::BindGroupLayout) {
-        // Reuse row_swap layout (same bindings)
-        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Compute Mult BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Compute Mult PL"),
-            bind_group_layouts: &[&layout],
-            push_constant_ranges: &[],
-        });
-
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Compute Mult Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: shader,
-            entry_point: "compute_multipliers",
-            cache: None,
-            compilation_options: Default::default(),
-        });
-
-        (pipeline, layout)
-    }
-
-    // Helper: Create row_elimination pipeline
-    fn create_row_elim_pipeline(
-        &self,
-        device: &wgpu::Device,
-        shader: &wgpu::ShaderModule,
-    ) -> (wgpu::ComputePipeline, wgpu::BindGroupLayout) {
-        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Row Elim BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Row Elim PL"),
-            bind_group_layouts: &[&layout],
-            push_constant_ranges: &[],
-        });
-
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Row Elim Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: shader,
-            entry_point: "row_elimination",
-            cache: None,
-            compilation_options: Default::default(),
-        });
-
-        (pipeline, layout)
-    }
-
-    // Helper: Read pivot result from GPU (2 u32 values)
-    fn read_pivot_result(&self, device: &Arc<WgpuDevice>, buffer: &wgpu::Buffer) -> Result<u32> {
-        // Read 2 u32 values [pivot_row, max_val_bits]
-        let data = device.read_buffer_u32(buffer, 2)?;
-        Ok(data[0])
     }
 }
 

@@ -1,6 +1,7 @@
 //! BERT model implementation
 //!
-//! Placeholder for BERT transformer model.
+//! Type-safe API surface for BERT transformer inference.
+//! Inference methods return `NotImplemented` until a model backend is integrated.
 
 use crate::Result;
 
@@ -29,7 +30,8 @@ impl Default for BertConfig {
     }
 }
 
-/// BERT model (placeholder)
+/// BERT model
+#[derive(Debug)]
 pub struct Bert {
     config: BertConfig,
 }
@@ -40,26 +42,28 @@ impl Bert {
         Self { config }
     }
 
-    /// Load from HuggingFace Hub (placeholder)
-    pub fn from_pretrained(_model_id: &str) -> Result<Self> {
-        // In full implementation:
-        // 1. Download from HuggingFace Hub
-        // 2. Load weights into Burn tensors
-        // 3. Initialize model
+    /// Access model configuration
+    pub fn config(&self) -> &BertConfig {
+        &self.config
+    }
 
-        Ok(Self::new(BertConfig::default()))
+    /// Load from HuggingFace Hub
+    pub fn from_pretrained(model_id: &str) -> Result<Self> {
+        Err(crate::Error::NotImplemented(format!(
+            "BERT model loading not yet integrated (requested: {model_id})"
+        )))
     }
 
     /// Get number of parameters
     pub fn num_parameters(&self) -> usize {
-        // Approximate BERT-base parameters
         110_000_000
     }
 
-    /// Run inference (placeholder)
+    /// Run inference
     pub fn forward(&self, _input_ids: &[u32]) -> Result<Vec<f32>> {
-        // Placeholder output
-        Ok(vec![0.0; self.config.hidden_size])
+        Err(crate::Error::NotImplemented(
+            "BERT inference requires a model backend (burn/onnx/wgsl)".into(),
+        ))
     }
 }
 
@@ -85,16 +89,18 @@ mod tests {
     }
 
     #[test]
-    fn test_bert_from_pretrained() {
-        let bert = Bert::from_pretrained("bert-base-uncased").unwrap();
-        assert_eq!(bert.config.hidden_size, 768);
+    fn test_bert_from_pretrained_not_implemented() {
+        let result = Bert::from_pretrained("bert-base-uncased");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("not yet integrated"));
     }
 
     #[test]
-    fn test_bert_forward_output_shape() {
+    fn test_bert_forward_not_implemented() {
         let bert = Bert::new(BertConfig::default());
-        let output = bert.forward(&[101, 7592, 1010, 2088, 102]).unwrap();
-        assert_eq!(output.len(), 768);
+        let result = bert.forward(&[101, 7592, 1010, 2088, 102]);
+        assert!(result.is_err());
     }
 
     #[test]
@@ -107,8 +113,7 @@ mod tests {
             intermediate_size: 512,
             max_position_embeddings: 128,
         };
-        let bert = Bert::new(cfg.clone());
-        let output = bert.forward(&[0, 1, 2]).unwrap();
-        assert_eq!(output.len(), cfg.hidden_size);
+        let bert = Bert::new(cfg);
+        assert_eq!(bert.num_parameters(), 110_000_000);
     }
 }

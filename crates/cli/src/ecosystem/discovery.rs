@@ -222,31 +222,54 @@ fn parse_service_url(url: &str) -> Result<SocketAddr> {
 ///
 /// Discovery runs for 2 seconds to allow time for mDNS responses.
 ///
-/// **Status**: Stub implementation - full mDNS planned for v0.3.0
+/// Discover services via mDNS using `toadstool::discovery::MdnsDiscoveryService`.
+///
+/// Delegates to the production mDNS implementation in toadstool-core (uses mdns-sd).
+/// Discovery runs for 2 seconds, matching Bonjour browse behavior.
 #[allow(dead_code)]
+#[allow(deprecated)]
 async fn discover_via_mdns(capability_category: &str) -> Result<Vec<ServiceEndpoint>> {
-    // FUTURE: Complete mDNS implementation (planned for v0.3.0)
-    //
-    // BLOCKED: The mdns crate (v3.0) uses async-std runtime which has compatibility
-    // issues with tokio. Waiting for mdns-sd crate maturity or tokio-compatible fork.
-    // Options for implementation:
-    //
-    // 1. Use mdns-sd crate instead (pure tokio)
-    // 2. Run mdns in separate thread pool with async-std
-    // 3. Use libmdns FFI bindings
-    // 4. Implement custom mDNS using tokio UDP sockets
-    //
-    // Service name pattern: _<capability>-service._tcp.local
-    // Example: _crypto-service._tcp.local for crypto capability
-    //
-    // See MDNS_DISCOVERY_GUIDE.md for full implementation plan.
+    let mdns = match toadstool::discovery::MdnsDiscoveryService::new() {
+        Ok(m) => m,
+        Err(e) => {
+            debug!("mDNS unavailable (no multicast interface?): {e}");
+            return Ok(Vec::new());
+        }
+    };
 
-    let service_name = format!("_{}-service._tcp.local", capability_category);
-    debug!("mDNS discovery not yet implemented for {}", service_name);
-    debug!("Skipping mDNS discovery - use environment variables or config files instead");
+    let discovered = mdns
+        .discover_by_capability(capability_category, Duration::from_secs(2))
+        .await
+        .unwrap_or_default();
 
-    // Return empty for now - other discovery methods will be tried
-    Ok(Vec::new())
+    let endpoints: Vec<ServiceEndpoint> = discovered
+        .into_iter()
+        .filter_map(|svc| {
+            let addr: SocketAddr = svc.endpoint.parse().ok()?;
+            let caps: Vec<String> = svc
+                .capabilities
+                .iter()
+                .map(|c| c.name.clone())
+                .collect();
+            Some(ServiceEndpoint {
+                service_type: EcosystemService::Unknown(capability_category.to_string()),
+                address: addr,
+                version: Arc::from(svc.version.as_str()),
+                capabilities: caps,
+                trust_level: TrustLevel::Advertised,
+            })
+        })
+        .collect();
+
+    if !endpoints.is_empty() {
+        info!(
+            "mDNS discovered {} service(s) for capability '{}'",
+            endpoints.len(),
+            capability_category
+        );
+    }
+
+    Ok(endpoints)
 }
 
 // ============================================================================

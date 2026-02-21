@@ -76,13 +76,6 @@ impl OpenClComputeUnit {
         Err(ComputeError::BackendError(anyhow::anyhow!(
             "OpenCL backend is deprecated. Use barracuda::device::WgpuDevice for GPU compute (pure Rust, safer, faster)"
         )))
-
-        // OLD CODE - needs updating for new ocl API:
-        // let name = device.name().map_err(|e| ComputeError::BackendError(e.into()))?;
-        // ✅ Note: OpenCL is deprecated in favor of WGPU/barraCUDA
-        // Keeping minimal impl for backward compatibility during transition
-        // let max_compute_units = device.info(DeviceInfo::MaxComputeUnits)?;
-        // let global_mem_size = device.info(DeviceInfo::GlobalMemSize)?;
     }
 }
 

@@ -3,6 +3,7 @@
 //! Wraps existing `AkidaDevice` to conform to `NpuBackend` trait.
 //! Deep Debt: Uses existing production code, no duplication.
 
+use super::read_hwmon_power;
 use crate::backend::{BackendType, ModelHandle, NpuBackend};
 use crate::capabilities::Capabilities;
 use crate::device::AkidaDevice;
@@ -118,26 +119,10 @@ impl NpuBackend for KernelBackend {
     }
 
     fn measure_power(&self) -> Result<f32> {
-        // Query via hwmon sysfs (runtime measurement!)
-        let hwmon_path = format!(
-            "/sys/bus/pci/devices/{}/hwmon/hwmon*/power1_average",
-            self.device_info.pcie_address()
-        );
-
-        if let Ok(entries) = glob::glob(&hwmon_path) {
-            for entry in entries.flatten() {
-                if let Ok(content) = std::fs::read_to_string(&entry) {
-                    if let Ok(microwatts) = content.trim().parse::<u64>() {
-                        // Precision loss acceptable: power measurement is inherently imprecise
-                        #[allow(clippy::cast_precision_loss)]
-                        let watts = microwatts as f32 / 1_000_000.0;
-                        return Ok(watts);
-                    }
-                }
-            }
+        if let Some(watts) = read_hwmon_power(self.device_info.pcie_address()) {
+            return Ok(watts);
         }
 
-        // Graceful fallback
         tracing::warn!(
             "NPU power unavailable for {}, using typical AKD1000 value",
             self.device_info.pcie_address()

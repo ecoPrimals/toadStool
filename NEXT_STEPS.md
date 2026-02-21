@@ -1,7 +1,7 @@
 # ToadStool/BarraCUDA — Next Steps
 
-**Updated**: February 21, 2026 — Session 25
-**Status**: Sovereign Phases 0–3 ✅ | Integration tests 13 suites/167 ✅ | TensorSession ML ops ✅ | ParallelFilter two-level ✅ | capabilities split ✅ | GemmCachedF64 ✅ | 172 new unit tests (S25) ✅ | ~65% coverage
+**Updated**: February 21, 2026 — Session 31c
+**Status**: All deep debt resolved ✅ | 10 deps removed ✅ | 10 files refactored ✅ | 31 GpuExecutor MathOps ✅ | 16,100+ tests | ~65% coverage
 
 ---
 
@@ -107,8 +107,8 @@ Prerequisites:
 - [ ] YOLO (object detection)
 
 ### Test Coverage (target 90%)
-- [ ] Current: 63.02% line (non-GPU crates) — up from 61.35%
-- [ ] Gap: async networking paths (`websocket.rs`, `unibin.rs` server startup), GPU-gated paths
+- [ ] Current: ~65% line (non-GPU crates) — 172 new tests in S25, refactoring + debt fixes in S28-29
+- [ ] Gap: async networking paths, GPU-gated paths
 - [ ] Remaining pending test suites: `e2e`, `fhe`, `comprehensive` (require future APIs)
 
 ### Cross-Repo Debt (neuralSpring + wetSpring)
@@ -119,6 +119,26 @@ Prerequisites:
 ---
 
 ## Completed (All Sessions)
+
+### Sessions 28–29 (Feb 21, 2026) ✅ — Deep Debt Sprint: Dependencies, Refactoring, Hardcoding
+
+- [x] 8 external deps removed: `once_cell`, `lazy_static`, `tempdir`, `term_size`, `mdns`, `dashmap`, `which`; `base64` unified to 0.22
+- [x] 5 files refactored under 1000 lines: `session/mod.rs`, `svd_gpu.rs`, `tensor/mod.rs`, `lu_gpu.rs`, `math_f64.wgsl`
+- [x] All `/tmp` and `/etc` hardcoded paths → XDG + env var + `std::env::temp_dir()` fallback
+- [x] `RwLock` poison recovery: `expect("poisoned")` → `unwrap_or_else(|e| e.into_inner())`
+- [x] Production `unwrap()` elimination: `try_into().unwrap()` → explicit array indexing in `gpu_executor.rs`
+- [x] ML model honesty: BERT/Whisper/YOLO return `Error::NotImplemented` (were fake empty results)
+- [x] Unsafe documentation: comprehensive SAFETY comments for `NonNull`, `Send`/`Sync` impls
+- [x] GPU capability magic numbers → `capability_defaults` module with named constants
+- [x] Fallback port numbers → named `const` values in `primal_discovery_complete.rs`
+- [x] Pre-existing test assertion bugs fixed in `toadstool-common` error types
+
+### Sessions 25–27 (Feb 20–21, 2026) ✅ — Coverage + Spring Absorption
+
+- [x] 172 new unit tests across 11 modules (~65% line coverage)
+- [x] hotSpring/wetSpring/neuralSpring shader absorption (16 new WGSL shaders)
+- [x] CPU-based f64 Householder+QR eigensolver
+- [x] NVVM Ada Lovelace f64 transcendental bug fix
 
 ### hotSpring Absorption (Feb 19, 2026) ✅ — Unidirectional Pipeline Feedback + NAK Universal Solution
 

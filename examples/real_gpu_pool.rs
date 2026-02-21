@@ -68,12 +68,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // TODO: GPU resource auto-detection
-    // The abstraction will automatically use CUDA, OpenCL, or Vulkan
-    // based on what's available on your system
-    println!("ℹ️  GPU resource detection coming soon");
-    println!("   Will auto-detect: CUDA, OpenCL, Vulkan, Metal");
-    println!("   For now: Using CPU resource pool");
+    // GPU auto-detection is available via barracuda::device::WgpuDevice
+    // which discovers all Vulkan/Metal/DX12 GPUs at runtime.
+    // This example demonstrates the CPU resource pool path.
+    println!("ℹ️  GPU detection available via barracuda::device::WgpuDevice");
+    println!("   Auto-detects: Vulkan, Metal, DX12 via WGPU");
+    println!("   This example: Using CPU resource pool");
     println!();
 
     // List all registered resources

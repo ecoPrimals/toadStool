@@ -124,49 +124,36 @@ pub struct ESN {
     trained: bool,
 }
 
+fn validate_config(config: &ESNConfig) -> BarracudaResult<()> {
+    let check = |cond: bool, msg: &str| -> BarracudaResult<()> {
+        if cond { Ok(()) } else { Err(BarracudaError::InvalidInput { message: msg.to_string() }) }
+    };
+    check(config.input_size > 0 && config.reservoir_size > 0 && config.output_size > 0,
+          "All sizes must be greater than zero")?;
+    check(config.spectral_radius > 0.0 && config.spectral_radius <= 2.0,
+          "Spectral radius must be in (0, 2]")?;
+    check(config.connectivity > 0.0 && config.connectivity <= 1.0,
+          "Connectivity must be in (0, 1]")?;
+    check(config.leak_rate > 0.0 && config.leak_rate <= 1.0,
+          "Leak rate must be in (0, 1]")?;
+    check(config.regularization > 0.0,
+          "Regularization must be positive")?;
+    Ok(())
+}
+
+fn expect_size(label: &str, expected: usize, actual: usize) -> BarracudaResult<()> {
+    if actual == expected { return Ok(()); }
+    Err(BarracudaError::InvalidInput {
+        message: format!("{label} size mismatch: expected {expected}, got {actual}"),
+    })
+}
+
 impl ESN {
     /// Create a new Echo State Network
     ///
     /// **Hardware-agnostic** - Auto-detects best device!
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - ESN configuration parameters
-    ///
-    /// # Returns
-    ///
-    /// Initialized ESN ready for training, on best available device
     pub async fn new(config: ESNConfig) -> BarracudaResult<Self> {
-        // Validate configuration
-        if config.input_size == 0 || config.reservoir_size == 0 || config.output_size == 0 {
-            return Err(BarracudaError::InvalidInput {
-                message: "All sizes must be greater than zero".to_string(),
-            });
-        }
-
-        if config.spectral_radius <= 0.0 || config.spectral_radius > 2.0 {
-            return Err(BarracudaError::InvalidInput {
-                message: "Spectral radius must be in (0, 2]".to_string(),
-            });
-        }
-
-        if config.connectivity <= 0.0 || config.connectivity > 1.0 {
-            return Err(BarracudaError::InvalidInput {
-                message: "Connectivity must be in (0, 1]".to_string(),
-            });
-        }
-
-        if config.leak_rate <= 0.0 || config.leak_rate > 1.0 {
-            return Err(BarracudaError::InvalidInput {
-                message: "Leak rate must be in (0, 1]".to_string(),
-            });
-        }
-
-        if config.regularization <= 0.0 {
-            return Err(BarracudaError::InvalidInput {
-                message: "Regularization must be positive".to_string(),
-            });
-        }
+        validate_config(&config)?;
 
         // Auto-detect best device (uses shared pool for concurrent safety)
         let device = Auto::new().await?;
@@ -300,13 +287,11 @@ impl ESN {
     ///
     /// Updated reservoir state (reservoir_size × 1)
     pub async fn update(&mut self, input: &Tensor) -> BarracudaResult<Tensor> {
-        // Validate input shape
         if input.shape() != [self.config.input_size, 1] {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
-                    "Input shape mismatch: expected [{}, 1], got {:?}",
-                    self.config.input_size,
-                    input.shape()
+                    "Input tensor shape mismatch: expected [{}, 1], got {:?}",
+                    self.config.input_size, input.shape()
                 ),
             });
         }
@@ -375,27 +360,9 @@ impl ESN {
         let mut all_targets = Vec::new();
 
         for (input_seq, target_seq) in inputs.iter().zip(targets.iter()) {
-            if input_seq.len() != self.config.input_size {
-                return Err(BarracudaError::InvalidInput {
-                    message: format!(
-                        "Input size mismatch: expected {}, got {}",
-                        self.config.input_size,
-                        input_seq.len()
-                    ),
-                });
-            }
+            expect_size("Input", self.config.input_size, input_seq.len())?;
+            expect_size("Target", self.config.output_size, target_seq.len())?;
 
-            if target_seq.len() != self.config.output_size {
-                return Err(BarracudaError::InvalidInput {
-                    message: format!(
-                        "Target size mismatch: expected {}, got {}",
-                        self.config.output_size,
-                        target_seq.len()
-                    ),
-                });
-            }
-
-            // Convert input to Tensor
             let input_tensor = Tensor::from_vec_on(
                 input_seq.clone(),
                 vec![self.config.input_size, 1],
@@ -495,23 +462,30 @@ impl ESN {
     ///
     /// Predicted output
     pub async fn predict(&mut self, input: &[f32]) -> BarracudaResult<Vec<f32>> {
+        let (output, _state) = self.predict_return_state(input).await?;
+        Ok(output)
+    }
+
+    /// Predict and return both output AND raw reservoir state.
+    ///
+    /// Essential for cross-substrate validation (GPU reservoir → NPU readout)
+    /// and for debugging reservoir dynamics. metalForge proved that raw state
+    /// access enables:
+    /// - Cross-substrate pipeline: train GPU readout from NPU reservoir state
+    /// - Online readout switching via weight mutation (AKD1000 validated)
+    /// - Reservoir quality metrics (effective rank, Lyapunov exponent)
+    pub async fn predict_return_state(
+        &mut self,
+        input: &[f32],
+    ) -> BarracudaResult<(Vec<f32>, Vec<f32>)> {
         if !self.trained {
             return Err(BarracudaError::InvalidInput {
                 message: "ESN must be trained before prediction".to_string(),
             });
         }
 
-        if input.len() != self.config.input_size {
-            return Err(BarracudaError::InvalidInput {
-                message: format!(
-                    "Input size mismatch: expected {}, got {}",
-                    self.config.input_size,
-                    input.len()
-                ),
-            });
-        }
+        expect_size("Input", self.config.input_size, input.len())?;
 
-        // Convert input to Tensor
         let input_tensor = Tensor::from_vec_on(
             input.to_vec(),
             vec![self.config.input_size, 1],
@@ -519,20 +493,40 @@ impl ESN {
         )
         .await?;
 
-        // Update state
         let state = self.update(&input_tensor).await?;
+        let raw_state = state.to_vec()?;
 
-        // Output: W_out * state
         let w_out =
             self.w_out
                 .as_ref()
                 .ok_or_else(|| crate::error::BarracudaError::InvalidOperation {
-                    op: "ESN::predict".to_string(),
+                    op: "ESN::predict_return_state".to_string(),
                     reason: "ESN has not been trained yet — call train() first".to_string(),
                 })?;
         let output = w_out.transpose()?.matmul(&state)?;
 
-        output.to_vec()
+        Ok((output.to_vec()?, raw_state))
+    }
+
+    /// Replace the readout weights without retraining the reservoir.
+    ///
+    /// Enables online readout switching — validated on AKD1000 via metalForge's
+    /// weight mutation discovery. The reservoir dynamics are preserved; only the
+    /// linear readout layer changes.
+    pub fn set_readout_weights(&mut self, weights: Tensor) -> BarracudaResult<()> {
+        let expected = [self.config.output_size, self.config.reservoir_size];
+        if weights.shape() != expected {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "Readout weight shape mismatch: expected {:?}, got {:?}",
+                    expected,
+                    weights.shape()
+                ),
+            });
+        }
+        self.w_out = Some(weights);
+        self.trained = true;
+        Ok(())
     }
 
     /// Get current configuration
@@ -754,6 +748,52 @@ mod tests {
         // Predict
         let prediction = esn.predict(&vec![0.5, 0.5]).await.unwrap();
         assert_eq!(prediction.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_esn_predict_return_state() {
+        let config = ESNConfig {
+            input_size: 1,
+            reservoir_size: 20,
+            output_size: 1,
+            ..Default::default()
+        };
+
+        let mut esn = ESN::new(config).await.unwrap();
+
+        let inputs = vec![vec![1.0], vec![2.0], vec![3.0]];
+        let targets = vec![vec![2.0], vec![3.0], vec![4.0]];
+        esn.train(&inputs, &targets).await.unwrap();
+
+        let (output, state) = esn.predict_return_state(&[5.0]).await.unwrap();
+        assert_eq!(output.len(), 1);
+        assert_eq!(state.len(), 20);
+        assert!(state.iter().any(|&v| v != 0.0), "State should be non-zero after update");
+    }
+
+    #[tokio::test]
+    async fn test_esn_set_readout_weights() {
+        let config = ESNConfig {
+            input_size: 1,
+            reservoir_size: 20,
+            output_size: 1,
+            ..Default::default()
+        };
+
+        let mut esn = ESN::new(config).await.unwrap();
+
+        let inputs = vec![vec![1.0], vec![2.0]];
+        let targets = vec![vec![2.0], vec![3.0]];
+        esn.train(&inputs, &targets).await.unwrap();
+
+        let original = esn.predict(&[5.0]).await.unwrap();
+
+        let new_weights = Tensor::zeros_on(vec![1, 20], esn.device.clone()).await.unwrap();
+        esn.set_readout_weights(new_weights).unwrap();
+
+        let zeroed = esn.predict(&[5.0]).await.unwrap();
+        assert!((zeroed[0]).abs() < 1e-5, "Zero readout should produce near-zero output");
+        assert_ne!(original, zeroed, "Different readout weights should produce different output");
     }
 
     #[tokio::test]

@@ -48,10 +48,6 @@ pub(crate) use traffic::TrafficExt;
 /// configurator.validate_configuration()?;
 /// ```
 pub struct SongbirdNetworkConfigurator {
-    /// HTTP client for making configuration requests - REMOVED (Unix sockets!)
-    #[allow(dead_code)]
-    pub(crate) _stub: String, // UniBin placeholder
-
     /// Network configuration
     pub config: SongbirdNetworkConfig,
 }

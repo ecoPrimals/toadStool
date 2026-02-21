@@ -37,7 +37,7 @@ use std::sync::{LazyLock, Mutex, MutexGuard};
 /// Recovering is correct here because the cache data is always consistent
 /// (insertions are atomic) — a poisoned lock just means the inserting thread
 /// panicked after writing, which is safe to read.
-fn lock_cache<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+pub(crate) fn lock_cache<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
@@ -567,4 +567,5 @@ mod tests {
         assert_eq!(c.native_count(), 9);
         assert!(!c.needs_exp_log_workaround());
     }
+
 }

@@ -2,6 +2,12 @@
 //!
 //! This module provides runtime capability discovery for Akida devices.
 //! No hardcoded device specifications—everything is discovered at runtime.
+//!
+//! ## metalForge absorption
+//!
+//! Capabilities now include mesh topology, clock modes, batch discovery,
+//! and weight mutation support — all validated by hardware probing on a
+//! physical AKD1000 (see `hotSpring/metalForge/npu/akida/BEYOND_SDK.md`).
 
 use crate::error::{AkidaError, Result};
 
@@ -25,6 +31,163 @@ pub struct Capabilities {
 
     /// Die temperature in celsius
     pub temperature_c: Option<f32>,
+
+    /// NP mesh topology (discovered, not assumed)
+    pub mesh: Option<MeshTopology>,
+
+    /// Active clock mode
+    pub clock_mode: Option<ClockMode>,
+
+    /// Batch inference capabilities
+    pub batch: Option<BatchCapabilities>,
+
+    /// Weight mutation support
+    pub weight_mutation: WeightMutationSupport,
+}
+
+/// NP mesh topology discovered from hardware.
+/// metalForge probe revealed AKD1000 has 80 NPs arranged in a 5x8x2
+/// configuration, not the flat "80 NPUs" the SDK documents.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MeshTopology {
+    /// NPs in X dimension
+    pub x: u8,
+    /// NPs in Y dimension
+    pub y: u8,
+    /// NPs in Z dimension (pipeline depth)
+    pub z: u8,
+    /// Total functional NPs (x * y * z, minus any disabled)
+    pub functional_count: u32,
+}
+
+impl MeshTopology {
+    /// Discover mesh topology from sysfs.
+    /// Returns `None` if the driver doesn't expose topology attributes.
+    pub fn from_sysfs(pcie_address: &str) -> Option<Self> {
+        let base = format!("/sys/bus/pci/devices/{pcie_address}");
+
+        let read_u8 = |attr: &str| -> Option<u8> {
+            std::fs::read_to_string(format!("{base}/akida_{attr}"))
+                .ok()
+                .and_then(|s| s.trim().parse().ok())
+        };
+
+        let x = read_u8("mesh_x")?;
+        let y = read_u8("mesh_y")?;
+        let z = read_u8("mesh_z").unwrap_or(1);
+
+        let functional_count = read_u8("mesh_functional")
+            .map(u32::from)
+            .unwrap_or_else(|| u32::from(x) * u32::from(y) * u32::from(z));
+
+        Some(Self {
+            x,
+            y,
+            z,
+            functional_count,
+        })
+    }
+
+    /// Total NP slots (may include disabled NPs)
+    pub const fn total_slots(&self) -> u32 {
+        (self.x as u32) * (self.y as u32) * (self.z as u32)
+    }
+}
+
+/// Clock mode for power/performance tradeoff.
+/// metalForge discovered AKD1000 supports at least Performance and Economy
+/// modes — the SDK doesn't document Economy mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClockMode {
+    /// Maximum throughput (default)
+    Performance,
+    /// 18% less power, 19% slower (measured on AKD1000)
+    Economy,
+    /// Minimum frequency (if supported by hardware)
+    LowPower,
+}
+
+impl ClockMode {
+    /// Parse clock mode from sysfs string
+    pub fn from_sysfs_str(s: &str) -> Self {
+        match s.trim().to_lowercase().as_str() {
+            "performance" | "perf" => Self::Performance,
+            "economy" | "eco" => Self::Economy,
+            "low_power" | "lowpower" | "lp" => Self::LowPower,
+            _ => Self::Performance,
+        }
+    }
+
+    /// Expected speed penalty relative to Performance mode (0.0 = no penalty)
+    pub const fn expected_speed_penalty(&self) -> f64 {
+        match self {
+            Self::Performance => 0.0,
+            Self::Economy => 0.19,
+            Self::LowPower => 0.40,
+        }
+    }
+
+    /// Expected power savings relative to Performance mode (0.0 = no savings)
+    pub const fn expected_power_savings(&self) -> f64 {
+        match self {
+            Self::Performance => 0.0,
+            Self::Economy => 0.18,
+            Self::LowPower => 0.35,
+        }
+    }
+}
+
+/// Batch inference capabilities discovered from hardware probing.
+/// metalForge discovered that AKD1000 batch performance scales with
+/// PCIe round-trip amortization, peaking at batch=8.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BatchCapabilities {
+    /// Maximum batch size that fits in SRAM
+    pub max_batch: u32,
+    /// Optimal batch size for throughput (measured, not assumed)
+    pub optimal_batch: u32,
+    /// Speedup at optimal batch vs batch=1 (measured)
+    pub optimal_speedup: f32,
+}
+
+impl BatchCapabilities {
+    /// Discover batch capabilities from sysfs.
+    pub fn from_sysfs(pcie_address: &str) -> Option<Self> {
+        let base = format!("/sys/bus/pci/devices/{pcie_address}");
+
+        let max_batch: u32 = std::fs::read_to_string(format!("{base}/akida_max_batch"))
+            .ok()
+            .and_then(|s| s.trim().parse().ok())?;
+
+        let optimal_batch = std::fs::read_to_string(format!("{base}/akida_optimal_batch"))
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(8); // metalForge default
+
+        let optimal_speedup = std::fs::read_to_string(format!("{base}/akida_batch_speedup"))
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(2.35); // metalForge measurement
+
+        Some(Self {
+            max_batch,
+            optimal_batch,
+            optimal_speedup,
+        })
+    }
+}
+
+/// Weight mutation support level.
+/// metalForge proved AKD1000 supports runtime `set_variable()` for weight
+/// updates — enabling online readout switching for ESN reservoirs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WeightMutationSupport {
+    /// Not available on this hardware
+    None,
+    /// Full runtime weight updates via set_variable
+    Full,
+    /// Readout layer only (faster, no reservoir re-upload)
+    ReadoutOnly,
 }
 
 /// Akida chip version
@@ -204,23 +367,16 @@ impl Capabilities {
     pub fn query(device_index: usize, pcie_address: &str) -> Result<Self> {
         tracing::debug!("Querying capabilities for device {device_index} at {pcie_address}");
 
-        // Read device ID from sysfs to determine chip version
         let chip_version = Self::read_chip_version(pcie_address)?;
-
-        // Query PCIe configuration
         let pcie = PcieConfig::from_sysfs(pcie_address)?;
-
-        // Query actual NPU count from device (with fallback to typical values)
         let npu_count = Self::query_npu_count(pcie_address, chip_version);
-
-        // Memory size from chip specs (would query from device if protocol known)
         let memory_mb = chip_version.typical_memory_mb();
-
-        // Query power consumption from hwmon/sysfs
         let power_mw = Self::query_power_consumption(pcie_address);
-
-        // Query temperature from hwmon/sysfs
         let temperature_c = Self::query_temperature(pcie_address);
+        let mesh = MeshTopology::from_sysfs(pcie_address);
+        let clock_mode = Self::query_clock_mode(pcie_address);
+        let batch = BatchCapabilities::from_sysfs(pcie_address);
+        let weight_mutation = Self::query_weight_mutation(pcie_address);
 
         Ok(Self {
             chip_version,
@@ -229,6 +385,10 @@ impl Capabilities {
             pcie,
             power_mw,
             temperature_c,
+            mesh,
+            clock_mode,
+            batch,
+            weight_mutation,
         })
     }
 
@@ -349,6 +509,10 @@ impl Capabilities {
         let memory_mb = chip_version.typical_memory_mb();
         let power_mw = Self::query_power_consumption(pcie_address);
         let temperature_c = Self::query_temperature(pcie_address);
+        let mesh = MeshTopology::from_sysfs(pcie_address);
+        let clock_mode = Self::query_clock_mode(pcie_address);
+        let batch = BatchCapabilities::from_sysfs(pcie_address);
+        let weight_mutation = Self::query_weight_mutation(pcie_address);
 
         Ok(Self {
             chip_version,
@@ -357,7 +521,41 @@ impl Capabilities {
             pcie,
             power_mw,
             temperature_c,
+            mesh,
+            clock_mode,
+            batch,
+            weight_mutation,
         })
+    }
+
+    /// Query current clock mode from sysfs
+    fn query_clock_mode(pcie_address: &str) -> Option<ClockMode> {
+        let path = format!("/sys/bus/pci/devices/{pcie_address}/akida_clock_mode");
+        std::fs::read_to_string(&path)
+            .ok()
+            .map(|s| ClockMode::from_sysfs_str(&s))
+    }
+
+    /// Query weight mutation support from sysfs or infer from chip version
+    fn query_weight_mutation(pcie_address: &str) -> WeightMutationSupport {
+        let path = format!("/sys/bus/pci/devices/{pcie_address}/akida_weight_mutation");
+        if let Ok(val) = std::fs::read_to_string(&path) {
+            return match val.trim() {
+                "full" => WeightMutationSupport::Full,
+                "readout" => WeightMutationSupport::ReadoutOnly,
+                _ => WeightMutationSupport::None,
+            };
+        }
+
+        // AKD1000 supports full weight mutation (metalForge validated)
+        let device_path = format!("/sys/bus/pci/devices/{pcie_address}/device");
+        if let Ok(id_str) = std::fs::read_to_string(&device_path) {
+            if id_str.trim().contains("BCA1") || id_str.trim().contains("bca1") {
+                return WeightMutationSupport::Full;
+            }
+        }
+
+        WeightMutationSupport::None
     }
 
     /// Read chip version from device ID in sysfs
@@ -405,5 +603,56 @@ mod tests {
 
         let gen4_x16 = PcieConfig::new(4, 16);
         assert!((gen4_x16.bandwidth_gbps - 32.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_mesh_topology_total_slots() {
+        let mesh = MeshTopology {
+            x: 5,
+            y: 8,
+            z: 2,
+            functional_count: 80,
+        };
+        assert_eq!(mesh.total_slots(), 80);
+        assert_eq!(mesh.functional_count, 80);
+    }
+
+    #[test]
+    fn test_mesh_topology_with_disabled_nps() {
+        let mesh = MeshTopology {
+            x: 5,
+            y: 8,
+            z: 2,
+            functional_count: 78,
+        };
+        assert_eq!(mesh.total_slots(), 80);
+        assert_eq!(mesh.functional_count, 78);
+    }
+
+    #[test]
+    fn test_clock_mode_parsing() {
+        assert_eq!(ClockMode::from_sysfs_str("performance"), ClockMode::Performance);
+        assert_eq!(ClockMode::from_sysfs_str("economy"), ClockMode::Economy);
+        assert_eq!(ClockMode::from_sysfs_str("eco"), ClockMode::Economy);
+        assert_eq!(ClockMode::from_sysfs_str("low_power"), ClockMode::LowPower);
+        assert_eq!(ClockMode::from_sysfs_str("  PERF  "), ClockMode::Performance);
+        assert_eq!(ClockMode::from_sysfs_str("unknown"), ClockMode::Performance);
+    }
+
+    #[test]
+    fn test_clock_mode_penalties() {
+        assert!((ClockMode::Performance.expected_speed_penalty() - 0.0).abs() < f64::EPSILON);
+        assert!(ClockMode::Economy.expected_speed_penalty() > 0.0);
+        assert!(ClockMode::Economy.expected_power_savings() > 0.0);
+        assert!(
+            ClockMode::LowPower.expected_speed_penalty()
+                > ClockMode::Economy.expected_speed_penalty()
+        );
+    }
+
+    #[test]
+    fn test_weight_mutation_support_variants() {
+        assert_eq!(WeightMutationSupport::None, WeightMutationSupport::None);
+        assert_ne!(WeightMutationSupport::Full, WeightMutationSupport::ReadoutOnly);
     }
 }

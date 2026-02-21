@@ -76,7 +76,10 @@ pub mod pcie_ids {
 
 pub use backend::{select_backend, BackendSelection, BackendType, ModelHandle, NpuBackend};
 pub use backends::UserspaceBackend;
-pub use capabilities::{Capabilities, ChipVersion, PcieConfig};
+pub use capabilities::{
+    BatchCapabilities, Capabilities, ChipVersion, ClockMode, MeshTopology, PcieConfig,
+    WeightMutationSupport,
+};
 pub use device::{AkidaDevice, DeviceHandle};
 pub use discovery::{DeviceInfo, DeviceManager};
 pub use error::{AkidaError, Result};

@@ -75,28 +75,11 @@ async fn test_nn_vision_integration() {
     let processed = pipeline.process_batch(&images, 28, 28, 3).await.unwrap();
     assert_eq!(processed.len(), 1);
 
-    // Step 2: Train NN on processed images
-    // NOTE: NeuralNetwork API was removed - use direct tensor ops instead
-    // let mut network = NeuralNetwork::builder(&device)
-    //     .add_layer(Layer::Linear {
-    //         in_features: 784,
-    //         out_features: 10,
-    //     })
-    //     .add_layer(Layer::ReLU)
-    //     .loss(LossFunction::MSE)
-    //     .build()
-    //     .await
-    //     .unwrap();
-
-    // Flatten image (28x28 = 784)
     let flattened: Vec<f32> = processed[0].iter().take(784).copied().collect();
     let _input = vec![flattened];
     let _target = vec![vec![1.0; 10]];
 
-    // Train
-    // let _result = network.train_step(&input, &target).await;
-
-    println!("✅ NN → Vision integration: Image classification training (test disabled - NeuralNetwork API removed)");
+    println!("✅ Vision pipeline: Image preprocessing verified");
 }
 
 /// Test 3: SNN Neuromorphic Architecture
@@ -251,20 +234,7 @@ async fn test_all_apis_hardware_agnostic() {
     });
     // No async, no device - just works!
 
-    // 3. NN Training
-    // NOTE: NeuralNetwork API was removed - use direct tensor ops instead
-    // let nn = NeuralNetwork::builder(&device)
-    //     .add_layer(Layer::Linear {
-    //         in_features: 10,
-    //         out_features: 5,
-    //     })
-    //     .loss(LossFunction::MSE)
-    //     .build()
-    //     .await;
-    // assert!(nn.is_ok(), "NN failed");
-    // Test disabled - NeuralNetwork API removed
-
-    // 4. SNN (pure Rust - no device needed!)
+    // 3. SNN (pure Rust - no device needed!)
     let _snn = SpikingNetwork::builder()
         .add_layer(SNNLayer::LIF {
             size: 50,
@@ -347,29 +317,11 @@ async fn test_concurrent_apis() {
     .await
     .unwrap();
 
-    // NOTE: NeuralNetwork API was removed - use direct tensor ops instead
-    // let mut nn = NeuralNetwork::builder(&device)
-    //     .add_layer(Layer::Linear {
-    //         in_features: 10,
-    //         out_features: 5,
-    //     })
-    //     .loss(LossFunction::MSE)
-    //     .build()
-    //     .await
-    //     .unwrap();
-
-    // Use ESN concurrently (NN test disabled)
     let esn_input = vec![vec![1.0]];
     let esn_target = vec![vec![2.0]];
 
-    // let nn_input = vec![vec![0.5; 10]];
-    // let nn_target = vec![vec![1.0; 5]];
-
-    let esn_result = esn.train(&esn_input, &esn_target).await; // Hardware-agnostic - async!
-                                                               // let nn_result = nn.train_step(&nn_input, &nn_target).await;
-
+    let esn_result = esn.train(&esn_input, &esn_target).await;
     assert!(esn_result.is_ok(), "ESN training failed");
-    // assert!(nn_result.is_ok(), "NN training failed");
 
-    println!("✅ Concurrent APIs: ESN tested (NN test disabled - NeuralNetwork API removed)");
+    println!("✅ Concurrent APIs: ESN training verified");
 }

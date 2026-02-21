@@ -504,10 +504,9 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
                         });
                     }
                     
-                    // ✅ LEGITIMATE POLLING: Checking status of external legacy systems
-                    // that don't provide event notifications.
-                    // NOTE: Real specialty runtime integration should use event channels
-                    // This is a mock/placeholder for integration testing
+                    // Polling external legacy systems that don't provide event
+                    // notifications. 1s interval balances responsiveness vs CPU cost
+                    // for mainframe/embedded/RTOS integrations that only expose status queries.
                     tokio::time::sleep(Duration::from_millis(1000)).await;
                 }
             }

@@ -31,14 +31,24 @@ impl WgpuDevice {
     /// Known broken drivers:
     /// - NVK/NAK: crashes on native exp(f64), log(f64)
     /// - RADV/ACO (AMD open-source): `fexp2` unimplemented for f64
-    ///
-    /// Proprietary NVIDIA and AMD drivers handle f64 exp/log natively.
+    /// - NVIDIA proprietary (NVVM/PTXAS) on Ada Lovelace (SM89): fails to
+    ///   compile native f64 transcendentals (exp, log, pow). Discovered by
+    ///   wetSpring on RTX 4070 (Feb 2026).
     ///
     /// **Evolution (W-001)**: For definitive detection, use `probe_f64_exp_capable().await`
     /// which dispatches a test shader and verifies empirically. This name-based method
     /// remains as a synchronous fallback; probe results override when available.
     pub fn needs_f64_exp_log_workaround(&self) -> bool {
-        self.is_nvk() || self.is_radv()
+        self.is_nvk() || self.is_radv() || self.is_nvidia_ada_lovelace()
+    }
+
+    /// Check if this device is NVIDIA Ada Lovelace (RTX 40xx) on the proprietary driver.
+    ///
+    /// This combination has broken f64 transcendentals in NVVM PTXAS.
+    pub fn is_nvidia_ada_lovelace(&self) -> bool {
+        let name = self.adapter_info.name.to_lowercase();
+        let is_ada = name.contains("rtx 40") || name.contains("rtx40") || name.contains("l40");
+        is_ada && self.is_nvidia_proprietary()
     }
 
     /// Probe and cache whether this device supports native f64 exp/log.

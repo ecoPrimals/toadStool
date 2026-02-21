@@ -127,39 +127,26 @@ impl DiscoveryConfig {
                 .map(|e| e == "development")
                 .unwrap_or(false)
         {
-            // Use environment-specific endpoints if available
-            // Songbird → orchestration/coordination (fallback: 8080)
-            // DEPRECATED: Use runtime discovery instead of these fallbacks
-            if let Ok(url) = std::env::var("SONGBIRD_URL") {
-                fallbacks.insert("orchestration".to_string(), url);
-                fallbacks.insert(
-                    "coordination".to_string(),
-                    fallbacks["orchestration"].clone(),
-                );
-            } else {
-                let songbird_fallback = format!("http://{bind_host}:8080");
-                fallbacks.insert("orchestration".to_string(), songbird_fallback.clone());
-                fallbacks.insert("coordination".to_string(), songbird_fallback);
-            }
+            // DEPRECATED: These fallback ports violate the self-knowledge principle.
+            // Use runtime discovery via Songbird/mDNS instead.
+            // Ports match toadstool_config::ports::fallback::{SONGBIRD, BEARDOG, NESTGATE}.
+            const SONGBIRD_FALLBACK_PORT: u16 = 8080;
+            const BEARDOG_FALLBACK_PORT: u16 = 8081;
+            const NESTGATE_FALLBACK_PORT: u16 = 8082;
 
-            // BearDog → security/authentication (fallback: 8081)
-            // DEPRECATED: Use runtime discovery instead of these fallbacks
-            if let Ok(url) = std::env::var("BEARDOG_URL") {
-                fallbacks.insert("security".to_string(), url);
-                fallbacks.insert("authentication".to_string(), fallbacks["security"].clone());
-            } else {
-                let beardog_fallback = format!("http://{bind_host}:8081");
-                fallbacks.insert("security".to_string(), beardog_fallback.clone());
-                fallbacks.insert("authentication".to_string(), beardog_fallback);
-            }
+            let songbird_url = std::env::var("SONGBIRD_URL")
+                .unwrap_or_else(|_| format!("http://{bind_host}:{SONGBIRD_FALLBACK_PORT}"));
+            fallbacks.insert("orchestration".to_string(), songbird_url.clone());
+            fallbacks.insert("coordination".to_string(), songbird_url);
 
-            // NestGate → storage (fallback: 8082)
-            // DEPRECATED: Use runtime discovery instead of these fallbacks
-            if let Ok(url) = std::env::var("NESTGATE_URL") {
-                fallbacks.insert("storage".to_string(), url);
-            } else {
-                fallbacks.insert("storage".to_string(), format!("http://{bind_host}:8082"));
-            }
+            let beardog_url = std::env::var("BEARDOG_URL")
+                .unwrap_or_else(|_| format!("http://{bind_host}:{BEARDOG_FALLBACK_PORT}"));
+            fallbacks.insert("security".to_string(), beardog_url.clone());
+            fallbacks.insert("authentication".to_string(), beardog_url);
+
+            let nestgate_url = std::env::var("NESTGATE_URL")
+                .unwrap_or_else(|_| format!("http://{bind_host}:{NESTGATE_FALLBACK_PORT}"));
+            fallbacks.insert("storage".to_string(), nestgate_url);
         }
 
         fallbacks

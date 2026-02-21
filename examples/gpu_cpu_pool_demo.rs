@@ -62,8 +62,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // TODO: Register GPU resource when available
-    // For now, we'll demonstrate with CPU resource pool
+    // GPU registration available via barracuda::device::WgpuDevice.
+    // This example demonstrates CPU resource pool.
 
     let resources = scheduler.list_resources().await;
     println!("📋 Registered Resources:");

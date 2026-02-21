@@ -121,9 +121,27 @@ impl CpuExecutor {
         1
     }
 
-    /// Execute unary operation on CPU
-    // Pending: Wire into CpuExecutor::execute() dispatch once compute graph is integrated
-    #[allow(dead_code)]
+    fn read_f32(storage: &dyn TensorStorage) -> Result<Vec<f32>> {
+        let rt = tokio::runtime::Handle::try_current()
+            .map(|h| h.block_on(storage.read_to_cpu()))
+            .unwrap_or_else(|_| {
+                tokio::runtime::Runtime::new()
+                    .map_err(|e| crate::error::BarracudaError::device(e.to_string()))
+                    .and_then(|rt: tokio::runtime::Runtime| rt.block_on(storage.read_to_cpu()))
+            })?;
+        Ok(rt
+            .chunks_exact(4)
+            .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+            .collect())
+    }
+
+    fn pack_f32(data: Vec<f32>, desc: TensorDescriptor) -> Arc<dyn TensorStorage> {
+        let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let mut s = CpuTensorStorage::new(desc);
+        s.data = bytes;
+        Arc::new(s)
+    }
+
     fn execute_unary_cpu(&self, op: &MathOp, input: &[f32]) -> Result<Vec<f32>> {
         use MathOp::*;
 
@@ -134,20 +152,26 @@ impl CpuExecutor {
                 Sigmoid => 1.0 / (1.0 + (-x).exp()),
                 Tanh => x.tanh(),
                 GELU => {
-                    // GELU approximation: x * Φ(x) where Φ is standard normal CDF
-                    // Approximation: 0.5 * x * (1 + tanh(√(2/π) * (x + 0.044715 * x³)))
                     let sqrt_2_over_pi = 0.797_884_6;
                     0.5 * x * (1.0 + (sqrt_2_over_pi * (x + 0.044715 * x * x * x)).tanh())
                 }
-                _ => x, // Fallback
+                Negate => -x,
+                Abs => x.abs(),
+                Square => x * x,
+                Sqrt => x.sqrt(),
+                Reciprocal => 1.0 / x,
+                Exp => x.exp(),
+                Log => x.ln(),
+                Sin => x.sin(),
+                Cos => x.cos(),
+                Tan => x.tan(),
+                _ => x,
             })
             .collect();
 
         Ok(output)
     }
 
-    /// Execute binary operation on CPU
-    #[allow(dead_code)]
     fn execute_binary_cpu(&self, op: &MathOp, a: &[f32], b: &[f32]) -> Result<Vec<f32>> {
         use MathOp::*;
 
@@ -169,8 +193,6 @@ impl CpuExecutor {
         Ok(output)
     }
 
-    /// Execute reduction operation on CPU
-    #[allow(dead_code)]
     fn execute_reduce_cpu(&self, op: &MathOp, input: &[f32]) -> Result<f32> {
         use MathOp::*;
 
@@ -194,9 +216,6 @@ impl CpuExecutor {
         Ok(result)
     }
 
-    /// Execute matrix multiply on CPU (naive implementation)
-    // Pending: Use optimized BLAS (e.g. ndarray+openblas) when CPU matmul becomes hot path
-    #[allow(dead_code)]
     fn execute_matmul_cpu(
         &self,
         a: &[f32],
@@ -297,27 +316,93 @@ impl ComputeExecutor for CpuExecutor {
         op: &MathOp,
         inputs: Vec<Arc<dyn TensorStorage>>,
     ) -> Result<Arc<dyn TensorStorage>> {
-        // **Deep Debt Note**: The scheduler path via ComputeExecutor is not yet implemented.
-        // CPU execution path: WGPU software rasterizer runs the same WGSL shaders.
-        // The primary execution path is Tensor operations (tensor.matmul(), etc.)
-        // which use WgpuDevice::new_cpu() for CPU-targeted execution.
-        //
-        // Native Rust implementations (execute_unary_cpu, execute_matmul_cpu, etc.)
-        // are available above for direct CPU math when the scheduler path is used.
-        //
-        // This explicit error prevents silent incorrect results from the stub.
         if inputs.is_empty() {
             return Err(crate::error::BarracudaError::InvalidInput {
                 message: "No inputs provided".to_string(),
             });
         }
 
-        Err(crate::error::BarracudaError::NotImplemented {
-            feature: format!(
-                "CpuExecutor::execute({:?}) - use Tensor API directly (e.g., tensor.matmul())",
-                op
-            ),
-        })
+        use MathOp::*;
+        match op {
+            // Unary ops (single input)
+            ReLU | Sigmoid | Tanh | GELU | Negate | Abs | Square | Sqrt
+            | Reciprocal | Exp | Log | Sin | Cos | Tan => {
+                let data = Self::read_f32(inputs[0].as_ref())?;
+                let result = self.execute_unary_cpu(op, &data)?;
+                let desc = inputs[0].descriptor().clone();
+                Ok(Self::pack_f32(result, desc))
+            }
+
+            // Binary ops (two inputs)
+            Add | Sub | Mul | Div | Pow | Max | Min => {
+                if inputs.len() < 2 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: format!("{op:?} requires 2 inputs, got {}", inputs.len()),
+                    });
+                }
+                let a = Self::read_f32(inputs[0].as_ref())?;
+                let b = Self::read_f32(inputs[1].as_ref())?;
+                let result = self.execute_binary_cpu(op, &a, &b)?;
+                let desc = inputs[0].descriptor().clone();
+                Ok(Self::pack_f32(result, desc))
+            }
+
+            // Reduction ops
+            ReduceSum { .. } | ReduceMean { .. } | ReduceMax { .. }
+            | ReduceMin { .. } | ReduceProd { .. } => {
+                let data = Self::read_f32(inputs[0].as_ref())?;
+                let scalar = self.execute_reduce_cpu(op, &data)?;
+                let desc = TensorDescriptor::new(vec![1], inputs[0].descriptor().dtype);
+                Ok(Self::pack_f32(vec![scalar], desc))
+            }
+
+            // Matrix multiply
+            MatMul { transpose_a, transpose_b } => {
+                if inputs.len() < 2 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: "MatMul requires 2 inputs".to_string(),
+                    });
+                }
+                let a_desc = inputs[0].descriptor();
+                let b_desc = inputs[1].descriptor();
+                let a_data = Self::read_f32(inputs[0].as_ref())?;
+                let b_data = Self::read_f32(inputs[1].as_ref())?;
+
+                let (m, k_a) = if a_desc.shape.len() >= 2 {
+                    let r = a_desc.shape.len();
+                    if *transpose_a { (a_desc.shape[r-1], a_desc.shape[r-2]) }
+                    else { (a_desc.shape[r-2], a_desc.shape[r-1]) }
+                } else {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: "MatMul requires 2D+ tensors".to_string(),
+                    });
+                };
+
+                let (k_b, n) = if b_desc.shape.len() >= 2 {
+                    let r = b_desc.shape.len();
+                    if *transpose_b { (b_desc.shape[r-1], b_desc.shape[r-2]) }
+                    else { (b_desc.shape[r-2], b_desc.shape[r-1]) }
+                } else {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: "MatMul requires 2D+ tensors".to_string(),
+                    });
+                };
+
+                if k_a != k_b {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: format!("MatMul inner dimension mismatch: {k_a} vs {k_b}"),
+                    });
+                }
+
+                let result = self.execute_matmul_cpu(&a_data, &b_data, m, k_a, n)?;
+                let desc = TensorDescriptor::new(vec![m, n], a_desc.dtype);
+                Ok(Self::pack_f32(result, desc))
+            }
+
+            _ => Err(crate::error::BarracudaError::NotImplemented {
+                feature: format!("CpuExecutor::execute({op:?})"),
+            }),
+        }
     }
 
     async fn allocate(&self, descriptor: TensorDescriptor) -> Result<Arc<dyn TensorStorage>> {

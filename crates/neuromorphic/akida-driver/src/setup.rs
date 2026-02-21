@@ -21,7 +21,7 @@ impl NpuSetup {
     pub fn new() -> Self {
         Self {
             driver_path: None,
-            pkexec_available: which::which("pkexec").is_ok(),
+            pkexec_available: find_in_path("pkexec").is_some(),
         }
     }
 
@@ -292,6 +292,15 @@ fn verify_device_nodes() -> Result<()> {
 fn kernel_version() -> Result<String> {
     let output = Command::new("uname").arg("-r").output()?;
     Ok(String::from_utf8(output.stdout)?.trim().to_string())
+}
+
+/// Pure Rust replacement for `which::which()`.
+/// Searches PATH for an executable, returning the first match.
+fn find_in_path(binary: &str) -> Option<PathBuf> {
+    let path_var = std::env::var_os("PATH")?;
+    std::env::split_paths(&path_var)
+        .map(|dir| dir.join(binary))
+        .find(|candidate| candidate.is_file())
 }
 
 #[cfg(test)]

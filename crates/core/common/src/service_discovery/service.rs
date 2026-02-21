@@ -288,6 +288,10 @@ impl ServiceDiscovery {
             p
         } else if let Ok(runtime) = std::env::var("BIOMEOS_RUNTIME_DIR") {
             format!("{runtime}/discovery.json")
+        } else if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+            format!("{xdg}/biomeos/discovery.json")
+        } else if let Ok(home) = std::env::var("HOME") {
+            format!("{home}/.config/biomeos/discovery.json")
         } else {
             "/etc/biomeos/discovery.json".to_string()
         };

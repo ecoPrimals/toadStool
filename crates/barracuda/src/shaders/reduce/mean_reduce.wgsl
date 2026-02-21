@@ -1,51 +1,24 @@
-// Mean Reduction: Compute mean over all elements
-// CUDA equivalent: thrust::reduce with mean operation
-// Algorithm: Tree reduction (work-efficient) then divide by size
-// Use cases: Global mean computation
+// mean_reduce.wgsl — Single-workgroup Mean Reduction (f32)
+//
+// Computes the arithmetic mean of an f32 array in a single-workgroup pass.
+// For large arrays, use BarraCUDA's ReduceScalarPipeline with multi-workgroup
+// tree reduction.
+//
+// Provenance: neuralSpring metalForge (Feb 21, 2026) → ToadStool absorption
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read_write> output: array<f32>;  // Partial results
+@group(0) @binding(0) var<storage, read> values: array<f32>;
+@group(0) @binding(1) var<storage, read_write> result: array<f32>;
 
-struct Params {
-    size: u32,
+struct ReduceParams {
+    n: u32,
 }
+@group(0) @binding(2) var<uniform> params: ReduceParams;
 
-@group(0) @binding(2) var<uniform> params: Params;
-
-var<workgroup> shared_data: array<f32, 256>;
-
-@compute @workgroup_size(256)
-fn main(
-    @builtin(global_invocation_id) global_id: vec3<u32>,
-    @builtin(local_invocation_id) local_id: vec3<u32>,
-    @builtin(workgroup_id) workgroup_id: vec3<u32>,
-) {
-    let tid = local_id.x;
-    let gid = global_id.x;
-    
-    // Load data into shared memory
-    var value: f32;
-    if (gid < params.size) {
-        value = input[gid];
-    } else {
-        // Initialize with 0 for sum reduction
-        value = 0.0;
+@compute @workgroup_size(1)
+fn mean_reduce(@builtin(global_invocation_id) gid: vec3<u32>) {
+    var sum: f32 = 0.0;
+    for (var i: u32 = 0u; i < params.n; i = i + 1u) {
+        sum = sum + values[i];
     }
-    shared_data[tid] = value;
-    workgroupBarrier();
-    
-    // Tree reduction in shared memory
-    for (var stride = 128u; stride > 0u; stride = stride / 2u) {
-        if (tid < stride && (gid + stride) < params.size) {
-            let a = shared_data[tid];
-            let b = shared_data[tid + stride];
-            shared_data[tid] = a + b;
-        }
-        workgroupBarrier();
-    }
-    
-    // Write partial result (sum, not mean - division happens on CPU)
-    if (tid == 0u) {
-        output[workgroup_id.x] = shared_data[0];
-    }
+    result[0] = sum / f32(params.n);
 }

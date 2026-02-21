@@ -374,7 +374,6 @@ pub struct KeyPair {
     pub private_key: Vec<u8>,
 }
 
-// Re-export base64 for convenience using base64 0.21 API
 mod base64 {
     use base64::{engine::general_purpose::STANDARD, Engine as _};
 

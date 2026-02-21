@@ -54,8 +54,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 # Date/time
 chrono = { version = "0.4", features = ["serde"] }
 
-# Base64 encoding (for basic auth)
-base64 = "0.21"
+# base64 removed: no usage found in source
 
 [features]
 default = []

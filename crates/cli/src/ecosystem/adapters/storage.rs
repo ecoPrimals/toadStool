@@ -272,7 +272,6 @@ pub struct ObjectStorageConnection {
     pub region: String,
 }
 
-// Re-export base64 for convenience using base64 0.21 API
 mod base64 {
     use base64::{engine::general_purpose::STANDARD, Engine as _};
 

@@ -252,7 +252,7 @@ mod tests {
     fn test_runtime() {
         let err = ToadStoolError::runtime("workload failed");
         let s = err.to_string();
-        assert!(s.contains("Execution error"));
+        assert!(s.contains("Runtime error"));
         assert!(s.contains("workload failed"));
     }
 
@@ -294,7 +294,7 @@ mod tests {
     #[test]
     fn test_not_found() {
         let err = ToadStoolError::not_found("resource-123");
-        assert!(err.to_string().contains("Resource error"));
+        assert!(err.to_string().contains("Not found"));
         assert!(err.to_string().contains("resource-123"));
     }
 
@@ -379,7 +379,7 @@ mod tests {
     fn test_error_debug_impl() {
         let err = ToadStoolError::runtime("test");
         let debug = format!("{err:?}");
-        assert!(debug.contains("Execution"));
+        assert!(debug.contains("Runtime"));
     }
 
     #[test]

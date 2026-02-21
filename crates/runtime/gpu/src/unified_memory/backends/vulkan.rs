@@ -74,8 +74,11 @@ pub struct VulkanBackend {
 }
 
 impl VulkanBackend {
-    /// Create new Vulkan backend (stub - needs device)
-    pub fn new_stub() -> Self {
+    /// Create an uninitialized Vulkan backend with conservative capability defaults.
+    ///
+    /// Call `try_init()` or `try_init_with_wgpu()` to connect to actual hardware.
+    /// This exists for capability reporting before device initialization.
+    pub fn new_uninitialized() -> Self {
         // Default capabilities (conservative estimates)
         let capabilities = UnifiedMemoryCapabilities {
             backend_type: BackendType::Vulkan,
@@ -418,8 +421,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_vulkan_stub() {
-        let backend = VulkanBackend::new_stub();
+    async fn test_vulkan_uninitialized() {
+        let backend = VulkanBackend::new_uninitialized();
 
         assert_eq!(backend.name(), "Vulkan");
         assert_eq!(backend.backend_type(), BackendType::Vulkan);

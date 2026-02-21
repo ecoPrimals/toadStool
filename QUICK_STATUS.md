@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA — Quick Status
 
-**Date**: February 21, 2026 — Session 25 (Unit Test Coverage Expansion)
+**Date**: February 21, 2026 — Session 31c (Executor Wiring & Smart Refactoring)
 
 ---
 
@@ -10,11 +10,15 @@
 cargo build --workspace               CLEAN
 cargo fmt --all -- --check            CLEAN
 cargo clippy --workspace --tests      CLEAN (0 warnings, -D warnings)
-cargo test --workspace                16,070+ passed / 0 failed
+cargo test --workspace                16,100+ passed / 0 failed
 cargo llvm-cov (non-GPU)              CLEAN — exit 0, no SIGSEGV
-unsafe blocks                         FFI only (VFIO, DRM) — SAFETY documented
-error handling                        No panic paths — Mutex poison recovery via lock_cache
+unsafe blocks                         FFI only (VFIO, DRM) — SAFETY documented, PhantomData cleaned
+error handling                        No panic paths — RwLock/Mutex poison recovery throughout
 production stubs                      0 — all service discovery, routing, capacity live
+ML model placeholders                 Honest NotImplemented (no fake empty results)
+std replacements                      once_cell, lazy_static, tempdir, term_size removed
+dependency unification                base64 unified to 0.22; unused deps removed from client/nestgate
+near-limit files                      0 — svd_gpu 973→305, lu_gpu 996→302, qr_gpu 933→486
 middleware tests                      400+ passed
 hotSpring evolution tests             47 tests (unit, E2E, chaos, fault)
 three springs evolution tests         37 tests (unit, E2E, chaos, fault, precision)
@@ -140,10 +144,10 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 |--------|-------|
 | Clippy warnings | 0 |
 | Build warnings | 0 |
-| Tests passing | 15,700+ |
+| Tests passing | 16,100+ |
 | Tests failing | 0 |
 | WGSL shaders | 480+ (shader-first) |
-| Line coverage (non-GPU) | 63.02% (+1.67 pp) |
+| Line coverage (non-GPU) | ~65% |
 | Unsafe blocks | FFI only (VFIO, DRM) |
 | Production placeholders | 0 (all evolved) |
 | Production mocks | 0 |
@@ -159,12 +163,12 @@ user's choice. Auto only kicks in when preference is `None` or `Auto`.
 
 ## What Works
 
-- 396 WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
+- 480+ WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
 - **Shader-first architecture**: ALL math is WGSL, ToadStool dispatches
 - Distributed LLM inference across machines (LAN TCP, BearDog encrypted)
 - Hardware discovery (GPUs, NPUs, CPUs) -- pure Rust, no scripts
 - NPU detection via /dev/akida* and IOMMU/VFIO sysfs
-- JSON-RPC 2.0 + tarpc IPC over Unix sockets (26 methods)
+- JSON-RPC 2.0 + tarpc IPC over Unix sockets (36 methods)
 - GPU job queue with priority and cross-gate routing
 - Ollama model management (list, inference, load, unload)
 - Cross-gate compute delegation (route by model locality, VRAM, queue depth)
@@ -381,187 +385,4 @@ neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
 
 ---
 
-## Unidirectional Pipeline Architecture (Feb 17) — EXPLORATION
-
-**Novel GPU data flow patterns** for eliminating round-trip latency:
-
-| Phase | Status | Description |
-|:-----:|:------:|-------------|
-| 0 | ✅ | Design docs (4 documents) |
-| 1 | 📋 | GpuRingBuffer implementation |
-| 2 | 📋 | UnidirectionalPipeline API |
-| 3 | 📋 | Bandwidth throttling |
-| 4 | 📋 | Benchmark vs traditional |
-
-**Key insight**: Factory model — raw materials in one door, finished products out another.
-
-**Tracking**: See `UNIDIRECTIONAL_PIPELINE.md` at root.
-
----
-
-## Deep Debt Evolution — Pure Rust System Calls (Feb 17) ✅ COMPLETE
-
-**Pure Rust syscalls** in akida-driver (replaced libc with rustix):
-
-| Syscall | Migration | Impact |
-|---------|-----------|--------|
-| `mmap` / `munmap` | `rustix::mm::mmap` / `munmap` | Memory mapping |
-| `mlock` / `munlock` | `rustix::mm::mlock` / `munlock` | Memory locking |
-| VFIO ioctls | Retained `libc::ioctl` | Kernel-specific |
-
-**biomeOS networking policy** — NO C dependencies:
-
-| Component | Provider | Role |
-|-----------|----------|------|
-| TLS | **Songbird** | Pure Rust TLS (rustls) |
-| Crypto | **Beardog** | Pure Rust crypto |
-| Transport | JSON-RPC 2.0 | Unix sockets / TCP |
-
-All `reqwest` / `hyper` references removed from documentation. The `crates/client` excluded pending migration.
-
-**Additional evolutions**:
-- Broadcast sends now log failures (debug/trace level)
-- FPGA/GPU remote execution placeholders documented with evolution paths
-- Songbird registry query evolved from stub → real JSON-RPC
-
----
-
-## Deep Debt Evolution + ecoBin Compliance (Feb 16) ✅ COMPLETE
-
-**Comprehensive audit and evolution** for modern Rust and ecoBin v2.0:
-
-| Category | Status | Evolution |
-|----------|:------:|-----------|
-| Platform Paths | ✅ | XDG-compliant `platform_paths` module |
-| TOML Config | ✅ | Preferred format (pure Rust, no C deps) |
-| CLI Dependencies | ✅ | `libc` → `rustix` for signals |
-| Semantic Naming | ✅ | camelCase → snake_case for IPC methods |
-| Unsafe Code | ✅ | Evolved to safer `slice.fill()` patterns |
-| NPU Executor | ✅ | `NpuExecutor` implements `ComputeExecutor` |
-| Test Coverage | ✅ | +18 new tests for low-coverage modules |
-| Documentation | ✅ | STATUS.md, CHANGELOG.md updated |
-
-**New**: `toadstool_common::platform_paths` — XDG paths for Linux/macOS/Windows/Android/WASM.
-
----
-
-## Device Registry + F64 Reduce Suite (Feb 16) ✅ COMPLETE
-
-**Physical device deduplication** — same GPU via multiple backends shows as one:
-
-| Feature | Description | Status |
-|---------|-------------|:------:|
-| DeviceRegistry | Tracks physical devices by (vendor_id, device_id) | ✅ |
-| Backend Preference | Vulkan > Metal > DX12 > GL | ✅ |
-| F64 Product | `ProdReduceF64::prod()`, log-domain variant | ✅ |
-| F64 Variance | `VarianceReduceF64::variance()`, Welford's algorithm | ✅ |
-| F64 Norms | `NormReduceF64::l1()`, `l2()`, `linf()`, `p_norm()` | ✅ |
-| F64 Cumprod | `CumprodF64::new()`, inclusive/exclusive/reverse | ✅ |
-
----
-
-## F64 Unified Math Language Suite (Feb 15) ✅ COMPLETE
-
-**WGSL as unified math language** — science-grade f64 on any GPU:
-
-| Category | Operations | Status |
-|----------|-----------|:------:|
-| Linalg f64 | CholeskyF64, TriangularSolveF64, CyclicReductionF64 | ✅ |
-| MD Forces f64 | LennardJonesF64, CoulombF64, MorseF64 | ✅ |
-| Native f64 builtins | sqrt, exp, log, abs | ✅ |
-
----
-
-## GPU-Resident Pipeline (Feb 15) ✅ COMPLETE
-
-**Amdahl's Law bottleneck solved** — zero CPU↔GPU round-trips during iteration:
-
-| Component | Status |
-|-----------|:------:|
-| Max Abs Diff Reduction | ✅ |
-| Persistent Buffer Mgmt | ✅ |
-| Batched Bisection (1000+ parallel) | ✅ |
-| Grid Quadrature GEMM | ✅ |
-| Multi-Kernel Pipeline | ✅ |
-
-**Metrics**: CPU↔GPU trips: ~10 → 1, Buffer allocs/iter: ~20 → 0
-
-See `NEXT_STEPS.md` for API usage.
-
----
-
-## Three Springs Validation (Feb 16) ✅ COMPLETE
-
-**Domain-specific validation projects confirm BarraCUDA's universality:**
-
-| Project | Domain | Checks | Key Achievement |
-|---------|--------|:------:|-----------------|
-| **hotSpring** | Nuclear physics | 195/195 | GPU-resident HFB 15% faster than CPU |
-| **wetSpring** | Life science | 48/48 | Shannon/Simpson/Bray-Curtis at f64 |
-| **airSpring** | Precision agriculture | 70/70 | FAO-56 ET₀, soil, water balance |
-
-**Combined**: 313+ Rust acceptance checks across nuclear physics, metagenomics, analytical
-chemistry, and precision agriculture — all on the same BarraCUDA primitives.
-
-**Cross-spring synergies**:
-- hotSpring → airSpring: f64 GPU patterns, dispatch batching, hybrid GPU+Rayon
-- airSpring → wetSpring: Spatial interpolation (kriging) for sampling sites
-- wetSpring → airSpring: IoT stream processing for real-time sensor data
-
----
-
-## cudarc 0.19 Upgrade + Clippy Cleanup (Feb 17) ✅ COMPLETE
-
-**CUDA Backend Modernization:**
-
-| Change | Before | After |
-|--------|--------|-------|
-| Device type | `CudaDevice` | `CudaContext` (Arc-wrapped) |
-| Device queries | Hardcoded | Real `ctx.name()`, `ctx.compute_capability()` |
-| Memory ops | `device.htod_copy()` | `stream.clone_htod()` |
-| Kernel launch | `func.launch()` | `stream.launch_builder().arg().launch()` |
-
-**Clippy Cleanup** — 44 warnings fixed:
-- Replaced manual `div_ceil()` with method
-- Replaced manual `.is_multiple_of()` implementations  
-- Added `CellSortResult` type alias for complex tuple
-- Fixed map iteration patterns
-
-**Result**: Workspace clippy-clean (only intentional deprecation warnings remain).
-
----
-
-## Deep Debt Evolution (Feb 17) ✅ COMPLETE
-
-**Timeout Constant Consolidation:**
-
-| File | Before | After |
-|------|--------|-------|
-| `handlers.rs` | `Duration::from_secs(300)` ×7 | `WORKLOAD_EXECUTION_TIMEOUT` |
-| `background.rs` | Hardcoded intervals | `DEFAULT_CACHE_TTL`, `HEALTH_CHECK_INTERVAL` |
-| `config/mod.rs` | `Duration::from_secs(300/30)` | Centralized constants |
-| `auth.rs` | `Duration::from_secs(3600/300)` | `TOKEN_REFRESH_INTERVAL`, `TIMESTAMP_VALIDATION_WINDOW` |
-| `monitoring.rs` | `Duration::from_secs(30)` | `HEALTH_CHECK_INTERVAL` |
-
-**SIMD Runtime Detection:**
-
-| Architecture | Before | After |
-|--------------|--------|-------|
-| x86_64 | `cfg!()` compile-time | `std::arch::is_x86_feature_detected!` runtime |
-| aarch64 | Compile-time assumption | Fixed NEON width (always 128-bit) |
-
-**Unidirectional Pipeline (Phases 0-4 Complete):**
-
-| Phase | Component | Status |
-|-------|-----------|:------:|
-| 0 | Design & Architecture | ✅ |
-| 1 | GpuRingBuffer (SPSC) | ✅ |
-| 2 | UnidirectionalPipeline | ✅ |
-| 3 | BandwidthThrottler | ✅ |
-| 4 | Benchmark Suite | ✅ |
-
-See `UNIDIRECTIONAL_PIPELINE.md` for tracking and `DEEP_DEBT_STATUS.md` for full details.
-
----
-
-**Last Updated**: February 20, 2026 — Session 24: error\_paths/fault/security suites graduated (167 tests), wetSpring cross-repo path fixed, neuralSpring retirement plan, TensorSession ML ops, ParallelFilter two-level, capabilities split
+**Last Updated**: February 21, 2026 — Session 31c: 31 GpuExecutor MathOps wired, CpuExecutor dispatching, 3 stubs eliminated, LU/QR/SVD refactored, cache_hierarchy table-driven.

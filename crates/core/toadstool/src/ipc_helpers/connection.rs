@@ -16,15 +16,20 @@ use super::framing;
 /// Request timeout for IPC operations (from config defaults)
 pub(crate) const IPC_TIMEOUT: Duration = timeouts::TCP_CONNECT_TIMEOUT;
 
-/// Get `$XDG_RUNTIME_DIR` or fall back to `/run/user/$UID`.
+/// Get runtime directory: `$XDG_RUNTIME_DIR` → `$BIOMEOS_RUNTIME_DIR` → `/run/user/$UID` → temp dir.
 fn get_runtime_dir() -> String {
-    std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
-        if let Ok(uid) = uid_detector::get_user_id() {
-            format!("/run/user/{}", uid)
-        } else {
-            String::from("/tmp/biomeos-runtime")
-        }
-    })
+    std::env::var("XDG_RUNTIME_DIR")
+        .or_else(|_| std::env::var("BIOMEOS_RUNTIME_DIR"))
+        .unwrap_or_else(|_| {
+            if let Ok(uid) = uid_detector::get_user_id() {
+                format!("/run/user/{}", uid)
+            } else {
+                std::env::temp_dir()
+                    .join("biomeos-runtime")
+                    .to_string_lossy()
+                    .to_string()
+            }
+        })
 }
 
 /// Get default Songbird socket path using biomeOS standard.

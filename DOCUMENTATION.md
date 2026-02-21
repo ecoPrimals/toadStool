@@ -22,62 +22,24 @@
 | Deploy NPU drivers | [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md) |
 | Understand NPU driver design | [specs/NPU_DRIVER_ARCHITECTURE.md](specs/NPU_DRIVER_ARCHITECTURE.md) |
 | Multi-tenant security | [specs/MULTITENANT_COMPUTE_ARCHITECTURE.md](specs/MULTITENANT_COMPUTE_ARCHITECTURE.md) |
-| Phase 5 evolution (current) | [specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md](specs/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md) |
-| Phase 3 evolution roadmap | [specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md](specs/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md) |
+| Phase 5 evolution (complete) | [specs/archive/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md](specs/archive/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md) |
+| Phase 3 evolution (complete) | [specs/archive/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md](specs/archive/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md) |
 
 ---
 
-## Current State (February 21, 2026 — Session 25)
+## Current State (Session 31c — February 21, 2026)
 
-- **Unit Test Coverage Expansion** — 172 new tests across 11 modules (endpoint, expand, dispatch, workload, quota, rk45, constraints, types, execution) (S25)
-- **Integration Tests** — 13 suites, 167 tests; error\_paths\_discovery, fault/chaos, security/penetration graduated (S24)
-- **GemmCachedF64** — GPU-resident weight matrix B; 60× dispatch speedup; `GemmF64::WGSL` as `pub const`
-- **TensorSession ML ops** — matmul, relu, gelu, softmax, layer\_norm, attention, head\_split/concat absorbed
-- **`capabilities.rs` semantic split** — `driver_profile.rs` extracted; 929 → 505 + 424 lines; backward compat (S23)
-- **ParallelFilter two-level** — 6-pass path up to 16M elements; `apply_l1_offsets` WGSL (S23)
-- **wetSpring cross-repo fix** — Cargo.toml case fix + `include_str!` → `GemmF64::WGSL` constant (S24)
-- **Sovereign Compute Phases 0–3** — `WgslOptimizer` live in `compile_shader_f64()` hot path (S18)
-- **cudarc 0.19 Upgrade** — CUDA backend modernized with real device queries, stream-based ops
-- **Pure Rust Syscalls** — akida-driver mmap/mlock migrated from libc to rustix
-- **biomeOS Networking** — No reqwest/hyper; Songbird (TLS) + Beardog (crypto) + JSON-RPC
-- **Three Springs Validation** — 313+ checks across hotSpring (195), wetSpring (48), airSpring (70)
-- **Unified Math Library** — Fused Map-Reduce, Kriging, Cosine Similarity f64, Batched ET₀
-- **37 New Evolution Tests** — Unit, E2E, chaos, fault, precision coverage for unified primitives
-- **log_f64 Bug Fix** — Coefficients halved (~1e-3 → ~1e-15 precision), discovered by wetSpring
-- **hotSpring Bug Fixes** — `target` keyword, SHADER_F64 device creation
-- **Deep Debt Evolution** — Comprehensive audit and ecoBin v2.0 compliance
-- **ecoBin Compliance** — TOML preferred, XDG paths, rustix for signals, semantic naming
-- **Platform Paths** — `platform_paths` module for cross-platform path resolution
-- **NPU Executor** — `NpuExecutor` implements `ComputeExecutor` for unified hardware discovery
-- **Device Registry** — Physical device deduplication with backend preference (Vulkan > Metal > DX12 > GL)
-- **F64 Reduce Suite** — ProdReduceF64, VarianceReduceF64, NormReduceF64, CumprodF64
-- **F64 Unified Math Language Suite** — CholeskyF64, TriangularSolveF64, LennardJonesF64, CoulombF64, MorseF64
-- **GPU-Resident Pipeline Complete** — Zero CPU↔GPU round-trips during iteration
-- **hotSpring Evolution Complete** — 195/195 nuclear EOS acceptance checks on consumer GPU
-- **Math Primitives Absorbed** — Broyden mixing, FD gradients, weighted inner products, Hermite/Laguerre f64
-- **84 new evolution tests** — 47 hotSpring + 37 three springs (unit, E2E, chaos, fault, precision)
-- **0 clippy warnings with -D warnings**
-- **16,070+ tests passing**, 0 failing (500+ scientific middleware, 167 integration, 172 new unit tests)
-- **480+ WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
-- **Shader-first**: ALL math is WGSL primary, ToadStool dispatches to GPU/CPU
-- **Scientific middleware** (14 modules: linalg, linalg::sparse, numerical, special, stats, optimize, surrogate, sample, pde, interpolate, dispatch, pipeline, mixing, grid — 400+ tests, 0 unsafe)
-- **Auto-dispatch system** — CPU/GPU routing with benchmark suite
-- **17 WorkloadHint variants** with auto-routing (GPU, NPU, CPU) and user preference override
-- **36 JSON-RPC methods** across 8 domains (toadstool, toadstool.resources, compute, resources, ai, gpu, ollama, gate)
-- GPU job queue with cross-gate routing
-- NPU detection: `/dev/akida*` and IOMMU/VFIO sysfs scan for BrainChip 0x1e7c
-- 100% `unsafe` block documentation (FFI only, all with `// SAFETY:`)
+- **16,100+ tests passing**, 0 failing | ~65% line coverage | all quality gates green
+- **480+ WGSL shaders** — shader-first architecture, any GPU via WGPU
+- **313+ three springs validation** — hotSpring (195), wetSpring (48), airSpring (70)
+- **Deep debt resolved** — 10 deps removed, all hardcoded paths evolved, production stubs eliminated
+- **GpuExecutor** — 31 MathOps fully wired; **CpuExecutor** — full dispatch
+- **Smart refactoring** — LU -61%, SVD -60%, QR -48% via WGPU helper extraction
+- **Sovereign Compute Phases 0–3** — `WgslOptimizer` live in `compile_shader_f64()` hot path
+- **Scientific middleware** — 14 modules, 400+ tests, 0 unsafe
+- **36 JSON-RPC methods** across 8 domains
+- **Integration tests** — 13 suites, 167 tests
 - Zero production placeholders, zero production mocks
-- Cross-vendor distributed GPU compute validated (NVIDIA + AMD, bit-identical)
-- 39.85 tok/s distributed LLM inference with encrypted tensor transport
-
-### Test Coverage
-
-| Crate | Line Coverage |
-|-------|-------------|
-| `toadstool-server` | ~85% |
-| `toadstool-common` | ~84% |
-| `toadstool-config` | ~85% |
 
 ---
 
@@ -168,4 +130,4 @@ specs/                     -- Technical specifications
 
 ---
 
-**Last Updated**: February 20, 2026
+**Last Updated**: February 21, 2026 — Session 31c

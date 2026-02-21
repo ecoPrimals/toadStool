@@ -121,157 +121,69 @@ impl QrGpu {
             mapped_at_creation: false,
         });
 
-        // Compile shader
-        // Compile f32 shader (for Tensor-based API)
         let shader = device.compile_shader(Self::wgsl_shader_f32(), Some("QR Decomp f32"));
-
-        // Create bind group layout (shared by all kernels)
         let bind_group_layout = self.create_bind_group_layout(&device.device);
 
-        // Create pipelines
         let column_norm_pipeline =
             self.create_pipeline(&device.device, &shader, &bind_group_layout, "column_norm");
         let compute_householder_pipeline = self.create_pipeline(
-            &device.device,
-            &shader,
-            &bind_group_layout,
-            "compute_householder",
+            &device.device, &shader, &bind_group_layout, "compute_householder",
         );
-        let _compute_vta_pipeline =
-            self.create_pipeline(&device.device, &shader, &bind_group_layout, "compute_vTA");
         let apply_householder_pipeline = self.create_pipeline(
-            &device.device,
-            &shader,
-            &bind_group_layout,
-            "apply_householder",
+            &device.device, &shader, &bind_group_layout, "apply_householder",
         );
         let update_column_k_pipeline = self.create_pipeline(
-            &device.device,
-            &shader,
-            &bind_group_layout,
-            "update_column_k",
+            &device.device, &shader, &bind_group_layout, "update_column_k",
         );
 
-        // Main loop: process each column
+        let dispatch = |pipeline: &wgpu::ComputePipeline,
+                        bg: &wgpu::BindGroup,
+                        wg: (u32, u32, u32)| {
+            let mut enc = device.device.create_command_encoder(
+                &wgpu::CommandEncoderDescriptor { label: None },
+            );
+            {
+                let mut pass =
+                    enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+                pass.set_pipeline(pipeline);
+                pass.set_bind_group(0, bg, &[]);
+                pass.dispatch_workgroups(wg.0, wg.1, wg.2);
+            }
+            device.queue.submit(Some(enc.finish()));
+        };
+
         for k in 0..k_max {
-            // Create params buffer for this iteration
             let params = [m, n, k, 0u32];
             let params_buffer =
-                device
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("QR Params"),
-                        contents: bytemuck::cast_slice(&params),
-                        usage: wgpu::BufferUsages::UNIFORM,
-                    });
+                device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("QR Params"),
+                    contents: bytemuck::cast_slice(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
-            // Create bind group
             let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("QR Bind Group"),
+                label: None,
                 layout: &bind_group_layout,
                 entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: a_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: v_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: tau_buffer.as_entire_binding(),
-                    },
+                    wgpu::BindGroupEntry { binding: 0, resource: params_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 1, resource: a_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 2, resource: v_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 3, resource: tau_buffer.as_entire_binding() },
                 ],
             });
 
-            // Step 1: Compute column norm
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Column Norm Encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Column Norm Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&column_norm_pipeline);
-                pass.set_bind_group(0, &bind_group, &[]);
-                pass.dispatch_workgroups(1, 1, 1);
-            }
-            device.queue.submit(Some(encoder.finish()));
+            dispatch(&column_norm_pipeline, &bind_group, (1, 1, 1));
 
-            // Step 2: Compute Householder vector
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Compute Householder Encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Compute Householder Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&compute_householder_pipeline);
-                pass.set_bind_group(0, &bind_group, &[]);
-                let rows = m - k;
-                pass.dispatch_workgroups(rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-            }
-            device.queue.submit(Some(encoder.finish()));
+            let rows = m - k;
+            dispatch(&compute_householder_pipeline, &bind_group, (rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1));
 
-            // Step 3: Compute vᵀA for remaining columns
-            // This requires a separate bind group with vTA buffer
-            // For simplicity, we use a combined pass that handles this internally
-
-            // Step 4: Apply Householder to remaining columns
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Apply Householder Encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Apply Householder Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&apply_householder_pipeline);
-                pass.set_bind_group(0, &bind_group, &[]);
-                let submatrix_rows = m - k;
-                let submatrix_cols = n - k - 1;
-                if submatrix_cols > 0 {
-                    let wg_x = submatrix_cols.div_ceil(16);
-                    let wg_y = submatrix_rows.div_ceil(16);
-                    pass.dispatch_workgroups(wg_x, wg_y, 1);
-                }
+            let sub_cols = n - k - 1;
+            if sub_cols > 0 {
+                let sub_rows = m - k;
+                dispatch(&apply_householder_pipeline, &bind_group, (sub_cols.div_ceil(16), sub_rows.div_ceil(16), 1));
             }
-            device.queue.submit(Some(encoder.finish()));
 
-            // Step 5: Update column k (zero below diagonal, store R)
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Update Column K Encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Update Column K Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&update_column_k_pipeline);
-                pass.set_bind_group(0, &bind_group, &[]);
-                let rows = m - k;
-                pass.dispatch_workgroups(rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-            }
-            device.queue.submit(Some(encoder.finish()));
+            dispatch(&update_column_k_pipeline, &bind_group, (rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1));
         }
 
         // Read back results
@@ -335,446 +247,108 @@ impl QrGpu {
         let tau_buffer = Self::create_zero_f64_buffer(&device, "QR tau f64", k_max as usize);
         let w_buffer = Self::create_zero_f64_buffer(&device, "QR w f64", n); // Work buffer for vᵀA
 
-        // Compile f64 shader
         let shader = device.compile_shader_f64(Self::wgsl_shader_f64(), Some("QR f64"));
 
-        // Create bind group layout for main kernels (4 bindings)
-        let main_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("QR f64 Main BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
+        let main_bgl = Self::make_bgl(&device.device, "QR f64 Main", &[
+            wgpu::BufferBindingType::Uniform,
+            wgpu::BufferBindingType::Storage { read_only: false },
+            wgpu::BufferBindingType::Storage { read_only: false },
+            wgpu::BufferBindingType::Storage { read_only: false },
+        ]);
 
-        // Extended layout for compute_householder (5 bindings - needs norm_sq_buf)
-        let hh_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("QR f64 HH BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
+        let hh_bgl = Self::make_bgl(&device.device, "QR f64 HH", &[
+            wgpu::BufferBindingType::Uniform,
+            wgpu::BufferBindingType::Storage { read_only: true },
+            wgpu::BufferBindingType::Storage { read_only: false },
+            wgpu::BufferBindingType::Storage { read_only: false },
+            wgpu::BufferBindingType::Storage { read_only: true },
+        ]);
 
-        // Apply layout (5 bindings - needs w and tau_apply)
-        let apply_bgl = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("QR f64 Apply BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
+        let apply_bgl = Self::make_bgl(&device.device, "QR f64 Apply", &[
+            wgpu::BufferBindingType::Uniform,
+            wgpu::BufferBindingType::Storage { read_only: true },
+            wgpu::BufferBindingType::Storage { read_only: false },
+            wgpu::BufferBindingType::Storage { read_only: false },
+            wgpu::BufferBindingType::Storage { read_only: true },
+        ]);
 
-        // Create pipelines
-        let main_pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("QR f64 Main PL"),
-                bind_group_layouts: &[&main_bgl],
+        let make_pipe = |bgl: &wgpu::BindGroupLayout, entry: &str| {
+            let pl = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,
+                bind_group_layouts: &[bgl],
                 push_constant_ranges: &[],
             });
+            device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(entry),
+                layout: Some(&pl),
+                module: &shader,
+                entry_point: entry,
+                cache: None,
+                compilation_options: Default::default(),
+            })
+        };
 
-        let hh_pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("QR f64 HH PL"),
-                bind_group_layouts: &[&hh_bgl],
-                push_constant_ranges: &[],
-            });
+        let column_norm_pipeline = make_pipe(&main_bgl, "column_norm");
+        let compute_hh_pipeline = make_pipe(&hh_bgl, "compute_householder");
+        let compute_vta_pipeline = make_pipe(&apply_bgl, "compute_vTA");
+        let apply_hh_pipeline = make_pipe(&apply_bgl, "apply_householder");
+        let update_col_pipeline = make_pipe(&apply_bgl, "update_column_k");
 
-        let apply_pl = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("QR f64 Apply PL"),
-                bind_group_layouts: &[&apply_bgl],
-                push_constant_ranges: &[],
-            });
+        let dispatch = |pipeline: &wgpu::ComputePipeline,
+                        bg: &wgpu::BindGroup,
+                        wg: (u32, u32, u32)| {
+            let mut enc = device.device.create_command_encoder(
+                &wgpu::CommandEncoderDescriptor { label: None },
+            );
+            {
+                let mut pass =
+                    enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+                pass.set_pipeline(pipeline);
+                pass.set_bind_group(0, bg, &[]);
+                pass.dispatch_workgroups(wg.0, wg.1, wg.2);
+            }
+            device.queue.submit(Some(enc.finish()));
+        };
 
-        let column_norm_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Column Norm f64"),
-                    layout: Some(&main_pl),
-                    module: &shader,
-                    entry_point: "column_norm",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
+        let make_bg = |layout: &wgpu::BindGroupLayout, entries: &[&wgpu::Buffer]| {
+            device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout,
+                entries: &entries
+                    .iter()
+                    .enumerate()
+                    .map(|(i, buf)| wgpu::BindGroupEntry {
+                        binding: i as u32,
+                        resource: buf.as_entire_binding(),
+                    })
+                    .collect::<Vec<_>>(),
+            })
+        };
 
-        let compute_hh_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Compute HH f64"),
-                    layout: Some(&hh_pl),
-                    module: &shader,
-                    entry_point: "compute_householder",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let compute_vta_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Compute vTA f64"),
-                    layout: Some(&apply_pl),
-                    module: &shader,
-                    entry_point: "compute_vTA",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let apply_hh_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Apply HH f64"),
-                    layout: Some(&apply_pl),
-                    module: &shader,
-                    entry_point: "apply_householder",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        let update_col_pipeline =
-            device
-                .device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Update Col f64"),
-                    layout: Some(&apply_pl),
-                    module: &shader,
-                    entry_point: "update_column_k",
-                    cache: None,
-                    compilation_options: Default::default(),
-                });
-
-        // Main loop: process each column
         for k in 0..k_max {
-            // Params for this iteration
             let params = [mu, nu, k, 0u32];
             let params_buffer =
-                device
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("QR Params"),
-                        contents: bytemuck::cast_slice(&params),
-                        usage: wgpu::BufferUsages::UNIFORM,
-                    });
-
-            // 1. Compute column norm (stores norm_sq in v[0])
-            let norm_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Norm BG"),
-                layout: &main_bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: a_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: v_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: tau_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Norm Encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Norm Pass"),
-                    timestamp_writes: None,
+                device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: None,
+                    contents: bytemuck::cast_slice(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
                 });
-                pass.set_pipeline(&column_norm_pipeline);
-                pass.set_bind_group(0, &norm_bg, &[]);
-                pass.dispatch_workgroups(1, 1, 1);
-            }
-            device.queue.submit(Some(encoder.finish()));
 
-            // 2. Compute Householder vector (reads norm_sq from v[0])
-            let hh_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("HH BG"),
-                layout: &hh_bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: a_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: v_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: tau_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: v_buffer.as_entire_binding(),
-                    }, // norm_sq_buf = v (v[0] has norm_sq)
-                ],
-            });
+            let norm_bg = make_bg(&main_bgl, &[&params_buffer, &a_buffer, &v_buffer, &tau_buffer]);
+            dispatch(&column_norm_pipeline, &norm_bg, (1, 1, 1));
 
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("HH Encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("HH Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&compute_hh_pipeline);
-                pass.set_bind_group(0, &hh_bg, &[]);
-                let rows = mu - k;
-                pass.dispatch_workgroups(rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-            }
-            device.queue.submit(Some(encoder.finish()));
+            let hh_bg = make_bg(&hh_bgl, &[&params_buffer, &a_buffer, &v_buffer, &tau_buffer, &v_buffer]);
+            let rows = mu - k;
+            dispatch(&compute_hh_pipeline, &hh_bg, (rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1));
 
-            // 3. Compute vᵀA for remaining columns
-            let apply_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Apply BG"),
-                layout: &apply_bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: v_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: a_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: w_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: tau_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
+            let apply_bg = make_bg(&apply_bgl, &[&params_buffer, &v_buffer, &a_buffer, &w_buffer, &tau_buffer]);
             let cols_remaining = nu.saturating_sub(k + 1);
             if cols_remaining > 0 {
-                let mut encoder =
-                    device
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                            label: Some("vTA Encoder"),
-                        });
-                {
-                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("vTA Pass"),
-                        timestamp_writes: None,
-                    });
-                    pass.set_pipeline(&compute_vta_pipeline);
-                    pass.set_bind_group(0, &apply_bg, &[]);
-                    pass.dispatch_workgroups(cols_remaining, 1, 1); // One workgroup per column
-                }
-                device.queue.submit(Some(encoder.finish()));
-
-                // 4. Apply Householder
-                let mut encoder =
-                    device
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                            label: Some("Apply HH Encoder"),
-                        });
-                {
-                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Apply HH Pass"),
-                        timestamp_writes: None,
-                    });
-                    pass.set_pipeline(&apply_hh_pipeline);
-                    pass.set_bind_group(0, &apply_bg, &[]);
-                    let rows = mu - k;
-                    pass.dispatch_workgroups(cols_remaining.div_ceil(16), rows.div_ceil(16), 1);
-                }
-                device.queue.submit(Some(encoder.finish()));
+                dispatch(&compute_vta_pipeline, &apply_bg, (cols_remaining, 1, 1));
+                dispatch(&apply_hh_pipeline, &apply_bg, (cols_remaining.div_ceil(16), rows.div_ceil(16), 1));
             }
 
-            // 5. Update column k (zero below diagonal)
-            let mut encoder =
-                device
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("Update Col Encoder"),
-                    });
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Update Col Pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&update_col_pipeline);
-                pass.set_bind_group(0, &apply_bg, &[]);
-                let rows = mu - k;
-                pass.dispatch_workgroups(rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1);
-            }
-            device.queue.submit(Some(encoder.finish()));
+            dispatch(&update_col_pipeline, &apply_bg, (rows.div_ceil(WORKGROUP_SIZE_1D), 1, 1));
         }
 
         // Read back results
@@ -808,60 +382,40 @@ impl QrGpu {
         })
     }
 
-    // Helper: Create bind group layout
-    fn create_bind_group_layout(&self, device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    fn make_bgl(
+        device: &wgpu::Device,
+        label: &str,
+        binding_types: &[wgpu::BufferBindingType],
+    ) -> wgpu::BindGroupLayout {
+        let entries: Vec<_> = binding_types
+            .iter()
+            .enumerate()
+            .map(|(i, &ty)| wgpu::BindGroupLayoutEntry {
+                binding: i as u32,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            })
+            .collect();
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("QR BGL"),
-            entries: &[
-                // Params (uniform)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // Matrix A (storage, read-write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // Householder vector v (storage, read-write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // Tau scalars (storage, read-write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
+            label: Some(label),
+            entries: &entries,
         })
     }
 
-    // Helper: Create compute pipeline
+    fn create_bind_group_layout(&self, device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        Self::make_bgl(device, "QR BGL", &[
+            wgpu::BufferBindingType::Uniform,
+            wgpu::BufferBindingType::Storage { read_only: false },
+            wgpu::BufferBindingType::Storage { read_only: false },
+            wgpu::BufferBindingType::Storage { read_only: false },
+        ])
+    }
+
     fn create_pipeline(
         &self,
         device: &wgpu::Device,
@@ -870,13 +424,12 @@ impl QrGpu {
         entry_point: &str,
     ) -> wgpu::ComputePipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some(&format!("QR {} PL", entry_point)),
+            label: None,
             bind_group_layouts: &[layout],
             push_constant_ranges: &[],
         });
-
         device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some(&format!("QR {} Pipeline", entry_point)),
+            label: Some(entry_point),
             layout: Some(&pipeline_layout),
             module: shader,
             entry_point,

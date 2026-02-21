@@ -11,8 +11,21 @@
 
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use wgpu::{BindGroupLayout, ComputePipeline, Device, ShaderModule};
+
+/// Recover from RwLock poison on read. Safe for caches: worst case is a
+/// stale entry or cache miss, never data corruption.
+fn read_or_recover<T>(lock: &RwLock<T>) -> RwLockReadGuard<'_, T> {
+    lock.read().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Recover from RwLock poison on write. Safe for caches: a previously
+/// panicked thread may have left partial state, but inserting over it
+/// is correct behavior for a cache.
+fn write_or_recover<T>(lock: &RwLock<T>) -> RwLockWriteGuard<'_, T> {
+    lock.write().unwrap_or_else(|e| e.into_inner())
+}
 
 /// Unique device identifier that works across wgpu instances
 ///
@@ -234,7 +247,7 @@ impl PipelineCache {
         let key = ShaderKey::new(source, fingerprint);
 
         // Fast path: already compiled.
-        if let Some(m) = self.shaders.read().expect("shaders poisoned").get(&key) {
+        if let Some(m) = read_or_recover(&self.shaders).get(&key) {
             return m.clone();
         }
         // Slow path: compile and cache.
@@ -242,9 +255,7 @@ impl PipelineCache {
             label,
             source: wgpu::ShaderSource::Wgsl(source.into()),
         }));
-        self.shaders
-            .write()
-            .expect("shaders poisoned")
+        write_or_recover(&self.shaders)
             .entry(key)
             .or_insert(module)
             .clone()
@@ -264,7 +275,7 @@ impl PipelineCache {
         let key = BindGroupLayoutKey::new(signature, fingerprint);
 
         // Fast path: already created.
-        if let Some(l) = self.layouts.read().expect("layouts poisoned").get(&key) {
+        if let Some(l) = read_or_recover(&self.layouts).get(&key) {
             return l.clone();
         }
         // Slow path: create from signature.
@@ -323,9 +334,7 @@ impl PipelineCache {
             });
             Arc::new(layout)
         };
-        self.layouts
-            .write()
-            .expect("layouts poisoned")
+        write_or_recover(&self.layouts)
             .entry(key)
             .or_insert(layout)
             .clone()
@@ -347,7 +356,7 @@ impl PipelineCache {
         let key = PipelineKey::new(shader_source, layout_signature, entry_point, fingerprint);
 
         // Fast path: already compiled.
-        if let Some(p) = self.pipelines.read().expect("pipelines poisoned").get(&key) {
+        if let Some(p) = read_or_recover(&self.pipelines).get(&key) {
             return p.clone();
         }
         // Slow path: compile shaders, build pipeline layout, create pipeline.
@@ -368,9 +377,7 @@ impl PipelineCache {
                 compilation_options: Default::default(),
             }),
         );
-        self.pipelines
-            .write()
-            .expect("pipelines poisoned")
+        write_or_recover(&self.pipelines)
             .entry(key)
             .or_insert(pipeline)
             .clone()
@@ -379,17 +386,17 @@ impl PipelineCache {
     /// Get cache statistics
     pub fn stats(&self) -> CacheStats {
         CacheStats {
-            shaders: self.shaders.read().expect("shaders poisoned").len(),
-            layouts: self.layouts.read().expect("layouts poisoned").len(),
-            pipelines: self.pipelines.read().expect("pipelines poisoned").len(),
+            shaders: read_or_recover(&self.shaders).len(),
+            layouts: read_or_recover(&self.layouts).len(),
+            pipelines: read_or_recover(&self.pipelines).len(),
         }
     }
 
     /// Clear all cached objects
     pub fn clear(&self) {
-        self.shaders.write().expect("shaders poisoned").clear();
-        self.layouts.write().expect("layouts poisoned").clear();
-        self.pipelines.write().expect("pipelines poisoned").clear();
+        write_or_recover(&self.shaders).clear();
+        write_or_recover(&self.layouts).clear();
+        write_or_recover(&self.pipelines).clear();
     }
 }
 
