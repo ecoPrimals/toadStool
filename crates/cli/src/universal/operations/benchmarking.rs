@@ -5,7 +5,6 @@
 use anyhow::Result;
 use std::collections::HashMap;
 use std::future::Future;
-use std::path::PathBuf;
 use tokio::fs;
 use tokio::time::{Duration, Instant};
 
@@ -149,7 +148,8 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         // Storage I/O test
         let start = Instant::now();
 
-        let test_file = PathBuf::from("/tmp/toadstool_storage_test");
+        // Use platform-agnostic temp directory
+        let test_file = std::env::temp_dir().join("toadstool_storage_test");
         let data = vec![0u8; 1024 * 1024]; // 1MB
 
         // Write test

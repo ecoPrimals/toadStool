@@ -33,11 +33,17 @@ pub struct LeakyRelu {
 
 impl LeakyRelu {
     pub fn new(input: Tensor) -> Self {
-        Self { input, negative_slope: LEAKY_RELU_DEFAULT_SLOPE }
+        Self {
+            input,
+            negative_slope: LEAKY_RELU_DEFAULT_SLOPE,
+        }
     }
 
     pub fn with_slope(input: Tensor, negative_slope: f32) -> Self {
-        Self { input, negative_slope }
+        Self {
+            input,
+            negative_slope,
+        }
     }
 
     fn wgsl_shader() -> &'static str {
@@ -55,14 +61,16 @@ impl LeakyRelu {
 
         let output_buffer = ctx.acquire_pooled_output(size);
 
-        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("LeakyReLU Params"),
-            contents: bytemuck::bytes_of(&Params {
-                size: size as u32,
-                negative_slope: self.negative_slope,
-            }),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buf = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("LeakyReLU Params"),
+                contents: bytemuck::bytes_of(&Params {
+                    size: size as u32,
+                    negative_slope: self.negative_slope,
+                }),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let layout_sig = BindGroupLayoutSignature::reduction();
         let adapter_info = device.adapter_info();
@@ -73,8 +81,8 @@ impl LeakyRelu {
             Some("LeakyReLU BGL"),
         );
 
-        let bind_group = std::sync::Arc::new(device.device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
+        let bind_group =
+            std::sync::Arc::new(device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("LeakyReLU BG"),
                 layout: &bgl,
                 entries: &[
@@ -91,8 +99,7 @@ impl LeakyRelu {
                         resource: params_buf.as_entire_binding(),
                     },
                 ],
-            },
-        ));
+            }));
 
         let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
             device.device(),

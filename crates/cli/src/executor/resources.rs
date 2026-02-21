@@ -3,7 +3,7 @@
 //! This module handles resource cleanup, PID tracking, and data management.
 
 use anyhow::Result;
-use std::path::PathBuf;
+use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 use tokio::fs;
 use tracing::info;
 use uuid::Uuid;
@@ -29,8 +29,10 @@ impl<'a> ResourceManager<'a> {
     ///
     /// Returns an error if directory removal fails
     pub async fn purge_biome_data(&self, biome_name: &str) -> Result<()> {
-        let data_dir = PathBuf::from(format!("/tmp/toadstool/data/{biome_name}"));
-        let log_dir = PathBuf::from(format!("/tmp/toadstool/logs/{biome_name}"));
+        let env = PathEnv::from_env();
+        let paths = PlatformPaths::new(&env);
+        let data_dir = paths.toadstool_data_dir().join(biome_name);
+        let log_dir = paths.toadstool_log_dir().join(biome_name);
 
         if data_dir.exists() {
             fs::remove_dir_all(&data_dir).await?;

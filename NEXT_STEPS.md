@@ -1,7 +1,7 @@
 # ToadStool/BarraCUDA — Next Steps
 
-**Updated**: February 20, 2026 — Session 24
-**Status**: Sovereign Phases 0–3 ✅ | Integration tests 13 suites/167 ✅ | TensorSession ML ops ✅ | ParallelFilter two-level ✅ | capabilities split ✅ | GemmCachedF64 ✅ | 63.02% coverage ✅
+**Updated**: February 21, 2026 — Session 25
+**Status**: Sovereign Phases 0–3 ✅ | Integration tests 13 suites/167 ✅ | TensorSession ML ops ✅ | ParallelFilter two-level ✅ | capabilities split ✅ | GemmCachedF64 ✅ | 172 new unit tests (S25) ✅ | ~65% coverage
 
 ---
 

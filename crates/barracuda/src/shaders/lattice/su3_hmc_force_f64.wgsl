@@ -85,7 +85,13 @@ fn shift_bwd(c: vec4<u32>, mu: u32) -> vec4<u32> {
 }
 
 fn load_link(site: u32, mu: u32) -> array<vec2<f64>, 9> {
-    return su3_load(&links, (site * 4u + mu) * 18u);
+    var m: array<vec2<f64>, 9>;
+    let base = (site * 4u + mu) * 18u;
+    for (var i = 0u; i < 9u; i = i + 1u) {
+        let off = base + i * 2u;
+        m[i] = c64_new(links[off], links[off + 1u]);
+    }
+    return m;
 }
 
 // ── SU(3) algebra projection ──────────────────────────────────────────────────
@@ -93,27 +99,41 @@ fn load_link(site: u32, mu: u32) -> array<vec2<f64>, 9> {
 //   P(M) = (M - M†) / 2  −  Tr(M − M†) / 6 · I
 
 fn su3_project_algebra(m: array<vec2<f64>, 9>) -> array<vec2<f64>, 9> {
-    let mdag  = su3_adjoint(m);
-    // anti-Hermitian part: (M - M†) / 2
+    var mv = m; // copy to var — Naga requires var for runtime array indexing
+    // Anti-Hermitian part element by element:
+    //   ah[i,j] = (M[i,j] - conj(M[j,i])) / 2
+    // With M[i,j] = (re, im) and conj(M[j,i]) = (mji.x, -mji.y):
+    //   ah[i,j].re = (mij.x - mji.x) * 0.5
+    //   ah[i,j].im = (mij.y + mji.y) * 0.5
+    // Written as raw vec2 ops to avoid Naga nested-call type inference issues.
     var ah: array<vec2<f64>, 9>;
-    for (var i = 0u; i < 9u; i = i + 1u) {
-        ah[i] = c64_scale(c64_sub(m[i], mdag[i]), 0.5);
+    for (var i = 0u; i < 3u; i = i + 1u) {
+        for (var j = 0u; j < 3u; j = j + 1u) {
+            let mij = mv[i * 3u + j];
+            let mji = mv[j * 3u + i];
+            ah[i * 3u + j] = vec2<f64>(
+                (mij.x - mji.x) * 0.5,
+                (mij.y + mji.y) * 0.5,
+            );
+        }
     }
-    // subtract trace/3 from diagonal to make traceless
-    let tr_over_3 = c64_scale(su3_trace(ah), 1.0 / 3.0);
-    ah[0] = c64_sub(ah[0], tr_over_3);
-    ah[4] = c64_sub(ah[4], tr_over_3);
-    ah[8] = c64_sub(ah[8], tr_over_3);
+    // Subtract Tr(ah)/3 from diagonal to make traceless.
+    let tr_re = (ah[0].x + ah[4].x + ah[8].x) / 3.0;
+    let tr_im = (ah[0].y + ah[4].y + ah[8].y) / 3.0;
+    ah[0] = vec2<f64>(ah[0].x - tr_re, ah[0].y - tr_im);
+    ah[4] = vec2<f64>(ah[4].x - tr_re, ah[4].y - tr_im);
+    ah[8] = vec2<f64>(ah[8].x - tr_re, ah[8].y - tr_im);
     return ah;
 }
 
 // ── Store algebra element to output buffer ────────────────────────────────────
 
 fn store_force(site: u32, mu: u32, f: array<vec2<f64>, 9>) {
+    var fv = f; // copy to var — Naga requires var for runtime array indexing
     let base = (site * 4u + mu) * 18u;
     for (var i = 0u; i < 9u; i = i + 1u) {
-        force[base + i * 2u]      = f[i].x;
-        force[base + i * 2u + 1u] = f[i].y;
+        force[base + i * 2u]      = fv[i].x;
+        force[base + i * 2u + 1u] = fv[i].y;
     }
 }
 

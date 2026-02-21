@@ -165,7 +165,7 @@ mod tests {
                 assert!(v[0] < 0.0);
                 assert!(v[2] > 0.0);
             }
-            _ => panic!(),
+            other => panic!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -180,7 +180,7 @@ mod tests {
                 let row0_mean = (v[0] + v[1]) / 2.0;
                 assert!(row0_mean.abs() < 1e-5);
             }
-            _ => panic!(),
+            other => panic!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -203,7 +203,7 @@ mod tests {
                 assert_eq!(cols, 2);
                 assert_eq!(v.len(), 4);
             }
-            _ => panic!(),
+            other => panic!("expected F32Matrix, got {other:?}"),
         }
     }
 
@@ -245,7 +245,7 @@ mod tests {
                 let col0_mean: f32 = (0..rows).map(|r| v[r * cols]).sum::<f32>() / rows as f32;
                 assert!(col0_mean.abs() < 1e-4, "col0 mean should be ~0");
             }
-            _ => panic!(),
+            other => panic!("expected F32Matrix, got {other:?}"),
         }
     }
 
@@ -282,7 +282,7 @@ mod tests {
                 assert!((v[1] - 2.0).abs() < 1e-5);
                 assert!((v[2] - 3.0).abs() < 1e-5);
             }
-            _ => panic!(),
+            other => panic!("expected F32Vec, got {other:?}"),
         }
     }
 

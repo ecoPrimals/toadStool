@@ -294,7 +294,8 @@ impl MorseForce {
 
         // Read back and convert i32 -> f32
         let buffer_slice = staging_buffer.slice(..);
-        let (tx, rx) = std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
+        let (tx, rx) =
+            std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).ok();
         });

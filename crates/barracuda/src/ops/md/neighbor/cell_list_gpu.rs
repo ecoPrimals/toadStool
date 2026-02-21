@@ -160,10 +160,20 @@ impl CellListGpu {
 
         // ── Pipelines ────────────────────────────────────────────────────────
         let bin_pl = make_pipeline(&device, &bin_mod, &bin_bgl, "atomic_cell_bin", "bin_pl");
-        let scan_pass_a_pl =
-            make_pipeline(&device, &scan_mod, &scan_bgl, "local_scan", "scan_pass_a_pl");
-        let scan_pass_b_pl =
-            make_pipeline(&device, &scan_mod, &scan_bgl, "add_wg_offsets", "scan_pass_b_pl");
+        let scan_pass_a_pl = make_pipeline(
+            &device,
+            &scan_mod,
+            &scan_bgl,
+            "local_scan",
+            "scan_pass_a_pl",
+        );
+        let scan_pass_b_pl = make_pipeline(
+            &device,
+            &scan_mod,
+            &scan_bgl,
+            "add_wg_offsets",
+            "scan_pass_b_pl",
+        );
         let scatter_pl = make_pipeline(
             &device,
             &scatter_mod,
@@ -389,7 +399,15 @@ impl CellListGpu {
             1,
             1,
         );
-        dispatch_pass(&mut enc, &self.scan_pass_b_pl, &bg_scan2, "scan_add_offsets", 1, 1, 1);
+        dispatch_pass(
+            &mut enc,
+            &self.scan_pass_b_pl,
+            &bg_scan2,
+            "scan_add_offsets",
+            1,
+            1,
+            1,
+        );
         dispatch_pass(
             &mut enc,
             &self.scatter_pl,

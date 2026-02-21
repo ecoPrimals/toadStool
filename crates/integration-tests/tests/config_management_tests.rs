@@ -9,8 +9,14 @@ use toadstool_config::{NetworkConfig, ToadStoolConfig};
 fn test_config_default() {
     let config = ToadStoolConfig::default();
     // network is a direct field, not an Option
-    assert!(!config.app.name.is_empty(), "App name should be non-empty by default");
-    assert!(!config.logging.level.is_empty(), "Log level should be set by default");
+    assert!(
+        !config.app.name.is_empty(),
+        "App name should be non-empty by default"
+    );
+    assert!(
+        !config.logging.level.is_empty(),
+        "Log level should be set by default"
+    );
 }
 
 #[test]
@@ -46,7 +52,10 @@ fn test_config_deserialization_round_trip() {
     let config = ToadStoolConfig::default();
     let json = serde_json::to_string(&config).expect("Failed to serialize config");
     let restored: Result<ToadStoolConfig, _> = serde_json::from_str(&json);
-    assert!(restored.is_ok(), "Config should deserialize from its own JSON");
+    assert!(
+        restored.is_ok(),
+        "Config should deserialize from its own JSON"
+    );
 }
 
 #[test]
@@ -55,8 +64,7 @@ fn test_config_cloning() {
     let cloned = config.clone();
     assert_eq!(config.app.name, cloned.app.name);
     assert_eq!(
-        config.network.bind_address,
-        cloned.network.bind_address,
+        config.network.bind_address, cloned.network.bind_address,
         "Cloned config should have the same bind address"
     );
 }
@@ -67,7 +75,10 @@ fn test_network_config_endpoints_non_empty() {
     // Deprecated endpoints are still populated by default for backward compatibility
     #[allow(deprecated)]
     let songbird_non_empty = !network.endpoints.songbird.is_empty();
-    assert!(songbird_non_empty, "Songbird endpoint should have a default value");
+    assert!(
+        songbird_non_empty,
+        "Songbird endpoint should have a default value"
+    );
 }
 
 #[test]

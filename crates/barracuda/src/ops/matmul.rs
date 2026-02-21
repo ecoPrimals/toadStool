@@ -47,13 +47,13 @@ enum MatMulTier {
     GpuEvolved32,
 }
 
-pub struct MatMul {
-    lhs: Tensor,
-    rhs: Tensor,
+pub struct MatMul<'a> {
+    lhs: &'a Tensor,
+    rhs: &'a Tensor,
 }
 
-impl MatMul {
-    pub fn new(lhs: Tensor, rhs: Tensor) -> Self {
+impl<'a> MatMul<'a> {
+    pub fn new(lhs: &'a Tensor, rhs: &'a Tensor) -> Self {
         Self { lhs, rhs }
     }
 
@@ -102,16 +102,18 @@ impl MatMul {
         // Pooled output — zero allocation in steady state.
         let output_buffer = ctx.acquire_pooled_output(output_size);
 
-        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("MatMul Params"),
-            contents: bytemuck::bytes_of(&MatMulParams {
-                m: m as u32,
-                k: k as u32,
-                n: n as u32,
-                _padding: 0,
-            }),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buf = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("MatMul Params"),
+                contents: bytemuck::bytes_of(&MatMulParams {
+                    m: m as u32,
+                    k: k as u32,
+                    n: n as u32,
+                    _padding: 0,
+                }),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // matmul() = (2 read-only, 1 read-write, 1 uniform)
         let layout_sig = BindGroupLayoutSignature::matmul();
@@ -123,8 +125,8 @@ impl MatMul {
             Some("MatMul BGL"),
         );
 
-        let bind_group = std::sync::Arc::new(device.device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
+        let bind_group =
+            std::sync::Arc::new(device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("MatMul BG"),
                 layout: &bgl,
                 entries: &[
@@ -145,8 +147,7 @@ impl MatMul {
                         resource: params_buf.as_entire_binding(),
                     },
                 ],
-            },
-        ));
+            }));
 
         let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
             device.device(),
@@ -182,7 +183,11 @@ impl MatMul {
             drop(params_buf);
         })?;
 
-        Ok(Tensor::from_pooled_buffer(output_buffer, vec![m, n], device.clone()))
+        Ok(Tensor::from_pooled_buffer(
+            output_buffer,
+            vec![m, n],
+            device.clone(),
+        ))
     }
 }
 
@@ -211,7 +216,7 @@ impl Tensor {
 
         // Existing WGSL path (GPU/CPU)
         log::debug!("Routing matmul to WGSL (GPU/CPU)");
-        MatMul::new(self, other.clone()).execute()
+        MatMul::new(&self, other).execute()
     }
 
     /// Check if NPU should be used for this matmul

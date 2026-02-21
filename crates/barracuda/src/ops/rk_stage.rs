@@ -313,6 +313,10 @@ impl RkIntegrator {
     }
 }
 
+// Re-export BatchedOdeRK4F64 from its dedicated module.
+// See `batched_ode_rk4.rs` for implementation and documentation.
+pub use super::batched_ode_rk4::{BatchedOdeRK4F64, BatchedRk4Config};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -415,8 +419,3 @@ mod tests {
         assert!(*times.last().unwrap() >= 49.9);
     }
 }
-
-
-// Re-export BatchedOdeRK4F64 from its dedicated module.
-// See `batched_ode_rk4.rs` for implementation and documentation.
-pub use super::batched_ode_rk4::{BatchedOdeRK4F64, BatchedRk4Config};

@@ -34,12 +34,12 @@ impl Tanh {
     /// - Dispatch batched when inside `TensorSession`.
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
-        let size   = self.input.len();
+        let size = self.input.len();
 
-        let ctx         = get_device_context(device);
-        let caps        = DeviceCapabilities::from_device(device);
-        let wg_size     = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups  = (size as u32).div_ceil(wg_size);
+        let ctx = get_device_context(device);
+        let caps = DeviceCapabilities::from_device(device);
+        let wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+        let workgroups = (size as u32).div_ceil(wg_size);
         let adapter_info = device.adapter_info();
 
         // Pooled output — zero allocation in steady state.

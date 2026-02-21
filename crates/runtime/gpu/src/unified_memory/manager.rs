@@ -5,11 +5,10 @@ use crate::unified_memory::{
     buffer::UnifiedBuffer,
     types::*,
 };
-use dashmap::DashMap;
-use parking_lot::RwLock;
+use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
-    Arc,
+    Arc, RwLock,
 };
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
@@ -44,7 +43,7 @@ pub struct UniversalUnifiedMemory {
     id_generator: BufferIdGenerator,
 
     /// Active allocations tracking
-    allocations: Arc<DashMap<BufferId, UnifiedBufferMetadata>>,
+    allocations: Arc<RwLock<HashMap<BufferId, UnifiedBufferMetadata>>>,
 
     /// Performance metrics
     metrics: Arc<RwLock<UnifiedMemoryStats>>,
@@ -126,7 +125,7 @@ impl UniversalUnifiedMemory {
         Ok(Self {
             backend,
             id_generator: BufferIdGenerator::new(),
-            allocations: Arc::new(DashMap::new()),
+            allocations: Arc::new(RwLock::new(HashMap::new())),
             metrics: Arc::new(RwLock::new(UnifiedMemoryStats::new(backend_name))),
             config,
             total_allocated: Arc::new(AtomicU64::new(0)),
@@ -344,7 +343,10 @@ impl UniversalUnifiedMemory {
 
         // Track allocation
         let metadata = UnifiedBufferMetadata::new(id, size, flags);
-        self.allocations.insert(id, metadata);
+        self.allocations
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(id, metadata);
 
         // Update metrics
         let prev = self
@@ -368,7 +370,7 @@ impl UniversalUnifiedMemory {
 
         // Update stats
         if self.config.enable_metrics {
-            let mut stats = self.metrics.write();
+            let mut stats = self.metrics.write().unwrap_or_else(|e| e.into_inner());
             stats.allocation_count += 1;
             stats.active_allocations += 1;
             stats.total_allocated = new_total;
@@ -407,12 +409,18 @@ impl UniversalUnifiedMemory {
 
     /// Get current statistics
     pub fn stats(&self) -> UnifiedMemoryStats {
-        self.metrics.read().clone()
+        self.metrics
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Get number of active allocations
     pub fn active_allocations(&self) -> usize {
-        self.allocations.len()
+        self.allocations
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .len()
     }
 
     /// Get total allocated bytes

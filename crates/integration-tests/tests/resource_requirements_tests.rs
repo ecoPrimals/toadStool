@@ -4,8 +4,8 @@
 //! MemoryRequirements, StorageRequirements, GpuRequirements, and NetworkRequirements.
 
 use toadstool::resources::{
-    CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements,
-    ResourceLimits, ResourceRequirements, ResourceUsage, StorageRequirements,
+    CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, ResourceLimits,
+    ResourceRequirements, ResourceUsage, StorageRequirements,
 };
 
 const MB: u64 = 1024 * 1024;
@@ -15,49 +15,93 @@ const GB: u64 = 1024 * MB;
 fn test_resource_requirements_default() {
     let req = ResourceRequirements::default();
     // Default values reflect sensible minimums, not "no requirement"
-    assert!(req.cpu.min_cores > 0.0, "Default should have positive cpu.min_cores");
-    assert!(req.memory.min_bytes > 0, "Default should have positive memory.min_bytes");
+    assert!(
+        req.cpu.min_cores > 0.0,
+        "Default should have positive cpu.min_cores"
+    );
+    assert!(
+        req.memory.min_bytes > 0,
+        "Default should have positive memory.min_bytes"
+    );
     assert!(req.gpu.is_none(), "Default should not require GPU");
 }
 
 #[test]
 fn test_resource_requirements_validation_passes() {
     let req = ResourceRequirements {
-        cpu: CpuRequirements { min_cores: 4.0, max_cores: None, architecture: None },
-        memory: MemoryRequirements { min_bytes: 2 * GB, max_bytes: None },
-        storage: StorageRequirements { min_bytes: GB, max_bytes: None, storage_type: None },
+        cpu: CpuRequirements {
+            min_cores: 4.0,
+            max_cores: None,
+            architecture: None,
+        },
+        memory: MemoryRequirements {
+            min_bytes: 2 * GB,
+            max_bytes: None,
+        },
+        storage: StorageRequirements {
+            min_bytes: GB,
+            max_bytes: None,
+            storage_type: None,
+        },
         gpu: None,
         network: NetworkRequirements::default(),
     };
-    assert!(req.validate().is_ok(), "Valid requirements should pass validation");
+    assert!(
+        req.validate().is_ok(),
+        "Valid requirements should pass validation"
+    );
 }
 
 #[test]
 fn test_resource_requirements_invalid_cpu() {
     let req = ResourceRequirements {
-        cpu: CpuRequirements { min_cores: 0.0, ..CpuRequirements::default() },
-        memory: MemoryRequirements { min_bytes: 512 * MB, max_bytes: None },
+        cpu: CpuRequirements {
+            min_cores: 0.0,
+            ..CpuRequirements::default()
+        },
+        memory: MemoryRequirements {
+            min_bytes: 512 * MB,
+            max_bytes: None,
+        },
         ..ResourceRequirements::default()
     };
-    assert!(req.validate().is_err(), "Zero CPU cores should fail validation");
+    assert!(
+        req.validate().is_err(),
+        "Zero CPU cores should fail validation"
+    );
 }
 
 #[test]
 fn test_resource_requirements_invalid_memory() {
     let req = ResourceRequirements {
-        cpu: CpuRequirements { min_cores: 2.0, ..CpuRequirements::default() },
-        memory: MemoryRequirements { min_bytes: 0, max_bytes: None },
+        cpu: CpuRequirements {
+            min_cores: 2.0,
+            ..CpuRequirements::default()
+        },
+        memory: MemoryRequirements {
+            min_bytes: 0,
+            max_bytes: None,
+        },
         ..ResourceRequirements::default()
     };
-    assert!(req.validate().is_err(), "Zero memory should fail validation");
+    assert!(
+        req.validate().is_err(),
+        "Zero memory should fail validation"
+    );
 }
 
 #[test]
 fn test_resource_limits_creation() {
     use toadstool::resources::{CpuLimits, MemoryLimits};
     let limits = ResourceLimits {
-        cpu_limits: CpuLimits { max_cores: Some(8.0), throttle_percent: Some(80.0) },
-        memory_limits: MemoryLimits { max_bytes: Some(4 * GB), swap_limit_bytes: None },
+        cpu_limits: CpuLimits {
+            max_cores: Some(8.0),
+            throttle_percent: Some(80.0),
+        },
+        memory_limits: MemoryLimits {
+            max_bytes: Some(4 * GB),
+            swap_limit_bytes: None,
+        },
         ..ResourceLimits::default()
     };
     assert_eq!(limits.cpu_limits.throttle_percent, Some(80.0));
@@ -68,8 +112,14 @@ fn test_resource_limits_creation() {
 fn test_resource_limits_validation() {
     use toadstool::resources::{CpuLimits, MemoryLimits};
     let limits = ResourceLimits {
-        cpu_limits: CpuLimits { max_cores: Some(32.0), throttle_percent: Some(100.0) },
-        memory_limits: MemoryLimits { max_bytes: Some(8 * GB), swap_limit_bytes: None },
+        cpu_limits: CpuLimits {
+            max_cores: Some(32.0),
+            throttle_percent: Some(100.0),
+        },
+        memory_limits: MemoryLimits {
+            max_bytes: Some(8 * GB),
+            swap_limit_bytes: None,
+        },
         ..ResourceLimits::default()
     };
     assert!(limits.cpu_limits.throttle_percent.unwrap() <= 100.0);
@@ -95,12 +145,22 @@ fn test_resource_usage_tracking() {
 fn test_resource_requirements_meets_limits() {
     use toadstool::resources::MemoryLimits;
     let req = ResourceRequirements {
-        cpu: CpuRequirements { min_cores: 2.0, max_cores: None, architecture: None },
-        memory: MemoryRequirements { min_bytes: 2 * GB, max_bytes: None },
+        cpu: CpuRequirements {
+            min_cores: 2.0,
+            max_cores: None,
+            architecture: None,
+        },
+        memory: MemoryRequirements {
+            min_bytes: 2 * GB,
+            max_bytes: None,
+        },
         ..ResourceRequirements::default()
     };
     let limits = ResourceLimits {
-        memory_limits: MemoryLimits { max_bytes: Some(4 * GB), swap_limit_bytes: None },
+        memory_limits: MemoryLimits {
+            max_bytes: Some(4 * GB),
+            swap_limit_bytes: None,
+        },
         ..ResourceLimits::default()
     };
     assert!(req.memory.min_bytes <= limits.memory_limits.max_bytes.unwrap());
@@ -109,8 +169,15 @@ fn test_resource_requirements_meets_limits() {
 #[test]
 fn test_resource_requirements_clone() {
     let req = ResourceRequirements {
-        cpu: CpuRequirements { min_cores: 4.0, max_cores: Some(8.0), architecture: None },
-        memory: MemoryRequirements { min_bytes: 2 * GB, max_bytes: None },
+        cpu: CpuRequirements {
+            min_cores: 4.0,
+            max_cores: Some(8.0),
+            architecture: None,
+        },
+        memory: MemoryRequirements {
+            min_bytes: 2 * GB,
+            max_bytes: None,
+        },
         gpu: Some(GpuRequirements {
             min_units: 1,
             max_units: None,
@@ -128,8 +195,15 @@ fn test_resource_requirements_clone() {
 #[test]
 fn test_resource_requirements_serialization() {
     let req = ResourceRequirements {
-        cpu: CpuRequirements { min_cores: 2.0, max_cores: None, architecture: None },
-        memory: MemoryRequirements { min_bytes: GB, max_bytes: None },
+        cpu: CpuRequirements {
+            min_cores: 2.0,
+            max_cores: None,
+            architecture: None,
+        },
+        memory: MemoryRequirements {
+            min_bytes: GB,
+            max_bytes: None,
+        },
         ..ResourceRequirements::default()
     };
     let json = serde_json::to_string(&req);
@@ -150,7 +224,10 @@ fn test_resource_limits_exceed_check() {
     };
     use toadstool::resources::CpuLimits;
     let limits = ResourceLimits {
-        cpu_limits: CpuLimits { max_cores: None, throttle_percent: Some(90.0) },
+        cpu_limits: CpuLimits {
+            max_cores: None,
+            throttle_percent: Some(90.0),
+        },
         ..ResourceLimits::default()
     };
     assert!(
@@ -163,8 +240,15 @@ fn test_resource_limits_exceed_check() {
 #[test]
 fn test_resource_requirements_with_gpu() {
     let req = ResourceRequirements {
-        cpu: CpuRequirements { min_cores: 8.0, max_cores: None, architecture: None },
-        memory: MemoryRequirements { min_bytes: 16 * GB, max_bytes: None },
+        cpu: CpuRequirements {
+            min_cores: 8.0,
+            max_cores: None,
+            architecture: None,
+        },
+        memory: MemoryRequirements {
+            min_bytes: 16 * GB,
+            max_bytes: None,
+        },
         gpu: Some(GpuRequirements {
             min_units: 1,
             max_units: Some(4),
@@ -174,14 +258,24 @@ fn test_resource_requirements_with_gpu() {
         ..ResourceRequirements::default()
     };
     assert!(req.gpu.is_some(), "GPU should be required");
-    assert!(req.cpu.min_cores >= 4.0, "GPU workloads typically need more CPU");
+    assert!(
+        req.cpu.min_cores >= 4.0,
+        "GPU workloads typically need more CPU"
+    );
 }
 
 #[test]
 fn test_resource_requirements_minimal() {
     let req = ResourceRequirements {
-        cpu: CpuRequirements { min_cores: 1.0, max_cores: None, architecture: None },
-        memory: MemoryRequirements { min_bytes: 128 * MB, max_bytes: None },
+        cpu: CpuRequirements {
+            min_cores: 1.0,
+            max_cores: None,
+            architecture: None,
+        },
+        memory: MemoryRequirements {
+            min_bytes: 128 * MB,
+            max_bytes: None,
+        },
         storage: StorageRequirements {
             min_bytes: 100 * MB,
             max_bytes: None,
@@ -189,14 +283,24 @@ fn test_resource_requirements_minimal() {
         },
         ..ResourceRequirements::default()
     };
-    assert!(req.validate().is_ok(), "Minimal valid requirements should pass");
+    assert!(
+        req.validate().is_ok(),
+        "Minimal valid requirements should pass"
+    );
 }
 
 #[test]
 fn test_resource_requirements_maximum() {
     let req = ResourceRequirements {
-        cpu: CpuRequirements { min_cores: 128.0, max_cores: None, architecture: None },
-        memory: MemoryRequirements { min_bytes: 1024 * GB, max_bytes: None }, // 1 TiB
+        cpu: CpuRequirements {
+            min_cores: 128.0,
+            max_cores: None,
+            architecture: None,
+        },
+        memory: MemoryRequirements {
+            min_bytes: 1024 * GB,
+            max_bytes: None,
+        }, // 1 TiB
         gpu: Some(GpuRequirements {
             min_units: 8,
             max_units: None,
@@ -205,7 +309,10 @@ fn test_resource_requirements_maximum() {
         }),
         ..ResourceRequirements::default()
     };
-    assert!(req.validate().is_ok(), "Maximum requirements should be valid");
+    assert!(
+        req.validate().is_ok(),
+        "Maximum requirements should be valid"
+    );
 }
 
 #[test]

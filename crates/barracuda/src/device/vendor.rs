@@ -31,14 +31,14 @@ pub const VENDOR_SOFTWARE: u32 = 0x0000;
 /// Return a human-readable vendor name for debug output.
 pub fn vendor_name(id: u32) -> &'static str {
     match id {
-        VENDOR_NVIDIA       => "NVIDIA",
-        VENDOR_AMD          => "AMD",
-        VENDOR_INTEL        => "Intel",
-        VENDOR_APPLE        => "Apple",
-        VENDOR_ARM          => "ARM Mali",
-        VENDOR_QUALCOMM     => "Qualcomm Adreno",
-        VENDOR_IMAGINATION  => "ImgTec PowerVR",
-        VENDOR_SOFTWARE     => "Software (CPU)",
-        _                   => "Unknown",
+        VENDOR_NVIDIA => "NVIDIA",
+        VENDOR_AMD => "AMD",
+        VENDOR_INTEL => "Intel",
+        VENDOR_APPLE => "Apple",
+        VENDOR_ARM => "ARM Mali",
+        VENDOR_QUALCOMM => "Qualcomm Adreno",
+        VENDOR_IMAGINATION => "ImgTec PowerVR",
+        VENDOR_SOFTWARE => "Software (CPU)",
+        _ => "Unknown",
     }
 }

@@ -32,12 +32,14 @@ use wgpu::util::DeviceExt;
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct TreeParamsGpu {
-    n_samples:   u32,
-    n_features:  u32,
+    n_samples: u32,
+    n_features: u32,
     n_nodes_max: u32,
-    n_trees:     u32,
-    max_depth:   u32,
-    _pad0: u32, _pad1: u32, _pad2: u32,
+    n_trees: u32,
+    max_depth: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
 }
 
 // ─── Flat tree structure ──────────────────────────────────────────────────────
@@ -48,15 +50,15 @@ struct TreeParamsGpu {
 /// For a single tree, `tree_offsets = [0]`.
 pub struct FlatForest {
     /// Feature index for each internal node (unused for leaves).
-    pub feature_idx:  Vec<u32>,
+    pub feature_idx: Vec<u32>,
     /// Split threshold for each internal node.
-    pub thresholds:   Vec<f64>,
+    pub thresholds: Vec<f64>,
     /// Left child node index; `< 0` indicates a leaf.
-    pub left_child:   Vec<i32>,
+    pub left_child: Vec<i32>,
     /// Right child node index.
-    pub right_child:  Vec<i32>,
+    pub right_child: Vec<i32>,
     /// Predicted class at each node (meaningful at leaves).
-    pub predictions:  Vec<u32>,
+    pub predictions: Vec<u32>,
     /// Starting node index for each tree in the flat arrays.
     pub tree_offsets: Vec<u32>,
 }
@@ -65,16 +67,27 @@ impl FlatForest {
     /// Wrap a single tree (root at node 0).
     pub fn single_tree(
         feature_idx: Vec<u32>,
-        thresholds:  Vec<f64>,
-        left_child:  Vec<i32>,
+        thresholds: Vec<f64>,
+        left_child: Vec<i32>,
         right_child: Vec<i32>,
         predictions: Vec<u32>,
     ) -> Self {
-        Self { feature_idx, thresholds, left_child, right_child, predictions, tree_offsets: vec![0] }
+        Self {
+            feature_idx,
+            thresholds,
+            left_child,
+            right_child,
+            predictions,
+            tree_offsets: vec![0],
+        }
     }
 
-    pub fn n_trees(&self) -> usize { self.tree_offsets.len() }
-    pub fn n_nodes(&self) -> usize { self.left_child.len() }
+    pub fn n_trees(&self) -> usize {
+        self.tree_offsets.len()
+    }
+    pub fn n_nodes(&self) -> usize {
+        self.left_child.len()
+    }
 }
 
 // ─── Main operator ────────────────────────────────────────────────────────────
@@ -109,7 +122,9 @@ pub struct TreeInferenceGpu {
 
 impl TreeInferenceGpu {
     pub fn new(device: &WgpuDevice) -> Self {
-        Self { device: Arc::new(device.clone()) }
+        Self {
+            device: Arc::new(device.clone()),
+        }
     }
 
     /// Run batch inference for `n_samples` through all trees in `forest`.
@@ -117,32 +132,33 @@ impl TreeInferenceGpu {
     /// Returns `output[sample_id * n_trees + tree_id]` = predicted class.
     pub fn predict(
         &self,
-        forest:    &FlatForest,
-        samples:   &[f64],
+        forest: &FlatForest,
+        samples: &[f64],
         n_samples: usize,
     ) -> Result<Vec<u32>> {
-        let dev      = &self.device;
-        let n_trees  = forest.n_trees();
-        let n_nodes  = forest.n_nodes();
-        let n_feat   = samples.len() / n_samples;
+        let dev = &self.device;
+        let n_trees = forest.n_trees();
+        let n_nodes = forest.n_nodes();
+        let n_feat = samples.len() / n_samples;
 
         // ── Upload buffers ─────────────────────────────────────────────────────
         let upload = |data: &[u8], label: &str| {
-            dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(label),
-                contents: data,
-                usage: wgpu::BufferUsages::STORAGE,
-            })
+            dev.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some(label),
+                    contents: data,
+                    usage: wgpu::BufferUsages::STORAGE,
+                })
         };
 
-        let samples_buf  = upload(bytemuck::cast_slice(samples),               "Tree samples");
-        let feat_buf     = upload(bytemuck::cast_slice(&forest.feature_idx),   "Tree feat_idx");
-        let thresh_buf   = upload(bytemuck::cast_slice(&forest.thresholds),    "Tree thresholds");
-        let left_buf     = upload(bytemuck::cast_slice(&forest.left_child),    "Tree left");
-        let right_buf    = upload(bytemuck::cast_slice(&forest.right_child),   "Tree right");
-        let pred_buf     = upload(bytemuck::cast_slice(&forest.predictions),   "Tree preds");
-        let offsets_buf  = upload(bytemuck::cast_slice(&forest.tree_offsets),  "Tree offsets");
-        let output_buf   = dev.device.create_buffer(&wgpu::BufferDescriptor {
+        let samples_buf = upload(bytemuck::cast_slice(samples), "Tree samples");
+        let feat_buf = upload(bytemuck::cast_slice(&forest.feature_idx), "Tree feat_idx");
+        let thresh_buf = upload(bytemuck::cast_slice(&forest.thresholds), "Tree thresholds");
+        let left_buf = upload(bytemuck::cast_slice(&forest.left_child), "Tree left");
+        let right_buf = upload(bytemuck::cast_slice(&forest.right_child), "Tree right");
+        let pred_buf = upload(bytemuck::cast_slice(&forest.predictions), "Tree preds");
+        let offsets_buf = upload(bytemuck::cast_slice(&forest.tree_offsets), "Tree offsets");
+        let output_buf = dev.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Tree output"),
             size: (n_samples * n_trees * std::mem::size_of::<u32>()) as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
@@ -150,32 +166,38 @@ impl TreeInferenceGpu {
         });
 
         let params = TreeParamsGpu {
-            n_samples:   n_samples as u32,
-            n_features:  n_feat as u32,
+            n_samples: n_samples as u32,
+            n_features: n_feat as u32,
             n_nodes_max: n_nodes as u32,
-            n_trees:     n_trees as u32,
-            max_depth:   32,
-            _pad0: 0, _pad1: 0, _pad2: 0,
+            n_trees: n_trees as u32,
+            max_depth: 32,
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
         };
-        let params_buf = dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Tree params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buf = dev
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Tree params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // ── Compile + dispatch (f64-aware for threshold comparisons) ──────────
         let module = dev.compile_shader_f64(
             include_str!("../../shaders/bio/tree_inference_f64.wgsl"),
             Some("TreeInferenceF64"),
         );
-        let pipeline = dev.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("TreeInferenceF64"),
-            layout: None,
-            module: &module,
-            entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
-        });
+        let pipeline = dev
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("TreeInferenceF64"),
+                layout: None,
+                module: &module,
+                entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
+            });
 
         let bg = {
             let bgl = pipeline.get_bind_group_layout(0);
@@ -183,22 +205,52 @@ impl TreeInferenceGpu {
                 label: None,
                 layout: &bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: params_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: samples_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: feat_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 3, resource: thresh_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 4, resource: left_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 5, resource: right_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 6, resource: pred_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 7, resource: offsets_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 8, resource: output_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: samples_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: feat_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: thresh_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: left_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: right_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: pred_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 7,
+                        resource: offsets_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 8,
+                        resource: output_buf.as_entire_binding(),
+                    },
                 ],
             })
         };
 
         let total_threads = (n_samples * n_trees) as u32;
-        let mut encoder = dev.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor { label: Some("TreeInference") });
+        let mut encoder = dev
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("TreeInference"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
             pass.set_pipeline(&pipeline);
@@ -221,17 +273,19 @@ mod tests {
         // if feature[0] <= 0.5 → class 0, else class 1
         // node 0: split; node 1: left leaf (class 0); node 2: right leaf (class 1)
         FlatForest::single_tree(
-            vec![0, 0, 0],            // feature index (unused at leaves)
-            vec![0.5, 0.0, 0.0],     // threshold (unused at leaves)
-            vec![1, -1, -1],          // left children
-            vec![2, -1, -1],          // right children
-            vec![99, 0, 1],           // predictions (99 = internal, ignored)
+            vec![0, 0, 0],       // feature index (unused at leaves)
+            vec![0.5, 0.0, 0.0], // threshold (unused at leaves)
+            vec![1, -1, -1],     // left children
+            vec![2, -1, -1],     // right children
+            vec![99, 0, 1],      // predictions (99 = internal, ignored)
         )
     }
 
     #[tokio::test]
     async fn test_stump_two_samples() {
-        let Some(device) = test_pool::get_test_device_if_f64_gpu_available().await else { return; };
+        let Some(device) = test_pool::get_test_device_if_f64_gpu_available().await else {
+            return;
+        };
         let infer = TreeInferenceGpu::new(&device);
         let forest = simple_stump();
         // sample 0: feature=0.3 → left leaf → class 0
@@ -244,7 +298,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_deeper_tree() {
-        let Some(device) = test_pool::get_test_device_if_f64_gpu_available().await else { return; };
+        let Some(device) = test_pool::get_test_device_if_f64_gpu_available().await else {
+            return;
+        };
         let infer = TreeInferenceGpu::new(&device);
         // Two-level tree: 7 nodes (0..6)
         //        0 (feat0 ≤ 0.5)
@@ -255,14 +311,14 @@ mod tests {
         //    2   3        5   6
         //  cls0 cls1    cls2 cls3
         let forest = FlatForest::single_tree(
-            vec![0, 1, 0, 0, 1, 0, 0],    // node 0: feat0; node 1: feat1; node 4: feat1
+            vec![0, 1, 0, 0, 1, 0, 0], // node 0: feat0; node 1: feat1; node 4: feat1
             vec![0.5, 0.5, 0.0, 0.0, 0.5, 0.0, 0.0],
-            vec![1,  2, -1, -1,  5, -1, -1],
-            vec![4,  3, -1, -1,  6, -1, -1],
+            vec![1, 2, -1, -1, 5, -1, -1],
+            vec![4, 3, -1, -1, 6, -1, -1],
             vec![99, 99, 0, 1, 99, 2, 3],
         );
         // 4 samples, 2 features each: (f0, f1)
-        let samples = vec![0.3_f64, 0.3,  0.3, 0.8,  0.8, 0.3,  0.8, 0.8];
+        let samples = vec![0.3_f64, 0.3, 0.3, 0.8, 0.8, 0.3, 0.8, 0.8];
         let output = infer.predict(&forest, &samples, 4).unwrap();
         assert_eq!(output[0], 0, "left-left → class 0");
         assert_eq!(output[1], 1, "left-right → class 1");

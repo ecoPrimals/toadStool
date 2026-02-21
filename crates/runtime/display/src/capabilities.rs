@@ -336,39 +336,29 @@ impl DisplayCapabilities {
 
     /// Get socket path (XDG compliant, no hardcoding!)
     fn get_socket_path() -> Result<PathBuf> {
-        // Use XDG_RUNTIME_DIR if available (standard)
-        if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-            let dir = PathBuf::from(runtime_dir).join("toadstool");
-            return Ok(dir.join("display.sock"));
-        }
-
-        // Fallback: /tmp/toadstool-<uid>/
-        // Use rustix to get UID (Pure Rust!)
-        let uid = rustix::process::getuid();
-        let dir = PathBuf::from(format!("/tmp/toadstool-{}", uid.as_raw()));
-        Ok(dir.join("display.sock"))
+        // Use PlatformPaths for consistent XDG-compliant path resolution
+        use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
+        let env = PathEnv::from_env();
+        let paths = PlatformPaths::new(&env);
+        Ok(paths.toadstool_socket_dir().join("display.sock"))
     }
 
     /// Get discovery directory (XDG compliant, no hardcoding!)
     fn get_discovery_dir() -> Result<PathBuf> {
-        // Use standard XDG path or fallback
-        if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-            Ok(PathBuf::from(runtime_dir).join("ecoPrimals/discovery"))
-        } else {
-            Ok(PathBuf::from("/tmp/ecoPrimals/discovery"))
-        }
+        // Use PlatformPaths for consistent XDG-compliant path resolution
+        use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
+        let env = PathEnv::from_env();
+        let paths = PlatformPaths::new(&env);
+        Ok(paths.runtime_dir().join("ecoPrimals/discovery"))
     }
 }
 
 // SAFETY REVIEW:
 //
-// Unsafe usage in this module:
+// Unsafe usage in this module: NONE
 //
-// 1. libc::getuid() for socket path:
-//    - SAFETY: Standard POSIX call, no failure modes
-//    - SAFETY: Returns current user ID (always valid)
-//    - SAFETY: Used only for path generation
-//    - IMPACT: Safe - read-only system call
+// All path resolution now uses toadstool_common::platform_paths which
+// internally handles XDG compliance without unsafe code.
 //
 // Grade: ✅ SAFE
 //

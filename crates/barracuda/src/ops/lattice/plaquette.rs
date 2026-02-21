@@ -25,29 +25,28 @@ use std::sync::Arc;
 use super::su3::su3_preamble;
 
 const PLAQ_WG: u32 = 64;
-const PLAQ_SHADER_BODY: &str =
-    include_str!("../../shaders/lattice/wilson_plaquette_f64.wgsl");
+const PLAQ_SHADER_BODY: &str = include_str!("../../shaders/lattice/wilson_plaquette_f64.wgsl");
 
 /// Wilson plaquette operator on a 4D SU(3) lattice.
 pub struct WilsonPlaquette {
-    device:  Arc<WgpuDevice>,
-    volume:  u32,
+    device: Arc<WgpuDevice>,
+    volume: u32,
     pipeline: wgpu::ComputePipeline,
-    bgl:     wgpu::BindGroupLayout,
-    params:  wgpu::Buffer,
+    bgl: wgpu::BindGroupLayout,
+    params: wgpu::Buffer,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct PlaqParams {
-    nt:     u32,
-    nx:     u32,
-    ny:     u32,
-    nz:     u32,
+    nt: u32,
+    nx: u32,
+    ny: u32,
+    nz: u32,
     volume: u32,
-    _pad0:  u32,
-    _pad1:  u32,
-    _pad2:  u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
 }
 
 impl WilsonPlaquette {
@@ -58,40 +57,63 @@ impl WilsonPlaquette {
         // compile_shader_f64 handles exp/log patching + ILP optimizer internally
         let module = device.compile_shader_f64(&src, Some("wilson_plaquette"));
 
-        let bgl = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("WilsonPlaquette:bgl"),
-            entries: &[
-                uniform_bgl(0),       // params
-                storage_bgl(1, true), // links (read)
-                storage_bgl(2, false),// plaq  (write)
-            ],
-        });
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("WilsonPlaquette:bgl"),
+                entries: &[
+                    uniform_bgl(0),        // params
+                    storage_bgl(1, true),  // links (read)
+                    storage_bgl(2, false), // plaq  (write)
+                ],
+            });
 
-        let layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("WilsonPlaquette:layout"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
+        let layout = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("WilsonPlaquette:layout"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("WilsonPlaquette:pipeline"),
-            layout: Some(&layout),
-            module: &module,
-            entry_point: "plaquette",
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("WilsonPlaquette:pipeline"),
+                layout: Some(&layout),
+                module: &module,
+                entry_point: "plaquette",
+                compilation_options: Default::default(),
+                cache: None,
+            });
 
-        let params_data = PlaqParams { nt, nx, ny, nz, volume, _pad0: 0, _pad1: 0, _pad2: 0 };
+        let params_data = PlaqParams {
+            nt,
+            nx,
+            ny,
+            nz,
+            volume,
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+        };
         let params = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("WilsonPlaquette:params"),
-            size:  std::mem::size_of::<PlaqParams>() as u64,
+            size: std::mem::size_of::<PlaqParams>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params, 0, bytemuck::bytes_of(&params_data));
+        device
+            .queue
+            .write_buffer(&params, 0, bytemuck::bytes_of(&params_data));
 
-        Ok(Self { device, volume, pipeline, bgl, params })
+        Ok(Self {
+            device,
+            volume,
+            pipeline,
+            bgl,
+            params,
+        })
     }
 
     /// Compute `Re Tr(U_p) / 3` for all plaquettes.
@@ -99,19 +121,34 @@ impl WilsonPlaquette {
     /// * `links_buf` — `[V × 4 × 18]` f64 storage buffer (GPU-resident)
     /// * `plaq_buf`  — `[V × 6]` f64 storage buffer (output, GPU-resident)
     pub fn compute(&self, links_buf: &wgpu::Buffer, plaq_buf: &wgpu::Buffer) -> Result<()> {
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("WilsonPlaquette:bg"),
-            layout: &self.bgl,
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: self.params.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: links_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: plaq_buf.as_entire_binding() },
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("WilsonPlaquette:bg"),
+                layout: &self.bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.params.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: links_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: plaq_buf.as_entire_binding(),
+                    },
+                ],
+            });
 
-        let mut enc = self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("WilsonPlaquette:enc"),
-        });
+        let mut enc = self
+            .device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("WilsonPlaquette:enc"),
+            });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("WilsonPlaquette:pass"),
@@ -126,10 +163,14 @@ impl WilsonPlaquette {
     }
 
     /// Number of lattice sites.
-    pub fn volume(&self) -> u32 { self.volume }
+    pub fn volume(&self) -> u32 {
+        self.volume
+    }
 
     /// Total number of plaquette values in the output buffer (`volume × 6`).
-    pub fn n_plaquettes(&self) -> u32 { self.volume * 6 }
+    pub fn n_plaquettes(&self) -> u32 {
+        self.volume * 6
+    }
 }
 
 // ── BGL helpers ──────────────────────────────────────────────────────────────
@@ -177,5 +218,86 @@ mod tests {
         assert!(src.contains("fn c64_mul"));
         assert!(src.contains("fn su3_mul"));
         assert!(src.contains("fn plaquette"));
+    }
+
+    /// All-identity link configuration must produce plaquette = 1.0 for every
+    /// plane at every site.  This validates the full WGSL path:
+    ///   su3_load → su3_plaquette → su3_re_trace / 3 → write.
+    ///
+    /// On a 2×2×2×2 lattice (16 sites):
+    ///   U_p = I · I · I† · I† = I  →  Re Tr(I)/3 = 3/3 = 1.0
+    #[test]
+    fn test_plaquette_identity_links_gpu() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
+        else {
+            return;
+        };
+
+        let (nt, nx, ny, nz) = (2u32, 2, 2, 2);
+        let volume = (nt * nx * ny * nz) as usize; // 16
+
+        // SU(3) identity: 9 complex entries row-major → 18 f64
+        // diagonal (1+0i, 1+0i, 1+0i), off-diagonal 0+0i
+        let identity_18: [f64; 18] = [
+            1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+            0.0,
+        ];
+
+        let links_f64: Vec<f64> = std::iter::repeat_n(identity_18.iter().copied(), volume * 4)
+            .flatten()
+            .collect(); // V × 4 directions
+
+        let plaq_len = volume * 6; // V × 6 planes
+
+        // Upload links
+        let link_bytes: &[u8] = bytemuck::cast_slice(&links_f64);
+        let links_buf = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("test:links"),
+            size: link_bytes.len() as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        device.queue.write_buffer(&links_buf, 0, link_bytes);
+
+        // Output buffer
+        let plaq_bytes = plaq_len * std::mem::size_of::<f64>();
+        let plaq_buf = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("test:plaq"),
+            size: plaq_bytes as u64,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let op = WilsonPlaquette::new(device.clone(), nt, nx, ny, nz).unwrap();
+        op.compute(&links_buf, &plaq_buf).unwrap();
+
+        // Readback
+        let staging = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("test:plaq_staging"),
+            size: plaq_bytes as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let mut enc = device.device.create_command_encoder(&Default::default());
+        enc.copy_buffer_to_buffer(&plaq_buf, 0, &staging, 0, plaq_bytes as u64);
+        device.queue.submit(Some(enc.finish()));
+
+        let slice = staging.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |r| tx.send(r).unwrap());
+        device.device.poll(wgpu::Maintain::Wait);
+        rx.recv().unwrap().unwrap();
+
+        let mapped = slice.get_mapped_range();
+        let plaq_out: &[f64] = bytemuck::cast_slice(&mapped);
+
+        for (i, &v) in plaq_out.iter().enumerate() {
+            assert!(
+                (v - 1.0).abs() < 1e-10,
+                "plaq[{i}] = {v:.15e}, expected 1.0 (identity links)"
+            );
+        }
     }
 }

@@ -64,12 +64,12 @@ pub enum FilterOperation {
 impl FilterOperation {
     fn to_u32(self) -> u32 {
         match self {
-            FilterOperation::GreaterThan    => 0,
-            FilterOperation::LessThan       => 1,
-            FilterOperation::Equal          => 2,
-            FilterOperation::NotEqual       => 3,
+            FilterOperation::GreaterThan => 0,
+            FilterOperation::LessThan => 1,
+            FilterOperation::Equal => 2,
+            FilterOperation::NotEqual => 3,
             FilterOperation::GreaterOrEqual => 4,
-            FilterOperation::LessOrEqual    => 5,
+            FilterOperation::LessOrEqual => 5,
         }
     }
 }
@@ -79,23 +79,23 @@ impl FilterOperation {
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct FilterParams {
-    size:      u32,
+    size: u32,
     operation: u32,
-    n_groups:  u32,
-    _pad:      u32,
+    n_groups: u32,
+    _pad: u32,
     threshold: f32,
-    epsilon:   f32,
-    _pad2:     f32,
-    _pad3:     f32,
+    epsilon: f32,
+    _pad2: f32,
+    _pad3: f32,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct ScanConfig {
-    n:        u32,
+    n: u32,
     n_groups: u32,
-    _pad0:    u32,
-    _pad1:    u32,
+    _pad0: u32,
+    _pad1: u32,
 }
 
 // ─── GPU pipeline helpers ────────────────────────────────────────────────────
@@ -104,7 +104,11 @@ fn bgl_entry(idx: u32, ty: wgpu::BufferBindingType) -> wgpu::BindGroupLayoutEntr
     wgpu::BindGroupLayoutEntry {
         binding: idx,
         visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::Buffer { ty, has_dynamic_offset: false, min_binding_size: None },
+        ty: wgpu::BindingType::Buffer {
+            ty,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
         count: None,
     }
 }
@@ -140,11 +144,11 @@ fn pipeline(
 
 /// GPU stream-compaction filter.
 pub struct Filter {
-    input:     Tensor,
+    input: Tensor,
     operation: FilterOperation,
     threshold: f32,
     /// Equality/NotEqual tolerance (default 1e-5).
-    epsilon:   f32,
+    epsilon: f32,
 }
 
 impl Filter {
@@ -157,7 +161,12 @@ impl Filter {
     }
 
     pub fn new(input: Tensor, operation: FilterOperation, threshold: f32) -> Self {
-        Self { input, operation, threshold, epsilon: 1e-5 }
+        Self {
+            input,
+            operation,
+            threshold,
+            epsilon: 1e-5,
+        }
     }
 
     pub fn with_epsilon(mut self, eps: f32) -> Self {
@@ -224,26 +233,28 @@ impl Filter {
         });
 
         // ── Filter params uniform ─────────────────────────────────────────────
-        let filter_params_buf = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Filter Params"),
-                contents: bytemuck::bytes_of(&FilterParams {
-                    size: n_u32,
-                    operation: self.operation.to_u32(),
-                    n_groups,
-                    _pad: 0,
-                    threshold: self.threshold,
-                    epsilon: self.epsilon,
-                    _pad2: 0.0,
-                    _pad3: 0.0,
-                }),
-                usage: wgpu::BufferUsages::UNIFORM,
-            },
-        );
+        let filter_params_buf =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Filter Params"),
+                    contents: bytemuck::bytes_of(&FilterParams {
+                        size: n_u32,
+                        operation: self.operation.to_u32(),
+                        n_groups,
+                        _pad: 0,
+                        threshold: self.threshold,
+                        epsilon: self.epsilon,
+                        _pad2: 0.0,
+                        _pad3: 0.0,
+                    }),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
         // ── Scan config uniform (level 0: n elements, n_groups groups) ────────
-        let scan_cfg_buf = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let scan_cfg_buf = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Scan Config L0"),
                 contents: bytemuck::bytes_of(&ScanConfig {
                     n: n_u32,
@@ -252,15 +263,15 @@ impl Filter {
                     _pad1: 0,
                 }),
                 usage: wgpu::BufferUsages::UNIFORM,
-            },
-        );
+            });
 
         // ── BGLs and pipelines ────────────────────────────────────────────────
         let caps = DeviceCapabilities::from_device(device);
         let _ = caps.optimal_workgroup_size(WorkloadType::ElementWise);
 
-        let filter_bgl = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
+        let filter_bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Filter BGL"),
                 entries: &[
                     bgl_entry(0, wgpu::BufferBindingType::Storage { read_only: true }),
@@ -270,31 +281,59 @@ impl Filter {
                     bgl_entry(4, wgpu::BufferBindingType::Storage { read_only: false }),
                     bgl_entry(5, wgpu::BufferBindingType::Uniform),
                 ],
-            },
-        );
+            });
 
         let filter_shader = compile(device.device(), Self::filter_shader(), "filter.wgsl");
-        let pred_pipeline =
-            pipeline(&device.device, &filter_shader, &filter_bgl, "evaluate_predicate", "Filter Predicate");
-        let scatter_pipeline =
-            pipeline(&device.device, &filter_shader, &filter_bgl, "scatter", "Filter Scatter");
+        let pred_pipeline = pipeline(
+            &device.device,
+            &filter_shader,
+            &filter_bgl,
+            "evaluate_predicate",
+            "Filter Predicate",
+        );
+        let scatter_pipeline = pipeline(
+            &device.device,
+            &filter_shader,
+            &filter_bgl,
+            "scatter",
+            "Filter Scatter",
+        );
 
         let filter_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Filter BG"),
             layout: &filter_bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: self.input.buffer().as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: flags_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: scan_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: output_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: total_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 5, resource: filter_params_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: flags_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: scan_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: total_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: filter_params_buf.as_entire_binding(),
+                },
             ],
         });
 
         // Scan BGL: config, flags_in, scan_out, wg_sums
-        let scan_bgl = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
+        let scan_bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Scan BGL"),
                 entries: &[
                     bgl_entry(0, wgpu::BufferBindingType::Uniform),
@@ -302,33 +341,56 @@ impl Filter {
                     bgl_entry(2, wgpu::BufferBindingType::Storage { read_only: false }),
                     bgl_entry(3, wgpu::BufferBindingType::Storage { read_only: false }),
                 ],
-            },
-        );
+            });
 
         let scan_shader = compile(device.device(), Self::scan_shader(), "prefix_sum.wgsl");
-        let local_scan_pipeline =
-            pipeline(&device.device, &scan_shader, &scan_bgl, "local_scan", "Scan Local");
-        let add_offsets_pipeline =
-            pipeline(&device.device, &scan_shader, &scan_bgl, "add_wg_offsets", "Scan Offsets");
+        let local_scan_pipeline = pipeline(
+            &device.device,
+            &scan_shader,
+            &scan_bgl,
+            "local_scan",
+            "Scan Local",
+        );
+        let add_offsets_pipeline = pipeline(
+            &device.device,
+            &scan_shader,
+            &scan_bgl,
+            "add_wg_offsets",
+            "Scan Offsets",
+        );
 
         // Level-0 bind group (scan flags → scan_buf, wg_sums_buf)
         let scan_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Scan BG L0"),
             layout: &scan_bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: scan_cfg_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: flags_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: scan_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: wg_sums_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: scan_cfg_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: flags_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: scan_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wg_sums_buf.as_entire_binding(),
+                },
             ],
         });
 
         let filter_workgroups = n_groups;
 
         // ── Encode passes ─────────────────────────────────────────────────────
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor { label: Some("Filter Encoder") },
-        );
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Filter Encoder"),
+            });
 
         // Pass 1: predicate
         {
@@ -384,28 +446,41 @@ impl Filter {
             });
 
             // Level-1 config: treat wg_sums1 as the input array
-            let scan_l1_cfg_buf = device.device.create_buffer_init(
-                &wgpu::util::BufferInitDescriptor {
-                    label: Some("Scan Config L1"),
-                    contents: bytemuck::bytes_of(&ScanConfig {
-                        n: n_groups,
-                        n_groups: n_groups2,
-                        _pad0: 0,
-                        _pad1: 0,
-                    }),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                },
-            );
+            let scan_l1_cfg_buf =
+                device
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Scan Config L1"),
+                        contents: bytemuck::bytes_of(&ScanConfig {
+                            n: n_groups,
+                            n_groups: n_groups2,
+                            _pad0: 0,
+                            _pad1: 0,
+                        }),
+                        usage: wgpu::BufferUsages::UNIFORM,
+                    });
 
             // Level-1 bind group: scan wg_sums1 → wg_sums1_scan, wg_sums2
             let scan_l1_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Scan BG L1"),
                 layout: &scan_bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: scan_l1_cfg_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: wg_sums_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: wg_sums1_scan_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 3, resource: wg_sums2_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: scan_l1_cfg_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wg_sums_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wg_sums1_scan_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wg_sums2_buf.as_entire_binding(),
+                    },
                 ],
             });
 
@@ -414,10 +489,22 @@ impl Filter {
                 label: Some("Add Offsets L1 BG"),
                 layout: &scan_bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: scan_l1_cfg_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: wg_sums_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: wg_sums1_scan_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 3, resource: wg_sums2_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: scan_l1_cfg_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wg_sums_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wg_sums1_scan_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wg_sums2_buf.as_entire_binding(),
+                    },
                 ],
             });
 
@@ -426,16 +513,33 @@ impl Filter {
             //   scan_out  → scan_buf (the L0 scan to correct)
             //   wg_sums   → wg_sums_buf  (unused, but bound)
             //   config.n  → n_u32 (original element count)
-            let apply_pipeline =
-                pipeline(&device.device, &scan_shader, &scan_bgl, "apply_l1_offsets", "Apply L1");
+            let apply_pipeline = pipeline(
+                &device.device,
+                &scan_shader,
+                &scan_bgl,
+                "apply_l1_offsets",
+                "Apply L1",
+            );
             let apply_bg = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Apply L1 BG"),
                 layout: &scan_bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: scan_cfg_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: wg_sums1_scan_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: scan_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 3, resource: wg_sums_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: scan_cfg_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wg_sums1_scan_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: scan_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wg_sums_buf.as_entire_binding(),
+                    },
                 ],
             });
 
@@ -538,14 +642,16 @@ mod tests {
             return;
         };
         // [1.0, 5.0, 3.0, 7.0] > 4.0 → keep [5.0, 7.0], count=2
-        let input =
-            Tensor::from_data(&[1.0f32, 5.0, 3.0, 7.0], vec![4], device.clone()).unwrap();
+        let input = Tensor::from_data(&[1.0f32, 5.0, 3.0, 7.0], vec![4], device.clone()).unwrap();
         let result = input.filter(FilterOperation::GreaterThan, 4.0).unwrap();
         assert_eq!(result.count, 2, "Expected 2 elements > 4.0");
         let out = result.selected.to_vec().unwrap();
         // First `count` elements are valid
         let selected: Vec<f32> = out[..result.count].to_vec();
-        assert!(selected.iter().all(|&v| v > 4.0), "All selected must be > 4.0: {selected:?}");
+        assert!(
+            selected.iter().all(|&v| v > 4.0),
+            "All selected must be > 4.0: {selected:?}"
+        );
     }
 
     #[tokio::test]
@@ -589,7 +695,9 @@ mod tests {
             return;
         };
         // 1024 elements alternating positive/negative — keep positive (> 0)
-        let data: Vec<f32> = (0..1024).map(|i| if i % 2 == 0 { 1.0 } else { -1.0 }).collect();
+        let data: Vec<f32> = (0..1024)
+            .map(|i| if i % 2 == 0 { 1.0 } else { -1.0 })
+            .collect();
         let input = Tensor::from_data(&data, vec![1024], device).unwrap();
         let result = input.filter(FilterOperation::GreaterThan, 0.0).unwrap();
         assert_eq!(result.count, 512);

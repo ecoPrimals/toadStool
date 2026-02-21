@@ -56,18 +56,11 @@ impl PinnedMemory {
         let layout = std::alloc::Layout::from_size_align(size, ALIGNMENT)
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {}", e)))?;
 
-        // SAFETY: Layout valid (size>0, ALIGNMENT=64 power-of-2). alloc returns null on OOM.
-        let ptr = unsafe { std::alloc::alloc(layout) };
-
-        if ptr.is_null() {
-            return Err(ToadStoolError::runtime(format!(
-                "Failed to allocate {} bytes of pinned memory",
-                size
-            )));
-        }
-
-        // SAFETY: ptr non-null (checked above); valid allocation from alloc(layout).
-        let ptr = unsafe { NonNull::new_unchecked(ptr) };
+        // SAFETY: Layout is valid (from_size_align succeeded, size>0, ALIGNMENT=64).
+        let raw = unsafe { std::alloc::alloc(layout) };
+        let ptr = NonNull::new(raw).ok_or_else(|| {
+            ToadStoolError::runtime(format!("Failed to allocate {size} bytes of pinned memory"))
+        })?;
 
         tracing::debug!("Allocated {} bytes of pinned memory (aligned to {})", size, ALIGNMENT);
 

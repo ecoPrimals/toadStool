@@ -488,7 +488,8 @@ async fn run_single_probe(device: &wgpu::Device, queue: &wgpu::Queue, probe: &Pr
 
     // Phase 4: read and validate numeric result
     let slice = staging.slice(..);
-    let (tx, rx) = std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
+    let (tx, rx) =
+        std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
     slice.map_async(wgpu::MapMode::Read, move |r| {
         let _ = tx.send(r);
     });

@@ -4,12 +4,11 @@ use crate::unified_memory::{
     backend::{BackendAllocation, UnifiedMemoryBackend},
     types::*,
 };
-use dashmap::DashMap;
-use parking_lot::RwLock;
+use std::collections::HashMap;
 use std::ptr::NonNull;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
-    Arc,
+    Arc, RwLock,
 };
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
@@ -76,7 +75,7 @@ pub struct UnifiedBuffer {
     sync_state: Arc<RwLock<SyncState>>,
 
     /// Allocations tracker (shared with manager)
-    allocations: Arc<DashMap<BufferId, UnifiedBufferMetadata>>,
+    allocations: Arc<RwLock<HashMap<BufferId, UnifiedBufferMetadata>>>,
 
     /// Total allocated counter (shared with manager)
     total_allocated: Arc<AtomicU64>,
@@ -207,7 +206,7 @@ impl UnifiedBuffer {
         device_ptr: *const u8,
         allocation: BackendAllocation,
         backend: Arc<dyn UnifiedMemoryBackend>,
-        allocations: Arc<DashMap<BufferId, UnifiedBufferMetadata>>,
+        allocations: Arc<RwLock<HashMap<BufferId, UnifiedBufferMetadata>>>,
         total_allocated: Arc<AtomicU64>,
         metrics: Arc<RwLock<UnifiedMemoryStats>>,
     ) -> Self {
@@ -268,7 +267,7 @@ impl UnifiedBuffer {
 
     /// Get current synchronization state
     pub fn sync_state(&self) -> SyncState {
-        *self.sync_state.read()
+        *self.sync_state.read().unwrap_or_else(|e| e.into_inner())
     }
 
     /// Write data from CPU (async, non-blocking)
@@ -333,10 +332,15 @@ impl UnifiedBuffer {
         target_slice.copy_from_slice(data);
 
         // Update sync state
-        *self.sync_state.write() = SyncState::CpuModified;
+        *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::CpuModified;
 
-        // Update metadata (DashMap provides interior mutability)
-        if let Some(mut metadata) = self.allocations.get_mut(&self.id) {
+        // Update metadata
+        if let Some(metadata) = self
+            .allocations
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_mut(&self.id)
+        {
             metadata.record_access();
         }
 
@@ -409,8 +413,13 @@ impl UnifiedBuffer {
         // Now use safe Vec::from to copy (no unsafe here!)
         let result = source_slice.to_vec();
 
-        // Update metadata (DashMap provides interior mutability)
-        if let Some(mut metadata) = self.allocations.get_mut(&self.id) {
+        // Update metadata
+        if let Some(metadata) = self
+            .allocations
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_mut(&self.id)
+        {
             metadata.record_access();
         }
 
@@ -429,36 +438,26 @@ impl UnifiedBuffer {
     /// Ensures CPU writes are visible to GPU.
     /// No-op if buffer is already synced or if using coherent memory.
     pub async fn sync_to_device(&self) -> ToadStoolResult<()> {
-        let state = *self.sync_state.read();
+        let state = *self.sync_state.read().unwrap_or_else(|e| e.into_inner());
 
         match state {
-            SyncState::Synced | SyncState::GpuModified => {
-                // Already synced or GPU has latest data
-                Ok(())
-            }
+            SyncState::Synced | SyncState::GpuModified => Ok(()),
             SyncState::CpuModified => {
-                // Need to sync CPU → GPU
                 if let Some(allocation) = &self.allocation {
                     self.backend.sync_cpu_to_device(allocation).await?;
-
-                    // Update state
-                    *self.sync_state.write() = SyncState::Synced;
-
-                    // Update metrics
-                    let mut metrics = self.metrics.write();
+                    *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::Synced;
+                    let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
                     metrics.cpu_to_gpu_syncs += 1;
                     metrics.bytes_synced += self.size as u64;
-
                     tracing::trace!("Synced buffer {} to device", self.id);
                 }
                 Ok(())
             }
             SyncState::Conflict => {
-                // Conflict: assume CPU wins
                 tracing::warn!("Sync conflict for buffer {}, CPU wins", self.id);
                 if let Some(allocation) = &self.allocation {
                     self.backend.sync_cpu_to_device(allocation).await?;
-                    *self.sync_state.write() = SyncState::Synced;
+                    *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::Synced;
                 }
                 Ok(())
             }
@@ -470,45 +469,33 @@ impl UnifiedBuffer {
     /// Ensures GPU writes are visible to CPU.
     /// No-op if buffer is already synced or if using coherent memory.
     pub async fn sync_to_cpu(&self) -> ToadStoolResult<()> {
-        let state = *self.sync_state.read();
+        let state = *self.sync_state.read().unwrap_or_else(|e| e.into_inner());
 
         match state {
-            SyncState::Synced | SyncState::CpuModified => {
-                // Already synced or CPU has latest data
-                Ok(())
-            }
+            SyncState::Synced | SyncState::CpuModified => Ok(()),
             SyncState::GpuModified => {
-                // Need to sync GPU → CPU
                 if let Some(allocation) = &self.allocation {
                     self.backend.sync_device_to_cpu(allocation).await?;
-
-                    // Update state
-                    *self.sync_state.write() = SyncState::Synced;
-
-                    // Update metrics
-                    let mut metrics = self.metrics.write();
+                    *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::Synced;
+                    let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
                     metrics.gpu_to_cpu_syncs += 1;
                     metrics.bytes_synced += self.size as u64;
-
                     tracing::trace!("Synced buffer {} to CPU", self.id);
                 }
                 Ok(())
             }
             SyncState::Conflict => {
-                // Conflict: assume GPU wins
                 tracing::warn!("Sync conflict for buffer {}, GPU wins", self.id);
                 if let Some(allocation) = &self.allocation {
                     self.backend.sync_device_to_cpu(allocation).await?;
-                    *self.sync_state.write() = SyncState::Synced;
+                    *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::Synced;
                 }
                 Ok(())
             }
         }
     }
 
-    /// Auto-sync to target (only if needed)
-    ///
-    /// Smart synchronization that only syncs when necessary.
+    /// Auto-sync to target (only if needed).
     pub async fn auto_sync(&self, target: SyncTarget) -> ToadStoolResult<()> {
         match target {
             SyncTarget::Cpu => self.sync_to_cpu().await,
@@ -516,27 +503,16 @@ impl UnifiedBuffer {
         }
     }
 
-    /// Mark GPU as modified (call after GPU kernel execution)
-    ///
-    /// This tells the buffer that GPU has modified the data,
-    /// so next CPU read should sync from GPU.
+    /// Mark GPU as modified (call after GPU kernel execution).
     pub fn mark_gpu_modified(&self) {
-        *self.sync_state.write() = SyncState::GpuModified;
+        *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::GpuModified;
     }
 
-    /// Fill buffer with value
-    ///
-    /// Efficient memset-like operation.
+    /// Fill buffer with value.
     pub async fn fill(&mut self, value: u8) -> ToadStoolResult<()> {
-        // DEEP DEBT: Null check removed - NonNull provides compile-time guarantee
-        // Old code: if self.cpu_ptr.is_null() { return Err(...); }
-        // NonNull makes this impossible by construction
-
-        // Deep Debt: Use safe slice fill instead of write_bytes!
         let buffer_slice = self.as_cpu_slice_mut()?;
         buffer_slice.fill(value);
-
-        *self.sync_state.write() = SyncState::CpuModified;
+        *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::CpuModified;
 
         Ok(())
     }
@@ -552,7 +528,10 @@ impl Drop for UnifiedBuffer {
     fn drop(&mut self) {
         if let Some(allocation) = self.allocation.take() {
             // Remove from tracking
-            self.allocations.remove(&self.id);
+            self.allocations
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(&self.id);
 
             // Update total allocated atomically
             let new_total = self
@@ -564,7 +543,7 @@ impl Drop for UnifiedBuffer {
             // consistent: active_allocations, total_allocated, and
             // deallocation_count are all updated atomically under the write lock.
             {
-                let mut metrics = self.metrics.write();
+                let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
                 metrics.deallocation_count += 1;
                 metrics.active_allocations = metrics.active_allocations.saturating_sub(1);
                 metrics.total_allocated = new_total;

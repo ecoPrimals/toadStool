@@ -128,6 +128,8 @@ impl DiscoveryConfig {
                 .unwrap_or(false)
         {
             // Use environment-specific endpoints if available
+            // Songbird → orchestration/coordination (fallback: 8080)
+            // DEPRECATED: Use runtime discovery instead of these fallbacks
             if let Ok(url) = std::env::var("SONGBIRD_URL") {
                 fallbacks.insert("orchestration".to_string(), url);
                 fallbacks.insert(
@@ -135,31 +137,28 @@ impl DiscoveryConfig {
                     fallbacks["orchestration"].clone(),
                 );
             } else {
-                fallbacks.insert(
-                    "orchestration".to_string(),
-                    format!("http://{bind_host}:8081"),
-                );
-                fallbacks.insert(
-                    "coordination".to_string(),
-                    format!("http://{bind_host}:8081"),
-                );
+                let songbird_fallback = format!("http://{bind_host}:8080");
+                fallbacks.insert("orchestration".to_string(), songbird_fallback.clone());
+                fallbacks.insert("coordination".to_string(), songbird_fallback);
             }
 
+            // BearDog → security/authentication (fallback: 8081)
+            // DEPRECATED: Use runtime discovery instead of these fallbacks
             if let Ok(url) = std::env::var("BEARDOG_URL") {
                 fallbacks.insert("security".to_string(), url);
                 fallbacks.insert("authentication".to_string(), fallbacks["security"].clone());
             } else {
-                fallbacks.insert("security".to_string(), format!("http://{bind_host}:8082"));
-                fallbacks.insert(
-                    "authentication".to_string(),
-                    format!("http://{bind_host}:8082"),
-                );
+                let beardog_fallback = format!("http://{bind_host}:8081");
+                fallbacks.insert("security".to_string(), beardog_fallback.clone());
+                fallbacks.insert("authentication".to_string(), beardog_fallback);
             }
 
+            // NestGate → storage (fallback: 8082)
+            // DEPRECATED: Use runtime discovery instead of these fallbacks
             if let Ok(url) = std::env::var("NESTGATE_URL") {
                 fallbacks.insert("storage".to_string(), url);
             } else {
-                fallbacks.insert("storage".to_string(), format!("http://{bind_host}:8083"));
+                fallbacks.insert("storage".to_string(), format!("http://{bind_host}:8082"));
             }
         }
 

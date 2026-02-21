@@ -1,7 +1,7 @@
 //! Dispatch configuration and routing logic.
 
 use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 /// Global dispatch configuration (lazy-initialized)
 static GLOBAL_CONFIG: OnceLock<DispatchConfig> = OnceLock::new();
@@ -10,7 +10,7 @@ static GLOBAL_CONFIG: OnceLock<DispatchConfig> = OnceLock::new();
 #[derive(Debug, Clone)]
 pub struct DispatchConfig {
     /// Per-operation CPU thresholds (input size below which CPU is used)
-    thresholds: HashMap<&'static str, usize>,
+    thresholds: HashMap<Arc<str>, usize>,
     /// Whether GPU is available (cached at init)
     gpu_available: bool,
     /// Force CPU for all operations (useful for testing, f64 precision)
@@ -37,7 +37,7 @@ impl DispatchConfig {
     }
 
     /// Create config with custom thresholds
-    pub fn with_thresholds(thresholds: HashMap<&'static str, usize>) -> Self {
+    pub fn with_thresholds(thresholds: HashMap<Arc<str>, usize>) -> Self {
         Self {
             thresholds,
             ..Self::default()
@@ -59,8 +59,8 @@ impl DispatchConfig {
     }
 
     /// Set threshold for a specific operation
-    pub fn set_threshold(&mut self, operation: &'static str, threshold: usize) {
-        self.thresholds.insert(operation, threshold);
+    pub fn set_threshold(&mut self, operation: impl Into<Arc<str>>, threshold: usize) {
+        self.thresholds.insert(operation.into(), threshold);
     }
 
     /// Get threshold for an operation (returns default if not set)
@@ -110,62 +110,62 @@ impl DispatchConfig {
 pub const DEFAULT_THRESHOLD: usize = 1024;
 
 /// Default per-operation thresholds (empirically determined)
-fn default_thresholds() -> HashMap<&'static str, usize> {
+fn default_thresholds() -> HashMap<Arc<str>, usize> {
     let mut m = HashMap::new();
 
     // === Special Functions ===
-    m.insert("erf", 512); // Error function
-    m.insert("erfc", 512); // Complementary error function
-    m.insert("gamma", 256); // Gamma function
-    m.insert("lgamma", 256); // Log-gamma
-    m.insert("digamma", 256); // Digamma (psi)
-    m.insert("bessel_j0", 512); // Bessel J0
-    m.insert("bessel_j1", 512); // Bessel J1
-    m.insert("bessel_i0", 512); // Modified Bessel I0
-    m.insert("bessel_k0", 512); // Modified Bessel K0
+    m.insert(Arc::from("erf"), 512); // Error function
+    m.insert(Arc::from("erfc"), 512); // Complementary error function
+    m.insert(Arc::from("gamma"), 256); // Gamma function
+    m.insert(Arc::from("lgamma"), 256); // Log-gamma
+    m.insert(Arc::from("digamma"), 256); // Digamma (psi)
+    m.insert(Arc::from("bessel_j0"), 512); // Bessel J0
+    m.insert(Arc::from("bessel_j1"), 512); // Bessel J1
+    m.insert(Arc::from("bessel_i0"), 512); // Modified Bessel I0
+    m.insert(Arc::from("bessel_k0"), 512); // Modified Bessel K0
 
     // === Linear Algebra ===
-    m.insert("matmul", 64); // Matrix multiply: 64×64 = 4096 elements
-    m.insert("cholesky", 128); // Cholesky decomposition
-    m.insert("eigh", 128); // Symmetric eigenvalue
-    m.insert("lu", 128); // LU decomposition
-    m.insert("qr", 128); // QR decomposition
-    m.insert("svd", 128); // Singular value decomposition
-    m.insert("solve", 128); // Linear solve
-    m.insert("tridiagonal", 256); // Tridiagonal solve (Thomas alg is fast)
+    m.insert(Arc::from("matmul"), 64); // Matrix multiply: 64×64 = 4096 elements
+    m.insert(Arc::from("cholesky"), 128); // Cholesky decomposition
+    m.insert(Arc::from("eigh"), 128); // Symmetric eigenvalue
+    m.insert(Arc::from("lu"), 128); // LU decomposition
+    m.insert(Arc::from("qr"), 128); // QR decomposition
+    m.insert(Arc::from("svd"), 128); // Singular value decomposition
+    m.insert(Arc::from("solve"), 128); // Linear solve
+    m.insert(Arc::from("tridiagonal"), 256); // Tridiagonal solve (Thomas alg is fast)
 
     // === Distance/Similarity ===
-    m.insert("cdist", 200); // Pairwise distances (O(N²))
-    m.insert("pdist", 200); // Pairwise distances (condensed)
-    m.insert("cosine_similarity", 256);
+    m.insert(Arc::from("cdist"), 200); // Pairwise distances (O(N²))
+    m.insert(Arc::from("pdist"), 200); // Pairwise distances (condensed)
+    m.insert(Arc::from("cosine_similarity"), 256);
 
     // === Transforms ===
-    m.insert("fft", 1024); // FFT
-    m.insert("ifft", 1024); // Inverse FFT
-    m.insert("dct", 1024); // Discrete cosine transform
+    m.insert(Arc::from("fft"), 1024); // FFT
+    m.insert(Arc::from("ifft"), 1024); // Inverse FFT
+    m.insert(Arc::from("dct"), 1024); // Discrete cosine transform
 
     // === Reductions ===
-    m.insert("sum", 4096); // Reduction needs large N for GPU win
-    m.insert("mean", 4096);
-    m.insert("max", 4096);
-    m.insert("min", 4096);
-    m.insert("argmax", 4096);
-    m.insert("argmin", 4096);
+    m.insert(Arc::from("sum"), 4096); // Reduction needs large N for GPU win
+    m.insert(Arc::from("mean"), 4096);
+    m.insert(Arc::from("max"), 4096);
+    m.insert(Arc::from("min"), 4096);
+    m.insert(Arc::from("argmax"), 4096);
+    m.insert(Arc::from("argmin"), 4096);
 
     // === Element-wise ===
-    m.insert("relu", 2048);
-    m.insert("sigmoid", 2048);
-    m.insert("tanh", 2048);
-    m.insert("exp", 2048);
-    m.insert("log", 2048);
-    m.insert("sqrt", 2048);
-    m.insert("sin", 2048);
-    m.insert("cos", 2048);
+    m.insert(Arc::from("relu"), 2048);
+    m.insert(Arc::from("sigmoid"), 2048);
+    m.insert(Arc::from("tanh"), 2048);
+    m.insert(Arc::from("exp"), 2048);
+    m.insert(Arc::from("log"), 2048);
+    m.insert(Arc::from("sqrt"), 2048);
+    m.insert(Arc::from("sin"), 2048);
+    m.insert(Arc::from("cos"), 2048);
 
     // === Surrogate/Optimization ===
-    m.insert("rbf_kernel", 200); // RBF kernel evaluation
-    m.insert("surrogate_predict", 100); // Single-point prediction is CPU-only
-    m.insert("surrogate_train", 200); // Training benefits from GPU
+    m.insert(Arc::from("rbf_kernel"), 200); // RBF kernel evaluation
+    m.insert(Arc::from("surrogate_predict"), 100); // Single-point prediction is CPU-only
+    m.insert(Arc::from("surrogate_train"), 200); // Training benefits from GPU
 
     m
 }
@@ -297,5 +297,118 @@ mod tests {
         // Small input should go to CPU
         let target = dispatch_for("matmul", 10);
         assert!(target.is_cpu());
+    }
+
+    #[test]
+    fn test_force_gpu_and_cpu_mutual_exclusion() {
+        let config = DispatchConfig::default().force_gpu().force_cpu();
+        assert!(!config.should_use_gpu(1_000_000, "matmul"));
+
+        let config = DispatchConfig::default().force_cpu().force_gpu();
+        if config.has_gpu() {
+            assert!(config.should_use_gpu(1, "matmul"));
+        }
+    }
+
+    #[test]
+    fn test_with_thresholds_custom_map() {
+        let mut thresholds = HashMap::new();
+        thresholds.insert(Arc::from("custom_fft"), 256_usize);
+        thresholds.insert(Arc::from("custom_sum"), 8192_usize);
+
+        let config = DispatchConfig::with_thresholds(thresholds);
+
+        assert_eq!(config.threshold("custom_fft"), 256);
+        assert_eq!(config.threshold("custom_sum"), 8192);
+        assert_eq!(config.threshold("unknown"), DEFAULT_THRESHOLD);
+    }
+
+    #[test]
+    fn test_dispatch_with_config() {
+        let config = DispatchConfig::default().force_cpu();
+        let target = dispatch_with_config(&config, "matmul", 1_000_000);
+        assert!(target.is_cpu());
+    }
+
+    #[test]
+    fn test_dispatch_with_config_gpu_available() {
+        let config = DispatchConfig::default();
+        if config.has_gpu() {
+            let target = dispatch_with_config(&config, "matmul", 1_000_000);
+            assert!(target.is_gpu());
+        }
+    }
+
+    #[test]
+    fn test_all_default_threshold_operations() {
+        let config = DispatchConfig::default();
+
+        assert_eq!(config.threshold("erf"), 512);
+        assert_eq!(config.threshold("erfc"), 512);
+        assert_eq!(config.threshold("gamma"), 256);
+        assert_eq!(config.threshold("lgamma"), 256);
+        assert_eq!(config.threshold("digamma"), 256);
+        assert_eq!(config.threshold("bessel_j0"), 512);
+        assert_eq!(config.threshold("bessel_j1"), 512);
+        assert_eq!(config.threshold("bessel_i0"), 512);
+        assert_eq!(config.threshold("bessel_k0"), 512);
+        assert_eq!(config.threshold("cholesky"), 128);
+        assert_eq!(config.threshold("eigh"), 128);
+        assert_eq!(config.threshold("lu"), 128);
+        assert_eq!(config.threshold("qr"), 128);
+        assert_eq!(config.threshold("svd"), 128);
+        assert_eq!(config.threshold("solve"), 128);
+        assert_eq!(config.threshold("tridiagonal"), 256);
+        assert_eq!(config.threshold("cdist"), 200);
+        assert_eq!(config.threshold("pdist"), 200);
+        assert_eq!(config.threshold("cosine_similarity"), 256);
+        assert_eq!(config.threshold("fft"), 1024);
+        assert_eq!(config.threshold("ifft"), 1024);
+        assert_eq!(config.threshold("dct"), 1024);
+        assert_eq!(config.threshold("sum"), 4096);
+        assert_eq!(config.threshold("mean"), 4096);
+        assert_eq!(config.threshold("max"), 4096);
+        assert_eq!(config.threshold("min"), 4096);
+        assert_eq!(config.threshold("argmax"), 4096);
+        assert_eq!(config.threshold("argmin"), 4096);
+        assert_eq!(config.threshold("relu"), 2048);
+        assert_eq!(config.threshold("sigmoid"), 2048);
+        assert_eq!(config.threshold("tanh"), 2048);
+        assert_eq!(config.threshold("exp"), 2048);
+        assert_eq!(config.threshold("log"), 2048);
+        assert_eq!(config.threshold("sqrt"), 2048);
+        assert_eq!(config.threshold("sin"), 2048);
+        assert_eq!(config.threshold("cos"), 2048);
+        assert_eq!(config.threshold("rbf_kernel"), 200);
+        assert_eq!(config.threshold("surrogate_predict"), 100);
+        assert_eq!(config.threshold("surrogate_train"), 200);
+    }
+
+    #[test]
+    fn test_boundary_conditions() {
+        let config = DispatchConfig::default();
+        if config.has_gpu() {
+            assert!(!config.should_use_gpu(63, "matmul"));
+            assert!(config.should_use_gpu(64, "matmul"));
+            assert!(config.should_use_gpu(65, "matmul"));
+        }
+    }
+
+    #[test]
+    fn test_zero_size_input() {
+        let target = dispatch_for("matmul", 0);
+        assert!(target.is_cpu());
+    }
+
+    #[test]
+    fn test_new_equals_default() {
+        let new_config = DispatchConfig::new();
+        let default_config = DispatchConfig::default();
+
+        assert_eq!(
+            new_config.threshold("matmul"),
+            default_config.threshold("matmul")
+        );
+        assert_eq!(new_config.has_gpu(), default_config.has_gpu());
     }
 }

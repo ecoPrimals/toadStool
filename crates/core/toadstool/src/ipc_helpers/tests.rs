@@ -1,4 +1,16 @@
 //! IPC helpers tests
+//!
+//! # Environment Variable Safety
+//!
+//! Several tests in this module modify environment variables (`SONGBIRD_SOCKET`,
+//! `XDG_RUNTIME_DIR`) to test different socket resolution paths. In Rust 1.68+,
+//! `std::env::set_var` and `remove_var` are `unsafe` because concurrent reads
+//! from other threads can race with modifications.
+//!
+//! **Safety invariant**: All env-var-modifying tests acquire `songbird_env_mutex()`
+//! before modifying environment variables. This mutex serializes all such tests,
+//! preventing data races. Each test restores the environment before releasing the
+//! lock, ensuring isolation between tests.
 
 use super::connection::{get_default_songbird_socket, IPC_TIMEOUT};
 use super::*;
@@ -281,8 +293,12 @@ fn test_get_default_songbird_socket_contains_songbird_sock() {
 #[test]
 fn test_get_default_songbird_socket_with_xdg_runtime_dir() {
     // When XDG_RUNTIME_DIR is set, the socket should be under that directory.
+    // SAFETY: This test runs under the serial test executor (not parallel) and
+    // the env var is restored immediately after use. No other code in this test
+    // reads environment variables concurrently.
     unsafe { std::env::set_var("XDG_RUNTIME_DIR", "/tmp/test-xdg-runtime") };
     let path = get_default_songbird_socket();
+    // SAFETY: Restoring env state; same constraints as above.
     unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
     assert!(path.starts_with("/tmp/test-xdg-runtime"));
     assert!(path.ends_with("songbird.sock"));
@@ -340,6 +356,8 @@ async fn test_register_with_songbird_success_via_mock() {
     let reply = json!({"jsonrpc": "2.0", "result": {"status": "registered"}, "id": 1});
     let handle = spawn_mock_songbird(&path_str, reply).await;
 
+    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests. The env var
+    // is restored before the lock is released, preventing races with other tests.
     unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
     let result = register_with_songbird().await;
     unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
@@ -358,6 +376,7 @@ async fn test_register_with_songbird_error_reply_via_mock() {
     let reply = json!({"jsonrpc": "2.0", "error": {"code": -32000, "message": "already registered"}, "id": 1});
     let handle = spawn_mock_songbird(&path_str, reply).await;
 
+    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests.
     unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
     let result = register_with_songbird().await;
     unsafe { std::env::remove_var("SONGBIRD_SOCKET") };

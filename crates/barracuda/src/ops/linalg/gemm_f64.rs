@@ -332,13 +332,14 @@ impl GemmCachedF64 {
         let dev = &device;
 
         // Upload B to GPU permanently — it stays resident across all multiply() calls.
-        let b_buffer = Arc::new(dev.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("GemmCached B (weight matrix)"),
-                contents: bytemuck::cast_slice(b),
-                usage: wgpu::BufferUsages::STORAGE,
-            },
-        ));
+        let b_buffer = Arc::new(
+            dev.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("GemmCached B (weight matrix)"),
+                    contents: bytemuck::cast_slice(b),
+                    usage: wgpu::BufferUsages::STORAGE,
+                }),
+        );
 
         // Create shared bind group layout (reused for every bind group).
         let bgl = Arc::new(
@@ -374,7 +375,15 @@ impl GemmCachedF64 {
             },
         ));
 
-        Ok(Self { device, pipeline, bgl, b_buffer, k, n, batch_size })
+        Ok(Self {
+            device,
+            pipeline,
+            bgl,
+            b_buffer,
+            k,
+            n,
+            batch_size,
+        })
     }
 
     /// Multiply input matrix A by the pre-loaded weight matrix B.
@@ -432,10 +441,22 @@ impl GemmCachedF64 {
             label: Some("GemmCached BG"),
             layout: &self.bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: a_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: self.b_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: c_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: params_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: a_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.b_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: c_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buf.as_entire_binding(),
+                },
             ],
         });
 

@@ -108,7 +108,7 @@ impl WgpuDevice {
         let optimized = if patched.contains("@ilp_region") || patched.contains("@unroll_hint") {
             use crate::device::capabilities::GpuDriverProfile;
             use crate::shaders::optimizer::WgslOptimizer;
-            let profile  = GpuDriverProfile::from_device(self);
+            let profile = GpuDriverProfile::from_device(self);
             let optimizer = WgslOptimizer::new(profile.latency_model());
             optimizer.optimize(&patched)
         } else {

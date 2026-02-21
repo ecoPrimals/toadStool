@@ -46,7 +46,10 @@ fn test_has_permission_wildcard() {
         ..SecurityContext::default()
     };
     // Wildcard should match any capability that is present
-    assert!(ctx.has_permission("*"), "Wildcard should match any non-empty capability set");
+    assert!(
+        ctx.has_permission("*"),
+        "Wildcard should match any non-empty capability set"
+    );
 }
 
 #[test]
@@ -67,8 +70,14 @@ fn test_unknown_permission_name_custom_capability() {
         capabilities: vec![Capability::Custom("audit_logs".to_string())],
         ..SecurityContext::default()
     };
-    assert!(ctx.has_permission("audit_logs"), "Custom capability should match by name");
-    assert!(!ctx.has_permission("admin"), "Unrelated custom capability should not match");
+    assert!(
+        ctx.has_permission("audit_logs"),
+        "Custom capability should match by name"
+    );
+    assert!(
+        !ctx.has_permission("admin"),
+        "Unrelated custom capability should not match"
+    );
 }
 
 // ── Privilege escalation resistance ──────────────────────────────────────────
@@ -79,8 +88,14 @@ fn test_cannot_escalate_read_to_write() {
         capabilities: vec![Capability::Read],
         ..SecurityContext::default()
     };
-    assert!(!ctx.has_permission("write"), "Read-only context must not grant write");
-    assert!(!ctx.has_permission("execute"), "Read-only context must not grant execute");
+    assert!(
+        !ctx.has_permission("write"),
+        "Read-only context must not grant write"
+    );
+    assert!(
+        !ctx.has_permission("execute"),
+        "Read-only context must not grant execute"
+    );
 }
 
 #[test]
@@ -116,7 +131,11 @@ fn test_isolation_levels_are_distinct() {
     // Each level is a distinct variant — compare ordinals via debug string
     let names: Vec<String> = levels.iter().map(|l| format!("{l:?}")).collect();
     let unique: std::collections::HashSet<_> = names.iter().collect();
-    assert_eq!(unique.len(), levels.len(), "All isolation levels must be distinct");
+    assert_eq!(
+        unique.len(),
+        levels.len(),
+        "All isolation levels must be distinct"
+    );
 }
 
 #[test]

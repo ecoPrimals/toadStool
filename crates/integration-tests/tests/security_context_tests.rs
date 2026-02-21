@@ -3,14 +3,15 @@
 //! Tests use the real SecurityContext API: isolation_level, capabilities
 //! (Capability enum), user_context, network_security, filesystem_security.
 
-use toadstool::{
-    Capability, IsolationLevel, SecurityContext, SecuritySettings, ToadStoolResult,
-};
+use toadstool::{Capability, IsolationLevel, SecurityContext, SecuritySettings, ToadStoolResult};
 
 #[test]
 fn test_security_context_default() {
     let context = SecurityContext::default();
-    assert!(context.validate().is_ok(), "Default security context should be valid");
+    assert!(
+        context.validate().is_ok(),
+        "Default security context should be valid"
+    );
 }
 
 #[test]
@@ -93,7 +94,10 @@ fn test_strict_security_context() {
         ..SecurityContext::default()
     };
     assert!(context.validate().is_ok());
-    assert!(!context.has_permission("write"), "Strict context should not allow write");
+    assert!(
+        !context.has_permission("write"),
+        "Strict context should not allow write"
+    );
 }
 
 #[test]
@@ -111,7 +115,10 @@ fn test_permissive_security_context() {
     };
     // Permissive context should still be valid
     assert!(context.validate().is_ok());
-    assert!(context.has_permission("*"), "Wildcard should match any non-empty context");
+    assert!(
+        context.has_permission("*"),
+        "Wildcard should match any non-empty context"
+    );
 }
 
 #[test]

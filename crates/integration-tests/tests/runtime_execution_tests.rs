@@ -54,7 +54,10 @@ async fn test_runtime_orchestrator_starts_with_no_engines() {
     // An orchestrator with no registered engines should fail gracefully on execute,
     // not panic or deadlock.
     let result = orch.execute(make_request()).await;
-    assert!(result.is_err(), "Empty orchestrator must return error, not panic");
+    assert!(
+        result.is_err(),
+        "Empty orchestrator must return error, not panic"
+    );
 }
 
 // ── WorkloadSpec construction and validation ───────────────────────────────────
@@ -75,7 +78,10 @@ fn test_workload_spec_url_is_native() {
 fn test_workload_spec_url_passes_validation() {
     // URL-based executables are validated without touching the filesystem.
     let spec = make_url_workload();
-    assert!(spec.validate().is_ok(), "URL-based WorkloadSpec must pass validation");
+    assert!(
+        spec.validate().is_ok(),
+        "URL-based WorkloadSpec must pass validation"
+    );
 }
 
 #[test]
@@ -168,7 +174,10 @@ async fn test_execute_with_no_engines_returns_not_found() {
     );
     let err = result.unwrap_err();
     assert!(
-        matches!(err, ToadStoolError::NotFound(_) | ToadStoolError::Runtime(_)),
+        matches!(
+            err,
+            ToadStoolError::NotFound(_) | ToadStoolError::Runtime(_)
+        ),
         "Expected NotFound or Runtime error, got: {err:?}"
     );
 }
@@ -186,7 +195,10 @@ async fn test_execute_with_native_hint_and_no_engine_returns_not_found() {
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(
-        matches!(err, ToadStoolError::NotFound(_) | ToadStoolError::Runtime(_)),
+        matches!(
+            err,
+            ToadStoolError::NotFound(_) | ToadStoolError::Runtime(_)
+        ),
         "Hint to unavailable engine: {err:?}"
     );
 }
@@ -195,10 +207,7 @@ async fn test_execute_with_native_hint_and_no_engine_returns_not_found() {
 async fn test_concurrent_executions_both_complete() {
     let orch = std::sync::Arc::new(make_orchestrator());
     let orch2 = orch.clone();
-    let (r1, r2) = tokio::join!(
-        orch.execute(make_request()),
-        orch2.execute(make_request()),
-    );
+    let (r1, r2) = tokio::join!(orch.execute(make_request()), orch2.execute(make_request()),);
     // Both should complete (success or graceful error — no panics or hangs)
     let _ = r1;
     let _ = r2;
@@ -264,9 +273,8 @@ fn test_resource_requirements_default_is_valid() {
 
 #[test]
 fn test_workload_type_roundtrip_through_spec() {
-    let types_and_specs: Vec<(WorkloadType, WorkloadSpec)> = vec![
-        (WorkloadType::Native, make_url_workload()),
-    ];
+    let types_and_specs: Vec<(WorkloadType, WorkloadSpec)> =
+        vec![(WorkloadType::Native, make_url_workload())];
     for (expected_type, spec) in types_and_specs {
         assert_eq!(
             spec.workload_type(),

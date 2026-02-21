@@ -54,11 +54,13 @@ impl Softmax {
         // because we pass `size` as the logical uniform, not arrayLength).
         let output_buffer = ctx.acquire_pooled_output(size);
 
-        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Softmax Params"),
-            contents: bytemuck::bytes_of(&Params { size: size as u32 }),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buf = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Softmax Params"),
+                contents: bytemuck::bytes_of(&Params { size: size as u32 }),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let layout_sig = BindGroupLayoutSignature::reduction();
         let adapter_info = device.adapter_info();
@@ -69,8 +71,8 @@ impl Softmax {
             Some("Softmax BGL"),
         );
 
-        let bind_group = std::sync::Arc::new(device.device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
+        let bind_group =
+            std::sync::Arc::new(device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Softmax BG"),
                 layout: &bgl,
                 entries: &[
@@ -87,8 +89,7 @@ impl Softmax {
                         resource: params_buf.as_entire_binding(),
                     },
                 ],
-            },
-        ));
+            }));
 
         let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
             device.device(),

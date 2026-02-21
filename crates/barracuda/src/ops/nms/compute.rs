@@ -28,10 +28,9 @@ impl NMS {
         }
 
         // Create device (use test pool when available, skip when no GPU)
-        let device = pollster::block_on(
-            crate::device::test_pool::get_test_device_if_gpu_available(),
-        )
-        .ok_or_else(|| crate::error::BarracudaError::device("No GPU available for NMS"))?;
+        let device =
+            pollster::block_on(crate::device::test_pool::get_test_device_if_gpu_available())
+                .ok_or_else(|| crate::error::BarracudaError::device("No GPU available for NMS"))?;
 
         // Convert boxes to tensor format [num_boxes, 5] where each box is [x1, y1, x2, y2, score]
         let mut box_data = Vec::with_capacity(num_boxes * 5);
@@ -44,11 +43,7 @@ impl NMS {
         }
 
         // Create box tensor on GPU
-        let boxes_tensor = Tensor::from_vec_on_sync(
-            box_data,
-            vec![num_boxes, 5],
-            device.clone(),
-        )?;
+        let boxes_tensor = Tensor::from_vec_on_sync(box_data, vec![num_boxes, 5], device.clone())?;
 
         // ====================================================================
         // Pass 1: Compute IoU Matrix on GPU

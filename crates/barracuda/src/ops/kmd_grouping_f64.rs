@@ -69,7 +69,11 @@ impl KmdGroupingF64 {
     ///
     /// Use `repeat_units::CF2` for PFAS, `repeat_units::CH2` for hydrocarbons.
     pub fn new(device: Arc<WgpuDevice>, exact_unit: f64, nominal_unit: f64) -> Self {
-        Self { device, exact_unit, nominal_unit }
+        Self {
+            device,
+            exact_unit,
+            nominal_unit,
+        }
     }
 
     /// Compute `[KM, NKM, KMD]` for each ion mass.
@@ -125,9 +129,18 @@ impl KmdGroupingF64 {
             label: Some("KMD BG"),
             layout: &bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: cfg_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: mass_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: out_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: cfg_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: mass_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: out_buf.as_entire_binding(),
+                },
             ],
         });
 
@@ -169,7 +182,11 @@ impl KmdGroupingF64 {
         let raw = crate::utils::read_buffer_f64(dev, &out_buf, n * 3)?;
         Ok(raw
             .chunks_exact(3)
-            .map(|c| KmdResult { km: c[0], nkm: c[1], kmd: c[2] })
+            .map(|c| KmdResult {
+                km: c[0],
+                nkm: c[1],
+                kmd: c[2],
+            })
             .collect())
     }
 

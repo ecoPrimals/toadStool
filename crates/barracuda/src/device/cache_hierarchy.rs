@@ -442,28 +442,32 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 // Primary: vendor ID is authoritative when the driver reports it.
                 match info.vendor {
                     VENDOR_NVIDIA => SubstrateType::NvidiaGpu,
-                    VENDOR_AMD    => SubstrateType::AmdGpu,
-                    VENDOR_INTEL  => SubstrateType::IntelGpu,
-                    VENDOR_APPLE  => SubstrateType::AppleGpu,
+                    VENDOR_AMD => SubstrateType::AmdGpu,
+                    VENDOR_INTEL => SubstrateType::IntelGpu,
+                    VENDOR_APPLE => SubstrateType::AppleGpu,
                     VENDOR_ARM | VENDOR_QUALCOMM => SubstrateType::Other,
                     _ => {
                         // Fallback: name-based heuristic for drivers that report
                         // vendor_id = 0 (e.g. some Mesa/software configurations).
                         let n = info.name.to_lowercase();
-                        if n.contains("nvidia") || n.contains("geforce")
-                            || n.contains("quadro") || n.contains("tesla")
+                        if n.contains("nvidia")
+                            || n.contains("geforce")
+                            || n.contains("quadro")
+                            || n.contains("tesla")
                         {
                             SubstrateType::NvidiaGpu
-                        } else if n.contains("amd") || n.contains("radeon")
-                            || n.contains("rx ") || n.contains("navi")
+                        } else if n.contains("amd")
+                            || n.contains("radeon")
+                            || n.contains("rx ")
+                            || n.contains("navi")
                         {
                             SubstrateType::AmdGpu
-                        } else if n.contains("intel") || n.contains("arc")
-                            || n.contains("iris")
-                        {
+                        } else if n.contains("intel") || n.contains("arc") || n.contains("iris") {
                             SubstrateType::IntelGpu
-                        } else if n.contains("apple") || n.contains("m1")
-                            || n.contains("m2")   || n.contains("m3")
+                        } else if n.contains("apple")
+                            || n.contains("m1")
+                            || n.contains("m2")
+                            || n.contains("m3")
                         {
                             SubstrateType::AppleGpu
                         } else {

@@ -30,11 +30,11 @@ use wgpu::util::DeviceExt;
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct SwParamsGpu {
-    n:          u32,
-    m:          u32,
+    n: u32,
+    m: u32,
     band_width: u32,
-    diagonal:   u32,
-    gap_open:   f64,
+    diagonal: u32,
+    gap_open: f64,
     gap_extend: f64,
 }
 
@@ -54,7 +54,11 @@ pub struct SwConfig {
 
 impl Default for SwConfig {
     fn default() -> Self {
-        Self { gap_open: 11.0, gap_extend: 1.0, band_width: 64 }
+        Self {
+            gap_open: 11.0,
+            gap_extend: 1.0,
+            band_width: 64,
+        }
     }
 }
 
@@ -101,7 +105,9 @@ pub struct SmithWatermanGpu {
 
 impl SmithWatermanGpu {
     pub fn new(device: &WgpuDevice) -> Self {
-        Self { device: Arc::new(device.clone()) }
+        Self {
+            device: Arc::new(device.clone()),
+        }
     }
 
     /// Run banded Smith-Waterman alignment on the GPU.
@@ -113,9 +119,9 @@ impl SmithWatermanGpu {
     /// - `config`: gap penalties and band width
     pub fn align(
         &self,
-        query:  &[u32],
+        query: &[u32],
         target: &[u32],
-        subst:  &[f64],
+        subst: &[f64],
         config: &SwConfig,
     ) -> Result<SwResult> {
         let dev = &self.device;
@@ -124,95 +130,139 @@ impl SmithWatermanGpu {
         let rows_cols = (n + 1) * (m + 1);
 
         // ── Upload buffers ─────────────────────────────────────────────────────
-        let query_buf  = dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SW query"),
-            contents: bytemuck::cast_slice(query),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
-        let target_buf = dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SW target"),
-            contents: bytemuck::cast_slice(target),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
-        let subst_buf  = dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SW subst"),
-            contents: bytemuck::cast_slice(subst),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let query_buf = dev
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("SW query"),
+                contents: bytemuck::cast_slice(query),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+        let target_buf = dev
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("SW target"),
+                contents: bytemuck::cast_slice(target),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+        let subst_buf = dev
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("SW subst"),
+                contents: bytemuck::cast_slice(subst),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
         let zeros: Vec<f64> = vec![0.0; rows_cols];
-        let h_buf = dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SW H"),
-            contents: bytemuck::cast_slice(&zeros),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-        });
-        let e_buf = dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SW E"),
-            contents: bytemuck::cast_slice(&zeros),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
-        let f_buf = dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SW F"),
-            contents: bytemuck::cast_slice(&zeros),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let h_buf = dev
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("SW H"),
+                contents: bytemuck::cast_slice(&zeros),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            });
+        let e_buf = dev
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("SW E"),
+                contents: bytemuck::cast_slice(&zeros),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+        let f_buf = dev
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("SW F"),
+                contents: bytemuck::cast_slice(&zeros),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         // ── Compile shader once (f64-aware: applies exp/log patching + ILP optimizer) ──
         let module = dev.compile_shader_f64(
             include_str!("../../shaders/bio/smith_waterman_banded_f64.wgsl"),
             Some("SW BandedF64"),
         );
-        let pipeline = dev.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("SW BandedF64"),
-            layout: None,
-            module: &module,
-            entry_point: "main",
-            cache: None,
-            compilation_options: Default::default(),
-        });
+        let pipeline = dev
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("SW BandedF64"),
+                layout: None,
+                module: &module,
+                entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
+            });
 
         // ── Sweep anti-diagonals d = 2 .. n+m (inclusive) ─────────────────────
-        let mut encoder = dev.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor { label: Some("SW sweep") });
+        let mut encoder = dev
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("SW sweep"),
+            });
 
         for d in 2u32..=(n + m) as u32 {
             // Number of cells on this diagonal within [1..n] × [1..m]
             let i_lo = d.saturating_sub(m as u32).max(1);
             let i_hi = (d - 1).min(n as u32);
-            if i_hi < i_lo { continue; }
+            if i_hi < i_lo {
+                continue;
+            }
             let cells = i_hi - i_lo + 1;
 
             let params_data = SwParamsGpu {
-                n: n as u32, m: m as u32,
+                n: n as u32,
+                m: m as u32,
                 band_width: config.band_width,
                 diagonal: d,
                 gap_open: config.gap_open,
                 gap_extend: config.gap_extend,
             };
             // Params use storage read (not uniform) because they contain f64 fields.
-            let params_buf = dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: None,
-                contents: bytemuck::bytes_of(&params_data),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+            let params_buf = dev
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: None,
+                    contents: bytemuck::bytes_of(&params_data),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
 
             let bgl = pipeline.get_bind_group_layout(0);
             let bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: None,
                 layout: &bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: params_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: query_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: target_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 3, resource: subst_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 4, resource: h_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 5, resource: e_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 6, resource: f_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: query_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: target_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: subst_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: h_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: e_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: f_buf.as_entire_binding(),
+                    },
                 ],
             });
 
             let wg = cells.div_ceil(256);
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: None, timestamp_writes: None,
+                label: None,
+                timestamp_writes: None,
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bg, &[]);
@@ -239,7 +289,11 @@ impl SmithWatermanGpu {
             }
         }
 
-        Ok(SwResult { score: best_score, row: best_row, col: best_col })
+        Ok(SwResult {
+            score: best_score,
+            row: best_row,
+            col: best_col,
+        })
     }
 }
 
@@ -251,18 +305,34 @@ mod tests {
     fn dna_subst() -> Vec<f64> {
         // Simple +2 match / -1 mismatch for ACGT
         let mut m = vec![-1.0_f64; 16];
-        m[0] = 2.0; m[5] = 2.0; m[10] = 2.0; m[15] = 2.0;
+        m[0] = 2.0;
+        m[5] = 2.0;
+        m[10] = 2.0;
+        m[15] = 2.0;
         m
     }
 
     #[tokio::test]
     async fn test_identical_sequences() {
-        let Some(device) = test_pool::get_test_device_if_f64_gpu_available().await else { return; };
+        let Some(device) = test_pool::get_test_device_if_f64_gpu_available().await else {
+            return;
+        };
         let sw = SmithWatermanGpu::new(&device);
         // ACGT vs ACGT: perfect match, score = 4 × 2.0 = 8.0
         let q = vec![0u32, 1, 2, 3];
         let t = vec![0u32, 1, 2, 3];
-        let result = sw.align(&q, &t, &dna_subst(), &SwConfig { gap_open: 11.0, gap_extend: 1.0, band_width: 0 }).unwrap();
+        let result = sw
+            .align(
+                &q,
+                &t,
+                &dna_subst(),
+                &SwConfig {
+                    gap_open: 11.0,
+                    gap_extend: 1.0,
+                    band_width: 0,
+                },
+            )
+            .unwrap();
         assert!((result.score - 8.0).abs() < 0.01, "score={}", result.score);
         assert_eq!(result.row, 4);
         assert_eq!(result.col, 4);
@@ -270,24 +340,32 @@ mod tests {
 
     #[tokio::test]
     async fn test_single_base_match() {
-        let Some(device) = test_pool::get_test_device_if_f64_gpu_available().await else { return; };
+        let Some(device) = test_pool::get_test_device_if_f64_gpu_available().await else {
+            return;
+        };
         let sw = SmithWatermanGpu::new(&device);
         // Only A matches
         let q = vec![0u32, 3, 3, 3]; // ATTT
         let t = vec![3u32, 3, 0, 3]; // TTAT
-        let result = sw.align(&q, &t, &dna_subst(), &SwConfig::default()).unwrap();
+        let result = sw
+            .align(&q, &t, &dna_subst(), &SwConfig::default())
+            .unwrap();
         // Best match: A(q[0]) vs A(t[2]) or T runs → at least score 2.0
         assert!(result.score >= 2.0, "score={}", result.score);
     }
 
     #[tokio::test]
     async fn test_no_match() {
-        let Some(device) = test_pool::get_test_device_if_f64_gpu_available().await else { return; };
+        let Some(device) = test_pool::get_test_device_if_f64_gpu_available().await else {
+            return;
+        };
         let sw = SmithWatermanGpu::new(&device);
         // All mismatches → score 0 (local alignment floor)
         let q = vec![0u32, 0, 0]; // AAA
         let t = vec![3u32, 3, 3]; // TTT
-        let result = sw.align(&q, &t, &dna_subst(), &SwConfig::default()).unwrap();
+        let result = sw
+            .align(&q, &t, &dna_subst(), &SwConfig::default())
+            .unwrap();
         assert_eq!(result.score, 0.0);
     }
 }

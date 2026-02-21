@@ -1,4 +1,4 @@
-# Status -- February 20, 2026 (Session 24: Test Graduation + Cross-Repo Debt)
+# Status -- February 21, 2026 (Session 25: Unit Test Coverage Expansion)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | Clean |
 | `cargo clippy --workspace --tests -- -D warnings` | PASS | **Clean (including test code)** |
 | `cargo doc --workspace --no-deps` | PASS | **Clean** |
-| `cargo test --workspace` | PASS | **15,900+ tests passed** |
+| `cargo test --workspace` | PASS | **16,070+ tests passed** |
 | `cargo llvm-cov` (non-GPU) | PASS | **Exit 0 — no SIGSEGV** |
 | hotSpring validation | PASS | **195/195 acceptance checks** |
 | wetSpring validation | PASS | **48/48 life science checks** |
@@ -18,11 +18,43 @@
 | Zero-copy hot paths | PASS | **bytes::Bytes on all binary RPC payloads** |
 | Hardcoded IPs/DNS | PASS | **0 remaining — capability-based** |
 | Integration test suites | PASS | **13 suites, 167 tests** |
-| Line coverage (non-GPU) | PASS | **63.02% (+1.67 pp from 61.35%)** |
+| Line coverage (non-GPU) | PASS | **~65% (target 90%)** |
 
 *All clippy warnings resolved. Workspace fully clean. Tested with `--tests` flag.*
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). `crates/client` excluded (pending reqwest migration to biomeOS tower).
+
+---
+
+## Session 25 Evolutions (Feb 21, 2026) ✅
+
+### Unit Test Coverage Expansion — 172 New Tests ✅
+
+Comprehensive unit test additions across core modules to improve coverage toward 90% target:
+
+| Module | Tests Added | Description |
+|--------|-------------|-------------|
+| `toadstool-common/service_discovery/endpoint.rs` | 13 | URL parsing for `ServiceEndpoint::from_url_string()` |
+| `barracuda/ops/expand/compute.rs` | 19 | Broadcasting shape computation, stride calculations |
+| `barracuda/dispatch/config.rs` | 14 | Dispatch thresholds, GPU routing, force CPU/GPU |
+| `barracuda/workload.rs` | 27 | Workload classification, sparsity analysis, device selection |
+| `barracuda/resource_quota.rs` | 22 | Quota tracking, VRAM limits, device requirements |
+| `barracuda/numerical/rk45.rs` | 16 | ODE solver config builders, error paths, max steps |
+| `toadstool/composition_constraints/constraint.rs` | 8 | Hard/soft constraint classification, serialization |
+| `toadstool/composition_constraints/evaluation.rs` | 8 | Satisfaction scoring, constraint evaluation |
+| `toadstool/composition_constraints/request.rs` | 13 | Composition requests, priorities, metadata |
+| `toadstool/universal/types.rs` | 16 | `SecurityLevel`, `PrimalType`, `NetworkLocation`, `PrimalContext` |
+| `toadstool/execution.rs` | 16 | `ExecutionStatus`, `RuntimeType`, `ExecutionInput/Output` |
+
+**New builder methods added to `Rk45Config`**:
+- `with_max_steps(usize)` — Set maximum number of integration steps
+- `with_safety(f64)` — Set safety factor for step size adjustment
+
+**Bug fixes**:
+- Fixed unused import warning in `ipc/server.rs`
+- Fixed case-sensitivity in `runtime.rs` test error message matching
+
+All 172 new tests pass. Tests focus on pure CPU logic, serialization roundtrips, builder patterns, error handling paths, and boundary conditions.
 
 ---
 

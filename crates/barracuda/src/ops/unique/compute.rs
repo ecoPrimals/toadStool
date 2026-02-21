@@ -193,7 +193,8 @@ fn read_buffer_u32_last(
     device.queue.submit(Some(encoder.finish()));
 
     let buffer_slice = staging_buffer.slice(..);
-    let (sender, receiver) = std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
+    let (sender, receiver) =
+        std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
     buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
         let _ = sender.send(result);
     });

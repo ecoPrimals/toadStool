@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 20, 2026
+**Last Updated**: February 21, 2026
 
 ---
 
@@ -27,8 +27,9 @@
 
 ---
 
-## Current State (February 20, 2026 — Session 24)
+## Current State (February 21, 2026 — Session 25)
 
+- **Unit Test Coverage Expansion** — 172 new tests across 11 modules (endpoint, expand, dispatch, workload, quota, rk45, constraints, types, execution) (S25)
 - **Integration Tests** — 13 suites, 167 tests; error\_paths\_discovery, fault/chaos, security/penetration graduated (S24)
 - **GemmCachedF64** — GPU-resident weight matrix B; 60× dispatch speedup; `GemmF64::WGSL` as `pub const`
 - **TensorSession ML ops** — matmul, relu, gelu, softmax, layer\_norm, attention, head\_split/concat absorbed
@@ -56,7 +57,7 @@
 - **Math Primitives Absorbed** — Broyden mixing, FD gradients, weighted inner products, Hermite/Laguerre f64
 - **84 new evolution tests** — 47 hotSpring + 37 three springs (unit, E2E, chaos, fault, precision)
 - **0 clippy warnings with -D warnings**
-- **15,900+ tests passing**, 0 failing (500+ scientific middleware, 167 integration)
+- **16,070+ tests passing**, 0 failing (500+ scientific middleware, 167 integration, 172 new unit tests)
 - **480+ WGSL shaders** — **SHADER-FIRST ARCHITECTURE**
 - **Shader-first**: ALL math is WGSL primary, ToadStool dispatches to GPU/CPU
 - **Scientific middleware** (14 modules: linalg, linalg::sparse, numerical, special, stats, optimize, surrogate, sample, pde, interpolate, dispatch, pipeline, mixing, grid — 400+ tests, 0 unsafe)

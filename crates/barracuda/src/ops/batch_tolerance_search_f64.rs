@@ -48,7 +48,11 @@ impl BatchToleranceSearchF64 {
 
     /// Create a new tolerance searcher.
     pub fn new(device: Arc<WgpuDevice>, ppm_tol: f64, da_tol: f64) -> Self {
-        Self { device, ppm_tol, da_tol }
+        Self {
+            device,
+            ppm_tol,
+            da_tol,
+        }
     }
 
     /// Search `sample_masses` against `ref_masses`.
@@ -114,10 +118,22 @@ impl BatchToleranceSearchF64 {
             label: Some("TolSearch BG"),
             layout: &bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: cfg_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: sample_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: ref_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: out_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: cfg_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: sample_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: ref_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: out_buf.as_entire_binding(),
+                },
             ],
         });
 
@@ -188,7 +204,11 @@ mod tests {
         let refs = vec![100.0_f64, 250.0];
         let scores = searcher.search(&samples, &refs).unwrap();
         // samples[0]=100 matches refs[0]=100 exactly → score 1.0
-        assert!((scores[0] - 1.0).abs() < 1e-6, "exact match = 1.0, got {}", scores[0]);
+        assert!(
+            (scores[0] - 1.0).abs() < 1e-6,
+            "exact match = 1.0, got {}",
+            scores[0]
+        );
         // samples[0]=100 vs refs[1]=250 → no match → 0.0
         assert!(scores[1].abs() < 1e-6, "no match = 0.0, got {}", scores[1]);
     }
@@ -204,6 +224,10 @@ mod tests {
         let samples = vec![200.0 + tol * 0.5];
         let refs = vec![200.0_f64];
         let scores = searcher.search(&samples, &refs).unwrap();
-        assert!(scores[0] > 0.4 && scores[0] < 0.6, "half-tol score ≈ 0.5, got {}", scores[0]);
+        assert!(
+            scores[0] > 0.4 && scores[0] < 0.6,
+            "half-tol score ≈ 0.5, got {}",
+            scores[0]
+        );
     }
 }

@@ -94,8 +94,8 @@ fn gauge_force(t: u32, x: u32, mu: u32) -> f64 {
 
     // Sum over the two plaquettes touching link (s, mu).
     // Plaquette at x: contains (s, mu) with positive orientation
-    let theta_p_fwd: f64;
-    let theta_p_bwd: f64;
+    var theta_p_fwd: f64 = 0.0;
+    var theta_p_bwd: f64 = 0.0;
     if (mu == 0u) {
         // t-link at (t,x): plaquettes at (t,x) and (t-1,x)
         theta_p_fwd = plaquette_angle(t, x);
@@ -107,7 +107,9 @@ fn gauge_force(t: u32, x: u32, mu: u32) -> f64 {
         let x_bwd = (x + params.ns - 1u) % params.ns;
         theta_p_bwd = plaquette_angle(t, x_bwd);
     }
-    let gauge_f = params.beta_pl * (sin(theta_p_fwd) + sin(theta_p_bwd));
+    // sin(f64) is not a WGSL builtin; extract Im(e^{iθ}) via c64_phase which
+    // routes through the NVK exp/log workaround when compiled with compile_shader_f64.
+    let gauge_f = params.beta_pl * (c64_phase(theta_p_fwd).y + c64_phase(theta_p_bwd).y);
 
     // Hopping term: Im[ φ†(x) e^{iθ} φ(x+mu) ]
     let phi_x  = load_phi(s);
@@ -127,31 +129,37 @@ fn gauge_force(t: u32, x: u32, mu: u32) -> f64 {
 // Force: dp_higgs/dt = -2 * dS/dφ†(x)   ← factor 2 from Wirtinger convention
 
 fn higgs_force(t: u32, x: u32) -> vec2<f64> {
+    // Rewritten using raw f64 arithmetic to avoid Naga nested-call type
+    // inference issues with c64_scale / c64_add on this wgpu version.
     let s = site(t, x);
     let phi = load_phi(s);
-    let phi_abs_sq = c64_abs_sq(phi);
+    let phi_abs_sq = phi.x * phi.x + phi.y * phi.y;
 
-    var covar_sum = c64_zero();
+    // Covariant hopping sum: Σ_mu [ e^{iθ(x,mu)} φ(x+mu) + e^{-iθ(x-mu,mu)} φ(x-mu) ]
+    var sum_re: f64 = 0.0;
+    var sum_im: f64 = 0.0;
     for (var mu = 0u; mu < 2u; mu = mu + 1u) {
-        // Forward covariant hop: e^{i θ_mu(x)} φ(x+mu)
-        let s_fw    = fwd(t, x, mu);
-        let theta_f = load_theta(s, mu);
-        covar_sum = c64_add(covar_sum, c64_mul(c64_phase(theta_f), load_phi(s_fw)));
+        // Forward hop: e^{i θ_mu(x)} φ(x+mu)
+        let p_f   = c64_phase(load_theta(s, mu));
+        let phi_f = load_phi(fwd(t, x, mu));
+        sum_re = sum_re + p_f.x * phi_f.x - p_f.y * phi_f.y;
+        sum_im = sum_im + p_f.x * phi_f.y + p_f.y * phi_f.x;
 
-        // Backward covariant hop: e^{-i θ_mu(x-mu)} φ(x-mu)
-        let s_bw    = bwd(t, x, mu);
-        let theta_b = load_theta(s_bw, mu);
-        covar_sum = c64_add(covar_sum, c64_mul(c64_phase(-theta_b), load_phi(s_bw)));
+        // Backward hop: e^{-i θ_mu(x-mu)} φ(x-mu)
+        let s_bw  = bwd(t, x, mu);
+        let p_b   = c64_phase(-load_theta(s_bw, mu));
+        let phi_b = load_phi(s_bw);
+        sum_re = sum_re + p_b.x * phi_b.x - p_b.y * phi_b.y;
+        sum_im = sum_im + p_b.x * phi_b.y + p_b.y * phi_b.x;
     }
 
-    let potential_coeff = 2.0 * params.lambda * (phi_abs_sq - 1.0) + params.mu_sq;
-    let dS_dphi_conj    = c64_add(
-        c64_scale(covar_sum, params.kappa),
-        c64_scale(phi, potential_coeff),
-    );
+    // dS/dφ† = kappa * covar_sum + (2λ(|φ|²-1) + μ²) * φ
+    let potential = f64(2.0) * params.lambda * (phi_abs_sq - f64(1.0)) + params.mu_sq;
+    let dS_re = params.kappa * sum_re + potential * phi.x;
+    let dS_im = params.kappa * sum_im + potential * phi.y;
 
-    // Wirtinger factor of 2
-    return c64_scale(dS_dphi_conj, -2.0);
+    // Wirtinger factor of -2:  dp/dt = -2 dS/dφ†
+    return vec2<f64>(f64(-2.0) * dS_re, f64(-2.0) * dS_im);
 }
 
 // ── Kernel: half-kick momenta ─────────────────────────────────────────────────

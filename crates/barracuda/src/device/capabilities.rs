@@ -314,9 +314,9 @@ impl DeviceCapabilities {
                 // Larger tiles for discrete GPU (more shared memory)
                 match self.vendor {
                     VENDOR_NVIDIA => 32, // NVIDIA - 32x32 tiles (1024 threads)
-                    VENDOR_AMD => 32, // AMD - 32x32 tiles
-                    VENDOR_INTEL => 16, // Intel - smaller tiles
-                    _ => 16,      // Conservative default
+                    VENDOR_AMD => 32,    // AMD - 32x32 tiles
+                    VENDOR_INTEL => 16,  // Intel - smaller tiles
+                    _ => 16,             // Conservative default
                 }
             }
             wgpu::DeviceType::IntegratedGpu => 16, // Smaller for integrated
@@ -502,7 +502,6 @@ impl fmt::Display for DeviceCapabilities {
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {

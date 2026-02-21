@@ -67,7 +67,12 @@ pub(crate) struct BufferPoolInner {
 
 impl BufferPoolInner {
     fn return_buffer(&self, buffer: wgpu::Buffer, bucket: usize) {
-        self.pools.write().expect("pools poisoned").entry(bucket).or_default().push(buffer);
+        self.pools
+            .write()
+            .expect("pools poisoned")
+            .entry(bucket)
+            .or_default()
+            .push(buffer);
         self.reuses.fetch_add(1, Ordering::Relaxed);
     }
 }
@@ -210,7 +215,13 @@ impl BufferPool {
 
     pub fn release(&self, buffer: wgpu::Buffer) {
         let bucket = Self::bucket_size(buffer.size() as usize);
-        self.inner.pools.write().expect("pools poisoned").entry(bucket).or_default().push(buffer);
+        self.inner
+            .pools
+            .write()
+            .expect("pools poisoned")
+            .entry(bucket)
+            .or_default()
+            .push(buffer);
     }
 
     pub fn stats(&self) -> (usize, usize) {

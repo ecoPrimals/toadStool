@@ -439,7 +439,7 @@ mod tests {
         };
         let result = orch_no_engine.execute(request).await;
         assert!(result.is_err());
-        let err_str = result.unwrap_err().to_string();
+        let err_str = result.unwrap_err().to_string().to_lowercase();
         assert!(
             err_str.contains("not available") || err_str.contains("not found"),
             "Expected 'not available' or 'not found', got: {err_str}"

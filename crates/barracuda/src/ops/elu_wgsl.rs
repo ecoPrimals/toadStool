@@ -33,7 +33,10 @@ pub struct ELU {
 
 impl ELU {
     pub fn new(input: Tensor) -> Self {
-        Self { input, alpha: ELU_DEFAULT_ALPHA }
+        Self {
+            input,
+            alpha: ELU_DEFAULT_ALPHA,
+        }
     }
 
     pub fn with_alpha(input: Tensor, alpha: f32) -> Self {
@@ -55,14 +58,16 @@ impl ELU {
 
         let output_buffer = ctx.acquire_pooled_output(size);
 
-        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("ELU Params"),
-            contents: bytemuck::bytes_of(&Params {
-                size: size as u32,
-                alpha: self.alpha,
-            }),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buf = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("ELU Params"),
+                contents: bytemuck::bytes_of(&Params {
+                    size: size as u32,
+                    alpha: self.alpha,
+                }),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let layout_sig = BindGroupLayoutSignature::reduction();
         let adapter_info = device.adapter_info();
@@ -73,8 +78,8 @@ impl ELU {
             Some("ELU BGL"),
         );
 
-        let bind_group = std::sync::Arc::new(device.device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
+        let bind_group =
+            std::sync::Arc::new(device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("ELU BG"),
                 layout: &bgl,
                 entries: &[
@@ -91,8 +96,7 @@ impl ELU {
                         resource: params_buf.as_entire_binding(),
                     },
                 ],
-            },
-        ));
+            }));
 
         let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
             device.device(),

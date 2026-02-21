@@ -323,7 +323,6 @@ impl PrimalDiscovery {
     //
     // See: docs/architecture/INFANT_DISCOVERY.md for full architecture
     // ========================================================================
-
 }
 
 /// Discovery errors

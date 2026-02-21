@@ -270,7 +270,7 @@ pub struct AppleMLatencyModel;
 impl LatencyModel for AppleMLatencyModel {
     fn raw_latency(&self, op: WgslOpClass) -> u32 {
         match op {
-            WgslOpClass::F64Fma => 16,      // software-emulated: 4× f32 pipeline
+            WgslOpClass::F64Fma => 16, // software-emulated: 4× f32 pipeline
             WgslOpClass::F64MulAdd => 32,
             WgslOpClass::F64Transcend => 40,
             WgslOpClass::F32Fma => 4,

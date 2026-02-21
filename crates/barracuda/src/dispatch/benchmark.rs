@@ -31,6 +31,7 @@
 
 use crate::error::{BarracudaError, Result};
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// Configuration for benchmarking
@@ -196,16 +197,13 @@ pub struct BenchmarkResult {
 
 impl BenchmarkResult {
     /// Get optimal thresholds for all operations
-    pub fn optimal_thresholds(&self) -> HashMap<&'static str, usize> {
+    pub fn optimal_thresholds(&self) -> HashMap<Arc<str>, usize> {
         let mut thresholds = HashMap::new();
 
         for (name, bench) in &self.operations {
             let threshold =
                 bench.optimal_threshold(self.config.min_speedup, self.config.safety_margin);
-            // Note: We need 'static str for DispatchConfig, so we leak the string
-            // This is acceptable for threshold configuration which lives for program duration
-            let name_static: &'static str = Box::leak(name.clone().into_boxed_str());
-            thresholds.insert(name_static, threshold);
+            thresholds.insert(Arc::from(name.as_str()), threshold);
         }
 
         thresholds

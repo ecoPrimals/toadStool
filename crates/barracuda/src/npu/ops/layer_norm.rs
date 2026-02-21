@@ -81,8 +81,7 @@ pub fn npu_layer_norm(input: &[f32], gamma: &[f32], beta: &[f32], eps: f32) -> R
     let device = get_test_device_sync();
 
     // Create tensors from raw data
-    let input_tensor =
-        Tensor::from_vec_on_sync(input.to_vec(), vec![n], device)?;
+    let input_tensor = Tensor::from_vec_on_sync(input.to_vec(), vec![n], device)?;
 
     // Execute LayerNorm using WGSL shader (same as GPU/CPU!)
     // This uses ops/layer_norm.rs → shaders/layer_norm.wgsl
@@ -91,16 +90,10 @@ pub fn npu_layer_norm(input: &[f32], gamma: &[f32], beta: &[f32], eps: f32) -> R
 
     // Apply scale (gamma) and shift (beta) manually.
     // Pending: Evolve Tensor::layer_norm_wgsl() to accept gamma/beta; API change in barracuda.
-    let gamma_tensor = Tensor::from_vec_on_sync(
-        gamma.to_vec(),
-        vec![n],
-        normalized_tensor.device().clone(),
-    )?;
-    let beta_tensor = Tensor::from_vec_on_sync(
-        beta.to_vec(),
-        vec![n],
-        normalized_tensor.device().clone(),
-    )?;
+    let gamma_tensor =
+        Tensor::from_vec_on_sync(gamma.to_vec(), vec![n], normalized_tensor.device().clone())?;
+    let beta_tensor =
+        Tensor::from_vec_on_sync(beta.to_vec(), vec![n], normalized_tensor.device().clone())?;
 
     // Apply: output = normalized * gamma + beta
     let result_tensor = normalized_tensor.mul(&gamma_tensor)?.add(&beta_tensor)?;

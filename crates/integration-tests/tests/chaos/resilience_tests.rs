@@ -4,8 +4,8 @@
 //! maintain invariants under load, and do not lose state.
 
 use std::time::Duration;
-use tokio::time::timeout;
 use toadstool_testing::chaos::{ChaosScenario, FaultType, ResourceType, SystemState};
+use tokio::time::timeout;
 
 #[tokio::test]
 async fn test_system_state_default_is_empty() {
@@ -46,7 +46,10 @@ async fn test_recovery_after_network_partition() {
         .with_timeout(Duration::from_secs(10));
 
     let result = timeout(Duration::from_secs(15), scenario.run()).await;
-    assert!(result.is_ok(), "Recovery scenario should complete within timeout");
+    assert!(
+        result.is_ok(),
+        "Recovery scenario should complete within timeout"
+    );
 }
 
 #[tokio::test]
@@ -59,7 +62,10 @@ async fn test_resilience_to_high_latency() {
         .with_timeout(Duration::from_secs(10));
 
     let result = timeout(Duration::from_secs(15), scenario.run()).await;
-    assert!(result.is_ok(), "System should remain resilient under high latency");
+    assert!(
+        result.is_ok(),
+        "System should remain resilient under high latency"
+    );
 }
 
 #[tokio::test]
@@ -148,5 +154,8 @@ async fn test_process_crash_recovery() {
         .with_timeout(Duration::from_secs(5));
 
     let result = timeout(Duration::from_secs(10), scenario.run()).await;
-    assert!(result.is_ok(), "System should handle simulated process crash");
+    assert!(
+        result.is_ok(),
+        "System should handle simulated process crash"
+    );
 }

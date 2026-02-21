@@ -386,7 +386,8 @@ mod tests {
     #[test]
     fn test_get_discovery_file_paths_tmp_path() {
         let paths = get_tcp_discovery_file_paths();
-        let tmp_path = PathBuf::from("/tmp/toadstool-ipc-port");
+        // Use std::env::temp_dir() for platform-agnostic test
+        let tmp_path = std::env::temp_dir().join("toadstool-ipc-port");
         assert!(paths.contains(&tmp_path));
     }
 }

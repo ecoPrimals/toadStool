@@ -266,7 +266,7 @@ impl ComputeExecutor for GpuExecutor {
             storage: &Arc<dyn TensorStorage>,
             device: &Arc<crate::device::WgpuDevice>,
         ) -> Result<crate::tensor::Tensor> {
-            let desc  = storage.descriptor();
+            let desc = storage.descriptor();
             let shape = desc.shape.clone();
 
             // Zero-copy path: storage already has a wgpu::Buffer
@@ -281,12 +281,14 @@ impl ComputeExecutor for GpuExecutor {
             // Fallback: read from CPU and upload (cross-device or CPU storage)
             let data_bytes = storage.read_to_cpu().await?;
             let numel = desc.numel;
-            let elem  = desc.dtype.size_bytes();
+            let elem = desc.dtype.size_bytes();
             if data_bytes.len() < numel * elem {
                 return Err(crate::error::BarracudaError::InvalidInput {
                     message: format!(
                         "execute: expected {} bytes for {numel} × {dtype:?} elements, got {}",
-                        numel * elem, data_bytes.len(), dtype = desc.dtype
+                        numel * elem,
+                        data_bytes.len(),
+                        dtype = desc.dtype
                     ),
                 });
             }
@@ -390,7 +392,7 @@ impl ComputeExecutor for GpuExecutor {
         // `GpuTensorStorage::from_tensor` shares the Tensor's Arc<wgpu::Buffer>
         // (owned path) or issues a GPU-side copy_buffer_to_buffer (pooled path).
         // In either case, no GPU→CPU→GPU round-trip occurs. D-S16-001 resolved.
-        let out_dtype   = inputs[0].descriptor().dtype;
+        let out_dtype = inputs[0].descriptor().dtype;
         let out_storage = GpuTensorStorage::from_tensor(&output_tensor, out_dtype);
         Ok(Arc::new(out_storage))
     }
@@ -430,22 +432,26 @@ impl ComputeExecutor for GpuExecutor {
 /// round-trip when wrapping an executed output back into TensorStorage.
 struct GpuTensorStorage {
     descriptor: TensorDescriptor,
-    device:     Arc<WgpuDevice>,
-    buffer:     Arc<wgpu::Buffer>,
+    device: Arc<WgpuDevice>,
+    buffer: Arc<wgpu::Buffer>,
 }
 
 impl GpuTensorStorage {
     fn new(descriptor: TensorDescriptor, device: Arc<WgpuDevice>) -> Self {
         let byte_size = (descriptor.numel * descriptor.dtype.size_bytes()) as u64;
         let buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label:              Some("GpuTensorStorage"),
-            size:               byte_size.max(4), // wgpu requires size ≥ 4
-            usage:              wgpu::BufferUsages::STORAGE
+            label: Some("GpuTensorStorage"),
+            size: byte_size.max(4), // wgpu requires size ≥ 4
+            usage: wgpu::BufferUsages::STORAGE
                 | wgpu::BufferUsages::COPY_SRC
                 | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        Self { descriptor, device, buffer: Arc::new(buffer) }
+        Self {
+            descriptor,
+            device,
+            buffer: Arc::new(buffer),
+        }
     }
 
     /// Zero-copy construction from a `Tensor` output.
@@ -457,20 +463,27 @@ impl GpuTensorStorage {
     fn from_tensor(tensor: &crate::tensor::Tensor, dtype: DType) -> Self {
         let shape = tensor.shape().to_vec();
         let numel: usize = shape.iter().product();
-        let desc   = TensorDescriptor::new(shape, dtype);
+        let desc = TensorDescriptor::new(shape, dtype);
 
         if let Some(arc) = tensor.try_arc_buffer() {
             // Fast path: share the buffer, zero copies.
-            Self { descriptor: desc, device: tensor.device().clone(), buffer: arc }
+            Self {
+                descriptor: desc,
+                device: tensor.device().clone(),
+                buffer: arc,
+            }
         } else {
             // Pooled buffer: allocate our own storage and copy.
             let new = Self::new(desc, tensor.device().clone());
             // Synchronous upload — the Tensor's content is already on GPU;
             // copy_buffer_to_buffer moves it without touching the CPU.
             let byte_size = (numel * dtype.size_bytes()) as u64;
-            let mut enc = new.device.device.create_command_encoder(
-                &wgpu::CommandEncoderDescriptor { label: Some("GpuTensorStorage copy") },
-            );
+            let mut enc =
+                new.device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("GpuTensorStorage copy"),
+                    });
             enc.copy_buffer_to_buffer(tensor.buffer(), 0, &new.buffer, 0, byte_size);
             new.device.queue.submit(Some(enc.finish()));
             new
@@ -496,35 +509,36 @@ impl TensorStorage for GpuTensorStorage {
     }
 
     async fn read_to_cpu(&self) -> Result<Vec<u8>> {
-        let numel     = self.descriptor.numel;
+        let numel = self.descriptor.numel;
         let elem_size = self.descriptor.dtype.size_bytes();
         let byte_size = (numel * elem_size) as u64;
 
         // Staging buffer for map-read
         let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label:              Some("GpuTensorStorage read staging"),
-            size:               byte_size.max(4),
-            usage:              wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            label: Some("GpuTensorStorage read staging"),
+            size: byte_size.max(4),
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
-        let mut encoder = self.device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor { label: Some("GpuTensorStorage read") },
-        );
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("GpuTensorStorage read"),
+                });
         encoder.copy_buffer_to_buffer(&self.buffer, 0, &staging, 0, byte_size);
         self.device.queue.submit(Some(encoder.finish()));
 
         let slice = staging.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+        slice.map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
         self.device.device.poll(wgpu::Maintain::Wait);
         rx.recv()
-            .map_err(|_| crate::error::BarracudaError::Gpu(
-                "map_async channel closed".to_string(),
-            ))?
-            .map_err(|e| crate::error::BarracudaError::Gpu(
-                format!("Buffer map failed: {e:?}"),
-            ))?;
+            .map_err(|_| crate::error::BarracudaError::Gpu("map_async channel closed".to_string()))?
+            .map_err(|e| crate::error::BarracudaError::Gpu(format!("Buffer map failed: {e:?}")))?;
 
         let data = slice.get_mapped_range().to_vec();
         staging.unmap();

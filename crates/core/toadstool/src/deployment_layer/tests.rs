@@ -196,9 +196,16 @@ async fn test_detect_reset_then_redetect() {
 // ── Cloud detection via environment variables ─────────────────────────────────
 // Each test uses a distinct env var not shared with any other test, so they
 // are safe to run in parallel without a mutex guard across the await point.
+//
+// SAFETY: `std::env::set_var`/`remove_var` are unsafe in Rust 1.68+ because
+// concurrent reads can race with modifications. These tests use distinct env
+// vars (AWS_EXECUTION_ENV, GCP_PROJECT, AZURE_SUBSCRIPTION_ID) that no other
+// code reads concurrently during testing. The env var is removed immediately
+// after the detection call completes, minimizing the window for races.
 
 #[tokio::test]
 async fn test_detect_aws_via_env() {
+    // SAFETY: See module-level SAFETY comment above.
     unsafe { std::env::set_var("AWS_EXECUTION_ENV", "AWS_ECS_EC2") };
     let mut detector = LayerDetector::new();
     let layer = detector.detect().await.expect("detect should succeed");
@@ -214,6 +221,7 @@ async fn test_detect_aws_via_env() {
 
 #[tokio::test]
 async fn test_detect_gcp_via_env() {
+    // SAFETY: See module-level SAFETY comment above.
     unsafe { std::env::set_var("GCP_PROJECT", "my-test-project") };
     let mut detector = LayerDetector::new();
     let _ = detector
@@ -225,6 +233,7 @@ async fn test_detect_gcp_via_env() {
 
 #[tokio::test]
 async fn test_detect_azure_via_env() {
+    // SAFETY: See module-level SAFETY comment above.
     unsafe {
         std::env::set_var(
             "AZURE_SUBSCRIPTION_ID",

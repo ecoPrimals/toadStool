@@ -38,7 +38,8 @@ pub use forces::*;
 pub use integrators::*;
 pub use neighbor::{CellList, CellListGpu};
 pub use observables::{
-    compute_msd, compute_rdf, compute_ssf, compute_vacf, KineticEnergy, Msd, Rdf, Vacf,
+    compute_msd, compute_rdf, compute_ssf, compute_vacf, KineticEnergy, KineticEnergyF64, Msd, Rdf,
+    RdfHistogramF64, SsfGpu, Vacf, VacfGpu,
 };
 pub use pbc::{DistanceMetric, PbcDistance};
 pub use thermostats::{

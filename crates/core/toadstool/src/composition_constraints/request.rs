@@ -89,3 +89,145 @@ impl fmt::Display for CompositionRequest {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_request() {
+        let request = CompositionRequest::new("test_workload");
+        assert_eq!(request.name, "test_workload");
+        assert!(request.constraints.is_empty());
+        assert_eq!(request.priority, ConstraintPriority::Normal);
+        assert!(request.metadata.is_empty());
+    }
+
+    #[test]
+    fn test_with_constraint() {
+        let request = CompositionRequest::new("test")
+            .with_constraint(Constraint::RequiresGPU)
+            .with_constraint(Constraint::MinMemoryGB(8.0));
+
+        assert_eq!(request.constraints.len(), 2);
+        assert_eq!(request.constraints[0], Constraint::RequiresGPU);
+        assert_eq!(request.constraints[1], Constraint::MinMemoryGB(8.0));
+    }
+
+    #[test]
+    fn test_with_priority() {
+        let request = CompositionRequest::new("test").with_priority(ConstraintPriority::Critical);
+
+        assert_eq!(request.priority, ConstraintPriority::Critical);
+    }
+
+    #[test]
+    fn test_with_metadata() {
+        let request = CompositionRequest::new("test")
+            .with_metadata("user", "alice")
+            .with_metadata("session", "12345");
+
+        assert_eq!(request.metadata.get("user"), Some(&"alice".to_string()));
+        assert_eq!(request.metadata.get("session"), Some(&"12345".to_string()));
+    }
+
+    #[test]
+    fn test_hard_constraints() {
+        let request = CompositionRequest::new("test")
+            .with_constraint(Constraint::RequiresGPU)
+            .with_constraint(Constraint::PrefersGPU)
+            .with_constraint(Constraint::MinMemoryGB(8.0))
+            .with_constraint(Constraint::PreferLocal);
+
+        let hard = request.hard_constraints();
+        assert_eq!(hard.len(), 2);
+        assert!(hard.iter().all(|c| c.is_hard()));
+    }
+
+    #[test]
+    fn test_soft_constraints() {
+        let request = CompositionRequest::new("test")
+            .with_constraint(Constraint::RequiresGPU)
+            .with_constraint(Constraint::PrefersGPU)
+            .with_constraint(Constraint::MinMemoryGB(8.0))
+            .with_constraint(Constraint::PreferLocal);
+
+        let soft = request.soft_constraints();
+        assert_eq!(soft.len(), 2);
+        assert!(soft.iter().all(|c| c.is_soft()));
+    }
+
+    #[test]
+    fn test_constraint_count() {
+        let request = CompositionRequest::new("test")
+            .with_constraint(Constraint::RequiresGPU)
+            .with_constraint(Constraint::PrefersGPU)
+            .with_constraint(Constraint::MinMemoryGB(8.0))
+            .with_constraint(Constraint::PreferLocal)
+            .with_constraint(Constraint::MustBeLocal);
+
+        let (hard, soft) = request.constraint_count();
+        assert_eq!(hard, 3);
+        assert_eq!(soft, 2);
+    }
+
+    #[test]
+    fn test_constraint_priority_ordering() {
+        assert!(ConstraintPriority::Background < ConstraintPriority::Normal);
+        assert!(ConstraintPriority::Normal < ConstraintPriority::High);
+        assert!(ConstraintPriority::High < ConstraintPriority::Critical);
+    }
+
+    #[test]
+    fn test_constraint_priority_display() {
+        assert_eq!(format!("{}", ConstraintPriority::Background), "Background");
+        assert_eq!(format!("{}", ConstraintPriority::Normal), "Normal");
+        assert_eq!(format!("{}", ConstraintPriority::High), "High");
+        assert_eq!(format!("{}", ConstraintPriority::Critical), "Critical");
+    }
+
+    #[test]
+    fn test_constraint_priority_default() {
+        let priority: ConstraintPriority = Default::default();
+        assert_eq!(priority, ConstraintPriority::Normal);
+    }
+
+    #[test]
+    fn test_request_display() {
+        let request = CompositionRequest::new("ml_inference")
+            .with_constraint(Constraint::RequiresGPU)
+            .with_constraint(Constraint::PrefersGPU)
+            .with_priority(ConstraintPriority::High);
+
+        let display = format!("{}", request);
+        assert!(display.contains("ml_inference"));
+        assert!(display.contains("High"));
+        assert!(display.contains("1 hard"));
+        assert!(display.contains("1 soft"));
+    }
+
+    #[test]
+    fn test_request_serde_roundtrip() {
+        let request = CompositionRequest::new("test")
+            .with_constraint(Constraint::RequiresGPU)
+            .with_constraint(Constraint::MinMemoryGB(16.0))
+            .with_priority(ConstraintPriority::Critical)
+            .with_metadata("key", "value");
+
+        let json = serde_json::to_string(&request).unwrap();
+        let deserialized: CompositionRequest = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(request.name, deserialized.name);
+        assert_eq!(request.constraints.len(), deserialized.constraints.len());
+        assert_eq!(request.priority, deserialized.priority);
+        assert_eq!(request.metadata, deserialized.metadata);
+    }
+
+    #[test]
+    fn test_empty_request_constraint_count() {
+        let request = CompositionRequest::new("empty");
+        let (hard, soft) = request.constraint_count();
+        assert_eq!(hard, 0);
+        assert_eq!(soft, 0);
+    }
+}

@@ -32,18 +32,18 @@ use std::time::Instant;
 #[tokio::test]
 async fn chaos_complex_large_scale() {
     let device = Arc::new(WgpuDevice::new().await.unwrap());
-    
+
     // Chaos: 1M complex numbers
     let size = 1_000_000;
     let data: Vec<f32> = (0..size * 2).map(|i| (i as f32) % 100.0).collect();
-    
+
     let tensor = Tensor::from_data(&data, vec![size, 2], device.clone()).unwrap();
-    
+
     let start = Instant::now();
     let mul_op = ComplexMul::new(tensor.clone(), tensor.clone()).unwrap();
     let result = mul_op.execute().unwrap();
     let elapsed = start.elapsed();
-    
+
     println!("✅ ComplexMul 1M elements: {:?}", elapsed);
     assert!(result.len() == size * 2, "Result size matches");
     assert!(elapsed.as_secs() < 10, "Completed in reasonable time");
@@ -52,18 +52,20 @@ async fn chaos_complex_large_scale() {
 #[tokio::test]
 async fn chaos_fft_large_scale() {
     let device = Arc::new(WgpuDevice::new().await.unwrap());
-    
+
     // Chaos: FFT with 65536 points (2^16)
     let degree = 65536;
-    let data: Vec<f32> = (0..degree * 2).map(|i| ((i as f32) / 1000.0).sin()).collect();
-    
+    let data: Vec<f32> = (0..degree * 2)
+        .map(|i| ((i as f32) / 1000.0).sin())
+        .collect();
+
     let tensor = Tensor::from_data(&data, vec![degree, 2], device.clone()).unwrap();
-    
+
     let start = Instant::now();
     let fft_op = Fft1D::new(tensor, degree as u32).unwrap();
     let result = fft_op.execute().unwrap();
     let elapsed = start.elapsed();
-    
+
     println!("✅ FFT 65K points: {:?}", elapsed);
     assert!(result.len() == degree * 2, "FFT output size correct");
     assert!(elapsed.as_secs() < 30, "FFT completed in reasonable time");
@@ -72,30 +74,35 @@ async fn chaos_fft_large_scale() {
 #[tokio::test]
 async fn chaos_fft_3d_medium_scale() {
     let device = Arc::new(WgpuDevice::new().await.unwrap());
-    
+
     // Chaos: 3D FFT with 64x64x64 = 262K points
     let nx = 64;
     let ny = 64;
     let nz = 64;
     let total = nx * ny * nz;
-    
-    let data: Vec<f32> = (0..total * 2).map(|i| ((i as f32) / 10000.0).cos()).collect();
+
+    let data: Vec<f32> = (0..total * 2)
+        .map(|i| ((i as f32) / 10000.0).cos())
+        .collect();
     let tensor = Tensor::from_data(&data, vec![nx, ny, nz, 2], device.clone()).unwrap();
-    
+
     let start = Instant::now();
     let fft_3d = Fft3D::new(tensor, nx as u32, ny as u32, nz as u32).unwrap();
     let result = fft_3d.execute();
     let elapsed = start.elapsed();
-    
+
     println!("✅ 3D FFT 64³ ({} points): {:?}", total, elapsed);
-    
+
     if let Ok(output) = result {
         assert!(output.len() == total * 2, "3D FFT output size correct");
     } else {
         println!("⚠️  3D FFT failed gracefully (acceptable for large scale)");
     }
-    
-    assert!(elapsed.as_secs() < 60, "3D FFT completed or failed within timeout");
+
+    assert!(
+        elapsed.as_secs() < 60,
+        "3D FFT completed or failed within timeout"
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -105,21 +112,21 @@ async fn chaos_fft_3d_medium_scale() {
 #[tokio::test]
 async fn chaos_precision_extremes_complex() {
     let device = Arc::new(WgpuDevice::new().await.unwrap());
-    
+
     // Chaos: Mix of tiny and huge values
     let data = vec![
-        1e-38f32, 0.0,      // Tiny
-        1e38, 0.0,          // Huge
-        1.0, 1e-38,         // Mixed
-        1e38, 1e-38,        // Extreme mixed
+        1e-38f32, 0.0, // Tiny
+        1e38, 0.0, // Huge
+        1.0, 1e-38, // Mixed
+        1e38, 1e-38, // Extreme mixed
     ];
-    
+
     let tensor = Tensor::from_data(&data, vec![4, 2], device.clone()).unwrap();
-    
+
     // Should not panic (even if some values overflow/underflow)
     let mul_op = ComplexMul::new(tensor.clone(), tensor.clone()).unwrap();
     let result = mul_op.execute();
-    
+
     assert!(result.is_ok(), "Handled precision extremes");
     println!("✅ Precision extremes: No panic");
 }
@@ -127,20 +134,15 @@ async fn chaos_precision_extremes_complex() {
 #[tokio::test]
 async fn chaos_precision_fft_extremes() {
     let device = Arc::new(WgpuDevice::new().await.unwrap());
-    
+
     // Chaos: FFT with extreme magnitudes
-    let data = vec![
-        1e20f32, 0.0,
-        1e-20, 0.0,
-        1e20, 1e-20,
-        0.0, 1e20,
-    ];
-    
+    let data = vec![1e20f32, 0.0, 1e-20, 0.0, 1e20, 1e-20, 0.0, 1e20];
+
     let tensor = Tensor::from_data(&data, vec![4, 2], device.clone()).unwrap();
-    
+
     let fft_op = Fft1D::new(tensor, 4).unwrap();
     let result = fft_op.execute();
-    
+
     // May succeed or fail, but shouldn't panic
     println!("✅ FFT precision extremes: {:?}", result.is_ok());
 }
@@ -152,30 +154,30 @@ async fn chaos_precision_fft_extremes() {
 #[tokio::test]
 async fn chaos_concurrent_complex_ops() {
     let device = Arc::new(WgpuDevice::new().await.unwrap());
-    
+
     // Chaos: 50 concurrent complex operations
     let num_ops = 50;
     let mut handles = vec![];
-    
+
     for i in 0..num_ops {
         let device_clone = device.clone();
         let handle = tokio::spawn(async move {
             let data = vec![i as f32, (i + 1) as f32, (i + 2) as f32, (i + 3) as f32];
             let tensor = Tensor::from_data(&data, vec![2, 2], device_clone).unwrap();
-            
+
             let mul_op = ComplexMul::new(tensor.clone(), tensor.clone()).unwrap();
             mul_op.execute().unwrap();
         });
         handles.push(handle);
     }
-    
+
     // Wait for all
     let start = Instant::now();
     for handle in handles {
         handle.await.unwrap();
     }
     let elapsed = start.elapsed();
-    
+
     println!("✅ {} concurrent ComplexMul: {:?}", num_ops, elapsed);
     assert!(elapsed.as_secs() < 30, "Concurrent ops completed");
 }
@@ -183,11 +185,11 @@ async fn chaos_concurrent_complex_ops() {
 #[tokio::test]
 async fn chaos_concurrent_fft_ops() {
     let device = Arc::new(WgpuDevice::new().await.unwrap());
-    
+
     // Chaos: 20 concurrent FFT operations
     let num_ops = 20;
     let mut handles = vec![];
-    
+
     for i in 0..num_ops {
         let device_clone = device.clone();
         let handle = tokio::spawn(async move {
@@ -195,21 +197,24 @@ async fn chaos_concurrent_fft_ops() {
             let data: Vec<f32> = (0..degree * 2)
                 .map(|j| ((i + j) as f32 / 100.0).sin())
                 .collect();
-            
+
             let tensor = Tensor::from_data(&data, vec![degree, 2], device_clone).unwrap();
             let fft_op = Fft1D::new(tensor, degree as u32).unwrap();
             fft_op.execute().unwrap();
         });
         handles.push(handle);
     }
-    
+
     let start = Instant::now();
     for handle in handles {
         handle.await.unwrap();
     }
     let elapsed = start.elapsed();
-    
-    println!("✅ {} concurrent FFT (256 pts each): {:?}", num_ops, elapsed);
+
+    println!(
+        "✅ {} concurrent FFT (256 pts each): {:?}",
+        num_ops, elapsed
+    );
     assert!(elapsed.as_secs() < 60, "Concurrent FFTs completed");
 }
 
@@ -220,11 +225,11 @@ async fn chaos_concurrent_fft_ops() {
 #[tokio::test]
 async fn chaos_repeated_operations() {
     let device = Arc::new(WgpuDevice::new().await.unwrap());
-    
+
     // Chaos: 1000 repeated operations (memory leak test)
     let iterations = 1000;
     let data = vec![1.0f32, 2.0, 3.0, 4.0];
-    
+
     let start = Instant::now();
     for _ in 0..iterations {
         let tensor = Tensor::from_data(&data, vec![2, 2], device.clone()).unwrap();
@@ -233,10 +238,13 @@ async fn chaos_repeated_operations() {
         // Drop immediately, test cleanup
     }
     let elapsed = start.elapsed();
-    
+
     println!("✅ {} iterations of ComplexMul: {:?}", iterations, elapsed);
     println!("   Average per op: {:?}", elapsed / iterations);
-    assert!(elapsed.as_secs() < 30, "No significant slowdown (memory leak check)");
+    assert!(
+        elapsed.as_secs() < 30,
+        "No significant slowdown (memory leak check)"
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -246,16 +254,16 @@ async fn chaos_repeated_operations() {
 #[tokio::test]
 async fn chaos_mixed_workload() {
     let device = Arc::new(WgpuDevice::new().await.unwrap());
-    
+
     // Chaos: Mix of complex ops and FFTs simultaneously
     let data_complex = vec![1.0f32, 2.0, 3.0, 4.0];
     let data_fft: Vec<f32> = (0..1024).map(|i| (i as f32 / 100.0).sin()).collect();
-    
+
     let tensor_complex = Tensor::from_data(&data_complex, vec![2, 2], device.clone()).unwrap();
     let tensor_fft = Tensor::from_data(&data_fft, vec![512, 2], device.clone()).unwrap();
-    
+
     let start = Instant::now();
-    
+
     // Run both concurrently
     let handle1 = {
         let t = tensor_complex.clone();
@@ -266,7 +274,7 @@ async fn chaos_mixed_workload() {
             }
         })
     };
-    
+
     let handle2 = {
         let t = tensor_fft.clone();
         tokio::spawn(async move {
@@ -276,10 +284,10 @@ async fn chaos_mixed_workload() {
             }
         })
     };
-    
+
     handle1.await.unwrap();
     handle2.await.unwrap();
-    
+
     let elapsed = start.elapsed();
     println!("✅ Mixed workload (100 ComplexMul + 10 FFT): {:?}", elapsed);
 }

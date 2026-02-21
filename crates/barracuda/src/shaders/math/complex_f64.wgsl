@@ -7,9 +7,11 @@
 //   c64_new(re, im)  →  vec2<f64>(re, im)
 //
 // NVK / Mesa NAK note:
-//   c64_exp uses exp(), cos(), sin() builtins.  On nouveau (NVK) these require
-//   the exp/log workaround.  Always compile complex-using shaders through
-//   ShaderTemplate::for_driver_profile() with the exp/log flag set.
+//   c64_exp and c64_phase use sin_f64/cos_f64 (soft polynomial) rather than
+//   native sin()/cos() builtins.  Native f64 sin/cos on NVK generate invalid
+//   SPIRV ("%N never defined").  ShaderTemplate::inject_missing_math_f64 will
+//   auto-inject sin_f64/cos_f64 kernels when this file is compiled via
+//   compile_shader_f64 or ShaderTemplate::for_driver_auto.
 //
 // hotSpring absorption: lattice/complex_f64.rs (v0.5.16, Feb 2026)
 // CPU-validated against paper reference implementations.
@@ -68,16 +70,18 @@ fn c64_div(a: vec2<f64>, b: vec2<f64>) -> vec2<f64> {
 
 // ── Exponential ───────────────────────────────────────────────────────────────
 // e^(x + iy) = e^x · (cos y + i sin y)
-// Requires NVK exp/log workaround when compiled for nouveau.
+// Uses exp_f64/sin_f64/cos_f64 (soft implementations) so NVK drivers compile
+// correctly.  inject_missing_math_f64 auto-injects all three when detected.
 
 fn c64_exp(a: vec2<f64>) -> vec2<f64> {
-    let mag = exp(a.x);
-    return vec2<f64>(mag * cos(a.y), mag * sin(a.y));
+    let mag = exp_f64(a.x);
+    return vec2<f64>(mag * cos_f64(a.y), mag * sin_f64(a.y));
 }
 
 // ── Phase factor ──────────────────────────────────────────────────────────────
 // e^(i·theta) = cos(theta) + i·sin(theta)
+// Uses sin_f64/cos_f64 — native f64 sin/cos broken on NVK (invalid SPIRV).
 
 fn c64_phase(theta: f64) -> vec2<f64> {
-    return vec2<f64>(cos(theta), sin(theta));
+    return vec2<f64>(cos_f64(theta), sin_f64(theta));
 }

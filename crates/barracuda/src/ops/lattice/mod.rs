@@ -20,7 +20,7 @@
 //! GPU promotion: Feb 2026 — barracuda first-class primitives.
 
 pub mod complex_f64;
-pub mod hmc_force_su3;
 pub mod higgs_u1;
+pub mod hmc_force_su3;
 pub mod plaquette;
 pub mod su3;

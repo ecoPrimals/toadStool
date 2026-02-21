@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
@@ -114,9 +115,14 @@ impl DisplayManager {
         Ok(())
     }
 
-    /// Get log file path for a biome
+    /// Get log file path for a biome (XDG-compliant)
     pub fn get_log_path(biome_name: &str, component: &str) -> PathBuf {
-        PathBuf::from(format!("/tmp/toadstool/logs/{biome_name}/{component}.log"))
+        let env = PathEnv::from_env();
+        let paths = PlatformPaths::new(&env);
+        paths
+            .toadstool_log_dir()
+            .join(biome_name)
+            .join(format!("{component}.log"))
     }
 }
 
@@ -129,9 +135,16 @@ mod tests {
     #[test]
     fn test_get_log_path_format() {
         let path = DisplayManager::get_log_path("my-biome", "stdout");
-        assert_eq!(
-            path,
-            PathBuf::from("/tmp/toadstool/logs/my-biome/stdout.log")
+        // Path should end with biome-name/component.log pattern
+        let path_str = path.to_string_lossy();
+        assert!(
+            path_str.ends_with("my-biome/stdout.log"),
+            "path should end with biome/component.log: {path_str}"
+        );
+        // Path should contain toadstool directory
+        assert!(
+            path_str.contains("toadstool"),
+            "path should contain toadstool: {path_str}"
         );
     }
 

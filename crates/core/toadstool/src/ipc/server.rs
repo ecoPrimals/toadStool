@@ -248,10 +248,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_bind_cleanup() {
-        use std::path::PathBuf;
-
-        // Create server with test socket
-        let test_path = PathBuf::from("/tmp/toadstool_test_server.sock");
+        // Create server with test socket (platform-agnostic temp dir)
+        let test_path = std::env::temp_dir().join("toadstool_test_server.sock");
         let _ = std::fs::remove_file(&test_path);
 
         let endpoints = vec![Endpoint::Unix {

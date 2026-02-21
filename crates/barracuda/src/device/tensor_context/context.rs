@@ -108,7 +108,12 @@ impl TensorContext {
         };
 
         // Fast path — read lock (the common case: already cached).
-        if let Some(bg) = self.bind_group_cache.read().expect("bind_group_cache poisoned").get(&key) {
+        if let Some(bg) = self
+            .bind_group_cache
+            .read()
+            .expect("bind_group_cache poisoned")
+            .get(&key)
+        {
             self.cache_hits.fetch_add(1, Ordering::Relaxed);
             return bg.clone();
         }
@@ -282,5 +287,8 @@ pub fn get_device_context(device: &Arc<WgpuDevice>) -> Arc<TensorContext> {
 
 /// Clear all global contexts (for testing/benchmarking).
 pub fn clear_global_contexts() {
-    GLOBAL_CONTEXTS.write().expect("GLOBAL_CONTEXTS poisoned").clear();
+    GLOBAL_CONTEXTS
+        .write()
+        .expect("GLOBAL_CONTEXTS poisoned")
+        .clear();
 }

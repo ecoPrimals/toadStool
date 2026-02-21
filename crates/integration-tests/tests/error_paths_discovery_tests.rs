@@ -3,10 +3,10 @@
 //! Tests error handling and failure scenarios in the primal discovery system,
 //! exercising `RuntimeDiscovery`'s register, find, and stats API paths.
 
-use toadstool::runtime_discovery::{DiscoveryConfig, RuntimeDiscovery};
-use toadstool::self_identity::{Capability, DiscoveredService, SelfIdentity};
 use std::collections::HashMap;
 use std::sync::Arc;
+use toadstool::runtime_discovery::{DiscoveryConfig, RuntimeDiscovery};
+use toadstool::self_identity::{Capability, DiscoveredService, SelfIdentity};
 use uuid::Uuid;
 
 fn make_capability(name: &str) -> Capability {
@@ -55,8 +55,10 @@ async fn test_discovery_with_invalid_endpoint() {
 async fn test_discovery_network_timeout() {
     // A very short timeout doesn't prevent startup — no services exist yet.
     let identity = SelfIdentity::new();
-    let mut config = DiscoveryConfig::default();
-    config.service_timeout = std::time::Duration::from_millis(10);
+    let config = DiscoveryConfig {
+        service_timeout: std::time::Duration::from_millis(10),
+        ..Default::default()
+    };
 
     let discovery = RuntimeDiscovery::with_config(identity, config);
     discovery
@@ -65,7 +67,10 @@ async fn test_discovery_network_timeout() {
         .expect("Discovery should start with minimal timeout");
 
     let stats = discovery.get_stats().await;
-    assert_eq!(stats.active_services, 0, "No services should be active initially");
+    assert_eq!(
+        stats.active_services, 0,
+        "No services should be active initially"
+    );
 }
 
 #[tokio::test]
@@ -103,7 +108,11 @@ async fn test_discovery_no_matching_capability() {
         .find_by_capability("nonexistent")
         .await
         .expect("Querying an unknown capability should return an empty list");
-    assert_eq!(not_found.len(), 0, "Should find no services for unknown capability");
+    assert_eq!(
+        not_found.len(),
+        0,
+        "Should find no services for unknown capability"
+    );
 }
 
 #[tokio::test]
@@ -112,10 +121,17 @@ async fn test_discovery_minimal_service() {
     let identity = SelfIdentity::new();
     let discovery = RuntimeDiscovery::new(identity);
 
-    let service = make_service("minimal", "http://localhost:8080", vec![make_capability("minimal")]);
+    let service = make_service(
+        "minimal",
+        "http://localhost:8080",
+        vec![make_capability("minimal")],
+    );
 
     let result = discovery.register_service(service).await;
-    assert!(result.is_ok(), "Should accept a service with only required fields");
+    assert!(
+        result.is_ok(),
+        "Should accept a service with only required fields"
+    );
 
     let all = discovery.get_all_services().await;
     assert_eq!(all.len(), 1, "Should have one registered service");
@@ -130,7 +146,10 @@ async fn test_discovery_with_empty_capability_list() {
     let service = make_service("empty", "http://localhost:8080", vec![]);
 
     let result = discovery.register_service(service).await;
-    assert!(result.is_ok(), "Should accept a service with no capabilities");
+    assert!(
+        result.is_ok(),
+        "Should accept a service with no capabilities"
+    );
 
     let found = discovery
         .find_by_capability("any")
@@ -167,7 +186,11 @@ async fn test_discovery_concurrent_registrations() {
     }
 
     let all = discovery.get_all_services().await;
-    assert_eq!(all.len(), 10, "All 10 concurrently registered services should be visible");
+    assert_eq!(
+        all.len(),
+        10,
+        "All 10 concurrently registered services should be visible"
+    );
 }
 
 #[tokio::test]

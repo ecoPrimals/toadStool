@@ -90,7 +90,7 @@ mod tests {
                 assert!((v[4] - 3.0).abs() < 1e-5); // [2,0]
                 assert!((v[5] - 6.0).abs() < 1e-5); // [2,1]
             }
-            _ => panic!(),
+            other => panic!("expected F32Matrix, got {other:?}"),
         }
     }
 
@@ -106,7 +106,7 @@ mod tests {
                 assert!((v[2] - 2.0).abs() < 1e-10); // [1,0]
                 assert!((v[3] - 4.0).abs() < 1e-10); // [1,1]
             }
-            _ => panic!(),
+            other => panic!("expected F64Matrix, got {other:?}"),
         }
     }
 
@@ -119,7 +119,7 @@ mod tests {
                 assert_eq!(cols, 1);
                 assert_eq!(v, vec![10, 20, 30, 40]);
             }
-            _ => panic!(),
+            other => panic!("expected I32Matrix, got {other:?}"),
         }
     }
 
@@ -147,7 +147,7 @@ mod tests {
         let w = make_workload(WorkloadData::F32Matrix(original.clone(), 2, 3));
         let transposed = match execute_transpose(w).unwrap() {
             WorkloadData::F32Matrix(v, rows, cols) => (v, rows, cols),
-            _ => panic!(),
+            other => panic!("expected F32Matrix, got {other:?}"),
         };
         let w2 = make_workload(WorkloadData::F32Matrix(
             transposed.0,
@@ -162,7 +162,7 @@ mod tests {
                     assert!((a - b).abs() < 1e-5);
                 }
             }
-            _ => panic!(),
+            other => panic!("expected F32Matrix, got {other:?}"),
         }
     }
 }

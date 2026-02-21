@@ -26,6 +26,11 @@ use crate::error::{BarracudaError, Result};
 use crate::ops::rk_stage::RkIntegrator;
 use std::sync::Arc;
 
+/// Type alias for ODE right-hand-side functions: `f(t, y) -> dy/dt`.
+///
+/// Must be `Send + Sync` for parallel trajectory integration.
+pub type OdeFn = Box<dyn Fn(f64, &[f64]) -> Vec<f64> + Send + Sync>;
+
 // ─── Result type ─────────────────────────────────────────────────────────────
 
 /// Integration result for one trajectory in a batched run.
@@ -86,7 +91,9 @@ pub struct BatchedRK4F64 {
 impl BatchedRK4F64 {
     /// Create a new batcher bound to `device`.
     pub fn new(device: &WgpuDevice) -> Self {
-        Self { device: Arc::new(device.clone()) }
+        Self {
+            device: Arc::new(device.clone()),
+        }
     }
 
     // ─── Fixed-step RK4 ──────────────────────────────────────────────────────
@@ -104,7 +111,7 @@ impl BatchedRK4F64 {
     /// `Vec<TrajectoryResult>` in the same order as `odes`.
     pub fn integrate_fixed(
         &self,
-        odes: &[Box<dyn Fn(f64, &[f64]) -> Vec<f64> + Send + Sync>],
+        odes: &[OdeFn],
         t0: f64,
         y0_batch: &[Vec<f64>],
         t_end: f64,
@@ -130,7 +137,11 @@ impl BatchedRK4F64 {
                         let integrator = RkIntegrator::new(dev)?;
                         // `f: &Box<dyn Fn...>` = `&OdeFunction`; pass directly.
                         let (times, states) = integrator.integrate_fixed(f, t0, y0, t_end, h)?;
-                        Ok(TrajectoryResult { times, states, instance: idx })
+                        Ok(TrajectoryResult {
+                            times,
+                            states,
+                            instance: idx,
+                        })
                     })
                 })
                 .collect();
@@ -160,7 +171,7 @@ impl BatchedRK4F64 {
     /// - `tol`      : local error tolerance for adaptive stepping
     pub fn integrate_adaptive(
         &self,
-        odes: &[Box<dyn Fn(f64, &[f64]) -> Vec<f64> + Send + Sync>],
+        odes: &[OdeFn],
         t0: f64,
         y0_batch: &[Vec<f64>],
         t_end: f64,
@@ -187,7 +198,11 @@ impl BatchedRK4F64 {
                         let integrator = RkIntegrator::new(dev)?;
                         let (times, states) =
                             integrator.integrate_adaptive(f, t0, y0, t_end, h_init, tol)?;
-                        Ok(TrajectoryResult { times, states, instance: idx })
+                        Ok(TrajectoryResult {
+                            times,
+                            states,
+                            instance: idx,
+                        })
                     })
                 })
                 .collect();
@@ -241,25 +256,29 @@ mod tests {
     use crate::device::test_pool;
 
     /// Exponential decay: dy/dt = -k*y  →  y(t) = y0 * exp(-k*t)
-    fn decay_ode(k: f64) -> Box<dyn Fn(f64, &[f64]) -> Vec<f64> + Send + Sync> {
+    fn decay_ode(k: f64) -> OdeFn {
         Box::new(move |_t, y| vec![-k * y[0]])
     }
 
     #[tokio::test]
     async fn test_fixed_three_decay_rates() {
-        let Some(device) = test_pool::get_test_device_if_gpu_available().await else { return };
+        let Some(device) = test_pool::get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batcher = BatchedRK4F64::new(&device);
 
         let rates = [0.5_f64, 1.0, 2.0];
         let odes: Vec<_> = rates.iter().map(|&k| decay_ode(k)).collect();
         let y0_batch: Vec<_> = (0..3).map(|_| vec![1.0_f64]).collect();
 
-        let results = batcher.integrate_fixed(&odes, 0.0, &y0_batch, 5.0, 0.01).unwrap();
+        let results = batcher
+            .integrate_fixed(&odes, 0.0, &y0_batch, 5.0, 0.01)
+            .unwrap();
 
         assert_eq!(results.len(), 3);
         for (r, &k) in results.iter().zip(&rates) {
-            let y_final   = r.final_state()[0];
-            let y_exact   = (-k * 5.0_f64).exp();
+            let y_final = r.final_state()[0];
+            let y_exact = (-k * 5.0_f64).exp();
             let rel_error = (y_final - y_exact).abs() / y_exact;
             assert!(
                 rel_error < 1e-4,
@@ -271,24 +290,32 @@ mod tests {
 
     #[tokio::test]
     async fn test_adaptive_single_instance() {
-        let Some(device) = test_pool::get_test_device_if_gpu_available().await else { return };
+        let Some(device) = test_pool::get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batcher = BatchedRK4F64::new(&device);
 
         let odes: Vec<_> = vec![decay_ode(1.0)];
         let y0_batch = vec![vec![1.0_f64]];
 
-        let results =
-            batcher.integrate_adaptive(&odes, 0.0, &y0_batch, 3.0, 0.1, 1e-6).unwrap();
+        let results = batcher
+            .integrate_adaptive(&odes, 0.0, &y0_batch, 3.0, 0.1, 1e-6)
+            .unwrap();
 
         let y_final = results[0].final_state()[0];
         let y_exact = (-3.0_f64).exp();
         let rel_error = (y_final - y_exact).abs() / y_exact;
-        assert!(rel_error < 1e-4, "y_final={y_final:.6}, y_exact={y_exact:.6}");
+        assert!(
+            rel_error < 1e-4,
+            "y_final={y_final:.6}, y_exact={y_exact:.6}"
+        );
     }
 
     #[tokio::test]
     async fn test_empty_batch() {
-        let Some(device) = test_pool::get_test_device_if_gpu_available().await else { return };
+        let Some(device) = test_pool::get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batcher = BatchedRK4F64::new(&device);
         let results = batcher.integrate_fixed(&[], 0.0, &[], 1.0, 0.01).unwrap();
         assert!(results.is_empty());
@@ -296,11 +323,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_dimension_mismatch_error() {
-        let Some(device) = test_pool::get_test_device_if_gpu_available().await else { return };
+        let Some(device) = test_pool::get_test_device_if_gpu_available().await else {
+            return;
+        };
         let batcher = BatchedRK4F64::new(&device);
         let odes: Vec<_> = vec![decay_ode(1.0), decay_ode(2.0)];
         // y0_batch has wrong inner dimension for instance 1
         let y0_batch = vec![vec![1.0_f64], vec![1.0_f64, 0.0_f64]];
-        assert!(batcher.integrate_fixed(&odes, 0.0, &y0_batch, 1.0, 0.01).is_err());
+        assert!(batcher
+            .integrate_fixed(&odes, 0.0, &y0_batch, 1.0, 0.01)
+            .is_err());
     }
 }

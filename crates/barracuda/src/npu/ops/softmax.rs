@@ -78,8 +78,7 @@ pub fn npu_softmax(logits: &[f32], temperature: f32) -> Result<Vec<f32>> {
     // Get device from shared pool (thread-safe concurrent access)
     let device = crate::device::test_pool::get_test_device_sync();
 
-    let tensor =
-        Tensor::from_vec_on_sync(scaled_logits, vec![logits_len], device)?;
+    let tensor = Tensor::from_vec_on_sync(scaled_logits, vec![logits_len], device)?;
 
     // Execute softmax using WGSL shader (same as GPU/CPU!)
     // This uses ops/softmax.rs → shaders/softmax.wgsl

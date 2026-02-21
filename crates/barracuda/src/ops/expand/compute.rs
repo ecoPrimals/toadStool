@@ -134,26 +134,27 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
     let device = input.device();
     let input_shape = input.shape();
     let output_size: usize = target_shape.iter().product();
+    // Keep the original target shape for the output tensor
     let original_target_shape = target_shape.clone();
 
     // Special case: handle [3] → [9] type expansions where ranks are equal
     // but target size is a multiple of input size
     // We treat this as adding a leading dimension: [3] → [1, 3] → [3, 3] → [9]
     let (effective_target_shape, effective_broadcasted_input_shape) = if input_shape.len()
-        == original_target_shape.len()
+        == target_shape.len()
         && input_shape.len() == 1
-        && original_target_shape[0].is_multiple_of(input_shape[0])
-        && original_target_shape[0] != input_shape[0]
+        && target_shape[0].is_multiple_of(input_shape[0])
+        && target_shape[0] != input_shape[0]
     {
         // [3] → [9]: treat as [1, 3] → [3, 3]
-        let leading_dim = original_target_shape[0] / input_shape[0];
+        let leading_dim = target_shape[0] / input_shape[0];
         let effective_target = vec![leading_dim, input_shape[0]];
         let effective_input = vec![1, input_shape[0]];
         (effective_target, effective_input)
     } else {
         // Normal case: use target_shape as-is
-        let broadcasted = compute_broadcast_shape(input_shape, &original_target_shape)?;
-        (original_target_shape.clone(), broadcasted)
+        let broadcasted = compute_broadcast_shape(input_shape, &target_shape)?;
+        (target_shape, broadcasted)
     };
 
     let broadcasted_input_shape = effective_broadcasted_input_shape;
@@ -403,4 +404,129 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
         original_target_shape,
         device.clone(),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_broadcast_shape_same_shape() {
+        let result = compute_broadcast_shape(&[3, 4], &[3, 4]).unwrap();
+        assert_eq!(result, vec![3, 4]);
+    }
+
+    #[test]
+    fn test_broadcast_shape_expand_ones() {
+        let result = compute_broadcast_shape(&[1, 4], &[3, 4]).unwrap();
+        assert_eq!(result, vec![1, 4]);
+    }
+
+    #[test]
+    fn test_broadcast_shape_rank_expansion() {
+        let result = compute_broadcast_shape(&[3], &[3, 5]).unwrap();
+        assert_eq!(result, vec![3, 1]);
+    }
+
+    #[test]
+    fn test_broadcast_shape_1d_exact_match() {
+        let result = compute_broadcast_shape(&[9], &[9]).unwrap();
+        assert_eq!(result, vec![9]);
+    }
+
+    #[test]
+    fn test_broadcast_shape_scalar_to_vector() {
+        let result = compute_broadcast_shape(&[1], &[5]).unwrap();
+        assert_eq!(result, vec![1]);
+    }
+
+    #[test]
+    fn test_broadcast_shape_multi_expand() {
+        let result = compute_broadcast_shape(&[1, 1, 4], &[2, 3, 4]).unwrap();
+        assert_eq!(result, vec![1, 1, 4]);
+    }
+
+    #[test]
+    fn test_broadcast_shape_3d_to_4d() {
+        let result = compute_broadcast_shape(&[3, 1, 5], &[3, 1, 5, 7]).unwrap();
+        assert_eq!(result, vec![3, 1, 5, 1]);
+    }
+
+    #[test]
+    fn test_broadcast_shape_incompatible_fails() {
+        let result = compute_broadcast_shape(&[3, 5], &[3, 4]);
+        assert!(result.is_err());
+        if let Err(BarracudaError::InvalidShape { expected, actual }) = result {
+            assert_eq!(expected, vec![3, 4]);
+            assert_eq!(actual, vec![3, 5]);
+        } else {
+            panic!("Expected InvalidShape error");
+        }
+    }
+
+    #[test]
+    fn test_broadcast_shape_incompatible_non_divisible() {
+        let result = compute_broadcast_shape(&[4], &[7]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_broadcast_shape_empty_target() {
+        let result = compute_broadcast_shape(&[3], &[]);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_input_strides_simple_2d() {
+        let strides = compute_input_strides(&[3, 4], 2);
+        assert_eq!(strides, vec![4, 1]);
+    }
+
+    #[test]
+    fn test_input_strides_broadcast_first_dim() {
+        let strides = compute_input_strides(&[1, 4], 2);
+        assert_eq!(strides, vec![0, 1]);
+    }
+
+    #[test]
+    fn test_input_strides_broadcast_last_dim() {
+        let strides = compute_input_strides(&[3, 1], 2);
+        assert_eq!(strides, vec![1, 0]);
+    }
+
+    #[test]
+    fn test_input_strides_all_broadcast() {
+        let strides = compute_input_strides(&[1, 1, 1], 3);
+        assert_eq!(strides, vec![0, 0, 0]);
+    }
+
+    #[test]
+    fn test_input_strides_3d() {
+        let strides = compute_input_strides(&[2, 3, 4], 3);
+        assert_eq!(strides, vec![12, 4, 1]);
+    }
+
+    #[test]
+    fn test_output_strides_simple_2d() {
+        let strides = compute_output_strides(&[3, 4], 2);
+        assert_eq!(strides, vec![4, 1]);
+    }
+
+    #[test]
+    fn test_output_strides_3d() {
+        let strides = compute_output_strides(&[2, 3, 4], 3);
+        assert_eq!(strides, vec![12, 4, 1]);
+    }
+
+    #[test]
+    fn test_output_strides_4d() {
+        let strides = compute_output_strides(&[2, 3, 4, 5], 4);
+        assert_eq!(strides, vec![60, 20, 5, 1]);
+    }
+
+    #[test]
+    fn test_output_strides_1d() {
+        let strides = compute_output_strides(&[10], 1);
+        assert_eq!(strides, vec![1]);
+    }
 }

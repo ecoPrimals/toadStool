@@ -66,8 +66,13 @@ fn shift_fwd(c: vec4<u32>, mu: u32) -> vec4<u32> {
 
 // Load link U_mu(site) from the flat links buffer
 fn load_link(site: u32, mu: u32) -> array<vec2<f64>, 9> {
+    var m: array<vec2<f64>, 9>;
     let base = (site * 4u + mu) * 18u;
-    return su3_load(&links, base);
+    for (var i = 0u; i < 9u; i = i + 1u) {
+        let off = base + i * 2u;
+        m[i] = c64_new(links[off], links[off + 1u]);
+    }
+    return m;
 }
 
 // ── Plaquette computation ─────────────────────────────────────────────────────

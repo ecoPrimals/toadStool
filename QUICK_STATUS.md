@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA — Quick Status
 
-**Date**: February 20, 2026 — Session 24 (Test Graduation + Cross-Repo Debt + TensorSession ML ops)
+**Date**: February 21, 2026 — Session 25 (Unit Test Coverage Expansion)
 
 ---
 
@@ -10,7 +10,7 @@
 cargo build --workspace               CLEAN
 cargo fmt --all -- --check            CLEAN
 cargo clippy --workspace --tests      CLEAN (0 warnings, -D warnings)
-cargo test --workspace                15,900+ passed / 0 failed
+cargo test --workspace                16,070+ passed / 0 failed
 cargo llvm-cov (non-GPU)              CLEAN — exit 0, no SIGSEGV
 unsafe blocks                         FFI only (VFIO, DRM) — SAFETY documented
 error handling                        No panic paths — Mutex poison recovery via lock_cache
@@ -34,7 +34,8 @@ SIMD detection                        Runtime via std::arch::is_x86_feature_dete
 sleep-based sync in tests             0 — 27 sleep calls removed (advance(), Barrier, Notify)
 zero-copy hot paths                   bytes::Bytes on all binary RPC payloads (O(1) clone)
 hardcoded IPs/DNS                     0 — capability-based or env-driven
-line coverage (non-GPU)               63.02% (+1.67 pp) — target 90%
+unit test coverage (S25)              172 new tests across 11 modules (endpoint, expand, dispatch, etc.)
+line coverage (non-GPU)               ~65% — target 90%
 ```
 
 *All quality gates green. Clippy -D warnings compliant. Zero panic paths in library code.*

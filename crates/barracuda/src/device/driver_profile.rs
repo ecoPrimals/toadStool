@@ -195,9 +195,7 @@ impl GpuDriverProfile {
             (CompilerKind::Aco, GpuArch::Rdna2 | GpuArch::Rdna3) => {
                 EigensolveStrategy::WarpPacked { wg_size: 32 }
             }
-            (CompilerKind::Aco, GpuArch::Cdna2) => {
-                EigensolveStrategy::WavePacked { wave_size: 64 }
-            }
+            (CompilerKind::Aco, GpuArch::Cdna2) => EigensolveStrategy::WavePacked { wave_size: 64 },
             (CompilerKind::NvidiaPtxas, _) => EigensolveStrategy::WarpPacked { wg_size: 32 },
             _ => EigensolveStrategy::Standard,
         }

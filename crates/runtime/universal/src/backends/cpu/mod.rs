@@ -283,7 +283,7 @@ mod tests {
         let out = cpu.execute(w).await.unwrap();
         match out.data {
             WorkloadData::F32Vec(v) => assert!((v[0] - 32.0).abs() < 1e-5),
-            _ => panic!(),
+            other => panic!("expected F32Vec, got {other:?}"),
         }
     }
 

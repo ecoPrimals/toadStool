@@ -207,9 +207,9 @@ impl MatrixPower {
 
         while n > 0 {
             if n % 2 == 1 {
-                result = MatMul::new(result, base.clone()).execute()?;
+                result = MatMul::new(&result, &base).execute()?;
             }
-            base = MatMul::new(base.clone(), base.clone()).execute()?;
+            base = MatMul::new(&base, &base).execute()?;
             n /= 2;
         }
 

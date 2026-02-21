@@ -17,15 +17,15 @@ use wgpu::util::DeviceExt;
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct Params {
-    size:         u32,
+    size: u32,
     feature_size: u32,
-    epsilon:      f32,
-    _pad:         u32,
+    epsilon: f32,
+    _pad: u32,
 }
 
 /// Layer normalization: normalize each row along the last (feature) dimension.
 pub struct LayerNorm {
-    input:   Tensor,
+    input: Tensor,
     epsilon: f32,
 }
 
@@ -43,50 +43,67 @@ impl LayerNorm {
     /// Dispatch: one workgroup per batch row (shape[:-1]) so each workgroup
     /// normalizes one full feature vector.
     pub fn execute(self) -> Result<Tensor> {
-        let device       = self.input.device();
-        let shape        = self.input.shape();
-        let size: usize  = shape.iter().product();
+        let device = self.input.device();
+        let shape = self.input.shape();
+        let size: usize = shape.iter().product();
         let feature_size = shape[shape.len() - 1];
-        let num_rows     = (size / feature_size) as u32;
+        let num_rows = (size / feature_size) as u32;
 
-        let ctx          = get_device_context(device);
-        let caps         = DeviceCapabilities::from_device(device);
-        let wg_size      = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups   = num_rows.div_ceil(wg_size);
+        let ctx = get_device_context(device);
+        let caps = DeviceCapabilities::from_device(device);
+        let wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+        let workgroups = num_rows.div_ceil(wg_size);
         let adapter_info = device.adapter_info();
 
         let output_buffer = ctx.acquire_pooled_output(size);
 
-        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label:    Some("LayerNorm Params"),
-            contents: bytemuck::bytes_of(&Params {
-                size:         size as u32,
-                feature_size: feature_size as u32,
-                epsilon:      self.epsilon,
-                _pad:         0,
-            }),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buf = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("LayerNorm Params"),
+                contents: bytemuck::bytes_of(&Params {
+                    size: size as u32,
+                    feature_size: feature_size as u32,
+                    epsilon: self.epsilon,
+                    _pad: 0,
+                }),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let layout_sig = BindGroupLayoutSignature::reduction();
-        let bgl        = GLOBAL_CACHE.get_or_create_layout(
-            device.device(), adapter_info, layout_sig, Some("LayerNorm BGL"),
+        let bgl = GLOBAL_CACHE.get_or_create_layout(
+            device.device(),
+            adapter_info,
+            layout_sig,
+            Some("LayerNorm BGL"),
         );
 
-        let bind_group = std::sync::Arc::new(device.device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                label:   Some("LayerNorm BG"),
-                layout:  &bgl,
+        let bind_group =
+            std::sync::Arc::new(device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("LayerNorm BG"),
+                layout: &bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: self.input.buffer().as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: output_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: params_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.input.buffer().as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: params_buf.as_entire_binding(),
+                    },
                 ],
-            },
-        ));
+            }));
 
         let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
-            device.device(), adapter_info, Self::wgsl_shader(), layout_sig, "main",
+            device.device(),
+            adapter_info,
+            Self::wgsl_shader(),
+            layout_sig,
+            "main",
             Some("LayerNorm Pipeline"),
         );
 
@@ -101,7 +118,11 @@ impl LayerNorm {
             drop(params_buf);
         })?;
 
-        Ok(Tensor::from_pooled_buffer(output_buffer, shape.to_vec(), device.clone()))
+        Ok(Tensor::from_pooled_buffer(
+            output_buffer,
+            shape.to_vec(),
+            device.clone(),
+        ))
     }
 }
 
@@ -122,7 +143,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_layer_norm_1d() {
-        let Some(device) = get_test_device().await else { return; };
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::new(vec![1.0, 2.0, 3.0, 4.0], vec![1, 4], device.clone());
         let output = input.layer_norm_wgsl(1e-5).unwrap();
         assert_eq!(output.shape(), &[1, 4]);
@@ -133,8 +156,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_layer_norm_batch() {
-        let Some(device) = get_test_device().await else { return; };
-        let input = Tensor::new(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3], device.clone());
+        let Some(device) = get_test_device().await else {
+            return;
+        };
+        let input = Tensor::new(
+            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            vec![2, 3],
+            device.clone(),
+        );
         let output = input.layer_norm_wgsl(1e-5).unwrap();
         assert_eq!(output.shape(), &[2, 3]);
         let r = output.to_vec().unwrap();

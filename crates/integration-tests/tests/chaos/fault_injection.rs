@@ -4,8 +4,8 @@
 //! invalid inputs, resource exhaustion signals, and malformed state.
 
 use std::time::Duration;
-use tokio::time::timeout;
 use toadstool_testing::chaos::{ChaosScenario, FaultType, ResourceType, SystemState};
+use tokio::time::timeout;
 
 #[tokio::test]
 async fn test_fault_scenario_construction() {

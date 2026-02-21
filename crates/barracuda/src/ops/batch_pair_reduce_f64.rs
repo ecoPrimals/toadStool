@@ -142,10 +142,22 @@ impl BatchPairReduceF64 {
             label: Some("PairReduce BG"),
             layout: &bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: cfg_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: a_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: b_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: out_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: cfg_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: a_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: b_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: out_buf.as_entire_binding(),
+                },
             ],
         });
 
@@ -233,6 +245,10 @@ mod tests {
         let b = vec![0.0_f64, 0.0];
         let reducer = BatchPairReduceF64::new(device, PairReduceOp::SquaredL2);
         let out = reducer.compute(1, 1, 1, 2, &a, &b).unwrap();
-        assert!((out[0] - 25.0).abs() < 1e-10, "squared L2 = 25, got {}", out[0]);
+        assert!(
+            (out[0] - 25.0).abs() < 1e-10,
+            "squared L2 = 25, got {}",
+            out[0]
+        );
     }
 }

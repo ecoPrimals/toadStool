@@ -19,7 +19,7 @@ use wgpu::util::DeviceExt;
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct Params {
-    batch_size:   u32,
+    batch_size: u32,
     feature_size: u32,
 }
 
@@ -38,49 +38,66 @@ impl LogSoftmax {
     }
 
     pub fn execute(self) -> Result<Tensor> {
-        let device       = self.input.device();
-        let shape        = self.input.shape();
-        let size: usize  = shape.iter().product();
+        let device = self.input.device();
+        let shape = self.input.shape();
+        let size: usize = shape.iter().product();
         let feature_size = shape[shape.len() - 1];
-        let batch_size   = (size / feature_size) as u32;
+        let batch_size = (size / feature_size) as u32;
 
-        let ctx          = get_device_context(device);
-        let caps         = DeviceCapabilities::from_device(device);
-        let wg_size      = caps.optimal_workgroup_size(WorkloadType::Reduction);
-        let workgroups   = batch_size.div_ceil(wg_size);
+        let ctx = get_device_context(device);
+        let caps = DeviceCapabilities::from_device(device);
+        let wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+        let workgroups = batch_size.div_ceil(wg_size);
         let adapter_info = device.adapter_info();
 
         // reduction() = (1 read-only, 1 read-write, 1 uniform)
-        let layout_sig  = BindGroupLayoutSignature::reduction();
+        let layout_sig = BindGroupLayoutSignature::reduction();
         let output_buffer = ctx.acquire_pooled_output(size);
 
-        let params_buf = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label:    Some("LogSoftmax Params"),
-            contents: bytemuck::bytes_of(&Params {
-                batch_size,
-                feature_size: feature_size as u32,
-            }),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buf = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("LogSoftmax Params"),
+                contents: bytemuck::bytes_of(&Params {
+                    batch_size,
+                    feature_size: feature_size as u32,
+                }),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bgl = GLOBAL_CACHE.get_or_create_layout(
-            device.device(), adapter_info, layout_sig, Some("LogSoftmax BGL"),
+            device.device(),
+            adapter_info,
+            layout_sig,
+            Some("LogSoftmax BGL"),
         );
 
-        let bind_group = std::sync::Arc::new(device.device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                label:   Some("LogSoftmax BG"),
-                layout:  &bgl,
+        let bind_group =
+            std::sync::Arc::new(device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("LogSoftmax BG"),
+                layout: &bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: self.input.buffer().as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: output_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: params_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.input.buffer().as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: params_buf.as_entire_binding(),
+                    },
                 ],
-            },
-        ));
+            }));
 
         let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
-            device.device(), adapter_info, Self::wgsl_shader(), layout_sig, "main",
+            device.device(),
+            adapter_info,
+            Self::wgsl_shader(),
+            layout_sig,
+            "main",
             Some("LogSoftmax Pipeline"),
         );
 
@@ -95,7 +112,11 @@ impl LogSoftmax {
             drop(params_buf);
         })?;
 
-        Ok(Tensor::from_pooled_buffer(output_buffer, shape.to_vec(), device.clone()))
+        Ok(Tensor::from_pooled_buffer(
+            output_buffer,
+            shape.to_vec(),
+            device.clone(),
+        ))
     }
 }
 
@@ -116,19 +137,30 @@ mod tests {
 
     #[tokio::test]
     async fn test_log_softmax_negative() {
-        let Some(device) = get_test_device().await else { return; };
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::new(vec![1.0, 2.0, 3.0], vec![1, 3], device.clone());
         let output = input.log_softmax_wgsl().unwrap();
         assert_eq!(output.shape(), &[1, 3]);
         let result = output.to_vec().unwrap();
         // log-softmax values must all be ≤ 0 (since softmax values are in (0,1])
-        assert!(result.iter().all(|&v| v <= 0.0), "All log-softmax values must be ≤ 0: {result:?}");
+        assert!(
+            result.iter().all(|&v| v <= 0.0),
+            "All log-softmax values must be ≤ 0: {result:?}"
+        );
     }
 
     #[tokio::test]
     async fn test_log_softmax_batch() {
-        let Some(device) = get_test_device().await else { return; };
-        let input = Tensor::new(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3], device.clone());
+        let Some(device) = get_test_device().await else {
+            return;
+        };
+        let input = Tensor::new(
+            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            vec![2, 3],
+            device.clone(),
+        );
         let output = input.log_softmax_wgsl().unwrap();
         assert_eq!(output.shape(), &[2, 3]);
         assert_eq!(output.to_vec().unwrap().len(), 6);

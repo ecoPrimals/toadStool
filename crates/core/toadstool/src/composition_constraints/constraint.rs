@@ -160,3 +160,191 @@ impl fmt::Display for Constraint {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hard_constraints() {
+        assert!(Constraint::RequiresGPU.is_hard());
+        assert!(Constraint::MinMemoryGB(8.0).is_hard());
+        assert!(Constraint::MinCPUCores(4).is_hard());
+        assert!(Constraint::MaxLatencyMs(100).is_hard());
+        assert!(Constraint::MinBandwidthGbps(1.0).is_hard());
+        assert!(Constraint::RequiresCapability("cuda".to_string()).is_hard());
+        assert!(Constraint::MustBeLocal.is_hard());
+        assert!(Constraint::RequiresLayer("gpu".to_string()).is_hard());
+        assert!(Constraint::RequiresPersistentStorage.is_hard());
+        assert!(Constraint::MaxCostPerHour(10.0).is_hard());
+        assert!(Constraint::Custom {
+            name: "test".to_string(),
+            hard: true,
+            value: "v".to_string(),
+        }
+        .is_hard());
+    }
+
+    #[test]
+    fn test_soft_constraints() {
+        assert!(Constraint::PrefersGPU.is_soft());
+        assert!(Constraint::PreferredLatencyMs(50).is_soft());
+        assert!(Constraint::PreferredBandwidthGbps(10.0).is_soft());
+        assert!(Constraint::PrefersCapability("avx".to_string()).is_soft());
+        assert!(Constraint::PreferLocal.is_soft());
+        assert!(Constraint::PrefersLayer("cache".to_string()).is_soft());
+        assert!(Constraint::MinimizeCost.is_soft());
+        assert!(Constraint::Custom {
+            name: "test".to_string(),
+            hard: false,
+            value: "v".to_string(),
+        }
+        .is_soft());
+    }
+
+    #[test]
+    fn test_constraint_names() {
+        assert_eq!(Constraint::RequiresGPU.name(), "requires_gpu");
+        assert_eq!(Constraint::PrefersGPU.name(), "prefers_gpu");
+        assert_eq!(Constraint::MinMemoryGB(8.0).name(), "min_memory_gb");
+        assert_eq!(Constraint::MinCPUCores(4).name(), "min_cpu_cores");
+        assert_eq!(Constraint::MaxLatencyMs(100).name(), "max_latency_ms");
+        assert_eq!(
+            Constraint::PreferredLatencyMs(50).name(),
+            "preferred_latency_ms"
+        );
+        assert_eq!(
+            Constraint::MinBandwidthGbps(1.0).name(),
+            "min_bandwidth_gbps"
+        );
+        assert_eq!(
+            Constraint::PreferredBandwidthGbps(10.0).name(),
+            "preferred_bandwidth_gbps"
+        );
+        assert_eq!(
+            Constraint::RequiresCapability("cuda".to_string()).name(),
+            "requires_capability"
+        );
+        assert_eq!(
+            Constraint::PrefersCapability("avx".to_string()).name(),
+            "prefers_capability"
+        );
+        assert_eq!(Constraint::MustBeLocal.name(), "must_be_local");
+        assert_eq!(Constraint::PreferLocal.name(), "prefer_local");
+        assert_eq!(
+            Constraint::RequiresLayer("gpu".to_string()).name(),
+            "requires_layer"
+        );
+        assert_eq!(
+            Constraint::PrefersLayer("cache".to_string()).name(),
+            "prefers_layer"
+        );
+        assert_eq!(
+            Constraint::RequiresPersistentStorage.name(),
+            "requires_persistent_storage"
+        );
+        assert_eq!(Constraint::MaxCostPerHour(10.0).name(), "max_cost_per_hour");
+        assert_eq!(Constraint::MinimizeCost.name(), "minimize_cost");
+        assert_eq!(
+            Constraint::Custom {
+                name: "custom_constraint".to_string(),
+                hard: true,
+                value: "v".to_string(),
+            }
+            .name(),
+            "custom_constraint"
+        );
+    }
+
+    #[test]
+    fn test_convenience_constructors() {
+        assert_eq!(Constraint::requires_gpu(), Constraint::RequiresGPU);
+        assert_eq!(Constraint::prefers_gpu(), Constraint::PrefersGPU);
+        assert_eq!(
+            Constraint::max_latency_ms(100),
+            Constraint::MaxLatencyMs(100)
+        );
+        assert_eq!(
+            Constraint::preferred_latency_ms(50),
+            Constraint::PreferredLatencyMs(50)
+        );
+        assert_eq!(
+            Constraint::min_bandwidth_gbps(1.0),
+            Constraint::MinBandwidthGbps(1.0)
+        );
+        assert_eq!(Constraint::min_memory_gb(8.0), Constraint::MinMemoryGB(8.0));
+        assert_eq!(Constraint::min_cpu_cores(4), Constraint::MinCPUCores(4));
+        assert_eq!(Constraint::must_be_local(), Constraint::MustBeLocal);
+        assert_eq!(Constraint::prefer_local(), Constraint::PreferLocal);
+        assert_eq!(
+            Constraint::requires_capability("cuda"),
+            Constraint::RequiresCapability("cuda".to_string())
+        );
+        assert_eq!(
+            Constraint::prefers_capability("avx"),
+            Constraint::PrefersCapability("avx".to_string())
+        );
+    }
+
+    #[test]
+    fn test_display_hard_constraints() {
+        assert_eq!(format!("{}", Constraint::RequiresGPU), "RequiresGPU [HARD]");
+        assert_eq!(
+            format!("{}", Constraint::MinMemoryGB(8.0)),
+            "MinMemory: 8GB [HARD]"
+        );
+        assert_eq!(
+            format!("{}", Constraint::MaxLatencyMs(100)),
+            "MaxLatency: 100ms [HARD]"
+        );
+    }
+
+    #[test]
+    fn test_display_soft_constraints() {
+        assert_eq!(format!("{}", Constraint::PrefersGPU), "PrefersGPU [SOFT]");
+        assert_eq!(
+            format!("{}", Constraint::PreferredLatencyMs(50)),
+            "PreferredLatency: 50ms [SOFT]"
+        );
+        assert_eq!(
+            format!("{}", Constraint::MinimizeCost),
+            "MinimizeCost [SOFT]"
+        );
+    }
+
+    #[test]
+    fn test_display_custom() {
+        let hard_custom = Constraint::Custom {
+            name: "test".to_string(),
+            hard: true,
+            value: "value".to_string(),
+        };
+        assert_eq!(format!("{}", hard_custom), "Custom(test=value)[HARD]");
+
+        let soft_custom = Constraint::Custom {
+            name: "test".to_string(),
+            hard: false,
+            value: "value".to_string(),
+        };
+        assert_eq!(format!("{}", soft_custom), "Custom(test=value)[SOFT]");
+    }
+
+    #[test]
+    fn test_constraint_serde_roundtrip() {
+        let constraints = vec![
+            Constraint::RequiresGPU,
+            Constraint::MinMemoryGB(16.0),
+            Constraint::Custom {
+                name: "special".to_string(),
+                hard: true,
+                value: "test_value".to_string(),
+            },
+        ];
+
+        for constraint in constraints {
+            let json = serde_json::to_string(&constraint).unwrap();
+            let deserialized: Constraint = serde_json::from_str(&json).unwrap();
+            assert_eq!(constraint, deserialized);
+        }
+    }
+}

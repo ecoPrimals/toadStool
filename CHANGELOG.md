@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Unreleased] - February 21, 2026 (Session 25 — Unit Test Coverage Expansion)
+
+### Added
+
+- **172 new unit tests** across 11 core modules to improve coverage toward 90% target:
+  - `toadstool-common/service_discovery/endpoint.rs` (13 tests) — URL parsing scenarios
+  - `barracuda/ops/expand/compute.rs` (19 tests) — broadcast shape, strides
+  - `barracuda/dispatch/config.rs` (14 tests) — dispatch thresholds, GPU routing
+  - `barracuda/workload.rs` (27 tests) — workload classification, sparsity, device selection
+  - `barracuda/resource_quota.rs` (22 tests) — quota tracking, VRAM limits
+  - `barracuda/numerical/rk45.rs` (16 tests) — ODE solver config, error paths
+  - `toadstool/composition_constraints/constraint.rs` (8 tests) — hard/soft classification
+  - `toadstool/composition_constraints/evaluation.rs` (8 tests) — satisfaction scoring
+  - `toadstool/composition_constraints/request.rs` (13 tests) — composition requests
+  - `toadstool/universal/types.rs` (16 tests) — `SecurityLevel`, `PrimalType`, `NetworkLocation`
+  - `toadstool/execution.rs` (16 tests) — `ExecutionStatus`, `RuntimeType`, inputs/outputs
+- **`Rk45Config::with_max_steps(usize)`** — builder method for maximum integration steps
+- **`Rk45Config::with_safety(f64)`** — builder method for step size safety factor
+
+### Fixed
+
+- **`ipc/server.rs`** — removed unused `PathBuf` import warning
+- **`runtime.rs` test** — case-insensitive error message matching for "Not found" variants
+
+---
+
 ## [Unreleased] - February 20, 2026 (Sessions 19–24 — Debt Sprint + Test Graduation + ML Ops)
 
 ### Added

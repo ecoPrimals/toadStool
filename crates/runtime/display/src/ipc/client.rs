@@ -145,19 +145,18 @@ impl DisplayClient {
 
     /// Get candidate Unix socket paths
     ///
-    /// **XDG-compliant**: Tries XDG_RUNTIME_DIR, HOME, /tmp
+    /// **XDG-compliant**: Uses PlatformPaths for consistent path resolution
     fn get_socket_paths() -> Vec<PathBuf> {
+        use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
+
         let mut paths = Vec::new();
+        let env = PathEnv::from_env();
+        let platform_paths = PlatformPaths::new(&env);
 
-        // XDG_RUNTIME_DIR (preferred)
-        if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-            let mut path = PathBuf::from(runtime_dir);
-            path.push("toadstool");
-            path.push("display.sock");
-            paths.push(path);
-        }
+        // Primary: PlatformPaths socket directory (XDG_RUNTIME_DIR or fallback)
+        paths.push(platform_paths.toadstool_socket_dir().join("display.sock"));
 
-        // HOME/.local/share
+        // Secondary: HOME/.local/share
         if let Ok(home) = std::env::var("HOME") {
             let mut path = PathBuf::from(home);
             path.push(".local");
@@ -167,8 +166,8 @@ impl DisplayClient {
             paths.push(path);
         }
 
-        // /tmp fallback
-        paths.push(PathBuf::from("/tmp/toadstool/display.sock"));
+        // Tertiary: temp_dir fallback (platform-agnostic)
+        paths.push(platform_paths.toadstool_temp_dir().join("display.sock"));
 
         paths
     }
@@ -198,18 +197,18 @@ impl DisplayClient {
 
     /// Get candidate TCP discovery file paths
     ///
-    /// **XDG-compliant**: Same paths as server writes to
+    /// **XDG-compliant**: Uses PlatformPaths for consistent path resolution
     fn get_tcp_discovery_file_candidates() -> Vec<PathBuf> {
+        use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
+
         let mut paths = Vec::new();
+        let env = PathEnv::from_env();
+        let platform_paths = PlatformPaths::new(&env);
 
-        // XDG_RUNTIME_DIR (preferred)
-        if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-            let mut path = PathBuf::from(runtime_dir);
-            path.push("toadstool-ipc-port");
-            paths.push(path);
-        }
+        // Primary: XDG_RUNTIME_DIR via PlatformPaths
+        paths.push(platform_paths.runtime_dir().join("toadstool-ipc-port"));
 
-        // HOME/.local/share
+        // Secondary: HOME/.local/share
         if let Ok(home) = std::env::var("HOME") {
             let mut path = PathBuf::from(home);
             path.push(".local");
@@ -218,8 +217,8 @@ impl DisplayClient {
             paths.push(path);
         }
 
-        // /tmp fallback
-        paths.push(PathBuf::from("/tmp/toadstool-ipc-port"));
+        // Tertiary: temp_dir fallback (platform-agnostic)
+        paths.push(std::env::temp_dir().join("toadstool-ipc-port"));
 
         paths
     }
@@ -318,10 +317,9 @@ impl DisplayClient {
 
     /// Create a window
     pub async fn create_window(&mut self, request: CreateWindowRequest) -> Result<WindowId> {
-        let req = JsonRpcRequest::new(
-            "display.create_window",
-            Some(serde_json::to_value(request).unwrap()),
-        );
+        let params = serde_json::to_value(request)
+            .map_err(|e| DisplayError::IpcError(format!("Failed to serialize request: {e}")))?;
+        let req = JsonRpcRequest::new("display.create_window", Some(params));
 
         let response = self.send_request(req).await?;
 

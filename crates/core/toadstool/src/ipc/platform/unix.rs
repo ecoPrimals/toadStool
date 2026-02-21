@@ -108,54 +108,58 @@ mod tests {
 
     #[tokio::test]
     async fn test_bind_and_connect() {
-        let test_socket = "/tmp/toadstool_test_unix.sock";
+        let test_socket = std::env::temp_dir().join("toadstool_test_unix.sock");
+        let test_socket_str = test_socket.to_string_lossy();
 
         // Clean up any stale socket
-        let _ = std::fs::remove_file(test_socket);
+        let _ = std::fs::remove_file(&test_socket);
 
         // Bind
-        let listener = bind(test_socket).await.unwrap();
+        let listener = bind(test_socket_str.as_ref()).await.unwrap();
 
         // Connect
-        let stream = connect(test_socket).await.unwrap();
+        let stream = connect(test_socket_str.as_ref()).await.unwrap();
 
         // Cleanup
         drop(listener);
         drop(stream);
-        let _ = std::fs::remove_file(test_socket);
+        let _ = std::fs::remove_file(&test_socket);
     }
 
     #[tokio::test]
     async fn test_bind_creates_directory() {
-        let test_socket = "/tmp/toadstool_test_dir/subdir/test.sock";
+        let test_dir = std::env::temp_dir().join("toadstool_test_dir");
+        let test_socket = test_dir.join("subdir/test.sock");
+        let test_socket_str = test_socket.to_string_lossy();
 
         // Ensure directory doesn't exist
-        let _ = std::fs::remove_dir_all("/tmp/toadstool_test_dir");
+        let _ = std::fs::remove_dir_all(&test_dir);
 
         // Bind should create directory
-        let listener = bind(test_socket).await.unwrap();
+        let listener = bind(test_socket_str.as_ref()).await.unwrap();
 
         // Directory should exist
-        assert!(std::path::Path::new("/tmp/toadstool_test_dir/subdir").exists());
+        assert!(test_dir.join("subdir").exists());
 
         // Cleanup
         drop(listener);
-        let _ = std::fs::remove_dir_all("/tmp/toadstool_test_dir");
+        let _ = std::fs::remove_dir_all(&test_dir);
     }
 
     #[tokio::test]
     async fn test_bind_removes_stale_socket() {
-        let test_socket = "/tmp/toadstool_test_stale.sock";
+        let test_socket = std::env::temp_dir().join("toadstool_test_stale.sock");
+        let test_socket_str = test_socket.to_string_lossy();
 
         // Create stale socket
-        let _ = std::fs::File::create(test_socket);
-        assert!(std::path::Path::new(test_socket).exists());
+        let _ = std::fs::File::create(&test_socket);
+        assert!(test_socket.exists());
 
         // Bind should remove stale and create new
-        let listener = bind(test_socket).await.unwrap();
+        let listener = bind(test_socket_str.as_ref()).await.unwrap();
 
         // Cleanup
         drop(listener);
-        let _ = std::fs::remove_file(test_socket);
+        let _ = std::fs::remove_file(&test_socket);
     }
 }

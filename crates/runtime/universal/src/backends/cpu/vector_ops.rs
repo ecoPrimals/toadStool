@@ -278,7 +278,7 @@ mod tests {
                 assert!((v[0] - 4.0).abs() < 1e-5);
                 assert!((v[1] - 6.0).abs() < 1e-5);
             }
-            _ => panic!(),
+            other => panic!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -293,7 +293,7 @@ mod tests {
                 assert!((v[0] - 3.0).abs() < 1e-5);
                 assert!((v[1] - 2.0).abs() < 1e-5);
             }
-            _ => panic!(),
+            other => panic!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -308,7 +308,7 @@ mod tests {
                 assert!((v[0] - 8.0).abs() < 1e-10);
                 assert!((v[1] - 15.0).abs() < 1e-10);
             }
-            _ => panic!(),
+            other => panic!("expected F64Vec, got {other:?}"),
         }
     }
 
@@ -323,7 +323,7 @@ mod tests {
                 assert!((v[0] - 3.0).abs() < 1e-5);
                 assert!((v[1] - 5.0).abs() < 1e-5);
             }
-            _ => panic!(),
+            other => panic!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -338,7 +338,7 @@ mod tests {
                 assert!((v[0] - 1.0).abs() < 1e-5);
                 assert!((v[1] - 2.0).abs() < 1e-5);
             }
-            _ => panic!(),
+            other => panic!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -372,7 +372,7 @@ mod tests {
                 assert!((v[1] - 10.0).abs() < 1e-5);
                 assert!((v[2] - 20.0).abs() < 1e-5);
             }
-            _ => panic!(),
+            other => panic!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -381,7 +381,7 @@ mod tests {
         let w = make_workload(WorkloadData::F32VecIndexed(vec![1.0, 2.0], vec![5]));
         match execute_gather(w).unwrap() {
             WorkloadData::F32Vec(v) => assert!((v[0] - 0.0).abs() < 1e-5),
-            _ => panic!(),
+            other => panic!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -393,7 +393,7 @@ mod tests {
                 assert_eq!(v[0], 8);
                 assert_eq!(v[1], 9);
             }
-            _ => panic!(),
+            other => panic!("expected I32Vec, got {other:?}"),
         }
     }
 
@@ -409,7 +409,7 @@ mod tests {
                 assert!((v[1] - 300.0).abs() < 1e-5);
                 assert!((v[2] - 100.0).abs() < 1e-5);
             }
-            _ => panic!(),
+            other => panic!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -418,7 +418,7 @@ mod tests {
         let w = make_workload(WorkloadData::F64VecIndexed(vec![], vec![]));
         match execute_scatter(w).unwrap() {
             WorkloadData::F64Vec(v) => assert!(v.is_empty()),
-            _ => panic!(),
+            other => panic!("expected F64Vec, got {other:?}"),
         }
     }
 

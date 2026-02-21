@@ -7,6 +7,7 @@ use anyhow::Result;
 use chrono::Utc;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 use tokio::fs;
 use tokio::time::{timeout, Duration};
 use tracing::{info, warn};
@@ -51,8 +52,10 @@ impl<'a> BiomeLifecycle<'a> {
 
         info!("🔧 Initializing biome infrastructure");
 
-        // Create log directory
-        let log_dir = PathBuf::from(format!("/tmp/toadstool/logs/{biome_name}"));
+        // Create log directory (XDG-compliant path resolution)
+        let env = PathEnv::from_env();
+        let paths = PlatformPaths::new(&env);
+        let log_dir = paths.toadstool_log_dir().join(biome_name);
         fs::create_dir_all(&log_dir).await?;
 
         // Parse environment variables

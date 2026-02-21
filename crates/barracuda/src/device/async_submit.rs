@@ -218,7 +218,8 @@ impl AsyncReadback {
         queue.submit(Some(encoder.finish()));
 
         // Start async map — stdlib mpsc, capacity 1 (single result, no blocking).
-        let (sender, receiver) = std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
+        let (sender, receiver) =
+            std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
         staging_buffer
             .slice(..)
             .map_async(wgpu::MapMode::Read, move |result| {
@@ -327,7 +328,7 @@ impl AsyncReadback {
             .map_err(|_| "Readback cancelled — sender dropped".to_string())?
             .map_err(|e| format!("Map error: {:?}", e))?;
 
-        let data   = self.staging_buffer.slice(..).get_mapped_range();
+        let data = self.staging_buffer.slice(..).get_mapped_range();
         let result = bytemuck::cast_slice::<u8, f32>(&data).to_vec();
         drop(data);
         self.staging_buffer.unmap();
@@ -342,7 +343,7 @@ impl AsyncReadback {
             .map_err(|_| "Readback cancelled — sender dropped".to_string())?
             .map_err(|e| format!("Map error: {:?}", e))?;
 
-        let data   = self.staging_buffer.slice(..).get_mapped_range();
+        let data = self.staging_buffer.slice(..).get_mapped_range();
         let result = bytemuck::cast_slice::<u8, f64>(&data).to_vec();
         drop(data);
         self.staging_buffer.unmap();

@@ -29,7 +29,10 @@ async fn test_network_partition_during_execution() {
 
             // Verify no data loss
             if state.data_loss_count > 0 {
-                return Err(format!("Data loss detected: {} events", state.data_loss_count));
+                return Err(format!(
+                    "Data loss detected: {} events",
+                    state.data_loss_count
+                ));
             }
 
             // Verify recovery occurred
@@ -40,12 +43,18 @@ async fn test_network_partition_during_execution() {
             Ok(())
         });
 
-    let result = scenario.run().await.expect("Network partition scenario should pass");
-    
+    let result = scenario
+        .run()
+        .await
+        .expect("Network partition scenario should pass");
+
     // Additional assertions
     assert_eq!(result.faults_injected, 1);
     assert!(result.final_state.cluster_recovered());
-    println!("✅ Network partition scenario passed: {:?}", result.duration);
+    println!(
+        "✅ Network partition scenario passed: {:?}",
+        result.duration
+    );
 }
 
 /// Scenario 2: Random Executor Crash and Restart
@@ -88,8 +97,11 @@ async fn test_executor_crash_and_recovery() {
             Ok(())
         });
 
-    let result = scenario.run().await.expect("Crash recovery scenario should pass");
-    
+    let result = scenario
+        .run()
+        .await
+        .expect("Crash recovery scenario should pass");
+
     assert_eq!(result.faults_injected, 2);
     assert_eq!(result.final_state.recovery_count, 2);
     assert_eq!(result.final_state.failed_nodes, 0);
@@ -123,10 +135,16 @@ async fn test_memory_exhaustion() {
             Ok(())
         });
 
-    let result = scenario.run().await.expect("Memory exhaustion scenario should pass");
-    
+    let result = scenario
+        .run()
+        .await
+        .expect("Memory exhaustion scenario should pass");
+
     assert!(result.final_state.active_nodes > 0);
-    println!("✅ Memory exhaustion handling passed: {:?}", result.duration);
+    println!(
+        "✅ Memory exhaustion handling passed: {:?}",
+        result.duration
+    );
 }
 
 /// Scenario 4: Combined Chaos (Network + Crash + Latency)
@@ -225,7 +243,10 @@ async fn test_sustained_resource_pressure() {
         .await
         .expect("Sustained pressure scenario should pass");
 
-    println!("✅ Sustained resource pressure passed: {:?}", result.duration);
+    println!(
+        "✅ Sustained resource pressure passed: {:?}",
+        result.duration
+    );
 }
 
 /// Scenario 6: Cascading Failures
@@ -279,4 +300,3 @@ async fn test_cascading_failures() {
     assert!(result.final_state.cluster_recovered());
     println!("✅ Cascading failures handled: {:?}", result.duration);
 }
-

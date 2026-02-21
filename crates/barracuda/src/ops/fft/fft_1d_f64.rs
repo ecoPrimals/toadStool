@@ -534,15 +534,13 @@ mod tests {
         let original = data.clone();
 
         // Forward FFT
-        let fwd_tensor =
-            Tensor::from_f64_data(&data, vec![n as usize, 2], device.clone()).unwrap();
+        let fwd_tensor = Tensor::from_f64_data(&data, vec![n as usize, 2], device.clone()).unwrap();
         let fft = Fft1DF64::new(fwd_tensor, n).unwrap();
         let spectrum = fft.execute().await.unwrap();
 
         // Inverse FFT
         let spec_data = spectrum.to_f64_vec().unwrap();
-        let inv_tensor =
-            Tensor::from_f64_data(&spec_data, vec![n as usize, 2], device).unwrap();
+        let inv_tensor = Tensor::from_f64_data(&spec_data, vec![n as usize, 2], device).unwrap();
         let ifft = Fft1DF64::new(inv_tensor, n).unwrap();
         let recovered_raw = ifft.execute_inverse().await.unwrap();
         let recovered = recovered_raw.to_f64_vec().unwrap();

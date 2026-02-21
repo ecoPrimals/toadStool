@@ -8,8 +8,7 @@
 ///
 /// Prepend to any WGSL shader that needs `c64_*` functions.
 /// All operations on `vec2<f64>` where `.x = Re`, `.y = Im`.
-pub const WGSL_COMPLEX64: &str =
-    include_str!("../../shaders/math/complex_f64.wgsl");
+pub const WGSL_COMPLEX64: &str = include_str!("../../shaders/math/complex_f64.wgsl");
 
 /// Prepend the complex-f64 preamble to a shader source string.
 ///

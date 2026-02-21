@@ -106,20 +106,25 @@ impl HillFunctionF64 {
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("HillF64 BGL"),
-                entries: &[
-                    bgl_storage_ro(0),
-                    bgl_storage_rw(1),
-                    bgl_uniform(2),
-                ],
+                entries: &[bgl_storage_ro(0), bgl_storage_rw(1), bgl_uniform(2)],
             });
 
         let bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("HillF64 BG"),
             layout: &bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: input_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: output_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: params_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buf.as_entire_binding(),
+                },
             ],
         });
 
@@ -217,7 +222,11 @@ mod tests {
         let hill = HillFunctionF64::new(device, k, 1.0).unwrap();
         let result = hill.apply(&[0.0, k, 2.0 * k, 100.0 * k]).unwrap();
         assert!(result[0].abs() < 1e-10, "Hill(0)=0");
-        assert!((result[1] - 0.5).abs() < 1e-10, "Hill(K)=0.5, got {}", result[1]);
+        assert!(
+            (result[1] - 0.5).abs() < 1e-10,
+            "Hill(K)=0.5, got {}",
+            result[1]
+        );
         assert!((result[2] - 2.0 / 3.0).abs() < 1e-10, "Hill(2K)=2/3");
         assert!(result[3] > 0.99, "Hill(100K)≈1");
     }
@@ -231,7 +240,11 @@ mod tests {
         let k = 5.0_f64;
         let hill = HillFunctionF64::new(device, k, 2.0).unwrap();
         let result = hill.apply(&[k]).unwrap();
-        assert!((result[0] - 0.5).abs() < 1e-9, "Hill(K, K, 2)=0.5, got {}", result[0]);
+        assert!(
+            (result[0] - 0.5).abs() < 1e-9,
+            "Hill(K, K, 2)=0.5, got {}",
+            result[0]
+        );
     }
 
     #[tokio::test]
@@ -243,7 +256,7 @@ mod tests {
         let hill = HillFunctionF64::new(device, 50.0, 1.0).unwrap();
         let result = hill.apply(&vals).unwrap();
         for &v in &result {
-            assert!(v >= 0.0 && v <= 1.0, "Hill output out of [0,1]: {v}");
+            assert!((0.0..=1.0).contains(&v), "Hill output out of [0,1]: {v}");
         }
     }
 }

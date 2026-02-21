@@ -122,10 +122,8 @@ pub use ops::sparse_matmul_quantized::sparse_matmul_quantized;
 
 // Bio / life-science GPU primitives (wetSpring handoff v4, Feb 2026)
 pub use ops::bio::{
-    FelsensteinGpu, FelsensteinResult, PhyloTree,
-    GillespieConfig, GillespieGpu, GillespieResult,
-    SmithWatermanGpu, SwConfig, SwResult,
-    FlatForest, TreeInferenceGpu,
+    FelsensteinGpu, FelsensteinResult, FlatForest, GillespieConfig, GillespieGpu, GillespieResult,
+    PhyloTree, SmithWatermanGpu, SwConfig, SwResult, TreeInferenceGpu,
 };
 
 /// Prelude: Common imports for using barracuda

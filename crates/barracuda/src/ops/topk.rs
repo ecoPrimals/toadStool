@@ -259,7 +259,8 @@ impl TopK {
 
         // Map and read
         let buffer_slice = staging_buffer.slice(..);
-        let (tx, rx) = std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
+        let (tx, rx) =
+            std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).ok();
         });
@@ -277,11 +278,7 @@ impl TopK {
         let indices_f32: Vec<f32> = indices_u32.iter().map(|&x| x as f32).collect();
 
         // Create output tensor [k] as f32
-        let output_tensor = Tensor::from_vec_on_sync(
-            indices_f32,
-            vec![self.k],
-            device.clone(),
-        )?;
+        let output_tensor = Tensor::from_vec_on_sync(indices_f32, vec![self.k], device.clone())?;
 
         Ok(output_tensor)
     }

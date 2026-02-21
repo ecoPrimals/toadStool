@@ -8,6 +8,7 @@
 
 use anyhow::Result;
 use std::sync::Arc;
+use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 use tokio::signal;
 use tracing::{info, warn};
 
@@ -77,11 +78,11 @@ impl DaemonServer {
     /// Run the daemon server until shutdown signal
     pub async fn run(self) -> Result<()> {
         // Determine socket path (prefer Unix socket for primal communication)
-        let socket_path = self
-            .config
-            .socket_path
-            .clone()
-            .unwrap_or_else(|| std::path::PathBuf::from("/primal/toadstool"));
+        // Uses XDG-compliant path resolution - no hardcoded paths
+        let socket_path = self.config.socket_path.clone().unwrap_or_else(|| {
+            let env = PathEnv::from_env();
+            PlatformPaths::new(&env).toadstool_socket()
+        });
 
         info!("🚀 ToadStool daemon running");
         info!("🍄 JSON-RPC socket: {}", socket_path.display());

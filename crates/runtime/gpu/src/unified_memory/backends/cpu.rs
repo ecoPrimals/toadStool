@@ -12,7 +12,7 @@ use crate::unified_memory::{
     types::*,
 };
 use async_trait::async_trait;
-use std::alloc::{alloc, dealloc, Layout};
+use std::alloc::{dealloc, Layout};
 use std::ptr::NonNull;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
@@ -47,16 +47,10 @@ impl AlignedBuffer {
         let layout = Layout::from_size_align(size, align)
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {e}")))?;
 
-        // SAFETY: Layout is valid (from_size_align succeeded)
-        let ptr = unsafe { alloc(layout) };
-
-        let ptr = NonNull::new(ptr).ok_or_else(|| ToadStoolError::runtime("Out of memory"))?;
-
-        // Zero the memory for safety
-        // SAFETY: ptr is valid and points to `size` bytes (just allocated)
-        unsafe {
-            std::ptr::write_bytes(ptr.as_ptr(), 0, size);
-        }
+        // SAFETY: Layout is valid (from_size_align succeeded).
+        // `alloc_zeroed` allocates and zero-initialises in one call.
+        let raw = unsafe { std::alloc::alloc_zeroed(layout) };
+        let ptr = NonNull::new(raw).ok_or_else(|| ToadStoolError::runtime("Out of memory"))?;
 
         Ok(Self { ptr, size, align })
     }

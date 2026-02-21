@@ -19,7 +19,7 @@ fn test_cross_compile_arm64_linux() {
         .expect("Failed to run rustup");
 
     let installed = String::from_utf8_lossy(&check.stdout);
-    
+
     if !installed.contains("aarch64-unknown-linux-gnu") {
         eprintln!("Skipping: aarch64-unknown-linux-gnu not installed");
         eprintln!("Install with: rustup target add aarch64-unknown-linux-gnu");
@@ -58,7 +58,7 @@ fn test_cross_compile_riscv64() {
         .expect("Failed to run rustup");
 
     let installed = String::from_utf8_lossy(&check.stdout);
-    
+
     if !installed.contains("riscv64gc-unknown-linux-gnu") {
         eprintln!("Skipping: riscv64gc-unknown-linux-gnu not installed");
         eprintln!("Install with: rustup target add riscv64gc-unknown-linux-gnu");
@@ -96,7 +96,7 @@ fn test_cross_compile_wasm32() {
         .expect("Failed to run rustup");
 
     let installed = String::from_utf8_lossy(&check.stdout);
-    
+
     if !installed.contains("wasm32-unknown-unknown") {
         eprintln!("Skipping: wasm32-unknown-unknown not installed");
         eprintln!("Install with: rustup target add wasm32-unknown-unknown");
@@ -135,7 +135,7 @@ fn test_cross_compile_windows() {
         .expect("Failed to run rustup");
 
     let installed = String::from_utf8_lossy(&check.stdout);
-    
+
     if !installed.contains("x86_64-pc-windows-gnu") {
         eprintln!("Skipping: x86_64-pc-windows-gnu not installed");
         eprintln!("Install with: rustup target add x86_64-pc-windows-gnu");
@@ -172,7 +172,7 @@ fn test_cross_compile_macos_arm() {
         .expect("Failed to run rustup");
 
     let installed = String::from_utf8_lossy(&check.stdout);
-    
+
     if !installed.contains("aarch64-apple-darwin") {
         eprintln!("Skipping: aarch64-apple-darwin not installed");
         eprintln!("Install with: rustup target add aarch64-apple-darwin");
@@ -204,20 +204,31 @@ fn test_cross_compile_macos_arm() {
 #[test]
 fn test_audit_wasm_runtime_dependencies() {
     let output = Command::new("cargo")
-        .args(["tree", "--package", "toadstool-runtime-wasm", "--depth", "1"])
+        .args([
+            "tree",
+            "--package",
+            "toadstool-runtime-wasm",
+            "--depth",
+            "1",
+        ])
         .output()
         .expect("Failed to run cargo tree");
 
     let tree = String::from_utf8_lossy(&output.stdout);
-    
+
     // Verify Pure Rust dependencies
     assert!(tree.contains("wasmi"), "Should use wasmi (Pure Rust!)");
-    
+
     // Ensure we don't have C dependencies
-    assert!(!tree.contains("wasmtime"), "Should NOT have wasmtime (has C)");
-    assert!(!tree.contains("-sys") || tree.contains("linux-raw-sys"), 
-            "Should have minimal -sys crates (only kernel interfaces)");
-    
+    assert!(
+        !tree.contains("wasmtime"),
+        "Should NOT have wasmtime (has C)"
+    );
+    assert!(
+        !tree.contains("-sys") || tree.contains("linux-raw-sys"),
+        "Should have minimal -sys crates (only kernel interfaces)"
+    );
+
     println!("✅ WASM runtime dependencies are Pure Rust!");
     println!("Dependencies:\n{}", tree);
 }
@@ -226,20 +237,32 @@ fn test_audit_wasm_runtime_dependencies() {
 #[test]
 fn test_audit_compression_dependencies() {
     let output = Command::new("cargo")
-        .args(["tree", "--package", "toadstool-runtime-secure-enclave", "--depth", "1"])
+        .args([
+            "tree",
+            "--package",
+            "toadstool-runtime-secure-enclave",
+            "--depth",
+            "1",
+        ])
         .output()
         .expect("Failed to run cargo tree");
 
     let tree = String::from_utf8_lossy(&output.stdout);
-    
+
     // Verify Pure Rust compression libraries
-    assert!(tree.contains("lz4_flex"), "Should use lz4_flex (Pure Rust!)");
+    assert!(
+        tree.contains("lz4_flex"),
+        "Should use lz4_flex (Pure Rust!)"
+    );
     assert!(tree.contains("ruzstd"), "Should use ruzstd (Pure Rust!)");
-    
+
     // Ensure we don't have C FFI compression
     assert!(!tree.contains("lz4-sys"), "Should NOT have lz4-sys (C FFI)");
-    assert!(!tree.contains("zstd-sys"), "Should NOT have zstd-sys (C FFI)");
-    
+    assert!(
+        !tree.contains("zstd-sys"),
+        "Should NOT have zstd-sys (C FFI)"
+    );
+
     println!("✅ Compression dependencies are Pure Rust!");
     println!("Dependencies:\n{}", tree);
 }
@@ -253,18 +276,20 @@ fn test_audit_crypto_dependencies() {
         .expect("Failed to run cargo tree");
 
     let tree = String::from_utf8_lossy(&output.stdout);
-    
+
     // Check for blake3 with pure feature
     if tree.contains("blake3") {
         println!("Found blake3 - verifying pure feature usage");
-        
+
         // NOTE: ring may appear in dependencies but should be minimal
         // The key is that runtime crates (wasmi, secure_enclave) don't use it
         if tree.contains("ring") {
-            println!("Note: ring detected in dependency tree (acceptable if not in runtime crates)");
+            println!(
+                "Note: ring detected in dependency tree (acceptable if not in runtime crates)"
+            );
         }
     }
-    
+
     println!("✅ Cryptography dependencies checked!");
 }
 
@@ -273,7 +298,7 @@ fn test_audit_crypto_dependencies() {
 fn test_no_c_compiler_invocations() {
     // This test validates that cargo build doesn't try to compile C code
     // We'll check the build output for cc/gcc/clang invocations
-    
+
     let output = Command::new("cargo")
         .args([
             "build",
@@ -288,22 +313,23 @@ fn test_no_c_compiler_invocations() {
         .expect("Failed to run cargo build");
 
     let stderr = String::from_utf8_lossy(&output.stderr);
-    
+
     // Check for C compiler invocations (look for Running with actual compile commands)
     // Note: "Fresh" lines are fine, we're looking for actual compilation
-    let has_cc_compile = stderr.lines()
+    let has_cc_compile = stderr
+        .lines()
         .filter(|line| line.contains("Running `") && !line.contains("Fresh"))
         .any(|line| {
-            (line.contains("gcc") || line.contains("clang") || line.contains(" cc ")) &&
-            (line.contains(".c") || line.contains(".cpp") || line.contains("-c "))
+            (line.contains("gcc") || line.contains("clang") || line.contains(" cc "))
+                && (line.contains(".c") || line.contains(".cpp") || line.contains("-c "))
         });
-    
+
     if has_cc_compile {
         eprintln!("Warning: Detected C compiler invocation!");
         eprintln!("Build output:\n{}", stderr);
         panic!("C compiler was invoked - Pure Rust violation!");
     }
-    
+
     println!("✅ Zero C compiler invocations (runtime crates are Pure Rust!)");
 }
 
@@ -316,13 +342,16 @@ fn test_cargo_metadata_pure_rust() {
         .expect("Failed to run cargo metadata");
 
     let metadata = String::from_utf8_lossy(&output.stdout);
-    
+
     // Parse and validate key dependencies
     assert!(metadata.contains("wasmi"), "Should have wasmi");
     assert!(metadata.contains("lz4_flex"), "Should have lz4_flex");
     assert!(metadata.contains("ruzstd"), "Should have ruzstd");
-    assert!(metadata.contains("etcetera"), "Should have etcetera (Pure Rust dirs!)");
-    
+    assert!(
+        metadata.contains("etcetera"),
+        "Should have etcetera (Pure Rust dirs!)"
+    );
+
     println!("✅ Cargo metadata confirms Pure Rust dependencies!");
 }
 
@@ -338,15 +367,19 @@ fn test_dirs_sys_eliminated() {
         .expect("Failed to run cargo tree");
 
     let tree = String::from_utf8_lossy(&output.stdout);
-    
+
     // Should NOT have dirs-sys anymore!
-    assert!(!tree.contains("dirs-sys"), 
-            "dirs-sys should be eliminated! Found in dependency tree.");
-    
+    assert!(
+        !tree.contains("dirs-sys"),
+        "dirs-sys should be eliminated! Found in dependency tree."
+    );
+
     // Should have etcetera instead
-    assert!(tree.contains("etcetera"), 
-            "Should have etcetera (Pure Rust replacement)");
-    
+    assert!(
+        tree.contains("etcetera"),
+        "Should have etcetera (Pure Rust replacement)"
+    );
+
     println!("✅ dirs-sys eliminated successfully!");
     println!("✅ Using etcetera (Pure Rust) instead!");
 }
@@ -362,27 +395,25 @@ fn test_only_acceptable_sys_crates() {
         .expect("Failed to run cargo tree");
 
     let tree = String::from_utf8_lossy(&output.stdout);
-    
+
     // Count -sys crates
-    let sys_crates: Vec<&str> = tree
-        .lines()
-        .filter(|line| line.contains("-sys"))
-        .collect();
-    
+    let sys_crates: Vec<&str> = tree.lines().filter(|line| line.contains("-sys")).collect();
+
     // Check each -sys crate
     for crate_line in &sys_crates {
-        let is_acceptable = 
-            crate_line.contains("linux-raw-sys") ||    // Syscall numbers ✅
+        let is_acceptable = crate_line.contains("linux-raw-sys") ||    // Syscall numbers ✅
             crate_line.contains("inotify-sys") ||      // File watching ✅
             crate_line.contains("pyo3-ffi") ||         // Python FFI (optional) ✅
             crate_line.contains("seccomp-sys") ||      // Security (optional) ✅
-            crate_line.contains("renderdoc-sys");      // GPU debugging (optional) ✅
-        
-        assert!(is_acceptable, 
-                "Found unacceptable -sys crate: {}. Only kernel interfaces allowed!", 
-                crate_line);
+            crate_line.contains("renderdoc-sys"); // GPU debugging (optional) ✅
+
+        assert!(
+            is_acceptable,
+            "Found unacceptable -sys crate: {}. Only kernel interfaces allowed!",
+            crate_line
+        );
     }
-    
+
     println!("✅ Only acceptable -sys crates remain!");
     println!("   Found {} -sys crates, all acceptable:", sys_crates.len());
     for crate_line in sys_crates.iter().take(5) {
@@ -399,21 +430,33 @@ fn test_true_100_percent_pure_rust() {
         .expect("Failed to run cargo tree");
 
     let tree = String::from_utf8_lossy(&output.stdout);
-    
+
     // Verify NO C library dependencies in production
     assert!(!tree.contains("lz4-sys"), "Should NOT have lz4-sys");
     assert!(!tree.contains("openssl-sys"), "Should NOT have openssl-sys");
-    
+
     // Note: zstd-sys may appear in dev-dependencies (for creating test data)
     // This is acceptable - we only care about production dependencies
-    
+
     // Verify Pure Rust replacements
     assert!(tree.contains("wasmi"), "Should have wasmi (Pure Rust WASM)");
-    assert!(tree.contains("lz4_flex"), "Should have lz4_flex (Pure Rust LZ4)");
-    assert!(tree.contains("ruzstd"), "Should have ruzstd (Pure Rust Zstd)");
-    assert!(tree.contains("etcetera"), "Should have etcetera (Pure Rust dirs)");
-    assert!(tree.contains("notify"), "Should have notify (Pure Rust file watching)");
-    
+    assert!(
+        tree.contains("lz4_flex"),
+        "Should have lz4_flex (Pure Rust LZ4)"
+    );
+    assert!(
+        tree.contains("ruzstd"),
+        "Should have ruzstd (Pure Rust Zstd)"
+    );
+    assert!(
+        tree.contains("etcetera"),
+        "Should have etcetera (Pure Rust dirs)"
+    );
+    assert!(
+        tree.contains("notify"),
+        "Should have notify (Pure Rust file watching)"
+    );
+
     println!("✅ TRUE 100% Pure Rust achieved!");
     println!("   All C library dependencies eliminated from production!");
     println!("   Only kernel interface wrappers remain (acceptable)!");

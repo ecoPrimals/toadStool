@@ -107,10 +107,8 @@ pub fn npu_matmul(
     let device = get_test_device_sync();
 
     // Block on async tensor creation
-    let tensor_a =
-        Tensor::from_vec_on_sync(a.to_vec(), vec![m, k], device.clone())?;
-    let tensor_b =
-        Tensor::from_vec_on_sync(b.to_vec(), vec![k, n], device)?;
+    let tensor_a = Tensor::from_vec_on_sync(a.to_vec(), vec![m, k], device.clone())?;
+    let tensor_b = Tensor::from_vec_on_sync(b.to_vec(), vec![k, n], device)?;
 
     // Execute matmul using WGSL shader (same as GPU/CPU!)
     // This uses ops/matmul.rs → shaders/matmul.wgsl

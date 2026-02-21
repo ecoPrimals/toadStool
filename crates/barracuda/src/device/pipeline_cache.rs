@@ -192,7 +192,7 @@ impl PipelineKey {
     }
 }
 
-/// Thread-safe pipeline cache — evolved from DashMap to stdlib RwLock<HashMap>.
+/// Thread-safe pipeline cache — evolved from DashMap to stdlib `RwLock<HashMap>`.
 ///
 /// Access pattern: very frequent reads (cache hits), rare writes (first-use only).
 /// RwLock's read-write semantics are ideal: unlimited concurrent readers, exclusive writer.
@@ -213,8 +213,8 @@ pub struct PipelineCache {
 impl PipelineCache {
     pub fn new() -> Self {
         Self {
-            shaders:   RwLock::new(HashMap::new()),
-            layouts:   RwLock::new(HashMap::new()),
+            shaders: RwLock::new(HashMap::new()),
+            layouts: RwLock::new(HashMap::new()),
             pipelines: RwLock::new(HashMap::new()),
         }
     }
@@ -270,52 +270,52 @@ impl PipelineCache {
         // Slow path: create from signature.
         let layout = {
             let mut entries = Vec::new();
-                let mut binding = 0u32;
+            let mut binding = 0u32;
 
-                // Read-only storage buffers
-                for _ in 0..signature.read_only_buffers {
-                    entries.push(wgpu::BindGroupLayoutEntry {
-                        binding,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    });
-                    binding += 1;
-                }
+            // Read-only storage buffers
+            for _ in 0..signature.read_only_buffers {
+                entries.push(wgpu::BindGroupLayoutEntry {
+                    binding,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                });
+                binding += 1;
+            }
 
-                // Read-write storage buffers
-                for _ in 0..signature.read_write_buffers {
-                    entries.push(wgpu::BindGroupLayoutEntry {
-                        binding,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    });
-                    binding += 1;
-                }
+            // Read-write storage buffers
+            for _ in 0..signature.read_write_buffers {
+                entries.push(wgpu::BindGroupLayoutEntry {
+                    binding,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                });
+                binding += 1;
+            }
 
-                // Uniform buffers
-                for _ in 0..signature.uniform_buffers {
-                    entries.push(wgpu::BindGroupLayoutEntry {
-                        binding,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    });
-                    binding += 1;
-                }
+            // Uniform buffers
+            for _ in 0..signature.uniform_buffers {
+                entries.push(wgpu::BindGroupLayoutEntry {
+                    binding,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                });
+                binding += 1;
+            }
 
             let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label,
@@ -358,14 +358,16 @@ impl PipelineCache {
             bind_group_layouts: &[&layout],
             push_constant_ranges: &[],
         });
-        let pipeline = Arc::new(device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label,
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point,
-            cache: None,
-            compilation_options: Default::default(),
-        }));
+        let pipeline = Arc::new(
+            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label,
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point,
+                cache: None,
+                compilation_options: Default::default(),
+            }),
+        );
         self.pipelines
             .write()
             .expect("pipelines poisoned")
@@ -377,8 +379,8 @@ impl PipelineCache {
     /// Get cache statistics
     pub fn stats(&self) -> CacheStats {
         CacheStats {
-            shaders:   self.shaders.read().expect("shaders poisoned").len(),
-            layouts:   self.layouts.read().expect("layouts poisoned").len(),
+            shaders: self.shaders.read().expect("shaders poisoned").len(),
+            layouts: self.layouts.read().expect("layouts poisoned").len(),
             pipelines: self.pipelines.read().expect("pipelines poisoned").len(),
         }
     }

@@ -22,12 +22,12 @@ impl Atanh {
     }
 
     pub fn execute(self) -> Result<Tensor> {
-        let device       = self.input.device();
-        let size         = self.input.len();
-        let ctx          = get_device_context(device);
-        let caps         = DeviceCapabilities::from_device(device);
-        let wg_size      = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups   = (size as u32).div_ceil(wg_size);
+        let device = self.input.device();
+        let size = self.input.len();
+        let ctx = get_device_context(device);
+        let caps = DeviceCapabilities::from_device(device);
+        let wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+        let workgroups = (size as u32).div_ceil(wg_size);
         let adapter_info = device.adapter_info();
 
         let output_buffer = ctx.acquire_pooled_output(size);
@@ -41,7 +41,11 @@ impl Atanh {
         );
 
         let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
-            device.device(), adapter_info, Self::wgsl_shader(), layout_sig, "main",
+            device.device(),
+            adapter_info,
+            Self::wgsl_shader(),
+            layout_sig,
+            "main",
             Some("Atanh Pipeline"),
         );
 
@@ -79,11 +83,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_atanh_finite() {
-        let Some(device) = get_test_device().await else { return; };
+        let Some(device) = get_test_device().await else {
+            return;
+        };
         let input = Tensor::new(vec![-0.9, -0.5, 0.0, 0.5, 0.9], vec![5], device.clone());
         let output = input.atanh().unwrap();
         let result = output.to_vec().unwrap();
-        assert!(result.iter().all(|&x| x.is_finite()), "atanh produced non-finite: {result:?}");
-        assert!(result[2].abs() < 1e-5, "atanh(0) should be 0, got {}", result[2]);
+        assert!(
+            result.iter().all(|&x| x.is_finite()),
+            "atanh produced non-finite: {result:?}"
+        );
+        assert!(
+            result[2].abs() < 1e-5,
+            "atanh(0) should be 0, got {}",
+            result[2]
+        );
     }
 }

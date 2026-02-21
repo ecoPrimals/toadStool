@@ -67,8 +67,8 @@ impl Tanhshrink {
             Some("Tanhshrink BGL"),
         );
 
-        let bind_group = std::sync::Arc::new(device.device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
+        let bind_group =
+            std::sync::Arc::new(device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Tanhshrink BG"),
                 layout: &bgl,
                 entries: &[
@@ -85,8 +85,7 @@ impl Tanhshrink {
                         resource: params_buf.as_entire_binding(),
                     },
                 ],
-            },
-        ));
+            }));
 
         let pipeline = GLOBAL_CACHE.get_or_create_pipeline(
             device.device(),

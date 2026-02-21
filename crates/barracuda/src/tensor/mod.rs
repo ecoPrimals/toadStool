@@ -87,7 +87,11 @@ impl Tensor {
     ///
     /// The buffer's lifetime is shared: both the `Tensor` and the caller's `Arc`
     /// keep it alive.
-    pub fn from_arc_buffer(buffer: Arc<wgpu::Buffer>, shape: Vec<usize>, device: Arc<WgpuDevice>) -> Self {
+    pub fn from_arc_buffer(
+        buffer: Arc<wgpu::Buffer>,
+        shape: Vec<usize>,
+        device: Arc<WgpuDevice>,
+    ) -> Self {
         Self {
             buffer: TensorBuffer::Owned(buffer),
             shape,

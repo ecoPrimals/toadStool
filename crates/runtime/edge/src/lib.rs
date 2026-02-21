@@ -122,12 +122,18 @@ pub struct ResourceUsage {
 
 impl Default for EdgeRuntimeConfig {
     fn default() -> Self {
+        // Use XDG-compliant path resolution for cache
+        let cache_path = toadstool::platform_paths::PlatformPaths::new(
+            &toadstool::platform_paths::PathEnv::from_env()
+        ).toadstool_cache_dir().join("edge_cache")
+            .to_string_lossy().into_owned();
+
         Self {
             discovery_enabled: true,
             discovery_timeout_secs: 30,
             max_devices: 100,
             communication_timeout_ms: 5000,
-            cross_compile_cache_path: "/tmp/toadstool_edge_cache".to_string(),
+            cross_compile_cache_path: cache_path,
             auto_provisioning: true,
             security_level: EdgeSecurityLevel::Standard,
             resource_strategy: ResourceAllocationStrategy::Adaptive,

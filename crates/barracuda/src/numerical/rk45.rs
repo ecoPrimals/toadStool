@@ -84,6 +84,18 @@ impl Rk45Config {
         self.h_max = h_max;
         self
     }
+
+    /// Set maximum number of steps.
+    pub fn with_max_steps(mut self, max_steps: usize) -> Self {
+        self.max_steps = max_steps;
+        self
+    }
+
+    /// Set safety factor for step size adjustment.
+    pub fn with_safety(mut self, safety: f64) -> Self {
+        self.safety = safety;
+        self
+    }
 }
 
 /// Result of the RK45 integration.
@@ -472,5 +484,88 @@ mod tests {
         assert!((config.h_init - 0.001).abs() < 1e-14);
         assert!((config.h_min - 1e-10).abs() < 1e-14);
         assert!((config.h_max - 0.5).abs() < 1e-14);
+    }
+
+    #[test]
+    fn test_max_steps_exceeded() {
+        let f = |_t: f64, y: &[f64]| vec![-y[0]];
+        let config = Rk45Config::new(1e-12, 1e-14)
+            .with_max_steps(5)
+            .with_h_init(0.001);
+
+        let result = rk45_solve(&f, 0.0, 10.0, &[1.0], &config);
+        assert!(result.is_err());
+        if let Err(BarracudaError::Numerical { message }) = result {
+            assert!(message.contains("Max steps"));
+        }
+    }
+
+    #[test]
+    fn test_config_default() {
+        let config = Rk45Config::default();
+        assert!((config.rtol - 1e-6).abs() < 1e-14);
+        assert!((config.atol - 1e-9).abs() < 1e-14);
+        assert!((config.h_init - 0.01).abs() < 1e-14);
+        assert!((config.h_min - 1e-12).abs() < 1e-14);
+        assert!((config.h_max - 1.0).abs() < 1e-14);
+        assert!((config.safety - 0.9).abs() < 1e-14);
+        assert_eq!(config.max_steps, 100_000);
+    }
+
+    #[test]
+    fn test_config_with_safety() {
+        let config = Rk45Config::default().with_safety(0.8);
+        assert!((config.safety - 0.8).abs() < 1e-14);
+    }
+
+    #[test]
+    fn test_config_with_max_steps() {
+        let config = Rk45Config::default().with_max_steps(500);
+        assert_eq!(config.max_steps, 500);
+    }
+
+    #[test]
+    fn test_linear_ode() {
+        let f = |t: f64, _y: &[f64]| vec![2.0 * t];
+        let config = Rk45Config::new(1e-8, 1e-10);
+
+        let result = rk45_solve(&f, 0.0, 1.0, &[0.0], &config).unwrap();
+        let expected = 1.0;
+        assert!(
+            (result.y_final[0] - expected).abs() < 1e-6,
+            "y(1) = {}, expected {}",
+            result.y_final[0],
+            expected
+        );
+    }
+
+    #[test]
+    fn test_multi_dimension() {
+        let f = |_t: f64, y: &[f64]| vec![-y[0], -2.0 * y[1], -3.0 * y[2]];
+        let config = Rk45Config::new(1e-8, 1e-10);
+
+        let result = rk45_solve(&f, 0.0, 1.0, &[1.0, 1.0, 1.0], &config).unwrap();
+
+        assert!((result.y_final[0] - (-1.0_f64).exp()).abs() < 1e-6);
+        assert!((result.y_final[1] - (-2.0_f64).exp()).abs() < 1e-6);
+        assert!((result.y_final[2] - (-3.0_f64).exp()).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_zero_interval_error() {
+        let f = |_t: f64, y: &[f64]| vec![y[0]];
+        let config = Rk45Config::default();
+
+        let result = rk45_solve(&f, 0.0, 0.0, &[1.0], &config);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_backward_integration_error() {
+        let f = |_t: f64, y: &[f64]| vec![-y[0]];
+        let config = Rk45Config::new(1e-8, 1e-10);
+
+        let result = rk45_solve(&f, 1.0, 0.0, &[(-1.0_f64).exp()], &config);
+        assert!(result.is_err());
     }
 }

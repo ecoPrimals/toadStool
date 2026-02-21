@@ -26,7 +26,7 @@ Nest    = Tower  + NestGate           ← storage
 
 ---
 
-## Quality Gates (February 20, 2026)
+## Quality Gates (February 21, 2026)
 
 | Gate | Status |
 |------|--------|
@@ -34,7 +34,7 @@ Nest    = Tower  + NestGate           ← storage
 | `cargo fmt --all -- --check` | ✅ Clean |
 | `cargo clippy --workspace --tests -- -D warnings` | ✅ Clean |
 | `cargo doc --workspace --no-deps` | ✅ Clean |
-| `cargo test --workspace` | ✅ 15,900+ passed, 0 failed |
+| `cargo test --workspace` | ✅ 16,070+ passed, 0 failed |
 | hotSpring validation | ✅ 195/195 nuclear physics + MD checks |
 | wetSpring validation | ✅ 48/48 life science checks |
 | airSpring validation | ✅ 70/70 Rust + 142 Python precision agriculture checks |
@@ -61,7 +61,8 @@ Nest    = Tower  + NestGate           ← storage
 | Zero-copy hot paths | ✅ `bytes::Bytes` on all binary RPC payloads (O(1) clone) |
 | Hardcoded values | ✅ DNS, IPs, endpoints all capability-based or env-driven |
 | `llvm-cov` (non-GPU) | ✅ Clean — no SIGSEGV, exit 0 across workspace |
-| Line coverage (non-GPU) | ✅ 63.02% (+1.67 pp) — target 90% |
+| Unit test coverage (S25) | ✅ 172 new tests across 11 modules |
+| Line coverage (non-GPU) | ✅ ~65% — target 90% |
 
 *All quality gates green. Workspace fully clean. Clippy -D warnings compliant.*
 

@@ -207,19 +207,19 @@ pub mod correlation_wgsl; // Pearson correlation
 pub mod covariance_wgsl; // Sample covariance
 
 // PDE/ODE infrastructure
-pub mod crank_nicolson; // Implicit PDE solver (Richards, heat, Schrödinger)
-pub mod batched_ode_rk4;   // BatchedOdeRK4F64 — full-GPU QS/c-di-GMP parameter sweep
-pub mod batched_rk4_sweep; // BatchedRK4F64   — general-purpose N-trajectory orchestration (D-S21-001)
-pub mod rk_stage;          // RkIntegrator    — single-trajectory CPU-orchestrated RK4/RK45
-pub mod hill_f64; // Hill kinetic activation (wetSpring QS/c-di-GMP + PFAS)
 pub mod batch_pair_reduce_f64; // O(N²) pairwise batch reduction (DADA2, BrayCurtis)
 pub mod batch_tolerance_search_f64; // PFAS ion batch tolerance search
-pub mod kmd_grouping_f64; // Kendrick Mass Defect homologue grouping
-pub use rk_stage::{BatchedOdeRK4F64, BatchedRk4Config, RkIntegrator, OdeFunction};
-pub use hill_f64::HillFunctionF64;
+pub mod batched_ode_rk4; // BatchedOdeRK4F64 — full-GPU QS/c-di-GMP parameter sweep
+pub mod batched_rk4_sweep; // BatchedRK4F64   — general-purpose N-trajectory orchestration (D-S21-001)
+pub mod crank_nicolson; // Implicit PDE solver (Richards, heat, Schrödinger)
+pub mod hill_f64; // Hill kinetic activation (wetSpring QS/c-di-GMP + PFAS)
+pub mod kmd_grouping_f64;
+pub mod rk_stage; // RkIntegrator    — single-trajectory CPU-orchestrated RK4/RK45 // Kendrick Mass Defect homologue grouping
 pub use batch_pair_reduce_f64::{BatchPairReduceF64, PairReduceOp};
 pub use batch_tolerance_search_f64::BatchToleranceSearchF64;
-pub use kmd_grouping_f64::{KmdGroupingF64, KmdResult, repeat_units};
+pub use hill_f64::HillFunctionF64;
+pub use kmd_grouping_f64::{repeat_units, KmdGroupingF64, KmdResult};
+pub use rk_stage::{BatchedOdeRK4F64, BatchedRk4Config, OdeFunction, RkIntegrator};
 
 // Cosine similarity (f64)
 pub mod cosine_similarity_f64; // Spectral matching, small-batch queries

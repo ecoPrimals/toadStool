@@ -189,6 +189,11 @@ fn find_loop_end(lines: &[&str], for_idx: usize) -> usize {
 }
 
 /// Collect the body lines between the opening `{` and closing `}` of a for loop.
+///
+/// The `for` header line at `for_idx` is deliberately excluded — it is the
+/// loop declaration itself, not part of the body.  Including it would cause
+/// the loop variable to be substituted into the header (e.g. `for (var 0 = 0u;
+/// ...)`) when the body lines undergo loop-variable substitution.
 fn collect_body(lines: &[&str], for_idx: usize) -> Vec<String> {
     let end_idx = find_loop_end(lines, for_idx);
     let mut body = Vec::new();
@@ -206,8 +211,9 @@ fn collect_body(lines: &[&str], for_idx: usize) -> Vec<String> {
                 depth -= 1;
             }
         }
-        if past_open && depth >= 1 {
-            // This line is inside the loop body (between outer braces)
+        // Skip the for-loop header (i == for_idx) — only collect the body
+        // lines strictly between the braces.
+        if i > for_idx && past_open && depth >= 1 {
             body.push(line.to_string());
         }
     }
