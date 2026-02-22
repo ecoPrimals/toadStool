@@ -309,7 +309,7 @@ fn emit_unrolled_block(
 /// Replace whole-word occurrences of `var_name` in `line` with the literal `iter`.
 fn substitute_loop_var(line: &str, var_name: &str, iter: u32) -> String {
     let result = line.to_string();
-    let replacement = iter.to_string();
+    let replacement = format!("{iter}u");
     // Replace whole-word occurrences only.
     let mut out = String::new();
     let mut pos = 0;
