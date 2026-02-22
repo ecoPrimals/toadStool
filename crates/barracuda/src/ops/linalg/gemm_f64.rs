@@ -363,7 +363,7 @@ impl GemmCachedF64 {
                 bind_group_layouts: &[&bgl],
                 push_constant_ranges: &[],
             });
-        let shader = dev.compile_shader(GemmF64::wgsl_shader(), Some("GemmCached"));
+        let shader = dev.compile_shader_f64(GemmF64::wgsl_shader(), Some("GemmCached"));
         let pipeline = Arc::new(dev.device.create_compute_pipeline(
             &wgpu::ComputePipelineDescriptor {
                 label: Some("GemmCached Pipeline"),

@@ -161,7 +161,7 @@ impl BatchPairReduceF64 {
             ],
         });
 
-        let shader = dev.compile_shader(Self::wgsl_shader(), Some("PairReduce"));
+        let shader = dev.compile_shader_f64(Self::wgsl_shader(), Some("PairReduce"));
         let pl = dev
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

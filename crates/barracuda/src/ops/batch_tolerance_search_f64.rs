@@ -137,7 +137,7 @@ impl BatchToleranceSearchF64 {
             ],
         });
 
-        let shader = dev.compile_shader(Self::wgsl_shader(), Some("TolSearch"));
+        let shader = dev.compile_shader_f64(Self::wgsl_shader(), Some("TolSearch"));
         let pl = dev
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

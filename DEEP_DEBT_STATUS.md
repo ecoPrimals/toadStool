@@ -1,6 +1,6 @@
 # Deep Debt Status Report
 
-**Sessions 32-40 -- February 22, 2026**
+**Sessions 32-41 -- February 22, 2026**
 **Status**: PRODUCTION-GRADE | All quality gates green | 0 clippy warnings | 3,847+ non-GPU tests + barracuda targeted | Coverage: common 87%, config 89%, core 79%, server 77%
 
 ---
@@ -247,6 +247,9 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | Moving window statistics GPU op (sliding mean/var/min/max, IoT streams) | ✅ S40 |
 | Dependency audit: workspace already pure Rust (libc only in akida VFIO) | ✅ S40 |
 | Dead code sweep: 38 `#[allow(dead_code)]` all verified legitimate | ✅ S40 |
+| Fix 6 f64 shaders using `compile_shader()` instead of `compile_shader_f64()` | ✅ S41 |
+| `cpu_conv_pool` functions promoted from `pub(crate)` to `pub` | ✅ S41 |
+| All 25 bio ops re-exported at crate level (`barracuda::PairwiseL2Gpu`, etc.) | ✅ S41 |
 
 ---
 

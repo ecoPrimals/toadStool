@@ -128,7 +128,7 @@ impl HillFunctionF64 {
             ],
         });
 
-        let shader = dev.compile_shader(Self::wgsl_shader(), Some("HillF64"));
+        let shader = dev.compile_shader_f64(Self::wgsl_shader(), Some("HillF64"));
         let pl = dev
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

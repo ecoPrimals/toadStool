@@ -206,7 +206,7 @@ impl BatchedOdeRK4F64 {
             ],
         });
 
-        let shader = dev.compile_shader(Self::wgsl_shader(), Some("BatchedOdeRK4"));
+        let shader = dev.compile_shader_f64(Self::wgsl_shader(), Some("BatchedOdeRK4"));
         let pl = dev
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

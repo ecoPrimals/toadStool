@@ -8,7 +8,7 @@ use crate::error::Result;
 /// 2D convolution (im2col-free direct convolution).
 /// Input `[N, C_in, H, W]`, kernel `[C_out, C_in, kH, kW]`.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn conv2d(
+pub fn conv2d(
     input: &[f32],
     kernel: &[f32],
     n: usize,
@@ -72,7 +72,7 @@ pub(crate) fn conv2d(
 
 /// 2D max pooling. Input `[N, C, H, W]`.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn max_pool2d(
+pub fn max_pool2d(
     input: &[f32],
     n: usize,
     c: usize,
@@ -124,7 +124,7 @@ pub(crate) fn max_pool2d(
 
 /// 2D average pooling. Input `[N, C, H, W]`.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn avg_pool2d(
+pub fn avg_pool2d(
     input: &[f32],
     n: usize,
     c: usize,
