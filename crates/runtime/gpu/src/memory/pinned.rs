@@ -11,6 +11,9 @@
 use std::ptr::NonNull;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
+/// Cache-line alignment for DMA-friendly pinned allocations.
+const PINNED_ALIGNMENT: usize = 64;
+
 /// Pinned host memory for fast GPU transfers
 ///
 /// Memory is page-locked and aligned for optimal GPU DMA performance
@@ -51,18 +54,16 @@ impl PinnedMemory {
         // - OpenCL: clCreateBuffer with CL_MEM_ALLOC_HOST_PTR
         // - Vulkan: vkAllocateMemory with HOST_VISIBLE | HOST_COHERENT
 
-        // Allocate aligned memory (64-byte alignment for cache lines)
-        const ALIGNMENT: usize = 64;
-        let layout = std::alloc::Layout::from_size_align(size, ALIGNMENT)
+        let layout = std::alloc::Layout::from_size_align(size, PINNED_ALIGNMENT)
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {}", e)))?;
 
-        // SAFETY: Layout is valid (from_size_align succeeded, size>0, ALIGNMENT=64).
+        // SAFETY: Layout is valid (from_size_align succeeded, size>0, PINNED_ALIGNMENT=64).
         let raw = unsafe { std::alloc::alloc(layout) };
         let ptr = NonNull::new(raw).ok_or_else(|| {
             ToadStoolError::runtime(format!("Failed to allocate {size} bytes of pinned memory"))
         })?;
 
-        tracing::debug!("Allocated {} bytes of pinned memory (aligned to {})", size, ALIGNMENT);
+        tracing::debug!("Allocated {} bytes of pinned memory (aligned to {})", size, PINNED_ALIGNMENT);
 
         Ok(Self {
             ptr,
@@ -110,9 +111,7 @@ impl PinnedMemory {
 
 impl Drop for PinnedMemory {
     fn drop(&mut self) {
-        // Free pinned memory
-        const ALIGNMENT: usize = 64;
-        let layout = std::alloc::Layout::from_size_align(self.size, ALIGNMENT)
+        let layout = std::alloc::Layout::from_size_align(self.size, PINNED_ALIGNMENT)
             .expect("Layout valid during drop");
 
         // SAFETY: ptr from alloc(layout) in new(); layout matches; Drop runs exactly once.

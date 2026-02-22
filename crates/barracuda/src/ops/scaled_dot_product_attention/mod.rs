@@ -7,6 +7,12 @@
 //! - **Production-ready**: Complete implementation with proper error handling
 //! - **Hardware-agnostic**: Pure WGSL for universal compute
 //!
+//! ## Evolution Path
+//!
+//! A single-kernel simplified variant is available via [`WGSL_SDPA_SINGLE_KERNEL`]
+//! for prototyping. The production multi-pass implementation (3 passes) is preferred
+//! for memory efficiency and numerical stability.
+//!
 //! ## Algorithm
 //!
 //! ```text
@@ -37,6 +43,13 @@ mod tests;
 
 use crate::error::Result;
 use crate::tensor::Tensor;
+
+/// Single-kernel SDPA shader for prototyping (simplified, non-production).
+///
+/// The production multi-pass implementation above is preferred; this constant
+/// exposes the simplified variant for experimentation and testing.
+pub const WGSL_SDPA_SINGLE_KERNEL: &str =
+    include_str!("../../shaders/attention/scaled_dot_product_attention.wgsl");
 
 /// Attention parameters
 #[repr(C)]

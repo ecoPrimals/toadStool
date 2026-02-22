@@ -5,9 +5,50 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 21, 2026 (Session 31e — Deep Debt Evolution)
+## [Unreleased] - February 21, 2026 (Session 31g — Deep Debt Evolution)
 
-### Executor Completeness
+### Orphan Shader Integration (Session 31g)
+
+- **ESN GPU kernels** — Wired `esn_reservoir_update.wgsl` and `esn_readout.wgsl`
+  as constants (`WGSL_RESERVOIR_UPDATE`, `WGSL_READOUT`) in `esn_v2.rs`.
+  Provenance: hotSpring v0.6.0 Stanton-Murillo transport.
+
+- **Random Forest GPU inference** — New `RfBatchInferenceGpu` wrapper for
+  `rf_batch_inference.wgsl` (SoA layout, f64 thresholds, one thread per
+  sample×tree pair). Provenance: wetSpring handoff v5.
+
+- **HMM forward f32** — Wired log-domain f32 HMM forward shader as
+  `WGSL_HMM_FORWARD_LOG_F32` constant in `ops/bio/hmm.rs`. Complements
+  existing f64 batch forward.
+
+- **Scaled dot-product attention** — Wired single-kernel prototype shader as
+  `WGSL_SDPA_SINGLE_KERNEL` constant alongside production multi-pass impl.
+
+- **Optimizer shaders** — Wired `bfgs_update.wgsl` + `batch_gradient.wgsl`
+  as constants in `optimize/bfgs.rs`; `simplex_ops.wgsl` in `nelder_mead_gpu.rs`.
+
+### Linear Algebra (Session 31g)
+
+- **`LinSolveF64`** — GPU Gaussian elimination with full f64 precision via
+  `linsolve_f64.wgsl`. For ill-conditioned systems (κ > 10⁶).
+
+- **`InverseF64`** — GPU Gauss-Jordan matrix inverse (f64) via `inverse_f64.wgsl`.
+  Optimized for small–medium matrices (N ≤ 32).
+
+### Safety & Code Quality (Session 31g)
+
+- **Unsafe audit** — All `unsafe` blocks in `runtime/gpu` verified: minimal scope,
+  SAFETY comments documenting invariants, validation before pointer use.
+  Extracted duplicated `PINNED_ALIGNMENT` constant in `pinned.rs`.
+
+- **Production panic audit** — Confirmed zero `panic!()` calls in library
+  production code; all 50+ panics are in `#[cfg(test)]` blocks.
+
+- **Hardcoded IP/port audit** — All `localhost` references in production code
+  use env-var-with-defaults pattern (e.g. `TOADSTOOL_BIND_HOST`). RFC 1918
+  ranges are standard network config constants.
+
+### Executor Completeness (Session 31e)
 
 - **GPU executor** — Wired all remaining MathOp variants: `Pow` (scalar extraction from
   second input → `pow_wgsl`), `Max` / `Min` (elementwise CPU fallback pending GPU kernel),

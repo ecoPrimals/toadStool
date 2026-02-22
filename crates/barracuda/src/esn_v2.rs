@@ -60,6 +60,18 @@ use crate::tensor::Tensor;
 use rand::{Rng, SeedableRng};
 use std::sync::Arc;
 
+/// GPU shader for fused reservoir update: W_in·input + W_res·state → leaky tanh → new state.
+///
+/// Single dispatch replaces two matmul + element-wise ops.
+/// Provenance: hotSpring v0.6.0 (Stanton-Murillo transport).
+pub const WGSL_RESERVOIR_UPDATE: &str = include_str!("shaders/ml/esn_reservoir_update.wgsl");
+
+/// GPU shader for readout: output[i] = W_out[i,:] · state (matrix-vector product).
+///
+/// Separated from reservoir update so readout can run on CPU while reservoir
+/// runs on GPU/NPU. Readout is cheap (output_size << reservoir_size).
+pub const WGSL_READOUT: &str = include_str!("shaders/ml/esn_readout.wgsl");
+
 /// Configuration for Echo State Network
 #[derive(Debug, Clone)]
 pub struct ESNConfig {

@@ -1,4 +1,4 @@
-# Status -- February 21, 2026 (Session 31e: Deep Debt Evolution)
+# Status -- February 21, 2026 (Session 31g: Deep Debt Evolution)
 
 ## Quality Gates
 
@@ -23,6 +23,27 @@
 *All clippy warnings resolved. Workspace fully clean.*
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU). `crates/client` excluded (pending reqwest migration to biomeOS tower).
+
+---
+
+## Session 31g: Deep Debt Evolution (Feb 21, 2026) ✅
+
+### Orphan Shader Integration
+- **ESN GPU kernels**: `WGSL_RESERVOIR_UPDATE` + `WGSL_READOUT` constants
+- **RF batch inference**: `RfBatchInferenceGpu` — full GPU wrapper (SoA f64, wetSpring v5)
+- **HMM forward f32**: `WGSL_HMM_FORWARD_LOG_F32` — log-domain variant
+- **SDPA single-kernel**: `WGSL_SDPA_SINGLE_KERNEL` — prototype alongside multi-pass
+- **Optimizer shaders**: BFGS update, batch gradient, simplex ops wired as constants
+
+### f64 Linear Algebra
+- **`LinSolveF64`**: GPU Gaussian elimination (f64) for ill-conditioned systems
+- **`InverseF64`**: GPU Gauss-Jordan inverse (f64, N ≤ 32)
+
+### Safety & Quality Audit
+- **Zero production panics**: All 50+ `panic!()` calls confirmed in test code only
+- **Hardcoded IPs resolved**: All use env-var-with-defaults pattern
+- **Unsafe audit clean**: All blocks minimal with SAFETY invariant docs
+- **Extracted `PINNED_ALIGNMENT`**: De-duplicated constant in `pinned.rs`
 
 ---
 

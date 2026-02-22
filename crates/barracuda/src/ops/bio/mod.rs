@@ -22,6 +22,7 @@
 //! | `pairwise_jaccard`  | `pairwise_jaccard.wgsl`          | Pairwise Jaccard distance |
 //! | `spatial_payoff`    | `spatial_payoff.wgsl`            | Spatial PD payoff stencil |
 //! | `batch_fitness`     | `batch_fitness_eval.wgsl`        | EA batch fitness evaluation |
+//! | `rf_inference`      | `rf_batch_inference.wgsl`        | Batch RF inference (SoA f64) |
 
 pub mod ani;
 pub mod batch_fitness;
@@ -35,6 +36,7 @@ pub mod pairwise_hamming;
 pub mod pairwise_jaccard;
 pub mod pangenome;
 pub mod quality_filter;
+pub mod rf_inference;
 pub mod smith_waterman;
 pub mod snp;
 pub mod spatial_payoff;
@@ -55,4 +57,5 @@ pub use quality_filter::{QualityConfig, QualityFilterGpu};
 pub use smith_waterman::{SmithWatermanGpu, SwConfig, SwResult};
 pub use snp::SnpCallingF64;
 pub use spatial_payoff::SpatialPayoffGpu;
+pub use rf_inference::RfBatchInferenceGpu;
 pub use tree_inference::{FlatForest, TreeInferenceGpu};

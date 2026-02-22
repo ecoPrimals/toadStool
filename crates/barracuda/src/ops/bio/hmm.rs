@@ -18,6 +18,13 @@ use std::sync::Arc;
 
 const SHADER: &str = include_str!("../../shaders/bio/hmm_forward_f64.wgsl");
 
+/// Log-domain f32 HMM forward shader (neuralSpring metalForge provenance).
+///
+/// Uses max-subtract trick for numerical stability. One thread per destination
+/// state; lighter-weight than the f64 variant above, suitable for real-time
+/// inference where f32 precision suffices.
+pub const WGSL_HMM_FORWARD_LOG_F32: &str = include_str!("../../shaders/ml/hmm_forward_log.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct HmmParams {
