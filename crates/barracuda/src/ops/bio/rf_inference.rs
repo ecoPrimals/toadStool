@@ -130,7 +130,7 @@ impl RfBatchInferenceGpu {
         });
 
         let total = n_samples * n_trees;
-        let workgroups = (total + 255) / 256;
+        let workgroups = total.div_ceil(256);
 
         let mut encoder = self
             .device

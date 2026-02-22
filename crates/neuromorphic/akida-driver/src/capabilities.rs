@@ -76,9 +76,10 @@ impl MeshTopology {
         let y = read_u8("mesh_y")?;
         let z = read_u8("mesh_z").unwrap_or(1);
 
-        let functional_count = read_u8("mesh_functional")
-            .map(u32::from)
-            .unwrap_or_else(|| u32::from(x) * u32::from(y) * u32::from(z));
+        let functional_count = read_u8("mesh_functional").map_or_else(
+            || u32::from(x) * u32::from(y) * u32::from(z),
+            u32::from,
+        );
 
         Some(Self {
             x,

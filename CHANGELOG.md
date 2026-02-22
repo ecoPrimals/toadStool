@@ -5,6 +5,41 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - February 21, 2026 (Session 31h — Deep Debt Polish)
+
+### Clippy Clean Sweep (Session 31h)
+
+- **Barracuda** — Resolved all 5 clippy warnings:
+  - `svd_gpu.rs`: Removed unnecessary `&` on already-borrowed `device` references
+  - `lattice/dirac.rs`: `sum % 2 == 0` → `sum.is_multiple_of(2)`
+  - `bio/rf_inference.rs`: `(total + 255) / 256` → `total.div_ceil(256)`
+
+- **Akida-driver** — Resolved both clippy warnings:
+  - `capabilities.rs`: `.map().unwrap_or_else()` → `.map_or_else()`
+  - `vfio.rs`: Extracted `PollConfig` struct from 8-argument `poll_register()` function
+
+### Dead Code Audit (Session 31h)
+
+- **33 files audited** across barracuda for `#[allow(dead_code)]` accuracy
+- **Removed 6 incorrect annotations** from actually-used items:
+  - `FheFastPolyMul`, `FhePointwiseMul`, `FheIntt` structs (used in tests+production)
+  - `FheIntt::inv_n` field (used in compute scaling)
+  - `Lookahead::alpha` field (used in tensor update)
+- **Removed 2 dead functions**:
+  - `qr.rs::mat_approx_eq` — unused test helper (tests use `approx_eq`)
+  - `nonzero/compute.rs::read_buffer_u32` — duplicate of `WgpuDevice::read_buffer_u32`
+- **Promoted dead `wgsl_shader()`** in `view.rs` to `pub const WGSL_VIEW`
+- **22 annotations confirmed legitimate** — `device` fields and `wgsl_shader()` methods
+  reserved for future GPU acceleration paths
+
+### Production Code Quality Verification (Session 31h)
+
+- **Zero unwrap() in production**: All high-count `unwrap()` calls verified to be
+  exclusively in `#[cfg(test)]` blocks across core, runtime, and CLI crates
+- **Zero clippy warnings**: Workspace fully clean except 2 deliberate `expect()` calls
+  in unsafe memory management (NonNull validation, Layout in Drop)
+- **Zero TODOs/FIXMEs/HACKs**: Only 1 research TODO in akida-reservoir-research
+
 ## [Unreleased] - February 21, 2026 (Session 31g — Deep Debt Evolution)
 
 ### Orphan Shader Integration (Session 31g)

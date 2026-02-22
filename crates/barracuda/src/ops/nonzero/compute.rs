@@ -11,55 +11,6 @@ use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 impl NonZero {
-    /// Read u32 buffer from GPU
-    #[allow(dead_code)]
-    pub(super) fn read_buffer_u32(
-        device: &Arc<crate::device::WgpuDevice>,
-        buffer: &wgpu::Buffer,
-        size: usize,
-    ) -> Result<Vec<u32>> {
-        let staging_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Staging Buffer U32"),
-            size: (size * std::mem::size_of::<u32>()) as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Read Buffer Encoder"),
-            });
-        encoder.copy_buffer_to_buffer(
-            buffer,
-            0,
-            &staging_buffer,
-            0,
-            (size * std::mem::size_of::<u32>()) as u64,
-        );
-        device.queue.submit(Some(encoder.finish()));
-
-        let buffer_slice = staging_buffer.slice(..);
-        let (sender, receiver) =
-            std::sync::mpsc::sync_channel::<std::result::Result<(), wgpu::BufferAsyncError>>(1);
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
-        device.device.poll(wgpu::Maintain::Wait);
-
-        receiver
-            .recv()
-            .map_err(|_| BarracudaError::gpu("Buffer map channel disconnected".to_string()))?
-            .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
-
-        let data = buffer_slice.get_mapped_range();
-        let result_data: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        staging_buffer.unmap();
-
-        Ok(result_data)
-    }
-
     /// Compute GPU prefix sum for boolean mask
     pub(super) fn compute_prefix_sum_gpu(
         device: &Arc<crate::device::WgpuDevice>,

@@ -35,7 +35,6 @@ use crate::tensor::Tensor;
 /// let result = fast_mul.execute().await?;
 /// // result = poly_a * poly_b (56x faster than naive!)
 /// ```
-#[allow(dead_code)]
 pub struct FheFastPolyMul {
     input_a: Tensor,
     input_b: Tensor,

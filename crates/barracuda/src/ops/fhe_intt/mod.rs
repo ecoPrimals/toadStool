@@ -54,7 +54,6 @@ use crate::tensor::Tensor;
 /// FHE Inverse Number Theoretic Transform operation
 ///
 /// Transforms polynomial from NTT domain back to coefficient domain.
-#[allow(dead_code)] // Will be used once NTT is integrated
 pub struct FheIntt {
     input: Tensor,
     degree: u32,
@@ -62,8 +61,7 @@ pub struct FheIntt {
     inv_root_of_unity: u64,
     barrett_mu: u64,
     inv_twiddle_factors: Vec<u64>,
-    #[allow(dead_code)] // Will be used for scaling in optimization phase
-    inv_n: u64, // N^(-1) mod q for scaling
+    inv_n: u64,
     pipeline_butterfly: wgpu::ComputePipeline,
     pipeline_bit_reverse: wgpu::ComputePipeline,
     pipeline_scale: wgpu::ComputePipeline,

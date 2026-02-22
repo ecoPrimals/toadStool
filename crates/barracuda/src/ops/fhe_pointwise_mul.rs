@@ -30,7 +30,6 @@ use wgpu::util::DeviceExt;
 /// let intt = FheIntt::new(c_ntt, degree, modulus, inv_root)?;
 /// let c = intt.execute().await?;  // c = a * b (polynomial multiplication!)
 /// ```
-#[allow(dead_code)]
 pub struct FhePointwiseMul {
     input_a: Tensor,
     input_b: Tensor,

@@ -129,9 +129,9 @@ impl SvdGpu {
             label: Some("SVD A"), contents: bytemuck::cast_slice(&input_data),
             usage: wgpu::BufferUsages::STORAGE,
         });
-        let b_buf = Self::create_zero_buffer(&device, (n * n) as usize, 4);
-        let v_buf = Self::create_zero_buffer(&device, (n * n) as usize, 4);
-        let sigma_buf = Self::create_zero_buffer(&device, n as usize, 4);
+        let b_buf = Self::create_zero_buffer(device, (n * n) as usize, 4);
+        let v_buf = Self::create_zero_buffer(device, (n * n) as usize, 4);
+        let sigma_buf = Self::create_zero_buffer(device, n as usize, 4);
 
         let shader = device.compile_shader(Self::wgsl_shader_f32(), Some("SVD f32"));
 

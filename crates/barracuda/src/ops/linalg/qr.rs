@@ -223,13 +223,7 @@ mod tests {
         (a - b).abs() < tol
     }
 
-    #[allow(dead_code)]
-    fn mat_approx_eq(a: &[f64], b: &[f64], tol: f64) -> bool {
-        if a.len() != b.len() {
-            return false;
-        }
-        a.iter().zip(b.iter()).all(|(x, y)| approx_eq(*x, *y, tol))
-    }
+
 
     #[test]
     fn test_qr_2x2() {

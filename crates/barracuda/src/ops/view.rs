@@ -77,10 +77,7 @@ impl View {
     }
 
     /// WGSL shader source (embedded at compile time)
-    #[allow(dead_code)]
-    fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/tensor/view.wgsl")
-    }
+    pub const WGSL_VIEW: &'static str = include_str!("../shaders/tensor/view.wgsl");
 
     /// Execute view operation on tensor
     ///

@@ -21,8 +21,7 @@ pub struct Lookahead {
     fast_weights: Tensor,
     state: LookaheadState,
     k: usize, // Sync frequency
-    #[allow(dead_code)]
-    alpha: f32, // Slow weights step size (used in actual tensor update implementation)
+    alpha: f32,
 }
 
 impl Lookahead {

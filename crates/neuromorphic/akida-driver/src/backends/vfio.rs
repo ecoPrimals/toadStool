@@ -59,6 +59,18 @@ use rustix::mm::{mlock, munlock};
 use std::fs::{File, OpenOptions};
 use std::os::unix::io::{AsRawFd, RawFd};
 
+/// Parameters for polling a status register.
+#[derive(Clone, Copy)]
+struct PollConfig<'a> {
+    reg: usize,
+    done_mask: u32,
+    error_mask: u32,
+    max_polls: u32,
+    yield_interval: u32,
+    timeout_msg: &'a str,
+    error_msg: &'a str,
+}
+
 /// VFIO ioctl numbers (from Linux kernel headers)
 ///
 /// These are calculated as: _IO(';', base + offset)
@@ -412,16 +424,8 @@ impl VfioBackend {
 
     /// Poll a status register until `done_mask` bit is set, returning the poll count.
     /// Returns `Err` if `error_mask` bit is set or `max_polls` is exceeded.
-    fn poll_register(
-        &self,
-        reg: usize,
-        done_mask: u32,
-        error_mask: u32,
-        max_polls: u32,
-        yield_interval: u32,
-        timeout_msg: &str,
-        error_msg: &str,
-    ) -> Result<u32> {
+    fn poll_register(&self, cfg: PollConfig<'_>) -> Result<u32> {
+        let PollConfig { reg, done_mask, error_mask, max_polls, yield_interval, timeout_msg, error_msg } = cfg;
         for i in 0..max_polls {
             let val = self.control_regs.read32(reg);
             if val & done_mask != 0 {
@@ -645,11 +649,13 @@ impl NpuBackend for VfioBackend {
         self.control_regs.write32(regs::MODEL_LOAD, 1);
         tracing::debug!("Triggered model load: IOVA={:#x}, size={}", buffer.iova(), model.len());
 
-        let polls = self.poll_register(
-            regs::STATUS, regs::status::MODEL_LOADED, regs::status::ERROR,
-            1_000_000, 1_000,
-            "Model load timed out", "Model load failed with device error",
-        )?;
+        let polls = self.poll_register(PollConfig {
+            reg: regs::STATUS, done_mask: regs::status::MODEL_LOADED,
+            error_mask: regs::status::ERROR, max_polls: 1_000_000,
+            yield_interval: 1_000,
+            timeout_msg: "Model load timed out",
+            error_msg: "Model load failed with device error",
+        })?;
         tracing::info!("Model loaded successfully after {polls} polls");
 
         self.model_buffer = Some(buffer);
@@ -679,11 +685,13 @@ impl NpuBackend for VfioBackend {
         self.write_iova_regs(regs::MODEL_ADDR_LO, regs::MODEL_ADDR_HI, regs::MODEL_SIZE, buffer.iova(), total_size);
         self.control_regs.write32(regs::MODEL_LOAD, 1);
 
-        let polls = self.poll_register(
-            regs::STATUS, regs::status::MODEL_LOADED, regs::status::ERROR,
-            1_000_000, 1_000,
-            "Reservoir load timed out", "Reservoir load failed with device error",
-        )?;
+        let polls = self.poll_register(PollConfig {
+            reg: regs::STATUS, done_mask: regs::status::MODEL_LOADED,
+            error_mask: regs::status::ERROR, max_polls: 1_000_000,
+            yield_interval: 1_000,
+            timeout_msg: "Reservoir load timed out",
+            error_msg: "Reservoir load failed with device error",
+        })?;
         tracing::info!("Reservoir loaded successfully after {polls} polls");
 
         self.model_buffer = Some(buffer);
@@ -725,11 +733,12 @@ impl NpuBackend for VfioBackend {
         self.control_regs.write32(regs::INFER_START, 1);
         tracing::debug!("Triggered inference: input_iova={input_iova:#x}, output_iova={output_iova:#x}");
 
-        let polls = self.poll_register(
-            regs::INFER_STATUS, 0x1, 0x2,
-            10_000_000, 10_000,
-            "Inference timed out", "Inference failed with device error",
-        )?;
+        let polls = self.poll_register(PollConfig {
+            reg: regs::INFER_STATUS, done_mask: 0x1, error_mask: 0x2,
+            max_polls: 10_000_000, yield_interval: 10_000,
+            timeout_msg: "Inference timed out",
+            error_msg: "Inference failed with device error",
+        })?;
 
         let actual_output_size = self.control_regs.read32(regs::OUTPUT_SIZE) as usize;
         let output_floats = actual_output_size.min(output_size) / std::mem::size_of::<f32>();

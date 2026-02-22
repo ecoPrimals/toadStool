@@ -267,7 +267,7 @@ fn site_neighbor(coords: &[usize; 4], dims: &[usize; 4], mu: usize, forward: boo
 
 fn staggered_phase(coords: &[usize; 4], mu: usize) -> f64 {
     let sum: usize = coords.iter().take(mu).sum();
-    if sum % 2 == 0 {
+    if sum.is_multiple_of(2) {
         1.0
     } else {
         -1.0
