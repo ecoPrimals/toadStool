@@ -38,8 +38,8 @@
 mod anderson;
 pub mod batch_ipr;
 mod hofstadter;
-mod lanczos;
-mod sparse;
+pub(crate) mod lanczos;
+pub(crate) mod sparse;
 mod stats;
 mod tridiag;
 

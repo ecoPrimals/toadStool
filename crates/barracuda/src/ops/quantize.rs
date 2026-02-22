@@ -252,6 +252,32 @@ impl Quantize {
     }
 }
 
+/// Compute affine i8 quantization parameters from data range.
+///
+/// Returns `(scale, zero_point)` for symmetric quantization around zero,
+/// mapping `[-abs_max, abs_max]` to `[-127, 127]`.
+pub fn compute_affine_i8_params(data: &[f32]) -> (f32, f32) {
+    let abs_max = data
+        .iter()
+        .fold(0.0f32, |acc, &x| acc.max(x.abs()))
+        .max(1e-10);
+    let scale = 127.0 / abs_max;
+    (scale, 0.0)
+}
+
+/// Quantize a tensor to affine int8 in one call.
+///
+/// Computes scale from the tensor's range and applies symmetric quantization.
+/// For asymmetric quantization or custom scale/zero_point, use `Quantize::new`.
+pub fn quantize_affine_i8(input: Tensor) -> Result<(Tensor, f32, f32)> {
+    let data = input.to_vec().map_err(|e| BarracudaError::InvalidInput {
+        message: format!("failed to read tensor for scale computation: {e}"),
+    })?;
+    let (scale, zero_point) = compute_affine_i8_params(&data);
+    let quantized = Quantize::new(input, scale, zero_point, 8)?.execute()?;
+    Ok((quantized, scale, zero_point))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

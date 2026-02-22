@@ -30,6 +30,11 @@
 //! - **CgGpu** (`CgGpu::solve`): GPU-accelerated Conjugate Gradient (SPD)
 //! - **BiCgStabGpu** (`BiCgStabGpu::solve`): GPU-accelerated BiCGSTAB (non-symmetric)
 //!
+//! ## Eigensolvers
+//! - **sparse_eigh**: Lanczos-based eigenvalues for sparse symmetric matrices
+//! - **sparse_eigh_smallest**: k smallest eigenvalues (extremal convergence)
+//! - **sparse_eigh_largest**: k largest eigenvalues
+//!
 //! # Example
 //!
 //! ```
@@ -55,12 +60,14 @@
 pub mod bicgstab_gpu;
 pub mod cg_gpu;
 pub mod csr;
+pub mod eigh;
 pub mod gpu_helpers; // EVOLVED: Extracted common GPU helpers (Feb 14, 2026)
 pub mod solvers;
 
 pub use bicgstab_gpu::{BiCgStabGpu, BiCgStabGpuResult};
 pub use cg_gpu::{CgGpu, CgGpuResult};
 pub use csr::{CooMatrix, CsrMatrix};
+pub use eigh::{sparse_eigh, sparse_eigh_largest, sparse_eigh_smallest, SparseEighResult};
 pub use gpu_helpers::{
     cg_dispatch_pass, CgPipelineSet, SparseBindGroupLayouts, SparseBuffers, SparsePipelines,
 };

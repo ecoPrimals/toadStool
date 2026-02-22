@@ -240,6 +240,9 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | GemmCachedF64 `execute_to_buffer()` (zero-copy streaming pipelines) | ✅ S39 |
 | `barracuda::math` convenience module (CPU special function re-exports) | ✅ S39 |
 | Generic FlatTree CSR layout for bio tree ops | ✅ S39 |
+| `sparse_eigh` Lanczos wrapper (sparse symmetric eigensolve) | ✅ S39 |
+| `quantize_affine_i8` convenience op + auto-scaling | ✅ S39 |
+| `barracuda::math` tiled shader barrier fix (matmul_tiled.wgsl) | ✅ S39 |
 
 ---
 
