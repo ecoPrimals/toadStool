@@ -1,7 +1,7 @@
-# BarraCUDA Scientific Middleware — Implementation Checklist
+# BarraCuda Scientific Middleware — Implementation Checklist
 
 **Sprint**: 3 weeks (15 working days)  
-**Goal**: Extract 600 lines from hotSpring L1/L2 binaries into reusable BarraCUDA library
+**Goal**: Extract 600 lines from hotSpring L1/L2 binaries into reusable BarraCuda library
 
 ---
 
@@ -139,7 +139,7 @@
 - [ ] Write module-level READMEs (linalg, surrogate, optimize, etc.)
 - [ ] Complete API documentation (rustdoc examples for all pub fns)
 - [ ] Create tutorial: "RBF Surrogate from Scratch"
-- [ ] Update main BarraCUDA README
+- [ ] Update main BarraCuda README
 - [ ] Tag: `v0.2.2-scientific-complete`
 
 **Week 3 Success Criteria**:
@@ -244,7 +244,7 @@ approx = "0.5"  # For float comparisons in tests
 
 ---
 
-**Sprint Owner**: ToadStool/BarraCUDA Team  
+**Sprint Owner**: ToadStool/BarraCuda Team  
 **Stakeholder**: hotSpring (L3 blocked)  
 **Start**: TBD  
 **End**: Start + 15 working days

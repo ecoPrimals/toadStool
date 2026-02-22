@@ -1,4 +1,4 @@
-//! Error types for barraCUDA
+//! Error types for barraCuda
 //!
 //! **Deep Debt Excellence**: Rich error context, zero panic paths
 

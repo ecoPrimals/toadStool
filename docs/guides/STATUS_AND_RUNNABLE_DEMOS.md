@@ -18,7 +18,7 @@ cargo run --release --bin scheduler_demo
 - Shows smart hardware selection
 - Validates tiny ops → CPU, large ops → GPU
 
-**2. BarraCUDA Operations** ✅
+**2. BarraCuda Operations** ✅
 - 336 operations (100% GPU-accelerated)
 - 364 WGSL shaders
 - Works on NVIDIA, AMD, Intel, Apple GPUs
@@ -64,7 +64,7 @@ cargo run --release --example matmul_demo
 cargo run --release --example substrate_selection
 ```
 
-### Demo 3: Homomorphic Computing (Unique to BarraCUDA) ✅
+### Demo 3: Homomorphic Computing (Unique to BarraCuda) ✅
 
 ```bash
 cd showcase/homomorphic-computing
@@ -77,7 +77,7 @@ cargo run --release --example public_benchmark_comparison
 
 ## 📊 What We Can Benchmark
 
-### Category 1: Cross-Platform (BarraCUDA wins)
+### Category 1: Cross-Platform (BarraCuda wins)
 
 **Same workload, multiple chips:**
 - ✅ NVIDIA GPU (RTX 3090)
@@ -94,7 +94,7 @@ cargo run --release --example public_benchmark_comparison
 - ❌ Cannot run on AMD, Intel, Apple
 - ❌ Requires rewrite for each platform
 
-### Category 2: Operations (BarraCUDA parity)
+### Category 2: Operations (BarraCuda parity)
 
 **What to benchmark:**
 1. **Matrix Operations** (98% parity)
@@ -124,7 +124,7 @@ cargo run --release --example public_benchmark_comparison
 
 6. **Fully Homomorphic Encryption** (UNIQUE!)
    - ❌ CUDA doesn't have this
-   - ✅ BarraCUDA has 6 FHE operations
+   - ✅ BarraCuda has 6 FHE operations
    - Compute on encrypted data
 
 ### Category 3: Real-World Workloads
@@ -148,11 +148,11 @@ cargo run --release --example public_benchmark_comparison
 
 ---
 
-## 🆚 BarraCUDA vs CUDA: Key Advantages
+## 🆚 BarraCuda vs CUDA: Key Advantages
 
 ### 1. **Hardware Portability** 🌍
 
-| Feature | CUDA | BarraCUDA |
+| Feature | CUDA | BarraCuda |
 |---------|------|-----------|
 | NVIDIA GPU | ✅ Yes | ✅ Yes |
 | AMD GPU | ❌ No | ✅ Yes |
@@ -163,7 +163,7 @@ cargo run --release --example public_benchmark_comparison
 | TPU | ❌ No | ✅ Yes (ready) |
 | NPU | ❌ No | ✅ Yes (Akida) |
 
-**Winner:** BarraCUDA (8x more hardware!)
+**Winner:** BarraCuda (8x more hardware!)
 
 ### 2. **Automatic Optimization** 🤖
 
@@ -177,7 +177,7 @@ if (size > threshold) {
 }
 ```
 
-**BarraCUDA:**
+**BarraCuda:**
 ```rust
 let y = x.matmul(&z)?;  // ✅ Automatic!
 // Scheduler picks best hardware based on:
@@ -187,7 +187,7 @@ let y = x.matmul(&z)?;  // ✅ Automatic!
 // - Transfer overhead
 ```
 
-**Winner:** BarraCUDA (zero configuration)
+**Winner:** BarraCuda (zero configuration)
 
 ### 3. **Safety** 🛡️
 
@@ -198,14 +198,14 @@ kernel<<<blocks, threads>>>(d_A);  // ❌ Can segfault
 cudaFree(d_A);  // ❌ Manual memory management
 ```
 
-**BarraCUDA:**
+**BarraCuda:**
 ```rust
 let x = Tensor::randn([1000, 1000])?;  // ✅ Safe
 let y = x.relu()?;  // ✅ Cannot segfault
 // Automatic memory management
 ```
 
-**Winner:** BarraCUDA (100% safe Rust)
+**Winner:** BarraCuda (100% safe Rust)
 
 ### 4. **Unique Features** ✨
 
@@ -215,13 +215,13 @@ let y = x.relu()?;  // ✅ Cannot segfault
 - ❌ Automatic CPU fallback
 - ❌ Hardware-agnostic code
 
-**BarraCUDA has:**
+**BarraCuda has:**
 - ✅ 6 FHE operations (unique!)
 - ✅ Akida NPU support
 - ✅ CPU executor with SIMD
 - ✅ Write once, run anywhere
 
-**Winner:** BarraCUDA (more capabilities)
+**Winner:** BarraCuda (more capabilities)
 
 ### 5. **Future-Proof** 🔮
 
@@ -230,12 +230,12 @@ let y = x.relu()?;  // ✅ Cannot segfault
 - ❌ Breaks on new hardware
 - ❌ Requires rewrite for each platform
 
-**BarraCUDA:**
+**BarraCuda:**
 - ✅ Works on ANY GPU (via WebGPU)
 - ✅ Works on future hardware (TPU ready)
 - ✅ One codebase forever
 
-**Winner:** BarraCUDA (extensible)
+**Winner:** BarraCuda (extensible)
 
 ---
 
@@ -266,25 +266,25 @@ let result_tpu = workload.matmul(&other)?;
 
 ### Benchmark 2: Performance Comparison
 
-**Goal:** Show BarraCUDA matches CUDA speed
+**Goal:** Show BarraCuda matches CUDA speed
 
-| Operation | Size | CUDA | BarraCUDA | Result |
+| Operation | Size | CUDA | BarraCuda | Result |
 |-----------|------|------|-----------|--------|
 | MatMul | 1024×1024 | 4.2 TFLOPS | 4.1 TFLOPS | 98% parity ✅ |
 | ReLU | 16M elements | 240M/sec | 241M/sec | 100% parity ✅ |
 | Softmax | 2048×2048 | 3.8 GB/s | 3.7 GB/s | 97% parity ✅ |
 
-**Winner:** BarraCUDA matches CUDA speed!
+**Winner:** BarraCuda matches CUDA speed!
 
 ### Benchmark 3: Unique Capabilities
 
-**Goal:** Show what BarraCUDA can do that CUDA cannot
+**Goal:** Show what BarraCuda can do that CUDA cannot
 
 **FHE Operations:**
 ```rust
 // Fully Homomorphic Encryption
 // ❌ CUDA doesn't have this
-// ✅ BarraCUDA does!
+// ✅ BarraCuda does!
 
 let encrypted = data.fhe_encrypt()?;
 let result = encrypted.fhe_poly_mul(&other)?;  // Compute on encrypted!
@@ -295,7 +295,7 @@ let decrypted = result.fhe_decrypt()?;
 ```rust
 // Use MULTIPLE devices simultaneously
 // ❌ CUDA: Single GPU per process
-// ✅ BarraCUDA: Any combination!
+// ✅ BarraCuda: Any combination!
 
 let part1 = data_part1.matmul(&w)?;  // → GPU
 let part2 = data_part2.relu()?;      // → CPU
@@ -306,7 +306,7 @@ let part3 = data_part3.filter()?;    // → NPU
 
 ## 🎬 Demo Script
 
-### Live Demo: BarraCUDA vs CUDA
+### Live Demo: BarraCuda vs CUDA
 
 ```bash
 # 1. Show hardware discovery
@@ -344,7 +344,7 @@ cargo run --release --example pipeline_validation_actual_hardware
 - ✅ Same operations work
 - ✅ Performance varies by chip
 - ✅ CUDA score: 0% (doesn't run!)
-- ✅ BarraCUDA score: 100% (always works!)
+- ✅ BarraCuda score: 100% (always works!)
 
 ### On CPU
 - ✅ SIMD optimizations (AVX2, SSE2, NEON)
@@ -365,7 +365,7 @@ cargo run --release --example pipeline_validation_actual_hardware
 
 ### What to Benchmark
 1. 🎯 Cross-platform (same workload, multiple chips)
-2. 🎯 Performance (BarraCUDA vs CUDA speed)
+2. 🎯 Performance (BarraCuda vs CUDA speed)
 3. 🎯 Unique capabilities (FHE, multi-hardware)
 4. 🎯 Portability (NVIDIA, AMD, Intel, Apple, CPU, TPU, NPU)
 
@@ -376,7 +376,7 @@ cargo run --release --example pipeline_validation_actual_hardware
 4. ❌ Manual device management
 5. ❌ Unsafe memory operations
 
-### BarraCUDA Advantages
+### BarraCuda Advantages
 1. ✅ ANY hardware (8+ types)
 2. ✅ CPU fallback (SIMD optimized)
 3. ✅ FHE operations (unique!)
@@ -389,4 +389,4 @@ cargo run --release --example pipeline_validation_actual_hardware
 **Next:** Run live demos and collect benchmark data  
 **Date:** February 4, 2026 (Evening)
 
-🦈 **BarraCUDA: ONE CODEBASE, ANY HARDWARE!** 🦈
+🦈 **BarraCuda: ONE CODEBASE, ANY HARDWARE!** 🦈

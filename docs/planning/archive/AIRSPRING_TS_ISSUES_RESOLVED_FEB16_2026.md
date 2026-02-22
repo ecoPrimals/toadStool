@@ -1,7 +1,7 @@
 # airSpring ToadStool Issues — Resolution Summary
 
 **Date:** February 16, 2026  
-**From:** ToadStool/BarraCUDA core team  
+**From:** ToadStool/BarraCuda core team  
 **To:** airSpring team  
 **License:** AGPL-3.0-or-later
 

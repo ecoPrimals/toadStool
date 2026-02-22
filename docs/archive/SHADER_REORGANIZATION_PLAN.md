@@ -1,4 +1,4 @@
-# BarraCUDA Shader Library Reorganization Plan
+# BarraCuda Shader Library Reorganization Plan
 
 **Date**: February 11, 2026  
 **Status**: APPROVED FOR EXECUTION

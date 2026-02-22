@@ -13,7 +13,7 @@
 //! - ✅ Emergent properties per substrate
 //! 
 //! **Deep Debt Compliance**:
-//! - ✅ Pure Rust (tfhe-rs for CPU, BarraCUDA for GPU/NPU)
+//! - ✅ Pure Rust (tfhe-rs for CPU, BarraCuda for GPU/NPU)
 //! - ✅ Actual hardware (no simulation)
 //! - ✅ Runtime discovery (no hardcoded devices)
 //! - ✅ Complete implementations (no mocks)
@@ -138,11 +138,11 @@ async fn main() -> Result<()> {
     println!("═══════════════════════════════════════════════════════════════════════\n");
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 2. GPU Implementation (BarraCUDA)
+    // 2. GPU Implementation (BarraCuda)
     // ═══════════════════════════════════════════════════════════════════════
     
-    println!("🎮 PLATFORM 2: GPU (BarraCUDA WGSL)\n");
-    println!("   Backend:    BarraCUDA v2.0 (WGSL compute shaders)");
+    println!("🎮 PLATFORM 2: GPU (BarraCuda WGSL)\n");
+    println!("   Backend:    BarraCuda v2.0 (WGSL compute shaders)");
     println!("   Power:      ~250W (measured)");
     println!("   Advantage:  Massive parallelism for batched ops\n");
     
@@ -309,7 +309,7 @@ async fn run_cpu(workload: &EncryptedWorkload, iterations: usize) -> Result<Vec<
     Ok(results)
 }
 
-/// GPU Implementation - BarraCUDA WGSL FHE operations (polynomials + Boolean gates)
+/// GPU Implementation - BarraCuda WGSL FHE operations (polynomials + Boolean gates)
 async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec<UniversalHEResult>> {
     use barracuda::ops::fhe_poly_add::FhePolyAdd;
     use barracuda::ops::fhe_poly_mul::FhePolyMul;
@@ -339,7 +339,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
     let poly_a = vec![workload.a_plain as u64; degree];
     let poly_b = vec![workload.b_plain as u64; degree];
     
-    // Convert to tensors (modern BarraCUDA API requires tensors as input)
+    // Convert to tensors (modern BarraCuda API requires tensors as input)
     let poly_a_u32: Vec<u32> = poly_a.iter()
         .flat_map(|&val| vec![(val & 0xFFFFFFFF) as u32, (val >> 32) as u32])
         .collect();
@@ -453,7 +453,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
     let binary_a = vec![1u64; degree];  // Represents encrypted bit "1"
     let binary_b = vec![1u64; degree];  // Represents encrypted bit "1"
     
-    // Convert to tensors for modern BarraCUDA API
+    // Convert to tensors for modern BarraCuda API
     let binary_a_u32: Vec<u32> = binary_a.iter().map(|&x| x as u32).collect();
     let binary_b_u32: Vec<u32> = binary_b.iter().map(|&x| x as u32).collect();
     
@@ -489,7 +489,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
         
         results.push(UniversalHEResult {
             platform: "GPU".to_string(),
-            backend: "BarraCUDA WGSL".to_string(),
+            backend: "BarraCuda WGSL".to_string(),
             operation: "AND".to_string(),
             num_operations: degree,
             iterations: 1,
@@ -530,7 +530,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
         
         results.push(UniversalHEResult {
             platform: "GPU".to_string(),
-            backend: "BarraCUDA WGSL".to_string(),
+            backend: "BarraCuda WGSL".to_string(),
             operation: "OR".to_string(),
             num_operations: degree,
             iterations: 1,
@@ -571,7 +571,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
         
         results.push(UniversalHEResult {
             platform: "GPU".to_string(),
-            backend: "BarraCUDA WGSL".to_string(),
+            backend: "BarraCuda WGSL".to_string(),
             operation: "XOR".to_string(),
             num_operations: degree,
             iterations: 1,
@@ -695,7 +695,7 @@ fn analyze_energy_efficiency(cpu_results: &[UniversalHEResult]) -> Result<()> {
     println!();
     
     println!("   🎯 Predicted (based on 94+ tests):");
-    println!("      GPU (BarraCUDA): ~{:.1} ops/J (0.6× CPU, higher throughput)", avg_ops_per_joule * 0.6);
+    println!("      GPU (BarraCuda): ~{:.1} ops/J (0.6× CPU, higher throughput)", avg_ops_per_joule * 0.6);
     println!("      NPU (Akida):     ~{:.1} ops/J (15× CPU, breakthrough!)", avg_ops_per_joule * 15.0);
     println!();
     println!("   💡 NPU Advantage: Sparse encrypted data is naturally event-driven!");

@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-Validate BarraCUDA's vendor-agnostic compute across all available hardware.
+Validate BarraCuda's vendor-agnostic compute across all available hardware.
 
 ### Hardware Inventory
 
@@ -23,7 +23,7 @@ Validate BarraCUDA's vendor-agnostic compute across all available hardware.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    ToadStool + BarraCUDA                    │
+│                    ToadStool + BarraCuda                    │
 │                                                             │
 │   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
 │   │   Cascade   │  │  Dispatch   │  │  Benchmark  │        │
@@ -97,7 +97,7 @@ Validate BarraCUDA's vendor-agnostic compute across all available hardware.
 
 ### 3.1 CUDA Reference (NVIDIA only)
 
-For NVIDIA GPU, compare BarraCUDA (wgpu/WGSL) against native CUDA:
+For NVIDIA GPU, compare BarraCuda (wgpu/WGSL) against native CUDA:
 
 ```rust
 // Using cudarc for reference timing
@@ -243,7 +243,7 @@ impl CrossVendorBenchmark {
 └──────────────┴───────────┴───────────┴──────────────────────────┘
 
 Summary:
-  BarraCUDA achieves 91-94% of native CUDA/ROCm performance
+  BarraCuda achieves 91-94% of native CUDA/ROCm performance
   via pure Rust + wgpu, with zero vendor SDK dependencies.
 ```
 

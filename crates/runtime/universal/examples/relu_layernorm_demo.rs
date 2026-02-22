@@ -16,7 +16,7 @@ use toadstool_runtime_universal::types::*;
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: ReLU & LayerNorm Demo               ║");
-    println!("║  barraCUDA Phase 1 - Activations & Normalization        ║");
+    println!("║  barraCuda Phase 1 - Activations & Normalization        ║");
     println!("╚══════════════════════════════════════════════════════════╝");
     println!();
 
@@ -251,7 +251,7 @@ async fn main() -> Result<()> {
 
     // Pattern Observations
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🎓 Pattern Observations (barraCUDA Learning)");
+    println!("🎓 Pattern Observations (barraCuda Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
@@ -290,10 +290,10 @@ async fn main() -> Result<()> {
     println!("     • Same structure as Softmax (R→M→R→M)");
     println!("     • Different operations in each phase");
     println!("  4. Pipeline: ReLU + LayerNorm is common in transformers");
-    println!("  5. barraCUDA can fuse multi-phase operations");
+    println!("  5. barraCuda can fuse multi-phase operations");
     println!();
 
-    println!("barraCUDA Opportunities:");
+    println!("barraCuda Opportunities:");
     println!("  • ReLU: Trivial to fuse with previous operation");
     println!("  • LayerNorm: Fuse 4 phases into single kernel");
     println!("  • Pipeline: Detect ReLU → LayerNorm → fuse all");

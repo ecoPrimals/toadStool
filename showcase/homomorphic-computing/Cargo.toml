@@ -3,14 +3,14 @@ name = "homomorphic-computing"
 version = "0.1.0"
 edition = "2021"
 authors = ["ToadStool Contributors"]
-description = "Showcase: Homomorphic encryption compute demonstrations on BarraCUDA"
+description = "Showcase: Homomorphic encryption compute demonstrations on BarraCuda"
 license = "AGPL-3.0"
 repository = "https://github.com/ecoPrimals/toadStool"
 keywords = ["homomorphic", "encryption", "fhe", "gpu"]
 categories = ["cryptography", "science"]
 
 [dependencies]
-# ToadStool internal - barraCUDA (our GPU framework) ⭐
+# ToadStool internal - barraCuda (our GPU framework) ⭐
 barracuda = { path = "../../crates/barracuda" }
 
 # ToadStool internal - Configuration system ⭐
@@ -49,7 +49,7 @@ tracing-subscriber = "0.3"
 num-traits = "0.2"
 num-complex = "0.4"
 
-# GPU (via wgpu - barraCUDA's backend)
+# GPU (via wgpu - barraCuda's backend)
 wgpu = { workspace = true }
 bytemuck = "1.20"
 tfhe = { version = "1.5.1", default-features = false, features = ["boolean", "shortint", "integer"] }

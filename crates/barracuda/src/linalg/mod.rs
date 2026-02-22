@@ -1,13 +1,13 @@
 //! Linear algebra operations for scientific computing
 //!
 //! This module provides high-precision (f64) linear algebra operations
-//! for scientific computing workflows. While BarraCUDA's GPU shaders
+//! for scientific computing workflows. While BarraCuda's GPU shaders
 //! operate in f32 for maximum throughput, many scientific applications
 //! require f64 precision for numerical stability.
 //!
 //! # Dual-Precision Architecture
 //!
-//! BarraCUDA uses a dual-precision pattern for optimal performance:
+//! BarraCuda uses a dual-precision pattern for optimal performance:
 //! - **GPU (f32)**: Fast pairwise operations (cdist, matmul)
 //! - **CPU (f64)**: Numerically sensitive operations (linear solves, eigendecomp)
 //!

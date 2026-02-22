@@ -57,7 +57,7 @@ members = [
     "showcase/neuromorphic/01-akida-detection",  # Akida detection showcase
     "showcase/neuromorphic/04-raytracing-comparison",  # NPU vs GPU raytracing (Feb 8, 2026)
     "showcase/rbf-surrogate",  # RBF surrogate learning (Feb 8, 2026)
-    "showcase/gpu-universal/ml-inference",  # BarraCUDA ML inference showcase
+    "showcase/gpu-universal/ml-inference",  # BarraCuda ML inference showcase
     "showcase/cross-platform",  # NEW: Cross-platform compute showcase (Feb 12, 2026) 🌐
     "showcase/homomorphic-computing",  # NPU-accelerated homomorphic encryption (Jan 31, 2026)
 ]
@@ -81,7 +81,7 @@ categories = ["development-tools", "web-programming", "api-bindings"]
 # ============================================================================
 # CRITICAL: wgpu must be the same version across all crates to prevent
 # duplicate symbol errors during linking (wgpu_core symbols)
-# barraCUDA framework uses wgpu for vendor-agnostic GPU compute
+# barraCuda framework uses wgpu for vendor-agnostic GPU compute
 #
 # PURE RUST EVOLVED! ✅
 # NOTE: Default features include 'renderdoc' (C dependency for GPU debugging)

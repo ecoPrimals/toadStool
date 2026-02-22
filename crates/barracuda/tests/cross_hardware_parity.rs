@@ -1,6 +1,6 @@
 //! Cross-Hardware Parity Tests
 //!
-//! Proves BarraCUDA produces IDENTICAL results across hardware:
+//! Proves BarraCuda produces IDENTICAL results across hardware:
 //! - Same WGSL shader
 //! - Same input data
 //! - GPU vs CPU → must match within f32 tolerance
@@ -295,10 +295,10 @@ async fn test_toadstool_guided_device_selection() {
         select_best_device(HardwareWorkload::TensorOps).expect("Device selection failed");
     println!("ToadStool recommends: {:?} for TensorOps", selection);
 
-    // BarraCUDA creates device from recommendation
+    // BarraCuda creates device from recommendation
     let device = WgpuDevice::from_selection(selection).await.unwrap();
     println!(
-        "BarraCUDA device: {} ({:?})",
+        "BarraCuda device: {} ({:?})",
         device.name(),
         device.device_type()
     );
@@ -312,7 +312,7 @@ async fn test_toadstool_guided_device_selection() {
     let result = tensor.to_vec().unwrap();
     assert_eq!(result, data);
 
-    println!("  ToadStool -> BarraCUDA integration: PASS");
+    println!("  ToadStool -> BarraCuda integration: PASS");
 }
 
 // ─── Performance Comparison (not parity) ─────────────────────────────────────

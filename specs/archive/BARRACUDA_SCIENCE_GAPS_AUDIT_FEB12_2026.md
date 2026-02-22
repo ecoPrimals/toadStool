@@ -1,4 +1,4 @@
-# BarraCUDA Science Gaps — Audit Response
+# BarraCuda Science Gaps — Audit Response
 
 **Date**: February 12, 2026
 **From**: ToadStool Team
@@ -211,7 +211,7 @@ files so they're discoverable via `use barracuda::*`.
 
 ## Shader-First Architecture (Feb 12, 2026)
 
-BarraCUDA follows **shader-first** principles:
+BarraCuda follows **shader-first** principles:
 - WGSL shaders are the primary implementation
 - ToadStool dispatches to GPU or CPU based on hardware
 - All math must be runnable anywhere (GPU, CPU, NPU)

@@ -1,7 +1,7 @@
-# barraCUDA: Pure Rust Compute Evolution
+# barraCuda: Pure Rust Compute Evolution
 
 **Date**: January 8, 2026  
-**Working Name**: barraCUDA (Barrier-breaking, Universal, Rust-based Compute)  
+**Working Name**: barraCuda (Barrier-breaking, Universal, Rust-based Compute)  
 **Vision**: Living Rust kernel, learned from open systems, evolved within ToadStool
 
 ---
@@ -25,7 +25,7 @@ Examples: CUDA (works, but locks users to NVIDIA)
 - Static system
 - Users trapped
 
-### This (ToadStool / barraCUDA Approach)
+### This (ToadStool / barraCuda Approach)
 
 ```
 Phase 1: Use Big Open Systems
@@ -36,7 +36,7 @@ Phase 2: Build Functional Systems
   ↓ (Real workloads inform design)
 Phase 3: Evolve Pure Rust Kernel
   ↓ (Informed by real experience)
-barraCUDA: Living Rust Compute
+barraCuda: Living Rust Compute
   ↓ (Continues to evolve)
 Never stops learning
 ```
@@ -49,7 +49,7 @@ Never stops learning
 
 ---
 
-## 💡 Why "barraCUDA"?
+## 💡 Why "barraCuda"?
 
 ### The Name
 
@@ -69,7 +69,7 @@ Never stops learning
 **CUDA approach**: 
 - Build proprietary → Lock users in → Extract value
 
-**barraCUDA approach**:
+**barraCuda approach**:
 - Use open systems → Learn what works → Build better → Keep it open
 
 **Key difference**: Learn first, build second, stay open always
@@ -149,7 +149,7 @@ crates/runtime/gpu/patterns/
 1. Analyze what we learned from Phase 1 & 2
 2. Identify optimal abstractions
 3. Design pure Rust compute kernel
-4. Prototype barraCUDA core
+4. Prototype barraCuda core
 
 **Design Principles** (Learned from Real Use):
 ```rust
@@ -173,7 +173,7 @@ crates/runtime/gpu/patterns/
 - Memory layout is critical
 - Auto-tuning beats manual optimization
 
-// barraCUDA synthesis
+// barraCuda synthesis
 → Pure Rust (wgpu's safety)
 → Explicit control (Vulkan's performance)
 → Wide support (OpenCL's reach)
@@ -183,7 +183,7 @@ crates/runtime/gpu/patterns/
 
 **Artifacts**:
 ```rust
-// New crate: barraCUDA core
+// New crate: barraCuda core
 crates/barracuda/
 ├── kernel/              # Pure Rust kernel DSL
 │   ├── types.rs         # Type-safe compute types
@@ -202,21 +202,21 @@ crates/barracuda/
         └── future.rs    # Neuromorphic, quantum, etc.
 ```
 
-**Outcome**: barraCUDA prototype, informed by real-world learning ✅
+**Outcome**: barraCuda prototype, informed by real-world learning ✅
 
 ### Phase 4: Living System (6+ Months)
 
 **Focus**: Evolving, learning system
 
 **Evolve**:
-1. barraCUDA learns from every workload
+1. barraCuda learns from every workload
 2. Auto-tunes based on hardware
 3. Discovers optimal patterns
 4. Shares learnings across deployments
 
 **Living Kernel**:
 ```rust
-// barraCUDA doesn't just execute - it learns
+// barraCuda doesn't just execute - it learns
 pub struct BarraCudaRuntime {
     // Execution engine
     executor: Executor,
@@ -279,7 +279,7 @@ impl BarraCudaRuntime {
 
 ## 🏗️ Technical Architecture
 
-### barraCUDA Layers
+### barraCuda Layers
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -289,21 +289,21 @@ impl BarraCudaRuntime {
 └─────────────────┬───────────────────────────┘
                   ↓
 ┌─────────────────────────────────────────────┐
-│  barraCUDA Kernel DSL                       │
+│  barraCuda Kernel DSL                       │
 │  - Type-safe compute operations             │
 │  - Pattern-based optimization               │
 │  - Compile-time verification                │
 └─────────────────┬───────────────────────────┘
                   ↓
 ┌─────────────────────────────────────────────┐
-│  barraCUDA Compiler                         │
+│  barraCuda Compiler                         │
 │  - Rust → IR → Optimized IR → Target       │
 │  - Auto-tuning based on learned patterns    │
 │  - Hardware-specific optimization           │
 └─────────────────┬───────────────────────────┘
                   ↓
 ┌─────────────────────────────────────────────┐
-│  barraCUDA Runtime                          │
+│  barraCuda Runtime                          │
 │  - Workload profiling                       │
 │  - Pattern recognition                      │
 │  - Adaptive optimization                    │
@@ -331,7 +331,7 @@ fn my_kernel(input: &[f32], output: &mut [f32]) {
     }
 }
 
-// barraCUDA:
+// barraCuda:
 // 1. Recognizes compute pattern
 // 2. Compiles to optimal GPU code
 // 3. Handles memory transfer
@@ -341,7 +341,7 @@ fn my_kernel(input: &[f32], output: &mut [f32]) {
 
 **2. Pattern-Based Optimization**
 ```rust
-// barraCUDA recognizes common patterns
+// barraCuda recognizes common patterns
 Pattern::MatrixMultiply { m, k, n } => {
     // Learned optimal tile sizes for this GPU
     let (tile_m, tile_n) = self.learned_patterns
@@ -392,7 +392,7 @@ impl AdaptiveOptimizer {
 - Build system
 - Hope it works
 
-**barraCUDA**:
+**barraCuda**:
 - Use real systems (OpenCL, Vulkan, wgpu)
 - Observe real workloads
 - Build informed by reality
@@ -426,7 +426,7 @@ impl AdaptiveOptimizer {
 - Slow updates
 - Vendor-controlled improvements
 
-**Living System** (barraCUDA):
+**Living System** (barraCuda):
 - Learns from every workload
 - Adapts to new hardware
 - Community-driven evolution
@@ -441,7 +441,7 @@ impl AdaptiveOptimizer {
 - Learn from mature systems
 - Wide hardware support
 
-**Stay open** (barraCUDA):
+**Stay open** (barraCuda):
 - Pure Rust (community-owned language)
 - Open source
 - Vendor-agnostic
@@ -451,7 +451,7 @@ impl AdaptiveOptimizer {
 
 ---
 
-## 📊 Comparison: CUDA vs barraCUDA
+## 📊 Comparison: CUDA vs barraCuda
 
 ### NVIDIA CUDA (Vendor Lock-In)
 
@@ -479,13 +479,13 @@ Application (C++/CUDA)
 - Can't extend or modify
 - Migration is extremely expensive
 
-### barraCUDA (Open Evolution)
+### barraCuda (Open Evolution)
 
 **Architecture**:
 ```
 Application (Pure Rust)
        ↓
-barraCUDA API (open)
+barraCuda API (open)
        ↓
     Learning Runtime
        ↓
@@ -535,7 +535,7 @@ OpenCL Vulkan  Native
 ### Q2 2026
 
 **Month 1**:
-- Design barraCUDA kernel DSL (informed by Q1 learnings)
+- Design barraCuda kernel DSL (informed by Q1 learnings)
 - Prototype pattern recognition
 - Build simple compiler (Rust → SPIR-V)
 
@@ -549,7 +549,7 @@ OpenCL Vulkan  Native
 - Performance validation
 - Documentation
 
-**Outcome**: barraCUDA prototype working ✅
+**Outcome**: barraCuda prototype working ✅
 
 ### Q3 2026
 
@@ -563,7 +563,7 @@ OpenCL Vulkan  Native
 - Community feedback
 - Iterative improvement
 
-**Outcome**: barraCUDA beta ready for real-world use ✅
+**Outcome**: barraCuda beta ready for real-world use ✅
 
 ### Q4 2026 and Beyond
 
@@ -584,7 +584,7 @@ OpenCL Vulkan  Native
 
 **For ToadStool**:
 - Building on open standards (OpenCL, Vulkan, wgpu)
-- barraCUDA is open source
+- barraCuda is open source
 - Users can fork if needed
 
 **For Users**:
@@ -595,10 +595,10 @@ OpenCL Vulkan  Native
 ### 2. Learning Competitive Advantage
 
 **CUDA**: Static optimizations  
-**barraCUDA**: Learns from every workload
+**barraCuda**: Learns from every workload
 
 **Over time**:
-- barraCUDA gets smarter
+- barraCuda gets smarter
 - Optimizations improve
 - Hardware support expands
 
@@ -628,7 +628,7 @@ OpenCL Vulkan  Native
 **New paradigm?**:
 - Neuromorphic, quantum, photonic
 - Implement ComputeUnit trait
-- barraCUDA learns optimal usage
+- barraCuda learns optimal usage
 
 **Result**: Extensible indefinitely ✅
 
@@ -649,12 +649,12 @@ OpenCL Vulkan  Native
 - [ ] Pattern recognition working
 - [ ] 100+ workload patterns documented
 - [ ] Auto-tuning shows measurable improvement
-- [ ] barraCUDA prototype compiles and executes
+- [ ] barraCuda prototype compiles and executes
 - [ ] Performance competitive with OpenCL/Vulkan
 
 ### Phase 3: Evolution (Q3-Q4 2026)
 
-- [ ] barraCUDA beta released
+- [ ] barraCuda beta released
 - [ ] 1000+ workload patterns learned
 - [ ] 10+ community contributions
 - [ ] Performance exceeds static systems in common cases
@@ -662,7 +662,7 @@ OpenCL Vulkan  Native
 
 ### Phase 4: Living System (2027+)
 
-- [ ] barraCUDA learning from production deployments
+- [ ] barraCuda learning from production deployments
 - [ ] Pattern database growing continuously
 - [ ] Community driving development
 - [ ] New hardware supported automatically
@@ -687,7 +687,7 @@ NVIDIA ✅ AMD ✅
 ```
 Application (Pure Rust)
     ↓
-barraCUDA (informed by learning)
+barraCuda (informed by learning)
     ↓
 ┌───┴───┬────────┬─────────┐
 ↓       ↓        ↓         ↓
@@ -703,7 +703,7 @@ GPU     GPU              Quantum
 ```
 Application (Pure Rust)
     ↓
-barraCUDA (living, learning, evolving)
+barraCuda (living, learning, evolving)
     ↓
 Automatically optimal on any hardware
     ↓
@@ -746,7 +746,7 @@ Continues to improve forever
 1. ⚡ Complete Vulkan verification
 2. ⚡ Complete wgpu verification
 3. → Document patterns learned
-4. → Begin barraCUDA design doc
+4. → Begin barraCuda design doc
 
 ### This Month
 
@@ -757,14 +757,14 @@ Continues to improve forever
 
 ### This Quarter
 
-1. Design barraCUDA kernel DSL
+1. Design barraCuda kernel DSL
 2. Prototype pattern recognition
 3. Build simple compiler
 4. Validate approach
 
 ---
 
-## 💡 The Name: barraCUDA
+## 💡 The Name: barraCuda
 
 **Breaking down the name**:
 
@@ -801,7 +801,7 @@ Continues to improve forever
 
 **Phase 1**: Use big open systems (OpenCL, Vulkan, wgpu) ✅  
 **Phase 2**: Build functional learning systems ⚡  
-**Phase 3**: Evolve pure Rust kernel (barraCUDA) →  
+**Phase 3**: Evolve pure Rust kernel (barraCuda) →  
 **Phase 4**: Living system that continues evolving ∞
 
 ### Why This Works
@@ -820,7 +820,7 @@ Continues to improve forever
 
 ### The Vision
 
-**barraCUDA**: 
+**barraCuda**: 
 - Born from open systems
 - Learned from real use
 - Built in pure Rust
@@ -838,7 +838,7 @@ Continues to improve forever
 
 ---
 
-*ToadStool / barraCUDA: Learning from open systems, building the future* 🚀
+*ToadStool / barraCuda: Learning from open systems, building the future* 🚀
 
 **"Learn from the open. Build in Rust. Evolve forever."** ✅
 

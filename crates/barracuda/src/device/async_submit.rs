@@ -1,4 +1,4 @@
-//! Async Submission System for BarraCUDA
+//! Async Submission System for BarraCuda
 //!
 //! Provides non-blocking GPU submission with operation batching.
 //!

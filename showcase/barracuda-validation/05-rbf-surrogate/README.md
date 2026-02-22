@@ -2,7 +2,7 @@
 
 **GPU-accelerated surrogate learning for physics simulations**
 
-This demo shows the complete BarraCUDA RBF pipeline in action, trained on synthetic data to replicate `scipy.interpolate.RBFInterpolator`.
+This demo shows the complete BarraCuda RBF pipeline in action, trained on synthetic data to replicate `scipy.interpolate.RBFInterpolator`.
 
 ---
 
@@ -77,7 +77,7 @@ Or use the demo script:
   Prediction: 0.87 ms
   Accuracy:   Mean 0.034521, Max 0.089234
 
-🦈 BarraCUDA: GPU-accelerated scientific computing ready!
+🦈 BarraCuda: GPU-accelerated scientific computing ready!
 🔬 hotSpring: Physics surrogate learning operational!
 ```
 
@@ -157,7 +157,7 @@ rbf = RBFInterpolator(x, y, kernel='thin_plate_spline')
 y_pred = rbf(x_new)
 ```
 
-**Rust/BarraCUDA** (production):
+**Rust/BarraCuda** (production):
 ```rust
 let rbf = RbfInterpolator::fit(&x, &y, ThinPlateSpline, 1.0)?;
 let y_pred = rbf.predict(&x_new)?;

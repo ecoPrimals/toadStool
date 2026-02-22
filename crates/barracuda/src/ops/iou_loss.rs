@@ -1,6 +1,6 @@
 //! IoULoss - Intersection over Union loss
 //!
-//! **Canonical BarraCUDA Pattern**: Struct with new/execute
+//! **Canonical BarraCuda Pattern**: Struct with new/execute
 //!
 //! Direct optimization of IoU metric.
 //! Used in segmentation and object detection.

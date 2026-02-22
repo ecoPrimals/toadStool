@@ -1,6 +1,6 @@
 //! RBF Surrogate Learning Example
 //! 
-//! Demonstrates complete BarraCUDA RBF pipeline:
+//! Demonstrates complete BarraCuda RBF pipeline:
 //! - Train on known function (sin, polynomial, etc.)
 //! - Predict at new points
 //! - Validate accuracy
@@ -139,7 +139,7 @@ async fn main() -> Result<()> {
     println!("  Prediction: {:.2} ms", pred_time.as_secs_f64() * 1000.0);
     println!("  Accuracy:   Mean {:.6}, Max {:.6}", mean_error, max_error);
     println!();
-    println!("🦈 BarraCUDA: GPU-accelerated scientific computing ready!");
+    println!("🦈 BarraCuda: GPU-accelerated scientific computing ready!");
     println!("🔬 hotSpring: Physics surrogate learning operational!");
     println!();
     

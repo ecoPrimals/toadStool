@@ -430,18 +430,18 @@ Return to local when available
 
 ---
 
-### With barraCUDA
+### With barraCuda
 
 **Current**: 18 GPU operations, vendor-agnostic
 
 **Integration**:
-- Use barraCUDA for all GPU workloads
+- Use barraCuda for all GPU workloads
 - Layer influences GPU access method
-- Cloud providers use barraCUDA with cloud GPUs
+- Cloud providers use barraCuda with cloud GPUs
 - True multi-vendor testing via fractal composition
 
 **Future**:
-- Test barraCUDA across local → AWS (NVIDIA) → Azure (AMD)
+- Test barraCuda across local → AWS (NVIDIA) → Azure (AMD)
 - Verify vendor lock-in breaking via real workload migration
 - Benchmark GPU ops across all providers
 
@@ -564,7 +564,7 @@ Return to local when available
 - `BIOMEOS_FRACTAL_COMPOSITION_RESPONSE.md` - Formal response
 - `FRACTAL_COMPOSITION_KICKOFF_JAN13.md` - Day 1 summary
 - Songbird evolution docs (parallel pattern)
-- barraCUDA achievements (velocity proof)
+- barraCuda achievements (velocity proof)
 
 ---
 

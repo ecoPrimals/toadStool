@@ -6,7 +6,7 @@
 // Reference: "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness"
 // by Dao et al. (2022)
 //
-// Simplified implementation for BarraCUDA - Full version would require more advanced tiling
+// Simplified implementation for BarraCuda - Full version would require more advanced tiling
 
 struct Params {
     seq_len: u32,

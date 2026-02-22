@@ -1,4 +1,4 @@
-# barraCUDA Phase 1: Session 2 Progress
+# barraCuda Phase 1: Session 2 Progress
 
 **Date**: January 8, 2026 (Evening - Continued)  
 **Focus**: Expanding operation library with composite and binary patterns  
@@ -8,7 +8,7 @@
 
 ## 🎯 Session Goals
 
-Continuing barraCUDA Phase 1 pattern learning by implementing:
+Continuing barraCuda Phase 1 pattern learning by implementing:
 1. ✅ Dot Product operation
 2. ✅ Elementwise Binary operations
 3. ⚡ Next: Gather/Scatter for indexing patterns
@@ -86,7 +86,7 @@ Pattern generalizes naturally to N inputs.
 - ✅ Educational comments explaining patterns
 - ✅ Performance scaling tests
 - ✅ Real-world use cases
-- ✅ Pattern observations for barraCUDA learning
+- ✅ Pattern observations for barraCuda learning
 
 ---
 
@@ -114,7 +114,7 @@ Pattern generalizes naturally to N inputs.
 
 This is huge! It means:
 - Complex operations are compositions of simpler patterns
-- barraCUDA can recognize these compositions
+- barraCuda can recognize these compositions
 - Auto-optimization: Fuse Map+Reduce into single kernel
 - Reusable building blocks
 
@@ -155,7 +155,7 @@ Complex operations are compositions:
 - MatMul = Many DotProducts
 - Conv2D = Sliding Window + Many DotProducts
 
-This is the foundation for barraCUDA Phase 2!
+This is the foundation for barraCuda Phase 2!
 
 ---
 
@@ -218,7 +218,7 @@ cargo run --example dot_product_demo -p toadstool-runtime-universal --features "
 
 ### Why This Matters
 
-**For barraCUDA Phase 2**:
+**For barraCuda Phase 2**:
 1. We're learning the vocabulary of parallel operations
 2. We're discovering composition rules
 3. We're identifying optimization opportunities

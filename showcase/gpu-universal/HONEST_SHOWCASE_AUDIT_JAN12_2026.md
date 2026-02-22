@@ -328,7 +328,7 @@ cargo run --release --bin lenet5_demo --features opencl
 
 ### What We Should NOT Say
 
-"~~CUDA vs barraCUDA benchmark proves vendor lock-in freedom~~"  
+"~~CUDA vs barraCuda benchmark proves vendor lock-in freedom~~"  
 → ❌ It uses `sleep()`, not real GPU work!
 
 "~~vendor_agnostic_demo shows same code on all GPUs~~"  
@@ -360,7 +360,7 @@ cargo run --release --bin lenet5_demo --features opencl
 
 1. Implement full GPU training pipeline
 2. Add distributed multi-GPU execution
-3. Complete all 21 barraCUDA operations with GPU kernels
+3. Complete all 21 barraCuda operations with GPU kernels
 
 ---
 

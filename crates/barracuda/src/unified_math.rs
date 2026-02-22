@@ -2,7 +2,7 @@
 //!
 //! **Philosophy**: Define WHAT to compute, not HOW
 //!
-//! This module provides the mathematical foundation for BarraCUDA:
+//! This module provides the mathematical foundation for BarraCuda:
 //! - Pure mathematical definitions (no hardware assumptions)
 //! - Trait-based abstraction (works with any backend)
 //! - Composable primitives (build complex ops from simple ones)

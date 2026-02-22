@@ -1,4 +1,4 @@
-# BarraCUDA Scientific Computing Operations Specification
+# BarraCuda Scientific Computing Operations Specification
 ## Complex Arithmetic, FFT, and Physics Primitives
 
 **Version**: 1.0.0  
@@ -574,7 +574,7 @@ fn bench_fft_4096(b: &mut Bencher) {
 
 ## Dependencies
 
-**Existing BarraCUDA Ops** (no changes needed):
+**Existing BarraCuda Ops** (no changes needed):
 - `erf.wgsl`, `erfc.wgsl` - Already validated
 - `pairwise_distance.rs` - PBC will wrap this
 - `u64_emu.wgsl` - Pattern for ComplexF64

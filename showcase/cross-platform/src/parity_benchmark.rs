@@ -1,4 +1,4 @@
-//! Comprehensive Parity Benchmark: BarraCUDA vs CUDA vs ROCm
+//! Comprehensive Parity Benchmark: BarraCuda vs CUDA vs ROCm
 //!
 //! Goal: Identify performance gaps and optimization targets to achieve
 //! vendor-free performance parity with native APIs.
@@ -12,7 +12,7 @@
 //! Targets:
 //! - CUDA (cudarc) on NVIDIA RTX 3090
 //! - ROCm (HIP) on AMD RX 6950 XT
-//! - BarraCUDA (wgpu/Vulkan) on both
+//! - BarraCuda (wgpu/Vulkan) on both
 
 use anyhow::Result;
 use barracuda::multi_gpu::{GpuPool, GpuVendor, WorkloadConfig};
@@ -398,7 +398,7 @@ int main(int argc, char** argv) {
 }
 
 // ============================================================================
-// BarraCUDA Benchmarks (Any GPU via wgpu)
+// BarraCuda Benchmarks (Any GPU via wgpu)
 // ============================================================================
 
 mod barracuda_bench {
@@ -451,7 +451,7 @@ mod barracuda_bench {
                 let time_us = start.elapsed().as_secs_f64() * 1e6 / iterations as f64;
                 let bytes = size * 3 * 4;
                 results.push(BenchResult::new(
-                    "BarraCUDA",
+                    "BarraCuda",
                     device_name,
                     "vector_add",
                     &size_str,
@@ -467,7 +467,7 @@ mod barracuda_bench {
                 }
                 let time_us = start.elapsed().as_secs_f64() * 1e6 / iterations as f64;
                 results.push(BenchResult::new(
-                    "BarraCUDA",
+                    "BarraCuda",
                     device_name,
                     "vector_mul",
                     &size_str,
@@ -476,7 +476,7 @@ mod barracuda_bench {
                     size,
                 ));
 
-                // Note: FMA and reduction need dedicated kernels in BarraCUDA
+                // Note: FMA and reduction need dedicated kernels in BarraCuda
                 // For now, skip to show where we need to add them
             }
         }
@@ -533,15 +533,15 @@ fn print_parity_analysis(results: &[BenchResult]) {
                 .iter()
                 .find(|r| r.backend == "CUDA" && r.operation == op && r.size == size);
 
-            // Find BarraCUDA on both devices
+            // Find BarraCuda on both devices
             let bc_nvidia = results.iter().find(|r| {
-                r.backend == "BarraCUDA"
+                r.backend == "BarraCuda"
                     && r.device == "RTX 3090"
                     && r.operation == op
                     && r.size == size
             });
             let bc_amd = results.iter().find(|r| {
-                r.backend == "BarraCUDA"
+                r.backend == "BarraCuda"
                     && r.device == "RX 6950 XT"
                     && r.operation == op
                     && r.size == size
@@ -583,7 +583,7 @@ fn print_optimization_targets(results: &[BenchResult]) {
 
     let bc_nvidia_times: Vec<f64> = results
         .iter()
-        .filter(|r| r.backend == "BarraCUDA" && r.device == "RTX 3090")
+        .filter(|r| r.backend == "BarraCuda" && r.device == "RTX 3090")
         .map(|r| r.time_us)
         .collect();
 
@@ -595,7 +595,7 @@ fn print_optimization_targets(results: &[BenchResult]) {
             .sum::<f64>()
             / cuda_times.len() as f64;
 
-        println!("Current average gap (BarraCUDA vs CUDA): {:.1}x", avg_gap);
+        println!("Current average gap (BarraCuda vs CUDA): {:.1}x", avg_gap);
         println!();
         println!("Identified bottlenecks:");
         println!("  1. wgpu command buffer submission overhead");
@@ -620,7 +620,7 @@ async fn main() -> Result<()> {
         .init();
 
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
-    println!("║     PARITY BENCHMARK: BarraCUDA vs CUDA vs ROCm                              ║");
+    println!("║     PARITY BENCHMARK: BarraCuda vs CUDA vs ROCm                              ║");
     println!("║     Goal: Achieve vendor-free performance parity                              ║");
     println!("╚══════════════════════════════════════════════════════════════════════════════╝\n");
 
@@ -659,11 +659,11 @@ async fn main() -> Result<()> {
         println!("Native ROCm not enabled (compile with --features rocm)");
     }
 
-    // BarraCUDA benchmarks (all GPUs)
-    println!("Running BarraCUDA benchmarks (wgpu/Vulkan)...");
+    // BarraCuda benchmarks (all GPUs)
+    println!("Running BarraCuda benchmarks (wgpu/Vulkan)...");
     match barracuda_bench::run_barracuda_benchmarks(&sizes, iterations).await {
         Ok(results) => all_results.extend(results),
-        Err(e) => eprintln!("  BarraCUDA benchmark failed: {}", e),
+        Err(e) => eprintln!("  BarraCuda benchmark failed: {}", e),
     }
 
     // Results

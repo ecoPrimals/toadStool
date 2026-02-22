@@ -3,14 +3,14 @@
 **Date**: February 15, 2026  
 **Status**: ✅ Complete  
 **From**: hotSpring handoff document (Feb 12, 2026)  
-**Absorbed by**: ToadStool/BarraCUDA team
+**Absorbed by**: ToadStool/BarraCuda team
 
 ---
 
 ## Summary
 
 This document records the absorption of physics-agnostic GPU math primitives from
-hotSpring's nuclear EOS validation study into ToadStool/BarraCUDA. These primitives
+hotSpring's nuclear EOS validation study into ToadStool/BarraCuda. These primitives
 were validated by hotSpring's 169/169 acceptance checks on consumer GPU hardware
 (RTX 4070, f64 via SHADER_F64).
 

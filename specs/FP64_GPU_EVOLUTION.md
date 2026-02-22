@@ -31,7 +31,7 @@ let c1 = zero + 0.3333333333333367565;   // ≈ 1/3 (minimax)
 
 ## Overview
 
-BarraCUDA now includes a pure-GPU f64 math library (`math_f64.wgsl`) that implements transcendental functions using only f64 arithmetic operations. This enables **substrate-independent** scientific computing where the same physics runs on CPU and GPU.
+BarraCuda now includes a pure-GPU f64 math library (`math_f64.wgsl`) that implements transcendental functions using only f64 arithmetic operations. This enables **substrate-independent** scientific computing where the same physics runs on CPU and GPU.
 
 ## Key Achievements
 
@@ -500,7 +500,7 @@ The RTX 4070's large L2 cache helps f64 workloads by keeping intermediate result
 
 ### NVIDIA vs AMD Performance Note
 
-NVIDIA advertises 1:64 FP64:FP32 ratio on consumer GPUs, but observed ratio is **~1:2** for BarraCUDA workloads. This may indicate:
+NVIDIA advertises 1:64 FP64:FP32 ratio on consumer GPUs, but observed ratio is **~1:2** for BarraCuda workloads. This may indicate:
 - Vendor throttling is bypassable via Vulkan/wgpu path
 - Silicon capability exceeds marketing specs
 - Workload patterns avoid throttling triggers

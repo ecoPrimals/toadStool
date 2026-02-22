@@ -1,6 +1,6 @@
 //! Matrix Inverse - Compute inverse of square matrix
 //!
-//! **Canonical BarraCUDA Pattern**: Struct with new/execute
+//! **Canonical BarraCuda Pattern**: Struct with new/execute
 //!
 //! Uses Gauss-Jordan elimination.
 //! Note: This is a wrapper around the canonical inverse_wgsl operation.

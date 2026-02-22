@@ -1,10 +1,10 @@
-//! Native CUDA vs BarraCUDA (wgpu) Performance Comparison
+//! Native CUDA vs BarraCuda (wgpu) Performance Comparison
 //!
 //! This benchmark compares:
 //! 1. Native CUDA (cudarc) - NVIDIA proprietary
-//! 2. BarraCUDA (wgpu/Vulkan) - Vendor-free
+//! 2. BarraCuda (wgpu/Vulkan) - Vendor-free
 //!
-//! Goal: Show BarraCUDA is competitive while being vendor-agnostic.
+//! Goal: Show BarraCuda is competitive while being vendor-agnostic.
 
 use anyhow::Result;
 
@@ -181,7 +181,7 @@ fn print_comparison_table(
         barracuda_times.0.clone()
     };
     println!(
-        "│ BarraCUDA/wgpu  │ {:23} │ {:>11.4} │ {:>11.4} │",
+        "│ BarraCuda/wgpu  │ {:23} │ {:>11.4} │ {:>11.4} │",
         device_short, barracuda_times.1, barracuda_times.2
     );
 
@@ -192,14 +192,14 @@ fn print_comparison_table(
         let add_ratio = cuda_add / barracuda_times.1;
         let mul_ratio = cuda_mul / barracuda_times.2;
 
-        println!("\nSpeedup (BarraCUDA vs Native CUDA):");
+        println!("\nSpeedup (BarraCuda vs Native CUDA):");
         let add_status = if add_ratio > 1.0 {
-            "BarraCUDA faster"
+            "BarraCuda faster"
         } else {
             "CUDA faster"
         };
         let mul_status = if mul_ratio > 1.0 {
-            "BarraCUDA faster"
+            "BarraCuda faster"
         } else {
             "CUDA faster"
         };
@@ -210,7 +210,7 @@ fn print_comparison_table(
         let overall = (add_ratio + mul_ratio) / 2.0;
         if overall > 0.9 {
             println!(
-                "\n✓ BarraCUDA achieves {:.0}% of native CUDA performance!",
+                "\n✓ BarraCuda achieves {:.0}% of native CUDA performance!",
                 overall * 100.0
             );
             println!("  While being VENDOR-AGNOSTIC (runs on AMD too)");
@@ -258,7 +258,7 @@ async fn main() -> Result<()> {
             None
         };
 
-        // BarraCUDA benchmark (always available via wgpu)
+        // BarraCuda benchmark (always available via wgpu)
         let barracuda_times = barracuda_bench::run_barracuda_benchmark(size, iterations).await?;
 
         print_comparison_table(size, cuda_times, barracuda_times);
@@ -270,16 +270,16 @@ async fn main() -> Result<()> {
 
     println!("\n═══ Key Insights ═══\n");
     println!("CUDA wins on raw latency (native driver, lower overhead).");
-    println!("BarraCUDA wins on portability (same code runs on NVIDIA + AMD + Intel).\n");
+    println!("BarraCuda wins on portability (same code runs on NVIDIA + AMD + Intel).\n");
     println!("Trade-off analysis:");
     println!("  • Simple ops (add/mul): CUDA ~10x faster due to lower API overhead");
     println!("  • Complex ops (matmul, conv): Gap narrows as kernel time dominates");
-    println!("  • Vendor lock-in: CUDA = NVIDIA only, BarraCUDA = any GPU");
-    println!("  • Development cost: BarraCUDA = write once, run anywhere");
+    println!("  • Vendor lock-in: CUDA = NVIDIA only, BarraCuda = any GPU");
+    println!("  • Development cost: BarraCuda = write once, run anywhere");
     println!("\nRecommendation:");
     println!("  • Production on NVIDIA: Consider CUDA for latency-critical workloads");
-    println!("  • Multi-vendor / AMD: BarraCUDA is the only option");
-    println!("  • Portability priority: BarraCUDA trades ~10x overhead for freedom");
+    println!("  • Multi-vendor / AMD: BarraCuda is the only option");
+    println!("  • Portability priority: BarraCuda trades ~10x overhead for freedom");
 
     Ok(())
 }

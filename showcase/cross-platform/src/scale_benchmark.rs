@@ -1,4 +1,4 @@
-//! Scale Benchmark - Does BarraCUDA reach parity at scale?
+//! Scale Benchmark - Does BarraCuda reach parity at scale?
 //!
 //! Tests the hypothesis: the 10x gap is constant overhead (~300μs),
 //! so for large workloads where GPU execution dominates, we approach parity.
@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
         .init();
 
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
-    println!("║  Scale Benchmark - Does BarraCUDA Reach Parity at Scale?                      ║");
+    println!("║  Scale Benchmark - Does BarraCuda Reach Parity at Scale?                      ║");
     println!("╚══════════════════════════════════════════════════════════════════════════════╝\n");
 
     let config = WorkloadConfig {
@@ -327,7 +327,7 @@ async fn main() -> Result<()> {
     // ═══════════════════════════════════════════════════════════════════════════
 
     println!("══════════════════════════════════════════════════════════════════════════════");
-    println!("  SUMMARY: Does BarraCUDA Reach Parity at Scale?");
+    println!("  SUMMARY: Does BarraCuda Reach Parity at Scale?");
     println!("══════════════════════════════════════════════════════════════════════════════\n");
 
     println!("  ┌─────────────────────────────────────────────────────────────────────────┐");
@@ -344,7 +344,7 @@ async fn main() -> Result<()> {
     println!("  │     GPU compute: ~1-5ms → Compute dominates, overhead negligible       │");
     println!("  │                                                                          │");
     println!("  │   CONCLUSION:                                                           │");
-    println!("  │   ✅ At scale (10M+ elements), BarraCUDA approaches memory bandwidth   │");
+    println!("  │   ✅ At scale (10M+ elements), BarraCuda approaches memory bandwidth   │");
     println!("  │   ✅ Batching amortizes overhead across operations                      │");
     println!("  │   ✅ Sustained bandwidth reaches significant % of theoretical peak     │");
     println!("  │                                                                          │");

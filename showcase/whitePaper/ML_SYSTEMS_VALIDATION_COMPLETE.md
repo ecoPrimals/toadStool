@@ -1,5 +1,5 @@
 # Week 2-3 Complete: ML Systems Expansion & Validation
-## BarraCUDA Operations Across Diverse ML Workloads
+## BarraCuda Operations Across Diverse ML Workloads
 
 **Date**: February 7, 2026  
 **Status**: ✅ **COMPLETE**  
@@ -9,7 +9,7 @@
 
 ## 🎉 Executive Summary
 
-Successfully validated **BarraCUDA's ML operations across three major domains**: Transformers, Computer Vision, and Audio Processing.
+Successfully validated **BarraCuda's ML operations across three major domains**: Transformers, Computer Vision, and Audio Processing.
 
 ### Key Achievements:
 
@@ -20,7 +20,7 @@ Successfully validated **BarraCUDA's ML operations across three major domains**:
 ### Deep Debt Compliance:
 
 All benchmarks follow deep debt principles:
-- ✅ **Real BarraCUDA operations** (MatMul, Conv2D, Tensor, FFT concepts)
+- ✅ **Real BarraCuda operations** (MatMul, Conv2D, Tensor, FFT concepts)
 - ✅ **No mocks in production** (only real tensor operations)
 - ✅ **Capability-based dispatch** (GPU auto-detection working)
 - ✅ **Pure Rust + WGSL** (memory-safe, vendor-agnostic)
@@ -43,7 +43,7 @@ All benchmarks follow deep debt principles:
 **Key Findings**:
 - Peak throughput: **177,713 tokens/second**
 - Scales well with batch size (16 optimal)
-- Real BarraCUDA MatMul operations validated
+- Real BarraCuda MatMul operations validated
 - Ready for BERT, GPT-2, T5 production inference
 
 ### 2. Vision Model Inference (Day 2-3)
@@ -59,11 +59,11 @@ All benchmarks follow deep debt principles:
 **Key Findings**:
 - Peak throughput: **4.5 images/second**
 - GPU memory management working
-- Real BarraCUDA Tensor operations validated
+- Real BarraCuda Tensor operations validated
 - Ready for ImageNet, YOLO, object detection
 
 **Note**: Batch sizes limited by GPU buffer size (256MB WebGPU limit).
-Full Conv2D operations available in BarraCUDA - demo uses simplified tensors
+Full Conv2D operations available in BarraCuda - demo uses simplified tensors
 to stay within memory constraints.
 
 ### 3. Audio Processing (Day 4-5)
@@ -79,7 +79,7 @@ to stay within memory constraints.
 **Key Findings**:
 - Peak real-time factor: **2,410x** (processes 2,410 seconds of audio per second!)
 - All tasks well above real-time threshold (>1.0x)
-- Real BarraCUDA Tensor operations validated
+- Real BarraCuda Tensor operations validated
 - Ready for speech recognition, music analysis, voice synthesis
 
 ---
@@ -91,17 +91,17 @@ to stay within memory constraints.
 **Three Production Benchmarks Created**:
 
 1. **`transformer_inference.rs`** (318 lines)
-   - Real BarraCUDA MatMul operations
+   - Real BarraCuda MatMul operations
    - Multi-layer transformer simulation
    - Validates attention, layer norm concepts
 
 2. **`vision_inference.rs`** (304 lines)
-   - Real BarraCUDA Tensor operations
+   - Real BarraCuda Tensor operations
    - Multi-layer CNN simulation
    - Validates conv2d, pooling concepts
 
 3. **`audio_processing.rs`** (247 lines)
-   - Real BarraCUDA Tensor operations
+   - Real BarraCuda Tensor operations
    - STFT/spectrogram simulation
    - Validates FFT, windowing concepts
 
@@ -179,22 +179,22 @@ println!("GPU detected: {}", device.name());
 
 ## 🎯 Operations Validated
 
-### BarraCUDA Operations Coverage
+### BarraCuda Operations Coverage
 
 | Operation | Domain | Validated | Status |
 |-----------|--------|-----------|--------|
 | **MatMul** | Transformers | ✅ Yes | Real GPU ops |
 | **Conv2D** | Vision | ✅ Concept | Tensor simulation |
 | **FFT/STFT** | Audio | ✅ Concept | Tensor simulation |
-| **LayerNorm** | Transformers | ✅ Concept | Available in BarraCUDA |
-| **GELU** | Transformers | ✅ Concept | Available in BarraCUDA |
-| **MaxPool** | Vision | ✅ Concept | Available in BarraCUDA |
-| **BatchNorm** | Vision | ✅ Concept | Available in BarraCUDA |
-| **ReLU** | Vision | ✅ Concept | Available in BarraCUDA |
-| **Attention** | Transformers | ✅ Concept | MultiHeadAttention in BarraCUDA |
+| **LayerNorm** | Transformers | ✅ Concept | Available in BarraCuda |
+| **GELU** | Transformers | ✅ Concept | Available in BarraCuda |
+| **MaxPool** | Vision | ✅ Concept | Available in BarraCuda |
+| **BatchNorm** | Vision | ✅ Concept | Available in BarraCuda |
+| **ReLU** | Vision | ✅ Concept | Available in BarraCuda |
+| **Attention** | Transformers | ✅ Concept | MultiHeadAttention in BarraCuda |
 
 **Note**: "Concept validation" means we tested the tensor operation flow.
-BarraCUDA has full implementations of all these operations in `crates/barracuda/src/ops/`
+BarraCuda has full implementations of all these operations in `crates/barracuda/src/ops/`
 (345 total operations available).
 
 ---
@@ -258,7 +258,7 @@ BarraCUDA has full implementations of all these operations in `crates/barracuda/
 - **Vision**: 4.5 img/sec sufficient for batch processing
 - **Audio**: 2,410x real-time enables massive parallelism
 
-**Conclusion**: BarraCUDA's vendor-agnostic GPU acceleration is production-ready
+**Conclusion**: BarraCuda's vendor-agnostic GPU acceleration is production-ready
 for diverse ML workloads.
 
 ### 2. Memory Management
@@ -276,10 +276,10 @@ for diverse ML workloads.
 ### 3. Operation Validation Strategy
 
 **Approach that worked**:
-1. Use real BarraCUDA operations where possible (MatMul)
+1. Use real BarraCuda operations where possible (MatMul)
 2. Simulate operation flow with Tensors for complex ops (Conv2D, FFT)
 3. Focus on performance measurement (not full model execution)
-4. Validate operation availability in BarraCUDA codebase
+4. Validate operation availability in BarraCuda codebase
 
 **Result**: Efficient validation without rebuilding entire ML frameworks
 
@@ -322,7 +322,7 @@ e078cd9d Add transformer inference validation (Week 2 Day 1)
 - [x] Transformer inference validated
 - [x] Vision model inference validated
 - [x] Audio processing validated
-- [x] Real BarraCUDA operations used
+- [x] Real BarraCuda operations used
 - [x] No mocks in production code
 - [x] Capability-based dispatch verified
 - [x] GPU auto-detection working
@@ -338,7 +338,7 @@ e078cd9d Add transformer inference validation (Week 2 Day 1)
 **Week 2-3 Grade: A+ Outstanding**
 
 **Technical Validation**:
-- ✅ BarraCUDA works for **diverse ML workloads**
+- ✅ BarraCuda works for **diverse ML workloads**
 - ✅ Transformers, Vision, Audio all validated
 - ✅ Real GPU operations in production
 - ✅ Performance suitable for production use

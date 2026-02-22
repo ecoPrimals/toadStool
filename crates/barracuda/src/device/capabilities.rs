@@ -41,7 +41,7 @@ use std::fmt;
 // Standard WGSL Shader Workgroup Sizes
 // ============================================================================
 //
-// ALL BarraCUDA WGSL shaders use these fixed workgroup sizes.
+// ALL BarraCuda WGSL shaders use these fixed workgroup sizes.
 // Dispatch calculations MUST use these constants to match the shader.
 //
 // The previous `optimal_workgroup_size()` method is retained for advisory use
@@ -250,7 +250,7 @@ impl DeviceCapabilities {
     /// Calculate number of workgroups for a 1D dispatch.
     ///
     /// Uses [`WORKGROUP_SIZE_1D`] (256) to match all `@workgroup_size(256)` shaders.
-    /// This is the correct way to calculate dispatch count for BarraCUDA ops.
+    /// This is the correct way to calculate dispatch count for BarraCuda ops.
     ///
     /// # Example
     /// ```ignore

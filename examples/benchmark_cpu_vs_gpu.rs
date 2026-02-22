@@ -11,7 +11,7 @@ use std::time::Instant;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("🦈 BarraCUDA: CPU vs GPU Performance Benchmark");
+    println!("🦈 BarraCuda: CPU vs GPU Performance Benchmark");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
     

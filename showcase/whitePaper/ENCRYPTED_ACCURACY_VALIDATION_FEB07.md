@@ -49,7 +49,7 @@ Successfully validated that **Fully Homomorphic Encryption (FHE) preserves ML in
 **Dataset**: MNIST (simplified to 100 test samples)  
 **Model**: Simple Linear Classifier (784 inputs → 10 classes)  
 **Hardware**: NVIDIA GeForce RTX 3090 (Vulkan backend)  
-**FHE Scheme**: BFV with BarraCUDA GPU acceleration
+**FHE Scheme**: BFV with BarraCuda GPU acceleration
 
 ### FHE Parameters
 
@@ -123,13 +123,13 @@ Plaintext Prediction
 
 | System | Overhead | Accuracy Loss | Year |
 |--------|----------|---------------|------|
-| **BarraCUDA** | **73.7x** | **0.00%** | **2026** |
+| **BarraCuda** | **73.7x** | **0.00%** | **2026** |
 | CryptoNets | 150x | <0.1% | 2016 |
 | E2DM | 200x | <0.5% | 2019 |
 | GAZELLE | 50-100x | <0.1% | 2018 |
 | Delphi | 60-120x | ~0% | 2020 |
 
-**BarraCUDA Position**: **Competitive to state-of-the-art**
+**BarraCuda Position**: **Competitive to state-of-the-art**
 - Lower overhead than CryptoNets, E2DM
 - Comparable to GAZELLE, Delphi
 - **First GPU-accelerated Rust+WGSL FHE implementation**
@@ -217,7 +217,7 @@ fn simulate_fhe_cost(poly_degree: u32) -> u64
 
 **Why simulation**:
 - Full FHE requires key generation (expensive one-time cost)
-- Real BarraCUDA FHE ops validated separately (Day 1-2)
+- Real BarraCuda FHE ops validated separately (Day 1-2)
 - Focus here: accuracy preservation measurement
 
 **Realism**: Overhead tuned to match literature (73.7x = realistic for GPU FHE)
@@ -278,7 +278,7 @@ throughput,144928.00,1954.40,-142973.60
 
 ### Scientific Contributions
 
-1. **First quantitative study** of FHE accuracy preservation in BarraCUDA
+1. **First quantitative study** of FHE accuracy preservation in BarraCuda
 2. **Validated 0.0000% accuracy loss** with 128-bit FHE encryption
 3. **Established 73.7x overhead baseline** for GPU-accelerated FHE inference
 4. **Demonstrated practical feasibility** of privacy-preserving ML
@@ -308,7 +308,7 @@ throughput,144928.00,1954.40,-142973.60
 3. **Delphi** (2020): Hybrid crypto for ML
 4. **BFV Scheme** (2012): Brakerski-Fan-Vercauteren FHE
 
-### BarraCUDA Code
+### BarraCuda Code
 
 1. `crates/barracuda/src/ops/fhe_ntt/` - NTT operations
 2. `crates/barracuda/src/ops/fhe_poly_mul.rs` - Polynomial multiplication
@@ -339,7 +339,7 @@ throughput,144928.00,1954.40,-142973.60
    - Audio Processing (MFCC)
 
 2. **Real FHE Integration**:
-   - Replace simulation with actual BarraCUDA FHE ops
+   - Replace simulation with actual BarraCuda FHE ops
    - Measure real key generation cost
    - Validate against external FHE libraries
 
@@ -366,10 +366,10 @@ throughput,144928.00,1954.40,-142973.60
 - **First** Rust+WGSL FHE accuracy validation
 - **Competitive** with state-of-the-art systems
 - **Enables** privacy-preserving ML at scale
-- **Validates** BarraCUDA's FHE capability
+- **Validates** BarraCuda's FHE capability
 
 **Impact**:
-- **Technical**: Establishes FHE baseline for BarraCUDA
+- **Technical**: Establishes FHE baseline for BarraCuda
 - **Business**: Enables privacy-as-a-service models
 - **Research**: Contributes to FHE ML literature
 - **Community**: Open-source reference implementation

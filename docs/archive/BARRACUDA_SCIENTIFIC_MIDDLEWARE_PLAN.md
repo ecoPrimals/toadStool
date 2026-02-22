@@ -1,4 +1,4 @@
-# BarraCUDA Scientific Computing Middleware Evolution Plan
+# BarraCuda Scientific Computing Middleware Evolution Plan
 
 **Date**: February 11, 2026  
 **Status**: INVESTIGATION & PLANNING  
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-hotSpring validated that BarraCUDA can run real nuclear physics pipelines with:
+hotSpring validated that BarraCuda can run real nuclear physics pipelines with:
 - **14× speedup** on L1 (SEMF) with better accuracy than Python
 - **1.7× speedup** on L2 (HFB+BCS) with throughput parity
 - Dual-precision architecture (GPU f32 cdist + CPU f64 linear algebra) proven
@@ -18,7 +18,7 @@ hotSpring validated that BarraCUDA can run real nuclear physics pipelines with:
 **The problem**: ~600 lines of general-purpose scientific computing code are
 duplicated between `nuclear_eos_l1.rs` and `nuclear_eos_l2.rs`. This middleware
 layer (linear solvers, RBF surrogates, optimizers, numerical methods) belongs
-in the BarraCUDA library.
+in the BarraCuda library.
 
 **The opportunity**: Extract proven code into library modules that every future
 scientific primal can reuse. No research needed — code exists and validates
@@ -464,7 +464,7 @@ pub fn latin_hypercube(
 /// minimum pairwise distance to existing points (gap-filling).
 /// 
 /// **This is the accuracy multiplier**: Python L2 reached χ²=1.93
-/// with 3008 evals using this. BarraCUDA's random sampling hit
+/// with 3008 evals using this. BarraCuda's random sampling hit
 /// χ²=87 with 1009 evals. Smart sampling + faster throughput = WIN.
 /// 
 /// # Arguments
@@ -705,7 +705,7 @@ pub fn laguerre(n: usize, alpha: f64, x: f64) -> f64;
 
 ### Performance
 
-| Workload | Python | BarraCUDA (inline) | BarraCUDA (library) |
+| Workload | Python | BarraCuda (inline) | BarraCuda (library) |
 |----------|--------|-------------------|---------------------|
 | L1 (30 rounds) | 129.9s | 9.3s (14×) | **9.3s** (maintain) |
 | L2 (1000 evals) | 3571s | 2055s (1.7×) | **2055s** (maintain) |
@@ -853,7 +853,7 @@ All are lightweight, pure Rust, and already widely used in the ecosystem.
 
 ## Summary
 
-BarraCUDA's 414 WGSL shaders proved they can run real physics. The missing piece
+BarraCuda's 414 WGSL shaders proved they can run real physics. The missing piece
 is the **scientific computing middleware** — the 600 lines of duplicated Rust code
 that connects "GPU tensor ops" to "find optimal nuclear parameters."
 
@@ -866,7 +866,7 @@ validates against Python, and achieves 14× speedups on real workloads.
 
 **Status**: APPROVED FOR EXECUTION  
 **Start Date**: TBD (after shader reorganization)  
-**Owner**: ToadStool/BarraCUDA Team  
+**Owner**: ToadStool/BarraCuda Team  
 **Stakeholder**: hotSpring (L3 blocked on this)
 
 **Next Steps**:

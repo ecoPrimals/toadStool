@@ -1,8 +1,8 @@
-# 🧠 → 🦈 Neuromorphic to barraCUDA Migration Plan
+# 🧠 → 🦈 Neuromorphic to barraCuda Migration Plan
 
 **Date**: January 31, 2026  
 **Status**: Architecture Evolution  
-**Goal**: Absorb Akida-specific operations into universal barraCUDA framework
+**Goal**: Absorb Akida-specific operations into universal barraCuda framework
 
 ---
 
@@ -13,7 +13,7 @@
 Current architecture:
 ```
 Akida-specific code → Akida hardware only
-GPU code (barraCUDA) → GPU hardware only
+GPU code (barraCuda) → GPU hardware only
 CPU code → CPU only
 ```
 
@@ -21,7 +21,7 @@ CPU code → CPU only
 
 Universal architecture:
 ```
-barraCUDA Operations → ANY hardware (NPU, TPU, GPU, CPU)
+barraCuda Operations → ANY hardware (NPU, TPU, GPU, CPU)
     ├─ Akida backend    → Dispatches to NPU when available
     ├─ CUDA/Vulkan      → Dispatches to GPU
     ├─ Metal            → Dispatches to Apple Silicon
@@ -38,9 +38,9 @@ barraCUDA Operations → ANY hardware (NPU, TPU, GPU, CPU)
 
 | Component | Location | Purpose | Migration Target |
 |-----------|----------|---------|------------------|
-| **K-mer Filtering** | `showcase/neuromorphic/02-akida-bioinformatics/src/akida_filter.rs` | Pattern matching | barraCUDA: Pattern ops |
-| **SNN Inference** | `crates/neuromorphic/akida-driver/src/inference.rs` | Spike-based compute | barraCUDA: Neuromorphic ops |
-| **Reservoir Computing** | `crates/neuromorphic/akida-reservoir-research/` | Echo state networks | barraCUDA: Recurrent ops |
+| **K-mer Filtering** | `showcase/neuromorphic/02-akida-bioinformatics/src/akida_filter.rs` | Pattern matching | barraCuda: Pattern ops |
+| **SNN Inference** | `crates/neuromorphic/akida-driver/src/inference.rs` | Spike-based compute | barraCuda: Neuromorphic ops |
+| **Reservoir Computing** | `crates/neuromorphic/akida-reservoir-research/` | Echo state networks | barraCuda: Recurrent ops |
 | **Model Loading** | `crates/neuromorphic/akida-models/src/` | NPU model format | Backend: Model adapter |
 | **Device Management** | `crates/neuromorphic/akida-driver/src/discovery.rs` | Hardware enumeration | Backend: Device pool |
 
@@ -245,7 +245,7 @@ pub async fn spike_encode(
     input: &[f32],
     dt: f32,
 ) -> Result<Vec<u8>> {
-    // barraCUDA dispatches to best backend:
+    // barraCuda dispatches to best backend:
     // - NPU (Akida) if available + optimal
     // - GPU (Vulkan/Metal/DX12) if available
     // - CPU fallback
@@ -280,10 +280,10 @@ impl ComputeBackend {
 
 - [x] Analyze Akida-specific code
 - [x] Identify reusable operations
-- [x] Define 12 new barraCUDA operations
+- [x] Define 12 new barraCuda operations
 - [x] Document API signatures
 
-### **Step 2: Implement barraCUDA Operations** 🔜
+### **Step 2: Implement barraCuda Operations** 🔜
 
 **For each operation**:
 1. Create `crates/barracuda/src/ops/[operation].rs`
@@ -353,7 +353,7 @@ impl Backend for NeuromorphicBackend {
 
 ### **Step 5: Update Showcases** 🔜
 
-**K-mer Filtering Showcase** → Use barraCUDA operations:
+**K-mer Filtering Showcase** → Use barraCuda operations:
 
 ```rust
 // Before (Akida-specific):
@@ -484,21 +484,21 @@ mod tests {
 - [ ] Implement 5 neuromorphic primitives
 - [ ] Write 25 tests (5 per operation)
 - [ ] Document APIs
-- [ ] **Outcome**: `spike_encode`, `spike_decode`, `lif_neuron`, `temporal_pool`, `sparse_matmul_quantized` in barraCUDA
+- [ ] **Outcome**: `spike_encode`, `spike_decode`, `lif_neuron`, `temporal_pool`, `sparse_matmul_quantized` in barraCuda
 
 ### **Milestone 2: Pattern Matching** (2 batches)
 
 - [ ] Implement 3 pattern operations
 - [ ] Write 15 tests
 - [ ] Benchmark against Akida-specific code
-- [ ] **Outcome**: K-mer filtering works via barraCUDA
+- [ ] **Outcome**: K-mer filtering works via barraCuda
 
 ### **Milestone 3: Reservoir Computing** (2-3 batches)
 
 - [ ] Implement 4 reservoir operations
 - [ ] Write 20 tests
 - [ ] Port reservoir research crate
-- [ ] **Outcome**: Echo state networks in barraCUDA
+- [ ] **Outcome**: Echo state networks in barraCuda
 
 ### **Milestone 4: Backend Abstraction** (1 large batch)
 
@@ -589,7 +589,7 @@ pub async fn spectral_radius(
 
 1. ✅ Create this migration plan
 2. ✅ Document 12 new operations
-3. 🔜 Decide: Start neuromorphic ops OR continue barraCUDA marathon?
+3. 🔜 Decide: Start neuromorphic ops OR continue barraCuda marathon?
 
 ### **Near-Term** (Next 7-10 Batches)
 
@@ -618,10 +618,10 @@ pub async fn spectral_radius(
 
 **Migration is complete when**:
 
-1. ✅ All 12 neuromorphic operations in barraCUDA
+1. ✅ All 12 neuromorphic operations in barraCuda
 2. ✅ 100% test pass rate (60 new tests)
 3. ✅ Backend abstraction implemented
-4. ✅ Akida hardware works through barraCUDA
+4. ✅ Akida hardware works through barraCuda
 5. ✅ K-mer showcase uses universal ops
 6. ✅ Workload orchestrator dispatches to best backend
 7. ✅ Same code runs on NPU/GPU/CPU without changes

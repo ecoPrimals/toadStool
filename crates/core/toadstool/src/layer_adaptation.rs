@@ -53,7 +53,7 @@ pub mod compute_capabilities {
     /// CPU-only compute (fallback)
     pub const CPU_COMPUTE: &str = "cpu_compute";
 
-    /// Tensor operations (barraCUDA)
+    /// Tensor operations (barraCuda)
     pub const TENSOR_OPS: &str = "tensor_operations";
 
     /// Neural network training
@@ -198,7 +198,7 @@ pub struct ComputeCapabilities {
     /// Memory available (bytes)
     pub memory_bytes: Option<u64>,
 
-    /// Supports tensor operations (barraCUDA)
+    /// Supports tensor operations (barraCuda)
     pub supports_tensor_ops: bool,
 
     /// Supports neural network training

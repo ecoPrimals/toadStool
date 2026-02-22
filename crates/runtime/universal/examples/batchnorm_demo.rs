@@ -17,7 +17,7 @@ use toadstool_runtime_universal::types::*;
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Batch Normalization Demo            ║");
-    println!("║  barraCUDA Phase 1 - 4th R→M→R→M Pattern Validation     ║");
+    println!("║  barraCuda Phase 1 - 4th R→M→R→M Pattern Validation     ║");
     println!("╚══════════════════════════════════════════════════════════╝");
     println!();
 
@@ -299,7 +299,7 @@ async fn main() -> Result<()> {
 
     // Pattern Observations
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🎓 Pattern Observations (barraCUDA Learning)");
+    println!("🎓 Pattern Observations (barraCuda Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
@@ -324,7 +324,7 @@ async fn main() -> Result<()> {
     println!("  3. InstanceNorm (future)");
     println!("  4. BatchNorm ✅ (same phases, different axis)");
     println!();
-    println!("  Template confirmed! barraCUDA can now auto-optimize ALL normalization ops! 🎯");
+    println!("  Template confirmed! barraCuda can now auto-optimize ALL normalization ops! 🎯");
     println!();
 
     println!("BatchNorm vs LayerNorm:");
@@ -366,7 +366,7 @@ async fn main() -> Result<()> {
     println!("     • Different behavior training vs inference");
     println!();
     println!("  2. Same 4-phase template as Softmax and LayerNorm");
-    println!("     • barraCUDA can recognize and optimize automatically");
+    println!("     • barraCuda can recognize and optimize automatically");
     println!("     • Kernel fusion opportunity: all 4 phases → 1 kernel");
     println!();
     println!("  3. Parallel over features, sequential over batch");
@@ -378,7 +378,7 @@ async fn main() -> Result<()> {
     println!("     • Critical for numerical stability");
     println!();
 
-    println!("barraCUDA Opportunities:");
+    println!("barraCuda Opportunities:");
     println!("  • Auto-recognize: R→M→R→M pattern → normalization");
     println!("  • Fusion: 4 phases → 1 kernel (4x memory bandwidth reduction)");
     println!("  • Affine transform: Optional γ·x + β learnable parameters");

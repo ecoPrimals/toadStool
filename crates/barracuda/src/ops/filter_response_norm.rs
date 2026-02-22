@@ -1,6 +1,6 @@
 //! Filter Response Normalization (FRN) - Normalization without batch dependency
 //!
-//! **Canonical BarraCUDA Pattern**: Struct with new/execute
+//! **Canonical BarraCuda Pattern**: Struct with new/execute
 //!
 //! Normalizes activations per filter, not per batch.
 //! Enables single-sample inference.

@@ -1,15 +1,15 @@
-# 🦈 BarraCUDA NPU Toolkit Specification
+# 🦈 BarraCuda NPU Toolkit Specification
 ## Universal Tensor Operations Across CPU, GPU, and NPU
 
 **Date**: February 1, 2026  
 **Version**: 2.0.0  
 **Status**: Active Development - NPU Backend Architecture Complete
 
-**BarraCUDA Evolution**: GPU-only (v1.x) → **Universal Compute (v2.x)** ✅
+**BarraCuda Evolution**: GPU-only (v1.x) → **Universal Compute (v2.x)** ✅
 
 **Philosophy**: **"Tensors Everywhere"**
 - **CUDA**: Tensors on GPU only (vendor lock-in)
-- **BarraCUDA**: Tensors on CPU, GPU, AND NPU (vendor-agnostic, substrate-agnostic)
+- **BarraCuda**: Tensors on CPU, GPU, AND NPU (vendor-agnostic, substrate-agnostic)
 
 ═══════════════════════════════════════════════════════════════════════════════
 
@@ -46,7 +46,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                 BarraCUDA Public API (v2.0)                 │
+│                 BarraCuda Public API (v2.0)                 │
 │  Universal compute abstraction for CPU, GPU, NPU            │
 └────────────────────────┬────────────────────────────────────┘
                          │
@@ -391,25 +391,25 @@ impl NpuMlBackend {
 
 ---
 
-### 3. Unified BarraCUDA API (v2.0)
+### 3. Unified BarraCuda API (v2.0)
 
 **Purpose**: Single API for all devices with automatic selection
 
 ```rust
-/// BarraCUDA v2.0: Universal compute engine
+/// BarraCuda v2.0: Universal compute engine
 /// 
 /// Supports CPU, GPU, and NPU with automatic device selection
-pub struct BarraCUDA {
+pub struct BarraCuda {
     cpu_backend: CpuBackend,
     gpu_backend: Option<WgpuDevice>,
     npu_backend: Option<NpuMlBackend>,  // NEW in v2.0!
     selector: DeviceSelector,
 }
 
-impl BarraCUDA {
+impl BarraCuda {
     /// Initialize with runtime device discovery
     pub async fn new() -> Result<Self> {
-        tracing::info!("🚀 BarraCUDA v2.0: Universal Compute");
+        tracing::info!("🚀 BarraCuda v2.0: Universal Compute");
         
         // Always have CPU
         let cpu_backend = CpuBackend::new();
@@ -784,7 +784,7 @@ crates/barracuda/src/
 **Version**: 2.0.0  
 **Last Updated**: February 1, 2026  
 **Status**: Active Development  
-**Owner**: ToadStool / BarraCUDA Team
+**Owner**: ToadStool / BarraCuda Team
 
 🦈 **Pure Rust. ANY Hardware. Intelligent Selection.** 🦈
 

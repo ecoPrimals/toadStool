@@ -1,4 +1,4 @@
-# BarraCUDA Extensions for Reservoir Computing 🦈🧠
+# BarraCuda Extensions for Reservoir Computing 🦈🧠
 
 **Date**: January 29, 2026  
 **Purpose**: Define new tensor operations needed for neuromorphic reservoir computing  
@@ -8,10 +8,10 @@
 
 ## Executive Summary
 
-With the addition of **Akida neuromorphic hardware** and **echo state network (reservoir computing)** capabilities, BarraCUDA needs extension to support the unique linear algebra requirements of these systems.
+With the addition of **Akida neuromorphic hardware** and **echo state network (reservoir computing)** capabilities, BarraCuda needs extension to support the unique linear algebra requirements of these systems.
 
 **Current Status**:
-- BarraCUDA: 10/21 tensor operations (48% coverage)
+- BarraCuda: 10/21 tensor operations (48% coverage)
 - **NEW**: Neuromorphic hardware integrated (2x Akida AKD1000)
 - **NEW**: Reservoir computing research initiated
 
@@ -19,11 +19,11 @@ With the addition of **Akida neuromorphic hardware** and **echo state network (r
 
 ---
 
-## Philosophy: BarraCUDA as Universal Linear Algebra
+## Philosophy: BarraCuda as Universal Linear Algebra
 
-### What BarraCUDA Is
+### What BarraCuda Is
 
-**BarraCUDA** is ToadStool's **vendor-free CUDA replacement** in **pure Rust**.
+**BarraCuda** is ToadStool's **vendor-free CUDA replacement** in **pure Rust**.
 
 ```rust
 // Not: "CUDA for Rust"
@@ -45,7 +45,7 @@ let result = barracuda.execute_on_any_substrate(
 
 ### Core Principle
 
-**BarraCUDA is JUST linear algebra** - substrate-agnostic mathematical operations.
+**BarraCuda is JUST linear algebra** - substrate-agnostic mathematical operations.
 
 **Not This** (Traditional):
 ```
@@ -54,7 +54,7 @@ ROCm operations → AMD only
 OneAPI → Intel only
 ```
 
-**This** (BarraCUDA):
+**This** (BarraCuda):
 ```
 Linear Algebra Operations → Any Hardware
   ├─ CPU backend (Rayon)
@@ -69,7 +69,7 @@ Linear Algebra Operations → Any Hardware
 ### Traditional Deep Learning
 
 ```
-Forward Pass:  MatMul + Activation (existing in BarraCUDA ✅)
+Forward Pass:  MatMul + Activation (existing in BarraCuda ✅)
 Backward Pass: Gradients + Weight Update (NOT NEEDED for reservoirs)
 ```
 
@@ -735,7 +735,7 @@ if spectral_radius < 1.0 {
 
 ## Conclusion
 
-**BarraCUDA as Universal Linear Algebra** enables reservoir computing across **ANY hardware**:
+**BarraCuda as Universal Linear Algebra** enables reservoir computing across **ANY hardware**:
 
 ```
 Reservoir Computing Pipeline:
@@ -760,4 +760,4 @@ Result: <1ms inference, vendor-agnostic, pure Rust! 🦈🧠
 **Dependencies**: ndarray-linalg (CPU), wgpu (GPU)  
 **Priority**: HIGH (blocks reservoir computing)
 
-🦈🧠 **BarraCUDA + Neuromorphic = Universal Reservoir Computing!** ✨
+🦈🧠 **BarraCuda + Neuromorphic = Universal Reservoir Computing!** ✨

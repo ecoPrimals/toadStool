@@ -2,14 +2,14 @@
 //!
 //! **Deep Debt**: Runtime discovery, zero hardcoding
 //!
-//! This example demonstrates how BarraCUDA detects device capabilities
+//! This example demonstrates how BarraCuda detects device capabilities
 //! at runtime and adapts optimal configurations for any GPU.
 
 use barracuda::device::{DeviceCapabilities, WgpuDevice, WorkloadType};
 
 #[tokio::main]
 async fn main() -> barracuda::error::Result<()> {
-    println!("🔍 BarraCUDA Device Capability Detection\n");
+    println!("🔍 BarraCuda Device Capability Detection\n");
     println!("Deep Debt Compliance: Runtime discovery, zero hardcoding!\n");
     println!("═══════════════════════════════════════════════════════════\n");
 

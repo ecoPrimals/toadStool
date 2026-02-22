@@ -13,7 +13,7 @@
 This showcase is a **proof of concept** that demonstrates:
 - ✅ Cross-substrate architecture for homomorphic operations
 - ✅ NPU hypothesis validation (24-26x energy efficiency advantage)
-- ✅ barraCUDA integration opportunities identified
+- ✅ barraCuda integration opportunities identified
 
 **NOT YET PRODUCTION-READY:**
 - ⚠️ BFV/CKKS implementations are simplified (NOT cryptographically secure)
@@ -31,10 +31,10 @@ This showcase is a **proof of concept** that demonstrates:
 This showcase demonstrates **homomorphic encryption** across three compute substrates:
 
 1. **CPU** - Pure Rust baseline (concrete-core)
-2. **GPU** - **barraCUDA** acceleration ⭐ (our internal framework!)
+2. **GPU** - **barraCuda** acceleration ⭐ (our internal framework!)
 3. **NPU** - Akida neuromorphic event-driven processing
 
-**Key Innovation**: Using **barraCUDA** (our internal pure Rust GPU framework) allows us to:
+**Key Innovation**: Using **barraCuda** (our internal pure Rust GPU framework) allows us to:
 - Better understand our infrastructure
 - Identify evolution needs for homomorphic workloads
 - Maintain pure Rust throughout
@@ -76,7 +76,7 @@ showcase/homomorphic-computing/
 │   ├── substrates/
 │   │   ├── mod.rs
 │   │   ├── cpu.rs                # Pure Rust baseline
-│   │   ├── gpu.rs                # barraCUDA acceleration ⭐
+│   │   ├── gpu.rs                # barraCuda acceleration ⭐
 │   │   └── npu.rs                # Akida event-driven
 │   └── benchmarks/
 │       ├── mod.rs
@@ -109,7 +109,7 @@ showcase/homomorphic-computing/
     ▼            ▼            ▼
 ┌─────────┐ ┌─────────┐ ┌─────────┐
 │   CPU   │ │   GPU   │ │   NPU   │
-│ (Rust)  │ │(barraCUDA)│ │(Akida)│
+│ (Rust)  │ │(barraCuda)│ │(Akida)│
 │         │ │    ⭐    │ │  ⭐⚡   │
 └─────────┘ └─────────┘ └─────────┘
 ```
@@ -121,7 +121,7 @@ showcase/homomorphic-computing/
 ### **Prerequisites**
 
 ```bash
-# Ensure barraCUDA is built
+# Ensure barraCuda is built
 cd /home/strandgate/Development/ecoPrimals/phase1/toadStool
 cargo build --package barracuda --release
 
@@ -278,7 +278,7 @@ let filtered_kmers = decrypt(encrypted_kmers);
 
 ---
 
-## 🔧 **USING barraCUDA**
+## 🔧 **USING barraCuda**
 
 ### **Why Internal Framework?**
 
@@ -288,7 +288,7 @@ let filtered_kmers = decrypt(encrypted_kmers);
 3. **Evolution guidance** - Identify where we need to improve
 4. **Dogfooding** - Use our own technology
 
-### **barraCUDA Integration**
+### **barraCuda Integration**
 
 ```rust
 use barracuda::*;
@@ -304,7 +304,7 @@ impl GpuHomomorphic {
     }
     
     pub async fn encrypt_add_batch(&self, a: &[u64], b: &[u64]) -> Result<Vec<u64>> {
-        // Use barraCUDA for parallel polynomial arithmetic
+        // Use barraCuda for parallel polynomial arithmetic
         self.runtime.dispatch_compute(
             include_str!("../shaders/homomorphic_add.wgsl"),
             &[a, b],
@@ -317,7 +317,7 @@ impl GpuHomomorphic {
 ### **Identifying Evolution Needs**
 
 As we implement homomorphic operations, we'll discover:
-- Missing barraCUDA features for polynomial arithmetic
+- Missing barraCuda features for polynomial arithmetic
 - Performance optimization opportunities
 - API ergonomics improvements
 - New kernel patterns
@@ -335,11 +335,11 @@ As we implement homomorphic operations, we'll discover:
 - [ ] Encrypted dataset generators
 - [ ] Basic arithmetic operations
 
-### **Phase 2: barraCUDA Integration** (Week 2)
-- [ ] GPU substrate with barraCUDA
+### **Phase 2: barraCuda Integration** (Week 2)
+- [ ] GPU substrate with barraCuda
 - [ ] WGSL shaders for homomorphic ops
 - [ ] Performance profiling
-- [ ] Identify barraCUDA evolution needs
+- [ ] Identify barraCuda evolution needs
 
 ### **Phase 3: NPU Integration** (Week 2-3)
 - [ ] Train Akida SNN for encrypted patterns
@@ -364,12 +364,12 @@ As we implement homomorphic operations, we'll discover:
 
 **Innovation**:
 - ✅ NPU energy efficiency 30x+ better
-- ✅ barraCUDA evolved for new workload type
+- ✅ barraCuda evolved for new workload type
 - ✅ Edge-deployable privacy compute proven
 
 **Documentation**:
 - ✅ Complete implementation guide
-- ✅ barraCUDA evolution insights
+- ✅ barraCuda evolution insights
 - ✅ Use case examples with code
 
 ---
@@ -382,7 +382,7 @@ As we implement homomorphic operations, we'll discover:
 3. Create encrypted datasets
 
 **This Week**:
-4. barraCUDA GPU acceleration
+4. barraCuda GPU acceleration
 5. Identify evolution needs
 6. Train Akida SNN
 
@@ -394,7 +394,7 @@ As we implement homomorphic operations, we'll discover:
 ---
 
 **Status**: 🚧 **IN PROGRESS**  
-**Innovation**: NPU + barraCUDA for privacy-preserving compute  
-**Goal**: 30x+ energy efficiency + barraCUDA evolution insights
+**Innovation**: NPU + barraCuda for privacy-preserving compute  
+**Goal**: 30x+ energy efficiency + barraCuda evolution insights
 
 *Let's build privacy-preserving edge AI with our own technology!* 🔐🧠⚡

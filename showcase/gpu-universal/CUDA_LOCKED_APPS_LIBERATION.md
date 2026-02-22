@@ -1,7 +1,7 @@
 # 🔓 CUDA-Locked Applications Liberation Guide
 
 **Date**: January 12, 2026  
-**Mission**: Prove barraCUDA can run CUDA-locked workloads  
+**Mission**: Prove barraCuda can run CUDA-locked workloads  
 **Status**: ✅ Ready to Demonstrate
 
 ---
@@ -27,13 +27,13 @@ Based on current research, these major applications **require CUDA**:
 
 ---
 
-## 🦈 The Solution: barraCUDA
+## 🦈 The Solution: barraCuda
 
-### What barraCUDA Provides
+### What barraCuda Provides
 
 **Same operations, vendor-agnostic**:
 
-| CUDA Operation | barraCUDA Equivalent | Works On |
+| CUDA Operation | barraCuda Equivalent | Works On |
 |----------------|---------------------|----------|
 | `cudaMalloc` | `wgpu::Buffer::new()` | AMD, NVIDIA, Intel, Apple |
 | `cudaMemcpy` | `buffer.write()` | All GPUs |
@@ -55,13 +55,13 @@ Based on current research, these major applications **require CUDA**:
 
 ### Results Summary
 
-| Workload | CPU | CUDA (NVIDIA) | barraCUDA (NVIDIA) | barraCUDA (AMD) |
+| Workload | CPU | CUDA (NVIDIA) | barraCuda (NVIDIA) | barraCuda (AMD) |
 |----------|-----|---------------|-------------------|-----------------|
 | **Neural Net** | 351/sec | 6061/sec (17x) | 5882/sec (17x) | 5291/sec (15x) ✅ |
 | **Matrix Mul** | 3.3 GFLOPS | 60.1 GFLOPS | 57.3 GFLOPS | 51.5 GFLOPS ✅ |
 | **Image Proc** | 810/sec | 11,494/sec (14x) | 10,870/sec (13x) | 9,804/sec (12x) ✅ |
 
-**Key Finding**: barraCUDA achieves **~95% of CUDA performance** but works on **AMD where CUDA fails**!
+**Key Finding**: barraCuda achieves **~95% of CUDA performance** but works on **AMD where CUDA fails**!
 
 ---
 
@@ -74,9 +74,9 @@ Based on current research, these major applications **require CUDA**:
 grep -r "cudaMalloc\|cudaMemcpy\|__global__\|cublas\|cudnn" src/
 ```
 
-### Step 2: Map to barraCUDA Equivalents
+### Step 2: Map to barraCuda Equivalents
 
-| CUDA Pattern | barraCUDA Pattern |
+| CUDA Pattern | barraCuda Pattern |
 |--------------|-------------------|
 | `#include <cuda.h>` | `use wgpu::*;` |
 | `cudaMalloc(&ptr, size)` | `device.create_buffer(&desc)` |
@@ -109,7 +109,7 @@ with tf.device('/GPU:0'):  # Must be NVIDIA
     result = tf.matmul(a, b)
 ```
 
-**Liberated** (barraCUDA):
+**Liberated** (barraCuda):
 ```rust
 // Works on AMD, NVIDIA, Intel, Apple
 let result = matrix_multiply(&a, &b)?;  // Vendor-agnostic
@@ -125,7 +125,7 @@ model = model.cuda()  # NVIDIA only!
 output = model(input.cuda())
 ```
 
-**Liberated** (barraCUDA):
+**Liberated** (barraCuda):
 ```rust
 // Works on all GPUs
 let output = model.forward(&input)?;  // Auto-selects GPU
@@ -141,7 +141,7 @@ x = cp.array([1, 2, 3])  # NVIDIA only
 y = cp.dot(x, x)
 ```
 
-**Liberated** (barraCUDA):
+**Liberated** (barraCuda):
 ```rust
 // Works on all GPUs
 let x = GpuArray::from_slice(&[1.0, 2.0, 3.0])?;
@@ -163,16 +163,16 @@ cd showcase/gpu-universal
 
 **Shows**: AMD + NVIDIA + CPU all run same code with same accuracy.
 
-### 2. CUDA vs barraCUDA Benchmark
+### 2. CUDA vs barraCuda Benchmark
 
-Compares CUDA vs barraCUDA performance:
+Compares CUDA vs barraCuda performance:
 
 ```bash
 cd showcase/gpu-universal
 ./run-cuda-vs-barracuda.sh
 ```
 
-**Shows**: barraCUDA achieves ~95% CUDA performance, works on AMD.
+**Shows**: barraCuda achieves ~95% CUDA performance, works on AMD.
 
 ---
 
@@ -183,10 +183,10 @@ cd showcase/gpu-universal
 **Phase 1**: Assess (1 day)
 1. Grep for CUDA dependencies
 2. Identify operations used
-3. Map to barraCUDA equivalents
+3. Map to barraCuda equivalents
 
 **Phase 2**: Prototype (1 week)
-1. Replace critical path with barraCUDA
+1. Replace critical path with barraCuda
 2. Test on AMD GPU
 3. Benchmark performance
 
@@ -249,7 +249,7 @@ cd showcase/gpu-universal
 
 ### Technical
 
-- ✅ barraCUDA uses Vulkan/wgpu (vendor-agnostic)
+- ✅ barraCuda uses Vulkan/wgpu (vendor-agnostic)
 - ✅ Works on AMD, NVIDIA, Intel, Apple
 - ✅ ~95% CUDA performance
 - ✅ No CUDA API dependencies
@@ -283,7 +283,7 @@ import tensorflow as tf
 tf.config.list_physical_devices('GPU')  # NVIDIA only
 ```
 
-**barraCUDA Alternative**:
+**barraCuda Alternative**:
 ```rust
 // Works on all GPUs
 use toadstool_runtime_gpu::universal::UniversalWorkload;
@@ -299,7 +299,7 @@ model = model.cuda()  # NVIDIA only
 output = model(input.cuda())
 ```
 
-**barraCUDA Alternative**:
+**barraCuda Alternative**:
 ```rust
 // Vendor-agnostic
 let output = model.forward_gpu(&input)?;  // Works on AMD too
@@ -313,7 +313,7 @@ import cupy as cp  # CUDA only
 x = cp.array([1, 2, 3])  # Requires CUDA
 ```
 
-**barraCUDA Alternative**:
+**barraCuda Alternative**:
 ```rust
 // Multi-vendor
 let x = GpuArray::from_slice(&[1.0, 2.0, 3.0])?;  // AMD, NVIDIA, etc.
@@ -325,7 +325,7 @@ let x = GpuArray::from_slice(&[1.0, 2.0, 3.0])?;  // AMD, NVIDIA, etc.
 
 ### We Proved
 
-1. ✅ barraCUDA breaks CUDA vendor lock-in
+1. ✅ barraCuda breaks CUDA vendor lock-in
 2. ✅ Works on AMD where CUDA fails
 3. ✅ Retains ~95% CUDA performance
 4. ✅ Vendor-agnostic via Vulkan
@@ -346,13 +346,13 @@ let x = GpuArray::from_slice(&[1.0, 2.0, 3.0])?;  // AMD, NVIDIA, etc.
 cd showcase/gpu-universal
 ./run-cuda-vs-barracuda.sh
 
-# Watch barraCUDA run on AMD
+# Watch barraCuda run on AMD
 # (where CUDA would fail)
 ```
 
 ---
 
-**🦈 barraCUDA**: Breaking CUDA vendor lock-in, one workload at a time.  
+**🦈 barraCuda**: Breaking CUDA vendor lock-in, one workload at a time.  
 **🍄 ToadStool**: True universal compute platform.
 
 **Status**: ✅ **READY TO RUN** - Prove it yourself!

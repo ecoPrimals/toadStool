@@ -1,4 +1,4 @@
-# BarraCUDA Evolution Roadmap
+# BarraCuda Evolution Roadmap
 
 **Date**: February 10, 2026
 **Status**: Active — Phase 2A/2B/2C Complete, Phase 3 Planning
@@ -7,11 +7,11 @@
 
 ## Philosophy
 
-**BarraCUDA is the math. ToadStool is how we run the math.**
+**BarraCuda is the math. ToadStool is how we run the math.**
 
-BarraCUDA provides universal mathematical primitives via WGSL shaders and pure Rust middleware. Every operation — whether for physics simulation, ML training, audio processing, ray tracing, or neural signal processing — is the same math expressed once. ToadStool routes that math to the optimal hardware.
+BarraCuda provides universal mathematical primitives via WGSL shaders and pure Rust middleware. Every operation — whether for physics simulation, ML training, audio processing, ray tracing, or neural signal processing — is the same math expressed once. ToadStool routes that math to the optimal hardware.
 
-hotSpring and future workloads are how we test our limitations and continue to evolve. When hotSpring reveals that a Nelder-Mead optimizer is needed for nuclear physics surrogates, that optimizer belongs in BarraCUDA — because the same algorithm serves ML hyperparameter tuning, audio filter design, and rendering parameter optimization.
+hotSpring and future workloads are how we test our limitations and continue to evolve. When hotSpring reveals that a Nelder-Mead optimizer is needed for nuclear physics surrogates, that optimizer belongs in BarraCuda — because the same algorithm serves ML hyperparameter tuning, audio filter design, and rendering parameter optimization.
 
 **Principles**:
 - **Pure Rust end to end**. No Python. No FFI. No ports.
@@ -29,7 +29,7 @@ Applications & Workloads (hotSpring, NUCLEUS, gaming, audio...)
        |
        | "I need eigendecomposition" / "I need RBF interpolation"
        |
-BarraCUDA: The Math Layer
+BarraCuda: The Math Layer
   ┌──────────────────────────────────────────────────┐
   │  WGSL Shaders (414+)                             │
   │    GPU-native: matmul, conv, attention, FFT,     │
@@ -55,7 +55,7 @@ ToadStool: The Hardware Router
 
 ### Cross-Domain Math Reuse
 
-| BarraCUDA Function | Physics Use | ML Use | Graphics Use | Audio Use |
+| BarraCuda Function | Physics Use | ML Use | Graphics Use | Audio Use |
 |--------------------|-------------|--------|-------------|-----------|
 | `eigh` | HFB eigenvalues | PCA | Normal estimation | Spectral analysis |
 | `linsolve` | Force-field fitting | Ridge regression | Mesh smoothing | Filter design |
@@ -68,7 +68,7 @@ ToadStool: The Hardware Router
 | `gamma` | Statistical distributions | Regularization | Subsurface scattering | Noise shaping |
 | `cdist` | Pair correlations | kNN | Point cloud | Echo detection |
 
-**Key insight**: The same mathematical operation serves different domains. BarraCUDA implements it once, correctly, on any hardware. Workloads consume it without caring about the hardware.
+**Key insight**: The same mathematical operation serves different domains. BarraCuda implements it once, correctly, on any hardware. Workloads consume it without caring about the hardware.
 
 ---
 
@@ -144,7 +144,7 @@ hotSpring L2 revealed that the accuracy gap (χ²=25.43 vs 1.93) is purely algor
 
 **Goal**: Discover and implement shaders that serve multiple domains
 
-Each new workload (physics, graphics, audio, neural) reveals mathematical operations that may already exist in BarraCUDA or need new shaders. The evolution cycle:
+Each new workload (physics, graphics, audio, neural) reveals mathematical operations that may already exist in BarraCuda or need new shaders. The evolution cycle:
 
 ```
 Workload → Reveal Limitation → Implement Shader → Test → Ship
@@ -199,7 +199,7 @@ Workload → Reveal Limitation → Implement Shader → Test → Ship
 | hotSpring Surrogate Learning | 15/15 pass | Optimization + ML |
 | hotSpring Nuclear EOS L1 | χ²=2.27 (beats Python) | Nuclear physics |
 | hotSpring Nuclear EOS L2 | χ²=25.43 (needs Phase 2A) | Nuclear physics |
-| BarraCUDA unit tests | 1,127 pass | All domains |
+| BarraCuda unit tests | 1,127 pass | All domains |
 | ToadStool + infrastructure | 1,204 pass | System integration |
 
 **Future test workloads**:

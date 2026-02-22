@@ -1,10 +1,10 @@
-//! GPU substrate for homomorphic operations using barraCUDA
+//! GPU substrate for homomorphic operations using barraCuda
 //!
-//! ✅ **REAL barraCUDA INTEGRATION** - Dogfooding our own framework!
+//! ✅ **REAL barraCuda INTEGRATION** - Dogfooding our own framework!
 //!
-//! This implementation uses our internal barraCUDA framework for GPU acceleration.
+//! This implementation uses our internal barraCuda framework for GPU acceleration.
 //!
-//! # Why barraCUDA?
+//! # Why barraCuda?
 //!
 //! 1. **Pure Rust** - No C/C++ dependencies
 //! 2. **Self-knowledge** - Understand our infrastructure deeply
@@ -22,9 +22,9 @@
 //! - Fast NTT via butterfly operations
 //! - Batch processing multiple ciphertexts
 //!
-//! # barraCUDA Evolution Insights Discovered
+//! # barraCuda Evolution Insights Discovered
 //!
-//! Through this implementation, we discovered barraCUDA needs:
+//! Through this implementation, we discovered barraCuda needs:
 //! - **u64 arithmetic support** (WGSL lacks native u64; use u32 with modular arithmetic)
 //! - **Modular arithmetic primitives** (Barrett reduction, Montgomery form)
 //! - **NTT kernel patterns** (butterfly operations for O(n log n) multiplication)
@@ -38,25 +38,25 @@ use anyhow::Result;
 use std::sync::Arc;
 use std::time::Instant;
 
-/// GPU-based homomorphic compute substrate using barraCUDA
-#[allow(dead_code)] // Temporary: device will be used when barraCUDA API is ready
+/// GPU-based homomorphic compute substrate using barraCuda
+#[allow(dead_code)] // Temporary: device will be used when barraCuda API is ready
 pub struct GpuHomomorphic {
     scheme: Box<dyn HomomorphicScheme + Send + Sync>,
-    /// barraCUDA device (wgpu-based, auto-detects GPU) ⭐
+    /// barraCuda device (wgpu-based, auto-detects GPU) ⭐
     device: Arc<barracuda::prelude::WgpuDevice>,
 }
 
 impl GpuHomomorphic {
     /// Create new GPU substrate with BFV scheme
     ///
-    /// ✅ Now actually initializes barraCUDA device!
+    /// ✅ Now actually initializes barraCuda device!
     ///
-    /// ⚠️ TEMPORARY: Full implementation blocked by barraCUDA API access
+    /// ⚠️ TEMPORARY: Full implementation blocked by barraCuda API access
     ///    See BARRACUDA_EVOLUTION_INSIGHTS.md for details
     pub async fn new() -> Result<Self> {
         use crate::schemes::BfvScheme;
 
-        // Initialize barraCUDA device (auto-detects GPU via wgpu)
+        // Initialize barraCuda device (auto-detects GPU via wgpu)
         let device = barracuda::prelude::WgpuDevice::new().await?;
 
         Ok(Self {
@@ -65,9 +65,9 @@ impl GpuHomomorphic {
         })
     }
 
-    /// Execute polynomial addition on GPU using barraCUDA
+    /// Execute polynomial addition on GPU using barraCuda
     ///
-    /// ✅ **REAL GPU IMPLEMENTATION** - Uses barraCUDA evolved APIs!
+    /// ✅ **REAL GPU IMPLEMENTATION** - Uses barraCuda evolved APIs!
     ///
     /// Modular addition: (a + b) mod q for each coefficient
     /// Highly parallel - perfect for GPU!
@@ -78,7 +78,7 @@ impl GpuHomomorphic {
         let a_u32: Vec<u32> = a.iter().map(|&v| v as u32).collect();
         let b_u32: Vec<u32> = b.iter().map(|&v| v as u32).collect();
 
-        // ✅ Use barraCUDA's buffer creation helpers!
+        // ✅ Use barraCuda's buffer creation helpers!
         let input_a = self
             .device
             .create_storage_buffer("poly_a", bytemuck::cast_slice(&a_u32));
@@ -120,7 +120,7 @@ impl GpuHomomorphic {
             }
         "#;
 
-        // ✅ Use barraCUDA's public device access!
+        // ✅ Use barraCuda's public device access!
         let bind_group_layout =
             self.device
                 .device()
@@ -229,9 +229,9 @@ impl GpuHomomorphic {
         self.device.queue().submit(Some(encoder.finish()));
 
         // Read back results
-        // ✅ Use barraCUDA's buffer readback!
+        // ✅ Use barraCuda's buffer readback!
         // Note: read_buffer_f32 is for f32, we need u64 version
-        // For now, create staging buffer manually (future: add read_buffer_u64 to barraCUDA)
+        // For now, create staging buffer manually (future: add read_buffer_u64 to barraCuda)
         let staging_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
             label: Some("staging"),
             size: output_size,
@@ -269,7 +269,7 @@ impl GpuHomomorphic {
 
     /// Execute polynomial multiplication on GPU using element-wise modular multiplication
     ///
-    /// ✅ **REAL GPU IMPLEMENTATION** - Uses barraCUDA evolved APIs!
+    /// ✅ **REAL GPU IMPLEMENTATION** - Uses barraCuda evolved APIs!
     ///
     /// Note: This is element-wise multiplication, not true polynomial multiplication.
     /// True polynomial multiplication requires NTT (Number Theoretic Transform).
@@ -281,7 +281,7 @@ impl GpuHomomorphic {
         let a_u32: Vec<u32> = a.iter().map(|&v| v as u32).collect();
         let b_u32: Vec<u32> = b.iter().map(|&v| v as u32).collect();
 
-        // ✅ Use barraCUDA's buffer creation helpers!
+        // ✅ Use barraCuda's buffer creation helpers!
         let input_a = self
             .device
             .create_storage_buffer("poly_a_mul", bytemuck::cast_slice(&a_u32));
@@ -325,7 +325,7 @@ impl GpuHomomorphic {
             }
         "#;
 
-        // ✅ Use barraCUDA's public device access!
+        // ✅ Use barraCuda's public device access!
         let bind_group_layout =
             self.device
                 .device()
@@ -473,7 +473,7 @@ impl GpuHomomorphic {
 #[async_trait::async_trait]
 impl HomomorphicSubstrate for GpuHomomorphic {
     fn name(&self) -> &str {
-        "GPU (barraCUDA)"
+        "GPU (barraCuda)"
     }
 
     async fn encrypted_add_batch(&self, a: &[u64], b: &[u64]) -> Result<Vec<u64>> {
@@ -481,7 +481,7 @@ impl HomomorphicSubstrate for GpuHomomorphic {
         let enc_a = self.scheme.encrypt(a)?;
         let enc_b = self.scheme.encrypt(b)?;
 
-        // ✅ Homomorphic addition on GPU via barraCUDA!
+        // ✅ Homomorphic addition on GPU via barraCuda!
         let enc_sum = self.gpu_polynomial_add(&enc_a, &enc_b).await?;
 
         Ok(enc_sum)
@@ -491,7 +491,7 @@ impl HomomorphicSubstrate for GpuHomomorphic {
         let enc_a = self.scheme.encrypt(a)?;
         let enc_b = self.scheme.encrypt(b)?;
 
-        // ✅ Homomorphic multiplication on GPU via barraCUDA!
+        // ✅ Homomorphic multiplication on GPU via barraCuda!
         let enc_product = self.gpu_polynomial_multiply(&enc_a, &enc_b).await?;
 
         Ok(enc_product)
@@ -566,7 +566,7 @@ impl GpuHomomorphic {
 }
 
 // ============================================================================
-// SHADER PLANS (for when barraCUDA integration is complete)
+// SHADER PLANS (for when barraCuda integration is complete)
 // ============================================================================
 
 /*

@@ -1,6 +1,6 @@
-# ToadStool + BarraCUDA -- Quick Status
+# ToadStool + BarraCuda -- Quick Status
 
-**Date**: February 22, 2026 (Session 41)
+**Date**: February 22, 2026 (Session 42)
 
 ---
 
@@ -41,8 +41,8 @@ ToadStool (Hardware Infrastructure Primal)
   Edge device discovery (filesystem, serial, TCP)
   43 crates, 3 GPUs across 2 machines, 2 vendors (NVIDIA + AMD)
 
-BarraCUDA (Universal Compute Engine -- SHADER-FIRST F64)
-  600+ WGSL shaders, zero orphans -- every shader wired to Rust
+BarraCuda (Universal Compute Engine -- SHADER-FIRST F64)
+  612 WGSL shaders, zero orphans -- every shader wired to Rust
   NN compute shaders: Conv2D, MaxPool2D, AvgPool2D
   FP64-by-default: Both CPU and GPU use f64
   SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2 vs 1:64)
@@ -99,7 +99,7 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 
 ## What Works
 
-- 600+ WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
+- 612 WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
 - Distributed LLM inference across machines (39.85 tok/s, BearDog encrypted)
 - Hardware discovery (GPUs, NPUs, CPUs) -- pure Rust, no scripts
 - JSON-RPC 2.0 + tarpc 0.34 IPC over Unix sockets (36 methods)
@@ -166,4 +166,4 @@ cargo llvm-cov --lib -p toadstool-common --json
 
 ---
 
-**Last Updated**: February 22, 2026 -- Session 41: 600+ WGSL shaders, Richards PDE solver, moving window GPU stats, 6 f64 shader compile fixes, all bio ops re-exported, four Springs validated.
+**Last Updated**: February 22, 2026 -- Session 42: 612 WGSL shaders, Richards PDE solver, moving window GPU stats, 6 f64 shader compile fixes, all bio ops re-exported, four Springs validated.

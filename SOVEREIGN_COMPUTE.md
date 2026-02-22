@@ -1,6 +1,6 @@
 # Sovereign Compute — Evolution Tracker
 
-**Vision**: ToadStool as ubiquitous as fungus. BarraCUDA as universal math.
+**Vision**: ToadStool as ubiquitous as fungus. BarraCuda as universal math.
 Pure Rust. Any hardware. No vendor lock.
 
 **Full spec**: [`specs/SOVEREIGN_COMPUTE_EVOLUTION.md`](specs/SOVEREIGN_COMPUTE_EVOLUTION.md)
@@ -14,7 +14,7 @@ Today:    WGSL → naga → SPIR-V → vendor compiler → GPU
                                    ^^^^^^^^^^^^^^^^^^^
                                    We depend on this being good
 
-Sovereign: WGSL → BarraCUDA WgslOptimizer → pre-scheduled SPIR-V → vendor → GPU
+Sovereign: WGSL → BarraCuda WgslOptimizer → pre-scheduled SPIR-V → vendor → GPU
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                              We own this. Any GPU. Any vendor. Forever.
 ```
@@ -164,7 +164,7 @@ for (var k = 0u; k < 8u; k = k + 1u) {
 Drive it as a library:
 ```
 WGSL text → naga::parse() → naga::Module (typed IR)
-         → BarraCUDA IR passes (reorder, unroll, pipeline)
+         → BarraCuda IR passes (reorder, unroll, pipeline)
          → modified naga::Module
          → naga::back::spv::write() → SPIR-V bytes
          → wgpu device (bypasses WGSL text entirely)
@@ -225,7 +225,7 @@ When all phases complete, a ToadStool node:
 2. **Probes** — `bench_f64_builtins` runs once, builds `MeasuredLatencyModel`
 3. **Optimises** — `WgslOptimizer` pre-schedules all shaders for this specific GPU
 4. **Announces** — mDNS-SD, joins the ecosystem via Songbird
-5. **Computes** — receives jobs via JSON-RPC, runs BarraCUDA shaders
+5. **Computes** — receives jobs via JSON-RPC, runs BarraCuda shaders
 6. **Reports** — performance metrics back via Songbird feedback channel
 
 Zero config files required for the math to be optimal.

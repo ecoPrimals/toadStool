@@ -36,7 +36,7 @@ Research (Experiments 001, 001b, 002) proved that:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    barraCUDA Application                     │
+│                    barraCuda Application                     │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -613,7 +613,7 @@ async fn test_adaptive_matmul() {
 ```markdown
 # Adaptive Optimization
 
-barraCUDA learns optimal settings for your GPU automatically!
+barraCuda learns optimal settings for your GPU automatically!
 
 ## First Run (10 seconds)
 ```rust

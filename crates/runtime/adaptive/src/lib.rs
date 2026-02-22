@@ -1,4 +1,4 @@
-//! Adaptive Optimization System for barraCUDA
+//! Adaptive Optimization System for barraCuda
 //!
 //! Runtime learning system that automatically optimizes GPU operation configurations
 //! for any hardware without manual tuning.

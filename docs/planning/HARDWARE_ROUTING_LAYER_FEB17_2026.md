@@ -18,7 +18,7 @@ This proposes a **hardware routing layer** that treats all physical interconnect
 ├─────────────────────────────────────────────────────────────────────┤
 │  Songbird        │  Network routing (which machine, which endpoint) │
 │  ToadStool       │  Hardware routing (which physical pipe)          │
-│  BarraCUDA       │  Math (shaders, algorithms, compute)             │
+│  BarraCuda       │  Math (shaders, algorithms, compute)             │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -58,7 +58,7 @@ This proposes a **hardware routing layer** that treats all physical interconnect
 ┌─────────────────────────────────────────────────────────────────────┐
 │                   GPU A (Compute)                                   │
 │  ┌──────────────────────────────────────────────────────────────┐  │
-│  │  BarraCUDA Shaders                                           │  │
+│  │  BarraCuda Shaders                                           │  │
 │  │  (eigensolve, forces, etc.)                                  │  │
 │  └──────────────────────────────────────────────────────────────┘  │
 │              │                                                      │
@@ -375,10 +375,10 @@ ToadStool Router: "How should it get there?" (physical path)
     └── Different machine → Network (back to Songbird)
 ```
 
-### Relationship to BarraCUDA
+### Relationship to BarraCuda
 
 ```
-BarraCUDA: Compute (math happens here)
+BarraCuda: Compute (math happens here)
     │
     ▼
 ToadStool Router: Data movement (move results)

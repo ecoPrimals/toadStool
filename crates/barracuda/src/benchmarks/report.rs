@@ -29,7 +29,7 @@ impl ReportGenerator {
         let mut report = String::new();
 
         // Header
-        writeln!(report, "# BarraCUDA vs CUDA Performance Report\n").unwrap();
+        writeln!(report, "# BarraCuda vs CUDA Performance Report\n").unwrap();
 
         #[cfg(feature = "benchmarks")]
         writeln!(report, "**Generated:** {}\n", chrono::Local::now()).unwrap();
@@ -122,7 +122,7 @@ impl ReportGenerator {
             writeln!(report, "- **Hardware:** {}", result.hardware).unwrap();
             writeln!(
                 report,
-                "- **BarraCUDA:** {:.3}ms",
+                "- **BarraCuda:** {:.3}ms",
                 result.barracuda.median_time.as_secs_f64() * 1000.0
             )
             .unwrap();

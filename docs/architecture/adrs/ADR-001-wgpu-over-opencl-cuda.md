@@ -2,14 +2,14 @@
 
 **Status**: ✅ Accepted  
 **Date**: February 5, 2026  
-**Deciders**: ToadStool/BarraCUDA Core Team  
+**Deciders**: ToadStool/BarraCuda Core Team  
 **Technical Story**: GPU compute abstraction for cross-platform ML acceleration
 
 ---
 
 ## Context and Problem Statement
 
-ToadStool/BarraCUDA requires GPU compute acceleration for:
+ToadStool/BarraCuda requires GPU compute acceleration for:
 - Matrix operations (matmul, convolution)
 - FHE operations (NTT, polynomial multiplication)
 - Neural network inference
@@ -202,7 +202,7 @@ let result = matmul_op.execute()?;  // ✅ Type-safe
 ```
 
 **Memory Safety**:
-- Zero unsafe in application code (BarraCUDA)
+- Zero unsafe in application code (BarraCuda)
 - Compile-time memory guarantees
 - No manual synchronization bugs
 
@@ -271,10 +271,10 @@ CPU (naive):       8200μs  (1.8% performance)
 
 **Unsafe Code Count**:
 ```
-BarraCUDA (using wgpu):     0 unsafe blocks ✅
-BarraCUDA (using OpenCL):  ~15 unsafe blocks ❌
-BarraCUDA (using CUDA):    ~25 unsafe blocks ❌
-BarraCUDA (using Vulkan):  ~50 unsafe blocks ❌
+BarraCuda (using wgpu):     0 unsafe blocks ✅
+BarraCuda (using OpenCL):  ~15 unsafe blocks ❌
+BarraCuda (using CUDA):    ~25 unsafe blocks ❌
+BarraCuda (using Vulkan):  ~50 unsafe blocks ❌
 ```
 
 **Result**: wgpu achieves memory safety goal
@@ -484,5 +484,5 @@ unsafe {
 
 **Document**: `docs/architecture/adrs/ADR-001-wgpu-over-opencl-cuda.md`  
 **Status**: ✅ Accepted  
-**Impact**: Foundation of BarraCUDA GPU strategy  
+**Impact**: Foundation of BarraCuda GPU strategy  
 **Next**: ADR-002 (TPU feature-gating)

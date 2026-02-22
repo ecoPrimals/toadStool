@@ -35,7 +35,7 @@ use std::time::Instant;
 #[tokio::main]
 async fn main() {
     println!("==========================================================");
-    println!(" BarraCUDA Workgroup-Size Eigensolve Diagnostic");
+    println!(" BarraCuda Workgroup-Size Eigensolve Diagnostic");
     println!(" hotSpring GPU Sovereignty Analysis — Feb 18, 2026");
     println!("==========================================================\n");
 

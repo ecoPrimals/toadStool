@@ -561,7 +561,7 @@ Build NPU + GPU pipeline, measure total system efficiency.
 
 **Demonstrates**:
 - Universal compute vision (CPU + GPU + NPU)
-- BarraCUDA's flexibility
+- BarraCuda's flexibility
 - ToadStool's heterogeneous orchestration
 
 **Unique Value**:

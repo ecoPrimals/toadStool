@@ -1,4 +1,4 @@
-//! Comprehensive Error Type Hierarchy for barraCUDA
+//! Comprehensive Error Type Hierarchy for barraCuda
 //!
 //! **Design Philosophy**:
 //! - Follow ToadStool's A+ error handling pattern
@@ -16,7 +16,7 @@
 
 use thiserror::Error;
 
-/// Main error type for barraCUDA operations
+/// Main error type for barraCuda operations
 #[derive(Error, Debug)]
 pub enum BarracudaError {
     /// GPU device initialization failed
@@ -213,7 +213,7 @@ impl BarracudaError {
     }
 }
 
-/// Result type alias for barraCUDA operations
+/// Result type alias for barraCuda operations
 pub type Result<T> = std::result::Result<T, BarracudaError>;
 
 /// Extension trait for adding context to Results

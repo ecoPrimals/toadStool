@@ -2,7 +2,7 @@
 //!
 //! **Philosophy**: Hardware executes math, math doesn't know hardware
 //!
-//! This module provides the hardware abstraction layer for BarraCUDA:
+//! This module provides the hardware abstraction layer for BarraCuda:
 //! - Trait-based execution (CPU, GPU, TPU, NPU implement same traits)
 //! - Runtime capability discovery (query what hardware can do)
 //! - Smart scheduling (match operations to best hardware)

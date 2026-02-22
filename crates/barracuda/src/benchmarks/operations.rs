@@ -3,7 +3,7 @@
 //! Provides benchmarking implementations for different operation categories.
 //!
 //! **Deep Debt Evolution (Feb 2026)**: Replaced mock `tokio::sleep` benchmarks
-//! with real BarraCUDA CPU tensor operations for accurate measurement.
+//! with real BarraCuda CPU tensor operations for accurate measurement.
 
 use super::{BenchmarkConfig, BenchmarkResult, Framework};
 use crate::error::Result;
@@ -34,7 +34,7 @@ pub async fn benchmark_matmul(
 ) -> Result<(BenchmarkResult, Option<BenchmarkResult>)> {
     tracing::info!("  MatMul [{m}x{k} @ {k}x{n}]");
 
-    // Benchmark BarraCUDA
+    // Benchmark BarraCuda
     let barracuda_result = benchmark_barracuda_matmul(config, m, n, k).await?;
 
     // Benchmark CUDA (if enabled)
@@ -49,13 +49,13 @@ pub async fn benchmark_matmul(
         let speedup = cuda.median_time.as_secs_f64() / barracuda_result.median_time.as_secs_f64();
         let parity = speedup * 100.0;
         tracing::info!(
-            "    BarraCUDA: {:.3}ms | CUDA: {:.3}ms | Parity: {parity:.1}%",
+            "    BarraCuda: {:.3}ms | CUDA: {:.3}ms | Parity: {parity:.1}%",
             barracuda_result.median_time.as_secs_f64() * 1000.0,
             cuda.median_time.as_secs_f64() * 1000.0,
         );
     } else {
         tracing::info!(
-            "    BarraCUDA: {:.3}ms",
+            "    BarraCuda: {:.3}ms",
             barracuda_result.median_time.as_secs_f64() * 1000.0
         );
     }
@@ -63,7 +63,7 @@ pub async fn benchmark_matmul(
     Ok((barracuda_result, cuda_result))
 }
 
-/// Real BarraCUDA matmul benchmark using CPU tensor operations
+/// Real BarraCuda matmul benchmark using CPU tensor operations
 async fn benchmark_barracuda_matmul(
     config: &BenchmarkConfig,
     m: usize,
@@ -88,7 +88,7 @@ async fn benchmark_barracuda_matmul(
         times.push(start.elapsed());
     }
 
-    compute_benchmark_result("MatMul", "CPU", Framework::BarraCUDA, times, m, n, k)
+    compute_benchmark_result("MatMul", "CPU", Framework::BarraCuda, times, m, n, k)
 }
 
 /// CUDA matmul benchmark (requires CUDA hardware)
@@ -238,7 +238,7 @@ pub async fn benchmark_activation(
     Ok(BenchmarkResult {
         operation: operation.to_string(),
         hardware: "CPU".to_string(),
-        framework: Framework::BarraCUDA,
+        framework: Framework::BarraCuda,
         median_time,
         min_time,
         max_time,

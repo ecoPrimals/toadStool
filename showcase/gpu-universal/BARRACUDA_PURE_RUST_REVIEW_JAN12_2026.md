@@ -1,4 +1,4 @@
-# 🦈 barraCUDA Pure Rust Kernel Review - January 12, 2026
+# 🦈 barraCuda Pure Rust Kernel Review - January 12, 2026
 
 **Date**: January 12, 2026  
 **Reviewer**: Technical Audit  
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-barraCUDA has a **strong pure Rust foundation** with wgpu/Vulkan, but only **3 of 21 operations** have WGSL GPU kernels implemented. The architecture is sound, but kernel coverage needs expansion.
+barraCuda has a **strong pure Rust foundation** with wgpu/Vulkan, but only **3 of 21 operations** have WGSL GPU kernels implemented. The architecture is sound, but kernel coverage needs expansion.
 
 ### Quick Stats
 
@@ -395,17 +395,17 @@ impl WgpuExecutor {
 
 ---
 
-## 📊 Comparison: barraCUDA vs Others
+## 📊 Comparison: barraCuda vs Others
 
 | Framework | Pure Rust | Vendor Agnostic | Kernel Coverage | Unsafe in App |
 |-----------|-----------|-----------------|-----------------|---------------|
-| **barraCUDA** | ✅ 100% | ✅ Yes | ⚠️ 14% | ✅ Zero |
+| **barraCuda** | ✅ 100% | ✅ Yes | ⚠️ 14% | ✅ Zero |
 | **CUDA** | ❌ C++/CUDA | ❌ NVIDIA only | ✅ 100% | ❌ Everywhere |
 | **ROCm** | ❌ C++/HIP | ❌ AMD only | ✅ 100% | ❌ Everywhere |
 | **Metal** | ❌ Swift/Metal | ❌ Apple only | ✅ 100% | ❌ FFI |
 | **wgpu (raw)** | ✅ Rust | ✅ Yes | ❌ 0% | ⚠️ Some |
 
-**barraCUDA Advantage**: Only framework with pure Rust + vendor agnostic!
+**barraCuda Advantage**: Only framework with pure Rust + vendor agnostic!
 
 ---
 

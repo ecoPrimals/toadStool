@@ -1,7 +1,7 @@
-// ! Akida NPU Backend for barraCUDA
+// ! Akida NPU Backend for barraCuda
 //!
 //! Provides Akida-specific acceleration for neuromorphic operations
-//! while maintaining compatibility with the universal barraCUDA API.
+//! while maintaining compatibility with the universal barraCuda API.
 //!
 //! **Architecture**:
 //! - Detects available Akida boards

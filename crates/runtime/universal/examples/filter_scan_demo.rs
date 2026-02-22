@@ -15,7 +15,7 @@ use toadstool_runtime_universal::types::*;
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Filter & Scan Operations Demo       ║");
-    println!("║  barraCUDA Phase 1 - Operation Pattern Learning         ║");
+    println!("║  barraCuda Phase 1 - Operation Pattern Learning         ║");
     println!("╚══════════════════════════════════════════════════════════╝");
     println!();
 
@@ -163,7 +163,7 @@ async fn main() -> Result<()> {
 
     // Pattern Observations
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🎓 Pattern Observations (barraCUDA Learning)");
+    println!("🎓 Pattern Observations (barraCuda Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
@@ -187,7 +187,7 @@ async fn main() -> Result<()> {
     println!("  • Current: Two separate kernel launches");
     println!("  • Opportunity: Kernel fusion (Filter+Scan in single pass)");
     println!("  • Tradeoff: Complexity vs performance");
-    println!("  • barraCUDA: Could auto-detect and fuse");
+    println!("  • barraCuda: Could auto-detect and fuse");
     println!();
 
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

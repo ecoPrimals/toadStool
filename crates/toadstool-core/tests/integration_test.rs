@@ -4,7 +4,7 @@ use toadstool_core::{HardwareManager, HardwareType};
 
 #[test]
 fn test_complete_stack_integration() {
-    println!("\n🍄 ToadStool + 🦈 BarraCUDA Integration Test\n");
+    println!("\n🍄 ToadStool + 🦈 BarraCuda Integration Test\n");
 
     // Step 1: ToadStool discovers hardware
     let hw = HardwareManager::discover().expect("Hardware discovery failed");

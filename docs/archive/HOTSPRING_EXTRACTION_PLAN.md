@@ -10,7 +10,7 @@
 
 hotSpring Python code has been analyzed. Key scientific computing functions identified for extraction into `barracuda` middleware. Primary goal: **achieve L2 accuracy parity** (currently χ²/datum=25.43, target χ²/datum=1.93).
 
-**Root Cause of L2 Gap**: Python uses `mystic.SparsitySampler` for space-filling sampling. BarraCUDA L2 currently uses naive sampling, leading to 13× accuracy gap despite 1.7× throughput advantage.
+**Root Cause of L2 Gap**: Python uses `mystic.SparsitySampler` for space-filling sampling. BarraCuda L2 currently uses naive sampling, leading to 13× accuracy gap despite 1.7× throughput advantage.
 
 ---
 
@@ -342,7 +342,7 @@ crates/barracuda/src/
 
 1. **hotSpring L2 Results**: `hotSpring/README.md` lines 38-49
    - Python L2: χ²=1.93, 3008 evals, 3.2h
-   - BarraCUDA L2: χ²=25.43, 1009 evals, 35min (1.7× faster, 13× less accurate)
+   - BarraCuda L2: χ²=25.43, 1009 evals, 35min (1.7× faster, 13× less accurate)
 
 2. **SparsitySampler Usage**: `hotSpring/control/surrogate/scripts/full_iterative_workflow.py`
    - Line 216: `sampler = SparsitySampler(bounds, cached, npts=16, solver=solver)`

@@ -17,7 +17,7 @@ use toadstool_runtime_universal::types::*;
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: 2D Convolution Demo                 ║");
-    println!("║  barraCUDA Phase 1 - THE Computer Vision Operation      ║");
+    println!("║  barraCuda Phase 1 - THE Computer Vision Operation      ║");
     println!("╚══════════════════════════════════════════════════════════╝");
     println!();
 
@@ -432,7 +432,7 @@ async fn main() -> Result<()> {
 
     // Pattern Observations
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🎓 Pattern Observations (barraCUDA Learning)");
+    println!("🎓 Pattern Observations (barraCuda Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
@@ -462,7 +462,7 @@ async fn main() -> Result<()> {
 
     println!("CNN Architecture Pattern:");
     println!("  Conv2D → ReLU → Conv2D → ReLU → MaxPool → ...");
-    println!("  All operations now in barraCUDA! 🎯");
+    println!("  All operations now in barraCuda! 🎯");
     println!();
 
     println!("Key Insights:");
@@ -485,7 +485,7 @@ async fn main() -> Result<()> {
     println!("     • Padding: Same (preserve size), valid (shrink)");
     println!();
 
-    println!("barraCUDA Opportunities:");
+    println!("barraCuda Opportunities:");
     println!("  • Im2col optimization: Transform to MatMul (reuse MatMul tiling!)");
     println!("  • Winograd: Fast convolution for 3×3 kernels (2.25x speedup)");
     println!("  • Shared memory: Cache kernel/input for GPU");
@@ -498,7 +498,7 @@ async fn main() -> Result<()> {
     println!();
     println!("Conv2D is now implemented! THE operation for computer vision.");
     println!();
-    println!("With Conv2D complete, barraCUDA can now:");
+    println!("With Conv2D complete, barraCuda can now:");
     println!("  ✅ Process image classification (ResNet, VGG, etc.)");
     println!("  ✅ Detect objects (YOLO, Faster R-CNN)");
     println!("  ✅ Segment images (U-Net, DeepLab)");

@@ -51,7 +51,7 @@ pub struct SparsitySamplerConfig {
     /// # Reference
     ///
     /// hotSpring L2 validation: Python's mystic does ~100-200 true evals per round.
-    /// BarraCUDA with n_direct_solvers=2 and n_solvers=8 approaches this density.
+    /// BarraCuda with n_direct_solvers=2 and n_solvers=8 approaches this density.
     pub n_direct_solvers: usize,
     /// Max evaluations per NM solver per iteration (default: 50)
     pub max_eval_per_solver: usize,

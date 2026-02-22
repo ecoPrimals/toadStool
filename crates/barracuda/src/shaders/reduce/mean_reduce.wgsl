@@ -1,7 +1,7 @@
 // mean_reduce.wgsl — Single-workgroup Mean Reduction (f32)
 //
 // Computes the arithmetic mean of an f32 array in a single-workgroup pass.
-// For large arrays, use BarraCUDA's ReduceScalarPipeline with multi-workgroup
+// For large arrays, use BarraCuda's ReduceScalarPipeline with multi-workgroup
 // tree reduction.
 //
 // Provenance: neuralSpring metalForge (Feb 21, 2026) → ToadStool absorption

@@ -1,8 +1,8 @@
 //! Cross-Platform Demo - Same Workload, Any Hardware
 //!
-//! Demonstrates BarraCUDA's key advantage over CUDA:
+//! Demonstrates BarraCuda's key advantage over CUDA:
 //! - CUDA: NVIDIA only
-//! - BarraCUDA: ANY hardware (CPU, GPU, TPU, NPU)
+//! - BarraCuda: ANY hardware (CPU, GPU, TPU, NPU)
 //!
 //! This shows the SAME workload running on MULTIPLE hardware types.
 
@@ -15,14 +15,14 @@ use barracuda::Result;
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🦈 BarraCUDA vs CUDA: Cross-Platform Advantage Demo");
+    println!("🦈 BarraCuda vs CUDA: Cross-Platform Advantage Demo");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
     
     // Part 1: Show CUDA's limitation
     show_cuda_limitation();
     
-    // Part 2: Show BarraCUDA's universal capability
+    // Part 2: Show BarraCuda's universal capability
     show_barracuda_advantage().await?;
     
     // Part 3: Same workload, different chips
@@ -58,10 +58,10 @@ fn show_cuda_limitation() {
 }
 
 async fn show_barracuda_advantage() -> Result<()> {
-    println!("✅ BarraCUDA Advantages:");
+    println!("✅ BarraCuda Advantages:");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
-    println!("  BarraCUDA Code:");
+    println!("  BarraCuda Code:");
     println!("  ```rust");
     println!("  let x = Tensor::randn([1000, 1000])?;");
     println!("  let y = x.matmul(&z)?;  // ✅ WORKS EVERYWHERE");
@@ -154,7 +154,7 @@ async fn demonstrate_cross_platform() -> Result<()> {
     println!("CUDA says:");
     println!("  \"Buy NVIDIA or rewrite everything\"");
     println!();
-    println!("BarraCUDA says:");
+    println!("BarraCuda says:");
     println!("  \"Use whatever hardware you have, we'll optimize it\"");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     

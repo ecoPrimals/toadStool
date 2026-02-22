@@ -129,7 +129,7 @@ async fn main() -> anyhow::Result<()> {
     println!("4. PURE RUST EVOLUTION PATH");
     println!("   • wgpu: Pure Rust, no FFI");
     println!("   • Type-safe, memory-safe");
-    println!("   • Future: barraCUDA builds on this");
+    println!("   • Future: barraCuda builds on this");
     println!();
 
     println!("═══════════════════════════════════════════════════════════");

@@ -1,14 +1,14 @@
-# 🦈 barraCUDA: Universal Compute Substrate - Strategic Vision
+# 🦈 barraCuda: Universal Compute Substrate - Strategic Vision
 
 **Date**: January 31, 2026  
 **Status**: Strategic Direction Document  
-**Purpose**: Define barraCUDA as THE universal compute library for ALL substrates
+**Purpose**: Define barraCuda as THE universal compute library for ALL substrates
 
 ---
 
 ## 🎯 **CORE INSIGHT**
 
-**barraCUDA is not just a GPU library - it's THE universal compute abstraction for ALL hardware.**
+**barraCuda is not just a GPU library - it's THE universal compute abstraction for ALL hardware.**
 
 ### **Why This Matters**
 
@@ -20,12 +20,12 @@ Using WGSL + wgpu as the foundation means:
 
 ---
 
-## 🔀 **EVOLUTION SPLIT: TOADSTOOL vs barraCUDA**
+## 🔀 **EVOLUTION SPLIT: TOADSTOOL vs barraCuda**
 
 ### **ToadStool Evolution** (Platform/API)
-**Focus**: How to USE barraCUDA and integrate with ecosystem
+**Focus**: How to USE barraCuda and integrate with ecosystem
 
-### **barraCUDA Evolution** (Compute Substrate)
+### **barraCuda Evolution** (Compute Substrate)
 **Focus**: The universal compute operations library itself
 
 ---
@@ -34,7 +34,7 @@ Using WGSL + wgpu as the foundation means:
 
 ### **Category: Platform Integration**
 
-**What ToadStool Needs from barraCUDA**:
+**What ToadStool Needs from barraCuda**:
 1. **Stable API** - Public device/queue access
 2. **Runtime Selection** - Choose CPU/GPU/NPU at runtime
 3. **Capability Discovery** - What ops are available?
@@ -52,7 +52,7 @@ pub trait ComputeSubstrate {
     fn supports_operation(&self, op: &str) -> bool;
 }
 
-// barraCUDA implements this for all substrates
+// barraCuda implements this for all substrates
 impl ComputeSubstrate for barracuda::WgpuDevice {
     fn name(&self) -> &str { "GPU (wgpu)" }
     fn capabilities(&self) -> SubstrateCapabilities {
@@ -116,7 +116,7 @@ impl PrimalCoordinator {
         data: &[u8],
     ) -> Result<Vec<u8>> {
         // Coordinate with other primals
-        // Use barraCUDA for actual compute
+        // Use barraCuda for actual compute
     }
 }
 ```
@@ -144,21 +144,21 @@ impl WorkloadOrchestrator {
 
 ---
 
-## 🦈 **barraCUDA EVOLUTION NEEDS**
+## 🦈 **barraCuda EVOLUTION NEEDS**
 
 ### **Category: Universal Compute Operations**
 
-**What barraCUDA Needs to Provide**:
+**What barraCuda Needs to Provide**:
 1. **Universal Operations** - Same API for all substrates
 2. **WGSL Kernels** - Cross-architecture compute
 3. **Performance Primitives** - Optimized building blocks
 4. **Substrate Detection** - Runtime hardware discovery
 
-### **barraCUDA-Specific Evolution**:
+### **barraCuda-Specific Evolution**:
 
 #### **1. Modular Arithmetic Primitives** 🔴 HIGH PRIORITY
 ```rust
-// barraCUDA's job: Provide universal crypto primitives
+// barraCuda's job: Provide universal crypto primitives
 pub mod ops::modular {
     /// Barrett reduction - optimized for all substrates
     pub fn barrett_reduce(
@@ -195,7 +195,7 @@ pub mod ops::modular {
 
 #### **2. NTT (Number Theoretic Transform)** 🟡 MEDIUM PRIORITY
 ```rust
-// barraCUDA's job: Universal FFT for FHE
+// barraCuda's job: Universal FFT for FHE
 pub mod ops::fft {
     /// Cooley-Tukey NTT - works on all substrates
     pub fn ntt_forward(
@@ -224,7 +224,7 @@ pub mod ops::fft {
 
 #### **3. Sparse Operations** 🟡 MEDIUM PRIORITY
 ```rust
-// barraCUDA's job: Universal sparse compute
+// barraCuda's job: Universal sparse compute
 pub mod ops::sparse {
     /// Sparse matrix multiply - optimized per substrate
     pub fn spmm(
@@ -252,7 +252,7 @@ pub mod ops::sparse {
 
 #### **4. Pattern Recognition Primitives** 🟢 ENHANCEMENT
 ```rust
-// barraCUDA's job: Universal pattern matching
+// barraCuda's job: Universal pattern matching
 pub mod ops::pattern {
     /// Pattern matching - leverages substrate strengths
     pub fn match_patterns(
@@ -280,7 +280,7 @@ pub mod ops::pattern {
 
 #### **5. Compute Device Trait** 🔴 HIGH PRIORITY
 ```rust
-// barraCUDA's job: Universal device abstraction
+// barraCuda's job: Universal device abstraction
 pub trait ComputeDevice: Send + Sync {
     /// Dispatch WGSL shader
     async fn dispatch_wgsl(
@@ -486,7 +486,7 @@ Every substrate teaches the others:
 
 ## 💡 **CONCLUSION**
 
-**barraCUDA is THE universal compute substrate.**
+**barraCuda is THE universal compute substrate.**
 
 By using WGSL + wgpu as the foundation:
 - ✅ Write once, run everywhere
@@ -494,11 +494,11 @@ By using WGSL + wgpu as the foundation:
 - ✅ Optimize anywhere, benefit everywhere
 - ✅ Innovate freely without hardware constraints
 
-**ToadStool orchestrates, barraCUDA executes.**
+**ToadStool orchestrates, barraCuda executes.**
 
 This separation enables:
 - ToadStool: Focus on platform integration, primal coordination, workload orchestration
-- barraCUDA: Focus on universal compute operations, cross-substrate optimization, performance primitives
+- barraCuda: Focus on universal compute operations, cross-substrate optimization, performance primitives
 
 **Together**: A world-class universal compute platform! 🦈✨
 

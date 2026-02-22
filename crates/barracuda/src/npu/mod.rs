@@ -1,4 +1,4 @@
-//! NPU Backend Module for BarraCUDA v2.0
+//! NPU Backend Module for BarraCuda v2.0
 //!
 //! Event-driven ML execution on Akida neuromorphic processors.
 //!

@@ -285,7 +285,7 @@ Result (with full performance data)
 
 **Integration Path**:
 - Validation proves concept (this package)
-- Integrate sparsity analyzer into BarraCUDA
+- Integrate sparsity analyzer into BarraCuda
 - Add pipeline router to ToadStool runtime
 - Production deployment
 

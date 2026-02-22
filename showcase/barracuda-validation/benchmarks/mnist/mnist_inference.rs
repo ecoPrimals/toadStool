@@ -1,4 +1,4 @@
-//! MNIST Inference Benchmark - BarraCUDA Universal Compute
+//! MNIST Inference Benchmark - BarraCuda Universal Compute
 //!
 //! **Deep Debt Principles**:
 //! - ✅ Modern idiomatic Rust (async/await, Result<T>, no unsafe)
@@ -172,7 +172,7 @@ async fn bench_mnist_gpu(
     let weights2 = initialize_weights(model.hidden_size, model.output_size);
     let bias2 = vec![0.0f32; model.output_size];
     
-    // Create GPU buffers - **Deep Debt**: using BarraCUDA's safe API
+    // Create GPU buffers - **Deep Debt**: using BarraCuda's safe API
     let buffer_input = device.create_storage_buffer("input", bytemuck::cast_slice(&input_data));
     let buffer_w1 = device.create_storage_buffer("weights1", bytemuck::cast_slice(&weights1));
     let buffer_b1 = device.create_storage_buffer("bias1", bytemuck::cast_slice(&bias1));
@@ -349,7 +349,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     
     println!("╔══════════════════════════════════════════════════════════════╗");
-    println!("║  🤖 MNIST INFERENCE BENCHMARK - BarraCUDA Universal         ║");
+    println!("║  🤖 MNIST INFERENCE BENCHMARK - BarraCuda Universal         ║");
     println!("║  Testing ML workload across CPU, GPU, NPU                   ║");
     println!("╚══════════════════════════════════════════════════════════════╝\n");
     

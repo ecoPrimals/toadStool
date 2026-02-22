@@ -11,7 +11,7 @@ fn main() -> Result<()> {
 
     println!("\n╔══════════════════════════════════════════════════════╗");
     println!("║   NPU vs GPU Raytracing Comparison                  ║");
-    println!("║   ToadStool + BarraCUDA Architecture                 ║");
+    println!("║   ToadStool + BarraCuda Architecture                 ║");
     println!("╚══════════════════════════════════════════════════════╝\n");
 
     // Step 1: ToadStool discovers hardware

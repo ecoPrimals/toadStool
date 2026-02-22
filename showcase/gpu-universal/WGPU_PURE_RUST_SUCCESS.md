@@ -200,15 +200,15 @@ Application → wgpu (Rust) → naga (Rust) → SPIR-V → Vulkan/Metal/DX12
 
 **wgpu tracks the standard**, so as WebGPU evolves, wgpu evolves.
 
-### 4. Aligns with barraCUDA Vision
+### 4. Aligns with barraCuda Vision
 
-**barraCUDA goals**:
+**barraCuda goals**:
 1. Learn from open systems → **wgpu is WebGPU (open standard)** ✅
 2. Pure Rust evolution → **wgpu is 100% Rust** ✅
 3. Safety + Performance → **wgpu provides both** ✅
 4. Vendor-agnostic → **wgpu works on all vendors** ✅
 
-**wgpu is the ideal foundation for barraCUDA** ✅
+**wgpu is the ideal foundation for barraCuda** ✅
 
 ---
 
@@ -274,14 +274,14 @@ let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
 **Mid-term** (Phase 2-3 - Q2 2026):
 - Prioritize wgpu for new development
 - Keep OpenCL for specific optimizations
-- Build barraCUDA on wgpu foundation
+- Build barraCuda on wgpu foundation
 
 **Long-term** (Phase 4 - Q3+ 2026):
-- barraCUDA becomes primary API
+- barraCuda becomes primary API
 - wgpu as one backend (among others)
 - OpenCL legacy support as needed
 
-### For barraCUDA
+### For barraCuda
 
 **wgpu provides**:
 1. **Pure Rust foundation** - No FFI to evolve away from ✅
@@ -289,13 +289,13 @@ let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
 3. **Cross-platform** - Write once, run everywhere ✅
 4. **Modern patterns** - Async, Result, etc. ✅
 
-**barraCUDA can**:
+**barraCuda can**:
 - Build on wgpu's safe abstractions
 - Add learning/optimization layer
 - Provide higher-level DSL
 - Maintain compatibility
 
-**Synergy**: wgpu handles low-level, barraCUDA adds intelligence ✅
+**Synergy**: wgpu handles low-level, barraCuda adds intelligence ✅
 
 ### For Users
 
@@ -306,7 +306,7 @@ let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
 
 **Future benefits**:
 - As wgpu matures, pure Rust path gets better
-- barraCUDA will add auto-optimization
+- barraCuda will add auto-optimization
 - System learns and improves over time
 
 ---
@@ -334,7 +334,7 @@ let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
 pub enum GpuBackend {
     OpenCl(OpenClDevice),
     Wgpu(WgpuDevice),
-    // Future: barraCUDA
+    // Future: barraCuda
 }
 
 pub struct UnifiedGpuRuntime {
@@ -357,11 +357,11 @@ impl UnifiedGpuRuntime {
 }
 ```
 
-### Phase 3: barraCUDA Foundation (Q2 2026)
+### Phase 3: barraCuda Foundation (Q2 2026)
 
 **Build on wgpu**:
 - wgpu provides safe GPU access ✅
-- barraCUDA adds learning layer
+- barraCuda adds learning layer
 - Pattern recognition
 - Auto-optimization
 - Pure Rust throughout
@@ -410,7 +410,7 @@ impl UnifiedGpuRuntime {
 
 **Implication**: Guaranteed execution even without GPU ✅
 
-### 5. Path to barraCUDA Clear
+### 5. Path to barraCuda Clear
 
 **Foundation exists**:
 - wgpu: Pure Rust GPU access ✅
@@ -418,7 +418,7 @@ impl UnifiedGpuRuntime {
 - Cross-platform: WebGPU standard ✅
 - Vendor-agnostic: Works everywhere ✅
 
-**barraCUDA can**:
+**barraCuda can**:
 - Build on this foundation
 - Add learning intelligence
 - Provide higher-level DSL
@@ -442,14 +442,14 @@ impl UnifiedGpuRuntime {
 **For ToadStool**:
 - Pure Rust evolution path proven ✅
 - Multi-vendor support confirmed ✅
-- Foundation for barraCUDA validated ✅
+- Foundation for barraCuda validated ✅
 
 **For Users**:
 - Freedom from vendor lock-in ✅
 - Safety without performance cost ✅
 - Cross-platform by design ✅
 
-**For barraCUDA**:
+**For barraCuda**:
 - Build on proven foundation ✅
 - Pure Rust throughout ✅
 - Learning layer on safe base ✅
@@ -499,7 +499,7 @@ impl UnifiedGpuRuntime {
 
 ---
 
-*ToadStool / barraCUDA: Pure Rust GPU computing, no compromises* 🦀🚀
+*ToadStool / barraCuda: Pure Rust GPU computing, no compromises* 🦀🚀
 
 **"The future of GPU computing is safe, fast, and pure Rust."** ✅
 

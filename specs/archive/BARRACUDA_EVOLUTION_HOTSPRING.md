@@ -1,10 +1,10 @@
-# BarraCUDA Evolution Guide — Lessons from hotSpring, GPU-Ready Roadmap
+# BarraCuda Evolution Guide — Lessons from hotSpring, GPU-Ready Roadmap
 
 **Date**: February 13, 2026
 **From**: ecoPrimals Control Team (Eastgate) — hotSpring validation
-**To**: ToadStool / BarraCUDA Team
+**To**: ToadStool / BarraCuda Team
 **Context**: Titan V incoming (~1 week), 87%/74% theoretical max on AMD/NVIDIA via pure wgpu
-**Purpose**: Map everything we learned from science workloads to the next evolution of BarraCUDA
+**Purpose**: Map everything we learned from science workloads to the next evolution of BarraCuda
 
 ---
 
@@ -12,10 +12,10 @@
 
 ### 1.1 The Validation Journey
 
-We used nuclear physics (Skyrme EDF parameter optimization) as a demanding, real-world scientific workload to validate BarraCUDA against Python/SciPy. This is not a toy benchmark — it's the same math that nuclear physicists run daily.
+We used nuclear physics (Skyrme EDF parameter optimization) as a demanding, real-world scientific workload to validate BarraCuda against Python/SciPy. This is not a toy benchmark — it's the same math that nuclear physicists run daily.
 
 ```
-                        BarraCUDA Performance vs Python/SciPy
+                        BarraCuda Performance vs Python/SciPy
    ┌──────────────────────────────────────────────────────────────┐
    │ Level 1 (SEMF):   0.80 chi²  vs  6.62  → 8.3× BETTER     │
    │ Level 2 (HFB):   16.11 chi²  vs 61.87  → 3.8× BETTER     │
@@ -26,7 +26,7 @@ We used nuclear physics (Skyrme EDF parameter optimization) as a demanding, real
 
 ### 1.2 What Worked (validated functions)
 
-These BarraCUDA functions have been battle-tested against SciPy on real science:
+These BarraCuda functions have been battle-tested against SciPy on real science:
 
 | Function | What It Does | Science Validation | Ready for GPU? |
 |----------|-------------|-------------------|----------------|
@@ -205,7 +205,7 @@ Current dispatch thresholds in `barracuda::dispatch::config`:
 
 ### 4.1 What 87% AMD / 74% NVIDIA Means
 
-BarraCUDA achieves 87% and 74% of theoretical max throughput on AMD and NVIDIA via pure wgpu. This means the shader dispatch and memory management are excellent. But the science workload reveals a different bottleneck:
+BarraCuda achieves 87% and 74% of theoretical max throughput on AMD and NVIDIA via pure wgpu. This means the shader dispatch and memory management are excellent. But the science workload reveals a different bottleneck:
 
 **The science bottleneck is not compute, it's latency.**
 
@@ -297,7 +297,7 @@ The Titan V makes the 10× budget run feasible in under an hour. This alone coul
 
 ### 5.3 Multi-Workload Validation Plan
 
-Once the Titan V is available, validate BarraCUDA on additional science workloads:
+Once the Titan V is available, validate BarraCuda on additional science workloads:
 
 | Workload | Math Profile | GPU Opportunity | hotSpring Module |
 |----------|-------------|-----------------|-----------------|
@@ -313,7 +313,7 @@ Once the Titan V is available, validate BarraCUDA on additional science workload
 
 ### 6.1 Reference Implementations (Rust, CPU)
 
-These are complete, validated implementations that the BarraCUDA team can use as the "ground truth" for GPU versions:
+These are complete, validated implementations that the BarraCuda team can use as the "ground truth" for GPU versions:
 
 | Module | What It Solves | Lines | Validated Against |
 |--------|---------------|-------|-------------------|
@@ -351,7 +351,7 @@ B_exp = 127.62 MeV
 
 ## 7. Immediate Action Items
 
-### For BarraCUDA Team (before Titan V)
+### For BarraCuda Team (before Titan V)
 
 - [ ] Commit `gradient_1d` 2nd-order boundary fix (already in tree, tests pass)
 - [ ] Set `auto_smoothing: true` as default in `SparsitySamplerConfig::new()`
@@ -374,10 +374,10 @@ B_exp = 127.62 MeV
 ## 8. Summary: The Evolution Equation
 
 ```
-BarraCUDA Evolution = (validated math) + (GPU acceleration) + (science feedback)
+BarraCuda Evolution = (validated math) + (GPU acceleration) + (science feedback)
 
     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-    │   hotSpring   │────→│  BarraCUDA   │────→│   Science    │
+    │   hotSpring   │────→│  BarraCuda   │────→│   Science    │
     │  Validation   │     │  Evolution   │     │  Workloads   │
     │              │←────│              │←────│              │
     └──────────────┘     └──────────────┘     └──────────────┘
@@ -388,7 +388,7 @@ BarraCUDA Evolution = (validated math) + (GPU acceleration) + (science feedback)
     Cycle 4: ??? → paper    (deformation: L3 on GPU)
 ```
 
-Each cycle, hotSpring validates, identifies the bottleneck, and the BarraCUDA team evolves. The Titan V is the accelerant for Cycle 3.
+Each cycle, hotSpring validates, identifies the bottleneck, and the BarraCuda team evolves. The Titan V is the accelerant for Cycle 3.
 
 ---
 

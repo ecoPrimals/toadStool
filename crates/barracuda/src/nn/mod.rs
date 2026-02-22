@@ -1,7 +1,7 @@
 //! High-level Neural Network Training API
 //!
 //! Production-ready interface for building and training deep neural networks.
-//! Wraps barraCUDA operations into an ergonomic, PyTorch-like API with full
+//! Wraps barraCuda operations into an ergonomic, PyTorch-like API with full
 //! deep debt compliance.
 //!
 //! # Deep Debt Principles

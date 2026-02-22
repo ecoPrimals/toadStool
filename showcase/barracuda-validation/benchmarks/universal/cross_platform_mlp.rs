@@ -1,4 +1,4 @@
-// BarraCUDA Universal Compute Validation
+// BarraCuda Universal Compute Validation
 // Run SAME MLP workload on CPU, GPU, and NPU - compare emergent characteristics
 //
 // Philosophy: AI on GPUs emerged from raytracing + tensors.
@@ -140,7 +140,7 @@ fn run_npu(workload: &MLPWorkload, iterations: usize) -> anyhow::Result<(Vec<f32
 
 fn main() -> anyhow::Result<()> {
     println!("═══════════════════════════════════════════════════════════════");
-    println!("🦈 BarraCUDA Universal Compute Validation");
+    println!("🦈 BarraCuda Universal Compute Validation");
     println!("═══════════════════════════════════════════════════════════════");
     println!();
     println!("Hypothesis: Same workload, three substrates, emergent properties");
@@ -270,7 +270,7 @@ fn main() -> anyhow::Result<()> {
     println!("═══════════════════════════════════════════════════════════════");
     println!();
     println!("Result: ✅ Same workload runs on ALL THREE platforms!");
-    println!("Impact: 🦈 BarraCUDA is truly \"Tensors Everywhere\"");
+    println!("Impact: 🦈 BarraCuda is truly \"Tensors Everywhere\"");
     println!("Discovery: ⚡ NPU reveals emergent ultra-low-power AI");
     
     Ok(())

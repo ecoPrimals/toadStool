@@ -122,7 +122,7 @@ async fn test_service_advertisement() {
     assert!(result.is_ok(), "Service advertisement should succeed");
 }
 
-/// Test: barraCUDA integration info is consistent with capabilities
+/// Test: barraCuda integration info is consistent with capabilities
 #[tokio::test]
 async fn test_barracuda_integration_consistency() {
     let runtime = FractalRuntime::init().await.unwrap();

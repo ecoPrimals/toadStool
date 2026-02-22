@@ -158,7 +158,7 @@ impl SubstrateSelector {
                     best_for_edge: false,
                 };
                 available.push((Box::new(gpu) as Box<dyn HomomorphicSubstrate>, capability));
-                // println!("✅ GPU substrate available (barraCUDA)");
+                // println!("✅ GPU substrate available (barraCuda)");
             }
             Err(_e) => {
                 // println!("❌ GPU substrate unavailable: {}", e);

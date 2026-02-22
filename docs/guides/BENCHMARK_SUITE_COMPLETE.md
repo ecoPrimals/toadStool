@@ -1,4 +1,4 @@
-# BarraCUDA Benchmark Suite - Complete
+# BarraCuda Benchmark Suite - Complete
 
 **Date:** February 4, 2026 (Evening)  
 **Status:** ✅ Full benchmark suite operational  
@@ -65,9 +65,9 @@ fhe_encrypt+compute+fhe_decrypt  │  25.0ms  │  22.0ms  │ 380ms    │
 ```
 
 **Key Finding:**
-- ✅ BarraCUDA: Works on AMD + NVIDIA + CPU
+- ✅ BarraCuda: Works on AMD + NVIDIA + CPU
 - ❌ CUDA: Has 0 FHE operations!
-- **Winner:** BarraCUDA (unique capability)
+- **Winner:** BarraCuda (unique capability)
 
 **Real-World Impact:**
 - Healthcare: Analyze encrypted medical data
@@ -78,38 +78,38 @@ fhe_encrypt+compute+fhe_decrypt  │  25.0ms  │  22.0ms  │ 380ms    │
 ### 2. "CUDA Workloads" on Any Hardware
 
 ```
-Workload                    │   CUDA    │ BarraCUDA │  Winner   │
+Workload                    │   CUDA    │ BarraCuda │  Winner   │
 ────────────────────────────┼───────────┼───────────┼───────────┤
-BERT Training (1 epoch)     │ NVIDIA    │ 3 chips   │ BarraCUDA │
-GPT-2 Inference (batch=32)  │ NVIDIA    │ 3 chips   │ BarraCUDA │
-ResNet-50 Training          │ NVIDIA    │ 3 chips   │ BarraCUDA │
-YOLO Object Detection       │ NVIDIA    │ 4 chips   │ BarraCUDA │
-MatMul 2048×2048            │ NVIDIA    │ 3 chips   │ BarraCUDA │
-FFT 1M points               │ NVIDIA    │ 3 chips   │ BarraCUDA │
-Monte Carlo (1B samples)    │ NVIDIA    │ 3 chips   │ BarraCUDA │
+BERT Training (1 epoch)     │ NVIDIA    │ 3 chips   │ BarraCuda │
+GPT-2 Inference (batch=32)  │ NVIDIA    │ 3 chips   │ BarraCuda │
+ResNet-50 Training          │ NVIDIA    │ 3 chips   │ BarraCuda │
+YOLO Object Detection       │ NVIDIA    │ 4 chips   │ BarraCuda │
+MatMul 2048×2048            │ NVIDIA    │ 3 chips   │ BarraCuda │
+FFT 1M points               │ NVIDIA    │ 3 chips   │ BarraCuda │
+Monte Carlo (1B samples)    │ NVIDIA    │ 3 chips   │ BarraCuda │
 ```
 
 **Key Finding:**
 - All "CUDA workloads" run on AMD, NVIDIA, CPU
 - CUDA only uses NVIDIA (vendor lock-in)
-- **Winner:** BarraCUDA (3-4x more hardware)
+- **Winner:** BarraCuda (3-4x more hardware)
 
 **Real-World Scenarios:**
 
 **Scenario 1: Startup with AMD GPUs**
 - Problem: Have AMD GPUs, want to train models
 - CUDA: ❌ Cannot use AMD, must buy NVIDIA ($10K+)
-- BarraCUDA: ✅ Use existing AMD GPUs!
+- BarraCuda: ✅ Use existing AMD GPUs!
 
 **Scenario 2: Cloud Cost Savings**
 - Problem: Want cheapest cloud GPUs
 - CUDA: ❌ Locked to NVIDIA instances
-- BarraCUDA: ✅ Use AMD instances (30% cheaper!)
+- BarraCuda: ✅ Use AMD instances (30% cheaper!)
 
 **Scenario 3: Academic Research**
 - Problem: Mixed GPU cluster (AMD + NVIDIA)
 - CUDA: ❌ Can only use NVIDIA nodes (50% waste)
-- BarraCUDA: ✅ Use ALL nodes! (2x capacity)
+- BarraCuda: ✅ Use ALL nodes! (2x capacity)
 
 ### 3. NPU Training vs Inference
 
@@ -143,50 +143,50 @@ NPU (Akida)      │   2.5ms   │     5W    │ 0.01 mJ  │  ✅ Perfect! │
 1. Train on GPU (NVIDIA or AMD): 45-55 seconds
 2. Export model to NPU format
 3. Deploy to NPU for inference: 40x power savings
-4. BarraCUDA enables seamless workflow
+4. BarraCuda enables seamless workflow
 
 ---
 
-## 🆚 BarraCUDA vs CUDA: Complete Comparison
+## 🆚 BarraCuda vs CUDA: Complete Comparison
 
 ### Hardware Support
 
-| Feature | CUDA | BarraCUDA | Winner |
+| Feature | CUDA | BarraCuda | Winner |
 |---------|------|-----------|--------|
 | **NVIDIA GPU** | ✅ Yes | ✅ Yes | Tie |
-| **AMD GPU** | ❌ No | ✅ Yes | BarraCUDA |
-| **Intel GPU** | ❌ No | ✅ Yes | BarraCUDA |
-| **Apple GPU** | ❌ No | ✅ Yes | BarraCUDA |
-| **CPU Fallback** | ❌ Crash | ✅ SIMD optimized | BarraCUDA |
-| **NPU Support** | ❌ No | ✅ Yes (Akida) | BarraCUDA |
-| **TPU Ready** | ❌ No | ✅ Yes | BarraCUDA |
+| **AMD GPU** | ❌ No | ✅ Yes | BarraCuda |
+| **Intel GPU** | ❌ No | ✅ Yes | BarraCuda |
+| **Apple GPU** | ❌ No | ✅ Yes | BarraCuda |
+| **CPU Fallback** | ❌ Crash | ✅ SIMD optimized | BarraCuda |
+| **NPU Support** | ❌ No | ✅ Yes (Akida) | BarraCuda |
+| **TPU Ready** | ❌ No | ✅ Yes | BarraCuda |
 
-**Score:** BarraCUDA wins 6/7 categories
+**Score:** BarraCuda wins 6/7 categories
 
 ### Unique Features
 
-| Feature | CUDA | BarraCUDA | Winner |
+| Feature | CUDA | BarraCuda | Winner |
 |---------|------|-----------|--------|
-| **FHE Operations** | 0 ops ❌ | 6 ops ✅ | BarraCUDA |
-| **Cross-Platform** | NVIDIA only ❌ | Any hardware ✅ | BarraCUDA |
-| **Auto-Selection** | Manual ❌ | Intelligent ✅ | BarraCUDA |
-| **Safe Code** | Unsafe pointers ❌ | 100% safe Rust ✅ | BarraCUDA |
-| **Vendor Lock-In** | Yes ❌ | No ✅ | BarraCUDA |
+| **FHE Operations** | 0 ops ❌ | 6 ops ✅ | BarraCuda |
+| **Cross-Platform** | NVIDIA only ❌ | Any hardware ✅ | BarraCuda |
+| **Auto-Selection** | Manual ❌ | Intelligent ✅ | BarraCuda |
+| **Safe Code** | Unsafe pointers ❌ | 100% safe Rust ✅ | BarraCuda |
+| **Vendor Lock-In** | Yes ❌ | No ✅ | BarraCuda |
 
-**Score:** BarraCUDA wins 5/5 categories
+**Score:** BarraCuda wins 5/5 categories
 
 ### Performance
 
-| Workload | CUDA on NVIDIA | BarraCUDA on NVIDIA | BarraCUDA on AMD | BarraCUDA on CPU |
+| Workload | CUDA on NVIDIA | BarraCuda on NVIDIA | BarraCuda on AMD | BarraCuda on CPU |
 |----------|----------------|---------------------|------------------|------------------|
 | **MatMul 512×512** | 2.3ms | 2.3ms (100%) | 2.8ms (82%) | 45ms (works!) |
 | **ReLU 1M elem** | 0.8ms | 0.8ms (100%) | 0.9ms (89%) | 12ms (works!) |
 | **FHE Poly Mul** | N/A (doesn't exist) | 8.5ms | 7.8ms (faster!) | 120ms (works!) |
 
 **Score:** 
-- NVIDIA: BarraCUDA matches CUDA (~98% parity)
-- AMD: BarraCUDA works (CUDA doesn't run at all!)
-- CPU: BarraCUDA works (CUDA crashes!)
+- NVIDIA: BarraCuda matches CUDA (~98% parity)
+- AMD: BarraCuda works (CUDA doesn't run at all!)
+- CPU: BarraCuda works (CUDA crashes!)
 
 ---
 
@@ -196,22 +196,22 @@ NPU (Akida)      │   2.5ms   │     5W    │ 0.01 mJ  │  ✅ Perfect! │
 
 **Scenario 1: Startup Training Models**
 - Old approach (CUDA): Buy NVIDIA GPU ($2,000)
-- New approach (BarraCUDA): Use existing AMD GPU ($0)
+- New approach (BarraCuda): Use existing AMD GPU ($0)
 - **Savings: $2,000+**
 
 **Scenario 2: Cloud Computing**
 - Old approach (CUDA): NVIDIA instances ($3.00/hour)
-- New approach (BarraCUDA): AMD instances ($2.00/hour)
+- New approach (BarraCuda): AMD instances ($2.00/hour)
 - **Savings: 33% per hour = $720/month**
 
 **Scenario 3: Edge Deployment**
 - Old approach (CUDA): NVIDIA Jetson ($500)
-- New approach (BarraCUDA): NPU Akida ($50)
+- New approach (BarraCuda): NPU Akida ($50)
 - **Savings: 10x cost reduction**
 
 **Scenario 4: Mixed GPU Cluster**
 - Old approach (CUDA): 50 NVIDIA GPUs, 50 AMD unused
-- New approach (BarraCUDA): Use all 100 GPUs
+- New approach (BarraCuda): Use all 100 GPUs
 - **Impact: 2x compute capacity**
 
 ### Freedom from Vendor Lock-In
@@ -222,7 +222,7 @@ NPU (Akida)      │   2.5ms   │     5W    │ 0.01 mJ  │  ✅ Perfect! │
 - Locked into NVIDIA pricing
 - Cannot use cheaper alternatives
 
-**BarraCUDA Reality:**
+**BarraCuda Reality:**
 - Use ANY GPU (NVIDIA, AMD, Intel, Apple)
 - Switch vendors anytime
 - Shop for best price
@@ -272,16 +272,16 @@ cargo run --release --bin scheduler_demo
 
 ### Message 1: Hardware Freedom
 > "CUDA says: Buy NVIDIA or rewrite everything"  
-> "BarraCUDA says: Use whatever you have, we'll optimize it"
+> "BarraCuda says: Use whatever you have, we'll optimize it"
 
 ### Message 2: Unique Capabilities
 > "CUDA has 0 FHE operations"  
-> "BarraCUDA has 6 FHE operations"  
+> "BarraCuda has 6 FHE operations"  
 > "That's not parity, that's a unique advantage!"
 
 ### Message 3: Right Tool for Right Job
 > "GPUs for training, NPUs for deployment"  
-> "BarraCUDA enables seamless pipeline"  
+> "BarraCuda enables seamless pipeline"  
 > "CUDA locks you to NVIDIA at every step"
 
 ### Message 4: Cost Savings
@@ -290,7 +290,7 @@ cargo run --release --bin scheduler_demo
 > "Deploy to NPUs: 10x cost reduction"
 
 ### Message 5: Future-Proof
-> "BarraCUDA works on hardware that doesn't exist yet"  
+> "BarraCuda works on hardware that doesn't exist yet"  
 > "TPU ready when it arrives"  
 > "CUDA is locked to NVIDIA forever"
 
@@ -306,7 +306,7 @@ cargo run --release --bin scheduler_demo
 5. ✅ Intelligent scheduler (automatic optimization)
 
 ### What We've Proven:
-1. ✅ BarraCUDA works on AMD + NVIDIA + CPU + NPU
+1. ✅ BarraCuda works on AMD + NVIDIA + CPU + NPU
 2. ✅ Same code, multiple hardware vendors
 3. ✅ Unique FHE capabilities (6 ops vs CUDA's 0)
 4. ✅ GPU→NPU deployment pipeline
@@ -314,7 +314,7 @@ cargo run --release --bin scheduler_demo
 6. ✅ ~98% CUDA parity on NVIDIA
 7. ✅ Works on AMD (CUDA can't do this!)
 
-### BarraCUDA Advantages:
+### BarraCuda Advantages:
 - ✅ 8x more hardware support (vs CUDA's 1)
 - ✅ 6 unique FHE operations (vs CUDA's 0)
 - ✅ 100% safe Rust (vs CUDA's unsafe pointers)
@@ -325,7 +325,7 @@ cargo run --release --bin scheduler_demo
 ### CUDA's Only Advantage:
 - ⚠️  2% faster on NVIDIA (98% vs 100% parity)
 
-**Verdict:** BarraCUDA wins on portability, safety, features, and freedom!
+**Verdict:** BarraCuda wins on portability, safety, features, and freedom!
 
 ---
 
@@ -333,4 +333,4 @@ cargo run --release --bin scheduler_demo
 **Hardware:** AMD + NVIDIA + CPU + NPU all working  
 **Date:** February 4, 2026 (Evening)
 
-🦈 **BarraCUDA: ONE CODEBASE, ANY HARDWARE, PROVEN!** 🦈
+🦈 **BarraCuda: ONE CODEBASE, ANY HARDWARE, PROVEN!** 🦈

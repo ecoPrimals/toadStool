@@ -1,7 +1,7 @@
 //! Integration test for fast polynomial multiplication
 //!
 //! Tests the complete NTT-based fast polynomial multiplication pipeline
-//! using actual GPU-accelerated BarraCUDA operations.
+//! using actual GPU-accelerated BarraCuda operations.
 //!
 //! This validates:
 //! 1. FheNtt (Number Theoretic Transform)
@@ -138,7 +138,7 @@ fn test_fhe_operations_list() {
     // Document all available FHE operations
 
     println!("\n╔══════════════════════════════════════════════════════════════╗");
-    println!("║  BarraCUDA FHE Operations (GPU-Accelerated)                 ║");
+    println!("║  BarraCuda FHE Operations (GPU-Accelerated)                 ║");
     println!("╚══════════════════════════════════════════════════════════════╝\n");
 
     println!("🚀 Fast Operations (NTT-Based):");

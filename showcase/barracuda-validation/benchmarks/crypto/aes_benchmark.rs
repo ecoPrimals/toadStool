@@ -1,4 +1,4 @@
-// AES Encryption Benchmark - BarraCUDA Universal Validation
+// AES Encryption Benchmark - BarraCuda Universal Validation
 // Deep Debt Principles: Pure Rust, no hardcoding, capability-based, runtime discovery
 
 use anyhow::Result;

@@ -26,7 +26,7 @@ fn main() -> Result<()> {
         
         if gpu_count > 0 {
             println!("✓ Found {} GPU(s)", gpu_count);
-            println!("    → BarraCUDA can use via WGPU (no drivers needed)");
+            println!("    → BarraCuda can use via WGPU (no drivers needed)");
         } else {
             println!("✗ No GPUs detected");
         }
@@ -93,13 +93,13 @@ fn main() -> Result<()> {
     
     println!("\n[3/3] Summary:");
     println!("  ToadStool discovers hardware at runtime (no scripts)");
-    println!("  BarraCUDA runs math on all discovered hardware");
+    println!("  BarraCuda runs math on all discovered hardware");
     println!("  No sudo needed for userspace drivers");
     println!("  Self-adapts to hardware changes (hot-plug)");
     
     println!("\n=== Status ===");
     println!("✓ ToadStool hardware layer ready");
-    println!("✓ BarraCUDA can run computations");
+    println!("✓ BarraCuda can run computations");
     println!("✓ No manual setup required on fresh systems");
     
     Ok(())

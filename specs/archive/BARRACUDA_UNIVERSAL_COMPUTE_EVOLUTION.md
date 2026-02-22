@@ -1,4 +1,4 @@
-# BarraCUDA Universal Compute Evolution Tracker
+# BarraCuda Universal Compute Evolution Tracker
 
 **Last Updated**: February 3, 2026 (⚡ **CORRECTED STATUS**)  
 **Status**: ⚡ **Phase 1 & 2 Complete (37.4%)!** Phase 4 Next  
@@ -8,7 +8,7 @@
 
 ## 🎯 **VISION**
 
-**BarraCUDA**: Universal tensor library that runs **the same math on any chipset**
+**BarraCuda**: Universal tensor library that runs **the same math on any chipset**
 
 **How**: WGSL (WebGPU Shading Language) + Pure Rust fallback  
 **Why**: Hardware-agnostic compute via WebGPU as universal interconnect  
@@ -48,12 +48,12 @@
 
 **ToadStool**: Orchestration platform that manages the interface between:
 - **Chipsets** (CPU/GPU/NPU/TPU) - Hardware discovery & allocation
-- **BarraCUDA** (Tensor compute) - Universal math operations
+- **BarraCuda** (Tensor compute) - Universal math operations
 - **Workloads** (Applications) - User code execution
 
 **Separation of Concerns**:
 - **ToadStool** → Resource management, scheduling, inter-chip coordination
-- **BarraCUDA** → Universal compute, tensor operations, math
+- **BarraCuda** → Universal compute, tensor operations, math
 - **WebGPU** → Hardware abstraction, universal interconnect
 
 ═══════════════════════════════════════════════════════════════
@@ -473,6 +473,6 @@ Each evolved operation should document:
 **Document Version**: 1.0  
 **Last Updated**: February 3, 2026  
 **Next Review**: Weekly during Phase 2  
-**Maintainer**: BarraCUDA Evolution Team  
+**Maintainer**: BarraCuda Evolution Team  
 
-🦀⚡ **BarraCUDA: Universal Compute via WGSL - 37.4% Complete!** ⚡🦀
+🦀⚡ **BarraCuda: Universal Compute via WGSL - 37.4% Complete!** ⚡🦀

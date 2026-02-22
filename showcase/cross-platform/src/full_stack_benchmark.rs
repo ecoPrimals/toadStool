@@ -1,4 +1,4 @@
-//! Full Stack Benchmark - BarraCUDA vs CUDA vs ROCm
+//! Full Stack Benchmark - BarraCuda vs CUDA vs ROCm
 //!
 //! Comprehensive comparison with batching and warmup enabled.
 //! Also profiles the software stack to identify optimization targets.
@@ -230,7 +230,7 @@ int main() {{
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BarraCUDA benchmarks
+// BarraCuda benchmarks
 // ═══════════════════════════════════════════════════════════════════════════
 
 async fn benchmark_barracuda_single(
@@ -327,7 +327,7 @@ fn profile_wgpu_stack(device: &Arc<WgpuDevice>) -> Result<()> {
     println!("  ┌──────────────────┬────────────┬─────────────────────────────┐");
     println!("  │ Layer            │ Open/Closed│ Optimization Potential       │");
     println!("  ├──────────────────┼────────────┼─────────────────────────────┤");
-    println!("  │ BarraCUDA        │ OPEN (Rust)│ ✅ Full control              │");
+    println!("  │ BarraCuda        │ OPEN (Rust)│ ✅ Full control              │");
     println!("  │ wgpu             │ OPEN (Rust)│ ✅ Can fork/optimize         │");
     println!("  │ naga (WGSL→SPIRV)│ OPEN (Rust)│ ✅ Can fork/optimize         │");
     println!("  │ Vulkan API       │ OPEN (spec)│ ⚠️  API only, not driver     │");
@@ -373,7 +373,7 @@ async fn main() -> Result<()> {
         .init();
 
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
-    println!("║  Full Stack Benchmark - BarraCUDA vs CUDA vs ROCm                             ║");
+    println!("║  Full Stack Benchmark - BarraCuda vs CUDA vs ROCm                             ║");
     println!("║  With Batching + Warmup Systems Active                                        ║");
     println!("╚══════════════════════════════════════════════════════════════════════════════╝\n");
 
@@ -485,7 +485,7 @@ async fn main() -> Result<()> {
 
     println!("  ├────────────────────────────────────┼────────────┼────────────┼─────────┤");
 
-    // BarraCUDA on each GPU
+    // BarraCuda on each GPU
     for device in &devices {
         let name = device.name();
         let single = benchmark_barracuda_single(device, size, iterations).await?;
@@ -504,7 +504,7 @@ async fn main() -> Result<()> {
         };
 
         println!(
-            "  │ BarraCUDA {:25}│ {:>7.1} μs │ {:>7.1} μs │ {:>5.1}x  │",
+            "  │ BarraCuda {:25}│ {:>7.1} μs │ {:>7.1} μs │ {:>5.1}x  │",
             short_name, single, batched, gap
         );
     }
@@ -529,7 +529,7 @@ async fn main() -> Result<()> {
     println!("  │ Total                           │ ~20-40 μs  │");
     println!("  └─────────────────────────────────┴────────────┘");
 
-    println!("\n  BarraCUDA path (current):");
+    println!("\n  BarraCuda path (current):");
     println!("  ┌─────────────────────────────────┬────────────┬─────────────────────────┐");
     println!("  │ Component                       │ Time       │ Notes                   │");
     println!("  ├─────────────────────────────────┼────────────┼─────────────────────────┤");
@@ -580,7 +580,7 @@ async fn main() -> Result<()> {
     println!("  ┌─────────────────────────────────────────────────────────────────────────┐");
     println!("  │ Component  │ Language │ Repository                                      │");
     println!("  ├────────────┼──────────┼─────────────────────────────────────────────────┤");
-    println!("  │ BarraCUDA  │ Rust     │ Local - full control                            │");
+    println!("  │ BarraCuda  │ Rust     │ Local - full control                            │");
     println!("  │ wgpu       │ Rust     │ https://github.com/gfx-rs/wgpu                  │");
     println!("  │ naga       │ Rust     │ https://github.com/gfx-rs/naga                  │");
     println!("  │ RADV (AMD) │ C        │ https://gitlab.freedesktop.org/mesa/mesa        │");

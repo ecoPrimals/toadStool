@@ -1,6 +1,6 @@
 //! PerceptualLoss - Feature-based perceptual loss
 //!
-//! **Canonical BarraCUDA Pattern**: Struct with new/execute
+//! **Canonical BarraCuda Pattern**: Struct with new/execute
 //!
 //! Compares high-level features instead of pixels.
 //! Used in style transfer and super-resolution.

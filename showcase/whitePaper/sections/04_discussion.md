@@ -4,7 +4,7 @@
 
 ### 4.1.1 "Tensors Everywhere" Proven
 
-Our validation demonstrates that BarraCUDA v2.0 achieves true universal compute:
+Our validation demonstrates that BarraCuda v2.0 achieves true universal compute:
 
 **Evidence**:
 - ✅ Same MLP workload → CPU, GPU, NPU execution
@@ -143,7 +143,7 @@ else:
 
 ### 4.4.2 Intelligent Auto-Selection
 
-**BarraCUDA v2.0 includes**:
+**BarraCuda v2.0 includes**:
 - WorkloadAnalyzer: Classifies operation type
 - SparsityAnalyzer: Measures data characteristics
 - DeviceSelector: Chooses optimal substrate
@@ -209,7 +209,7 @@ else:
 - Different precision (float16 vs float32)
 - Platform-specific optimizations (break equivalence)
 
-**BarraCUDA Approach**:
+**BarraCuda Approach**:
 - Maintain float32 throughout
 - Verified bit-exact operations
 - No lossy event encoding

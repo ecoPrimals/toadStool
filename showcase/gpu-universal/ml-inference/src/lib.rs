@@ -24,7 +24,7 @@ pub mod gpu_kernels;
 // Modern processing substrate abstraction (ZERO deep debt!)
 pub mod substrate;
 
-// Modern modular WGPU implementation (part of barraCUDA)
+// Modern modular WGPU implementation (part of barraCuda)
 pub mod wgpu;
 
 // Legacy compatibility re-export (will be deprecated)
@@ -44,7 +44,7 @@ pub mod cpu_inference;
 pub mod gpu_inference;
 pub mod training;
 
-// barraCUDA GPU operations (Week 3-10) - THE COMPLETE SET!
+// barraCuda GPU operations (Week 3-10) - THE COMPLETE SET!
 pub mod advanced_conv;
 pub mod advanced_linear;
 pub mod attention;

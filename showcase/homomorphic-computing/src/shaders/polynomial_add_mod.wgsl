@@ -5,7 +5,7 @@
 // Homomorphic addition: (a + b) mod q
 // Where q is the ciphertext modulus (typically 2^60 or similar)
 //
-// EVOLUTION INSIGHT: This is our first crypto workload in barraCUDA!
+// EVOLUTION INSIGHT: This is our first crypto workload in barraCuda!
 // We'll discover what modular arithmetic support looks like.
 
 @group(0) @binding(0) var<storage, read> a: array<u32>;
@@ -29,7 +29,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     
     // Modular addition for homomorphic encryption
     // IMPORTANT: This is simplified - real HE needs double-precision arithmetic
-    // EVOLUTION OPPORTUNITY: barraCUDA could support u64 operations!
+    // EVOLUTION OPPORTUNITY: barraCuda could support u64 operations!
     
     let sum = a[idx] + b[idx];
     

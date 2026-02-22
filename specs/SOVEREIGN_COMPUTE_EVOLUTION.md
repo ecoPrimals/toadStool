@@ -1,4 +1,4 @@
-# Sovereign Compute Evolution — BarraCUDA WGSL Optimizer & Mycelial ToadStool
+# Sovereign Compute Evolution — BarraCuda WGSL Optimizer & Mycelial ToadStool
 
 **Date**: February 18, 2026
 **Status**: Vision formalised — Phase 0 absorbed (fossils, NAK latency tables), Phase 1 active
@@ -13,7 +13,7 @@ computational substrate (GPU, NPU, CPU, embedded, edge, cloud, WASM) just as myc
 threads through soil. Not a single monolith that requires careful installation, but a
 spore that germinates wherever Rust can run.
 
-BarraCUDA is the **unified math language** of that organism — one set of WGSL shaders,
+BarraCuda is the **unified math language** of that organism — one set of WGSL shaders,
 one f64-first numeric stack, running identically on NVIDIA, AMD, Intel, Apple, WebGPU.
 
 The sovereign endpoint: **zero dependency on any vendor SDK for correctness or
@@ -34,7 +34,7 @@ That revealed three sovereign principles:
 ### Principle 1 — We are upstream of every compiler
 
 NAK operates at the SPIR-V → machine-code boundary.
-BarraCUDA operates at the WGSL → naga → SPIR-V boundary.
+BarraCuda operates at the WGSL → naga → SPIR-V boundary.
 **Anything NAK's scheduler can do to SPIR-V, we can express directly in WGSL
 and it will work on every backend: NVK, RADV/ACO, PTXAS, Metal, DX12, WebGPU.**
 
@@ -64,7 +64,7 @@ waiting for vendor disclosure or compiler work.
 
 ---
 
-## Architecture: BarraCUDA WGSL Optimizer
+## Architecture: BarraCuda WGSL Optimizer
 
 ```
 User WGSL shader
@@ -267,7 +267,7 @@ We can drive it as a library: parse WGSL → get typed IR → transform IR →
 re-emit IR → hand to naga's SPIR-V backend. No new parser to write.
 
 **Outcome**: The sovereign compiler layer is complete. Any WGSL shader
-written for BarraCUDA is automatically optimised for the target GPU before
+written for BarraCuda is automatically optimised for the target GPU before
 the vendor driver ever sees it. NAK/ACO/PTXAS receive pre-scheduled SPIR-V
 and simply translate it 1-to-1 to machine code.
 
@@ -310,13 +310,13 @@ ToadStool's sovereign endpoint mirrors this:
      └──────────┘   │   │   · JSON-RPC 2.0 │               │
      ┌──────────┐   │   │   · tarpc        │               │
      │  NPU     │◄──┼──►│   · Unix sockets │               │
-     │ (Akida)  │   │   │   · BarraCUDA    │               │
+     │ (Akida)  │   │   │   · BarraCuda    │               │
      └──────────┘   │   └──────────────────┘               │
      ┌──────────┐   │            │                          │
      │  CPU     │◄──┘            │ self-describes           │
      │ (WASM)   │                ▼                          │
      └──────────┘   ┌──────────────────────┐               │
-                    │  BarraCUDA           │               │
+                    │  BarraCuda           │               │
                     │  WGSL Math Engine    │               │
                     │  · 480+ shaders      │               │
                     │  · WgslOptimizer     │               │
@@ -331,7 +331,7 @@ ToadStool's sovereign endpoint mirrors this:
 - Single Rust binary, `#[no_std]`-compatible core, cross-compiled to any target
 - ToadStool spawns on a new node, discovers its hardware, announces itself to
   the ecosystem via mDNS or Songbird — no config file needed
-- BarraCUDA shaders compile at first-run on the target GPU via wgpu's Vulkan
+- BarraCuda shaders compile at first-run on the target GPU via wgpu's Vulkan
   backend — no pre-compiled binaries needed
 - The `WgslOptimizer` adapts to the GPU it finds — `bench_f64_builtins` runs
   once, populates `MeasuredLatencyModel`, subsequent shaders are pre-scheduled
@@ -369,7 +369,7 @@ at different abstraction levels. What we share back:
 3. **Phase 2-4 roadmap** — f64 FMA selection, loop unrolling, dual-issue;
    provided as Mesa MR with benchmarks
 
-The timeline: BarraCUDA's WGSL optimizer makes our applications fast
+The timeline: BarraCuda's WGSL optimizer makes our applications fast
 regardless of NAK's state. As NAK improves, our applications get faster
 without changes. Both paths converge on the same hardware target.
 
@@ -388,4 +388,4 @@ without changes. Both paths converge on the same hardware target.
 ---
 
 *Sovereign compute means: we write the math, any hardware runs it, no vendor
-can take it away. That is BarraCUDA's contract with ToadStool.*
+can take it away. That is BarraCuda's contract with ToadStool.*

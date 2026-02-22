@@ -1,4 +1,4 @@
-# barraCUDA Unsafe Code Analysis
+# barraCuda Unsafe Code Analysis
 
 **Date**: January 12, 2026  
 **Question**: "Does this mean we still have unsafe code? Does wgpu have a pure Rust, pure safe AND fast alternative? How much effort to evolve completely?"
@@ -11,7 +11,7 @@
 
 ### Our Code Analysis
 
-**barraCUDA Application Code** (showcase/gpu-universal/ml-inference/src/):
+**barraCuda Application Code** (showcase/gpu-universal/ml-inference/src/):
 ```bash
 Total unsafe blocks: 0
 Total unsafe functions: 0
@@ -33,11 +33,11 @@ Total unsafe traits: 0
 
 ## 🏗️ The Architecture: Layered Safety
 
-### How barraCUDA Achieves Zero Unsafe
+### How barraCuda Achieves Zero Unsafe
 
 ```
 ┌─────────────────────────────────────────┐
-│   barraCUDA Application Layer           │
+│   barraCuda Application Layer           │
 │   (OUR CODE)                            │
 │   ✅ 100% Safe Rust                     │
 │   ✅ 0 unsafe blocks                    │
@@ -315,11 +315,11 @@ A: No - that's the wrong abstraction boundary.
 
 ---
 
-## 📊 Comparison: barraCUDA vs CUDA
+## 📊 Comparison: barraCuda vs CUDA
 
 ### Safety Analysis
 
-| Aspect | CUDA (C++) | barraCUDA (Rust + wgpu) |
+| Aspect | CUDA (C++) | barraCuda (Rust + wgpu) |
 |--------|------------|-------------------------|
 | **Application unsafe** | ❌ Everywhere | ✅ 0 blocks |
 | **Memory safety** | ❌ Manual | ✅ Guaranteed |
@@ -331,7 +331,7 @@ A: No - that's the wrong abstraction boundary.
 | **Type safety** | ⚠️  Weak | ✅ Strong |
 | **Error handling** | ⚠️  Manual | ✅ Result<T,E> |
 
-**Verdict**: barraCUDA is **massively safer** than CUDA while matching performance.
+**Verdict**: barraCuda is **massively safer** than CUDA while matching performance.
 
 ---
 
@@ -411,7 +411,7 @@ We have 0 unsafe in our code, which is the ideal state. Eliminating wgpu's inter
 
 ## 📚 Key Insights
 
-1. **We have 0 unsafe** in barraCUDA application code ✅
+1. **We have 0 unsafe** in barraCuda application code ✅
 
 2. **wgpu's internal unsafe is unavoidable** for GPU work (and properly encapsulated) ✅
 
@@ -460,6 +460,6 @@ It means:
 
 ---
 
-**barraCUDA: Zero unsafe in application. Full GPU performance. Vendor-agnostic. Production-ready.** 🦈
+**barraCuda: Zero unsafe in application. Full GPU performance. Vendor-agnostic. Production-ready.** 🦈
 
 _For questions about this analysis, see the discussion in BARRACUDA_MISSION.md line 102._

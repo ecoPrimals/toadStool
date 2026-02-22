@@ -2,7 +2,7 @@
 //!
 //! This module implements homomorphic encryption across different substrates:
 //! - CPU: Pure Rust baseline
-//! - GPU: barraCUDA acceleration (our internal framework) ⭐
+//! - GPU: barraCuda acceleration (our internal framework) ⭐
 //! - NPU: Akida neuromorphic event-driven processing
 
 pub mod cpu;

@@ -1,6 +1,6 @@
 //! Focal Loss v2 - Enhanced focal loss with alpha balancing
 //!
-//! **Canonical BarraCUDA Pattern**: Struct with new/execute
+//! **Canonical BarraCuda Pattern**: Struct with new/execute
 //!
 //! Improved version with class balancing parameter.
 

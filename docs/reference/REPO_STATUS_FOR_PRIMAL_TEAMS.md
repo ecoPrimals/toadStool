@@ -43,7 +43,7 @@ git clone git@github.com:ecoPrimals/toadStool.git
 ✅ **What they SHOULD get**:
 ```
 ✅ Fractal Composition (our evolution!)
-✅ barraCUDA (our GPU framework!)
+✅ barraCuda (our GPU framework!)
 ✅ Source code only
 ✅ Documentation
 ✅ Tests
@@ -148,7 +148,7 @@ git push origin master --force
 - Plugin system
 - **Usage**: Copy patterns for their primals
 
-✅ **barraCUDA**:
+✅ **barraCuda**:
 - Vendor-agnostic GPU compute
 - Pure Rust tensor operations
 - WGSL shaders
@@ -239,7 +239,7 @@ du -sh .git/
 
 ✅ **YES!** All our work is tracked:
 - Fractal Composition (all 9 modules)
-- barraCUDA (all 18 operations + tests)
+- barraCuda (all 18 operations + tests)
 - Tests (all 255 comprehensive tests)
 - Documentation (complete fossil record)
 - Evolution fixes (both applied)

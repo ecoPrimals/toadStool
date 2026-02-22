@@ -9,7 +9,7 @@
 
 ## 🎯 Executive Summary
 
-**Key Achievement**: BarraCUDA is the **ONLY framework with GPU-accelerated FHE operations** that runs on **AMD and NVIDIA**.
+**Key Achievement**: BarraCuda is the **ONLY framework with GPU-accelerated FHE operations** that runs on **AMD and NVIDIA**.
 
 ### Critical Findings
 
@@ -25,13 +25,13 @@
 
 | Framework | GPU Support | Multi-Vendor | FHE Ops Built-in |
 |-----------|-------------|--------------|------------------|
-| **BarraCUDA** | ✅ Yes | ✅ AMD + NVIDIA | ✅ 6 operations |
+| **BarraCuda** | ✅ Yes | ✅ AMD + NVIDIA | ✅ 6 operations |
 | CUDA | ❌ No | ❌ NVIDIA only | ❌ 0 operations |
 | Concrete | ❌ CPU only | ❌ N/A | ✅ Full TFHE |
 | TFHE-rs | ❌ CPU only | ❌ N/A | ✅ Full TFHE |
 | SEAL | ❌ CPU only | ❌ N/A | ✅ Full BFV/CKKS |
 
-**BarraCUDA Unique Selling Point**:  
+**BarraCuda Unique Selling Point**:  
 > "The **ONLY** GPU-accelerated FHE framework with multi-vendor support"
 
 ---
@@ -182,9 +182,9 @@ Actual: 59
 
 ## 🎯 Competitive Analysis
 
-### BarraCUDA vs CUDA
+### BarraCuda vs CUDA
 
-| Feature | CUDA | BarraCUDA |
+| Feature | CUDA | BarraCuda |
 |---------|------|-----------|
 | **FHE Operations** | ❌ 0 | ✅ 6 |
 | **Multi-vendor GPU** | ❌ NVIDIA only | ✅ AMD + NVIDIA |
@@ -193,16 +193,16 @@ Actual: 59
 
 **Key Insight**: CUDA has **ZERO** FHE operations. You must implement yourself AND lock into NVIDIA.
 
-### BarraCUDA vs Concrete/TFHE-rs
+### BarraCuda vs Concrete/TFHE-rs
 
-| Feature | Concrete | TFHE-rs | BarraCUDA |
+| Feature | Concrete | TFHE-rs | BarraCuda |
 |---------|----------|---------|-----------|
 | **GPU Acceleration** | ❌ No | ❌ No | ✅ Yes |
 | **Multi-GPU Vendor** | ❌ No | ❌ No | ✅ AMD + NVIDIA |
 | **Auto Hardware Selection** | ❌ No | ❌ No | ✅ Scheduler |
 | **Production FHE** | ✅ Full | ✅ Full | ⚠️ Basic (6 ops) |
 
-**Key Insight**: BarraCUDA is the **ONLY** GPU-accelerated FHE framework, but Concrete/TFHE-rs have **more complete** FHE schemes (BFV, CKKS).
+**Key Insight**: BarraCuda is the **ONLY** GPU-accelerated FHE framework, but Concrete/TFHE-rs have **more complete** FHE schemes (BFV, CKKS).
 
 ---
 
@@ -299,7 +299,7 @@ ops_per_joule, correctness, input_a, input_b, expected, actual
    - Cloud servers: GPU (high throughput)
    - Hybrid: Use scheduler to select optimal hardware
 
-### 4. BarraCUDA Unique Position
+### 4. BarraCuda Unique Position
 
 ✅ **Only framework** with GPU-accelerated FHE on multiple vendors  
 ✅ **Competitive advantage** vs CUDA (0 FHE ops) and Concrete (CPU only)  
@@ -340,7 +340,7 @@ ops_per_joule, correctness, input_a, input_b, expected, actual
 2. **TFHE-rs**: Pure Rust, community-maintained
 3. **SEAL** (Microsoft): BFV/CKKS, C++
 
-**Strategy**: BarraCUDA provides **GPU acceleration layer** for these libraries
+**Strategy**: BarraCuda provides **GPU acceleration layer** for these libraries
 
 ---
 
@@ -384,11 +384,11 @@ Ops per Joule (higher is better)
 2. ✅ **GPU acceleration validated** (2.7-3.3x speedup)
 3. ✅ **AMD advantage confirmed** (1.2x faster than NVIDIA)
 4. ✅ **Cross-platform portability proven** (CPU + NVIDIA + AMD)
-5. ✅ **BarraCUDA unique position** (only GPU-accelerated FHE)
+5. ✅ **BarraCuda unique position** (only GPU-accelerated FHE)
 
 ### Competitive Position
 
-**BarraCUDA is the ONLY framework that offers**:
+**BarraCuda is the ONLY framework that offers**:
 - ✅ GPU-accelerated FHE operations
 - ✅ Multi-vendor GPU support (AMD + NVIDIA)
 - ✅ Automatic hardware selection (scheduler)

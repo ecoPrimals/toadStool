@@ -1,6 +1,6 @@
 // 🔐 NPU Validation via Akida - REAL HARDWARE
 //
-// Three-way comparison: CPU (TFHE-rs) vs GPU (BarraCUDA) vs NPU (Akida)
+// Three-way comparison: CPU (TFHE-rs) vs GPU (BarraCuda) vs NPU (Akida)
 // All substrates use REAL hardware execution and REAL power measurement.
 //
 // Deep Debt Compliance:
@@ -88,7 +88,7 @@ fn query_npu_power(pcie_address: &str) -> f32 {
 fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  NPU Validation via Akida - REAL HARDWARE              ║");
-    println!("║  CPU (TFHE-rs) vs GPU (BarraCUDA) vs NPU (Akida)      ║");
+    println!("║  CPU (TFHE-rs) vs GPU (BarraCuda) vs NPU (Akida)      ║");
     println!("╚══════════════════════════════════════════════════════════╝\n");
 
     println!("📊 Purpose: Validate Akida NPU's energy efficiency for encrypted compute\n");
@@ -203,7 +203,7 @@ fn bench_cpu(client_key: &tfhe::ClientKey, iterations: usize) -> Result<BenchRes
 
 /// GPU benchmark: Real TFHE-rs execution with nvidia-smi power measurement
 /// Note: FHE polynomial operations use CPU (TFHE-rs). GPU power is measured
-/// to establish the baseline for GPU-accelerated FHE (see BarraCUDA FHE ops).
+/// to establish the baseline for GPU-accelerated FHE (see BarraCuda FHE ops).
 fn bench_gpu_real(client_key: &tfhe::ClientKey, iterations: usize) -> Result<BenchResult> {
     let enc_a = FheUint8::encrypt(42u8, client_key);
     let enc_b = FheUint8::encrypt(128u8, client_key);

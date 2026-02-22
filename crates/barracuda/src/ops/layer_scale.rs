@@ -1,6 +1,6 @@
 //! LayerScale - Per-layer learnable scaling
 //!
-//! **Canonical BarraCUDA Pattern**: Struct with new/execute
+//! **Canonical BarraCuda Pattern**: Struct with new/execute
 //!
 //! Used in vision transformers (CaiT, LeViT) to stabilize training.
 //!

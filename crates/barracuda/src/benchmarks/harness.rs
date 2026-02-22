@@ -60,7 +60,7 @@ impl Harness {
         Ok(BenchmarkResult {
             operation: name.to_string(),
             hardware: String::new(),
-            framework: super::Framework::BarraCUDA,
+            framework: super::Framework::BarraCuda,
             median_time: median,
             mean_time,
             std_dev,

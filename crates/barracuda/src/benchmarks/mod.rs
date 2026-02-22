@@ -1,9 +1,9 @@
-//! BarraCUDA vs CUDA Benchmarking Framework
+//! BarraCuda vs CUDA Benchmarking Framework
 //!
-//! **Purpose**: Compare BarraCUDA performance against CUDA across hardware
+//! **Purpose**: Compare BarraCuda performance against CUDA across hardware
 //!
 //! This module provides comprehensive benchmarking tools to:
-//! - Compare BarraCUDA (WGSL/WebGPU) vs CUDA performance
+//! - Compare BarraCuda (WGSL/WebGPU) vs CUDA performance
 //! - Test across different hardware (NVIDIA, AMD, Intel, Apple)
 //! - Measure operation throughput, latency, and efficiency
 //! - Generate performance reports and visualizations
@@ -74,7 +74,7 @@ pub struct BenchmarkResult {
     /// Hardware name (e.g., "NVIDIA RTX 4090", "AMD RX 7900 XTX")
     pub hardware: String,
 
-    /// Framework (BarraCUDA or CUDA)
+    /// Framework (BarraCuda or CUDA)
     pub framework: Framework,
 
     /// Median execution time
@@ -105,7 +105,7 @@ pub struct BenchmarkResult {
 /// Framework identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Framework {
-    BarraCUDA,
+    BarraCuda,
     CUDA,
     PyTorchCUDA,
     TensorFlowCUDA,
@@ -114,7 +114,7 @@ pub enum Framework {
 impl std::fmt::Display for Framework {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Framework::BarraCUDA => write!(f, "BarraCUDA"),
+            Framework::BarraCuda => write!(f, "BarraCuda"),
             Framework::CUDA => write!(f, "CUDA"),
             Framework::PyTorchCUDA => write!(f, "PyTorch+CUDA"),
             Framework::TensorFlowCUDA => write!(f, "TensorFlow+CUDA"),
@@ -131,18 +131,18 @@ pub struct ComparisonResult {
     /// Hardware name
     pub hardware: String,
 
-    /// BarraCUDA result
+    /// BarraCuda result
     pub barracuda: BenchmarkResult,
 
     /// CUDA result
     pub cuda: Option<BenchmarkResult>,
 
-    /// Speedup (positive = BarraCUDA faster, negative = CUDA faster)
-    /// 2.0 = BarraCUDA is 2x faster
+    /// Speedup (positive = BarraCuda faster, negative = CUDA faster)
+    /// 2.0 = BarraCuda is 2x faster
     /// -2.0 = CUDA is 2x faster
     pub speedup: f64,
 
-    /// Parity percentage (100% = same speed, >100% = BarraCUDA faster)
+    /// Parity percentage (100% = same speed, >100% = BarraCuda faster)
     pub parity_percent: f64,
 }
 
@@ -174,7 +174,7 @@ impl ComparisonResult {
         }
     }
 
-    /// Check if BarraCUDA achieves target parity (e.g., 90%)
+    /// Check if BarraCuda achieves target parity (e.g., 90%)
     pub fn achieves_parity(&self, target_percent: f64) -> bool {
         self.parity_percent >= target_percent
     }
@@ -197,7 +197,7 @@ impl BenchmarkSuite {
 
     /// Run all benchmarks
     pub async fn run_all(&mut self) -> Result<()> {
-        println!("🚀 Starting BarraCUDA vs CUDA Benchmark Suite");
+        println!("🚀 Starting BarraCuda vs CUDA Benchmark Suite");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         println!();
 
@@ -315,7 +315,7 @@ impl BenchmarkSuite {
             let result = BenchmarkResult {
                 operation: format!("Sum [size={}]", size),
                 hardware: "CPU".to_string(),
-                framework: Framework::BarraCUDA,
+                framework: Framework::BarraCuda,
                 median_time,
                 min_time,
                 max_time,
@@ -386,7 +386,7 @@ impl BenchmarkSuite {
             let result = BenchmarkResult {
                 operation: format!("Conv1D [in={}, k={}]", input_size, kernel_size),
                 hardware: "CPU".to_string(),
-                framework: Framework::BarraCUDA,
+                framework: Framework::BarraCuda,
                 median_time,
                 min_time,
                 max_time,
@@ -518,7 +518,7 @@ mod tests {
 
     #[test]
     fn test_framework_display() {
-        assert_eq!(Framework::BarraCUDA.to_string(), "BarraCUDA");
+        assert_eq!(Framework::BarraCuda.to_string(), "BarraCuda");
         assert_eq!(Framework::CUDA.to_string(), "CUDA");
     }
 }

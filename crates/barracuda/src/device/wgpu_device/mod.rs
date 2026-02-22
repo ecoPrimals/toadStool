@@ -125,11 +125,11 @@ impl WgpuDevice {
         bind_groups: &[&wgpu::BindGroup],
         workgroups: (u32, u32, u32),
     ) -> Result<()> {
-        let shader = self.compile_shader(shader_source, Some("barraCUDA Operation"));
+        let shader = self.compile_shader(shader_source, Some("barraCuda Operation"));
         let pipeline = self
             .device
             .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("barraCUDA Pipeline"),
+                label: Some("barraCuda Pipeline"),
                 layout: None,
                 module: &shader,
                 entry_point: "main",
@@ -140,12 +140,12 @@ impl WgpuDevice {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("barraCUDA Encoder"),
+                label: Some("barraCuda Encoder"),
             });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("barraCUDA Compute"),
+                label: Some("barraCuda Compute"),
                 timestamp_writes: None,
             });
             pass.set_pipeline(&pipeline);
@@ -210,7 +210,7 @@ mod tests {
         else {
             return;
         };
-        println!("barraCUDA device: {}", device.name());
+        println!("barraCuda device: {}", device.name());
         if device.is_cpu() {
             println!("  Using CPU software rasterizer");
         } else {

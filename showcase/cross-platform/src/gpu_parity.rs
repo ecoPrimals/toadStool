@@ -1,7 +1,7 @@
 //! GPU Parity Test: NVIDIA vs AMD
 //!
 //! Verifies that the same WGSL shader produces identical results on both GPUs.
-//! This is the core promise of BarraCUDA: write once, run anywhere.
+//! This is the core promise of BarraCuda: write once, run anywhere.
 
 use anyhow::Result;
 use barracuda::device::WgpuDevice;
@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     println!("╔═══════════════════════════════════════════════════════════════╗");
-    println!("║  BarraCUDA GPU Parity Test                                    ║");
+    println!("║  BarraCuda GPU Parity Test                                    ║");
     println!("║  Same WGSL, Same Math, Same Results                           ║");
     println!("╚═══════════════════════════════════════════════════════════════╝");
     println!();
@@ -118,7 +118,7 @@ async fn main() -> Result<()> {
     if matches && add_matches {
         println!("  ALL TESTS PASSED!");
         println!();
-        println!("  BarraCUDA Promise Validated:");
+        println!("  BarraCuda Promise Validated:");
         println!("  → Same WGSL shader code");
         println!("  → Hardware-agnostic execution");
         println!("  → Consistent numerical output");

@@ -90,7 +90,7 @@ chrono = { version = "0.4", features = ["serde"] }
 # Migration: sys_info::mem_info() → System::new_all() + refresh_memory()
 sysinfo = { workspace = true }
 
-# GPU detection via barraCUDA (vendor-agnostic)
+# GPU detection via barraCuda (vendor-agnostic)
 wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅
 futures = "0.3"
 

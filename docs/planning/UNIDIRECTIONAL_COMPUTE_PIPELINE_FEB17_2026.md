@@ -240,7 +240,7 @@ impl PrepStation {
 }
 ```
 
-### GPU Compute (BarraCUDA)
+### GPU Compute (BarraCuda)
 
 ```rust
 /// GPU compute with display output

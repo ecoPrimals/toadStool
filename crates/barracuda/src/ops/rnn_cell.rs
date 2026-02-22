@@ -1,6 +1,6 @@
 //! RNN Cell - Basic recurrent neural network cell
 //!
-//! **Canonical BarraCUDA Pattern**: Struct with new/execute
+//! **Canonical BarraCuda Pattern**: Struct with new/execute
 //!
 //! ## Algorithm
 //!

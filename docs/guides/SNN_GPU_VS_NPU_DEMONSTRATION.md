@@ -1,13 +1,13 @@
 # SNN on GPU vs NPU Demonstration
 
 **Date**: February 3, 2026  
-**Purpose**: Prove BarraCUDA's universality by running SNNs on both GPU and NPU
+**Purpose**: Prove BarraCuda's universality by running SNNs on both GPU and NPU
 
 ---
 
 ## 🎯 Objective
 
-Demonstrate that BarraCUDA can run **any workload on any hardware**, even when suboptimal. This proves TRUE portability.
+Demonstrate that BarraCuda can run **any workload on any hardware**, even when suboptimal. This proves TRUE portability.
 
 **Key Question**: Can we run SNNs on GPU and ML on NPU?
 
@@ -48,7 +48,7 @@ Demonstrate that BarraCUDA can run **any workload on any hardware**, even when s
 - Must simulate spike behavior using dense operations
 - Processes ALL neurons every timestep (even silent ones)
 - High power consumption
-- **But BarraCUDA can still do it!** (Portability)
+- **But BarraCuda can still do it!** (Portability)
 
 ### NPU (Neuromorphic Processor)
 
@@ -72,14 +72,14 @@ Demonstrate that BarraCUDA can run **any workload on any hardware**, even when s
 
 | Hardware | Latency | Power | Energy/Inf | Advantage |
 |----------|---------|-------|------------|-----------|
-| **GPU (BarraCUDA)** | ~1000 µs | 250W | ~0.25 mJ | Portability |
+| **GPU (BarraCuda)** | ~1000 µs | 250W | ~0.25 mJ | Portability |
 | **NPU (Akida)** | ~10 µs | 0.5W | ~0.005 mJ | **50-100x better** |
 
 ### ML Inference Performance
 
 | Hardware | Latency | Power | Energy/Inf | Advantage |
 |----------|---------|-------|------------|-----------|
-| **GPU (BarraCUDA)** | ~100 µs | 250W | ~0.025 mJ | High throughput |
+| **GPU (BarraCuda)** | ~100 µs | 250W | ~0.025 mJ | High throughput |
 | **NPU (Akida)** | ~60 µs | 0.5W | ~0.03 µJ | **1.5x faster, 1000x efficient** |
 
 ---
@@ -102,11 +102,11 @@ cargo run --release --bin snn_gpu_vs_npu
 
 ```
 ╔══════════════════════════════════════════════════════════════╗
-║  🦈 BarraCUDA: SNN on GPU vs NPU Demonstration             ║
+║  🦈 BarraCuda: SNN on GPU vs NPU Demonstration             ║
 ║  Proving universality & understanding hardware limits       ║
 ╚══════════════════════════════════════════════════════════════╝
 
-🎯 Objective: Show BarraCUDA can run ANY workload on ANY hardware
+🎯 Objective: Show BarraCuda can run ANY workload on ANY hardware
    Even when suboptimal - this is TRUE portability!
 
 📋 Test Configuration:
@@ -115,7 +115,7 @@ cargo run --release --bin snn_gpu_vs_npu
   - Spike threshold: 1.0
   - Leak rate: 0.9
 
-🖥️  Running SNN on GPU (BarraCUDA/WGSL)...
+🖥️  Running SNN on GPU (BarraCuda/WGSL)...
   ✅ Completed 100 timesteps
   ⏱️  Time per inference: 850.00 µs
   📊 Total spikes: 1247
@@ -133,7 +133,7 @@ cargo run --release --bin snn_gpu_vs_npu
 
 Hardware                | Inference Time | Throughput    | Energy/Inf
 -----------------------|----------------|---------------|------------
-GPU (BarraCUDA)        |     850.00 µs |      1176 inf/s |   0.2125 mJ
+GPU (BarraCuda)        |     850.00 µs |      1176 inf/s |   0.2125 mJ
 NPU (Akida Native)     |      10.50 µs |     95238 inf/s |   0.0053 mJ
 
 🏆 NPU Advantages for SNNs:
@@ -146,7 +146,7 @@ NPU (Akida Native)     |      10.50 µs |     95238 inf/s |   0.0053 mJ
 ═══════════════════════════════════════════════════════════════
 
 ✅ PORTABILITY:
-   BarraCUDA can run SNNs on GPU even though it's suboptimal
+   BarraCuda can run SNNs on GPU even though it's suboptimal
    This proves TRUE hardware universality!
 
 ✅ OPTIMIZATION:
@@ -156,7 +156,7 @@ NPU (Akida Native)     |      10.50 µs |     95238 inf/s |   0.0053 mJ
 ✅ FLEXIBILITY:
    GPU: Good for standard ML + can handle SNNs
    NPU: Exceptional for SNNs + can handle standard ML
-   BarraCUDA: Works on BOTH!
+   BarraCuda: Works on BOTH!
 ```
 
 ---
@@ -165,7 +165,7 @@ NPU (Akida Native)     |      10.50 µs |     95238 inf/s |   0.0053 mJ
 
 ### 1. **Portability**
 
-✅ **BarraCUDA can run SNNs on GPU**
+✅ **BarraCuda can run SNNs on GPU**
 - Even though GPU isn't optimized for SNNs
 - Proves true hardware universality
 - Useful for prototyping and debugging
@@ -177,7 +177,7 @@ NPU (Akida Native)     |      10.50 µs |     95238 inf/s |   0.0053 mJ
 - Event-driven architecture
 - Ultra-low power consumption
 
-### 3. **BarraCUDA Handles Both**
+### 3. **BarraCuda Handles Both**
 
 ✅ **One codebase, any hardware**
 - SNN on GPU: Suboptimal but possible
@@ -218,7 +218,7 @@ let ml_result = ctx.matmul(&a, &b)?;  // → GPU
 
 ### For SNN Prototyping/Research
 
-**Use GPU (BarraCUDA)**:
+**Use GPU (BarraCuda)**:
 - ✅ More accessible hardware
 - ✅ Easier debugging
 - ✅ Better development tools
@@ -232,7 +232,7 @@ let ml_result = ctx.matmul(&a, &b)?;  // → GPU
 
 ### For Mixed Workloads
 
-**Use BarraCUDA Auto-Tensor API**:
+**Use BarraCuda Auto-Tensor API**:
 - ✅ Automatic hardware selection
 - ✅ Routes SNNs to NPU
 - ✅ Routes standard ML to GPU
@@ -267,7 +267,7 @@ else:
 - `neurons`: 1000 (network size)
 - `timesteps`: 100 (simulation length)
 
-### GPU Implementation (BarraCUDA)
+### GPU Implementation (BarraCuda)
 
 **Approach**: Simulate SNN using dense operations
 ```rust
@@ -315,7 +315,7 @@ for spike in active_spikes {
 
 ### What We Proved
 
-✅ **BarraCUDA can run SNNs on GPU**
+✅ **BarraCuda can run SNNs on GPU**
 - Suboptimal but functional
 - True portability
 
@@ -329,7 +329,7 @@ for spike in active_spikes {
 - 60 µs per inference
 - 3x faster than GPU for batch=1
 
-✅ **BarraCUDA handles both**
+✅ **BarraCuda handles both**
 - One codebase
 - Any hardware
 - Automatic selection
@@ -338,7 +338,7 @@ for spike in active_spikes {
 
 ## 📊 Summary Table
 
-| Workload Type | Optimal Hardware | BarraCUDA Support | Performance Ratio |
+| Workload Type | Optimal Hardware | BarraCuda Support | Performance Ratio |
 |---------------|------------------|-------------------|-------------------|
 | **Standard ML (training)** | GPU | ✅ Native | Baseline |
 | **Standard ML (inference)** | GPU or NPU | ✅ Native | NPU 1.5x faster @ batch=1 |
@@ -368,7 +368,7 @@ for spike in active_spikes {
 
 ## 📝 Key Takeaways
 
-1. **Portability**: BarraCUDA can run ANY workload on ANY hardware
+1. **Portability**: BarraCuda can run ANY workload on ANY hardware
 2. **Optimization**: Specialized hardware matters (NPU 50-100x better for SNNs)
 3. **Flexibility**: Same code on GPU and NPU
 4. **Intelligence**: Auto-Tensor API routes optimally

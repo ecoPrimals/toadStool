@@ -30,7 +30,7 @@ use std::sync::Arc;
 #[tokio::main]
 async fn main() {
     println!("=================================================================");
-    println!(" BarraCUDA F64 Built-in Capability Survey");
+    println!(" BarraCuda F64 Built-in Capability Survey");
     println!(" WGSL → naga → SPIR-V → Vulkan path (bypasses proprietary lock)");
     println!("=================================================================\n");
 

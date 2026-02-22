@@ -57,7 +57,7 @@ impl WgpuDevice {
 
         let adapter_info = adapter.get_info();
         log::info!(
-            "barraCUDA (cpu-relaxed): {} ({:?})",
+            "barraCuda (cpu-relaxed): {} ({:?})",
             adapter_info.name,
             adapter_info.device_type
         );
@@ -74,7 +74,7 @@ impl WgpuDevice {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    label: Some("barraCUDA cpu-relaxed"),
+                    label: Some("barraCuda cpu-relaxed"),
                     required_features,
                     required_limits: wgpu::Limits::downlevel_defaults(),
                     memory_hints: Default::default(),
@@ -117,7 +117,7 @@ impl WgpuDevice {
 
         let info = adapter.get_info();
         log::info!(
-            "BarraCUDA (high-capacity): {} ({:?})",
+            "BarraCuda (high-capacity): {} ({:?})",
             info.name,
             info.device_type
         );
@@ -138,7 +138,7 @@ impl WgpuDevice {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    label: Some("BarraCUDA high-capacity device"),
+                    label: Some("BarraCuda high-capacity device"),
                     required_features,
                     required_limits: limits,
                     memory_hints: Default::default(),
@@ -366,7 +366,7 @@ impl WgpuDevice {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    label: Some("BarraCUDA device"),
+                    label: Some("BarraCuda device"),
                     required_features,
                     required_limits: super::super::tensor_context::science_limits(),
                     memory_hints: Default::default(),
@@ -410,7 +410,7 @@ impl WgpuDevice {
 
         let adapter_info = adapter.get_info();
         log::info!(
-            "barraCUDA initialized: {} ({:?})",
+            "barraCuda initialized: {} ({:?})",
             adapter_info.name,
             adapter_info.device_type
         );
@@ -431,7 +431,7 @@ impl WgpuDevice {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    label: Some("barraCUDA Device"),
+                    label: Some("barraCuda Device"),
                     required_features,
                     required_limits: super::super::tensor_context::science_limits(),
                     memory_hints: Default::default(),

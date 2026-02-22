@@ -1,11 +1,11 @@
 #!/bin/bash
-# barraCUDA Universal Benchmark Suite
+# barraCuda Universal Benchmark Suite
 # Tests all operations across all available hardware
 
 set -e
 
 echo "═══════════════════════════════════════════════════════════════"
-echo "🦈 barraCUDA UNIVERSAL COMPUTE BENCHMARK"
+echo "🦈 barraCuda UNIVERSAL COMPUTE BENCHMARK"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
 echo "Hardware Detected:"
@@ -124,7 +124,7 @@ echo ""
 
 # Create summary
 cat > "$RESULTS_DIR/SUMMARY.md" << 'EOF'
-# barraCUDA Universal Compute Benchmark Results
+# barraCuda Universal Compute Benchmark Results
 
 ## Hardware Configuration
 

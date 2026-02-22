@@ -1,6 +1,6 @@
 //! hotSpring Integration Bridge
 //!
-//! Connects ToadStool's BarraCUDA to hotSpring's MD validation suite.
+//! Connects ToadStool's BarraCuda to hotSpring's MD validation suite.
 //! This allows running hotSpring's control experiments through ToadStool
 //! for cross-validation.
 
@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
 
     println!("╔═══════════════════════════════════════════════════════════════╗");
     println!("║  hotSpring ↔ ToadStool Integration Bridge                     ║");
-    println!("║  MD Validation via BarraCUDA                                  ║");
+    println!("║  MD Validation via BarraCuda                                  ║");
     println!("╚═══════════════════════════════════════════════════════════════╝");
     println!();
 
@@ -79,14 +79,14 @@ async fn main() -> Result<()> {
     println!("═══ Integration Status ═══");
     println!();
     println!("  hotSpring repo:       ✅ Found");
-    println!("  BarraCUDA dependency: ✅ Linked (path = ../../phase1/toadstool/crates/barracuda)");
+    println!("  BarraCuda dependency: ✅ Linked (path = ../../phase1/toadstool/crates/barracuda)");
     println!("  GPU device:           ✅ {} available", device.name());
     println!();
 
     // Quick health check: run a mini validation
     println!("═══ Quick Health Check ═══");
     println!();
-    println!("  Testing BarraCUDA tensor creation...");
+    println!("  Testing BarraCuda tensor creation...");
 
     let test_data: Vec<f32> = (0..100).map(|i| i as f32).collect();
     let tensor = barracuda::tensor::Tensor::from_data(&test_data, vec![10, 10], device.clone())?;

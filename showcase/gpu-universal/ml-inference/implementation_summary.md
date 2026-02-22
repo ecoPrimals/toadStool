@@ -1,4 +1,4 @@
-# barraCUDA Implementation Status
+# barraCuda Implementation Status
 
 ## Current Progress: 10/21 operations complete (48%)
 

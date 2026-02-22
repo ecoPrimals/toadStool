@@ -57,7 +57,7 @@ Toadstool achieves **universal GPU compute** through a **layered capability-base
 
 ## Layers Explained
 
-### Layer 1: Application (barraCUDA)
+### Layer 1: Application (barraCuda)
 
 **Location**: `crates/barracuda/`  
 **Responsibility**: High-level tensor operations  
@@ -338,7 +338,7 @@ println!("Selected: {} (score: {:.2})",
 
 ### Current State (2026)
 
-- ✅ **barraCUDA**: Pure WGSL via wgpu (universal)
+- ✅ **barraCuda**: Pure WGSL via wgpu (universal)
 - ✅ **runtime/gpu**: Optional CUDA/OpenCL for optimization
 - ✅ **Default**: wgpu (works everywhere, zero features)
 - ✅ **Optimization**: Compile with features for speed
@@ -432,7 +432,7 @@ async fn test_backend_failure_recovery() {
 
 ## Performance Expectations
 
-### barraCUDA (wgpu/WGSL)
+### barraCuda (wgpu/WGSL)
 
 - **NVIDIA GPU**: 85-95% of native CUDA
 - **AMD GPU**: 90-100% of native ROCm

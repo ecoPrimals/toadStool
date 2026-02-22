@@ -1,4 +1,4 @@
-# Quick Start: BarraCUDA Benchmarks
+# Quick Start: BarraCuda Benchmarks
 
 **Run AMD vs NVIDIA benchmarks in 5 minutes!**
 
@@ -50,7 +50,7 @@ cargo run --release --bin mnist_amd_vs_nvidia
 **Expected results:**
 - AMD: 2-4x faster for all batch sizes
 - AMD: 4x more energy efficient
-- Both: Same BarraCUDA code!
+- Both: Same BarraCuda code!
 
 **Time:** ~30 seconds
 
@@ -258,16 +258,16 @@ A: Lower kernel dispatch overhead, better small workgroup handling, Infinity Cac
 A: More compute units (2x), higher memory bandwidth (1.6x), better scaling with problem size.
 
 **Q: Can I run on just CPU?**  
-A: Yes! BarraCUDA falls back to CPU if no GPU available. Performance will be lower but it works.
+A: Yes! BarraCuda falls back to CPU if no GPU available. Performance will be lower but it works.
 
 **Q: Does this replace CUDA?**  
-A: Yes for portability! BarraCUDA matches CUDA performance on NVIDIA while also working on AMD, Intel, Apple.
+A: Yes for portability! BarraCuda matches CUDA performance on NVIDIA while also working on AMD, Intel, Apple.
 
 **Q: What about TPU?**  
 A: TPU support is built-in but requires hardware. Once TPU is available, benchmarks will work automatically.
 
 **Q: Can I use this for production?**  
-A: Absolutely! BarraCUDA is production-ready. Same code deploys to any hardware.
+A: Absolutely! BarraCuda is production-ready. Same code deploys to any hardware.
 
 ---
 
@@ -277,7 +277,7 @@ A: Absolutely! BarraCUDA is production-ready. Same code deploys to any hardware.
 
 ✅ **AMD 3.89x faster for edge inference**  
 ✅ **NVIDIA 2.5x faster for large training**  
-✅ **Same BarraCUDA code on both vendors**  
+✅ **Same BarraCuda code on both vendors**  
 ✅ **$6M savings for 10,000 edge devices**  
 
 ### Strategic Recommendation
@@ -285,7 +285,7 @@ A: Absolutely! BarraCUDA is production-ready. Same code deploys to any hardware.
 **Best Practice:**
 - Train models on NVIDIA (datacenter)
 - Deploy to AMD (edge devices)
-- Use same BarraCUDA code (zero porting!)
+- Use same BarraCuda code (zero porting!)
 - Optimize hardware per workload
 
 **vs CUDA:**
@@ -314,4 +314,4 @@ A: Absolutely! BarraCUDA is production-ready. Same code deploys to any hardware.
 
 ---
 
-🦈 **BarraCUDA: One code. All GPUs. Better performance.** 🦈
+🦈 **BarraCuda: One code. All GPUs. Better performance.** 🦈

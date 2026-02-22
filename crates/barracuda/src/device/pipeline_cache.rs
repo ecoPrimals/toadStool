@@ -1,4 +1,4 @@
-//! Pipeline Cache for BarraCUDA
+//! Pipeline Cache for BarraCuda
 //!
 //! Caches shader modules, bind group layouts, and compute pipelines
 //! to eliminate redundant GPU object creation.

@@ -1,4 +1,4 @@
-# BarraCUDA Performance Parity Roadmap
+# BarraCuda Performance Parity Roadmap
 
 **Date**: February 16, 2026  
 **Status**: GPU-RESIDENT PIPELINE COMPLETE + log_f64 BUG FIX  
@@ -10,7 +10,7 @@
 
 ### 0.0.6 Three Springs Validation Complete (Feb 16, 2026) — NEW
 
-**Three domain-specific validation projects now confirm BarraCUDA's compute stack:**
+**Three domain-specific validation projects now confirm BarraCuda's compute stack:**
 
 | Project | Domain | Rust Checks | Key Achievement |
 |---------|--------|:-----------:|-----------------|
@@ -18,7 +18,7 @@
 | **wetSpring** | Life science | 48/48 | Shannon/Simpson/Bray-Curtis at f64 |
 | **airSpring** | Precision agriculture | 70/70 | FAO-56 ET₀, soil, water balance |
 
-**Combined**: 313+ Rust acceptance checks. The same BarraCUDA primitives serve
+**Combined**: 313+ Rust acceptance checks. The same BarraCuda primitives serve
 nuclear physics, metagenomics, analytical chemistry, and precision agriculture.
 
 **airSpring GPU Acceleration Opportunities (Phase 3):**
@@ -225,7 +225,7 @@ is less optimized than AMD's open-source RADV.
 
 1. **AMD RADV (open-source Vulkan) achieves 77%+ of theoretical peak at scale**
    - Mesa developers have heavily optimized Vulkan compute paths
-   - BarraCUDA is already at near-parity on AMD hardware
+   - BarraCuda is already at near-parity on AMD hardware
 
 2. **NVIDIA proprietary Vulkan driver has significant overhead**
    - NVIDIA optimizes for CUDA, not Vulkan compute
@@ -241,7 +241,7 @@ is less optimized than AMD's open-source RADV.
 
 | Question | Answer |
 |----------|--------|
-| Does BarraCUDA reach parity at scale? | ✅ **YES on AMD, approaching on NVIDIA** |
+| Does BarraCuda reach parity at scale? | ✅ **YES on AMD, approaching on NVIDIA** |
 | Is the 10x gap fundamental? | ❌ **NO - it's overhead on small workloads** |
 | Which vendor benefits most from wgpu? | **AMD (open-source RADV is excellent)** |
 | Where should we focus optimization? | **NVIDIA queue submit overhead** |
@@ -316,7 +316,7 @@ methodology with validation.
 
 ### Comparison to CUDA Baseline
 
-| Metric | CUDA (RTX 3090) | BarraCUDA (RTX 3090) | Gap |
+| Metric | CUDA (RTX 3090) | BarraCuda (RTX 3090) | Gap |
 |--------|-----------------|----------------------|-----|
 | Bandwidth | ~800 GB/s | 176 GB/s | 4.5x |
 | Efficiency | 85% theoretical | 19% theoretical | - |
@@ -335,7 +335,7 @@ methodology with validation.
 
 ### Runtime Calibration System
 
-BarraCUDA now discovers optimal parameters at runtime rather than hardcoding vendor assumptions:
+BarraCuda now discovers optimal parameters at runtime rather than hardcoding vendor assumptions:
 
 ```rust
 // Auto-calibration on first use
@@ -368,8 +368,8 @@ println!("Peak BW: {} GB/s", cal.peak_bandwidth_gbps);
 | Backend | Device | Add (μs) | Mul (μs) | Bandwidth (GB/s) | Gap vs CUDA |
 |---------|--------|----------|----------|------------------|-------------|
 | **CUDA (native)** | RTX 3090 | 232 | 229 | 826-839 | Baseline |
-| BarraCUDA (wgpu) | RTX 3090 | 3097 | 2767 | 62-69 | **13x slower** |
-| BarraCUDA (wgpu) | RX 6950 XT | 1449 | 812 | 132-236 | **4-6x slower** |
+| BarraCuda (wgpu) | RTX 3090 | 3097 | 2767 | 62-69 | **13x slower** |
+| BarraCuda (wgpu) | RX 6950 XT | 1449 | 812 | 132-236 | **4-6x slower** |
 
 ### Size-Dependent Scaling
 
@@ -405,7 +405,7 @@ wgpu/Vulkan workflow:
 
 ### 2.3 Memory Bandwidth Utilization
 - CUDA: 763-828 GB/s (95% of theoretical 936 GB/s)
-- BarraCUDA: 62-187 GB/s (7-20% of theoretical)
+- BarraCuda: 62-187 GB/s (7-20% of theoretical)
 - Bottleneck: CPU-side command buffer setup, not GPU execution
 
 ---
@@ -551,7 +551,7 @@ rocprof --stats ./target/release/parity_benchmark
 
 ### hotSpring Validation
 ```
-# scipy-scale validation with BarraCUDA
+# scipy-scale validation with BarraCuda
 cd ../hotSpring
 cargo run --bin validate_hfb -- --backend barracuda
 ```
@@ -561,12 +561,12 @@ cargo run --bin validate_hfb -- --backend barracuda
 ## 7. Success Criteria
 
 **Phase 1 Complete** when:
-1. BarraCUDA achieves <3x CUDA latency on vector ops
+1. BarraCuda achieves <3x CUDA latency on vector ops
 2. Same code runs on both NVIDIA and AMD
 3. AMD performance within 20% of NVIDIA
 
 **Parity Achieved** when:
-1. BarraCUDA achieves <1.5x CUDA latency
+1. BarraCuda achieves <1.5x CUDA latency
 2. Memory bandwidth >70% theoretical
 3. hotSpring validates with <1% scipy deviation
 

@@ -49,7 +49,7 @@ cargo test -p toadstool-server
 cargo test -p toadstool-config
 cargo test -p toadstool-cli
 
-# BarraCUDA (lib tests work without GPU; shader tests require GPU)
+# BarraCuda (lib tests work without GPU; shader tests require GPU)
 cargo test -p barracuda --lib
 cargo test -p barracuda --lib ops::linalg --release
 cargo test -p barracuda --lib linalg numerical special optimize surrogate --release
@@ -482,7 +482,7 @@ let (df_drho, df_dz) = cyl.compute(&f_values, &rho_grid, d_rho, d_z).await?;
 ```rust
 use barracuda::device::{Device, WorkloadHint};
 
-// Auto-routing (BarraCUDA picks the best device)
+// Auto-routing (BarraCuda picks the best device)
 let device = Device::select_for_workload(&WorkloadHint::FFT);
 
 // User override (force CPU even if GPU is available)

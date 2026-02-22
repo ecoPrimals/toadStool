@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-**Purpose**: Document significant architectural decisions made in ToadStool/BarraCUDA
+**Purpose**: Document significant architectural decisions made in ToadStool/BarraCuda
 
 ---
 
@@ -184,7 +184,7 @@ Architecture Decision Records (ADRs) capture important architectural decisions a
 
 **Last Updated**: February 5, 2026
 
-**Maintainer**: ToadStool/BarraCUDA Core Team
+**Maintainer**: ToadStool/BarraCuda Core Team
 
 **Template Location**: See "Writing New ADRs" section above
 

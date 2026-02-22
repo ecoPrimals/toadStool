@@ -619,7 +619,7 @@ But the **pattern** can be validated and used with just software.
 
 ## Next Steps
 
-1. [ ] Implement `GpuRingBuffer` in BarraCUDA
+1. [ ] Implement `GpuRingBuffer` in BarraCuda
 2. [ ] Implement `UnidirectionalPipeline` 
 3. [ ] Add bandwidth throttling
 4. [ ] Benchmark against traditional pattern

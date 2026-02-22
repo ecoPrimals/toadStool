@@ -17,7 +17,7 @@ use toadstool_runtime_universal::types::*;
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Matrix Multiplication Demo          ║");
-    println!("║  barraCUDA Phase 1 - THE Fundamental Operation          ║");
+    println!("║  barraCuda Phase 1 - THE Fundamental Operation          ║");
     println!("╚══════════════════════════════════════════════════════════╝");
     println!();
 
@@ -320,7 +320,7 @@ async fn main() -> Result<()> {
 
     // Pattern Observations
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🎓 Pattern Observations (barraCUDA Learning)");
+    println!("🎓 Pattern Observations (barraCuda Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
@@ -354,7 +354,7 @@ async fn main() -> Result<()> {
     println!("  3. Softmax(scaled) → attention_weights (Softmax) ✅");
     println!("  4. attention_weights·V → output (MatMul) ✅");
     println!();
-    println!("  All operations now implemented in barraCUDA! 🎯");
+    println!("  All operations now implemented in barraCuda! 🎯");
     println!();
 
     println!("Key Insights:");
@@ -377,7 +377,7 @@ async fn main() -> Result<()> {
     println!("     • MatMul + LayerNorm (feed-forward)");
     println!();
 
-    println!("barraCUDA Opportunities:");
+    println!("barraCuda Opportunities:");
     println!("  • Fusion: MatMul + activation in single kernel");
     println!("  • Auto-tuning: Select tile size based on matrix shape");
     println!("  • Strassen: For very large square matrices (>1024)");
@@ -390,7 +390,7 @@ async fn main() -> Result<()> {
     println!();
     println!("MatMul is now implemented! This is THE fundamental operation.");
     println!();
-    println!("With MatMul complete, barraCUDA can now:");
+    println!("With MatMul complete, barraCuda can now:");
     println!("  ✅ Analyze complete Transformer architectures");
     println!("  ✅ Optimize attention mechanisms");
     println!("  ✅ Handle all fully-connected layers");

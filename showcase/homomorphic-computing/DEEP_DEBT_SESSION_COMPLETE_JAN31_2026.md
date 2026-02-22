@@ -15,7 +15,7 @@ Successfully completed a comprehensive deep debt evolution of the homomorphic co
 - Zero hardcoded values in production
 - Real hardware measurements (GPU: 138.79W measured)
 - Capability-based substrate selection
-- 6 major barraCUDA evolution insights
+- 6 major barraCuda evolution insights
 - Complete transparency about PoC vs production code
 
 ---
@@ -49,9 +49,9 @@ Successfully completed a comprehensive deep debt evolution of the homomorphic co
 
 ---
 
-### **✅ PHASE 2: barraCUDA DOGFOODING**
+### **✅ PHASE 2: barraCuda DOGFOODING**
 
-**Goal**: Use barraCUDA internally to discover evolution needs
+**Goal**: Use barraCuda internally to discover evolution needs
 
 **Actions Taken**:
 1. Integrated `barracuda::prelude::WgpuDevice` in `GpuHomomorphic`
@@ -63,7 +63,7 @@ Successfully completed a comprehensive deep debt evolution of the homomorphic co
 5. Created BARRACUDA_EVOLUTION_INSIGHTS.md
 
 **Deliverables**:
-- `src/substrates/gpu.rs` - Real barraCUDA integration (400+ lines)
+- `src/substrates/gpu.rs` - Real barraCuda integration (400+ lines)
 - `src/shaders/*.wgsl` - Polynomial arithmetic kernels
 - `BARRACUDA_EVOLUTION_INSIGHTS.md` - 6 major insights
 
@@ -76,7 +76,7 @@ Successfully completed a comprehensive deep debt evolution of the homomorphic co
 6. **Async Readback**: Better async-friendly buffer readback
 
 **Success Metrics**:
-- ✅ barraCUDA WgpuDevice integrated
+- ✅ barraCuda WgpuDevice integrated
 - ✅ WGSL shaders created and working
 - ✅ 6 evolution insights documented
 - ✅ Prioritized recommendations provided
@@ -109,10 +109,10 @@ Successfully completed a comprehensive deep debt evolution of the homomorphic co
 **Demo Results** (Validated):
 ```
 Available substrates: 3
-Names: ["CPU (Pure Rust)", "GPU (barraCUDA)", "NPU (Akida)"]
+Names: ["CPU (Pure Rust)", "GPU (barraCuda)", "NPU (Akida)"]
 
 Edge Deployment (5W) → NPU (Akida) ⭐
-Batch Processing → GPU (barraCUDA) ⭐
+Batch Processing → GPU (barraCuda) ⭐
 Real-Time Streaming → NPU (Akida) ⭐
 Custom (3W budget) → NPU (Akida) ⭐
 ```
@@ -187,7 +187,7 @@ Measurement Coverage: 1/3 (33%)
 - **Capability-Based Design**: 100% (runtime discovery implemented)
 - **Real Measurements**: 33% (GPU measured, CPU/NPU graceful fallback)
 
-### **barraCUDA Evolution Insights**:
+### **barraCuda Evolution Insights**:
 - **Total Insights**: 6 major areas identified
 - **Prioritization**: All insights prioritized and documented
 - **Impact**: Immediate (API access) to Strategic (NTT kernels)
@@ -203,7 +203,7 @@ Measurement Coverage: 1/3 (33%)
 
 ### **2. Pure Rust Dependencies** ✅
 - **Status**: All dependencies pure Rust (rand, serde, tokio, wgpu)
-- **barraCUDA**: Our own pure Rust GPU framework
+- **barraCuda**: Our own pure Rust GPU framework
 - **Future**: concrete-rs is also pure Rust
 
 ### **3. Capability-Based Design** ✅
@@ -239,8 +239,8 @@ The 4-phase approach (Acknowledge → Dogfood → Capability → Measure) succes
 ### **3. Capability-Based Selection Working**
 Runtime discovery of 3 substrates with intelligent workload-based selection. Demo validated correct choices for edge deployment, batch processing, and streaming scenarios.
 
-### **4. barraCUDA Evolution Insights**
-Discovered 6 major areas for barraCUDA improvement through real-world crypto workload usage. These insights directly inform future API design.
+### **4. barraCuda Evolution Insights**
+Discovered 6 major areas for barraCuda improvement through real-world crypto workload usage. These insights directly inform future API design.
 
 ### **5. Complete Transparency**
 Clear PoC warnings, production paths documented, measurement vs estimate transparent. Users know exactly what they're getting.
@@ -256,7 +256,7 @@ Clear PoC warnings, production paths documented, measurement vs estimate transpa
 ❌ Hardcoded throughput multipliers
 ❌ Manual substrate selection
 ❌ TODOs in production paths
-❌ barraCUDA not actually integrated
+❌ barraCuda not actually integrated
 ❌ No measurement infrastructure
 ```
 
@@ -267,7 +267,7 @@ Clear PoC warnings, production paths documented, measurement vs estimate transpa
 ✅ NO hardcoded values in production
 ✅ Runtime capability discovery
 ✅ Complete implementations or clear markers
-✅ barraCUDA integrated with 6 insights
+✅ barraCuda integrated with 6 insights
 ✅ Power measurement infrastructure complete
 ```
 
@@ -276,7 +276,7 @@ Clear PoC warnings, production paths documented, measurement vs estimate transpa
 ## 💡 **LESSONS LEARNED**
 
 ### **1. Dogfooding Reveals Real Needs**
-Using barraCUDA for homomorphic crypto workloads revealed 6 API limitations that weren't apparent in design. Dogfooding is essential for API evolution.
+Using barraCuda for homomorphic crypto workloads revealed 6 API limitations that weren't apparent in design. Dogfooding is essential for API evolution.
 
 ### **2. Honesty Enables Evolution**
 Clearly marking PoC code and documenting production paths makes systematic evolution possible. Hiding debt makes it worse.
@@ -300,7 +300,7 @@ The 4-phase methodology provided clear milestones and verifiable progress. Each 
 - Security audit and cryptographic validation
 - Maintain same HomomorphicScheme trait interface
 
-### **barraCUDA Evolution**
+### **barraCuda Evolution**
 - Implement 6 insights from BARRACUDA_EVOLUTION_INSIGHTS.md
 - Public device/queue access or builder methods
 - Modular arithmetic primitives (Barrett, Montgomery)
@@ -348,7 +348,7 @@ The 4-phase methodology provided clear milestones and verifiable progress. Each 
 | Metric | Target | Achieved | Status |
 |--------|--------|----------|--------|
 | Phase 1: Acknowledge Debt | Complete | ✅ Complete | **SUCCESS** |
-| Phase 2: barraCUDA Dogfooding | Complete | ✅ Complete | **SUCCESS** |
+| Phase 2: barraCuda Dogfooding | Complete | ✅ Complete | **SUCCESS** |
 | Phase 3: Capability Selection | Complete | ✅ Complete | **SUCCESS** |
 | Phase 4: Real Measurement | Complete | ✅ Complete | **SUCCESS** |
 | Hardcoded Values Eliminated | 100% | 100% | **SUCCESS** |
@@ -364,7 +364,7 @@ The 4-phase methodology provided clear milestones and verifiable progress. Each 
 **Justification**:
 - ✅ All 4 phases completed in single session
 - ✅ Real hardware measurement achieved (138.79W GPU)
-- ✅ 6 major barraCUDA insights (target was 3)
+- ✅ 6 major barraCuda insights (target was 3)
 - ✅ 100% elimination of hardcoded values
 - ✅ Capability-based design fully validated
 - ✅ Deep debt methodology proven effective

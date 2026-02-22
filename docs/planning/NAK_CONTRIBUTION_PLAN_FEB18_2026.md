@@ -2,14 +2,14 @@
 
 **Date**: 2026-02-18
 **Status**: Research complete, Phase 1 ready to implement
-**Author**: ToadStool / BarraCUDA team
+**Author**: ToadStool / BarraCuda team
 **Context**: W-003 in DEBT.md — absorbing hotSpring GPU sovereignty analysis
 
 ---
 
 ## The Goal in One Sentence
 
-If we solve NAK's SM70 compiler deficiencies, BarraCUDA's WGSL shaders run
+If we solve NAK's SM70 compiler deficiencies, BarraCuda's WGSL shaders run
 at hardware FP64 peak throughput on ANY GPU with open-source drivers — NVK
 (NVIDIA), RADV (AMD), and future open hardware — with zero proprietary dependencies.
 

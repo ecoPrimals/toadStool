@@ -260,13 +260,13 @@ impl ResourceValidator {
         })
     }
 
-    /// Query GPU capabilities via wgpu (vendor-agnostic, part of barraCUDA)
+    /// Query GPU capabilities via wgpu (vendor-agnostic, part of barraCuda)
     ///
     /// **Deep Debt Compliance**:
     /// - Runtime GPU discovery (no hardcoded assumptions)
     /// - Vendor-agnostic (works with NVIDIA, AMD, Intel, Apple)
     /// - Graceful degradation (returns empty if no GPU)
-    /// - Part of barraCUDA universal GPU framework
+    /// - Part of barraCuda universal GPU framework
     async fn query_gpu_capabilities(&self) -> (u64, u64, usize, Vec<String>) {
         match Self::discover_gpus_via_wgpu().await {
             Ok(gpus) if !gpus.is_empty() => {
@@ -287,7 +287,7 @@ impl ResourceValidator {
         }
     }
 
-    /// Discover GPUs using wgpu (vendor-agnostic, part of barraCUDA)
+    /// Discover GPUs using wgpu (vendor-agnostic, part of barraCuda)
     #[cfg(feature = "gpu-discovery")]
     async fn discover_gpus_via_wgpu(
     ) -> Result<Vec<GpuInfo>, Box<dyn std::error::Error + Send + Sync>> {

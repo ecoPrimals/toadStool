@@ -7,7 +7,7 @@
 
 ## Question
 
-Can we evolve BarraCUDA to "any fp" instead of hardcoded f32/f64?
+Can we evolve BarraCuda to "any fp" instead of hardcoded f32/f64?
 
 Could embedded systems use fp8/bf16/f16 while still using the same algorithms?
 

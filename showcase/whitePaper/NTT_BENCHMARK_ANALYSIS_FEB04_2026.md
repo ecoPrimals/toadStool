@@ -8,7 +8,7 @@
 
 ## 🎯 Executive Summary
 
-**Headline**: BarraCUDA's NTT implementation achieves **56.1x speedup** for polynomial multiplication with N=4096, enabling production-viable encrypted machine learning!
+**Headline**: BarraCuda's NTT implementation achieves **56.1x speedup** for polynomial multiplication with N=4096, enabling production-viable encrypted machine learning!
 
 ### Key Findings
 
@@ -159,11 +159,11 @@ Perfect scaling confirmed: Speedup grows with N!
 
 ## 🏆 Competitive Analysis
 
-### BarraCUDA vs Competition
+### BarraCuda vs Competition
 
 | Framework | FHE Support | GPU Acceleration | NTT Support | N=4096 Speedup |
 |-----------|-------------|------------------|-------------|----------------|
-| **BarraCUDA** | ✅ 8 ops | ✅ AMD + NVIDIA | ✅ **56x** | ✅ **56x** |
+| **BarraCuda** | ✅ 8 ops | ✅ AMD + NVIDIA | ✅ **56x** | ✅ **56x** |
 | CUDA | ❌ 0 ops | ❌ NVIDIA only | ❌ | ❌ |
 | Concrete | ✅ 50+ ops | ❌ CPU only | ✅ (CPU) | ~100x (CPU) |
 | TFHE-rs | ✅ 40+ ops | ❌ CPU only | ✅ (CPU) | ~80x (CPU) |
@@ -371,7 +371,7 @@ Proof: NTT evaluates polynomials at N-th roots of unity
 - Fraud detection: 50K transactions/sec
 - Face matching: 50K comparisons/sec
 
-**BarraCUDA Position**:
+**BarraCuda Position**:
 - **Only** GPU-accelerated FHE with NTT
 - **Competitive** with CPU-only libraries
 - **Unique** AMD + NVIDIA support

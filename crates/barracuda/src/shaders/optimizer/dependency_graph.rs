@@ -38,7 +38,7 @@ pub fn classify_op(expr: &str) -> WgslOpClass {
     if expr.contains("_batch[") || expr.contains("_buffer[") || expr.contains("global[") {
         return WgslOpClass::GlobalMem;
     }
-    // f64 transcendentals in BarraCUDA are recognised by their _f64 suffix
+    // f64 transcendentals in BarraCuda are recognised by their _f64 suffix
     if expr.contains("sqrt(")
         || expr.contains("exp_f64(")
         || expr.contains("log_f64(")

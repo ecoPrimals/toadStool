@@ -1,4 +1,4 @@
-// barraCUDA Multi-Backend Benchmark Example
+// barraCuda Multi-Backend Benchmark Example
 // Tests operations across all available hardware
 
 use barracuda::prelude::*;
@@ -10,7 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     
     println!("═══════════════════════════════════════════════════════════════");
-    println!("🦈 barraCUDA UNIVERSAL COMPUTE BENCHMARK");
+    println!("🦈 barraCuda UNIVERSAL COMPUTE BENCHMARK");
     println!("═══════════════════════════════════════════════════════════════\n");
     
     // 1. Detect ALL available hardware

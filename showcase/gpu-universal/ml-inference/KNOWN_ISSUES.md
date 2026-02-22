@@ -1,4 +1,4 @@
-# Known Issues - barraCUDA
+# Known Issues - barraCuda
 
 **Date**: January 12, 2026  
 **Status**: Honest accounting of work in progress

@@ -1,4 +1,4 @@
-# 🦈 barraCUDA: Pure Rust Tensor Operations Specification
+# 🦈 barraCuda: Pure Rust Tensor Operations Specification
 
 **Date**: January 12, 2026  
 **Version**: 1.1.0  
@@ -921,6 +921,6 @@ async fn test_operation_cross_vendor() {
 **Version**: 1.0.0  
 **Last Updated**: January 12, 2026  
 **Status**: Living Document  
-**Owner**: ToadStool / barraCUDA Team
+**Owner**: ToadStool / barraCuda Team
 
 🦈 **Pure Rust. Any Hardware. Zero Lock-In.** 🦈

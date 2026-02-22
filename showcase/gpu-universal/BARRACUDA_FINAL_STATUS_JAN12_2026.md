@@ -1,4 +1,4 @@
-# barraCUDA Final Status - January 12, 2026
+# barraCuda Final Status - January 12, 2026
 
 ## 🎯 Mission Status: PHASE 1 COMPLETE ✅
 
@@ -171,7 +171,7 @@ test result: ok. 19 passed; 0 failed
 | Approach | Hardware | Cost |
 |----------|----------|------|
 | **CUDA-locked** | 100x NVIDIA A100 @ $10k | $1,000,000 |
-| **barraCUDA** | 50x NVIDIA + 50x AMD @ $8k | $800,000 |
+| **barraCuda** | 50x NVIDIA + 50x AMD @ $8k | $800,000 |
 | **Savings** | Vendor flexibility | **$200,000 (20%)** |
 
 ### Strategic Value
@@ -337,7 +337,7 @@ test result: ok. 19 passed; 0 failed
 
 ---
 
-**Team**: ToadStool / barraCUDA  
+**Team**: ToadStool / barraCuda  
 **Date**: January 12, 2026  
 **Status**: Phase 1 Complete ✅, Path to Phase 2 Clear
 

@@ -37,7 +37,7 @@
 
 ---
 
-## 🔬 Proposed BarraCUDA FHE Benchmark Suite
+## 🔬 Proposed BarraCuda FHE Benchmark Suite
 
 ### Phase 1: Standard Operations (HEBench Compliance)
 
@@ -49,7 +49,7 @@
 5. ✅ **Encrypted OR** (`fhe_or`)
 6. ✅ **Encrypted XOR** (`fhe_xor`)
 
-**Already Implemented**: All 6 in BarraCUDA! ✅
+**Already Implemented**: All 6 in BarraCuda! ✅
 
 **Test Matrix**:
 ```
@@ -238,9 +238,9 @@ for encrypted_img in encrypted_images {
 Workload: Encrypted Addition (poly degree 4096)
 
 CPU (TFHE-rs)     → Baseline
-GPU NVIDIA (BarraCUDA) → GPU acceleration
-GPU AMD (BarraCUDA)    → Multi-vendor support
-NPU Akida (BarraCUDA)  → Event-driven optimization?
+GPU NVIDIA (BarraCuda) → GPU acceleration
+GPU AMD (BarraCuda)    → Multi-vendor support
+NPU Akida (BarraCuda)  → Event-driven optimization?
 
 Expected:
 - GPU 10-100x faster than CPU (parallel polynomial ops)
@@ -294,7 +294,7 @@ Expected:
 **Issue**: FHE benchmarks use deprecated API
 
 **Actions**:
-1. Update `showcase/homomorphic-computing/` to modern BarraCUDA API
+1. Update `showcase/homomorphic-computing/` to modern BarraCuda API
 2. Fix `fhe_cross_platform` binary
 3. Validate basic FHE ops work
 
@@ -357,7 +357,7 @@ Expected:
 **Expectation**:
 - GPU should be **10-100x faster** than CPU for polynomial operations
 - Both AMD and NVIDIA should benefit (math-heavy workload)
-- BarraCUDA's WGSL shaders should parallelize polynomial arithmetic
+- BarraCuda's WGSL shaders should parallelize polynomial arithmetic
 
 **Test**: Compare CPU vs GPU on polynomial addition/multiplication
 
@@ -379,14 +379,14 @@ Expected:
 
 **Test**: Benchmark FHE on Akida NPU (exploratory)
 
-### Hypothesis 4: BarraCUDA Unique Advantage
+### Hypothesis 4: BarraCuda Unique Advantage
 
 **Expectation**:
 - CUDA has **ZERO FHE operations**
-- BarraCUDA has **6 FHE operations**
+- BarraCuda has **6 FHE operations**
 - This is a unique competitive advantage
 
-**Test**: Show BarraCUDA FHE working on AMD, NVIDIA, CPU (CUDA can't do this!)
+**Test**: Show BarraCuda FHE working on AMD, NVIDIA, CPU (CUDA can't do this!)
 
 ---
 
@@ -525,7 +525,7 @@ Expected:
    - Expected: 10-100x faster
    - Test: Polynomial operations (degree 4096)
 
-2. **Portability**: Does BarraCUDA FHE work on AMD and NVIDIA?
+2. **Portability**: Does BarraCuda FHE work on AMD and NVIDIA?
    - Expected: Yes (unique vs CUDA)
    - Test: Same code on both vendors
 
@@ -555,25 +555,25 @@ Expected:
 
 ## 🏆 Competitive Advantages
 
-### BarraCUDA vs CUDA
+### BarraCuda vs CUDA
 
-| Feature | CUDA | BarraCUDA |
+| Feature | CUDA | BarraCuda |
 |---------|------|-----------|
 | **FHE Operations** | ❌ 0 | ✅ 6 |
 | **Encrypted ML** | ❌ DIY | ✅ Built-in |
 | **Multi-vendor** | ❌ NVIDIA only | ✅ AMD + NVIDIA |
 | **Portability** | ❌ Manual | ✅ Automatic |
 
-### BarraCUDA vs Concrete/TFHE-rs
+### BarraCuda vs Concrete/TFHE-rs
 
-| Feature | Concrete | TFHE-rs | BarraCUDA |
+| Feature | Concrete | TFHE-rs | BarraCuda |
 |---------|----------|---------|-----------|
 | **GPU Support** | ❌ No | ❌ No | ✅ Yes |
 | **Multi-GPU** | ❌ No | ❌ No | ✅ AMD + NVIDIA |
 | **Automatic Selection** | ❌ No | ❌ No | ✅ Yes (scheduler) |
 | **Hardware Universal** | ❌ CPU only | ❌ CPU only | ✅ CPU/GPU/NPU |
 
-**BarraCUDA Unique Selling Point**:
+**BarraCuda Unique Selling Point**:
 > "The ONLY FHE framework with GPU acceleration AND multi-vendor support"
 
 ---
@@ -587,7 +587,7 @@ Expected:
 - Why it matters
 - Privacy-preserving ML
 
-**6.2 BarraCUDA FHE Architecture**
+**6.2 BarraCuda FHE Architecture**
 - 6 FHE operations
 - Cross-platform support
 - GPU acceleration strategy

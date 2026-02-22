@@ -1,8 +1,8 @@
-# BarraCUDA FHE Cross-Vendor Validation Report
+# BarraCuda FHE Cross-Vendor Validation Report
 ## Universal Compute Performance & Privacy-Preserving ML
 
 **Date**: February 7, 2026  
-**Authors**: BarraCUDA Team  
+**Authors**: BarraCuda Team  
 **Version**: 1.0  
 **Status**: Production-Ready Validation Complete
 
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-This report presents comprehensive validation of **BarraCUDA's Fully Homomorphic Encryption (FHE)** capabilities across GPU hardware, demonstrating:
+This report presents comprehensive validation of **BarraCuda's Fully Homomorphic Encryption (FHE)** capabilities across GPU hardware, demonstrating:
 
 1. **World-class performance**: 118.4x GPU speedup over CPU baseline
 2. **Perfect accuracy preservation**: 0.0000% loss with FHE encryption
@@ -54,7 +54,7 @@ Privacy-preserving machine learning is critical for:
 - Sacrifice performance (>1000x overhead)
 - Lack production readiness (research prototypes)
 
-**BarraCUDA Solution**:
+**BarraCuda Solution**:
 - ✅ **Vendor-agnostic**: WebGPU runs on any GPU
 - ✅ **High performance**: 118.4x GPU speedup, 73.7x overhead for privacy
 - ✅ **Production-ready**: Rust safety, comprehensive tests, real hardware validation
@@ -62,7 +62,7 @@ Privacy-preserving machine learning is critical for:
 
 ### 1.2 Research Questions
 
-1. **Performance**: How fast are BarraCUDA's FHE operations on real GPU hardware?
+1. **Performance**: How fast are BarraCuda's FHE operations on real GPU hardware?
 2. **Accuracy**: Does FHE encryption preserve ML model accuracy?
 3. **Efficiency**: What's the energy cost of cryptographic privacy?
 4. **Portability**: Does capability-based dispatch work across vendors?
@@ -90,7 +90,7 @@ Privacy-preserving machine learning is critical for:
 
 ### 2.2 Software
 
-**Framework**: BarraCUDA v0.1.0
+**Framework**: BarraCuda v0.1.0
 - Language: Rust 2021 Edition
 - GPU Backend: WebGPU (wgpu 0.19)
 - Shaders: WGSL (WebGPU Shading Language)
@@ -119,7 +119,7 @@ Privacy-preserving machine learning is critical for:
 | **Scheme** | BFV | Brakerski-Fan-Vercauteren (efficient for ML) |
 | **Root of Unity** | 12,605,157,117,250,394,513 | Primitive 4096-th root mod q |
 
-**Validation**: Parameters verified against BarraCUDA's 661 passing unit tests
+**Validation**: Parameters verified against BarraCuda's 661 passing unit tests
 
 ---
 
@@ -187,7 +187,7 @@ Exponential scaling: Speedup increases superlinearly!
 - At N=4096: 16,777,216 operations
 - Time: 35,752 ms (35.7 seconds!)
 
-**GPU (BarraCUDA)**: FFT-based NTT
+**GPU (BarraCuda)**: FFT-based NTT
 - Complexity: O(N log N)
 - At N=4096: ~49,152 operations (log₂(4096) = 12)
 - Time: 302 ms (0.3 seconds)
@@ -294,11 +294,11 @@ Actual: 118.4x = 34.7% efficiency
 
 ### 5.2 Vendor Portability (Planned)
 
-**BarraCUDA's WebGPU Architecture**:
+**BarraCuda's WebGPU Architecture**:
 
 ```
 ┌─────────────────────────────────────────────┐
-│          BarraCUDA FHE Operations           │
+│          BarraCuda FHE Operations           │
 │      (Pure Rust + WGSL Shaders)             │
 └─────────────────┬───────────────────────────┘
                   │
@@ -500,7 +500,7 @@ GPU uses 85.9% less energy for same computation!
 
 | System | Language | Backend | Speedup | Overhead | Accuracy Loss | Year | Open Source |
 |--------|----------|---------|---------|----------|---------------|------|-------------|
-| **BarraCUDA** | **Rust+WGSL** | **WebGPU** | **118.4x** | **73.7x** | **0.00%** | **2026** | **✅ Yes** |
+| **BarraCuda** | **Rust+WGSL** | **WebGPU** | **118.4x** | **73.7x** | **0.00%** | **2026** | **✅ Yes** |
 | HElib | C++ | CPU | 1.0x | N/A | <0.1% | 2013 | ✅ Yes |
 | SEAL | C++ | CPU | 1.0x | N/A | <0.1% | 2017 | ✅ Yes |
 | CryptoNets | C++ | CUDA GPU | ~50x | 150x | <0.1% | 2016 | ⚠️ Limited |
@@ -509,7 +509,7 @@ GPU uses 85.9% less energy for same computation!
 | E2DM | C++ | CPU/GPU | ~40x | 200x | <0.5% | 2019 | ❌ No |
 | TFHE | C++ | CPU | ~20x | 500x+ | ~0% | 2016 | ✅ Yes |
 
-### 8.2 BarraCUDA Advantages
+### 8.2 BarraCuda Advantages
 
 **Technical Superiority**:
 
@@ -524,7 +524,7 @@ GPU uses 85.9% less energy for same computation!
 
 1. **No Vendor Lock-In**:
    - CUDA-only systems tie you to NVIDIA
-   - BarraCUDA runs on NVIDIA, AMD, Intel, Apple
+   - BarraCuda runs on NVIDIA, AMD, Intel, Apple
    - Future-proof against vendor changes
 
 2. **Open Source**:
@@ -552,7 +552,7 @@ Performance vs Portability Matrix
 
 High Performance
     │
-    │  BarraCUDA ●
+    │  BarraCuda ●
     │    (WebGPU)
     │                GAZELLE ●
     │                (CUDA)
@@ -573,7 +573,7 @@ Low Performance
 
                    Portability →
 
-BarraCUDA: Best of both worlds!
+BarraCuda: Best of both worlds!
 ```
 
 **Market Position**: **Leader in vendor-agnostic high-performance FHE**
@@ -594,7 +594,7 @@ BarraCUDA: Best of both worlds!
 - Target: Cloud ML providers, healthcare AI, fintech
 
 **Serviceable Obtainable Market (SOM)**:
-- BarraCUDA initial target: $50M (2026)
+- BarraCuda initial target: $50M (2026)
 - Focus: Open-source community, early adopters
 
 ### 9.2 Go-To-Market Strategy
@@ -660,7 +660,7 @@ BarraCUDA: Best of both worlds!
 └─────────────────┬───────────────────────────────────┘
                   │
 ┌─────────────────▼───────────────────────────────────┐
-│           BarraCUDA FHE Operations                  │
+│           BarraCuda FHE Operations                  │
 │  • FheNtt (NTT forward transform)                   │
 │  • FheIntt (NTT inverse transform)                  │
 │  • FhePolyMul (Polynomial multiplication)           │
@@ -852,7 +852,7 @@ fn butterfly_stage(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
 ### 12.1 Summary of Findings
 
-This comprehensive validation demonstrates that **BarraCUDA achieves world-class FHE performance** while maintaining vendor-agnostic portability:
+This comprehensive validation demonstrates that **BarraCuda achieves world-class FHE performance** while maintaining vendor-agnostic portability:
 
 1. **Performance**: ✅ **118.4x GPU speedup** (competitive with CUDA-locked solutions)
 2. **Accuracy**: ✅ **0.0000% loss** (perfect preservation with encryption)
@@ -884,7 +884,7 @@ This comprehensive validation demonstrates that **BarraCUDA achieves world-class
 ### 12.3 Recommendations
 
 **For Developers**:
-- ✅ Use BarraCUDA for GPU-accelerated FHE
+- ✅ Use BarraCuda for GPU-accelerated FHE
 - ✅ Leverage vendor-agnostic WebGPU backend
 - ✅ Contribute to open-source development
 
@@ -895,14 +895,14 @@ This comprehensive validation demonstrates that **BarraCUDA achieves world-class
 - ✅ Expect ROI on high-value privacy use cases
 
 **For Researchers**:
-- ✅ Build on BarraCUDA foundation
+- ✅ Build on BarraCuda foundation
 - ✅ Explore NPU-FHE integration
 - ✅ Optimize for 10-20x overhead target
 - ✅ Extend to new ML architectures
 
 ### 12.4 Final Verdict
 
-**BarraCUDA FHE: Production-Ready for Privacy-Preserving ML**
+**BarraCuda FHE: Production-Ready for Privacy-Preserving ML**
 
 **Grade: A+ Outstanding**
 
@@ -937,7 +937,7 @@ This comprehensive validation demonstrates that **BarraCUDA achieves world-class
 git clone https://github.com/ecoPrimals/toadStool.git
 cd toadStool
 
-# Build BarraCUDA
+# Build BarraCuda
 cargo build --release
 
 # Run FHE operations benchmark
@@ -977,7 +977,7 @@ cargo run --release --bin encrypted_vs_unencrypted_accuracy
 3. TFHE: https://github.com/tfhe/tfhe
 4. wgpu: https://github.com/gfx-rs/wgpu
 
-### B.3 BarraCUDA Resources
+### B.3 BarraCuda Resources
 
 - **Repository**: https://github.com/ecoPrimals/toadStool
 - **Documentation**: https://docs.ecoprimals.dev/barracuda
@@ -988,7 +988,7 @@ cargo run --release --bin encrypted_vs_unencrypted_accuracy
 
 **Report Version**: 1.0  
 **Publication Date**: February 7, 2026  
-**Authors**: BarraCUDA Team, ecoPrimals  
+**Authors**: BarraCuda Team, ecoPrimals  
 **License**: Creative Commons BY-SA 4.0
 
 **© 2026 ecoPrimals. All Rights Reserved.**

@@ -14,7 +14,7 @@ The ToadStool showcase collection demonstrates the complete self-evolving comput
 - Self-evolves with hardware changes
 - Zero setup on fresh systems
 
-**🦈 BarraCUDA** - Universal compute layer
+**🦈 BarraCuda** - Universal compute layer
 - 250+ GPU-accelerated operations
 - FFT/NTT shaders for MD simulations
 - FHE with 21.1x speedup
@@ -62,7 +62,7 @@ cd neuromorphic/04-raytracing-comparison
 - Performance comparison
 - ToadStool automatic device selection
 
-### 2. BarraCUDA Validation (`barracuda-validation/`)
+### 2. BarraCuda Validation (`barracuda-validation/`)
 
 ```bash
 cd barracuda-validation
@@ -120,7 +120,7 @@ cd neuromorphic/01-akida-detection && ./demo.sh
 cd ../02-akida-bioinformatics && ./demo-kmer-filtering.sh
 cd ../04-raytracing-comparison && ./demo.sh
 
-# BarraCUDA  
+# BarraCuda  
 cd ../../barracuda-validation && cargo test --release
 
 # GPU Universal
@@ -159,7 +159,7 @@ GPU Results:
 ### FHE Performance
 ```
 CPU Baseline: 107.8ms
-GPU (BarraCUDA): 5.1ms
+GPU (BarraCuda): 5.1ms
 Speedup: 21.1x faster
 ```
 
@@ -172,7 +172,7 @@ All showcases demonstrate the complete stack:
 ```
 Showcase Application
      ↓
-BarraCUDA 🦈 (Math/Shaders)
+BarraCuda 🦈 (Math/Shaders)
   • FFT/NTT for MD
   • Raytracing shaders
   • FHE operations
@@ -190,7 +190,7 @@ Hardware (Auto-Discovered)
 
 ## 🎯 What Each Showcase Demonstrates
 
-| Showcase | ToadStool Feature | BarraCUDA Feature | Hardware |
+| Showcase | ToadStool Feature | BarraCuda Feature | Hardware |
 |----------|-------------------|-------------------|----------|
 | **akida-detection** | Discovery | - | NPU |
 | **akida-bioinformatics** | Device selection | k-mer ops | NPU |

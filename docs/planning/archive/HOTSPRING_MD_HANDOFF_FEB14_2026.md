@@ -1,8 +1,8 @@
-# BarraCUDA GPU MD Evolution — hotSpring Phase C Handoff
+# BarraCuda GPU MD Evolution — hotSpring Phase C Handoff
 
 **Date**: February 14, 2026  
 **From**: hotSpring validation team  
-**To**: ToadStool / BarraCUDA evolution team  
+**To**: ToadStool / BarraCuda evolution team  
 **Re**: GPU f64 Molecular Dynamics — lessons, code patterns, and evolution targets
 
 ---
@@ -350,7 +350,7 @@ Current state:
 Evolution target:
   ToadStool gets: f64 MD ops (composable) + cell-list + thermostats + observables
                   ↓
-  Sarkas-equivalent MD runs as a first-class BarraCUDA pipeline
+  Sarkas-equivalent MD runs as a first-class BarraCuda pipeline
                   ↓
   Add PPPM/Ewald → full plasma simulation on consumer GPU
                   ↓

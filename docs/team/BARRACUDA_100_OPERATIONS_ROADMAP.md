@@ -1,4 +1,4 @@
-# barraCUDA: Road to 100 Operations
+# barraCuda: Road to 100 Operations
 ## Solidify, Evolve, Expand - Comprehensive Roadmap
 
 **Date**: January 15, 2026  
@@ -594,9 +594,9 @@ Build **100 production-ready GPU operations** with:
 - Testing guide
 
 ### **Migration Guides**
-- From CUDA to barraCUDA
-- From PyTorch to barraCUDA
-- From TensorFlow to barraCUDA
+- From CUDA to barraCuda
+- From PyTorch to barraCuda
+- From TensorFlow to barraCuda
 
 ---
 

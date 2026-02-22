@@ -35,7 +35,7 @@ This roadmap document is being superseded by more detailed, actively maintained 
 
 ## 📊 **CURRENT STATUS** (Feb 3, 2026 Evening)
 
-**BarraCUDA Evolution**: **37.8% Universal Compute** (98/259 operations)
+**BarraCuda Evolution**: **37.8% Universal Compute** (98/259 operations)
 
 **Completed** ✅:
 - ✅ **Phase 1**: Core NPU operations (5 ops: matmul, relu, softmax, gelu, layer_norm)
@@ -64,11 +64,11 @@ This roadmap document is being superseded by more detailed, actively maintained 
 
 ### **Mission**
 
-Transform ToadStool + BarraCUDA into a **Universal Compute Platform** - same math on any chip, everywhere, safely.
+Transform ToadStool + BarraCuda into a **Universal Compute Platform** - same math on any chip, everywhere, safely.
 
 ### **Core Goals** (Status)
 
-1. ✅ **100% Pure Rust Core**: Zero C dependencies in BarraCUDA (ACHIEVED!)
+1. ✅ **100% Pure Rust Core**: Zero C dependencies in BarraCuda (ACHIEVED!)
 2. ✅ **TRUE UniBin**: Trivial cross-compilation (`cargo build --target <any>`) (ACHIEVED!)
 3. ✅ **Zero Unsafe Code**: Enforced by `#![deny(unsafe_code)]` (ACHIEVED!)
 4. ⚡ **Universal Compute**: 37.8% coverage, growing to 100% (IN PROGRESS)

@@ -1,6 +1,6 @@
 // 🔥 HETEROGENEOUS PIPELINE VALIDATION - ACTUAL HARDWARE
 // ✅ Evolution from Simulation → Real Hardware
-// ✅ CPU (TFHE-rs), GPU (BarraCUDA), NPU (Akida)
+// ✅ CPU (TFHE-rs), GPU (BarraCuda), NPU (Akida)
 //
 // Comprehensive validation of heterogeneous pipeline architectures
 // using ACTUAL hardware measurements for scientific validation.
@@ -67,7 +67,7 @@ impl PipelineConfig {
     fn name(&self) -> String {
         match self {
             PipelineConfig::SingleCpu => "Single_CPU".to_string(),
-            PipelineConfig::SingleGpu => "Single_GPU_BarraCUDA".to_string(),
+            PipelineConfig::SingleGpu => "Single_GPU_BarraCuda".to_string(),
             PipelineConfig::SingleNpu => "Single_NPU_Akida".to_string(),
             PipelineConfig::NpuGpu => "NPU→GPU".to_string(),
             PipelineConfig::GpuNpu => "GPU→NPU".to_string(),
@@ -79,7 +79,7 @@ impl PipelineConfig {
     fn chip_ordering(&self) -> Vec<String> {
         match self {
             PipelineConfig::SingleCpu => vec!["CPU".to_string()],
-            PipelineConfig::SingleGpu => vec!["GPU (BarraCUDA)".to_string()],
+            PipelineConfig::SingleGpu => vec!["GPU (BarraCuda)".to_string()],
             PipelineConfig::SingleNpu => vec!["NPU (Akida)".to_string()],
             PipelineConfig::NpuGpu => vec!["NPU".to_string(), "GPU".to_string()],
             PipelineConfig::GpuNpu => vec!["GPU".to_string(), "NPU".to_string()],
@@ -133,11 +133,11 @@ impl HardwareContext {
     async fn initialize() -> Result<Self> {
         println!("⚡ Initializing Hardware Context...\n");
 
-        // Initialize GPU (BarraCUDA)
+        // Initialize GPU (BarraCuda)
         print!("  GPU: ");
         let gpu_device = match WgpuDevice::new().await {
             Ok(device) => {
-                println!("✅ BarraCUDA GPU initialized (NVIDIA RTX 3090)");
+                println!("✅ BarraCuda GPU initialized (NVIDIA RTX 3090)");
                 Some(device)
             }
             Err(e) => {
@@ -194,7 +194,7 @@ async fn main() -> Result<()> {
 
     println!("╔══════════════════════════════════════════════════════════════════╗");
     println!("║  🔥 HETEROGENEOUS PIPELINE VALIDATION - ACTUAL HARDWARE          ║");
-    println!("║  ✅ CPU (TFHE-rs) + GPU (BarraCUDA) + NPU (Akida)               ║");
+    println!("║  ✅ CPU (TFHE-rs) + GPU (BarraCuda) + NPU (Akida)               ║");
     println!("╚══════════════════════════════════════════════════════════════════╝\n");
 
     // Initialize all hardware
@@ -386,7 +386,7 @@ async fn run_pipeline_benchmark(
             if let Some(gpu) = &hardware.gpu_device {
                 uses_actual_gpu = true;
 
-                // ACTUAL GPU execution via BarraCUDA!
+                // ACTUAL GPU execution via BarraCuda!
                 let degree = 1024;
                 let start = Instant::now();
 
@@ -396,7 +396,7 @@ async fn run_pipeline_benchmark(
                 }
 
                 let time = start.elapsed().as_micros();
-                chip_times.push(("GPU (BarraCUDA)".to_string(), time));
+                chip_times.push(("GPU (BarraCuda)".to_string(), time));
 
                 // Query real GPU power via nvidia-smi
                 let gpu_power = query_gpu_power();
@@ -603,7 +603,7 @@ fn execute_npu_sparse_inference(
     Ok(start.elapsed().as_micros())
 }
 
-/// Execute actual GPU polynomial addition via BarraCUDA
+/// Execute actual GPU polynomial addition via BarraCuda
 async fn execute_gpu_polynomial_add(device: &WgpuDevice, degree: usize) -> Result<Vec<f32>> {
     use rand::Rng;
     let mut rng = rand::thread_rng();
@@ -612,7 +612,7 @@ async fn execute_gpu_polynomial_add(device: &WgpuDevice, degree: usize) -> Resul
     let poly_a: Vec<f32> = (0..degree).map(|_| rng.gen_range(0.0..10000.0)).collect();
     let poly_b: Vec<f32> = (0..degree).map(|_| rng.gen_range(0.0..10000.0)).collect();
 
-    // Create GPU buffers with BarraCUDA API
+    // Create GPU buffers with BarraCuda API
     let buffer_a = device.create_storage_buffer("poly_a", bytemuck::cast_slice(&poly_a));
     let buffer_b = device.create_storage_buffer("poly_b", bytemuck::cast_slice(&poly_b));
 

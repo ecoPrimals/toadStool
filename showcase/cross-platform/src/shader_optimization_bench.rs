@@ -449,7 +449,7 @@ async fn run_all_benchmarks() -> Result<()> {
 
     // Recommendations
     println!("═══ RECOMMENDATIONS ═══\n");
-    println!("Based on the results, optimal BarraCUDA configuration:");
+    println!("Based on the results, optimal BarraCuda configuration:");
     println!("  1. Use vec4<f32> for memory operations (4x elements per thread)");
     println!("  2. Workgroup size: 64 for AMD (wavefront-aligned), 256 for NVIDIA");
     println!("  3. Pre-compile shaders with vendor-specific workgroup sizes");

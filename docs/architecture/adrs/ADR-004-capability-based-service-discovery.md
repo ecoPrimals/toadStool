@@ -2,7 +2,7 @@
 
 **Status**: ✅ Accepted  
 **Date**: February 5, 2026  
-**Deciders**: ToadStool/BarraCUDA Core Team  
+**Deciders**: ToadStool/BarraCuda Core Team  
 **Technical Story**: Primals discover other primals at runtime (no hardcoding)
 
 ---

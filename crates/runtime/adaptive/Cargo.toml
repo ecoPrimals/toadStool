@@ -7,7 +7,7 @@ keywords = ["gpu", "optimization", "adaptive", "performance", "runtime"]
 categories = ["algorithms", "hardware-support", "science"]
 authors = ["ToadStool Team"]
 license = "AGPL-3.0"
-description = "Adaptive optimization system for barraCUDA GPU operations"
+description = "Adaptive optimization system for barraCuda GPU operations"
 repository = "https://github.com/ecoPrimals/toadStool"
 
 [dependencies]

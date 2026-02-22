@@ -45,11 +45,11 @@ let amd_output = model.forward(&input, &amd_device)?;
 assert_tensors_close(&nvidia_output, &amd_output, 1e-5);
 ```
 
-#### B. BarraCUDA Scientific Compute
+#### B. BarraCuda Scientific Compute
 
 From `hotSpring` validation targets:
 
-| Operation | Baseline | BarraCUDA Target |
+| Operation | Baseline | BarraCuda Target |
 |-----------|----------|------------------|
 | RBF Interpolation | scipy.interpolate.RBFInterpolator | `barracuda::surrogate::rbf` |
 | Cholesky | numpy.linalg.cholesky | `barracuda::linalg::cholesky` |
@@ -60,7 +60,7 @@ From `hotSpring` validation targets:
 
 **Validation Path** (from hotSpring):
 1. Run scipy reference (Python, f64)
-2. Run BarraCUDA (WGSL, f32/f64)
+2. Run BarraCuda (WGSL, f32/f64)
 3. Compare within tolerance (typically 1e-6 for f64, 1e-4 for f32)
 
 ---
@@ -162,7 +162,7 @@ From hotSpring's validation framework:
 
 #### Current State
 - **Sarkas** (Python): Reference MD simulator, DSF validation
-- **BarraCUDA**: GPU force kernels (LJ, Coulomb, Morse)
+- **BarraCuda**: GPU force kernels (LJ, Coulomb, Morse)
 - **Validation**: 12 DSF cases against Dense Plasma Properties Database
 
 #### Cross-Platform MD Target
@@ -196,9 +196,9 @@ From hotSpring's validation framework:
 | DS-CNN | — | — | Akida | Keyword spotting |
 | wav2vec2 | Candle | Burn+wgpu | — | Speech features |
 
-### 3.3 Scientific HPC (BarraCUDA strength)
+### 3.3 Scientific HPC (BarraCuda strength)
 
-| Workload | scipy Baseline | BarraCUDA Target |
+| Workload | scipy Baseline | BarraCuda Target |
 |----------|----------------|------------------|
 | Nuclear EOS | `skyrm_hfb.py` | `nuclear_eos_l2.rs` |
 | RBF surrogate | `RBFInterpolator` | `surrogate::rbf` |
@@ -277,7 +277,7 @@ From hotSpring's validation framework:
 | NPU inference latency | <1ms per sample | **0.27-0.39ms ✓** |
 | NPU power efficiency | <1W for keyword spotting | **1.5W (idle ready)** |
 | scipy parity | <1e-6 for f64 operations | *Pending hotSpring* |
-| BarraCUDA vs CUDA | >90% performance parity | *Pending hotSpring* |
+| BarraCuda vs CUDA | >90% performance parity | *Pending hotSpring* |
 
 ### CUDA Parity Benchmark Results (Feb 13, 2026)
 
@@ -287,8 +287,8 @@ From hotSpring's validation framework:
 |---------|--------|------------|------------|-----------|-----|
 | **CUDA (native)** | RTX 3090 | 229μs | 230μs | 837 GB/s | Baseline |
 | **ROCm (native)** | RX 6950 XT | TBD | TBD | TBD | Pending |
-| BarraCUDA (wgpu) | RTX 3090 | 3067μs | 2725μs | 70 GB/s | **13x** |
-| BarraCUDA (wgpu) | RX 6950 XT | 1260μs | 913μs | 180 GB/s | **5x** |
+| BarraCuda (wgpu) | RTX 3090 | 3067μs | 2725μs | 70 GB/s | **13x** |
+| BarraCuda (wgpu) | RX 6950 XT | 1260μs | 913μs | 180 GB/s | **5x** |
 
 ### Key Insight: AMD Wins via Vulkan
 

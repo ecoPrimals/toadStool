@@ -1,4 +1,4 @@
-//! Auto-Tuning Runtime for BarraCUDA
+//! Auto-Tuning Runtime for BarraCuda
 //!
 //! Discovers optimal GPU parameters at runtime through calibration.
 //!

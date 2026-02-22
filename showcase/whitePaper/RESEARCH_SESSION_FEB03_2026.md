@@ -46,7 +46,7 @@
 
 ---
 
-## ✅ BarraCUDA Current State
+## ✅ BarraCuda Current State
 
 ### FHE Operations (Built-in)
 
@@ -77,29 +77,29 @@ CPU,TFHE-rs v0.4+,XOR,37.899
 
 ---
 
-## 🎯 BarraCUDA Unique Advantages
+## 🎯 BarraCuda Unique Advantages
 
 ### vs CUDA
 
-| Feature | CUDA | BarraCUDA |
+| Feature | CUDA | BarraCuda |
 |---------|------|-----------|
 | **FHE Operations** | ❌ 0 | ✅ 6 |
 | **Encrypted ML** | ❌ None | ✅ Supported |
 | **GPU Vendors** | ❌ NVIDIA only | ✅ AMD + NVIDIA |
 | **Automatic Selection** | ❌ Manual | ✅ Scheduler |
 
-**Key Insight**: **BarraCUDA is the ONLY framework with GPU-accelerated FHE on multiple vendors!**
+**Key Insight**: **BarraCuda is the ONLY framework with GPU-accelerated FHE on multiple vendors!**
 
 ### vs Concrete/TFHE-rs
 
-| Feature | Concrete | TFHE-rs | BarraCUDA |
+| Feature | Concrete | TFHE-rs | BarraCuda |
 |---------|----------|---------|-----------|
 | **GPU Acceleration** | ❌ No | ❌ No | ✅ Yes |
 | **Multi-GPU** | ❌ No | ❌ No | ✅ AMD + NVIDIA |
 | **Auto Hardware Selection** | ❌ No | ❌ No | ✅ Scheduler |
 | **NPU Support** | ❌ No | ❌ No | ✅ Yes |
 
-**Key Insight**: **Only BarraCUDA has GPU/NPU acceleration for FHE!**
+**Key Insight**: **Only BarraCuda has GPU/NPU acceleration for FHE!**
 
 ---
 
@@ -238,13 +238,13 @@ showcase/whitePaper/
 
 ## 🎓 Key Insights
 
-### What Makes BarraCUDA Special
+### What Makes BarraCuda Special
 
 1. **ONLY GPU-accelerated FHE framework**
    - Concrete: CPU only
    - TFHE-rs: CPU only
    - CUDA: No FHE operations
-   - BarraCUDA: ✅ GPU + multi-vendor
+   - BarraCuda: ✅ GPU + multi-vendor
 
 2. **Cross-platform FHE**
    - Same code on AMD + NVIDIA + CPU + NPU
@@ -295,7 +295,7 @@ showcase/whitePaper/
 - Expected: Similar or AMD slight edge (memory bandwidth)
 - Test: Head-to-head FHE benchmarks
 
-**BarraCUDA vs Concrete**:
+**BarraCuda vs Concrete**:
 - Expected: GPU 10-100x faster than CPU-only Concrete
 - Test: Same workload comparison
 

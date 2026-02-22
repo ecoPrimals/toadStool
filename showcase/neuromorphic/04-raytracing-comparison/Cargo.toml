@@ -27,7 +27,7 @@ toadstool-core = { path = "../../../crates/toadstool-core" }
 # NPU driver
 akida-driver = { path = "../../../crates/neuromorphic/akida-driver" }
 
-# BarraCUDA for GPU compute
+# BarraCuda for GPU compute
 barracuda = { path = "../../../crates/barracuda" }
 
 # Math

@@ -1,4 +1,4 @@
-# BarraCUDA Scientific Computing Middleware Implementation
+# BarraCuda Scientific Computing Middleware Implementation
 
 **Date**: February 11, 2026  
 **Status**: ✅ Phase 1 Complete  
@@ -9,7 +9,7 @@
 ## Executive Summary
 
 Extracted ~600 lines of duplicated scientific computing code from L1/L2 binaries into
-proper BarraCUDA library modules. Five new middleware modules provide self-contained
+proper BarraCuda library modules. Five new middleware modules provide self-contained
 scientific computing without inline code duplication.
 
 ## Implementation Status
@@ -285,7 +285,7 @@ for numerically sensitive kernel evaluation and linear algebra.
 2. **Sparsity Sampler** (`optimize::sparsity_sampler`)
     - Port of `mystic.SparsitySampler`
     - Maximin distance criterion for gap-filling
-    - This is THE prize: Python control converges to χ²=1.93 in 3008 evals vs BarraCUDA's 87.13 in 1009
+    - This is THE prize: Python control converges to χ²=1.93 in 3008 evals vs BarraCuda's 87.13 in 1009
     - Effort: 1 week
 
 3. **Multi-start Nelder-Mead** (`optimize::multi_start_nelder_mead`)
@@ -319,7 +319,7 @@ for numerically sensitive kernel evaluation and linear algebra.
 
 ### Against hotSpring L1/L2
 
-| Metric | Python Control | BarraCUDA (Current) |
+| Metric | Python Control | BarraCuda (Current) |
 |--------|---------------|---------------------|
 | **L1 Best χ²** | 3.93 | **1.34** |
 | **L1 Throughput** | 46.1 evals/s | **646.8 evals/s** (14×) |
@@ -328,9 +328,9 @@ for numerically sensitive kernel evaluation and linear algebra.
 | **L2 Best χ² (full run)** | **1.93** (3008 evals) | — |
 
 **Key Insight**: Throughput parity achieved. Accuracy gap is sampling strategy
-(Python uses `mystic.SparsitySampler`, BarraCUDA uses naive random).
+(Python uses `mystic.SparsitySampler`, BarraCuda uses naive random).
 
-**With SparsitySampler** (projected): BarraCUDA would reach χ²~2.0 in ~1700 evals
+**With SparsitySampler** (projected): BarraCuda would reach χ²~2.0 in ~1700 evals
 at 0.49 evals/s = **60% of Python wall-clock time**.
 
 ---

@@ -158,7 +158,7 @@ Wired into `sm70.rs` at: `op_needs_scoreboard`, `raw_latency`, `war_latency`, `w
 **Cumulative target**: After all 4 phases: ~3-6ms for n=30 batch=512
 (from 69.8ms current, approaching 7.4ms proprietary baseline)
 
-**Why This Matters**: NAK is written in Rust, same language as BarraCUDA. Every improvement
+**Why This Matters**: NAK is written in Rust, same language as BarraCuda. Every improvement
 benefits all NVK users — this is the open-source multiplier. AMD RDNA3 with RADV/ACO is
 a second target once NVK baseline is established.
 
@@ -697,7 +697,7 @@ Absorbed all 11 neuralSpring local evolutions into upstream barracuda.
 ## Session 15 — wetSpring Handoff Absorption (Feb 19, 2026)
 
 Absorbed wetSpring's validated bioinformatics pipeline lessons and promoted
-the 5 highest-priority local extensions to upstream BarraCUDA primitives.
+the 5 highest-priority local extensions to upstream BarraCuda primitives.
 
 ### Resolved Issues (Session 15)
 

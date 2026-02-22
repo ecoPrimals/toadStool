@@ -1,4 +1,4 @@
-// BarraCUDA Validation Library
+// BarraCuda Validation Library
 // Shared utilities for validation benchmarks
 
 pub mod power_measurement;

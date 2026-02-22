@@ -225,7 +225,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ DEMONSTRATION COMPLETE");
     println!("═══════════════════════════════════════════════════════════════\n");
     
-    println!("barraCUDA enables:");
+    println!("barraCuda enables:");
     println!("  ✅ Write once, run on GPU OR Akida");
     println!("  ✅ Automatic hardware selection");
     println!("  ✅ Zero platform-specific code");
@@ -240,7 +240,7 @@ async fn spike_encode_gpu(
     input: &[f32],
     time_steps: u32,
 ) -> Result<Vec<u32>, Box<dyn std::error::Error>> {
-    // Use barraCUDA's spike_encode operation
+    // Use barraCuda's spike_encode operation
     use barracuda::ops::spike_encode::spike_encode;
     
     let result = spike_encode(
@@ -262,7 +262,7 @@ async fn lif_neuron_gpu(
     leak: f32,
     time_steps: u32,
 ) -> Result<Vec<u32>, Box<dyn std::error::Error>> {
-    // Use barraCUDA's LIF neuron operation
+    // Use barraCuda's LIF neuron operation
     use barracuda::ops::lif_neuron::lif_neuron;
     
     let result = lif_neuron(

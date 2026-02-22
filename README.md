@@ -1,13 +1,13 @@
-# ToadStool + BarraCUDA
+# ToadStool + BarraCuda
 
-**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 41 -- February 22, 2026
+**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 42 -- February 22, 2026
 
 ---
 
 ## What Is This?
 
 - **ToadStool** -- Hardware infrastructure primal. Discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. Ollama model lifecycle management. Distributed workload dispatch across machines. Cloud cost estimation, compliance validation, and federation. ecoBin compliant: single binary, pure Rust, cross-architecture, cross-platform.
-- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: 600+ WGSL shaders (zero orphans -- every shader wired to Rust) as the primary math implementation. ToadStool dispatches to GPU or CPU based on hardware. Dedicated Conv2D, MaxPool2D, AvgPool2D compute shaders for neural network ops. **Nuclear physics**: HFB (Hartree-Fock-Bogoliubov) GPU-resident SCF suite -- 5 spherical + 6 axially-deformed shaders on cylindrical (ρ,z) grids; potentials, Hamiltonian, density, energy, BCS bisection, wavefunctions. **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde, lattice QCD, bio/genomics) -- same math for physics, ML, life science, and audio. **Complete MathOp coverage**: GPU and CPU executors handle all shape ops, binary ops, activations, and batch matmul. **TensorSession**: batched operation recording with single-submit execution (add, mul, fma, scale, matmul, relu, gelu, softmax, layer_norm, attention). **25 bio/evolution GPU ops**: ANI, dN/dS, HMM, DADA2, SNP, pangenome, quality filter, RF inference, ODE sweep, locus variance, pairwise Hamming/Jaccard/L2, spatial PD payoff, batch fitness, Hill gate, multi-objective fitness, swarm NN, k-mer histogram, taxonomy FC, UniFrac. **PDE solvers**: Crank-Nicolson (heat, Schrodinger), Richards unsaturated flow (van Genuchten-Mualem). **Moving window statistics** GPU op for IoT sensor streams. **ESN GPU-train → NPU-deploy**: export/import weights pipeline. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
+- **BarraCuda** (**bar**rier-free **r**ust-**a**bstracted **C**omputationally **U**nified **D**imensionalized **A**lgebra) -- Unified math library. **Shader-first architecture**: 612 WGSL shaders (zero orphans -- every shader wired to Rust) as the primary math implementation. ToadStool dispatches to GPU or CPU based on hardware. Dedicated Conv2D, MaxPool2D, AvgPool2D compute shaders for neural network ops. **Nuclear physics**: HFB (Hartree-Fock-Bogoliubov) GPU-resident SCF suite -- 5 spherical + 6 axially-deformed shaders on cylindrical (ρ,z) grids; potentials, Hamiltonian, density, energy, BCS bisection, wavefunctions. **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde, lattice QCD, bio/genomics) -- same math for physics, ML, life science, and audio. **Complete MathOp coverage**: GPU and CPU executors handle all shape ops, binary ops, activations, and batch matmul. **TensorSession**: batched operation recording with single-submit execution (add, mul, fma, scale, matmul, relu, gelu, softmax, layer_norm, attention). **25 bio/evolution GPU ops**: ANI, dN/dS, HMM, DADA2, SNP, pangenome, quality filter, RF inference, ODE sweep, locus variance, pairwise Hamming/Jaccard/L2, spatial PD payoff, batch fitness, Hill gate, multi-objective fitness, swarm NN, k-mer histogram, taxonomy FC, UniFrac. **PDE solvers**: Crank-Nicolson (heat, Schrodinger), Richards unsaturated flow (van Genuchten-Mualem). **Moving window statistics** GPU op for IoT sensor streams. **ESN GPU-train → NPU-deploy**: export/import weights pipeline. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
 
 ---
 
@@ -95,7 +95,7 @@ TinyLlama-1.1B split across two machines over LAN TCP:
 ```
 Applications (hotSpring, NUCLEUS inference, etc.)
        |
-BarraCUDA: 600+ WGSL Shaders (SHADER-FIRST)
+BarraCuda: 600+ WGSL Shaders (SHADER-FIRST)
   ALL math is WGSL primary -- ToadStool dispatches to GPU/CPU
   Zero orphan shaders -- every WGSL file wired to Rust
   NN ops: Conv2D, MaxPool2D, AvgPool2D (dedicated WGSL compute shaders)

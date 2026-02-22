@@ -1,4 +1,4 @@
-//! Property-based and mathematical correctness tests for BarraCUDA operations.
+//! Property-based and mathematical correctness tests for BarraCuda operations.
 //!
 //! `fhe_proptest`  — proptest-driven randomised NTT/modular arithmetic invariants
 //!                   (pure, no GPU required).

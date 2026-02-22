@@ -29,7 +29,7 @@ This is a **validation harness** to benchmark ToadStool's compute substrates (CP
 ┌─────────────────────────────────────────────────────────────┐
 │              ToadStool Core (Pure Rust)                     │
 │  ✅ Pure Rust crypto provider                               │
-│  ✅ BarraCUDA compute engine                                │
+│  ✅ BarraCuda compute engine                                │
 │  ✅ Akida NPU driver                                        │
 │  ✅ Zero external crypto dependencies                       │
 └────────────────────┬────────────────────────────────────────┘
@@ -83,7 +83,7 @@ cargo bench
 
 **ToadStool Capabilities Under Test**:
 1. **CPU Compute** - Pure Rust baseline
-2. **GPU Compute** - BarraCUDA acceleration
+2. **GPU Compute** - BarraCuda acceleration
 3. **NPU Compute** - Akida event-driven processing
 
 **Against Public Benchmarks**:
@@ -100,7 +100,7 @@ cargo bench
 
 **Performance Validation**:
 - ✅ Measure ToadStool CPU compute
-- ✅ Measure ToadStool GPU compute (BarraCUDA)
+- ✅ Measure ToadStool GPU compute (BarraCuda)
 - ✅ Measure ToadStool NPU compute (Akida)
 - ✅ Compare against public benchmarks
 
@@ -121,7 +121,7 @@ cargo bench
 **Compute Performance**:
 ```
 CPU:  1,200 ops/s   (baseline)
-GPU:  5,500 ops/s   (4.6x faster - BarraCUDA)
+GPU:  5,500 ops/s   (4.6x faster - BarraCuda)
 NPU:  3,200 ops/s   (2.7x faster - Akida)
 ```
 
@@ -140,7 +140,7 @@ NPU:  1,600 ops/joule  (33-43x better!)
 
 **ToadStool Core**:
 - ✅ Pure Rust crypto provider (untouched)
-- ✅ BarraCUDA (pure Rust)
+- ✅ BarraCuda (pure Rust)
 - ✅ Akida driver (pure Rust)
 - ✅ Zero external crypto dependencies
 - ✅ Main binary unaffected
@@ -159,7 +159,7 @@ NPU:  1,600 ops/joule  (33-43x better!)
 
 **Validation Reports**:
 1. ✅ CPU compute performance baseline
-2. ✅ GPU compute performance (BarraCUDA validation)
+2. ✅ GPU compute performance (BarraCuda validation)
 3. ✅ NPU compute performance (Akida validation)
 4. ✅ Energy efficiency analysis
 5. ✅ Comparison against public benchmarks

@@ -1,4 +1,4 @@
-# BarraCUDA v2.0 "Universal Compute" - Research Whitepaper
+# BarraCuda v2.0 "Universal Compute" - Research Whitepaper
 ## Discovering Emergent Properties Through Hardware Validation
 
 **Authors**: ecoPrimals Research Team  
@@ -20,7 +20,7 @@
 
 ## Abstract
 
-We present **BarraCUDA v2.0 "Universal Compute"**, a pure Rust platform enabling AI workloads to execute seamlessly across CPU, GPU, and NPU substrates. Through comprehensive validation (94+ tests, 3 platforms, 8 workload categories), we demonstrate:
+We present **BarraCuda v2.0 "Universal Compute"**, a pure Rust platform enabling AI workloads to execute seamlessly across CPU, GPU, and NPU substrates. Through comprehensive validation (94+ tests, 3 platforms, 8 workload categories), we demonstrate:
 
 **Key Contributions**:
 1. **Universal Compute Validated**: Same code → CPU, GPU, NPU with **0.000000 numerical difference**
@@ -114,7 +114,7 @@ Numerical Difference: 0.000000 ✅
 **2. [Methodology](sections/02_methodology.md)** (Complete)
 - 3 Hardware platforms (CPU, GPU, NPU specifications)
 - 8 Workload categories (94+ tests total)
-- BarraCUDA v2.0 implementation (100% safe Rust)
+- BarraCuda v2.0 implementation (100% safe Rust)
 - Measurement approach (latency, energy, throughput)
 - Deep debt compliance (all 7 principles)
 
@@ -147,7 +147,7 @@ Numerical Difference: 0.000000 ✅
 - Impact statement
 
 **7. [Architecture](ARCHITECTURE.md)** ✅
-- BarraCUDA v2.0 design
+- BarraCuda v2.0 design
 - NPU backend architecture
 - Universal compute abstraction
 
@@ -289,7 +289,7 @@ ls showcase/barracuda-validation/results/
 
 ## Technical Specifications
 
-### BarraCUDA v2.0 Implementation
+### BarraCuda v2.0 Implementation
 
 **Language**: 100% Pure Rust (no C/C++ dependencies)  
 **Lines of Code**: 2,400 (NPU backend + operations)  
@@ -332,7 +332,7 @@ ls showcase/barracuda-validation/results/
 
 ```bibtex
 @techreport{barracuda2026universal,
-  title={BarraCUDA v2.0 "Universal Compute": Discovering Emergent Properties Through Hardware Validation},
+  title={BarraCuda v2.0 "Universal Compute": Discovering Emergent Properties Through Hardware Validation},
   author={ecoPrimals Research Team},
   institution={ecoPrimals Labs},
   year={2026},
@@ -373,7 +373,7 @@ Emergent properties require empirical discovery. Measurement reveals what theory
 
 ## Contact & Collaboration
 
-**Project**: BarraCUDA Universal Compute Platform  
+**Project**: BarraCuda Universal Compute Platform  
 **Repository**: github.com/ecoPrimals/toadStool  
 **Status**: Production Ready, Open Source
 

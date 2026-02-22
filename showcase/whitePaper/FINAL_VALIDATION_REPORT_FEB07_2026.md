@@ -81,7 +81,7 @@ let intt_op = FheIntt::new(ntt_result, degree, modulus, inv_root)?;
 let recovered = intt_op.execute()?;
 ```
 
-**Status**: ✅ All FHE operations use real BarraCUDA GPU NTT/INTT
+**Status**: ✅ All FHE operations use real BarraCuda GPU NTT/INTT
 
 ---
 
@@ -100,7 +100,7 @@ let input = Tensor::from_data(&input_data, vec![batch, 3, res, res], device)?; /
 let audio = Tensor::from_data(&audio_data, vec![1, samples], device)?; // ✅ Real Tensor
 ```
 
-**Status**: ✅ All ML operations use real BarraCUDA Tensor/MatMul
+**Status**: ✅ All ML operations use real BarraCuda Tensor/MatMul
 
 ---
 
@@ -176,7 +176,7 @@ let manager = DeviceManager::discover()?; // ✅ Real Akida NPU discovery
 ### Summary
 
 **Production Showcases**: ✅ **8/8 compliant** (100%)
-- All use real BarraCUDA operations
+- All use real BarraCuda operations
 - Zero mocks in production code
 - All measurements are real (not estimated)
 

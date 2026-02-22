@@ -43,8 +43,8 @@ fn main() -> Result<()> {
     println!("  NPUs: {}", hw.devices_by_type(HardwareType::Npu).len());
     println!("  CPUs: {}", hw.devices_by_type(HardwareType::Cpu).len());
     
-    // Check what BarraCUDA can use
-    println!("\n=== BarraCUDA Capabilities ===");
+    // Check what BarraCuda can use
+    println!("\n=== BarraCuda Capabilities ===");
     if hw.has_gpu() {
         println!("✓ GPU compute available (via WGPU)");
     }
@@ -66,7 +66,7 @@ fn main() -> Result<()> {
     
     println!("\n=== Status ===");
     println!("ToadStool ready! No setup required.");
-    println!("BarraCUDA can run math on {} device(s).", hw.devices().len());
+    println!("BarraCuda can run math on {} device(s).", hw.devices().len());
     
     Ok(())
 }

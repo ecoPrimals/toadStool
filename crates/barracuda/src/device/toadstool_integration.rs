@@ -1,6 +1,6 @@
-//! ToadStool ↔ BarraCUDA Hardware Integration
+//! ToadStool ↔ BarraCuda Hardware Integration
 //!
-//! ToadStool discovers hardware. BarraCUDA runs math on it.
+//! ToadStool discovers hardware. BarraCuda runs math on it.
 //!
 //! Architecture:
 //! - GPU/CPU: Run ANY operation via WGSL shaders (same code, different speed)
@@ -184,7 +184,7 @@ pub fn select_device_prefer(preferred: DeviceSelection) -> Result<DeviceSelectio
 
 /// Get a full hardware report
 ///
-/// Returns what ToadStool found and what BarraCUDA can target.
+/// Returns what ToadStool found and what BarraCuda can target.
 pub fn hardware_report() -> Result<HardwareReport> {
     let hw = HardwareManager::discover()?;
     let registry = super::registry::DeviceRegistry::global();
@@ -306,7 +306,7 @@ pub struct HardwareReport {
 
 impl std::fmt::Display for HardwareReport {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "ToadStool + BarraCUDA Hardware Report")?;
+        writeln!(f, "ToadStool + BarraCuda Hardware Report")?;
         writeln!(f, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")?;
         writeln!(f)?;
         writeln!(f, "ToadStool Discovery:")?;

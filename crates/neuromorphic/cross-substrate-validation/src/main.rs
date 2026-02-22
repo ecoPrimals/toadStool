@@ -1,8 +1,8 @@
 //! Cross-Substrate Validation Benchmark
 //!
 //! Compares performance of the same workload across:
-//! - CPU (BarraCUDA CPU backend)
-//! - GPU(s) (BarraCUDA wgpu backend)  
+//! - CPU (BarraCuda CPU backend)
+//! - GPU(s) (BarraCuda wgpu backend)  
 //! - Neuromorphic (Akida NPUs)
 //!
 //! **Deep Debt**: Complete implementation, no mocks!

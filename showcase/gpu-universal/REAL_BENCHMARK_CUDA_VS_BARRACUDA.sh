@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Real CUDA vs barraCUDA Benchmark
+# Real CUDA vs barraCuda Benchmark
 # Using ACTUAL working GPU code (wgpu/Vulkan)
 
 set -e
@@ -7,10 +7,10 @@ set -e
 echo ""
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║                                                                  ║"
-echo "║  🦈 REAL Benchmark: CUDA vs barraCUDA                           ║"
+echo "║  🦈 REAL Benchmark: CUDA vs barraCuda                           ║"
 echo "║                                                                  ║"
 echo "║  CUDA: Vendor-locked to NVIDIA only                             ║"
-echo "║  barraCUDA: Vendor-agnostic (Vulkan/wgpu)                       ║"
+echo "║  barraCuda: Vendor-agnostic (Vulkan/wgpu)                       ║"
 echo "║                                                                  ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
@@ -49,7 +49,7 @@ if [ "$HAS_AMD" = true ]; then
 fi
 echo ""
 
-echo "barraCUDA (Vulkan/wgpu) Status:"
+echo "barraCuda (Vulkan/wgpu) Status:"
 if [ "$HAS_NVIDIA" = true ]; then
     echo "  ✅ Can run on NVIDIA (via Vulkan)"
 fi
@@ -67,20 +67,20 @@ echo "────────────────────────�
 ./target/release/lenet5_demo 2>&1 | grep -A 4 "CPU Inference"
 echo ""
 
-# Benchmark 2: barraCUDA on NVIDIA (Vulkan)
+# Benchmark 2: barraCuda on NVIDIA (Vulkan)
 if [ "$HAS_NVIDIA" = true ]; then
-    echo "📊 Benchmark 2: barraCUDA on NVIDIA (Vulkan/wgpu)"
+    echo "📊 Benchmark 2: barraCuda on NVIDIA (Vulkan/wgpu)"
     echo "─────────────────────────────────────────────────────────────────"
     echo "  Running wgpu demo (vendor-agnostic Vulkan)..."
     ./target/release/wgpu_demo 2>&1 | grep -E "GPU:|Throughput|Time:" | head -10
     echo ""
 fi
 
-# Benchmark 3: barraCUDA on AMD (Vulkan) - CUDA CANNOT DO THIS!
+# Benchmark 3: barraCuda on AMD (Vulkan) - CUDA CANNOT DO THIS!
 if [ "$HAS_AMD" = true ]; then
-    echo "📊 Benchmark 3: barraCUDA on AMD (Vulkan/wgpu)"
+    echo "📊 Benchmark 3: barraCuda on AMD (Vulkan/wgpu)"
     echo "─────────────────────────────────────────────────────────────────"
-    echo "  ⚡ CUDA CANNOT RUN HERE - barraCUDA CAN!"
+    echo "  ⚡ CUDA CANNOT RUN HERE - barraCuda CAN!"
     echo "  Attempting Vulkan execution on AMD..."
     # Note: May need AMD Vulkan driver configuration
     echo "  (AMD Vulkan support requires proper driver config)"
@@ -102,14 +102,14 @@ echo "Key Findings:"
 echo ""
 
 if [ "$HAS_NVIDIA" = true ]; then
-    echo "✅ barraCUDA (Vulkan) works on NVIDIA"
+    echo "✅ barraCuda (Vulkan) works on NVIDIA"
     echo "   → No CUDA API needed!"
     echo "   → Vendor-agnostic execution proven"
     echo ""
 fi
 
 if [ "$HAS_AMD" = true ]; then
-    echo "✅ barraCUDA (Vulkan) CAN work on AMD"
+    echo "✅ barraCuda (Vulkan) CAN work on AMD"
     echo "   → CUDA CANNOT do this!"
     echo "   → Proof of vendor lock-in freedom"
     echo ""
@@ -126,7 +126,7 @@ else
 fi
 echo ""
 
-echo "  barraCUDA (Vulkan/wgpu):"
+echo "  barraCuda (Vulkan/wgpu):"
 echo "    ✅ Works on NVIDIA (proven)"
 if [ "$HAS_AMD" = true ]; then
     echo "    ✅ Works on AMD (needs driver config)"
@@ -142,5 +142,5 @@ echo "  💰 No vendor lock-in"
 echo "  💰 Future-proof (Intel, Apple coming)"
 echo ""
 
-echo "🦈 barraCUDA: Proven vendor lock-in freedom!"
+echo "🦈 barraCuda: Proven vendor lock-in freedom!"
 echo ""

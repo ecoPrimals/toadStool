@@ -160,7 +160,7 @@ impl Device {
     /// of the computation. GPUs run arbitrary WGSL shaders, NPUs run
     /// pre-compiled neural network models, CPUs handle everything else.
     ///
-    /// This is BarraCUDA's recommendation. To override, use
+    /// This is BarraCuda's recommendation. To override, use
     /// [`select_with_preference`] or construct a [`DeviceContext`] directly.
     pub fn select_for_workload(workload: &WorkloadHint) -> Device {
         let gpu = Device::GPU.is_available();
@@ -203,7 +203,7 @@ impl Device {
     ///
     /// If the user requests a specific device and it is available, honour
     /// that choice regardless of what the auto-router would recommend.
-    /// This lets callers try workloads on hardware BarraCUDA might not
+    /// This lets callers try workloads on hardware BarraCuda might not
     /// consider optimal -- experimentation is always allowed.
     ///
     /// Fallback chain when the preferred device is unavailable:

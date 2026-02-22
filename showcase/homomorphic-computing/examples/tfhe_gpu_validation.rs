@@ -1,8 +1,8 @@
-// 🔐 GPU Validation via BarraCUDA
+// 🔐 GPU Validation via BarraCuda
 // ⚠️ VALIDATION HARNESS ONLY - NOT PRODUCTION CODE
 //
 // This validates ToadStool's GPU compute performance using
-// BarraCUDA to accelerate polynomial operations that underlie
+// BarraCuda to accelerate polynomial operations that underlie
 // homomorphic encryption schemes.
 
 use anyhow::Result;
@@ -26,14 +26,14 @@ struct BenchResult {
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
-    println!("║  GPU Validation via BarraCUDA                           ║");
+    println!("║  GPU Validation via BarraCuda                           ║");
     println!("║  ⚠️  VALIDATION HARNESS - NOT PRODUCTION CODE  ⚠️       ║");
     println!("╚══════════════════════════════════════════════════════════╝\n");
 
     println!("📊 Purpose: Validate ToadStool GPU compute against CPU baseline\n");
 
-    // Initialize BarraCUDA (ToadStool's pure Rust GPU framework)
-    println!("⚡ Initializing BarraCUDA (ToadStool's pure Rust GPU)...\n");
+    // Initialize BarraCuda (ToadStool's pure Rust GPU framework)
+    println!("⚡ Initializing BarraCuda (ToadStool's pure Rust GPU)...\n");
     let device = WgpuDevice::new().await?;
     println!("✅ GPU Device initialized");
     println!("   Using wgpu backend\n");
@@ -48,12 +48,12 @@ async fn main() -> Result<()> {
     // Run GPU-accelerated polynomial benchmarks
     println!("═══════════════════════════════════════════════════════════\n");
     println!("📊 GPU-Accelerated Polynomial Operations\n");
-    println!("Testing BarraCUDA's ability to accelerate the polynomial");
+    println!("Testing BarraCuda's ability to accelerate the polynomial");
     println!("arithmetic that underlies homomorphic encryption.\n");
 
     // Benchmark 1: GPU-accelerated polynomial addition
     println!("─────────────────────────────────────────────────────────");
-    println!("Benchmark 1: GPU Polynomial Addition (via BarraCUDA)\n");
+    println!("Benchmark 1: GPU Polynomial Addition (via BarraCuda)\n");
 
     let poly_add_result = bench_gpu_polynomial_add(&device, 50_000).await?;
     print_result(&poly_add_result);
@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
     println!("🎯 GPU Validation Complete!\n");
     println!("Key Findings:");
     println!(
-        "  • BarraCUDA provides {:.1}x speedup over CPU",
+        "  • BarraCuda provides {:.1}x speedup over CPU",
         gpu_result.throughput / cpu_result.throughput
     );
     println!("  • Pure Rust GPU implementation validated ✅");
@@ -165,7 +165,7 @@ async fn bench_gpu_accelerated_ops(
     iterations: usize,
 ) -> Result<BenchResult> {
     // For validation: We test the underlying polynomial operations
-    // that TFHE uses, but accelerated via BarraCUDA
+    // that TFHE uses, but accelerated via BarraCuda
 
     let clear_a: u8 = 42;
     let clear_b: u8 = 128;
@@ -174,7 +174,7 @@ async fn bench_gpu_accelerated_ops(
     let enc_b = FheUint8::encrypt(clear_b, client_key);
 
     // In a full implementation, we'd extract polynomial coefficients
-    // and process them via BarraCUDA. For validation, we benchmark
+    // and process them via BarraCuda. For validation, we benchmark
     // the GPU's ability to handle the workload
 
     let start = Instant::now();

@@ -106,7 +106,7 @@ impl WgpuDevice {
     /// Allocate buffer for f32 data
     pub fn create_buffer_f32(&self, size: usize) -> Result<wgpu::Buffer> {
         Ok(self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("barraCUDA Buffer"),
+            label: Some("barraCuda Buffer"),
             size: (size * std::mem::size_of::<f32>()) as u64,
             usage: wgpu::BufferUsages::STORAGE
                 | wgpu::BufferUsages::COPY_DST
@@ -118,7 +118,7 @@ impl WgpuDevice {
     /// Allocate buffer for u32 data
     pub fn create_buffer_u32(&self, size: usize) -> Result<wgpu::Buffer> {
         Ok(self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("barraCUDA U32 Buffer"),
+            label: Some("barraCuda U32 Buffer"),
             size: (size * std::mem::size_of::<u32>()) as u64,
             usage: wgpu::BufferUsages::STORAGE
                 | wgpu::BufferUsages::COPY_DST
@@ -133,7 +133,7 @@ impl WgpuDevice {
         Ok(self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("barraCUDA U32 Zeros Buffer"),
+                label: Some("barraCuda U32 Zeros Buffer"),
                 contents: bytemuck::cast_slice(&zeros),
                 usage: wgpu::BufferUsages::STORAGE
                     | wgpu::BufferUsages::COPY_DST
@@ -144,7 +144,7 @@ impl WgpuDevice {
     /// Allocate buffer for f64 data
     pub fn create_buffer_f64(&self, size: usize) -> Result<wgpu::Buffer> {
         Ok(self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("barraCUDA F64 Buffer"),
+            label: Some("barraCuda F64 Buffer"),
             size: (size * std::mem::size_of::<f64>()) as u64,
             usage: wgpu::BufferUsages::STORAGE
                 | wgpu::BufferUsages::COPY_DST

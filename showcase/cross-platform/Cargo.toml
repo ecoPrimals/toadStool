@@ -140,7 +140,7 @@ rocm = []  # Uses system hipcc, no Rust crate needed
 cuda-comparison = ["cuda"]  # Enable CUDA performance comparison benchmarks
 
 [dependencies]
-# BarraCUDA for GPU compute
+# BarraCuda for GPU compute
 barracuda = { path = "../../crates/barracuda" }
 
 # ToadStool for hardware discovery

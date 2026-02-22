@@ -2,12 +2,12 @@
 //!
 //! This library implements homomorphic encryption benchmarks across:
 //! - CPU: Pure Rust baseline (concrete-core)
-//! - GPU: barraCUDA acceleration (our internal framework)
+//! - GPU: barraCuda acceleration (our internal framework)
 //! - NPU: Akida neuromorphic event-driven processing
 //!
 //! # Key Innovation
 //!
-//! Using barraCUDA internally allows us to:
+//! Using barraCuda internally allows us to:
 //! - Better understand our infrastructure
 //! - Identify evolution needs for new workload types
 //! - Maintain pure Rust throughout the stack

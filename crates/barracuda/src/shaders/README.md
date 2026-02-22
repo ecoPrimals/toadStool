@@ -1,4 +1,4 @@
-# BarraCUDA WGSL Shader Library
+# BarraCuda WGSL Shader Library
 
 **396 Production WGSL Shaders** | Categorized for Discovery | Cross-Vendor Compatible
 

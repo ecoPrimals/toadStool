@@ -1,6 +1,6 @@
 //! Comprehensive GPU Operations Benchmark - All 105 Operations
 //!
-//! Benchmarks every barraCUDA operation for performance analysis.
+//! Benchmarks every barraCuda operation for performance analysis.
 //! Measures throughput, latency, and identifies optimization opportunities.
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};

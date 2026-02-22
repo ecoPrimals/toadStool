@@ -1,4 +1,4 @@
-# BarraCUDA Shader Reorganization Summary
+# BarraCuda Shader Reorganization Summary
 
 **Date**: February 11, 2026  
 **Status**: ✅ COMPLETE  
@@ -264,7 +264,7 @@ git checkout src/ops/
 
 ## Conclusion
 
-The BarraCUDA shader library is now organized for scale. With 414 shaders
+The BarraCuda shader library is now organized for scale. With 414 shaders
 categorized and documented, developers can quickly find what they need and
 confidently add new operations to the right place.
 

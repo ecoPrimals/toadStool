@@ -1,4 +1,4 @@
-// ! Workload Analysis Module for BarraCUDA v2.0
+// ! Workload Analysis Module for BarraCuda v2.0
 //!
 //! Analyzes workloads and selects optimal compute device (CPU, GPU, NPU)
 //! based on validated performance data from 96+ actual hardware tests.

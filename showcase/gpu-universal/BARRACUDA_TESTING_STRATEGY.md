@@ -1,4 +1,4 @@
-# barraCUDA Testing Strategy - Comprehensive Verification Plan
+# barraCuda Testing Strategy - Comprehensive Verification Plan
 
 **Date**: January 12, 2026  
 **Status**: Verification & Validation Phase  

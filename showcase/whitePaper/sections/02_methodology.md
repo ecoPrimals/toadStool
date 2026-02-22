@@ -27,7 +27,7 @@
 
 ### 2.1.2 Software Stack
 
-**BarraCUDA v2.0 "Universal Compute"**:
+**BarraCuda v2.0 "Universal Compute"**:
 - Language: 100% Pure Rust (no C/C++ dependencies)
 - GPU Backend: wgpu (vendor-agnostic WebGPU)
 - NPU Backend: akida-driver (pure Rust, event-driven)
@@ -45,7 +45,7 @@
 
 **1. Homomorphic Encryption (HE)**
 - Operations: Boolean AND, OR, XOR on encrypted data
-- Library: tfhe-rs (baseline), BarraCUDA GPU/NPU
+- Library: tfhe-rs (baseline), BarraCuda GPU/NPU
 - Sizes: 100, 500, 1000, 5000 operations
 - Platforms: CPU (baseline), GPU, NPU
 - Tests: 15 (5 per platform)

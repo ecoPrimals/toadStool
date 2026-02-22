@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-BarraCUDA Shader Reorganization Script
+BarraCuda Shader Reorganization Script
 
 Reorganizes 414 WGSL shaders from flat structure into categorized directories.
 Updates all include_str! references in Rust files.
@@ -171,7 +171,7 @@ def main():
         return 1
     
     print("=" * 80)
-    print("BarraCUDA Shader Reorganization")
+    print("BarraCuda Shader Reorganization")
     print("=" * 80)
     print()
     

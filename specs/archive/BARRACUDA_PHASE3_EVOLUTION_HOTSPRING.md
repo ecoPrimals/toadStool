@@ -1,4 +1,4 @@
-# BarraCUDA & ToadStool — Phase 3 Evolution Roadmap
+# BarraCuda & ToadStool — Phase 3 Evolution Roadmap
 
 **Date**: February 12, 2026 (Updated)  
 **Source**: ecoPrimals Control Team (Eastgate) — hotSpring validation & evolution analysis  
@@ -42,7 +42,7 @@
 
 ## Executive Summary
 
-BarraCUDA has evolved into an extraordinary platform: **436 WGSL shaders**, **540 Rust modules**,
+BarraCuda has evolved into an extraordinary platform: **436 WGSL shaders**, **540 Rust modules**,
 **1,658 tests**, and **~16,800 lines** of scientific computing middleware. The shader-first
 architecture is sound. The ML/DL layer is production-grade. The scientific computing modules
 work correctly — all validation tests pass.
@@ -322,7 +322,7 @@ pub enum PrecisionMode {
 Every new function validated in hotSpring:
 
 ```
-Python control (scipy/numpy)  ←→  BarraCUDA (Rust/WGSL)
+Python control (scipy/numpy)  ←→  BarraCuda (Rust/WGSL)
          ↓                              ↓
     reference results              candidate results
          ↓                              ↓

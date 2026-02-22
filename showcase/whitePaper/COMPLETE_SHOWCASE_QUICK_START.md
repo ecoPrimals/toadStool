@@ -28,7 +28,7 @@ cd showcase/whitePaper/benchmarks
 ```bash
 cargo run --release --bin fhe_cross_vendor_validation
 ```
-- **Operations**: Real GPU NTT/INTT (BarraCUDA)
+- **Operations**: Real GPU NTT/INTT (BarraCuda)
 - **Performance**: 118.4x GPU speedup
 - **Status**: ✅ Real from day 1
 
@@ -58,7 +58,7 @@ cargo run --release --bin encrypted_mnist_pipeline
 ```bash
 cargo run --release --bin transformer_inference
 ```
-- **Operations**: Real MatMul (BarraCUDA)
+- **Operations**: Real MatMul (BarraCuda)
 - **Performance**: 167K tokens/sec
 - **Status**: ✅ Real from day 1
 
@@ -66,7 +66,7 @@ cargo run --release --bin transformer_inference
 ```bash
 cargo run --release --bin vision_inference
 ```
-- **Operations**: Real Tensor ops (BarraCUDA)
+- **Operations**: Real Tensor ops (BarraCuda)
 - **Performance**: 4.5 images/sec
 - **Status**: ✅ Real from day 1
 
@@ -74,7 +74,7 @@ cargo run --release --bin vision_inference
 ```bash
 cargo run --release --bin audio_processing
 ```
-- **Operations**: Real Tensor ops (BarraCUDA)
+- **Operations**: Real Tensor ops (BarraCuda)
 - **Performance**: 2,410x real-time
 - **Status**: ✅ Real from day 1
 

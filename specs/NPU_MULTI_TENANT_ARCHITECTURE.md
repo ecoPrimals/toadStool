@@ -477,7 +477,7 @@ pub struct TimeSliceScheduler {
 
 ### 10.1 GPU Multi-Tenancy
 
-Apply same pattern to GPU (via BarraCUDA):
+Apply same pattern to GPU (via BarraCuda):
 - Kernel backend: Vulkan/WGPU
 - Userspace backend: Sandboxed compute shaders
 - Same isolation guarantees

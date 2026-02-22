@@ -2,13 +2,13 @@
 
 **Date**: February 3, 2026  
 **Status**: 🔬 **PLANNING PHASE**  
-**Goal**: Evolve from simulated FHE to real validation using BarraCUDA's FHE operations
+**Goal**: Evolve from simulated FHE to real validation using BarraCuda's FHE operations
 
 ---
 
 ## 🎯 Current State Assessment
 
-### ✅ Existing FHE Operations in BarraCUDA
+### ✅ Existing FHE Operations in BarraCuda
 
 **Core Polynomial Operations** (6 total):
 
@@ -52,7 +52,7 @@
 - ✅ u32 pairs for u64 polynomial coefficients
 - ✅ Barrett reduction for modular arithmetic
 - ✅ WGSL GPU shaders
-- ✅ Tensor-based API (unified with BarraCUDA)
+- ✅ Tensor-based API (unified with BarraCuda)
 - ✅ Hardware-agnostic (CPU/GPU via wgpu)
 
 ---
@@ -263,7 +263,7 @@
 **Tasks**:
 1. ⏳ **Encrypt MNIST Images**
    - Use Concrete or TFHE-rs for encryption
-   - Convert to BarraCUDA tensor format
+   - Convert to BarraCuda tensor format
    - Store encrypted test set
 
 2. ⏳ **Encrypted Layer 1 (784→128)**
@@ -308,7 +308,7 @@ All new FHE shaders will follow this structure:
 
 ```wgsl
 // FHE Operation Shader Template
-// BarraCUDA Deep Debt Compliant: Pure WGSL, hardware-agnostic
+// BarraCuda Deep Debt Compliant: Pure WGSL, hardware-agnostic
 
 // Input/output buffers (u32 pairs for u64)
 @group(0) @binding(0) var<storage, read> input_a: array<u32>;
@@ -521,7 +521,7 @@ showcase/whitePaper/
 ### Academic Papers (Potential Publications)
 
 1. **"GPU-Accelerated FHE on Multi-Vendor Hardware"**
-   - BarraCUDA's unique multi-vendor GPU support
+   - BarraCuda's unique multi-vendor GPU support
    - Performance comparison: AMD vs NVIDIA for FHE
    - Target: IEEE S&P, CRYPTO, USENIX Security
 

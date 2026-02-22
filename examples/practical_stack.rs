@@ -3,14 +3,14 @@
 //! Demonstrates the real integration:
 //! 1. ToadStool discovers hardware
 //! 2. Application selects best device for workload
-//! 3. BarraCUDA runs computation
+//! 3. BarraCuda runs computation
 //!
 //! Run with: cargo run --release --example practical_stack
 
 use toadstool_core::{HardwareManager, HardwareType};
 
 fn main() -> anyhow::Result<()> {
-    println!("\n🍄 ToadStool + 🦈 BarraCUDA Practical Demo\n");
+    println!("\n🍄 ToadStool + 🦈 BarraCuda Practical Demo\n");
     
     // ═══════════════════════════════════════════════════════════════
     // Step 1: ToadStool discovers hardware
@@ -50,11 +50,11 @@ fn main() -> anyhow::Result<()> {
     }
     
     // ═══════════════════════════════════════════════════════════════
-    // Step 3: Show BarraCUDA integration
+    // Step 3: Show BarraCuda integration
     // ═══════════════════════════════════════════════════════════════
-    println!("\nStep 3: BarraCUDA Compute Layer");
+    println!("\nStep 3: BarraCuda Compute Layer");
     println!("────────────────────────────────────");
-    println!("  BarraCUDA uses ToadStool-discovered hardware");
+    println!("  BarraCuda uses ToadStool-discovered hardware");
     println!("  Operations: Tensor ops, Neural nets, FFT, etc.");
     println!("  Backends: WGPU (GPU), Akida (NPU), Rayon (CPU)");
     
@@ -66,7 +66,7 @@ fn main() -> anyhow::Result<()> {
     println!("  If hardware is added/removed:");
     println!("  1. ToadStool rescans: hw.rescan()");
     println!("  2. New devices automatically available");
-    println!("  3. BarraCUDA uses new hardware");
+    println!("  3. BarraCuda uses new hardware");
     println!("  4. No code changes needed!");
     
     // ═══════════════════════════════════════════════════════════════
@@ -74,7 +74,7 @@ fn main() -> anyhow::Result<()> {
     // ═══════════════════════════════════════════════════════════════
     println!("\n✓ Complete Stack Operational");
     println!("  • ToadStool: Hardware infrastructure (pure Rust)");
-    println!("  • BarraCUDA: Compute layer (math operations)");
+    println!("  • BarraCuda: Compute layer (math operations)");
     println!("  • Self-evolving: Adapts to hardware changes");
     println!("  • Zero setup: Works on fresh systems\n");
     

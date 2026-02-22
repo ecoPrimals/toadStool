@@ -14,7 +14,7 @@ use barracuda::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("🦈 BarraCUDA Unified Scheduler Demo");
+    println!("🦈 BarraCuda Unified Scheduler Demo");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
     

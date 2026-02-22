@@ -15,7 +15,7 @@ use toadstool_runtime_universal::types::*;
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Tanh & Sigmoid Demo                 ║");
-    println!("║  barraCUDA Phase 1 - Classic Activations                ║");
+    println!("║  barraCuda Phase 1 - Classic Activations                ║");
     println!("╚══════════════════════════════════════════════════════════╝");
     println!();
 
@@ -291,7 +291,7 @@ async fn main() -> Result<()> {
 
     // Pattern Observations
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🎓 Pattern Observations (barraCUDA Learning)");
+    println!("🎓 Pattern Observations (barraCuda Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
@@ -337,7 +337,7 @@ async fn main() -> Result<()> {
     println!("     • And for specific use cases (probabilities, gates)");
     println!();
 
-    println!("barraCUDA Opportunities:");
+    println!("barraCuda Opportunities:");
     println!("  • Fusion: Can fuse Tanh/Sigmoid with previous operation");
     println!("  • LSTM detection: Recognize Sigmoid+Tanh pattern → LSTM gate");
     println!("  • Relationship: Use tanh(x) = 2*sigmoid(2x) - 1 for optimization");

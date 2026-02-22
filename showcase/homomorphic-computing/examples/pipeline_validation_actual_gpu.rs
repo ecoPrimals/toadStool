@@ -1,5 +1,5 @@
 // 🔥 ACTUAL GPU HARDWARE VALIDATION
-// ✅ Uses REAL BarraCUDA GPU execution
+// ✅ Uses REAL BarraCuda GPU execution
 // ✅ Measures ACTUAL hardware performance
 // ✅ No simulation - pure hardware timing
 
@@ -36,13 +36,13 @@ struct ActualBenchmarkResult {
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════════════╗");
     println!("║  🔥 ACTUAL GPU HARDWARE VALIDATION                               ║");
-    println!("║  ✅ Real BarraCUDA execution on NVIDIA RTX 3090                 ║");
+    println!("║  ✅ Real BarraCuda execution on NVIDIA RTX 3090                 ║");
     println!("╚══════════════════════════════════════════════════════════════════╝\n");
 
     println!("📊 Purpose: Validate ACTUAL GPU performance vs CPU baseline\n");
 
-    // Initialize BarraCUDA GPU device
-    println!("⚡ Initializing BarraCUDA GPU device...");
+    // Initialize BarraCuda GPU device
+    println!("⚡ Initializing BarraCuda GPU device...");
     let gpu_device = WgpuDevice::new().await?;
     println!("✅ GPU Device initialized (wgpu backend)\n");
 
@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// Benchmark GPU polynomial addition using ACTUAL BarraCUDA execution
+/// Benchmark GPU polynomial addition using ACTUAL BarraCuda execution
 async fn bench_gpu_polynomial_add(
     device: &WgpuDevice,
     degree: usize,
@@ -273,7 +273,7 @@ async fn bench_gpu_polynomial_add(
     let ops_per_joule = throughput / power_watts as f64;
 
     Ok(ActualBenchmarkResult {
-        substrate_name: "GPU (BarraCUDA)".to_string(),
+        substrate_name: "GPU (BarraCuda)".to_string(),
         hardware_type: "NVIDIA RTX 3090".to_string(),
         operation: format!("Polynomial Addition (degree={})", degree),
         total_time_us,

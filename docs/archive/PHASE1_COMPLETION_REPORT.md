@@ -194,7 +194,7 @@ All pure Rust or well-justified:
 - **Compute**: `barracuda` (internal), `wgpu`
 - **Utilities**: `tracing`, `dashmap`, `bytemuck`
 
-### BarraCUDA Dependencies (21 total)
+### BarraCuda Dependencies (21 total)
 Pure Rust scientific stack:
 - **GPU**: `wgpu`, `bytemuck` (safe zero-copy)
 - **Math**: `nalgebra`, `rand`, `ndarray`
@@ -269,7 +269,7 @@ QUICK_STATUS.md                                   (middleware line)
 ### High-Value Additions (Not Blocking)
 
 #### 1. SparsitySampler (1 week) - **HIGHEST PRIORITY**
-Port from `mystic` when hotSpring source available. This would enable BarraCUDA to reach 
+Port from `mystic` when hotSpring source available. This would enable BarraCuda to reach 
 Python control's accuracy in **32% of the wall-clock time**.
 
 #### 2. Latin Hypercube Sampling (2-3 days)

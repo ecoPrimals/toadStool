@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 
 echo "╔══════════════════════════════════════════════════════════════════════════╗"
 echo "║                                                                          ║"
-echo "║               GPU BENCHMARKING SUITE - barraCUDA                        ║"
+echo "║               GPU BENCHMARKING SUITE - barraCuda                        ║"
 echo "║                                                                          ║"
 echo "╚══════════════════════════════════════════════════════════════════════════╝"
 echo ""

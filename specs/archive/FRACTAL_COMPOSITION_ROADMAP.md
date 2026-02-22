@@ -43,7 +43,7 @@ Across:
   - AI/ML with intelligent backend selection
   - CUDA compatibility layer
 
-- ✅ **GPU Abstraction** (`barraCUDA`)
+- ✅ **GPU Abstraction** (`barraCuda`)
   - Vendor-agnostic GPU compute
   - 18 operations proven, 4 more ready
   - Pure Rust, zero vendor lock-in
@@ -386,9 +386,9 @@ crates/
 
 ## 🎯 Integration with Existing Code
 
-### barraCUDA Integration
-- Use barraCUDA for GPU workloads across all layers
-- Cloud providers use barraCUDA for GPU operations
+### barraCuda Integration
+- Use barraCuda for GPU workloads across all layers
+- Cloud providers use barraCuda for GPU operations
 - Layer detection influences GPU capability exposure
 
 ### Infant Discovery Integration
@@ -523,4 +523,4 @@ NOT:
 **Status**: Roadmap Complete  
 **Next**: Team review and Phase 1 kickoff  
 **Timeline**: 4 weeks  
-**Confidence**: HIGH (building on solid barraCUDA foundation)
+**Confidence**: HIGH (building on solid barraCuda foundation)

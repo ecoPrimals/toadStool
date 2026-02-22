@@ -1,6 +1,6 @@
 //! GPU Raytracing - Dense Parallel Ray Traversal
 //!
-//! Deep Debt: Uses BarraCUDA WGSL shaders for GPU raytracing
+//! Deep Debt: Uses BarraCuda WGSL shaders for GPU raytracing
 //! Excels at dense scenes with high hit rates
 
 use crate::scene::Scene;
@@ -14,7 +14,7 @@ pub struct GpuRaytracer {
 impl GpuRaytracer {
     /// Create GPU raytracer
     ///
-    /// Deep Debt: Uses BarraCUDA for GPU access via ToadStool
+    /// Deep Debt: Uses BarraCuda for GPU access via ToadStool
     pub fn new(scene: Scene) -> Result<Self> {
         Ok(Self { scene })
     }
@@ -43,7 +43,7 @@ impl GpuRaytracer {
             }
         }
 
-        // Note: In production, this would use BarraCUDA WGSL shader
+        // Note: In production, this would use BarraCuda WGSL shader
         // See: showcase/neuromorphic/04-raytracing-comparison/shaders/raytrace.wgsl
 
         Ok(pixels)

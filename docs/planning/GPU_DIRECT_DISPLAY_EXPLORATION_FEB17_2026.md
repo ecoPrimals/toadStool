@@ -60,12 +60,12 @@ The CPU never sees pixel data during normal gameplay.
 
 ---
 
-## Current ToadStool/BarraCUDA Architecture
+## Current ToadStool/BarraCuda Architecture
 
 ### What We Have
 
 ```
-BarraCUDA (Compute)                    Display Backend (DRM)
+BarraCuda (Compute)                    Display Backend (DRM)
 ────────────────────                   ───────────────────────
 wgpu::Device                           DRM Device
   └── Compute pipelines                  └── DumbBuffer (CPU-accessible)
@@ -78,7 +78,7 @@ wgpu::Device                           DRM Device
 
 ### The Gap
 
-- BarraCUDA creates devices with `compatible_surface: None` (compute-only)
+- BarraCuda creates devices with `compatible_surface: None` (compute-only)
 - Display backend uses DRM "dumb buffers" (CPU-accessible, no GPU)
 - No path from GPU compute → display without CPU readback
 
@@ -88,7 +88,7 @@ wgpu::Device                           DRM Device
 
 ### Phase 1: Compute → Storage Texture
 
-Add storage texture support to BarraCUDA:
+Add storage texture support to BarraCuda:
 
 ```rust
 // New: Storage texture for 2D output
@@ -342,7 +342,7 @@ The display path is **not the bottleneck** — it's the PCIe readback.
 - [x] Design GPU-direct architecture
 
 ### Phase 1: Storage Textures
-- [ ] Add `GpuTexture2D` to BarraCUDA
+- [ ] Add `GpuTexture2D` to BarraCuda
 - [ ] WGSL templates for texture output
 - [ ] Test compute → texture path
 

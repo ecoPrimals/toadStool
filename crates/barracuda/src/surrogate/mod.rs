@@ -8,7 +8,7 @@
 //!
 //! # Dual-Precision Architecture
 //!
-//! The RBF surrogate uses BarraCUDA's dual-precision pattern:
+//! The RBF surrogate uses BarraCuda's dual-precision pattern:
 //! 1. **GPU (f32)**: Compute pairwise distances via cdist shader (O(n²) bottleneck)
 //! 2. **CPU (f64)**: Apply kernel, assemble matrix, solve for weights
 //!

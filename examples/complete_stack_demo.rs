@@ -1,15 +1,15 @@
 //! Complete Stack Integration Demo
 //! 
-//! Shows the full ToadStool + BarraCUDA architecture:
+//! Shows the full ToadStool + BarraCuda architecture:
 //! - ToadStool discovers hardware
-//! - BarraCUDA runs math on discovered hardware
+//! - BarraCuda runs math on discovered hardware
 //! - No scripts, no sudo, self-adapting
 
 use anyhow::Result;
 
 fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
-    println!("║   ToadStool + BarraCUDA Complete Stack Demo             ║");
+    println!("║   ToadStool + BarraCuda Complete Stack Demo             ║");
     println!("╚══════════════════════════════════════════════════════════╝\n");
     
     // ═══════════════════════════════════════════════════════════
@@ -55,7 +55,7 @@ fn main() -> Result<()> {
     
     println!("\n  Hardware Discovered:");
     println!("  ┌─────────────────────────────────────────┐");
-    println!("  │ GPUs: {:2}  (BarraCUDA via WGPU)      │", gpu_count);
+    println!("  │ GPUs: {:2}  (BarraCuda via WGPU)      │", gpu_count);
     println!("  │ NPUs: {:2}  (Akida neuromorphic)      │", npu_count);
     for name in &npu_names {
         println!("  │   → {}                           │", name);
@@ -67,13 +67,13 @@ fn main() -> Result<()> {
     println!("\n  ✓ ToadStool found {} compute device(s)", total_devices);
     
     // ═══════════════════════════════════════════════════════════
-    // LAYER 2: BarraCUDA Computation
+    // LAYER 2: BarraCuda Computation
     // ═══════════════════════════════════════════════════════════
-    println!("\n┌─ LAYER 2: BarraCUDA (Math/Compute Layer) ──────────────┐");
+    println!("\n┌─ LAYER 2: BarraCuda (Math/Compute Layer) ──────────────┐");
     println!("│ Universal compute, runs on all ToadStool hardware       │");
     println!("└──────────────────────────────────────────────────────────┘\n");
     
-    println!("[2/4] BarraCUDA selecting best device for workload...");
+    println!("[2/4] BarraCuda selecting best device for workload...");
     
     // Workload selection logic
     let selected_device = if npu_count > 0 {
@@ -97,7 +97,7 @@ fn main() -> Result<()> {
     println!("[3/4] Demonstrating hot-plug adaptation...");
     println!("\n  Scenario: User adds/removes hardware");
     println!("  ToadStool: Rescans and discovers new devices");
-    println!("  BarraCUDA: Automatically uses new hardware");
+    println!("  BarraCuda: Automatically uses new hardware");
     println!("  Application: No changes needed!");
     
     // ═══════════════════════════════════════════════════════════
@@ -107,7 +107,7 @@ fn main() -> Result<()> {
     println!("│                                                          │");
     println!("│   Application (Your Code)                               │");
     println!("│          ↓                                               │");
-    println!("│   BarraCUDA 🦈 (Math Layer)                             │");
+    println!("│   BarraCuda 🦈 (Math Layer)                             │");
     println!("│    • Tensor ops  • Neural nets  • FFT/NTT               │");
     println!("│          ↓                                               │");
     println!("│   ToadStool 🍄 (Hardware Layer)                          │");
@@ -119,7 +119,7 @@ fn main() -> Result<()> {
     
     println!("\n[4/4] Summary:");
     println!("\n  ✓ ToadStool: Pure Rust hardware infrastructure");
-    println!("  ✓ BarraCUDA: Universal math/compute layer");
+    println!("  ✓ BarraCuda: Universal math/compute layer");
     println!("  ✓ No scripts, no sudo, self-evolving");
     println!("  ✓ Works on fresh systems immediately");
     

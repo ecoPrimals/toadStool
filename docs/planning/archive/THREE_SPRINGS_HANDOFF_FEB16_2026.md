@@ -1,7 +1,7 @@
 # Handoff: ToadStool → hotSpring, wetSpring, airSpring
 
 **Date:** February 16, 2026  
-**From:** ToadStool/BarraCUDA core team  
+**From:** ToadStool/BarraCuda core team  
 **To:** hotSpring, wetSpring, airSpring validation teams  
 **Commit:** `0c477306` — `git pull origin master` to receive  
 **License:** AGPL-3.0-or-later
@@ -505,7 +505,7 @@ The parallel cyclic reduction algorithm had data flow issues. Instead of multi-p
 
 ### hotSpring Validation Success
 
-hotSpring validated that BarraCUDA WGSL shaders are **driver-agnostic**:
+hotSpring validated that BarraCuda WGSL shaders are **driver-agnostic**:
 
 | GPU | Architecture | Driver | shaderFloat64 | Results |
 |-----|-------------|--------|---------------|---------|

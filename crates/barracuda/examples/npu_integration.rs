@@ -1,4 +1,4 @@
-//! BarraCUDA NPU Integration Examples
+//! BarraCuda NPU Integration Examples
 //!
 //! Demonstrates using NPU operations for real ML inference.
 //!
@@ -16,7 +16,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 // Main function for example
 fn main() -> Result<()> {
-    println!("🧠 BarraCUDA NPU Integration Examples\n");
+    println!("🧠 BarraCuda NPU Integration Examples\n");
     println!("═══════════════════════════════════════\n");
 
     println!("📋 Available Examples:");
@@ -216,7 +216,7 @@ pub fn example_activation_comparison() -> Result<()> {
 /// Run all examples
 pub fn run_all_examples() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
-    println!("║  BarraCUDA NPU Operations - Integration Examples         ║");
+    println!("║  BarraCuda NPU Operations - Integration Examples         ║");
     println!("║  Demonstrating 5 core ML operations on Akida NPU        ║");
     println!("╚══════════════════════════════════════════════════════════╝");
 

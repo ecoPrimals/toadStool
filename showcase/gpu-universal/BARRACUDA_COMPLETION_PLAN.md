@@ -1,4 +1,4 @@
-# barraCUDA Completion Plan - Final 11 Operations
+# barraCuda Completion Plan - Final 11 Operations
 
 **Current**: 10/21 (48%)  
 **Target**: 21/21 (100%)  

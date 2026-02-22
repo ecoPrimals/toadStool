@@ -6,7 +6,7 @@ set -euo pipefail
 
 echo "╔══════════════════════════════════════════════════════╗"
 echo "║   NPU vs GPU Raytracing Comparison                  ║"
-echo "║   Demonstrates ToadStool + BarraCUDA Architecture    ║"
+echo "║   Demonstrates ToadStool + BarraCuda Architecture    ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
 

@@ -15,7 +15,7 @@ This validation demonstrates **ToadStool's universal compute platform** can effe
 ### **Key Findings**
 
 ✅ **CPU Baseline**: Established reliable baseline (~1,200 ops/sec)  
-✅ **GPU Acceleration**: BarraCUDA provides **4-6x speedup** (pure Rust!)  
+✅ **GPU Acceleration**: BarraCuda provides **4-6x speedup** (pure Rust!)  
 ✅ **NPU Efficiency**: Akida achieves **30-50x energy advantage** over GPU!  
 ✅ **Universal Compute**: Single codebase runs on all substrates ✨  
 
@@ -126,7 +126,7 @@ This validation demonstrates **ToadStool's universal compute platform** can effe
 
 **Strengths**:
 - ✅ **4.7x average speedup** vs CPU
-- ✅ Validates ToadStool's **BarraCUDA** (pure Rust!)
+- ✅ Validates ToadStool's **BarraCuda** (pure Rust!)
 - ✅ Excellent for batch processing
 - ✅ High parallelism
 
@@ -199,7 +199,7 @@ Akida NPU's **spiking neural network** architecture:
 
 ### **ToadStool's Universal Compute: VALIDATED** ✅
 
-1. ✅ **Pure Rust Implementation**: All substrates (BarraCUDA GPU, Akida NPU)
+1. ✅ **Pure Rust Implementation**: All substrates (BarraCuda GPU, Akida NPU)
 2. ✅ **Universal Codebase**: Single implementation runs everywhere
 3. ✅ **Capability-Based Selection**: Runtime substrate discovery
 4. ✅ **Production Ready**: No mocks, complete implementations
@@ -220,7 +220,7 @@ Akida NPU's **spiking neural network** architecture:
 
 **For ToadStool**:
 - ✅ Proves universal compute capability
-- ✅ Validates pure Rust GPU (BarraCUDA)
+- ✅ Validates pure Rust GPU (BarraCuda)
 - ✅ Demonstrates NPU integration (Akida)
 - ✅ Shows energy efficiency leadership
 - ✅ Enables edge AI + privacy (HE + NPU)
@@ -243,13 +243,13 @@ Akida NPU's **spiking neural network** architecture:
 ### **Test Environment**
 
 - **CPU**: Modern x86_64 (baseline)
-- **GPU**: wgpu backend (via BarraCUDA)
+- **GPU**: wgpu backend (via BarraCuda)
 - **NPU**: Akida neuromorphic processor (when available)
 
 ### **Validation Approach**
 
 1. **CPU Baseline**: Establish reference performance
-2. **GPU Validation**: Test BarraCUDA acceleration
+2. **GPU Validation**: Test BarraCuda acceleration
 3. **NPU Validation**: Measure Akida efficiency
 4. **Energy Analysis**: Compare ops/joule across substrates
 
@@ -301,7 +301,7 @@ This is a **VALIDATION HARNESS ONLY**, completely isolated from ToadStool's prod
 ✅ **ToadStool Core (Production)**:
 - 100% pure Rust
 - Pure Rust crypto provider (existing)
-- BarraCUDA (pure Rust GPU)
+- BarraCuda (pure Rust GPU)
 - Akida driver (pure Rust NPU)
 - ZERO external crypto dependencies
 
@@ -333,7 +333,7 @@ This validation:
 **External References**:
 - [TFHE-rs](https://github.com/zama-ai/tfhe-rs) - Reference implementation
 - [BrainChip Akida](https://brainchip.com) - Neuromorphic NPU
-- [BarraCUDA](../../crates/barracuda/) - ToadStool's pure Rust GPU
+- [BarraCuda](../../crates/barracuda/) - ToadStool's pure Rust GPU
 
 ═══════════════════════════════════════════════════════════════════
 
@@ -343,7 +343,7 @@ This validation:
 
 ToadStool's **universal compute platform** is **validated and production-ready** for encrypted workloads across:
 - ✅ CPU (baseline, universally available)
-- ✅ GPU (4-6x speedup via pure Rust BarraCUDA)
+- ✅ GPU (4-6x speedup via pure Rust BarraCuda)
 - ✅ NPU (30-50x energy efficiency via Akida)
 
 ### **NPU: The Edge AI + Privacy Champion** ⭐

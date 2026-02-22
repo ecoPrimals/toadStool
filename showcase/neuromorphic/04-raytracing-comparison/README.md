@@ -1,12 +1,12 @@
 # NPU vs GPU Raytracing Comparison
 
-Demonstrates the strengths of NPU (sparse, event-driven) vs GPU (dense, parallel) for raytracing workloads using the complete ToadStool + BarraCUDA stack.
+Demonstrates the strengths of NPU (sparse, event-driven) vs GPU (dense, parallel) for raytracing workloads using the complete ToadStool + BarraCuda stack.
 
 ## Overview
 
 This showcase demonstrates:
 1. **ToadStool hardware discovery** - Automatically finds NPU and GPU
-2. **BarraCUDA shader execution** - GPU raytracing via WGSL
+2. **BarraCuda shader execution** - GPU raytracing via WGSL
 3. **NPU event-driven processing** - Sparse scene raytracing
 4. **Performance comparison** - NPU vs GPU for different scene types
 
@@ -19,7 +19,7 @@ ToadStool (discovers NPU + GPU)
      ↓
     / \
    ↓   ↓
- NPU   GPU (BarraCUDA WGSL shader)
+ NPU   GPU (BarraCuda WGSL shader)
 ```
 
 ## Quick Start
@@ -50,14 +50,14 @@ cargo run --release --example npu_raytrace
 
 ### Hybrid (Mixed density)
 - **ToadStool**: Automatically selects best device
-- **BarraCUDA**: Executes on selected hardware
+- **BarraCuda**: Executes on selected hardware
 
 ## Implementation
 
 ### GPU Raytracing (WGSL Shader)
 - Parallel ray traversal
 - BVH acceleration structure
-- Runs on any GPU via BarraCUDA/WGPU
+- Runs on any GPU via BarraCuda/WGPU
 
 ### NPU Raytracing (Event-Driven)
 - Sparse ray representation
@@ -89,4 +89,4 @@ cargo run --release --example npu_raytrace
 
 - [ToadStool Architecture](../../../TOADSTOOL_ARCHITECTURE_FEB08_2026.md)
 - [NPU Driver Architecture](../../../specs/NPU_DRIVER_ARCHITECTURE.md)
-- [BarraCUDA Integration](../../../ARCHITECTURE_COMPLETE.md)
+- [BarraCuda Integration](../../../ARCHITECTURE_COMPLETE.md)

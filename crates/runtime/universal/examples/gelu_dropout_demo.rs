@@ -15,7 +15,7 @@ use toadstool_runtime_universal::types::*;
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: GELU & Dropout Demo                 ║");
-    println!("║  barraCUDA Phase 1 - Modern Activations & Regularization║");
+    println!("║  barraCuda Phase 1 - Modern Activations & Regularization║");
     println!("╚══════════════════════════════════════════════════════════╝");
     println!();
 
@@ -249,7 +249,7 @@ async fn main() -> Result<()> {
 
     // Pattern Observations
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🎓 Pattern Observations (barraCUDA Learning)");
+    println!("🎓 Pattern Observations (barraCuda Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
@@ -279,7 +279,7 @@ async fn main() -> Result<()> {
     println!("     • Worth it for better gradient flow");
     println!("     • Especially important in deep networks");
     println!("  2. Dropout has dual behavior (training vs inference)");
-    println!("     • barraCUDA must handle mode switching");
+    println!("     • barraCuda must handle mode switching");
     println!("     • Parameter: dropout_rate (0 = inference)");
     println!("  3. GELU + Dropout is standard in Transformers");
     println!("     • Feed-forward: Linear → GELU → Dropout → Linear");
@@ -287,7 +287,7 @@ async fn main() -> Result<()> {
     println!("     • Easy to fuse with previous operations");
     println!();
 
-    println!("barraCUDA Opportunities:");
+    println!("barraCuda Opportunities:");
     println!("  • GELU: Fuse sigmoid + multiply into single operation");
     println!("  • Dropout: Eliminate in inference mode (compile-time)");
     println!("  • Pipeline: Fuse GELU → Dropout → next layer");

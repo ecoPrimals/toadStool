@@ -14,7 +14,7 @@ use toadstool_runtime_universal::types::*;
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Transpose & Softmax Demo            ║");
-    println!("║  barraCUDA Phase 1 - Data Movement & Normalization      ║");
+    println!("║  barraCuda Phase 1 - Data Movement & Normalization      ║");
     println!("╚══════════════════════════════════════════════════════════╝");
     println!();
 
@@ -247,7 +247,7 @@ async fn main() -> Result<()> {
 
     // Pattern Observations
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🎓 Pattern Observations (barraCUDA Learning)");
+    println!("🎓 Pattern Observations (barraCuda Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
@@ -278,10 +278,10 @@ async fn main() -> Result<()> {
     println!("  3. Softmax is a 4-phase composite:");
     println!("     Reduce → Map → Reduce → Map");
     println!("  4. Numerical stability requires algorithmic care");
-    println!("  5. barraCUDA can recognize and optimize composites");
+    println!("  5. barraCuda can recognize and optimize composites");
     println!();
 
-    println!("barraCUDA Opportunities:");
+    println!("barraCuda Opportunities:");
     println!("  • Transpose: Cache blocking, shared memory (GPU)");
     println!("  • Softmax: Fuse all 4 phases into single kernel");
     println!("  • Both: Detect patterns in user code automatically");

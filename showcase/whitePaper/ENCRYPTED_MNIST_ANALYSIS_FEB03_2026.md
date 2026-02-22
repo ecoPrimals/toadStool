@@ -404,17 +404,17 @@ Encrypt MRI ─────────────> Encrypted Inference ──�
 
 ## 🎯 Competitive Analysis
 
-### BarraCUDA vs Existing FHE Frameworks
+### BarraCuda vs Existing FHE Frameworks
 
 | Framework | GPU Support | Multi-Vendor | NPU Support | Auto-Selection |
 |-----------|-------------|--------------|-------------|----------------|
-| **BarraCUDA** | ✅ Yes | ✅ AMD + NVIDIA | ✅ Akida 🆕 | ✅ Scheduler |
+| **BarraCuda** | ✅ Yes | ✅ AMD + NVIDIA | ✅ Akida 🆕 | ✅ Scheduler |
 | CUDA | ❌ No | ❌ NVIDIA only | ❌ No | ❌ Manual |
 | Concrete (Zama) | ❌ CPU only | ❌ N/A | ❌ No | ❌ Manual |
 | TFHE-rs | ❌ CPU only | ❌ N/A | ❌ No | ❌ Manual |
 | SEAL (Microsoft) | ❌ CPU only | ❌ N/A | ❌ No | ❌ Manual |
 
-**BarraCUDA Unique Advantages**:
+**BarraCuda Unique Advantages**:
 1. ✅ **Only** GPU-accelerated FHE framework
 2. ✅ **Only** multi-vendor GPU support
 3. ✅ **First** NPU FHE implementation (world first!)
@@ -424,17 +424,17 @@ Encrypt MRI ─────────────> Encrypted Inference ──�
 
 | Framework | Hardware | MNIST Inference Latency |
 |-----------|----------|-------------------------|
-| **BarraCUDA** | GPU AMD | **0.36 ms** 🏆 |
-| **BarraCUDA** | GPU NVIDIA | **0.43 ms** 🏆 |
-| **BarraCUDA** | NPU Akida | **0.22 ms** 🏆🆕 |
-| **BarraCUDA** | CPU | 1.44 ms |
+| **BarraCuda** | GPU AMD | **0.36 ms** 🏆 |
+| **BarraCuda** | GPU NVIDIA | **0.43 ms** 🏆 |
+| **BarraCuda** | NPU Akida | **0.22 ms** 🏆🆕 |
+| **BarraCuda** | CPU | 1.44 ms |
 | Concrete | CPU | ~5-10 ms (estimated) |
 | TT-TFHE (paper) | CPU | < 5000 ms (target) |
 
 **Analysis**:
-- BarraCUDA GPU: **10-25x faster** than CPU-only frameworks
-- BarraCUDA NPU: **20-45x faster** than CPU-only frameworks
-- BarraCUDA meets TT-TFHE target (< 5 sec) by **10,000x margin**!
+- BarraCuda GPU: **10-25x faster** than CPU-only frameworks
+- BarraCuda NPU: **20-45x faster** than CPU-only frameworks
+- BarraCuda meets TT-TFHE target (< 5 sec) by **10,000x margin**!
 
 ---
 
@@ -529,7 +529,7 @@ imgs_per_joule, accuracy, layer1_time_ms, layer2_time_ms, total_operations
 - Multi-vendor = no NVIDIA lock-in
 - AMD partnership opportunity
 
-### 3. BarraCUDA Unique Position
+### 3. BarraCuda Unique Position
 
 ✅ **Only GPU FHE**: No competition in GPU-accelerated FHE  
 ✅ **Only NPU FHE**: World first neuromorphic FHE  
@@ -565,7 +565,7 @@ imgs_per_joule, accuracy, layer1_time_ms, layer2_time_ms, total_operations
 
 ### Competitive Position
 
-**BarraCUDA is the ONLY framework that offers**:
+**BarraCuda is the ONLY framework that offers**:
 - ✅ GPU-accelerated FHE operations
 - ✅ Multi-vendor GPU support (AMD + NVIDIA)
 - ✅ NPU FHE support (Akida) 🆕

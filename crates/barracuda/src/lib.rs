@@ -1,4 +1,4 @@
-//! # barraCUDA: Hardware-Agnostic Tensor Compute
+//! # barraCuda: Hardware-Agnostic Tensor Compute
 //!
 //! **Deep Debt Excellence**: Zero duplication, pure capability-based compute
 //!
@@ -10,7 +10,7 @@
 //! - ✅ **Zero Duplication**: Single WGSL implementation per operation
 //! - ✅ **Runtime Discovery**: wgpu selects best available backend
 //! - ✅ **Simple**: No separate CPU code, no trait abstractions
-//! - ✅ **Pure Rust**: Zero unsafe in barraCUDA core, zero FFI
+//! - ✅ **Pure Rust**: Zero unsafe in barraCuda core, zero FFI
 //!
 //! ## Architecture
 //!
@@ -63,7 +63,7 @@
 //! - Zero duplication: One implementation per op
 
 #![deny(unsafe_code)]
-// Zero unsafe in barraCUDA core!
+// Zero unsafe in barraCuda core!
 // Ops documentation uses math variables like [N], [M], [batch_size] which
 // rustdoc interprets as links. These are intentional mathematical notation.
 #![allow(rustdoc::broken_intra_doc_links)]

@@ -141,7 +141,7 @@ let validation = stats.validate_unidirectional(&config);
 ```
 Songbird   → WHERE (which machine, which endpoint)
 ToadStool  → HOW (which physical pipe: PCIe, HDMI, NVLink)
-BarraCUDA  → WHAT (the math: shaders, algorithms)
+BarraCuda  → WHAT (the math: shaders, algorithms)
 ```
 
 ### Why HDMI Matters

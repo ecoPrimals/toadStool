@@ -1,4 +1,4 @@
-//! Evolution Benchmark - What BarraCUDA has achieved
+//! Evolution Benchmark - What BarraCuda has achieved
 //!
 //! Shows the cumulative effect of all optimizations:
 //! 1. Pipeline caching (no shader recompilation)
@@ -73,7 +73,7 @@ async fn main() -> Result<()> {
         .init();
 
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
-    println!("║  BarraCUDA Evolution Benchmark - Cumulative Optimization Impact              ║");
+    println!("║  BarraCuda Evolution Benchmark - Cumulative Optimization Impact              ║");
     println!("╚══════════════════════════════════════════════════════════════════════════════╝\n");
 
     let config = WorkloadConfig {

@@ -1,8 +1,8 @@
-# BarraCUDA Universal Shader Math Library — Evolution Roadmap
+# BarraCuda Universal Shader Math Library — Evolution Roadmap
 
 **Date**: February 12, 2026
 **From**: ecoPrimals Control Team (Eastgate) — hotSpring validation findings
-**To**: ToadStool / BarraCUDA Team
+**To**: ToadStool / BarraCuda Team
 **Priority**: HIGH — Foundational for all scientific workloads
 **Depends On**: BARRACUDA_LIBRARY_VALIDATION_FEB12_2026.md (today's validation)
 **Scope**: Build a robust, GPU-accelerated math library that eliminates the need
@@ -12,7 +12,7 @@ for scipy, numpy, LAPACK, or any external math dependency in Rust workloads
 
 ## Executive Summary
 
-BarraCUDA already has **378 WGSL shaders** across 21 categories — an extraordinary
+BarraCuda already has **378 WGSL shaders** across 21 categories — an extraordinary
 foundation. The ML/DL layer is mature. What's missing is the **scientific computing
 middleware** that bridges raw shaders to real-world physics, engineering, and
 optimization workloads.
@@ -247,7 +247,7 @@ pub fn erf_gpu(x: &[f64]) -> Vec<f64> { ... }
 | Rust CPU | f64 native | Linear algebra, root-finding, physics |
 
 **Future (Titan V)**: Direct f64 on GPU via compute shader with f64 extensions.
-BarraCUDA should have a `precision` config that selects f32/f64 shaders.
+BarraCuda should have a `precision` config that selects f32/f64 shaders.
 
 ---
 
@@ -573,16 +573,16 @@ Every function:
 
 ## Summary
 
-BarraCUDA has the GPU infrastructure. The 378 shaders are an extraordinary
+BarraCuda has the GPU infrastructure. The 378 shaders are an extraordinary
 foundation. What's missing is the **math middleware** — the Rust-side API that
 makes these shaders usable by scientific workloads without any external dependencies.
 
-The roadmap above turns BarraCUDA from a **tensor compute engine** into a
+The roadmap above turns BarraCuda from a **tensor compute engine** into a
 **self-contained scientific computing platform**. Once complete, any primal can
 express `scipy.special.gamma(x)` as `barracuda::special::gamma(x)`, with automatic
 CPU/GPU dispatch, full f64 precision, and zero Python dependency.
 
 The SparsitySampler hybrid-eval fix is the #1 immediate priority for accuracy.
 The shader bridging work (Phase 1) is the #1 immediate priority for completeness.
-Together they make BarraCUDA the drop-in replacement for scipy + numpy + PyTorch
+Together they make BarraCuda the drop-in replacement for scipy + numpy + PyTorch
 that the ecoPrimals ecosystem needs.

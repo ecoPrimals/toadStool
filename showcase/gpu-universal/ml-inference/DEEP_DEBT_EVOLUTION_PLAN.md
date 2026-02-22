@@ -1,4 +1,4 @@
-# Deep Debt Evolution Plan - barraCUDA
+# Deep Debt Evolution Plan - barraCuda
 
 **Date**: January 12, 2026  
 **Status**: Evolving from pragmatic to robust

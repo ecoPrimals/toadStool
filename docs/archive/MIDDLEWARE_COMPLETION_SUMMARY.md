@@ -1,4 +1,4 @@
-# BarraCUDA Scientific Computing Middleware - Completion Summary
+# BarraCuda Scientific Computing Middleware - Completion Summary
 
 **Date**: February 11, 2026  
 **Status**: ✅ PHASE 1 COMPLETE  
@@ -10,7 +10,7 @@
 ## Mission Accomplished
 
 Extracted ~600 lines of duplicated scientific computing code from hotSpring L1/L2 binaries into 
-production-grade BarraCUDA library modules. **Zero duplication. Self-contained. Comprehensively tested.**
+production-grade BarraCuda library modules. **Zero duplication. Self-contained. Comprehensively tested.**
 
 ---
 
@@ -115,9 +115,9 @@ speedup while maintaining f64 where it matters.
 ### Future High-Value Enhancements (Not Blocking)
 
 #### 1. SparsitySampler (1 week) - **THE PRIZE**
-**Impact**: Python control uses this to reach χ²=1.93 in 3008 evals vs BarraCUDA's 87.13 in 1009.
+**Impact**: Python control uses this to reach χ²=1.93 in 3008 evals vs BarraCuda's 87.13 in 1009.
 
-With BarraCUDA's 1.7× faster throughput + smart sampling = **60% of Python wall-clock time** 
+With BarraCuda's 1.7× faster throughput + smart sampling = **60% of Python wall-clock time** 
 with **better accuracy**.
 
 #### 2. Latin Hypercube Sampling (2-3 days)
@@ -176,7 +176,7 @@ QUICK_STATUS.md                                   (middleware line)
 
 ## Validation Against hotSpring L1/L2
 
-| Metric | Python Control | BarraCUDA (Current) | BarraCUDA (Projected with SparsitySampler) |
+| Metric | Python Control | BarraCuda (Current) | BarraCuda (Projected with SparsitySampler) |
 |--------|---------------|---------------------|-------------------------------------------|
 | **L1 Best χ²** | 3.93 | **1.34** ✅ | **1.34** |
 | **L1 Throughput** | 46.1 evals/s | **646.8 evals/s** (14×) ✅ | **646.8 evals/s** |
@@ -292,7 +292,7 @@ let (x_best, f_best, n_evals) = nelder_mead(
 
 ## Conclusion
 
-**Phase 1 of the BarraCUDA Scientific Computing Middleware extraction is complete.**
+**Phase 1 of the BarraCuda Scientific Computing Middleware extraction is complete.**
 
 Five new library modules provide self-contained, production-grade scientific computing:
 - **Linear algebra** (Gauss-Jordan solver)
@@ -312,7 +312,7 @@ All deep debt criteria met:
 **60 comprehensive tests ensure correctness. Zero duplication. Ready for production use.**
 
 The highest-value remaining enhancement is **SparsitySampler** (1 week), which would enable 
-BarraCUDA to reach Python's accuracy in **32% of the wall-clock time** (60% faster throughput + 
+BarraCuda to reach Python's accuracy in **32% of the wall-clock time** (60% faster throughput + 
 smart sampling).
 
 ---

@@ -1,19 +1,19 @@
 //! Hardware-Agnostic Echo State Network (ESN) API
 //!
-//! **EVOLVED v2**: Uses BarraCUDA Tensors - Works on ANY hardware!
+//! **EVOLVED v2**: Uses BarraCuda Tensors - Works on ANY hardware!
 //!
 //! This module provides a production-ready interface for training and using
-//! Echo State Networks using BarraCUDA's universal Tensor operations.
+//! Echo State Networks using BarraCuda's universal Tensor operations.
 //!
 //! # Philosophy
 //!
-//! ESN operations ARE BarraCUDA operations! Instead of CPU-specific code,
+//! ESN operations ARE BarraCuda operations! Instead of CPU-specific code,
 //! we use universal tensor operations that work on CPU, GPU, and NPU.
 //!
 //! # Deep Debt Compliance
 //!
 //! - ✅ **Hardware agnostic**: Uses Tensor operations (CPU/GPU/NPU)
-//! - ✅ **Pure Rust**: BarraCUDA is 100% Rust
+//! - ✅ **Pure Rust**: BarraCuda is 100% Rust
 //! - ✅ **Fast**: Leverages best device for workload
 //! - ✅ **Safe**: Zero unsafe code
 //! - ✅ **Capability-based**: Runtime device discovery
@@ -130,16 +130,16 @@ pub type ExportedWeights = (Vec<f32>, Vec<f32>, Option<Vec<f32>>);
 
 /// Hardware-Agnostic Echo State Network
 ///
-/// **Uses BarraCUDA Tensors** - Works on CPU, GPU, NPU!
+/// **Uses BarraCuda Tensors** - Works on CPU, GPU, NPU!
 pub struct ESN {
     config: ESNConfig,
 
-    // Network weights (BarraCUDA Tensors - hardware agnostic!)
+    // Network weights (BarraCuda Tensors - hardware agnostic!)
     w_in: Tensor,          // Input weights (reservoir_size × input_size)
     w_res: Tensor,         // Reservoir weights (reservoir_size × reservoir_size)
     w_out: Option<Tensor>, // Readout weights (output_size × reservoir_size)
 
-    // Current state (BarraCUDA Tensor!)
+    // Current state (BarraCuda Tensor!)
     state: Tensor, // Reservoir state (reservoir_size × 1)
 
     // Device
@@ -224,7 +224,7 @@ impl ESN {
     /// Initialize reservoir weights
     ///
     /// Creates a sparse random matrix scaled to target spectral radius.
-    /// **Uses BarraCUDA Tensors** - works on any device!
+    /// **Uses BarraCuda Tensors** - works on any device!
     async fn init_reservoir(
         config: &ESNConfig,
         device: &Arc<WgpuDevice>,
@@ -314,7 +314,7 @@ impl ESN {
 
     /// Update reservoir state with a single input
     ///
-    /// **BarraCUDA operations** - Works on any device!
+    /// **BarraCuda operations** - Works on any device!
     ///
     /// Uses tensor operations:
     /// - `matmul()` for matrix multiplication
@@ -344,16 +344,16 @@ impl ESN {
 
         // new_state = (1-leak)*state + leak*tanh(W_in*input + W_res*state)
 
-        // Compute W_in * input (BarraCUDA matmul!)
+        // Compute W_in * input (BarraCuda matmul!)
         let input_contrib = self.w_in.clone().matmul(input)?;
 
-        // Compute W_res * state (BarraCUDA matmul!)
+        // Compute W_res * state (BarraCuda matmul!)
         let recurrent_contrib = self.w_res.clone().matmul(&self.state)?;
 
-        // Combine: input_contrib + recurrent_contrib (BarraCUDA add!)
+        // Combine: input_contrib + recurrent_contrib (BarraCuda add!)
         let combined = input_contrib.add(&recurrent_contrib)?;
 
-        // Activation: tanh(combined) (BarraCUDA tanh!)
+        // Activation: tanh(combined) (BarraCuda tanh!)
         let activated = combined.tanh()?;
 
         // Leaky integration: (1-leak)*state + leak*activated
@@ -367,7 +367,7 @@ impl ESN {
 
     /// Train the ESN readout layer
     ///
-    /// **BarraCUDA operations** - Works on any device!
+    /// **BarraCuda operations** - Works on any device!
     ///
     /// Uses ridge regression (linear regression with L2 regularization):
     /// W_out = (S^T S + λI)^(-1) S^T Y
@@ -456,7 +456,7 @@ impl ESN {
 
     /// Solve ridge regression using gradient descent
     ///
-    /// **BarraCUDA operations** - All tensor ops!
+    /// **BarraCuda operations** - All tensor ops!
     async fn ridge_regression_solve(
         &self,
         states: &Tensor,
@@ -496,7 +496,7 @@ impl ESN {
 
     /// Predict on new input sequence
     ///
-    /// **BarraCUDA operations** - Works on any device!
+    /// **BarraCuda operations** - Works on any device!
     ///
     /// # Arguments
     ///

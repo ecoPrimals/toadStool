@@ -2,7 +2,7 @@
 
 **Date**: February 14, 2026  
 **From**: hotSpring validation team  
-**To**: ToadStool / BarraCUDA evolution team  
+**To**: ToadStool / BarraCuda evolution team  
 **Re**: Review of Feb 14 pull (6,823 lines), feedback, and remaining evolution targets
 
 ---

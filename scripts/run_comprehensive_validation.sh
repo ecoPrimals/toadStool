@@ -3,7 +3,7 @@
 # Re-runs all experiments across CPU, GPU, and NPU
 
 echo "═══════════════════════════════════════════════════════════════"
-echo "🦈 BarraCUDA Comprehensive Cross-Platform Validation"
+echo "🦈 BarraCuda Comprehensive Cross-Platform Validation"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
 echo "Running all workloads on all platforms..."
@@ -132,5 +132,5 @@ echo "  1. Review results in $RESULTS_DIR"
 echo "  2. Generate comparison analysis"
 echo "  3. Update documentation"
 echo ""
-echo "🦈 BarraCUDA: Universal Compute Validation Complete! 🦈"
+echo "🦈 BarraCuda: Universal Compute Validation Complete! 🦈"
 echo ""

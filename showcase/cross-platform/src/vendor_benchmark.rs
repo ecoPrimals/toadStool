@@ -1,6 +1,6 @@
 //! Cross-Hardware Vendor Benchmark
 //!
-//! Compares BarraCUDA (wgpu/Vulkan) vs native CUDA vs CPU baseline
+//! Compares BarraCuda (wgpu/Vulkan) vs native CUDA vs CPU baseline
 //! to demonstrate vendor-free performance parity.
 
 use anyhow::Result;
@@ -41,7 +41,7 @@ impl BenchResult {
     }
 }
 
-/// Run BarraCUDA benchmark on a specific device
+/// Run BarraCuda benchmark on a specific device
 async fn bench_barracuda(
     device: std::sync::Arc<WgpuDevice>,
     name: &str,
@@ -72,7 +72,7 @@ async fn bench_barracuda(
     }
     let elapsed = start.elapsed().as_secs_f64() * 1000.0 / iterations as f64;
     results.push(BenchResult::new(
-        "BarraCUDA",
+        "BarraCuda",
         name,
         "vector_add",
         size,
@@ -86,7 +86,7 @@ async fn bench_barracuda(
     }
     let elapsed = start.elapsed().as_secs_f64() * 1000.0 / iterations as f64;
     results.push(BenchResult::new(
-        "BarraCUDA",
+        "BarraCuda",
         name,
         "vector_mul",
         size,
@@ -102,7 +102,7 @@ async fn bench_barracuda(
     }
     let elapsed = start.elapsed().as_secs_f64() * 1000.0 / iterations as f64;
     results.push(BenchResult::new(
-        "BarraCUDA",
+        "BarraCuda",
         name,
         "reduction_sum",
         size,
@@ -247,17 +247,17 @@ fn print_speedup_analysis(results: &[BenchResult]) {
 }
 
 fn print_vendor_parity(results: &[BenchResult]) {
-    println!("═══ Vendor Parity (NVIDIA vs AMD via same BarraCUDA code) ═══\n");
+    println!("═══ Vendor Parity (NVIDIA vs AMD via same BarraCuda code) ═══\n");
 
     let ops = ["vector_add", "vector_mul", "reduction_sum"];
 
     for op in ops {
         let nvidia = results
             .iter()
-            .find(|r| r.backend == "BarraCUDA" && r.operation == op && r.device.contains("NVIDIA"));
+            .find(|r| r.backend == "BarraCuda" && r.operation == op && r.device.contains("NVIDIA"));
         let amd = results
             .iter()
-            .find(|r| r.backend == "BarraCUDA" && r.operation == op && r.device.contains("AMD"));
+            .find(|r| r.backend == "BarraCuda" && r.operation == op && r.device.contains("AMD"));
 
         if let (Some(n), Some(a)) = (nvidia, amd) {
             let ratio = n.time_ms / a.time_ms;
@@ -283,7 +283,7 @@ async fn main() -> Result<()> {
 
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
     println!("║     CROSS-HARDWARE VENDOR BENCHMARK                                          ║");
-    println!("║     BarraCUDA (wgpu/Vulkan) vs CPU Baseline                                  ║");
+    println!("║     BarraCuda (wgpu/Vulkan) vs CPU Baseline                                  ║");
     println!("║     Demonstrating vendor-free GPU compute                                     ║");
     println!("╚══════════════════════════════════════════════════════════════════════════════╝\n");
 
@@ -320,7 +320,7 @@ async fn main() -> Result<()> {
             size, size, iterations
         );
 
-        // BarraCUDA on each GPU
+        // BarraCuda on each GPU
         for (i, gpu) in pool.devices().iter().enumerate() {
             if let Some(device) = pool.device(i) {
                 let device_name = format!(
@@ -376,7 +376,7 @@ async fn main() -> Result<()> {
     print_vendor_parity(&analysis_results);
 
     println!("\n═══ Key Findings ═══\n");
-    println!("• BarraCUDA uses identical WGSL shaders on NVIDIA and AMD");
+    println!("• BarraCuda uses identical WGSL shaders on NVIDIA and AMD");
     println!("• Zero vendor lock-in: same Rust code, same compute kernels");
     println!("• Performance competitive with native APIs via Vulkan backend");
     println!("• CPU baseline shows GPU acceleration benefit");

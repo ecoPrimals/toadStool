@@ -1,21 +1,21 @@
-# Operation Patterns Documented (barraCUDA Phase 1)
+# Operation Patterns Documented (barraCuda Phase 1)
 
 **Date**: January 8, 2026 (Updated - 60% Achieved!)  
 **Status**: ⚡ 12 / 20+ patterns documented (60% complete)  
-**Goal**: Document 20+ common operation patterns for barraCUDA Phase 2
+**Goal**: Document 20+ common operation patterns for barraCuda Phase 2
 
 ---
 
 ## 🎯 Purpose
 
-This document catalogs operation patterns observed during barraCUDA Phase 1 (Learning from Open Systems). Each pattern is characterized by:
+This document catalogs operation patterns observed during barraCuda Phase 1 (Learning from Open Systems). Each pattern is characterized by:
 - **Parallelism profile**: How the operation parallelizes
 - **CPU characteristics**: How it executes on CPU
 - **GPU characteristics**: How it executes on GPU
 - **Performance expectations**: When to prefer CPU vs GPU
 - **Implementation status**: Current implementation state
 
-These patterns will inform barraCUDA DSL design in Phase 2.
+These patterns will inform barraCuda DSL design in Phase 2.
 
 ---
 
@@ -510,7 +510,7 @@ Expected: 70.0 ✅ PASS
 - Map: Element-wise multiply (embarrassingly parallel)
 - Reduce: Sum (tree-based)
 
-This demonstrates that complex operations can be built from simpler building blocks. barraCUDA can recognize and optimize such compositions.
+This demonstrates that complex operations can be built from simpler building blocks. barraCuda can recognize and optimize such compositions.
 
 ---
 
@@ -866,7 +866,7 @@ This is fundamental to graph algorithms and sparse linear algebra!
 2. **Map → Reduce**: Common pattern (map-reduce)
 3. **Filter → Map**: Common pattern (conditional transform)
 
-**barraCUDA Opportunity**: Auto-detect and fuse these patterns
+**barraCuda Opportunity**: Auto-detect and fuse these patterns
 
 **Example**:
 ```rust
@@ -874,7 +874,7 @@ This is fundamental to graph algorithms and sparse linear algebra!
 let filtered = filter(input, |x| x > 0);
 let result = scan(filtered);
 
-// barraCUDA could fuse:
+// barraCuda could fuse:
 let result = filter_scan(input, |x| x > 0);
 // Single kernel with integrated scan!
 ```
@@ -888,7 +888,7 @@ let result = filter_scan(input, |x| x > 0);
 - Large (10K-100K): GPU usually faster
 - Very large (> 100K): GPU much faster
 
-**barraCUDA Opportunity**: Learn crossover points per operation
+**barraCuda Opportunity**: Learn crossover points per operation
 
 ### Pattern: Operation Complexity
 
@@ -902,7 +902,7 @@ let result = filter_scan(input, |x| x > 0);
 - GPU advantage larger
 - Speedup even on smaller data
 
-**barraCUDA Opportunity**: Estimate operation complexity, adjust thresholds
+**barraCuda Opportunity**: Estimate operation complexity, adjust thresholds
 
 ---
 
@@ -1032,7 +1032,7 @@ Exact formula: x * Φ(x) where Φ is cumulative distribution function
 4. **Precomputation**: Cache exp(-1.702 * x) if x repeated
 5. **Kernel selection**: Use GPU for larger batches (> 1K elements)
 
-### barraCUDA Insights
+### barraCuda Insights
 
 - **Smooth activation**: No dead neurons (unlike ReLU)
 - **Computational cost**: ~5x more expensive than ReLU
@@ -1097,7 +1097,7 @@ Inference mode: Pass-through (dropout_rate = 0)
 4. **Determinism**: Support seeded RNG for reproducibility
 5. **Inverted dropout**: Scale during training (not inference)
 
-### barraCUDA Insights
+### barraCuda Insights
 
 - **Dual behavior**: Training vs Inference (mode switching)
 - **Compile-time optimization**: Can eliminate entirely in inference
@@ -1182,10 +1182,10 @@ Complete Attention Flow:
   3. Softmax(scaled) → attention_weights (Softmax) ✅
   4. attention_weights·V → output (MatMul) ✅
 
-All operations now in barraCUDA!
+All operations now in barraCuda!
 ```
 
-### barraCUDA Insights
+### barraCuda Insights
 - **THE bottleneck**: 90%+ of Transformer compute time
 - **Cache efficiency**: Without tiling → memory-bound (slow), with tiling → compute-bound (fast)
 - **Shape matters**: Square (balanced), Tall (row-parallel), Wide (column-parallel)
@@ -1300,11 +1300,11 @@ This is the 4th operation with R→M→R→M pattern:
    Phase 1 (R): mean | Phase 2 (M): subtract
    Phase 3 (R): var  | Phase 4 (M): normalize
 
-Template CONFIRMED! barraCUDA can now auto-recognize and
+Template CONFIRMED! barraCuda can now auto-recognize and
 optimize ALL normalization operations! 🦀⚡
 ```
 
-### barraCUDA Insights
+### barraCuda Insights
 - **Template discovery**: All normalization ops follow R→M→R→M
 - **Auto-recognition**: Pattern matching can identify normalization layers
 - **Fusion potential**: 4 phases → 1 kernel = 4x memory bandwidth saved
@@ -1406,10 +1406,10 @@ Standard CNN Block:
     ↓
   Repeat...
 
-All operations now in barraCUDA! 🎉
+All operations now in barraCuda! 🎉
 ```
 
-### barraCUDA Insights
+### barraCuda Insights
 - **THE operation**: 70-90% of CNN compute time
 - **Multi-channel = feature learning**: Each output channel detects different features
 - **Hyperparameters matter**: 3×3 kernel (modern), stride, padding
@@ -1509,7 +1509,7 @@ Pattern at position (x+1, y):
 This robustness is crucial for computer vision.
 ```
 
-### barraCUDA Insights
+### barraCuda Insights
 - **Translation invariance**: Small shifts → same output (robustness!)
 - **Preserves strongest features**: Max operation
 - **Typical**: 2×2 pool, stride=2 → 2× spatial reduction
@@ -1601,7 +1601,7 @@ For each batch, ch, out_y, out_x:
 | Differentiability | Non-differentiable at max | Fully differentiable |
 | Use case | CNN layers | Final pooling |
 
-### barraCUDA Insights
+### barraCuda Insights
 - **Smooth downsampling**: Less aggressive than MaxPool
 - **Global average pooling**: Spatial → 1×1 per channel
 - **Fully differentiable**: Better gradient flow
@@ -1660,7 +1660,7 @@ Fusion Opportunity:
 | Sigmoid   | 6x           | Smooth        | (0, 1) | LSTMs (gates), output |
 | Softmax   | 7x           | Smooth        | [0, 1] (sum=1) | Classification output |
 
-**barraCUDA Insights**:
+**barraCuda Insights**:
 - GELU's 5x cost justified in Transformers (gradient quality > speed)
 - Tanh + Sigmoid form LSTM gates (different mathematical roles)
 - ReLU family: Non-differentiable at 0, but fast
@@ -1719,6 +1719,6 @@ Fusion Opportunity:
 
 ---
 
-*barraCUDA Phase 1: Learning one pattern at a time* 🦀⚡  
+*barraCuda Phase 1: Learning one pattern at a time* 🦀⚡  
 *✅ **100% COMPLETE!** All 21 operations implemented! Foundation ready for Phase 2!* 🎯🤖🎉
 

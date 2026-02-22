@@ -9,7 +9,7 @@
 //! in the latency window — a technique called **instruction-level parallelism**
 //! (ILP).
 //!
-//! BarraCUDA expresses ILP at the WGSL source level (via `@ilp_region`
+//! BarraCuda expresses ILP at the WGSL source level (via `@ilp_region`
 //! annotations and the Phase 3 `WgslDependencyGraph` reorderer). This module
 //! provides the **latency numbers** that guide that reordering.
 //!

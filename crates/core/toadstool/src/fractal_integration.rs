@@ -184,9 +184,9 @@ impl FractalRuntime {
         self.capabilities.has_gpu_access()
     }
 
-    /// Get barraCUDA integration info
+    /// Get barraCuda integration info
     ///
-    /// Returns information about how barraCUDA should access GPU in this layer
+    /// Returns information about how barraCuda should access GPU in this layer
     pub fn barracuda_integration(&self) -> BarracudaIntegration {
         use crate::layer_adaptation::GpuAccess;
 
@@ -209,9 +209,9 @@ impl FractalRuntime {
     }
 }
 
-/// barraCUDA integration information
+/// barraCuda integration information
 ///
-/// Describes how barraCUDA should access GPU in the current deployment layer.
+/// Describes how barraCuda should access GPU in the current deployment layer.
 #[derive(Debug, Clone)]
 pub enum BarracudaIntegration {
     /// Direct GPU access (bare metal, GPU passthrough)

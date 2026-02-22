@@ -1,4 +1,4 @@
-// Power measurement utilities for BarraCUDA showcases
+// Power measurement utilities for BarraCuda showcases
 // Real hardware queries (no hardcoding)
 
 use std::process::Command;

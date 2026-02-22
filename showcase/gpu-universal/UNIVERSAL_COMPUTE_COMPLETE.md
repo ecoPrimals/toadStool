@@ -196,7 +196,7 @@ fn select_best_unit(&self, units: &[Box<dyn ComputeUnit>]) {
 
 **wgpu**: Pure Rust, no FFI in application code
 **CPU**: Rayon (pure Rust parallelism)
-**Future**: barraCUDA will be pure Rust
+**Future**: barraCuda will be pure Rust
 
 **Principle**: Evolve towards pure Rust! ✅
 
@@ -302,7 +302,7 @@ let output = runtime.execute_optimal(workload).await?;
 - Runtime analyzes workload
 - Scores each unit
 - Selects optimal
-- Gets better over time (barraCUDA learning)
+- Gets better over time (barraCuda learning)
 
 **Result**: Better performance automatically! ✅
 
@@ -319,7 +319,7 @@ let output = runtime.execute_optimal(workload).await?;
 - Safe, no unsafe blocks
 - Performance: SIMD optimizations
 
-**barraCUDA** (Future):
+**barraCuda** (Future):
 - Pure Rust throughout
 - Learning on safe foundation
 
@@ -354,7 +354,7 @@ let output = runtime.execute_optimal(workload).await?;
 **Runtime**:
 - Profiles workload
 - Selects best unit
-- Learns patterns (barraCUDA future)
+- Learns patterns (barraCuda future)
 - Gets smarter with use
 
 **Developer**: Doesn't need to optimize manually ✅
@@ -374,7 +374,7 @@ let output = runtime.execute_optimal(workload).await?;
 
 **Result**: Extensible to any future hardware! ✅
 
-### 4. barraCUDA Foundation
+### 4. barraCuda Foundation
 
 **Universal runtime** provides:
 - Pure Rust foundation ✅
@@ -382,7 +382,7 @@ let output = runtime.execute_optimal(workload).await?;
 - Unified interface ✅
 - Vendor-agnostic ✅
 
-**barraCUDA** will add:
+**barraCuda** will add:
 - Learning layer
 - Pattern recognition
 - Auto-optimization
@@ -447,7 +447,7 @@ let output = runtime.execute_optimal(workload).await?;
 ### Future 📋
 
 9. **Neuromorphic Integration** - When Akida arrives
-10. **barraCUDA Learning Layer** - Pattern recognition, auto-optimization
+10. **barraCuda Learning Layer** - Pattern recognition, auto-optimization
 11. **Full GPU Execution** - Complete OpenCL/wgpu implementations
 12. **Performance Benchmarking** - CPU vs GPU vs future
 
@@ -502,10 +502,10 @@ let result = runtime.execute_map_f32(input, |x| x * 2.0).await?;
 - Universal compute runtime ✅
 - Pure Rust path (wgpu) ✅
 - Vendor-agnostic ✅
-- barraCUDA-ready ✅
+- barraCuda-ready ✅
 
 **Next Steps**:
-- barraCUDA learning layer (Q2 2026)
+- barraCuda learning layer (Q2 2026)
 - Neuromorphic integration (when Akida arrives)
 - Production optimization
 
@@ -535,7 +535,7 @@ let result = runtime.execute_map_f32(input, |x| x * 2.0).await?;
 - Pure Rust (community-owned language)
 - Open source
 - Contributions welcome
-- Pattern sharing (barraCUDA future)
+- Pattern sharing (barraCuda future)
 
 ---
 
@@ -652,7 +652,7 @@ let output = runtime.execute_optimal(workload).await?;
 
 ### The Future
 
-**barraCUDA** (Q2-Q3 2026):
+**barraCuda** (Q2-Q3 2026):
 - Learning layer on universal runtime foundation
 - Pattern recognition from real workloads
 - Auto-optimization that improves over time

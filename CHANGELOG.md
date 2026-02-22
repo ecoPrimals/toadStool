@@ -1295,7 +1295,7 @@ Total: **37 passing tests** validating the unified math library across all sprin
 
 ### [2026-02-15] - hotSpring Math Primitives Absorption
 
-**Impact**: Physics-agnostic GPU primitives from hotSpring's nuclear EOS study absorbed into BarraCUDA. All primitives validated by 169/169 acceptance checks on consumer GPU (RTX 4070, f64).
+**Impact**: Physics-agnostic GPU primitives from hotSpring's nuclear EOS study absorbed into BarraCuda. All primitives validated by 169/169 acceptance checks on consumer GPU (RTX 4070, f64).
 
 #### Added
 
@@ -1560,7 +1560,7 @@ Total: **37 passing tests** validating the unified math library across all sprin
 
 ### [2026-02-13] - Phase 5 Evolution — hotSpring Critical Fixes (Tier 1)
 
-**Impact**: All Tier 1 critical bugs from hotSpring validation fixed. BarraCUDA now has correct LOO-CV, auto-smoothing, penalty filtering, warm-start seeding, and missing special functions.
+**Impact**: All Tier 1 critical bugs from hotSpring validation fixed. BarraCuda now has correct LOO-CV, auto-smoothing, penalty filtering, warm-start seeding, and missing special functions.
 
 #### Added
 
@@ -1601,7 +1601,7 @@ Total: **37 passing tests** validating the unified math library across all sprin
 
 ### [2026-02-12] - Phase 3 Evolution Complete (Phases A & B)
 
-**Impact**: All high and medium priority items from hotSpring handoff implemented. BarraCUDA now has complete f64 linalg bridges, auto-dispatch, scientific functions, and surrogate quality metrics.
+**Impact**: All high and medium priority items from hotSpring handoff implemented. BarraCuda now has complete f64 linalg bridges, auto-dispatch, scientific functions, and surrogate quality metrics.
 
 #### Added
 
@@ -1749,7 +1749,7 @@ Total: **37 passing tests** validating the unified math library across all sprin
 
 ### [2026-02-12] - Phase 3 Evolution Roadmap (hotSpring Handoff)
 
-**Impact**: BarraCUDA validated against scipy/numpy (121/121 tests). Evolution shifts from breadth to depth.
+**Impact**: BarraCuda validated against scipy/numpy (121/121 tests). Evolution shifts from breadth to depth.
 
 #### Added
 
@@ -1784,7 +1784,7 @@ Total: **37 passing tests** validating the unified math library across all sprin
 
 ---
 
-### [2026-02-12] - Shader-First Architecture for BarraCUDA Math Library
+### [2026-02-12] - Shader-First Architecture for BarraCuda Math Library
 
 **Impact**: ALL parallelizable math is now WGSL shader-first. ToadStool dispatches to GPU (default) or CPU (fallback). Seamless fp64 GPU transition when available.
 
@@ -1813,7 +1813,7 @@ Total: **37 passing tests** validating the unified math library across all sprin
 
 #### Architecture
 
-- **Principle**: BarraCUDA is a UNIFIED math library — shaders are primary implementation
+- **Principle**: BarraCuda is a UNIFIED math library — shaders are primary implementation
 - **Dispatch**: ToadStool routes to GPU (WGSL) by default, CPU fallback for fp64 precision
 - **Future**: When fp64 GPUs available (Titan 7, etc.), math remains unchanged
 - **CPU-only exceptions**: BFGS, Nelder-Mead, Crank-Nicolson (inherently iterative)
@@ -1850,14 +1850,14 @@ Total: **37 passing tests** validating the unified math library across all sprin
 
 ---
 
-### [2026-02-11] - BarraCUDA Scientific Computing Middleware (Phase 1)
+### [2026-02-11] - BarraCuda Scientific Computing Middleware (Phase 1)
 
 **Impact**: Extracted ~600 lines of duplicated scientific code from hotSpring L1/L2 binaries
 into proper library modules. Self-contained scientific computing with 60 comprehensive tests.
 
 #### Added
 
-- **New modules**: 5 scientific middleware modules in BarraCUDA
+- **New modules**: 5 scientific middleware modules in BarraCuda
   - `linalg`: Linear algebra (Gauss-Jordan solver with partial pivoting)
   - `numerical`: Numerical methods (gradient, trapezoidal integration)
   - `special`: Special functions (Lanczos gamma, factorial with Stirling)
@@ -1892,7 +1892,7 @@ into proper library modules. Self-contained scientific computing with 60 compreh
 
 ---
 
-### [2026-02-11] - BarraCUDA Shader Library Reorganization
+### [2026-02-11] - BarraCuda Shader Library Reorganization
 
 **Impact**: 414 WGSL shaders reorganized from flat to categorized structure. Improved discoverability,
 maintainability, and documentation. Zero downtime, all tests passing.
@@ -2016,7 +2016,7 @@ primal names and ports replaced with interned constants. 15,400+ tests passing, 
 
 #### Changed
 
-- BarraCUDA lib tests: 1,048 to 1,068 (all passing).
+- BarraCuda lib tests: 1,048 to 1,068 (all passing).
 - Workspace tests: 13,988 to 15,408 (all passing, 0 failed).
 - Updated all root documentation to reflect 414 shaders, routing matrix, and user override.
 
@@ -2172,7 +2172,7 @@ Hot path allocations eliminated:
 - Graceful fallback with `log::warn!()`
 
 **Phase 4: FHE Operation Validation**:
-- Real BarraCUDA GPU execution for 6 FHE operations
+- Real BarraCuda GPU execution for 6 FHE operations
 - `validate_operation_gpu()` async function
 - Dual validation: CPU baseline + GPU execution
 - Wired: FhePolyAdd, FhePolySub, FhePolyMul, FheAnd, FheOr, FheXor
@@ -2197,7 +2197,7 @@ Hot path allocations eliminated:
 **Hardware Integration Evolution**:
 - NPU: Simulation → Real Akida driver inference
 - Akida: Hardcoded estimates → hwmon telemetry
-- FHE: CPU simulation → BarraCUDA GPU shaders
+- FHE: CPU simulation → BarraCuda GPU shaders
 - GPU: Hardcoded power → nvidia-smi real-time queries
 
 **Deep Debt Compliance Achieved**:
@@ -2222,7 +2222,7 @@ Hot path allocations eliminated:
 
 ### [2026-02-08] - Scientific Computing Foundation COMPLETE
 
-**Impact**: BarraCUDA expanded to a 3-domain universal compute platform (ML + Physics + Signal). 24 scientific computing operations added.
+**Impact**: BarraCuda expanded to a 3-domain universal compute platform (ML + Physics + Signal). 24 scientific computing operations added.
 
 #### Added - Scientific Computing (24 Operations)
 

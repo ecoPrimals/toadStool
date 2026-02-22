@@ -14,7 +14,7 @@ use toadstool_runtime_universal::types::*;
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Dot Product & Elementwise Ops Demo  ║");
-    println!("║  barraCUDA Phase 1 - Building Block Pattern Learning    ║");
+    println!("║  barraCuda Phase 1 - Building Block Pattern Learning    ║");
     println!("╚══════════════════════════════════════════════════════════╝");
     println!();
 
@@ -171,7 +171,7 @@ async fn main() -> Result<()> {
 
     // Pattern Observations
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🎓 Pattern Observations (barraCUDA Learning)");
+    println!("🎓 Pattern Observations (barraCuda Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
@@ -197,7 +197,7 @@ async fn main() -> Result<()> {
     println!("  • Complex operations = composition of simple patterns");
     println!("  • Dot Product = Map + Reduce");
     println!("  • Elementwise = Map with 2 inputs");
-    println!("  • barraCUDA opportunity: Recognize and optimize compositions");
+    println!("  • barraCuda opportunity: Recognize and optimize compositions");
     println!();
 
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

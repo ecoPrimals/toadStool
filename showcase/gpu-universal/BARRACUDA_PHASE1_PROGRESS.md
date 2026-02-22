@@ -1,4 +1,4 @@
-# barraCUDA Phase 1: Progress Report
+# barraCuda Phase 1: Progress Report
 
 **Date**: January 8, 2026  
 **Phase**: Phase 1 - Learning from Open Systems  
@@ -88,7 +88,7 @@ NVIDIA RTX 3090 (OpenCL):
 
 **Insight**: **They're not different things - points on a spectrum!**
 
-**Implication for barraCUDA**:
+**Implication for barraCuda**:
 - Single abstraction can handle all
 - Selection based on workload characteristics
 - Future hardware fits naturally
@@ -139,7 +139,7 @@ fn score_for_workload(&self, workload: &Workload) -> f64 {
 }
 ```
 
-**Implication for barraCUDA**:
+**Implication for barraCuda**:
 - No hardcoded dispatch logic
 - Units compete on capabilities
 - New hardware automatically integrated
@@ -206,7 +206,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 3. Backend-specific execution (CPU: Rayon, GPU: WGSL)
 4. Unified result
 
-**Implication for barraCUDA**:
+**Implication for barraCuda**:
 - High-level DSL for operations
 - Backend code generation
 - Type-safe throughout
@@ -232,7 +232,7 @@ pub enum WorkloadData {
 - Runtime dispatches based on enum
 - Extension via Custom variant
 
-**Implication for barraCUDA**:
+**Implication for barraCuda**:
 - Start with common types (F32, I32)
 - Add types as needed
 - Generic backend code where possible
@@ -259,7 +259,7 @@ let (cpu_result, gpu_result) = tokio::join!(
 );
 ```
 
-**Implication for barraCUDA**:
+**Implication for barraCuda**:
 - Keep async throughout
 - Enables sophisticated scheduling
 - Natural for heterogeneous execution
@@ -279,7 +279,7 @@ let (cpu_result, gpu_result) = tokio::join!(
 - OpenCL: SVM (Shared Virtual Memory)
 - CPU: Direct memory access
 
-**barraCUDA Opportunity**:
+**barraCuda Opportunity**:
 - Detect zero-copy support
 - Prefer when available
 - Fall back to copy if needed
@@ -298,7 +298,7 @@ let final_result = unit.execute(reduce_op).await?;
 let result = unit.execute(fused_map_reduce_op).await?;
 ```
 
-**barraCUDA Opportunity**:
+**barraCuda Opportunity**:
 - Detect fusible operations
 - Generate fused kernels
 - Reduce launch overhead
@@ -316,7 +316,7 @@ pub struct Capabilities {
 
 **Opportunity**: Dynamic batching based on unit
 
-**barraCUDA Opportunity**:
+**barraCuda Opportunity**:
 - Profile actual batch performance
 - Adapt batch size per unit
 - ML-based optimization (Phase 4)
@@ -329,7 +329,7 @@ pub struct Capabilities {
 
 **Opportunity**: Automatic type selection
 
-**barraCUDA Opportunity**:
+**barraCuda Opportunity**:
 - Analyze required precision
 - Use F16/BF16 where possible
 - Reduce memory bandwidth
@@ -342,7 +342,7 @@ pub struct Capabilities {
 
 **Opportunity**: Learn from history
 
-**barraCUDA Opportunity** (Phase 4):
+**barraCuda Opportunity** (Phase 4):
 - Cache optimal unit for workload type
 - Predict execution time more accurately
 - Preemptive scheduling
@@ -368,7 +368,7 @@ ML Inference:    17.3x GPU vs CPU (overall)
 - Large workloads: GPU parallelism dominates
 - Regular access: GPU memory coalescing helps
 
-**Implication for barraCUDA**:
+**Implication for barraCuda**:
 - Workload size threshold for GPU
 - Prefer CPU for small/irregular
 - Batch small workloads for GPU
@@ -387,7 +387,7 @@ ML Inference:    17.3x GPU vs CPU (overall)
 
 **Insight**: **Workload characteristics determine optimal unit**
 
-**barraCUDA Selection Logic**:
+**barraCuda Selection Logic**:
 ```rust
 if workload.size < 1000 || workload.latency_critical {
     select_cpu();
@@ -411,14 +411,14 @@ if workload.size < 1000 || workload.latency_critical {
 
 **Learning**: **Safety does not cost performance**
 
-**Implication for barraCUDA**:
+**Implication for barraCuda**:
 - Prefer pure Rust
 - No need for unsafe/FFI
 - Better tooling, safety, maintainability
 
 ---
 
-## 🎓 Key Takeaways for barraCUDA
+## 🎓 Key Takeaways for barraCuda
 
 ### 1. Abstraction Works
 
@@ -469,7 +469,7 @@ if workload.size < 1000 || workload.latency_critical {
 - Data processing: Map, Filter, Reduce
 - Scientific: FFT, Solve, Integrate
 
-**barraCUDA Opportunity**: Library of common patterns
+**barraCuda Opportunity**: Library of common patterns
 
 ---
 
@@ -535,7 +535,7 @@ if workload.size < 1000 || workload.latency_critical {
 
 ### 1. DSL Design
 
-**Question**: How should barraCUDA DSL look?
+**Question**: How should barraCuda DSL look?
 
 **Options**:
 ```rust
@@ -589,7 +589,7 @@ BarraCudaKernel::new()
 
 ### 4. Learning System
 
-**Question**: How should barraCUDA learn?
+**Question**: How should barraCuda learn?
 
 **Options**:
 - Local only (on-device learning)
@@ -716,5 +716,5 @@ BarraCudaKernel::new()
 
 ---
 
-*barraCUDA: Learn from the open. Build in Rust. Evolve forever.* 🦀⚡
+*barraCuda: Learn from the open. Build in Rust. Evolve forever.* 🦀⚡
 

@@ -14,7 +14,7 @@ use toadstool_runtime_universal::types::*;
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Gather & Scatter Operations Demo    ║");
-    println!("║  barraCUDA Phase 1 - Indexing Pattern Learning          ║");
+    println!("║  barraCuda Phase 1 - Indexing Pattern Learning          ║");
     println!("╚══════════════════════════════════════════════════════════╝");
     println!();
 
@@ -246,7 +246,7 @@ async fn main() -> Result<()> {
 
     // Pattern Observations
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🎓 Pattern Observations (barraCUDA Learning)");
+    println!("🎓 Pattern Observations (barraCuda Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
@@ -277,7 +277,7 @@ async fn main() -> Result<()> {
     println!("  5. GPU needs coalesced access for performance");
     println!();
 
-    println!("barraCUDA Opportunities:");
+    println!("barraCuda Opportunities:");
     println!("  • Detect gather/scatter pairs → optimize locality");
     println!("  • Recognize when indices don't overlap → parallel scatter");
     println!("  • Fuse gather + map + scatter → single kernel");

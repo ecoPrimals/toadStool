@@ -60,20 +60,20 @@ impl CapabilityDiscovery {
 
     /// Discover OpenCL devices
     ///
-    /// **DEPRECATED**: OpenCL support is legacy. Use wgpu (barraCUDA) instead.
+    /// **DEPRECATED**: OpenCL support is legacy. Use wgpu (barraCuda) instead.
     ///
     /// **Why Deprecated**:
     /// - OpenCL requires C bindings (FFI complexity)
     /// - ocl crate API has breaking changes
     /// - wgpu provides pure Rust alternative
     /// - wgpu is vendor-agnostic (NVIDIA, AMD, Intel, Apple)
-    /// - barraCUDA framework built on wgpu
+    /// - barraCuda framework built on wgpu
     ///
     /// **Migration**: Use `discover_wgpu()` for GPU compute
     #[cfg(feature = "opencl")]
     #[deprecated(
         since = "3.0.0",
-        note = "Use wgpu (barraCUDA) instead - pure Rust, vendor-agnostic"
+        note = "Use wgpu (barraCuda) instead - pure Rust, vendor-agnostic"
     )]
     async fn discover_opencl() -> Vec<Box<dyn ComputeUnit>> {
         // Returning empty Vec - OpenCL discovery deprecated in favor of wgpu

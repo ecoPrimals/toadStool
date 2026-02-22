@@ -1,4 +1,4 @@
-# ToadStool + BarraCUDA Specifications
+# ToadStool + BarraCuda Specifications
 
 ## Current Status (February 18, 2026)
 
@@ -230,7 +230,7 @@ Same binary, identical results:
 
 ### Sibling Validation Projects
 
-BarraCUDA is validated by multiple domain-specific projects:
+BarraCuda is validated by multiple domain-specific projects:
 
 | Project | Domain | Checks | Key Findings |
 |---------|--------|:------:|--------------|

@@ -1,4 +1,4 @@
-# Adaptive Optimization System for barraCUDA
+# Adaptive Optimization System for barraCuda
 
 **Runtime learning system for vendor-agnostic GPU optimization**
 
@@ -251,7 +251,7 @@ pub enum SizeClass {
 
 ---
 
-## 🛠️ Integration with barraCUDA
+## 🛠️ Integration with barraCuda
 
 ### Phase 1 (Week 1) - ✅ COMPLETE
 - Core modules implemented

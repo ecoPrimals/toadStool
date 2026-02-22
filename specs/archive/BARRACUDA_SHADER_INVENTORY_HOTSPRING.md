@@ -1,4 +1,4 @@
-# BarraCUDA Shader Inventory for hotSpring
+# BarraCuda Shader Inventory for hotSpring
 
 **Date**: February 12, 2026  
 **Total Shaders**: 400  

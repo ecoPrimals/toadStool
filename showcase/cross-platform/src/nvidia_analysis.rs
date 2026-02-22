@@ -520,7 +520,7 @@ async fn main() -> Result<()> {
     println!("     - NVIDIA optimizes heavily for CUDA, less for Vulkan compute");
     println!("     - Their Vulkan focus is graphics, not GPGPU\n");
 
-    println!("  3. BarraCUDA implications:");
+    println!("  3. BarraCuda implications:");
     println!("     - AMD already near parity with vendor-specific solutions");
     println!("     - NVIDIA optimization opportunities:");
     println!("       a) Use CUDA interop for NVIDIA (sacrifice portability)");

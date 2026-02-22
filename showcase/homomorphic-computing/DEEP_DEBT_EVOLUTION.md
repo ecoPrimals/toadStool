@@ -14,7 +14,7 @@
 **✅ ACHIEVEMENTS:**
 - Cross-substrate architecture designed and benchmarked
 - NPU hypothesis validated (24-26x energy efficiency)
-- barraCUDA integration points identified
+- barraCuda integration points identified
 - Pure Rust throughout (no C dependencies)
 
 **⚠️ DEBT IDENTIFIED:**
@@ -35,7 +35,7 @@
 
 4. **TODOs in Critical Paths**
    - 12+ TODOs for actual implementations
-   - barraCUDA runtime not integrated
+   - barraCuda runtime not integrated
    - Akida board integration stubbed
 
 5. **Missing Capability-Based Selection**
@@ -62,19 +62,19 @@
 - Document path to production FHE integration
 - Keep architecture but evolve internals
 
-### **Priority 2: barraCUDA Integration** 🎯 DOGFOODING
+### **Priority 2: barraCuda Integration** 🎯 DOGFOODING
 
-**Problem**: GPU substrate has TODOs for barraCUDA
-**Solution**: Actually integrate barraCUDA runtime
+**Problem**: GPU substrate has TODOs for barraCuda
+**Solution**: Actually integrate barraCuda runtime
 
 **Tasks:**
-1. Add barraCUDA dependency (already in workspace)
+1. Add barraCuda dependency (already in workspace)
 2. Initialize WgpuDevice in GpuHomomorphic
 3. Implement polynomial ops via WGSL shaders
 4. Discover evolution needs through real usage
 
 **Expected Insights:**
-- What barraCUDA needs for polynomial arithmetic
+- What barraCuda needs for polynomial arithmetic
 - Memory transfer patterns
 - API ergonomics improvements
 
@@ -152,11 +152,11 @@ impl SubstrateSelector {
 - [x] Create production integration path
 - [x] Update README with current status
 
-### **Phase 2: barraCUDA Dogfooding** ✅ **COMPLETE**
-- [x] Integrate barraCUDA WgpuDevice
+### **Phase 2: barraCuda Dogfooding** ✅ **COMPLETE**
+- [x] Integrate barraCuda WgpuDevice
 - [x] Implement polynomial add/multiply shaders
 - [x] Profile and discover evolution needs
-- [x] Document insights for barraCUDA team (6 major insights!)
+- [x] Document insights for barraCuda team (6 major insights!)
 
 ### **Phase 3: Capability Discovery** ✅ **COMPLETE**
 - [x] Implement SubstrateSelector
@@ -188,7 +188,7 @@ impl SubstrateSelector {
 ### **2. Pure Rust Dependencies**
 ✅ **Current**: All Rust (rand, serde, tokio)  
 ✅ **Opportunity**: concrete-rs is pure Rust  
-✅ **barraCUDA**: Our own pure Rust GPU framework
+✅ **barraCuda**: Our own pure Rust GPU framework
 
 ### **3. Capability-Based Design**
 ❌ **Current**: Manual substrate selection  
@@ -235,15 +235,15 @@ Document concrete-rs integration plan:
 // breaking the cross-substrate architecture.
 ```
 
-### **Action 3: Integrate barraCUDA**
+### **Action 3: Integrate barraCuda**
 
-Start dogfooding by actually using barraCUDA:
+Start dogfooding by actually using barraCuda:
 ```rust
 use barracuda::*;
 
 pub struct GpuHomomorphic {
     scheme: Box<dyn HomomorphicScheme + Send + Sync>,
-    runtime: WgpuRuntime,  // ✅ Real barraCUDA integration
+    runtime: WgpuRuntime,  // ✅ Real barraCuda integration
 }
 ```
 
@@ -258,7 +258,7 @@ pub struct GpuHomomorphic {
 - ✅ README updated with PoC status
 
 **Phase 2 Complete:** ✅ **ACHIEVED**
-- ✅ barraCUDA WgpuDevice actually integrated
+- ✅ barraCuda WgpuDevice actually integrated
 - ✅ Polynomial ops using WGSL shaders
 - ✅ 6 evolution insights documented
 - ✅ BARRACUDA_EVOLUTION_INSIGHTS.md created
@@ -292,7 +292,7 @@ Transform from:
 To:
 - ✅ Production-ready or clearly marked PoC
 - ✅ Capability-based substrate discovery
-- ✅ Real barraCUDA dogfooding
+- ✅ Real barraCuda dogfooding
 - ✅ Complete implementations or clear integration paths
 
 **This is deep debt evolution done right!** 🎯

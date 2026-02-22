@@ -3,7 +3,7 @@
 # Cross-Hardware Demo: Same Workload on AMD GPU, NVIDIA GPU, and Dual CPU
 #
 # This script demonstrates running the SAME workload across different hardware
-# using barraCUDA's vendor-agnostic infrastructure.
+# using barraCuda's vendor-agnostic infrastructure.
 #
 # Hardware Requirements:
 # - AMD GPU (e.g., RX 6950 XT)
@@ -14,7 +14,7 @@ set -e
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║                                                                  ║"
-echo "║   🦈 barraCUDA: Cross-Hardware Demo                             ║"
+echo "║   🦈 barraCuda: Cross-Hardware Demo                             ║"
 echo "║                                                                  ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
@@ -27,7 +27,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Build with all GPU backends enabled
-echo "📦 Building barraCUDA with all backends..."
+echo "📦 Building barraCuda with all backends..."
 cd /home/strandgate/Development/ecoPrimals/phase1/toadStool/showcase/gpu-universal/ml-inference
 cargo build --release --features="opencl vulkan webgpu" 2>&1 | tail -10
 echo ""
@@ -112,7 +112,7 @@ echo "    AMD GPU:             ~80,000 images/sec (11x speedup)"
 echo "    Cross-GPU (NVIDIA+AMD): 1.63x combined speedup"
 echo "    Combined VRAM:       40 GB heterogeneous!"
 echo ""
-echo " 🦈 barraCUDA Phase 1: COMPLETE"
+echo " 🦈 barraCuda Phase 1: COMPLETE"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""

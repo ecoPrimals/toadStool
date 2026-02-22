@@ -1,4 +1,4 @@
-# ToadStool/BarraCUDA -- Next Steps
+# ToadStool/BarraCuda -- Next Steps
 
 **Updated**: February 22, 2026 -- Sessions 32-41
 **Status**: Production-grade | 0 clippy warnings | 600+ WGSL shaders | 5,965+ tests + barracuda targeted | Coverage: common 87%, config 89%, core 79%, server 77%
@@ -81,7 +81,7 @@ analysis and register pressure estimation.
 ```
 WGSL text
   → naga::parse() → naga::Module (typed IR)
-  → BarraCUDA IR passes (reorder, unroll, software pipeline)
+  → BarraCuda IR passes (reorder, unroll, software pipeline)
   → modified naga::Module
   → naga::back::spv::write() → SPIR-V bytes  (no WGSL round-trip)
   → wgpu device

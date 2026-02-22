@@ -1,6 +1,6 @@
 //! Canonical GPU vendor ID constants.
 //!
-//! Every place in BarraCUDA that branches on `caps.vendor` or
+//! Every place in BarraCuda that branches on `caps.vendor` or
 //! `adapter_info.vendor` should import from here instead of
 //! repeating raw hex literals.  This is the single source of truth.
 

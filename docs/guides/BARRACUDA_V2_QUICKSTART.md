@@ -1,4 +1,4 @@
-# 🦈 BarraCUDA v2.0 - Quick Start Guide
+# 🦈 BarraCuda v2.0 - Quick Start Guide
 ## NPU Operations for ML Inference
 
 **Status**: Production Ready | **Grade**: A++

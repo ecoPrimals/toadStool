@@ -1,4 +1,4 @@
-# BarraCUDA Phase 5 Evolution — hotSpring Validation Response
+# BarraCuda Phase 5 Evolution — hotSpring Validation Response
 
 **Date**: February 13, 2026  
 **Status**: TIER 1 + TIER 2 + TIER 3 COMPLETE  
@@ -8,13 +8,13 @@
 
 ## Executive Summary
 
-This document tracks BarraCUDA's response to the Phase 5 hotSpring validation handoff. The hotSpring team validated BarraCUDA against Python/scipy controls using nuclear EOS workloads, identifying both victories and critical gaps.
+This document tracks BarraCuda's response to the Phase 5 hotSpring validation handoff. The hotSpring team validated BarraCuda against Python/scipy controls using nuclear EOS workloads, identifying both victories and critical gaps.
 
 ### Headline Results (from hotSpring)
 
-| Pipeline | BarraCUDA | Python/scipy | Verdict |
+| Pipeline | BarraCuda | Python/scipy | Verdict |
 |----------|-----------|-------------|---------|
-| **L1 (SEMF)** | χ²/datum = 1.19 | χ²/datum = 6.62 | **✅ BarraCUDA WINS by 82%** |
+| **L1 (SEMF)** | χ²/datum = 1.19 | χ²/datum = 6.62 | **✅ BarraCuda WINS by 82%** |
 | **Validation Suite** | **129/129** tests | — | **✅ COMPLETE** |
 
 ---

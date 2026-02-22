@@ -17,13 +17,13 @@ async fn encrypted_training_gpu(...) {
 }
 ```
 
-### After: REAL BarraCUDA FHE Training
+### After: REAL BarraCuda FHE Training
 ```rust
 async fn encrypted_training_gpu(...) {
     use barracuda::ops::fhe_ntt::FheNtt;
     use barracuda::ops::fhe_poly_add::FhePolyAdd;
     
-    println!("   🔐 Using REAL BarraCUDA FHE operations for encrypted training!");
+    println!("   🔐 Using REAL BarraCuda FHE operations for encrypted training!");
     
     for epoch in 0..epochs {
         for i in 0..samples_per_epoch {
@@ -134,7 +134,7 @@ This proves:
 - PyTorch/TensorFlow: No FHE support
 - Microsoft SEAL: Crypto library only (no ML integration)
 - HElib, PALISADE: Research-grade, no production ML
-- **BarraCUDA**: Real encrypted training + inference on real hardware!
+- **BarraCuda**: Real encrypted training + inference on real hardware!
 
 ### 2. Privacy Preservation
 **Complete confidentiality**:
@@ -155,7 +155,7 @@ This proves:
 - ✅ Zero mocks
 - ✅ Zero simulations
 - ✅ Zero `thread::sleep()`
-- ✅ 100% real BarraCUDA operations
+- ✅ 100% real BarraCuda operations
 - ✅ Transparent, documented code
 
 ---
@@ -197,7 +197,7 @@ Inference:
 - Transparently documented in code comments
 
 This is a **practical engineering choice**, not a limitation:
-- BarraCUDA has all primitives for full FHE encoding
+- BarraCuda has all primitives for full FHE encoding
 - Could implement complete end-to-end FHE if needed
 - Current approach demonstrates real operations + accurate overhead
 
@@ -217,7 +217,7 @@ cargo build --release --bin encrypted_mnist_pipeline
 cargo run --release --bin encrypted_mnist_pipeline
 
 Output:
-  🔐 Using REAL BarraCUDA FHE operations for encrypted training!
+  🔐 Using REAL BarraCuda FHE operations for encrypted training!
   Epoch 1/1...
      Sample 0/50 - FHE weight update complete
      Sample 10/50 - FHE weight update complete
@@ -238,7 +238,7 @@ CSV:  showcase/whitePaper/data/fhe/encrypted_mnist_pipeline.csv
 
 | Framework | FHE Training | FHE Inference | Real Hardware | Post-Quantum |
 |-----------|--------------|---------------|---------------|--------------|
-| **BarraCUDA** | ✅ **REAL** | ✅ **REAL** | ✅ GPU+NPU | ✅ 128-bit |
+| **BarraCuda** | ✅ **REAL** | ✅ **REAL** | ✅ GPU+NPU | ✅ 128-bit |
 | PyTorch | ❌ None | ❌ None | ✅ GPU | ❌ No |
 | TensorFlow | ❌ None | ❌ None | ✅ GPU | ❌ No |
 | Microsoft SEAL | ⚠️ Crypto only | ⚠️ Crypto only | ✅ CPU | ✅ 128-bit |
@@ -258,7 +258,7 @@ CSV:  showcase/whitePaper/data/fhe/encrypted_mnist_pipeline.csv
 Could implement complete coefficient packing for end-to-end encryption:
 - Encode real weight values into polynomials
 - Decode predictions from encrypted results
-- No change to BarraCUDA operations (primitives already exist!)
+- No change to BarraCuda operations (primitives already exist!)
 
 ### 2. Multi-GPU Training
 Distribute encrypted weight updates across multiple GPUs:
@@ -283,7 +283,7 @@ Already works via WGSL cross-compilation:
 ## Summary
 
 **We've achieved the impossible**:
-1. ✅ **Real encrypted training** using actual BarraCUDA FHE operations
+1. ✅ **Real encrypted training** using actual BarraCuda FHE operations
 2. ✅ **Real encrypted inference** on GPU and NPU
 3. ✅ **100% accuracy parity** between encrypted and plaintext
 4. ✅ **Zero mocks, zero simulations** - all production code is real
@@ -299,7 +299,7 @@ Already works via WGSL cross-compilation:
 
 - **FHE Theory**: Brakerski, Z., Fan, J., & Vercauteren, F. (2012). "Somewhat Practical Fully Homomorphic Encryption"
 - **BFV Scheme**: Full specification in `crates/barracuda/src/ops/fhe_*/README.md`
-- **BarraCUDA Ops**: `crates/barracuda/src/ops/fhe_ntt/mod.rs`, `fhe_poly_add.rs`, etc.
+- **BarraCuda Ops**: `crates/barracuda/src/ops/fhe_ntt/mod.rs`, `fhe_poly_add.rs`, etc.
 - **Benchmark Code**: `showcase/whitePaper/benchmarks/encrypted_mnist_pipeline.rs`
 
 ---

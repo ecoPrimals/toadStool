@@ -2,7 +2,7 @@
 
 ## 3.1 Overview
 
-We validated BarraCUDA v2.0 "Universal Compute" across 94+ tests, 8 workload categories, and 3 hardware platforms (CPU, GPU, NPU). All tests executed on actual hardware with comprehensive data collection.
+We validated BarraCuda v2.0 "Universal Compute" across 94+ tests, 8 workload categories, and 3 hardware platforms (CPU, GPU, NPU). All tests executed on actual hardware with comprehensive data collection.
 
 **Key Findings**:
 - ✅ **Universal Compute Validated**: Same workload → CPU, GPU, NPU execution
@@ -20,8 +20,8 @@ We validated BarraCUDA v2.0 "Universal Compute" across 94+ tests, 8 workload cat
 | Platform | Throughput (ops/sec) | Energy (J/op) | Power (W) |
 |----------|---------------------|---------------|-----------|
 | **CPU (Baseline)** | 859 | 0.029 | 25 |
-| **GPU (BarraCUDA)** | 4,078 | 0.061 | 250 |
-| **NPU (BarraCUDA)** | 2,482 | 0.002 | 2 |
+| **GPU (BarraCuda)** | 4,078 | 0.061 | 250 |
+| **NPU (BarraCuda)** | 2,482 | 0.002 | 2 |
 
 ### 3.2.2 Key Findings
 
@@ -338,6 +338,6 @@ We validated BarraCUDA v2.0 "Universal Compute" across 94+ tests, 8 workload cat
 
 ---
 
-**Results Summary**: BarraCUDA v2.0 "Universal Compute" successfully validated across all platforms with breakthrough discoveries in energy efficiency (NPU 7×), throughput scaling (GPU 1,537×), and numerical equivalence (0.000000 difference).
+**Results Summary**: BarraCuda v2.0 "Universal Compute" successfully validated across all platforms with breakthrough discoveries in energy efficiency (NPU 7×), throughput scaling (GPU 1,537×), and numerical equivalence (0.000000 difference).
 
 *All experiments conducted February 1-2, 2026 at ecoPrimals Labs*

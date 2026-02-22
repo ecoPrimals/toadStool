@@ -201,7 +201,7 @@ open pipeline_validation_matrix.csv
 5. ✅ Confirm NPU as future leader
 
 ### **Integration Planning**:
-- Integrate sparsity analyzer into BarraCUDA
+- Integrate sparsity analyzer into BarraCuda
 - Add pipeline router to ToadStool runtime
 - Implement workload-based routing
 - Production deployment

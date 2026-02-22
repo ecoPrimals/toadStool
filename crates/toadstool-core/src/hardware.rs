@@ -12,7 +12,7 @@ use tracing::{info, warn};
 /// Hardware types that ToadStool can discover and manage
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HardwareType {
-    /// GPU (via BarraCUDA/WGPU)
+    /// GPU (via BarraCuda/WGPU)
     Gpu,
     /// NPU/Neuromorphic (Akida, etc)
     Npu,
@@ -55,7 +55,7 @@ impl HardwareManager {
 
         let mut devices = Vec::new();
 
-        // Discover GPUs (BarraCUDA handles via WGPU)
+        // Discover GPUs (BarraCuda handles via WGPU)
         devices.extend(Self::discover_gpus()?);
 
         // Discover NPUs (Akida, etc)
@@ -79,13 +79,13 @@ impl HardwareManager {
 
     /// Discover GPUs via sysfs
     ///
-    /// Deep Debt: BarraCUDA will use WGPU for actual GPU access
+    /// Deep Debt: BarraCuda will use WGPU for actual GPU access
     /// ToadStool just discovers what's available
     fn discover_gpus() -> Result<Vec<HardwareDevice>> {
         let mut gpus = Vec::new();
 
         // Scan /sys/class/drm for GPU devices
-        // BarraCUDA/WGPU handles actual GPU access
+        // BarraCuda/WGPU handles actual GPU access
         if let Ok(entries) = fs::read_dir("/sys/class/drm") {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -103,7 +103,7 @@ impl HardwareManager {
                         pcie_address: None,
                         vendor_id: None,
                         device_id: None,
-                        driver_available: true, // BarraCUDA/WGPU handles driver
+                        driver_available: true, // BarraCuda/WGPU handles driver
                         userspace_capable: true,
                     });
                 }
@@ -194,7 +194,7 @@ impl HardwareManager {
             .collect()
     }
 
-    /// Check if any GPU available (for BarraCUDA)
+    /// Check if any GPU available (for BarraCuda)
     pub fn has_gpu(&self) -> bool {
         self.devices
             .iter()

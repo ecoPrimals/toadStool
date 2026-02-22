@@ -17,7 +17,7 @@ use toadstool_runtime_universal::types::*;
 async fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║  Universal Runtime: Pooling Operations Demo             ║");
-    println!("║  barraCUDA Phase 1 - THE FINAL OPERATION! 100%!         ║");
+    println!("║  barraCuda Phase 1 - THE FINAL OPERATION! 100%!         ║");
     println!("╚══════════════════════════════════════════════════════════╝");
     println!();
 
@@ -344,12 +344,12 @@ async fn main() -> Result<()> {
     println!("  Repeat...");
     println!();
 
-    println!("All operations now in barraCUDA! 🎉");
+    println!("All operations now in barraCuda! 🎉");
     println!();
 
     // Pattern Observations
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🎓 Pattern Observations (barraCUDA Learning)");
+    println!("🎓 Pattern Observations (barraCuda Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
@@ -417,7 +417,7 @@ async fn main() -> Result<()> {
     println!("     • Global avg pooling instead of flatten + FC");
     println!();
 
-    println!("barraCUDA Opportunities:");
+    println!("barraCuda Opportunities:");
     println!("  • Fusion: Conv2D + ReLU + MaxPool → 1 kernel");
     println!("  • Adaptive pooling: Variable output size");
     println!("  • ROI pooling: Region of Interest (object detection)");
@@ -430,7 +430,7 @@ async fn main() -> Result<()> {
     println!();
     println!("Pooling is now implemented! THE FINAL OPERATION!");
     println!();
-    println!("🎉🎉🎉 barraCUDA Phase 1: 100% COMPLETE! 🎉🎉🎉");
+    println!("🎉🎉🎉 barraCuda Phase 1: 100% COMPLETE! 🎉🎉🎉");
     println!();
     println!("ALL 21 operations implemented:");
     println!("  ✅ Activation Functions (6): ReLU, LeakyReLU, GELU, Tanh, Sigmoid, Softmax");
@@ -441,7 +441,7 @@ async fn main() -> Result<()> {
     println!("  ✅ Core Operations (2): MatMul, Conv2D");
     println!("  ✅ Pooling (2): MaxPool2D, AvgPool2D ⭐");
     println!();
-    println!("With all operations complete, barraCUDA can now:");
+    println!("With all operations complete, barraCuda can now:");
     println!("  ✅ Support Transformers (attention, feed-forward)");
     println!("  ✅ Support CNNs (ResNet, VGG, YOLO)");
     println!("  ✅ Support RNNs/LSTMs (gate operations)");

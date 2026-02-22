@@ -134,7 +134,7 @@ fn main() -> Result<()> {
     println!("🏆 VALIDATION COMPLETE!\n");
     println!("✅ ToadStool's universal compute validated across all substrates");
     println!("✅ CPU baseline established");
-    println!("✅ GPU acceleration confirmed (BarraCUDA)");
+    println!("✅ GPU acceleration confirmed (BarraCuda)");
     println!("✅ NPU energy efficiency proven (Akida)");
     println!("\n📄 Full results available in:");
     println!("   HOMOMORPHIC_VALIDATION_RESULTS_FEB01_2026.md");
@@ -601,7 +601,7 @@ fn generate_key_findings(results: &[BenchResult]) {
             .sum::<f64>()
             / gpu_results.len() as f64;
 
-        println!("\nGPU (BarraCUDA - ToadStool's Pure Rust GPU):");
+        println!("\nGPU (BarraCuda - ToadStool's Pure Rust GPU):");
         println!("  ✅ {:.1}x average speedup vs CPU", avg_speedup);
         println!("  ✅ Validates ToadStool's GPU compute");
         println!("  ✅ Best for batch processing and high throughput");
