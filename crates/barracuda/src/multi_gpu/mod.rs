@@ -44,8 +44,6 @@ pub use topology::{GpuDriver, GpuInfo, GpuVendor, WorkloadType};
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use crate::resource_quota::{QuotaTracker, ResourceQuota};
-#[allow(unused_imports)]
-use crate::tensor::Tensor;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::{Mutex, Semaphore};

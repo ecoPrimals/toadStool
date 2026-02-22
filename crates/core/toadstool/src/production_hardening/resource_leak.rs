@@ -98,3 +98,95 @@ impl ResourceLeakDetector {
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::resources::ResourceRequirements;
+    use std::time::Duration;
+
+    fn sample_resource_allocation(id: Uuid) -> ResourceAllocation {
+        ResourceAllocation {
+            id,
+            resource_type: "test-resource".to_string(),
+            allocated_at: Instant::now(),
+            requirements: ResourceRequirements::default(),
+            owner: "test-owner".to_string(),
+            last_accessed: Instant::now(),
+        }
+    }
+
+    #[test]
+    fn test_resource_allocation_creation() {
+        let id = Uuid::new_v4();
+        let allocation = sample_resource_allocation(id);
+        assert_eq!(allocation.id, id);
+        assert_eq!(allocation.resource_type, "test-resource");
+        assert_eq!(allocation.owner, "test-owner");
+    }
+
+    #[tokio::test]
+    async fn test_resource_leak_detector_new() {
+        let detector = ResourceLeakDetector::new(Duration::from_secs(300), Duration::from_secs(60));
+        let leaked = detector.cleanup_leaked_resources().await;
+        assert!(leaked.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_track_and_remove_allocation() {
+        let detector = ResourceLeakDetector::new(Duration::from_secs(300), Duration::from_secs(60));
+        let id = Uuid::new_v4();
+        let allocation = sample_resource_allocation(id);
+        detector.track_allocation(allocation).await;
+
+        detector.remove_allocation(id).await;
+
+        let leaked = detector.cleanup_leaked_resources().await;
+        assert!(leaked.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_update_access_extends_lifetime() {
+        let detector =
+            ResourceLeakDetector::new(Duration::from_millis(50), Duration::from_secs(60));
+        let id = Uuid::new_v4();
+        let allocation = sample_resource_allocation(id);
+        detector.track_allocation(allocation).await;
+
+        // Update access to keep it alive
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        detector.update_access(id).await;
+        tokio::time::sleep(Duration::from_millis(30)).await;
+
+        let leaked = detector.cleanup_leaked_resources().await;
+        // Should not have leaked yet due to update_access
+        assert!(leaked.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_detects_stale_allocation() {
+        let detector =
+            ResourceLeakDetector::new(Duration::from_millis(25), Duration::from_secs(60));
+        let id = Uuid::new_v4();
+        let allocation = ResourceAllocation {
+            id,
+            resource_type: "stale".to_string(),
+            allocated_at: Instant::now(),
+            requirements: ResourceRequirements::default(),
+            owner: "test".to_string(),
+            last_accessed: Instant::now() - Duration::from_secs(1),
+        };
+        detector.track_allocation(allocation).await;
+
+        let leaked = detector.cleanup_leaked_resources().await;
+        assert_eq!(leaked.len(), 1);
+        assert_eq!(leaked[0].id, id);
+        assert_eq!(leaked[0].resource_type, "stale");
+    }
+
+    #[tokio::test]
+    async fn test_remove_nonexistent_does_not_panic() {
+        let detector = ResourceLeakDetector::new(Duration::from_secs(300), Duration::from_secs(60));
+        detector.remove_allocation(Uuid::new_v4()).await;
+    }
+}

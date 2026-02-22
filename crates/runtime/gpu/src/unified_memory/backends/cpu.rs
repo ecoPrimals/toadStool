@@ -47,8 +47,10 @@ impl AlignedBuffer {
         let layout = Layout::from_size_align(size, align)
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {e}")))?;
 
-        // SAFETY: Layout is valid (from_size_align succeeded).
-        // `alloc_zeroed` allocates and zero-initialises in one call.
+        // UNAVOIDABLE UNSAFE: std::alloc::alloc_zeroed is the only way to get
+        // custom-aligned zero-initialized heap memory. Vec/Box lack alignment control.
+        //
+        // SAFETY: Layout is valid (from_size_align succeeded, align is power-of-two).
         let raw = unsafe { std::alloc::alloc_zeroed(layout) };
         let ptr = NonNull::new(raw).ok_or_else(|| ToadStoolError::runtime("Out of memory"))?;
 
@@ -82,10 +84,15 @@ impl AlignedBuffer {
 }
 
 impl Drop for AlignedBuffer {
+    #[allow(clippy::expect_used)]
     fn drop(&mut self) {
+        // size/align are immutable after construction and were validated
+        // at alloc time, so from_size_align cannot fail here.
+        // Drop cannot propagate errors, so expect is the correct choice.
         let layout = Layout::from_size_align(self.size, self.align)
             .expect("layout valid: matches original allocation");
-        // SAFETY: ptr was allocated with this exact layout; Drop runs exactly once.
+        // SAFETY: (1) ptr from alloc_zeroed(layout) in new(); (2) layout matches;
+        // (3) Drop runs exactly once; (4) no references exist (self is being dropped).
         unsafe { dealloc(self.ptr.as_ptr(), layout) };
     }
 }
@@ -151,7 +158,8 @@ impl CpuBackend {
     /// This function reconstructs the buffer and lets Drop handle deallocation.
     fn free_aligned_safe(ptr: *mut u8, size: usize, align: usize) {
         if !ptr.is_null() {
-            // SAFETY: ptr/size/align from our allocate_aligned_safe; buffer takes ownership
+            // SAFETY: ptr/size/align from allocate_aligned_safe; caller transfers ownership.
+            // from_raw takes ownership; Drop deallocates with matching layout.
             if let Some(buffer) = unsafe { AlignedBuffer::from_raw(ptr, size, align) } {
                 drop(buffer); // Explicit drop for clarity (would happen anyway)
             }
@@ -286,18 +294,14 @@ mod tests {
         assert!(!device_ptr.is_null());
         assert_eq!(cpu_ptr as *const u8, device_ptr); // Same pointer!
 
-        // Write some data
-        // SAFETY: cpu_ptr from allocate_unified(4096); verified non-null; 4096 bytes valid.
-        unsafe {
-            std::ptr::write_bytes(cpu_ptr, 42, 4096);
-        }
-
-        // Read it back
-        // SAFETY: cpu_ptr valid; memory initialized by write_bytes above; single byte read.
-        unsafe {
-            let first_byte = *cpu_ptr;
-            assert_eq!(first_byte, 42);
-        }
+        let BackendAllocation::Cpu(ref alloc) = allocation else {
+            panic!("expected CPU allocation");
+        };
+        let size = alloc.size;
+        // SAFETY: cpu_ptr from allocate_unified; size from same allocation; exclusive access.
+        let slice = unsafe { std::slice::from_raw_parts_mut(cpu_ptr, size) };
+        slice.fill(42);
+        assert_eq!(slice[0], 42);
 
         // Free
         backend.free_unified(allocation).await.unwrap();

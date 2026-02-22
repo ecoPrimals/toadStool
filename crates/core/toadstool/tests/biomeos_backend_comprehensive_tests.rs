@@ -61,7 +61,7 @@ fn test_auth_backend_trait_validate_token_valid() {
         expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
         issued_at: chrono::Utc::now(),
         issuer: "beardog".to_string(),
-        audience: vec!["songbird".to_string()],
+        audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
         claims: std::collections::HashMap::new(),
     };
@@ -81,7 +81,7 @@ fn test_auth_backend_trait_validate_token_expired() {
         expires_at: chrono::Utc::now() - chrono::Duration::hours(1), // Expired
         issued_at: chrono::Utc::now() - chrono::Duration::hours(2),
         issuer: "beardog".to_string(),
-        audience: vec!["songbird".to_string()],
+        audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
         claims: std::collections::HashMap::new(),
     };
@@ -103,7 +103,7 @@ fn test_auth_backend_trait_validate_token_invalid_issuer() {
         expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
         issued_at: chrono::Utc::now(),
         issuer: "malicious-issuer".to_string(), // Invalid issuer
-        audience: vec!["songbird".to_string()],
+        audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
         claims: std::collections::HashMap::new(),
     };
@@ -125,7 +125,7 @@ fn test_auth_backend_trait_validate_token_invalid_type() {
         expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
         issued_at: chrono::Utc::now(),
         issuer: "beardog".to_string(),
-        audience: vec!["songbird".to_string()],
+        audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
         claims: std::collections::HashMap::new(),
     };
@@ -147,7 +147,7 @@ fn test_auth_backend_trait_validate_token_bearer_type() {
         expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
         issued_at: chrono::Utc::now(),
         issuer: "beardog".to_string(),
-        audience: vec!["songbird".to_string()],
+        audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
         claims: std::collections::HashMap::new(),
     };
@@ -167,7 +167,7 @@ fn test_auth_backend_trait_validate_token_ed25519_type() {
         expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
         issued_at: chrono::Utc::now(),
         issuer: "beardog".to_string(),
-        audience: vec!["songbird".to_string()],
+        audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
         claims: std::collections::HashMap::new(),
     };
@@ -216,7 +216,10 @@ async fn test_inmemory_auth_backend_token_request_fields() {
     assert_eq!(token.public_key, "test-public-key");
     assert!(token.expires_at > chrono::Utc::now());
     assert_eq!(token.issuer, "beardog");
-    assert!(token.audience.contains(&"songbird".to_string()));
+    assert!(
+        token.audience.contains(&"toadstool".to_string())
+            || token.audience.contains(&"biomeos".to_string())
+    );
     assert!(token.scope.contains(&"cross-primal".to_string()));
 }
 

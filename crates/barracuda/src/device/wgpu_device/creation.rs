@@ -467,7 +467,18 @@ impl WgpuDevice {
         wgpu_device
     }
 
-    /// Create WgpuDevice from existing device/queue with synthetic adapter info
+    /// Create WgpuDevice from existing device/queue with synthetic adapter info.
+    ///
+    /// # Deprecated
+    ///
+    /// Use [`from_existing`](Self::from_existing) instead and pass the real
+    /// `AdapterInfo` from the adapter that created the device. Synthetic
+    /// `AdapterInfo` with `DeviceType::Other` breaks Ada Lovelace (RTX 40xx)
+    /// capability detection and f64 feature probing.
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use from_existing() with real AdapterInfo; synthetic info breaks driver detection"
+    )]
     pub fn from_existing_simple(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>) -> Self {
         let wgpu_device = Self {
             device,

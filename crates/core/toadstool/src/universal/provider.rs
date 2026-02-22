@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
+use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_config::env_config::EnvironmentConfig;
 
 use crate::ToadStoolResult;
@@ -37,7 +38,7 @@ impl ToadStoolPrimalProvider {
 #[async_trait]
 impl UniversalPrimalProvider for ToadStoolPrimalProvider {
     fn primal_id(&self) -> &'static str {
-        "toadstool"
+        PRIMAL_NAME
     }
 
     fn instance_id(&self) -> &'static str {

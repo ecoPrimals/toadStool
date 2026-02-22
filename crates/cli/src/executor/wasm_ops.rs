@@ -50,11 +50,42 @@ impl BiomeExecutor {
     #[allow(dead_code)]
     pub(super) async fn execute_wasm_module(
         &self,
-        _module_data: &[u8],
-        _args: Vec<String>,
+        module_data: &[u8],
+        args: Vec<String>,
     ) -> Result<()> {
-        // Execute WASM module using wasmi runtime
-        // This is a placeholder - actual implementation would use toadstool-runtime-wasm
-        bail!("WASM execution not yet implemented in executor");
+        #[cfg(feature = "wasm")]
+        {
+            use bytes::Bytes;
+            use toadstool::workload::WasmModuleSource;
+            use toadstool_runtime_wasm::{ModuleExecutor, WasmRuntimeConfig};
+            use wasmi::Engine;
+
+            let engine = Engine::default();
+            let config = WasmRuntimeConfig::default();
+            let executor = ModuleExecutor::new(engine, config);
+
+            let source = WasmModuleSource::Bytes {
+                data: Bytes::copy_from_slice(module_data),
+            };
+
+            // WASI modules typically export _start; Core WASM may use different entry points
+            let entry_point = "_start";
+
+            let _output = executor
+                .load_and_execute(&source, entry_point, args)
+                .await
+                .map_err(|e| anyhow::anyhow!("WASM execution failed: {}", e))?;
+
+            info!("✅ WASM module execution completed");
+            Ok(())
+        }
+
+        #[cfg(not(feature = "wasm"))]
+        {
+            let _ = (module_data, args);
+            bail!(
+                "WASM execution requires the 'wasm' feature. Build with: cargo build --features wasm"
+            );
+        }
     }
 }

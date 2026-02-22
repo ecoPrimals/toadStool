@@ -325,8 +325,8 @@ impl ComputeExecutor for CpuExecutor {
         use MathOp::*;
         match op {
             // Unary ops (single input)
-            ReLU | Sigmoid | Tanh | GELU | Negate | Abs | Square | Sqrt
-            | Reciprocal | Exp | Log | Sin | Cos | Tan => {
+            ReLU | Sigmoid | Tanh | GELU | Negate | Abs | Square | Sqrt | Reciprocal | Exp
+            | Log | Sin | Cos | Tan => {
                 let data = Self::read_f32(inputs[0].as_ref())?;
                 let result = self.execute_unary_cpu(op, &data)?;
                 let desc = inputs[0].descriptor().clone();
@@ -348,8 +348,11 @@ impl ComputeExecutor for CpuExecutor {
             }
 
             // Reduction ops
-            ReduceSum { .. } | ReduceMean { .. } | ReduceMax { .. }
-            | ReduceMin { .. } | ReduceProd { .. } => {
+            ReduceSum { .. }
+            | ReduceMean { .. }
+            | ReduceMax { .. }
+            | ReduceMin { .. }
+            | ReduceProd { .. } => {
                 let data = Self::read_f32(inputs[0].as_ref())?;
                 let scalar = self.execute_reduce_cpu(op, &data)?;
                 let desc = TensorDescriptor::new(vec![1], inputs[0].descriptor().dtype);
@@ -357,7 +360,10 @@ impl ComputeExecutor for CpuExecutor {
             }
 
             // Matrix multiply
-            MatMul { transpose_a, transpose_b } => {
+            MatMul {
+                transpose_a,
+                transpose_b,
+            } => {
                 if inputs.len() < 2 {
                     return Err(crate::error::BarracudaError::InvalidInput {
                         message: "MatMul requires 2 inputs".to_string(),
@@ -370,8 +376,11 @@ impl ComputeExecutor for CpuExecutor {
 
                 let (m, k_a) = if a_desc.shape.len() >= 2 {
                     let r = a_desc.shape.len();
-                    if *transpose_a { (a_desc.shape[r-1], a_desc.shape[r-2]) }
-                    else { (a_desc.shape[r-2], a_desc.shape[r-1]) }
+                    if *transpose_a {
+                        (a_desc.shape[r - 1], a_desc.shape[r - 2])
+                    } else {
+                        (a_desc.shape[r - 2], a_desc.shape[r - 1])
+                    }
                 } else {
                     return Err(crate::error::BarracudaError::InvalidInput {
                         message: "MatMul requires 2D+ tensors".to_string(),
@@ -380,8 +389,11 @@ impl ComputeExecutor for CpuExecutor {
 
                 let (k_b, n) = if b_desc.shape.len() >= 2 {
                     let r = b_desc.shape.len();
-                    if *transpose_b { (b_desc.shape[r-1], b_desc.shape[r-2]) }
-                    else { (b_desc.shape[r-2], b_desc.shape[r-1]) }
+                    if *transpose_b {
+                        (b_desc.shape[r - 1], b_desc.shape[r - 2])
+                    } else {
+                        (b_desc.shape[r - 2], b_desc.shape[r - 1])
+                    }
                 } else {
                     return Err(crate::error::BarracudaError::InvalidInput {
                         message: "MatMul requires 2D+ tensors".to_string(),
@@ -411,7 +423,10 @@ impl ComputeExecutor for CpuExecutor {
             }
 
             // BatchMatMul — delegate to MatMul logic (single batch)
-            BatchMatMul { transpose_a, transpose_b } => {
+            BatchMatMul {
+                transpose_a,
+                transpose_b,
+            } => {
                 if inputs.len() < 2 {
                     return Err(crate::error::BarracudaError::InvalidInput {
                         message: "BatchMatMul requires 2 inputs".to_string(),
@@ -424,8 +439,11 @@ impl ComputeExecutor for CpuExecutor {
 
                 let (m, k_a) = if a_desc.shape.len() >= 2 {
                     let r = a_desc.shape.len();
-                    if *transpose_a { (a_desc.shape[r-1], a_desc.shape[r-2]) }
-                    else { (a_desc.shape[r-2], a_desc.shape[r-1]) }
+                    if *transpose_a {
+                        (a_desc.shape[r - 1], a_desc.shape[r - 2])
+                    } else {
+                        (a_desc.shape[r - 2], a_desc.shape[r - 1])
+                    }
                 } else {
                     return Err(crate::error::BarracudaError::InvalidInput {
                         message: "BatchMatMul requires 2D+ tensors".to_string(),
@@ -434,8 +452,11 @@ impl ComputeExecutor for CpuExecutor {
 
                 let (k_b, n) = if b_desc.shape.len() >= 2 {
                     let r = b_desc.shape.len();
-                    if *transpose_b { (b_desc.shape[r-1], b_desc.shape[r-2]) }
-                    else { (b_desc.shape[r-2], b_desc.shape[r-1]) }
+                    if *transpose_b {
+                        (b_desc.shape[r - 1], b_desc.shape[r - 2])
+                    } else {
+                        (b_desc.shape[r - 2], b_desc.shape[r - 1])
+                    }
                 } else {
                     return Err(crate::error::BarracudaError::InvalidInput {
                         message: "BatchMatMul requires 2D+ tensors".to_string(),
@@ -463,7 +484,10 @@ impl ComputeExecutor for CpuExecutor {
 
             Squeeze { .. } => {
                 let data = Self::read_f32(inputs[0].as_ref())?;
-                let shape: Vec<usize> = inputs[0].descriptor().shape.iter()
+                let shape: Vec<usize> = inputs[0]
+                    .descriptor()
+                    .shape
+                    .iter()
                     .copied()
                     .filter(|&d| d != 1)
                     .collect();
@@ -535,15 +559,184 @@ impl ComputeExecutor for CpuExecutor {
                         result.push(data[i % data.len()]);
                     }
                 }
-                let desc = TensorDescriptor::new(target_shape.clone(), inputs[0].descriptor().dtype);
+                let desc =
+                    TensorDescriptor::new(target_shape.clone(), inputs[0].descriptor().dtype);
                 Ok(Self::pack_f32(result, desc))
             }
 
-            // Convolution ops — CPU fallback pending
-            other @ (Conv2D { .. } | MaxPool2D { .. } | AvgPool2D { .. }) => {
-                Err(crate::error::BarracudaError::NotImplemented {
-                    feature: format!("CpuExecutor::execute({other:?}) — conv ops planned"),
-                })
+            // Convolution ops
+            Conv2D {
+                stride: (stride_h, stride_w),
+                padding: (pad_h, pad_w),
+                dilation: (dil_h, dil_w),
+                groups,
+            } => {
+                if inputs.len() < 2 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: "Conv2D requires 2 inputs (input, kernel)".to_string(),
+                    });
+                }
+                if *groups != 1 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: "Conv2D groups > 1 not yet supported".to_string(),
+                    });
+                }
+
+                let in_desc = inputs[0].descriptor();
+                let kernel_desc = inputs[1].descriptor();
+
+                if in_desc.shape.len() != 4 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: format!(
+                            "Conv2D input must be 4D [N, C_in, H, W], got {:?}",
+                            in_desc.shape
+                        ),
+                    });
+                }
+                if kernel_desc.shape.len() != 4 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: format!(
+                            "Conv2D kernel must be 4D [C_out, C_in, kH, kW], got {:?}",
+                            kernel_desc.shape
+                        ),
+                    });
+                }
+
+                let n = in_desc.shape[0];
+                let c_in = in_desc.shape[1];
+                let h = in_desc.shape[2];
+                let w = in_desc.shape[3];
+
+                let c_out = kernel_desc.shape[0];
+                let k_c_in = kernel_desc.shape[1];
+                let k_h = kernel_desc.shape[2];
+                let k_w = kernel_desc.shape[3];
+
+                if c_in != k_c_in {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: format!(
+                            "Conv2D input channels {} != kernel in-channels {}",
+                            c_in, k_c_in
+                        ),
+                    });
+                }
+
+                let input_data = Self::read_f32(inputs[0].as_ref())?;
+                let kernel_data = Self::read_f32(inputs[1].as_ref())?;
+
+                let result = crate::cpu_conv_pool::conv2d(
+                    &input_data,
+                    &kernel_data,
+                    n,
+                    c_in,
+                    h,
+                    w,
+                    c_out,
+                    k_h,
+                    k_w,
+                    *stride_h,
+                    *stride_w,
+                    *pad_h,
+                    *pad_w,
+                    *dil_h,
+                    *dil_w,
+                )?;
+
+                let eff_k_h = (k_h - 1) * *dil_h + 1;
+                let eff_k_w = (k_w - 1) * *dil_w + 1;
+                let h_out = (h + 2 * *pad_h - eff_k_h) / *stride_h + 1;
+                let w_out = (w + 2 * *pad_w - eff_k_w) / *stride_w + 1;
+
+                let out_desc = TensorDescriptor::new(vec![n, c_out, h_out, w_out], in_desc.dtype);
+                Ok(Self::pack_f32(result, out_desc))
+            }
+
+            MaxPool2D {
+                kernel_size: (k_h, k_w),
+                stride: (stride_h, stride_w),
+                padding: (pad_h, pad_w),
+            } => {
+                let in_desc = inputs[0].descriptor();
+
+                if in_desc.shape.len() != 4 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: format!(
+                            "MaxPool2D input must be 4D [N, C, H, W], got {:?}",
+                            in_desc.shape
+                        ),
+                    });
+                }
+
+                let n = in_desc.shape[0];
+                let c = in_desc.shape[1];
+                let h = in_desc.shape[2];
+                let w = in_desc.shape[3];
+
+                let input_data = Self::read_f32(inputs[0].as_ref())?;
+
+                let result = crate::cpu_conv_pool::max_pool2d(
+                    &input_data,
+                    n,
+                    c,
+                    h,
+                    w,
+                    *k_h,
+                    *k_w,
+                    *stride_h,
+                    *stride_w,
+                    *pad_h,
+                    *pad_w,
+                )?;
+
+                let h_out = (h + 2 * *pad_h - *k_h) / *stride_h + 1;
+                let w_out = (w + 2 * *pad_w - *k_w) / *stride_w + 1;
+
+                let out_desc = TensorDescriptor::new(vec![n, c, h_out, w_out], in_desc.dtype);
+                Ok(Self::pack_f32(result, out_desc))
+            }
+
+            AvgPool2D {
+                kernel_size: (k_h, k_w),
+                stride: (stride_h, stride_w),
+                padding: (pad_h, pad_w),
+            } => {
+                let in_desc = inputs[0].descriptor();
+
+                if in_desc.shape.len() != 4 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: format!(
+                            "AvgPool2D input must be 4D [N, C, H, W], got {:?}",
+                            in_desc.shape
+                        ),
+                    });
+                }
+
+                let n = in_desc.shape[0];
+                let c = in_desc.shape[1];
+                let h = in_desc.shape[2];
+                let w = in_desc.shape[3];
+
+                let input_data = Self::read_f32(inputs[0].as_ref())?;
+
+                let result = crate::cpu_conv_pool::avg_pool2d(
+                    &input_data,
+                    n,
+                    c,
+                    h,
+                    w,
+                    *k_h,
+                    *k_w,
+                    *stride_h,
+                    *stride_w,
+                    *pad_h,
+                    *pad_w,
+                )?;
+
+                let h_out = (h + 2 * *pad_h - *k_h) / *stride_h + 1;
+                let w_out = (w + 2 * *pad_w - *k_w) / *stride_w + 1;
+
+                let out_desc = TensorDescriptor::new(vec![n, c, h_out, w_out], in_desc.dtype);
+                Ok(Self::pack_f32(result, out_desc))
             }
         }
     }
@@ -707,5 +900,48 @@ mod tests {
         // [[1*5+2*7, 1*6+2*8], [3*5+4*7, 3*6+4*8]]
         // [[19, 22], [43, 50]]
         assert_eq!(c, vec![19.0, 22.0, 43.0, 50.0]);
+    }
+
+    #[test]
+    fn test_conv2d_simple() {
+        // 1x1x4x4 input, 1x1x2x2 kernel, stride=1, pad=0
+        // Input: [[1,2,3,4], [5,6,7,8], [9,10,11,12], [13,14,15,16]]
+        // Kernel: [[1,0],[0,1]] - identity-ish 2x2
+        let input: Vec<f32> = (1..=16).map(|x| x as f32).collect();
+        let kernel = vec![1.0, 0.0, 0.0, 1.0]; // [1,1,2,2]
+
+        let out =
+            crate::cpu_conv_pool::conv2d(&input, &kernel, 1, 1, 4, 4, 1, 2, 2, 1, 1, 0, 0, 1, 1)
+                .unwrap();
+
+        // H_out = (4+0-2)/1+1 = 3, W_out = 3
+        assert_eq!(out.len(), 9);
+        // Top-left: input[0]*1 + input[1]*0 + input[4]*0 + input[5]*1 = 1+6 = 7
+        assert!((out[0] - 7.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_maxpool2d_simple() {
+        // 1x1x4x4 input, 2x2 pool, stride 2, no pad
+        let input: Vec<f32> = (1..=16).map(|x| x as f32).collect();
+        let out = crate::cpu_conv_pool::max_pool2d(&input, 1, 1, 4, 4, 2, 2, 2, 2, 0, 0).unwrap();
+        assert_eq!(out.len(), 4);
+        // Expected: max of each 2x2 block = 6, 8, 14, 16
+        assert!((out[0] - 6.0).abs() < 1e-5);
+        assert!((out[1] - 8.0).abs() < 1e-5);
+        assert!((out[2] - 14.0).abs() < 1e-5);
+        assert!((out[3] - 16.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_avgpool2d_simple() {
+        // 1x1x4x4 input, 2x2 pool, stride 2, no pad
+        let input: Vec<f32> = (1..=16).map(|x| x as f32).collect();
+        let out = crate::cpu_conv_pool::avg_pool2d(&input, 1, 1, 4, 4, 2, 2, 2, 2, 0, 0).unwrap();
+        assert_eq!(out.len(), 4);
+        // Top-left 2x2: (1+2+5+6)/4 = 3.5
+        assert!((out[0] - 3.5).abs() < 1e-5);
+        // Top-right: (3+4+7+8)/4 = 5.5
+        assert!((out[1] - 5.5).abs() < 1e-5);
     }
 }

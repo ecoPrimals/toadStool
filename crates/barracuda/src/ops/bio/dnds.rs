@@ -37,7 +37,11 @@ impl DnDsBatchF64 {
         let bgl = super::snp::make_bgl(&device, &[true, true, true, false, false, false]);
         let layout = super::snp::make_layout(&device, &bgl, "DnDsBatch");
         let pipeline = super::snp::make_pipeline(&device, &layout, &module, "main", "DnDsBatch");
-        Ok(Self { device, pipeline, bgl })
+        Ok(Self {
+            device,
+            pipeline,
+            bgl,
+        })
     }
 
     pub fn dispatch(
@@ -53,19 +57,22 @@ impl DnDsBatchF64 {
     ) -> Result<()> {
         let params = DnDsParams { n_pairs, n_codons };
         let pbuf = super::snp::upload_uniform(&self.device, &params);
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &self.bgl,
-            entries: &[
-                super::snp::bg_entry(0, &pbuf),
-                super::snp::bg_entry(1, seq_a),
-                super::snp::bg_entry(2, seq_b),
-                super::snp::bg_entry(3, genetic_code),
-                super::snp::bg_entry(4, dn_out),
-                super::snp::bg_entry(5, ds_out),
-                super::snp::bg_entry(6, omega_out),
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout: &self.bgl,
+                entries: &[
+                    super::snp::bg_entry(0, &pbuf),
+                    super::snp::bg_entry(1, seq_a),
+                    super::snp::bg_entry(2, seq_b),
+                    super::snp::bg_entry(3, genetic_code),
+                    super::snp::bg_entry(4, dn_out),
+                    super::snp::bg_entry(5, ds_out),
+                    super::snp::bg_entry(6, omega_out),
+                ],
+            });
         super::snp::submit(&self.device, &self.pipeline, &bg, n_pairs.div_ceil(64));
         Ok(())
     }

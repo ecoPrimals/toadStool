@@ -16,8 +16,7 @@
 //! convergence on cold and hot SU(3) lattices.
 
 /// WGSL source for the three CG kernels (separate entry points).
-pub const WGSL_CG_KERNELS_F64: &str =
-    include_str!("../../shaders/lattice/cg_kernels_f64.wgsl");
+pub const WGSL_CG_KERNELS_F64: &str = include_str!("../../shaders/lattice/cg_kernels_f64.wgsl");
 
 /// WGSL fragment: real part of complex dot product.
 ///

@@ -9,6 +9,8 @@ use tokio::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;
 
+use toadstool_common::constants::ecosystem::{node_type, well_known};
+
 use super::types::{
     CapabilityTracker, CoordinationStrategy, DiscoveryClient, DistributionPlan, NetworkCapacity,
     NetworkHealthMonitor, NetworkStatus, NodeCapabilities, NodeId, NodeRegistration, NodeRegistry,
@@ -304,7 +306,8 @@ impl Clone for DiscoveryClient {
     fn clone(&self) -> Self {
         // Clone uses fallback path since Clone trait is sync
         // In async contexts, use the async new() constructor instead
-        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock");
+        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir()
+            .join(format!("{}.sock", well_known::SONGBIRD));
 
         Self {
             connection: Arc::clone(&self.connection),
@@ -319,7 +322,8 @@ impl DiscoveryClient {
         let socket_path = toadstool_common::primal_sockets::discover_coordination_socket()
             .await
             .unwrap_or_else(|_| {
-                toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
+                toadstool_common::primal_sockets::get_biomeos_dir()
+                    .join(format!("{}.sock", well_known::SONGBIRD))
             });
 
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
@@ -361,11 +365,12 @@ impl DiscoveryClient {
             .ok_or_else(|| ToadStoolError::runtime("Missing node_id in discovery data"))?
             .to_string();
 
-        let node_type = match node_data["type"].as_str().unwrap_or("ToadStool") {
-            "ToadStool" => NodeType::ToadStool,
-            "NestGate" => NodeType::NestGate,
-            "BearDog" => NodeType::BearDog,
-            "Songbird" => NodeType::Songbird,
+        let type_str = node_data["type"].as_str().unwrap_or(node_type::TOADSTOOL);
+        let parsed_node_type = match type_str {
+            s if s == node_type::TOADSTOOL => NodeType::ToadStool,
+            s if s == node_type::NESTGATE => NodeType::NestGate,
+            s if s == node_type::BEARDOG => NodeType::BearDog,
+            s if s == node_type::SONGBIRD => NodeType::Songbird,
             custom => NodeType::Custom(custom.to_string()),
         };
 
@@ -418,7 +423,7 @@ impl DiscoveryClient {
 
         Ok(NodeRegistration {
             node_id,
-            node_type,
+            node_type: parsed_node_type,
             capabilities: capabilities.clone(),
             endpoints,
             protocols,

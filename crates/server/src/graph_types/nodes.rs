@@ -6,6 +6,7 @@ use std::time::Duration;
 use toadstool::resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
 };
+use toadstool_common::constants::PRIMAL_NAME;
 
 /// Graph node representing a single workload unit
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,7 +29,7 @@ pub struct GraphNode {
 }
 
 fn default_primal() -> String {
-    "toadstool".to_string()
+    PRIMAL_NAME.to_string()
 }
 
 fn serialize_duration<S>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
@@ -72,7 +73,7 @@ impl GraphNode {
     pub fn simple(id: impl Into<String>, operation: impl Into<String>) -> Self {
         Self {
             id: id.into(),
-            primal: "toadstool".to_string(),
+            primal: PRIMAL_NAME.to_string(),
             operation: operation.into(),
             requirements: NodeResourceRequirements::default(),
             duration: None,
@@ -99,7 +100,7 @@ impl GraphNodeBuilder {
     pub fn new(id: impl Into<String>, operation: impl Into<String>) -> Self {
         Self {
             id: id.into(),
-            primal: "toadstool".to_string(),
+            primal: PRIMAL_NAME.to_string(),
             operation: operation.into(),
             cpu_cores: None,
             memory_bytes: None,
@@ -223,5 +224,71 @@ impl GraphNodeBuilder {
             requirements,
             metadata: self.metadata,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_graph_node_simple() {
+        let node = GraphNode::simple("n1", "cpu_compute");
+        assert_eq!(node.id, "n1");
+        assert_eq!(node.operation, "cpu_compute");
+        assert!(node.requirements.cpu.is_none());
+        assert!(node.metadata.is_empty());
+    }
+
+    #[test]
+    fn test_graph_node_builder_minimal() {
+        let node = GraphNode::builder("n2", "storage").build();
+        assert_eq!(node.id, "n2");
+        assert_eq!(node.operation, "storage");
+    }
+
+    #[test]
+    fn test_graph_node_builder_with_resources() {
+        let node = GraphNode::builder("n3", "gpu_compute")
+            .cpu(8.0)
+            .memory_gb(16)
+            .gpu_memory_gb(4)
+            .duration_secs(120)
+            .metadata("key", "value")
+            .build();
+        assert_eq!(node.id, "n3");
+        assert_eq!(node.operation, "gpu_compute");
+        assert_eq!(node.requirements.cpu.as_ref().unwrap().min_cores, 8.0);
+        assert_eq!(
+            node.requirements.memory.as_ref().unwrap().min_bytes,
+            16 * 1024 * 1024 * 1024
+        );
+        assert_eq!(
+            node.requirements
+                .gpu
+                .as_ref()
+                .and_then(|g| g.min_memory_bytes)
+                .unwrap(),
+            4 * 1024 * 1024 * 1024
+        );
+        assert_eq!(node.duration, Some(Duration::from_secs(120)));
+        assert_eq!(node.metadata.get("key").map(String::as_str), Some("value"));
+    }
+
+    #[test]
+    fn test_node_resource_requirements_default() {
+        let req = NodeResourceRequirements::default();
+        assert!(req.cpu.is_none());
+        assert!(req.memory.is_none());
+        assert!(req.gpu.is_none());
+    }
+
+    #[test]
+    fn test_graph_node_serialization_roundtrip() {
+        let node = GraphNode::simple("serial", "cpu_compute");
+        let json = serde_json::to_string(&node).unwrap();
+        let restored: GraphNode = serde_json::from_str(&json).unwrap();
+        assert_eq!(node.id, restored.id);
+        assert_eq!(node.operation, restored.operation);
     }
 }

@@ -1,6 +1,9 @@
 //! Unit tests for ManualJsonRpcServer
 //!
 //! Tests the pure Rust HTTP/1.1 + JSON-RPC 2.0 implementation over Unix sockets.
+//! ManualJsonRpcServer is deprecated; tests retained until migration to pure_jsonrpc.
+
+#![allow(deprecated)]
 
 use std::sync::Arc;
 use toadstool_server::manual_jsonrpc::ManualJsonRpcServer;

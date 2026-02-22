@@ -62,13 +62,27 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 
 // Normalize histogram to g(r)
-// g(r) = histogram[bin] * V / (N * N_pairs_in_shell)
-// where N_pairs_in_shell = 4π r² dr * ρ
+// g(r) = histogram[bin] / (N_pairs * V_shell * rho)
+// where V_shell = (4/3)*π*((r+dr)³ - r³), rho = N/V
+@group(0) @binding(3) var<storage, read_write> g_r_output: array<f64>;
+
 @compute @workgroup_size(256)
 fn normalize(@builtin(global_invocation_id) gid: vec3<u32>) {
     let bin = gid.x;
     if (bin >= params.n_bins) { return; }
-    
-    // This kernel would need additional output buffer for g(r)
-    // Left as placeholder - normalization typically done on CPU
+
+    let n = params.n_particles;
+    let volume = params.box_x * params.box_y * params.box_z;
+    let rho = f64(n) / volume;
+    let n_pairs = f64(n * (n - 1u)) / 2.0;
+
+    let r_lo = f64(bin) * params.dr;
+    let r_hi = f64(bin + 1u) * params.dr;
+    let v_shell = (4.0 / 3.0) * 3.14159265358979323846 * (r_hi * r_hi * r_hi - r_lo * r_lo * r_lo);
+
+    let expected = rho * v_shell * f64(n - 1u) / 2.0;
+    let count = f64(atomicLoad(&histogram[bin]));
+
+    let g_r = select(0.0, count / expected, expected > 0.0);
+    g_r_output[bin] = g_r;
 }

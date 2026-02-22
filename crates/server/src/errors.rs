@@ -9,10 +9,15 @@ use toadstool_common::error::{
     ConfigError, ExecutionError, NetworkError, ResourceError, SecurityError, SystemError,
 };
 
-/// Placeholder strings for error conversions (when specific context is unknown)
-const UNKNOWN: &str = "unknown";
-const SYSTEM_RESOURCE: &str = "system";
-const SERVER_OPERATION: &str = "server_operation";
+/// Fallback strings for error conversions when specific context cannot be extracted
+/// from ServerError. Used when converting ServerError → ToadStoolError; the target
+/// variant requires structured fields (engine, resource, endpoint, etc.) that
+/// ServerError does not carry. Chosen to produce clear, actionable error output.
+const FALLBACK_ENGINE: &str = "runtime engine (identifier not available)";
+const FALLBACK_RESOURCE: &str = "system resource (type not specified)";
+const FALLBACK_OPERATION: &str = "requested operation (not specified)";
+const FALLBACK_ENDPOINT: &str = "connection target (endpoint not specified)";
+const FALLBACK_WORKLOAD: &str = "workload (identifier not available)";
 
 /// `ToadStool` server errors
 ///
@@ -64,13 +69,13 @@ impl From<ServerError> for ToadStoolError {
             }
             ServerError::RuntimeEngine(msg) => {
                 ToadStoolError::Execution(ExecutionError::EngineUnavailable {
-                    engine: UNKNOWN.to_string(),
+                    engine: FALLBACK_ENGINE.into(),
                     reason: msg,
                 })
             }
             ServerError::ResourceExhaustion(msg) => {
                 ToadStoolError::Resource(ResourceError::AllocationFailure {
-                    resource: SYSTEM_RESOURCE.to_string(),
+                    resource: FALLBACK_RESOURCE.into(),
                     reason: msg,
                 })
             }
@@ -79,7 +84,7 @@ impl From<ServerError> for ToadStoolError {
             }
             ServerError::Authorization(msg) => {
                 ToadStoolError::Security(SecurityError::PermissionDenied {
-                    operation: SERVER_OPERATION.to_string(),
+                    operation: FALLBACK_OPERATION.into(),
                     reason: msg,
                 })
             }
@@ -87,12 +92,12 @@ impl From<ServerError> for ToadStoolError {
                 ToadStoolError::Configuration(ConfigError::ValidationError { reason: msg })
             }
             ServerError::Network(msg) => ToadStoolError::Network(NetworkError::ConnectionFailed {
-                endpoint: UNKNOWN.to_string(),
+                endpoint: FALLBACK_ENDPOINT.into(),
                 reason: msg,
             }),
             ServerError::Execution(msg) => {
                 ToadStoolError::Execution(ExecutionError::WorkloadFailure {
-                    workload_id: UNKNOWN.to_string(),
+                    workload_id: FALLBACK_WORKLOAD.into(),
                     reason: msg,
                 })
             }

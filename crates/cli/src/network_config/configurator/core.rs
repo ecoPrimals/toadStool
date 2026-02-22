@@ -185,7 +185,10 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         endpoint: std::env::var("BEARDOG_ENDPOINT")
                             .or_else(|_| {
                                 let domains = ServiceDomainsConfig::from_env();
-                                Ok::<_, std::env::VarError>(format!("http://{}:8000", domains.beardog))
+                                Ok::<_, std::env::VarError>(format!(
+                                    "http://{}:8000",
+                                    domains.beardog
+                                ))
                             })
                             .unwrap_or_default(),
                         auth_token: None,

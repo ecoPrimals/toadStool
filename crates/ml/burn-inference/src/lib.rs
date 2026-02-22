@@ -36,6 +36,14 @@ pub enum Error {
     #[error("Unsupported model type: {0}")]
     UnsupportedModel(String),
 
+    /// Model weights have not been loaded. Load with the model-specific loader before inference.
+    #[error("Model not loaded: {0}")]
+    ModelNotLoaded(String),
+
+    /// Inference requires a backend (burn/onnx/wgsl) with loaded weights.
+    #[error("Model backend required: {0}")]
+    ModelBackendRequired(String),
+
     #[error("Not implemented: {0}")]
     NotImplemented(String),
 

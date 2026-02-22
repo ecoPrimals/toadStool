@@ -1,7 +1,10 @@
 //! Inference engine for running models
 //!
-//! Provides a high-level API for model inference across different devices.
+//! Provides a high-level API for model loading and device selection.
+//! For actual inference, use model-specific APIs: `Bert::forward()`, `Whisper::transcribe()`,
+//! `Yolo::detect()`, `ResNet::classify()` — each returns a clear error if weights/backend are missing.
 
+use crate::device::enumerate_devices;
 use crate::{BurnDevice, Error, Result};
 use std::path::Path;
 use tracing::info;
@@ -104,21 +107,23 @@ impl InferenceEngine {
 
     /// Run inference
     ///
+    /// Generic inference is not implemented. Use model-specific APIs with loaded weights.
+    ///
     /// # Errors
-    /// Returns `Error::NotImplemented` - full model inference requires implementing
-    /// the actual neural network forward pass. See `models/` for model-specific APIs.
+    /// Returns `Error::ModelBackendRequired` with available backends and model-specific API guidance.
     pub fn infer(&self, model: &LoadedModel, _input: &[f32]) -> Result<Vec<f32>> {
-        // Full implementation requires:
-        // 1. Load model weights into Burn tensors
-        // 2. Build the model architecture (varies by model type)
-        // 3. Run forward pass through model layers
-        // 4. Extract output values from result tensor
-
-        Err(Error::NotImplemented(format!(
-            "Generic inference not implemented for '{}' ({:?}). \
-             Use model-specific APIs: Bert::forward(), Whisper::transcribe(), \
-             Yolo::detect(), or ResNet::classify() instead.",
-            model.name, model.format
+        let backends: Vec<String> = enumerate_devices()
+            .iter()
+            .map(|d| format!("{} ({:?})", d.name, d.device_type))
+            .collect();
+        Err(Error::ModelBackendRequired(format!(
+            "Generic inference not supported for '{}' ({:?}). \
+             Available backends: [{}]. \
+             Use model-specific APIs with loaded weights: Bert::forward(), Whisper::transcribe(), \
+             Yolo::detect(), or ResNet::classify(). Each returns a clear error if weights are missing.",
+            model.name,
+            model.format,
+            backends.join(", ")
         )))
     }
 }

@@ -358,7 +358,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(unused_mut)] // mut needed for state.resource_monitor assignment
     async fn test_perform_health_check_resource_monitor_failure_returns_false() {
         let config = ServerConfig {
             health_check: HealthCheckConfig {

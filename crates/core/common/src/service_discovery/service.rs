@@ -296,14 +296,14 @@ impl ServiceDiscovery {
             "/etc/biomeos/discovery.json".to_string()
         };
 
-        let content = tokio::fs::read_to_string(&resolved_path)
-            .await
-            .map_err(|e| DiscoveryError::MethodUnavailable {
+        let content = tokio::fs::read(&resolved_path).await.map_err(|e| {
+            DiscoveryError::MethodUnavailable {
                 method: format!("cannot read discovery config {resolved_path:?}: {e}"),
-            })?;
+            }
+        })?;
 
         let config_file: ConfigFile =
-            serde_json::from_str(&content).map_err(|e| DiscoveryError::InvalidResponse {
+            serde_json::from_slice(&content).map_err(|e| DiscoveryError::InvalidResponse {
                 reason: format!("malformed discovery config {resolved_path:?}: {e}"),
             })?;
 
@@ -401,20 +401,23 @@ impl ServiceDiscovery {
             .await
             .map_err(|source| DiscoveryError::NetworkError { source })?;
 
-        let mut response = String::new();
+        let mut response = Vec::new();
         stream
-            .read_to_string(&mut response)
+            .read_to_end(&mut response)
             .await
             .map_err(|source| DiscoveryError::NetworkError { source })?;
 
         // Strip HTTP headers — body starts after first blank line
+        let blank = b"\r\n\r\n";
         let body = response
-            .split_once("\r\n\r\n")
-            .map(|(_, body)| body)
-            .unwrap_or(&response);
+            .as_slice()
+            .windows(blank.len())
+            .position(|w| w == blank)
+            .map(|pos| &response[pos + blank.len()..])
+            .unwrap_or(&response[..]);
 
         let config_file: ConfigFile =
-            serde_json::from_str(body).map_err(|e| DiscoveryError::InvalidResponse {
+            serde_json::from_slice(body).map_err(|e| DiscoveryError::InvalidResponse {
                 reason: format!("malformed registry response from {resolved:?}: {e}"),
             })?;
 
@@ -577,5 +580,252 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
         }
         info!("Discovery cache refreshed: {} services", cache.len());
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn test_capability_from_str_known() {
+        assert!(matches!(
+            capability_from_str("coordination"),
+            Capability::Coordination(_)
+        ));
+        assert!(matches!(
+            capability_from_str("orchestration"),
+            Capability::Coordination(_)
+        ));
+        assert!(matches!(
+            capability_from_str("storage"),
+            Capability::Storage(_)
+        ));
+        assert!(matches!(
+            capability_from_str("object-storage"),
+            Capability::Storage(_)
+        ));
+        assert!(matches!(
+            capability_from_str("crypto"),
+            Capability::Crypto(_)
+        ));
+        assert!(matches!(
+            capability_from_str("auth"),
+            Capability::Authentication(_)
+        ));
+        assert!(matches!(
+            capability_from_str("compute"),
+            Capability::Compute(_)
+        ));
+        assert!(matches!(capability_from_str("gpu"), Capability::Compute(_)));
+    }
+
+    #[test]
+    fn test_capability_from_str_unknown() {
+        match capability_from_str("custom-thing") {
+            Capability::Custom { name, .. } => assert_eq!(name, "custom-thing"),
+            other => panic!("Expected Custom, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_capability_from_str_case_insensitive() {
+        assert!(matches!(
+            capability_from_str("COORDINATION"),
+            Capability::Coordination(_)
+        ));
+        assert!(matches!(
+            capability_from_str("Storage"),
+            Capability::Storage(_)
+        ));
+        assert!(matches!(
+            capability_from_str("GPU_COMPUTE"),
+            Capability::Compute(_)
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_config_file_discovery() {
+        let config = r#"{
+            "services": [
+                {
+                    "name": "test-compute",
+                    "version": "1.0.0",
+                    "capabilities": ["compute", "gpu"],
+                    "endpoints": ["http://localhost:9090/compute"],
+                    "metadata": {"region": "local"}
+                },
+                {
+                    "name": "test-storage",
+                    "capabilities": ["storage"],
+                    "endpoints": ["http://localhost:8080/storage"]
+                }
+            ]
+        }"#;
+
+        let mut tmp = NamedTempFile::new().expect("temp file");
+        tmp.write_all(config.as_bytes()).unwrap();
+        let path = tmp.path().to_string_lossy().to_string();
+
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path }).await;
+        assert!(discovery.is_ok(), "Config file discovery should succeed");
+
+        let disc = discovery.unwrap();
+        let all = disc.discover_all().await.unwrap();
+        assert_eq!(all.len(), 2);
+
+        let compute_svc = all.iter().find(|s| s.name == "test-compute").unwrap();
+        assert_eq!(compute_svc.version, "1.0.0");
+        assert!(compute_svc.capabilities.len() >= 2);
+        assert_eq!(compute_svc.metadata.get("region").unwrap(), "local");
+
+        let storage_svc = all.iter().find(|s| s.name == "test-storage").unwrap();
+        assert!(storage_svc
+            .capabilities
+            .iter()
+            .any(|c| matches!(c, Capability::Storage(_))));
+    }
+
+    #[tokio::test]
+    async fn test_config_file_missing() {
+        let result = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
+            path: "/nonexistent/path/discovery.json".to_string(),
+        })
+        .await;
+        // Should succeed (logs warning) because `new` catches initial refresh failures
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_config_file_malformed_json() {
+        let mut tmp = NamedTempFile::new().expect("temp file");
+        tmp.write_all(b"not valid json {{{").unwrap();
+        let path = tmp.path().to_string_lossy().to_string();
+
+        let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
+            .await
+            .unwrap();
+        let all = disc.discover_all().await;
+        assert!(all.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_config_file_empty_services() {
+        let mut tmp = NamedTempFile::new().expect("temp file");
+        tmp.write_all(b"{\"services\": []}").unwrap();
+        let path = tmp.path().to_string_lossy().to_string();
+
+        let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
+            .await
+            .unwrap();
+        let all = disc.discover_all().await.unwrap();
+        assert!(all.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_parse_capabilities() {
+        let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
+            .await
+            .unwrap();
+        let caps = disc.parse_capabilities("coordination,storage,compute");
+        assert_eq!(caps.len(), 3);
+        assert!(caps
+            .iter()
+            .any(|c| matches!(c, Capability::Coordination(_))));
+        assert!(caps.iter().any(|c| matches!(c, Capability::Storage(_))));
+        assert!(caps.iter().any(|c| matches!(c, Capability::Compute(_))));
+    }
+
+    #[tokio::test]
+    async fn test_parse_capabilities_empty() {
+        let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
+            .await
+            .unwrap();
+        let caps = disc.parse_capabilities("");
+        assert!(caps.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_cache_population_and_lookup() {
+        let config = r#"{
+            "services": [
+                {
+                    "name": "cached-svc",
+                    "capabilities": ["compute"],
+                    "endpoints": ["http://localhost:7777/api"]
+                }
+            ]
+        }"#;
+
+        let mut tmp = NamedTempFile::new().expect("temp file");
+        tmp.write_all(config.as_bytes()).unwrap();
+        let path = tmp.path().to_string_lossy().to_string();
+
+        let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
+            .await
+            .unwrap();
+
+        let compute_cap =
+            Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution);
+        let found = disc.find_service_by_capability(compute_cap).await;
+        assert!(found.is_ok());
+        assert_eq!(found.unwrap().name, "cached-svc");
+    }
+
+    #[tokio::test]
+    async fn test_find_service_by_capability_not_found() {
+        let config = r#"{"services": [
+            {"name": "storage-only", "capabilities": ["storage"], "endpoints": ["http://localhost:1234"]}
+        ]}"#;
+        let mut tmp = NamedTempFile::new().expect("temp file");
+        tmp.write_all(config.as_bytes()).unwrap();
+        let path = tmp.path().to_string_lossy().to_string();
+
+        let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
+            .await
+            .unwrap();
+
+        let result = disc
+            .find_service_by_capability(Capability::Crypto(CryptoCapability::KeyManagement))
+            .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_refresh_clears_cache() {
+        let config = r#"{"services": [
+            {"name": "refreshable", "capabilities": ["compute"], "endpoints": ["http://localhost:5555"]}
+        ]}"#;
+        let mut tmp = NamedTempFile::new().expect("temp file");
+        tmp.write_all(config.as_bytes()).unwrap();
+        let path = tmp.path().to_string_lossy().to_string();
+
+        let disc = ServiceDiscovery::new(DiscoveryMethod::ConfigFile { path })
+            .await
+            .unwrap();
+
+        // Cache should be populated
+        let cap = Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution);
+        let found = disc.find_service_by_capability(cap.clone()).await;
+        assert!(found.is_ok());
+
+        // Refresh should work
+        let refresh_result = disc.refresh().await;
+        assert!(refresh_result.is_ok());
+    }
+
+    #[test]
+    fn test_default_version() {
+        assert_eq!(default_version(), "unknown");
+    }
+
+    #[tokio::test]
+    async fn test_multi_method_discovery() {
+        let disc = ServiceDiscovery::new(DiscoveryMethod::Auto).await.unwrap();
+        let all = disc.discover_all().await;
+        // Auto discovery may return empty if no env vars or mDNS services exist
+        assert!(all.is_ok());
     }
 }

@@ -24,7 +24,6 @@ mod types;
 // Refactored domain modules
 mod display;
 mod lifecycle;
-mod process;
 mod resources;
 mod signals;
 

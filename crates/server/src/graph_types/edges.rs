@@ -68,3 +68,56 @@ pub enum EdgeType {
     #[default]
     Dependency,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_graph_edge_new() {
+        let edge = GraphEdge::new("a", "b");
+        assert_eq!(edge.from, "a");
+        assert_eq!(edge.to, "b");
+        assert_eq!(edge.edge_type, EdgeType::Dependency);
+        assert!(edge.metadata.is_empty());
+    }
+
+    #[test]
+    fn test_graph_edge_data_flow() {
+        let edge = GraphEdge::data_flow("src", "dst");
+        assert_eq!(edge.from, "src");
+        assert_eq!(edge.to, "dst");
+        assert_eq!(edge.edge_type, EdgeType::DataFlow);
+    }
+
+    #[test]
+    fn test_graph_edge_control() {
+        let edge = GraphEdge::control("ctrl", "target");
+        assert_eq!(edge.edge_type, EdgeType::Control);
+    }
+
+    #[test]
+    fn test_edge_type_default() {
+        let default: EdgeType = Default::default();
+        assert_eq!(default, EdgeType::Dependency);
+    }
+
+    #[test]
+    fn test_edge_type_serialization_roundtrip() {
+        for etype in [EdgeType::DataFlow, EdgeType::Control, EdgeType::Dependency] {
+            let json = serde_json::to_string(&etype).unwrap();
+            let restored: EdgeType = serde_json::from_str(&json).unwrap();
+            assert_eq!(etype, restored);
+        }
+    }
+
+    #[test]
+    fn test_graph_edge_serialization_roundtrip() {
+        let edge = GraphEdge::data_flow("from", "to");
+        let json = serde_json::to_string(&edge).unwrap();
+        let restored: GraphEdge = serde_json::from_str(&json).unwrap();
+        assert_eq!(edge.from, restored.from);
+        assert_eq!(edge.to, restored.to);
+        assert_eq!(edge.edge_type, restored.edge_type);
+    }
+}

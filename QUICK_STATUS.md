@@ -1,6 +1,6 @@
-# ToadStool + BarraCUDA — Quick Status
+# ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 21, 2026 — Session 31h (Deep Debt Polish)
+**Date**: February 22, 2026
 
 ---
 
@@ -8,24 +8,22 @@
 
 ```
 cargo build --workspace               CLEAN
-cargo fmt --all -- --check            CLEAN
-cargo clippy --workspace --tests      CLEAN (0 warnings, -D warnings)
-cargo clippy -W clippy::all           CLEAN (barracuda + akida-driver)
-cargo test --workspace                16,100+ passed / 0 failed
-cargo llvm-cov (non-GPU)              CLEAN — exit 0, no SIGSEGV
-unsafe blocks                         FFI only (VFIO, DRM) — SAFETY documented
-production panics/unwraps             0 — RwLock/Mutex poison recovery throughout
+cargo fmt --all -- --check            0 diffs
+cargo clippy --workspace --all-targets  0 warnings (8 deprecation notes in legacy module)
+cargo doc --workspace --no-deps       0 warnings
+cargo test --workspace --lib          3,847+ non-GPU + barracuda targeted / 0 failed
+unsafe blocks                         55 -- FFI only, all SAFETY documented
+production panics/unwraps             0 blind unwrap(); infallible expect() only
 production TODOs/FIXMEs               0
-ML model placeholders                 Honest NotImplemented (no fake empty results)
-orphan WGSL shaders                   0 — all 570+ wired to Rust (55 wired in S31e-31g)
-dead code annotations                 Audited (33 files) — 6 incorrect removed
-std replacements                      once_cell, lazy_static, tempdir, term_size removed
-near-limit files                      0 — all under 1000 lines
-integration-tests crate               13 active suites, 167 tests
-line coverage (non-GPU)               ~65% — target 90%
+hardcoded primal names in prod        0 -- capability-based discovery
+orphan WGSL shaders                   0 -- all 589+ wired to Rust
+near-limit files                      0 -- all under 1000 lines
+line coverage (common)                87%
+line coverage (config)                89%
+line coverage (core)                  79%
+line coverage (server)                77%
+line coverage (distributed)           55%
 ```
-
-*All quality gates green. Zero panic paths in library code.*
 
 ---
 
@@ -33,31 +31,34 @@ line coverage (non-GPU)               ~65% — target 90%
 
 ```
 ToadStool (Hardware Infrastructure Primal)
-  Pure Rust | ecoBin | UniBin | JSON-RPC 2.0 + tarpc
+  Pure Rust | ecoBin | UniBin | JSON-RPC 2.0 + tarpc 0.34
   36 JSON-RPC methods (toadstool, compute, resources, ai, gpu, ollama, gate)
   GPU Job Queue with Cross-Gate Routing
-  Capability-based runtime discovery (zero hardcoding)
+  Capability-based runtime discovery (self-knowledge principle)
+  Cloud cost estimation, compliance validation, federation
   Distributed node routing: least-loaded via NetworkLoadBalancer
   Hardware-agnostic workload routing (GPU / NPU / CPU)
-  3 GPUs across 2 machines, 2 vendors (NVIDIA + AMD)
+  Edge device discovery (filesystem, serial, TCP)
+  43 crates, 3 GPUs across 2 machines, 2 vendors (NVIDIA + AMD)
 
-BarraCUDA (Universal Compute Engine — SHADER-FIRST F64)
-  570+ WGSL shaders, zero orphans — every shader wired to Rust
+BarraCUDA (Universal Compute Engine -- SHADER-FIRST F64)
+  589+ WGSL shaders, zero orphans -- every shader wired to Rust
+  NN compute shaders: Conv2D, MaxPool2D, AvgPool2D
   FP64-by-default: Both CPU and GPU use f64
   SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2 vs 1:64)
   Bit-identical results: RTX 4070 = RTX 3090 = RX 6950 XT
   TensorSession: batched op recording with single-submit execution
   GpuExecutor: 31 MathOps | CpuExecutor: full dispatch
   Scientific middleware: 14 modules, 400+ tests, 0 unsafe
-  21 bio/evolution GPU ops, spectral theory, lattice QCD
+  25 bio/evolution GPU ops, HFB nuclear physics (spherical + deformed), spectral theory, lattice QCD
   Three Springs validated: 2,700+ acceptance checks
 
-Sovereign Compute (WgslOptimizer — Phases 0–3 complete)
-  Phase 0: fossil f64 functions removed → native WGSL builtins
+Sovereign Compute (WgslOptimizer -- Phases 0-3 complete)
+  Phase 0: fossil f64 functions removed -> native WGSL builtins
   Phase 1: Jacobi @ilp_region restructure, warp-packing 32x1x1
-  Phase 2: LatencyModel trait — Sm70, Rdna2, AppleM, Conservative, Measured
+  Phase 2: LatencyModel trait -- Sm70, Rdna2, AppleM, Conservative, Measured
   Phase 3: WgslOptimizer WIRED into compile_shader_f64() hot path
-  Next: Phase 4 (full naga-IR SSA optimizer) — Q3 2026
+  Next: Phase 4 (full naga-IR SSA optimizer)
 ```
 
 ---
@@ -78,17 +79,16 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 
 | Metric | Value |
 |--------|-------|
-| Clippy warnings | 0 (including `-W clippy::all`) |
-| Build warnings | 0 |
-| Tests passing | 16,100+ |
-| WGSL shaders | 570+ (zero orphans) |
-| Line coverage (non-GPU) | ~65% |
-| Unsafe blocks | FFI only (VFIO, DRM) |
-| Production panics/unwraps | 0 |
-| Dead code annotations | Audited (33 files) |
-| Sleep-based sync in tests | 0 (27 removed) |
-| Hardcoded IPs/DNS | 0 |
-| Zero-copy hot paths | bytes::Bytes on all binary payloads |
+| Clippy warnings | 0 (8 deprecation notes in legacy module) |
+| Doc warnings | 0 |
+| Unit tests passing | 3,847+ non-GPU + barracuda targeted |
+| WGSL shaders | 589+ (zero orphans) |
+| Line coverage (common/config) | 87% / 89% |
+| Line coverage (core/server) | 79% / 77% |
+| Unsafe blocks | 55 -- FFI only, all SAFETY documented |
+| Production panics/unwraps | 0 blind unwrap(); infallible expect() only |
+| Hardcoded primal names | 0 -- capability-based |
+| Zero-copy hot paths | `Cow<'a, str>` + `#[serde(borrow)]`, `from_slice`, `bytes::Bytes` |
 | **hotSpring validation** | 195/195 nuclear physics |
 | **wetSpring validation** | 48/48 life science |
 | **Combined validation** | 2,700+ acceptance checks |
@@ -97,11 +97,16 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 
 ## What Works
 
-- 570+ WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
+- 589+ WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
 - Distributed LLM inference across machines (39.85 tok/s, BearDog encrypted)
-- Hardware discovery (GPUs, NPUs, CPUs) — pure Rust, no scripts
-- JSON-RPC 2.0 + tarpc IPC over Unix sockets (36 methods)
+- Hardware discovery (GPUs, NPUs, CPUs) -- pure Rust, no scripts
+- JSON-RPC 2.0 + tarpc 0.34 IPC over Unix sockets (36 methods)
 - GPU job queue with priority and cross-gate routing
+- Cloud cost model with pricing tiers and budget enforcement
+- Compliance validation (data sovereignty, security tiers, resource isolation)
+- Federation with heartbeats and capability exchange
+- Capability-based primal discovery (zero hardcoded names)
+- Edge device discovery via filesystem scanning and serial/TCP communication
 - Matrix decompositions (LU, QR, SVD, Cholesky, eigh, tridiagonal)
 - ODE/PDE solvers (RK45 adaptive, Crank-Nicolson)
 - Special functions (Bessel, Hermite, Legendre, erf, gamma, digamma, beta)
@@ -128,7 +133,8 @@ barracuda::interpolate    - Cubic spline (natural/clamped/not-a-knot)
 barracuda::dispatch       - Auto CPU/GPU routing with benchmark suite
 barracuda::pipeline       - Cascade multi-stage filtering
 barracuda::spectral       - Lanczos, Anderson localization, Hofstadter, batch IPR
-barracuda::ops::bio       - 21 GPU ops (HMM, ANI, SNP, dN/dS, pangenome, RF inference, etc.)
+barracuda::ops::bio       - 25 GPU ops (HMM, ANI, SNP, dN/dS, pangenome, RF inference, etc.)
+barracuda::ops::nn        - Conv2D, MaxPool2D, AvgPool2D (dedicated WGSL compute shaders)
 barracuda::ops::lattice   - Wilson plaquette, HMC force, Higgs U(1), Dirac, CG kernels
 barracuda::session        - TensorSession batched ops (matmul, relu, gelu, softmax, attention)
 ```
@@ -140,22 +146,22 @@ barracuda::session        - TensorSession batched ops (matmul, relu, gelu, softm
 ```bash
 cargo build --release
 cargo fmt --all -- --check
-cargo clippy --workspace
-cargo test --workspace
+cargo clippy --workspace --all-targets
+cargo test --workspace --lib
 cargo test -p barracuda --lib
-cargo llvm-cov -p toadstool-server --lib
+cargo llvm-cov --lib -p toadstool-common --json
 ```
 
 ---
 
 ## Documentation
 
-- [README.md](README.md) — Full overview
-- [STATUS.md](STATUS.md) — Detailed session-by-session status
-- [DOCUMENTATION.md](DOCUMENTATION.md) — Navigation hub
-- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) — Commands and API reference
-- [CHANGELOG.md](CHANGELOG.md) — Full evolution history
+- [README.md](README.md) -- Full overview
+- [STATUS.md](STATUS.md) -- Detailed session-by-session status
+- [DOCUMENTATION.md](DOCUMENTATION.md) -- Navigation hub
+- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) -- Commands and API reference
+- [CHANGELOG.md](CHANGELOG.md) -- Full evolution history
 
 ---
 
-**Last Updated**: February 21, 2026 — Session 31h: Zero clippy warnings, dead code audit (33 files), zero orphan shaders, production quality verified.
+**Last Updated**: February 22, 2026 -- Session 38: Zero clippy warnings, 589+ WGSL shaders, HFB nuclear physics (spherical + deformed), blind unwrap() audit, 3,847+ workspace tests, test race fix.

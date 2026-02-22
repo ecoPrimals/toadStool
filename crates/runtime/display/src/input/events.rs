@@ -2,7 +2,6 @@
 //!
 //! Provides typed events for keyboard, mouse, touch input.
 
-#[allow(unused_imports)]
 use crate::window::WindowId;
 
 /// Input event
@@ -345,4 +344,3 @@ pub enum TouchPhase {
     /// Touch cancelled
     Cancelled,
 }
-

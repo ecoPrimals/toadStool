@@ -295,3 +295,56 @@ impl Default for LayerDetector {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_layer_detector_new() {
+        let detector = LayerDetector::new();
+        assert!(detector.cached_layer.is_none());
+    }
+
+    #[test]
+    fn test_layer_detector_default() {
+        let detector = LayerDetector::default();
+        assert!(detector.cached_layer.is_none());
+    }
+
+    #[test]
+    fn test_layer_detector_reset() {
+        let mut detector = LayerDetector::new();
+        detector.cached_layer = Some(DeploymentLayer::BareMetalOS);
+        detector.reset();
+        assert!(detector.cached_layer.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_layer_detector_detect_returns_valid_layer() {
+        let mut detector = LayerDetector::new();
+        let result = detector.detect().await;
+        assert!(result.is_ok());
+        let layer = result.unwrap();
+        assert!(matches!(
+            layer,
+            DeploymentLayer::BareMetalOS
+                | DeploymentLayer::ContainerLayer { .. }
+                | DeploymentLayer::CloudLayer { .. }
+                | DeploymentLayer::VMLayer { .. }
+                | DeploymentLayer::MiddlewareLayer { .. }
+                | DeploymentLayer::ServiceLayer { .. }
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_layer_detector_caches_result() {
+        let mut detector = LayerDetector::new();
+        let first = detector.detect().await.unwrap();
+        let second = detector.detect().await.unwrap();
+        assert_eq!(
+            std::mem::discriminant(&first),
+            std::mem::discriminant(&second)
+        );
+    }
+}

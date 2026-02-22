@@ -28,18 +28,13 @@ use tracing::{debug, error, info, warn};
 /// Exit codes following ecoBin standard
 ///
 /// **ecoBin Compliance**: Standard exit codes for consistent system integration
-#[allow(dead_code)]
 mod exit_codes {
-    /// Success - operation completed normally
-    pub const SUCCESS: i32 = 0;
     /// General error - unspecified failure
     pub const GENERAL_ERROR: i32 = 1;
     /// Configuration error - invalid config, missing required settings
     pub const CONFIG_ERROR: i32 = 2;
     /// Runtime/network error - connection failures, resource exhaustion
     pub const RUNTIME_ERROR: i32 = 3;
-    /// Interrupted - received SIGINT (Ctrl+C) or SIGTERM
-    pub const INTERRUPTED: i32 = 130;
 }
 
 /// Determine appropriate exit code from error
@@ -74,16 +69,8 @@ fn exit_code_for_error(error: &anyhow::Error) -> i32 {
 }
 
 use toadstool_cli::{
-    ecosystem::EcosystemIntegrator,
-    executor::BiomeExecutor,
-    network_config::SongbirdNetworkConfigurator,
-    universal::UniversalComputeManager,
-    // zero_config::execute_zero_config_deployment,  // Temporarily disabled (HTTP deps)
-    Cli,
-    CliContext,
-    Commands,
-    EcosystemCommands,
-    UniversalCommands,
+    ecosystem::EcosystemIntegrator, executor::BiomeExecutor, universal::UniversalComputeManager,
+    Cli, CliContext, Commands, EcosystemCommands, UniversalCommands,
 };
 
 #[tokio::main]
@@ -101,6 +88,16 @@ async fn main() -> Result<()> {
         info!("🍄 ToadStool invoked as 'toadstool-server' (legacy mode)");
         info!("💡 TIP: Use 'toadstool daemon' for the modern UniBin interface");
         return run_server_daemon(None).await;
+    }
+
+    // If invoked as "toadstool-byob-server", run BYOB server (UniBin migration)
+    if bin_name == "toadstool-byob-server" {
+        info!("🍄 ToadStool invoked as 'toadstool-byob-server' (legacy mode)");
+        info!("💡 TIP: Use 'toadstool byob-server' for the modern UniBin interface");
+        let config = toadstool_runtime_container::byob_server::ByobServerConfig::default();
+        return toadstool_runtime_container::byob_server::run_byob_server(config)
+            .await
+            .map_err(|e| anyhow::anyhow!("BYOB server failed: {}", e));
     }
 
     // Parse command line arguments
@@ -429,6 +426,18 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
                 format.clone(),
             )
             .await?;
+        }
+
+        Commands::ByobServer { bind, port, config } => {
+            info!("🍄 Starting Toadstool BYOB Server");
+            let config = toadstool_runtime_container::byob_server::ByobServerConfig {
+                bind_address: Some(bind.clone()),
+                port: Some(*port),
+                config_path: config.as_ref().and_then(|p| p.to_str().map(String::from)),
+            };
+            toadstool_runtime_container::byob_server::run_byob_server(config)
+                .await
+                .map_err(|e| anyhow::anyhow!("BYOB server failed: {}", e))?;
         }
 
         Commands::Doctor {
@@ -776,104 +785,4 @@ fn print_operation_summary(operation: &str, duration: std::time::Duration, detai
         println!("Details:   {details}");
     }
     println!();
-}
-
-/// Execute network configuration command
-// UNIBIN PHASE 1: NetworkConfig temporarily disabled
-#[allow(dead_code)]
-async fn execute_network_config_command(
-    apply: bool,
-    validate: bool,
-    summary: bool,
-    config_file: &Option<PathBuf>,
-    test: bool,
-    export: &Option<PathBuf>,
-) -> Result<()> {
-    println!("🔧 Songbird Network Configuration");
-    println!("================================");
-
-    let configurator = SongbirdNetworkConfigurator::new();
-
-    if validate {
-        println!("🔍 Validating network configuration...");
-        match configurator.validate_configuration() {
-            Ok(()) => {
-                println!("✅ Network configuration is valid");
-            }
-            Err(e) => {
-                eprintln!("❌ Network configuration validation failed: {e}");
-                std::process::exit(exit_codes::CONFIG_ERROR);
-            }
-        }
-    }
-
-    if summary {
-        println!("📋 Network Configuration Summary:");
-        println!("{}", configurator.generate_configuration_summary());
-    }
-
-    if test {
-        println!("🧪 Testing network connectivity...");
-        // In a real implementation, this would test actual network connectivity
-        println!("✅ Network connectivity test completed");
-    }
-
-    if apply {
-        println!("🚀 Applying network configuration...");
-        let start = std::time::Instant::now();
-
-        match configurator.apply_configuration().await {
-            Ok(()) => {
-                let duration = start.elapsed();
-                println!("✅ Network configuration applied successfully in {duration:?}");
-
-                // Show post-configuration summary
-                if !summary {
-                    println!("\n📊 Applied Configuration Summary:");
-                    println!("{}", configurator.generate_configuration_summary());
-                }
-            }
-            Err(e) => {
-                eprintln!("❌ Failed to apply network configuration: {e}");
-                std::process::exit(exit_codes::RUNTIME_ERROR);
-            }
-        }
-    }
-
-    if let Some(export_path) = export {
-        println!("💾 Exporting configuration to: {}", export_path.display());
-
-        // In a real implementation, this would export the configuration to a file
-        let config_json = serde_json::to_string_pretty(&configurator.config)
-            .context("Failed to serialize configuration")?;
-
-        std::fs::write(export_path, config_json).context("Failed to write configuration file")?;
-
-        println!("✅ Configuration exported successfully");
-    }
-
-    if let Some(config_path) = config_file {
-        println!("📄 Loading configuration from: {}", config_path.display());
-
-        // In a real implementation, this would load configuration from a file
-        if config_path.exists() {
-            println!("✅ Configuration loaded successfully");
-        } else {
-            eprintln!("❌ Configuration file not found: {}", config_path.display());
-            std::process::exit(exit_codes::CONFIG_ERROR);
-        }
-    }
-
-    // Show next steps if no action was taken
-    if !apply && !validate && !summary && !test && export.is_none() {
-        println!("\n🎯 Next Steps:");
-        println!("  • Use --validate to check configuration");
-        println!("  • Use --summary to view current settings");
-        println!("  • Use --test to test connectivity");
-        println!("  • Use --apply to apply configuration");
-        println!("  • Use --export <path> to export configuration");
-        println!("\n💡 Example: toadstool network-config --validate --summary --apply");
-    }
-
-    Ok(())
 }

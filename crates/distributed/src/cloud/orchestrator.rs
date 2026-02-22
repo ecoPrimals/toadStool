@@ -296,7 +296,7 @@ impl UniversalCloudOrchestrator {
     }
 
     /// Check if provider can handle job requirements
-    fn can_handle_full_job(
+    pub(crate) fn can_handle_full_job(
         &self,
         availability: &AvailabilityInfo,
         requirements: &ResourceRequirements,
@@ -391,7 +391,7 @@ impl UniversalCloudOrchestrator {
     }
 
     /// Calculate provider capacity for job
-    fn calculate_provider_capacity(
+    pub(crate) fn calculate_provider_capacity(
         &self,
         availability: &AvailabilityInfo,
         requirements: &ResourceRequirements,
@@ -420,5 +420,146 @@ impl UniversalCloudOrchestrator {
         }
 
         Ok(distribution)
+    }
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cloud::{
+        ComplianceConfig, CostConfig, FederationConfig, HybridSchedulingStrategy,
+        LoadBalancerConfig, LoadBalancingAlgorithm,
+    };
+    use crate::types::resources::{
+        CpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
+    };
+    use std::time::Duration;
+
+    fn make_orchestrator_config() -> CloudOrchestratorConfig {
+        CloudOrchestratorConfig {
+            scheduling_strategy: HybridSchedulingStrategy::Balanced {
+                cost_weight: 0.33,
+                performance_weight: 0.33,
+                compliance_weight: 0.34,
+            },
+            cost_config: CostConfig {
+                budget_limit: None,
+                cost_tracking_enabled: true,
+                spot_instance_preference: 0.5,
+            },
+            compliance_config: ComplianceConfig {
+                required_certifications: vec![],
+                allowed_regions: vec!["us-east-1".to_string()],
+                data_sovereignty_requirements: vec![],
+            },
+            load_balancer_config: LoadBalancerConfig {
+                algorithm: LoadBalancingAlgorithm::RoundRobin,
+                health_check_interval: Duration::from_secs(10),
+                failover_timeout: Duration::from_secs(30),
+            },
+            federation_config: FederationConfig {
+                federation_id: "test-fed".to_string(),
+                discovery_endpoints: vec![],
+                trust_anchors: vec![],
+            },
+        }
+    }
+
+    fn make_availability(cpu: f64, memory_gb: f64, storage_gb: f64) -> AvailabilityInfo {
+        AvailabilityInfo {
+            cpu_cores: cpu,
+            memory_gb,
+            storage_gb,
+            gpu_count: 0,
+            regions: vec![],
+            availability_zones: vec![],
+        }
+    }
+
+    fn make_requirements(cpu: f64, memory_bytes: u64, storage_bytes: u64) -> ResourceRequirements {
+        ResourceRequirements {
+            cpu: CpuRequirements {
+                min_cores: cpu,
+                max_cores: None,
+            },
+            memory: MemoryRequirements {
+                min_bytes: memory_bytes,
+                max_bytes: None,
+            },
+            storage: StorageRequirements {
+                min_bytes: storage_bytes,
+                max_bytes: None,
+            },
+            network: NetworkRequirements {
+                bandwidth_mbps: None,
+                latency_ms: None,
+            },
+            gpu: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_can_handle_full_job_sufficient_resources() {
+        let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+            .await
+            .unwrap();
+        let availability = make_availability(8.0, 16.0, 100.0);
+        let requirements = make_requirements(4.0, 8 * 1024 * 1024 * 1024, 50 * 1024 * 1024 * 1024);
+        assert!(orch.can_handle_full_job(&availability, &requirements));
+    }
+
+    #[tokio::test]
+    async fn test_can_handle_full_job_insufficient_cpu() {
+        let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+            .await
+            .unwrap();
+        let availability = make_availability(2.0, 64.0, 500.0);
+        let requirements = make_requirements(8.0, 1024 * 1024 * 1024, 1024 * 1024 * 1024);
+        assert!(!orch.can_handle_full_job(&availability, &requirements));
+    }
+
+    #[tokio::test]
+    async fn test_can_handle_full_job_insufficient_memory() {
+        let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+            .await
+            .unwrap();
+        let availability = make_availability(16.0, 2.0, 500.0);
+        let requirements = make_requirements(4.0, 8 * 1024 * 1024 * 1024, 1024 * 1024 * 1024);
+        assert!(!orch.can_handle_full_job(&availability, &requirements));
+    }
+
+    #[tokio::test]
+    async fn test_calculate_provider_capacity_exact_fit() {
+        let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+            .await
+            .unwrap();
+        let availability = make_availability(4.0, 8.0, 100.0);
+        let requirements = make_requirements(4.0, 8 * 1024 * 1024 * 1024, 100 * 1024 * 1024 * 1024);
+        let cap = orch.calculate_provider_capacity(&availability, &requirements);
+        assert!((cap - 1.0).abs() < 0.01);
+    }
+
+    #[tokio::test]
+    async fn test_calculate_provider_capacity_cpu_limited() {
+        let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+            .await
+            .unwrap();
+        let availability = make_availability(8.0, 32.0, 500.0);
+        let requirements = make_requirements(16.0, 1024 * 1024 * 1024, 1024 * 1024 * 1024);
+        let cap = orch.calculate_provider_capacity(&availability, &requirements);
+        assert!((cap - 0.5).abs() < 0.01); // 8/16 = 0.5
+    }
+
+    #[tokio::test]
+    async fn test_calculate_provider_capacity_capped_at_one() {
+        let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+            .await
+            .unwrap();
+        let availability = make_availability(32.0, 128.0, 1000.0);
+        let requirements = make_requirements(4.0, 8 * 1024 * 1024 * 1024, 50 * 1024 * 1024 * 1024);
+        let cap = orch.calculate_provider_capacity(&availability, &requirements);
+        assert!(cap <= 1.0);
     }
 }

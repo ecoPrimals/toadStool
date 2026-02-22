@@ -85,15 +85,12 @@ impl AniBatchF64 {
             n_pairs,
             max_seq_len,
         };
-        let params_buf = self
-            .device
-            .device
-            .create_buffer(&wgpu::BufferDescriptor {
-                label: Some("AniBatch:params"),
-                size: std::mem::size_of::<AniParams>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+        let params_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("AniBatch:params"),
+            size: std::mem::size_of::<AniParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         self.device
             .queue
             .write_buffer(&params_buf, 0, bytemuck::bytes_of(&params));

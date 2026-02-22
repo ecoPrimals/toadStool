@@ -921,6 +921,38 @@ mod tests {
         assert_eq!(network.max_latency_ms, Some(100));
     }
 
+    #[test]
+    fn test_resource_requirements_validate_ok() {
+        let req = ResourceRequirements::default();
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_resource_requirements_validate_zero_cpu() {
+        let mut req = ResourceRequirements::default();
+        req.cpu.min_cores = 0.0;
+        let result = req.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .to_lowercase()
+            .contains("cpu"));
+    }
+
+    #[test]
+    fn test_resource_requirements_validate_zero_memory() {
+        let mut req = ResourceRequirements::default();
+        req.memory.min_bytes = 0;
+        let result = req.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .to_lowercase()
+            .contains("memory"));
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_system_resource_monitor_creation() {
         let monitor = SystemResourceMonitor::new();

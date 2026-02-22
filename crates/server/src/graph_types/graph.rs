@@ -217,3 +217,144 @@ impl ExecutionGraphBuilder {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph_types::GraphNode;
+
+    fn node(id: &str) -> GraphNode {
+        GraphNode::simple(id, "cpu_compute")
+    }
+
+    #[test]
+    fn test_execution_graph_simple() {
+        let graph = ExecutionGraph::simple("g1");
+        assert_eq!(graph.id, "g1");
+        assert!(graph.nodes.is_empty());
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn test_validate_empty_graph() {
+        let graph = ExecutionGraph::simple("empty");
+        let err = graph.validate().unwrap_err();
+        assert!(matches!(err, GraphValidationError::EmptyGraph));
+    }
+
+    #[test]
+    fn test_validate_duplicate_node_id() {
+        let graph = ExecutionGraph::builder("dup")
+            .nodes([node("a"), node("a")])
+            .build();
+        let err = graph.validate().unwrap_err();
+        assert!(matches!(err, GraphValidationError::DuplicateNodeId(id) if id == "a"));
+    }
+
+    #[test]
+    fn test_validate_invalid_edge_source() {
+        let graph = ExecutionGraph::builder("bad-edge")
+            .nodes([node("a")])
+            .connect("missing", "a")
+            .build();
+        let err = graph.validate().unwrap_err();
+        assert!(matches!(err, GraphValidationError::InvalidEdge { .. }));
+    }
+
+    #[test]
+    fn test_validate_invalid_edge_target() {
+        let graph = ExecutionGraph::builder("bad-edge")
+            .nodes([node("a")])
+            .connect("a", "missing")
+            .build();
+        let err = graph.validate().unwrap_err();
+        assert!(matches!(err, GraphValidationError::InvalidEdge { .. }));
+    }
+
+    #[test]
+    fn test_validate_self_edge() {
+        let graph = ExecutionGraph::builder("self")
+            .nodes([node("a")])
+            .connect("a", "a")
+            .build();
+        let err = graph.validate().unwrap_err();
+        assert!(matches!(err, GraphValidationError::SelfEdge(id) if id == "a"));
+    }
+
+    #[test]
+    fn test_validate_cycle() {
+        let graph = ExecutionGraph::builder("cycle")
+            .nodes([node("a"), node("b")])
+            .connect("a", "b")
+            .connect("b", "a")
+            .build();
+        let err = graph.validate().unwrap_err();
+        assert!(matches!(err, GraphValidationError::CycleDetected(_)));
+    }
+
+    #[test]
+    fn test_validate_valid_single_node() {
+        let graph = ExecutionGraph::builder("ok").nodes([node("only")]).build();
+        assert!(graph.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_valid_linear() {
+        let graph = ExecutionGraph::builder("linear")
+            .nodes([node("a"), node("b"), node("c")])
+            .connect("a", "b")
+            .connect("b", "c")
+            .build();
+        assert!(graph.validate().is_ok());
+    }
+
+    #[test]
+    fn test_get_node() {
+        let graph = ExecutionGraph::builder("g")
+            .nodes([node("x"), node("y")])
+            .build();
+        assert_eq!(graph.get_node("x").map(|n| n.id.as_str()), Some("x"));
+        assert!(graph.get_node("z").is_none());
+    }
+
+    #[test]
+    fn test_get_dependents() {
+        let graph = ExecutionGraph::builder("g")
+            .nodes([node("a"), node("b"), node("c")])
+            .connect("a", "b")
+            .connect("a", "c")
+            .build();
+        let deps = graph.get_dependents("a");
+        assert_eq!(deps.len(), 2);
+    }
+
+    #[test]
+    fn test_get_dependencies() {
+        let graph = ExecutionGraph::builder("g")
+            .nodes([node("a"), node("b"), node("c")])
+            .connect("a", "c")
+            .connect("b", "c")
+            .build();
+        let deps = graph.get_dependencies("c");
+        assert_eq!(deps.len(), 2);
+    }
+
+    #[test]
+    fn test_execution_graph_builder() {
+        let graph = ExecutionGraph::builder("built")
+            .node(node("n1"))
+            .connect("n1", "n2")
+            .metadata("k", "v")
+            .build();
+        assert_eq!(graph.id, "built");
+        assert_eq!(graph.nodes.len(), 1);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.metadata.get("k").map(String::as_str), Some("v"));
+    }
+
+    #[test]
+    fn test_graph_validation_error_display() {
+        let err = GraphValidationError::EmptyGraph;
+        assert!(err.to_string().contains("empty"));
+    }
+}

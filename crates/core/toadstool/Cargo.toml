@@ -45,7 +45,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 # Error handling
 anyhow = { workspace = true }
-thiserror = "1.0"
+thiserror = { workspace = true }
 
 # System monitoring
 sysinfo = { workspace = true }

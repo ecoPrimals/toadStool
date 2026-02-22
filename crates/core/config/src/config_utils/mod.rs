@@ -467,18 +467,14 @@ impl ConfigUtils {
 
     /// Get all service ports as a map
     ///
-    /// # ⚠️ Legacy API - Partially Deprecated
-    ///
-    /// This method includes both self-knowledge ports and deprecated hardcoded primal ports.
-    #[allow(deprecated)] // Uses deprecated port getters for backwards compatibility
+    /// Returns only self-knowledge ports (ToadStool's own). Ports for external
+    /// primals (songbird, beardog, nestgate, squirrel) are discovered at runtime.
     #[must_use]
     pub fn get_service_ports() -> HashMap<String, u16> {
+        use toadstool_common::constants::primal_identity::PRIMAL_NAME;
+
         let mut ports = HashMap::new();
-        ports.insert("songbird".to_string(), Self::get_songbird_port());
-        ports.insert("beardog".to_string(), Self::get_beardog_port());
-        ports.insert("nestgate".to_string(), Self::get_nestgate_port());
-        ports.insert("squirrel".to_string(), Self::get_squirrel_port());
-        ports.insert("toadstool".to_string(), Self::get_toadstool_port());
+        ports.insert(PRIMAL_NAME.to_string(), Self::get_toadstool_port());
         ports.insert("federation".to_string(), Self::get_federation_port());
         ports.insert("metrics".to_string(), Self::get_metrics_port());
         ports.insert("health".to_string(), Self::get_health_port());
@@ -488,22 +484,14 @@ impl ConfigUtils {
 
     /// Get all service endpoints as a map
     ///
-    /// # ⚠️ Legacy API - Use Capability-Based Discovery
-    ///
-    /// This method aggregates deprecated endpoint getters for backwards compatibility.
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use RuntimeDiscovery::discover_all() for dynamic service discovery"
-    )]
-    #[allow(deprecated)] // This function uses deprecated methods for backwards compatibility
+    /// Returns only ToadStool's own endpoint. External primal endpoints
+    /// (songbird, beardog, nestgate, squirrel) are discovered at runtime.
     #[must_use]
     pub fn get_service_endpoints() -> HashMap<String, String> {
+        use toadstool_common::constants::primal_identity::PRIMAL_NAME;
+
         let mut endpoints = HashMap::new();
-        endpoints.insert("songbird".to_string(), Self::get_songbird_endpoint());
-        endpoints.insert("beardog".to_string(), Self::get_beardog_endpoint());
-        endpoints.insert("nestgate".to_string(), Self::get_nestgate_endpoint());
-        endpoints.insert("squirrel".to_string(), Self::get_squirrel_endpoint());
-        endpoints.insert("toadstool".to_string(), Self::get_toadstool_endpoint());
+        endpoints.insert(PRIMAL_NAME.to_string(), Self::get_toadstool_endpoint());
         endpoints
     }
 
@@ -664,9 +652,6 @@ impl ConfigUtils {
     }
 
     /// Print all current configuration values (for debugging)
-    ///
-    /// Note: Uses legacy APIs for comprehensive debugging output.
-    #[allow(deprecated)] // Debug function uses all APIs including deprecated ones
     #[cfg(debug_assertions)]
     pub fn print_current_config() {
         println!("=== ToadStool Configuration ===");

@@ -12,8 +12,7 @@ pub mod device;
 pub use buffer::{DumbBuffer, MappedBuffer, PixelFormat};
 pub use device::{Device, DeviceCapabilities};
 
-#[allow(unused_imports)]
-use crate::{DisplayError, Result};
+use crate::Result;
 use std::path::Path;
 
 /// DRM backend for display hardware control

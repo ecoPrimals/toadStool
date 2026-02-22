@@ -120,3 +120,79 @@ impl ResourceCoordinator {
         self.available_resources.read().await.clone()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_universal_system_resources_struct() {
+        let resources = UniversalSystemResources {
+            cpu_cores: 16.0,
+            memory_bytes: 32 * 1024 * 1024 * 1024,
+            storage_bytes: 500 * 1024 * 1024 * 1024,
+            network_bandwidth: 10 * 1024 * 1024 * 1024,
+            gpu_units: 2,
+            special_hardware: std::collections::HashMap::new(),
+        };
+        assert_eq!(resources.cpu_cores, 16.0);
+        assert_eq!(resources.gpu_units, 2);
+    }
+
+    #[test]
+    fn test_resource_allocation_struct() {
+        let id = Uuid::new_v4();
+        let allocation = ResourceAllocation {
+            job_id: id,
+            allocated_resources: ResourceRequirements::default(),
+            allocated_at: chrono::Utc::now(),
+            released_at: None,
+        };
+        assert_eq!(allocation.job_id, id);
+        assert!(allocation.released_at.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_resource_coordinator_new() {
+        let coordinator = ResourceCoordinator::new().await;
+        assert!(coordinator.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_resource_coordinator_allocate_and_release() {
+        let coordinator = ResourceCoordinator::new().await.unwrap();
+        let requirements = ResourceRequirements::default();
+
+        let allocation = coordinator
+            .allocate_resources(&requirements)
+            .await
+            .expect("allocate should succeed");
+        assert!(allocation.released_at.is_none());
+
+        let release_result = coordinator.release_resources(allocation).await;
+        assert!(release_result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_resource_coordinator_get_available_resources() {
+        let coordinator = ResourceCoordinator::new().await.unwrap();
+        let resources = coordinator.get_available_resources().await;
+        assert_eq!(resources.cpu_cores, 8.0);
+        assert!(resources.memory_bytes > 0);
+    }
+
+    #[test]
+    fn test_universal_system_resources_serde() {
+        let resources = UniversalSystemResources {
+            cpu_cores: 4.0,
+            memory_bytes: 8 * 1024 * 1024 * 1024,
+            storage_bytes: 100 * 1024 * 1024 * 1024,
+            network_bandwidth: 1000 * 1024 * 1024,
+            gpu_units: 0,
+            special_hardware: std::collections::HashMap::new(),
+        };
+        let json = serde_json::to_string(&resources).unwrap();
+        let decoded: UniversalSystemResources = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.cpu_cores, resources.cpu_cores);
+    }
+}

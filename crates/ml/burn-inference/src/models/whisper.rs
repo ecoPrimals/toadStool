@@ -1,8 +1,23 @@
 //! Whisper speech recognition model
 //!
 //! Type-safe API surface for Whisper ASR inference.
-//! Inference methods return `NotImplemented` until a model backend is integrated.
+//!
+//! # Requirements
+//!
+//! Whisper inference requires:
+//! - **Model weights**: Load from HuggingFace (e.g. `openai/whisper-tiny`) or local safetensors
+//! - **Burn backend**: Enable `burn` with wgpu or ndarray backend in Cargo.toml
+//! - **Audio**: 16 kHz mono PCM float32 input
+//!
+//! # Example
+//!
+//! ```ignore
+//! let whisper = Whisper::from_pretrained("openai/whisper-tiny")?;
+//! let text = whisper.transcribe(&audio, 16000)?;
+//! ```
 
+use crate::Error::ModelBackendRequired;
+use crate::Error::ModelNotLoaded;
 use crate::Result;
 
 /// Whisper configuration
@@ -60,17 +75,24 @@ impl Whisper {
         Self { config }
     }
 
-    /// Load from HuggingFace Hub
+    /// Load from HuggingFace Hub or local safetensors.
+    ///
+    /// **Requires**: Model weights. Load with `WhisperModel::from_safetensors(path)` once integrated.
     pub fn from_pretrained(model_id: &str) -> Result<Self> {
-        Err(crate::Error::NotImplemented(format!(
-            "Whisper model loading not yet integrated (requested: {model_id})"
+        Err(ModelNotLoaded(format!(
+            "Whisper model weights required. Requested: {model_id}. \
+             Load with WhisperModel::from_safetensors(path) once burn backend is integrated."
         )))
     }
 
-    /// Transcribe audio
+    /// Transcribe audio (16 kHz mono PCM float32).
+    ///
+    /// **Requires**: Model weights loaded via `Whisper::from_pretrained` or
+    /// `WhisperModel::from_safetensors(path)`, plus burn backend (wgpu/ndarray).
     pub fn transcribe(&self, _audio: &[f32], _sample_rate: u32) -> Result<String> {
-        Err(crate::Error::NotImplemented(
-            "Whisper inference requires a model backend (burn/onnx/wgsl)".into(),
+        Err(ModelBackendRequired(
+            "Whisper inference requires model weights. Load with WhisperModel::from_safetensors(path). \
+             Ensure burn backend (wgpu/ndarray) is enabled in Cargo.toml.".into(),
         ))
     }
 
@@ -122,17 +144,21 @@ mod tests {
     }
 
     #[test]
-    fn test_whisper_from_pretrained_not_implemented() {
+    fn test_whisper_from_pretrained_requires_weights() {
         let result = Whisper::from_pretrained("openai/whisper-tiny");
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
-        assert!(err.contains("not yet integrated"));
+        assert!(err.contains("model weights required"));
+        assert!(err.contains("from_safetensors"));
     }
 
     #[test]
-    fn test_whisper_transcribe_not_implemented() {
+    fn test_whisper_transcribe_requires_backend() {
         let w = Whisper::new(WhisperConfig::default());
         let result = w.transcribe(&[0.0f32; 16000], 16000);
         assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("model weights"));
+        assert!(err.contains("from_safetensors"));
     }
 }

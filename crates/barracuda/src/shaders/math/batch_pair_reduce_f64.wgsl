@@ -23,7 +23,7 @@
 //   2: mat_b   [B × M × D] f64
 //   3: out     [B × N × M] f64
 
-enable f64;
+// f64 is enabled by compile_shader_f64() preamble injection — do not use `enable f64;`
 
 struct PairReduceConfig {
     n_batches: u32,

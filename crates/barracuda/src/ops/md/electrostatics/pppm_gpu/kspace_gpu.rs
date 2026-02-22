@@ -56,9 +56,10 @@ pub async fn compute_with_kspace_gpu(
         });
     }
 
-    let wgpu_device = Arc::new(WgpuDevice::from_existing_simple(
+    let wgpu_device = Arc::new(WgpuDevice::from_existing(
         pppm.device_arc(),
         pppm.queue_arc(),
+        pppm.adapter_info().clone(),
     ));
 
     let (device, queue, layouts, pipelines) = (

@@ -122,7 +122,7 @@ static DIRECTION_NUMBERS: &[&[u32]] = &[
 
 /// Primitive polynomials for Sobol sequence (degree of polynomial for each dimension).
 static POLYNOMIALS: &[u32] = &[
-    0, // dim 1 (placeholder)
+    0, // dim 1: trivial polynomial p(x)=1 (degree 0), Joe-Kuo
     1, // dim 2: x + 1 (degree 1)
     1, // dim 3: x + 1
     2, // dim 4: x² + x + 1

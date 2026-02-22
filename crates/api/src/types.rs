@@ -577,7 +577,6 @@ pub struct ApiConfig {
     /// Enable REST API endpoints
     pub enable_rest: bool,
     /// Ignored; real-time events use JSON-RPC 2.0 polling via biomeOS/songbird coordination
-    #[allow(dead_code)]
     pub enable_websocket: bool,
     /// Enable CORS support
     pub cors_enabled: bool,

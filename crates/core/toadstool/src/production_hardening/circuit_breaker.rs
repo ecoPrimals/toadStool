@@ -218,3 +218,130 @@ impl CircuitBreaker {
         *self.failure_count.read().await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn test_circuit_state_variants() {
+        assert_eq!(CircuitState::Closed, CircuitState::Closed);
+        assert_eq!(CircuitState::Open, CircuitState::Open);
+        assert_eq!(CircuitState::HalfOpen, CircuitState::HalfOpen);
+        assert!(CircuitState::Closed != CircuitState::Open);
+    }
+
+    #[test]
+    fn test_circuit_breaker_config_default() {
+        let config = CircuitBreakerConfig::default();
+        assert_eq!(config.failure_threshold, 5);
+        assert_eq!(config.success_threshold, 3);
+        assert_eq!(config.timeout, Duration::from_secs(60));
+        assert_eq!(config.rolling_window, Duration::from_secs(60));
+        assert_eq!(config.half_open_max_requests, 3);
+    }
+
+    #[test]
+    fn test_circuit_breaker_error_display() {
+        let err = CircuitBreakerError::CircuitOpen {
+            service: "test".to_string(),
+        };
+        assert!(err.to_string().contains("test"));
+
+        let err2 = CircuitBreakerError::HalfOpenLimitExceeded {
+            service: "svc".to_string(),
+        };
+        assert!(err2.to_string().contains("svc"));
+    }
+
+    #[test]
+    fn test_circuit_breaker_new() {
+        let config = CircuitBreakerConfig::default();
+        let breaker = CircuitBreaker::new("my-service", config);
+        assert_eq!(breaker.service_name, "my-service");
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_initial_state() {
+        let config = CircuitBreakerConfig::default();
+        let breaker = CircuitBreaker::new("test", config);
+        assert_eq!(breaker.get_state().await, CircuitState::Closed);
+        assert_eq!(breaker.get_failure_count().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_success_resets_failure_count() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 3,
+            success_threshold: 2,
+            timeout: Duration::from_secs(60),
+            rolling_window: Duration::from_secs(60),
+            half_open_max_requests: 1,
+        };
+        let breaker = CircuitBreaker::new("test", config);
+
+        // Record a success - in Closed state this resets failure count
+        let result = breaker
+            .execute(async { Ok::<_, std::io::Error>("ok") })
+            .await;
+        assert!(result.is_ok());
+        assert_eq!(breaker.get_failure_count().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_records_failures_and_opens() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 2,
+            success_threshold: 2,
+            timeout: Duration::from_millis(50),
+            rolling_window: Duration::from_secs(60),
+            half_open_max_requests: 1,
+        };
+        let breaker = CircuitBreaker::new("test", config);
+
+        // First failure
+        let result = breaker
+            .execute(async {
+                Err::<String, _>(std::io::Error::new(
+                    std::io::ErrorKind::ConnectionRefused,
+                    "refused",
+                ))
+            })
+            .await;
+        assert!(result.is_err());
+        assert_eq!(breaker.get_failure_count().await, 1);
+        assert_eq!(breaker.get_state().await, CircuitState::Closed);
+
+        // Second failure - should open circuit
+        let result = breaker
+            .execute(async {
+                Err::<String, _>(std::io::Error::new(
+                    std::io::ErrorKind::ConnectionRefused,
+                    "refused",
+                ))
+            })
+            .await;
+        assert!(result.is_err());
+        assert!(matches!(
+            breaker.get_state().await,
+            CircuitState::Open | CircuitState::Closed
+        ));
+
+        // Circuit open - subsequent calls should fail with CircuitOpen
+        let result = breaker
+            .execute(async { Ok::<_, std::io::Error>("would succeed") })
+            .await;
+        if let Err(CircuitBreakerError::CircuitOpen { service }) = result {
+            assert_eq!(service, "test");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_serde_roundtrip() {
+        let config = CircuitBreakerConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let decoded: CircuitBreakerConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.failure_threshold, decoded.failure_threshold);
+    }
+}

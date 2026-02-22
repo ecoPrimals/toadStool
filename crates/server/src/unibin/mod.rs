@@ -1,6 +1,10 @@
 //! UniBin server entry point
 //!
 //! Shared server main logic for both toadstool and toadstool-server binaries
+//!
+//! Uses ManualJsonRpcServer (deprecated); migration to pure_jsonrpc tracked in manual_jsonrpc/MIGRATION.md
+
+#![allow(deprecated)] // ManualJsonRpcServer: migration to pure_jsonrpc pending serving layer
 
 mod capabilities;
 mod execution;

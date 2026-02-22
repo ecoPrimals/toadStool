@@ -24,10 +24,6 @@ use toadstool::{
     WorkloadType,
 };
 
-#[cfg(unix)]
-#[allow(unused_imports)]
-use std::os::unix::process::CommandExt;
-
 /// Native runtime engine for executing native processes
 pub struct NativeRuntimeEngine {
     config: RuntimeConfig,

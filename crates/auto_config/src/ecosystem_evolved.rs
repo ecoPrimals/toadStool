@@ -14,6 +14,8 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
+use toadstool_common::constants::ecosystem::well_known;
+
 use crate::{ToadStoolError, ToadStoolResult};
 
 /// Ecosystem discovery system using capability-based IPC
@@ -135,12 +137,28 @@ impl EcosystemDiscoverer {
     fn discover_from_environment(&mut self) -> ToadStoolResult<Vec<DiscoveredService>> {
         let mut services = Vec::new();
 
-        // Check for known primal socket paths
+        // Check for known primal socket paths (integration constants)
         let known_primals = vec![
-            ("beardog", "/primal/beardog", vec!["crypto", "security"]),
-            ("songbird", "/primal/songbird", vec!["coordination", "network"]),
-            ("nestgate", "/primal/nestgate", vec!["storage", "data"]),
-            ("squirrel", "/primal/squirrel", vec!["ai", "mcp"]),
+            (
+                well_known::BEARDOG,
+                "/primal/beardog",
+                vec!["crypto", "security"],
+            ),
+            (
+                well_known::SONGBIRD,
+                "/primal/songbird",
+                vec!["coordination", "network"],
+            ),
+            (
+                well_known::NESTGATE,
+                "/primal/nestgate",
+                vec!["storage", "data"],
+            ),
+            (
+                well_known::SQUIRREL,
+                "/primal/squirrel",
+                vec!["ai", "mcp"],
+            ),
         ];
 
         for (name, default_socket, capabilities) in known_primals {

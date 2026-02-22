@@ -9,7 +9,6 @@ use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
-#[allow(unused_imports)]
 use wgpu::util::DeviceExt;
 
 const SHADER: &str = include_str!("../../shaders/linalg/inverse_f64.wgsl");
@@ -94,16 +93,19 @@ impl InverseF64 {
                 ],
             });
 
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("InvF64 BG"),
-            layout: &bgl,
-            entries: &[
-                bg_entry(0, &input_buf),
-                bg_entry(1, &work_buf),
-                bg_entry(2, &output_buf),
-                bg_entry(3, &params_buf),
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("InvF64 BG"),
+                layout: &bgl,
+                entries: &[
+                    bg_entry(0, &input_buf),
+                    bg_entry(1, &work_buf),
+                    bg_entry(2, &output_buf),
+                    bg_entry(3, &params_buf),
+                ],
+            });
 
         let shader = self.device.compile_shader_f64(SHADER, Some("InverseF64"));
         let pl = self
@@ -115,24 +117,24 @@ impl InverseF64 {
                 push_constant_ranges: &[],
             });
 
-        let pipeline = self
-            .device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("InvF64 Pipeline"),
-                layout: Some(&pl),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("InvF64 Pipeline"),
+                    layout: Some(&pl),
+                    module: &shader,
+                    entry_point: "main",
+                    cache: None,
+                    compilation_options: Default::default(),
+                });
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("InvF64 Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("InvF64 Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {

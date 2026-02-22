@@ -1,12 +1,21 @@
 //! Buffer pool for zero-overhead tensor operations
+//!
+//! Buffers returned to the pool are held in a pending queue until a
+//! non-blocking `device.poll(MaintainBase::Poll)` confirms that all
+//! previously submitted GPU work has progressed. This prevents the
+//! "drop-before-completion" race (S-13) where a recycled buffer could
+//! be handed out while the GPU is still reading/writing its contents.
 
 use crate::error::{BarracudaError, Result};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, RwLock, Weak};
+use std::sync::{Arc, Mutex, RwLock, Weak};
 
 /// A buffer that automatically returns to its pool when dropped.
+///
+/// The buffer enters a pending queue on drop rather than being
+/// immediately available for reuse — see [`BufferPool::drain_pending`].
 pub struct PooledBuffer {
     buffer: Option<wgpu::Buffer>,
     pool: Weak<BufferPoolInner>,
@@ -50,7 +59,7 @@ impl Drop for PooledBuffer {
     fn drop(&mut self) {
         if let Some(buffer) = self.buffer.take() {
             if let Some(pool) = self.pool.upgrade() {
-                pool.return_buffer(buffer, self.bucket);
+                pool.defer_return(buffer, self.bucket);
             }
         }
     }
@@ -63,6 +72,7 @@ pub(crate) struct BufferPoolInner {
     pub allocations: AtomicUsize,
     pub reuses: AtomicUsize,
     pub solver_buffers: RwLock<HashMap<String, SolverBufferSet>>,
+    pending: Mutex<Vec<(wgpu::Buffer, usize)>>,
 }
 
 impl BufferPoolInner {
@@ -74,6 +84,16 @@ impl BufferPoolInner {
             .or_default()
             .push(buffer);
         self.reuses.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Place a buffer into the pending queue instead of making it
+    /// immediately available. The buffer becomes reusable only after
+    /// [`BufferPool::drain_pending`] calls `device.poll`.
+    fn defer_return(&self, buffer: wgpu::Buffer, bucket: usize) {
+        self.pending
+            .lock()
+            .expect("pending lock poisoned")
+            .push((buffer, bucket));
     }
 }
 
@@ -162,6 +182,7 @@ impl BufferPool {
                 allocations: AtomicUsize::new(0),
                 reuses: AtomicUsize::new(0),
                 solver_buffers: RwLock::new(HashMap::new()),
+                pending: Mutex::new(Vec::new()),
             }),
         }
     }
@@ -172,7 +193,25 @@ impl BufferPool {
         size.next_power_of_two()
     }
 
+    /// Move pending buffers back into the available pool after a
+    /// non-blocking device poll confirms completed GPU work.
+    /// Called automatically before every `acquire` / `acquire_pooled`.
+    pub fn drain_pending(&self) {
+        self.inner.device.poll(wgpu::MaintainBase::Poll);
+
+        let drained: Vec<(wgpu::Buffer, usize)> = {
+            let mut pending = self.inner.pending.lock().expect("pending lock poisoned");
+            std::mem::take(&mut *pending)
+        };
+
+        for (buffer, bucket) in drained {
+            self.inner.return_buffer(buffer, bucket);
+        }
+    }
+
     pub fn acquire_pooled(&self, size_bytes: usize) -> PooledBuffer {
+        self.drain_pending();
+
         let bucket = Self::bucket_size(size_bytes);
         let buffer = self
             .inner
@@ -186,6 +225,8 @@ impl BufferPool {
     }
 
     pub fn acquire(&self, size_bytes: usize) -> wgpu::Buffer {
+        self.drain_pending();
+
         let bucket = Self::bucket_size(size_bytes);
         let recycled = self
             .inner

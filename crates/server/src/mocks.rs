@@ -2,6 +2,8 @@
 //!
 //! ⚠️ **TEST-ONLY MODULE**
 //! These mocks are for testing infrastructure only and should never be used in production.
+//!
+//! This module is gated with `#[cfg(test)]` in `lib.rs` — it is never compiled into production builds.
 
 #[cfg(test)]
 use std::future::Future;

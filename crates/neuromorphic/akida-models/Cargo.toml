@@ -11,7 +11,7 @@ categories = ["parser-implementations", "science"]
 
 [dependencies]
 # Error handling
-thiserror = "2"
+thiserror = { workspace = true }
 anyhow = "1"
 
 # Binary parsing

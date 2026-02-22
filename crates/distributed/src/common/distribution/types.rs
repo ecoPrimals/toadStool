@@ -163,3 +163,127 @@ impl Default for DistributionConfig {
         }
     }
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_distribution_strategy_default() {
+        let s = DistributionStrategy::default();
+        assert!(matches!(s, DistributionStrategy::Single));
+    }
+
+    #[test]
+    fn test_distribution_strategy_variants() {
+        let _equal = DistributionStrategy::Equal;
+        let _weighted = DistributionStrategy::Weighted {
+            weights: {
+                let mut m = HashMap::new();
+                m.insert("node1".to_string(), 0.6);
+                m.insert("node2".to_string(), 0.4);
+                m
+            },
+        };
+        let _replicated = DistributionStrategy::Replicated {
+            replication_factor: 3,
+        };
+        let _burst = DistributionStrategy::Burst {
+            primary_target: "primary".to_string(),
+            burst_targets: vec!["burst1".to_string()],
+        };
+    }
+
+    #[test]
+    fn test_distribution_config_default() {
+        let config = DistributionConfig::default();
+        assert!(matches!(
+            config.default_strategy,
+            DistributionStrategy::Single
+        ));
+        assert_eq!(config.max_targets, 100);
+        assert_eq!(config.min_units_per_target, 1);
+        assert!(config.auto_rebalance);
+        assert!((config.rebalance_threshold_percent - 20.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_distribution_plan_construction() {
+        let plan = DistributionPlan {
+            plan_id: Uuid::new_v4(),
+            strategy: DistributionStrategy::Equal,
+            targets: vec![DistributionTarget {
+                id: "node-1".to_string(),
+                target_type: TargetType::LocalNode,
+                allocated_units: 50,
+                weight: 1.0,
+                capacity: ResourceCapacity {
+                    cpu_cores: 4.0,
+                    memory_bytes: 8 * 1024 * 1024 * 1024,
+                    storage_bytes: 100 * 1024 * 1024 * 1024,
+                    network_bandwidth_bps: 1_000_000_000,
+                    gpu_units: None,
+                },
+            }],
+            total_units: 100,
+            estimated_duration_secs: 60,
+        };
+        assert_eq!(plan.targets.len(), 1);
+        assert_eq!(plan.total_units, 100);
+        assert_eq!(plan.targets[0].id, "node-1");
+    }
+
+    #[test]
+    fn test_target_type_variants() {
+        assert!(TargetType::LocalNode != TargetType::CloudProvider);
+        assert_eq!(TargetType::SongbirdNode, TargetType::SongbirdNode);
+    }
+
+    #[test]
+    fn test_distribution_algorithm_variants() {
+        assert_eq!(
+            DistributionAlgorithm::RoundRobin,
+            DistributionAlgorithm::RoundRobin
+        );
+        let custom = DistributionAlgorithm::Custom("my_algo".to_string());
+        assert_eq!(custom, DistributionAlgorithm::Custom("my_algo".to_string()));
+    }
+
+    #[test]
+    fn test_distribution_strategy_serialization_roundtrip() {
+        let strategy = DistributionStrategy::Replicated {
+            replication_factor: 5,
+        };
+        let json = serde_json::to_string(&strategy).unwrap();
+        let parsed: DistributionStrategy = serde_json::from_str(&json).unwrap();
+        assert_eq!(strategy, parsed);
+    }
+
+    #[test]
+    fn test_distribution_config_serialization_roundtrip() {
+        let config = DistributionConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: DistributionConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.default_strategy, parsed.default_strategy);
+        assert_eq!(config.max_targets, parsed.max_targets);
+        assert_eq!(config.auto_rebalance, parsed.auto_rebalance);
+    }
+
+    #[test]
+    fn test_resource_capacity_serialization_roundtrip() {
+        let cap = ResourceCapacity {
+            cpu_cores: 8.0,
+            memory_bytes: 16 * 1024 * 1024 * 1024,
+            storage_bytes: 500 * 1024 * 1024 * 1024,
+            network_bandwidth_bps: 10_000_000_000,
+            gpu_units: Some(2),
+        };
+        let json = serde_json::to_string(&cap).unwrap();
+        let parsed: ResourceCapacity = serde_json::from_str(&json).unwrap();
+        assert_eq!(cap.cpu_cores, parsed.cpu_cores);
+        assert_eq!(cap.gpu_units, parsed.gpu_units);
+    }
+}

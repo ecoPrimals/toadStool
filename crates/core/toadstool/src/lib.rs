@@ -198,3 +198,22 @@ pub async fn init_with_biomeos() -> anyhow::Result<UniversalComputePlatform> {
 
     Ok(platform)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_version_constant() {
+        assert!(!VERSION.is_empty());
+        assert!(VERSION.chars().next().unwrap().is_ascii_digit());
+    }
+
+    #[test]
+    fn test_universal_capabilities() {
+        assert!(!UNIVERSAL_CAPABILITIES.is_empty());
+        assert!(UNIVERSAL_CAPABILITIES.contains(&"native_execution"));
+        assert!(UNIVERSAL_CAPABILITIES.contains(&"wasm_execution"));
+        assert!(UNIVERSAL_CAPABILITIES.contains(&"pure_ecosystem"));
+    }
+}

@@ -2,8 +2,6 @@
 //!
 //! Implements the standard NeuroBench benchmark suite.
 
-#[allow(unused_imports)]
-use crate::Result;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

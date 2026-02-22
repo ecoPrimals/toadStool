@@ -549,22 +549,32 @@ mod implementation {
         async fn update_model(&self) -> ToadStoolResult<()> {
             let history = self.metrics_history.read().await;
             if history.len() < self.config.min_prediction_samples {
-                debug!("Not enough samples ({}) for model update, need {}", history.len(), self.config.min_prediction_samples);
+                debug!(
+                    "Not enough samples ({}) for model update, need {}",
+                    history.len(),
+                    self.config.min_prediction_samples
+                );
                 return Ok(());
             }
 
             let mut by_runtime: HashMap<RuntimeType, Vec<&PerformanceMetrics>> = HashMap::new();
             for m in history.iter() {
-                by_runtime.entry(m.runtime_type.clone()).or_default().push(m);
+                by_runtime
+                    .entry(m.runtime_type.clone())
+                    .or_default()
+                    .push(m);
             }
 
             let mut stats = self.runtime_stats.write().await;
             for (rt, metrics) in &by_runtime {
-                let mut durations: Vec<f64> = metrics.iter()
+                let mut durations: Vec<f64> = metrics
+                    .iter()
                     .filter_map(|m| m.execution_duration.map(|d| d.as_secs_f64()))
                     .collect();
 
-                if durations.is_empty() { continue; }
+                if durations.is_empty() {
+                    continue;
+                }
                 durations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
                 let p95_idx = ((durations.len() as f64) * 0.95).ceil() as usize;
@@ -577,27 +587,34 @@ mod implementation {
 
             let mut baselines = self._baseline_measurements.write().await;
             for (rt, metrics) in &by_runtime {
-                let (sum_time, sum_mem, sum_cpu, count) = metrics.iter().fold(
-                    (0.0f64, 0.0f64, 0.0f64, 0u64),
-                    |(t, m, c, n), met| {
-                        let dur = met.execution_duration.map_or(0.0, |d| d.as_secs_f64());
-                        let mem = met.resource_metrics.memory.used_bytes as f64 / 1024.0 / 1024.0;
-                        let cpu = met.resource_metrics.cpu.usage_percent;
-                        (t + dur, m + mem, c + cpu, n + 1)
-                    },
-                );
+                let (sum_time, sum_mem, sum_cpu, count) =
+                    metrics
+                        .iter()
+                        .fold((0.0f64, 0.0f64, 0.0f64, 0u64), |(t, m, c, n), met| {
+                            let dur = met.execution_duration.map_or(0.0, |d| d.as_secs_f64());
+                            let mem =
+                                met.resource_metrics.memory.used_bytes as f64 / 1024.0 / 1024.0;
+                            let cpu = met.resource_metrics.cpu.usage_percent;
+                            (t + dur, m + mem, c + cpu, n + 1)
+                        });
                 if count > 0 {
                     let c = count as f64;
-                    baselines.insert(format!("{rt:?}"), BaselineMetrics {
-                        _avg_execution_time: Duration::from_secs_f64(sum_time / c),
-                        _avg_memory_mb: sum_mem / c,
-                        _avg_cpu_percent: sum_cpu / c,
-                    });
+                    baselines.insert(
+                        format!("{rt:?}"),
+                        BaselineMetrics {
+                            _avg_execution_time: Duration::from_secs_f64(sum_time / c),
+                            _avg_memory_mb: sum_mem / c,
+                            _avg_cpu_percent: sum_cpu / c,
+                        },
+                    );
                 }
             }
 
-            info!("Performance model updated with {} samples across {} runtimes",
-                history.len(), by_runtime.len());
+            info!(
+                "Performance model updated with {} samples across {} runtimes",
+                history.len(),
+                by_runtime.len()
+            );
             Ok(())
         }
     }

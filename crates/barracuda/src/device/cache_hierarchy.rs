@@ -309,10 +309,12 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         });
 
         let bgl_entry = |binding: u32, read_only: bool| wgpu::BindGroupLayoutEntry {
-            binding, visibility: wgpu::ShaderStages::COMPUTE,
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Storage { read_only },
-                has_dynamic_offset: false, min_binding_size: None,
+                has_dynamic_offset: false,
+                min_binding_size: None,
             },
             count: None,
         };
@@ -323,37 +325,59 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
         let bufs = [&buf_a, &buf_b, &buf_out];
         let bind_group = wgpu_device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None, layout: &bgl,
-            entries: &bufs.iter().enumerate().map(|(i, b)| wgpu::BindGroupEntry {
-                binding: i as u32, resource: b.as_entire_binding(),
-            }).collect::<Vec<_>>(),
+            label: None,
+            layout: &bgl,
+            entries: &bufs
+                .iter()
+                .enumerate()
+                .map(|(i, b)| wgpu::BindGroupEntry {
+                    binding: i as u32,
+                    resource: b.as_entire_binding(),
+                })
+                .collect::<Vec<_>>(),
         });
 
         let pl = wgpu_device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None, bind_group_layouts: &[&bgl], push_constant_ranges: &[],
+            label: None,
+            bind_group_layouts: &[&bgl],
+            push_constant_ranges: &[],
         });
         let pipeline = wgpu_device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: None, layout: Some(&pl), module: &shader,
-            entry_point: "main", cache: None, compilation_options: Default::default(),
+            label: None,
+            layout: Some(&pl),
+            module: &shader,
+            entry_point: "main",
+            cache: None,
+            compilation_options: Default::default(),
         });
 
         let workgroups = (elements as u32).div_ceil(256).min(65535);
 
         let run_pass = |poll: bool| {
-            let mut enc = wgpu_device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-            { let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-              p.set_pipeline(&pipeline); p.set_bind_group(0, &bind_group, &[]);
-              p.dispatch_workgroups(workgroups, 1, 1); }
+            let mut enc =
+                wgpu_device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            {
+                let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+                p.set_pipeline(&pipeline);
+                p.set_bind_group(0, &bind_group, &[]);
+                p.dispatch_workgroups(workgroups, 1, 1);
+            }
             queue.submit(Some(enc.finish()));
-            if poll { wgpu_device.poll(wgpu::Maintain::Wait); }
+            if poll {
+                wgpu_device.poll(wgpu::Maintain::Wait);
+            }
         };
 
-        for _ in 0..3 { run_pass(false); }
+        for _ in 0..3 {
+            run_pass(false);
+        }
         wgpu_device.poll(wgpu::Maintain::Wait);
 
         let iterations = 10;
         let start = Instant::now();
-        for _ in 0..iterations { run_pass(true); }
+        for _ in 0..iterations {
+            run_pass(true);
+        }
 
         let elapsed = start.elapsed();
         let time_per_op = elapsed.as_secs_f64() / iterations as f64;
@@ -394,13 +418,17 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                         // Fallback: name-based heuristic for drivers that report
                         // vendor_id = 0 (e.g. some Mesa/software configurations).
                         const NAME_TABLE: &[(&[&str], SubstrateType)] = &[
-                            (&["nvidia", "geforce", "quadro", "tesla"], SubstrateType::NvidiaGpu),
-                            (&["amd", "radeon", "rx ", "navi"],         SubstrateType::AmdGpu),
-                            (&["intel", "arc", "iris"],                 SubstrateType::IntelGpu),
-                            (&["apple", "m1", "m2", "m3"],             SubstrateType::AppleGpu),
+                            (
+                                &["nvidia", "geforce", "quadro", "tesla"],
+                                SubstrateType::NvidiaGpu,
+                            ),
+                            (&["amd", "radeon", "rx ", "navi"], SubstrateType::AmdGpu),
+                            (&["intel", "arc", "iris"], SubstrateType::IntelGpu),
+                            (&["apple", "m1", "m2", "m3"], SubstrateType::AppleGpu),
                         ];
                         let n = info.name.to_lowercase();
-                        NAME_TABLE.iter()
+                        NAME_TABLE
+                            .iter()
                             .find(|(patterns, _)| patterns.iter().any(|p| n.contains(p)))
                             .map(|(_, st)| *st)
                             .unwrap_or(SubstrateType::Other)

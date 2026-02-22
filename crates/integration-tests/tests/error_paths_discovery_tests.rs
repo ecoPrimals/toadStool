@@ -195,18 +195,146 @@ async fn test_discovery_concurrent_registrations() {
 
 #[tokio::test]
 async fn test_discovery_cache_corruption() {
-    // Placeholder: resilience against corrupted cache data (P2).
-    // No-op until the cache layer is implemented.
+    // Resilience against corrupted/malformed data in discovery.
+    // RuntimeDiscovery stores services in-memory; we verify the system remains
+    // operational when services have malformed or edge-case endpoint data.
+    let identity = SelfIdentity::new();
+    let discovery = RuntimeDiscovery::new(identity);
+
+    // Register services with various "corrupted-looking" endpoint values
+    let long_string = "x".repeat(10000);
+    let malformed_endpoints: [&str; 5] = [
+        "",
+        ":::",
+        "http://",
+        "not-a-url-at-all!!!@@###",
+        &long_string,
+    ];
+
+    for (i, ep) in malformed_endpoints.iter().enumerate() {
+        let service = make_service(
+            &format!("corrupt-{i}"),
+            ep,
+            vec![make_capability(&format!("corrupt-cap-{i}"))],
+        );
+        let result = discovery.register_service(service).await;
+        assert!(
+            result.is_ok(),
+            "Discovery should accept service with malformed endpoint '{}'",
+            &ep[..ep.len().min(50)]
+        );
+    }
+
+    // Discovery should remain operational: get_all_services and find_by_capability
+    // must complete without panicking
+    let all = discovery.get_all_services().await;
+    assert_eq!(all.len(), 5, "All malformed services should be stored");
+
+    for i in 0..5 {
+        let found = discovery
+            .find_by_capability(&format!("corrupt-cap-{i}"))
+            .await
+            .expect("find_by_capability should succeed");
+        assert_eq!(found.len(), 1);
+    }
 }
 
 #[tokio::test]
 async fn test_discovery_dns_resolution_failure() {
-    // Placeholder: unresolvable hostname error path (P1).
-    // No-op until DNS-SD active-probe is implemented.
+    // Unresolvable hostname error path: registering a service whose endpoint
+    // cannot be resolved. Discovery accepts registration (optimistic); we
+    // verify that attempting to connect to such an endpoint yields a proper
+    // DNS/connection error (not a panic).
+    let identity = SelfIdentity::new();
+    let discovery = RuntimeDiscovery::new(identity);
+
+    let service = make_service(
+        "unresolvable",
+        "this-hostname-definitely-does-not-exist-12345.invalid:9999",
+        vec![make_capability("unresolvable")],
+    );
+
+    discovery
+        .register_service(service)
+        .await
+        .expect("Registration should succeed");
+
+    let found = discovery
+        .find_by_capability("unresolvable")
+        .await
+        .expect("find_by_capability should succeed");
+    assert_eq!(found.len(), 1);
+
+    // Attempt connection; must fail with a proper error (DNS resolution or connection)
+    let endpoint = &found[0].endpoint;
+    let connect_result = tokio::net::TcpStream::connect(endpoint).await;
+
+    assert!(
+        connect_result.is_err(),
+        "Connection to unresolvable hostname should fail"
+    );
+
+    let err = connect_result.unwrap_err();
+    let err_str = err.to_string().to_lowercase();
+    assert!(
+        err_str.contains("no address")
+            || err_str.contains("dns")
+            || err_str.contains("name")
+            || err_str.contains("resolve")
+            || err_str.contains("not found")
+            || err_str.contains("connection"),
+        "Error should indicate DNS/connection failure: {}",
+        err
+    );
 }
 
 #[tokio::test]
 async fn test_discovery_ssl_certificate_error() {
-    // Placeholder: TLS certificate error path (P2).
-    // No-op until TLS transport layer is implemented.
+    // TLS certificate error path: a service endpoint with invalid/self-signed
+    // certificate should be rejected when connecting via HTTPS.
+    // Uses badssl.com endpoints known to have certificate issues.
+    let identity = SelfIdentity::new();
+    let discovery = RuntimeDiscovery::new(identity);
+
+    let service = make_service(
+        "badssl",
+        "https://self-signed.badssl.com:443",
+        vec![make_capability("badssl")],
+    );
+
+    discovery
+        .register_service(service)
+        .await
+        .expect("Registration should succeed");
+
+    let found = discovery
+        .find_by_capability("badssl")
+        .await
+        .expect("find_by_capability should succeed");
+    assert_eq!(found.len(), 1);
+
+    // Attempt HTTPS request; TLS verification should fail
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(false)
+        .build()
+        .expect("reqwest client");
+
+    let connect_result = client.get("https://self-signed.badssl.com/").send().await;
+
+    assert!(
+        connect_result.is_err(),
+        "HTTPS request to self-signed cert should fail with TLS error"
+    );
+
+    let err = connect_result.unwrap_err();
+    let err_str = err.to_string().to_lowercase();
+    assert!(
+        err_str.contains("certificate")
+            || err_str.contains("tls")
+            || err_str.contains("ssl")
+            || err_str.contains("invalid")
+            || err_str.contains("verify"),
+        "Error should indicate TLS/certificate failure: {}",
+        err
+    );
 }

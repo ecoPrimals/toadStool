@@ -22,6 +22,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
+use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_config::defaults;
 
 use crate::execution::{
@@ -192,7 +193,7 @@ impl UniversalScheduler {
             // Create a primal request for native execution
             let request = PrimalRequest {
                 id: Uuid::new_v4(),
-                source: "toadstool".to_string(),
+                source: PRIMAL_NAME.to_string(),
                 target: provider.primal_id().to_string(),
                 request_type: "execute_native".to_string(),
                 payload: serde_json::json!({

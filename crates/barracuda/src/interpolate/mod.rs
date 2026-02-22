@@ -45,5 +45,4 @@ pub use cubic_spline::{CubicSpline, SplineBoundary};
 /// Supports spherical, exponential, Gaussian, and linear variogram models.
 ///
 /// Applications: soil moisture mapping (airSpring), spatial data interpolation.
-pub const WGSL_KRIGING_F64: &str =
-    include_str!("../shaders/interpolation/kriging_f64.wgsl");
+pub const WGSL_KRIGING_F64: &str = include_str!("../shaders/interpolation/kriging_f64.wgsl");

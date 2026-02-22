@@ -1,9 +1,23 @@
 //! Vision models (YOLO, ResNet, etc.)
 //!
 //! Type-safe API surface for computer vision inference.
-//! Inference methods return `NotImplemented` until a model backend
-//! (burn, onnxruntime, or custom WGSL) is integrated.
+//!
+//! # Requirements
+//!
+//! Vision inference requires:
+//! - **Model weights**: Load from HuggingFace/Ultralytics or local safetensors/ONNX
+//! - **Burn backend**: Enable `burn` with wgpu or ndarray; or use ONNX runtime
+//! - **Image** (optional): Enable `vision` feature for `image` crate preprocessing
+//!
+//! # Example
+//!
+//! ```ignore
+//! let yolo = Yolo::from_pretrained("yolov8n")?;
+//! let detections = yolo.detect(&image_bytes, width, height)?;
+//! ```
 
+use crate::Error::ModelBackendRequired;
+use crate::Error::ModelNotLoaded;
 use crate::Result;
 
 /// YOLO configuration
@@ -56,17 +70,30 @@ impl Yolo {
         Self { config }
     }
 
-    /// Load from pretrained model weights
+    /// Load from pretrained model weights (HuggingFace/Ultralytics or local path).
+    ///
+    /// **Requires**: Model weights. Load with `YoloModel::from_safetensors(path)` or
+    /// `YoloModel::from_onnx(path)` once burn/ONNX backend is integrated.
+    #[cfg_attr(
+        feature = "vision",
+        doc = "The `vision` feature enables image preprocessing."
+    )]
     pub fn from_pretrained(model_id: &str) -> Result<Self> {
-        Err(crate::Error::NotImplemented(format!(
-            "YOLO model loading not yet integrated (requested: {model_id})"
+        Err(ModelNotLoaded(format!(
+            "YOLO model weights required. Requested: {model_id}. \
+             Load with YoloModel::from_safetensors(path) or from_onnx(path) once backend is integrated."
         )))
     }
 
-    /// Detect objects in image
+    /// Detect objects in image.
+    ///
+    /// **Requires**: Model weights loaded via `Yolo::from_pretrained` or
+    /// `YoloModel::from_safetensors(path)`, plus burn backend (wgpu/ndarray).
     pub fn detect(&self, _image: &[u8], _width: usize, _height: usize) -> Result<Vec<Detection>> {
-        Err(crate::Error::NotImplemented(
-            "YOLO inference requires a model backend (burn/onnx/wgsl)".into(),
+        Err(ModelBackendRequired(
+            "YOLO inference requires model weights. Load with YoloModel::from_safetensors(path). \
+             Ensure burn backend (wgpu/ndarray) is enabled in Cargo.toml."
+                .into(),
         ))
     }
 
@@ -103,10 +130,13 @@ impl ResNet {
         Self { variant }
     }
 
-    /// Classify image
+    /// Classify image.
+    ///
+    /// **Requires**: Model weights loaded via `ResNetModel::from_safetensors(path)`, plus burn backend.
     pub fn classify(&self, _image: &[u8]) -> Result<Vec<(usize, f32)>> {
-        Err(crate::Error::NotImplemented(
-            "ResNet inference requires a model backend (burn/onnx/wgsl)".into(),
+        Err(ModelBackendRequired(
+            "ResNet inference requires model weights. Load with ResNetModel::from_safetensors(path). \
+             Ensure burn backend (wgpu/ndarray) is enabled in Cargo.toml.".into(),
         ))
     }
 
@@ -170,18 +200,22 @@ mod tests {
     }
 
     #[test]
-    fn test_yolo_from_pretrained_not_implemented() {
+    fn test_yolo_from_pretrained_requires_weights() {
         let result = Yolo::from_pretrained("yolov8n");
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
-        assert!(err.contains("not yet integrated"));
+        assert!(err.contains("model weights required"));
+        assert!(err.contains("from_safetensors"));
     }
 
     #[test]
-    fn test_yolo_detect_not_implemented() {
+    fn test_yolo_detect_requires_backend() {
         let yolo = Yolo::new(YoloConfig::default());
         let result = yolo.detect(&[], 0, 0);
         assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("model weights"));
+        assert!(err.contains("from_safetensors"));
     }
 
     #[test]
@@ -201,10 +235,13 @@ mod tests {
     }
 
     #[test]
-    fn test_resnet_classify_not_implemented() {
+    fn test_resnet_classify_requires_backend() {
         let model = ResNet::new(ResNetVariant::ResNet101);
         let result = model.classify(&[]);
         assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("model weights"));
+        assert!(err.contains("from_safetensors"));
     }
 
     #[test]

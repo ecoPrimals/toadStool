@@ -53,11 +53,16 @@ impl PinnedMemory {
         // - CUDA: cudaMallocHost() / cudaHostAlloc()
         // - OpenCL: clCreateBuffer with CL_MEM_ALLOC_HOST_PTR
         // - Vulkan: vkAllocateMemory with HOST_VISIBLE | HOST_COHERENT
+        //
+        // UNAVOIDABLE UNSAFE: std::alloc::alloc is the only way to get heap
+        // memory with custom alignment (64 bytes for DMA). Vec/Box do not
+        // support aligned allocation in stable Rust.
 
         let layout = std::alloc::Layout::from_size_align(size, PINNED_ALIGNMENT)
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {}", e)))?;
 
-        // SAFETY: Layout is valid (from_size_align succeeded, size>0, PINNED_ALIGNMENT=64).
+        // SAFETY: (1) Layout is valid: from_size_align succeeded, size>0, PINNED_ALIGNMENT=64.
+        // (2) Returned ptr is valid for reads/writes of `size` bytes, or null.
         let raw = unsafe { std::alloc::alloc(layout) };
         let ptr = NonNull::new(raw).ok_or_else(|| {
             ToadStoolError::runtime(format!("Failed to allocate {size} bytes of pinned memory"))
@@ -75,7 +80,9 @@ impl PinnedMemory {
     ///
     /// Zero-copy access to underlying data
     pub fn as_slice(&self) -> &[u8] {
-        // SAFETY: ptr valid for size bytes; u8 align=1; lifetime tied to &self.
+        // SAFETY: UNAVOIDABLE - raw ptr to slice. Invariants: (1) ptr from alloc(layout)
+        // in new(), valid for size bytes; (2) u8 has align=1; (3) lifetime tied to &self;
+        // (4) no mutable access via other pointers while &self exists.
         unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.size) }
     }
 
@@ -83,7 +90,8 @@ impl PinnedMemory {
     ///
     /// Zero-copy access to underlying data
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        // SAFETY: ptr valid for size bytes; &mut self gives exclusive access.
+        // SAFETY: UNAVOIDABLE - raw ptr to slice. Invariants: (1) ptr from alloc(layout)
+        // in new(), valid for size bytes; (2) &mut self gives exclusive access (no aliasing).
         unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.size) }
     }
 
@@ -114,7 +122,8 @@ impl Drop for PinnedMemory {
         let layout = std::alloc::Layout::from_size_align(self.size, PINNED_ALIGNMENT)
             .expect("Layout valid during drop");
 
-        // SAFETY: ptr from alloc(layout) in new(); layout matches; Drop runs exactly once.
+        // SAFETY: (1) ptr from alloc(layout) in new(); (2) layout matches allocation;
+        // (3) Drop runs exactly once; (4) no references exist (self is being dropped).
         unsafe {
             std::alloc::dealloc(self.ptr.as_ptr(), layout);
         }

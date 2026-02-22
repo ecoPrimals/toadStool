@@ -174,19 +174,22 @@ impl ServiceDiscoveryConfig {
 
     /// Create example configuration file
     ///
-    /// **INFANT DISCOVERY**: This example uses placeholder URLs.
-    /// In production, services are discovered at runtime via capabilities.
-    /// See `primal_identity.rs` and `discovery_defaults.rs` for implementation.
+    /// Uses capability-based endpoint discovery: Unix socket paths from
+    /// biomeOS runtime directory. Services are discovered at runtime via
+    /// well-known capability constants (primal_identity, ecosystem).
     pub fn create_example() -> Self {
-        let mut services = HashMap::new();
+        use toadstool_common::constants::ecosystem::well_known;
+        use toadstool_common::primal_sockets::get_biomeos_dir;
 
-        // NOTE: These are EXAMPLE URLs only. Production deployments use discovery.
+        let mut services = HashMap::new();
+        let biomeos_dir = get_biomeos_dir();
+
+        // Capability-based: PKI (beardog) Unix socket
+        let beardog_socket = biomeos_dir.join(format!("{}.sock", well_known::BEARDOG));
         services.insert(
             "crypto".to_string(),
             ServiceConfig {
-                // Use environment variable or discovery in production:
-                // CRYPTO_SERVICE_URL or discover by Capability::Authentication
-                url: "http://localhost:6000".to_string(), // Example beardog local dev port
+                url: format!("unix://{}", beardog_socket.display()),
                 priority: 90,
                 enabled: false, // Disabled by default - enable via discovery
                 health_check_interval: 30,
@@ -194,44 +197,53 @@ impl ServiceDiscoveryConfig {
                     let mut meta = HashMap::new();
                     meta.insert(
                         "discovery_capability".to_string(),
-                        "Authentication::ServiceAuth".to_string(),
+                        toadstool_common::constants::primal_identity::capability::CRYPTO_PROVIDER
+                            .to_string(),
                     );
                     meta
                 },
             },
         );
 
+        // Capability-based: Storage (nestgate) Unix socket
+        let nestgate_socket = biomeos_dir.join(format!("{}.sock", well_known::NESTGATE));
         services.insert(
             "storage".to_string(),
             ServiceConfig {
-                // Use environment variable or discovery in production:
-                // STORAGE_SERVICE_URL or discover by Capability::Storage
-                url: "http://storage.local:8000".to_string(), // Example nestgate local dev port
+                url: format!("unix://{}", nestgate_socket.display()),
                 priority: 80,
-                enabled: false, // Disabled by default - enable via discovery
+                enabled: false,
                 health_check_interval: 60,
                 metadata: {
                     let mut meta = HashMap::new();
                     meta.insert(
                         "discovery_capability".to_string(),
-                        "Storage::ObjectStorage".to_string(),
+                        toadstool_common::constants::primal_identity::capability::STORAGE_PROVIDER
+                            .to_string(),
                     );
                     meta
                 },
             },
         );
 
+        // Capability-based: Coordination (songbird) Unix socket
+        let songbird_socket = biomeos_dir.join(format!("{}.sock", well_known::SONGBIRD));
         services.insert(
             "coordination".to_string(),
             ServiceConfig {
-                url: format!(
-                    "http://coordinator.local:{}",
-                    toadstool_common::constants::DEFAULT_HTTP_PORT
-                ),
+                url: format!("unix://{}", songbird_socket.display()),
                 priority: 85,
                 enabled: true,
                 health_check_interval: 15,
-                metadata: HashMap::new(),
+                metadata: {
+                    let mut meta = HashMap::new();
+                    meta.insert(
+                        "discovery_capability".to_string(),
+                        toadstool_common::constants::primal_identity::capability::SERVICE_DISCOVERY
+                            .to_string(),
+                    );
+                    meta
+                },
             },
         );
 

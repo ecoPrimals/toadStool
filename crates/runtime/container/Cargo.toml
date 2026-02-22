@@ -71,7 +71,3 @@ docker = ["bollard"]
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
-
-[[bin]]
-name = "toadstool-byob-server"
-path = "src/bin/toadstool-byob-server.rs"

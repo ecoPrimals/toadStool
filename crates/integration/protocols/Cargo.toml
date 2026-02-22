@@ -20,7 +20,7 @@ toadstool-common = { path = "../../core/common" }
 toadstool-config = { path = "../../core/config" }
 
 # RPC frameworks
-tarpc = { version = "0.33", features = ["tokio1", "serde-transport"] }
+tarpc = { workspace = true }
 
 # HTTP client
 
@@ -33,7 +33,7 @@ serde_json = "1.0"
 bytes = { workspace = true }
 
 # Error handling
-thiserror = "1.0"
+thiserror = { workspace = true }
 
 # Logging
 tracing = "0.1"

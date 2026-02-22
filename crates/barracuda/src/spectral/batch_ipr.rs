@@ -91,7 +91,11 @@ impl BatchIprGpu {
             cache: None,
         });
 
-        Self { pipeline, bgl, device }
+        Self {
+            pipeline,
+            bgl,
+            device,
+        }
     }
 
     /// Compute IPR for `n_vectors` eigenvectors, each of dimension `dim`.
@@ -119,9 +123,18 @@ impl BatchIprGpu {
             label: Some("BatchIpr BG"),
             layout: &self.bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: eigenvectors_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: ipr_out_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: params_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: eigenvectors_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: ipr_out_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buf.as_entire_binding(),
+                },
             ],
         });
 

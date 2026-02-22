@@ -27,19 +27,19 @@
 
 ---
 
-## Current State (Session 31h — February 21, 2026)
+## Current State (Session 38 — February 22, 2026)
 
-- **16,100+ tests passing**, 0 failing | ~65% line coverage | all quality gates green
-- **570+ WGSL shaders** — zero orphans, every shader wired to Rust
-- **Zero clippy warnings** under `-W clippy::all` across all key crates
-- **Zero production panics/unwraps/TODOs** — dead code audit complete (33 files)
+- **3,847+ non-GPU tests + barracuda targeted**, 0 failing | all quality gates green
+- **589+ WGSL shaders** — zero orphans, every shader wired to Rust
+- **Zero clippy warnings** workspace-wide (8 intentional deprecation notes in legacy module)
+- **Zero blind unwrap()** in production code — infallible `expect()` only
 - **2,700+ three springs validation** — hotSpring + wetSpring + neuralSpring
-- **GpuExecutor** — 31 MathOps wired; **CpuExecutor** — full dispatch
-- **TensorSession** — batched ops with single-submit (5-file module, pre-compiled pipelines)
+- **HFB nuclear physics** — spherical (5 shaders) + axially-deformed (5 shaders) on cylindrical grids
+- **25 bio/evolution GPU ops** — HMM, ANI, SNP, dN/dS, pangenome, Hill gate, swarm NN, etc.
 - **Sovereign Compute Phases 0–3** — `WgslOptimizer` live in `compile_shader_f64()` hot path
 - **Scientific middleware** — 14 modules, 400+ tests, 0 unsafe
 - **36 JSON-RPC methods** across 8 domains
-- **Integration tests** — 13 suites, 167 tests
+- **Distributed networking** — least-loaded node selection, federation TCP discovery, edge device probing
 
 ---
 
@@ -130,4 +130,4 @@ specs/                     -- Technical specifications
 
 ---
 
-**Last Updated**: February 21, 2026 — Session 31h
+**Last Updated**: February 22, 2026 — Session 38

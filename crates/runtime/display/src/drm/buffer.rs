@@ -4,7 +4,6 @@
 //!
 //! Uses Pure Rust abstractions (drm + rustix) for memory mapping!
 
-#[allow(unused_imports)]
 use crate::{DisplayError, Result};
 use drm::buffer::{Buffer, DrmFourcc};
 use drm::control::Device as ControlDevice;

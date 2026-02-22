@@ -97,7 +97,11 @@ impl SpatialPayoffGpu {
             cache: None,
         });
 
-        Self { pipeline, bgl, device }
+        Self {
+            pipeline,
+            bgl,
+            device,
+        }
     }
 
     /// Compute spatial PD payoffs for a `grid_size × grid_size` grid.
@@ -134,9 +138,18 @@ impl SpatialPayoffGpu {
             label: Some("SpatialPayoff BG"),
             layout: &self.bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: grid_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: fitness_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: params_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: grid_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: fitness_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buf.as_entire_binding(),
+                },
             ],
         });
 

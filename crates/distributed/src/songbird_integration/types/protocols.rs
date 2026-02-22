@@ -44,3 +44,87 @@ pub struct MessageQueueProtocolConfig {
     pub exchange: String,
     pub routing_key: String,
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_songbird_protocol_variants() {
+        let _http = SongbirdProtocol::HTTP;
+        let _grpc = SongbirdProtocol::GRPC;
+        let _mq = SongbirdProtocol::MessageQueue;
+    }
+
+    #[test]
+    fn test_songbird_protocol_serialization_roundtrip() {
+        for protocol in [SongbirdProtocol::HTTP, SongbirdProtocol::GRPC] {
+            let json = serde_json::to_string(&protocol).unwrap();
+            let parsed: SongbirdProtocol = serde_json::from_str(&json).unwrap();
+            assert!(std::mem::discriminant(&protocol) == std::mem::discriminant(&parsed));
+        }
+    }
+
+    #[test]
+    fn test_http_protocol_config_construction() {
+        let mut headers = HashMap::new();
+        headers.insert("X-Custom".to_string(), "value".to_string());
+        let config = HttpProtocolConfig {
+            timeout_ms: 5000,
+            max_retries: 3,
+            headers,
+        };
+        assert_eq!(config.timeout_ms, 5000);
+        assert_eq!(config.max_retries, 3);
+    }
+
+    #[test]
+    fn test_grpc_protocol_config_construction() {
+        let config = GrpcProtocolConfig {
+            timeout_ms: 10000,
+            max_message_size: 4 * 1024 * 1024,
+            compression: true,
+        };
+        assert_eq!(config.max_message_size, 4 * 1024 * 1024);
+        assert!(config.compression);
+    }
+
+    #[test]
+    fn test_message_queue_protocol_config_construction() {
+        let config = MessageQueueProtocolConfig {
+            queue_name: "jobs".to_string(),
+            exchange: "toadstool".to_string(),
+            routing_key: "compute".to_string(),
+        };
+        assert_eq!(config.queue_name, "jobs");
+        assert_eq!(config.routing_key, "compute");
+    }
+
+    #[test]
+    fn test_protocol_config_serialization_roundtrip() {
+        let config = ProtocolConfig {
+            protocol: SongbirdProtocol::HTTP,
+            http: HttpProtocolConfig {
+                timeout_ms: 3000,
+                max_retries: 5,
+                headers: HashMap::new(),
+            },
+            grpc: GrpcProtocolConfig {
+                timeout_ms: 5000,
+                max_message_size: 1024 * 1024,
+                compression: false,
+            },
+            message_queue: MessageQueueProtocolConfig {
+                queue_name: "test".to_string(),
+                exchange: "ex".to_string(),
+                routing_key: "key".to_string(),
+            },
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: ProtocolConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.http.timeout_ms, config.http.timeout_ms);
+    }
+}

@@ -27,7 +27,7 @@ rand = "0.8"
 
 # Error handling
 anyhow = "1.0"
-thiserror = "1.0"
+thiserror = { workspace = true }
 
 # Logging
 tracing = "0.1"

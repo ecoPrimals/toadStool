@@ -74,9 +74,12 @@ impl BornMayerForceF64 {
 
         let to_buf = |label: &str, data: &[f64], usage: wgpu::BufferUsages| -> wgpu::Buffer {
             let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
-            dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(label), contents: &bytes, usage,
-            })
+            dev.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some(label),
+                    contents: &bytes,
+                    usage,
+                })
         };
 
         let pos_buf = to_buf("bm pos", positions, wgpu::BufferUsages::STORAGE);
@@ -84,61 +87,103 @@ impl BornMayerForceF64 {
         let rho_buf = to_buf("bm rho", rho_params, wgpu::BufferUsages::STORAGE);
 
         let forces_buf = dev.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("bm forces"), size: (n * 3 * 8) as u64,
+            label: Some("bm forces"),
+            size: (n * 3 * 8) as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
 
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-        struct Params { n_particles: u32, _pad0: u32, cutoff_lo: u32, cutoff_hi: u32 }
+        struct Params {
+            n_particles: u32,
+            _pad0: u32,
+            cutoff_lo: u32,
+            cutoff_hi: u32,
+        }
 
         let cutoff_bits = cutoff.to_bits();
-        let params_buf = dev.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::bytes_of(&Params {
-                n_particles: n as u32, _pad0: 0,
-                cutoff_lo: cutoff_bits as u32, cutoff_hi: (cutoff_bits >> 32) as u32,
-            }),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buf = dev
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::bytes_of(&Params {
+                    n_particles: n as u32,
+                    _pad0: 0,
+                    cutoff_lo: cutoff_bits as u32,
+                    cutoff_hi: (cutoff_bits >> 32) as u32,
+                }),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let shader = dev.compile_shader_f64(Self::wgsl_shader(), Some("BornMayer f64"));
 
-        let bgl = dev.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: None,
-            entries: &(0..5u32).map(|i| wgpu::BindGroupLayoutEntry {
-                binding: i, visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: if i == 4 { wgpu::BufferBindingType::Uniform }
-                        else if i == 3 { wgpu::BufferBindingType::Storage { read_only: false } }
-                        else { wgpu::BufferBindingType::Storage { read_only: true } },
-                    has_dynamic_offset: false, min_binding_size: None,
-                },
-                count: None,
-            }).collect::<Vec<_>>(),
-        });
+        let bgl = dev
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &(0..5u32)
+                    .map(|i| wgpu::BindGroupLayoutEntry {
+                        binding: i,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: if i == 4 {
+                                wgpu::BufferBindingType::Uniform
+                            } else if i == 3 {
+                                wgpu::BufferBindingType::Storage { read_only: false }
+                            } else {
+                                wgpu::BufferBindingType::Storage { read_only: true }
+                            },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    })
+                    .collect::<Vec<_>>(),
+            });
 
-        let pl = dev.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None, bind_group_layouts: &[&bgl], push_constant_ranges: &[],
-        });
-        let pipeline = dev.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("born_mayer_f64"), layout: Some(&pl), module: &shader,
-            entry_point: "main", cache: None, compilation_options: Default::default(),
-        });
+        let pl = dev
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            });
+        let pipeline = dev
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("born_mayer_f64"),
+                layout: Some(&pl),
+                module: &shader,
+                entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
+            });
 
         let bufs: [&wgpu::Buffer; 5] = [&pos_buf, &a_buf, &rho_buf, &forces_buf, &params_buf];
         let bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None, layout: &bgl,
-            entries: &bufs.iter().enumerate().map(|(i, b)| wgpu::BindGroupEntry {
-                binding: i as u32, resource: b.as_entire_binding(),
-            }).collect::<Vec<_>>(),
+            label: None,
+            layout: &bgl,
+            entries: &bufs
+                .iter()
+                .enumerate()
+                .map(|(i, b)| wgpu::BindGroupEntry {
+                    binding: i as u32,
+                    resource: b.as_entire_binding(),
+                })
+                .collect::<Vec<_>>(),
         });
 
         let wg = (n as u32).div_ceil(WORKGROUP_SIZE_1D);
-        let mut enc = dev.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-        { let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-          p.set_pipeline(&pipeline); p.set_bind_group(0, &bg, &[]); p.dispatch_workgroups(wg, 1, 1); }
+        let mut enc = dev
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        {
+            let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+            p.set_pipeline(&pipeline);
+            p.set_bind_group(0, &bg, &[]);
+            p.dispatch_workgroups(wg, 1, 1);
+        }
         dev.queue.submit(Some(enc.finish()));
 
         dev.read_f64_buffer(&forces_buf, n * 3)

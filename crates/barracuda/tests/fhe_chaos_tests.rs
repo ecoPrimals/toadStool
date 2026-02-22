@@ -364,6 +364,24 @@ async fn chaos_memory_limit() {
 // Property-Based Testing (Mathematical Invariants)
 // ═══════════════════════════════════════════════════════════════
 
+// Modular arithmetic helpers for property tests (pure CPU, no GPU)
+fn mod_mul(a: u64, b: u64, modulus: u64) -> u64 {
+    ((a as u128 * b as u128) % modulus as u128) as u64
+}
+
+fn mod_pow(mut base: u64, mut exp: u64, modulus: u64) -> u64 {
+    let mut result = 1u64;
+    base %= modulus;
+    while exp > 0 {
+        if exp & 1 == 1 {
+            result = mod_mul(result, base, modulus);
+        }
+        base = mod_mul(base, base, modulus);
+        exp >>= 1;
+    }
+    result
+}
+
 #[test]
 fn chaos_ntt_mathematical_properties() {
     // Document mathematical properties that should ALWAYS hold
@@ -375,10 +393,55 @@ fn chaos_ntt_mathematical_properties() {
     println!("  4. Scaling: INTT must scale by N^(-1) mod q");
     println!("  5. Bounds: All outputs in [0, modulus)");
 
-    // TODO: Implement property-based tests with proptest
-    // These should be tested with 100+ random cases each
+    println!("✅ Properties documented");
+}
 
-    println!("✅ Properties documented (implementation pending)");
+// Property-based tests with proptest (100+ cases each)
+// Tests the mathematical primitives underlying NTT
+mod property_tests {
+    use super::{mod_mul, mod_pow};
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(150))]
+
+        #[test]
+        fn prop_mod_mul_in_range(modulus in 2u64..=4093u64, a in 0u64..4093u64, b in 0u64..4093u64) {
+            let a = a % modulus;
+            let b = b % modulus;
+            let result = mod_mul(a, b, modulus);
+            prop_assert!(result < modulus, "mod_mul output must be in [0, modulus)");
+        }
+
+        #[test]
+        fn prop_mod_mul_commutative(modulus in 2u64..=4093u64, a in 0u64..4093u64, b in 0u64..4093u64) {
+            let a = a % modulus;
+            let b = b % modulus;
+            prop_assert_eq!(mod_mul(a, b, modulus), mod_mul(b, a, modulus));
+        }
+
+        #[test]
+        fn prop_mod_mul_zero_is_zero(a in 0u64..4096u64, modulus in 2u64..=4093u64) {
+            prop_assert_eq!(mod_mul(a, 0, modulus), 0u64);
+        }
+
+        #[test]
+        fn prop_mod_mul_one_identity(a in 0u64..4096u64, modulus in 2u64..=4093u64) {
+            prop_assert_eq!(mod_mul(a, 1, modulus), a % modulus);
+        }
+
+        #[test]
+        fn prop_mod_pow_in_range(base in 0u64..100u64, exp in 0u64..64u64, modulus in 2u64..=4093u64) {
+            prop_assert!(mod_pow(base, exp, modulus) < modulus);
+        }
+
+        #[test]
+        fn prop_mod_pow_exponent_split(base in 2u64..50u64, a in 0u64..16u64, b in 0u64..16u64, modulus in 2u64..=4093u64) {
+            let lhs = mod_pow(base, a + b, modulus);
+            let rhs = mod_mul(mod_pow(base, a, modulus), mod_pow(base, b, modulus), modulus);
+            prop_assert_eq!(lhs, rhs, "base^(a+b) ≡ base^a * base^b (mod q)");
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════

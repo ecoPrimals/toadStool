@@ -202,3 +202,157 @@ impl NetworkHealthMonitor {
         tracing::debug!("Removed node {} from health monitoring", node_id);
     }
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::resources::{
+        CpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
+    };
+    use crate::types::ResourceRequirements;
+
+    fn make_minimal_job(
+        cpu: f64,
+        memory_bytes: u64,
+        storage_bytes: u64,
+        bandwidth_mbps: Option<u64>,
+    ) -> crate::UniversalJob {
+        crate::UniversalJob {
+            job_id: uuid::Uuid::new_v4(),
+            job_type: None,
+            execution_request: toadstool::ExecutionRequest::default(),
+            target: crate::ExecutionTarget::Local,
+            priority: crate::JobPriority::Normal,
+            dependencies: vec![],
+            resource_requirements: ResourceRequirements {
+                cpu: CpuRequirements {
+                    min_cores: cpu,
+                    max_cores: None,
+                },
+                memory: MemoryRequirements {
+                    min_bytes: memory_bytes,
+                    max_bytes: None,
+                },
+                storage: StorageRequirements {
+                    min_bytes: storage_bytes,
+                    max_bytes: None,
+                },
+                network: NetworkRequirements {
+                    bandwidth_mbps,
+                    latency_ms: None,
+                },
+                gpu: None,
+            },
+            retry_config: crate::types::DistributedRetryConfig::default(),
+            created_at: chrono::Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_available_capacity_can_handle_job_true() {
+        let capacity = AvailableCapacity {
+            cpu_cores: 4.0,
+            memory_bytes: 8 * 1024 * 1024 * 1024,   // 8GB
+            storage_bytes: 50 * 1024 * 1024 * 1024, // 50GB
+            network_bandwidth: 100 * 1024 * 1024,   // 100 Mbps in bytes/s
+        };
+        let job = make_minimal_job(
+            2.0,
+            4 * 1024 * 1024 * 1024,
+            10 * 1024 * 1024 * 1024,
+            Some(50),
+        );
+        assert!(capacity.can_handle_job(&job));
+    }
+
+    #[test]
+    fn test_available_capacity_can_handle_job_false_insufficient_cpu() {
+        let capacity = AvailableCapacity {
+            cpu_cores: 1.0,
+            memory_bytes: 8 * 1024 * 1024 * 1024,
+            storage_bytes: 50 * 1024 * 1024 * 1024,
+            network_bandwidth: u64::MAX,
+        };
+        let job = make_minimal_job(4.0, 1, 1, None);
+        assert!(!capacity.can_handle_job(&job));
+    }
+
+    #[test]
+    fn test_available_capacity_can_handle_job_false_insufficient_memory() {
+        let capacity = AvailableCapacity {
+            cpu_cores: 8.0,
+            memory_bytes: 1024 * 1024 * 1024, // 1GB
+            storage_bytes: 100 * 1024 * 1024 * 1024,
+            network_bandwidth: u64::MAX,
+        };
+        let job = make_minimal_job(1.0, 8 * 1024 * 1024 * 1024, 1, None); // needs 8GB
+        assert!(!capacity.can_handle_job(&job));
+    }
+
+    #[test]
+    fn test_node_registry_register_and_get() {
+        let mut registry = NodeRegistry::default();
+        let reg = NodeRegistration {
+            node_id: "node-1".to_string(),
+            node_type: NodeType::ToadStool,
+            capabilities: NodeCapabilities {
+                cpu_cores: 4.0,
+                memory_gb: 8.0,
+                storage_gb: 100.0,
+                gpu_count: 0,
+                specialized_hardware: vec![],
+                software_capabilities: vec![],
+            },
+            endpoints: vec!["http://localhost:8080".to_string()],
+            protocols: vec!["http".to_string()],
+            metadata: NodeMetadata {
+                version: "1.0".to_string(),
+                build_info: "test".to_string(),
+                capabilities: NodeCapabilities {
+                    cpu_cores: 4.0,
+                    memory_gb: 8.0,
+                    storage_gb: 100.0,
+                    gpu_count: 0,
+                    specialized_hardware: vec![],
+                    software_capabilities: vec![],
+                },
+            },
+        };
+        registry.register(reg);
+        assert!(registry.get_node(&"node-1".to_string()).is_some());
+        assert_eq!(registry.list_nodes().len(), 1);
+    }
+
+    #[test]
+    fn test_network_health_monitor_update_and_get() {
+        let mut monitor = NetworkHealthMonitor::default();
+        monitor.update_node_health("node-a".to_string(), ConnectionHealth::Healthy);
+        assert_eq!(
+            monitor.get_node_health(&"node-a".to_string()),
+            ConnectionHealth::Healthy
+        );
+        assert_eq!(monitor.healthy_nodes(), vec!["node-a".to_string()]);
+    }
+
+    #[test]
+    fn test_network_health_monitor_unknown_for_missing_node() {
+        let monitor = NetworkHealthMonitor::default();
+        assert_eq!(
+            monitor.get_node_health(&"missing".to_string()),
+            ConnectionHealth::Unknown
+        );
+    }
+
+    #[test]
+    fn test_network_health_monitor_remove_node() {
+        let mut monitor = NetworkHealthMonitor::default();
+        monitor.update_node_health("node-x".to_string(), ConnectionHealth::Healthy);
+        monitor.remove_node(&"node-x".to_string());
+        assert_eq!(
+            monitor.get_node_health(&"node-x".to_string()),
+            ConnectionHealth::Unknown
+        );
+    }
+}

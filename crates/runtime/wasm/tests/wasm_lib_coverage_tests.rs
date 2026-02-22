@@ -1,13 +1,22 @@
 //! Comprehensive Coverage Tests for WASM Runtime Lib
 //!
 //! Targeting lib.rs to increase coverage from 48.72% to 60%+
+//!
+//! Evolved: Placeholder component-model tests remain for Phase 2.
+//! Real tests below exercise the existing wasmi runtime (module load, execute, metrics).
 
-use toadstool::execution::RuntimeEngine;
+use std::collections::HashMap;
+use std::time::Duration;
+use uuid::Uuid;
+
+use toadstool::execution::{ExecutionRequest, ExecutionStatus, RuntimeConfig, RuntimeEngine};
+use toadstool::resources::ResourceRequirements;
 use toadstool::security::{IsolationLevel, SecurityContext};
-use toadstool::workload::WorkloadType;
+use toadstool::workload::{WorkloadSpec, WorkloadType};
 use toadstool_runtime_wasm::{CacheMetrics, SecurityLevel, WasmRuntimeConfig, WasmRuntimeEngine};
-// Note: ComponentModelConfig, ComponentState, ComponentValue not imported
-// (component_model feature disabled - Phase 2 work)
+
+mod test_utils;
+use test_utils::create_simple_wasm_module;
 
 // ============================================================================
 // CacheMetrics Tests
@@ -182,51 +191,59 @@ fn test_wasm_config_debug() {
 // ComponentModelConfig Tests (Phase 2 - Requires component-model feature)
 // ============================================================================
 
+/// Stub tests when component-model feature is NOT enabled — run and skip clearly
+#[cfg(not(feature = "component-model"))]
+mod component_config_tests {
+    #[test]
+    fn test_component_config_default() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_config_custom() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_config_clone() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_config_debug() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+}
+
+/// Full implementation when component-model feature IS enabled
 #[cfg(feature = "component-model")]
 mod component_config_tests {
-    use super::*;
-
     #[test]
     fn test_component_config_default() {
         // TODO(component-model): Implement when feature is enabled
         // let config = ComponentModelConfig::default();
         // assert!(config.enabled);
         // assert!(config.max_instances > 0);
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_config_custom() {
         // TODO(component-model): Implement when feature is enabled
-        // let config = ComponentModelConfig {
-        //     enabled: false,
-        //     max_instances: 50,
-        //     linking_timeout_ms: 15000,
-        //     composition_enabled: false,
-        //     wit_support: true,
-        // };
-        //
-        // assert!(!config.enabled);
-        // assert_eq!(config.max_instances, 50);
-        // assert_eq!(config.linking_timeout_ms, 15000);
-        // assert!(!config.composition_enabled);
-        // assert!(config.wit_support);
+        // let config = ComponentModelConfig { ... };
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_config_clone() {
         // TODO(component-model): Implement when feature is enabled
-        // let config1 = ComponentModelConfig::default();
-        // let config2 = config1.clone();
-        // assert_eq!(config1.enabled, config2.enabled);
-        // assert_eq!(config1.max_instances, config2.max_instances);
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_config_debug() {
         // TODO(component-model): Implement when feature is enabled
-        // let config = ComponentModelConfig::default();
-        // let debug_str = format!("{:?}", config);
-        // assert!(debug_str.contains("ComponentModelConfig"));
+        eprintln!("skipped: component-model implementation pending");
     }
 }
 
@@ -362,109 +379,246 @@ async fn test_module_load_timeout() {
 }
 
 // ============================================================================
+// WASM Runtime Execution Tests (existing wasmi runtime)
+// ============================================================================
+// Evolved from placeholder: real tests exercising module load, execute, metrics.
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_execute_simple_wasm_module() {
+    let wasm = create_simple_wasm_module().expect("create simple WASM");
+    let config = WasmRuntimeConfig::default();
+    let mut engine = WasmRuntimeEngine::new(config).unwrap();
+
+    engine.initialize(RuntimeConfig::default()).await.unwrap();
+
+    let request = ExecutionRequest {
+        execution_id: Uuid::new_v4(),
+        workload: WorkloadSpec::Wasm {
+            module: toadstool::workload::WasmModuleSource::Bytes { data: wasm.into() },
+            args: Some(vec![]),
+            wasi_config: None,
+            env_vars: HashMap::new(),
+        },
+        runtime_hint: Some(toadstool::RuntimeType::Wasm),
+        resources: ResourceRequirements::default(),
+        security_context: SecurityContext::default(),
+        timeout: Some(Duration::from_secs(5)),
+        environment: HashMap::new(),
+        input_data: toadstool::execution::ExecutionInput::default(),
+        callback_config: None,
+        encryption_config: None,
+    };
+
+    let response = engine.execute(request).await.unwrap();
+    assert!(matches!(response.status, ExecutionStatus::Success));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_execute_returns_metrics() {
+    let wasm = create_simple_wasm_module().expect("create simple WASM");
+    let config = WasmRuntimeConfig::default();
+    let mut engine = WasmRuntimeEngine::new(config).unwrap();
+    engine.initialize(RuntimeConfig::default()).await.unwrap();
+
+    let execution_id = Uuid::new_v4();
+    let request = ExecutionRequest {
+        execution_id,
+        workload: WorkloadSpec::Wasm {
+            module: toadstool::workload::WasmModuleSource::Bytes { data: wasm.into() },
+            args: Some(vec![]),
+            wasi_config: None,
+            env_vars: HashMap::new(),
+        },
+        runtime_hint: Some(toadstool::RuntimeType::Wasm),
+        resources: ResourceRequirements::default(),
+        security_context: SecurityContext::default(),
+        timeout: Some(Duration::from_secs(5)),
+        environment: HashMap::new(),
+        input_data: toadstool::execution::ExecutionInput::default(),
+        callback_config: None,
+        encryption_config: None,
+    };
+
+    let response = engine.execute(request).await.unwrap();
+    assert_eq!(response.execution_id, execution_id);
+    assert_eq!(response.runtime_used, toadstool::RuntimeType::Wasm);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_module_loader_cache_key_generation() {
+    use bytes::Bytes;
+    use toadstool::workload::WasmModuleSource;
+    use toadstool_runtime_wasm::ModuleLoader;
+
+    let config = WasmRuntimeConfig::default();
+    let engine = wasmi::Engine::default();
+    let loader = ModuleLoader::new(engine, config);
+
+    let source1 = WasmModuleSource::Bytes {
+        data: Bytes::from(vec![1, 2, 3]),
+    };
+    let source2 = WasmModuleSource::Bytes {
+        data: Bytes::from(vec![1, 2, 3]),
+    };
+    let source3 = WasmModuleSource::Bytes {
+        data: Bytes::from(vec![4, 5, 6]),
+    };
+
+    let key1 = loader.generate_cache_key(&source1);
+    let key2 = loader.generate_cache_key(&source2);
+    let key3 = loader.generate_cache_key(&source3);
+
+    assert_eq!(key1, key2, "Same content should produce same cache key");
+    assert_ne!(
+        key1, key3,
+        "Different content should produce different cache key"
+    );
+}
+
+// ============================================================================
 // Component Model Tests (Phase 2 - Requires component-model feature)
 // ============================================================================
 // NOTE: These tests are conditionally compiled to avoid blocking builds.
-// Enable with: cargo test --features component-model
+// Enable with: cargo test -p toadstool-runtime-wasm --features component-model
 // EVOLUTION: Component model support is planned for Phase 2 via wasmtime subprocess.
 
+/// Stub tests when component-model feature is NOT enabled — run and skip clearly
+#[cfg(not(feature = "component-model"))]
+mod component_model_tests {
+    #[test]
+    fn test_component_value_u32() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_value_string() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_value_bool() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_value_u64() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_value_f32() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_value_clone() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_state_initializing() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_state_ready() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_state_running() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_state_failed() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_state_terminating() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+
+    #[test]
+    fn test_component_state_clone() {
+        eprintln!("skipped: component-model feature not enabled");
+    }
+}
+
+/// Full implementation when component-model feature IS enabled
 #[cfg(feature = "component-model")]
 mod component_model_tests {
-    use super::*;
-
-    // Component model types would be imported here when feature is enabled
-    // For now, these tests are placeholder structure for future implementation
-
     #[test]
     fn test_component_value_u32() {
         // TODO(component-model): Implement when feature is enabled
-        // let value = ComponentValue::U32(42);
-        // assert!(format!("{:?}", value).contains("U32"));
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_value_string() {
         // TODO(component-model): Implement when feature is enabled
-        // let value = ComponentValue::String("test".to_string());
-        // assert!(format!("{:?}", value).contains("String"));
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_value_bool() {
         // TODO(component-model): Implement when feature is enabled
-        // let value = ComponentValue::Bool(true);
-        // assert!(format!("{:?}", value).contains("Bool"));
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_value_u64() {
         // TODO(component-model): Implement when feature is enabled
-        // let value = ComponentValue::U64(1000);
-        // assert!(format!("{:?}", value).contains("U64"));
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_value_f32() {
         // TODO(component-model): Implement when feature is enabled
-        // let value = ComponentValue::F32(std::f32::consts::PI);
-        // assert!(format!("{:?}", value).contains("F32"));
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_value_clone() {
         // TODO(component-model): Implement when feature is enabled
-        // let value1 = ComponentValue::U32(100);
-        // let value2 = value1.clone();
-        // assert!(format!("{:?}", value1) == format!("{:?}", value2));
+        eprintln!("skipped: component-model implementation pending");
     }
-
-    // ============================================================================
-    // ComponentState Tests
-    // ============================================================================
 
     #[test]
     fn test_component_state_initializing() {
         // TODO(component-model): Implement when feature is enabled
-        // let state = ComponentState::Initializing;
-        // assert!(format!("{:?}", state).contains("Initializing"));
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_state_ready() {
         // TODO(component-model): Implement when feature is enabled
-        // let state = ComponentState::Ready;
-        // assert!(format!("{:?}", state).contains("Ready"));
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_state_running() {
         // TODO(component-model): Implement when feature is enabled
-        // let state = ComponentState::Running;
-        // assert!(format!("{:?}", state).contains("Running"));
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_state_failed() {
         // TODO(component-model): Implement when feature is enabled
-        // let state = ComponentState::Failed {
-        //     error: "test error".to_string(),
-        // };
-        // assert!(format!("{:?}", state).contains("Failed"));
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_state_terminating() {
         // TODO(component-model): Implement when feature is enabled
-        // let state = ComponentState::Terminating;
-        // assert!(format!("{:?}", state).contains("Terminating"));
+        eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_state_clone() {
         // TODO(component-model): Implement when feature is enabled
-        // let state1 = ComponentState::Ready;
-        // let state2 = state1.clone();
-        // assert!(format!("{:?}", state1) == format!("{:?}", state2));
+        eprintln!("skipped: component-model implementation pending");
     }
 }
 

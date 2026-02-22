@@ -1,4 +1,8 @@
 //! Server execution lifecycle: executor creation, server startup, shutdown
+//!
+//! ManualJsonRpcServer (deprecated) used here; see manual_jsonrpc/MIGRATION.md.
+
+#![allow(deprecated)]
 
 use std::path::PathBuf;
 use tracing::{error, info, warn};

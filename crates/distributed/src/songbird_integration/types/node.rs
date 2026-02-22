@@ -15,3 +15,41 @@ pub struct NodeCapabilities {
     pub specialized_hardware: Vec<String>,
     pub software_capabilities: Vec<String>,
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_node_capabilities_construction() {
+        let caps = NodeCapabilities {
+            cpu_cores: 8.0,
+            memory_gb: 32.0,
+            storage_gb: 500.0,
+            gpu_count: 2,
+            specialized_hardware: vec!["nvidia".to_string()],
+            software_capabilities: vec!["cuda".to_string()],
+        };
+        assert_eq!(caps.cpu_cores, 8.0);
+        assert_eq!(caps.gpu_count, 2);
+        assert_eq!(caps.specialized_hardware.len(), 1);
+    }
+
+    #[test]
+    fn test_node_capabilities_serialization_roundtrip() {
+        let caps = NodeCapabilities {
+            cpu_cores: 4.0,
+            memory_gb: 16.0,
+            storage_gb: 256.0,
+            gpu_count: 1,
+            specialized_hardware: vec![],
+            software_capabilities: vec!["wasm".to_string()],
+        };
+        let json = serde_json::to_string(&caps).unwrap();
+        let parsed: NodeCapabilities = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.cpu_cores, caps.cpu_cores);
+        assert_eq!(parsed.software_capabilities, caps.software_capabilities);
+    }
+}

@@ -9,8 +9,10 @@
 
 pub mod compute;
 pub mod display;
+pub mod ecosystem;
 pub mod jsonrpc;
 pub mod network;
+pub mod primal_identity;
 pub mod resources;
 pub mod timeouts;
 pub mod versions;
@@ -20,6 +22,7 @@ pub use compute::*;
 pub use display::*;
 pub use jsonrpc::*;
 pub use network::*;
+pub use primal_identity::PRIMAL_NAME;
 pub use resources::*;
 pub use timeouts::*;
 pub use versions::*;

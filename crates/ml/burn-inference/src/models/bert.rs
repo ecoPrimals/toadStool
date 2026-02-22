@@ -1,8 +1,25 @@
 //! BERT model implementation
 //!
 //! Type-safe API surface for BERT transformer inference.
-//! Inference methods return `NotImplemented` until a model backend is integrated.
+//!
+//! # Requirements
+//!
+//! BERT inference requires:
+//! - **Model weights**: Load from HuggingFace safetensors (e.g. `bert-base-uncased`) or local path
+//! - **Burn backend**: Enable `burn` with wgpu or ndarray backend in Cargo.toml
+//! - **Tokenizers** (optional): Enable `nlp` feature for HuggingFace tokenizer integration
+//!
+//! # Example
+//!
+//! ```ignore
+//! // Load weights: Bert::from_pretrained("bert-base-uncased") or
+//! // BertModel::from_safetensors(path) once backend is integrated
+//! let bert = Bert::from_pretrained("bert-base-uncased")?;
+//! let logits = bert.forward(&token_ids)?;
+//! ```
 
+use crate::Error::ModelBackendRequired;
+use crate::Error::ModelNotLoaded;
 use crate::Result;
 
 /// BERT configuration
@@ -47,10 +64,19 @@ impl Bert {
         &self.config
     }
 
-    /// Load from HuggingFace Hub
+    /// Load from HuggingFace Hub or local safetensors.
+    ///
+    /// **Requires**: Model weights. Download from HuggingFace Hub or use local path.
+    /// Once the burn backend is integrated, load with `BertModel::from_safetensors(path)`.
+    #[cfg_attr(
+        feature = "nlp",
+        doc = "The `nlp` feature enables HuggingFace tokenizer support."
+    )]
     pub fn from_pretrained(model_id: &str) -> Result<Self> {
-        Err(crate::Error::NotImplemented(format!(
-            "BERT model loading not yet integrated (requested: {model_id})"
+        Err(ModelNotLoaded(format!(
+            "BERT model weights required. Requested: {model_id}. \
+             Load with BertModel::from_safetensors(path) once burn backend is integrated, \
+             or download weights from HuggingFace Hub."
         )))
     }
 
@@ -60,9 +86,14 @@ impl Bert {
     }
 
     /// Run inference
+    ///
+    /// **Requires**: Model weights loaded via `Bert::from_pretrained` or
+    /// `BertModel::from_safetensors(path)`, plus burn backend (wgpu/ndarray).
     pub fn forward(&self, _input_ids: &[u32]) -> Result<Vec<f32>> {
-        Err(crate::Error::NotImplemented(
-            "BERT inference requires a model backend (burn/onnx/wgsl)".into(),
+        Err(ModelBackendRequired(
+            "BERT inference requires model weights. Load with BertModel::from_safetensors(path). \
+             Ensure burn backend (wgpu/ndarray) is enabled in Cargo.toml."
+                .into(),
         ))
     }
 }
@@ -89,18 +120,22 @@ mod tests {
     }
 
     #[test]
-    fn test_bert_from_pretrained_not_implemented() {
+    fn test_bert_from_pretrained_requires_weights() {
         let result = Bert::from_pretrained("bert-base-uncased");
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
-        assert!(err.contains("not yet integrated"));
+        assert!(err.contains("model weights required"));
+        assert!(err.contains("from_safetensors"));
     }
 
     #[test]
-    fn test_bert_forward_not_implemented() {
+    fn test_bert_forward_requires_backend() {
         let bert = Bert::new(BertConfig::default());
         let result = bert.forward(&[101, 7592, 1010, 2088, 102]);
         assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("model weights"));
+        assert!(err.contains("from_safetensors"));
     }
 
     #[test]

@@ -3,6 +3,7 @@
 //! High-performance binary RPC server for primal-to-primal communication.
 //! Follows Songbird's architecture pattern.
 
+use futures::StreamExt;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -168,7 +169,12 @@ impl ToadStoolTarpcServer {
                 let transport = tokio_serde::Framed::new(framed, Json::<_, _>::default());
 
                 let channel = BaseChannel::with_defaults(transport);
-                channel.execute(server.serve()).await;
+                channel
+                    .execute(server.serve())
+                    .for_each(|rpc| async {
+                        tokio::spawn(rpc);
+                    })
+                    .await;
             });
         }
     }
@@ -223,7 +229,12 @@ impl ToadStoolTarpcServer {
                 let transport = tokio_serde::Framed::new(framed, Json::<_, _>::default());
 
                 let channel = BaseChannel::with_defaults(transport);
-                channel.execute(server.serve()).await;
+                channel
+                    .execute(server.serve())
+                    .for_each(|rpc| async {
+                        tokio::spawn(rpc);
+                    })
+                    .await;
             });
         }
     }
@@ -242,8 +253,6 @@ impl Clone for ToadStoolTarpcServer {
     }
 }
 
-/// Implement the tarpc service trait
-#[tarpc::server]
 impl ToadStoolComputeRpc for ToadStoolTarpcServer {
     async fn submit_workload(
         self,

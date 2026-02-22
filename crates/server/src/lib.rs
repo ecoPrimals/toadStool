@@ -120,7 +120,13 @@ pub mod graph_types; // Main graph types (ExecutionGraph, builders)
 
 pub mod handlers;
 
-// ✅ PURE RUST: Manual JSON-RPC 2.0 over Unix sockets (no jsonrpsee!)
+// DEPRECATED: Manual JSON-RPC 2.0 — phased out in favor of pure_jsonrpc.
+// See pure_jsonrpc and MIGRATION_JSONRPC.md for migration path.
+#[deprecated(
+    since = "2.2.0",
+    note = "Use pure_jsonrpc for new code. Manual module lacks SemanticMethodRegistry and proper error types. Full migration requires pure_jsonrpc to gain Unix/TCP serving and handlers for resources/gpu/ollama/gate. See crates/server/src/manual_jsonrpc/MIGRATION.md"
+)]
+#[allow(deprecated)]
 pub mod manual_jsonrpc;
 
 // ✅ PURE RUST: Ollama integration client (ollama.list_models/inference/load/unload)
@@ -130,7 +136,8 @@ pub mod ollama;
 #[cfg(test)]
 pub mod mocks;
 
-// ✅ PURE RUST: BearDog's pattern for JSON-RPC 2.0 (no jsonrpsee!)
+// ✅ CANONICAL: BearDog's pattern for JSON-RPC 2.0 (SemanticMethodRegistry, proper error types)
+// Consolidation target — manual_jsonrpc is deprecated in favor of this module.
 pub mod pure_jsonrpc;
 pub mod resource_estimator;
 pub mod resource_optimizer;
@@ -152,7 +159,12 @@ pub use rpc_types::*;
 // Re-export coordinator executor
 pub use coordinator_executor::CoordinatorExecutor;
 
-// Re-export manual JSON-RPC server
+// Re-export manual JSON-RPC server (DEPRECATED — use pure_jsonrpc::JsonRpcHandler)
+#[deprecated(
+    since = "2.2.0",
+    note = "Use pure_jsonrpc::JsonRpcHandler. Manual module phased out. See manual_jsonrpc/MIGRATION.md"
+)]
+#[allow(deprecated)]
 pub use manual_jsonrpc::ManualJsonRpcServer;
 
 // Re-export collaborative intelligence types

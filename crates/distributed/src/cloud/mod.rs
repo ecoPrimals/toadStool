@@ -16,14 +16,19 @@ mod scheduling;
 pub mod types;
 
 // Public re-exports (main API)
-pub use compliance::CloudComplianceEnforcer;
+pub use compliance::{
+    CheckResult, CloudComplianceEnforcer, ComplianceCheck, ComplianceError, ComplianceReport,
+    SecurityTier,
+};
 pub use core::{CloudProvider, CloudProviderInterface, UniversalCloudOrchestrator};
-pub use cost::{CloudCostModel, CloudCostOptimizer};
+pub use cost::{
+    CloudCostModel, CloudCostOptimizer, CostError, CostEstimate, CostLineItem, PricingTier,
+};
 pub use credentials::{
     AWSCredentials, AuthMethod, AzureCredentials, EdgeMeshConfig, EncryptionLevel, GCPCredentials,
     KubernetesConfig,
 };
-pub use federation::CloudFederationManager;
+pub use federation::{CloudFederationManager, FederationError, FederationMember};
 pub use load_balancing::MultiCloudLoadBalancer;
 pub use scheduling::{HybridCloudScheduler, HybridSchedulingStrategy};
 pub use types::CloudJobHandle;

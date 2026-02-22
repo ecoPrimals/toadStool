@@ -78,7 +78,6 @@ pub enum TrustLevel {
 ///
 /// **Zero-Copy**: Uses `Arc<str>` for all string fields.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct FederationRequest {
     pub peer_id: Uuid,
     #[serde(serialize_with = "serialize_arc_str")]
@@ -225,7 +224,6 @@ mod tests {
 /// **Zero-Copy**: Uses `Arc<str>` for all string fields.
 /// Clone operations are cheap (just rc increments).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct FederationResponse {
     pub peer_id: Uuid,
     #[serde(serialize_with = "serialize_arc_str")]

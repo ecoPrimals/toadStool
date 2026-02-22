@@ -1,7 +1,7 @@
-# ToadStool/BarraCUDA — Next Steps
+# ToadStool/BarraCUDA -- Next Steps
 
-**Updated**: February 21, 2026 — Session 31c
-**Status**: All deep debt resolved ✅ | 10 deps removed ✅ | 10 files refactored ✅ | 31 GpuExecutor MathOps ✅ | 16,100+ tests | ~65% coverage
+**Updated**: February 22, 2026 -- Sessions 32-38
+**Status**: Production-grade | 0 clippy warnings | 589+ WGSL shaders | 3,847+ non-GPU tests + barracuda targeted | Coverage: common 87%, config 89%, core 79%, server 77%
 
 ---
 
@@ -107,7 +107,7 @@ Prerequisites:
 - [ ] YOLO (object detection)
 
 ### Test Coverage (target 90%)
-- [ ] Current: ~65% line (non-GPU crates) — 172 new tests in S25, refactoring + debt fixes in S28-29
+- [ ] Current: common 87%, config 89%, core 79%, server 77%, distributed 55% -- 3,847+ non-GPU tests + barracuda targeted
 - [ ] Gap: async networking paths, GPU-gated paths
 - [ ] Remaining pending test suites: `e2e`, `fhe`, `comprehensive` (require future APIs)
 

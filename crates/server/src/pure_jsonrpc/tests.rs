@@ -3,6 +3,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use std::borrow::Cow;
+
 use super::handler::JsonRpcHandler;
 use super::types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, JsonWorkloadSubmission};
 use crate::rpc_types::{ResourceRequirements, WorkloadPriority};
@@ -12,10 +14,10 @@ fn test_handler() -> JsonRpcHandler {
     JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
 }
 
-fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest {
+fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest<'static> {
     JsonRpcRequest {
-        jsonrpc: "2.0".to_string(),
-        method: method.to_string(),
+        jsonrpc: Cow::Borrowed("2.0"),
+        method: Cow::Owned(method.to_string()),
         params,
         id: Some(serde_json::json!(id)),
     }
@@ -29,9 +31,9 @@ fn test_parse_request() {
         "id": 1
     }"#;
 
-    let req: JsonRpcRequest = serde_json::from_str(json).expect("Parse failed");
-    assert_eq!(req.jsonrpc, "2.0");
-    assert_eq!(req.method, "toadstool.health");
+    let req: JsonRpcRequest<'_> = serde_json::from_str(json).expect("Parse failed");
+    assert_eq!(req.jsonrpc.as_ref(), "2.0");
+    assert_eq!(req.method.as_ref(), "toadstool.health");
 }
 
 #[test]
@@ -105,8 +107,8 @@ async fn test_handle_method_dispatch_unknown() {
 async fn test_invalid_jsonrpc_version() {
     let handler = test_handler();
     let request = JsonRpcRequest {
-        jsonrpc: "3.0".to_string(),
-        method: "toadstool.health".to_string(),
+        jsonrpc: Cow::Owned("3.0".to_string()),
+        method: Cow::Borrowed("toadstool.health"),
         params: None,
         id: Some(serde_json::json!(1)),
     };
@@ -377,8 +379,8 @@ async fn test_health_error_count_incremented() {
 async fn test_request_id_null_when_missing() {
     let handler = test_handler();
     let request = JsonRpcRequest {
-        jsonrpc: "2.0".to_string(),
-        method: "toadstool.health".to_string(),
+        jsonrpc: Cow::Borrowed("2.0"),
+        method: Cow::Borrowed("toadstool.health"),
         params: None,
         id: None,
     };
@@ -463,8 +465,54 @@ fn test_jsonrpc_response_serialization() {
 #[test]
 fn test_jsonrpc_request_with_params_array() {
     let json = r#"{"jsonrpc":"2.0","method":"foo","params":[1,2],"id":1}"#;
-    let req: JsonRpcRequest = serde_json::from_str(json).expect("Parse failed");
+    let req: JsonRpcRequest<'_> = serde_json::from_str(json).expect("Parse failed");
     assert!(req.params.is_some());
+}
+
+#[test]
+fn test_jsonrpc_request_with_params_object() {
+    let json = r#"{"jsonrpc":"2.0","method":"foo","params":{"x":1},"id":"req-1"}"#;
+    let req: JsonRpcRequest<'_> = serde_json::from_str(json).expect("Parse failed");
+    assert!(req.params.is_some());
+    assert_eq!(req.method.as_ref(), "foo");
+}
+
+#[test]
+fn test_jsonrpc_request_default_params() {
+    let json = r#"{"jsonrpc":"2.0","method":"bar","id":null}"#;
+    let req: JsonRpcRequest<'_> = serde_json::from_str(json).expect("Parse failed");
+    assert!(req.params.is_none());
+}
+
+#[test]
+fn test_jsonrpc_error_serialization_roundtrip() {
+    let err = JsonRpcError::invalid_params("missing field");
+    let json = serde_json::to_string(&err).unwrap();
+    let restored: JsonRpcError = serde_json::from_str(&json).unwrap();
+    assert_eq!(err.code, restored.code);
+    assert_eq!(err.message, restored.message);
+}
+
+#[test]
+fn test_json_workload_submission_serialization_roundtrip() {
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    let sub = JsonWorkloadSubmission {
+        workload_id: "w-1".to_string(),
+        workload_type: "cpu_compute".to_string(),
+        data: STANDARD.encode([1u8, 2, 3]),
+        metadata: [("k".to_string(), "v".to_string())].into(),
+        priority: WorkloadPriority::High,
+        requirements: ResourceRequirements {
+            cpu_cores: Some(4),
+            memory_bytes: Some(1024),
+            gpu_memory_bytes: None,
+            timeout_secs: Some(60),
+        },
+    };
+    let json = serde_json::to_string(&sub).unwrap();
+    let restored: JsonWorkloadSubmission = serde_json::from_str(&json).unwrap();
+    assert_eq!(sub.workload_id, restored.workload_id);
+    assert_eq!(sub.data, restored.data);
 }
 
 /// Semantic method names registered in SemanticMethodRegistry must route correctly.

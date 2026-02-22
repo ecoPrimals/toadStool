@@ -56,7 +56,7 @@ impl JsonRpcHandler {
     /// Handle a JSON-RPC request (main entry point).
     ///
     /// Pattern: parse → validate → resolve → route → execute → respond
-    pub async fn handle_request(&self, request: &JsonRpcRequest) -> JsonRpcResponse {
+    pub async fn handle_request(&self, request: &JsonRpcRequest<'_>) -> JsonRpcResponse {
         if request.jsonrpc != JSONRPC_VERSION {
             self.error_count.fetch_add(1, Ordering::Relaxed);
             return JsonRpcResponse {
@@ -69,10 +69,10 @@ impl JsonRpcHandler {
             };
         }
 
-        info!("JSON-RPC request: {}", request.method);
+        info!("JSON-RPC request: {}", request.method.as_ref());
 
         match self
-            .handle_method(&request.method, request.params.as_ref())
+            .handle_method(request.method.as_ref(), request.params.as_ref())
             .await
         {
             Ok(result) => JsonRpcResponse {
@@ -83,7 +83,11 @@ impl JsonRpcHandler {
             },
             Err(err) => {
                 self.error_count.fetch_add(1, Ordering::Relaxed);
-                error!("JSON-RPC error for {}: {}", request.method, err.message);
+                error!(
+                    "JSON-RPC error for {}: {}",
+                    request.method.as_ref(),
+                    err.message
+                );
                 JsonRpcResponse {
                     jsonrpc: Cow::Borrowed(JSONRPC_VERSION),
                     result: None,

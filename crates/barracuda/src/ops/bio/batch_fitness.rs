@@ -101,7 +101,11 @@ impl BatchFitnessGpu {
             cache: None,
         });
 
-        Self { pipeline, bgl, device }
+        Self {
+            pipeline,
+            bgl,
+            device,
+        }
     }
 
     /// Evaluate linear fitness for `pop_size` individuals, each with `genome_len` traits.
@@ -120,7 +124,10 @@ impl BatchFitnessGpu {
         let d = self.device.device();
         let q = self.device.queue();
 
-        let params = FitnessParams { pop_size, genome_len };
+        let params = FitnessParams {
+            pop_size,
+            genome_len,
+        };
         let params_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("BatchFitness Params"),
             contents: bytemuck::bytes_of(&params),
@@ -131,10 +138,22 @@ impl BatchFitnessGpu {
             label: Some("BatchFitness BG"),
             layout: &self.bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: population_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: weights_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: fitness_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: params_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: population_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: weights_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: fitness_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buf.as_entire_binding(),
+                },
             ],
         });
 

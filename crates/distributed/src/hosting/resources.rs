@@ -217,31 +217,23 @@ impl HostingResourceManager {
             return Ok(());
         }
 
-        // Find and remove the allocation
-        let allocation = self.active_allocations.remove(allocation_id);
-
-        match allocation {
-            Some(resources) => {
-                // Return resources to the pool
-                for (resource, amount) in &resources {
-                    if let Some(current) = self.allocated_resources.get_mut(resource) {
-                        *current = current.saturating_sub(*amount);
-                    }
+        if let Some(resources) = self.active_allocations.remove(allocation_id) {
+            for (resource, amount) in &resources {
+                if let Some(current) = self.allocated_resources.get_mut(resource) {
+                    *current = current.saturating_sub(*amount);
                 }
-                debug!(
-                    "Deallocated resources for {}: {:?}",
-                    allocation_id, resources
-                );
-                Ok(())
             }
-            None => {
-                warn!(
-                    "Attempted to deallocate unknown allocation: {}",
-                    allocation_id
-                );
-                Ok(()) // Don't fail, just warn
-            }
+            debug!(
+                "Deallocated resources for {}: {:?}",
+                allocation_id, resources
+            );
+        } else {
+            warn!(
+                "Attempted to deallocate unknown allocation: {}",
+                allocation_id
+            );
         }
+        Ok(())
     }
 
     /// Get current resource utilization as a percentage (0.0-1.0)
@@ -316,5 +308,153 @@ mod tests {
         requirements.insert("cpu_cores".to_string(), 10); // More than available
 
         assert!(!manager.can_allocate(&requirements));
+    }
+
+    #[test]
+    fn test_reservation_buffer_enforced() {
+        let config = HostingResourceConfig {
+            enabled: true,
+            limits: HashMap::new(),
+            quotas: HashMap::new(),
+            reservation_buffer: 0.2, // 20% buffer
+        };
+        let mut manager = HostingResourceManager::new(config);
+        manager.total_resources.insert("cpu_cores".to_string(), 10);
+        manager
+            .allocated_resources
+            .insert("cpu_cores".to_string(), 0);
+
+        // 10 cores with 20% buffer = 8 effective; requesting 9 should fail
+        let mut req = HashMap::new();
+        req.insert("cpu_cores".to_string(), 9);
+        assert!(!manager.can_allocate(&req));
+
+        // Requesting 8 should succeed
+        req.insert("cpu_cores".to_string(), 8);
+        assert!(manager.can_allocate(&req));
+    }
+
+    #[test]
+    fn test_limits_enforced() {
+        let mut limits = HashMap::new();
+        limits.insert("gpu_vram".to_string(), 4);
+        let config = HostingResourceConfig {
+            enabled: true,
+            limits,
+            quotas: HashMap::new(),
+            reservation_buffer: 0.0,
+        };
+        let mut manager = HostingResourceManager::new(config);
+        manager.total_resources.insert("gpu_vram".to_string(), 100);
+        manager
+            .allocated_resources
+            .insert("gpu_vram".to_string(), 0);
+
+        // Requesting 5 should fail (limit is 4)
+        let mut req = HashMap::new();
+        req.insert("gpu_vram".to_string(), 5);
+        assert!(!manager.can_allocate(&req));
+
+        // Requesting 4 should succeed
+        req.insert("gpu_vram".to_string(), 4);
+        assert!(manager.can_allocate(&req));
+    }
+
+    #[test]
+    fn test_disabled_manager_allows_all() {
+        let config = HostingResourceConfig {
+            enabled: false,
+            ..Default::default()
+        };
+        let manager = HostingResourceManager::new(config);
+
+        let mut req = HashMap::new();
+        req.insert("cpu_cores".to_string(), 1_000_000);
+        assert!(manager.can_allocate(&req));
+    }
+
+    #[test]
+    fn test_multiple_allocations_accumulate() {
+        let mut manager = HostingResourceManager::new(HostingResourceConfig::default());
+        manager.total_resources.insert("cpu_cores".to_string(), 8);
+        manager
+            .allocated_resources
+            .insert("cpu_cores".to_string(), 0);
+
+        let mut req = HashMap::new();
+        req.insert("cpu_cores".to_string(), 2);
+
+        assert!(manager.allocate_resources("j1", &req).is_ok());
+        assert!(manager.allocate_resources("j2", &req).is_ok());
+        assert!(manager.allocate_resources("j3", &req).is_ok());
+        assert_eq!(manager.available("cpu_cores"), 2);
+
+        // Fourth allocation should fail (2 remaining, buffer consumes some)
+        req.insert("cpu_cores".to_string(), 3);
+        assert!(!manager.can_allocate(&req));
+    }
+
+    #[test]
+    fn test_deallocate_unknown_is_ok() {
+        let mut manager = HostingResourceManager::new(HostingResourceConfig::default());
+        // Should not error on unknown allocation
+        assert!(manager.deallocate_resources("nonexistent").is_ok());
+    }
+
+    #[test]
+    fn test_utilization_empty() {
+        let manager = HostingResourceManager::new(HostingResourceConfig::default());
+        assert_eq!(manager.utilization("anything"), 0.0);
+    }
+
+    #[test]
+    fn test_available_unknown_resource() {
+        let manager = HostingResourceManager::new(HostingResourceConfig::default());
+        assert_eq!(manager.available("unknown_resource"), 0);
+    }
+
+    #[test]
+    fn test_from_system_has_cpu_and_memory() {
+        let manager = HostingResourceManager::from_system(HostingResourceConfig::default());
+        assert!(
+            manager
+                .total_resources
+                .get("cpu_cores")
+                .copied()
+                .unwrap_or(0)
+                > 0
+        );
+        assert!(
+            manager
+                .total_resources
+                .get("memory_bytes")
+                .copied()
+                .unwrap_or(0)
+                > 0
+        );
+    }
+
+    #[test]
+    fn test_unknown_resource_type_allows_allocation() {
+        let mut manager = HostingResourceManager::new(HostingResourceConfig::default());
+        manager.total_resources.insert("cpu_cores".to_string(), 4);
+        manager
+            .allocated_resources
+            .insert("cpu_cores".to_string(), 0);
+
+        // Request an unknown resource type alongside a known one
+        let mut req = HashMap::new();
+        req.insert("cpu_cores".to_string(), 2);
+        req.insert("fpga_units".to_string(), 10); // No total declared
+        assert!(manager.can_allocate(&req));
+    }
+
+    #[test]
+    fn test_config_serialization_roundtrip() {
+        let config = HostingResourceConfig::default();
+        let json = serde_json::to_string(&config).expect("serialize");
+        let roundtrip: HostingResourceConfig = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(roundtrip.enabled, config.enabled);
+        assert!((roundtrip.reservation_buffer - config.reservation_buffer).abs() < f64::EPSILON);
     }
 }

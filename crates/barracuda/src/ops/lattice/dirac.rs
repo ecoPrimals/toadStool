@@ -123,15 +123,12 @@ impl StaggeredDirac {
             mass_re: mass,
             hop_sign,
         };
-        let params = self
-            .device
-            .device
-            .create_buffer(&wgpu::BufferDescriptor {
-                label: Some("StaggeredDirac:params"),
-                size: std::mem::size_of::<DiracParams>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+        let params = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("StaggeredDirac:params"),
+            size: std::mem::size_of::<DiracParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         self.device
             .queue
             .write_buffer(&params, 0, bytemuck::bytes_of(&params_data));

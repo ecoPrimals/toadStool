@@ -98,6 +98,7 @@ pub mod workload; // Workload analysis, device selection, auto-batching
 
 pub mod auto_tensor;
 pub mod benchmarks;
+pub mod cpu_conv_pool;
 pub mod cpu_executor;
 pub mod dispatch; // Auto-dispatch for CPU/GPU routing
 pub mod gpu_executor;

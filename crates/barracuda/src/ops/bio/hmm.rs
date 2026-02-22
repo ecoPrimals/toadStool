@@ -103,15 +103,12 @@ impl HmmBatchForwardF64 {
             n_steps,
             n_seqs,
         };
-        let params_buf = self
-            .device
-            .device
-            .create_buffer(&wgpu::BufferDescriptor {
-                label: Some("HmmForward:params"),
-                size: std::mem::size_of::<HmmParams>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+        let params_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("HmmForward:params"),
+            size: std::mem::size_of::<HmmParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         self.device
             .queue
             .write_buffer(&params_buf, 0, bytemuck::bytes_of(&params));

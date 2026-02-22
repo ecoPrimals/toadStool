@@ -6,6 +6,8 @@
 // Module declarations
 pub mod types;
 
+pub mod byob_server;
+
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -47,12 +49,11 @@ pub use types::{
 
 /// Active container handle
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 struct ContainerHandle {
     container_id: String,
-    image: String,
-    start_time: Instant,
-    config: ContainerRuntimeConfig,
+    _image: String,
+    _start_time: Instant,
+    _config: ContainerRuntimeConfig,
 }
 
 /// Container runtime engine implementation
@@ -306,27 +307,6 @@ impl ContainerRuntimeEngine {
         }
 
         Ok(())
-    }
-
-    #[allow(dead_code)]
-    #[allow(clippy::too_many_arguments)]
-    fn create_container_config(
-        &self,
-        image: &str,
-        _env_vars: &HashMap<String, String>,
-        _volumes: &[VolumeMount],
-        _resources: &ContainerResourceLimits,
-        _security: &ContainerSecurityConfig,
-        _args: Option<&Vec<String>>,
-        _ports: &[PortMapping],
-    ) -> ToadStoolResult<Config<String>> {
-        // Simplified container configuration
-        let config = Config {
-            image: Some(image.to_string()),
-            ..Default::default()
-        };
-
-        Ok(config)
     }
 }
 

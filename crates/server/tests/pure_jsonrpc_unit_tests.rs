@@ -3,6 +3,7 @@
 //! These tests cover request parsing, method dispatch, and error
 //! construction without requiring a live server.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool_server::pure_jsonrpc::*;
@@ -14,10 +15,10 @@ fn test_handler() -> JsonRpcHandler {
     JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
 }
 
-fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest {
+fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest<'static> {
     JsonRpcRequest {
-        jsonrpc: "2.0".to_string(),
-        method: method.to_string(),
+        jsonrpc: Cow::Borrowed("2.0"),
+        method: Cow::Owned(method.to_string()),
         params,
         id: Some(serde_json::json!(id)),
     }
@@ -31,9 +32,9 @@ fn test_parse_request() {
         "id": 1
     }"#;
 
-    let req: JsonRpcRequest = serde_json::from_str(json).expect("Parse failed");
-    assert_eq!(req.jsonrpc, "2.0");
-    assert_eq!(req.method, "toadstool.health");
+    let req: JsonRpcRequest<'_> = serde_json::from_str(json).expect("Parse failed");
+    assert_eq!(req.jsonrpc.as_ref(), "2.0");
+    assert_eq!(req.method.as_ref(), "toadstool.health");
 }
 
 #[test]
@@ -107,8 +108,8 @@ async fn test_handle_method_dispatch_unknown() {
 async fn test_invalid_jsonrpc_version() {
     let handler = test_handler();
     let request = JsonRpcRequest {
-        jsonrpc: "3.0".to_string(),
-        method: "toadstool.health".to_string(),
+        jsonrpc: Cow::Owned("3.0".to_string()),
+        method: Cow::Borrowed("toadstool.health"),
         params: None,
         id: Some(serde_json::json!(1)),
     };
@@ -379,8 +380,8 @@ async fn test_health_error_count_incremented() {
 async fn test_request_id_null_when_missing() {
     let handler = test_handler();
     let request = JsonRpcRequest {
-        jsonrpc: "2.0".to_string(),
-        method: "toadstool.health".to_string(),
+        jsonrpc: Cow::Borrowed("2.0"),
+        method: Cow::Borrowed("toadstool.health"),
         params: None,
         id: None,
     };
@@ -465,6 +466,6 @@ fn test_jsonrpc_response_serialization() {
 #[test]
 fn test_jsonrpc_request_with_params_array() {
     let json = r#"{"jsonrpc":"2.0","method":"foo","params":[1,2],"id":1}"#;
-    let req: JsonRpcRequest = serde_json::from_str(json).expect("Parse failed");
+    let req: JsonRpcRequest<'_> = serde_json::from_str(json).expect("Parse failed");
     assert!(req.params.is_some());
 }

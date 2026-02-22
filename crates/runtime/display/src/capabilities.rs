@@ -9,10 +9,10 @@
 //! - ✅ Capability-based (advertises via files)
 //! - ✅ Agnostic (no primal-specific logic)
 
-#[allow(unused_imports)]
 use crate::{DisplayError, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use toadstool_common::constants::PRIMAL_NAME;
 
 /// Display backend capabilities
 ///
@@ -142,7 +142,7 @@ impl DisplayCapabilities {
         tracing::info!("🔍 Discovering display backend capabilities (self-knowledge)...");
 
         // Generate unique primal ID
-        let primal_id = format!("toadstool-display-{}", uuid::Uuid::new_v4());
+        let primal_id = format!("{}-display-{}", PRIMAL_NAME, uuid::Uuid::new_v4());
 
         // Discover DRM devices (displays)
         let drm_devices = DrmDevice::discover_all().map_err(|e| {
@@ -204,7 +204,7 @@ impl DisplayCapabilities {
 
         Ok(Self {
             primal_id,
-            primal_type: "toadstool".to_string(),
+            primal_type: PRIMAL_NAME.to_string(),
             socket_path,
             max_windows: 8, // Reasonable default
             supported_formats: vec![
@@ -464,36 +464,47 @@ mod tests {
 
     #[test]
     fn test_socket_path_uses_xdg() {
-        // Set XDG_RUNTIME_DIR and verify the function uses it
-        std::env::set_var("XDG_RUNTIME_DIR", "/tmp/test_xdg_runtime");
-        let path = DisplayCapabilities::get_socket_path().unwrap();
-        assert!(path.to_string_lossy().contains("toadstool"));
+        use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
+        let env = PathEnv {
+            xdg_runtime_dir: Some("/tmp/test_xdg_runtime".into()),
+            ..PathEnv::default()
+        };
+        let paths = PlatformPaths::new(&env);
+        let path = paths.toadstool_socket_dir().join("display.sock");
+        assert!(path.to_string_lossy().contains("test_xdg_runtime"));
+        assert!(path.to_string_lossy().contains("biomeos"));
         assert!(path.to_string_lossy().contains("display.sock"));
-        std::env::remove_var("XDG_RUNTIME_DIR");
     }
 
     #[test]
     fn test_discovery_dir_uses_xdg() {
-        std::env::set_var("XDG_RUNTIME_DIR", "/tmp/test_xdg_runtime");
-        let dir = DisplayCapabilities::get_discovery_dir().unwrap();
+        use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
+        let env = PathEnv {
+            xdg_runtime_dir: Some("/tmp/test_xdg_runtime".into()),
+            ..PathEnv::default()
+        };
+        let paths = PlatformPaths::new(&env);
+        let dir = paths.runtime_dir().join("ecoPrimals/discovery");
         assert!(dir.to_string_lossy().contains("ecoPrimals/discovery"));
-        std::env::remove_var("XDG_RUNTIME_DIR");
     }
 
     #[test]
     fn test_discovery_dir_fallback() {
-        std::env::remove_var("XDG_RUNTIME_DIR");
-        let dir = DisplayCapabilities::get_discovery_dir().unwrap();
-        assert!(dir.to_string_lossy().contains("/tmp/ecoPrimals/discovery"));
+        use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
+        let env = PathEnv {
+            xdg_runtime_dir: None,
+            user: Some("testuser".into()),
+            ..PathEnv::default()
+        };
+        let paths = PlatformPaths::new(&env);
+        let dir = paths.runtime_dir().join("ecoPrimals/discovery");
+        assert!(dir.to_string_lossy().contains("ecoPrimals/discovery"));
     }
 
     #[tokio::test]
     async fn test_find_all_empty_dir_returns_empty() {
-        // Point to a non-existent dir to get an empty list
-        std::env::set_var("XDG_RUNTIME_DIR", "/tmp/nonexistent_dir_toadstool_test");
         let result = DisplayCapabilities::find_all().await.unwrap();
         assert!(result.is_empty());
-        std::env::remove_var("XDG_RUNTIME_DIR");
     }
 
     #[tokio::test]

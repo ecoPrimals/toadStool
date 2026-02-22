@@ -8,6 +8,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+use toadstool_common::constants::ecosystem::well_known;
+use toadstool_common::constants::primal_identity::{audience, PRIMAL_NAME};
+
 use crate::{ToadStoolError, ToadStoolResult};
 
 // Re-export types from auth module
@@ -46,11 +49,25 @@ pub trait AuthBackend: Send + Sync {
             ));
         }
 
-        // Check issuer
-        if token.issuer != "beardog" {
+        // Check issuer (crypto provider; well-known integration constant)
+        if token.issuer != well_known::BEARDOG {
             return Err(ToadStoolError::runtime(format!(
                 "Invalid token issuer: {}",
                 token.issuer
+            )));
+        }
+
+        // Accept tokens with audience matching self or platform
+        let acceptable = token
+            .audience
+            .iter()
+            .any(|a| a == PRIMAL_NAME || a == audience::PLATFORM_AUDIENCE);
+        if !acceptable {
+            return Err(ToadStoolError::runtime(format!(
+                "Token audience {:?} does not include {} or {}",
+                token.audience,
+                PRIMAL_NAME,
+                audience::PLATFORM_AUDIENCE
             )));
         }
 
@@ -109,7 +126,8 @@ impl BearDogBackend {
     #[allow(deprecated)]
     pub fn new(_endpoint: impl Into<String>) -> Self {
         // LEGACY: Uses primal name for backward compatibility
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("beardog");
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_service(well_known::BEARDOG);
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
         }
@@ -192,11 +210,10 @@ impl InMemoryAuthBackend {
             public_key: "test-public-key".to_string(),
             expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
             issued_at: chrono::Utc::now(),
-            issuer: "beardog".to_string(),
+            issuer: well_known::BEARDOG.to_string(),
             audience: vec![
-                "songbird".to_string(),
-                "nestgate".to_string(),
-                "squirrel".to_string(),
+                PRIMAL_NAME.to_string(),
+                audience::PLATFORM_AUDIENCE.to_string(),
             ],
             scope: vec!["cross-primal".to_string(), "propagation".to_string()],
             claims: HashMap::new(),
@@ -235,8 +252,11 @@ impl AuthBackend for InMemoryAuthBackend {
             public_key: "test-public-key".to_string(),
             expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
             issued_at: chrono::Utc::now(),
-            issuer: "beardog".to_string(),
-            audience: vec!["songbird".to_string(), "nestgate".to_string()],
+            issuer: well_known::BEARDOG.to_string(),
+            audience: vec![
+                PRIMAL_NAME.to_string(),
+                audience::PLATFORM_AUDIENCE.to_string(),
+            ],
             scope: vec!["cross-primal".to_string()],
             claims: HashMap::new(),
         };
@@ -268,7 +288,7 @@ mod tests {
         assert!(result.is_ok());
 
         let token = result.unwrap();
-        assert_eq!(token.issuer, "beardog");
+        assert_eq!(token.issuer, well_known::BEARDOG);
         assert!(token.expires_at > chrono::Utc::now());
     }
 
@@ -285,7 +305,7 @@ mod tests {
 
         let token = result.unwrap();
         assert!(token.id.contains("refreshed"));
-        assert_eq!(token.issuer, "beardog");
+        assert_eq!(token.issuer, well_known::BEARDOG);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -313,8 +333,8 @@ mod tests {
             public_key: "test-key".to_string(),
             expires_at: chrono::Utc::now() - chrono::Duration::hours(1), // Expired!
             issued_at: chrono::Utc::now() - chrono::Duration::hours(2),
-            issuer: "beardog".to_string(),
-            audience: vec!["test".to_string()],
+            issuer: well_known::BEARDOG.to_string(),
+            audience: vec![PRIMAL_NAME.to_string()],
             scope: vec!["test".to_string()],
             claims: HashMap::new(),
         };

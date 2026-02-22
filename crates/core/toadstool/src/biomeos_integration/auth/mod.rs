@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
+use toadstool_common::constants::primal_identity::{audience, PRIMAL_NAME};
 use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
 
 use super::auth_backend::AuthBackend;
@@ -59,7 +60,8 @@ impl Default for AuthManagerConfig {
 /// Resolve the token audience at runtime: env override → config defaults.
 ///
 /// Reads `TOADSTOOL_AUTH_AUDIENCE` (comma-separated primal names).
-/// Falls back to the canonical biomeOS peer set when the variable is absent.
+/// Falls back to self + platform audience when the variable is absent.
+/// ToadStool only knows itself; external peers are discovered at runtime.
 fn default_token_audience() -> Vec<String> {
     if let Ok(val) = std::env::var("TOADSTOOL_AUTH_AUDIENCE") {
         let list: Vec<String> = val
@@ -72,12 +74,10 @@ fn default_token_audience() -> Vec<String> {
             return list;
         }
     }
-    // Canonical peer set — override via TOADSTOOL_AUTH_AUDIENCE for isolated deployments
+    // Self-knowledge only: tokens valid for this primal and the platform
     vec![
-        "songbird".to_string(),
-        "nestgate".to_string(),
-        "squirrel".to_string(),
-        "biomeos".to_string(),
+        PRIMAL_NAME.to_string(),
+        audience::PLATFORM_AUDIENCE.to_string(),
     ]
 }
 
@@ -295,7 +295,7 @@ impl AuthenticationManager {
                 interval.tick().await;
                 tracing::debug!("Refreshing authentication token");
                 let refresh_request = TokenRefreshRequest {
-                    requesting_primal: "toadstool".to_string(),
+                    requesting_primal: PRIMAL_NAME.to_string(),
                     timestamp: chrono::Utc::now(),
                 };
                 match backend.refresh_token(&refresh_request).await {

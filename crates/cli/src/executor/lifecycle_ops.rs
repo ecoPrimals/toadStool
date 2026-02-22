@@ -10,13 +10,14 @@
 //! - `force_kill_process()` - Force kill a process
 //! - `purge_biome_data()` - Clean up biome data
 //! - `wait_for_interruption()` - Wait for termination signals
-//! - `get_actual_pid()` - Get real PID of a biome process
 //! - `send_signal_to_process()` - Send Unix signal to process
 //!
 //! **Deep Debt Principles**:
 //! - ✅ Real implementations (no mocks)
 //! - ✅ Modern async/await throughout
 //! - ✅ Proper error handling with context
+
+use toadstool_common::constants::ecosystem::well_known;
 
 use super::*;
 
@@ -61,7 +62,7 @@ impl BiomeExecutor {
         if manifest.security.beardog_required {
             info!("🔐 Security provider required - use UniversalServiceAdapter.discover(\"security\")");
 
-            if let Some(beardog_config) = manifest.primals.get("beardog") {
+            if let Some(beardog_config) = manifest.primals.get(well_known::BEARDOG) {
                 let primal_name = "security-provider";
                 info!("🐻 Starting security primal (discovered by capability)");
                 let process = self
@@ -83,7 +84,7 @@ impl BiomeExecutor {
 
         // Start other primals
         for (primal_name, primal_config) in &manifest.primals {
-            if primal_name == "beardog" {
+            if primal_name == well_known::BEARDOG {
                 continue; // Already started
             }
 
@@ -440,43 +441,6 @@ impl BiomeExecutor {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    async fn get_actual_pid(&self, biome_name: &str) -> Result<u32> {
-        // Get the actual PID from the running biome processes
-        let biomes = self.biomes.read().await;
-        if let Some(biome) = biomes.get(biome_name) {
-            // Return the first process PID if available
-            if let Some(process) = biome.process_handles.first() {
-                if let Some(pid) = process.pid {
-                    return Ok(pid);
-                }
-            }
-        }
-
-        // If no processes found, try to find by process name
-        #[cfg(target_os = "linux")]
-        {
-            if let Ok(output) = std::process::Command::new("pgrep")
-                .arg("-f")
-                .arg(biome_name)
-                .output()
-            {
-                if output.status.success() {
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    if let Some(pid_str) = stdout.lines().next() {
-                        if let Ok(pid) = pid_str.parse::<u32>() {
-                            return Ok(pid);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Fallback: return current process ID as last resort
-        Err(anyhow::anyhow!("Biome not found: {biome_name}"))
-    }
-
-    #[allow(dead_code)]
     fn send_signal_to_process(&self, pid: u32, signal: &str) -> Result<()> {
         use std::process::Command;
 

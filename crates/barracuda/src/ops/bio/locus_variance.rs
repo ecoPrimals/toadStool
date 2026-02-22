@@ -92,7 +92,11 @@ impl LocusVarianceGpu {
             cache: None,
         });
 
-        Self { pipeline, bgl, device }
+        Self {
+            pipeline,
+            bgl,
+            device,
+        }
     }
 
     /// Compute per-locus allele frequency variance across populations.
@@ -120,9 +124,18 @@ impl LocusVarianceGpu {
             label: Some("LocusVariance BG"),
             layout: &self.bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: allele_freqs_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: output_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: params_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: allele_freqs_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buf.as_entire_binding(),
+                },
             ],
         });
 

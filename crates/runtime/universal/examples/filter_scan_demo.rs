@@ -94,7 +94,7 @@ async fn main() -> Result<()> {
 
         // Verify correctness
         let expected_last = scan_input.iter().sum::<f32>();
-        let actual_last = *output.last().unwrap();
+        let actual_last = *output.last().expect("output is non-empty");
         println!(
             "Expected final sum: {:.1}, Actual: {:.1} ✅",
             expected_last, actual_last
@@ -129,7 +129,10 @@ async fn main() -> Result<()> {
     let filter_result = runtime.execute_optimal(filter_workload).await?;
     let filtered_data = match filter_result.data {
         WorkloadData::F32Vec(data) => data,
-        _ => panic!("Unexpected result type"),
+        other => anyhow::bail!(
+            "Filter operation returned unexpected result type: {:?}",
+            other
+        ),
     };
 
     println!(

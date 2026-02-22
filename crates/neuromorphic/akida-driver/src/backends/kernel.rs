@@ -102,18 +102,21 @@ impl NpuBackend for KernelBackend {
     }
 
     fn infer(&mut self, input: &[f32]) -> Result<Vec<f32>> {
-        // Safe byte conversion (zero-copy, no unsafe)
+        // Buffer sized for typical AKD1000 max (1024 floats), matching Vfio backend.
+        // device.read() returns bytes actually read; we use that to size the output.
+        const MAX_INFER_OUTPUT_BYTES: usize = 4096;
+
         let input_bytes = bytemuck::cast_slice::<f32, u8>(input);
 
-        // Write via DMA
         self.device.write(input_bytes)?;
 
-        // Read output via DMA
-        let mut output_bytes = vec![0u8; 1024]; // Placeholder size
-        self.device.read(&mut output_bytes)?;
+        let mut output_bytes = vec![0u8; MAX_INFER_OUTPUT_BYTES];
+        let bytes_read = self.device.read(&mut output_bytes)?;
 
-        // Safe conversion back to f32
-        let output: Vec<f32> = bytemuck::cast_slice::<u8, f32>(&output_bytes).to_vec();
+        // Use only bytes actually read; truncate to whole floats
+        let float_bytes = (bytes_read / std::mem::size_of::<f32>()) * std::mem::size_of::<f32>();
+        let output: Vec<f32> =
+            bytemuck::cast_slice::<u8, f32>(&output_bytes[..float_bytes]).to_vec();
 
         Ok(output)
     }

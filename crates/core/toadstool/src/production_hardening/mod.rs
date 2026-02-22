@@ -49,7 +49,7 @@ impl Default for ProductionHardeningConfig {
 /// Unified production hardening manager.
 ///
 /// Owns a circuit-breaker registry, a resource-leak detector, and a memory-pressure
-/// handler. Callers initialise once with [`initialize`], then use the delegation
+/// handler. Callers construct once with [`Self::new`], then use the delegation
 /// methods to interact with each sub-system.
 pub struct ProductionHardeningManager {
     config: ProductionHardeningConfig,
@@ -146,5 +146,82 @@ impl ProductionHardeningManager {
     /// Current memory pressure level.
     pub async fn get_memory_pressure_level(&self) -> MemoryPressureLevel {
         self.memory_handler.get_pressure_level().await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn test_production_hardening_config_default() {
+        let config = ProductionHardeningConfig::default();
+        assert!(config.enable_circuit_breakers);
+        assert!(config.enable_leak_detection);
+        assert!(config.enable_memory_pressure);
+        assert_eq!(config.leak_detection_threshold, Duration::from_secs(300));
+        assert_eq!(config.leak_cleanup_interval, Duration::from_secs(300));
+    }
+
+    #[test]
+    fn test_production_hardening_manager_new() {
+        let config = ProductionHardeningConfig::default();
+        let _manager = ProductionHardeningManager::new(config);
+    }
+
+    #[tokio::test]
+    async fn test_production_hardening_manager_get_circuit_breaker() {
+        let config = ProductionHardeningConfig::default();
+        let manager = ProductionHardeningManager::new(config);
+        let breaker = manager.get_circuit_breaker("test-service").await;
+        assert_eq!(breaker.get_state().await, CircuitState::Closed);
+    }
+
+    #[tokio::test]
+    async fn test_production_hardening_manager_find_circuit_breaker() {
+        let config = ProductionHardeningConfig::default();
+        let manager = ProductionHardeningManager::new(config);
+        assert!(manager.find_circuit_breaker("nonexistent").await.is_none());
+
+        manager.get_circuit_breaker("my-svc").await;
+        assert!(manager.find_circuit_breaker("my-svc").await.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_production_hardening_manager_track_and_remove_resource() {
+        let config = ProductionHardeningConfig::default();
+        let manager = ProductionHardeningManager::new(config);
+        let id = uuid::Uuid::new_v4();
+        let allocation = super::resource_leak::ResourceAllocation {
+            id,
+            resource_type: "test".to_string(),
+            allocated_at: std::time::Instant::now(),
+            requirements: crate::resources::ResourceRequirements::default(),
+            owner: "test".to_string(),
+            last_accessed: std::time::Instant::now(),
+        };
+        manager.track_resource(allocation).await;
+        manager.remove_resource(id).await;
+    }
+
+    #[tokio::test]
+    async fn test_production_hardening_manager_memory_pressure() {
+        let config = ProductionHardeningConfig::default();
+        let manager = ProductionHardeningManager::new(config);
+        manager.update_memory_usage(1000, 500).await;
+        let level = manager.get_memory_pressure_level().await;
+        assert_eq!(level, MemoryPressureLevel::Normal);
+    }
+
+    #[test]
+    fn test_production_hardening_config_serde() {
+        let config = ProductionHardeningConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let decoded: ProductionHardeningConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            config.enable_circuit_breakers,
+            decoded.enable_circuit_breakers
+        );
     }
 }

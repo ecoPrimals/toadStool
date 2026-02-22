@@ -12,7 +12,7 @@ categories = ["hardware-support", "development-tools"]
 
 [dependencies]
 anyhow = "1"
-thiserror = "1"
+thiserror = { workspace = true }
 tracing = "0.1"
 
 # For NPU backend selection

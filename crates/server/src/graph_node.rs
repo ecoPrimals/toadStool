@@ -9,6 +9,7 @@ use std::time::Duration;
 use toadstool::resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
 };
+use toadstool_common::constants::PRIMAL_NAME;
 
 /// A node in the execution graph representing a workload unit
 ///
@@ -52,7 +53,7 @@ pub struct GraphNode {
 }
 
 fn default_primal() -> String {
-    "toadstool".to_string()
+    PRIMAL_NAME.to_string()
 }
 
 fn serialize_duration<S>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
@@ -124,7 +125,7 @@ impl GraphNode {
     pub fn simple(id: impl Into<String>, operation: impl Into<String>) -> Self {
         Self {
             id: id.into(),
-            primal: "toadstool".to_string(),
+            primal: PRIMAL_NAME.to_string(),
             operation: operation.into(),
             requirements: NodeResourceRequirements::default(),
             duration: None,
@@ -155,7 +156,7 @@ impl GraphNodeBuilder {
     pub fn new(id: impl Into<String>, operation: impl Into<String>) -> Self {
         Self {
             id: id.into(),
-            primal: "toadstool".to_string(),
+            primal: PRIMAL_NAME.to_string(),
             operation: operation.into(),
             cpu_cores: None,
             memory_bytes: None,
@@ -327,5 +328,35 @@ mod tests {
         assert_eq!(node.primal, "toadstool");
         assert_eq!(node.operation, "cpu_compute");
         assert!(node.requirements.cpu.is_none());
+    }
+
+    #[test]
+    fn test_node_resource_requirements_default() {
+        let req = NodeResourceRequirements::default();
+        assert!(req.cpu.is_none());
+        assert!(req.memory.is_none());
+        assert!(req.storage.is_none());
+        assert!(req.gpu.is_none());
+        assert!(req.network.is_none());
+    }
+
+    #[test]
+    fn test_graph_node_serialization_roundtrip() {
+        let node = GraphNode::builder("serial_node", "gpu_compute")
+            .duration_secs(120)
+            .metadata("k", "v")
+            .build();
+        let json = serde_json::to_string(&node).unwrap();
+        let restored: GraphNode = serde_json::from_str(&json).unwrap();
+        assert_eq!(node.id, restored.id);
+        assert_eq!(node.operation, restored.operation);
+        assert_eq!(node.duration, restored.duration);
+        assert_eq!(node.metadata.get("k"), restored.metadata.get("k"));
+    }
+
+    #[test]
+    fn test_graph_node_builder_primal() {
+        let node = GraphNode::builder("n", "op").primal("squirrel").build();
+        assert_eq!(node.primal, "squirrel");
     }
 }

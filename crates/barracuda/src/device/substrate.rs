@@ -161,7 +161,10 @@ impl Substrate {
             *index += 1;
 
             let features = adapter.features();
-            let mut capabilities = vec![SubstrateCapability::F32Compute, SubstrateCapability::ShaderDispatch];
+            let mut capabilities = vec![
+                SubstrateCapability::F32Compute,
+                SubstrateCapability::ShaderDispatch,
+            ];
             if features.contains(wgpu::Features::SHADER_F64) {
                 capabilities.extend_from_slice(&[
                     SubstrateCapability::F64Compute,

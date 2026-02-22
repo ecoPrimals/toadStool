@@ -32,7 +32,7 @@
 //   2: params          [B × 17] f64 — parameter set per batch
 //   3: output_states   [B × 5]  f64 — final state after n_steps
 
-enable f64;
+// f64 is enabled by compile_shader_f64() preamble injection — do not use `enable f64;`
 
 const N_VARS:   u32 = 5u;
 const N_PARAMS: u32 = 17u;

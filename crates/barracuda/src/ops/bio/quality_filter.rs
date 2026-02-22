@@ -66,8 +66,13 @@ impl QualityFilterGpu {
         let module = device.compile_shader_f64(SHADER, Some("quality_filter"));
         let bgl = super::snp::make_bgl(&device, &[true, true, true, false]);
         let layout = super::snp::make_layout(&device, &bgl, "QualityFilter");
-        let pipeline = super::snp::make_pipeline(&device, &layout, &module, "quality_filter", "QualityFilter");
-        Ok(Self { device, pipeline, bgl })
+        let pipeline =
+            super::snp::make_pipeline(&device, &layout, &module, "quality_filter", "QualityFilter");
+        Ok(Self {
+            device,
+            pipeline,
+            bgl,
+        })
     }
 
     pub fn dispatch(
@@ -90,17 +95,20 @@ impl QualityFilterGpu {
             _pad: 0,
         };
         let pbuf = super::snp::upload_uniform(&self.device, &params);
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &self.bgl,
-            entries: &[
-                super::snp::bg_entry(0, &pbuf),
-                super::snp::bg_entry(1, qual_data),
-                super::snp::bg_entry(2, read_offsets),
-                super::snp::bg_entry(3, read_lengths),
-                super::snp::bg_entry(4, results),
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout: &self.bgl,
+                entries: &[
+                    super::snp::bg_entry(0, &pbuf),
+                    super::snp::bg_entry(1, qual_data),
+                    super::snp::bg_entry(2, read_offsets),
+                    super::snp::bg_entry(3, read_lengths),
+                    super::snp::bg_entry(4, results),
+                ],
+            });
         super::snp::submit(&self.device, &self.pipeline, &bg, n_reads.div_ceil(256));
         Ok(())
     }

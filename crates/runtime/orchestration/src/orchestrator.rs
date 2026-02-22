@@ -9,7 +9,6 @@ use std::time::{Duration, Instant};
 use toadstool_runtime_universal::substrate::*;
 
 use crate::policy::*;
-use crate::scheduler::*;
 
 /// Main orchestrator for workload distribution
 ///
@@ -20,10 +19,6 @@ pub struct WorkloadOrchestrator {
 
     /// Selection policy
     policy: SelectionPolicy,
-
-    /// Scheduler for multi-substrate workloads
-    #[allow(dead_code)] // Future: parallel scheduling
-    scheduler: WorkloadScheduler,
 
     /// Performance history for learning
     history: Arc<RwLock<PerformanceHistory>>,
@@ -36,13 +31,11 @@ impl WorkloadOrchestrator {
     pub async fn discover() -> Result<Self> {
         let substrates = Arc::new(RwLock::new(Vec::new()));
         let policy = SelectionPolicy::default();
-        let scheduler = WorkloadScheduler::new();
         let history = Arc::new(RwLock::new(PerformanceHistory::new()));
 
         Ok(Self {
             substrates,
             policy,
-            scheduler,
             history,
         })
     }
@@ -52,7 +45,6 @@ impl WorkloadOrchestrator {
         Self {
             substrates: Arc::new(RwLock::new(substrates)),
             policy: SelectionPolicy::default(),
-            scheduler: WorkloadScheduler::new(),
             history: Arc::new(RwLock::new(PerformanceHistory::new())),
         }
     }

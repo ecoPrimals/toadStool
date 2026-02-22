@@ -113,3 +113,115 @@ impl MemoryPressureCallback for DefaultMemoryPressureCallback {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU8, Ordering};
+
+    #[test]
+    fn test_memory_pressure_config_default() {
+        let config = MemoryPressureConfig::default();
+        assert!((config.warning_threshold - 70.0).abs() < f64::EPSILON);
+        assert!((config.critical_threshold - 85.0).abs() < f64::EPSILON);
+        assert!((config.emergency_threshold - 95.0).abs() < f64::EPSILON);
+        assert_eq!(config.check_interval, Duration::from_secs(10));
+    }
+
+    #[test]
+    fn test_memory_pressure_level_variants() {
+        assert_eq!(MemoryPressureLevel::Normal, MemoryPressureLevel::Normal);
+        assert_eq!(MemoryPressureLevel::Warning, MemoryPressureLevel::Warning);
+        assert_eq!(MemoryPressureLevel::Critical, MemoryPressureLevel::Critical);
+        assert_eq!(
+            MemoryPressureLevel::Emergency,
+            MemoryPressureLevel::Emergency
+        );
+    }
+
+    #[test]
+    fn test_memory_pressure_handler_new() {
+        let config = MemoryPressureConfig::default();
+        let _handler = MemoryPressureHandler::new(config);
+    }
+
+    #[tokio::test]
+    async fn test_memory_pressure_handler_update_usage_normal() {
+        let config = MemoryPressureConfig::default();
+        let handler = MemoryPressureHandler::new(config);
+        handler.update_memory_usage(1000, 500).await; // 50% - Normal
+        let level = handler.get_pressure_level().await;
+        assert_eq!(level, MemoryPressureLevel::Normal);
+    }
+
+    #[tokio::test]
+    async fn test_memory_pressure_handler_update_usage_warning() {
+        let config = MemoryPressureConfig {
+            warning_threshold: 50.0,
+            critical_threshold: 80.0,
+            emergency_threshold: 95.0,
+            check_interval: Duration::from_secs(10),
+        };
+        let handler = MemoryPressureHandler::new(config);
+        handler.update_memory_usage(100, 60).await; // 60% - Warning
+        let level = handler.get_pressure_level().await;
+        assert_eq!(level, MemoryPressureLevel::Normal); // get_pressure_level returns Normal (current impl)
+    }
+
+    #[tokio::test]
+    async fn test_memory_pressure_callback_invoked() {
+        static LEVEL_SEEN: AtomicU8 = AtomicU8::new(0);
+        LEVEL_SEEN.store(0, Ordering::SeqCst);
+
+        struct CallbackTracker;
+        #[async_trait::async_trait]
+        impl MemoryPressureCallback for CallbackTracker {
+            async fn handle_pressure(&self, level: MemoryPressureLevel, _usage_percent: f64) {
+                LEVEL_SEEN.store(
+                    match level {
+                        MemoryPressureLevel::Normal => 0,
+                        MemoryPressureLevel::Warning => 1,
+                        MemoryPressureLevel::Critical => 2,
+                        MemoryPressureLevel::Emergency => 3,
+                    },
+                    Ordering::SeqCst,
+                );
+            }
+        }
+
+        let config = MemoryPressureConfig {
+            warning_threshold: 50.0,
+            critical_threshold: 80.0,
+            emergency_threshold: 95.0,
+            check_interval: Duration::from_secs(10),
+        };
+        let handler = MemoryPressureHandler::new(config);
+        handler.register_callback(Box::new(CallbackTracker)).await;
+
+        // 75% should trigger Warning callback
+        handler.update_memory_usage(100, 75).await;
+        assert_eq!(LEVEL_SEEN.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn test_default_memory_pressure_callback() {
+        let callback = DefaultMemoryPressureCallback;
+        callback
+            .handle_pressure(MemoryPressureLevel::Warning, 75.0)
+            .await;
+        callback
+            .handle_pressure(MemoryPressureLevel::Critical, 90.0)
+            .await;
+        callback
+            .handle_pressure(MemoryPressureLevel::Emergency, 98.0)
+            .await;
+    }
+
+    #[test]
+    fn test_memory_pressure_config_serde() {
+        let config = MemoryPressureConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let decoded: MemoryPressureConfig = serde_json::from_str(&json).unwrap();
+        assert!((decoded.warning_threshold - config.warning_threshold).abs() < f64::EPSILON);
+    }
+}

@@ -567,5 +567,4 @@ mod tests {
         assert_eq!(c.native_count(), 9);
         assert!(!c.needs_exp_log_workaround());
     }
-
 }

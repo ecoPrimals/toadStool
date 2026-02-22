@@ -55,7 +55,7 @@ pub struct ReduceScalarPipeline {
     partial_buffer: wgpu::Buffer, // ⌈n/256⌉ × 8 bytes
     scalar_staging: wgpu::Buffer, // 8 bytes, MAP_READ
     sum_pipeline: wgpu::ComputePipeline,
-    _sum_bg_pass1: wgpu::BindGroup, // placeholder; pass-1 BG rebuilt per call against caller's input
+    _sum_bg_pass1: wgpu::BindGroup, // kept alive; pass-1 BG rebuilt per call against caller's input
     sum_bg_pass2: wgpu::BindGroup,
     scalar_output: wgpu::Buffer, // 1 × 8 bytes STORAGE | COPY_SRC
     params_buf: wgpu::Buffer,
@@ -183,10 +183,10 @@ impl ReduceScalarPipeline {
             ],
         });
 
-        // Pass 1 bind group is input-dependent — rebuilt per call; stored as placeholder.
-        // We use partial_buffer as a dummy here since the real bind group is created in sum_f64.
+        // Pass 1 bind group is input-dependent — rebuilt per call.
+        // This initial BG uses partial_buffer as a stand-in; the field keeps the BG alive.
         let sum_bg_pass1 = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ReduceScalar:BG:pass1:placeholder"),
+            label: Some("ReduceScalar:BG:pass1:init"),
             layout: &bgl,
             entries: &[
                 wgpu::BindGroupEntry {

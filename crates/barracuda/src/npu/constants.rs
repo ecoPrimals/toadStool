@@ -66,25 +66,25 @@ pub mod quantization {
     pub const INT4_ACT4_MAX_ERROR: f64 = 0.50;
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// Compile-time validation: constants stay within physical bounds.
+const _: () = {
+    assert!(FC_DEPTH_OVERHEAD_MAX > 0.0);
+    assert!(FC_DEPTH_OVERHEAD_MAX < 1.0);
+    assert!(BATCH_SPEEDUP_MIN > 1.0);
+    assert!(MULTI_OUTPUT_OVERHEAD_MAX > 0.0);
+    assert!(MULTI_OUTPUT_OVERHEAD_MAX < 1.0);
+    assert!(WEIGHT_MUTATION_LINEARITY > 0.0);
+    assert!(WEIGHT_MUTATION_LINEARITY < 0.1);
+    assert!(OPTIMAL_BATCH_SIZE > 0);
+    assert!(OPTIMAL_BATCH_SIZE <= 32);
+    assert!(ECONOMY_CLOCK_SPEED_PENALTY > 0.0);
+    assert!(ECONOMY_CLOCK_SPEED_PENALTY < 0.5);
+    assert!(ECONOMY_CLOCK_POWER_SAVINGS > 0.0);
+    assert!(ECONOMY_CLOCK_POWER_SAVINGS < 0.5);
+};
 
-    #[test]
-    fn constants_are_within_physical_bounds() {
-        assert!(FC_DEPTH_OVERHEAD_MAX > 0.0 && FC_DEPTH_OVERHEAD_MAX < 1.0);
-        assert!(BATCH_SPEEDUP_MIN > 1.0);
-        assert!(MULTI_OUTPUT_OVERHEAD_MAX > 0.0 && MULTI_OUTPUT_OVERHEAD_MAX < 1.0);
-        assert!(WEIGHT_MUTATION_LINEARITY > 0.0 && WEIGHT_MUTATION_LINEARITY < 0.1);
-        assert!(OPTIMAL_BATCH_SIZE > 0 && OPTIMAL_BATCH_SIZE <= 32);
-        assert!(ECONOMY_CLOCK_SPEED_PENALTY > 0.0 && ECONOMY_CLOCK_SPEED_PENALTY < 0.5);
-        assert!(ECONOMY_CLOCK_POWER_SAVINGS > 0.0 && ECONOMY_CLOCK_POWER_SAVINGS < 0.5);
-    }
-
-    #[test]
-    fn quantization_errors_are_ordered() {
-        assert!(quantization::F32_MAX_ERROR < quantization::INT8_MAX_ERROR);
-        assert!(quantization::INT8_MAX_ERROR < quantization::INT4_MAX_ERROR);
-        assert!(quantization::INT4_MAX_ERROR < quantization::INT4_ACT4_MAX_ERROR);
-    }
-}
+const _: () = {
+    assert!(quantization::F32_MAX_ERROR < quantization::INT8_MAX_ERROR);
+    assert!(quantization::INT8_MAX_ERROR < quantization::INT4_MAX_ERROR);
+    assert!(quantization::INT4_MAX_ERROR < quantization::INT4_ACT4_MAX_ERROR);
+};

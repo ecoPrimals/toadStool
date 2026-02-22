@@ -931,4 +931,65 @@ mod tests {
         assert!(cfg.max_queue_size > 0);
         assert!(cfg.max_concurrent > 0);
     }
+
+    #[test]
+    fn test_job_state_serialization_roundtrip() {
+        for state in [
+            JobState::Pending,
+            JobState::Running,
+            JobState::Completed,
+            JobState::Failed,
+            JobState::Cancelled,
+        ] {
+            let json = serde_json::to_string(&state).unwrap();
+            let restored: JobState = serde_json::from_str(&json).unwrap();
+            assert_eq!(state, restored);
+        }
+    }
+
+    #[test]
+    fn test_job_type_inference_serialization_roundtrip() {
+        let job_type = JobType::Inference {
+            model: "tinyllama".to_string(),
+            prompt: "Hello".to_string(),
+            params: serde_json::json!({"temperature": 0.7}),
+        };
+        let json = serde_json::to_string(&job_type).unwrap();
+        let restored: JobType = serde_json::from_str(&json).unwrap();
+        match (&job_type, &restored) {
+            (
+                JobType::Inference {
+                    model: m1,
+                    prompt: p1,
+                    ..
+                },
+                JobType::Inference {
+                    model: m2,
+                    prompt: p2,
+                    ..
+                },
+            ) => {
+                assert_eq!(m1, m2);
+                assert_eq!(p1, p2);
+            }
+            _ => panic!("Expected Inference variant"),
+        }
+    }
+
+    #[test]
+    fn test_job_queue_error_display() {
+        let id = Uuid::new_v4();
+        let err = JobQueueError::QueueFull { max: 100 };
+        assert!(err.to_string().contains("100"));
+
+        let err = JobQueueError::JobNotFound { id };
+        assert!(err.to_string().contains("not found"));
+
+        let err = JobQueueError::CannotCancel {
+            id,
+            state: JobState::Completed,
+        };
+        assert!(err.to_string().contains("Cannot cancel"));
+        assert!(err.to_string().contains("Completed"));
+    }
 }

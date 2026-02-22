@@ -1,9 +1,9 @@
 //! Service discovery implementations
 //!
 //! Provides multiple discovery mechanisms for finding ecosystem services:
+//! - Filesystem (biomeOS runtime directory - primal socket files)
 //! - mDNS/Multicast DNS (local network)
 //! - DNS-SD/Service Discovery (DNS-based)
-//! - HTTP Registry (centralized registry)
 //! - Localhost fallback (development)
 
 use anyhow::Result;
@@ -14,6 +14,8 @@ use tokio::time::timeout;
 use tracing::debug;
 
 use super::types::ServiceEndpoint;
+use toadstool_common::constants::ecosystem::well_known;
+use toadstool_common::primal_sockets::get_biomeos_dir;
 
 /// Service discovery coordinator
 pub struct ServiceDiscovery {
@@ -37,7 +39,13 @@ impl ServiceDiscovery {
     ) -> Result<Option<ServiceEndpoint>> {
         debug!("Discovering service with {} capability", capability_name);
 
-        // Try mDNS first (local network discovery)
+        // Try filesystem first (biomeOS runtime directory - primal socket files)
+        if let Some(service) = self.try_filesystem_discovery(capability_name).await? {
+            debug!("Found {} via filesystem (biomeOS sockets)", capability_name);
+            return Ok(Some(service));
+        }
+
+        // Try mDNS (local network discovery)
         if let Some(service) = self.try_mdns_discovery(capability_name).await? {
             debug!("Found {} via mDNS", capability_name);
             return Ok(Some(service));
@@ -59,6 +67,48 @@ impl ServiceDiscovery {
         }
 
         debug!("Service with {} capability not found", capability_name);
+        Ok(None)
+    }
+
+    /// Try filesystem-based discovery (biomeOS runtime directory)
+    ///
+    /// Scans the biomeOS runtime directory for primal socket files.
+    /// Uses well_known constants to map capability names to primal socket names.
+    async fn try_filesystem_discovery(
+        &self,
+        capability_name: &str,
+    ) -> Result<Option<ServiceEndpoint>> {
+        debug!("Attempting filesystem discovery for {}", capability_name);
+
+        let primal_name = match capability_name {
+            "orchestration" => well_known::SONGBIRD,
+            "pki" => well_known::BEARDOG,
+            "storage" => well_known::NESTGATE,
+            "ai" => well_known::SQUIRREL,
+            "toadstool" => toadstool_common::constants::primal_identity::PRIMAL_NAME,
+            _ => {
+                debug!("No well-known primal for capability: {}", capability_name);
+                return Ok(None);
+            }
+        };
+
+        let biomeos_dir = get_biomeos_dir();
+        let socket_path = biomeos_dir.join(format!("{}.sock", primal_name));
+
+        if socket_path.exists() {
+            let endpoint = format!("unix://{}", socket_path.display());
+            debug!("Found primal socket: {}", endpoint);
+
+            return Ok(Some(ServiceEndpoint {
+                name: capability_name.to_string(),
+                endpoint,
+                version: "1.0.0".to_string(),
+                status: "discovered".to_string(),
+                auth_required: false,
+                discovered_at: chrono::Utc::now(),
+            }));
+        }
+
         Ok(None)
     }
 
@@ -233,16 +283,6 @@ impl Default for ServiceDiscovery {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Registry service response format
-#[derive(serde::Deserialize)]
-// HTTP registry removed - struct kept for reference but unused
-#[allow(dead_code)]
-struct RegistryService {
-    endpoint: String,
-    version: String,
-    requires_auth: bool,
 }
 
 #[cfg(test)]

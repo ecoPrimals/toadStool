@@ -259,3 +259,61 @@ impl Default for PrimalCapabilitiesConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_authentication_config_default() {
+        let config = AuthenticationConfig::default();
+        assert!(!config.required);
+        assert!(config.api_keys.is_empty());
+        assert!(config.jwt_secret.is_none());
+        assert!(config.basic_auth.is_empty());
+        assert!(config.custom_validator.is_none());
+    }
+
+    #[test]
+    fn test_rate_limiting_config_default() {
+        let config = RateLimitingConfig::default();
+        assert_eq!(config.requests_per_minute, 100);
+        assert_eq!(config.concurrent_executions_per_client, 10);
+        assert!(config.limit_by_ip);
+        assert!(config.limit_by_api_key);
+    }
+
+    #[test]
+    fn test_logging_config_default() {
+        let config = LoggingConfig::default();
+        assert_eq!(config.level, "info");
+        assert!(config.log_requests);
+        assert!(config.log_executions);
+        assert!(config.log_metrics);
+    }
+
+    #[test]
+    fn test_health_check_config_default() {
+        let config = HealthCheckConfig::default();
+        assert!(config.check_runtime_engines);
+        assert!(config.check_resources);
+        assert_eq!(config.memory_threshold_percent, 90.0);
+        assert_eq!(config.cpu_threshold_percent, 95.0);
+    }
+
+    #[test]
+    fn test_server_config_builder_chain() {
+        let config = ServerConfig::default()
+            .bind_address("127.0.0.1:0".to_string())
+            .enable_api(false)
+            .enable_websocket(true)
+            .max_concurrent_executions(50)
+            .default_timeout(Duration::from_secs(120));
+
+        assert_eq!(config.bind_address, "127.0.0.1:0");
+        assert!(!config.enable_api);
+        assert!(config.enable_websocket);
+        assert_eq!(config.max_concurrent_executions, 50);
+        assert_eq!(config.default_timeout, Duration::from_secs(120));
+    }
+}

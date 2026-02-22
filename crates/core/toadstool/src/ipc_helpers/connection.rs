@@ -10,6 +10,7 @@ use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_common::constants::timeouts;
+use toadstool_common::constants::PRIMAL_NAME;
 
 use super::framing;
 
@@ -59,14 +60,14 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
     let socket_endpoint = std::env::var("TOADSTOOL_SOCKET").unwrap_or_else(|_| {
         // XDG-compliant biomeOS standard path: $XDG_RUNTIME_DIR/biomeos/toadstool.sock
         let runtime_dir = get_runtime_dir();
-        format!("{}/biomeos/toadstool.sock", runtime_dir)
+        format!("{}/biomeos/{}.sock", runtime_dir, PRIMAL_NAME)
     });
 
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
         "method": "ipc.register",
         "params": {
-            "primal_name": "toadstool",
+            "primal_name": PRIMAL_NAME,
             // biomeOS Node Atomic capabilities (node_atomic_compute.toml):
             //   compute, workload, orchestration, ai_local
             // Plus implementation-level capabilities advertised to consumers:
@@ -232,4 +233,30 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
     );
 
     Ok(primals)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_default_songbird_socket_format() {
+        let socket = get_default_songbird_socket();
+        assert!(socket.contains("biomeos"));
+        assert!(socket.ends_with("songbird.sock"));
+        assert!(!socket.is_empty());
+    }
+
+    #[test]
+    fn test_get_default_songbird_socket_with_xdg_runtime_dir() {
+        std::env::remove_var("BIOMEOS_RUNTIME_DIR");
+        std::env::set_var("XDG_RUNTIME_DIR", "/tmp/xdg-socket-test");
+        let socket = get_default_songbird_socket();
+        std::env::remove_var("XDG_RUNTIME_DIR");
+        assert!(
+            socket.starts_with("/tmp/xdg-socket-test"),
+            "expected socket to start with XDG path, got: {}",
+            socket
+        );
+    }
 }

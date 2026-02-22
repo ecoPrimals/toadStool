@@ -206,7 +206,7 @@ impl FusedMapReduceF64 {
                     usage: wgpu::BufferUsages::UNIFORM,
                 });
 
-        // Create bind group
+        // Create bind group for pass 1
         let bind_group_layout = self.pipeline.get_bind_group_layout(0);
         let bind_group = self
             .device
@@ -230,7 +230,9 @@ impl FusedMapReduceF64 {
                 ],
             });
 
-        // Execute first pass
+        // Single command encoder for all passes — ensures proper GPU synchronization
+        // between the map-reduce pass and the partials reduction pass. Using separate
+        // submissions caused buffer conflicts on some drivers (TS-004).
         let mut encoder =
             self.device
                 .device
@@ -248,101 +250,79 @@ impl FusedMapReduceF64 {
             pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
         }
 
-        self.device.queue.submit(Some(encoder.finish()));
+        if n_workgroups > 1 && n_workgroups <= 256 {
+            // Encode the partials reduction in the same command encoder.
+            // A new compute pass within the same encoder provides implicit
+            // memory barriers between the write (pass 1) and read (pass 2).
+            let final_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("FMR Partials Output"),
+                size: 8,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            });
 
-        // If we have multiple partials, reduce them
-        if n_workgroups > 1 {
-            if n_workgroups <= 256 {
-                // Single workgroup can handle all partials
-                let final_buffer =
-                    self.reduce_partials_pass(&output_buffer, n_workgroups, reduce_op)?;
-                return self.read_result(&final_buffer);
-            } else {
-                // Need multiple passes (rare for typical workloads)
-                return self.reduce_partials_recursive(&output_buffer, n_workgroups, reduce_op);
+            let pass2_params = Params {
+                n: n_workgroups as u32,
+                n_workgroups: 1,
+                total: 1.0,
+                map_op: MapOp::Identity as u32,
+                reduce_op: reduce_op as u32,
+            };
+            let pass2_params_buffer =
+                self.device
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("FMR Params Pass2"),
+                        contents: bytemuck::bytes_of(&pass2_params),
+                        usage: wgpu::BufferUsages::UNIFORM,
+                    });
+
+            let pass2_layout = self.pipeline_partials.get_bind_group_layout(0);
+            let pass2_bind_group =
+                self.device
+                    .device
+                    .create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("FMR Bind Group Pass2"),
+                        layout: &pass2_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: output_buffer.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: final_buffer.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 2,
+                                resource: pass2_params_buffer.as_entire_binding(),
+                            },
+                        ],
+                    });
+
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("FMR Pass 2"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.pipeline_partials);
+                pass.set_bind_group(0, &pass2_bind_group, &[]);
+                pass.dispatch_workgroups(1, 1, 1);
             }
+
+            self.device.queue.submit(Some(encoder.finish()));
+            return self.read_result(&final_buffer);
         }
 
-        // Read result (single workgroup case)
-        self.read_result(&output_buffer)
-    }
-
-    /// Execute reduction of partial results.
-    ///
-    /// Uses separate input/output buffers to avoid buffer binding conflicts.
-    /// The shader reads from input (binding 0) and writes to output (binding 1).
-    fn reduce_partials_pass(
-        &self,
-        input_buffer: &wgpu::Buffer,
-        n_partials: usize,
-        reduce_op: ReduceOp,
-    ) -> Result<wgpu::Buffer> {
-        // Create separate output buffer for the final result
-        let output_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("FMR Partials Output"),
-            size: 8, // Single f64 result
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-
-        let params = Params {
-            n: n_partials as u32,
-            n_workgroups: 1, // Single workgroup for partials reduction
-            total: 1.0,      // Not used in reduce_partials
-            map_op: MapOp::Identity as u32,
-            reduce_op: reduce_op as u32,
-        };
-        let params_buffer =
-            self.device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("FMR Params Pass2"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
-
-        let bind_group_layout = self.pipeline_partials.get_bind_group_layout(0);
-        let bind_group = self
-            .device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("FMR Bind Group Pass2"),
-                layout: &bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: input_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: output_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-
-        let mut encoder =
-            self.device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("FMR Encoder Pass2"),
-                });
-
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("FMR Pass 2"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline_partials);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(1, 1, 1);
+        if n_workgroups > 256 {
+            // Submit pass 1, then fall back to CPU-side reduction of partials
+            self.device.queue.submit(Some(encoder.finish()));
+            return self.reduce_partials_recursive(&output_buffer, n_workgroups, reduce_op);
         }
 
+        // Single workgroup — just submit and read
         self.device.queue.submit(Some(encoder.finish()));
-        Ok(output_buffer)
+        self.read_result(&output_buffer)
     }
 
     /// Recursive reduction for very large inputs (>256 workgroups)
@@ -377,7 +357,7 @@ impl FusedMapReduceF64 {
         let data = slice.get_mapped_range();
         let partials: Vec<f64> = data
             .chunks_exact(8)
-            .map(|b| f64::from_le_bytes(b.try_into().unwrap()))
+            .map(|b| f64::from_le_bytes(b.try_into().expect("chunks_exact(8) guarantees 8 bytes")))
             .collect();
         drop(data);
         staging.unmap();
@@ -416,7 +396,7 @@ impl FusedMapReduceF64 {
         self.device.device.poll(wgpu::Maintain::Wait);
 
         let data = slice.get_mapped_range();
-        let result = f64::from_le_bytes(data[..8].try_into().unwrap());
+        let result = f64::from_le_bytes(data[..8].try_into().expect("scalar buffer is 8 bytes"));
         drop(data);
         staging.unmap();
 

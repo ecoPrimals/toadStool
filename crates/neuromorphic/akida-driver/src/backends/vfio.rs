@@ -407,7 +407,14 @@ impl VfioBackend {
 
     /// Write a 64-bit IOVA address and size to MMIO registers (addr_lo, addr_hi, size_reg).
     #[allow(clippy::cast_possible_truncation)]
-    fn write_iova_regs(&self, addr_lo: usize, addr_hi: usize, size_reg: usize, iova: u64, size: usize) {
+    fn write_iova_regs(
+        &self,
+        addr_lo: usize,
+        addr_hi: usize,
+        size_reg: usize,
+        iova: u64,
+        size: usize,
+    ) {
         self.control_regs.write32(addr_lo, iova as u32);
         self.control_regs.write32(addr_hi, (iova >> 32) as u32);
         self.control_regs.write32(size_reg, size as u32);
@@ -417,7 +424,9 @@ impl VfioBackend {
     fn check_not_busy(&self, op: &str) -> Result<()> {
         let status = self.control_regs.read32(regs::STATUS);
         if status & regs::status::BUSY != 0 {
-            return Err(AkidaError::hardware_error(format!("Device busy, cannot {op}")));
+            return Err(AkidaError::hardware_error(format!(
+                "Device busy, cannot {op}"
+            )));
         }
         Ok(())
     }
@@ -425,7 +434,15 @@ impl VfioBackend {
     /// Poll a status register until `done_mask` bit is set, returning the poll count.
     /// Returns `Err` if `error_mask` bit is set or `max_polls` is exceeded.
     fn poll_register(&self, cfg: PollConfig<'_>) -> Result<u32> {
-        let PollConfig { reg, done_mask, error_mask, max_polls, yield_interval, timeout_msg, error_msg } = cfg;
+        let PollConfig {
+            reg,
+            done_mask,
+            error_mask,
+            max_polls,
+            yield_interval,
+            timeout_msg,
+            error_msg,
+        } = cfg;
         for i in 0..max_polls {
             let val = self.control_regs.read32(reg);
             if val & done_mask != 0 {
@@ -645,13 +662,25 @@ impl NpuBackend for VfioBackend {
         let mut buffer = self.alloc_dma(model.len())?;
         buffer.as_mut_slice().copy_from_slice(model);
 
-        self.write_iova_regs(regs::MODEL_ADDR_LO, regs::MODEL_ADDR_HI, regs::MODEL_SIZE, buffer.iova(), model.len());
+        self.write_iova_regs(
+            regs::MODEL_ADDR_LO,
+            regs::MODEL_ADDR_HI,
+            regs::MODEL_SIZE,
+            buffer.iova(),
+            model.len(),
+        );
         self.control_regs.write32(regs::MODEL_LOAD, 1);
-        tracing::debug!("Triggered model load: IOVA={:#x}, size={}", buffer.iova(), model.len());
+        tracing::debug!(
+            "Triggered model load: IOVA={:#x}, size={}",
+            buffer.iova(),
+            model.len()
+        );
 
         let polls = self.poll_register(PollConfig {
-            reg: regs::STATUS, done_mask: regs::status::MODEL_LOADED,
-            error_mask: regs::status::ERROR, max_polls: 1_000_000,
+            reg: regs::STATUS,
+            done_mask: regs::status::MODEL_LOADED,
+            error_mask: regs::status::ERROR,
+            max_polls: 1_000_000,
             yield_interval: 1_000,
             timeout_msg: "Model load timed out",
             error_msg: "Model load failed with device error",
@@ -682,12 +711,20 @@ impl NpuBackend for VfioBackend {
         slice[..w_in_bytes.len()].copy_from_slice(w_in_bytes);
         slice[w_in_bytes.len()..].copy_from_slice(w_res_bytes);
 
-        self.write_iova_regs(regs::MODEL_ADDR_LO, regs::MODEL_ADDR_HI, regs::MODEL_SIZE, buffer.iova(), total_size);
+        self.write_iova_regs(
+            regs::MODEL_ADDR_LO,
+            regs::MODEL_ADDR_HI,
+            regs::MODEL_SIZE,
+            buffer.iova(),
+            total_size,
+        );
         self.control_regs.write32(regs::MODEL_LOAD, 1);
 
         let polls = self.poll_register(PollConfig {
-            reg: regs::STATUS, done_mask: regs::status::MODEL_LOADED,
-            error_mask: regs::status::ERROR, max_polls: 1_000_000,
+            reg: regs::STATUS,
+            done_mask: regs::status::MODEL_LOADED,
+            error_mask: regs::status::ERROR,
+            max_polls: 1_000_000,
             yield_interval: 1_000,
             timeout_msg: "Reservoir load timed out",
             error_msg: "Reservoir load failed with device error",
@@ -713,29 +750,54 @@ impl NpuBackend for VfioBackend {
         let input_bytes = bytemuck::cast_slice::<f32, u8>(input);
 
         // Ensure input DMA buffer is large enough
-        if self.input_buffer.as_ref().is_none_or(|b| b.size() < input_bytes.len()) {
+        if self
+            .input_buffer
+            .as_ref()
+            .is_none_or(|b| b.size() < input_bytes.len())
+        {
             self.input_buffer = Some(self.alloc_dma(input_bytes.len().max(4096))?);
         }
         let input_buf = self.input_buffer.as_mut().expect("ensured Some above");
         input_buf.as_mut_slice()[..input_bytes.len()].copy_from_slice(input_bytes);
 
         let output_size: usize = 4096; // 1024 floats max
-        if self.output_buffer.as_ref().is_none_or(|b| b.size() < output_size) {
+        if self
+            .output_buffer
+            .as_ref()
+            .is_none_or(|b| b.size() < output_size)
+        {
             self.output_buffer = Some(self.alloc_dma(output_size)?);
         }
 
         let input_iova = self.input_buffer.as_ref().expect("ensured Some").iova();
         let output_iova = self.output_buffer.as_ref().expect("ensured Some").iova();
 
-        self.write_iova_regs(regs::INPUT_ADDR_LO, regs::INPUT_ADDR_HI, regs::INPUT_SIZE, input_iova, input_bytes.len());
-        self.write_iova_regs(regs::OUTPUT_ADDR_LO, regs::OUTPUT_ADDR_HI, regs::OUTPUT_SIZE, output_iova, output_size);
+        self.write_iova_regs(
+            regs::INPUT_ADDR_LO,
+            regs::INPUT_ADDR_HI,
+            regs::INPUT_SIZE,
+            input_iova,
+            input_bytes.len(),
+        );
+        self.write_iova_regs(
+            regs::OUTPUT_ADDR_LO,
+            regs::OUTPUT_ADDR_HI,
+            regs::OUTPUT_SIZE,
+            output_iova,
+            output_size,
+        );
 
         self.control_regs.write32(regs::INFER_START, 1);
-        tracing::debug!("Triggered inference: input_iova={input_iova:#x}, output_iova={output_iova:#x}");
+        tracing::debug!(
+            "Triggered inference: input_iova={input_iova:#x}, output_iova={output_iova:#x}"
+        );
 
         let polls = self.poll_register(PollConfig {
-            reg: regs::INFER_STATUS, done_mask: 0x1, error_mask: 0x2,
-            max_polls: 10_000_000, yield_interval: 10_000,
+            reg: regs::INFER_STATUS,
+            done_mask: 0x1,
+            error_mask: 0x2,
+            max_polls: 10_000_000,
+            yield_interval: 10_000,
             timeout_msg: "Inference timed out",
             error_msg: "Inference failed with device error",
         })?;
@@ -744,7 +806,10 @@ impl NpuBackend for VfioBackend {
         let output_floats = actual_output_size.min(output_size) / std::mem::size_of::<f32>();
         tracing::debug!("Inference completed after {polls} polls, output: {output_floats} floats");
 
-        let output_bytes = &self.output_buffer.as_ref().expect("ensured Some")
+        let output_bytes = &self
+            .output_buffer
+            .as_ref()
+            .expect("ensured Some")
             .as_slice()[..output_floats * std::mem::size_of::<f32>()];
         Ok(bytemuck::cast_slice::<u8, f32>(output_bytes).to_vec())
     }

@@ -51,6 +51,7 @@ fn exp_f64(x: f64) -> f64 {
         return one + x;
     }
     
+    // Range reduction: x = k * ln(2) + r, where |r| <= ln(2)/2
     let inv_ln2 = zero + 1.4426950408889634;
     let k_f = floor(x * inv_ln2 + (zero + 0.5));
     let k = i32(k_f);
@@ -58,23 +59,42 @@ fn exp_f64(x: f64) -> f64 {
     let ln2 = zero + 0.6931471805599453;
     let r = x - k_f * ln2;
     
-    let r2 = r * r;
-    let c2 = zero + 0.5;
-    let c3 = zero + 0.16666666666666666;
-    let c4 = zero + 0.041666666666666664;
-    let c5 = zero + 0.008333333333333333;
+    // Taylor series e^r = 1 + r + r^2*(c2 + r*(c3 + ... + r*c11))
+    // 11 terms for full f64 precision (~16 significant digits)
+    let c2  = zero + 0.5;
+    let c3  = zero + 0.16666666666666666;
+    let c4  = zero + 0.041666666666666664;
+    let c5  = zero + 0.008333333333333333;
+    let c6  = zero + 0.001388888888888889;
+    let c7  = zero + 0.0001984126984126984;
+    let c8  = zero + 0.0000248015873015873;
+    let c9  = zero + 0.0000027557319223985893;
+    let c10 = zero + 2.755731922398589e-7;
+    let c11 = zero + 2.505210838544172e-8;
     
-    var p = c5;
+    var p = c11;
+    p = p * r + c10;
+    p = p * r + c9;
+    p = p * r + c8;
+    p = p * r + c7;
+    p = p * r + c6;
+    p = p * r + c5;
     p = p * r + c4;
     p = p * r + c3;
     p = p * r + c2;
     
+    let r2 = r * r;
     var exp_r = one + r + r2 * p;
     
-    // Scale by 2^k
+    // Scale by 2^k using binary decomposition (handles k up to ±1023)
     if (k > 0) {
         var scale = one;
         var rem = k;
+        if (rem >= 512) { scale = scale * (zero + 1.3407807929942597e+154); rem = rem - 512; }
+        if (rem >= 256) { scale = scale * (zero + 1.157920892373162e+77); rem = rem - 256; }
+        if (rem >= 128) { scale = scale * (zero + 3.4028236692093846e+38); rem = rem - 128; }
+        if (rem >= 64) { scale = scale * (zero + 1.8446744073709552e+19); rem = rem - 64; }
+        if (rem >= 32) { scale = scale * (zero + 4294967296.0); rem = rem - 32; }
         if (rem >= 16) { scale = scale * (zero + 65536.0); rem = rem - 16; }
         if (rem >= 8) { scale = scale * (zero + 256.0); rem = rem - 8; }
         if (rem >= 4) { scale = scale * (zero + 16.0); rem = rem - 4; }
@@ -84,6 +104,11 @@ fn exp_f64(x: f64) -> f64 {
     } else if (k < 0) {
         var scale = one;
         var rem = -k;
+        if (rem >= 512) { scale = scale * (zero + 7.458340731200207e-155); rem = rem - 512; }
+        if (rem >= 256) { scale = scale * (zero + 8.636168555094445e-78); rem = rem - 256; }
+        if (rem >= 128) { scale = scale * (zero + 2.9387358770557188e-39); rem = rem - 128; }
+        if (rem >= 64) { scale = scale * (zero + 5.421010862427522e-20); rem = rem - 64; }
+        if (rem >= 32) { scale = scale * (zero + 2.3283064365386963e-10); rem = rem - 32; }
         if (rem >= 16) { scale = scale * (zero + 0.0000152587890625); rem = rem - 16; }
         if (rem >= 8) { scale = scale * (zero + 0.00390625); rem = rem - 8; }
         if (rem >= 4) { scale = scale * (zero + 0.0625); rem = rem - 4; }
@@ -95,18 +120,18 @@ fn exp_f64(x: f64) -> f64 {
     return exp_r;
 }
 
-fn pow_f64(base: f64, exp: f64) -> f64 {
+fn pow_f64(base: f64, exp_v: f64) -> f64 {
     let zero = base - base;
     let one = zero + 1.0;
     
-    if (exp == zero) { return one; }
+    if (exp_v == zero) { return one; }
     if (base == zero) { return zero; }
     if (base == one) { return one; }
-    if (exp == one) { return base; }
+    if (exp_v == one) { return base; }
     
     // Integer exponent: fast binary exponentiation
-    let exp_i = i32(exp);
-    if (f64(exp_i) == exp) {
+    let exp_i = i32(exp_v);
+    if (f64(exp_i) == exp_v) {
         var result = one;
         var b = base;
         var e = exp_i;
@@ -120,31 +145,34 @@ fn pow_f64(base: f64, exp: f64) -> f64 {
     }
     
     // Fractional exponent: base^exp = exp(exp * log(base))
-    // REQUIRES: base > 0 for real result
     if (base < zero) {
-        // Negative base with fractional exponent → NaN (return 0 as sentinel)
         return zero;
     }
     
-    return exp_f64(exp * log_f64(base));
+    return exp_f64(exp_v * log_f64(base));
 }
 
 fn log_f64(x: f64) -> f64 {
     let zero = x - x;
     let one = zero + 1.0;
     let two = zero + 2.0;
+    let half = zero + 0.5;
     
     if (x <= zero) {
         let big = zero + 1e38;
         return -big * big;
     }
     
+    // Range reduction: x = 2^k * y, where 1 <= y < 2
     var y = x;
     var k = zero;
     
-    while (y >= two) { y = y * (zero + 0.5); k = k + one; }
+    while (y >= two) { y = y * half; k = k + one; }
     while (y < one) { y = y * two; k = k - one; }
     
+    // Compute ln(y) for y in [1, 2) using substitution s = (y-1)/(y+1)
+    // ln(y) = 2*s*(1 + s^2*(c1 + s^2*(c2 + ...)))
+    // 7 terms for full f64 precision
     let z = y - one;
     let s = z / (two + z);
     let s2 = s * s;
@@ -152,8 +180,16 @@ fn log_f64(x: f64) -> f64 {
     let c1 = zero + 0.3333333333333367565;
     let c2 = zero + 0.1999999999970470954;
     let c3 = zero + 0.1428571437183119575;
+    let c4 = zero + 0.1111109921607489198;
+    let c5 = zero + 0.0909178608080902506;
+    let c6 = zero + 0.0765691884960468666;
+    let c7 = zero + 0.0739909930255829295;
     
-    var p = c3;
+    var p = c7;
+    p = p * s2 + c6;
+    p = p * s2 + c5;
+    p = p * s2 + c4;
+    p = p * s2 + c3;
     p = p * s2 + c2;
     p = p * s2 + c1;
     
@@ -245,64 +281,72 @@ fn fao56_et0(
 }
 
 // Precision trig for ET₀ (f64 Taylor series)
+//
+// Cody-Waite range reduction to minimize cancellation near multiples of π.
+// Split 2π into high+low parts: 2π = two_pi_hi + two_pi_lo.
 fn sin_simple(x: f64) -> f64 {
     let zero = x - x;
     let one = zero + 1.0;
     let pi = zero + 3.141592653589793;
-    let two_pi = zero + 6.283185307179586;
+    let two_pi_hi = zero + 6.283185307179586;
+    let two_pi_lo = zero + 2.4492935982947064e-16;
     
-    // Range reduction to [-π, π]
+    // Cody-Waite range reduction to [-π, π]
     var y = x;
-    while (y > pi) { y = y - two_pi; }
-    while (y < -pi) { y = y + two_pi; }
+    while (y > pi) { y = y - two_pi_hi; y = y - two_pi_lo; }
+    while (y < -pi) { y = y + two_pi_hi; y = y + two_pi_lo; }
     
-    // Taylor series: sin(y) = y - y³/3! + y⁵/5! - y⁷/7! + y⁹/9! - y¹¹/11! + y¹³/13!
+    // Taylor: sin(y) = y(1 - y²·P(y²)), 7 terms → y^15 truncation
     let y2 = y * y;
-    let c3 = zero + 0.16666666666666666;   // 1/6
-    let c5 = zero + 0.008333333333333333;  // 1/120
-    let c7 = zero + 0.0001984126984126984; // 1/5040
-    let c9 = zero + 0.0000027557319223985893; // 1/362880
-    let c11 = zero + 2.505210838544172e-8;  // 1/39916800
-    let c13 = zero + 1.6059043836821613e-10; // 1/6227020800
+    let c3  = zero + 0.16666666666666666;
+    let c5  = zero + 0.008333333333333333;
+    let c7  = zero + 0.0001984126984126984;
+    let c9  = zero + 0.0000027557319223985893;
+    let c11 = zero + 2.505210838544172e-8;
+    let c13 = zero + 1.6059043836821613e-10;
+    let c15 = zero + 7.647163731819816e-13;
     
-    var p = -c13;
-    p = p * y2 + c11;
-    p = p * y2 - c9;
-    p = p * y2 + c7;
-    p = p * y2 - c5;
-    p = p * y2 + c3;
+    var p = -c15;
+    p = p * y2 + c13;
+    p = p * y2 - c11;
+    p = p * y2 + c9;
+    p = p * y2 - c7;
+    p = p * y2 + c5;
+    p = p * y2 - c3;
     
-    return y * (one - y2 * p);
+    return y * (one + y2 * p);
 }
 
 fn cos_simple(x: f64) -> f64 {
     let zero = x - x;
     let one = zero + 1.0;
     let pi = zero + 3.141592653589793;
-    let two_pi = zero + 6.283185307179586;
+    let two_pi_hi = zero + 6.283185307179586;
+    let two_pi_lo = zero + 2.4492935982947064e-16;
     
-    // Range reduction
     var y = x;
-    while (y > pi) { y = y - two_pi; }
-    while (y < -pi) { y = y + two_pi; }
+    while (y > pi) { y = y - two_pi_hi; y = y - two_pi_lo; }
+    while (y < -pi) { y = y + two_pi_hi; y = y + two_pi_lo; }
     
-    // Taylor series: cos(y) = 1 - y²/2! + y⁴/4! - y⁶/6! + y⁸/8! - y¹⁰/10! + y¹²/12!
+    // Taylor: cos(y) = 1 + y²·P(y²), 7 terms → y^14 truncation
     let y2 = y * y;
-    let c2 = zero + 0.5;                   // 1/2
-    let c4 = zero + 0.041666666666666664;  // 1/24
-    let c6 = zero + 0.001388888888888889;  // 1/720
-    let c8 = zero + 0.0000248015873015873; // 1/40320
-    let c10 = zero + 2.7557319223985893e-7; // 1/3628800
-    let c12 = zero + 2.08767569878681e-9;  // 1/479001600
+    let c2  = zero + 0.5;
+    let c4  = zero + 0.041666666666666664;
+    let c6  = zero + 0.001388888888888889;
+    let c8  = zero + 0.0000248015873015873;
+    let c10 = zero + 2.7557319223985893e-7;
+    let c12 = zero + 2.08767569878681e-9;
+    let c14 = zero + 1.1470745597729725e-11;
     
-    var p = c12;
-    p = p * y2 - c10;
-    p = p * y2 + c8;
-    p = p * y2 - c6;
-    p = p * y2 + c4;
-    p = p * y2 - c2;
+    var p = c14;
+    p = p * y2 - c12;
+    p = p * y2 + c10;
+    p = p * y2 - c8;
+    p = p * y2 + c6;
+    p = p * y2 - c4;
+    p = p * y2 + c2;
     
-    return one + y2 * p;
+    return one - y2 * p;
 }
 
 fn tan_simple(x: f64) -> f64 {
@@ -315,45 +359,40 @@ fn acos_simple(x: f64) -> f64 {
     let half_pi = zero + 1.5707963267948966;
     let pi = zero + 3.141592653589793;
     
-    // Boundary cases
     if (x >= one) { return zero; }
     if (x <= -one) { return pi; }
-    
-    // acos(x) = atan2(sqrt(1-x²), x) approximation via asin
-    // For |x| <= 0.5: acos(x) = π/2 - asin(x)
-    // For x > 0.5: acos(x) = 2 * asin(sqrt((1-x)/2))
-    // For x < -0.5: acos(x) = π - 2 * asin(sqrt((1+x)/2))
     
     let half = zero + 0.5;
     
     if (x > half) {
-        // acos(x) = 2 * asin(sqrt((1-x)/2))
         let t = sqrt((one - x) * half);
         return (zero + 2.0) * asin_core(t);
     } else if (x < -half) {
-        // acos(x) = π - 2 * asin(sqrt((1+x)/2))
         let t = sqrt((one + x) * half);
         return pi - (zero + 2.0) * asin_core(t);
     } else {
-        // acos(x) = π/2 - asin(x)
         return half_pi - asin_core(x);
     }
 }
 
-// Helper: asin for |x| <= 0.5 using Padé approximation
+// asin(x) for |x| <= ~0.707 — 8-term Taylor for full f64 precision
 fn asin_core(x: f64) -> f64 {
     let zero = x - x;
     let x2 = x * x;
     
-    // Minimax polynomial for asin(x)/x for |x| <= 0.5
-    // asin(x) ≈ x * (1 + x² * P(x²))
-    let c1 = zero + 0.16666666666666666;   // 1/6
-    let c2 = zero + 0.075;                  // 3/40
-    let c3 = zero + 0.04464285714285714;   // 15/336
-    let c4 = zero + 0.030381944444444446;  // 35/1152
-    let c5 = zero + 0.022372159090909092;  // 63/2816
+    let c1 = zero + 0.16666666666666666;
+    let c2 = zero + 0.075;
+    let c3 = zero + 0.04464285714285714;
+    let c4 = zero + 0.030381944444444446;
+    let c5 = zero + 0.022372159090909092;
+    let c6 = zero + 0.017352764423076923;
+    let c7 = zero + 0.01396484375;
+    let c8 = zero + 0.011551800896139706;
     
-    var p = c5;
+    var p = c8;
+    p = p * x2 + c7;
+    p = p * x2 + c6;
+    p = p * x2 + c5;
     p = p * x2 + c4;
     p = p * x2 + c3;
     p = p * x2 + c2;

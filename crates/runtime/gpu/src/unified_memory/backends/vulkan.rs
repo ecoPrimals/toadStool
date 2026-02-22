@@ -183,10 +183,11 @@ impl VulkanBackend {
             return true;
         }
 
-        // Fallback: check direct Vulkan
+        // Fallback: check direct Vulkan (FFI - loads libvulkan)
         #[cfg(feature = "vulkan")]
         {
-            // SAFETY: We're just checking if the library loads
+            // UNAVOIDABLE UNSAFE: ash::Entry::load() is FFI - loads Vulkan loader.
+            // SAFETY: We only check if loading succeeds; no pointers or memory involved.
             unsafe {
                 if ash::Entry::load().is_ok() {
                     return true;

@@ -12,8 +12,12 @@
 
 use anyhow::Result;
 use serde::Serialize;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use sysinfo::System;
+
+use toadstool_common::constants::ecosystem::well_known;
+use toadstool_common::constants::primal_identity::PRIMAL_NAME;
 
 /// Results of the doctor diagnostic checks
 #[derive(Debug, Serialize)]
@@ -301,8 +305,10 @@ async fn check_ecosystem_health() -> EcosystemReport {
         ));
     }
 
-    // Find sockets
+    // Discover primals from socket files in biomeOS directory
     let mut sockets_found = vec![];
+    let mut discovered_primal_names = HashSet::new();
+
     if biomeos_dir_exists {
         if let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
             for entry in entries.flatten() {
@@ -316,17 +322,30 @@ async fn check_ecosystem_health() -> EcosystemReport {
                 {
                     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                         sockets_found.push(name.to_string());
+                        // Extract primal name from "foo.sock" or "foo"
+                        let primal_name = name.strip_suffix(".sock").unwrap_or(name).to_string();
+                        if !primal_name.is_empty() {
+                            discovered_primal_names.insert(primal_name);
+                        }
                     }
                 }
             }
         }
     }
 
-    // Check primal connectivity
-    let primals = ["toadstool", "songbird", "beardog", "nestgate"];
-    let mut primals_reachable = vec![];
+    // Union discovered primals with well-known list for comprehensive reporting
+    let well_known_primals = [
+        PRIMAL_NAME,
+        well_known::SONGBIRD,
+        well_known::BEARDOG,
+        well_known::NESTGATE,
+    ];
+    for name in &well_known_primals {
+        discovered_primal_names.insert((*name).to_string());
+    }
 
-    for primal in primals {
+    let mut primals_reachable = vec![];
+    for primal in discovered_primal_names {
         let socket_path = biomeos_dir.join(format!("{primal}.sock"));
         let socket_exists = socket_path.exists();
         let reachable = if socket_exists {
@@ -336,11 +355,14 @@ async fn check_ecosystem_health() -> EcosystemReport {
         };
 
         primals_reachable.push(PrimalStatus {
-            name: primal.to_string(),
+            name: primal,
             socket_exists,
             reachable,
         });
     }
+
+    // Sort for deterministic output
+    primals_reachable.sort_by(|a, b| a.name.cmp(&b.name));
 
     EcosystemReport {
         biomeos_dir_exists,

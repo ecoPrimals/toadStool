@@ -3,8 +3,6 @@
 //! **Deep Debt**: Intelligent, configurable selection policies
 
 use anyhow::{anyhow, Result};
-#[allow(unused_imports)] // Types used in future policy implementations
-use toadstool_runtime_universal::substrate::*;
 
 use crate::orchestrator::*;
 
@@ -194,6 +192,7 @@ mod tests {
     use super::*;
     use async_trait::async_trait;
     use std::sync::Arc;
+    use toadstool_runtime_universal::substrate::*;
 
     struct MockSubstrate {
         name: String,

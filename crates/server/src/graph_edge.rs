@@ -111,4 +111,30 @@ mod tests {
         let edge = GraphEdge::new("a", "b").with_metadata("data_size", "1GB");
         assert_eq!(edge.metadata.get("data_size"), Some(&"1GB".to_string()));
     }
+
+    #[test]
+    fn test_edge_type_default() {
+        let default: EdgeType = Default::default();
+        assert_eq!(default, EdgeType::Dependency);
+    }
+
+    #[test]
+    fn test_edge_type_serialization_roundtrip() {
+        for etype in [EdgeType::DataFlow, EdgeType::Control, EdgeType::Dependency] {
+            let json = serde_json::to_string(&etype).unwrap();
+            let restored: EdgeType = serde_json::from_str(&json).unwrap();
+            assert_eq!(etype, restored);
+        }
+    }
+
+    #[test]
+    fn test_graph_edge_serialization_roundtrip() {
+        let edge = GraphEdge::data_flow("producer", "consumer").with_metadata("key", "value");
+        let json = serde_json::to_string(&edge).unwrap();
+        let restored: GraphEdge = serde_json::from_str(&json).unwrap();
+        assert_eq!(edge.from, restored.from);
+        assert_eq!(edge.to, restored.to);
+        assert_eq!(edge.edge_type, restored.edge_type);
+        assert_eq!(edge.metadata.get("key"), restored.metadata.get("key"));
+    }
 }

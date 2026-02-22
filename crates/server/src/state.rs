@@ -225,3 +225,84 @@ impl Default for ServerStatistics {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use toadstool::ExecutionStatus;
+
+    #[test]
+    fn test_server_event_to_json_execution_started() {
+        let event = ServerEvent::ExecutionStarted {
+            execution_id: Uuid::new_v4(),
+            runtime_type: RuntimeType::Native,
+            timestamp: Utc::now(),
+        };
+        let json = event.to_json();
+        assert!(json.contains("execution_started"));
+        assert!(json.contains("execution_id"));
+    }
+
+    #[test]
+    fn test_server_event_to_json_execution_completed() {
+        let event = ServerEvent::ExecutionCompleted {
+            execution_id: Uuid::new_v4(),
+            status: ExecutionStatus::Success,
+            duration_ms: 1500,
+            timestamp: Utc::now(),
+        };
+        let json = event.to_json();
+        assert!(json.contains("execution_completed"));
+        assert!(json.contains("duration_ms"));
+    }
+
+    #[test]
+    fn test_server_event_to_json_health_status_changed() {
+        let event = ServerEvent::HealthStatusChanged {
+            healthy: true,
+            message: "ok".to_string(),
+            timestamp: Utc::now(),
+        };
+        let json = event.to_json();
+        assert!(json.contains("health_status_changed"));
+        assert!(json.contains("healthy"));
+    }
+
+    #[test]
+    fn test_server_event_to_json_error_occurred() {
+        let event = ServerEvent::ErrorOccurred {
+            error_type: "Network".to_string(),
+            message: "timeout".to_string(),
+            execution_id: None,
+            timestamp: Utc::now(),
+        };
+        let json = event.to_json();
+        assert!(json.contains("error_occurred"));
+        assert!(json.contains("timeout"));
+    }
+
+    #[test]
+    fn test_server_statistics_default() {
+        let stats = ServerStatistics::default();
+        assert_eq!(stats.total_executions, 0);
+        assert_eq!(stats.successful_executions, 0);
+        assert_eq!(stats.failed_executions, 0);
+        assert!((stats.average_execution_time_ms - 0.0).abs() < f64::EPSILON);
+        assert_eq!(stats.peak_concurrent_executions, 0);
+        assert_eq!(stats.uptime_seconds, 0);
+        assert_eq!(stats.total_requests, 0);
+        assert_eq!(stats.errors_count, 0);
+    }
+
+    #[test]
+    fn test_client_info_fields() {
+        let info = ClientInfo {
+            ip_address: Some("127.0.0.1".to_string()),
+            user_agent: Some("test".to_string()),
+            api_key: None,
+            authenticated_user: Some("alice".to_string()),
+        };
+        assert_eq!(info.ip_address.as_deref(), Some("127.0.0.1"));
+        assert_eq!(info.authenticated_user.as_deref(), Some("alice"));
+    }
+}

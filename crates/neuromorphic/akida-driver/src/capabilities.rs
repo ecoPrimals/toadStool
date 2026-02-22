@@ -76,10 +76,8 @@ impl MeshTopology {
         let y = read_u8("mesh_y")?;
         let z = read_u8("mesh_z").unwrap_or(1);
 
-        let functional_count = read_u8("mesh_functional").map_or_else(
-            || u32::from(x) * u32::from(y) * u32::from(z),
-            u32::from,
-        );
+        let functional_count = read_u8("mesh_functional")
+            .map_or_else(|| u32::from(x) * u32::from(y) * u32::from(z), u32::from);
 
         Some(Self {
             x,
@@ -632,11 +630,17 @@ mod tests {
 
     #[test]
     fn test_clock_mode_parsing() {
-        assert_eq!(ClockMode::from_sysfs_str("performance"), ClockMode::Performance);
+        assert_eq!(
+            ClockMode::from_sysfs_str("performance"),
+            ClockMode::Performance
+        );
         assert_eq!(ClockMode::from_sysfs_str("economy"), ClockMode::Economy);
         assert_eq!(ClockMode::from_sysfs_str("eco"), ClockMode::Economy);
         assert_eq!(ClockMode::from_sysfs_str("low_power"), ClockMode::LowPower);
-        assert_eq!(ClockMode::from_sysfs_str("  PERF  "), ClockMode::Performance);
+        assert_eq!(
+            ClockMode::from_sysfs_str("  PERF  "),
+            ClockMode::Performance
+        );
         assert_eq!(ClockMode::from_sysfs_str("unknown"), ClockMode::Performance);
     }
 
@@ -654,6 +658,9 @@ mod tests {
     #[test]
     fn test_weight_mutation_support_variants() {
         assert_eq!(WeightMutationSupport::None, WeightMutationSupport::None);
-        assert_ne!(WeightMutationSupport::Full, WeightMutationSupport::ReadoutOnly);
+        assert_ne!(
+            WeightMutationSupport::Full,
+            WeightMutationSupport::ReadoutOnly
+        );
     }
 }

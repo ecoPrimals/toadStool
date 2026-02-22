@@ -223,8 +223,6 @@ mod tests {
         (a - b).abs() < tol
     }
 
-
-
     #[test]
     fn test_qr_2x2() {
         let a = vec![3.0, 4.0, 4.0, 3.0];

@@ -15,7 +15,7 @@
 //   1: output [N] f64 — Hill activation values in [0,1]
 //   2: params uniform  { n_elements: u32, K: f64, n: f64 }
 
-enable f64;
+// f64 is enabled by compile_shader_f64() preamble injection — do not use `enable f64;`
 
 struct HillParams {
     n_elements: u32,

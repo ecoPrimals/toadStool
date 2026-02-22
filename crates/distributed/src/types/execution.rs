@@ -165,3 +165,82 @@ pub struct TrainedESN {
     pub output_weights: Vec<Vec<f64>>,
     pub performance_metrics: HashMap<String, f64>,
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_node_assignment_construction() {
+        let assignment = NodeAssignment {
+            node_id: "node-1".to_string(),
+            resources: ResourceAllocation::default(),
+            tasks: vec!["task-a".to_string(), "task-b".to_string()],
+        };
+        assert_eq!(assignment.node_id, "node-1");
+        assert_eq!(assignment.tasks.len(), 2);
+    }
+
+    #[test]
+    fn test_distributed_execution_status_variants() {
+        let _pending = DistributedExecutionStatus::Pending;
+        let _running = DistributedExecutionStatus::Running;
+        let _completed = DistributedExecutionStatus::Completed;
+        let _failed = DistributedExecutionStatus::Failed("error".to_string());
+        let _cancelled = DistributedExecutionStatus::Cancelled;
+    }
+
+    #[test]
+    fn test_job_distribution_result_serialization_roundtrip() {
+        let result = JobDistributionResult {
+            job_id: Uuid::new_v4(),
+            target_node: "node-1".to_string(),
+            distribution_time: chrono::Utc::now(),
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        let parsed: JobDistributionResult = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.target_node, result.target_node);
+    }
+
+    #[test]
+    fn test_universal_execution_result_construction() {
+        let result = UniversalExecutionResult {
+            substrate_used: "native".to_string(),
+            execution_time_ms: 123.5,
+            energy_consumed_joules: 0.5,
+            result_data: vec![1, 2, 3],
+            performance_metrics: HashMap::new(),
+            substrate_health_post_execution: Some("healthy".to_string()),
+        };
+        assert_eq!(result.substrate_used, "native");
+        assert!((result.execution_time_ms - 123.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_platform_resource_requirements_construction() {
+        let req = PlatformResourceRequirements {
+            compute_units: 8,
+            memory_bytes: 16 * 1024 * 1024 * 1024,
+            storage_bytes: 100 * 1024 * 1024 * 1024,
+            network_bandwidth_bps: 1_000_000_000,
+            specialized_hardware: vec!["gpu".to_string()],
+        };
+        assert_eq!(req.compute_units, 8);
+    }
+
+    #[test]
+    fn test_neuromorphic_config_serialization_roundtrip() {
+        let config = NeuromorphicConfig {
+            platform: "akida".to_string(),
+            neuron_model: "lif".to_string(),
+            synapse_model: "stdp".to_string(),
+            learning_rule: "hebbian".to_string(),
+            connectivity_pattern: "sparse".to_string(),
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: NeuromorphicConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.platform, config.platform);
+    }
+}

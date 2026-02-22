@@ -782,6 +782,6 @@ mod tests {
         assert_eq!(quota_mb.max_vram_bytes, Some(512 * 1024 * 1024));
 
         let quota_min_gb = ResourceQuota::new().with_min_vram_gb(1);
-        assert_eq!(quota_min_gb.min_vram_bytes, Some(1 * 1024 * 1024 * 1024));
+        assert_eq!(quota_min_gb.min_vram_bytes, Some(1024 * 1024 * 1024));
     }
 }

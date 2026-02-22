@@ -54,6 +54,7 @@ mdns-sd = "0.10"
 tokio-test = { workspace = true }
 tokio = { workspace = true }
 proptest = { workspace = true }
+tempfile = "3"
 
 [features]
 default = [] 

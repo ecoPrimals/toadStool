@@ -89,7 +89,11 @@ impl PairwiseHammingGpu {
             cache: None,
         });
 
-        Self { pipeline, bgl, device }
+        Self {
+            pipeline,
+            bgl,
+            device,
+        }
     }
 
     /// Compute pairwise Hamming distances for `n_seqs` sequences of `seq_len`.
@@ -119,9 +123,18 @@ impl PairwiseHammingGpu {
             label: Some("PairwiseHamming BG"),
             layout: &self.bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: sequences_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: distances_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: params_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: sequences_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: distances_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buf.as_entire_binding(),
+                },
             ],
         });
 

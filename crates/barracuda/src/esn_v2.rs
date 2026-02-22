@@ -118,13 +118,15 @@ impl Default for ESNConfig {
 /// GPU shader for fused reservoir update: W_in*input + W_res*state → leaky tanh → new state.
 ///
 /// Single dispatch replaces two matmul + elementwise ops. Provenance: hotSpring v0.6.0.
-pub const WGSL_ESN_RESERVOIR_UPDATE: &str =
-    include_str!("shaders/ml/esn_reservoir_update.wgsl");
+pub const WGSL_ESN_RESERVOIR_UPDATE: &str = include_str!("shaders/ml/esn_reservoir_update.wgsl");
 
 /// GPU shader for readout: output[i] = W_out[i,:] · state (matrix-vector product).
 ///
 /// Separated from reservoir update so readout can run on CPU while reservoir runs on GPU/NPU.
 pub const WGSL_ESN_READOUT: &str = include_str!("shaders/ml/esn_readout.wgsl");
+
+/// Result of [`ESN::export_weights`]: `(w_in, w_res, w_out)` as flat f32 vectors.
+pub type ExportedWeights = (Vec<f32>, Vec<f32>, Option<Vec<f32>>);
 
 /// Hardware-Agnostic Echo State Network
 ///
@@ -149,23 +151,41 @@ pub struct ESN {
 
 fn validate_config(config: &ESNConfig) -> BarracudaResult<()> {
     let check = |cond: bool, msg: &str| -> BarracudaResult<()> {
-        if cond { Ok(()) } else { Err(BarracudaError::InvalidInput { message: msg.to_string() }) }
+        if cond {
+            Ok(())
+        } else {
+            Err(BarracudaError::InvalidInput {
+                message: msg.to_string(),
+            })
+        }
     };
-    check(config.input_size > 0 && config.reservoir_size > 0 && config.output_size > 0,
-          "All sizes must be greater than zero")?;
-    check(config.spectral_radius > 0.0 && config.spectral_radius <= 2.0,
-          "Spectral radius must be in (0, 2]")?;
-    check(config.connectivity > 0.0 && config.connectivity <= 1.0,
-          "Connectivity must be in (0, 1]")?;
-    check(config.leak_rate > 0.0 && config.leak_rate <= 1.0,
-          "Leak rate must be in (0, 1]")?;
-    check(config.regularization > 0.0,
-          "Regularization must be positive")?;
+    check(
+        config.input_size > 0 && config.reservoir_size > 0 && config.output_size > 0,
+        "All sizes must be greater than zero",
+    )?;
+    check(
+        config.spectral_radius > 0.0 && config.spectral_radius <= 2.0,
+        "Spectral radius must be in (0, 2]",
+    )?;
+    check(
+        config.connectivity > 0.0 && config.connectivity <= 1.0,
+        "Connectivity must be in (0, 1]",
+    )?;
+    check(
+        config.leak_rate > 0.0 && config.leak_rate <= 1.0,
+        "Leak rate must be in (0, 1]",
+    )?;
+    check(
+        config.regularization > 0.0,
+        "Regularization must be positive",
+    )?;
     Ok(())
 }
 
 fn expect_size(label: &str, expected: usize, actual: usize) -> BarracudaResult<()> {
-    if actual == expected { return Ok(()); }
+    if actual == expected {
+        return Ok(());
+    }
     Err(BarracudaError::InvalidInput {
         message: format!("{label} size mismatch: expected {expected}, got {actual}"),
     })
@@ -314,7 +334,8 @@ impl ESN {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "Input tensor shape mismatch: expected [{}, 1], got {:?}",
-                    self.config.input_size, input.shape()
+                    self.config.input_size,
+                    input.shape()
                 ),
             });
         }
@@ -567,6 +588,55 @@ impl ESN {
         &self.state
     }
 
+    /// Export all ESN weights as flat f32 vectors for cross-device deployment.
+    ///
+    /// Returns `(w_in, w_res, w_out)` where each is a row-major flat vector.
+    /// `w_out` is `None` if the network has not been trained.
+    ///
+    /// This is the primary mechanism for the GPU-train → NPU-deploy pipeline:
+    /// train on a GPU-backed ESN, export weights, then load onto an NPU or
+    /// edge device for inference.
+    /// Exported weight tuple: `(w_in, w_res, w_out)`.
+    pub fn export_weights(&self) -> BarracudaResult<ExportedWeights> {
+        let w_in_data = self.w_in.to_vec()?;
+        let w_res_data = self.w_res.to_vec()?;
+        let w_out_data = match &self.w_out {
+            Some(w) => Some(w.to_vec()?),
+            None => None,
+        };
+        Ok((w_in_data, w_res_data, w_out_data))
+    }
+
+    /// Import pre-trained weights (e.g., from another device or saved checkpoint).
+    ///
+    /// Shapes must match the current config:
+    ///   - `w_in`:  `[reservoir_size, input_size]`
+    ///   - `w_res`: `[reservoir_size, reservoir_size]`
+    ///   - `w_out`: `[output_size, reservoir_size]`
+    pub fn import_weights(
+        &mut self,
+        w_in: &[f32],
+        w_res: &[f32],
+        w_out: Option<&[f32]>,
+    ) -> BarracudaResult<()> {
+        let rs = self.config.reservoir_size;
+        let is = self.config.input_size;
+        let os = self.config.output_size;
+
+        expect_size("w_in", rs * is, w_in.len())?;
+        expect_size("w_res", rs * rs, w_res.len())?;
+
+        self.w_in = Tensor::from_data(w_in, vec![rs, is], self.device.clone())?;
+        self.w_res = Tensor::from_data(w_res, vec![rs, rs], self.device.clone())?;
+
+        if let Some(wo) = w_out {
+            expect_size("w_out", os * rs, wo.len())?;
+            self.w_out = Some(Tensor::from_data(wo, vec![os, rs], self.device.clone())?);
+            self.trained = true;
+        }
+        Ok(())
+    }
+
     /// Get device query
     pub fn query_device(&self) -> Device {
         // Map WgpuDevice type to unified Device enum
@@ -791,7 +861,10 @@ mod tests {
         let (output, state) = esn.predict_return_state(&[5.0]).await.unwrap();
         assert_eq!(output.len(), 1);
         assert_eq!(state.len(), 20);
-        assert!(state.iter().any(|&v| v != 0.0), "State should be non-zero after update");
+        assert!(
+            state.iter().any(|&v| v != 0.0),
+            "State should be non-zero after update"
+        );
     }
 
     #[tokio::test]
@@ -811,12 +884,20 @@ mod tests {
 
         let original = esn.predict(&[5.0]).await.unwrap();
 
-        let new_weights = Tensor::zeros_on(vec![1, 20], esn.device.clone()).await.unwrap();
+        let new_weights = Tensor::zeros_on(vec![1, 20], esn.device.clone())
+            .await
+            .unwrap();
         esn.set_readout_weights(new_weights).unwrap();
 
         let zeroed = esn.predict(&[5.0]).await.unwrap();
-        assert!((zeroed[0]).abs() < 1e-5, "Zero readout should produce near-zero output");
-        assert_ne!(original, zeroed, "Different readout weights should produce different output");
+        assert!(
+            (zeroed[0]).abs() < 1e-5,
+            "Zero readout should produce near-zero output"
+        );
+        assert_ne!(
+            original, zeroed,
+            "Different readout weights should produce different output"
+        );
     }
 
     #[tokio::test]

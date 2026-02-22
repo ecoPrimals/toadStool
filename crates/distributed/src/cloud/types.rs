@@ -284,7 +284,7 @@ pub enum NetworkingFeature {
 }
 
 /// Security feature options
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum SecurityFeature {
     Encryption,
     IdentityManagement,
@@ -293,7 +293,7 @@ pub enum SecurityFeature {
 }
 
 /// Compliance certifications
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ComplianceCertification {
     SOC2,
     ISO27001,
@@ -626,4 +626,108 @@ pub struct ComplianceConstraints {
     pub allowed_providers: Vec<String>,
     pub required_regions: Vec<String>,
     pub encryption_required: bool,
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_disaster_recovery_config_default() {
+        let config = DisasterRecoveryConfig::default();
+        assert!(config.auto_failover);
+        assert_eq!(config.rto_seconds, 900);
+        assert_eq!(config.rpo_seconds, 300);
+        assert_eq!(config.backup_retention_days, 30);
+    }
+
+    #[test]
+    fn test_multi_cloud_availability_new() {
+        let avail = MultiCloudAvailability::new();
+        assert!(avail.providers.is_empty());
+    }
+
+    #[test]
+    fn test_multi_cloud_availability_add_provider() {
+        let mut avail = MultiCloudAvailability::new();
+        avail.add_provider(
+            "aws",
+            AvailabilityInfo {
+                cpu_cores: 64.0,
+                memory_gb: 256.0,
+                storage_gb: 1000.0,
+                gpu_count: 4,
+                regions: vec!["us-east-1".to_string()],
+                availability_zones: vec!["us-east-1a".to_string()],
+            },
+        );
+        // Verify add_provider completes without panic
+        let _ = &avail;
+    }
+
+    #[test]
+    fn test_multi_cloud_availability_mark_unavailable() {
+        let mut avail = MultiCloudAvailability::new();
+        avail.mark_provider_unavailable("gcp");
+        // Verify mark_provider_unavailable completes without panic
+        let _ = &avail;
+    }
+
+    #[test]
+    fn test_cloud_health_checker_new() {
+        let checker = CloudHealthChecker::new("ec2".to_string());
+        assert!(checker.endpoint.contains("ec2"));
+        assert!(checker.endpoint.contains("amazonaws.com"));
+    }
+
+    #[test]
+    fn test_region_construction() {
+        let region = Region {
+            name: "us-east-1".to_string(),
+            location: "N. Virginia".to_string(),
+            availability_zones: vec!["us-east-1a".to_string(), "us-east-1b".to_string()],
+        };
+        assert_eq!(region.name, "us-east-1");
+        assert_eq!(region.availability_zones.len(), 2);
+    }
+
+    #[test]
+    fn test_topology_type_default() {
+        let topo = TopologyType::default();
+        assert!(matches!(topo, TopologyType::Centralized));
+    }
+
+    #[test]
+    fn test_federation_node_default() {
+        let node = FederationNode::default();
+        assert!(node.id.is_empty());
+        assert!(node.capabilities.is_empty());
+    }
+
+    #[test]
+    fn test_replica_status_default() {
+        let status = ReplicaStatus::default();
+        assert!(matches!(status, ReplicaStatus::Synced));
+    }
+
+    #[test]
+    fn test_connection_status_default() {
+        let status = ConnectionStatus::default();
+        assert!(matches!(status, ConnectionStatus::Active));
+    }
+
+    #[test]
+    fn test_alert_severity_default() {
+        let severity = AlertSeverity::default();
+        assert!(matches!(severity, AlertSeverity::Info));
+    }
+
+    #[test]
+    fn test_performance_metric_default() {
+        let metric = PerformanceMetric::default();
+        assert!(metric.name.is_empty());
+        assert_eq!(metric.value, 0.0);
+    }
 }

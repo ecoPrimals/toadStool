@@ -11,6 +11,7 @@
 //! - ✅ Runtime capability discovery
 //! - ✅ Hardware-agnostic (works on any GPU)
 
+use crate::cpu_executor::CpuExecutor;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use crate::unified_hardware::{
@@ -351,16 +352,20 @@ impl ComputeExecutor for GpuExecutor {
 
         let output_tensor: crate::tensor::Tensor = match op {
             // ── Unary ops ───────────────────────────────────────────────────
-            MathOp::Negate     => build_tensor(&inputs[0], &self.device).await?.mul_scalar(-1.0f32)?,
-            MathOp::Abs        => build_tensor(&inputs[0], &self.device).await?.abs_wgsl()?,
-            MathOp::Sqrt       => build_tensor(&inputs[0], &self.device).await?.sqrt_wgsl()?,
-            MathOp::Exp        => build_tensor(&inputs[0], &self.device).await?.exp_wgsl()?,
-            MathOp::Log        => build_tensor(&inputs[0], &self.device).await?.log_wgsl()?,
-            MathOp::Sin        => build_tensor(&inputs[0], &self.device).await?.sin_wgsl()?,
-            MathOp::Cos        => build_tensor(&inputs[0], &self.device).await?.cos_wgsl()?,
-            MathOp::Tan        => build_tensor(&inputs[0], &self.device).await?.tan_wgsl()?,
-            MathOp::Reciprocal => build_tensor(&inputs[0], &self.device).await?.reciprocal_wgsl()?,
-            MathOp::Square     => {
+            MathOp::Negate => build_tensor(&inputs[0], &self.device)
+                .await?
+                .mul_scalar(-1.0f32)?,
+            MathOp::Abs => build_tensor(&inputs[0], &self.device).await?.abs_wgsl()?,
+            MathOp::Sqrt => build_tensor(&inputs[0], &self.device).await?.sqrt_wgsl()?,
+            MathOp::Exp => build_tensor(&inputs[0], &self.device).await?.exp_wgsl()?,
+            MathOp::Log => build_tensor(&inputs[0], &self.device).await?.log_wgsl()?,
+            MathOp::Sin => build_tensor(&inputs[0], &self.device).await?.sin_wgsl()?,
+            MathOp::Cos => build_tensor(&inputs[0], &self.device).await?.cos_wgsl()?,
+            MathOp::Tan => build_tensor(&inputs[0], &self.device).await?.tan_wgsl()?,
+            MathOp::Reciprocal => build_tensor(&inputs[0], &self.device)
+                .await?
+                .reciprocal_wgsl()?,
+            MathOp::Square => {
                 let t = build_tensor(&inputs[0], &self.device).await?;
                 t.mul(&t)?
             }
@@ -387,16 +392,16 @@ impl ComputeExecutor for GpuExecutor {
 
             // ── Activation ops ──────────────────────────────────────────────
             MathOp::Softmax { .. } => build_tensor(&inputs[0], &self.device).await?.softmax()?,
-            MathOp::ReLU           => build_tensor(&inputs[0], &self.device).await?.relu()?,
-            MathOp::Sigmoid        => build_tensor(&inputs[0], &self.device).await?.sigmoid()?,
-            MathOp::Tanh           => build_tensor(&inputs[0], &self.device).await?.tanh()?,
-            MathOp::GELU           => build_tensor(&inputs[0], &self.device).await?.gelu_wgsl()?,
+            MathOp::ReLU => build_tensor(&inputs[0], &self.device).await?.relu()?,
+            MathOp::Sigmoid => build_tensor(&inputs[0], &self.device).await?.sigmoid()?,
+            MathOp::Tanh => build_tensor(&inputs[0], &self.device).await?.tanh()?,
+            MathOp::GELU => build_tensor(&inputs[0], &self.device).await?.gelu_wgsl()?,
 
             // ── Reductions ──────────────────────────────────────────────────
-            MathOp::ReduceSum  { .. } => build_tensor(&inputs[0], &self.device).await?.sum()?,
+            MathOp::ReduceSum { .. } => build_tensor(&inputs[0], &self.device).await?.sum()?,
             MathOp::ReduceMean { .. } => build_tensor(&inputs[0], &self.device).await?.mean()?,
-            MathOp::ReduceMax  { .. } => build_tensor(&inputs[0], &self.device).await?.max()?,
-            MathOp::ReduceMin  { .. } => build_tensor(&inputs[0], &self.device).await?.min()?,
+            MathOp::ReduceMax { .. } => build_tensor(&inputs[0], &self.device).await?.max()?,
+            MathOp::ReduceMin { .. } => build_tensor(&inputs[0], &self.device).await?.min()?,
             MathOp::ReduceProd { .. } => build_tensor(&inputs[0], &self.device).await?.prod()?,
 
             // ── Pow (scalar exponent via GPU, extracts first element of b) ─
@@ -415,16 +420,30 @@ impl ComputeExecutor for GpuExecutor {
             MathOp::Max | MathOp::Min => {
                 let a_data = inputs[0].read_to_cpu().await?;
                 let b_data = inputs[1].read_to_cpu().await?;
-                let a_f32: Vec<f32> = a_data.chunks_exact(4)
+                let a_f32: Vec<f32> = a_data
+                    .chunks_exact(4)
                     .map(|c| f32::from_ne_bytes([c[0], c[1], c[2], c[3]]))
                     .collect();
-                let b_f32: Vec<f32> = b_data.chunks_exact(4)
+                let b_f32: Vec<f32> = b_data
+                    .chunks_exact(4)
                     .map(|c| f32::from_ne_bytes([c[0], c[1], c[2], c[3]]))
                     .collect();
-                let result: Vec<f32> = a_f32.iter().zip(b_f32.iter())
-                    .map(|(&a, &b)| if matches!(op, MathOp::Max) { a.max(b) } else { a.min(b) })
+                let result: Vec<f32> = a_f32
+                    .iter()
+                    .zip(b_f32.iter())
+                    .map(|(&a, &b)| {
+                        if matches!(op, MathOp::Max) {
+                            a.max(b)
+                        } else {
+                            a.min(b)
+                        }
+                    })
                     .collect();
-                crate::tensor::Tensor::from_data(&result, inputs[0].descriptor().shape.clone(), self.device.clone())?
+                crate::tensor::Tensor::from_data(
+                    &result,
+                    inputs[0].descriptor().shape.clone(),
+                    self.device.clone(),
+                )?
             }
 
             // ── Shape ops ───────────────────────────────────────────────────
@@ -432,15 +451,19 @@ impl ComputeExecutor for GpuExecutor {
                 let t = build_tensor(&inputs[0], &self.device).await?;
                 t.reshape(new_shape.iter().map(|&x| x as usize).collect())?
             }
-            MathOp::Transpose { .. } => build_tensor(&inputs[0], &self.device).await?.transpose()?,
+            MathOp::Transpose { .. } => {
+                build_tensor(&inputs[0], &self.device).await?.transpose()?
+            }
             MathOp::Squeeze { .. } => build_tensor(&inputs[0], &self.device).await?.squeeze()?,
             MathOp::Unsqueeze { dims } => {
                 let axis = dims.first().copied().unwrap_or(0);
-                build_tensor(&inputs[0], &self.device).await?.unsqueeze(axis)?
+                build_tensor(&inputs[0], &self.device)
+                    .await?
+                    .unsqueeze(axis)?
             }
-            MathOp::Broadcast { target_shape } => {
-                build_tensor(&inputs[0], &self.device).await?.broadcast(target_shape.clone())?
-            }
+            MathOp::Broadcast { target_shape } => build_tensor(&inputs[0], &self.device)
+                .await?
+                .broadcast(target_shape.clone())?,
             MathOp::Concat { .. } => {
                 if inputs.len() < 2 {
                     return Err(crate::error::BarracudaError::InvalidInput {
@@ -458,11 +481,19 @@ impl ComputeExecutor for GpuExecutor {
                 first
             }
 
-            // ── Convolution ops (future GPU kernels) ────────────────────────
-            other @ (MathOp::Conv2D { .. } | MathOp::MaxPool2D { .. } | MathOp::AvgPool2D { .. }) => {
-                return Err(crate::error::BarracudaError::NotImplemented {
-                    feature: format!("GpuExecutor::execute({other:?}) — conv kernels planned"),
-                })
+            // ── Convolution ops: CPU fallback; dedicated WGSL shaders exist ───
+            // ops/nn/conv2d.wgsl, maxpool2d.wgsl, avgpool2d.wgsl provide GPU
+            // acceleration when wired; routing to CPU for now.
+            MathOp::Conv2D { .. } | MathOp::MaxPool2D { .. } | MathOp::AvgPool2D { .. } => {
+                let cpu = CpuExecutor::new();
+                // Transfer inputs to CPU, execute, then transfer result back to GPU
+                let mut cpu_inputs = Vec::with_capacity(inputs.len());
+                for inp in &inputs {
+                    let on_cpu = cpu.transfer(inp.clone()).await?;
+                    cpu_inputs.push(on_cpu);
+                }
+                let cpu_result = cpu.execute(op, cpu_inputs).await?;
+                return self.transfer(cpu_result).await;
             }
         };
 

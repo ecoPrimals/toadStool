@@ -15,6 +15,7 @@
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
 
 /// Result of particle sorting by cell: (sorted_positions, particle_indices, cell_start, cell_count)
 pub type CellSortResult = (Vec<f64>, Vec<usize>, Vec<u32>, Vec<u32>);
@@ -22,9 +23,11 @@ pub type CellSortResult = (Vec<f64>, Vec<usize>, Vec<u32>, Vec<u32>);
 /// f64 Yukawa force with cell-list O(N) scaling
 ///
 /// For large systems (N > 5000), uses cell decomposition for O(N) complexity.
+/// Uses GPU-accelerated WGSL shader with sorted particles and pre-computed cell
+/// boundaries, falling back to CPU only for very small systems (< 256 particles).
 pub struct YukawaCellListF64 {
-    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
+    pipeline: wgpu::ComputePipeline,
 }
 
 /// Cell list parameters for spatial decomposition
@@ -47,26 +50,28 @@ pub struct CellListParams {
 impl YukawaCellListF64 {
     /// Create new Yukawa cell-list force calculation
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        Ok(Self { device })
-    }
+        let shader_source = include_str!("yukawa_celllist_f64.wgsl");
+        let shader_module =
+            device.compile_shader_f64(shader_source, Some("YukawaCellListF64 Shader"));
 
-    #[allow(dead_code)]
-    fn wgsl_shader() -> &'static str {
-        include_str!("yukawa_celllist_f64.wgsl")
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("YukawaCellListF64 Pipeline"),
+                layout: None,
+                module: &shader_module,
+                entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
+            });
+
+        Ok(Self { device, pipeline })
     }
 
     /// Compute Yukawa forces using cell-list algorithm
     ///
-    /// # Arguments
-    /// * `positions` - Particle positions [N*3] (x,y,z interleaved)
-    /// * `params` - Cell list and simulation parameters
-    ///
-    /// # Returns
-    /// Force vectors [N*3] and per-particle potential energy [N]
-    ///
-    /// # Note
-    /// Positions should be sorted by cell index for optimal GPU performance.
-    /// Use `sort_particles_by_cell()` to prepare data.
+    /// For N >= 256, dispatches the GPU shader with sorted particles.
+    /// For N < 256, uses CPU fallback (driver overhead dominates).
     pub fn compute_forces(
         &self,
         positions: &[f64],
@@ -77,12 +82,207 @@ impl YukawaCellListF64 {
             return Ok((vec![], vec![]));
         }
 
-        // Build cell list
-        let cell_data = self.build_cell_list(positions, params)?;
+        if n < 256 {
+            let cell_data = self.build_cell_list(positions, params)?;
+            return Ok(self.compute_cpu(positions, params, &cell_data));
+        }
 
-        // For now, use CPU implementation
-        // GPU path requires sorted particles + complex setup
-        Ok(self.compute_cpu(positions, params, &cell_data))
+        self.compute_gpu(positions, params)
+    }
+
+    fn compute_gpu(
+        &self,
+        positions: &[f64],
+        params: &CellListParams,
+    ) -> Result<(Vec<f64>, Vec<f64>)> {
+        let n = positions.len() / 3;
+        let n_cells_total = params.n_cells[0] * params.n_cells[1] * params.n_cells[2];
+
+        let (sorted_pos, _indices, cell_start, cell_count) =
+            self.sort_particles_by_cell(positions, params)?;
+
+        let cell_size = [
+            params.box_size[0] / params.n_cells[0] as f64,
+            params.box_size[1] / params.n_cells[1] as f64,
+            params.box_size[2] / params.n_cells[2] as f64,
+        ];
+
+        let gpu_params: Vec<f64> = vec![
+            n as f64,
+            params.kappa,
+            params.prefactor,
+            params.cutoff * params.cutoff,
+            params.box_size[0],
+            params.box_size[1],
+            params.box_size[2],
+            params.epsilon,
+            params.n_cells[0] as f64,
+            params.n_cells[1] as f64,
+            params.n_cells[2] as f64,
+            cell_size[0],
+            cell_size[1],
+            cell_size[2],
+            n_cells_total as f64,
+            0.0, // padding to 16
+        ];
+
+        let pos_bytes: Vec<u8> = sorted_pos.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let params_bytes: Vec<u8> = gpu_params.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let cs_bytes: Vec<u8> = cell_start.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let cc_bytes: Vec<u8> = cell_count.iter().flat_map(|v| v.to_le_bytes()).collect();
+
+        let pos_buffer = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("YCL Positions"),
+                contents: &pos_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let forces_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("YCL Forces"),
+            size: (n * 3 * 8) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let pe_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("YCL PE"),
+            size: (n * 8) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let params_buffer =
+            self.device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("YCL Params"),
+                    contents: &params_bytes,
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
+
+        let cs_buffer = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("YCL CellStart"),
+                contents: &cs_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let cc_buffer = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("YCL CellCount"),
+                contents: &cc_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let bind_group_layout = self.pipeline.get_bind_group_layout(0);
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("YCL Bind Group"),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: pos_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: forces_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: pe_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: cs_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: cc_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+
+        let n_workgroups = (n as u32).div_ceil(64);
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("YCL Encoder"),
+                });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("YCL Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(n_workgroups, 1, 1);
+        }
+
+        self.device.queue.submit(Some(encoder.finish()));
+
+        let forces = self.read_f64_buffer(&forces_buffer, n * 3)?;
+        let energies = self.read_f64_buffer(&pe_buffer, n)?;
+
+        // Unsort: map GPU output back to original particle ordering
+        let (_, original_indices, _, _) = self.sort_particles_by_cell(positions, params)?;
+        let mut forces_unsorted = vec![0.0f64; n * 3];
+        let mut energies_unsorted = vec![0.0f64; n];
+        for (sorted_idx, &orig_idx) in original_indices.iter().enumerate() {
+            forces_unsorted[orig_idx * 3] = forces[sorted_idx * 3];
+            forces_unsorted[orig_idx * 3 + 1] = forces[sorted_idx * 3 + 1];
+            forces_unsorted[orig_idx * 3 + 2] = forces[sorted_idx * 3 + 2];
+            energies_unsorted[orig_idx] = energies[sorted_idx];
+        }
+
+        Ok((forces_unsorted, energies_unsorted))
+    }
+
+    fn read_f64_buffer(&self, buffer: &wgpu::Buffer, count: usize) -> Result<Vec<f64>> {
+        let staging = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("YCL Staging"),
+            size: (count * 8) as u64,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("YCL Copy"),
+                });
+        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, (count * 8) as u64);
+        self.device.queue.submit(Some(encoder.finish()));
+
+        let slice = staging.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        self.device.device.poll(wgpu::Maintain::Wait);
+
+        let data = slice.get_mapped_range();
+        let results: Vec<f64> = data
+            .chunks_exact(8)
+            .map(|b| f64::from_le_bytes(b.try_into().expect("8-byte chunk")))
+            .collect();
+        drop(data);
+        staging.unmap();
+
+        Ok(results)
     }
 
     /// Sort particles by cell index for optimal GPU performance

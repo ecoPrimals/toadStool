@@ -21,9 +21,6 @@ use toadstool_common::primal_sockets::{discover_crypto_socket, get_socket_path_f
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use toadstool_common::{ToadStoolError, ToadStoolResult};
 
-#[allow(unused_imports)] // Keep for discovery trait implementations
-use std::time::Duration;
-
 use toadstool_common::constants::timeouts;
 
 use super::types::{

@@ -21,7 +21,6 @@ use anyhow::{Context, Result};
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 
-#[allow(unused_imports)]
 use wgpu;
 
 /// Parameters passed to the cumprod_f64 shader

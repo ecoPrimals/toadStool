@@ -146,19 +146,13 @@ impl UnifiedBuffer {
         // DEEP DEBT: Validate before every use!
         self.validate_cpu_ptr()?;
 
-        // SAFETY: from_raw_parts_mut requires:
-        // - ptr must be valid for reads and writes of size * mem::size_of::<T>() bytes
-        // - ptr must be properly aligned for T
-        // - The memory must be initialized (for reads)
-        // - The memory must not be accessed through other pointers during the lifetime
-        // Invariants that hold:
-        // - cpu_ptr is NonNull (compile-time guarantee of non-null)
-        // - cpu_ptr validated above (alignment checked, allocation exists, not in NULL page)
-        // - size is validated at buffer creation and in validate_cpu_ptr() (non-zero, reasonable)
-        // - We have exclusive &mut self (Rust borrow checker guarantees no concurrent access)
-        // - The pointer points to unified memory allocated by backend (valid for buffer lifetime)
-        // - T = u8, so alignment requirement is 1 (always satisfied)
-        // DEEP DEBT: NonNull.as_ptr() is zero-cost - same performance, better safety
+        // UNAVOIDABLE UNSAFE: from_raw_parts_mut - no safe alternative when wrapping
+        // backend-returned raw pointer for slice access. bytemuck::cast_slice is for
+        // type conversion, not ptr→slice.
+        //
+        // SAFETY: (1) cpu_ptr NonNull, validated (alignment, allocation, not NULL page);
+        // (2) size validated at creation and in validate_cpu_ptr; (3) exclusive &mut self;
+        // (4) ptr from backend allocation, valid for buffer lifetime; (5) u8 align=1.
         Ok(unsafe { std::slice::from_raw_parts_mut(self.cpu_ptr.as_ptr(), self.size) })
     }
 
@@ -181,19 +175,12 @@ impl UnifiedBuffer {
         // DEEP DEBT: Validate before every use!
         self.validate_cpu_ptr()?;
 
-        // SAFETY: from_raw_parts requires:
-        // - ptr must be valid for reads of size * mem::size_of::<T>() bytes
-        // - ptr must be properly aligned for T
-        // - The memory must be initialized
-        // - The memory must not be mutated through other pointers during the lifetime
-        // Invariants that hold:
-        // - cpu_ptr is NonNull (compile-time guarantee of non-null)
-        // - cpu_ptr validated above (alignment checked, allocation exists, not in NULL page)
-        // - size is validated at buffer creation and in validate_cpu_ptr() (non-zero, reasonable)
-        // - We have &self, Rust guarantees no concurrent mutation (immutable borrow)
-        // - The pointer points to unified memory allocated by backend (valid for buffer lifetime)
-        // - T = u8, so alignment requirement is 1 (always satisfied)
-        // DEEP DEBT: NonNull.as_ptr() is zero-cost - same performance, better safety
+        // UNAVOIDABLE UNSAFE: from_raw_parts - no safe alternative when wrapping
+        // backend-returned raw pointer for slice access.
+        //
+        // SAFETY: (1) cpu_ptr NonNull, validated (alignment, allocation, not NULL page);
+        // (2) size validated; (3) &self gives shared access, no concurrent mutation;
+        // (4) ptr from backend allocation, valid for buffer lifetime; (5) u8 align=1.
         Ok(unsafe { std::slice::from_raw_parts(self.cpu_ptr.as_ptr(), self.size) })
     }
 
@@ -230,10 +217,9 @@ impl UnifiedBuffer {
         );
         assert!(size > 0, "Buffer size cannot be zero");
 
-        // SAFE: The three assertions above guarantee cpu_ptr is non-null and
-        // outside the null page. NonNull::new returns Some for non-null pointers.
-        let cpu_ptr_nonnull = NonNull::new(cpu_ptr)
-            .expect("cpu_ptr validated non-null by assertions above");
+        // SAFETY: The three assertions above guarantee cpu_ptr is non-null and
+        // outside the null page. NonNull::new cannot return None here.
+        let cpu_ptr_nonnull = unsafe { NonNull::new_unchecked(cpu_ptr) };
 
         Self {
             id,

@@ -92,7 +92,11 @@ impl PairwiseJaccardGpu {
             cache: None,
         });
 
-        Self { pipeline, bgl, device }
+        Self {
+            pipeline,
+            bgl,
+            device,
+        }
     }
 
     /// Compute pairwise Jaccard distances for a pangenome PA matrix.
@@ -122,9 +126,18 @@ impl PairwiseJaccardGpu {
             label: Some("PairwiseJaccard BG"),
             layout: &self.bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: pa_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: distances_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: params_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: pa_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: distances_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buf.as_entire_binding(),
+                },
             ],
         });
 

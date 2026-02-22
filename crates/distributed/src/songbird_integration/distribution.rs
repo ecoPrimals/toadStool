@@ -292,3 +292,55 @@ impl JobSplittingStrategy {
         }
     }
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::songbird_integration::types::SplittingStrategyType;
+
+    #[test]
+    fn test_job_splitting_strategy_from_string_data_parallel() {
+        let s = JobSplittingStrategy::from_string("data_parallel");
+        assert!(matches!(
+            s.strategy_type,
+            SplittingStrategyType::DataParallel
+        ));
+        assert_eq!(s.max_subtasks, 100);
+    }
+
+    #[test]
+    fn test_job_splitting_strategy_from_string_task_parallel() {
+        let s = JobSplittingStrategy::from_string("task_parallel");
+        assert!(matches!(
+            s.strategy_type,
+            SplittingStrategyType::TaskParallel
+        ));
+    }
+
+    #[test]
+    fn test_job_splitting_strategy_from_string_map_reduce() {
+        let s = JobSplittingStrategy::from_string("map_reduce");
+        assert!(matches!(s.strategy_type, SplittingStrategyType::MapReduce));
+    }
+
+    #[test]
+    fn test_job_splitting_strategy_from_string_custom() {
+        let s = JobSplittingStrategy::from_string("my_custom_strategy");
+        assert!(
+            matches!(&s.strategy_type, SplittingStrategyType::Custom(name) if name == "my_custom_strategy")
+        );
+    }
+
+    #[test]
+    fn test_job_splitting_strategy_default() {
+        let s = JobSplittingStrategy::default();
+        assert!(matches!(
+            s.strategy_type,
+            SplittingStrategyType::DataParallel
+        ));
+        assert_eq!(s.max_subtasks, 100);
+        assert_eq!(s.min_subtask_size, 1024);
+    }
+}

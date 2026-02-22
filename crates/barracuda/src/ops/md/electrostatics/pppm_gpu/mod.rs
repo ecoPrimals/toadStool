@@ -28,6 +28,7 @@ use pipelines::{PppmBindGroupLayouts, PppmPipelines};
 pub struct PppmGpu {
     device: Arc<wgpu::Device>,
     queue: Arc<wgpu::Queue>,
+    adapter_info: wgpu::AdapterInfo,
     params: PppmParams,
     greens: GreensFunction,
     pipelines: PppmPipelines,
@@ -51,6 +52,7 @@ impl PppmGpu {
         Self::build_from_modules(
             wgpu_device.device_arc(),
             wgpu_device.queue_arc(),
+            wgpu_device.adapter_info().clone(),
             params,
             greens,
             bspline_module,
@@ -63,15 +65,24 @@ impl PppmGpu {
     }
 
     /// Create from raw wgpu device/queue (legacy API).
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use from_device() for proper adapter detection"
+    )]
     pub async fn new(
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
         params: PppmParams,
     ) -> Result<Self> {
+        #[allow(deprecated)]
         Self::new_with_driver(device, queue, params, false).await
     }
 
     /// Create with explicit driver awareness.
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use from_device() for proper adapter detection"
+    )]
     pub async fn new_with_driver(
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
@@ -106,9 +117,20 @@ impl PppmGpu {
             source: wgpu::ShaderSource::Wgsl(erfc_forces_shader.into()),
         });
 
+        let synthetic_info = wgpu::AdapterInfo {
+            name: "Legacy PPPM Device".to_string(),
+            vendor: 0,
+            device: 0,
+            device_type: wgpu::DeviceType::Other,
+            driver: if is_nvk { "nvk" } else { "unknown" }.to_string(),
+            driver_info: "created via deprecated new_with_driver()".to_string(),
+            backend: wgpu::Backend::Vulkan,
+        };
+
         Self::build_from_modules(
             device,
             queue,
+            synthetic_info,
             params,
             greens,
             bspline_module,
@@ -123,6 +145,7 @@ impl PppmGpu {
     async fn build_from_modules(
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
+        adapter_info: wgpu::AdapterInfo,
         params: PppmParams,
         greens: GreensFunction,
         bspline_module: wgpu::ShaderModule,
@@ -144,6 +167,7 @@ impl PppmGpu {
         Ok(Self {
             device,
             queue,
+            adapter_info,
             params,
             greens,
             pipelines,
@@ -173,6 +197,10 @@ impl PppmGpu {
 
     pub(crate) fn queue_arc(&self) -> Arc<wgpu::Queue> {
         Arc::clone(&self.queue)
+    }
+
+    pub(crate) fn adapter_info(&self) -> &wgpu::AdapterInfo {
+        &self.adapter_info
     }
 
     pub(crate) fn layouts(&self) -> &PppmBindGroupLayouts {

@@ -39,7 +39,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Error handling
-thiserror = "1.0"
+thiserror = { workspace = true }
 anyhow = "1.0"
 
 # Memory management - Pure Rust Evolution (Feb 12, 2026)

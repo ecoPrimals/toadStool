@@ -169,3 +169,145 @@ pub enum CapacityAlert {
     /// Capacity restored
     Restored { resource_type: String },
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_capacity_info(
+        total: (f64, u64, u64),
+        available: (f64, u64, u64),
+        network_bps: u64,
+    ) -> CapacityInfo {
+        CapacityInfo {
+            total_cpu_cores: total.0,
+            available_cpu_cores: available.0,
+            total_memory_bytes: total.1,
+            available_memory_bytes: available.1,
+            total_storage_bytes: total.2,
+            available_storage_bytes: available.2,
+            total_gpu_units: Some(2),
+            available_gpu_units: Some(1),
+            network_bandwidth_bps: network_bps,
+            timestamp: chrono::Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_capacity_info_cpu_utilization_full() {
+        let info = make_capacity_info((4.0, 8, 100), (0.0, 0, 0), 1000);
+        assert_eq!(info.cpu_utilization(), 1.0);
+    }
+
+    #[test]
+    fn test_capacity_info_cpu_utilization_half() {
+        let info = make_capacity_info((4.0, 8, 100), (2.0, 4, 50), 1000);
+        assert_eq!(info.cpu_utilization(), 0.5);
+    }
+
+    #[test]
+    fn test_capacity_info_cpu_utilization_zero_total() {
+        let info = make_capacity_info((0.0, 0, 0), (0.0, 0, 0), 0);
+        assert_eq!(info.cpu_utilization(), 0.0);
+    }
+
+    #[test]
+    fn test_capacity_info_memory_utilization() {
+        let info = make_capacity_info((4.0, 8, 100), (4.0, 2, 50), 1000);
+        assert_eq!(info.memory_utilization(), 0.75);
+    }
+
+    #[test]
+    fn test_capacity_info_storage_utilization() {
+        let info = make_capacity_info((4.0, 8, 100), (4.0, 8, 25), 1000);
+        assert_eq!(info.storage_utilization(), 0.75);
+    }
+
+    #[test]
+    fn test_capacity_info_has_capacity_true() {
+        let info = make_capacity_info((4.0, 8, 100), (2.0, 4, 50), 1000);
+        let req = CapacityRequirement {
+            cpu_cores: 1.0,
+            memory_bytes: 2,
+            storage_bytes: 25,
+            network_bandwidth_bps: 500,
+            gpu_units: Some(1),
+        };
+        assert!(info.has_capacity(&req));
+    }
+
+    #[test]
+    fn test_capacity_info_has_capacity_false_insufficient_cpu() {
+        let info = make_capacity_info((4.0, 8, 100), (0.5, 8, 100), 1000);
+        let req = CapacityRequirement {
+            cpu_cores: 2.0,
+            memory_bytes: 1,
+            storage_bytes: 1,
+            network_bandwidth_bps: 1,
+            gpu_units: None,
+        };
+        assert!(!info.has_capacity(&req));
+    }
+
+    #[test]
+    fn test_capacity_info_has_capacity_false_insufficient_gpu() {
+        let info = CapacityInfo {
+            total_cpu_cores: 4.0,
+            available_cpu_cores: 4.0,
+            total_memory_bytes: 8,
+            available_memory_bytes: 8,
+            total_storage_bytes: 100,
+            available_storage_bytes: 100,
+            total_gpu_units: None,
+            available_gpu_units: None,
+            network_bandwidth_bps: 1000,
+            timestamp: chrono::Utc::now(),
+        };
+        let req = CapacityRequirement {
+            cpu_cores: 1.0,
+            memory_bytes: 1,
+            storage_bytes: 1,
+            network_bandwidth_bps: 1,
+            gpu_units: Some(1),
+        };
+        assert!(!info.has_capacity(&req));
+    }
+
+    #[test]
+    fn test_capacity_config_default() {
+        let config = CapacityConfig::default();
+        assert_eq!(config.reserve_percent, 10.0);
+        assert!(config.auto_scale);
+        assert_eq!(config.scale_up_threshold, 0.8);
+        assert_eq!(config.scale_down_threshold, 0.3);
+    }
+
+    #[test]
+    fn test_network_capacity_construction() {
+        let nc = NetworkCapacity {
+            total_bandwidth_bps: 1_000_000_000,
+            available_bandwidth_bps: 500_000_000,
+            active_connections: 10,
+            max_connections: 100,
+            latency_ms: 5.2,
+        };
+        assert_eq!(nc.total_bandwidth_bps, 1_000_000_000);
+        assert_eq!(nc.latency_ms, 5.2);
+    }
+
+    #[test]
+    fn test_capacity_alert_variants() {
+        let _low = CapacityAlert::LowCapacity {
+            resource_type: "cpu".to_string(),
+            utilization_percent: 85.0,
+        };
+        let _exhausted = CapacityAlert::Exhausted {
+            resource_type: "memory".to_string(),
+        };
+        let _restored = CapacityAlert::Restored {
+            resource_type: "storage".to_string(),
+        };
+    }
+}

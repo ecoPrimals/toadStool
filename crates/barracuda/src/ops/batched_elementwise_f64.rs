@@ -271,7 +271,7 @@ impl BatchedElementwiseF64 {
         let data = slice.get_mapped_range();
         let results: Vec<f64> = data
             .chunks_exact(8)
-            .map(|b| f64::from_le_bytes(b.try_into().unwrap()))
+            .map(|b| f64::from_le_bytes(b.try_into().expect("chunks_exact(8) guarantees 8 bytes")))
             .collect();
         drop(data);
         staging.unmap();

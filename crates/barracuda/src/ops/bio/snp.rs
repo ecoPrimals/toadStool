@@ -39,7 +39,11 @@ impl SnpCallingF64 {
         let bgl = make_bgl(&device, &[true, true, false, false, false, false]);
         let layout = make_layout(&device, &bgl, "SnpCalling");
         let pipeline = make_pipeline(&device, &layout, &module, "main", "SnpCalling");
-        Ok(Self { device, pipeline, bgl })
+        Ok(Self {
+            device,
+            pipeline,
+            bgl,
+        })
     }
 
     pub fn dispatch(
@@ -53,17 +57,34 @@ impl SnpCallingF64 {
         depth_out: &wgpu::Buffer,
         alt_freq_out: &wgpu::Buffer,
     ) -> Result<()> {
-        let params = SnpParams { alignment_length, n_sequences, min_depth, _pad: 0 };
+        let params = SnpParams {
+            alignment_length,
+            n_sequences,
+            min_depth,
+            _pad: 0,
+        };
         let pbuf = upload_uniform(&self.device, &params);
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &self.bgl,
-            entries: &[
-                bg_entry(0, &pbuf), bg_entry(1, sequences), bg_entry(2, is_variant),
-                bg_entry(3, ref_allele), bg_entry(4, depth_out), bg_entry(5, alt_freq_out),
-            ],
-        });
-        submit(&self.device, &self.pipeline, &bg, alignment_length.div_ceil(256));
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout: &self.bgl,
+                entries: &[
+                    bg_entry(0, &pbuf),
+                    bg_entry(1, sequences),
+                    bg_entry(2, is_variant),
+                    bg_entry(3, ref_allele),
+                    bg_entry(4, depth_out),
+                    bg_entry(5, alt_freq_out),
+                ],
+            });
+        submit(
+            &self.device,
+            &self.pipeline,
+            &bg,
+            alignment_length.div_ceil(256),
+        );
         Ok(())
     }
 }
@@ -91,29 +112,45 @@ pub(super) fn make_bgl(device: &WgpuDevice, storage_ro: &[bool]) -> wgpu::BindGr
             count: None,
         });
     }
-    device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: None,
-        entries: &entries,
-    })
+    device
+        .device
+        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: None,
+            entries: &entries,
+        })
 }
 
-pub(super) fn make_layout(device: &WgpuDevice, bgl: &wgpu::BindGroupLayout, label: &str) -> wgpu::PipelineLayout {
-    device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(label),
-        bind_group_layouts: &[bgl],
-        push_constant_ranges: &[],
-    })
+pub(super) fn make_layout(
+    device: &WgpuDevice,
+    bgl: &wgpu::BindGroupLayout,
+    label: &str,
+) -> wgpu::PipelineLayout {
+    device
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some(label),
+            bind_group_layouts: &[bgl],
+            push_constant_ranges: &[],
+        })
 }
 
-pub(super) fn make_pipeline(device: &WgpuDevice, layout: &wgpu::PipelineLayout, module: &wgpu::ShaderModule, entry: &str, label: &str) -> wgpu::ComputePipeline {
-    device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some(label),
-        layout: Some(layout),
-        module,
-        entry_point: entry,
-        compilation_options: Default::default(),
-        cache: None,
-    })
+pub(super) fn make_pipeline(
+    device: &WgpuDevice,
+    layout: &wgpu::PipelineLayout,
+    module: &wgpu::ShaderModule,
+    entry: &str,
+    label: &str,
+) -> wgpu::ComputePipeline {
+    device
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some(label),
+            layout: Some(layout),
+            module,
+            entry_point: entry,
+            compilation_options: Default::default(),
+            cache: None,
+        })
 }
 
 pub(super) fn upload_uniform<T: bytemuck::Pod>(device: &WgpuDevice, data: &T) -> wgpu::Buffer {
@@ -128,10 +165,18 @@ pub(super) fn upload_uniform<T: bytemuck::Pod>(device: &WgpuDevice, data: &T) ->
 }
 
 pub(super) fn bg_entry(binding: u32, buf: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
-    wgpu::BindGroupEntry { binding, resource: buf.as_entire_binding() }
+    wgpu::BindGroupEntry {
+        binding,
+        resource: buf.as_entire_binding(),
+    }
 }
 
-pub(super) fn submit(device: &WgpuDevice, pipeline: &wgpu::ComputePipeline, bg: &wgpu::BindGroup, wg_x: u32) {
+pub(super) fn submit(
+    device: &WgpuDevice,
+    pipeline: &wgpu::ComputePipeline,
+    bg: &wgpu::BindGroup,
+    wg_x: u32,
+) {
     let mut enc = device.device.create_command_encoder(&Default::default());
     {
         let mut pass = enc.begin_compute_pass(&Default::default());

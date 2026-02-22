@@ -41,7 +41,7 @@ tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
 # ✅ NOW USING: manual_jsonrpc.rs and pure_jsonrpc.rs (100% Pure Rust!)
 
 # tarpc for high-performance RPC
-tarpc = { version = "0.33", features = ["tokio1", "serde-transport", "serde-transport-json"] }
+tarpc = { workspace = true }
 tokio-util = { version = "0.7", features = ["codec"] }
 tokio-serde = { version = "0.9", features = ["json"] }
 
@@ -72,7 +72,7 @@ serde_json = "1.0"
 bytes = { workspace = true }
 
 # Error handling
-thiserror = "1.0"
+thiserror = { workspace = true }
 
 # Logging
 tracing = "0.1"

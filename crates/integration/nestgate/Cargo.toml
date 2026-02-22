@@ -24,7 +24,7 @@ toadstool-config = { path = "../../core/config" }
 toadstool-common = { path = "../../core/common" }
 
 # Error handling
-thiserror = "1.0"
+thiserror = { workspace = true }
 
 # Logging
 tracing = "0.1"

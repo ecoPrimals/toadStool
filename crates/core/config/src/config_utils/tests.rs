@@ -70,22 +70,24 @@ fn test_config_utils() {
 
 #[test]
 fn test_service_ports() {
+    use toadstool_common::constants::primal_identity::PRIMAL_NAME;
+
     let ports = ConfigUtils::get_service_ports();
-    assert!(ports.contains_key("songbird"));
-    assert!(ports.contains_key("beardog"));
-    assert!(ports.contains_key("nestgate"));
-    assert!(ports.contains_key("squirrel"));
-    assert!(ports.contains_key("toadstool"));
+    // Self-knowledge only: toadstool + federation/metrics/health/events
+    assert!(ports.contains_key(PRIMAL_NAME));
+    assert!(ports.contains_key("federation"));
+    assert!(ports.contains_key("metrics"));
+    assert!(ports.contains_key("health"));
+    assert!(ports.contains_key("events"));
 }
 
 #[test]
 fn test_service_endpoints() {
+    use toadstool_common::constants::primal_identity::PRIMAL_NAME;
+
     let endpoints = ConfigUtils::get_service_endpoints();
-    assert!(endpoints.contains_key("songbird"));
-    assert!(endpoints.contains_key("beardog"));
-    assert!(endpoints.contains_key("nestgate"));
-    assert!(endpoints.contains_key("squirrel"));
-    assert!(endpoints.contains_key("toadstool"));
+    // Self-knowledge only: ToadStool's own endpoint
+    assert!(endpoints.contains_key(PRIMAL_NAME));
 
     // Check endpoint format
     for endpoint in endpoints.values() {

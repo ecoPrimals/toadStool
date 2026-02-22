@@ -172,3 +172,55 @@ impl Default for ValidationRules {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_security_hardening_config_default() {
+        let config = SecurityHardeningConfig::default();
+        assert!(config.enable_input_validation);
+        assert!(config.enable_rate_limiting);
+        assert!(config.enable_audit_logging);
+    }
+
+    #[test]
+    fn test_rate_limiting_config_default() {
+        let config = RateLimitingConfig::default();
+        assert_eq!(config.max_requests_per_minute, 60);
+        assert_eq!(config.max_requests_per_hour, 3600);
+    }
+
+    #[test]
+    fn test_audit_config_default() {
+        let config = AuditConfig::default();
+        assert!(config.structured_logging);
+        assert_eq!(config.log_level, "info");
+    }
+
+    #[test]
+    fn test_intrusion_detection_config_default() {
+        let config = IntrusionDetectionConfig::default();
+        assert!((config.anomaly_threshold - 0.8).abs() < f64::EPSILON);
+        assert!(config.allowed_ips.contains(&"127.0.0.1".to_string()));
+    }
+
+    #[test]
+    fn test_validation_rules_default() {
+        let rules = ValidationRules::default();
+        assert_eq!(rules.max_input_length, 1024 * 1024);
+        assert!(!rules.blocked_patterns.is_empty());
+    }
+
+    #[test]
+    fn test_config_serde_roundtrip() {
+        let config = SecurityHardeningConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let decoded: SecurityHardeningConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            config.enable_input_validation,
+            decoded.enable_input_validation
+        );
+    }
+}

@@ -1,7 +1,7 @@
 # Deep Debt Status Report
 
-**Session 31h — February 21, 2026**
-**Status**: ✅ PRODUCTION-GRADE | All quality gates green | 16,100+ tests | ~65% line coverage
+**Sessions 32-38 -- February 22, 2026**
+**Status**: PRODUCTION-GRADE | All quality gates green | 0 clippy warnings | 3,847+ non-GPU tests + barracuda targeted | Coverage: common 87%, config 89%, core 79%, server 77%
 
 ---
 
@@ -32,9 +32,17 @@
 | `cudarc` | ✅ Upgraded 0.11 → 0.19 (real device queries) |
 | `wgpu` | ✅ Unified to workspace v22 |
 
-**Remaining external dep debt**: `cubecl` transitively pulls `dirs-sys` (D-S18-002, low priority — needs upstream PR).
+**Remaining external dep debt**: `cubecl` transitively pulls `dirs-sys` (D-S18-002, low priority -- needs upstream PR).
 
-### Hardcoded Values ✅ RESOLVED
+### Dependencies (Sessions 32-35)
+
+| Category | Status |
+|----------|--------|
+| `thiserror` | Upgraded 1.0 -> 2.0 workspace-wide (26 crates) |
+| `async-trait` | Retained -- needed for `dyn Trait` async (~65 files) |
+| `chrono` -> `time` | Deferred -- chrono is already pure Rust |
+
+### Hardcoded Values RESOLVED
 
 | Category | Evolution |
 |----------|-----------|
@@ -49,29 +57,58 @@
 | Timeout durations | `toadstool_common::constants::timeouts` centralized |
 | Beardog endpoint | S31: Removed `http://localhost:8000` fallback — env/domain only |
 
-### Unsafe Code ✅ DOCUMENTED
+### Hardcoded Primal Names RESOLVED (Sessions 32-35)
 
-All `unsafe` blocks in the workspace are FFI-boundary or hardware-related:
+| Pattern | Evolution |
+|---------|-----------|
+| Hardcoded `"beardog"`, `"songbird"`, etc. | `well_known::BEARDOG`, `well_known::SONGBIRD` constants |
+| Hardcoded audience lists in auth | `[PRIMAL_NAME, PLATFORM_AUDIENCE]` only |
+| Hardcoded external port mappings | Removed -- self-knowledge only; discovered at runtime |
+| Hardcoded primal lists in doctor | Filesystem-based socket discovery |
+| HTTP placeholder URLs in CLI | Unix socket capability-based discovery |
 
-| Location | Purpose | Documentation |
-|----------|---------|---------------|
-| `akida-driver` VFIO ioctls | Kernel VFIO interface | SAFETY comments |
-| `akida-driver` mmap/mlock | DMA buffer management | Evolved to `rustix::mm` |
-| `runtime/gpu` `NonNull::new` | Buffer pointer (S31: evolved from `new_unchecked` to safe) | Assertions + safe `NonNull::new().expect()` |
-| `runtime/gpu` `Send`/`Sync` impls | `AlignedBuffer`, `PinnedMemory` exclusive ownership | SAFETY comments on ownership model |
-| WGSL `include_str!` | Shader source embedding | Standard safe pattern |
+### Unsafe Code DOCUMENTED
+
+**55 unsafe blocks audited (Sessions 32-38)** -- all FFI-boundary or hardware-related:
+
+| Pattern | Count | Replaceable? |
+|---------|-------|-------------|
+| `alloc`/`alloc_zeroed`/`dealloc` | 10 | No -- custom alignment required |
+| `from_raw_parts`/`from_raw_parts_mut` | 15 | No -- backend/FFI pointers |
+| `NonNull::new_unchecked` | 3 | OK -- null-checked beforehand |
+| `unsafe impl Send/Sync` | 12 | No -- trait impls required |
+| FFI (ioctl, mlock, mmap, madvise) | ~25 | No -- kernel/hardware interface |
+| CUDA/OpenCL kernel launch | 2 | No -- GPU API |
 
 **Zero unsafe in middleware** (barracuda scientific computing is 100% safe Rust).
 
-### Production Panics ✅ RESOLVED
+### Cloud Stubs EVOLVED (Sessions 32-35)
+
+| Module | Before | After |
+|--------|--------|-------|
+| `cloud/cost.rs` | Minimal stub | Resource-based estimation, 6 pricing tiers, budget enforcement |
+| `cloud/compliance.rs` | Simple checks | Data sovereignty, security tiers (Basic/Standard/High), resource isolation |
+| `cloud/federation.rs` | Stub | Member management, heartbeats, capability exchange |
+
+### Zero-Copy DEEPENED (Sessions 32-35)
+
+| Pattern | Change |
+|---------|--------|
+| `JsonRpcRequest.method` | `String` -> `Cow<'a, str>` with `#[serde(borrow)]` |
+| `JsonRpcResponse.jsonrpc` | `String` -> `Cow<'a, str>` with `#[serde(borrow)]` |
+| `JsonRpcError.message` | `String` -> `Cow<'a, str>` with `#[serde(borrow)]` |
+| Service discovery config | `read_to_string` + `from_str` -> `read` + `from_slice` |
+| Error conversions | Removed useless `String` -> `String` `.into()` calls |
+
+### Production Panics RESOLVED
 
 | Pattern | Evolution |
 |---------|-----------|
 | `expect("poisoned")` on RwLock | `unwrap_or_else(\|e\| e.into_inner())` poison recovery |
 | `try_into().unwrap()` in gpu_executor | Explicit array indexing `[c[0], c[1], ...]` |
 | `unwrap()` in tests leaking to lib | All library code returns `Result` |
-| ML model fake results | `Error::NotImplemented` with descriptive message |
-| `#[allow(dead_code)]` on used items | S31h: 6 incorrect annotations removed, 2 dead functions deleted |
+| ML model fake results | `Error::ModelNotLoaded` / `Error::ModelBackendRequired` with actionable messages |
+| `#[allow(dead_code)]` on used items | S31h: 6 incorrect removed; S32-35: 5 more unnecessary `#[allow]` removed |
 
 ### File Size (< 1000 lines) ✅ RESOLVED
 
@@ -142,9 +179,9 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | ecoBin compliance | ✅ TOML preferred, XDG paths, pure Rust, `rustix` syscalls |
 | Vendor-agnostic | ✅ WGSL over CUDA/ROCm, any GPU works |
 | Error handling | ✅ Result-based, no panic paths in library code |
-| Clippy strictness | ✅ Zero warnings under `-W clippy::all` (S31h) |
+| Clippy strictness | ✅ Zero warnings workspace-wide (S38) |
 | Dead code hygiene | ✅ 33 files audited, 6 incorrect annotations removed (S31h) |
-| Orphan shader elimination | ✅ Zero orphans — all 570+ WGSL wired to Rust (S31e-31g) |
+| Orphan shader elimination | Zero orphans -- all 589+ WGSL wired to Rust |
 
 ---
 
@@ -152,7 +189,7 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 
 | Milestone | Status |
 |-----------|--------|
-| Shader-first architecture (570+ WGSL, zero orphans) | ✅ |
+| Shader-first architecture (589+ WGSL, zero orphans) | Yes |
 | MD pipeline (thermostats + PPPM GPU) | ✅ |
 | GPU-Resident Pipeline (zero CPU round-trips) | ✅ |
 | Unidirectional Pipeline (fire-and-forget staging) | ✅ |
@@ -177,6 +214,22 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | Dead code audit (33 files, 6 annotations removed) | ✅ S31h |
 | PollConfig refactor in akida-driver | ✅ S31h |
 | Production quality verified (zero unwrap/panic/TODO) | ✅ S31h |
+| TS-001 pow_f64 fix (exp_f64 2^k up to 1023, log_f64 7 terms) | ✅ S36 |
+| TS-004 FusedMapReduceF64 buffer conflict fix | ✅ S36 |
+| S-13 PooledBuffer drop race fix (deferred return) | ✅ S36 |
+| HFB spherical nuclear physics (5 shaders) | ✅ S36 |
+| HFB deformed nuclear physics (5 shaders on ρ,z grid) | ✅ S37 |
+| TS-003 trig precision (Cody-Waite + 7-term Taylor) | ✅ S37 |
+| Yukawa cell-list GPU dispatch (N≥256 GPU, N<256 CPU) | ✅ S37 |
+| LinuxEdgeDevice + Bluetooth sysfs probe | ✅ S37 |
+| Federation TCP discovery (evolved from stub) | ✅ S37 |
+| ESN export/import weights (GPU-train → NPU-deploy) | ✅ S36 |
+| IPC v3.0 (abstract sockets, TCP fallback) | ✅ S36 |
+| Zero clippy warnings workspace-wide | ✅ S38 |
+| Blind unwrap() elimination (zero in production) | ✅ S38 |
+| Test race condition fix (PathEnv testability) | ✅ S38 |
+| NetworkLoadBalancer behavioral tests (8 new) | ✅ S38 |
+| NetworkDistributor behavioral tests (3 new) | ✅ S38 |
 
 ---
 

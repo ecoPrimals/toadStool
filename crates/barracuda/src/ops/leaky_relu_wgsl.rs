@@ -16,7 +16,8 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
 /// Simple LeakyReLU variant (single-pass, no vectorization).
-pub const WGSL_LEAKY_RELU_SIMPLE: &str = include_str!("../shaders/activation/leaky_relu_simple.wgsl");
+pub const WGSL_LEAKY_RELU_SIMPLE: &str =
+    include_str!("../shaders/activation/leaky_relu_simple.wgsl");
 
 /// Default negative slope for LeakyReLU (matches common framework defaults).
 pub const LEAKY_RELU_DEFAULT_SLOPE: f32 = 0.01;

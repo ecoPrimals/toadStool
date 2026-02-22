@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use toadstool_common::constants::ecosystem::well_known;
+use toadstool_common::constants::primal_identity::audience;
 use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
 
 use super::*;
@@ -14,7 +16,10 @@ fn test_config() -> AuthManagerConfig {
         timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
         replay_protection: true,
         signing_key_seed: None,
-        token_audience: vec!["songbird".to_string(), "nestgate".to_string()],
+        token_audience: vec![
+            well_known::SONGBIRD.to_string(),
+            well_known::NESTGATE.to_string(),
+        ],
     }
 }
 
@@ -28,7 +33,10 @@ fn test_config_with_signing_key() -> AuthManagerConfig {
         timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
         replay_protection: true,
         signing_key_seed: Some(general_purpose::STANDARD.encode(seed)),
-        token_audience: vec!["songbird".to_string(), "nestgate".to_string()],
+        token_audience: vec![
+            well_known::SONGBIRD.to_string(),
+            well_known::NESTGATE.to_string(),
+        ],
     }
 }
 
@@ -42,8 +50,11 @@ fn sample_token() -> AuthenticationToken {
         public_key: "pk-abc".to_string(),
         expires_at: expires,
         issued_at: now,
-        issuer: "beardog".to_string(),
-        audience: vec!["songbird".to_string(), "biomeos".to_string()],
+        issuer: well_known::BEARDOG.to_string(),
+        audience: vec![
+            well_known::SONGBIRD.to_string(),
+            audience::PLATFORM_AUDIENCE.to_string(),
+        ],
         scope: vec!["cross-primal".to_string()],
         claims: HashMap::new(),
     }
@@ -59,7 +70,7 @@ fn test_auth_manager_config_construction() {
 fn test_authentication_token_construction() {
     let token = sample_token();
     assert_eq!(token.id, "token-123");
-    assert_eq!(token.issuer, "beardog");
+    assert_eq!(token.issuer, well_known::BEARDOG);
 }
 
 #[test]
@@ -76,7 +87,7 @@ async fn test_manager_with_inmemory_backend() {
     let result = manager.get_current_token().await;
     assert!(result.is_ok());
     let token = result.unwrap();
-    assert_eq!(token.issuer, "beardog");
+    assert_eq!(token.issuer, well_known::BEARDOG);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -84,7 +95,9 @@ async fn test_sign_token_request_mock() {
     let config = test_config();
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.expect("token");
-    let signature = manager.sign_token_request(&token, "songbird").await;
+    let signature = manager
+        .sign_token_request(&token, well_known::SONGBIRD)
+        .await;
     assert!(signature.is_ok());
     assert!(signature.unwrap().starts_with("ed25519:mock:"));
 }

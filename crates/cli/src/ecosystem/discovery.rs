@@ -246,11 +246,7 @@ async fn discover_via_mdns(capability_category: &str) -> Result<Vec<ServiceEndpo
         .into_iter()
         .filter_map(|svc| {
             let addr: SocketAddr = svc.endpoint.parse().ok()?;
-            let caps: Vec<String> = svc
-                .capabilities
-                .iter()
-                .map(|c| c.name.clone())
-                .collect();
+            let caps: Vec<String> = svc.capabilities.iter().map(|c| c.name.clone()).collect();
             Some(ServiceEndpoint {
                 service_type: EcosystemService::Unknown(capability_category.to_string()),
                 address: addr,

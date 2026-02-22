@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use thiserror::Error;
+use toadstool_common::constants::ecosystem::well_known;
 use toadstool_config::network::DEFAULT_CONNECTION_TIMEOUT_SECS;
 use tokio::fs;
 use uuid::Uuid;
@@ -411,6 +412,24 @@ pub enum Commands {
     //     #[arg(long)]
     //     export: Option<PathBuf>,
     // },
+    /// BYOB server - HTTP API for team biome deployments from Songbird
+    ///
+    /// **UniBin Standard Compliant**: Compute execution service for BYOB (Bring Your Own Biome)
+    /// deployments. Provides REST endpoints for deploy, list, stop, and resource usage.
+    ByobServer {
+        /// Server bind address
+        #[arg(short, long, default_value = "0.0.0.0")]
+        bind: String,
+
+        /// Server port
+        #[arg(short, long, default_value_t = toadstool_common::constants::network::BYOB_DEFAULT_PORT)]
+        port: u16,
+
+        /// Configuration file path (TOML)
+        #[arg(short, long)]
+        config: Option<PathBuf>,
+    },
+
     /// Execute a workload directly (no biome.yaml required)
     Execute {
         /// Workload specification file (TOML or JSON)
@@ -825,7 +844,7 @@ pub fn validate_manifest(manifest: &BiomeManifest) -> Result<Vec<String>> {
     let mut warnings = Vec::new();
 
     // Check for required primals
-    if !manifest.primals.contains_key("beardog") && manifest.security.beardog_required {
+    if !manifest.primals.contains_key(well_known::BEARDOG) && manifest.security.beardog_required {
         warnings.push("BearDog is required but not configured".to_string());
     }
 

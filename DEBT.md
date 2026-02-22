@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: February 21, 2026
+**Date**: February 22, 2026
 **Philosophy**: Workarounds are short-term solutions that increase debt.
 We aim to solve deep debt over iterations, evolving toward vendor-agnostic,
 capability-based solutions.

@@ -146,3 +146,119 @@ impl UniversalPrimalRegistry {
         self.providers.read().await.values().cloned().collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::universal::provider::ToadStoolPrimalProvider;
+    use crate::universal::requests::PrimalRequest;
+    use crate::universal::types::{
+        NetworkLocation, PrimalCapability, PrimalContext, SecurityLevel,
+    };
+    use std::collections::HashMap;
+    use uuid::Uuid;
+
+    fn make_test_context() -> PrimalContext {
+        PrimalContext {
+            user_id: "test-user".to_string(),
+            device_id: "test-device".to_string(),
+            session_id: "test-session".to_string(),
+            network_location: NetworkLocation {
+                ip_address: "127.0.0.1".to_string(),
+                subnet: None,
+                network_id: None,
+                geo_location: None,
+            },
+            security_level: SecurityLevel::Standard,
+            metadata: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn test_registry_default() {
+        let _registry = UniversalPrimalRegistry::default();
+        // Default creates new registry
+    }
+
+    #[tokio::test]
+    async fn test_registry_new_and_register() {
+        let registry = UniversalPrimalRegistry::new();
+        let context = make_test_context();
+        let provider = Arc::new(ToadStoolPrimalProvider::new(context));
+        let result = registry.register_primal(provider).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_registry_find_by_capability() {
+        let registry = UniversalPrimalRegistry::new();
+        let context = make_test_context();
+        let provider = Arc::new(ToadStoolPrimalProvider::new(context));
+        registry.register_primal(provider).await.unwrap();
+
+        let providers = registry
+            .find_by_capability(&PrimalCapability::WasmExecution { wasi_support: true })
+            .await;
+        assert!(!providers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_registry_find_by_context() {
+        let registry = UniversalPrimalRegistry::new();
+        let context = make_test_context();
+        let provider = Arc::new(ToadStoolPrimalProvider::new(context.clone()));
+        registry.register_primal(provider).await.unwrap();
+
+        let providers = registry.find_by_context(&context).await;
+        assert!(!providers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_registry_get_all_providers() {
+        let registry = UniversalPrimalRegistry::new();
+        let context = make_test_context();
+        let provider = Arc::new(ToadStoolPrimalProvider::new(context));
+        registry.register_primal(provider).await.unwrap();
+
+        let all = registry.get_all_providers().await;
+        assert_eq!(all.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_registry_route_request() {
+        let registry = UniversalPrimalRegistry::new();
+        let context = make_test_context();
+        let provider = Arc::new(ToadStoolPrimalProvider::new(context));
+        registry.register_primal(provider).await.unwrap();
+
+        let request = PrimalRequest {
+            id: Uuid::new_v4(),
+            source: "source".to_string(),
+            target: "toadstool-main".to_string(),
+            request_type: "ping".to_string(),
+            payload: serde_json::json!({}),
+            context: make_test_context(),
+            metadata: HashMap::new(),
+            timestamp: chrono::Utc::now(),
+        };
+        let response = registry.route_request(request).await;
+        assert!(response.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_registry_route_request_unknown_target() {
+        let registry = UniversalPrimalRegistry::new();
+        let request = PrimalRequest {
+            id: Uuid::new_v4(),
+            source: "source".to_string(),
+            target: "nonexistent".to_string(),
+            request_type: "ping".to_string(),
+            payload: serde_json::json!({}),
+            context: make_test_context(),
+            metadata: HashMap::new(),
+            timestamp: chrono::Utc::now(),
+        };
+        let response = registry.route_request(request).await;
+        assert!(response.is_err());
+    }
+}

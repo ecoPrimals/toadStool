@@ -45,6 +45,7 @@ use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_common::constants::timeouts;
+use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::service_discovery::DiscoveredService;
 
 use super::types::{EcosystemMessage, ServiceChannel, ServiceClient, ServiceStatus};
@@ -53,9 +54,9 @@ use super::types::{EcosystemMessage, ServiceChannel, ServiceClient, ServiceStatu
 pub struct CommunicationManager {
     /// Active communication channels (keyed by service ID)
     channels: Arc<RwLock<HashMap<String, ServiceChannel>>>,
-    /// Default timeout for operations
-    #[allow(dead_code)]
-    default_timeout: Duration,
+    /// Default timeout for operations (queried in tests; will be used for
+    /// channel-level timeouts once async messaging is wired up).
+    _default_timeout: Duration,
 }
 
 impl CommunicationManager {
@@ -68,7 +69,7 @@ impl CommunicationManager {
     pub fn with_timeout(timeout: Duration) -> Self {
         Self {
             channels: Arc::new(RwLock::new(HashMap::new())),
-            default_timeout: timeout,
+            _default_timeout: timeout,
         }
     }
 
@@ -191,7 +192,7 @@ impl CommunicationManager {
             .ok_or_else(|| ToadStoolError::not_found(format!("Channel not found: {service_id}")))?;
 
         let heartbeat_msg =
-            EcosystemMessage::heartbeat("toadstool".to_string(), channel.service_name.clone());
+            EcosystemMessage::heartbeat(PRIMAL_NAME.to_string(), channel.service_name.clone());
 
         self.send_message(channel, heartbeat_msg).await?;
 
@@ -361,7 +362,7 @@ impl CommunicationManager {
     fn fallback_response(&self, original: EcosystemMessage) -> EcosystemMessage {
         EcosystemMessage {
             id: uuid::Uuid::new_v4(),
-            from: "toadstool_local".to_string(),
+            from: format!("{}_local", PRIMAL_NAME),
             to: original.from,
             message_type: super::types::EcosystemMessageType::StatusUpdate,
             payload: serde_json::json!({
@@ -395,7 +396,7 @@ mod tests {
     #[tokio::test]
     async fn test_custom_timeout() {
         let manager = CommunicationManager::with_timeout(Duration::from_secs(60));
-        assert_eq!(manager.default_timeout.as_secs(), 60);
+        assert_eq!(manager._default_timeout.as_secs(), 60);
     }
 
     #[test]

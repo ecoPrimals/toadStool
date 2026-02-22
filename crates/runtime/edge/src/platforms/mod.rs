@@ -4,6 +4,7 @@
 
 pub mod arduino;
 pub mod esp32;
+pub mod linux_edge;
 pub mod raspberry_pi;
 pub mod industrial;
 pub mod microcontroller;
@@ -20,6 +21,7 @@ use toadstool::{
 
 pub use arduino::*;
 pub use esp32::*;
+pub use linux_edge::*;
 pub use raspberry_pi::*;
 pub use industrial::*;
 pub use microcontroller::*;

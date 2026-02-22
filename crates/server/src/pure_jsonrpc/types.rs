@@ -14,13 +14,19 @@ use crate::rpc_types::{
 /// JSON-RPC 2.0 Request
 ///
 /// Standard compliant: <https://www.jsonrpc.org/specification>
+///
+/// Uses `#[serde(borrow)]` and `Cow` for zero-copy deserialization when parsing
+/// from network bytes via `serde_json::from_slice`. Method names are often
+/// static literals, so borrowing avoids allocation on the hot path.
 #[derive(Debug, Clone, Deserialize)]
-pub struct JsonRpcRequest {
+pub struct JsonRpcRequest<'a> {
     /// Protocol version (must be "2.0")
-    pub jsonrpc: String,
+    #[serde(borrow)]
+    pub jsonrpc: Cow<'a, str>,
 
     /// Method name (e.g., "toadstool.submit_workload")
-    pub method: String,
+    #[serde(borrow)]
+    pub method: Cow<'a, str>,
 
     /// Optional parameters (can be object or array)
     #[serde(default)]
@@ -56,13 +62,14 @@ pub struct JsonRpcResponse {
 /// JSON-RPC 2.0 Error Object
 ///
 /// Standard error codes: <https://www.jsonrpc.org/specification#error_object>
+/// Uses `Cow<'static, str>` for zero-copy static error messages.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonRpcError {
     /// Error code (standard or application-defined)
     pub code: i32,
 
-    /// Human-readable error message
-    pub message: String,
+    /// Human-readable error message (Cow for zero-copy static strings)
+    pub message: Cow<'static, str>,
 
     /// Additional error data (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -81,7 +88,7 @@ impl JsonRpcError {
     pub const INTERNAL_ERROR: i32 =
         toadstool_common::constants::jsonrpc::error_codes::INTERNAL_ERROR;
 
-    pub fn parse_error(msg: impl Into<String>) -> Self {
+    pub fn parse_error(msg: impl Into<Cow<'static, str>>) -> Self {
         Self {
             code: Self::PARSE_ERROR,
             message: msg.into(),
@@ -89,7 +96,7 @@ impl JsonRpcError {
         }
     }
 
-    pub fn invalid_request(msg: impl Into<String>) -> Self {
+    pub fn invalid_request(msg: impl Into<Cow<'static, str>>) -> Self {
         Self {
             code: Self::INVALID_REQUEST,
             message: msg.into(),
@@ -100,12 +107,12 @@ impl JsonRpcError {
     pub fn method_not_found(method: &str) -> Self {
         Self {
             code: Self::METHOD_NOT_FOUND,
-            message: format!("Method not found: {}", method),
+            message: Cow::Owned(format!("Method not found: {}", method)),
             data: None,
         }
     }
 
-    pub fn invalid_params(msg: impl Into<String>) -> Self {
+    pub fn invalid_params(msg: impl Into<Cow<'static, str>>) -> Self {
         Self {
             code: Self::INVALID_PARAMS,
             message: msg.into(),
@@ -113,7 +120,7 @@ impl JsonRpcError {
         }
     }
 
-    pub fn internal_error(msg: impl Into<String>) -> Self {
+    pub fn internal_error(msg: impl Into<Cow<'static, str>>) -> Self {
         Self {
             code: Self::INTERNAL_ERROR,
             message: msg.into(),

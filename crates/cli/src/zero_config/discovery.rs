@@ -387,8 +387,8 @@ impl ZeroConfigDeployment {
             }
         }
 
-        // Fallback: try localhost with environment-configured ports
-        if let Some(service) = self.try_localhost_discovery(capability_name).await? {
+        // Fallback: try Unix socket capability-based discovery (biomeOS runtime)
+        if let Some(service) = self.try_unix_socket_discovery(capability_name).await? {
             return Ok(Some(service));
         }
 
@@ -419,80 +419,81 @@ impl ZeroConfigDeployment {
             .await
     }
 
-    /// Try localhost discovery with environment-aware ports
-    async fn try_localhost_discovery(
+    /// Try Unix socket capability-based discovery (biomeOS runtime directory)
+    ///
+    /// Discovers primals by capability name using well-known socket paths.
+    /// Replaces deprecated HTTP localhost discovery with proper Unix socket checks.
+    async fn try_unix_socket_discovery(
         &self,
         capability_name: &str,
     ) -> Result<Option<ServiceEndpoint>> {
-        use toadstool_config::network_config::NetworkConfig;
-        let config = NetworkConfig::from_env();
+        use toadstool_common::constants::ecosystem::well_known;
+        use toadstool_common::primal_sockets::get_biomeos_dir;
 
-        // Map capabilities to ports (still using config, not hardcoding!)
-        let port = match capability_name {
-            "orchestration" => config.service_port + 2000, // e.g., 5000 + 2000 = 7000
-            "pki" => config.service_port + 3000,           // e.g., 5000 + 3000 = 8000
-            "storage" => config.service_port + 4000,       // e.g., 5000 + 4000 = 9000
-            "ai" => config.service_port + 1000,            // e.g., 5000 + 1000 = 6000
+        let primal_name = match capability_name {
+            "orchestration" => well_known::SONGBIRD,
+            "pki" => well_known::BEARDOG,
+            "storage" => well_known::NESTGATE,
+            "ai" => well_known::SQUIRREL,
+            "toadstool" => toadstool_common::constants::primal_identity::PRIMAL_NAME,
             _ => return Ok(None),
         };
 
-        let endpoint = format!("http://localhost:{}", port);
-        match self
-            .check_service_endpoint(&endpoint, capability_name)
+        let biomeos_dir = get_biomeos_dir();
+        let socket_path = biomeos_dir.join(format!("{}.sock", primal_name));
+
+        self.check_unix_socket_endpoint(&socket_path, capability_name)
             .await
-        {
-            Ok(service) => {
-                debug!("Found {} service on localhost:{}", capability_name, port);
-                Ok(Some(service))
-            }
-            Err(_) => Ok(None),
-        }
     }
 
-    /// Discover ToadStool peers
+    /// Check if a Unix socket endpoint is available (capability-based discovery)
+    async fn check_unix_socket_endpoint(
+        &self,
+        socket_path: &std::path::Path,
+        service_name: &str,
+    ) -> Result<Option<ServiceEndpoint>> {
+        if !socket_path.exists() {
+            debug!("Socket not found: {}", socket_path.display());
+            return Ok(None);
+        }
+
+        // Verify we can connect to the socket (basic availability check)
+        let path = socket_path.to_path_buf();
+        let connect_result = tokio::net::UnixStream::connect(&path).await;
+        if connect_result.is_err() {
+            debug!(
+                "Socket exists but connection failed for {}: {}",
+                service_name,
+                socket_path.display()
+            );
+            return Ok(None);
+        }
+        drop(connect_result); // Close immediately - we only needed to verify liveness
+
+        let endpoint = format!("unix://{}", socket_path.display());
+        debug!("Found {} service at {}", service_name, endpoint);
+
+        Ok(Some(ServiceEndpoint {
+            name: service_name.to_string(),
+            endpoint,
+            version: "1.0.0".to_string(),
+            status: "discovered".to_string(),
+            auth_required: false,
+            discovered_at: Utc::now(),
+        }))
+    }
+
+    /// Discover ToadStool peers via Unix socket capability-based discovery
     async fn discover_toadstool_peers(&self) -> Result<Vec<ServiceEndpoint>> {
         debug!("Discovering ToadStool peers");
 
-        // Network scan for ToadStool instances
         let mut peers = Vec::new();
 
-        // Try common ToadStool ports
-        let ports = vec![5000, 5001, 5002];
-
-        for port in ports {
-            let endpoint = format!("http://localhost:{port}");
-            if let Ok(service) = self.check_service_endpoint(&endpoint, "toadstool").await {
-                peers.push(service);
-            }
+        // Primary: Unix socket discovery (biomeOS runtime)
+        if let Some(peer) = self.try_unix_socket_discovery("toadstool").await? {
+            peers.push(peer);
         }
 
         Ok(peers)
-    }
-
-    /// Check if a service endpoint is available
-    ///
-    /// DEEP DEBT SOLUTION: HTTP removed - use Unix sockets for primal discovery!
-    /// External HTTP should go through Songbird (Concentrated Gap architecture)
-    async fn check_service_endpoint(
-        &self,
-        endpoint: &str,
-        service_name: &str,
-    ) -> Result<ServiceEndpoint> {
-        // PURE RUST: External HTTP removed - backward-compatible placeholder until Unix socket migration.
-        tracing::warn!(
-            "HTTP service check deprecated for {} at {} - use Unix socket discovery instead",
-            service_name,
-            endpoint
-        );
-
-        // Return placeholder success; real impl uses capability-based discovery via Unix sockets.
-        Ok(ServiceEndpoint {
-            name: service_name.to_string(),
-            endpoint: endpoint.to_string(),
-            version: "1.0.0".to_string(),
-            status: "deprecated: use Unix socket discovery".to_string(),
-            auth_required: false,
-            discovered_at: Utc::now(),
-        })
     }
 }

@@ -39,7 +39,11 @@ impl Dada2EStepGpu {
         let bgl = super::snp::make_bgl(&device, &[true, true, true, true, true, false]);
         let layout = super::snp::make_layout(&device, &bgl, "Dada2EStep");
         let pipeline = super::snp::make_pipeline(&device, &layout, &module, "e_step", "Dada2EStep");
-        Ok(Self { device, pipeline, bgl })
+        Ok(Self {
+            device,
+            pipeline,
+            bgl,
+        })
     }
 
     /// Dispatch E-step computation.
@@ -63,21 +67,29 @@ impl Dada2EStepGpu {
         log_err: &wgpu::Buffer,
         scores: &wgpu::Buffer,
     ) -> Result<()> {
-        let params = Dada2Params { n_seqs, n_centers, max_len, _pad: 0 };
+        let params = Dada2Params {
+            n_seqs,
+            n_centers,
+            max_len,
+            _pad: 0,
+        };
         let pbuf = super::snp::upload_uniform(&self.device, &params);
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &self.bgl,
-            entries: &[
-                super::snp::bg_entry(0, &pbuf),
-                super::snp::bg_entry(1, bases),
-                super::snp::bg_entry(2, quals),
-                super::snp::bg_entry(3, lengths),
-                super::snp::bg_entry(4, center_indices),
-                super::snp::bg_entry(5, log_err),
-                super::snp::bg_entry(6, scores),
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout: &self.bgl,
+                entries: &[
+                    super::snp::bg_entry(0, &pbuf),
+                    super::snp::bg_entry(1, bases),
+                    super::snp::bg_entry(2, quals),
+                    super::snp::bg_entry(3, lengths),
+                    super::snp::bg_entry(4, center_indices),
+                    super::snp::bg_entry(5, log_err),
+                    super::snp::bg_entry(6, scores),
+                ],
+            });
         let total_pairs = n_seqs * n_centers;
         super::snp::submit(&self.device, &self.pipeline, &bg, total_pairs.div_ceil(256));
         Ok(())

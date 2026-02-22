@@ -27,6 +27,7 @@ members = [
     "crates/runtime/display",         # NEW: 100% Pure Rust display backend for petalTongue (Jan 19, 2026) 🍄🌸
     "crates/runtime/gpu",
     # "crates/runtime/specialty",  # Future feature (P3) - incomplete trait implementations (see docs/sessions/dec-4-2025/SPECIALTY_RUNTIME_11_HOUR_ASSESSMENT.md)
+    # "crates/runtime/edge",          # Excluded: serialport → libudev-sys (C dep); evolve to pure-Rust serial
     "crates/runtime/native",
     "crates/runtime/orchestration",   # NEW: Workload orchestration (Jan 31, 2026) 🎯
     "crates/runtime/python",
@@ -113,7 +114,7 @@ uuid = { version = "1.7", features = ["v4", "serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 anyhow = "1.0"
-thiserror = "1.0"
+thiserror = "2.0"
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1.10"

@@ -304,4 +304,189 @@ mod tests {
         let debug_str = format!("{:?}", breaker);
         assert!(debug_str.contains("CircuitBreaker"));
     }
+
+    #[tokio::test]
+    async fn test_register_and_select_node() {
+        let lb = NetworkLoadBalancer::new();
+        lb.register_node(
+            "node-a".into(),
+            NodeHealth {
+                healthy: true,
+                cpu_usage: 20.0,
+                memory_usage: 30.0,
+                response_time_ms: 50,
+            },
+        )
+        .await;
+
+        let selected = lb.select_node().await;
+        assert_eq!(selected, Some("node-a".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_select_node_empty_returns_none() {
+        let lb = NetworkLoadBalancer::new();
+        assert!(lb.select_node().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_select_least_loaded_node() {
+        let lb = NetworkLoadBalancer::new();
+        lb.register_node(
+            "heavy".into(),
+            NodeHealth {
+                healthy: true,
+                cpu_usage: 90.0,
+                memory_usage: 85.0,
+                response_time_ms: 300,
+            },
+        )
+        .await;
+        lb.register_node(
+            "light".into(),
+            NodeHealth {
+                healthy: true,
+                cpu_usage: 10.0,
+                memory_usage: 20.0,
+                response_time_ms: 50,
+            },
+        )
+        .await;
+
+        let selected = lb.select_node().await;
+        assert_eq!(selected, Some("light".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_select_skips_unhealthy_nodes() {
+        let lb = NetworkLoadBalancer::new();
+        lb.register_node(
+            "down".into(),
+            NodeHealth {
+                healthy: false,
+                cpu_usage: 5.0,
+                memory_usage: 5.0,
+                response_time_ms: 10,
+            },
+        )
+        .await;
+        lb.register_node(
+            "up".into(),
+            NodeHealth {
+                healthy: true,
+                cpu_usage: 50.0,
+                memory_usage: 50.0,
+                response_time_ms: 100,
+            },
+        )
+        .await;
+
+        let selected = lb.select_node().await;
+        assert_eq!(selected, Some("up".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_all_unhealthy_returns_none() {
+        let lb = NetworkLoadBalancer::new();
+        lb.register_node(
+            "down1".into(),
+            NodeHealth {
+                healthy: false,
+                cpu_usage: 5.0,
+                memory_usage: 5.0,
+                response_time_ms: 10,
+            },
+        )
+        .await;
+        lb.register_node(
+            "down2".into(),
+            NodeHealth {
+                healthy: false,
+                cpu_usage: 10.0,
+                memory_usage: 10.0,
+                response_time_ms: 20,
+            },
+        )
+        .await;
+
+        assert!(lb.select_node().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_deregister_node() {
+        let lb = NetworkLoadBalancer::new();
+        lb.register_node(
+            "node-a".into(),
+            NodeHealth {
+                healthy: true,
+                cpu_usage: 20.0,
+                memory_usage: 30.0,
+                response_time_ms: 50,
+            },
+        )
+        .await;
+        assert!(lb.select_node().await.is_some());
+
+        lb.deregister_node("node-a").await;
+        assert!(lb.select_node().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_node_health_snapshot() {
+        let lb = NetworkLoadBalancer::new();
+        lb.register_node(
+            "a".into(),
+            NodeHealth {
+                healthy: true,
+                cpu_usage: 10.0,
+                memory_usage: 20.0,
+                response_time_ms: 30,
+            },
+        )
+        .await;
+        lb.register_node(
+            "b".into(),
+            NodeHealth {
+                healthy: false,
+                cpu_usage: 80.0,
+                memory_usage: 90.0,
+                response_time_ms: 500,
+            },
+        )
+        .await;
+
+        let snapshot = lb.node_health_snapshot().await;
+        assert_eq!(snapshot.len(), 2);
+        assert!(snapshot.get("a").is_some_and(|h| h.healthy));
+        assert!(snapshot.get("b").is_some_and(|h| !h.healthy));
+    }
+
+    #[tokio::test]
+    async fn test_register_updates_existing_node() {
+        let lb = NetworkLoadBalancer::new();
+        lb.register_node(
+            "node-a".into(),
+            NodeHealth {
+                healthy: true,
+                cpu_usage: 20.0,
+                memory_usage: 30.0,
+                response_time_ms: 50,
+            },
+        )
+        .await;
+        lb.register_node(
+            "node-a".into(),
+            NodeHealth {
+                healthy: false,
+                cpu_usage: 95.0,
+                memory_usage: 99.0,
+                response_time_ms: 1000,
+            },
+        )
+        .await;
+
+        let snapshot = lb.node_health_snapshot().await;
+        assert_eq!(snapshot.len(), 1);
+        assert!(snapshot.get("node-a").is_some_and(|h| !h.healthy));
+    }
 }

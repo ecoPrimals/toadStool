@@ -332,4 +332,70 @@ mod tests {
 
         assert!(debug_str.contains("NetworkDistributorConfig"));
     }
+
+    #[tokio::test]
+    async fn test_distribute_job_disabled_falls_back_to_local() {
+        use crate::types::{
+            DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
+        };
+        use chrono::Utc;
+        use toadstool::ExecutionRequest;
+
+        let config = NetworkDistributorConfig {
+            enabled: false,
+            ..NetworkDistributorConfig::default()
+        };
+        let distributor = NetworkDistributor::new(config);
+
+        let job = UniversalJob {
+            job_id: Uuid::new_v4(),
+            job_type: None,
+            execution_request: ExecutionRequest::default(),
+            target: ExecutionTarget::Local,
+            priority: JobPriority::Normal,
+            dependencies: vec![],
+            resource_requirements: ResourceRequirements::default(),
+            retry_config: DistributedRetryConfig::default(),
+            created_at: Utc::now(),
+        };
+
+        let execution = distributor.distribute_job(job).await.unwrap();
+        assert_eq!(execution.node_assignments.len(), 1);
+        assert_eq!(
+            execution.node_assignments[0].node_id,
+            env!("CARGO_PKG_NAME")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_deregister_peer_node() {
+        use crate::network::NodeHealth;
+
+        let distributor = NetworkDistributor::new(NetworkDistributorConfig::default());
+        distributor
+            .register_peer_node(
+                "tmp-node".into(),
+                NodeHealth {
+                    healthy: true,
+                    cpu_usage: 20.0,
+                    memory_usage: 30.0,
+                    response_time_ms: 50,
+                },
+            )
+            .await;
+
+        let snapshot = distributor.load_balancer().node_health_snapshot().await;
+        assert_eq!(snapshot.len(), 1);
+
+        distributor.deregister_peer_node("tmp-node").await;
+        let snapshot = distributor.load_balancer().node_health_snapshot().await;
+        assert!(snapshot.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_load_balancer_accessor() {
+        let distributor = NetworkDistributor::new(NetworkDistributorConfig::default());
+        let lb = distributor.load_balancer();
+        assert!(lb.select_node().await.is_none());
+    }
 }

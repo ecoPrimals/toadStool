@@ -116,28 +116,31 @@ impl RfBatchInferenceGpu {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        let bg = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("RfBatch BG"),
-            layout: &self.bgl,
-            entries: &[
-                bg_entry(0, &params_buf),
-                bg_entry(1, node_features_buf),
-                bg_entry(2, node_thresh_buf),
-                bg_entry(3, node_children_buf),
-                bg_entry(4, features_buf),
-                bg_entry(5, predictions_buf),
-            ],
-        });
+        let bg = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("RfBatch BG"),
+                layout: &self.bgl,
+                entries: &[
+                    bg_entry(0, &params_buf),
+                    bg_entry(1, node_features_buf),
+                    bg_entry(2, node_thresh_buf),
+                    bg_entry(3, node_children_buf),
+                    bg_entry(4, features_buf),
+                    bg_entry(5, predictions_buf),
+                ],
+            });
 
         let total = n_samples * n_trees;
         let workgroups = total.div_ceil(256);
 
-        let mut encoder = self
-            .device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("RfBatch Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("RfBatch Encoder"),
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {

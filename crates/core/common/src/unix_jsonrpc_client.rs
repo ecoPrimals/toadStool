@@ -16,6 +16,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
@@ -25,28 +26,30 @@ use crate::{ToadStoolError, ToadStoolResult};
 /// JSON-RPC 2.0 request
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct JsonRpcRequest {
-    jsonrpc: String,
+    jsonrpc: Cow<'static, str>,
     id: u64,
     method: String,
     params: Value,
 }
 
-/// JSON-RPC 2.0 response
+/// JSON-RPC 2.0 response (deserialized from network bytes via `from_slice`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct JsonRpcResponse {
-    jsonrpc: String,
+struct JsonRpcResponse<'a> {
+    #[serde(borrow)]
+    jsonrpc: Cow<'a, str>,
     id: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<JsonRpcError>,
+    error: Option<JsonRpcError<'a>>,
 }
 
 /// JSON-RPC 2.0 error object
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct JsonRpcError {
+struct JsonRpcError<'a> {
     code: i32,
-    message: String,
+    #[serde(borrow)]
+    message: Cow<'a, str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<Value>,
 }
@@ -115,11 +118,11 @@ impl UnixJsonRpcClient {
             .next_id
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        // Build JSON-RPC 2.0 request
+        // Build JSON-RPC 2.0 request (zero-copy version string)
         let request = JsonRpcRequest {
-            jsonrpc: String::from(crate::constants::jsonrpc::VERSION),
+            jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id,
-            method: String::from(method),
+            method: method.to_string(),
             params,
         };
 
@@ -225,7 +228,7 @@ mod tests {
     #[test]
     fn test_request_serialization() {
         let request = JsonRpcRequest {
-            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
+            jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id: 1,
             method: "test.method".to_string(),
             params: serde_json::json!({"key": "value"}),
@@ -240,9 +243,9 @@ mod tests {
     #[test]
     fn test_response_deserialization() {
         let json = r#"{"jsonrpc":"2.0","id":1,"result":{"status":"ok"}}"#;
-        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let response: JsonRpcResponse<'_> = serde_json::from_slice(json.as_bytes()).unwrap();
 
-        assert_eq!(response.jsonrpc, "2.0");
+        assert_eq!(response.jsonrpc.as_ref(), "2.0");
         assert_eq!(response.id, 1);
         assert!(response.result.is_some());
         assert!(response.error.is_none());
@@ -252,20 +255,20 @@ mod tests {
     fn test_error_response_deserialization() {
         let json =
             r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32600,"message":"Invalid Request"}}"#;
-        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let response: JsonRpcResponse<'_> = serde_json::from_slice(json.as_bytes()).unwrap();
 
         assert!(response.result.is_none());
         assert!(response.error.is_some());
 
         let error = response.error.unwrap();
         assert_eq!(error.code, -32600);
-        assert_eq!(error.message, "Invalid Request");
+        assert_eq!(error.message.as_ref(), "Invalid Request");
     }
 
     #[test]
     fn test_request_with_empty_params() {
         let request = JsonRpcRequest {
-            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
+            jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id: 42,
             method: "simple.method".to_string(),
             params: serde_json::json!(null),
@@ -279,7 +282,7 @@ mod tests {
     #[test]
     fn test_request_with_array_params() {
         let request = JsonRpcRequest {
-            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
+            jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id: 1,
             method: "test.array".to_string(),
             params: serde_json::json!([1, 2, 3]),
@@ -293,7 +296,7 @@ mod tests {
     fn test_response_with_empty_object_result() {
         // Test with empty object instead of null (more realistic)
         let json = r#"{"jsonrpc":"2.0","id":1,"result":{}}"#;
-        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let response: JsonRpcResponse<'_> = serde_json::from_slice(json.as_bytes()).unwrap();
 
         assert!(response.result.is_some());
         assert!(response.result.unwrap().is_object());
@@ -302,7 +305,7 @@ mod tests {
     #[test]
     fn test_error_with_data() {
         let json = r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32603,"message":"Internal error","data":{"details":"stack trace here"}}}"#;
-        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let response: JsonRpcResponse<'_> = serde_json::from_slice(json.as_bytes()).unwrap();
 
         let error = response.error.unwrap();
         assert_eq!(error.code, -32603);
@@ -361,7 +364,7 @@ mod tests {
     #[test]
     fn test_jsonrpc_request_debug() {
         let request = JsonRpcRequest {
-            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
+            jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id: 1,
             method: "test".to_string(),
             params: serde_json::json!({}),
@@ -375,7 +378,7 @@ mod tests {
     #[test]
     fn test_jsonrpc_response_debug() {
         let response = JsonRpcResponse {
-            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
+            jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id: 1,
             result: Some(serde_json::json!({"ok": true})),
             error: None,
@@ -389,7 +392,7 @@ mod tests {
     fn test_jsonrpc_error_debug() {
         let error = JsonRpcError {
             code: -32700,
-            message: "Parse error".to_string(),
+            message: Cow::Borrowed("Parse error"),
             data: None,
         };
 
@@ -402,7 +405,7 @@ mod tests {
     fn test_response_serialization_skips_none() {
         // Response with only result (no error)
         let response1 = JsonRpcResponse {
-            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
+            jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id: 1,
             result: Some(serde_json::json!({"data": "value"})),
             error: None,
@@ -413,12 +416,12 @@ mod tests {
 
         // Response with only error (no result)
         let response2 = JsonRpcResponse {
-            jsonrpc: crate::constants::jsonrpc::VERSION.to_string(),
+            jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id: 2,
             result: None,
             error: Some(JsonRpcError {
                 code: -32600,
-                message: "Bad request".to_string(),
+                message: Cow::Borrowed("Bad request"),
                 data: None,
             }),
         };
@@ -431,7 +434,7 @@ mod tests {
     fn test_error_without_data() {
         let error = JsonRpcError {
             code: -32601,
-            message: "Method not found".to_string(),
+            message: Cow::Borrowed("Method not found"),
             data: None,
         };
 

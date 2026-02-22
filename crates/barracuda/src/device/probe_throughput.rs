@@ -199,7 +199,8 @@ async fn run_throughput_probe(device: &WgpuDevice, use_f64: bool) -> Option<f64>
     };
 
     for _ in 0..3 {
-        let mut enc = wgpu_dev.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            wgpu_dev.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         dispatch(&mut enc);
         queue.submit(Some(enc.finish()));
     }
@@ -208,7 +209,8 @@ async fn run_throughput_probe(device: &WgpuDevice, use_f64: bool) -> Option<f64>
     let iterations = 20;
     let start = std::time::Instant::now();
     for _ in 0..iterations {
-        let mut enc = wgpu_dev.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut enc =
+            wgpu_dev.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         dispatch(&mut enc);
         queue.submit(Some(enc.finish()));
         wgpu_dev.poll(wgpu::Maintain::Wait);

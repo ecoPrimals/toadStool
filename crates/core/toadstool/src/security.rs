@@ -433,6 +433,38 @@ mod tests {
         assert!(!ctx.filesystem_security.read_only);
     }
 
+    #[test]
+    fn security_context_has_permission() {
+        // Default has Execute + Read; add Write to test all three
+        let ctx = SecurityContext::default().with_capability(Capability::Write);
+        assert!(ctx.has_permission("read"));
+        assert!(ctx.has_permission("write"));
+        assert!(ctx.has_permission("execute"));
+        assert!(!ctx.has_permission("network_client"));
+
+        // Minimal context with only Execute (from for_isolation_level)
+        let ctx = SecurityContext::for_isolation_level(IsolationLevel::Basic);
+        assert!(ctx.has_permission("execute"));
+        assert!(!ctx.has_permission("read"));
+    }
+
+    #[test]
+    fn security_context_has_permission_wildcard() {
+        let ctx = SecurityContext::default();
+        assert!(ctx.has_permission("*"));
+        let mut empty = SecurityContext::default();
+        empty.capabilities.clear();
+        assert!(!empty.has_permission("*"));
+    }
+
+    #[test]
+    fn security_context_has_permission_custom() {
+        let ctx =
+            SecurityContext::default().with_capability(Capability::Custom("my_cap".to_string()));
+        assert!(ctx.has_permission("my_cap"));
+        assert!(!ctx.has_permission("other_cap"));
+    }
+
     // ─── IsolationLevel ───────────────────────────────────────────────────
 
     #[test]
