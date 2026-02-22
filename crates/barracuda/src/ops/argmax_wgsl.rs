@@ -12,6 +12,12 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// Argsort shader (tracks original indices).
+pub const WGSL_ARGSORT: &str = include_str!("../shaders/misc/argsort.wgsl");
+
+/// Generic sort shader.
+pub const WGSL_SORT: &str = include_str!("../shaders/misc/sort.wgsl");
+
 /// Argmax operation - Find indices of maximum values
 pub struct Argmax {
     input: Tensor,

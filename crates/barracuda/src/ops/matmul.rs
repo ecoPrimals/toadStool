@@ -25,6 +25,12 @@ const GPU_EVOLVED_THRESHOLD: usize = 256;
 /// At these sizes, tile-fill overhead exceeds computation cost.
 const SMALL_MATRIX_THRESHOLD: usize = 32;
 
+/// f64-emulated matmul (hi/lo f32 pairs).
+pub const WGSL_MATMUL_FP64: &str = include_str!("../shaders/math/matmul_fp64.wgsl");
+
+/// Linear layer shader (matmul + bias).
+pub const WGSL_LINEAR: &str = include_str!("../shaders/misc/linear.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct MatMulParams {

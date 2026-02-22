@@ -13,6 +13,9 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// Simple SELU variant (single-pass, no vectorization).
+pub const WGSL_SELU_SIMPLE: &str = include_str!("../shaders/activation/selu_simple.wgsl");
+
 /// SELU operation
 pub struct SELU {
     input: Tensor,

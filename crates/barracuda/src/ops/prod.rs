@@ -12,6 +12,9 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// Simple prod reduction variant (scalar path).
+pub const WGSL_PROD_SIMPLE: &str = include_str!("../shaders/misc/prod_simple.wgsl");
+
 /// Product reduction operation
 pub struct Prod {
     input: Tensor,

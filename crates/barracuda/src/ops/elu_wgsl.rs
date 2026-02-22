@@ -15,6 +15,9 @@ use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
+/// Simple ELU variant (single-pass, no vectorization).
+pub const WGSL_ELU_SIMPLE: &str = include_str!("../shaders/activation/elu_simple.wgsl");
+
 /// Default alpha for ELU (matches common framework defaults).
 pub const ELU_DEFAULT_ALPHA: f32 = 1.0;
 

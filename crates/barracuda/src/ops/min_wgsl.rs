@@ -12,6 +12,9 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// Simple min reduction variant (scalar path).
+pub const WGSL_MIN_SIMPLE: &str = include_str!("../shaders/math/min_simple.wgsl");
+
 /// Min reduction operation
 pub struct Min {
     input: Tensor,

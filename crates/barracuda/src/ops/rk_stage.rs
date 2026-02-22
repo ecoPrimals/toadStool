@@ -23,6 +23,12 @@ use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 
+/// Parallel multi-system RK4 integration (f32).
+pub const WGSL_RK4_PARALLEL: &str = include_str!("../shaders/numerical/rk4_parallel.wgsl");
+
+/// RK stage f64 variant.
+pub const WGSL_RK_STAGE_F64: &str = include_str!("../shaders/numerical/rk_stage_f64.wgsl");
+
 /// Parameters for RK stage shader
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]

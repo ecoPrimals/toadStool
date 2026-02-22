@@ -12,6 +12,9 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// Simple clamp variant (scalar, no vectorization).
+pub const WGSL_CLAMP_SIMPLE: &str = include_str!("../shaders/math/clamp_simple.wgsl");
+
 /// Clamp operation - Clamp values between min and max
 pub struct Clamp {
     input: Tensor,

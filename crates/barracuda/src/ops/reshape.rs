@@ -22,6 +22,9 @@
 
 use crate::error::{BarracudaError, Result};
 
+/// Reshape identity shader (metadata-only, copy-through).
+pub const WGSL_RESHAPE: &str = include_str!("../shaders/tensor/reshape.wgsl");
+
 /// Reshape parameters
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]

@@ -31,6 +31,9 @@ const SHADER_WG128: &str = include_str!("../shaders/math/fma_wg128.wgsl");
 /// Default shader (WG=256, fallback)
 const SHADER_DEFAULT: &str = include_str!("../shaders/math/fma.wgsl");
 
+/// Element-wise FMA shader.
+pub const WGSL_FMA_ELEMENTWISE: &str = include_str!("../shaders/math/elementwise_fma.wgsl");
+
 /// Fused Multiply-Add operation: D = A * B + C
 pub struct Fma {
     a: Tensor,

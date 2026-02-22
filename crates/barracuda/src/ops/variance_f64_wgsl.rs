@@ -14,6 +14,9 @@ use crate::device::WgpuDevice;
 use crate::error::Result;
 use std::sync::Arc;
 
+/// Simple variance reduction variant (scalar path).
+pub const WGSL_VARIANCE_SIMPLE: &str = include_str!("../shaders/misc/variance_simple.wgsl");
+
 /// f64 Variance/StdDev evaluator
 pub struct VarianceF64 {
     #[allow(dead_code)]

@@ -7,6 +7,9 @@ use crate::tensor::Tensor;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
+/// Meshgrid shader (expand coords to grid).
+pub const WGSL_MESHGRID: &str = include_str!("../shaders/misc/meshgrid.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct FillParams {

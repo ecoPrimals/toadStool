@@ -24,6 +24,10 @@
 //! assert!(result.reconstruction_error(&a) < 1e-12);
 //! ```
 
+/// NAK-optimized batched symmetric eigensolve (f64).
+pub const WGSL_BATCHED_EIGH_NAK_OPTIMIZED: &str =
+    include_str!("../../shaders/linalg/batched_eigh_nak_optimized_f64.wgsl");
+
 /// Result of symmetric eigenvalue decomposition A = V·D·Vᵀ (f64).
 ///
 /// Eigenvalues in ascending order; eigenvectors as columns of V (row-major).

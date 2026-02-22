@@ -12,6 +12,9 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// Simple mean reduction variant (scalar path).
+pub const WGSL_MEAN_SIMPLE: &str = include_str!("../shaders/misc/mean_simple.wgsl");
+
 /// Mean reduction operation
 pub struct Mean {
     input: Tensor,

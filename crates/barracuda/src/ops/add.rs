@@ -24,6 +24,18 @@ const SHADER_WG128: &str = include_str!("../shaders/math/elementwise_add_wg128.w
 /// Default shader (WG=256, fallback)
 const SHADER_DEFAULT: &str = include_str!("../shaders/math/elementwise_add.wgsl");
 
+/// f64 element-wise add variant.
+pub const WGSL_ADD_F64: &str = include_str!("../shaders/math/elementwise_add_f64.wgsl");
+
+/// Optimized element-wise add variant.
+pub const WGSL_ADD_OPTIMIZED: &str = include_str!("../shaders/math/elementwise_add_optimized.wgsl");
+
+/// Vector-add shader.
+pub const WGSL_VECTORADD: &str = include_str!("../shaders/math/vectoradd.wgsl");
+
+/// Generic element-wise binary op shader.
+pub const WGSL_ELEMENTWISE_BINARY: &str = include_str!("../shaders/misc/elementwise_binary.wgsl");
+
 // Vendor IDs for capability-based dispatch (no string matching)
 use crate::device::vendor::{VENDOR_AMD, VENDOR_NVIDIA};
 

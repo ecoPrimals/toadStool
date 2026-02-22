@@ -47,6 +47,9 @@ pub mod maximin;
 pub mod sobol;
 pub mod sparsity;
 
+/// Latin hypercube sampling shader.
+pub const WGSL_LHS: &str = include_str!("../shaders/sample/lhs.wgsl");
+
 pub use direct::{direct_sampler, DirectSamplerConfig, DirectSamplerResult};
 pub use lhs::{latin_hypercube, random_uniform};
 pub use sobol::{sobol_scaled, sobol_sequence, SobolGenerator};

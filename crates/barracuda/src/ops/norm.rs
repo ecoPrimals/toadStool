@@ -12,6 +12,9 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// Simple norm reduction variant (scalar path).
+pub const WGSL_NORM_SIMPLE: &str = include_str!("../shaders/misc/norm_simple.wgsl");
+
 /// Norm reduction operation
 pub struct Norm {
     input: Tensor,

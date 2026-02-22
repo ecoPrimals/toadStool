@@ -5,6 +5,9 @@ use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 
+/// Where/select conditional shader.
+pub const WGSL_WHERE_OP: &str = include_str!("../shaders/tensor/where_op.wgsl");
+
 pub struct Where {
     condition: Tensor,
     x: Tensor,

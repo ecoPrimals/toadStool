@@ -13,6 +13,9 @@
 use crate::error::Result;
 use crate::tensor::Tensor;
 
+/// Soft NMS shader (soft non-maximum suppression).
+pub const WGSL_SOFT_NMS: &str = include_str!("../shaders/detection/soft_nms.wgsl");
+
 /// SoftNMS operation
 pub struct SoftNMS {
     boxes: Tensor,  // [N, 4] (x1, y1, x2, y2)

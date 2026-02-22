@@ -23,6 +23,21 @@ pub const WGSL_LAYERNORM_FUSED_V2: &str = include_str!("../shaders/norm/layernor
 /// GPU shader for optimized layer normalization (vectorized loads).
 pub const WGSL_LAYERNORM_OPTIMIZED: &str = include_str!("../shaders/norm/layernorm_optimized.wgsl");
 
+/// LayerNorm mean/variance pass.
+pub const WGSL_LAYERNORM_MEANVAR: &str = include_str!("../shaders/norm/layernorm_meanvar.wgsl");
+
+/// LayerNorm normalize pass.
+pub const WGSL_LAYERNORM_NORMALIZE: &str = include_str!("../shaders/norm/layernorm_normalize.wgsl");
+
+/// LayerNorm stats pass.
+pub const WGSL_LAYERNORM_STATS: &str = include_str!("../shaders/norm/layernorm_stats.wgsl");
+
+/// LayerNorm optimized variant.
+pub const WGSL_LAYERNORM_OPT: &str = include_str!("../shaders/norm/layernorm_opt.wgsl");
+
+/// Base layer norm shader.
+pub const WGSL_LAYERNORM_BASE: &str = include_str!("../shaders/norm/layernorm.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct Params {

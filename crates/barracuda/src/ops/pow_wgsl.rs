@@ -12,6 +12,9 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// Simple pow variant (scalar, no vectorization).
+pub const WGSL_POW_SIMPLE: &str = include_str!("../shaders/math/pow_simple.wgsl");
+
 /// Power operation
 pub struct Pow {
     input: Tensor,

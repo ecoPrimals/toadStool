@@ -12,6 +12,9 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// Simple sum reduction variant (scalar path).
+pub const WGSL_SUM_SIMPLE: &str = include_str!("../shaders/misc/sum_simple.wgsl");
+
 /// Sum reduction operation
 pub struct Sum {
     input: Tensor,

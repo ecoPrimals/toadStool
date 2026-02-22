@@ -15,6 +15,9 @@ mod tests;
 use crate::error::Result;
 use crate::tensor::Tensor;
 
+/// Simple std reduction variant (scalar path).
+pub const WGSL_STD_SIMPLE: &str = include_str!("../../shaders/misc/std_simple.wgsl");
+
 /// Standard deviation reduction operation
 pub struct Std {
     input: Tensor,
