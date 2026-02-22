@@ -1,4 +1,4 @@
-# Status -- February 22, 2026 (Sessions 32-38: Deep Debt Evolution)
+# Status -- February 22, 2026 (Sessions 32-41: Deep Debt Evolution + Spring Absorption)
 
 ## Quality Gates
 
@@ -6,11 +6,12 @@
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
-| `cargo clippy --workspace --all-targets` | PASS | **0 warnings** (8 intentional deprecation notes in legacy module) |
+| `cargo clippy --workspace --all-targets` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace --lib` | PASS | **3,847+ non-GPU tests + barracuda targeted** |
+| `cargo test --workspace --lib` | PASS | **5,965+ non-GPU tests + barracuda targeted** |
 | hotSpring validation | PASS | **195/195 acceptance checks** |
-| wetSpring validation | PASS | **48/48 life science checks** |
+| wetSpring validation | PASS | **728 Rust tests, 95 experiments** |
+| neuralSpring validation | PASS | **1,560+ checks, 115 binaries** |
 | Pure Rust syscalls | PASS | mmap/mlock via rustix |
 | Zero-copy hot paths | PASS | `Cow<'a, str>` + `#[serde(borrow)]`, `from_slice`, `bytes::Bytes` |
 | Hardcoded primal names | PASS | **0 -- capability-based discovery** |
@@ -23,9 +24,32 @@
 | Production panics/unwraps | PASS | **Zero blind unwrap(); infallible expect() only** |
 | TODOs/FIXMEs/HACKs | PASS | **Zero in production code** |
 | File size limit | PASS | **All files under 1000 lines** |
-| WGSL shaders | PASS | **589+ (zero orphans)** |
+| WGSL shaders | PASS | **600+ (zero orphans)** |
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+
+---
+
+## Session 41: f64 Shader Compile Fix + API Exposure (Feb 22, 2026)
+
+- **Critical**: 6 f64 WGSL shaders used `compile_shader()` instead of `compile_shader_f64()`, missing f64 preamble injection for naga/Vulkan. Fixed: `batched_ode_rk4`, `batch_pair_reduce_f64`, `batch_tolerance_search_f64`, `kmd_grouping_f64`, `hill_f64`, `GemmCachedF64`
+- **API**: `cpu_conv_pool::{conv2d, max_pool2d, avg_pool2d}` promoted from `pub(crate)` to `pub` (unblocks neuralSpring LeNet-5)
+- **API**: All 25 bio ops re-exported at crate root (was 10)
+- **Confirmed**: S-14/S-15 already resolved in S39; neuralSpring V8 recommendations stale for these
+
+## Session 40: Richards PDE + Moving Window Stats + Dependency Audit (Feb 22, 2026)
+
+- **Richards**: 1D unsaturated zone water flow solver (van Genuchten-Mualem, Picard iteration, Crank-Nicolson) with 4 tests (airSpring absorption)
+- **Moving window stats**: WGSL GPU kernel computing mean/var/min/max over sliding windows for IoT sensor streams; CPU fallback for N<256
+- **Dependency audit**: workspace already pure Rust; libc confined to akida VFIO ioctls
+- **Dead code sweep**: 38 `#[allow(dead_code)]` all verified legitimate
+
+## Sessions 39: Full Spring Absorption (Feb 22, 2026)
+
+- Absorbed 7 neuralSpring bio ops + 3 wetSpring WGSL shaders + 11 hotSpring HFB physics shaders
+- S-14 Naive matmul tier removed; S-15 matmul hang fix; S-16 transpose dispatch fix
+- `GemmCachedF64::execute_to_buffer()`, `barracuda::math` module, `FlatTree` CSR, `sparse_eigh`, `quantize_affine_i8`
+- `matmul_tiled.wgsl` barrier-safety fix for small matrix dispatch
 
 ---
 

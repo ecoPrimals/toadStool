@@ -1,7 +1,7 @@
 # ToadStool/BarraCUDA -- Next Steps
 
-**Updated**: February 22, 2026 -- Sessions 32-38
-**Status**: Production-grade | 0 clippy warnings | 589+ WGSL shaders | 3,847+ non-GPU tests + barracuda targeted | Coverage: common 87%, config 89%, core 79%, server 77%
+**Updated**: February 22, 2026 -- Sessions 32-41
+**Status**: Production-grade | 0 clippy warnings | 600+ WGSL shaders | 5,965+ tests + barracuda targeted | Coverage: common 87%, config 89%, core 79%, server 77%
 
 ---
 
@@ -110,6 +110,15 @@ Prerequisites:
 - [ ] Current: common 87%, config 89%, core 79%, server 77%, distributed 55% -- 3,847+ non-GPU tests + barracuda targeted
 - [ ] Gap: async networking paths, GPU-gated paths
 - [ ] Remaining pending test suites: `e2e`, `fhe`, `comprehensive` (require future APIs)
+
+### Conv2D/MaxPool2D GPU Executor Wiring (neuralSpring P0)
+- [ ] Refactor `ops::Conv2D` to handle batched multi-channel inputs matching `MathOp::Conv2D` params
+- [ ] Wire `GpuExecutor::execute` Conv2D/MaxPool2D/AvgPool2D branches to WGSL ops (currently CPU fallback)
+- [ ] Enables full LeNet-5 GPU validation for neuralSpring
+
+### PCoA BatchedEighGpu naga Fix
+- [ ] `BatchedEighGpu` fails naga shader validation (wetSpring currently uses `catch_unwind`)
+- [ ] Investigate naga "invalid function call" error in eigensolve shaders
 
 ### Cross-Repo Debt (neuralSpring + wetSpring)
 - [ ] **D-S20-003**: neuralSpring `evolved/` migration (~2075 lines) — API mapping table in `DEBT.md`; awaiting neuralSpring team effort

@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA -- Quick Status
 
-**Date**: February 22, 2026
+**Date**: February 22, 2026 (Session 41)
 
 ---
 
@@ -9,14 +9,14 @@
 ```
 cargo build --workspace               CLEAN
 cargo fmt --all -- --check            0 diffs
-cargo clippy --workspace --all-targets  0 warnings (8 deprecation notes in legacy module)
+cargo clippy --workspace --all-targets  0 warnings
 cargo doc --workspace --no-deps       0 warnings
-cargo test --workspace --lib          3,847+ non-GPU + barracuda targeted / 0 failed
+cargo test --workspace --lib          5,965+ non-GPU + barracuda targeted / 0 failed
 unsafe blocks                         55 -- FFI only, all SAFETY documented
 production panics/unwraps             0 blind unwrap(); infallible expect() only
 production TODOs/FIXMEs               0
 hardcoded primal names in prod        0 -- capability-based discovery
-orphan WGSL shaders                   0 -- all 589+ wired to Rust
+orphan WGSL shaders                   0 -- all 600+ wired to Rust
 near-limit files                      0 -- all under 1000 lines
 line coverage (common)                87%
 line coverage (config)                89%
@@ -42,7 +42,7 @@ ToadStool (Hardware Infrastructure Primal)
   43 crates, 3 GPUs across 2 machines, 2 vendors (NVIDIA + AMD)
 
 BarraCUDA (Universal Compute Engine -- SHADER-FIRST F64)
-  589+ WGSL shaders, zero orphans -- every shader wired to Rust
+  600+ WGSL shaders, zero orphans -- every shader wired to Rust
   NN compute shaders: Conv2D, MaxPool2D, AvgPool2D
   FP64-by-default: Both CPU and GPU use f64
   SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2 vs 1:64)
@@ -50,8 +50,9 @@ BarraCUDA (Universal Compute Engine -- SHADER-FIRST F64)
   TensorSession: batched op recording with single-submit execution
   GpuExecutor: 31 MathOps | CpuExecutor: full dispatch
   Scientific middleware: 14 modules, 400+ tests, 0 unsafe
-  25 bio/evolution GPU ops, HFB nuclear physics (spherical + deformed), spectral theory, lattice QCD
-  Three Springs validated: 2,700+ acceptance checks
+  25 bio/evolution GPU ops, 11 HFB nuclear physics, spectral theory, lattice QCD
+  PDE: Crank-Nicolson, Richards unsaturated flow | Stats: moving window GPU
+  Four Springs validated: 4,000+ acceptance checks
 
 Sovereign Compute (WgslOptimizer -- Phases 0-3 complete)
   Phase 0: fossil f64 functions removed -> native WGSL builtins
@@ -79,10 +80,10 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 
 | Metric | Value |
 |--------|-------|
-| Clippy warnings | 0 (8 deprecation notes in legacy module) |
+| Clippy warnings | 0 |
 | Doc warnings | 0 |
-| Unit tests passing | 3,847+ non-GPU + barracuda targeted |
-| WGSL shaders | 589+ (zero orphans) |
+| Unit tests passing | 5,965+ non-GPU + barracuda targeted |
+| WGSL shaders | 600+ (zero orphans) |
 | Line coverage (common/config) | 87% / 89% |
 | Line coverage (core/server) | 79% / 77% |
 | Unsafe blocks | 55 -- FFI only, all SAFETY documented |
@@ -90,14 +91,15 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 | Hardcoded primal names | 0 -- capability-based |
 | Zero-copy hot paths | `Cow<'a, str>` + `#[serde(borrow)]`, `from_slice`, `bytes::Bytes` |
 | **hotSpring validation** | 195/195 nuclear physics |
-| **wetSpring validation** | 48/48 life science |
-| **Combined validation** | 2,700+ acceptance checks |
+| **wetSpring validation** | 728 Rust tests + 95 experiments |
+| **neuralSpring validation** | 1,560+ checks, 115 binaries |
+| **Combined validation** | 4,000+ acceptance checks |
 
 ---
 
 ## What Works
 
-- 589+ WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
+- 600+ WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
 - Distributed LLM inference across machines (39.85 tok/s, BearDog encrypted)
 - Hardware discovery (GPUs, NPUs, CPUs) -- pure Rust, no scripts
 - JSON-RPC 2.0 + tarpc 0.34 IPC over Unix sockets (36 methods)
@@ -108,7 +110,7 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 - Capability-based primal discovery (zero hardcoded names)
 - Edge device discovery via filesystem scanning and serial/TCP communication
 - Matrix decompositions (LU, QR, SVD, Cholesky, eigh, tridiagonal)
-- ODE/PDE solvers (RK45 adaptive, Crank-Nicolson)
+- ODE/PDE solvers (RK45 adaptive, Crank-Nicolson, Richards unsaturated flow)
 - Special functions (Bessel, Hermite, Legendre, erf, gamma, digamma, beta)
 - Optimization (Nelder-Mead, BFGS, bisection)
 - Sampling (LHS, Sobol quasi-random, maximin)
@@ -128,7 +130,7 @@ barracuda::stats          - norm_cdf, norm_ppf, correlation, covariance, varianc
 barracuda::optimize       - Nelder-Mead, BFGS, bisection, Newton, Brent, diagnostics
 barracuda::surrogate      - RBF with 6 kernels, GPU-accelerated training, LOO-CV
 barracuda::sample         - Sobol, LHS, random_uniform, direct_sampler
-barracuda::pde            - Crank-Nicolson heat equation solver
+barracuda::pde            - Crank-Nicolson, Richards unsaturated flow (van Genuchten-Mualem)
 barracuda::interpolate    - Cubic spline (natural/clamped/not-a-knot)
 barracuda::dispatch       - Auto CPU/GPU routing with benchmark suite
 barracuda::pipeline       - Cascade multi-stage filtering
@@ -164,4 +166,4 @@ cargo llvm-cov --lib -p toadstool-common --json
 
 ---
 
-**Last Updated**: February 22, 2026 -- Session 38: Zero clippy warnings, 589+ WGSL shaders, HFB nuclear physics (spherical + deformed), blind unwrap() audit, 3,847+ workspace tests, test race fix.
+**Last Updated**: February 22, 2026 -- Session 41: 600+ WGSL shaders, Richards PDE solver, moving window GPU stats, 6 f64 shader compile fixes, all bio ops re-exported, four Springs validated.
