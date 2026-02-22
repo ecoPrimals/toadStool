@@ -18,6 +18,9 @@
 
 use crate::error::{BarracudaError, Result};
 
+#[allow(dead_code)]
+const WGSL_IOU_F64: &str = include_str!("../../shaders/misc/iou_f64.wgsl");
+
 mod compute;
 
 #[cfg(test)]

@@ -17,6 +17,9 @@
 //! - ✅ Full f64 precision
 //! - ✅ Zero unsafe code
 
+#[allow(dead_code)]
+const WGSL_MSD_F64: &str = include_str!("msd_f64.wgsl");
+
 mod kinetic_energy;
 mod kinetic_energy_f64;
 mod rdf_f64;

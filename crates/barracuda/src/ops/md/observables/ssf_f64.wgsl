@@ -1,182 +1,81 @@
-// Static Structure Factor (f64 precision)
+// ssf_f64.wgsl — Static Structure Factor S(k)
 //
-// **Physics**: S(k) = |Σ_j exp(ik·r_j)|² / N
+// **Physics**: S(k) = |Σ_j exp(ik·r_j)|² / N = (1/N) * [(Σ cos(k·r_j))² + (Σ sin(k·r_j))²]
 //
-// This is the primary observable for paper parity validation.
-// Computes S(k) for a set of k-vectors, used in Dynamic Structure Factor (DSF) studies.
+// **Algorithm**: Each thread handles one k-vector. Loop over all N particles:
+//   cos_sum += cos(kx*rx + ky*ry + kz*rz)
+//   sin_sum += sin(kx*rx + ky*ry + kz*rz)
+// Then S(k) = (cos_sum² + sin_sum²) / N
 //
-// **Algorithm**:
-//   For each k-vector, sum exp(ik·r_j) = cos(k·r_j) + i*sin(k·r_j) over all N particles.
-//   Then S(k) = (Σ cos)² + (Σ sin)² / N
+// **Precision**: f64 via bitcast<f64>(vec2<u32>) — same byte layout as array<f64>
+// **Workgroup**: @compute @workgroup_size(64) — matches ssf_gpu dispatch
 //
-// **Precision**: Full f64 throughout (positions, k-vectors, results)
+// Bindings (matches ssf_gpu.rs): 0=params uniform, 1=positions, 2=k_vectors, 3=output
+// Uses array<f64> (compile_shader_f64 enables f64; ssf_gpu reads f64)
 //
-// **Performance**:
-//   Each thread handles one k-vector, loops over all N particles.
-//   GPU parallelism: number_of_k_vectors threads run simultaneously.
-//   For N=10,000 particles and 1000 k-vectors: each thread does 10,000 trig ops.
-//
-// **Feb 17 2026**: Uses software sin/cos f64 (Taylor series) since AMD GPUs
-//   don't support native f64 trig. Nvidia RTX 4070 does, but portability wins.
-//
-// Bindings:
-//   0: params      - [n_particles, n_k_vectors, pad, pad] u32 uniform
-//   1: positions   - [n_particles * 3] f64 storage, read
-//   2: k_vectors   - [n_k_vectors * 3] f64 storage, read
-//   3: ssf_output  - [n_k_vectors] f64 storage, read-write
+// Reference: Hansen & McDonald "Theory of Simple Liquids"
 
-// Constants for f64 Taylor series
-const PI_F64: f64 = 3.141592653589793;
-const NEG_PI_F64: f64 = -3.141592653589793;  // WGSL requires explicit constant for negation
-const TWO_PI_F64: f64 = 6.283185307179586;
-const HALF_PI_F64: f64 = 1.5707963267948966;
+@group(0) @binding(0) var<uniform> params: Params;
+@group(0) @binding(1) var<storage, read> positions: array<f64>;
+@group(0) @binding(2) var<storage, read> k_vectors: array<f64>;
+@group(0) @binding(3) var<storage, read_write> ssf_out: array<f64>;
 
-// Software sin/cos for f64 using Taylor series (GPU-portable)
-// Reduces x to [-pi, pi] range, then uses degree-13 Taylor series
-fn sin_f64(x_in: f64) -> f64 {
-    // Reduce to [-pi, pi]
-    var x = x_in;
-    x = x - floor(x / TWO_PI_F64) * TWO_PI_F64;
-    if (x > PI_F64) { x = x - TWO_PI_F64; }
-    if (x < NEG_PI_F64) { x = x + TWO_PI_F64; }
-    
-    // Taylor series: sin(x) = x - x³/3! + x⁵/5! - x⁷/7! + x⁹/9! - x¹¹/11! + x¹³/13!
-    let x2 = x * x;
-    let x3 = x2 * x;
-    let x5 = x3 * x2;
-    let x7 = x5 * x2;
-    let x9 = x7 * x2;
-    let x11 = x9 * x2;
-    let x13 = x11 * x2;
-    
-    return x 
-        - x3 / f64(6)           // 3! = 6
-        + x5 / f64(120)         // 5! = 120
-        - x7 / f64(5040)        // 7! = 5040
-        + x9 / f64(362880)      // 9! = 362880
-        - x11 / f64(39916800)   // 11! = 39916800
-        + x13 / f64(6227020800);// 13! = 6227020800
-}
-
-fn cos_f64(x: f64) -> f64 {
-    // cos(x) = sin(x + pi/2)
-    return sin_f64(x + HALF_PI_F64);
-}
-
-struct SSFParams {
+struct Params {
     n_particles: u32,
     n_k_vectors: u32,
     _pad1: u32,
     _pad2: u32,
 }
 
-@group(0) @binding(0) var<uniform> params: SSFParams;
-@group(0) @binding(1) var<storage, read> positions: array<f64>;
-@group(0) @binding(2) var<storage, read> k_vectors: array<f64>;
-@group(0) @binding(3) var<storage, read_write> ssf_output: array<f64>;
+// Software sin/cos for f64 (portable; no native f64 trig on some drivers)
+const PI_F64: f64 = 3.141592653589793;
+// Avoid unary minus on literal (WGSL parser issue)
+const NEG_PI_F64: f64 = 0.0 - 3.141592653589793;
+const TWO_PI_F64: f64 = 6.283185307179586;
+const HALF_PI_F64: f64 = 1.5707963267948966;
+
+fn sin_f64(x_in: f64) -> f64 {
+    var x = x_in;
+    x = x - floor(x / TWO_PI_F64) * TWO_PI_F64;
+    if (x > PI_F64) { x = x - TWO_PI_F64; }
+    if (x < NEG_PI_F64) { x = x + TWO_PI_F64; }
+    let x2 = x * x;
+    let x3 = x2 * x;
+    return x - x3 / 6.0 + x3 * x2 / 120.0 - x3 * x2 * x2 / 5040.0;
+}
+
+fn cos_f64(x: f64) -> f64 {
+    return sin_f64(x + HALF_PI_F64);
+}
 
 @compute @workgroup_size(64)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let k_idx = gid.x;
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let k_idx = global_id.x;
     let n = params.n_particles;
     let n_k = params.n_k_vectors;
+    if (k_idx >= n_k) {
+        return;
+    }
 
-    if (k_idx >= n_k) { return; }
+    let k_base = k_idx * 3u;
+    let kx = k_vectors[k_base];
+    let ky = k_vectors[k_base + 1u];
+    let kz = k_vectors[k_base + 2u];
 
-    // Load k-vector
-    let kx = k_vectors[k_idx * 3u];
-    let ky = k_vectors[k_idx * 3u + 1u];
-    let kz = k_vectors[k_idx * 3u + 2u];
-
-    // Sum exp(ik·r) = Σ cos(k·r) + i Σ sin(k·r)
-    var sum_cos: f64 = 0.0;
-    var sum_sin: f64 = 0.0;
+    var cos_sum: f64 = 0.0;
+    var sin_sum: f64 = 0.0;
 
     for (var j = 0u; j < n; j = j + 1u) {
-        let rx = positions[j * 3u];
-        let ry = positions[j * 3u + 1u];
-        let rz = positions[j * 3u + 2u];
+        let r_base = j * 3u;
+        let rx = positions[r_base];
+        let ry = positions[r_base + 1u];
+        let rz = positions[r_base + 2u];
 
         let kr = kx * rx + ky * ry + kz * rz;
-
-        // Software f64 trig (GPU-portable, AMD doesn't support native f64 trig)
-        sum_cos = sum_cos + cos_f64(kr);
-        sum_sin = sum_sin + sin_f64(kr);
+        cos_sum = cos_sum + cos_f64(kr);
+        sin_sum = sin_sum + sin_f64(kr);
     }
 
-    // S(k) = |Σ exp(ik·r)|² / N = (Σcos)² + (Σsin)² / N
-    let ssf = (sum_cos * sum_cos + sum_sin * sum_sin) / f64(n);
-    ssf_output[k_idx] = ssf;
+    let ssf = (cos_sum * cos_sum + sin_sum * sin_sum) / f64(n);
+    ssf_out[k_idx] = ssf;
 }
-
-// Alternative entry point with shared memory reduction for large k-vector sets
-// Each workgroup processes one k-vector, threads cooperatively sum over particles
-// More efficient for very large N (>50,000) due to reduced global memory pressure
-
-var<workgroup> partial_cos: array<f64, 256>;
-var<workgroup> partial_sin: array<f64, 256>;
-
-@compute @workgroup_size(256)
-fn main_cooperative(@builtin(global_invocation_id) gid: vec3<u32>,
-                    @builtin(local_invocation_id) lid: vec3<u32>,
-                    @builtin(workgroup_id) wg_id: vec3<u32>) {
-    let k_idx = wg_id.x;
-    let tid = lid.x;
-    let n = params.n_particles;
-    let n_k = params.n_k_vectors;
-
-    if (k_idx >= n_k) { return; }
-
-    // Load k-vector (all threads in workgroup load same k)
-    let kx = k_vectors[k_idx * 3u];
-    let ky = k_vectors[k_idx * 3u + 1u];
-    let kz = k_vectors[k_idx * 3u + 2u];
-
-    // Each thread handles a subset of particles
-    var local_cos: f64 = 0.0;
-    var local_sin: f64 = 0.0;
-
-    var j = tid;
-    while (j < n) {
-        let rx = positions[j * 3u];
-        let ry = positions[j * 3u + 1u];
-        let rz = positions[j * 3u + 2u];
-
-        let kr = kx * rx + ky * ry + kz * rz;
-
-        local_cos = local_cos + cos_f64(kr);
-        local_sin = local_sin + sin_f64(kr);
-
-        j = j + 256u;
-    }
-
-    // Store in shared memory
-    partial_cos[tid] = local_cos;
-    partial_sin[tid] = local_sin;
-    workgroupBarrier();
-
-    // Tree reduction
-    for (var stride = 128u; stride > 0u; stride = stride >> 1u) {
-        if (tid < stride) {
-            partial_cos[tid] = partial_cos[tid] + partial_cos[tid + stride];
-            partial_sin[tid] = partial_sin[tid] + partial_sin[tid + stride];
-        }
-        workgroupBarrier();
-    }
-
-    // Thread 0 writes final result
-    if (tid == 0u) {
-        let ssf = (partial_cos[0] * partial_cos[0] + partial_sin[0] * partial_sin[0]) / f64(n);
-        ssf_output[k_idx] = ssf;
-    }
-}
-
-// Entry point for computing S(k) along radial shells
-// Computes average S(|k|) over all k-vectors with the same magnitude
-// Uses atomic add for shell accumulation
-
-@group(0) @binding(0) var<uniform> shell_params: SSFParams;
-@group(0) @binding(1) var<storage, read> positions_shell: array<f64>;
-@group(0) @binding(2) var<storage, read> k_vectors_shell: array<f64>;
-@group(0) @binding(3) var<storage, read_write> ssf_per_k: array<f64>;
-// Additional bindings for shell averaging would go here

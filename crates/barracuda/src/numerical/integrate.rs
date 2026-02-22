@@ -1,5 +1,8 @@
 //! Numerical integration via trapezoidal rule
 
+#[allow(dead_code)]
+const WGSL_TRAPZ_F64: &str = include_str!("../shaders/math/trapz_f64.wgsl");
+
 use crate::error::{BarracudaError, Result};
 
 /// Trapezoidal integration: ∫ y(x) dx

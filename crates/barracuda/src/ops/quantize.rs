@@ -10,6 +10,9 @@
 //! Quantizes floating point values to low-precision integers.
 //! Used for model compression and efficient inference.
 
+#[allow(dead_code)]
+const WGSL_QUANTIZE_PARAMS_F64: &str = include_str!("../shaders/misc/quantize_params_f64.wgsl");
+
 use crate::device::DeviceCapabilities;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;

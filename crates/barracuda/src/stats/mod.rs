@@ -30,6 +30,9 @@
 //! - Efron & Tibshirani (1993) Bootstrap methods
 //! - hotSpring validation: `stats.rs`
 
+#[allow(dead_code)]
+const WGSL_BOOTSTRAP_MEAN_F64: &str = include_str!("../shaders/special/bootstrap_mean_f64.wgsl");
+
 pub mod bootstrap;
 pub mod chi2;
 pub mod correlation;

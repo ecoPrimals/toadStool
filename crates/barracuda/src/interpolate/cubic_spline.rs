@@ -30,6 +30,9 @@
 
 use crate::error::{BarracudaError, Result};
 
+#[allow(dead_code)]
+const WGSL_CUBIC_SPLINE_EVAL_F64: &str = include_str!("../shaders/math/cubic_spline_eval_f64.wgsl");
+
 /// Cubic spline interpolator
 #[derive(Debug, Clone)]
 pub struct CubicSpline {

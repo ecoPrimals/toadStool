@@ -27,6 +27,9 @@
 //! - Dormand, J. R. & Prince, P. J. (1980)
 //! - Numerical Recipes, §17.2
 
+#[allow(dead_code)]
+const WGSL_RK45_F64: &str = include_str!("../shaders/math/rk45_f64.wgsl");
+
 use crate::error::{BarracudaError, Result};
 
 /// Configuration for the RK45 solver.

@@ -118,6 +118,9 @@ pub fn gamma(x: f64) -> Result<f64> {
     Ok(ln_gamma(x)?.exp())
 }
 
+#[allow(dead_code)]
+const WGSL_INCOMPLETE_GAMMA_F64: &str = include_str!("../shaders/special/incomplete_gamma_f64.wgsl");
+
 /// Lower incomplete gamma function: γ(a, x) = ∫₀ˣ t^(a-1) e^(-t) dt
 ///
 /// Uses series expansion for x < a+1 and continued fraction for x >= a+1.
@@ -179,6 +182,9 @@ pub fn upper_incomplete_gamma(a: f64, x: f64) -> Result<f64> {
     let (lower, complete) = lower_incomplete_gamma(a, x)?;
     Ok(complete - lower)
 }
+
+#[allow(dead_code)]
+const WGSL_REGULARIZED_GAMMA_F64: &str = include_str!("../shaders/special/regularized_gamma_f64.wgsl");
 
 /// Regularized lower incomplete gamma function: P(a, x) = γ(a, x) / Γ(a)
 ///
@@ -417,6 +423,9 @@ pub fn beta(a: f64, b: f64) -> Result<f64> {
     let ln_beta = ln_gamma(a)? + ln_gamma(b)? - ln_gamma(a + b)?;
     Ok(ln_beta.exp())
 }
+
+#[allow(dead_code)]
+const WGSL_LN_BETA_F64: &str = include_str!("../shaders/special/ln_beta_f64.wgsl");
 
 /// Natural logarithm of the beta function: ln(B(a, b))
 ///

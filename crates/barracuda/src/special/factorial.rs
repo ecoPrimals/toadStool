@@ -1,5 +1,8 @@
 //! Factorial function
 
+#[allow(dead_code)]
+const WGSL_FACTORIAL_F64: &str = include_str!("../shaders/special/factorial_f64.wgsl");
+
 /// Compute n! (factorial)
 ///
 /// Uses exact calculation for n ≤ 20, Stirling's approximation for larger n.

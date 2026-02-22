@@ -26,6 +26,9 @@
 //! The spreading/interpolation stencil is p × p × p nodes centered on the
 //! particle's mesh cell.
 
+#[allow(dead_code)]
+const WGSL_BSPLINE_F64: &str = include_str!("bspline_f64.wgsl");
+
 use std::f64::consts::PI;
 
 /// Cardinal B-spline of order p evaluated at x

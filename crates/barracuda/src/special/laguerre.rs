@@ -27,6 +27,9 @@
 //! - NIST DLMF, Chapter 18
 //! - scipy.special.eval_genlaguerre
 
+#[allow(dead_code)]
+const WGSL_LAGUERRE_GENERALIZED_F64: &str = include_str!("../shaders/math/laguerre_generalized_f64.wgsl");
+
 /// Evaluate the generalized Laguerre polynomial L_n^(α)(x).
 ///
 /// # Arguments
