@@ -36,7 +36,7 @@ pub struct SnpCallingF64 {
 impl SnpCallingF64 {
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
         let module = device.compile_shader_f64(SHADER, Some("snp_calling_f64"));
-        let bgl = make_bgl(&device, &[true, true, false, false, false, false]);
+        let bgl = make_bgl(&device, &[true, false, false, false, false]);
         let layout = make_layout(&device, &bgl, "SnpCalling");
         let pipeline = make_pipeline(&device, &layout, &module, "main", "SnpCalling");
         Ok(Self {

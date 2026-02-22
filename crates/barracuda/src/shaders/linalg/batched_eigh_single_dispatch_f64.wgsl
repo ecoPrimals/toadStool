@@ -85,24 +85,27 @@ fn batched_eigh_single_dispatch(
     
     let base = batch_offset(batch_idx, n);
     let tol = f64(params.tolerance);
+    // f64 constants via (zero + literal) pattern for naga compatibility
+    let z   = tol - tol; // f64 zero
+    let one = z + 1.0;
+    let neg_one = z - 1.0;
+    let two = z + 2.0;
+    let eps = z + 1e-14;
     
     // Step 1: Initialize V = Identity directly in global memory
-    // (A_batch already contains input matrices)
     for (var i = 0u; i < n; i = i + 1u) {
         for (var j = 0u; j < n; j = j + 1u) {
             if (i == j) {
-                V_batch[base + idx2d(i, j, n)] = f64(1.0);
+                V_batch[base + idx2d(i, j, n)] = one;
             } else {
-                V_batch[base + idx2d(i, j, n)] = f64(0.0);
+                V_batch[base + idx2d(i, j, n)] = z;
             }
         }
     }
     
-    // Step 2: Jacobi sweeps - ALL iterations run here
-    // Each thread operates on its own matrix in global memory (no shared memory needed)
+    // Step 2: Jacobi sweeps
     for (var sweep = 0u; sweep < params.max_sweeps; sweep = sweep + 1u) {
-        // Check convergence: max off-diagonal element
-        var max_off = f64(0.0);
+        var max_off = z;
         for (var i = 0u; i < n; i = i + 1u) {
             for (var j = i + 1u; j < n; j = j + 1u) {
                 let off = abs(A_batch[base + idx2d(i, j, n)]);
@@ -112,110 +115,76 @@ fn batched_eigh_single_dispatch(
             }
         }
         
-        // Early exit if converged
         if (max_off < tol) {
             break;
         }
         
-        // Cyclic Jacobi: iterate through all (p, q) pairs
         for (var p = 0u; p < n - 1u; p = p + 1u) {
             for (var q = p + 1u; q < n; q = q + 1u) {
                 let apq = A_batch[base + idx2d(p, q, n)];
                 
-                // Skip if already zero
-                if (abs(apq) < 1e-14) {
+                if (abs(apq) < eps) {
                     continue;
                 }
                 
                 let app = A_batch[base + idx2d(p, p, n)];
                 let aqq = A_batch[base + idx2d(q, q, n)];
                 
-                // Compute rotation angle
                 let diff = aqq - app;
                 var t: f64;
                 
-                if (abs(diff) < 1e-14) {
-                    // app ≈ aqq
-                    if (apq >= 0.0) { t = f64(1.0); } else { t = f64(-1.0); }
+                if (abs(diff) < eps) {
+                    if (apq >= z) { t = one; } else { t = neg_one; }
                 } else {
-                    // tan(2θ) = 2*apq / (aqq - app)
-                    let phi = diff / (2.0 * apq);
+                    let phi = diff / (two * apq);
                     let abs_phi = abs(phi);
-                    if (phi >= 0.0) {
-                        t = f64(1.0) / (abs_phi + sqrt(f64(1.0) + phi * phi));
+                    if (phi >= z) {
+                        t = one / (abs_phi + sqrt(one + phi * phi));
                     } else {
-                        t = f64(-1.0) / (abs_phi + sqrt(f64(1.0) + phi * phi));
+                        t = neg_one / (abs_phi + sqrt(one + phi * phi));
                     }
                 }
                 
-                let c = f64(1.0) / sqrt(f64(1.0) + t * t);
+                let c = one / sqrt(one + t * t);
                 let s = t * c;
 
-                // @ilp_region begin
-                // Hoist scalar products outside the inner loops. On SM70 each DFMA
-                // takes 8 cycles; these are computed ONCE per (p,q) pair and reused
-                // n times inside the loops — filling the latency window for free.
                 let cc      = c * c;
                 let ss      = s * s;
-                let two_cs  = 2.0 * c * s;
-                // Independent of cc/ss/two_cs — start during their latency windows:
+                let two_cs  = two * c * s;
                 let app_new = cc * app - two_cs * apq + ss * aqq;
                 let aqq_new = ss * app + two_cs * apq + cc * aqq;
-                // @ilp_region end
 
-                // Apply rotation to A (rows and columns p, q).
-                // @ilp_region begin
-                // Load both akp and akq before computing — independent loads issued
-                // in parallel, hardware can coalesce or dual-issue them.
-                // The DFMA for new_akp is computed while new_akq loads resolve,
-                // eliminating back-to-back DFMA stalls on SM70.
-                //
-                // @unroll_hint 32: WgslLoopUnroller expands this into 32 guarded copies
-                // (each guarded by `if (k < n)`). With MAX_N=32, the guard is evaluated
-                // once from a uniform value — zero stall overhead. All 32 iterations are
-                // visible to the hardware scheduler simultaneously, enabling inter-iteration
-                // ILP: while iteration i waits 8cy for DFMA, iterations i+1..i+3 feed
-                // independent load/FMA pairs that fill the scoreboard window.
-                // @unroll_hint 32
+                // A rotation: rows k ≠ p,q (the 2×2 block is updated below)
                 for (var k = 0u; k < n; k = k + 1u) {
                     if (k != p && k != q) {
                         let akp     = A_batch[base + idx2d(k, p, n)];
                         let akq     = A_batch[base + idx2d(k, q, n)];
-                        // Load V simultaneously — issued during A-load latency:
-                        let vkp     = V_batch[base + idx2d(k, p, n)];
-                        let vkq     = V_batch[base + idx2d(k, q, n)];
-
-                        // A rotation: independent of V loads, starts during V-load gap
                         let new_akp = c * akp - s * akq;
                         let new_akq = s * akp + c * akq;
-
-                        // V rotation: independent of A results, compiler/HW can dual-issue
-                        let new_vkp = c * vkp - s * vkq;
-                        let new_vkq = s * vkp + c * vkq;
-
-                        // Write back A (symmetric):
                         A_batch[base + idx2d(k, p, n)] = new_akp;
                         A_batch[base + idx2d(k, q, n)] = new_akq;
                         A_batch[base + idx2d(p, k, n)] = new_akp;
                         A_batch[base + idx2d(q, k, n)] = new_akq;
-
-                        // Write back V:
-                        V_batch[base + idx2d(k, p, n)] = new_vkp;
-                        V_batch[base + idx2d(k, q, n)] = new_vkq;
                     }
                 }
-                // @ilp_region end
 
-                // Update 2×2 diagonal block with pre-hoisted products:
+                // V rotation: ALL rows k (eigenvectors need full column rotation)
+                for (var k = 0u; k < n; k = k + 1u) {
+                    let vkp     = V_batch[base + idx2d(k, p, n)];
+                    let vkq     = V_batch[base + idx2d(k, q, n)];
+                    V_batch[base + idx2d(k, p, n)] = c * vkp - s * vkq;
+                    V_batch[base + idx2d(k, q, n)] = s * vkp + c * vkq;
+                }
+
                 A_batch[base + idx2d(p, p, n)] = app_new;
                 A_batch[base + idx2d(q, q, n)] = aqq_new;
-                A_batch[base + idx2d(p, q, n)] = f64(0.0);
-                A_batch[base + idx2d(q, p, n)] = f64(0.0);
+                A_batch[base + idx2d(p, q, n)] = z;
+                A_batch[base + idx2d(q, p, n)] = z;
             }
         }
     }
     
-    // Step 3: Extract eigenvalues (diagonal of A) to eigenvalue buffer
+    // Step 3: Extract eigenvalues
     let eig_base = batch_idx * n;
     for (var i = 0u; i < n; i = i + 1u) {
         eigenvalues[eig_base + i] = A_batch[base + idx2d(i, i, n)];

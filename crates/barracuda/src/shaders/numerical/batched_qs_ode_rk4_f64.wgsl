@@ -53,13 +53,29 @@ struct QsOdeConfig {
 @group(0) @binding(2) var<storage, read>       batch_params:   array<f64>;  // [B × 17]
 @group(0) @binding(3) var<storage, read_write> output_states:  array<f64>;  // [B × 5]
 
+// ── f64-safe math (naga max/pow/clamp lack f64 overloads) ────────────────────
+// Names avoid `_f64` suffix to prevent fossil substitution rewriting.
+fn fmax(a: f64, b: f64) -> f64 {
+    if (a >= b) { return a; }
+    return b;
+}
+fn fclamp(x: f64, lo: f64, hi: f64) -> f64 {
+    if (x < lo) { return lo; }
+    if (x > hi) { return hi; }
+    return x;
+}
+fn fpow(base: f64, e: f64) -> f64 {
+    return exp_f64(e * log_f64(base));
+}
+
 // ── Hill activation ───────────────────────────────────────────────────────────
 // Hill(x, K, n) = xⁿ / (Kⁿ + xⁿ)
 // Clamped to [0, 1]; input x clamped to ≥ 0 to avoid NaN from negative pow().
 fn hill(x: f64, K: f64, n: f64) -> f64 {
-    let xc = max(x, 0.0);
-    let xn = pow(xc, n);
-    let Kn = pow(max(K, 1e-30), n);
+    let z = x - x; // f64 zero
+    let xc = fmax(x, z);
+    let xn = fpow(xc, n);
+    let Kn = fpow(fmax(K, z + 1e-30), n);
     return xn / (Kn + xn);
 }
 
@@ -86,23 +102,29 @@ fn qs_deriv(y0: f64, y1: f64, y2: f64, y3: f64, y4: f64,
     let d_bio = batch_params[p_base + 16u];
 
     var dy: array<f64, 5>;
+    let z = y0 - y0; // f64 zero
+    let one = z + 1.0;
     // dN/dt
-    dy[0] = mu * y0 * (1.0 - y0 / max(K_cap, 1e-30)) - d_n * y0;
+    dy[0] = mu * y0 * (one - y0 / fmax(K_cap, z + 1e-30)) - d_n * y0;
     // dA/dt
     dy[1] = k_ai * y0 - d_ai * y1;
     // dH/dt
     dy[2] = k_h * hill(y1, K_h, n_h) - d_h * y2;
     // dC/dt
-    dy[3] = k_dgc * (1.0 - k_rep * y2) - (k_pde + k_act * y2) * y3;
+    dy[3] = k_dgc * (one - k_rep * y2) - (k_pde + k_act * y2) * y3;
     // dB/dt  (biofilm fraction clamped to [0,1] via logistic structure)
-    dy[4] = k_bio * hill(y3, K_bio, n_bio) * (1.0 - y4) - d_bio * y4;
+    dy[4] = k_bio * hill(y3, K_bio, n_bio) * (one - y4) - d_bio * y4;
     return dy;
 }
 
 // ── RK4 step ─────────────────────────────────────────────────────────────────
 fn rk4_step(y0: f64, y1: f64, y2: f64, y3: f64, y4: f64,
             p_base: u32, h: f64) -> array<f64, 5> {
-    let h2 = h * 0.5;
+    // Force constants to f64 via the (zero + literal) pattern
+    let z = h - h;
+    let half = z + 0.5;
+    let two  = z + 2.0;
+    let h2 = h * half;
 
     // k1 = f(y)
     let k1 = qs_deriv(y0, y1, y2, y3, y4, p_base);
@@ -123,12 +145,12 @@ fn rk4_step(y0: f64, y1: f64, y2: f64, y3: f64, y4: f64,
         y3 + h * k3[3], y4 + h * k3[4], p_base);
 
     var y_new: array<f64, 5>;
-    let sixth = 1.0 / 6.0;
-    y_new[0] = y0 + h * sixth * (k1[0] + 2.0 * k2[0] + 2.0 * k3[0] + k4[0]);
-    y_new[1] = y1 + h * sixth * (k1[1] + 2.0 * k2[1] + 2.0 * k3[1] + k4[1]);
-    y_new[2] = y2 + h * sixth * (k1[2] + 2.0 * k2[2] + 2.0 * k3[2] + k4[2]);
-    y_new[3] = y3 + h * sixth * (k1[3] + 2.0 * k2[3] + 2.0 * k3[3] + k4[3]);
-    y_new[4] = y4 + h * sixth * (k1[4] + 2.0 * k2[4] + 2.0 * k3[4] + k4[4]);
+    let sixth = (z + 1.0) / (z + 6.0);
+    y_new[0] = y0 + h * sixth * (k1[0] + two * k2[0] + two * k3[0] + k4[0]);
+    y_new[1] = y1 + h * sixth * (k1[1] + two * k2[1] + two * k3[1] + k4[1]);
+    y_new[2] = y2 + h * sixth * (k1[2] + two * k2[2] + two * k3[2] + k4[2]);
+    y_new[3] = y3 + h * sixth * (k1[3] + two * k2[3] + two * k3[3] + k4[3]);
+    y_new[4] = y4 + h * sixth * (k1[4] + two * k2[4] + two * k3[4] + k4[4]);
     return y_new;
 }
 
@@ -157,11 +179,12 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let yn = rk4_step(y0, y1, y2, y3, y4, p_base, h);
 
         // Non-negativity + blow-up guard
-        y0 = clamp(yn[0], cmin, cmax);
-        y1 = clamp(yn[1], cmin, cmax);
-        y2 = clamp(yn[2], cmin, cmax);
-        y3 = clamp(yn[3], cmin, cmax);
-        y4 = clamp(yn[4], cmin, 1.0);  // biofilm fraction ∈ [0,1]
+        y0 = fclamp(yn[0], cmin, cmax);
+        y1 = fclamp(yn[1], cmin, cmax);
+        y2 = fclamp(yn[2], cmin, cmax);
+        y3 = fclamp(yn[3], cmin, cmax);
+        let one = cmin - cmin + 1.0; // f64 1.0
+        y4 = fclamp(yn[4], cmin, one);  // biofilm fraction ∈ [0,1]
     }
 
     // Write final state
