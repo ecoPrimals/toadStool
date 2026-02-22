@@ -46,10 +46,10 @@ fn main(
     let local_row = local_id.y;  // Local row in tile
     let local_col = local_id.x;  // Local column in tile
     
-    // Early exit for out-of-bounds threads
-    if (row >= params.M || col >= params.N) {
-        return;
-    }
+    // S-14: No early return — all threads must reach workgroupBarrier().
+    // Out-of-bounds threads participate in tile loading (with zeros) and
+    // barriers, but skip the final write.
+    let in_bounds = row < params.M && col < params.N;
     
     var sum = 0.0;
     
@@ -68,22 +68,16 @@ fn main(
         let a_row = row;
         let a_col = tile * TILE_SIZE + local_col;
         
-        if (a_col < params.K) {
-            // Coalesced read: All threads in a row read consecutive elements
+        if (a_row < params.M && a_col < params.K) {
             tileA[local_row * TILE_SIZE + local_col] = A[a_row * params.K + a_col];
         } else {
             tileA[local_row * TILE_SIZE + local_col] = 0.0;
         }
         
-        // ═══════════════════════════════════════════════════════
-        // PHASE 2: Cooperative load of B tile (COALESCED!)
-        // ═══════════════════════════════════════════════════════
-        
         let b_row = tile * TILE_SIZE + local_row;
         let b_col = col;
         
-        if (b_row < params.K) {
-            // Coalesced read: All threads in a column read consecutive elements
+        if (b_row < params.K && b_col < params.N) {
             tileB[local_row * TILE_SIZE + local_col] = B[b_row * params.N + b_col];
         } else {
             tileB[local_row * TILE_SIZE + local_col] = 0.0;
@@ -112,6 +106,7 @@ fn main(
     // PHASE 4: Write result (COALESCED!)
     // ═══════════════════════════════════════════════════════════
     
-    // Coalesced write: All threads in a workgroup write to consecutive memory
-    C[row * params.N + col] = sum;
+    if (in_bounds) {
+        C[row * params.N + col] = sum;
+    }
 }

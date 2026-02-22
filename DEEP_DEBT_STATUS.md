@@ -234,6 +234,12 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | HFB physics module (5 spherical + 6 deformed shaders wired) | ✅ S39 |
 | wetSpring 3 shaders absorbed (kmer_histogram, taxonomy_fc, unifrac_propagate) | ✅ S39 |
 | Deprecated `/tmp` constants removed | ✅ S39 |
+| S-15 matmul hang fix (remove GPU→CPU readback in NPU sparsity check) | ✅ S39 |
+| S-14 Naive matmul tier removed (Tiled16 minimum, barrier-safe shader) | ✅ S39 |
+| S-16 Transpose 2D dispatch fix (TILE=16 matching shader workgroup_size) | ✅ S39 |
+| GemmCachedF64 `execute_to_buffer()` (zero-copy streaming pipelines) | ✅ S39 |
+| `barracuda::math` convenience module (CPU special function re-exports) | ✅ S39 |
+| Generic FlatTree CSR layout for bio tree ops | ✅ S39 |
 
 ---
 

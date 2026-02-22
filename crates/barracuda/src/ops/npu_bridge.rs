@@ -219,23 +219,15 @@ pub async fn npu_data_to_tensor(
 /// let should_use = should_use_npu(&data, Priority::Energy);
 /// assert!(should_use);  // NPU preferred for energy + sparse
 /// ```
+/// S-15 fix: avoid synchronous GPU readback for sparsity analysis.
+/// For GPU-resident tensors, sparsity cannot be cheaply measured without
+/// a readback. Return false and let the caller stay on the GPU path.
+/// CPU-side callers who already have `&[f32]` should use `should_use_npu()`.
 pub fn should_route_to_npu(
-    tensor: &crate::tensor::Tensor,
-    priority: Option<crate::workload::Priority>,
+    _tensor: &crate::tensor::Tensor,
+    _priority: Option<crate::workload::Priority>,
 ) -> bool {
-    use crate::workload::Priority;
-
-    if !is_npu_available() {
-        return false;
-    }
-
-    let data = match tensor.to_vec() {
-        Ok(d) => d,
-        Err(_) => return false,
-    };
-
-    let priority = priority.unwrap_or(Priority::Balanced);
-    should_use_npu(&data, priority)
+    false
 }
 
 pub fn should_use_npu(data: &[f32], priority: crate::workload::Priority) -> bool {

@@ -393,8 +393,21 @@ impl GemmCachedF64 {
     /// * `m` — Rows of A (varies per call; K must match the B dimensions)
     ///
     /// # Returns
-    /// `[batch × M × N]` row-major f64 output.
+    /// `[batch × M × N]` row-major f64 output (read back to CPU).
     pub fn multiply(&self, a: &[f64], m: usize) -> Result<Vec<f64>> {
+        let c_buf = self.execute_to_buffer(a, m)?;
+        let c_size = self.batch_size * m * self.n;
+        self.device.read_f64_buffer(&c_buf, c_size)
+    }
+
+    /// GPU-resident GEMM — returns `wgpu::Buffer` without CPU readback.
+    ///
+    /// Use this in streaming pipelines where the output feeds directly
+    /// into another GPU dispatch (e.g., HFB self-consistency, density mixing).
+    ///
+    /// # Returns
+    /// GPU buffer containing `[batch × M × N]` row-major f64 output.
+    pub fn execute_to_buffer(&self, a: &[f64], m: usize) -> Result<wgpu::Buffer> {
         let k = self.k;
         let n = self.n;
         let batch_size = self.batch_size;
@@ -402,7 +415,7 @@ impl GemmCachedF64 {
         if a.len() != batch_size * m * k {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
-                    "GemmCachedF64::multiply: A has {} elements, expected batch×M×K={}",
+                    "GemmCachedF64::execute_to_buffer: A has {} elements, expected batch×M×K={}",
                     a.len(),
                     batch_size * m * k
                 ),
@@ -436,7 +449,6 @@ impl GemmCachedF64 {
             mapped_at_creation: false,
         });
 
-        // Bind group reuses the pre-resident B buffer — zero upload cost.
         let bg = dev.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("GemmCached BG"),
             layout: &self.bgl,
@@ -481,7 +493,7 @@ impl GemmCachedF64 {
         }
         dev.queue.submit(Some(encoder.finish()));
 
-        dev.read_f64_buffer(&c_buf, c_size)
+        Ok(c_buf)
     }
 }
 

@@ -4,7 +4,6 @@
 //! logic for both 2D and N-D transpose operations.
 
 use super::TransposeParams2D;
-use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -162,12 +161,11 @@ fn execute_2d(
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
 
-        // Deep Debt Evolution: Capability-based dispatch
-        // 2D transpose is element-wise operation
-        let caps = DeviceCapabilities::from_device(device);
-        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups_x = cols.div_ceil(optimal_wg_size).max(1);
-        let workgroups_y = rows.div_ceil(optimal_wg_size).max(1);
+        // S-16: 2D tiled transpose uses @workgroup_size(16, 16) in the shader.
+        // Each workgroup covers a 16x16 tile, so dispatch in tiles not elements.
+        const TILE: u32 = 16;
+        let workgroups_x = cols.div_ceil(TILE).max(1);
+        let workgroups_y = rows.div_ceil(TILE).max(1);
         pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
     }
 

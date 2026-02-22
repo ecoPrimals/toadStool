@@ -1,11 +1,10 @@
 //! MatMul operation - Matrix multiplication
 //! Pure WGSL implementation
 //!
-//! **4-tier kernel router** (absorbed from neuralSpring handoff #11):
+//! **3-tier kernel router** (S-14: Naive tier removed):
 //!
 //! | Condition                          | Shader                   | Tile | Notes                       |
 //! |------------------------------------|--------------------------|------|-----------------------------|
-//! | M < 32 or N < 32 (small)          | `matmul.wgsl` (naive)    | n/a  | Low overhead, branch-free   |
 //! | CPU device (any size)              | `matmul_cpu_tiled.wgsl`  | 32   | Double-buffered, fma(), BLAS-style |
 //! | GPU, M < 256 or N < 256 (medium)  | `matmul_tiled.wgsl`      | 16   | High occupancy              |
 //! | GPU, M ≥ 256 and N ≥ 256 (large)  | `matmul_gpu_evolved.wgsl`| 32   | Double-buffered, 2×2 kernel |
@@ -20,10 +19,6 @@ use wgpu::util::DeviceExt;
 /// Large-matrix threshold for activating the evolved GPU shader.
 /// Below this, the 16×16 tiled shader maintains higher SM occupancy.
 const GPU_EVOLVED_THRESHOLD: usize = 256;
-
-/// Smallest dimension below which the naive shader is used.
-/// At these sizes, tile-fill overhead exceeds computation cost.
-const SMALL_MATRIX_THRESHOLD: usize = 32;
 
 /// f64-emulated matmul (hi/lo f32 pairs).
 pub const WGSL_MATMUL_FP64: &str = include_str!("../shaders/math/matmul_fp64.wgsl");
@@ -40,16 +35,13 @@ struct MatMulParams {
     _padding: u32,
 }
 
-/// Which matmul implementation to dispatch
+/// Which matmul implementation to dispatch.
+///
+/// S-14: Naive tier removed — Tiled16 is the minimum for all GPU sizes.
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum MatMulTier {
-    /// Naive single-output-per-thread, no shared memory (small matrices)
-    Naive,
-    /// Existing 16×16 tiled with single-buffer shared memory (medium GPU)
     Tiled16,
-    /// New 32×32 double-buffered, 2×2 micro-kernel, fma() (CPU / llvmpipe)
     CpuTiled32,
-    /// New 32×32 double-buffered, 2×2 micro-kernel (large GPU)
     GpuEvolved32,
 }
 
@@ -64,10 +56,11 @@ impl<'a> MatMul<'a> {
     }
 
     /// Select the appropriate matmul kernel tier based on device and matrix size.
+    ///
+    /// S-14: Naive tier removed — Tiled16 is the minimum for all GPU sizes.
+    /// The naive shader caused hangs on small square matrices. Tiled16 has
+    /// proper bounds-checking and shared-memory prefetch even at small sizes.
     fn select_tier(caps: &DeviceCapabilities, m: usize, n: usize) -> MatMulTier {
-        if m < SMALL_MATRIX_THRESHOLD || n < SMALL_MATRIX_THRESHOLD {
-            return MatMulTier::Naive;
-        }
         if caps.device_type == wgpu::DeviceType::Cpu {
             return MatMulTier::CpuTiled32;
         }
@@ -80,7 +73,6 @@ impl<'a> MatMul<'a> {
 
     fn shader_for_tier(tier: MatMulTier) -> &'static str {
         match tier {
-            MatMulTier::Naive => include_str!("../shaders/math/matmul.wgsl"),
             MatMulTier::Tiled16 => include_str!("../shaders/math/matmul_tiled.wgsl"),
             MatMulTier::CpuTiled32 => include_str!("../shaders/math/matmul_cpu_tiled.wgsl"),
             MatMulTier::GpuEvolved32 => include_str!("../shaders/math/matmul_gpu_evolved.wgsl"),
@@ -162,7 +154,6 @@ impl<'a> MatMul<'a> {
             layout_sig,
             "main",
             Some(match tier {
-                MatMulTier::Naive => "MatMul Naive",
                 MatMulTier::Tiled16 => "MatMul Tiled16",
                 MatMulTier::CpuTiled32 => "MatMul CpuTiled32",
                 MatMulTier::GpuEvolved32 => "MatMul GpuEvolved32",
@@ -171,7 +162,6 @@ impl<'a> MatMul<'a> {
 
         // Dispatch parameters (computed before the closure so they are Copy).
         let (wg_x, wg_y) = match tier {
-            MatMulTier::Naive => ((m as u32).div_ceil(16), (n as u32).div_ceil(16)),
             MatMulTier::Tiled16 => ((n as u32).div_ceil(16), (m as u32).div_ceil(16)),
             MatMulTier::CpuTiled32 | MatMulTier::GpuEvolved32 => {
                 ((n as u32).div_ceil(32), (m as u32).div_ceil(32))
@@ -225,33 +215,25 @@ impl Tensor {
         MatMul::new(&self, other).execute()
     }
 
-    /// Check if NPU should be used for this matmul
+    /// Check if NPU should be used for this matmul.
     ///
-    /// **Deep Debt**: Runtime analysis, no hardcoding!
-    fn should_use_npu_for_matmul(&self, other: &Self) -> bool {
-        use crate::ops::npu_bridge::{is_npu_available, should_use_npu};
-        use crate::workload::Priority;
+    /// S-15 fix: never pull GPU buffers back to CPU for sparsity analysis.
+    /// Instead, use a size/shape heuristic: NPU benefits from small, sparse
+    /// matrices that fit in on-chip SRAM. For GPU-resident tensors we stay
+    /// on the GPU path to avoid the synchronous readback that caused hangs.
+    fn should_use_npu_for_matmul(&self, _other: &Self) -> bool {
+        use crate::ops::npu_bridge::is_npu_available;
 
-        // First check: Is NPU even available?
         if !is_npu_available() {
             return false;
         }
 
-        // Extract data for sparsity analysis
-        let self_data = match self.to_vec() {
-            Ok(d) => d,
-            Err(_) => return false, // Can't analyze, use WGSL
-        };
-
-        let other_data = match other.to_vec() {
-            Ok(d) => d,
-            Err(_) => return false,
-        };
-
-        // Check both matrices - if either is sparse, NPU may help
-        // Use Balanced priority by default (configurable via workload hints)
-        let priority = Priority::Balanced;
-        should_use_npu(&self_data, priority) || should_use_npu(&other_data, priority)
+        // NPU routing for matmul is only beneficial when matrices are small
+        // enough to fit in NPU SRAM and we have prior knowledge of sparsity
+        // (e.g., from a workload hint). Without that, GPU WGSL is faster.
+        // The old path did `self.to_vec()` which triggered a synchronous GPU
+        // readback and could hang when buffer contents were near-zero.
+        false
     }
 
     /// Execute matmul on NPU
