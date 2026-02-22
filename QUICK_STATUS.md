@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA — Quick Status
 
-**Date**: February 21, 2026 — Session 31c (Executor Wiring & Smart Refactoring)
+**Date**: February 21, 2026 — Session 31h (Deep Debt Polish)
 
 ---
 
@@ -10,39 +10,22 @@
 cargo build --workspace               CLEAN
 cargo fmt --all -- --check            CLEAN
 cargo clippy --workspace --tests      CLEAN (0 warnings, -D warnings)
+cargo clippy -W clippy::all           CLEAN (barracuda + akida-driver)
 cargo test --workspace                16,100+ passed / 0 failed
 cargo llvm-cov (non-GPU)              CLEAN — exit 0, no SIGSEGV
-unsafe blocks                         FFI only (VFIO, DRM) — SAFETY documented, PhantomData cleaned
-error handling                        No panic paths — RwLock/Mutex poison recovery throughout
-production stubs                      0 — all service discovery, routing, capacity live
+unsafe blocks                         FFI only (VFIO, DRM) — SAFETY documented
+production panics/unwraps             0 — RwLock/Mutex poison recovery throughout
+production TODOs/FIXMEs               0
 ML model placeholders                 Honest NotImplemented (no fake empty results)
+orphan WGSL shaders                   0 — all 570+ wired to Rust (55 wired in S31e-31g)
+dead code annotations                 Audited (33 files) — 6 incorrect removed
 std replacements                      once_cell, lazy_static, tempdir, term_size removed
-dependency unification                base64 unified to 0.22; unused deps removed from client/nestgate
-near-limit files                      0 — svd_gpu 973→305, lu_gpu 996→302, qr_gpu 933→486
-middleware tests                      400+ passed
-hotSpring evolution tests             47 tests (unit, E2E, chaos, fault)
-three springs evolution tests         37 tests (unit, E2E, chaos, fault, precision)
-GPU sovereignty                       f64 fossils removed, capability matrix probed per-GPU
-Sovereign Phase 0-3                   WgslOptimizer LIVE in compile_shader_f64() hot path
-LatencyModel                          Sm70 (8cy), Rdna2 (4cy), AppleM (16cy SW), Conservative, Measured
-GpuExecutor zero-copy                 Arc<wgpu::Buffer> shared — GPU→CPU→GPU round-trip gone (D-S16-001)
-integration-tests crate               13 active suites, 167 tests — workspace tests/ clean (D-S16-004)
-ParallelFilter two-level scan         up to 16,777,216 elements (WG²) — D-S16-003 resolved
-capabilities.rs semantic split        driver_profile.rs extracted — D-S17-002 resolved
-TensorSession ML ops                  matmul/relu/gelu/softmax/layer_norm/attention absorbed
-GemmCachedF64                         GPU-resident weight B, 60× dispatch speedup (wetSpring fix)
-Mesa NAK patches                      sm70_instr_latencies.rs + rdna2_instr_latencies.rs ready
-node routing                          least-loaded selection, local fallback, Songbird wiring
-timeout constants                     Centralized in toadstool_common::constants::timeouts
-SIMD detection                        Runtime via std::arch::is_x86_feature_detected!
-sleep-based sync in tests             0 — 27 sleep calls removed (advance(), Barrier, Notify)
-zero-copy hot paths                   bytes::Bytes on all binary RPC payloads (O(1) clone)
-hardcoded IPs/DNS                     0 — capability-based or env-driven
-unit test coverage (S25)              172 new tests across 11 modules (endpoint, expand, dispatch, etc.)
+near-limit files                      0 — all under 1000 lines
+integration-tests crate               13 active suites, 167 tests
 line coverage (non-GPU)               ~65% — target 90%
 ```
 
-*All quality gates green. Clippy -D warnings compliant. Zero panic paths in library code.*
+*All quality gates green. Zero panic paths in library code.*
 
 ---
 
@@ -53,46 +36,28 @@ ToadStool (Hardware Infrastructure Primal)
   Pure Rust | ecoBin | UniBin | JSON-RPC 2.0 + tarpc
   36 JSON-RPC methods (toadstool, compute, resources, ai, gpu, ollama, gate)
   GPU Job Queue with Cross-Gate Routing
-  Ollama model lifecycle management
-  3 GPUs across 2 machines, 2 vendors (NVIDIA + AMD)
-  52 GB combined VRAM, 88 CPU threads
   Capability-based runtime discovery (zero hardcoding)
-  mDNS / config-file / HTTP-registry service discovery (all live)
   Distributed node routing: least-loaded via NetworkLoadBalancer
-  Shared error tracking across all transports
   Hardware-agnostic workload routing (GPU / NPU / CPU)
-  Auth self-knowledge: env!("CARGO_PKG_NAME"), audience from config
+  3 GPUs across 2 machines, 2 vendors (NVIDIA + AMD)
 
 BarraCUDA (Universal Compute Engine — SHADER-FIRST F64)
+  570+ WGSL shaders, zero orphans — every shader wired to Rust
   FP64-by-default: Both CPU and GPU use f64
-  SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2-3 vs 1:32)
-  480+ WGSL shaders, proven cross-vendor
-  Shader-first architecture: ALL math is WGSL primary
-  f64 fossil functions removed — native WGSL builtins used directly
-  F64BuiltinCapabilities matrix: RTX 3090 (9/9 native), RX 6950 XT (3/9)
-  Three Springs validated: 313+ Rust checks (hotSpring 195 + wetSpring 48 + airSpring 70)
+  SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2 vs 1:64)
   Bit-identical results: RTX 4070 = RTX 3090 = RX 6950 XT
-  39.85 tok/s distributed LLM inference
-  20 special function shaders (Hermite, Legendre, Laguerre, Bessel, f64 variants)
-  3 sampling shaders (Sobol, LHS, random_uniform)
-  Scientific middleware: 10 modules (linalg, numerical, special, stats, optimize, surrogate, sample, pde, mixing, grid)
-  400+ tests (RBF, LU/QR/SVD, RK45, Crank-Nicolson, BFGS, Sobol, Broyden mixing, FD gradients)
-  Smart auto-routing with user device preference override
+  TensorSession: batched op recording with single-submit execution
+  GpuExecutor: 31 MathOps | CpuExecutor: full dispatch
+  Scientific middleware: 14 modules, 400+ tests, 0 unsafe
+  21 bio/evolution GPU ops, spectral theory, lattice QCD
+  Three Springs validated: 2,700+ acceptance checks
 
 Sovereign Compute (WgslOptimizer — Phases 0–3 complete)
-  Phase 0: fossil f64 functions removed → native WGSL builtins, F64BuiltinCapabilities probe
-  Phase 1: Jacobi @ilp_region restructure, warp-packing 32x1x1 (2.2× NVK speedup)
-  Phase 2: LatencyModel trait — Sm70 (8cy), Rdna2 (4cy), AppleM (16cy SW), Conservative, Measured
-  Phase 3: WgslOptimizer (DAG + ASAP scheduler + loop unroller) WIRED into compile_shader_f64()
+  Phase 0: fossil f64 functions removed → native WGSL builtins
+  Phase 1: Jacobi @ilp_region restructure, warp-packing 32x1x1
+  Phase 2: LatencyModel trait — Sm70, Rdna2, AppleM, Conservative, Measured
+  Phase 3: WgslOptimizer WIRED into compile_shader_f64() hot path
   Next: Phase 4 (full naga-IR SSA optimizer) — Q3 2026
-  Mesa NAK patches: contrib/mesa-nak/ — ready to submit post Titan V validation
-
-Integration Tests (13 suites, 167 passing, 0 failed)
-  S16: chaos_engineering, error_paths_config, pure_rust_validation
-  S22: error_handling, resource_requirements, security_context, config_management
-  S22: evolution_fault, evolution_chaos
-  S23: runtime_execution
-  S24: error_paths_discovery, fault (fault_injection + resilience), security (penetration)
 ```
 
 ---
@@ -109,174 +74,64 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 
 ---
 
-## Hardware Routing
-
-```
-WorkloadHint         Auto-Route   Override?
-─────────────────    ──────────   ─────────
-PhysicsForce         GPU          yes (CPU fallback)
-FFT                  GPU          yes
-EigenDecomp          GPU          yes
-LinearSolve          GPU          yes
-Training             GPU          yes
-MonteCarlo           GPU          yes
-SparseMath           GPU          yes
-SurrogateEval        GPU          yes
-LargeMatrices        GPU          yes
-SparseEvents         NPU          yes (CPU/GPU fallback)
-Inference            NPU          yes
-PreScreen            NPU          yes
-Reservoir            NPU          yes
-EventProcessing      NPU          yes (CPU fallback)
-SmallWorkload        CPU          yes (can force GPU)
-StringOps            CPU          yes
-General              GPU→CPU      yes
-```
-
-`Device::select_with_preference(Some(Device::CPU), &hint)` honours the
-user's choice. Auto only kicks in when preference is `None` or `Auto`.
-
----
-
 ## Code Quality
 
 | Metric | Value |
 |--------|-------|
-| Clippy warnings | 0 |
+| Clippy warnings | 0 (including `-W clippy::all`) |
 | Build warnings | 0 |
 | Tests passing | 16,100+ |
-| Tests failing | 0 |
-| WGSL shaders | 480+ (shader-first) |
+| WGSL shaders | 570+ (zero orphans) |
 | Line coverage (non-GPU) | ~65% |
 | Unsafe blocks | FFI only (VFIO, DRM) |
-| Production placeholders | 0 (all evolved) |
-| Production mocks | 0 |
+| Production panics/unwraps | 0 |
+| Dead code annotations | Audited (33 files) |
 | Sleep-based sync in tests | 0 (27 removed) |
 | Hardcoded IPs/DNS | 0 |
 | Zero-copy hot paths | bytes::Bytes on all binary payloads |
 | **hotSpring validation** | 195/195 nuclear physics |
 | **wetSpring validation** | 48/48 life science |
-| **airSpring validation** | 70/70 precision agriculture |
-| **Combined validation** | 313+ Rust acceptance checks |
+| **Combined validation** | 2,700+ acceptance checks |
 
 ---
 
 ## What Works
 
-- 480+ WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
-- **Shader-first architecture**: ALL math is WGSL, ToadStool dispatches
-- Distributed LLM inference across machines (LAN TCP, BearDog encrypted)
-- Hardware discovery (GPUs, NPUs, CPUs) -- pure Rust, no scripts
-- NPU detection via /dev/akida* and IOMMU/VFIO sysfs
+- 570+ WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
+- Distributed LLM inference across machines (39.85 tok/s, BearDog encrypted)
+- Hardware discovery (GPUs, NPUs, CPUs) — pure Rust, no scripts
 - JSON-RPC 2.0 + tarpc IPC over Unix sockets (36 methods)
 - GPU job queue with priority and cross-gate routing
-- Ollama model management (list, inference, load, unload)
-- Cross-gate compute delegation (route by model locality, VRAM, queue depth)
 - Matrix decompositions (LU, QR, SVD, Cholesky, eigh, tridiagonal)
-- ODE/PDE solvers (RK45 adaptive, Crank-Nicolson heat equation)
+- ODE/PDE solvers (RK45 adaptive, Crank-Nicolson)
 - Special functions (Bessel, Hermite, Legendre, erf, gamma, digamma, beta)
-- Statistics (Normal distribution, correlation, covariance matrices)
 - Optimization (Nelder-Mead, BFGS, bisection)
 - Sampling (LHS, Sobol quasi-random, maximin)
-- RBF surrogates with GPU-accelerated training
 - FHE acceleration (21.1x speedup on RTX 3090)
-- Smart auto-routing with user preference override
-- CPU compute backends (matmul, conv2d, pooling) as universal fallback
-- CUDA PTX kernel execution via cudarc
-- Unified memory with wgpu fallback (OpenCL/Vulkan)
-- Unix socket security providers (JSON-RPC 2.0)
+- Smart auto-routing with user device preference override
 
-## L2 Evolution Status (hotSpring Validation Response)
+---
 
-### ✅ Completed (Feb 13, 2026) — L2 Evolution Tier 1 Critical Fixes
-
-- **gradient_1d 2nd-order boundaries** -- Matches numpy.gradient; exact for polynomials ≤ degree 2
-  - Expected impact: ~40 MeV reduction in HFB SCF offset
-- **auto_smoothing = true default** -- Prevents SparsitySampler overfitting (was false)
-- **smoothing = 1e-3 default** -- Reasonable fallback (was 1e-12)
-
-### ✅ Completed (Feb 13, 2026) — L2 Evolution Tier 2 Algorithm Improvements
-
-- **Hybrid evaluation mode** -- `n_direct_solvers` field in SparsitySamplerConfig
-  - Direct solvers run NM on TRUE objective (exploration)
-  - Surrogate solvers run NM on surrogate (exploitation)
-  - Closes evaluation density gap vs Python's mystic
-- **Warm-start cascade** -- `top_k_seeds()` on SparsitySamplerResult and DirectSamplerResult
-  - Enables SparsitySampler → DirectSampler cascade optimization
-  - L1 seeds flow to L2 optimization
-
-### ✅ Completed (Feb 13, 2026) — Phase 5 Tier 3 Architecture
-
-- **Dispatch Benchmark Suite** -- `BenchmarkSuite` for empirical CPU/GPU threshold determination
-- **Pipeline Orchestration** -- `Cascade` API for hotSpring-validated multi-stage filtering
-- **Sparse Linear Algebra** -- `CsrMatrix`, `cg_solve`, `bicgstab_solve` for large HFB basis sets
-
-### ✅ Completed (Feb 13, 2026) — Phase 5 Tier 2 New Algorithms
-
-- **Direct Sampler** -- `direct_sampler()` round-based NM on true objective (achieved χ²/datum = 1.19)
-- **Chi² Decomposition** -- `chi2_decomposed()` with per-datum residuals, pulls, worst-N
-- **Bootstrap CI** -- `bootstrap_ci()` non-parametric confidence intervals for any statistic
-- **Convergence Diagnostics** -- `convergence_diagnostics()` detecting stagnation/oscillation/divergence
-- **Adaptive Penalty** -- `adaptive_penalty()` data-driven penalty from feasible values
-
-### ✅ Completed (Feb 13, 2026) — Phase 5 Tier 1 Critical Fixes
-
-- **LOO-CV hat matrix bug fixed** -- K_raw for RHS, K_smooth for system (was H_ii = 1.0 always)
-- **Auto-smoothing** -- `SparsitySamplerConfig::auto_smoothing`, `loo_cv_optimal_smoothing()`
-- **Penalty filtering** -- `PenaltyFilter` enum (Threshold, Quantile, AdaptiveMAD)
-- **Warm-start seeds** -- `SparsitySamplerConfig::with_warm_start()` for L1→L2 seeding
-- **digamma(x)** -- ψ(x) = Γ'(x)/Γ(x) with 1e-9 precision
-- **beta(a,b), ln_beta(a,b)** -- B(a,b) = Γ(a)Γ(b)/Γ(a+b)
-
-### hotSpring Validation Results
+## Scientific Middleware (Shader-First)
 
 ```
-L1 (SEMF): χ²/datum = 1.19 (BarraCUDA) vs 6.62 (scipy) → 82% BETTER
-Validation Suite: 129/129 tests PASS
+barracuda::linalg         - LU, QR, SVD, Cholesky, eigh, gen_eigh, tridiagonal
+barracuda::linalg::sparse - CsrMatrix, CG, BiCGSTAB, Jacobi, preconditioned CG
+barracuda::numerical      - Gradient, trapz, RK45 adaptive ODE solver
+barracuda::special        - gamma, chi_squared, Hermite, Legendre, Laguerre, digamma, beta, erf, Bessel
+barracuda::stats          - norm_cdf, norm_ppf, correlation, covariance, variance, bootstrap, chi2
+barracuda::optimize       - Nelder-Mead, BFGS, bisection, Newton, Brent, diagnostics
+barracuda::surrogate      - RBF with 6 kernels, GPU-accelerated training, LOO-CV
+barracuda::sample         - Sobol, LHS, random_uniform, direct_sampler
+barracuda::pde            - Crank-Nicolson heat equation solver
+barracuda::interpolate    - Cubic spline (natural/clamped/not-a-knot)
+barracuda::dispatch       - Auto CPU/GPU routing with benchmark suite
+barracuda::pipeline       - Cascade multi-stage filtering
+barracuda::spectral       - Lanczos, Anderson localization, Hofstadter, batch IPR
+barracuda::ops::bio       - 21 GPU ops (HMM, ANI, SNP, dN/dS, pangenome, RF inference, etc.)
+barracuda::ops::lattice   - Wilson plaquette, HMC force, Higgs U(1), Dirac, CG kernels
+barracuda::session        - TensorSession batched ops (matmul, relu, gelu, softmax, attention)
 ```
-
-## Phase 3 Status (Complete)
-
-### ✅ Completed (Feb 12, 2026)
-
-- **f64 linalg bridges** -- `cholesky_f64`, `eigh_f64`, `gen_eigh_f64`, LU/QR/SVD/tridiagonal
-- **Auto-dispatch system** -- `dispatch` module with per-operation CPU/GPU thresholds
-- **EvaluationCache persistence** -- `save/load/load_or_new` via serde_json
-- **LOO-CV wiring** -- `loo_cv_rmse()`, `loo_cv_errors()` on RBFSurrogate
-- **Root-finding** -- Newton-Raphson, Secant, Brent methods
-- **Chi-squared distribution** -- CDF, PDF, quantile, goodness-of-fit test
-- **Cubic spline** -- Natural/clamped/not-a-knot boundaries
-- **Generalized eigenvalue** -- `gen_eigh_f64` via Cholesky reduction
-- **Deep debt** -- Mock isolation (feature-gated), hardcoded path removal
-
-### Awaiting Hardware (Phase C)
-
-- Multi-GPU DevicePool (awaiting Titan V)
-- f64 WGSL shaders (when WebGPU adds f64 extensions)
-- f64 Tensor type
-
-### ✅ Cross-Platform Systems (Feb 13, 2026 — VERIFIED)
-
-- **VFIO Backend** -- Pure Rust VFIO driver for 2x Akida AKD1000 (DMA working, 80 NPUs each)
-- **Multi-GPU Pool** -- 3 GPUs: 2x RTX 3090 + 1x RX 6950 XT (~2100 GFLOPS total)
-- **Cross-Vendor Parity** -- NVIDIA = AMD, <1e-5 max difference (same WGSL shaders)
-- **MMIO Infrastructure** -- Register map for AKD1000 (BAR0: control, BAR1: model, BAR2: data)
-- **Burn ML Framework** -- wgpu-based inference (`burn-inference` crate with safetensors loader)
-- **NeuroBench Harness** -- Pure Rust benchmark harness for neuromorphic evaluation
-- **Cross-Platform Showcase** -- `multi_gpu_bench`, `npu_test`, `gpu_parity`, `cascade_demo`
-- **hotSpring Bridge** -- Integration with MD validation suite
-
-### Infrastructure (Feb 15, 2026 — Completed) ✅
-
-- ✅ **Safetensors/GGUF weight loader** — Full GGUF v2/v3 support for llama.cpp quantized models
-- ✅ **INT4/INT8 quantized WGSL shaders** — Q4_0/Q8_0 dequant + on-the-fly GEMV
-- ✅ **Async batch GPU submission** — `AsyncSubmitter` for deferred work batching
-- ✅ **Cache probing microbenchmarks** — Runtime bandwidth probing CLI tool
-
-### Infrastructure (Ongoing)
-
-- NPU model pipeline (train/compile/deploy from Rust)
-- mDNS/K8s discovery (env vars work, others pending)
 
 ---
 
@@ -295,94 +150,12 @@ cargo llvm-cov -p toadstool-server --lib
 
 ## Documentation
 
-- [README.md](README.md) -- Full overview
-- [STATUS.md](STATUS.md) -- Detailed status
-- [DOCUMENTATION.md](DOCUMENTATION.md) -- Navigation hub
-- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) -- Commands and API reference
+- [README.md](README.md) — Full overview
+- [STATUS.md](STATUS.md) — Detailed session-by-session status
+- [DOCUMENTATION.md](DOCUMENTATION.md) — Navigation hub
+- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) — Commands and API reference
+- [CHANGELOG.md](CHANGELOG.md) — Full evolution history
 
 ---
 
-## Scientific Middleware (Shader-First)
-
-**14 production-grade modules** — WGSL shaders primary, ToadStool dispatches:
-
-```
-barracuda::linalg         - solve, cholesky, eigh, gen_eigh, LU, QR, SVD, tridiagonal
-barracuda::linalg::sparse - CsrMatrix, CooMatrix, CG, BiCGSTAB, Jacobi solvers
-barracuda::numerical      - Gradient, trapz, RK45 adaptive ODE solver
-barracuda::special        - gamma, chi_squared, Hermite, Legendre, Laguerre, digamma, beta, erf, Bessel
-barracuda::stats          - norm_cdf, norm_ppf, correlation, covariance, variance, bootstrap, chi2
-barracuda::optimize       - Nelder-Mead, BFGS, bisection, Newton, Brent, diagnostics, penalty
-barracuda::surrogate      - RBF with 6 kernels, GPU-accelerated training, LOO-CV
-barracuda::sample         - Sobol, LHS, random_uniform, direct_sampler
-barracuda::pde            - Crank-Nicolson heat equation solver
-barracuda::interpolate    - Cubic spline (natural/clamped/not-a-knot) with derivatives
-barracuda::dispatch       - Auto CPU/GPU routing with benchmark suite
-barracuda::pipeline       - Cascade multi-stage filtering, Stage with Target devices
-barracuda::ops::mixing    - LinearMixer, BroydenMixer for SCF convergence (hotSpring)
-barracuda::ops::grid      - Gradient1D/2D, Laplacian, CylindricalGradient (hotSpring)
-barracuda::ops::fused_map_reduce_f64 - Shannon, Simpson, norms with CPU/GPU routing (wetSpring)
-barracuda::ops::kriging_f64 - Spatial interpolation with variograms (airSpring + wetSpring)
-burn-inference            - HuggingFace models via Burn (wgpu backend)
-neurobench-runner         - Pure Rust NeuroBench harness for NPU benchmarking
-```
-
-**Tests**: 500+ passing (156 Phase 3 + 62 Phase 5 + 47 hotSpring + 37 three springs + 25 cross-platform + MD)
-**Quality**: Zero unsafe in compute ops, clippy clean, pure Rust
-**Architecture**: Shader-first — 480+ WGSL shaders, universal hardware
-**Audit**: All three springs complete — 313+ acceptance checks (hotSpring 195 + wetSpring 48 + airSpring 70)
-**Evolution**: once_cell/lazy_static → std::sync::LazyLock (pure std)
-**MD Pipeline**: Full thermostat suite + MSD + Cell-list + **PPPM universal** (CPU + GPU w/kspace) — 38 tests
-**Math Primitives**: Hermite/Laguerre f64, Broyden mixing, FD gradients, weighted inner products
-**New Unified Primitives**: Fused Map-Reduce, Kriging, Cosine Similarity f64, Batched ET₀
-**Docs**: `docs/planning/HOTSPRING_ABSORPTION_FEB15_2026.md`, `docs/planning/HOTSPRING_MD_HANDOFF_FEB14_2026.md`
-
-**Completed (Feb 15 — hotSpring Math Primitives):**
-- ✅ `hermite_f64.wgsl` — Physicist's Hermite polynomials, normalized functions
-- ✅ `laguerre_f64.wgsl` — Generalized Laguerre polynomials, radial functions
-- ✅ `broyden_f64.wgsl` — Linear/Modified Broyden II mixing for SCF
-- ✅ `fd_gradient_f64.wgsl` — 1D/2D/cylindrical gradients + Laplacian
-- ✅ `weighted_dot_f64.wgsl` — Weighted inner product with workgroup reduction
-- ✅ Science-grade buffer limits: 512 MiB / 1 GiB in `WgpuDevice::new()`
-- ✅ 47 new tests: unit, E2E, chaos, fault coverage
-
-**Completed (Feb 14 — GPU Linear Algebra):**
-- ✅ FP64-by-default architecture (SPIR-V/Vulkan bypasses CUDA throttle)
-- ✅ `LuGpu::execute_f64()`, `QrGpu::execute_f64()`, `SvdGpu::execute_f64()`
-- ✅ `CgGpu::solve()`, `BiCgStabGpu::solve()` — GPU sparse solvers
-- ✅ Native f64 builtins in MD kernels — 1.5-2.2× faster
-- ✅ GPU FFT: `Fft1DF64`, `Fft3DF64` + `PppmGpu::compute_with_kspace_gpu()`
-- ✅ `ShaderTemplate::with_math_f64_auto()` — auto-detecting modular preamble
-
-**GPU Linear Algebra (f64) — COMPLETE**:
-
-| Operation | Shader | Orchestrator | Status |
-|-----------|--------|--------------|--------|
-| LU Decomposition | `lu_decomp_f64.wgsl` | `LuGpu::execute_f64()` | ✅ |
-| QR Decomposition | `qr_decomp_f64.wgsl` | `QrGpu::execute_f64()` | ✅ |
-| SVD | `svd_f64.wgsl` | `SvdGpu::execute_f64()` | ✅ |
-| Sparse CG | `sparse_matvec_f64.wgsl` | `CgGpu::solve()` | ✅ |
-| Sparse BiCGSTAB | `sparse_matvec_f64.wgsl` | `BiCgStabGpu::solve()` | ✅ |
-| Symmetric Eigh | `eigh_f64.wgsl` | Ready for orchestrator | ✅ |
-| Batched Eigh | `batched_eigh_f64.wgsl` | `BatchedEighGpu::execute_f64()` | ✅ |
-| 3D FFT | `fft_1d_f64.wgsl` | `Fft3DF64` | ✅ |
-| PPPM Electrostatics | — | `PppmGpu::compute_with_kspace_gpu()` | ✅ |
-| Prefix Sum | `cumsum_f64.wgsl` | `CumsumF64` | ✅ |
-| GPU SSF | `ssf_f64.wgsl` | `SsfGpu::compute()` | ✅ |
-| GPU-Resident CG | `sparse_matvec_f64.wgsl` | `CgGpu::solve_gpu_resident()` | ✅ |
-| Preconditioned CG | `sparse_matvec_f64.wgsl` | `CgGpu::solve_preconditioned()` | ✅ |
-
-**hotSpring Evolution Complete (Feb 15, 2026)**:
-- ✅ Math primitives absorbed (Broyden, FD gradients, Hermite, Laguerre f64)
-- ✅ 47 new tests with full coverage (unit, E2E, chaos, fault)
-- ✅ 169/169 nuclear EOS acceptance checks on consumer GPU (RTX 4070)
-- ✅ Batched eigendecomposition for HFB Hamiltonians (Level 2 blocker resolved)
-- ✅ GPU SSF compute for paper parity (50-100× speedup)
-- ✅ GPU-resident CG iteration (10× fewer CPU↔GPU syncs)
-- ✅ Diagonal preconditioning for sparse solvers (halves iterations)
-
-**All hotSpring evolution work complete. Production-ready.**
-
----
-
-**Last Updated**: February 21, 2026 — Session 31c: 31 GpuExecutor MathOps wired, CpuExecutor dispatching, 3 stubs eliminated, LU/QR/SVD refactored, cache_hierarchy table-driven.
+**Last Updated**: February 21, 2026 — Session 31h: Zero clippy warnings, dead code audit (33 files), zero orphan shaders, production quality verified.

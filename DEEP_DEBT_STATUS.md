@@ -1,6 +1,6 @@
 # Deep Debt Status Report
 
-**Session 31e — February 21, 2026**
+**Session 31h — February 21, 2026**
 **Status**: ✅ PRODUCTION-GRADE | All quality gates green | 16,100+ tests | ~65% line coverage
 
 ---
@@ -71,6 +71,7 @@ All `unsafe` blocks in the workspace are FFI-boundary or hardware-related:
 | `try_into().unwrap()` in gpu_executor | Explicit array indexing `[c[0], c[1], ...]` |
 | `unwrap()` in tests leaking to lib | All library code returns `Result` |
 | ML model fake results | `Error::NotImplemented` with descriptive message |
+| `#[allow(dead_code)]` on used items | S31h: 6 incorrect annotations removed, 2 dead functions deleted |
 
 ### File Size (< 1000 lines) ✅ RESOLVED
 
@@ -141,6 +142,9 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | ecoBin compliance | ✅ TOML preferred, XDG paths, pure Rust, `rustix` syscalls |
 | Vendor-agnostic | ✅ WGSL over CUDA/ROCm, any GPU works |
 | Error handling | ✅ Result-based, no panic paths in library code |
+| Clippy strictness | ✅ Zero warnings under `-W clippy::all` (S31h) |
+| Dead code hygiene | ✅ 33 files audited, 6 incorrect annotations removed (S31h) |
+| Orphan shader elimination | ✅ Zero orphans — all 570+ WGSL wired to Rust (S31e-31g) |
 
 ---
 
@@ -148,7 +152,7 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 
 | Milestone | Status |
 |-----------|--------|
-| Shader-first architecture (500+ WGSL) | ✅ |
+| Shader-first architecture (570+ WGSL, zero orphans) | ✅ |
 | MD pipeline (thermostats + PPPM GPU) | ✅ |
 | GPU-Resident Pipeline (zero CPU round-trips) | ✅ |
 | Unidirectional Pipeline (fire-and-forget staging) | ✅ |
@@ -166,6 +170,13 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | NPU runtime discovery (AKD1000 /dev/akida*) | ✅ S31d |
 | Executor full MathOp coverage (GPU+CPU) | ✅ S31e |
 | 6 orphan shader wrappers (IPR, FST, Hamming, Jaccard, PD, fitness) | ✅ S31e |
+| 55 orphan shaders → 0 (all wired to Rust) | ✅ S31e-31g |
+| f64 LinSolve + Inverse GPU wrappers | ✅ S31g |
+| RfBatchInferenceGpu wrapper | ✅ S31g |
+| Clippy clean sweep (`-W clippy::all`, 0 warnings) | ✅ S31h |
+| Dead code audit (33 files, 6 annotations removed) | ✅ S31h |
+| PollConfig refactor in akida-driver | ✅ S31h |
+| Production quality verified (zero unwrap/panic/TODO) | ✅ S31h |
 
 ---
 
