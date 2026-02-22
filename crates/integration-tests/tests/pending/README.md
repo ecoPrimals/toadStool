@@ -8,8 +8,13 @@ fully integrated**. They are quarantined here so they do not block CI.
 | File | Blocking on | Notes |
 |---|---|---|
 | `e2e_composition_workflow.rs` | Composition engine E2E path | APIs exist (`CompositionEngine`, `CompositionRequest`, `Constraint`); needs E2E wiring |
-| `e2e_primal_discovery_workflow.rs` | API rename | Uses old `EcosystemDiscovery` — needs update to `EcosystemCoordinator::with_config()` |
 | `fhe_integration_example.rs` | GPU hardware | `barracuda::ops::fhe_ntt` exists; test is `#[ignore]`, needs GPU to run |
+
+## Removed (S41 — stale API)
+
+| File | Reason |
+|---|---|
+| `e2e_primal_discovery_workflow.rs` | Used removed `EcosystemDiscovery`; API is now `EcosystemCoordinator` |
 
 ## Graduated (moved to `tests/`)
 

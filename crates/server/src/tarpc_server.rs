@@ -193,15 +193,9 @@ impl ToadStoolTarpcServer {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         warn!("⚠️  TCP mode is DEBUG ONLY - violates deep debt principles");
         warn!("⚠️  Use Unix sockets for production (serve_unix)");
-        info!("tarpc server requested on: {} (not yet implemented)", addr);
-        warn!("tarpc transport layer needs completion - use JSON-RPC for now");
+        info!("tarpc TCP debug endpoint requested on: {addr} — use serve_unix() or serve_tcp() instead");
 
-        // ✅ RESOLVED: tarpc Unix socket transport implemented
-        // See: serve_unix() function below for production implementation
-        // Uses XDG-compliant Unix sockets with proper permissions (0o600)
-        // JSON-RPC works for all current use cases
-
-        Err("tarpc TCP server not implemented - use serve_unix() instead".into())
+        Err("serve_tcp_debug is deprecated — use serve_unix() or serve_tcp()".into())
     }
 
     /// Start tarpc server on TCP listener (isomorphic fallback)
