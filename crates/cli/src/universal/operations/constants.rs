@@ -104,16 +104,6 @@ pub mod paths {
     pub fn snapshot_prefix() -> PathBuf {
         temp_dir().join("toadstool_snapshot_")
     }
-
-    // Legacy constants for backward compatibility (deprecated)
-    #[deprecated(note = "Use checkpoint_prefix() function for runtime discovery")]
-    pub const CHECKPOINT_PREFIX: &str = "/tmp/checkpoint_";
-
-    #[deprecated(note = "Use export_prefix() function for runtime discovery")]
-    pub const EXPORT_PREFIX: &str = "/tmp/export_";
-
-    #[deprecated(note = "Use snapshot_prefix() function for runtime discovery")]
-    pub const SNAPSHOT_PREFIX: &str = "/tmp/snapshot_";
 }
 
 /// Trust levels

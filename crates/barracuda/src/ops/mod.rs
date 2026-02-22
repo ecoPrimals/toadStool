@@ -432,6 +432,10 @@ pub mod md;
 // complex_f64 + SU(3) WGSL libraries, Wilson plaquette, U(1) Higgs HMC, SU(3) HMC force
 pub mod lattice;
 
+// Nuclear structure GPU primitives (HFB, BCS, Skyrme)
+// Absorbed from hotSpring v0.6.4 (Feb 2026)
+pub mod physics;
+
 // Life-science + analytical chemistry GPU primitives (wetSpring handoff v4, Feb 2026)
 // Smith-Waterman banded alignment, Gillespie SSA, decision-tree inference, Felsenstein pruning
 pub mod bio;

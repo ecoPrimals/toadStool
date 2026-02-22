@@ -1,6 +1,6 @@
 # Deep Debt Status Report
 
-**Sessions 32-38 -- February 22, 2026**
+**Sessions 32-39 -- February 22, 2026**
 **Status**: PRODUCTION-GRADE | All quality gates green | 0 clippy warnings | 3,847+ non-GPU tests + barracuda targeted | Coverage: common 87%, config 89%, core 79%, server 77%
 
 ---
@@ -181,7 +181,7 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | Error handling | ✅ Result-based, no panic paths in library code |
 | Clippy strictness | ✅ Zero warnings workspace-wide (S38) |
 | Dead code hygiene | ✅ 33 files audited, 6 incorrect annotations removed (S31h) |
-| Orphan shader elimination | Zero orphans -- all 589+ WGSL wired to Rust |
+| Orphan shader elimination | Zero orphans -- all 600+ WGSL wired to Rust |
 
 ---
 
@@ -202,7 +202,7 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | TensorSession ML ops (neuralSpring absorption) | ✅ |
 | Three Springs Validation (2,700+ checks) | ✅ |
 | Lattice QCD Dirac+CG (hotSpring absorption) | ✅ S31d |
-| 9 Bio ops GPU pipelines (wetSpring absorption) | ✅ S31d |
+| 9→20 Bio ops GPU pipelines (wetSpring+neuralSpring absorption) | ✅ S31d, S39 |
 | SubstrateCapability model (forge absorption) | ✅ S31d |
 | NPU runtime discovery (AKD1000 /dev/akida*) | ✅ S31d |
 | Executor full MathOp coverage (GPU+CPU) | ✅ S31e |
@@ -230,6 +230,10 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | Test race condition fix (PathEnv testability) | ✅ S38 |
 | NetworkLoadBalancer behavioral tests (8 new) | ✅ S38 |
 | NetworkDistributor behavioral tests (3 new) | ✅ S38 |
+| neuralSpring 4 bio ops wired (pairwise_l2, multi_obj_fitness, swarm_nn, hill_gate) | ✅ S39 |
+| HFB physics module (5 spherical + 6 deformed shaders wired) | ✅ S39 |
+| wetSpring 3 shaders absorbed (kmer_histogram, taxonomy_fc, unifrac_propagate) | ✅ S39 |
+| Deprecated `/tmp` constants removed | ✅ S39 |
 
 ---
 

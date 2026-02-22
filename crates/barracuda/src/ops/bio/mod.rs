@@ -2,7 +2,7 @@
 
 //! Life-science, evolutionary computation, and analytical-chemistry GPU primitives.
 //!
-//! Absorbed from wetSpring handoff v4–v6 and neuralSpring metalForge (Feb 2026).
+//! Absorbed from wetSpring handoff v4–v8 and neuralSpring metalForge (Feb 2026).
 //!
 //! | Module | Shader | Primitive |
 //! |--------|--------|-----------|
@@ -18,11 +18,18 @@
 //! | `quality_filter`    | `quality_filter.wgsl`            | Per-read quality trimming |
 //! | `dada2`             | `dada2_e_step.wgsl`              | DADA2 E-step (batch log_p_error) |
 //! | `locus_variance`    | `locus_variance.wgsl`            | Per-locus AF variance (FST) |
+//! | `multi_obj_fitness` | `multi_obj_fitness.wgsl`         | Multi-objective fitness eval |
 //! | `pairwise_hamming`  | `pairwise_hamming.wgsl`          | Pairwise Hamming distance |
+//! | `pairwise_l2`      | `pairwise_l2.wgsl`               | Pairwise L2 (Euclidean) distance |
 //! | `pairwise_jaccard`  | `pairwise_jaccard.wgsl`          | Pairwise Jaccard distance |
+//! | `hill_gate`        | `hill_gate.wgsl`                | Two-input Hill AND gate |
 //! | `spatial_payoff`    | `spatial_payoff.wgsl`            | Spatial PD payoff stencil |
 //! | `batch_fitness`     | `batch_fitness_eval.wgsl`        | EA batch fitness evaluation |
 //! | `rf_inference`      | `rf_batch_inference.wgsl`        | Batch RF inference (SoA f64) |
+//! | `swarm_nn`          | `swarm_nn_forward.wgsl`         | Swarm NN forward pass |
+//! | `kmer_histogram`    | `kmer_histogram.wgsl`            | K-mer counting (atomic histogram) |
+//! | `taxonomy_fc`       | `taxonomy_fc.wgsl`               | Naive Bayes taxonomy FC (f64) |
+//! | `unifrac_propagate` | `unifrac_propagate.wgsl`         | UniFrac tree propagation (f64) |
 
 pub mod ani;
 pub mod batch_fitness;
@@ -30,17 +37,24 @@ pub mod dada2;
 pub mod dnds;
 pub mod felsenstein;
 pub mod gillespie;
+pub mod hill_gate;
 pub mod hmm;
+pub mod kmer_histogram;
 pub mod locus_variance;
+pub mod multi_obj_fitness;
 pub mod pairwise_hamming;
 pub mod pairwise_jaccard;
+pub mod pairwise_l2;
 pub mod pangenome;
 pub mod quality_filter;
 pub mod rf_inference;
 pub mod smith_waterman;
 pub mod snp;
 pub mod spatial_payoff;
+pub mod swarm_nn;
+pub mod taxonomy_fc;
 pub mod tree_inference;
+pub mod unifrac_propagate;
 
 pub use ani::AniBatchF64;
 pub use batch_fitness::BatchFitnessGpu;
@@ -48,14 +62,21 @@ pub use dada2::Dada2EStepGpu;
 pub use dnds::DnDsBatchF64;
 pub use felsenstein::{FelsensteinGpu, FelsensteinResult, PhyloTree};
 pub use gillespie::{GillespieConfig, GillespieGpu, GillespieResult};
+pub use hill_gate::{HillGateGpu, HillGateParams};
 pub use hmm::HmmBatchForwardF64;
+pub use kmer_histogram::KmerHistogramGpu;
 pub use locus_variance::LocusVarianceGpu;
+pub use multi_obj_fitness::MultiObjFitnessGpu;
 pub use pairwise_hamming::PairwiseHammingGpu;
 pub use pairwise_jaccard::PairwiseJaccardGpu;
+pub use pairwise_l2::PairwiseL2Gpu;
 pub use pangenome::PangenomeClassifyGpu;
 pub use quality_filter::{QualityConfig, QualityFilterGpu};
 pub use rf_inference::RfBatchInferenceGpu;
 pub use smith_waterman::{SmithWatermanGpu, SwConfig, SwResult};
 pub use snp::SnpCallingF64;
 pub use spatial_payoff::SpatialPayoffGpu;
+pub use swarm_nn::SwarmNnGpu;
+pub use taxonomy_fc::TaxonomyFcGpu;
 pub use tree_inference::{FlatForest, TreeInferenceGpu};
+pub use unifrac_propagate::{UniFracConfig, UniFracPropagateGpu};
