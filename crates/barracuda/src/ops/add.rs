@@ -24,6 +24,9 @@ const SHADER_WG128: &str = include_str!("../shaders/math/elementwise_add_wg128.w
 /// Default shader (WG=256, fallback)
 const SHADER_DEFAULT: &str = include_str!("../shaders/math/elementwise_add.wgsl");
 
+/// Basic element-wise add shader.
+pub const WGSL_ADD_BASIC: &str = include_str!("../shaders/math/add.wgsl");
+
 /// f64 element-wise add variant.
 pub const WGSL_ADD_F64: &str = include_str!("../shaders/math/elementwise_add_f64.wgsl");
 

@@ -17,6 +17,9 @@ use std::sync::Arc;
 /// Simple variance reduction variant (scalar path).
 pub const WGSL_VARIANCE_SIMPLE: &str = include_str!("../shaders/misc/variance_simple.wgsl");
 
+/// Special variance shader.
+pub const WGSL_VARIANCE_SPECIAL: &str = include_str!("../shaders/special/variance.wgsl");
+
 /// f64 Variance/StdDev evaluator
 pub struct VarianceF64 {
     #[allow(dead_code)]

@@ -12,6 +12,12 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// Simple max reduction variant.
+pub const WGSL_MAX_SIMPLE: &str = include_str!("../shaders/math/max_simple.wgsl");
+
+/// Basic max reduction shader.
+pub const WGSL_MAX_BASIC: &str = include_str!("../shaders/math/max.wgsl");
+
 /// Max reduction operation
 pub struct Max {
     input: Tensor,

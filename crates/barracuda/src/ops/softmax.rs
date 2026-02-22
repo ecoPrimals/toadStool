@@ -11,6 +11,9 @@ use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
+/// Basic softmax activation shader.
+pub const WGSL_SOFTMAX_BASIC: &str = include_str!("../shaders/activation/softmax.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct Params {

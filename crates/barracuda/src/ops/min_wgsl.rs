@@ -15,6 +15,9 @@ use wgpu::util::DeviceExt;
 /// Simple min reduction variant (scalar path).
 pub const WGSL_MIN_SIMPLE: &str = include_str!("../shaders/math/min_simple.wgsl");
 
+/// Basic min reduction shader.
+pub const WGSL_MIN_BASIC: &str = include_str!("../shaders/math/min.wgsl");
+
 /// Min reduction operation
 pub struct Min {
     input: Tensor,

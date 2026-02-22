@@ -28,6 +28,16 @@
 pub const WGSL_BATCHED_EIGH_NAK_OPTIMIZED: &str =
     include_str!("../../shaders/linalg/batched_eigh_nak_optimized_f64.wgsl");
 
+/// Batched symmetric eigensolve (f64).
+pub const WGSL_BATCHED_EIGH_F64: &str = include_str!("../../shaders/linalg/batched_eigh_f64.wgsl");
+
+/// Batched symmetric eigensolve single-dispatch variant (f64).
+pub const WGSL_BATCHED_EIGH_SINGLE_DISPATCH_F64: &str =
+    include_str!("../../shaders/linalg/batched_eigh_single_dispatch_f64.wgsl");
+
+/// Symmetric eigenvalue decomposition (f64).
+pub const WGSL_EIGH_F64: &str = include_str!("../../shaders/linalg/eigh_f64.wgsl");
+
 /// Result of symmetric eigenvalue decomposition A = V·D·Vᵀ (f64).
 ///
 /// Eigenvalues in ascending order; eigenvectors as columns of V (row-major).

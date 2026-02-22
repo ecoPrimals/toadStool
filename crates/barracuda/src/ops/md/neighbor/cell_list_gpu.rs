@@ -46,6 +46,13 @@ use crate::device::WgpuDevice;
 use crate::error::Result;
 use std::sync::Arc;
 
+/// Atomic cell binning pass (pass 1).
+pub const WGSL_ATOMIC_CELL_BIN: &str = include_str!("../../../shaders/misc/atomic_cell_bin.wgsl");
+
+/// Cell list scatter pass (pass 3).
+pub const WGSL_CELL_LIST_SCATTER: &str =
+    include_str!("../../../shaders/misc/cell_list_scatter.wgsl");
+
 const BIN_WG: u32 = 64;
 const SCAN_WG: u32 = 256; // must match prefix_sum.wgsl workgroup size
 
@@ -90,10 +97,9 @@ pub struct CellListGpu {
 }
 
 impl CellListGpu {
-    const BIN_SHADER: &'static str = include_str!("../../../shaders/misc/atomic_cell_bin.wgsl");
+    const BIN_SHADER: &'static str = WGSL_ATOMIC_CELL_BIN;
     const SCAN_SHADER: &'static str = include_str!("../../../shaders/misc/prefix_sum.wgsl");
-    const SCATTER_SHADER: &'static str =
-        include_str!("../../../shaders/misc/cell_list_scatter.wgsl");
+    const SCATTER_SHADER: &'static str = WGSL_CELL_LIST_SCATTER;
 
     /// Create a GPU cell-list builder.
     ///
