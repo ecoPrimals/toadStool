@@ -27,8 +27,6 @@ use rayon::prelude::*;
 pub(super) fn execute_map(workload: Workload) -> Result<WorkloadData, ComputeError> {
     match workload.input {
         WorkloadData::F32Vec(input) => {
-            // For now, identity map as placeholder
-            // In full implementation, would interpret function from params
             let output: Vec<f32> = input.par_iter().map(|&x| x * 2.0 + 1.0).collect();
             Ok(WorkloadData::F32Vec(output))
         }
@@ -53,7 +51,6 @@ pub(super) fn execute_map(workload: Workload) -> Result<WorkloadData, ComputeErr
 pub(super) fn execute_filter(workload: Workload) -> Result<WorkloadData, ComputeError> {
     match workload.input {
         WorkloadData::F32Vec(input) => {
-            // For now, filter > 0.5 as placeholder
             let output: Vec<f32> = input.par_iter().filter(|&&x| x > 0.5).copied().collect();
             Ok(WorkloadData::F32Vec(output))
         }

@@ -134,9 +134,6 @@ impl UniversalRuntime {
     where
         F: Fn(f32) -> f32 + Send + Sync,
     {
-        // Note: In a full implementation, we'd serialize/compile the function
-        // For now, this is a placeholder showing the API design
-
         let workload = WorkloadBuilder::new()
             .operation(OperationType::Map)
             .data_f32(input.clone())

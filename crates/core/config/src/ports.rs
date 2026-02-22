@@ -188,9 +188,9 @@ pub fn get_toadstool_port(name: &str, default: u16) -> u16 {
 ///
 /// # Self-Knowledge Principle
 ///
-/// Using this function represents a **temporary violation** of self-knowledge.
-/// ToadStool should NOT "know" other primals' ports - they should be discovered
-/// at runtime via Songbird (Phase 3).
+/// Port fallbacks exist for bootstrapping before Songbird is available.
+/// Once Songbird is running, primals discover each other via capability
+/// registration — these env-var fallbacks are the cold-start path only.
 ///
 /// # Examples
 /// ```
