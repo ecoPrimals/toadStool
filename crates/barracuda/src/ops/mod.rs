@@ -205,6 +205,7 @@ pub mod weighted_dot_f64; // Weighted inner products (energy integrals, Galerkin
 // Statistical kernels
 pub mod correlation_wgsl; // Pearson correlation
 pub mod covariance_wgsl; // Sample covariance
+pub mod moving_window_stats; // Sliding window mean/var/min/max (airSpring IoT)
 
 // PDE/ODE infrastructure
 pub mod batch_pair_reduce_f64; // O(N²) pairwise batch reduction (DADA2, BrayCurtis)

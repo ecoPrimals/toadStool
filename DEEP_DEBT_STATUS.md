@@ -1,6 +1,6 @@
 # Deep Debt Status Report
 
-**Sessions 32-39 -- February 22, 2026**
+**Sessions 32-40 -- February 22, 2026**
 **Status**: PRODUCTION-GRADE | All quality gates green | 0 clippy warnings | 3,847+ non-GPU tests + barracuda targeted | Coverage: common 87%, config 89%, core 79%, server 77%
 
 ---
@@ -243,6 +243,10 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | `sparse_eigh` Lanczos wrapper (sparse symmetric eigensolve) | ✅ S39 |
 | `quantize_affine_i8` convenience op + auto-scaling | ✅ S39 |
 | `barracuda::math` tiled shader barrier fix (matmul_tiled.wgsl) | ✅ S39 |
+| 1D Richards equation solver (van Genuchten-Mualem, Picard iteration) | ✅ S40 |
+| Moving window statistics GPU op (sliding mean/var/min/max, IoT streams) | ✅ S40 |
+| Dependency audit: workspace already pure Rust (libc only in akida VFIO) | ✅ S40 |
+| Dead code sweep: 38 `#[allow(dead_code)]` all verified legitimate | ✅ S40 |
 
 ---
 
