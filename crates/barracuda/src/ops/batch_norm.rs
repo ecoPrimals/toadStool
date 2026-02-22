@@ -8,6 +8,18 @@ use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 
+/// GPU shader for BatchNorm with running mean/var (training mode, CNN).
+pub const WGSL_BATCHNORM_TRAINING: &str = include_str!("../shaders/norm/batchnorm.wgsl");
+
+/// GPU shader for 2D batch normalization (NCHW format, per-channel stats).
+pub const WGSL_BATCH_NORM_2D: &str = include_str!("../shaders/norm/batch_norm2d.wgsl");
+
+/// GPU shader for group normalization (groups within channels).
+pub const WGSL_GROUPNORM: &str = include_str!("../shaders/norm/groupnorm.wgsl");
+
+/// GPU shader for instance normalization (per-instance per-channel).
+pub const WGSL_INSTANCENORM: &str = include_str!("../shaders/norm/instancenorm.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct BatchNormParams {

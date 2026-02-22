@@ -11,6 +11,17 @@ use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// GPU shader for generalized Einstein summation (stride-based contraction).
+///
+/// Supports common patterns like matrix multiply (`ij,jk->ik`) via configurable
+/// strides. Entry point: `main`.
+pub const WGSL_EINSUM: &str = include_str!("../shaders/misc/einsum.wgsl");
+
+/// GPU shader for Kronecker product: C[i*m+k, j*n+l] = A[i,j] * B[k,l].
+///
+/// Each thread computes one element. Entry point: `main`.
+pub const WGSL_KRON: &str = include_str!("../shaders/misc/kron.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct TensorDotParams {

@@ -12,6 +12,16 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// GPU shader for f64 sparse matrix-vector product (CSR format).
+///
+/// Includes SpMV, axpy, dot product, scale, copy, diagonal preconditioner,
+/// linear combination, and full CG solver kernels — all in f64.
+///
+/// Entry points: `spmv_f64`, `axpy_f64`, `dot_f64`, `scale_f64`, `copy_f64`,
+/// `precond_f64`, `linear_comb_f64`, `final_reduce_f64`, `cg_update_xr`,
+/// `cg_update_p`, `compute_alpha`, `compute_beta`.
+pub const WGSL_SPARSE_MATVEC_F64: &str = include_str!("../shaders/misc/sparse_matvec_f64.wgsl");
+
 /// Sparse matrix-vector product in CSR (Compressed Sparse Row) format.
 pub struct SparseMatVec {
     values: Tensor,

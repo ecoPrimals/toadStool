@@ -14,6 +14,15 @@ use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
+/// GPU shader for fused layer normalization (single-pass mean+var, normalize+affine).
+pub const WGSL_LAYERNORM_FUSED: &str = include_str!("../shaders/norm/layernorm_fused.wgsl");
+
+/// GPU shader for fused layer normalization v2 (improved numerical stability).
+pub const WGSL_LAYERNORM_FUSED_V2: &str = include_str!("../shaders/norm/layernorm_fused_v2.wgsl");
+
+/// GPU shader for optimized layer normalization (vectorized loads).
+pub const WGSL_LAYERNORM_OPTIMIZED: &str = include_str!("../shaders/norm/layernorm_optimized.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct Params {
