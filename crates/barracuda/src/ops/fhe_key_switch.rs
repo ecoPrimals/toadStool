@@ -149,7 +149,10 @@ impl FheKeySwitch {
 
         let device = input.device();
 
-        // Load WGSL shader
+        // U64 emulation preamble (shared across FHE ops)
+        #[allow(dead_code)]
+        const U64_EMU_PREAMBLE: &str = include_str!("u64_emu.wgsl");
+
         let shader_source = include_str!("fhe_key_switch.wgsl");
         let shader_module = device
             .device

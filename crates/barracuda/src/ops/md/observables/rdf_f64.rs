@@ -27,6 +27,12 @@ impl RdfHistogramF64 {
         include_str!("rdf_histogram_f64.wgsl")
     }
 
+    /// f32 variant shader for GPUs without f64 support
+    #[allow(dead_code)]
+    fn wgsl_shader_f32() -> &'static str {
+        include_str!("rdf_histogram.wgsl")
+    }
+
     /// Compute RDF histogram
     ///
     /// # Arguments
