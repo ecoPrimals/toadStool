@@ -18,7 +18,7 @@
 //! Network service discovery is **delegated to Songbird** (comms primal).
 //!
 //! **Removed**: Vendor-specific detectors (K8s, Docker, Consul, AWS/GCP/Azure)
-//! **Kept**: BareMetalDetector (hardware capabilities), mDNS (exposed to Songbird)
+//! **Kept**: `BareMetalDetector` (hardware capabilities), mDNS (exposed to Songbird)
 //!
 //! ## Separation of Concerns
 //!

@@ -68,7 +68,7 @@ impl ManualJsonRpcServer {
         let model = params.get("model").and_then(|v| v.as_str()).unwrap_or("");
         let vram = params
             .get("vram_required_mb")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(4096);
 
         let router = self.router.read().await;

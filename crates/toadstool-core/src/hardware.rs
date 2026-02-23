@@ -56,10 +56,10 @@ impl HardwareManager {
         let mut devices = Vec::new();
 
         // Discover GPUs (BarraCuda handles via WGPU)
-        devices.extend(Self::discover_gpus()?);
+        devices.extend(Self::discover_gpus());
 
         // Discover NPUs (Akida, etc)
-        devices.extend(Self::discover_npus()?);
+        devices.extend(Self::discover_npus());
 
         // CPU always available
         devices.push(HardwareDevice {
@@ -79,9 +79,9 @@ impl HardwareManager {
 
     /// Discover GPUs via sysfs
     ///
-    /// Deep Debt: BarraCuda will use WGPU for actual GPU access
+    /// Deep Debt: `BarraCuda` will use WGPU for actual GPU access
     /// ToadStool just discovers what's available
-    fn discover_gpus() -> Result<Vec<HardwareDevice>> {
+    fn discover_gpus() -> Vec<HardwareDevice> {
         let mut gpus = Vec::new();
 
         // Scan /sys/class/drm for GPU devices
@@ -110,13 +110,13 @@ impl HardwareManager {
             }
         }
 
-        Ok(gpus)
+        gpus
     }
 
     /// Discover NPUs (Akida, etc)
     ///
-    /// Deep Debt: Direct PCIe discovery, userspace access
-    fn discover_npus() -> Result<Vec<HardwareDevice>> {
+    /// Deep Debt: Direct `PCIe` discovery, userspace access
+    fn discover_npus() -> Vec<HardwareDevice> {
         let mut npus = Vec::new();
 
         // Scan PCIe bus for Akida devices (vendor 0x1e7c)
@@ -149,14 +149,11 @@ impl HardwareManager {
                         .to_string();
 
                         // Check if kernel driver available (/dev/akida*)
-                        let driver_available = fs::read_dir("/dev")
-                            .ok()
-                            .map(|entries| {
-                                entries
-                                    .flatten()
-                                    .any(|e| e.file_name().to_string_lossy().starts_with("akida"))
-                            })
-                            .unwrap_or(false);
+                        let driver_available = fs::read_dir("/dev").ok().is_some_and(|entries| {
+                            entries
+                                .flatten()
+                                .any(|e| e.file_name().to_string_lossy().starts_with("akida"))
+                        });
 
                         // Check if userspace access available (resource files readable)
                         let userspace_capable = device_path.join("resource0").exists()
@@ -178,15 +175,17 @@ impl HardwareManager {
             }
         }
 
-        Ok(npus)
+        npus
     }
 
     /// Get all discovered devices
+    #[must_use]
     pub fn devices(&self) -> &[HardwareDevice] {
         &self.devices
     }
 
     /// Get devices by type
+    #[must_use]
     pub fn devices_by_type(&self, hardware_type: HardwareType) -> Vec<&HardwareDevice> {
         self.devices
             .iter()
@@ -194,7 +193,8 @@ impl HardwareManager {
             .collect()
     }
 
-    /// Check if any GPU available (for BarraCuda)
+    /// Check if any GPU available (for `BarraCuda`)
+    #[must_use]
     pub fn has_gpu(&self) -> bool {
         self.devices
             .iter()
@@ -202,6 +202,7 @@ impl HardwareManager {
     }
 
     /// Check if any NPU available
+    #[must_use]
     pub fn has_npu(&self) -> bool {
         self.devices
             .iter()
@@ -209,7 +210,8 @@ impl HardwareManager {
     }
 
     /// Get number of discovered devices
-    pub fn device_count(&self) -> usize {
+    #[must_use]
+    pub const fn device_count(&self) -> usize {
         self.devices.len()
     }
 
@@ -228,12 +230,12 @@ impl HardwareManager {
     /// Deep Debt: No scripts, pure Rust
     ///
     /// # Errors
-    /// Returns error if device not found or cannot enable PCIe device
+    /// Returns error if device not found or cannot enable `PCIe` device
     pub fn enable_npu_userspace(&self, pcie_address: &str) -> Result<()> {
         let device_path = Path::new("/sys/bus/pci/devices").join(pcie_address);
 
         if !device_path.exists() {
-            bail!("NPU device not found: {}", pcie_address);
+            bail!("NPU device not found: {pcie_address}");
         }
 
         // Enable PCIe device

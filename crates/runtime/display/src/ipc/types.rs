@@ -60,6 +60,7 @@ pub struct JsonRpcResponse {
 
 impl JsonRpcResponse {
     /// Create a success response
+    #[must_use]
     pub fn success(id: serde_json::Value, result: serde_json::Value) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -70,6 +71,7 @@ impl JsonRpcResponse {
     }
 
     /// Create an error response
+    #[must_use]
     pub fn error(id: serde_json::Value, error: JsonRpcError) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -94,6 +96,7 @@ pub struct JsonRpcError {
 
 impl JsonRpcError {
     /// Parse error (-32700)
+    #[must_use]
     pub fn parse_error() -> Self {
         Self {
             code: -32700,
@@ -103,6 +106,7 @@ impl JsonRpcError {
     }
 
     /// Invalid request (-32600)
+    #[must_use]
     pub fn invalid_request() -> Self {
         Self {
             code: -32600,
@@ -112,28 +116,31 @@ impl JsonRpcError {
     }
 
     /// Method not found (-32601)
+    #[must_use]
     pub fn method_not_found(method: &str) -> Self {
         Self {
             code: -32601,
-            message: format!("Method not found: {}", method),
+            message: format!("Method not found: {method}"),
             data: None,
         }
     }
 
     /// Invalid params (-32602)
+    #[must_use]
     pub fn invalid_params(msg: &str) -> Self {
         Self {
             code: -32602,
-            message: format!("Invalid params: {}", msg),
+            message: format!("Invalid params: {msg}"),
             data: None,
         }
     }
 
     /// Internal error (-32603)
+    #[must_use]
     pub fn internal_error(msg: &str) -> Self {
         Self {
             code: -32603,
-            message: format!("Internal error: {}", msg),
+            message: format!("Internal error: {msg}"),
             data: None,
         }
     }
@@ -250,7 +257,7 @@ pub struct DisplayCapabilitiesInfo {
     pub supported_formats: Vec<String>,
     /// GPU acceleration available
     pub has_gpu_acceleration: bool,
-    /// VSync available
+    /// `VSync` available
     pub vsync_available: bool,
     /// Number of displays
     pub display_count: usize,

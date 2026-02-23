@@ -5,7 +5,7 @@
 //!
 //! This binary can be distributed to any Linux system and will:
 //! 1. Load kernel module
-//! 2. Enable PCIe devices
+//! 2. Enable `PCIe` devices
 //! 3. Set up permissions
 //! 4. Verify operation
 
@@ -15,9 +15,11 @@ mod pcie;
 mod permissions;
 mod verification;
 
-use pcie::*;
-use permissions::*;
-use verification::*;
+use pcie::{discover_akida_devices, enable_pcie_device, is_module_loaded, load_kernel_module};
+use permissions::{
+    list_device_nodes, setup_device_permissions, setup_pcie_permissions, setup_udev_rules,
+};
+use verification::verify_setup;
 
 #[derive(Debug)]
 pub struct SetupConfig {

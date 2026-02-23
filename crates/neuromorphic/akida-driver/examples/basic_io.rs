@@ -24,14 +24,14 @@ fn main() -> Result<()> {
     println!("📤 Writing {} bytes...", test_data.len());
 
     let written = device.write(&test_data)?;
-    println!("✅ Wrote {} bytes", written);
+    println!("✅ Wrote {written} bytes");
 
     // Test read
     let mut buffer = vec![0u8; 1024];
     println!("\n📥 Reading {} bytes...", buffer.len());
 
     let read_bytes = device.read(&mut buffer)?;
-    println!("✅ Read {} bytes", read_bytes);
+    println!("✅ Read {read_bytes} bytes");
 
     // Verify data (if device echoes back)
     if buffer[..read_bytes] == test_data[..read_bytes] {

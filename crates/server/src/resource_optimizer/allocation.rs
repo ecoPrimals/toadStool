@@ -47,8 +47,7 @@ pub fn identify_bottlenecks(
             affected_nodes: find_high_memory_nodes(estimate),
             severity: 0.7,
             description: format!(
-                "High memory usage: {} GB. Consider streaming or batching.",
-                memory_gb
+                "High memory usage: {memory_gb} GB. Consider streaming or batching."
             ),
             time_impact_secs: 0,
         });
@@ -127,7 +126,7 @@ fn find_parallelization_opportunities(
                         opportunity_type: OpportunityType::Parallelization,
                         affected_nodes: nodes,
                         benefit: 0.7,
-                        description: format!("Node '{}' could be parallelized", first_node_id),
+                        description: format!("Node '{first_node_id}' could be parallelized"),
                         recommendation: "Consider splitting this node into multiple parallel tasks."
                             .to_string(),
                         time_savings_secs: 30,
@@ -176,7 +175,7 @@ fn find_memory_streaming_opportunities(estimate: &ResourceEstimate) -> Vec<Oppor
                 opportunity_type: OpportunityType::MemoryStreaming,
                 affected_nodes: vec![node_id.clone()],
                 benefit: 0.6,
-                description: format!("Node '{}' uses {} GB memory", node_id, memory_gb),
+                description: format!("Node '{node_id}' uses {memory_gb} GB memory"),
                 recommendation: "Consider streaming data instead of loading all at once."
                     .to_string(),
                 time_savings_secs: 0,
@@ -203,7 +202,7 @@ fn find_batching_opportunities(graph: &ExecutionGraph) -> Vec<Opportunity> {
                 opportunity_type: OpportunityType::Batching,
                 affected_nodes: nodes,
                 benefit: 0.5,
-                description: format!("{} nodes with operation '{}'", node_count, operation),
+                description: format!("{node_count} nodes with operation '{operation}'"),
                 recommendation: "Consider batching these operations together for better efficiency."
                     .to_string(),
                 time_savings_secs: 15,

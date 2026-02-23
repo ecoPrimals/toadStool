@@ -114,7 +114,7 @@ impl WebGpuBackend {
                 None, // No trace path
             )
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to request device: {}", e)))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to request device: {e}")))?;
 
         Ok((device, queue))
     }

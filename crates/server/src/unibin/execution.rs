@@ -7,6 +7,7 @@
 use std::path::PathBuf;
 use tracing::{error, info, warn};
 
+use crate::errors::{ServerError, ServerResult};
 use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 use crate::{CoordinatorExecutor, ManualJsonRpcServer};
 
@@ -16,10 +17,7 @@ use toadstool_distributed::{DistributedConfig, StandaloneConfig};
 /// Create executor with distributed or standalone mode
 pub async fn create_executor(
     family_id: &str,
-) -> Result<
-    std::sync::Arc<dyn WorkloadExecutor + Send + Sync>,
-    Box<dyn std::error::Error + Send + Sync>,
-> {
+) -> Result<std::sync::Arc<dyn WorkloadExecutor + Send + Sync>, ServerError> {
     info!("Creating executor with distributed coordinator (isomorphic/fractal)");
 
     let use_distributed = std::env::var("TOADSTOOL_STANDALONE")
@@ -32,7 +30,7 @@ pub async fn create_executor(
         info!("Local capabilities: {:?}", _capabilities);
 
         let config = DistributedConfig {
-            instance_id: format!("toadstool-{}", family_id),
+            instance_id: format!("toadstool-{family_id}"),
             standalone: StandaloneConfig {
                 max_concurrent_executions: 10,
                 default_timeout_secs: 300,
@@ -53,10 +51,12 @@ pub async fn create_executor(
             }),
         };
 
-        let service_id = format!("toadstool-{}", family_id);
+        let service_id = format!("toadstool-{family_id}");
         let executor = CoordinatorExecutor::new(config, service_id)
             .await
-            .map_err(|e| format!("Failed to create coordinator executor: {}", e))?;
+            .map_err(|e| {
+                ServerError::Initialization(format!("Failed to create coordinator executor: {e}"))
+            })?;
 
         info!("✅ Distributed coordinator executor ready");
         Ok(std::sync::Arc::new(executor))
@@ -74,7 +74,7 @@ pub async fn start_servers_with_fallback(
     jsonrpc_server: ManualJsonRpcServer,
     socket_path: PathBuf,
     jsonrpc_socket: PathBuf,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> ServerResult<()> {
     info!("   Trying Unix socket IPC (optimal)...");
 
     match try_unix_servers(&server, &jsonrpc_server, &socket_path, &jsonrpc_socket).await {
@@ -98,12 +98,16 @@ async fn try_unix_servers(
     jsonrpc_server: &ManualJsonRpcServer,
     socket_path: &PathBuf,
     jsonrpc_socket: &PathBuf,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> ServerResult<()> {
     if let Some(parent) = socket_path.parent() {
-        tokio::fs::create_dir_all(parent).await?;
+        tokio::fs::create_dir_all(parent)
+            .await
+            .map_err(|e| ServerError::Initialization(e.to_string()))?;
     }
     if let Some(parent) = jsonrpc_socket.parent() {
-        tokio::fs::create_dir_all(parent).await?;
+        tokio::fs::create_dir_all(parent)
+            .await
+            .map_err(|e| ServerError::Initialization(e.to_string()))?;
     }
 
     if let Err(e) = tokio::fs::remove_file(socket_path).await {
@@ -132,16 +136,24 @@ async fn try_unix_servers(
 async fn start_tcp_servers(
     server: ToadStoolTarpcServer,
     jsonrpc_server: ManualJsonRpcServer,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> ServerResult<()> {
     use tokio::net::TcpListener;
 
     info!("🌐 Starting TCP IPC fallback (isomorphic mode)");
 
-    let tarpc_listener = TcpListener::bind("127.0.0.1:0").await?;
-    let tarpc_addr = tarpc_listener.local_addr()?;
+    let tarpc_listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .map_err(|e| ServerError::Network(e.to_string()))?;
+    let tarpc_addr = tarpc_listener
+        .local_addr()
+        .map_err(|e| ServerError::Network(e.to_string()))?;
 
-    let jsonrpc_listener = TcpListener::bind("127.0.0.1:0").await?;
-    let jsonrpc_addr = jsonrpc_listener.local_addr()?;
+    let jsonrpc_listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .map_err(|e| ServerError::Network(e.to_string()))?;
+    let jsonrpc_addr = jsonrpc_listener
+        .local_addr()
+        .map_err(|e| ServerError::Network(e.to_string()))?;
 
     info!("✅ TCP IPC listening:");
     info!("   JSON-RPC (PRIMARY): {}", jsonrpc_addr);
@@ -221,21 +233,21 @@ pub async fn wait_for_shutdown_signal() -> super::ShutdownSignal {
 pub(crate) fn write_tcp_discovery_file(
     filename: &str,
     addr: &std::net::SocketAddr,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> ServerResult<()> {
     use std::env;
     use std::fs;
 
-    let content = format!("tcp:{}", addr);
+    let content = format!("tcp:{addr}");
 
     if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
         let path = PathBuf::from(runtime_dir).join(filename);
-        fs::write(&path, &content)?;
+        fs::write(&path, &content).map_err(|e| ServerError::Internal(e.to_string()))?;
         info!("📁 TCP discovery file: {}", path.display());
         return Ok(());
     }
 
     let path = PathBuf::from("/tmp").join(filename);
-    fs::write(&path, &content)?;
+    fs::write(&path, &content).map_err(|e| ServerError::Internal(e.to_string()))?;
     info!("📁 TCP discovery file: {}", path.display());
     Ok(())
 }

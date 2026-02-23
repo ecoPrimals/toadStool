@@ -26,8 +26,10 @@ pub enum ConfigError {
     Toml(#[from] toml::de::Error),
     #[error("JSON parse error: {0}")]
     Json(#[from] serde_json::Error),
-    #[error("Generic error: {0}")]
-    Generic(#[from] Box<dyn std::error::Error>),
+    #[error("Address parse error: {0}")]
+    AddrParse(#[from] std::net::AddrParseError),
+    #[error("Environment error: {0}")]
+    Env(String),
 }
 
 /// Configuration result type
@@ -249,8 +251,10 @@ mod tests {
     #[test]
     #[allow(deprecated)] // Testing legacy endpoint configuration
     fn test_env_overrides() {
-        let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner()); // ✅ MODERN: Concurrent-safe + poison recovery
-                                                                               // Save original environment state
+        let _guard = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner); // ✅ MODERN: Concurrent-safe + poison recovery
+                                                                 // Save original environment state
         let original_env = env::var("TOADSTOOL_ENV").ok();
         let original_debug = env::var("TOADSTOOL_DEBUG").ok();
         let original_log_level = env::var("TOADSTOOL_LOG_LEVEL").ok();
@@ -319,7 +323,7 @@ mod tests {
         invalid_config.runtime.resource_limits.max_cpu_usage = 150.0;
         assert!(invalid_config.validate_runtime_config().is_err());
 
-        let mut invalid_config = config.clone();
+        let mut invalid_config = config;
         invalid_config.runtime.max_concurrent_executions = 0;
         assert!(invalid_config.validate_runtime_config().is_err());
     }
@@ -353,8 +357,10 @@ mod tests {
 
     #[test]
     fn test_current_environment_detection() {
-        let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner()); // ✅ MODERN: Concurrent-safe + poison recovery
-                                                                               // Save original environment state
+        let _guard = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner); // ✅ MODERN: Concurrent-safe + poison recovery
+                                                                 // Save original environment state
         let original_toadstool_env = env::var("TOADSTOOL_ENVIRONMENT").ok();
         let original_env = env::var("ENVIRONMENT").ok();
         let original_toadstool_env_short = env::var("TOADSTOOL_ENV").ok();

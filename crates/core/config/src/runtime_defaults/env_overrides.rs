@@ -1,6 +1,17 @@
 //! Environment variable configuration overrides
 //!
-//! Handles applying environment variable overrides to ToadStool configuration
+//! Handles applying environment variable overrides to ToadStool configuration.
+//!
+//! # Network Environment Variables (primary; current values are fallback defaults)
+//!
+//! | Variable | Fallback | Description |
+//! |----------|----------|-------------|
+//! | `TOADSTOOL_BIND_ADDRESS` | `127.0.0.1` (from config) | Full socket address (host:port) |
+//! | `TOADSTOOL_PORT` | port from config | Override port only |
+//! | `TOADSTOOL_SONGBIRD_ENDPOINT` | (deprecated) | Legacy coordination endpoint |
+//! | `TOADSTOOL_BEARDOG_ENDPOINT` | (deprecated) | Legacy PKI endpoint |
+//! | `TOADSTOOL_NESTGATE_ENDPOINT` | (deprecated) | Legacy storage endpoint |
+//! | `TOADSTOOL_SQUIRREL_ENDPOINT` | (deprecated) | Legacy AI endpoint |
 
 use super::{ConfigError, ConfigResult};
 use crate::{BackendCacheConfig, MetricsConfig, ToadStoolConfig};
@@ -33,12 +44,15 @@ impl ToadStoolConfig {
             };
         }
 
+        // TOADSTOOL_BIND_ADDRESS: full "host:port" (e.g. 0.0.0.0:9000, 127.0.0.1:3000)
+        // Fallback: existing config value (from defaults::network or env_config)
         if let Ok(bind_address) = std::env::var("TOADSTOOL_BIND_ADDRESS") {
             self.network.bind_address = bind_address
                 .parse()
                 .map_err(|e| ConfigError::Invalid(format!("Invalid bind address: {e}")))?;
         }
 
+        // TOADSTOOL_PORT: override port only; fallback: existing config port
         if let Ok(port) = std::env::var("TOADSTOOL_PORT") {
             let port: u16 = port
                 .parse()
@@ -352,7 +366,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_sets_environment() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_ENV", "staging");
         let mut c = ToadStoolConfig::default();
@@ -363,7 +379,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_debug_true() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_DEBUG", "true");
         let mut c = ToadStoolConfig::default();
@@ -374,7 +392,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_verbose_sets_debug_level() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_VERBOSE", "true");
         let mut c = ToadStoolConfig::default();
@@ -385,7 +405,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_bind_address() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_BIND_ADDRESS", "0.0.0.0:9000");
         let mut c = ToadStoolConfig::default();
@@ -396,7 +418,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_invalid_bind_address_returns_error() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_BIND_ADDRESS", "not-valid");
         let mut c = ToadStoolConfig::default();
@@ -407,7 +431,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_port() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_PORT", "7777");
         let mut c = ToadStoolConfig::default();
@@ -419,7 +445,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_invalid_port_returns_error() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_PORT", "abc");
         let mut c = ToadStoolConfig::default();
@@ -431,7 +459,9 @@ mod tests {
     #[allow(deprecated)]
     #[test]
     fn apply_env_overrides_legacy_endpoints() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_SONGBIRD_ENDPOINT", "http://sb:8000");
         env::set_var("TOADSTOOL_BEARDOG_ENDPOINT", "http://bd:8001");
@@ -448,7 +478,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_resource_limits() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_MAX_CPU", "75.0");
         env::set_var("TOADSTOOL_MAX_MEMORY", "2147483648");
@@ -461,7 +493,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_invalid_max_cpu_returns_error() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_MAX_CPU", "not-a-float");
         let mut c = ToadStoolConfig::default();
@@ -472,7 +506,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_data_cache_dirs() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_DATA_DIR", "/data");
         env::set_var("TOADSTOOL_CACHE_DIR", "/cache");
@@ -485,7 +521,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_worker_threads() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_WORKER_THREADS", "32");
         let mut c = ToadStoolConfig::default();
@@ -496,7 +534,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_execution_timeout() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_EXECUTION_TIMEOUT", "120");
         let mut c = ToadStoolConfig::default();
@@ -510,7 +550,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_enable_metrics_true() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_ENABLE_METRICS", "true");
         let mut c = ToadStoolConfig {
@@ -524,7 +566,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_enable_cache_true() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_ENABLE_CACHE", "true");
         let mut c = ToadStoolConfig {
@@ -538,7 +582,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_feature_flags() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_ENABLE_FEDERATION", "true");
         env::set_var("TOADSTOOL_ENABLE_GRPC", "true");
@@ -551,7 +597,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_container_runtime() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_CONTAINER_RUNTIME", "containerd");
         let mut c = ToadStoolConfig::default();
@@ -562,7 +610,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_wasm_settings() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_WASM_ENGINE", "wasmtime");
         env::set_var("TOADSTOOL_WASM_MAX_MEMORY", "128");
@@ -577,7 +627,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_python_settings() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_PYTHON_EXECUTABLE", "/usr/bin/python3");
         env::set_var("TOADSTOOL_PYTHON_VENV_PATH", "/venv");
@@ -594,7 +646,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_security_auth() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_JWT_SECRET", "secret123");
         env::set_var("TOADSTOOL_SESSION_TIMEOUT", "600");
@@ -617,7 +671,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_encryption() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_ENCRYPTION_ENABLED", "true");
         env::set_var("TOADSTOOL_ENCRYPTION_ALGORITHM", "AES-256-GCM");
@@ -632,7 +688,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_logging() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_LOG_FORMAT", "json");
         env::set_var("TOADSTOOL_LOG_COLORS", "true");
@@ -649,7 +707,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_invalid_worker_threads_returns_error() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_WORKER_THREADS", "xyz");
         let mut c = ToadStoolConfig::default();
@@ -660,7 +720,9 @@ mod tests {
 
     #[test]
     fn apply_env_overrides_invalid_execution_timeout_returns_error() {
-        let _g = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_toadstool_env();
         env::set_var("TOADSTOOL_EXECUTION_TIMEOUT", "abc");
         let mut c = ToadStoolConfig::default();

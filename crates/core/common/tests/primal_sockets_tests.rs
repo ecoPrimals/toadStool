@@ -1,6 +1,6 @@
 //! Unit tests for primal socket path resolution
 //!
-//! Extracted from primal_sockets.rs to reduce file size.
+//! Extracted from `primal_sockets.rs` to reduce file size.
 #![allow(deprecated)]
 
 use std::path::PathBuf;
@@ -29,8 +29,7 @@ fn test_runtime_dir_fallback() {
     // Could be /run/user/<uid> if exists, or fallback
     assert!(
         runtime_dir.starts_with("/run/user/") || runtime_dir == "/tmp/toadstool-runtime-testuser",
-        "Expected /run/user/<uid> or /tmp fallback, got: {}",
-        runtime_dir
+        "Expected /run/user/<uid> or /tmp fallback, got: {runtime_dir}"
     );
 }
 
@@ -345,8 +344,7 @@ fn test_get_runtime_dir() {
     let dir = get_runtime_dir();
     assert!(
         dir.starts_with("/run/user/") || dir.starts_with("/tmp/toadstool-runtime-"),
-        "Unexpected runtime dir: {}",
-        dir
+        "Unexpected runtime dir: {dir}"
     );
 }
 

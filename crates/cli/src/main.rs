@@ -35,6 +35,8 @@ mod exit_codes {
     pub const CONFIG_ERROR: i32 = 2;
     /// Runtime/network error - connection failures, resource exhaustion
     pub const RUNTIME_ERROR: i32 = 3;
+    /// Interrupted - SIGINT/SIGTERM (Ctrl+C), ecoBin standard
+    pub const INTERRUPTED: i32 = 130;
 }
 
 /// Determine appropriate exit code from error
@@ -75,6 +77,12 @@ use toadstool_cli::{
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Install interrupt handler for ecoBin exit code compliance
+    tokio::spawn(async {
+        tokio::signal::ctrl_c().await.ok();
+        std::process::exit(exit_codes::INTERRUPTED);
+    });
+
     // UNIBIN: Detect how we were invoked for backward compatibility
     let bin_path = std::env::args().next();
     let bin_name = bin_path

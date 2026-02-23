@@ -10,18 +10,28 @@
 //! - Self-knowledge only (discovers other primals at runtime)
 
 use std::net::SocketAddr;
+use thiserror::Error;
+
+/// Error type for ToadStool tarpc client operations.
+#[derive(Debug, Error)]
+pub enum TarpcClientError {
+    #[error("Connection failed: {0}")]
+    Connection(String),
+    #[error("RPC transport error: {0}")]
+    Transport(#[from] tarpc::client::RpcError),
+    #[error("Service error: {0}")]
+    Service(String),
+    #[error("Discovery failed: {0}")]
+    Discovery(String),
+}
 use std::path::{Path, PathBuf};
-use tarpc::{
-    client,
-    context,
-    tokio_serde::formats::Json,
-};
+use tarpc::{client, context, tokio_serde::formats::Json};
 use tokio::net::{TcpStream, UnixStream};
 use tracing::{info, warn};
 
 use toadstool_integration_protocols::tarpc_service::{
-    ComputeCapabilities, HealthStatus, ToadStoolComputeRpcClient,
-    WorkloadResult, WorkloadSubmission,
+    ComputeCapabilities, HealthStatus, ToadStoolComputeRpcClient, WorkloadResult,
+    WorkloadSubmission,
 };
 
 /// ToadStool tarpc client endpoint type
@@ -61,24 +71,31 @@ impl ToadStoolTarpcClient {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use toadstool_client::ToadStoolTarpcClient;
+    /// use toadstool_client::{ToadStoolTarpcClient, TarpcClientError};
     /// use toadstool_common::primal_sockets;
     ///
-    /// # async fn example() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    /// # async fn example() -> Result<(), TarpcClientError> {
     /// // Discover ToadStool socket via capability discovery
     /// let socket_path = primal_sockets::get_toadstool_socket_path();
     /// let client = ToadStoolTarpcClient::connect_unix(&socket_path).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn connect_unix(socket_path: impl AsRef<Path>) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn connect_unix(socket_path: impl AsRef<Path>) -> Result<Self, TarpcClientError> {
         let socket_path = socket_path.as_ref();
-        info!("Connecting to ToadStool compute service at Unix socket: {:?}", socket_path);
+        info!(
+            "Connecting to ToadStool compute service at Unix socket: {:?}",
+            socket_path
+        );
 
         // Establish Unix socket connection
-        let stream = UnixStream::connect(socket_path).await
-            .map_err(|e| format!("Failed to connect to Unix socket {:?}: {}", socket_path, e))?;
-        
+        let stream = UnixStream::connect(socket_path).await.map_err(|e| {
+            TarpcClientError::Connection(format!(
+                "Failed to connect to Unix socket {:?}: {}",
+                socket_path, e
+            ))
+        })?;
+
         // Create transport with JSON codec (same as server)
         let transport = tarpc::serde_transport::new(
             tokio_util::codec::LengthDelimitedCodec::builder()
@@ -88,15 +105,15 @@ impl ToadStoolTarpcClient {
         );
 
         // Create tarpc client
-        let client = ToadStoolComputeRpcClient::new(
-            client::Config::default(),
-            transport,
-        ).spawn();
+        let client = ToadStoolComputeRpcClient::new(client::Config::default(), transport).spawn();
 
-        info!("✅ Successfully connected to ToadStool via Unix socket: {:?}", socket_path);
+        info!(
+            "✅ Successfully connected to ToadStool via Unix socket: {:?}",
+            socket_path
+        );
 
-        Ok(Self { 
-            client, 
+        Ok(Self {
+            client,
             endpoint: ClientEndpoint::UnixSocket(socket_path.to_path_buf()),
         })
     }
@@ -112,10 +129,10 @@ impl ToadStoolTarpcClient {
     /// # Migration
     ///
     /// ```rust,no_run
-    /// use toadstool_client::ToadStoolTarpcClient;
+    /// use toadstool_client::{ToadStoolTarpcClient, TarpcClientError};
     /// use toadstool_common::primal_sockets;
     ///
-    /// # async fn example() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    /// # async fn example() -> Result<(), TarpcClientError> {
     /// // OLD (TCP - Deep Debt violation)
     /// // let client = ToadStoolTarpcClient::connect("127.0.0.1:50051".parse()?).await?;
     ///
@@ -129,14 +146,16 @@ impl ToadStoolTarpcClient {
         since = "0.2.0",
         note = "Use connect_unix() for production. TCP hardcoding violates Deep Debt principles."
     )]
-    pub async fn connect(addr: SocketAddr) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn connect(addr: SocketAddr) -> Result<Self, TarpcClientError> {
         warn!("⚠️  TCP mode is DEPRECATED - violates Deep Debt principles");
         warn!("⚠️  Use connect_unix() for production");
         info!("Connecting to ToadStool compute service at TCP: {}", addr);
 
         // Establish TCP connection
-        let stream = TcpStream::connect(addr).await?;
-        
+        let stream = TcpStream::connect(addr).await.map_err(|e| {
+            TarpcClientError::Connection(format!("Failed to connect to TCP {}: {}", addr, e))
+        })?;
+
         // Create transport with JSON codec
         let transport = tarpc::serde_transport::new(
             tokio_util::codec::LengthDelimitedCodec::builder()
@@ -146,15 +165,12 @@ impl ToadStoolTarpcClient {
         );
 
         // Create tarpc client
-        let client = ToadStoolComputeRpcClient::new(
-            client::Config::default(),
-            transport,
-        ).spawn();
+        let client = ToadStoolComputeRpcClient::new(client::Config::default(), transport).spawn();
 
         info!("Connected to ToadStool at TCP: {}", addr);
 
-        Ok(Self { 
-            client, 
+        Ok(Self {
+            client,
             endpoint: ClientEndpoint::Tcp(addr),
         })
     }
@@ -169,9 +185,9 @@ impl ToadStoolTarpcClient {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use toadstool_client::ToadStoolTarpcClient;
+    /// use toadstool_client::{ToadStoolTarpcClient, TarpcClientError};
     ///
-    /// # async fn example() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    /// # async fn example() -> Result<(), TarpcClientError> {
     /// // Discovers ANY compute service providing ToadStool capabilities
     /// let client = ToadStoolTarpcClient::discover().await?;
     /// let caps = client.query_capabilities().await?;
@@ -179,84 +195,78 @@ impl ToadStoolTarpcClient {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn discover() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn discover() -> Result<Self, TarpcClientError> {
         // Use capability-based discovery to find compute service
         // Falls back to standard ToadStool socket if discovery unavailable
         let socket_path = toadstool_common::primal_sockets::get_toadstool_socket_path();
-        
-        Self::connect_unix(socket_path).await
+        Self::connect_unix(socket_path)
+            .await
+            .map_err(|e| TarpcClientError::Discovery(e.to_string()))
     }
 
     /// Submit workload for execution
     pub async fn submit_workload(
         &self,
         submission: WorkloadSubmission,
-    ) -> Result<WorkloadResult, Box<dyn std::error::Error + Send + Sync>> {
-        let result = self.client
+    ) -> Result<WorkloadResult, TarpcClientError> {
+        self.client
             .submit_workload(context::current(), submission)
-            .await??;
-        
-        Ok(result)
+            .await
+            .map_err(TarpcClientError::from)?
+            .map_err(TarpcClientError::Service)
     }
 
     /// Query workload status
     pub async fn query_status(
         &self,
         workload_id: String,
-    ) -> Result<WorkloadResult, Box<dyn std::error::Error + Send + Sync>> {
-        let result = self.client
+    ) -> Result<WorkloadResult, TarpcClientError> {
+        self.client
             .query_status(context::current(), workload_id)
-            .await??;
-        
-        Ok(result)
+            .await
+            .map_err(TarpcClientError::from)?
+            .map_err(TarpcClientError::Service)
     }
 
     /// Cancel workload
-    pub async fn cancel_workload(
-        &self,
-        workload_id: String,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn cancel_workload(&self, workload_id: String) -> Result<(), TarpcClientError> {
         self.client
             .cancel_workload(context::current(), workload_id)
-            .await??;
-        
-        Ok(())
+            .await
+            .map_err(TarpcClientError::from)?
+            .map_err(TarpcClientError::Service)
     }
 
     /// List workloads
     pub async fn list_workloads(
         &self,
         filter: Option<std::collections::HashMap<String, String>>,
-    ) -> Result<Vec<WorkloadResult>, Box<dyn std::error::Error + Send + Sync>> {
-        let results = self.client
+    ) -> Result<Vec<WorkloadResult>, TarpcClientError> {
+        self.client
             .list_workloads(context::current(), filter)
-            .await??;
-        
-        Ok(results)
+            .await
+            .map_err(TarpcClientError::from)?
+            .map_err(TarpcClientError::Service)
     }
 
     /// Query service capabilities (runtime discovery of primal's abilities)
     ///
     /// This is how we discover what a primal can do - NO hardcoded knowledge!
-    pub async fn query_capabilities(
-        &self,
-    ) -> Result<ComputeCapabilities, Box<dyn std::error::Error + Send + Sync>> {
-        let caps = self.client
+    pub async fn query_capabilities(&self) -> Result<ComputeCapabilities, TarpcClientError> {
+        self.client
             .query_capabilities(context::current())
-            .await??;
-        
-        Ok(caps)
+            .await
+            .map_err(TarpcClientError::from)?
+            .map_err(TarpcClientError::Service)
     }
 
     /// Health check
-    pub async fn health_check(
-        &self,
-    ) -> Result<HealthStatus, Box<dyn std::error::Error + Send + Sync>> {
-        let health = self.client
+    pub async fn health_check(&self) -> Result<HealthStatus, TarpcClientError> {
+        self.client
             .health_check(context::current())
-            .await??;
-        
-        Ok(health)
+            .await
+            .map_err(TarpcClientError::from)?
+            .map_err(TarpcClientError::Service)
     }
 
     /// Get connected endpoint
@@ -278,9 +288,7 @@ impl ToadStoolTarpcClient {
 mod tests {
     use super::*;
     use std::collections::HashMap;
-    use toadstool_integration_protocols::tarpc_service::{
-        WorkloadPriority, ResourceRequirements,
-    };
+    use toadstool_integration_protocols::tarpc_service::{ResourceRequirements, WorkloadPriority};
 
     // Integration tests require actual server running
     // These are example test structures
@@ -289,10 +297,10 @@ mod tests {
     #[ignore] // Requires server
     async fn test_client_unix_connection() {
         use std::path::PathBuf;
-        
+
         let socket_path = PathBuf::from("/tmp/toadstool-test.sock");
         let result = ToadStoolTarpcClient::connect_unix(&socket_path).await;
-        
+
         // Would succeed if server is running
         assert!(result.is_ok() || result.is_err()); // Placeholder assertion
     }
@@ -303,7 +311,7 @@ mod tests {
     async fn test_client_tcp_connection_deprecated() {
         let addr: SocketAddr = "127.0.0.1:50051".parse().unwrap();
         let result = ToadStoolTarpcClient::connect(addr).await;
-        
+
         // Would succeed if server is running
         assert!(result.is_ok() || result.is_err()); // Placeholder assertion
     }
@@ -312,7 +320,7 @@ mod tests {
     #[ignore] // Requires server
     async fn test_client_discovery() {
         let result = ToadStoolTarpcClient::discover().await;
-        
+
         // Would succeed if server is running
         assert!(result.is_ok() || result.is_err());
     }
@@ -322,7 +330,7 @@ mod tests {
         let submission = WorkloadSubmission {
             workload_id: "work-test-123".to_string(),
             workload_type: "gpu_compute".to_string(),
-            data: vec![1, 2, 3, 4],
+            data: bytes::Bytes::from(vec![1, 2, 3, 4]),
             metadata: HashMap::new(),
             priority: WorkloadPriority::Normal,
             requirements: ResourceRequirements {
@@ -337,4 +345,3 @@ mod tests {
         assert_eq!(submission.workload_type, "gpu_compute");
     }
 }
-

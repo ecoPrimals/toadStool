@@ -4,7 +4,10 @@
 //! contextual information. These methods are useful for backward compatibility
 //! and for creating errors quickly without specifying all fields.
 
-use super::types::*;
+use super::types::{
+    ConfigError, ExecutionError, IntegrationError, NetworkError, ResourceError, SecurityError,
+    SystemError, ToadStoolError,
+};
 use std::time::Duration;
 
 use crate::error_codes::ErrorCode;
@@ -28,7 +31,7 @@ impl ToadStoolError {
     ///
     /// Returns `ToadStoolError::Runtime(message)` — matchable directly as a variant.
     pub fn runtime(message: impl Into<String>) -> Self {
-        ToadStoolError::Runtime(message.into())
+        Self::Runtime(message.into())
     }
 
     /// Create a security error (convenience method)
@@ -88,7 +91,7 @@ impl ToadStoolError {
     ///
     /// Returns `ToadStoolError::NotFound(message)` — matchable directly as a variant.
     pub fn not_found(message: impl Into<String>) -> Self {
-        ToadStoolError::NotFound(message.into())
+        Self::NotFound(message.into())
     }
 
     /// Create a permission denied error (convenience method)

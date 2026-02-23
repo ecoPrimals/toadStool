@@ -210,17 +210,15 @@ mod tests {
     fn test_service_ports_completeness() {
         let ports = ConfigUtils::get_service_ports();
 
-        // Should have all primals
-        assert!(ports.contains_key("songbird"));
-        assert!(ports.contains_key("beardog"));
-        assert!(ports.contains_key("nestgate"));
-        assert!(ports.contains_key("squirrel"));
-        assert!(ports.contains_key("toadstool"));
+        // Self-knowledge: toadstool always knows its own port
+        assert!(
+            ports.contains_key("toadstool"),
+            "Primal must have self-knowledge of its own port"
+        );
 
-        // All ports should be valid
+        // All returned ports should be valid
         for (name, &port) in &ports {
             assert!(port > 0, "Port for {} should be positive", name);
-            // Port is u16, so it's automatically < 65536
         }
     }
 
@@ -228,8 +226,11 @@ mod tests {
     fn test_service_endpoints_format() {
         let endpoints = ConfigUtils::get_service_endpoints();
 
-        // Should have all primals
-        assert!(endpoints.len() >= 5);
+        // At minimum, toadstool knows its own endpoint
+        assert!(
+            !endpoints.is_empty(),
+            "Should have at least the self endpoint"
+        );
 
         // All endpoints should be valid HTTP URLs
         for (name, endpoint) in &endpoints {
@@ -240,7 +241,6 @@ mod tests {
                 endpoint
             );
 
-            // Should contain a port
             assert!(
                 endpoint.contains(':'),
                 "Endpoint for {} should have port",

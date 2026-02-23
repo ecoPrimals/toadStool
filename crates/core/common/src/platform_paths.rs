@@ -50,13 +50,13 @@ use std::path::PathBuf;
 /// - ✅ Pure functions operate on this snapshot
 #[derive(Debug, Clone, Default)]
 pub struct PathEnv {
-    /// XDG_RUNTIME_DIR - Unix socket directory
+    /// `XDG_RUNTIME_DIR` - Unix socket directory
     pub xdg_runtime_dir: Option<String>,
-    /// XDG_DATA_HOME - User data directory
+    /// `XDG_DATA_HOME` - User data directory
     pub xdg_data_home: Option<String>,
-    /// XDG_CACHE_HOME - Cache directory
+    /// `XDG_CACHE_HOME` - Cache directory
     pub xdg_cache_home: Option<String>,
-    /// XDG_CONFIG_HOME - Config directory
+    /// `XDG_CONFIG_HOME` - Config directory
     pub xdg_config_home: Option<String>,
     /// HOME directory
     pub home: Option<String>,
@@ -199,7 +199,7 @@ impl<'a> PlatformPaths<'a> {
     ///
     /// Resolution order:
     /// 1. `XDG_RUNTIME_DIR` (if set)
-    /// 2. Platform-specific fallback using temp_dir
+    /// 2. Platform-specific fallback using `temp_dir`
     ///
     /// ## Note
     ///
@@ -218,11 +218,11 @@ impl<'a> PlatformPaths<'a> {
         match self.env.platform {
             Platform::Android => {
                 // Android: abstract sockets preferred, but provide filesystem fallback
-                temp.join(format!("toadstool-runtime-{}", username))
+                temp.join(format!("toadstool-runtime-{username}"))
             }
             Platform::Windows => {
                 // Windows: named pipes preferred, filesystem for discovery files
-                temp.join(format!("toadstool-{}", username))
+                temp.join(format!("toadstool-{username}"))
             }
             Platform::Wasm => {
                 // WASM: in-memory only, but provide path for compatibility
@@ -230,12 +230,12 @@ impl<'a> PlatformPaths<'a> {
             }
             _ => {
                 // Linux/macOS: temp-based runtime
-                temp.join(format!("toadstool-runtime-{}", username))
+                temp.join(format!("toadstool-runtime-{username}"))
             }
         }
     }
 
-    /// Temp directory (std::env::temp_dir with optional override).
+    /// Temp directory (`std::env::temp_dir` with optional override).
     ///
     /// Uses `TMPDIR`/`TMP`/`TEMP` if set, otherwise `std::env::temp_dir()`.
     #[must_use]
@@ -243,8 +243,7 @@ impl<'a> PlatformPaths<'a> {
         self.env
             .tmpdir
             .as_ref()
-            .map(PathBuf::from)
-            .unwrap_or_else(std::env::temp_dir)
+            .map_or_else(std::env::temp_dir, PathBuf::from)
     }
 
     /// Data directory for persistent application data.
@@ -421,7 +420,7 @@ impl<'a> PlatformPaths<'a> {
     #[must_use]
     pub fn primal_socket(&self, primal_name: &str) -> PathBuf {
         self.biomeos_runtime_dir()
-            .join(format!("{}.sock", primal_name))
+            .join(format!("{primal_name}.sock"))
     }
 
     /// ecoPrimals discovery directory

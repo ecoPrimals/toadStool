@@ -155,7 +155,7 @@ impl UniversalSubstrateCapabilities {
     pub fn has_ai_accelerators(&self) -> bool {
         self.specialized_architectures
             .iter()
-            .any(|arch| arch.is_ai_accelerator())
+            .any(SpecializedArchitecture::is_ai_accelerator)
     }
 
     /// Check if quantum platforms are available

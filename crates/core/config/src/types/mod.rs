@@ -111,13 +111,11 @@ impl ToadStoolConfig {
     ///
     /// # Example
     /// ```no_run
-    /// # use toadstool_config::types::ToadStoolConfig;
+    /// # use toadstool_config::{types::ToadStoolConfig, ConfigError};
     /// let config = ToadStoolConfig::load_from_file("config.toml")?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), ConfigError>(())
     /// ```
-    pub fn load_from_file<P: AsRef<std::path::Path>>(
-        path: P,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn load_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self, crate::ConfigError> {
         let content = std::fs::read_to_string(path)?;
         let config: Self = toml::from_str(&content)?;
         config.validate()?;
@@ -131,11 +129,11 @@ impl ToadStoolConfig {
     ///
     /// # Example
     /// ```
-    /// # use toadstool_config::types::ToadStoolConfig;
+    /// # use toadstool_config::{types::ToadStoolConfig, ConfigError};
     /// let config = ToadStoolConfig::load_from_env()?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), ConfigError>(())
     /// ```
-    pub fn load_from_env() -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn load_from_env() -> Result<Self, crate::ConfigError> {
         let mut config = Self::default();
 
         // Override with environment variables
@@ -165,40 +163,51 @@ impl ToadStoolConfig {
     ///
     /// # Errors
     /// Returns an error if the configuration is invalid
-    pub fn validate(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn validate(&self) -> Result<(), crate::ConfigError> {
         // Validate application configuration
         if self.app.name.is_empty() {
-            return Err("Application name cannot be empty".into());
+            return Err(crate::ConfigError::Invalid(
+                "Application name cannot be empty".to_string(),
+            ));
         }
 
         if self.app.worker_threads == 0 {
-            return Err("Worker threads must be greater than 0".into());
+            return Err(crate::ConfigError::Invalid(
+                "Worker threads must be greater than 0".to_string(),
+            ));
         }
 
         // Validate legacy network configuration (deprecated - use capability-based discovery)
         #[allow(deprecated)]
         if self.network.endpoints.songbird.is_empty() {
-            return Err(
-                "Songbird endpoint cannot be empty (use capability-based discovery instead)".into(),
-            );
+            return Err(crate::ConfigError::Invalid(
+                "Songbird endpoint cannot be empty (use capability-based discovery instead)"
+                    .to_string(),
+            ));
         }
 
         // Validate runtime configuration
         if self.runtime.max_concurrent_executions == 0 {
-            return Err("Max concurrent executions must be greater than 0".into());
+            return Err(crate::ConfigError::Invalid(
+                "Max concurrent executions must be greater than 0".to_string(),
+            ));
         }
 
         // Validate resource limits
         if self.runtime.resource_limits.max_cpu_usage <= 0.0
             || self.runtime.resource_limits.max_cpu_usage > 100.0
         {
-            return Err("Max CPU usage must be between 0 and 100".into());
+            return Err(crate::ConfigError::Invalid(
+                "Max CPU usage must be between 0 and 100".to_string(),
+            ));
         }
 
         if self.runtime.resource_limits.max_memory_usage <= 0.0
             || self.runtime.resource_limits.max_memory_usage > 100.0
         {
-            return Err("Max memory usage must be between 0 and 100".into());
+            return Err(crate::ConfigError::Invalid(
+                "Max memory usage must be between 0 and 100".to_string(),
+            ));
         }
 
         Ok(())

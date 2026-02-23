@@ -298,7 +298,8 @@ mod tests {
             panic!("expected CPU allocation");
         };
         let size = alloc.size;
-        // SAFETY: cpu_ptr from allocate_unified; size from same allocation; exclusive access.
+        // SAFETY: (1) cpu_ptr from allocate_unified (valid, non-null); (2) size matches alloc.size;
+        // (3) allocation not freed yet (we hold it); (4) exclusive access in test.
         let slice = unsafe { std::slice::from_raw_parts_mut(cpu_ptr, size) };
         slice.fill(42);
         assert_eq!(slice[0], 42);

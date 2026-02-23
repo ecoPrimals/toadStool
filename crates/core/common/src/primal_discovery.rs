@@ -233,7 +233,7 @@ impl PrimalDiscovery {
         // 3. Try configured fallback
         if let Some(url) = self.config.fallbacks.get(capability) {
             let endpoint = PrimalEndpoint {
-                service_id: format!("{}-fallback", capability),
+                service_id: format!("{capability}-fallback"),
                 capabilities: vec![capability.to_string()],
                 url: url.clone(),
                 trust_level: TrustLevel::Local,

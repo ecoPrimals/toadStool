@@ -87,14 +87,20 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         tracing_enabled: true,
                         access_logs: true,
                         metrics_port: 15090,
-                        tracing_endpoint: Some("http://jaeger:14268/api/traces".to_string()),
+                        tracing_endpoint: Some(
+                            std::env::var("TOADSTOOL_TRACING_ENDPOINT")
+                                .unwrap_or_else(|_| "http://jaeger:14268/api/traces".to_string()),
+                        ),
                     },
                 },
                 mtls: MutualTLSConfig {
                     enabled: true,
-                    ca_cert: "/etc/certs/ca.crt".to_string(),
-                    service_cert: "/etc/certs/service.crt".to_string(),
-                    private_key: "/etc/certs/service.key".to_string(),
+                    ca_cert: std::env::var("TOADSTOOL_CA_CERT")
+                        .unwrap_or_else(|_| "/etc/certs/ca.crt".to_string()),
+                    service_cert: std::env::var("TOADSTOOL_SERVICE_CERT")
+                        .unwrap_or_else(|_| "/etc/certs/service.crt".to_string()),
+                    private_key: std::env::var("TOADSTOOL_SERVICE_KEY")
+                        .unwrap_or_else(|_| "/etc/certs/service.key".to_string()),
                     rotation_interval: Duration::from_secs(3600),
                     verification_mode: "strict".to_string(),
                 },
@@ -185,9 +191,11 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         endpoint: std::env::var("BEARDOG_ENDPOINT")
                             .or_else(|_| {
                                 let domains = ServiceDomainsConfig::from_env();
+                                let port = std::env::var("TOADSTOOL_BEARDOG_PORT")
+                                    .unwrap_or_else(|_| "8000".to_string());
                                 Ok::<_, std::env::VarError>(format!(
-                                    "http://{}:8000",
-                                    domains.beardog
+                                    "http://{}:{}",
+                                    domains.beardog, port
                                 ))
                             })
                             .unwrap_or_default(),
@@ -380,13 +388,33 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
             health_monitoring: HealthMonitoringConfig {
                 enabled: true,
                 interval: Duration::from_secs(30),
-                // Health endpoints now constructed dynamically from service domains
+                // Health endpoints now constructed dynamically from service domains + env ports
                 endpoints: {
                     let domains = ServiceDomainsConfig::from_env();
+                    let songbird_port = std::env::var("TOADSTOOL_SONGBIRD_PORT")
+                        .or_else(|_| std::env::var("SONGBIRD_PORT"))
+                        .ok()
+                        .and_then(|p| p.parse().ok())
+                        .unwrap_or(7000u16);
+                    let beardog_port = std::env::var("TOADSTOOL_BEARDOG_PORT")
+                        .or_else(|_| std::env::var("BEARDOG_PORT"))
+                        .ok()
+                        .and_then(|p| p.parse().ok())
+                        .unwrap_or(8000u16);
+                    let nestgate_port = std::env::var("TOADSTOOL_NESTGATE_PORT")
+                        .or_else(|_| std::env::var("NESTGATE_PORT"))
+                        .ok()
+                        .and_then(|p| p.parse().ok())
+                        .unwrap_or(9000u16);
+                    let squirrel_port = std::env::var("TOADSTOOL_SQUIRREL_PORT")
+                        .or_else(|_| std::env::var("SQUIRREL_PORT"))
+                        .ok()
+                        .and_then(|p| p.parse().ok())
+                        .unwrap_or(6000u16);
                     vec![
                         HealthEndpoint {
                             name: "orchestration".to_string(), // Capability-based name
-                            url: format!("http://{}:7000/health", domains.songbird),
+                            url: format!("http://{}:{songbird_port}/health", domains.songbird),
                             health_check: HttpHealthCheckConfig {
                                 base: HealthCheckConfig {
                                     enabled: true,
@@ -403,7 +431,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         },
                         HealthEndpoint {
                             name: "pki".to_string(), // Capability-based name
-                            url: format!("http://{}:8000/health", domains.beardog),
+                            url: format!("http://{}:{beardog_port}/health", domains.beardog),
                             health_check: HttpHealthCheckConfig {
                                 base: HealthCheckConfig {
                                     enabled: true,
@@ -420,7 +448,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         },
                         HealthEndpoint {
                             name: "storage".to_string(), // Capability-based name
-                            url: format!("http://{}:9000/health", domains.nestgate),
+                            url: format!("http://{}:{nestgate_port}/health", domains.nestgate),
                             health_check: HttpHealthCheckConfig {
                                 base: HealthCheckConfig {
                                     enabled: true,
@@ -437,7 +465,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         },
                         HealthEndpoint {
                             name: "ai".to_string(), // Capability-based name
-                            url: format!("http://{}:6000/health", domains.squirrel),
+                            url: format!("http://{}:{squirrel_port}/health", domains.squirrel),
                             health_check: HttpHealthCheckConfig {
                                 base: HealthCheckConfig {
                                     enabled: true,
@@ -474,10 +502,22 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                     interval: Duration::from_secs(15),
                     exporters: vec![MetricsExporter {
                         exporter_type: "prometheus".to_string(),
-                        config: HashMap::from([(
-                            "endpoint".to_string(),
-                            serde_json::Value::String("http://prometheus:9090".to_string()),
-                        )]),
+                        config: {
+                            let prometheus_port = std::env::var("TOADSTOOL_PROMETHEUS_PORT")
+                                .or_else(|_| std::env::var("PROMETHEUS_PORT"))
+                                .ok()
+                                .and_then(|p| p.parse().ok())
+                                .unwrap_or(9090u16);
+                            let prometheus_host = std::env::var("TOADSTOOL_PROMETHEUS_HOST")
+                                .or_else(|_| std::env::var("PROMETHEUS_HOST"))
+                                .unwrap_or_else(|_| "prometheus".to_string());
+                            HashMap::from([(
+                                "endpoint".to_string(),
+                                serde_json::Value::String(format!(
+                                    "http://{prometheus_host}:{prometheus_port}"
+                                )),
+                            )])
+                        },
                         enabled: true,
                     }],
                 },

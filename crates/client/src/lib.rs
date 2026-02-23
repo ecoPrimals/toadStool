@@ -96,6 +96,9 @@
 // Internal client module with all implementation
 mod client;
 
+#[cfg(feature = "tarpc")]
+mod tarpc_client;
+
 // Re-export all public types and functions
 pub use client::{
     // Configuration
@@ -123,6 +126,9 @@ pub use client::{
     WorkloadSubmission,
     WorkloadType,
 };
+
+#[cfg(feature = "tarpc")]
+pub use tarpc_client::{ClientEndpoint, TarpcClientError, ToadStoolTarpcClient};
 
 #[cfg(test)]
 mod tests {
@@ -185,21 +191,20 @@ mod tests {
             .build()
             .expect("Failed to build workload");
 
-        match workload.workload_type {
-            WorkloadType::Container {
-                image,
-                command,
-                args,
-                ..
-            } => {
-                assert_eq!(image, "alpine:latest");
-                assert_eq!(command, Some(vec!["echo".to_string()]));
-                assert_eq!(args, Some(vec!["Hello from container".to_string()]));
-            }
-            _ => panic!(
-                "Expected container workload type, got: {:?}",
-                workload.workload_type
-            ),
+        assert!(matches!(
+            workload.workload_type,
+            WorkloadType::Container { .. }
+        ));
+        if let WorkloadType::Container {
+            image,
+            command,
+            args,
+            ..
+        } = &workload.workload_type
+        {
+            assert_eq!(image, "alpine:latest");
+            assert_eq!(command, &Some(vec!["echo".to_string()]));
+            assert_eq!(args, &Some(vec!["Hello from container".to_string()]));
         }
 
         assert_eq!(workload.runtime_hint, Some("container".to_string()));
@@ -213,18 +218,17 @@ mod tests {
             .build()
             .expect("Failed to build workload");
 
-        match workload.workload_type {
-            WorkloadType::Python {
-                script,
-                requirements,
-            } => {
-                assert_eq!(script, "print('Hello, Python!')");
-                assert_eq!(requirements, vec!["requests==2.28.0"]);
-            }
-            _ => panic!(
-                "Expected Python workload type, got: {:?}",
-                workload.workload_type
-            ),
+        assert!(matches!(
+            workload.workload_type,
+            WorkloadType::Python { .. }
+        ));
+        if let WorkloadType::Python {
+            script,
+            requirements,
+        } = &workload.workload_type
+        {
+            assert_eq!(script, "print('Hello, Python!')");
+            assert_eq!(requirements, &vec!["requests==2.28.0".to_string()]);
         }
 
         assert_eq!(workload.runtime_hint, Some("python".to_string()));
@@ -250,15 +254,14 @@ mod tests {
             .build()
             .expect("Failed to build workload");
 
-        match workload.workload_type {
-            WorkloadType::Wasm {
-                module_data: data,
-                args,
-            } => {
-                assert_eq!(data, module_data);
-                assert_eq!(args, vec!["arg1", "arg2"]);
-            }
-            _ => panic!("Expected WASM workload type"),
+        assert!(matches!(workload.workload_type, WorkloadType::Wasm { .. }));
+        if let WorkloadType::Wasm {
+            module_data: data,
+            args,
+        } = &workload.workload_type
+        {
+            assert_eq!(data, &module_data);
+            assert_eq!(args, &vec!["arg1".to_string(), "arg2".to_string()]);
         }
 
         assert_eq!(workload.priority, Some(JobPriority::Normal));
@@ -287,18 +290,24 @@ mod tests {
             .build()
             .unwrap();
 
-        match (&workload1.workload_type, &workload2.workload_type) {
-            (
-                WorkloadType::Native {
-                    executable: exec1, ..
-                },
-                WorkloadType::Native {
-                    executable: exec2, ..
-                },
-            ) => {
-                assert_eq!(exec1, exec2);
-            }
-            _ => panic!("Expected native workload types"),
+        assert!(matches!(
+            &workload1.workload_type,
+            WorkloadType::Native { .. }
+        ));
+        assert!(matches!(
+            &workload2.workload_type,
+            WorkloadType::Native { .. }
+        ));
+        if let (
+            WorkloadType::Native {
+                executable: exec1, ..
+            },
+            WorkloadType::Native {
+                executable: exec2, ..
+            },
+        ) = (&workload1.workload_type, &workload2.workload_type)
+        {
+            assert_eq!(exec1, exec2);
         }
     }
 
@@ -383,11 +392,12 @@ mod tests {
             .build()
             .unwrap();
 
-        match workload.workload_type {
-            WorkloadType::Native { working_dir, .. } => {
-                assert_eq!(working_dir, Some("/tmp".to_string()));
-            }
-            _ => panic!("Expected native workload"),
+        assert!(matches!(
+            workload.workload_type,
+            WorkloadType::Native { .. }
+        ));
+        if let WorkloadType::Native { working_dir, .. } = &workload.workload_type {
+            assert_eq!(working_dir, &Some("/tmp".to_string()));
         }
     }
 
@@ -421,14 +431,16 @@ mod tests {
             .build()
             .expect("Failed to build workload");
 
-        match workload.workload_type {
-            WorkloadType::Python {
-                requirements: reqs, ..
-            } => {
-                assert_eq!(reqs, requirements);
-                assert_eq!(reqs.len(), 3);
-            }
-            _ => panic!("Expected Python workload"),
+        assert!(matches!(
+            workload.workload_type,
+            WorkloadType::Python { .. }
+        ));
+        if let WorkloadType::Python {
+            requirements: reqs, ..
+        } = &workload.workload_type
+        {
+            assert_eq!(reqs, &requirements);
+            assert_eq!(reqs.len(), 3);
         }
     }
 
@@ -469,11 +481,9 @@ mod tests {
         let result = WorkloadSubmission::native().build();
 
         assert!(result.is_err());
-        match result {
-            Err(ClientError::Configuration(msg)) => {
-                assert!(msg.contains("Executable path is required"));
-            }
-            _ => panic!("Expected configuration error"),
+        assert!(matches!(&result, Err(ClientError::Configuration(_))));
+        if let Err(ClientError::Configuration(msg)) = result {
+            assert!(msg.contains("Executable path is required"));
         }
     }
 
@@ -520,7 +530,13 @@ mod tests {
             config.retry_backoff,
             Duration::from_millis(toadstool_config::defaults::retries::BACKOFF_MS)
         );
-        assert!(config.enable_websocket);
+        #[allow(deprecated)]
+        {
+            assert!(
+                !config.enable_websocket,
+                "WebSocket disabled by default since deprecation"
+            );
+        }
         assert!(config.auth.is_none());
         assert!(config.custom_headers.is_empty());
     }
@@ -533,11 +549,9 @@ mod tests {
             .build()
             .expect("Failed to build workload");
 
-        match workload.workload_type {
-            WorkloadType::Wasm { args, .. } => {
-                assert!(args.is_empty());
-            }
-            _ => panic!("Expected WASM workload"),
+        assert!(matches!(workload.workload_type, WorkloadType::Wasm { .. }));
+        if let WorkloadType::Wasm { args, .. } = &workload.workload_type {
+            assert!(args.is_empty());
         }
     }
 
@@ -548,12 +562,13 @@ mod tests {
             .build()
             .unwrap();
 
-        match workload.workload_type {
-            WorkloadType::Native { executable, .. } => {
-                assert!(executable.starts_with('/'));
-                assert_eq!(executable, "/usr/local/bin/custom-script");
-            }
-            _ => panic!("Expected native workload"),
+        assert!(matches!(
+            workload.workload_type,
+            WorkloadType::Native { .. }
+        ));
+        if let WorkloadType::Native { executable, .. } = &workload.workload_type {
+            assert!(executable.starts_with('/'));
+            assert_eq!(executable, "/usr/local/bin/custom-script");
         }
     }
 
@@ -564,12 +579,13 @@ mod tests {
             .build()
             .expect("Failed to build workload");
 
-        match workload.workload_type {
-            WorkloadType::Container { image, .. } => {
-                assert!(image.contains(':'));
-                assert!(image.contains("v1.2.3"));
-            }
-            _ => panic!("Expected container workload"),
+        assert!(matches!(
+            workload.workload_type,
+            WorkloadType::Container { .. }
+        ));
+        if let WorkloadType::Container { image, .. } = &workload.workload_type {
+            assert!(image.contains(':'));
+            assert!(image.contains("v1.2.3"));
         }
     }
 }

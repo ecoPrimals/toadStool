@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: February 22, 2026
+**Date**: February 23, 2026
 **Philosophy**: Workarounds are short-term solutions that increase debt.
 We aim to solve deep debt over iterations, evolving toward vendor-agnostic,
 capability-based solutions.
@@ -809,7 +809,7 @@ evolution, smart structural refactoring, capability-based dispatch, and mock iso
 |---|---|---|
 | D-S16-003 | `ParallelFilter` max 16M elements; second-level scan hierarchy for genome-scale. | Low |
 | D-S17-002 | `capabilities.rs` (~930 lines) still large. Smart refactor deferred. | Low |
-| D-S18-002 | cubecl transitive `dirs-sys`: `cubecl v0.4.0 → dirs v5.0.1 → dirs-sys v0.4.1`. Fix: PR to cubecl replacing `dirs` with `etcetera`. | Low |
+| D-S18-002 | cubecl transitive `dirs-sys`: `cubecl v0.4.0 → dirs v5.0.1 → dirs-sys v0.4.1`. Path: burn-inference → burn-wgpu → cubecl-runtime → dirs. Fix: upstream PR to cubecl replacing `dirs` with `etcetera` (pure Rust). See [docs/debt/D-S18-002-cubecl-dirs-sys.md](docs/debt/D-S18-002-cubecl-dirs-sys.md). | Low |
 | D-S18-003 | 12 pending integration tests in `crates/integration-tests/tests/pending/` — unblock by implementing missing `toadstool::ecosystem::discovery`, `SecurityContext`, `WorkloadType` APIs. | Medium |
 | D-S19-001 | `GpuExecutor::build_tensor` still does CPU round-trip for input tensors (reads GPU→CPU then re-uploads). Full fix: zero-copy input path via `Arc<wgpu::Buffer>` views (same as output zero-copy in S18-003). | Medium |
 | D-S20-001 | `TensorSession::matmul` compiles all 4 tier pipelines per `run()` call even when only one tier is used. Optimise: lazy-compile or pre-compile once at session construction and cache. | Low |

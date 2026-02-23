@@ -257,12 +257,8 @@ mod timeout_handling_tests {
     async fn test_operation_timeout() {
         let timeout_duration = Duration::from_millis(100);
 
-        let result = tokio::time::timeout(timeout_duration, async {
-            // ✅ INTENTIONAL DELAY: Testing timeout behavior requires exceeding the limit
-            tokio::time::sleep(Duration::from_millis(200)).await;
-            Ok::<(), ()>(())
-        })
-        .await;
+        let result =
+            tokio::time::timeout(timeout_duration, std::future::pending::<Result<(), ()>>()).await;
 
         assert!(result.is_err()); // Should timeout
     }

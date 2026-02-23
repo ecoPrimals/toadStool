@@ -67,7 +67,9 @@ fn test_default_federation_address() {
 #[test]
 #[allow(deprecated)]
 fn test_get_songbird_port_default() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = env::var("SONGBIRD_PORT").ok();
     env::remove_var("SONGBIRD_PORT");
     let port = network::get_songbird_port();
@@ -80,7 +82,9 @@ fn test_get_songbird_port_default() {
 #[test]
 #[allow(deprecated)]
 fn test_get_beardog_port_default() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = env::var("BEARDOG_PORT").ok();
     env::remove_var("BEARDOG_PORT");
     let port = network::get_beardog_port();
@@ -93,7 +97,9 @@ fn test_get_beardog_port_default() {
 #[test]
 #[allow(deprecated)]
 fn test_get_nestgate_port_default() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = env::var("NESTGATE_PORT").ok();
     env::remove_var("NESTGATE_PORT");
     let port = network::get_nestgate_port();
@@ -106,7 +112,9 @@ fn test_get_nestgate_port_default() {
 #[test]
 #[allow(deprecated)]
 fn test_get_squirrel_port_default() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = env::var("TOADSTOOL_SQUIRREL_PORT").ok();
     env::remove_var("TOADSTOOL_SQUIRREL_PORT");
     let port = network::get_squirrel_port();
@@ -119,7 +127,9 @@ fn test_get_squirrel_port_default() {
 #[test]
 #[allow(deprecated)]
 fn test_get_toadstool_port_default() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let original_port = env::var("TOADSTOOL_PORT").ok();
     let original_api = env::var("TOADSTOOL_API_PORT").ok();
     env::remove_var("TOADSTOOL_PORT");
@@ -136,7 +146,9 @@ fn test_get_toadstool_port_default() {
 
 #[test]
 fn test_get_bind_host_default() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = env::var("BIND_ADDRESS").ok();
     env::remove_var("BIND_ADDRESS");
     let host = network::get_bind_host();

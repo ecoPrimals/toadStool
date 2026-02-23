@@ -67,7 +67,7 @@ impl Default for DiscoveryConfig {
 impl DiscoveryConfig {
     /// Create production configuration (strict, no fallbacks)
     #[must_use]
-    pub fn production() -> Self {
+    pub const fn production() -> Self {
         Self {
             enable_localhost_fallback: false,
             timeout: Duration::from_secs(10),
@@ -79,7 +79,7 @@ impl DiscoveryConfig {
 
     /// Create development configuration (permissive, with fallbacks)
     #[must_use]
-    pub fn development() -> Self {
+    pub const fn development() -> Self {
         Self {
             enable_localhost_fallback: true,
             timeout: Duration::from_secs(2),
@@ -91,7 +91,7 @@ impl DiscoveryConfig {
 
     /// Create test configuration (fast, local only)
     #[must_use]
-    pub fn test() -> Self {
+    pub const fn test() -> Self {
         Self {
             enable_localhost_fallback: true,
             timeout: Duration::from_millis(100),
@@ -147,7 +147,7 @@ impl LocalhostFallbacks {
 
     /// Check if fallbacks should be used
     #[must_use]
-    pub fn should_use_fallback(&self) -> bool {
+    pub const fn should_use_fallback(&self) -> bool {
         self.enabled
     }
 }

@@ -258,9 +258,8 @@ futures = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 colored = "2.0"
 
-# Networking (for ecosystem integration)
-tokio-tungstenite = "0.20"
-# tonic = { version = "0.10", optional = true } # REMOVED: protobuf dependency
+# Networking (WebSocket removed — use JSON-RPC 2.0 polling)
+# tokio-tungstenite removed: R-011 WebSocket deprecated
 
 [features]
 default = ["pure-ecosystem"]

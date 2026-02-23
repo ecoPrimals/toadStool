@@ -278,13 +278,13 @@ impl DmaBuffer {
     }
 
     /// Get slice view of buffer for reading
-    pub fn as_slice(&self) -> &[u8] {
+    pub const fn as_slice(&self) -> &[u8] {
         // SAFETY: vaddr is valid and points to `size` bytes
         unsafe { std::slice::from_raw_parts(self.vaddr, self.size) }
     }
 
     /// Get mutable slice view of buffer for writing
-    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+    pub const fn as_mut_slice(&mut self) -> &mut [u8] {
         // SAFETY: vaddr is valid and points to `size` bytes, we have &mut self
         unsafe { std::slice::from_raw_parts_mut(self.vaddr, self.size) }
     }
@@ -757,7 +757,9 @@ impl NpuBackend for VfioBackend {
         {
             self.input_buffer = Some(self.alloc_dma(input_bytes.len().max(4096))?);
         }
-        let input_buf = self.input_buffer.as_mut().expect("ensured Some above");
+        let input_buf = self.input_buffer.as_mut().ok_or_else(|| {
+            AkidaError::hardware_error("Input DMA buffer missing after allocation")
+        })?;
         input_buf.as_mut_slice()[..input_bytes.len()].copy_from_slice(input_bytes);
 
         let output_size: usize = 4096; // 1024 floats max
@@ -769,8 +771,18 @@ impl NpuBackend for VfioBackend {
             self.output_buffer = Some(self.alloc_dma(output_size)?);
         }
 
-        let input_iova = self.input_buffer.as_ref().expect("ensured Some").iova();
-        let output_iova = self.output_buffer.as_ref().expect("ensured Some").iova();
+        let input_iova = self
+            .input_buffer
+            .as_ref()
+            .ok_or_else(|| AkidaError::hardware_error("Input DMA buffer missing after allocation"))?
+            .iova();
+        let output_iova = self
+            .output_buffer
+            .as_ref()
+            .ok_or_else(|| {
+                AkidaError::hardware_error("Output DMA buffer missing after allocation")
+            })?
+            .iova();
 
         self.write_iova_regs(
             regs::INPUT_ADDR_LO,
@@ -809,7 +821,9 @@ impl NpuBackend for VfioBackend {
         let output_bytes = &self
             .output_buffer
             .as_ref()
-            .expect("ensured Some")
+            .ok_or_else(|| {
+                AkidaError::hardware_error("Output DMA buffer missing after allocation")
+            })?
             .as_slice()[..output_floats * std::mem::size_of::<f32>()];
         Ok(bytemuck::cast_slice::<u8, f32>(output_bytes).to_vec())
     }

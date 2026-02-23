@@ -51,6 +51,7 @@ impl Default for RuntimePortDiscovery {
 
 impl RuntimePortDiscovery {
     /// Create new port discovery with default settings
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -83,9 +84,9 @@ impl RuntimePortDiscovery {
     /// Check if specific port is available
     fn is_port_available(&self, port: u16) -> bool {
         let addr = if self.localhost_only {
-            format!("127.0.0.1:{}", port)
+            format!("127.0.0.1:{port}")
         } else {
-            format!("0.0.0.0:{}", port)
+            format!("0.0.0.0:{port}")
         };
 
         match addr.parse::<SocketAddr>() {
@@ -97,9 +98,9 @@ impl RuntimePortDiscovery {
     /// Find any available port (let OS choose if port=0)
     fn find_available_port(&self, port: u16) -> PortResult<u16> {
         let addr = if self.localhost_only {
-            format!("127.0.0.1:{}", port)
+            format!("127.0.0.1:{port}")
         } else {
-            format!("0.0.0.0:{}", port)
+            format!("0.0.0.0:{port}")
         };
 
         let listener = TcpListener::bind(&addr).map_err(|e| PortError::BindFailed {
@@ -125,19 +126,22 @@ impl RuntimePortDiscovery {
     }
 
     /// Set preferred port range
-    pub fn with_range(mut self, range: Range<u16>) -> Self {
+    #[must_use]
+    pub const fn with_range(mut self, range: Range<u16>) -> Self {
         self.preferred_range = Some(range);
         self
     }
 
     /// Allow binding to all interfaces
-    pub fn all_interfaces(mut self) -> Self {
+    #[must_use]
+    pub const fn all_interfaces(mut self) -> Self {
         self.localhost_only = false;
         self
     }
 
     /// Bind to localhost only (default)
-    pub fn localhost_only(mut self) -> Self {
+    #[must_use]
+    pub const fn localhost_only(mut self) -> Self {
         self.localhost_only = true;
         self
     }

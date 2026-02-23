@@ -594,6 +594,105 @@ async fn test_security_audit_logger_multiple_events() {
 }
 
 // ============================================================================
+// IntrusionDetectionSystem Tests (8 tests)
+// ============================================================================
+
+#[tokio::test]
+async fn test_intrusion_detection_system_new() {
+    let config = IntrusionDetectionConfig::default();
+    let ids = IntrusionDetectionSystem::new(config);
+    assert!(!ids.is_banned("client-1").await);
+}
+
+#[tokio::test]
+async fn test_intrusion_detection_record_request_activity() {
+    let config = IntrusionDetectionConfig::default();
+    let ids = IntrusionDetectionSystem::new(config);
+    ids.record_activity("client-req", ActivityType::Request)
+        .await;
+    ids.record_activity("client-req", ActivityType::Request)
+        .await;
+    assert!(!ids.is_banned("client-req").await);
+}
+
+#[tokio::test]
+async fn test_intrusion_detection_record_failed_attempt() {
+    let config = IntrusionDetectionConfig::default();
+    let ids = IntrusionDetectionSystem::new(config);
+    ids.record_activity("client-fail", ActivityType::FailedAttempt)
+        .await;
+    assert!(!ids.is_banned("client-fail").await);
+}
+
+#[tokio::test]
+async fn test_intrusion_detection_record_suspicious_pattern() {
+    let config = IntrusionDetectionConfig::default();
+    let ids = IntrusionDetectionSystem::new(config);
+    ids.record_activity("client-susp", ActivityType::SuspiciousPattern)
+        .await;
+    assert!(!ids.is_banned("client-susp").await);
+}
+
+#[tokio::test]
+async fn test_intrusion_detection_ban_client() {
+    let config = IntrusionDetectionConfig::default();
+    let ids = IntrusionDetectionSystem::new(config);
+    ids.ban_client("bad-client", Duration::from_secs(3600), "Manual ban")
+        .await;
+    assert!(ids.is_banned("bad-client").await);
+}
+
+#[tokio::test]
+async fn test_intrusion_detection_ban_expires() {
+    let config = IntrusionDetectionConfig {
+        ban_duration: Duration::from_millis(50),
+        ..IntrusionDetectionConfig::default()
+    };
+    let ids = IntrusionDetectionSystem::new(config);
+    ids.ban_client("temp-banned", Duration::from_millis(50), "Short ban")
+        .await;
+    assert!(ids.is_banned("temp-banned").await);
+    // Wait for ban duration using interval (proper async pattern for time-based wait)
+    let mut interval = tokio::time::interval(Duration::from_millis(60));
+    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    interval.tick().await;
+    interval.tick().await;
+    assert!(!ids.is_banned("temp-banned").await);
+}
+
+#[tokio::test]
+async fn test_intrusion_detection_auto_ban_threshold() {
+    let config = IntrusionDetectionConfig {
+        auto_ban_threshold: 3,
+        anomaly_threshold: 10.0,
+        ban_duration: Duration::from_secs(60),
+        ..IntrusionDetectionConfig::default()
+    };
+    let ids = IntrusionDetectionSystem::new(config);
+    for _ in 0..3 {
+        ids.record_activity("auto-ban-client", ActivityType::FailedAttempt)
+            .await;
+    }
+    assert!(ids.is_banned("auto-ban-client").await);
+}
+
+#[tokio::test]
+async fn test_intrusion_detection_anomaly_threshold_triggers_ban() {
+    let config = IntrusionDetectionConfig {
+        anomaly_threshold: 0.5,
+        auto_ban_threshold: 100,
+        ban_duration: Duration::from_secs(60),
+        ..IntrusionDetectionConfig::default()
+    };
+    let ids = IntrusionDetectionSystem::new(config);
+    for _ in 0..3 {
+        ids.record_activity("anomaly-client", ActivityType::SuspiciousPattern)
+            .await;
+    }
+    assert!(ids.is_banned("anomaly-client").await);
+}
+
+// ============================================================================
 // Test Coverage Summary
 // ============================================================================
 

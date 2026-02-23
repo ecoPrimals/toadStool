@@ -70,64 +70,33 @@ pub fn npu_layer_norm(input: &[f32], gamma: &[f32], beta: &[f32], eps: f32) -> R
 
     log::debug!("NPU LayerNorm (WGSL): {} features, eps={}", n, eps);
 
-    // ═══════════════════════════════════════════════════════════
-    // CRITICAL: Use WGSL shader (same math as GPU/CPU!)
-    // ═══════════════════════════════════════════════════════════
-
-    use crate::device::test_pool::get_test_device_sync;
+    use crate::device::test_pool::run_with_sync_device;
     use crate::tensor::Tensor;
 
-    // Get device from shared pool (thread-safe concurrent access)
-    let device = get_test_device_sync();
+    run_with_sync_device(|device| {
+        let input_tensor = Tensor::from_vec_on_sync(input.to_vec(), vec![n], device)?;
+        let normalized_tensor = input_tensor.layer_norm_wgsl(eps)?;
+        let gamma_tensor =
+            Tensor::from_vec_on_sync(gamma.to_vec(), vec![n], normalized_tensor.device().clone())?;
+        let beta_tensor =
+            Tensor::from_vec_on_sync(beta.to_vec(), vec![n], normalized_tensor.device().clone())?;
+        let result_tensor = normalized_tensor.mul(&gamma_tensor)?.add(&beta_tensor)?;
+        let output = result_tensor.to_vec()?;
 
-    // Create tensors from raw data
-    let input_tensor = Tensor::from_vec_on_sync(input.to_vec(), vec![n], device)?;
-
-    // Execute LayerNorm using WGSL shader (same as GPU/CPU!)
-    // This uses ops/layer_norm.rs → shaders/layer_norm.wgsl
-    // Note: Tensor API uses learned gamma/beta internally, here we use epsilon only
-    let normalized_tensor = input_tensor.layer_norm_wgsl(eps)?;
-
-    // Apply scale (gamma) and shift (beta) manually.
-    // Pending: Evolve Tensor::layer_norm_wgsl() to accept gamma/beta; API change in barracuda.
-    let gamma_tensor =
-        Tensor::from_vec_on_sync(gamma.to_vec(), vec![n], normalized_tensor.device().clone())?;
-    let beta_tensor =
-        Tensor::from_vec_on_sync(beta.to_vec(), vec![n], normalized_tensor.device().clone())?;
-
-    // Apply: output = normalized * gamma + beta
-    let result_tensor = normalized_tensor.mul(&gamma_tensor)?.add(&beta_tensor)?;
-
-    // Extract result
-    let output = result_tensor.to_vec()?;
-
-    // ═══════════════════════════════════════════════════════════
-    // NPU-SPECIFIC OPTIMIZATION: Event encoding (optional)
-    // ═══════════════════════════════════════════════════════════
-
-    // Measure sparsity created
-    let codec = EventCodec::default();
-    let input_sparsity = codec.measure_sparsity(input);
-    let output_sparsity = codec.measure_sparsity(&output);
-
-    log::debug!(
-        "NPU LayerNorm (WGSL) complete: {} features, sparsity {:.1}% → {:.1}%",
-        n,
-        input_sparsity * 100.0,
-        output_sparsity * 100.0
-    );
-
-    // For sparse outputs, encode as events
-    if output_sparsity > 0.3 {
-        let events = codec.encode(&output);
+        let codec = EventCodec::default();
+        let input_sparsity = codec.measure_sparsity(input);
+        let output_sparsity = codec.measure_sparsity(&output);
         log::debug!(
-            "NPU event encoding: {} events ({}% reduction)",
-            events.len(),
-            ((1.0 - events.len() as f32 / output.len() as f32) * 100.0)
+            "NPU LayerNorm (WGSL) complete: {} features, sparsity {:.1}% → {:.1}%",
+            n,
+            input_sparsity * 100.0,
+            output_sparsity * 100.0
         );
-    }
-
-    Ok(output)
+        if output_sparsity > 0.3 {
+            let _events = codec.encode(&output);
+        }
+        Ok(output)
+    })
 }
 
 /// NPU-accelerated RMSNorm (Root Mean Square Normalization)

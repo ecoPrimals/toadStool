@@ -70,17 +70,21 @@ pub fn discover_from_environment(capability_category: &str) -> Option<String> {
 pub fn discover_from_config(capability_category: &str) -> Option<String> {
     use etcetera::{choose_base_strategy, BaseStrategy};
 
-    // Try multiple config locations
+    // Try multiple config locations (user home first, system config last-resort fallback)
     let config_paths = if let Ok(strategy) = choose_base_strategy() {
         vec![
             Some(strategy.home_dir().join(".toadstool/services.toml")),
             Some(std::path::PathBuf::from(".toadstool/config.toml")),
-            Some(std::path::PathBuf::from("/etc/toadstool/services.toml")),
+            Some(std::path::PathBuf::from(
+                crate::ecosystem::constants::paths::SYSTEM_SERVICES_CONFIG,
+            )),
         ]
     } else {
         vec![
             Some(std::path::PathBuf::from(".toadstool/config.toml")),
-            Some(std::path::PathBuf::from("/etc/toadstool/services.toml")),
+            Some(std::path::PathBuf::from(
+                crate::ecosystem::constants::paths::SYSTEM_SERVICES_CONFIG,
+            )),
         ]
     };
 

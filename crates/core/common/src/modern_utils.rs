@@ -11,7 +11,7 @@ use std::time::Duration;
 pub type UtilResult<T> = Result<T, UtilError>;
 
 /// Utility error types
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum UtilError {
     #[error("Operation timeout after {0:?}")]
     Timeout(Duration),
@@ -283,7 +283,7 @@ pub fn normalize(value: f64, min: f64, max: f64) -> UtilResult<f64> {
 #[must_use]
 pub fn lerp(start: f64, end: f64, t: f64) -> f64 {
     let clamped_t = t.clamp(0.0, 1.0);
-    start + (end - start) * clamped_t
+    (end - start).mul_add(clamped_t, start)
 }
 
 /// Check if a value is within a range (inclusive)
@@ -308,20 +308,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_with_timeout_success() {
-        let result = with_timeout(Duration::from_secs(1), async {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        })
-        .await;
+        let result = with_timeout(Duration::from_secs(1), async {}).await;
 
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_with_timeout_failure() {
-        let result = with_timeout(Duration::from_millis(10), async {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        })
-        .await;
+        let result = with_timeout(Duration::from_millis(10), std::future::pending::<()>()).await;
 
         assert!(result.is_err());
     }
@@ -471,10 +465,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_with_timeout_returns_timeout_error() {
-        let result = with_timeout(Duration::from_millis(10), async {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        })
-        .await;
+        let result = with_timeout(Duration::from_millis(10), std::future::pending::<()>()).await;
 
         assert!(matches!(result, Err(UtilError::Timeout(_))));
     }

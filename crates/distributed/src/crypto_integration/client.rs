@@ -280,7 +280,7 @@ impl CryptoServiceClient {
 
         Ok(result
             .get("healthy")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false))
     }
 }
@@ -314,7 +314,10 @@ mod tests {
                 name: "local-crypto".to_string(),
                 version: "1.0.0".to_string(),
                 capabilities: vec![Capability::Crypto(CryptoCapability::Encryption)],
-                endpoints: vec![ServiceEndpoint::http("127.0.0.1", 8080)],
+                endpoints: vec![ServiceEndpoint::http(
+                    toadstool_common::constants::network::LOCALHOST_IPV4,
+                    toadstool_common::constants::network::DEFAULT_HTTP_PORT,
+                )],
                 metadata: Default::default(),
                 discovered_at: std::time::SystemTime::now(),
                 last_seen: std::time::SystemTime::now(),
@@ -325,7 +328,10 @@ mod tests {
                 name: "remote-crypto".to_string(),
                 version: "1.0.0".to_string(),
                 capabilities: vec![Capability::Crypto(CryptoCapability::Encryption)],
-                endpoints: vec![ServiceEndpoint::http("10.0.0.1", 8080)],
+                endpoints: vec![ServiceEndpoint::http(
+                    "10.0.0.1",
+                    toadstool_common::constants::network::DEFAULT_HTTP_PORT,
+                )],
                 metadata: Default::default(),
                 discovered_at: std::time::SystemTime::now(),
                 last_seen: std::time::SystemTime::now(),

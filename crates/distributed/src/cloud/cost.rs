@@ -311,7 +311,7 @@ impl CloudCostOptimizer {
         Ok(CostEstimate {
             line_items,
             total_cost,
-            tier: format!("{:?}", tier),
+            tier: format!("{tier:?}"),
             uses_spot: self.config.spot_instance_preference > 0.0,
             duration_hours,
         })

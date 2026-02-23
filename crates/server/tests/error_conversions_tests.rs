@@ -117,7 +117,7 @@ fn test_conversion_runtime_engine_to_toadstool_error() {
 
     match toadstool_error {
         ToadStoolError::Execution(ExecutionError::EngineUnavailable { engine, reason }) => {
-            assert_eq!(engine, "unknown");
+            assert_eq!(engine, "runtime engine (identifier not available)");
             assert_eq!(reason, "engine error");
         }
         _ => panic!("Expected Execution::EngineUnavailable error"),
@@ -131,7 +131,7 @@ fn test_conversion_resource_exhaustion_to_toadstool_error() {
 
     match toadstool_error {
         ToadStoolError::Resource(ResourceError::AllocationFailure { resource, reason }) => {
-            assert_eq!(resource, "system");
+            assert_eq!(resource, "system resource (type not specified)");
             assert_eq!(reason, "no memory");
         }
         _ => panic!("Expected Resource::AllocationFailure error"),
@@ -158,7 +158,7 @@ fn test_conversion_authorization_to_toadstool_error() {
 
     match toadstool_error {
         ToadStoolError::Security(SecurityError::PermissionDenied { operation, reason }) => {
-            assert_eq!(operation, "server_operation");
+            assert_eq!(operation, "requested operation (not specified)");
             assert_eq!(reason, "no permission");
         }
         _ => panic!("Expected Security::PermissionDenied error"),
@@ -185,7 +185,7 @@ fn test_conversion_network_to_toadstool_error() {
 
     match toadstool_error {
         ToadStoolError::Network(NetworkError::ConnectionFailed { endpoint, reason }) => {
-            assert_eq!(endpoint, "unknown");
+            assert_eq!(endpoint, "connection target (endpoint not specified)");
             assert_eq!(reason, "connection failed");
         }
         _ => panic!("Expected Network::ConnectionFailed error"),
@@ -202,7 +202,7 @@ fn test_conversion_execution_to_toadstool_error() {
             workload_id,
             reason,
         }) => {
-            assert_eq!(workload_id, "unknown");
+            assert_eq!(workload_id, "workload (identifier not available)");
             assert_eq!(reason, "workload crash");
         }
         _ => panic!("Expected Execution::WorkloadFailure error"),

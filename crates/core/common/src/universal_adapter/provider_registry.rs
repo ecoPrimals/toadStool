@@ -30,6 +30,7 @@ struct RegisteredProvider {
 
 impl ProviderRegistry {
     /// Create a new provider registry
+    #[must_use]
     pub fn new() -> Self {
         Self {
             providers: HashMap::new(),
@@ -177,8 +178,8 @@ impl ProviderRegistry {
             }
 
             // For other capability types, just match the variant
-            (CapabilityType::Network { .. }, CapabilityType::Network { .. }) => true,
-            (CapabilityType::Monitoring { .. }, CapabilityType::Monitoring { .. }) => true,
+            (CapabilityType::Network { .. }, CapabilityType::Network { .. })
+            | (CapabilityType::Monitoring { .. }, CapabilityType::Monitoring { .. }) => true,
 
             // Different capability types don't match
             _ => false,
@@ -213,11 +214,13 @@ impl ProviderRegistry {
     }
 
     /// List all available capabilities
+    #[must_use]
     pub fn list_capabilities(&self) -> Vec<CapabilityInfo> {
         self.providers.values().map(|p| p.info.clone()).collect()
     }
 
     /// Get provider by ID
+    #[must_use]
     pub fn get_provider(&self, provider_id: &str) -> Option<&CapabilityInfo> {
         self.providers.get(provider_id).map(|p| &p.info)
     }
@@ -246,6 +249,7 @@ impl ProviderRegistry {
     }
 
     /// Get provider count
+    #[must_use]
     pub fn provider_count(&self) -> usize {
         self.providers.len()
     }

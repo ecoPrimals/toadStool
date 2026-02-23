@@ -7,7 +7,9 @@ use crate::env_config::tests::get_env_lock;
 #[test]
 fn test_config_utils() {
     // ✅ MODERN: Recover from poisoned lock (robust concurrent testing)
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     // Save original environment state
     // ✅ SELF-KNOWLEDGE: Other primals use non-prefixed env vars
@@ -110,7 +112,9 @@ fn test_port_ranges() {
 
 #[test]
 fn test_get_federation_metrics_health_events_ports() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let fed = ConfigUtils::get_federation_port();
     let metrics = ConfigUtils::get_metrics_port();
     let health = ConfigUtils::get_health_port();
@@ -123,7 +127,9 @@ fn test_get_federation_metrics_health_events_ports() {
 
 #[test]
 fn test_get_external_hostname_default() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = env::var("TOADSTOOL_EXTERNAL_HOSTNAME").ok();
     env::remove_var("TOADSTOOL_EXTERNAL_HOSTNAME");
     let host = ConfigUtils::get_external_hostname();
@@ -289,8 +295,7 @@ fn test_get_all_toadstool_env_vars() {
     for k in vars.keys() {
         assert!(
             k.starts_with("TOADSTOOL_"),
-            "key {} should have TOADSTOOL_ prefix",
-            k
+            "key {k} should have TOADSTOOL_ prefix"
         );
     }
 }
@@ -304,7 +309,9 @@ fn test_get_toadstool_endpoint() {
 
 #[test]
 fn test_get_squirrel_port_default() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = env::var("SQUIRREL_PORT").ok();
     env::remove_var("SQUIRREL_PORT");
     let port = ConfigUtils::get_squirrel_port();

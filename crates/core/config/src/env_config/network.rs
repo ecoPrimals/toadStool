@@ -30,7 +30,7 @@ pub struct NetworkEnvConfig {
     pub metrics_port: u16,
     /// Health check port
     pub health_port: u16,
-    /// Port for JSON-RPC event streaming (replaces deprecated WebSocket)
+    /// Port for JSON-RPC event streaming (replaces deprecated `WebSocket`)
     pub events_port: u16,
     /// Bind address
     pub bind_address: String,

@@ -90,14 +90,17 @@ impl NetworkConfig {
     /// Load configuration from environment variables with fallback to defaults
     ///
     /// # Environment Variables
-    /// - `TOADSTOOL_LISTEN_ADDRESS` - IP address to bind to
-    /// - `TOADSTOOL_SERVICE_PORT` - Main service port
-    /// - `TOADSTOOL_API_PORT` - API endpoint port
-    /// - `TOADSTOOL_METRICS_PORT` - Metrics/monitoring port
-    /// - `TOADSTOOL_HEALTH_PORT` - Health check port
-    /// - `TOADSTOOL_DISCOVERY_ENDPOINTS` - Comma-separated discovery endpoints
-    /// - `TOADSTOOL_ENABLE_MDNS` - Enable mDNS (true/false)
-    /// - `TOADSTOOL_BIND_MODE` - Bind mode (localhost/all/specific)
+    ///
+    /// | Variable | Fallback | Description |
+    /// |----------|----------|--------------|
+    /// | `TOADSTOOL_LISTEN_ADDRESS` | `127.0.0.1` | IP address to bind to |
+    /// | `TOADSTOOL_SERVICE_PORT` | `ports::toadstool::SERVER` (8084) | Main service port |
+    /// | `TOADSTOOL_API_PORT` | `ports::toadstool::SERVER` | API endpoint port |
+    /// | `TOADSTOOL_METRICS_PORT` | `ports::toadstool::METRICS` (9090) | Metrics/monitoring port |
+    /// | `TOADSTOOL_HEALTH_PORT` | `ports::toadstool::HEALTH` (8087) | Health check port |
+    /// | `TOADSTOOL_DISCOVERY_ENDPOINTS` | `[]` | Comma-separated discovery endpoints |
+    /// | `TOADSTOOL_ENABLE_MDNS` | `true` | Enable mDNS (true/false) |
+    /// | `TOADSTOOL_BIND_MODE` | `Localhost` | Bind mode (localhost/all/specific) |
     #[must_use]
     pub fn from_env() -> Self {
         Self {
@@ -116,25 +119,25 @@ impl NetworkConfig {
 
     /// Get service socket address
     #[must_use]
-    pub fn service_addr(&self) -> SocketAddr {
+    pub const fn service_addr(&self) -> SocketAddr {
         SocketAddr::new(self.listen_address, self.service_port)
     }
 
     /// Get API socket address
     #[must_use]
-    pub fn api_addr(&self) -> SocketAddr {
+    pub const fn api_addr(&self) -> SocketAddr {
         SocketAddr::new(self.listen_address, self.api_port)
     }
 
     /// Get metrics socket address
     #[must_use]
-    pub fn metrics_addr(&self) -> SocketAddr {
+    pub const fn metrics_addr(&self) -> SocketAddr {
         SocketAddr::new(self.listen_address, self.metrics_port)
     }
 
     /// Get health check socket address
     #[must_use]
-    pub fn health_addr(&self) -> SocketAddr {
+    pub const fn health_addr(&self) -> SocketAddr {
         SocketAddr::new(self.listen_address, self.health_port)
     }
 
@@ -162,7 +165,7 @@ impl NetworkConfig {
 
     /// Create test configuration (random available ports)
     #[must_use]
-    pub fn test() -> Self {
+    pub const fn test() -> Self {
         Self {
             listen_address: IpAddr::V4(Ipv4Addr::LOCALHOST),
             service_port: 0, // OS assigns available port
@@ -193,9 +196,9 @@ fn parse_list_or(value: Option<&str>, default: Vec<String>) -> Vec<String> {
             v.split(',')
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
-                .collect()
+                .collect::<Vec<String>>()
         })
-        .filter(|list: &Vec<String>| !list.is_empty())
+        .and_then(|list| if list.is_empty() { None } else { Some(list) })
         .unwrap_or(default)
 }
 
@@ -220,7 +223,7 @@ pub struct EndpointBuilder {
 impl EndpointBuilder {
     /// Create a new endpoint builder from configuration
     #[must_use]
-    pub fn new(config: NetworkConfig) -> Self {
+    pub const fn new(config: NetworkConfig) -> Self {
         Self { config }
     }
 

@@ -68,7 +68,6 @@ impl BiomeExecutor {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub(super) async fn show_log_file(&self, log_file: &Path, lines: Option<usize>) -> Result<()> {
         let content = fs::read_to_string(log_file).await?;
 
@@ -89,8 +88,6 @@ impl BiomeExecutor {
 
     // Used by commands.rs for 'logs --follow' command
     pub(super) async fn tail_log_file(&self, log_file: &Path, initial_lines: usize) -> Result<()> {
-        use tokio::time::{sleep, Duration};
-
         // Show initial lines
         self.show_log_file(log_file, Some(initial_lines)).await?;
 
@@ -99,11 +96,15 @@ impl BiomeExecutor {
         let mut reader = BufReader::new(file);
         let mut line = String::new();
 
+        // Poll at interval (proper async pattern for tail -f without inotify)
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(100));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
         loop {
             match reader.read_line(&mut line).await {
                 Ok(0) => {
-                    // EOF - wait and retry
-                    sleep(Duration::from_millis(100)).await;
+                    // EOF - wait for next poll tick
+                    interval.tick().await;
                 }
                 Ok(_) => {
                     print!("{}", line);

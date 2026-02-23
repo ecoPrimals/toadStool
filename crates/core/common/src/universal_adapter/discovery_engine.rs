@@ -19,7 +19,7 @@ use super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus, Serv
 use crate::{ToadStoolError, ToadStoolResult};
 
 /// Simplified registry entry for biomeos registry.json.
-/// Deserializes from JSON and converts to CapabilityInfo.
+/// Deserializes from JSON and converts to `CapabilityInfo`.
 #[derive(Debug, Deserialize)]
 struct RegistryServiceEntry {
     #[serde(alias = "provider_id", alias = "id")]
@@ -62,6 +62,7 @@ impl DiscoveryEngine {
     }
 
     /// Create an empty discovery engine (for testing)
+    #[must_use]
     pub fn empty() -> Self {
         Self {
             sources: vec![],
@@ -145,12 +146,14 @@ impl Default for MDnsSource {
 }
 
 impl MDnsSource {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Create with custom browse timeout
-    pub fn with_timeout(secs: u64) -> Self {
+    #[must_use]
+    pub const fn with_timeout(secs: u64) -> Self {
         Self {
             browse_timeout_secs: secs,
         }
@@ -163,7 +166,7 @@ impl MDnsSource {
         host: &str,
         port: u16,
         txt: &HashMap<String, String>,
-    ) -> Option<CapabilityInfo> {
+    ) -> CapabilityInfo {
         // Extract provider_id (or generate from service name)
         let provider_id = txt
             .get("provider_id")
@@ -171,24 +174,18 @@ impl MDnsSource {
             .unwrap_or_else(|| service_name.to_string());
 
         // Extract endpoint (or construct from host:port)
-        let endpoint_str = txt
-            .get("endpoint")
-            .map(String::as_str)
-            .unwrap_or_else(|| "");
+        let endpoint_str = txt.get("endpoint").map_or_else(|| "", String::as_str);
         let endpoint = if endpoint_str.is_empty() {
             // Construct HTTP endpoint from host:port
-            ServiceEndpoint::Http(format!("http://{}:{}", host, port))
+            ServiceEndpoint::Http(format!("http://{host}:{port}"))
         } else if let Ok(ep) = EnvironmentSource::parse_endpoint(endpoint_str) {
             ep
         } else {
-            ServiceEndpoint::Http(format!("http://{}:{}", host, port))
+            ServiceEndpoint::Http(format!("http://{host}:{port}"))
         };
 
         // Extract capability type
-        let capability_str = txt
-            .get("capability")
-            .map(String::as_str)
-            .unwrap_or("coordination");
+        let capability_str = txt.get("capability").map_or("coordination", String::as_str);
         let capability = LocalRegistrySource::capability_from_str(capability_str);
 
         // Build metadata from remaining TXT records
@@ -198,13 +195,13 @@ impl MDnsSource {
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
 
-        Some(CapabilityInfo {
+        CapabilityInfo {
             provider_id,
             capability,
             metadata,
             endpoint,
             health: HealthStatus::Unknown,
-        })
+        }
     }
 }
 
@@ -261,17 +258,15 @@ impl DiscoverySource for MDnsSource {
                         let port = info.get_port();
 
                         // Parse into CapabilityInfo
-                        if let Some(cap_info) =
-                            self.parse_txt_records(info.get_fullname(), &host, port, &txt)
-                        {
-                            tracing::debug!(
-                                "mDNS discovered: {} at {}:{}",
-                                cap_info.provider_id,
-                                host,
-                                port
-                            );
-                            providers.push(cap_info);
-                        }
+                        let cap_info =
+                            self.parse_txt_records(info.get_fullname(), &host, port, &txt);
+                        tracing::debug!(
+                            "mDNS discovered: {} at {}:{}",
+                            cap_info.provider_id,
+                            host,
+                            port
+                        );
+                        providers.push(cap_info);
                     }
                 }
                 Err(e) => {
@@ -292,7 +287,7 @@ impl DiscoverySource for MDnsSource {
         Ok(providers)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "mdns"
     }
 }
@@ -300,8 +295,8 @@ impl DiscoverySource for MDnsSource {
 /// Environment variable-based discovery
 ///
 /// Discovers providers from environment variables:
-/// - TOADSTOOL_SECURITY_PROVIDER=http://localhost:9000
-/// - TOADSTOOL_STORAGE_PROVIDER=unix:///var/run/storage.sock
+/// - `TOADSTOOL_SECURITY_PROVIDER=http://localhost:9000`
+/// - `TOADSTOOL_STORAGE_PROVIDER=unix:///var/run/storage.sock`
 /// - etc.
 #[derive(Default)]
 pub struct EnvironmentSource {
@@ -309,6 +304,7 @@ pub struct EnvironmentSource {
 }
 
 impl EnvironmentSource {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -420,7 +416,7 @@ impl DiscoverySource for EnvironmentSource {
         Ok(providers)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "environment"
     }
 }
@@ -435,6 +431,7 @@ pub struct LocalRegistrySource {
 }
 
 impl LocalRegistrySource {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -481,10 +478,6 @@ impl LocalRegistrySource {
             "storage" => CapabilityType::Storage {
                 features: vec![],
                 min_throughput_mbps: None,
-            },
-            "coordination" => CapabilityType::Coordination {
-                features: vec![],
-                max_latency_ms: None,
             },
             "intelligence" => CapabilityType::Intelligence {
                 features: vec![],
@@ -573,7 +566,7 @@ impl DiscoverySource for LocalRegistrySource {
         }
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "local_registry"
     }
 }
@@ -676,8 +669,7 @@ mod tests {
         #[async_trait::async_trait]
         impl DiscoverySource for SlowSource {
             async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-                tokio::time::sleep(Duration::from_secs(10)).await;
-                Ok(vec![])
+                std::future::pending::<ToadStoolResult<Vec<CapabilityInfo>>>().await
             }
             fn name(&self) -> &str {
                 "slow"
@@ -685,7 +677,7 @@ mod tests {
         }
         let mut engine = DiscoveryEngine::empty();
         engine.add_source(Box::new(SlowSource));
-        // empty() has 1s timeout, slow source sleeps 10s - will timeout
+        // empty() has 1s timeout, slow source never completes - will timeout
         let providers = engine.discover_all().await.unwrap();
         assert_eq!(providers.len(), 0, "Should handle timeout gracefully");
     }
@@ -727,7 +719,8 @@ mod tests {
     #[tokio::test]
     async fn test_environment_discovery() {
         let _guard = ENV_MUTEX.lock().unwrap();
-        std::env::set_var("TOADSTOOL_SECURITY_PROVIDER", "http://localhost:9000");
+        // SAFETY: ENV_MUTEX serializes env-var-modifying tests; no concurrent reads.
+        unsafe { std::env::set_var("TOADSTOOL_SECURITY_PROVIDER", "http://localhost:9000") };
 
         let source = EnvironmentSource::new();
         let providers = source.discover().await.unwrap();
@@ -737,13 +730,15 @@ mod tests {
             "Should find at least one provider from env"
         );
 
-        std::env::remove_var("TOADSTOOL_SECURITY_PROVIDER");
+        // SAFETY: Same as above; restoring env before releasing lock.
+        unsafe { std::env::remove_var("TOADSTOOL_SECURITY_PROVIDER") };
     }
 
     #[tokio::test]
     async fn test_environment_discovery_storage_provider() {
         let _guard = ENV_MUTEX.lock().unwrap();
-        std::env::set_var("TOADSTOOL_STORAGE_PROVIDER", "http://localhost:8083");
+        // SAFETY: ENV_MUTEX serializes env-var-modifying tests; no concurrent reads.
+        unsafe { std::env::set_var("TOADSTOOL_STORAGE_PROVIDER", "http://localhost:8083") };
 
         let source = EnvironmentSource::new();
         let providers = source.discover().await.unwrap();
@@ -752,31 +747,33 @@ mod tests {
             !providers.is_empty(),
             "Should find storage provider from env"
         );
-        std::env::remove_var("TOADSTOOL_STORAGE_PROVIDER");
+        unsafe { std::env::remove_var("TOADSTOOL_STORAGE_PROVIDER") };
     }
 
     #[tokio::test]
     async fn test_environment_discovery_coordination_provider() {
         let _guard = ENV_MUTEX.lock().unwrap();
-        std::env::set_var("TOADSTOOL_COORDINATION_PROVIDER", "tcp://host:1234");
+        // SAFETY: ENV_MUTEX serializes env-var-modifying tests; no concurrent reads.
+        unsafe { std::env::set_var("TOADSTOOL_COORDINATION_PROVIDER", "tcp://host:1234") };
 
         let source = EnvironmentSource::new();
         let providers = source.discover().await.unwrap();
 
         assert!(!providers.is_empty(), "Should find coordination provider");
-        std::env::remove_var("TOADSTOOL_COORDINATION_PROVIDER");
+        unsafe { std::env::remove_var("TOADSTOOL_COORDINATION_PROVIDER") };
     }
 
     #[tokio::test]
     async fn test_environment_discovery_intelligence_provider() {
         let _guard = ENV_MUTEX.lock().unwrap();
-        std::env::set_var("TOADSTOOL_INTELLIGENCE_PROVIDER", "unix:///tmp/ai.sock");
+        // SAFETY: ENV_MUTEX serializes env-var-modifying tests; no concurrent reads.
+        unsafe { std::env::set_var("TOADSTOOL_INTELLIGENCE_PROVIDER", "unix:///tmp/ai.sock") };
 
         let source = EnvironmentSource::new();
         let providers = source.discover().await.unwrap();
 
         assert!(!providers.is_empty(), "Should find intelligence provider");
-        std::env::remove_var("TOADSTOOL_INTELLIGENCE_PROVIDER");
+        unsafe { std::env::remove_var("TOADSTOOL_INTELLIGENCE_PROVIDER") };
     }
 
     #[tokio::test]
@@ -825,15 +822,16 @@ mod tests {
         .unwrap();
 
         let old_xdg = std::env::var("XDG_CONFIG_HOME").ok();
-        std::env::set_var("XDG_CONFIG_HOME", config_dir.to_str().unwrap());
+        // SAFETY: ENV_MUTEX held; no concurrent env reads.
+        unsafe { std::env::set_var("XDG_CONFIG_HOME", config_dir.to_str().unwrap()) };
 
         let source = LocalRegistrySource::new();
         let providers = source.discover().await.unwrap();
 
         if let Some(ref xdg) = old_xdg {
-            std::env::set_var("XDG_CONFIG_HOME", xdg);
+            unsafe { std::env::set_var("XDG_CONFIG_HOME", xdg) };
         } else {
-            std::env::remove_var("XDG_CONFIG_HOME");
+            unsafe { std::env::remove_var("XDG_CONFIG_HOME") };
         }
         std::fs::remove_dir_all(&config_dir).ok();
 
@@ -851,15 +849,16 @@ mod tests {
         std::fs::write(biomeos_dir.join("registry.json"), "not valid json").unwrap();
 
         let old_xdg = std::env::var("XDG_CONFIG_HOME").ok();
-        std::env::set_var("XDG_CONFIG_HOME", config_dir.to_str().unwrap());
+        // SAFETY: ENV_MUTEX held; no concurrent env reads.
+        unsafe { std::env::set_var("XDG_CONFIG_HOME", config_dir.to_str().unwrap()) };
 
         let source = LocalRegistrySource::new();
         let providers = source.discover().await.unwrap();
 
         if let Some(ref xdg) = old_xdg {
-            std::env::set_var("XDG_CONFIG_HOME", xdg);
+            unsafe { std::env::set_var("XDG_CONFIG_HOME", xdg) };
         } else {
-            std::env::remove_var("XDG_CONFIG_HOME");
+            unsafe { std::env::remove_var("XDG_CONFIG_HOME") };
         }
         std::fs::remove_dir_all(&config_dir).ok();
 

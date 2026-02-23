@@ -1,6 +1,6 @@
-//! Event parsing from evdev to InputEvent
+//! Event parsing from evdev to `InputEvent`
 //!
-//! Converts low-level evdev events into typed InputEvent enums for petalTongue.
+//! Converts low-level evdev events into typed `InputEvent` enums for petalTongue.
 //!
 //! ## Deep Debt Compliance
 //!
@@ -30,6 +30,7 @@ pub struct EventParser {
 
 impl EventParser {
     /// Create a new event parser
+    #[must_use]
     pub fn new() -> Self {
         Self {
             modifiers: Modifiers::none(),
@@ -41,16 +42,17 @@ impl EventParser {
     }
 
     /// Set the focused window for event routing
-    pub fn set_focused_window(&mut self, window: Option<WindowId>) {
+    pub const fn set_focused_window(&mut self, window: Option<WindowId>) {
         self.focused_window = window;
     }
 
     /// Get current modifiers (for testing)
-    pub fn modifiers(&self) -> Modifiers {
+    #[must_use]
+    pub const fn modifiers(&self) -> Modifiers {
         self.modifiers
     }
 
-    /// Parse an evdev InputEvent into our InputEvent
+    /// Parse an evdev `InputEvent` into our `InputEvent`
     ///
     /// Returns None if the event should be ignored (e.g., SYN events without updates).
     ///
@@ -100,7 +102,7 @@ impl EventParser {
         // Update modifier state
         self.update_modifiers(key_code, value);
 
-        let key = KeyCode::from_raw(key_code.code() as u32);
+        let key = KeyCode::from_raw(u32::from(key_code.code()));
 
         if value == 1 {
             // Key pressed
@@ -125,7 +127,7 @@ impl EventParser {
     /// Update modifier key state
     ///
     /// **Exposed for testing**
-    pub fn update_modifiers(&mut self, key_code: evdev::KeyCode, value: i32) {
+    pub const fn update_modifiers(&mut self, key_code: evdev::KeyCode, value: i32) {
         let pressed = value != 0;
 
         match key_code {
@@ -146,7 +148,7 @@ impl EventParser {
     }
 
     /// Handle relative axis event (mouse movement)
-    fn handle_relative_axis(
+    const fn handle_relative_axis(
         &mut self,
         axis: evdev::RelativeAxisCode,
         value: i32,
@@ -185,7 +187,7 @@ impl EventParser {
 
     /// Handle absolute axis event (touchscreen/touchpad)
     ///
-    /// **Priority 4 COMPLETE**: Now handles multi-touch (ABS_MT_*)!
+    /// **Priority 4 COMPLETE**: Now handles multi-touch (`ABS_MT`_*)!
     fn handle_absolute_axis(
         &mut self,
         axis: evdev::AbsoluteAxisCode,
@@ -227,7 +229,7 @@ impl EventParser {
         }
     }
 
-    /// Handle synchronization event (SYN_REPORT)
+    /// Handle synchronization event (`SYN_REPORT`)
     ///
     /// **Priority 4**: Finalizes touch updates!
     fn handle_sync(&mut self, window: WindowId) -> Option<Vec<InputEvent>> {
@@ -255,7 +257,7 @@ impl EventParser {
 
     /// Handle mouse button event
     ///
-    /// Note: This is called separately when we detect BTN_LEFT/RIGHT/MIDDLE
+    /// Note: This is called separately when we detect `BTN_LEFT/RIGHT/MIDDLE`
     ///
     /// **Exposed for testing**
     pub fn handle_mouse_button(

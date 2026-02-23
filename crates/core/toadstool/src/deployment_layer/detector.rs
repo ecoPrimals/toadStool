@@ -347,4 +347,52 @@ mod tests {
             std::mem::discriminant(&second)
         );
     }
+
+    #[test]
+    fn test_parse_os_release_extracts_name_and_version() {
+        let detector = LayerDetector::new();
+        let content = r#"NAME="Ubuntu"
+VERSION="22.04 LTS""#;
+        let (name, version) = detector.parse_os_release(content);
+        assert_eq!(name, "Ubuntu");
+        assert_eq!(version, Some("22.04 LTS".to_string()));
+    }
+
+    #[test]
+    fn test_parse_os_release_name_only() {
+        let detector = LayerDetector::new();
+        let content = r#"NAME="Pop!_OS"
+ID=pop"#;
+        let (name, version) = detector.parse_os_release(content);
+        assert_eq!(name, "Pop!_OS");
+        assert_eq!(version, None);
+    }
+
+    #[test]
+    fn test_parse_os_release_empty() {
+        let detector = LayerDetector::new();
+        let (name, version) = detector.parse_os_release("");
+        assert_eq!(name, "");
+        assert_eq!(version, None);
+    }
+
+    #[test]
+    fn test_parse_os_release_version_only() {
+        let detector = LayerDetector::new();
+        let content = r#"VERSION="20.04"
+ID=ubuntu"#;
+        let (name, version) = detector.parse_os_release(content);
+        assert_eq!(name, "");
+        assert_eq!(version, Some("20.04".to_string()));
+    }
+
+    #[test]
+    fn test_parse_os_release_quoted_values() {
+        let detector = LayerDetector::new();
+        let content = r#"NAME="Fedora Linux"
+VERSION="39 (Container Image)""#;
+        let (name, version) = detector.parse_os_release(content);
+        assert_eq!(name, "Fedora Linux");
+        assert_eq!(version, Some("39 (Container Image)".to_string()));
+    }
 }

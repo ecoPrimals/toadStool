@@ -2,19 +2,18 @@
 
 use std::path::PathBuf;
 
-#[allow(deprecated)]
-use crate::interned_strings::primals;
-
 use super::discovery;
 use super::env::SocketPathEnv;
 use super::paths;
 
 /// Get runtime directory for socket files
+#[must_use]
 pub fn get_runtime_dir() -> String {
     paths::resolve_runtime_dir(&SocketPathEnv::from_env())
 }
 
 /// Get biomeos directory path
+#[must_use]
 pub fn get_biomeos_dir() -> PathBuf {
     paths::resolve_biomeos_dir(&SocketPathEnv::from_env())
 }
@@ -33,6 +32,7 @@ pub fn ensure_biomeos_dir() -> std::io::Result<PathBuf> {
 }
 
 /// Get family ID from environment
+#[must_use]
 pub fn get_family_id() -> String {
     paths::resolve_family_id(&SocketPathEnv::from_env())
 }
@@ -41,6 +41,7 @@ pub fn get_family_id() -> String {
     since = "0.2.0",
     note = "Use discover_crypto_socket() for capability-based discovery. See docs for migration."
 )]
+#[must_use]
 pub fn get_beardog_socket_path() -> PathBuf {
     let discovery_result = std::thread::spawn(|| {
         let rt = tokio::runtime::Runtime::new().ok()?;
@@ -59,6 +60,7 @@ pub fn get_beardog_socket_path() -> PathBuf {
     since = "0.2.0",
     note = "Use discover_coordination_socket() for capability-based discovery. See docs for migration."
 )]
+#[must_use]
 pub fn get_songbird_socket_path() -> PathBuf {
     let discovery_result = std::thread::spawn(|| {
         let rt = tokio::runtime::Runtime::new().ok()?;
@@ -77,6 +79,7 @@ pub fn get_songbird_socket_path() -> PathBuf {
     since = "0.2.0",
     note = "Use discover_storage_socket() for capability-based discovery. See docs for migration."
 )]
+#[must_use]
 pub fn get_nestgate_socket_path() -> PathBuf {
     let discovery_result = std::thread::spawn(|| {
         let rt = tokio::runtime::Runtime::new().ok()?;
@@ -92,14 +95,17 @@ pub fn get_nestgate_socket_path() -> PathBuf {
 }
 
 #[allow(deprecated)]
+#[must_use]
 pub fn get_squirrel_socket_path() -> PathBuf {
     paths::resolve_squirrel_socket(&SocketPathEnv::from_env())
 }
 
+#[must_use]
 pub fn get_nucleus_socket_path() -> PathBuf {
     paths::resolve_nucleus_socket(&SocketPathEnv::from_env())
 }
 
+#[must_use]
 pub fn get_toadstool_socket_path() -> PathBuf {
     paths::resolve_toadstool_socket(&SocketPathEnv::from_env())
 }
@@ -107,11 +113,11 @@ pub fn get_toadstool_socket_path() -> PathBuf {
 #[allow(deprecated)]
 pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
     match service_name.to_lowercase().as_str() {
-        s if s == primals::BEARDOG || s == "bear-dog" => get_beardog_socket_path(),
-        s if s == primals::SONGBIRD || s == "song-bird" => get_songbird_socket_path(),
-        s if s == primals::NESTGATE || s == "nest-gate" => get_nestgate_socket_path(),
-        s if s == primals::SQUIRREL => get_squirrel_socket_path(),
-        s if s == primals::TOADSTOOL || s == "toad-stool" => get_toadstool_socket_path(),
+        s if s == "beardog" || s == "bear-dog" => get_beardog_socket_path(),
+        s if s == "songbird" || s == "song-bird" => get_songbird_socket_path(),
+        s if s == "nestgate" || s == "nest-gate" => get_nestgate_socket_path(),
+        s if s == "squirrel" => get_squirrel_socket_path(),
+        s if s == "toadstool" || s == "toad-stool" => get_toadstool_socket_path(),
         "nucleus" | "biomeos" => get_nucleus_socket_path(),
         _ => {
             let env = SocketPathEnv::from_env();

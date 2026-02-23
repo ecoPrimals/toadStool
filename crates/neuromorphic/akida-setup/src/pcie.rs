@@ -1,4 +1,4 @@
-//! PCIe device management
+//! `PCIe` device management
 
 use anyhow::{bail, Context, Result};
 use std::fs;
@@ -6,10 +6,11 @@ use std::path::Path;
 use std::process::Command;
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct AkidaDevice {
     pub pcie_address: String,
+    #[allow(dead_code)] // Stored for diagnostics/filtering
     pub vendor_id: String,
+    #[allow(dead_code)] // Stored for diagnostics/filtering
     pub device_id: String,
 }
 
@@ -32,7 +33,7 @@ pub fn discover_akida_devices() -> Result<Vec<AkidaDevice>> {
         // Parse: "a1:00.0 Co-processor: Brainchip..."
         if let Some(pcie_addr) = line.split_whitespace().next() {
             devices.push(AkidaDevice {
-                pcie_address: format!("0000:{}", pcie_addr),
+                pcie_address: format!("0000:{pcie_addr}"),
                 vendor_id: "1e7c".to_string(),
                 device_id: "bca1".to_string(),
             });
@@ -42,9 +43,9 @@ pub fn discover_akida_devices() -> Result<Vec<AkidaDevice>> {
     Ok(devices)
 }
 
-/// Enable PCIe device via sysfs
+/// Enable `PCIe` device via sysfs
 pub fn enable_pcie_device(pcie_address: &str) -> Result<()> {
-    let enable_path = format!("/sys/bus/pci/devices/{}/enable", pcie_address);
+    let enable_path = format!("/sys/bus/pci/devices/{pcie_address}/enable");
 
     // Check if already enabled
     if let Ok(content) = fs::read_to_string(&enable_path) {
@@ -56,12 +57,12 @@ pub fn enable_pcie_device(pcie_address: &str) -> Result<()> {
 
     // Enable device
     fs::write(&enable_path, "1")
-        .with_context(|| format!("Failed to enable device {}", pcie_address))?;
+        .with_context(|| format!("Failed to enable device {pcie_address}"))?;
 
     // Verify
     let enabled = fs::read_to_string(&enable_path)?;
     if enabled.trim() != "1" {
-        bail!("Failed to enable device {}", pcie_address);
+        bail!("Failed to enable device {pcie_address}");
     }
 
     Ok(())
@@ -72,7 +73,7 @@ pub fn load_kernel_module(module_path: &str) -> Result<()> {
     let path = Path::new(module_path);
 
     if !path.exists() {
-        bail!("Kernel module not found: {}", module_path);
+        bail!("Kernel module not found: {module_path}");
     }
 
     // Check if already loaded
@@ -99,7 +100,7 @@ pub fn load_kernel_module(module_path: &str) -> Result<()> {
     Ok(())
 }
 
-/// Check if akida_pcie module is loaded
+/// Check if `akida_pcie` module is loaded
 pub fn is_module_loaded() -> Result<bool> {
     let output = Command::new("lsmod")
         .output()

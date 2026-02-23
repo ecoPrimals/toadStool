@@ -5,16 +5,13 @@
 
 use std::path::Path;
 
-/// Test SetupConfig default values
+/// Test `SetupConfig` default values
 #[test]
 fn test_setup_config_default() {
     // Note: Can't import from binary crate directly, so we test the expected behavior
     // This verifies the default module path structure
     let home = std::env::var("HOME").unwrap_or_default();
-    let expected_module_path = format!(
-        "{}/Development/ecoPrimals/akida_dw_edma/akida-pcie.ko",
-        home
-    );
+    let expected_module_path = format!("{home}/Development/ecoPrimals/akida_dw_edma/akida-pcie.ko");
 
     assert!(!home.is_empty(), "HOME should be set");
     // Verify path format is correct (even if file doesn't exist)
@@ -46,7 +43,7 @@ SUBSYSTEM=="pci", ATTR{vendor}=="0x1e7c", ATTR{device}=="0xbca1", \
     assert!(rules_content.contains("SUBSYSTEM==\"pci\""));
 }
 
-/// Test PCIe address format validation
+/// Test `PCIe` address format validation
 #[test]
 fn test_pcie_address_format() {
     // Valid PCIe addresses
@@ -84,8 +81,8 @@ fn test_pcie_address_format() {
 #[test]
 fn test_sysfs_path_construction() {
     let pcie_address = "0000:a1:00.0";
-    let expected_enable_path = format!("/sys/bus/pci/devices/{}/enable", pcie_address);
-    let expected_resource_path = format!("/sys/bus/pci/devices/{}/resource0", pcie_address);
+    let expected_enable_path = format!("/sys/bus/pci/devices/{pcie_address}/enable");
+    let expected_resource_path = format!("/sys/bus/pci/devices/{pcie_address}/resource0");
 
     assert_eq!(
         expected_enable_path,
@@ -141,7 +138,7 @@ fn test_akida_pci_ids() {
     assert!(device_id.chars().all(|c| c.is_ascii_hexdigit()));
 
     // lspci format
-    let lspci_id = format!("{}:{}", vendor_id, device_id);
+    let lspci_id = format!("{vendor_id}:{device_id}");
     assert_eq!(lspci_id, "1e7c:bca1");
 }
 
@@ -171,7 +168,7 @@ fn test_lspci_output_parsing() {
     assert_eq!(pcie_addr, "a1:00.0");
 
     // Full address with domain
-    let full_addr = format!("0000:{}", pcie_addr);
+    let full_addr = format!("0000:{pcie_addr}");
     assert_eq!(full_addr, "0000:a1:00.0");
 }
 
@@ -188,7 +185,7 @@ a2:00.0 Co-processor: Brainchip Inc. Device bca1
         .filter_map(|line| {
             line.split_whitespace()
                 .next()
-                .map(|addr| format!("0000:{}", addr))
+                .map(|addr| format!("0000:{addr}"))
         })
         .collect();
 

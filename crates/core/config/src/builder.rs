@@ -90,7 +90,7 @@ pub trait ToadStoolConfigTrait: Serialize + for<'de> Deserialize<'de> + Default 
 /// Profiler configuration
 ///
 /// **Deep Debt**: No hardcoded values, all runtime configurable
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProfilerConfig {
     /// Number of warmup iterations
     pub warmup_iterations: usize,
@@ -111,7 +111,7 @@ pub struct ProfilerConfig {
     pub output_format: OutputFormat,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum OutputFormat {
     Json,
@@ -185,7 +185,8 @@ impl ToadStoolConfigTrait for ProfilerConfig {
 
 impl ProfilerConfig {
     /// Quick configuration for fast benchmarks
-    pub fn quick() -> Self {
+    #[must_use]
+    pub const fn quick() -> Self {
         Self {
             warmup_iterations: 5,
             benchmark_iterations: 50,
@@ -197,7 +198,8 @@ impl ProfilerConfig {
     }
 
     /// Thorough configuration for comprehensive benchmarks
-    pub fn thorough() -> Self {
+    #[must_use]
+    pub const fn thorough() -> Self {
         Self {
             warmup_iterations: 20,
             benchmark_iterations: 500,
@@ -209,7 +211,8 @@ impl ProfilerConfig {
     }
 
     /// Production configuration for real-world benchmarks
-    pub fn production() -> Self {
+    #[must_use]
+    pub const fn production() -> Self {
         Self {
             warmup_iterations: 10,
             benchmark_iterations: 1000,
@@ -229,48 +232,57 @@ pub struct ProfilerConfigBuilder {
 }
 
 impl ProfilerConfigBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: ProfilerConfig::default(),
         }
     }
 
-    pub fn warmup_iterations(mut self, n: usize) -> Self {
+    #[must_use]
+    pub const fn warmup_iterations(mut self, n: usize) -> Self {
         self.config.warmup_iterations = n;
         self
     }
 
-    pub fn benchmark_iterations(mut self, n: usize) -> Self {
+    #[must_use]
+    pub const fn benchmark_iterations(mut self, n: usize) -> Self {
         self.config.benchmark_iterations = n;
         self
     }
 
-    pub fn timeout_ms(mut self, ms: u64) -> Self {
+    #[must_use]
+    pub const fn timeout_ms(mut self, ms: u64) -> Self {
         self.config.timeout_ms = Some(ms);
         self
     }
 
-    pub fn no_timeout(mut self) -> Self {
+    #[must_use]
+    pub const fn no_timeout(mut self) -> Self {
         self.config.timeout_ms = None;
         self
     }
 
-    pub fn parallel(mut self) -> Self {
+    #[must_use]
+    pub const fn parallel(mut self) -> Self {
         self.config.parallel = true;
         self
     }
 
-    pub fn sequential(mut self) -> Self {
+    #[must_use]
+    pub const fn sequential(mut self) -> Self {
         self.config.parallel = false;
         self
     }
 
-    pub fn detailed_metrics(mut self) -> Self {
+    #[must_use]
+    pub const fn detailed_metrics(mut self) -> Self {
         self.config.detailed_metrics = true;
         self
     }
 
-    pub fn output_format(mut self, format: OutputFormat) -> Self {
+    #[must_use]
+    pub const fn output_format(mut self, format: OutputFormat) -> Self {
         self.config.output_format = format;
         self
     }
@@ -280,7 +292,8 @@ impl ProfilerConfigBuilder {
         Ok(self.config)
     }
 
-    pub fn build_unchecked(self) -> ProfilerConfig {
+    #[must_use]
+    pub const fn build_unchecked(self) -> ProfilerConfig {
         self.config
     }
 }
@@ -316,7 +329,7 @@ pub struct SubstrateConfig {
     pub auto_discover: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SubstratePreference {
     Auto,
@@ -324,7 +337,7 @@ pub enum SubstratePreference {
     ByCapability(Vec<String>),
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SubstrateType {
     Cpu,
@@ -333,7 +346,7 @@ pub enum SubstrateType {
     Tpu,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum PerformanceTarget {
     Latency,    // Minimize latency
@@ -358,17 +371,18 @@ impl ToadStoolConfigTrait for SubstrateConfig {
     fn from_env() -> Result<Self> {
         use std::env;
 
-        let preferred = env::var("TOADSTOOL_SUBSTRATE_PREFERRED")
-            .ok()
-            .map(|s| match s.to_lowercase().as_str() {
-                "auto" => SubstratePreference::Auto,
-                "cpu" => SubstratePreference::Specific(SubstrateType::Cpu),
-                "gpu" => SubstratePreference::Specific(SubstrateType::Gpu),
-                "npu" => SubstratePreference::Specific(SubstrateType::Npu),
-                "tpu" => SubstratePreference::Specific(SubstrateType::Tpu),
-                _ => SubstratePreference::Auto,
-            })
-            .unwrap_or(SubstratePreference::Auto);
+        let preferred =
+            env::var("TOADSTOOL_SUBSTRATE_PREFERRED")
+                .ok()
+                .map_or(SubstratePreference::Auto, |s| {
+                    match s.to_lowercase().as_str() {
+                        "cpu" => SubstratePreference::Specific(SubstrateType::Cpu),
+                        "gpu" => SubstratePreference::Specific(SubstrateType::Gpu),
+                        "npu" => SubstratePreference::Specific(SubstrateType::Npu),
+                        "tpu" => SubstratePreference::Specific(SubstrateType::Tpu),
+                        "auto" | _ => SubstratePreference::Auto,
+                    }
+                });
 
         Ok(Self {
             preferred,
@@ -376,15 +390,15 @@ impl ToadStoolConfigTrait for SubstrateConfig {
             power_budget_watts: env::var("TOADSTOOL_POWER_BUDGET")
                 .ok()
                 .and_then(|s| s.parse().ok()),
-            performance_target: env::var("TOADSTOOL_PERFORMANCE_TARGET")
-                .ok()
-                .map(|s| match s.to_lowercase().as_str() {
+            performance_target: env::var("TOADSTOOL_PERFORMANCE_TARGET").ok().map_or(
+                PerformanceTarget::Balanced,
+                |s| match s.to_lowercase().as_str() {
                     "latency" => PerformanceTarget::Latency,
                     "throughput" => PerformanceTarget::Throughput,
                     "energy" => PerformanceTarget::Energy,
                     _ => PerformanceTarget::Balanced,
-                })
-                .unwrap_or(PerformanceTarget::Balanced),
+                },
+            ),
             auto_discover: env::var("TOADSTOOL_AUTO_DISCOVER")
                 .map(|s| s != "false" && s != "0")
                 .unwrap_or(true),
@@ -394,6 +408,7 @@ impl ToadStoolConfigTrait for SubstrateConfig {
 
 impl SubstrateConfig {
     /// Edge deployment preset (power-constrained)
+    #[must_use]
     pub fn edge() -> Self {
         Self {
             preferred: SubstratePreference::Auto,
@@ -405,6 +420,7 @@ impl SubstrateConfig {
     }
 
     /// Server deployment preset (performance-focused)
+    #[must_use]
     pub fn server() -> Self {
         Self {
             preferred: SubstratePreference::Auto,
@@ -422,52 +438,62 @@ pub struct SubstrateConfigBuilder {
 }
 
 impl SubstrateConfigBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: SubstrateConfig::default(),
         }
     }
 
+    #[must_use]
     pub fn prefer_auto(mut self) -> Self {
         self.config.preferred = SubstratePreference::Auto;
         self
     }
 
+    #[must_use]
     pub fn prefer_cpu(mut self) -> Self {
         self.config.preferred = SubstratePreference::Specific(SubstrateType::Cpu);
         self
     }
 
+    #[must_use]
     pub fn prefer_gpu(mut self) -> Self {
         self.config.preferred = SubstratePreference::Specific(SubstrateType::Gpu);
         self
     }
 
+    #[must_use]
     pub fn prefer_npu(mut self) -> Self {
         self.config.preferred = SubstratePreference::Specific(SubstrateType::Npu);
         self
     }
 
-    pub fn power_budget_watts(mut self, watts: f64) -> Self {
+    #[must_use]
+    pub const fn power_budget_watts(mut self, watts: f64) -> Self {
         self.config.power_budget_watts = Some(watts);
         self
     }
 
-    pub fn target_latency(mut self) -> Self {
+    #[must_use]
+    pub const fn target_latency(mut self) -> Self {
         self.config.performance_target = PerformanceTarget::Latency;
         self
     }
 
-    pub fn target_throughput(mut self) -> Self {
+    #[must_use]
+    pub const fn target_throughput(mut self) -> Self {
         self.config.performance_target = PerformanceTarget::Throughput;
         self
     }
 
-    pub fn target_energy(mut self) -> Self {
+    #[must_use]
+    pub const fn target_energy(mut self) -> Self {
         self.config.performance_target = PerformanceTarget::Energy;
         self
     }
 
+    #[must_use]
     pub fn build(self) -> SubstrateConfig {
         self.config
     }
@@ -658,13 +684,13 @@ mod tests {
     fn test_profiler_config_from_file() {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("profiler.toml");
-        let contents = r##"warmup_iterations = 3
+        let contents = r#"warmup_iterations = 3
 benchmark_iterations = 30
 timeout_ms = 5000
 parallel = false
 detailed_metrics = false
 output_format = "json"
-"##;
+"#;
         std::fs::write(&path, contents).expect("write toml");
         let config = ProfilerConfig::from_file(&path).expect("load from file");
         assert_eq!(config.warmup_iterations, 3);
@@ -680,7 +706,7 @@ output_format = "json"
         config.to_file(&path).expect("write toml");
         let contents = std::fs::read_to_string(&path).expect("read file");
         assert!(contents.contains("warmup_iterations"));
-        assert!(contents.contains("5"));
+        assert!(contents.contains('5'));
     }
 
     #[test]

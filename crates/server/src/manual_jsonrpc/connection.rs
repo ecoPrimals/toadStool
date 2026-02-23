@@ -8,40 +8,47 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{error, info, warn};
 
+use crate::errors::{ServerError, ServerResult};
+
 use super::JSONRPC_VERSION;
 use super::{JsonRpcError, JsonRpcErrorResponse, JsonRpcRequest, ManualJsonRpcServer, PARSE_ERROR};
 
 impl ManualJsonRpcServer {
     /// Start server on Unix socket
-    pub async fn serve(
-        self,
-        socket_path: PathBuf,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn serve(self, socket_path: PathBuf) -> ServerResult<()> {
         info!(
             "Starting manual JSON-RPC 2.0 server on Unix socket: {:?}",
             socket_path
         );
 
         if let Some(parent) = socket_path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .map_err(|e| format!("Failed to create socket directory {:?}: {}", parent, e))?;
+            tokio::fs::create_dir_all(parent).await.map_err(|e| {
+                ServerError::Initialization(format!(
+                    "Failed to create socket directory {parent:?}: {e}"
+                ))
+            })?;
             info!("Ensured JSON-RPC socket directory exists: {:?}", parent);
         }
 
         if socket_path.exists() {
             warn!("Removing old JSON-RPC socket: {:?}", socket_path);
-            tokio::fs::remove_file(&socket_path).await?;
+            tokio::fs::remove_file(&socket_path)
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
         }
 
-        let listener = UnixListener::bind(&socket_path)?;
+        let listener =
+            UnixListener::bind(&socket_path).map_err(|e| ServerError::Network(e.to_string()))?;
 
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = std::fs::metadata(&socket_path)?.permissions();
+            let mut perms = std::fs::metadata(&socket_path)
+                .map_err(|e| ServerError::Internal(e.to_string()))?
+                .permissions();
             perms.set_mode(0o600);
-            std::fs::set_permissions(&socket_path, perms)?;
+            std::fs::set_permissions(&socket_path, perms)
+                .map_err(|e| ServerError::Internal(e.to_string()))?;
             info!("Set JSON-RPC socket permissions to 0600");
         }
 
@@ -68,11 +75,10 @@ impl ManualJsonRpcServer {
     }
 
     /// Start server on TCP listener (isomorphic fallback)
-    pub async fn serve_tcp(
-        self,
-        listener: tokio::net::TcpListener,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let local_addr = listener.local_addr()?;
+    pub async fn serve_tcp(self, listener: tokio::net::TcpListener) -> ServerResult<()> {
+        let local_addr = listener
+            .local_addr()
+            .map_err(|e| ServerError::Network(e.to_string()))?;
         info!(
             "✅ Manual JSON-RPC 2.0 server listening on TCP: {}",
             local_addr
@@ -96,15 +102,15 @@ impl ManualJsonRpcServer {
     }
 
     /// Handle a single TCP connection
-    async fn handle_tcp_connection(
-        &self,
-        stream: tokio::net::TcpStream,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn handle_tcp_connection(&self, stream: tokio::net::TcpStream) -> ServerResult<()> {
         let (reader, mut writer) = stream.into_split();
         let mut reader = BufReader::new(reader);
 
         let mut first_line = String::new();
-        reader.read_line(&mut first_line).await?;
+        reader
+            .read_line(&mut first_line)
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
 
         let (request_result, is_http) = if first_line.starts_with("POST")
             || first_line.starts_with("GET")
@@ -122,7 +128,7 @@ impl ManualJsonRpcServer {
         let response_body = match request_result {
             Ok(request) => {
                 let response = self.handle_jsonrpc_request(request).await;
-                serde_json::to_vec(&response)?
+                serde_json::to_vec(&response).map_err(|e| ServerError::Internal(e.to_string()))?
             }
             Err(e) => {
                 self.error_count.fetch_add(1, Ordering::Relaxed);
@@ -130,12 +136,13 @@ impl ManualJsonRpcServer {
                     jsonrpc: JSONRPC_VERSION.clone(),
                     error: JsonRpcError {
                         code: PARSE_ERROR,
-                        message: std::borrow::Cow::Owned(format!("Parse error: {}", e)),
+                        message: std::borrow::Cow::Owned(format!("Parse error: {e}")),
                         data: None,
                     },
                     id: None,
                 };
-                serde_json::to_vec(&error_response)?
+                serde_json::to_vec(&error_response)
+                    .map_err(|e| ServerError::Internal(e.to_string()))?
             }
         };
 
@@ -143,9 +150,18 @@ impl ManualJsonRpcServer {
             self.write_http_response_tcp(&mut writer, &response_body)
                 .await?;
         } else {
-            writer.write_all(&response_body).await?;
-            writer.write_all(b"\n").await?;
-            writer.flush().await?;
+            writer
+                .write_all(&response_body)
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
+            writer
+                .write_all(b"\n")
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
+            writer
+                .flush()
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
         }
 
         Ok(())
@@ -154,13 +170,16 @@ impl ManualJsonRpcServer {
     async fn read_http_request_continuation_tcp(
         &self,
         reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
-    ) -> Result<(HashMap<String, String>, Vec<u8>), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> ServerResult<(HashMap<String, String>, Vec<u8>)> {
         let mut headers = HashMap::new();
         let mut line = String::new();
 
         loop {
             line.clear();
-            let n = reader.read_line(&mut line).await?;
+            let n = reader
+                .read_line(&mut line)
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
             if n == 0 || line == "\r\n" || line == "\n" {
                 break;
             }
@@ -175,7 +194,9 @@ impl ManualJsonRpcServer {
             .unwrap_or(0);
 
         let mut body = vec![0u8; content_length];
-        tokio::io::AsyncReadExt::read_exact(reader, &mut body).await?;
+        tokio::io::AsyncReadExt::read_exact(reader, &mut body)
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
 
         Ok((headers, body))
     }
@@ -184,7 +205,7 @@ impl ManualJsonRpcServer {
         &self,
         writer: &mut tokio::net::tcp::OwnedWriteHalf,
         body: &[u8],
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> ServerResult<()> {
         let header = format!(
             "HTTP/1.1 200 OK\r\n\
              Content-Type: application/json\r\n\
@@ -193,22 +214,31 @@ impl ManualJsonRpcServer {
              \r\n",
             body.len()
         );
-        writer.write_all(header.as_bytes()).await?;
-        writer.write_all(body).await?;
-        writer.flush().await?;
+        writer
+            .write_all(header.as_bytes())
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
+        writer
+            .write_all(body)
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
+        writer
+            .flush()
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
         Ok(())
     }
 
     /// Handle a single Unix socket connection
-    async fn handle_connection(
-        &self,
-        stream: UnixStream,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn handle_connection(&self, stream: UnixStream) -> ServerResult<()> {
         let (reader, mut writer) = stream.into_split();
         let mut reader = BufReader::new(reader);
 
         let mut first_line = String::new();
-        reader.read_line(&mut first_line).await?;
+        reader
+            .read_line(&mut first_line)
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
 
         let (request_result, is_http) = if first_line.starts_with("POST")
             || first_line.starts_with("GET")
@@ -226,7 +256,7 @@ impl ManualJsonRpcServer {
         let response_body = match request_result {
             Ok(request) => {
                 let response = self.handle_jsonrpc_request(request).await;
-                serde_json::to_vec(&response)?
+                serde_json::to_vec(&response).map_err(|e| ServerError::Internal(e.to_string()))?
             }
             Err(e) => {
                 self.error_count.fetch_add(1, Ordering::Relaxed);
@@ -234,12 +264,13 @@ impl ManualJsonRpcServer {
                     jsonrpc: JSONRPC_VERSION.clone(),
                     error: JsonRpcError {
                         code: PARSE_ERROR,
-                        message: std::borrow::Cow::Owned(format!("Parse error: {}", e)),
+                        message: std::borrow::Cow::Owned(format!("Parse error: {e}")),
                         data: None,
                     },
                     id: None,
                 };
-                serde_json::to_vec(&error_response)?
+                serde_json::to_vec(&error_response)
+                    .map_err(|e| ServerError::Internal(e.to_string()))?
             }
         };
 
@@ -247,9 +278,18 @@ impl ManualJsonRpcServer {
             self.write_http_response(&mut writer, &response_body)
                 .await?;
         } else {
-            writer.write_all(&response_body).await?;
-            writer.write_all(b"\n").await?;
-            writer.flush().await?;
+            writer
+                .write_all(&response_body)
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
+            writer
+                .write_all(b"\n")
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
+            writer
+                .flush()
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
         }
 
         Ok(())
@@ -258,13 +298,16 @@ impl ManualJsonRpcServer {
     async fn read_http_request_continuation(
         &self,
         reader: &mut BufReader<tokio::net::unix::OwnedReadHalf>,
-    ) -> Result<(HashMap<String, String>, Vec<u8>), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> ServerResult<(HashMap<String, String>, Vec<u8>)> {
         let mut headers = HashMap::new();
         let mut line = String::new();
 
         loop {
             line.clear();
-            let n = reader.read_line(&mut line).await?;
+            let n = reader
+                .read_line(&mut line)
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
             if n == 0 || line == "\r\n" || line == "\n" {
                 break;
             }
@@ -279,7 +322,9 @@ impl ManualJsonRpcServer {
             .unwrap_or(0);
 
         let mut body = vec![0u8; content_length];
-        tokio::io::AsyncReadExt::read_exact(reader, &mut body).await?;
+        tokio::io::AsyncReadExt::read_exact(reader, &mut body)
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
 
         Ok((headers, body))
     }
@@ -288,7 +333,7 @@ impl ManualJsonRpcServer {
         &self,
         writer: &mut tokio::net::unix::OwnedWriteHalf,
         body: &[u8],
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> ServerResult<()> {
         let header = format!(
             "HTTP/1.1 200 OK\r\n\
              Content-Type: application/json\r\n\
@@ -297,9 +342,18 @@ impl ManualJsonRpcServer {
              \r\n",
             body.len()
         );
-        writer.write_all(header.as_bytes()).await?;
-        writer.write_all(body).await?;
-        writer.flush().await?;
+        writer
+            .write_all(header.as_bytes())
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
+        writer
+            .write_all(body)
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
+        writer
+            .flush()
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
         Ok(())
     }
 }

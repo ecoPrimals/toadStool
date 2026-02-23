@@ -149,7 +149,7 @@ impl ConfigUtils {
         loader.get_u16("HEALTH_PORT", config.network.health_port)
     }
 
-    /// Get events port from environment or default (JSON-RPC event streaming; replaces deprecated WebSocket)
+    /// Get events port from environment or default (JSON-RPC event streaming; replaces deprecated `WebSocket`)
     #[must_use]
     pub fn get_events_port() -> u16 {
         let config = crate::env_config::EnvironmentConfig::from_env();

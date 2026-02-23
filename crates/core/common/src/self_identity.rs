@@ -105,19 +105,19 @@ impl SelfIdentity {
 
     /// Get all capabilities this instance provides
     #[must_use]
-    pub fn capabilities(&self) -> &HashSet<String> {
+    pub const fn capabilities(&self) -> &HashSet<String> {
         &self.capabilities
     }
 
     /// Get version
     #[must_use]
-    pub fn version(&self) -> &semver::Version {
+    pub const fn version(&self) -> &semver::Version {
         &self.version
     }
 
     /// Get metadata
     #[must_use]
-    pub fn metadata(&self) -> &std::collections::HashMap<String, String> {
+    pub const fn metadata(&self) -> &std::collections::HashMap<String, String> {
         &self.metadata
     }
 

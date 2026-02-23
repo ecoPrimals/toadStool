@@ -75,11 +75,7 @@ fn test_backend_inference_parity() {
         let diff = (k - u).abs();
         assert!(
             diff < 1e-5,
-            "Output mismatch at index {}: kernel={}, userspace={}, diff={}",
-            i,
-            k,
-            u,
-            diff
+            "Output mismatch at index {i}: kernel={k}, userspace={u}, diff={diff}"
         );
     }
 }
@@ -93,7 +89,7 @@ fn test_backend_selection() {
         Ok(backend) => {
             // Should get a valid backend type
             let backend_type = backend.backend_type();
-            println!("Auto selected backend: {:?}", backend_type);
+            println!("Auto selected backend: {backend_type:?}");
         }
         Err(_) => {
             // OK if no hardware present

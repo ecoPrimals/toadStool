@@ -1,6 +1,6 @@
-//! Pure Rust NeuroBench Harness
+//! Pure Rust `NeuroBench` Harness
 //!
-//! This crate provides a Rust implementation of NeuroBench benchmark suites
+//! This crate provides a Rust implementation of `NeuroBench` benchmark suites
 //! for neuromorphic hardware evaluation. It interfaces with the Akida NPU
 //! through the akida-driver crate.
 //!

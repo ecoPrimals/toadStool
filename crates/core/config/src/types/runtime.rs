@@ -5,7 +5,7 @@
 //! - Resource limits (CPU, memory, disk, network)
 //! - Container runtime (Docker/Podman)
 //! - WASM runtime (Wasmtime/WASI)
-//! - Python runtime (PyO3)
+//! - Python runtime (`PyO3`)
 //! - GPU compute (CUDA/OpenCL)
 
 use serde::{Deserialize, Serialize};
@@ -173,7 +173,7 @@ impl Default for WasmConfig {
 
 /// Python runtime configuration
 ///
-/// Settings for Python code execution via PyO3.
+/// Settings for Python code execution via `PyO3`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PythonConfig {
     /// Python executable path
@@ -182,7 +182,7 @@ pub struct PythonConfig {
     /// Virtual environment path (optional)
     pub venv_path: Option<String>,
 
-    /// Package index URL (PyPI)
+    /// Package index URL (`PyPI`)
     pub index_url: String,
 
     /// Maximum memory size in bytes

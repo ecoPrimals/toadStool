@@ -1,4 +1,4 @@
-//! Integration tests for SecurityMonitor
+//! Integration tests for `SecurityMonitor`
 //!
 //! Covers recording, querying, capacity bounds, concurrency, resource sampling,
 //! and correlation ID tracking.

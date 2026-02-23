@@ -1,6 +1,6 @@
-//! Data loading utilities for NeuroBench
+//! Data loading utilities for `NeuroBench`
 //!
-//! Handles loading benchmark datasets from standard NeuroBench formats.
+//! Handles loading benchmark datasets from standard `NeuroBench` formats.
 //!
 //! ## Supported Formats
 //!
@@ -28,12 +28,14 @@ pub struct Sample {
 
 impl Sample {
     /// Create sample with f32 input (will be converted to bytes)
+    #[must_use]
     pub fn from_f32(data: &[f32], label: usize, id: Option<String>) -> Self {
         let input: Vec<u8> = data.iter().flat_map(|f| f.to_le_bytes()).collect();
         Self { input, label, id }
     }
 
     /// Get input as f32 slice
+    #[must_use]
     pub fn as_f32(&self) -> Vec<f32> {
         self.input
             .chunks_exact(4)
@@ -67,8 +69,8 @@ pub enum DatasetSplit {
 impl Dataset {
     /// Load dataset from directory
     ///
-    /// Searches for standard NeuroBench dataset formats:
-    /// - `{benchmark}_test.npy` - NumPy format
+    /// Searches for standard `NeuroBench` dataset formats:
+    /// - `{benchmark}_test.npy` - `NumPy` format
     /// - `{benchmark}_test.csv` - CSV format
     /// - `{benchmark}/test/` - Directory with samples
     pub fn load<P: AsRef<Path>>(benchmark: Benchmark, path: P) -> Result<Self> {
@@ -121,7 +123,7 @@ impl Dataset {
         let label_map = Self::load_label_map(path)?;
 
         for entry in std::fs::read_dir(&test_dir)
-            .map_err(|e| Error::DataLoad(format!("Cannot read test dir: {}", e)))?
+            .map_err(|e| Error::DataLoad(format!("Cannot read test dir: {e}")))?
         {
             let entry = entry.map_err(|e| Error::DataLoad(e.to_string()))?;
             let file_path = entry.path();
@@ -171,7 +173,7 @@ impl Dataset {
         let mut samples = Vec::new();
         let classes: Vec<_> = std::fs::read_dir(&test_dir)
             .map_err(|e| Error::DataLoad(e.to_string()))?
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
             .filter(|e| e.path().is_dir())
             .collect();
 
@@ -181,7 +183,7 @@ impl Dataset {
 
             for entry in std::fs::read_dir(class_dir.path())
                 .map_err(|e| Error::DataLoad(e.to_string()))?
-                .filter_map(|e| e.ok())
+                .filter_map(std::result::Result::ok)
             {
                 // For now, load raw bytes - real implementation would compute MFCC
                 if let Ok(data) = std::fs::read(entry.path()) {
@@ -253,7 +255,7 @@ impl Dataset {
 
         if labels_path.exists() {
             let file = File::open(&labels_path)
-                .map_err(|e| Error::DataLoad(format!("Cannot open labels.txt: {}", e)))?;
+                .map_err(|e| Error::DataLoad(format!("Cannot open labels.txt: {e}")))?;
 
             for (idx, line) in BufReader::new(file).lines().enumerate() {
                 if let Ok(label_name) = line {
@@ -312,7 +314,7 @@ impl Dataset {
 
         // Read NPY file (simplified - real impl would parse NPY header)
         let data = std::fs::read(path)
-            .map_err(|e| Error::DataLoad(format!("Cannot read NPY file: {}", e)))?;
+            .map_err(|e| Error::DataLoad(format!("Cannot read NPY file: {e}")))?;
 
         // Skip NPY header (simplified - assumes standard header)
         let header_end = data.iter().position(|&b| b == b'\n').unwrap_or(0) + 1;
@@ -333,12 +335,12 @@ impl Dataset {
     fn load_npy_dataset(benchmark: Benchmark, path: &Path) -> Result<Self> {
         info!("Loading NPY dataset from {}", path.display());
 
-        let mut file = File::open(path)
-            .map_err(|e| Error::DataLoad(format!("Cannot open NPY file: {}", e)))?;
+        let mut file =
+            File::open(path).map_err(|e| Error::DataLoad(format!("Cannot open NPY file: {e}")))?;
 
         let mut data = Vec::new();
         file.read_to_end(&mut data)
-            .map_err(|e| Error::DataLoad(format!("Cannot read NPY file: {}", e)))?;
+            .map_err(|e| Error::DataLoad(format!("Cannot read NPY file: {e}")))?;
 
         // Simplified NPY parsing - real implementation would parse header properly
         // For now, generate synthetic samples based on file content
@@ -357,7 +359,7 @@ impl Dataset {
                 Sample {
                     input: data[start..end].to_vec(),
                     label: i % benchmark.num_classes(),
-                    id: Some(format!("npy_sample_{}", i)),
+                    id: Some(format!("npy_sample_{i}")),
                 }
             })
             .collect();
@@ -373,8 +375,8 @@ impl Dataset {
     fn load_csv_timeseries(benchmark: Benchmark, path: &Path) -> Result<Self> {
         info!("Loading CSV timeseries from {}", path.display());
 
-        let file = File::open(path)
-            .map_err(|e| Error::DataLoad(format!("Cannot open CSV file: {}", e)))?;
+        let file =
+            File::open(path).map_err(|e| Error::DataLoad(format!("Cannot open CSV file: {e}")))?;
 
         let reader = BufReader::new(file);
         let mut samples = Vec::new();
@@ -399,7 +401,7 @@ impl Dataset {
         // Create sliding window samples
         for (i, window) in all_data.windows(window_size).enumerate() {
             let input: Vec<f32> = window.iter().flatten().copied().collect();
-            samples.push(Sample::from_f32(&input, 0, Some(format!("ts_{}", i))));
+            samples.push(Sample::from_f32(&input, 0, Some(format!("ts_{i}"))));
         }
 
         info!("Created {} time series samples", samples.len());
@@ -412,6 +414,7 @@ impl Dataset {
     }
 
     /// Generate synthetic dataset for testing
+    #[must_use]
     pub fn synthetic(benchmark: Benchmark, num_samples: usize) -> Self {
         let input_shape = benchmark.input_shape();
         let input_size: usize = input_shape.iter().product();
@@ -427,7 +430,7 @@ impl Dataset {
                 Sample {
                     input,
                     label: i % num_classes,
-                    id: Some(format!("synthetic_{}", i)),
+                    id: Some(format!("synthetic_{i}")),
                 }
             })
             .collect();
@@ -440,12 +443,14 @@ impl Dataset {
     }
 
     /// Number of samples
-    pub fn len(&self) -> usize {
+    #[must_use]
+    pub const fn len(&self) -> usize {
         self.samples.len()
     }
 
     /// Is dataset empty
-    pub fn is_empty(&self) -> bool {
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
         self.samples.is_empty()
     }
 
@@ -455,6 +460,7 @@ impl Dataset {
     }
 
     /// Get a batch of samples
+    #[must_use]
     pub fn batch(&self, start: usize, size: usize) -> &[Sample] {
         let end = (start + size).min(self.samples.len());
         &self.samples[start..end]
@@ -476,6 +482,6 @@ mod tests {
         assert_eq!(sample.input.len(), expected_size);
 
         println!("DVS Gesture synthetic dataset: {} samples", dataset.len());
-        println!("Input size: {} bytes", expected_size);
+        println!("Input size: {expected_size} bytes");
     }
 }

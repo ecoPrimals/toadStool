@@ -164,57 +164,7 @@ async fn test_http_transport_with_tls() {
 }
 
 // ============================================================================
-// WebSocketTransport Tests
-// ============================================================================
-
-#[test]
-fn test_websocket_transport_new() {
-    let transport = TRpcTransport::new();
-    let _ = format!("{:?}", transport);
-}
-
-#[test]
-fn test_websocket_transport_default() {
-    let transport = TRpcTransport::default();
-    let _ = format!("{:?}", transport);
-}
-
-#[test]
-fn test_websocket_transport_supports_websocket_endpoint() {
-    let transport = TRpcTransport::new();
-    let endpoint = create_test_endpoint(TransportType::TRpc);
-    assert!(transport.supports_endpoint(&endpoint));
-}
-
-#[test]
-fn test_websocket_transport_rejects_http_endpoint() {
-    let transport = TRpcTransport::new();
-    let endpoint = create_test_endpoint(TransportType::Http);
-    assert!(!transport.supports_endpoint(&endpoint));
-}
-
-#[test]
-fn test_websocket_transport_type() {
-    let transport = TRpcTransport::new();
-    assert_eq!(transport.transport_type(), TransportType::TRpc);
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_websocket_transport_send_message_not_implemented() {
-    let transport = TRpcTransport::new();
-    let endpoint = create_test_endpoint(TransportType::TRpc);
-    let message = create_test_message();
-
-    let result = transport.send_message(&message, &endpoint).await;
-    assert!(result.is_err());
-    if let Err(e) = result {
-        let msg = e.to_string().to_ascii_lowercase();
-        assert!(msg.contains("not yet implemented") || msg.contains("not implemented"));
-    }
-}
-
-// ============================================================================
-// TRpcTransport Tests
+// TRpcTransport Tests (WebSocket removed — use JSON-RPC 2.0)
 // ============================================================================
 
 #[test]
@@ -257,6 +207,10 @@ async fn test_trpc_transport_send_message_no_server() {
 
     let result = transport.send_message(&message, &endpoint).await;
     assert!(result.is_err());
+    if let Err(e) = result {
+        let msg = e.to_string().to_ascii_lowercase();
+        assert!(msg.contains("not yet implemented") || msg.contains("not implemented"));
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -281,7 +235,7 @@ fn test_transport_enum_http_variant() {
 }
 
 #[test]
-fn test_transport_enum_websocket_variant() {
+fn test_transport_enum_trpc_variant_alias() {
     let transport = Transport::TRpc(TRpcTransport::new());
     assert_eq!(transport.transport_type(), TransportType::TRpc);
 }
@@ -317,16 +271,6 @@ fn test_transport_enum_debug() {
 async fn test_transport_enum_send_message_http() {
     let transport = Transport::Http(HttpTransport::new());
     let endpoint = create_test_endpoint(TransportType::Http);
-    let message = create_test_message();
-
-    let result = transport.send_message(&message, &endpoint).await;
-    assert!(result.is_err());
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_transport_enum_send_message_websocket() {
-    let transport = Transport::TRpc(TRpcTransport::new());
-    let endpoint = create_test_endpoint(TransportType::TRpc);
     let message = create_test_message();
 
     let result = transport.send_message(&message, &endpoint).await;
@@ -467,13 +411,12 @@ fn test_transport_coverage_summary() {
     println!("========================================");
     println!("Connection Tests:             4 tests");
     println!("HttpTransport Tests:          7 tests");
-    println!("WebSocketTransport Tests:     6 tests");
     println!("TRpcTransport Tests:          7 tests");
-    println!("Transport Enum Tests:         9 tests");
+    println!("Transport Enum Tests:         8 tests");
     println!("TransportManager Tests:       7 tests");
     println!("Edge Cases:                   3 tests");
     println!("========================================");
-    println!("Total New Tests:             43 tests");
+    println!("Total New Tests:             36 tests");
     println!("========================================");
     println!();
     println!("🎯 Target: Increase transport.rs coverage");

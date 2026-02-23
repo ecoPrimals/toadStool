@@ -29,12 +29,12 @@ impl CpuComputeResource {
     /// Create new CPU compute resource
     pub fn new() -> ToadStoolResult<Self> {
         let num_cores = std::thread::available_parallelism()
-            .map(|p| p.get())
+            .map(std::num::NonZero::get)
             .unwrap_or(1);
 
         let thread_pool = rayon::ThreadPoolBuilder::new()
             .num_threads(num_cores)
-            .thread_name(|i| format!("toadstool-cpu-{}", i))
+            .thread_name(|i| format!("toadstool-cpu-{i}"))
             .build()
             .map_err(|e| ToadStoolError::runtime(format!("Failed to create thread pool: {e}")))?;
 
@@ -102,7 +102,7 @@ impl CpuComputeResource {
                 startup_latency_us: 10,                       // Very low latency (no GPU transfer)
                 sustained_performance_percent: 90.0,          // CPUs sustain well
             },
-            resource_type: format!("CPU ({} cores)", num_cores),
+            resource_type: format!("CPU ({num_cores} cores)"),
         }
     }
 
@@ -352,8 +352,7 @@ impl CpuComputeContext {
             }
             Operation::Reduction => self.execute_reduction(workload).await,
             _ => Err(ToadStoolError::runtime(format!(
-                "Operation {:?} not yet implemented for CPU",
-                operation
+                "Operation {operation:?} not yet implemented for CPU"
             ))),
         }
     }
@@ -383,7 +382,7 @@ impl CpuComputeContext {
                     .collect()
             });
 
-            outputs.insert(format!("output_{}", idx), output_data);
+            outputs.insert(format!("output_{idx}"), output_data);
         }
 
         Ok(outputs)
@@ -406,7 +405,7 @@ impl CpuComputeContext {
 
             // Convert sum to bytes
             let result = sum.to_le_bytes().to_vec();
-            outputs.insert(format!("output_{}", idx), result);
+            outputs.insert(format!("output_{idx}"), result);
         }
 
         Ok(outputs)
@@ -437,8 +436,7 @@ impl CpuComputeContext {
                 ))
             }
             _ => Err(ToadStoolError::runtime(format!(
-                "Language {:?} not supported on CPU",
-                language
+                "Language {language:?} not supported on CPU"
             ))),
         }
     }

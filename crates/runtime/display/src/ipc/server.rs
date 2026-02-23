@@ -32,7 +32,7 @@
 //! - ✅ Zero unsafe
 //! - ✅ Modern async (tokio)
 
-use super::types::*;
+use super::types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 use crate::window::{CreateWindowRequest, Size, WindowId, WindowManager};
 use crate::{DisplayError, Result};
 use std::net::SocketAddr;
@@ -77,6 +77,7 @@ pub struct DisplayServer {
 
 impl DisplayServer {
     /// Create a new display server
+    #[must_use]
     pub fn new(manager: WindowManager) -> Self {
         // Default socket path (capability-based discovery!)
         let socket_path = Self::discover_socket_path();
@@ -90,7 +91,7 @@ impl DisplayServer {
 
     /// Discover socket path from environment
     ///
-    /// **Capability-based**: Uses XDG_RUNTIME_DIR, no hardcoding!
+    /// **Capability-based**: Uses `XDG_RUNTIME_DIR`, no hardcoding!
     fn discover_socket_path() -> PathBuf {
         let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
 
@@ -108,7 +109,7 @@ impl DisplayServer {
     /// ## Behavior
     ///
     /// 1. **TRY** Unix socket (optimal)
-    /// 2. **DETECT** platform constraints (SELinux, unsupported)
+    /// 2. **DETECT** platform constraints (`SELinux`, unsupported)
     /// 3. **ADAPT** to TCP fallback (127.0.0.1:ephemeral)
     /// 4. **SUCCEED** or fail with real error
     pub async fn start(self: Arc<Self>) -> Result<()> {
@@ -142,9 +143,9 @@ impl DisplayServer {
 
         // Create parent directory if needed
         if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent).await.map_err(|e| {
-                DisplayError::IpcError(format!("Failed to create socket dir: {}", e))
-            })?;
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| DisplayError::IpcError(format!("Failed to create socket dir: {e}")))?;
         }
 
         // Remove existing socket
@@ -152,7 +153,7 @@ impl DisplayServer {
 
         // Bind listener (this is where platform constraints appear!)
         let listener = UnixListener::bind(&path)
-            .map_err(|e| DisplayError::IpcError(format!("Failed to bind Unix socket: {}", e)))?;
+            .map_err(|e| DisplayError::IpcError(format!("Failed to bind Unix socket: {e}")))?;
 
         tracing::info!(
             "✅ Unix socket JSON-RPC server listening: {}",
@@ -188,11 +189,11 @@ impl DisplayServer {
         // Bind to localhost only (security: same as Unix socket)
         let listener = TcpListener::bind("127.0.0.1:0")
             .await
-            .map_err(|e| DisplayError::IpcError(format!("Failed to bind TCP socket: {}", e)))?;
+            .map_err(|e| DisplayError::IpcError(format!("Failed to bind TCP socket: {e}")))?;
 
         let local_addr = listener
             .local_addr()
-            .map_err(|e| DisplayError::IpcError(format!("Failed to get local address: {}", e)))?;
+            .map_err(|e| DisplayError::IpcError(format!("Failed to get local address: {e}")))?;
 
         tracing::info!("✅ TCP IPC listening on {}", local_addr);
 
@@ -244,37 +245,36 @@ impl DisplayServer {
         false
     }
 
-    /// Check if SELinux is enforcing (common on Android)
+    /// Check if `SELinux` is enforcing (common on Android)
     fn is_selinux_enforcing(&self) -> bool {
         std::fs::read_to_string("/sys/fs/selinux/enforce")
             .ok()
             .and_then(|s| s.trim().parse::<u8>().ok())
-            .map(|v| v == 1)
-            .unwrap_or(false)
+            .is_some_and(|v| v == 1)
     }
 
     /// Write TCP discovery file for clients
     ///
-    /// **XDG-compliant**: Tries XDG_RUNTIME_DIR, HOME, /tmp
+    /// **XDG-compliant**: Tries `XDG_RUNTIME_DIR`, HOME, /tmp
     fn write_tcp_discovery_file(&self, addr: &SocketAddr) -> Result<()> {
         // XDG-compliant discovery file paths
         let discovery_dirs: Vec<Option<String>> = vec![
             std::env::var("XDG_RUNTIME_DIR").ok(),
             std::env::var("HOME")
                 .ok()
-                .map(|h| format!("{}/.local/share", h)),
+                .map(|h| format!("{h}/.local/share")),
             Some("/tmp".to_string()),
         ];
 
         for dir in discovery_dirs.iter().filter_map(|d| d.as_ref()) {
             // Create directory if needed
-            if let Ok(()) = std::fs::create_dir_all(dir) {
-                let discovery_file = format!("{}/toadstool-ipc-port", dir);
+            if matches!(std::fs::create_dir_all(dir), Ok(())) {
+                let discovery_file = format!("{dir}/toadstool-ipc-port");
 
                 if let Ok(mut f) = std::fs::File::create(&discovery_file) {
                     use std::io::Write;
                     // Write in format: tcp:127.0.0.1:PORT
-                    writeln!(f, "tcp:{}", addr).ok();
+                    writeln!(f, "tcp:{addr}").ok();
                     tracing::info!("📁 TCP discovery file: {}", discovery_file);
                     break;
                 }
@@ -307,21 +307,20 @@ impl DisplayServer {
                     let response = Self::handle_request(&line, &self.manager).await;
 
                     // Send response
-                    let response_json = serde_json::to_string(&response).map_err(|e| {
-                        DisplayError::IpcError(format!("Serialization error: {}", e))
-                    })?;
+                    let response_json = serde_json::to_string(&response)
+                        .map_err(|e| DisplayError::IpcError(format!("Serialization error: {e}")))?;
 
                     writer
                         .write_all(response_json.as_bytes())
                         .await
-                        .map_err(|e| DisplayError::IpcError(format!("Write error: {}", e)))?;
+                        .map_err(|e| DisplayError::IpcError(format!("Write error: {e}")))?;
                     writer
                         .write_all(b"\n")
                         .await
-                        .map_err(|e| DisplayError::IpcError(format!("Write error: {}", e)))?;
+                        .map_err(|e| DisplayError::IpcError(format!("Write error: {e}")))?;
                 }
                 Err(e) => {
-                    return Err(DisplayError::IpcError(format!("Read error: {}", e)));
+                    return Err(DisplayError::IpcError(format!("Read error: {e}")));
                 }
             }
         }
@@ -352,21 +351,20 @@ impl DisplayServer {
                     let response = Self::handle_request(&line, &self.manager).await;
 
                     // Send response
-                    let response_json = serde_json::to_string(&response).map_err(|e| {
-                        DisplayError::IpcError(format!("Serialization error: {}", e))
-                    })?;
+                    let response_json = serde_json::to_string(&response)
+                        .map_err(|e| DisplayError::IpcError(format!("Serialization error: {e}")))?;
 
                     writer
                         .write_all(response_json.as_bytes())
                         .await
-                        .map_err(|e| DisplayError::IpcError(format!("Write error: {}", e)))?;
+                        .map_err(|e| DisplayError::IpcError(format!("Write error: {e}")))?;
                     writer
                         .write_all(b"\n")
                         .await
-                        .map_err(|e| DisplayError::IpcError(format!("Write error: {}", e)))?;
+                        .map_err(|e| DisplayError::IpcError(format!("Write error: {e}")))?;
                 }
                 Err(e) => {
-                    return Err(DisplayError::IpcError(format!("Read error: {}", e)));
+                    return Err(DisplayError::IpcError(format!("Read error: {e}")));
                 }
             }
         }
@@ -423,9 +421,11 @@ impl DisplayServer {
                 }))
             }
             "display.destroy_window" => {
-                let params: serde_json::Value = request.params.clone().unwrap_or_default();
-                let window_id_str = params["window_id"]
-                    .as_str()
+                let window_id_str = request
+                    .params
+                    .as_ref()
+                    .and_then(|p| p.get("window_id"))
+                    .and_then(|v| v.as_str())
                     .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
                 let window_id = WindowId::from_string(window_id_str)?;
 
@@ -435,7 +435,10 @@ impl DisplayServer {
                 Ok(serde_json::json!({"destroyed": true}))
             }
             "display.resize_window" => {
-                let params: serde_json::Value = request.params.clone().unwrap_or_default();
+                let params = request
+                    .params
+                    .as_ref()
+                    .ok_or_else(|| DisplayError::IpcError("Missing params".to_string()))?;
                 let window_id_str = params["window_id"]
                     .as_str()
                     .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
@@ -455,9 +458,11 @@ impl DisplayServer {
                 Ok(serde_json::json!({"resized": true}))
             }
             "display.get_window_info" => {
-                let params: serde_json::Value = request.params.clone().unwrap_or_default();
-                let window_id_str = params["window_id"]
-                    .as_str()
+                let window_id_str = request
+                    .params
+                    .as_ref()
+                    .and_then(|p| p.get("window_id"))
+                    .and_then(|v| v.as_str())
                     .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
                 let window_id = WindowId::from_string(window_id_str)?;
 
@@ -465,7 +470,7 @@ impl DisplayServer {
                 let info = mgr.get_window_info(window_id)?;
 
                 Ok(serde_json::to_value(info)
-                    .map_err(|e| DisplayError::IpcError(format!("Serialization error: {}", e)))?)
+                    .map_err(|e| DisplayError::IpcError(format!("Serialization error: {e}")))?)
             }
             "display.get_capabilities" => {
                 let mgr = manager.read().await;
@@ -493,7 +498,8 @@ impl DisplayServer {
     }
 
     /// Get socket path
-    pub fn socket_path(&self) -> &PathBuf {
+    #[must_use]
+    pub const fn socket_path(&self) -> &PathBuf {
         &self.socket_path
     }
 

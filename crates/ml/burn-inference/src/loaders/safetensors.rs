@@ -1,6 +1,6 @@
 //! Safetensors file loader
 //!
-//! Loads model weights from HuggingFace safetensors format.
+//! Loads model weights from `HuggingFace` safetensors format.
 
 use super::{DataType, ModelWeights, WeightTensor};
 use crate::{Error, Result};
@@ -88,13 +88,13 @@ pub fn load<P: AsRef<Path>>(path: P) -> Result<ModelWeights> {
 
         let start = data_offsets
             .first()
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .ok_or_else(|| Error::ModelLoad(format!("Invalid start offset for {name}")))?
             as usize;
 
         let end = data_offsets
             .get(1)
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .ok_or_else(|| Error::ModelLoad(format!("Invalid end offset for {name}")))?
             as usize;
 

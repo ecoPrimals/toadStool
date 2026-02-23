@@ -2,10 +2,18 @@
 //!
 //! The universal adapter discovers services by capability and invokes them
 //! using the appropriate protocol, completely abstracting away service identity.
+//!
+//! ## Protocol Priority (UNIVERSAL_IPC_STANDARD_V3)
+//!
+//! JSON-RPC 2.0 over Unix sockets is preferred (pure Rust, no tonic/protobuf).
+//! HTTP is deprecated for primal-to-primal; use Songbird for external HTTP.
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::sync::Arc;
+use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
+use toadstool_common::ToadStoolError;
 use tokio::time::Duration;
 
 use crate::ecosystem::capabilities::{CapabilityId, CapabilityResolver, ServiceProvider};
@@ -120,20 +128,40 @@ impl UniversalServiceAdapter {
         provider: &ServiceProvider,
         request: Request,
     ) -> Result<Response> {
-        // Determine protocol (prefer HTTP if available)
+        // Determine protocol (prefer JSON-RPC / Unix socket per UNIVERSAL_IPC_STANDARD_V3)
         let protocol = Self::select_protocol(&provider.protocols)?;
 
         match protocol.as_str() {
+            "jsonrpc" | "unix-socket" | "unix" => self.invoke_jsonrpc(provider, request).await,
             "http" | "https" => self.invoke_http(provider, request).await,
-            "grpc" => self.invoke_grpc(provider, request).await,
-            _ => anyhow::bail!("Unsupported protocol: {}", protocol),
+            "grpc" => self.invoke_grpc_fallback(provider, request).await,
+            _ => anyhow::bail!(
+                "Unsupported protocol: {} (use jsonrpc or unix-socket)",
+                protocol
+            ),
         }
     }
 
     /// Select the best protocol from available options
+    ///
+    /// Preference order (UNIVERSAL_IPC_STANDARD_V3): jsonrpc, unix-socket > http > grpc
     fn select_protocol(protocols: &[String]) -> Result<String> {
-        // Preference order: http, grpc, others
-        for preferred in &["http", "https", "grpc"] {
+        // Prefer JSON-RPC / Unix socket (pure Rust, no tonic/protobuf)
+        for preferred in &["jsonrpc", "unix-socket", "unix"] {
+            if protocols.iter().any(|p| p == preferred) {
+                return Ok(preferred.to_string());
+            }
+        }
+
+        // Fall back to HTTP (deprecated for primal-to-primal)
+        for preferred in &["http", "https"] {
+            if protocols.iter().any(|p| p == preferred) {
+                return Ok(preferred.to_string());
+            }
+        }
+
+        // Last resort: gRPC (requires tonic, violates ecoBin)
+        for preferred in &["grpc"] {
             if protocols.iter().any(|p| p == preferred) {
                 return Ok(preferred.to_string());
             }
@@ -144,6 +172,69 @@ impl UniversalServiceAdapter {
             .first()
             .map(|s| s.to_string())
             .ok_or_else(|| anyhow::anyhow!("No protocols available"))
+    }
+
+    /// Extract Unix socket path from provider endpoint
+    ///
+    /// Supports: `unix:///path/to/sock`, `unix://path`, or bare `/path/to/sock`
+    pub(crate) fn socket_path_from_endpoint(endpoint: &str) -> Result<PathBuf> {
+        let path = if endpoint.starts_with("unix://") {
+            endpoint
+                .strip_prefix("unix://")
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| endpoint.to_string())
+        } else if endpoint.starts_with('/') {
+            endpoint.to_string()
+        } else {
+            anyhow::bail!(
+                "Endpoint is not a Unix socket path (expected unix:///path or /path): {}",
+                endpoint
+            )
+        };
+
+        Ok(PathBuf::from(path))
+    }
+
+    /// Invoke via Unix socket JSON-RPC 2.0 (UNIVERSAL_IPC_STANDARD_V3)
+    ///
+    /// Pure Rust - no tonic, no protobuf, no C dependencies.
+    async fn invoke_jsonrpc(
+        &self,
+        provider: &ServiceProvider,
+        request: Request,
+    ) -> Result<Response> {
+        let socket_path =
+            Self::socket_path_from_endpoint(&provider.endpoint).with_context(|| {
+                format!(
+                    "Provider endpoint {} is not a Unix socket for JSON-RPC",
+                    provider.endpoint
+                )
+            })?;
+
+        let client = UnixJsonRpcClient::new(socket_path);
+
+        match client
+            .call(request.operation.as_str(), request.payload.clone())
+            .await
+        {
+            Ok(result) => Ok(Response {
+                status: ResponseStatus::Success,
+                data: Some(result),
+                error: None,
+            }),
+            Err(e) => {
+                // JSON-RPC server returned error object → Response with status Error
+                if matches!(e, ToadStoolError::Execution(_)) {
+                    return Ok(Response {
+                        status: ResponseStatus::Error,
+                        data: None,
+                        error: Some(e.to_string()),
+                    });
+                }
+                // Connection, serialization, network errors → propagate
+                Err(e.into())
+            }
+        }
     }
 
     /// Invoke via HTTP/REST
@@ -165,17 +256,19 @@ impl UniversalServiceAdapter {
         )
     }
 
-    /// Invoke via gRPC (stub implementation)
-    async fn invoke_grpc(
+    /// Invoke via gRPC (stub - deprecated in favor of JSON-RPC)
+    ///
+    /// gRPC requires tonic (protobuf, C deps) and violates ecoBin.
+    /// Use `jsonrpc` or `unix-socket` protocol instead (UNIVERSAL_IPC_STANDARD_V3).
+    async fn invoke_grpc_fallback(
         &self,
         _provider: &ServiceProvider,
         _request: Request,
     ) -> Result<Response> {
-        // FUTURE: Implement gRPC invocation (planned for v0.3.0)
-        // This requires adding tonic or similar gRPC client dependency.
-        // Currently, HTTP/REST is sufficient for all existing primal integrations.
-        // See: docs/planning/GRPC_INTEGRATION_PLAN.md (to be created)
-        anyhow::bail!("gRPC protocol not yet implemented - use HTTP/REST for now")
+        anyhow::bail!(
+            "gRPC protocol not supported - use JSON-RPC over Unix socket instead \
+             (UNIVERSAL_IPC_STANDARD_V3). For external HTTP, route through Songbird."
+        )
     }
 }
 
@@ -272,9 +365,62 @@ mod tests {
     }
 
     #[test]
-    fn test_protocol_selection() {
+    fn test_protocol_selection_prefers_jsonrpc() {
+        // jsonrpc and unix-socket preferred over http/grpc
+        let protocols = vec![
+            "grpc".to_string(),
+            "http".to_string(),
+            "jsonrpc".to_string(),
+        ];
+        let selected = UniversalServiceAdapter::select_protocol(&protocols).unwrap();
+        assert_eq!(selected, "jsonrpc");
+    }
+
+    #[test]
+    fn test_protocol_selection_prefers_unix_socket_over_http() {
+        let protocols = vec!["http".to_string(), "unix-socket".to_string()];
+        let selected = UniversalServiceAdapter::select_protocol(&protocols).unwrap();
+        assert_eq!(selected, "unix-socket");
+    }
+
+    #[test]
+    fn test_protocol_selection_http_over_grpc() {
         let protocols = vec!["grpc".to_string(), "http".to_string()];
         let selected = UniversalServiceAdapter::select_protocol(&protocols).unwrap();
-        assert_eq!(selected, "http"); // HTTP preferred
+        assert_eq!(selected, "http");
+    }
+
+    #[test]
+    fn test_protocol_selection_grpc_fallback() {
+        let protocols = vec!["grpc".to_string()];
+        let selected = UniversalServiceAdapter::select_protocol(&protocols).unwrap();
+        assert_eq!(selected, "grpc");
+    }
+
+    #[test]
+    fn test_protocol_selection_empty() {
+        let protocols: Vec<String> = vec![];
+        let result = UniversalServiceAdapter::select_protocol(&protocols);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_socket_path_from_endpoint_unix_prefix() {
+        let path =
+            UniversalServiceAdapter::socket_path_from_endpoint("unix:///var/run/toadstool.sock")
+                .unwrap();
+        assert_eq!(path, std::path::Path::new("/var/run/toadstool.sock"));
+    }
+
+    #[test]
+    fn test_socket_path_from_endpoint_bare_path() {
+        let path = UniversalServiceAdapter::socket_path_from_endpoint("/tmp/service.sock").unwrap();
+        assert_eq!(path, std::path::Path::new("/tmp/service.sock"));
+    }
+
+    #[test]
+    fn test_socket_path_from_endpoint_http_fails() {
+        let result = UniversalServiceAdapter::socket_path_from_endpoint("http://localhost:8080");
+        assert!(result.is_err());
     }
 }

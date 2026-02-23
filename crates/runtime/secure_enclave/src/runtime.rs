@@ -211,7 +211,7 @@ impl SecureEnclaveRuntime {
 
     /// Check if runtime is ready for processing
     #[must_use]
-    pub fn is_ready(&self) -> bool {
+    pub const fn is_ready(&self) -> bool {
         // Ready if we have basic resources
         // Future: check for more resources (GPU, etc.)
         true
@@ -226,7 +226,9 @@ impl SecureEnclaveRuntime {
 
 impl Default for SecureEnclaveRuntime {
     fn default() -> Self {
-        Self::new().expect("Failed to create default runtime")
+        Self::new().expect(
+            "Failed to create default SecureEnclaveRuntime: ephemeral key store allocation failed (check available memory and mlock limits)",
+        )
     }
 }
 

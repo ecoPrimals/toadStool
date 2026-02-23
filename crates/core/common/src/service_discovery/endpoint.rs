@@ -1,4 +1,4 @@
-//! ServiceEndpoint URL parsing extension
+//! `ServiceEndpoint` URL parsing extension
 
 use std::collections::HashMap;
 
@@ -12,7 +12,7 @@ impl ServiceEndpoint {
         let parts: Vec<&str> = url.split("://").collect();
         if parts.len() != 2 {
             return Err(DiscoveryError::InvalidResponse {
-                reason: format!("Invalid URL format: {}", url),
+                reason: format!("Invalid URL format: {url}"),
             });
         }
 
@@ -22,7 +22,7 @@ impl ServiceEndpoint {
         let address = host_port
             .first()
             .ok_or_else(|| DiscoveryError::InvalidResponse {
-                reason: format!("Missing host in URL: {}", url),
+                reason: format!("Missing host in URL: {url}"),
             })?;
         let port = host_port.get(1).and_then(|p| p.parse().ok()).unwrap_or(80);
 

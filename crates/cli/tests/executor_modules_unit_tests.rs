@@ -61,10 +61,9 @@ mod signal_manager_tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_signal_timeout() {
-        // Test signal handling with timeout
+        // Test signal handling with timeout - completes before timeout
         let timeout = tokio::time::timeout(Duration::from_millis(100), async {
-            // Signal wait should be interruptible
-            tokio::time::sleep(Duration::from_millis(50)).await;
+            tokio::task::yield_now().await;
         });
 
         assert!(timeout.await.is_ok());
@@ -223,7 +222,7 @@ mod resource_manager_tests {
 
 #[cfg(test)]
 mod lifecycle_manager_tests {
-    use tokio::time::{sleep, Duration};
+    use tokio::time::Duration;
 
     #[test]
     fn test_lifecycle_manager_structure() {
@@ -239,8 +238,7 @@ mod lifecycle_manager_tests {
         let graceful_timeout = Duration::from_secs(5);
 
         let result = tokio::time::timeout(graceful_timeout, async {
-            // Simulate graceful shutdown
-            sleep(Duration::from_millis(100)).await;
+            tokio::task::yield_now().await;
             true
         })
         .await;
@@ -255,8 +253,7 @@ mod lifecycle_manager_tests {
         let force_timeout = Duration::from_secs(2);
 
         let result = tokio::time::timeout(force_timeout, async {
-            // Simulate force kill
-            sleep(Duration::from_millis(50)).await;
+            tokio::task::yield_now().await;
             true
         })
         .await;
@@ -399,11 +396,8 @@ mod error_handling_tests {
     #[tokio::test]
     async fn test_timeout_handling() {
         // Test timeout handling in async operations
-        let result = tokio::time::timeout(Duration::from_millis(50), async {
-            tokio::time::sleep(Duration::from_millis(100)).await;
-            "completed"
-        })
-        .await;
+        let result =
+            tokio::time::timeout(Duration::from_millis(50), std::future::pending::<&str>()).await;
 
         // Should timeout and return error
         assert!(result.is_err());

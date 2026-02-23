@@ -182,7 +182,7 @@ impl JsonRpcHandler {
             .map_err(JsonRpcError::internal_error)?;
 
         serde_json::to_value(result)
-            .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
+            .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {e}")))
     }
 
     async fn query_status(
@@ -252,7 +252,7 @@ impl JsonRpcHandler {
             .map_err(JsonRpcError::internal_error)?;
 
         serde_json::to_value(caps)
-            .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
+            .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {e}")))
     }
 
     async fn health(&self) -> Result<serde_json::Value, JsonRpcError> {
@@ -269,7 +269,7 @@ impl JsonRpcHandler {
         };
 
         serde_json::to_value(status)
-            .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
+            .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {e}")))
     }
 
     async fn version_info(&self) -> Result<serde_json::Value, JsonRpcError> {
@@ -296,7 +296,10 @@ impl JsonRpcHandler {
         let job_type: crate::gpu_job_queue::JobType = serde::Deserialize::deserialize(params)
             .map_err(|e| JsonRpcError::invalid_params(format!("Invalid job type: {e}")))?;
 
-        let priority = params.get("priority").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+        let priority = params
+            .get("priority")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0) as u32;
 
         match self.job_queue.submit(job_type, priority).await {
             Ok(job_id) => Ok(serde_json::json!({"job_id": job_id})),

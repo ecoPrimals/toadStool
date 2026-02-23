@@ -289,7 +289,7 @@ pub mod stubs {
 
         /// Get arguments
         #[must_use]
-        pub fn get_args(&self) -> &Vec<String> {
+        pub fn get_args(&self) -> &[String] {
             &self.args
         }
     }

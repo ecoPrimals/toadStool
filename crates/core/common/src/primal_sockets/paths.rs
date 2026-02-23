@@ -1,9 +1,6 @@
-//! Pure socket path resolution (no env access - inject SocketPathEnv)
+//! Pure socket path resolution (no env access - inject `SocketPathEnv`)
 
 use std::path::PathBuf;
-
-#[allow(deprecated)]
-use crate::interned_strings::primals;
 
 use super::env::SocketPathEnv;
 
@@ -22,7 +19,7 @@ pub fn resolve_runtime_dir(env: &SocketPathEnv) -> String {
     let temp_dir = std::env::temp_dir();
     let username = env.user.as_deref().unwrap_or("default");
     temp_dir
-        .join(format!("toadstool-runtime-{}", username))
+        .join(format!("toadstool-runtime-{username}"))
         .to_string_lossy()
         .to_string()
 }
@@ -103,7 +100,6 @@ pub fn resolve_toadstool_socket(env: &SocketPathEnv) -> PathBuf {
 
 /// Pure logic: resolve socket path for any service by name
 #[must_use]
-#[allow(deprecated)]
 pub fn resolve_socket_path_for_service(
     service_name: &str,
     env: &SocketPathEnv,
@@ -113,11 +109,11 @@ pub fn resolve_socket_path_for_service(
         return path;
     }
     match service_name.to_lowercase().as_str() {
-        s if s == primals::BEARDOG || s == "bear-dog" => resolve_beardog_socket_fallback(env),
-        s if s == primals::SONGBIRD || s == "song-bird" => resolve_songbird_socket_fallback(env),
-        s if s == primals::NESTGATE || s == "nest-gate" => resolve_nestgate_socket_fallback(env),
-        s if s == primals::SQUIRREL => resolve_squirrel_socket(env),
-        s if s == primals::TOADSTOOL || s == "toad-stool" => resolve_toadstool_socket(env),
+        s if s == "beardog" || s == "bear-dog" => resolve_beardog_socket_fallback(env),
+        s if s == "songbird" || s == "song-bird" => resolve_songbird_socket_fallback(env),
+        s if s == "nestgate" || s == "nest-gate" => resolve_nestgate_socket_fallback(env),
+        s if s == "squirrel" => resolve_squirrel_socket(env),
+        s if s == "toadstool" || s == "toad-stool" => resolve_toadstool_socket(env),
         "nucleus" | "biomeos" => resolve_nucleus_socket(env),
         _ => resolve_biomeos_dir(env).join(format!("{}.sock", service_name.to_lowercase())),
     }

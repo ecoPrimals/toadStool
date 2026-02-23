@@ -51,6 +51,12 @@ pub mod capability_categories {
     pub const ALL: &[&str] = &[NETWORK, CRYPTO, STORAGE, ORCHESTRATION, COMPUTE];
 }
 
+/// System-level config paths (last-resort fallback after XDG/home paths)
+pub mod paths {
+    /// System-wide services config (fallback when user config not found)
+    pub const SYSTEM_SERVICES_CONFIG: &str = "/etc/toadstool/services.toml";
+}
+
 /// Common string constants
 pub mod common {
     /// Unknown version string

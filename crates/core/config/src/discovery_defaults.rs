@@ -93,6 +93,7 @@ pub struct ServiceDiscoveryHelper {
 
 impl ServiceDiscoveryHelper {
     /// Create a new discovery helper with default settings
+    #[must_use]
     pub fn new() -> Self {
         Self {
             defaults: DiscoveryDefaults::default(),
@@ -100,22 +101,26 @@ impl ServiceDiscoveryHelper {
     }
 
     /// Create with custom defaults
-    pub fn with_defaults(defaults: DiscoveryDefaults) -> Self {
+    #[must_use]
+    pub const fn with_defaults(defaults: DiscoveryDefaults) -> Self {
         Self { defaults }
     }
 
     /// Get discovery timeout
-    pub fn discovery_timeout(&self) -> Duration {
+    #[must_use]
+    pub const fn discovery_timeout(&self) -> Duration {
         self.defaults.discovery_timeout
     }
 
     /// Get refresh interval
-    pub fn refresh_interval(&self) -> Duration {
+    #[must_use]
+    pub const fn refresh_interval(&self) -> Duration {
         self.defaults.refresh_interval
     }
 
     /// Get cache TTL
-    pub fn cache_ttl(&self) -> Duration {
+    #[must_use]
+    pub const fn cache_ttl(&self) -> Duration {
         self.defaults.cache_ttl
     }
 }
@@ -128,26 +133,54 @@ impl Default for ServiceDiscoveryHelper {
 
 /// Fallback configuration for when discovery is not available
 ///
-/// This should ONLY be used in constrained environments where mDNS is unavailable
+/// This should ONLY be used in constrained environments where mDNS is unavailable.
+///
+/// # Environment Variables
+///
+/// | Variable | Fallback | Description |
+/// |----------|----------|-------------|
+/// | `TOADSTOOL_DISCOVERY_FALLBACK_PORT` | `9080` | Base port for localhost fallback endpoints |
+/// | `TOADSTOOL_DISCOVERY_FALLBACK_ENABLED` | `true` | Enable localhost fallback when discovery unavailable |
 #[derive(Debug, Clone)]
 pub struct FallbackEndpoints {
     /// Enable fallback to localhost
     pub enable_localhost_fallback: bool,
 
-    /// Base port for localhost services
+    /// Base port for localhost services (offset 0 = 9080, offset 1 = 9081, etc.)
     pub localhost_base_port: u16,
 }
 
 impl Default for FallbackEndpoints {
     fn default() -> Self {
-        Self {
-            enable_localhost_fallback: true, // Development convenience
-            localhost_base_port: 9080,
-        }
+        Self::from_env()
     }
 }
 
 impl FallbackEndpoints {
+    /// Load from environment variables with fallback defaults
+    ///
+    /// Uses `TOADSTOOL_DISCOVERY_FALLBACK_PORT` (default 9080) and
+    /// `TOADSTOOL_DISCOVERY_FALLBACK_ENABLED` (default true).
+    #[must_use]
+    pub fn from_env() -> Self {
+        let localhost_base_port = std::env::var("TOADSTOOL_DISCOVERY_FALLBACK_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(9080u16);
+        let enable_localhost_fallback = std::env::var("TOADSTOOL_DISCOVERY_FALLBACK_ENABLED")
+            .ok()
+            .and_then(|v| match v.to_lowercase().as_str() {
+                "true" | "1" | "yes" | "on" => Some(true),
+                "false" | "0" | "no" | "off" => Some(false),
+                _ => None,
+            })
+            .unwrap_or(true);
+        Self {
+            enable_localhost_fallback,
+            localhost_base_port,
+        }
+    }
+
     /// Get localhost endpoint for a service by offset
     ///
     /// This is a FALLBACK ONLY - prefer discovery

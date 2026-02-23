@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use toadstool::{ExecutionRequest, ToadStoolError, ToadStoolResult};
-
 // Re-export canonical JobPriority for convenience
 pub use toadstool::JobPriority;
 
@@ -472,7 +471,7 @@ mod tests {
         let _local = ExecutionTarget::Local;
         let _toadstool = ExecutionTarget::ToadStool {
             instance_id: "inst-1".to_string(),
-            endpoint: "http://localhost:8000".to_string(),
+            endpoint: toadstool_common::constants::network::default_http_url(),
         };
         let _best = ExecutionTarget::BestAvailable {
             constraints: ResourceConstraints {

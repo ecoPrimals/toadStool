@@ -62,10 +62,10 @@ fn test_power_measurement() {
     if let Ok(backend) = select_backend(BackendSelection::Auto, "0") {
         match backend.measure_power() {
             Ok(power) => {
-                println!("NPU power: {:.2}W", power);
+                println!("NPU power: {power:.2}W");
                 assert!(power > 0.0 && power < 100.0, "Power out of range");
             }
-            Err(e) => println!("ℹ️  Power measurement unavailable: {}", e),
+            Err(e) => println!("ℹ️  Power measurement unavailable: {e}"),
         }
     }
 }

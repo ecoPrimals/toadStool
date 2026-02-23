@@ -39,6 +39,7 @@ pub struct InferenceEngine {
 
 impl InferenceEngine {
     /// Create a new inference engine with auto-selected device
+    #[must_use]
     pub fn new() -> Self {
         Self::with_device(BurnDevice::auto_select())
     }
@@ -58,12 +59,14 @@ impl InferenceEngine {
     }
 
     /// Create with device and config
-    pub fn with_config(device: BurnDevice, config: EngineConfig) -> Self {
+    #[must_use]
+    pub const fn with_config(device: BurnDevice, config: EngineConfig) -> Self {
         Self { device, config }
     }
 
     /// Get the underlying device
-    pub fn device(&self) -> &BurnDevice {
+    #[must_use]
+    pub const fn device(&self) -> &BurnDevice {
         &self.device
     }
 
@@ -101,7 +104,7 @@ impl InferenceEngine {
                     size_bytes: std::fs::metadata(path).map(|m| m.len()).unwrap_or(0),
                 })
             }
-            _ => Err(Error::UnsupportedModel(format!("Unknown format: {}", ext))),
+            _ => Err(Error::UnsupportedModel(format!("Unknown format: {ext}"))),
         }
     }
 
@@ -143,9 +146,9 @@ pub struct LoadedModel {
 }
 
 /// Supported model formats
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelFormat {
-    /// HuggingFace safetensors/bin format
+    /// `HuggingFace` safetensors/bin format
     HuggingFace,
     /// ONNX format
     Onnx,

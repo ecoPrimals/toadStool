@@ -345,20 +345,22 @@ async fn test_e2e_image_processing_workflow() {
     input_buffer.sync_to_device().await.unwrap();
 
     // Simulate GPU processing (invert colors)
-    let mut processed_data = input_buffer.read_async(0, image_size).await.unwrap();
-    for pixel in processed_data.iter_mut() {
+    // Bytes is immutable; use .to_vec() when we need to mutate
+    let processed_data = input_buffer.read_async(0, image_size).await.unwrap();
+    let mut processed: Vec<u8> = processed_data.to_vec();
+    for pixel in processed.iter_mut() {
         *pixel = 255 - *pixel;
     }
 
     // Write processed data to output buffer
-    output_buffer.write_async(0, &processed_data).await.unwrap();
+    output_buffer.write_async(0, &processed).await.unwrap();
 
     // Download from GPU
     output_buffer.sync_to_cpu().await.unwrap();
     let final_data = output_buffer.read_async(0, image_size).await.unwrap();
 
     // Verify processing
-    assert_eq!(final_data, processed_data);
+    assert_eq!(final_data.as_ref(), processed.as_slice());
 
     let stats = memory.stats();
     assert_eq!(stats.active_allocations, 2);

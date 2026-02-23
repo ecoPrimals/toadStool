@@ -20,7 +20,7 @@ pub mod well_known {
     pub const BIOMEOS: &str = "biomeos";
 }
 
-/// Protocol strings for NodeType (Songbird discovery API).
+/// Protocol strings for `NodeType` (Songbird discovery API).
 /// Used when parsing discovery responses from coordination services.
 pub mod node_type {
     pub const TOADSTOOL: &str = "ToadStool";

@@ -237,8 +237,7 @@ impl ParallelComputeFramework for WebGpuFramework {
                 })
             }
             _ => Err(ToadStoolError::runtime(format!(
-                "Unsupported kernel format {:?} for WebGPU",
-                format
+                "Unsupported kernel format {format:?} for WebGPU"
             ))),
         }
     }
@@ -273,7 +272,7 @@ impl ParallelComputeFramework for WebGpuFramework {
         // For now, simulate execution with input processing
         let mut output_buffers = HashMap::new();
         for (i, input) in inputs.iter().enumerate() {
-            let output_name = format!("output_{}", i);
+            let output_name = format!("output_{i}");
             // Echo input data as output (placeholder behavior)
             output_buffers.insert(output_name, input.data.clone());
         }

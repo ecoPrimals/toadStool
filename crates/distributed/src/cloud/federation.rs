@@ -280,7 +280,7 @@ impl CloudFederationManager {
             .map_err(|e| FederationError::InvalidNode(e.to_string()))?;
 
         Ok(FederationNode {
-            id: format!("discovered-{}", peer_addr),
+            id: format!("discovered-{peer_addr}"),
             provider: endpoint.to_string(),
             capabilities: vec!["compute".to_string()],
             region: String::new(),

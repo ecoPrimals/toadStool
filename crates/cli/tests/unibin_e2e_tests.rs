@@ -5,11 +5,44 @@
 //!
 //! ToadStool is the FIRST primal to achieve 100% UniBin compliance!
 
+use std::net::SocketAddr;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::net::TcpStream;
 use tokio::process::Command;
 use tokio::sync::Barrier;
 use tokio::time::timeout;
+
+/// Wait for TCP port to become ready (event-driven, no fixed sleep)
+async fn wait_for_port(port: u16, timeout_duration: Duration) -> bool {
+    let addr: SocketAddr = format!("127.0.0.1:{}", port).parse().expect("valid addr");
+    let result = timeout(timeout_duration, async {
+        loop {
+            if TcpStream::connect(addr).await.is_ok() {
+                return true;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await;
+    result.unwrap_or(false)
+}
+
+/// Wait for Unix socket file to appear (event-driven)
+async fn wait_for_socket(path: &Path, timeout_duration: Duration) -> bool {
+    let path = path.to_path_buf();
+    let result = timeout(timeout_duration, async {
+        loop {
+            if path.exists() {
+                return true;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await;
+    result.unwrap_or(false)
+}
 
 // ============================================================================
 // SERVER MODE E2E TESTS
@@ -25,8 +58,7 @@ async fn test_server_mode_starts() {
         .spawn()
         .expect("Failed to spawn server");
 
-    // Give it time to start
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    wait_for_port(8085, Duration::from_secs(5)).await;
 
     // Kill the server
     cmd.kill().await.ok();
@@ -55,8 +87,7 @@ async fn test_server_mode_with_socket() {
         .spawn()
         .expect("Failed to spawn server");
 
-    // Give it time to create socket
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    wait_for_socket(Path::new(socket_path), Duration::from_secs(5)).await;
 
     // Kill the server
     cmd.kill().await.ok();
@@ -78,8 +109,7 @@ async fn test_daemon_mode_backward_compat() {
         .spawn()
         .expect("Failed to spawn daemon");
 
-    // Give it time to start
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    wait_for_port(8087, Duration::from_secs(5)).await;
 
     // Kill the daemon
     cmd.kill().await.ok();
@@ -117,8 +147,7 @@ async fn test_server_mode_with_all_options() {
         .spawn()
         .expect("Failed to spawn server");
 
-    // Give it time to start with all options
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    wait_for_port(8088, Duration::from_secs(5)).await;
 
     // Kill the server
     cmd.kill().await.ok();
@@ -143,8 +172,7 @@ async fn test_cli_to_server_communication() {
         .spawn()
         .expect("Failed to spawn server");
 
-    // Wait for server to start
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    wait_for_port(8089, Duration::from_secs(5)).await;
 
     // Run a CLI command (list biomes)
     let output = Command::new("cargo")
@@ -173,8 +201,7 @@ async fn test_multiple_cli_commands_to_server() {
         .spawn()
         .expect("Failed to spawn server");
 
-    // Wait for server
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    wait_for_port(8090, Duration::from_secs(5)).await;
 
     // Run multiple CLI commands concurrently
     let handles: Vec<_> = (0..5)
@@ -216,8 +243,7 @@ async fn test_server_graceful_shutdown() {
         .spawn()
         .expect("Failed to spawn server");
 
-    // Let it run
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    wait_for_port(8091, Duration::from_secs(5)).await;
 
     // Send SIGTERM for graceful shutdown testing
     // EVOLVED: Using rustix (ecoBin compliant) instead of libc
@@ -254,13 +280,16 @@ async fn test_server_restart_after_crash() {
         .spawn()
         .expect("Failed to spawn server");
 
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    wait_for_port(8092, Duration::from_secs(5)).await;
 
     // Kill it hard
     cmd1.kill().await.ok();
 
-    // Wait a moment
-    tokio::time::sleep(Duration::from_secs(1)).await;
+    // Wait for port to be released (interval tick - no sleep)
+    let mut release_interval = tokio::time::interval(Duration::from_millis(500));
+    release_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    release_interval.tick().await; // first completes immediately
+    release_interval.tick().await; // wait for port to leave TIME_WAIT
 
     // Start again
     let mut cmd2 = Command::new("cargo")
@@ -269,7 +298,7 @@ async fn test_server_restart_after_crash() {
         .spawn()
         .expect("Failed to spawn server second time");
 
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    wait_for_port(8092, Duration::from_secs(5)).await;
 
     // Should start successfully
     cmd2.kill().await.ok();
@@ -312,7 +341,7 @@ memory_limit = "256M"
         .spawn()
         .expect("Failed to spawn server");
 
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    wait_for_port(8093, Duration::from_secs(5)).await;
 
     // Run workload via CLI
     let output = Command::new("cargo")
@@ -353,8 +382,9 @@ async fn test_multiple_servers_different_ports() {
         servers.push(cmd);
     }
 
-    // Let them all start
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    for port in &ports {
+        wait_for_port(*port, Duration::from_secs(5)).await;
+    }
 
     // All should be running
     for server in servers.iter_mut() {
@@ -384,7 +414,7 @@ async fn test_server_handles_concurrent_requests() {
         .spawn()
         .expect("Failed to spawn server");
 
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    wait_for_port(8097, Duration::from_secs(5)).await;
 
     // Send many concurrent requests
     let barrier = Arc::new(Barrier::new(20));
@@ -436,7 +466,7 @@ async fn test_single_binary_multiple_modes() {
         .spawn()
         .expect("Failed to spawn server");
 
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    wait_for_port(8098, Duration::from_secs(5)).await;
 
     // Use CLI mode
     let cli_output = Command::new("cargo")
@@ -463,10 +493,13 @@ async fn test_server_and_daemon_equivalence() {
         .spawn()
         .expect("Failed to spawn server");
 
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    wait_for_port(8099, Duration::from_secs(5)).await;
     server.kill().await.ok();
 
-    tokio::time::sleep(Duration::from_secs(1)).await;
+    let mut release_interval = tokio::time::interval(Duration::from_millis(500));
+    release_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    release_interval.tick().await;
+    release_interval.tick().await;
 
     // Start with daemon (should work identically)
     let mut daemon = Command::new("cargo")
@@ -475,7 +508,7 @@ async fn test_server_and_daemon_equivalence() {
         .spawn()
         .expect("Failed to spawn daemon");
 
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    wait_for_port(8099, Duration::from_secs(5)).await;
     daemon.kill().await.ok();
 }
 
@@ -494,7 +527,7 @@ async fn test_server_recovers_from_invalid_request() {
         .spawn()
         .expect("Failed to spawn server");
 
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    wait_for_port(8100, Duration::from_secs(5)).await;
 
     // Send invalid request (nonexistent command)
     let _ = Command::new("cargo")
@@ -527,7 +560,7 @@ async fn test_server_handles_port_already_in_use() {
         .spawn()
         .expect("Failed to spawn first server");
 
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    wait_for_port(8101, Duration::from_secs(5)).await;
 
     // Try to start second server on same port
     let mut server2 = Command::new("cargo")
@@ -537,7 +570,8 @@ async fn test_server_handles_port_already_in_use() {
         .spawn()
         .expect("Failed to spawn second server");
 
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    // Second server may fail to bind (port in use) - wait for outcome
+    let _ = timeout(Duration::from_secs(2), server2.wait()).await;
 
     // Second should fail or handle gracefully
     let status2 = server2.wait().await;

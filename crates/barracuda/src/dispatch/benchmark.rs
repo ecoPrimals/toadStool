@@ -725,11 +725,12 @@ fn run_gpu_operation(operation: &str, test_data: &TestData) -> Result<()> {
         _ => 20.0,
     };
 
-    let simulated_time =
+    let _simulated_time =
         dispatch_overhead + per_element_time.mul_f64((elements as f64) / gpu_speedup);
 
-    // Actually wait to simulate real timing
-    std::thread::sleep(simulated_time.min(std::time::Duration::from_millis(10)));
+    // Do not sleep: simulation models timing for threshold calibration; real wall-clock
+    // delay adds no value and slows tests. Caller uses simulated_time for crossover logic.
+    std::thread::yield_now();
 
     Ok(())
 }

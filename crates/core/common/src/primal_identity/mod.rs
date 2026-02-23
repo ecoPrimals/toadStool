@@ -12,8 +12,7 @@
 
 use std::collections::HashMap;
 
-#[allow(deprecated)]
-use crate::interned_strings::primals;
+use crate::constants::PRIMAL_NAME;
 
 pub use types::*;
 
@@ -115,10 +114,9 @@ impl Default for ToadStoolIdentity {
     }
 }
 
-#[allow(deprecated)] // Self-knowledge: ToadStool knows its own name
 impl PrimalIdentity for ToadStoolIdentity {
     fn primal_name(&self) -> &'static str {
-        primals::TOADSTOOL
+        PRIMAL_NAME
     }
 
     fn version(&self) -> &str {

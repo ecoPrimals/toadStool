@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
 // Copyright (C) 2025 ecoPrimals
 
-//! Comprehensive tests for infant_discovery module
+//! Comprehensive tests for `infant_discovery` module
 //!
 //! Coverage push - Nov 7, 2025
-//! Target: Bring infant_discovery from 0% → 60%+
+//! Target: Bring `infant_discovery` from 0% → 60%+
 
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
@@ -339,7 +339,7 @@ fn test_discovered_service_multiple_services() {
 #[test]
 fn test_discovery_error_capability_not_found() {
     let error = DiscoveryError::CapabilityNotFound("missing_service".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("missing_service"));
     assert!(error_str.contains("not found"));
 }
@@ -347,7 +347,7 @@ fn test_discovery_error_capability_not_found() {
 #[test]
 fn test_discovery_error_timeout() {
     let error = DiscoveryError::Timeout(Duration::from_secs(30));
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("timeout"));
     assert!(error_str.contains("30"));
 }
@@ -355,7 +355,7 @@ fn test_discovery_error_timeout() {
 #[test]
 fn test_discovery_error_no_healthy_services() {
     let error = DiscoveryError::NoHealthyServices("degraded_service".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("degraded_service"));
     assert!(error_str.contains("No healthy"));
 }
@@ -363,7 +363,7 @@ fn test_discovery_error_no_healthy_services() {
 #[test]
 fn test_discovery_error_protocol_not_supported() {
     let error = DiscoveryError::ProtocolNotSupported("websocket".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("websocket"));
     assert!(error_str.contains("not supported"));
 }
@@ -371,7 +371,7 @@ fn test_discovery_error_protocol_not_supported() {
 #[test]
 fn test_discovery_error_source_failed() {
     let error = DiscoveryError::SourceFailed("MDNS discovery failed".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("source failed") || error_str.contains("Source failed"));
     assert!(error_str.contains("MDNS"));
 }
@@ -379,7 +379,7 @@ fn test_discovery_error_source_failed() {
 #[test]
 fn test_discovery_error_config_error() {
     let error = DiscoveryError::ConfigError("Invalid timeout value".to_string());
-    let error_str = format!("{}", error);
+    let error_str = format!("{error}");
     assert!(error_str.contains("Configuration error"));
     assert!(error_str.contains("timeout"));
 }

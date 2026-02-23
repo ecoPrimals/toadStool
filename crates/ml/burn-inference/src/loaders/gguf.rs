@@ -1,7 +1,7 @@
 //! GGUF model file loader
 //!
 //! Loads model weights from llama.cpp GGUF format.
-//! GGUF supports quantized weights (Q4_0, Q4_1, Q5_0, Q5_1, Q8_0, etc.)
+//! GGUF supports quantized weights (`Q4_0`, `Q4_1`, `Q5_0`, `Q5_1`, `Q8_0`, etc.)
 //!
 //! ## Format Overview
 //!
@@ -19,9 +19,9 @@
 //! ## Supported Quantization Types
 //!
 //! - F32, F16 - Full precision
-//! - Q4_0, Q4_1 - 4-bit quantization
-//! - Q5_0, Q5_1 - 5-bit quantization
-//! - Q8_0 - 8-bit quantization
+//! - `Q4_0`, `Q4_1` - 4-bit quantization
+//! - `Q5_0`, `Q5_1` - 5-bit quantization
+//! - `Q8_0` - 8-bit quantization
 
 use super::{DataType, ModelWeights, WeightTensor};
 use crate::{Error, Result};
@@ -62,7 +62,7 @@ pub enum GgufType {
 }
 
 impl GgufType {
-    fn from_u32(v: u32) -> Option<Self> {
+    const fn from_u32(v: u32) -> Option<Self> {
         match v {
             0 => Some(Self::F32),
             1 => Some(Self::F16),
@@ -86,7 +86,7 @@ impl GgufType {
     }
 
     /// Get bytes per element (for non-quantized types)
-    fn element_size(&self) -> usize {
+    const fn element_size(&self) -> usize {
         match self {
             Self::F32 | Self::I32 => 4,
             Self::F16 | Self::I16 => 2,
@@ -97,7 +97,7 @@ impl GgufType {
     }
 
     /// Get block size for quantized types
-    fn block_size(&self) -> usize {
+    const fn block_size(&self) -> usize {
         match self {
             Self::Q4_0 | Self::Q4_1 | Self::Q5_0 | Self::Q5_1 | Self::Q8_0 | Self::Q8_1 => 32,
             Self::Q2_K | Self::Q3_K | Self::Q4_K | Self::Q5_K | Self::Q6_K | Self::Q8_K => 256,
@@ -106,7 +106,7 @@ impl GgufType {
     }
 
     /// Get bytes per block for quantized types
-    fn bytes_per_block(&self) -> usize {
+    const fn bytes_per_block(&self) -> usize {
         match self {
             Self::F32 => 4,
             Self::F16 => 2,
@@ -128,7 +128,7 @@ impl GgufType {
         }
     }
 
-    fn to_data_type(self) -> DataType {
+    const fn to_data_type(self) -> DataType {
         match self {
             Self::F32 => DataType::F32,
             Self::F16 => DataType::F16,
@@ -183,8 +183,7 @@ pub fn load<P: AsRef<Path>>(path: P) -> Result<ModelWeights> {
 
     if magic != GGUF_MAGIC {
         return Err(Error::ModelLoad(format!(
-            "Invalid GGUF magic: {:?} (expected {:?})",
-            magic, GGUF_MAGIC
+            "Invalid GGUF magic: {magic:?} (expected {GGUF_MAGIC:?})"
         )));
     }
 
@@ -192,8 +191,7 @@ pub fn load<P: AsRef<Path>>(path: P) -> Result<ModelWeights> {
     let version = read_u32(&mut reader)?;
     if version != GGUF_VERSION_2 && version != GGUF_VERSION_3 {
         return Err(Error::ModelLoad(format!(
-            "Unsupported GGUF version: {} (supported: 2, 3)",
-            version
+            "Unsupported GGUF version: {version} (supported: 2, 3)"
         )));
     }
     tracing::debug!("GGUF version: {}", version);
@@ -394,7 +392,7 @@ fn skip_metadata<R: Read>(reader: &mut R, count: u64) -> Result<HashMap<String, 
                         .read_exact(&mut buf)
                         .map_err(|e| Error::ModelLoad(format!("Failed to skip array: {e}")))?;
                 }
-                format!("[array len={}]", len)
+                format!("[array len={len}]")
             }
             10 => {
                 // U64
@@ -412,8 +410,7 @@ fn skip_metadata<R: Read>(reader: &mut R, count: u64) -> Result<HashMap<String, 
             }
             _ => {
                 return Err(Error::ModelLoad(format!(
-                    "Unknown metadata type: {}",
-                    value_type
+                    "Unknown metadata type: {value_type}"
                 )));
             }
         };
@@ -443,10 +440,7 @@ fn read_tensor_infos<R: Read>(reader: &mut R, count: u64) -> Result<Vec<GgufTens
         // Read type
         let type_id = read_u32(reader)?;
         let gguf_type = GgufType::from_u32(type_id).ok_or_else(|| {
-            Error::ModelLoad(format!(
-                "Unknown GGUF type: {} for tensor {}",
-                type_id, name
-            ))
+            Error::ModelLoad(format!("Unknown GGUF type: {type_id} for tensor {name}"))
         })?;
 
         // Read offset
@@ -464,7 +458,8 @@ fn read_tensor_infos<R: Read>(reader: &mut R, count: u64) -> Result<Vec<GgufTens
     Ok(infos)
 }
 
-/// Dequantize Q4_0 data to f32
+/// Dequantize `Q4_0` data to f32
+#[must_use]
 pub fn dequantize_q4_0(data: &[u8], numel: usize) -> Vec<f32> {
     let block_size = 32;
     let n_blocks = numel.div_ceil(block_size);
@@ -486,9 +481,9 @@ pub fn dequantize_q4_0(data: &[u8], numel: usize) -> Vec<f32> {
             let q0 = (byte & 0x0F) as i8 - 8;
             let q1 = ((byte >> 4) & 0x0F) as i8 - 8;
 
-            output.push(scale * q0 as f32);
+            output.push(scale * f32::from(q0));
             if output.len() < numel {
-                output.push(scale * q1 as f32);
+                output.push(scale * f32::from(q1));
             }
         }
     }
@@ -497,7 +492,8 @@ pub fn dequantize_q4_0(data: &[u8], numel: usize) -> Vec<f32> {
     output
 }
 
-/// Dequantize Q8_0 data to f32
+/// Dequantize `Q8_0` data to f32
+#[must_use]
 pub fn dequantize_q8_0(data: &[u8], numel: usize) -> Vec<f32> {
     let block_size = 32;
     let n_blocks = numel.div_ceil(block_size);
@@ -519,7 +515,7 @@ pub fn dequantize_q8_0(data: &[u8], numel: usize) -> Vec<f32> {
                 break;
             }
             let q = data[block_offset + 2 + i] as i8;
-            output.push(scale * q as f32);
+            output.push(scale * f32::from(q));
         }
     }
 

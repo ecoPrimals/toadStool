@@ -59,7 +59,7 @@ impl CoordinatorExecutor {
 
         let coordinator = DistributedCoordinator::new(config)
             .await
-            .map_err(|e| format!("Failed to create coordinator: {}", e))?;
+            .map_err(|e| format!("Failed to create coordinator: {e}"))?;
 
         let coordinator = Arc::new(coordinator);
 
@@ -67,7 +67,7 @@ impl CoordinatorExecutor {
         Arc::clone(&coordinator)
             .start()
             .await
-            .map_err(|e| format!("Failed to start coordinator: {}", e))?;
+            .map_err(|e| format!("Failed to start coordinator: {e}"))?;
 
         info!("✅ Coordinator executor ready");
 
@@ -86,15 +86,15 @@ impl WorkloadExecutor for CoordinatorExecutor {
             submission.workload_id
         );
 
-        // Convert WorkloadSubmission to ExecutionRequest
-        let request = convert_submission_to_request(submission.clone())?;
+        // Convert WorkloadSubmission to ExecutionRequest (pass by ref to avoid full clone)
+        let request = convert_submission_to_request(&submission)?;
 
         // Submit to coordinator (isomorphic/fractal routing)
         let execution_id = self
             .coordinator
             .submit_execution(request)
             .await
-            .map_err(|e| format!("Coordinator execution failed: {}", e))?;
+            .map_err(|e| format!("Coordinator execution failed: {e}"))?;
 
         info!("Workload submitted to coordinator: {}", execution_id);
 
@@ -194,17 +194,19 @@ impl WorkloadExecutor for CoordinatorExecutor {
 /// Convert WorkloadSubmission to ExecutionRequest
 ///
 /// Deep debt principle: Type conversion without hardcoding
+/// Takes reference to avoid cloning workload_id, workload_type, priority, requirements.
 fn convert_submission_to_request(
-    submission: WorkloadSubmission,
+    submission: &WorkloadSubmission,
 ) -> Result<ExecutionRequest, String> {
     // Create workload spec from raw binary data
+    // Bytes::clone is cheap (refcount); metadata clone necessary for env_vars
     let workload_spec = WorkloadSpec::Native {
         executable: toadstool::workload::ExecutableSource::Bytes {
-            data: submission.data,
+            data: submission.data.clone(),
         },
         args: None,
         working_dir: None,
-        env_vars: submission.metadata, // metadata is HashMap, not Option
+        env_vars: submission.metadata.clone(),
         user: None,
     };
 
@@ -314,7 +316,8 @@ mod tests {
             },
         };
 
-        let request = convert_submission_to_request(submission).expect("Conversion should succeed");
+        let request =
+            convert_submission_to_request(&submission).expect("Conversion should succeed");
 
         assert_eq!(
             request.execution_id.to_string(),
@@ -348,7 +351,8 @@ mod tests {
             },
         };
 
-        let request = convert_submission_to_request(submission).expect("Conversion should succeed");
+        let request =
+            convert_submission_to_request(&submission).expect("Conversion should succeed");
 
         // Should not panic - invalid UUID gets replaced with new_v4
         assert!(uuid::Uuid::parse_str(&request.execution_id.to_string()).is_ok());
@@ -370,7 +374,8 @@ mod tests {
             },
         };
 
-        let request = convert_submission_to_request(submission).expect("Conversion should succeed");
+        let request =
+            convert_submission_to_request(&submission).expect("Conversion should succeed");
         assert!(matches!(request.runtime_hint, Some(RuntimeType::Native)));
     }
 
@@ -390,7 +395,8 @@ mod tests {
             },
         };
 
-        let request = convert_submission_to_request(submission).expect("Conversion should succeed");
+        let request =
+            convert_submission_to_request(&submission).expect("Conversion should succeed");
         assert!(matches!(request.runtime_hint, Some(RuntimeType::Wasm)));
     }
 

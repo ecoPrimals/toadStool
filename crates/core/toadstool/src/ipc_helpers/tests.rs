@@ -403,6 +403,7 @@ async fn test_resolve_primal_success_via_mock() {
     });
     let handle = spawn_mock_songbird(&path_str, reply).await;
 
+    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests.
     unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
     let result = resolve_primal("beardog").await;
     unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
@@ -423,6 +424,7 @@ async fn test_resolve_primal_missing_endpoint_returns_error() {
     let reply = json!({"jsonrpc": "2.0", "result": {}, "id": 1});
     let handle = spawn_mock_songbird(&path_str, reply).await;
 
+    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests.
     unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
     let result = resolve_primal("beardog").await;
     unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
@@ -451,6 +453,7 @@ async fn test_find_by_capability_success_via_mock() {
     });
     let handle = spawn_mock_songbird(&path_str, reply).await;
 
+    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests.
     unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
     let result = find_by_capability("compute").await;
     unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
@@ -473,6 +476,7 @@ async fn test_find_by_capability_error_reply() {
         json!({"jsonrpc": "2.0", "error": {"code": -1, "message": "no capabilities"}, "id": 1});
     let handle = spawn_mock_songbird(&path_str, reply).await;
 
+    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests.
     unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
     let result = find_by_capability("gpu").await;
     unsafe { std::env::remove_var("SONGBIRD_SOCKET") };

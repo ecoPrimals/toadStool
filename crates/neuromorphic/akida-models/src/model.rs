@@ -153,7 +153,7 @@ impl Model {
 
     /// Get number of layers
     #[must_use]
-    pub fn layer_count(&self) -> usize {
+    pub const fn layer_count(&self) -> usize {
         self.layers.len()
     }
 
@@ -165,7 +165,7 @@ impl Model {
 
     /// Get model program size (bytes)
     #[must_use]
-    pub fn program_size(&self) -> usize {
+    pub const fn program_size(&self) -> usize {
         self.data.len()
     }
 

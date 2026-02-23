@@ -1,4 +1,4 @@
-//! Vision models (YOLO, ResNet, etc.)
+//! Vision models (YOLO, `ResNet`, etc.)
 //!
 //! Type-safe API surface for computer vision inference.
 //!
@@ -66,7 +66,8 @@ pub struct Yolo {
 
 impl Yolo {
     /// Create new YOLO model
-    pub fn new(config: YoloConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: YoloConfig) -> Self {
         Self { config }
     }
 
@@ -98,7 +99,8 @@ impl Yolo {
     }
 
     /// Get number of parameters
-    pub fn num_parameters(&self) -> usize {
+    #[must_use]
+    pub const fn num_parameters(&self) -> usize {
         match self.config.version {
             YoloVersion::V8Nano => 3_200_000,
             YoloVersion::V8Small => 11_200_000,
@@ -108,7 +110,7 @@ impl Yolo {
     }
 }
 
-/// ResNet configuration
+/// `ResNet` configuration
 #[derive(Debug, Clone, Copy)]
 pub enum ResNetVariant {
     ResNet18,
@@ -118,15 +120,16 @@ pub enum ResNetVariant {
     ResNet152,
 }
 
-/// ResNet model
+/// `ResNet` model
 #[derive(Debug)]
 pub struct ResNet {
     variant: ResNetVariant,
 }
 
 impl ResNet {
-    /// Create new ResNet model
-    pub fn new(variant: ResNetVariant) -> Self {
+    /// Create new `ResNet` model
+    #[must_use]
+    pub const fn new(variant: ResNetVariant) -> Self {
         Self { variant }
     }
 
@@ -141,7 +144,8 @@ impl ResNet {
     }
 
     /// Get number of parameters
-    pub fn num_parameters(&self) -> usize {
+    #[must_use]
+    pub const fn num_parameters(&self) -> usize {
         match self.variant {
             ResNetVariant::ResNet18 => 11_700_000,
             ResNetVariant::ResNet34 => 21_800_000,

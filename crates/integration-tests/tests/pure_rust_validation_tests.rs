@@ -359,7 +359,7 @@ fn test_cargo_metadata_pure_rust() {
 /// Ignored: cubecl v0.4.0 (NPU backend) transitively pulls in dirs → dirs-sys.
 /// Track as workspace debt: replace cubecl::dirs with etcetera when cubecl exposes that option.
 #[test]
-#[ignore = "cubecl transitive dep brings dirs-sys; tracked as workspace debt"]
+#[ignore = "D-S18-002: cubecl transitive dirs-sys; see docs/debt/D-S18-002-cubecl-dirs-sys.md"]
 fn test_dirs_sys_eliminated() {
     let output = Command::new("cargo")
         .args(["tree", "--workspace"])

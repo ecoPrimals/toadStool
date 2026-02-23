@@ -133,14 +133,16 @@ impl InputManager {
     /// - ✅ Graceful error handling
     /// - ✅ Zero unsafe
     ///
-    /// Note: Currently uses blocking fetch_events() in tokio::spawn_blocking.
-    /// Future evolution: Use EventStream for true async.
+    /// Note: Currently uses blocking `fetch_events()` in `tokio::spawn_blocking`.
+    /// Future evolution: Use `EventStream` for true async.
     async fn read_device_events(
         mut device: Device,
         tx: mpsc::Sender<InputEvent>,
         shared_focus: Arc<RwLock<Option<WindowId>>>,
     ) -> Result<()> {
         let mut parser = EventParser::new();
+        let mut poll_interval = tokio::time::interval(tokio::time::Duration::from_millis(10));
+        poll_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
         // Read events in a blocking loop (inside tokio::spawn_blocking for now)
         loop {
@@ -154,14 +156,14 @@ impl InputManager {
                 let events: std::io::Result<Vec<_>> = device
                     .evdev_device_mut()
                     .fetch_events()
-                    .map(|iter| iter.collect())
+                    .map(std::iter::Iterator::collect)
                     .map_err(std::io::Error::other);
                 (device, events)
             })
             .await;
 
             let (dev, events_result) = events_result
-                .map_err(|e| DisplayError::InputError(format!("Task join error: {}", e)))?;
+                .map_err(|e| DisplayError::InputError(format!("Task join error: {e}")))?;
 
             device = dev;
 
@@ -182,12 +184,12 @@ impl InputManager {
                 }
                 Err(e) => {
                     tracing::error!("Error reading events: {}", e);
-                    return Err(DisplayError::InputError(format!("Event read error: {}", e)));
+                    return Err(DisplayError::InputError(format!("Event read error: {e}")));
                 }
             }
 
-            // Small delay to avoid busy-waiting
-            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+            // Rate-limit poll to avoid busy-waiting (proper async interval pattern)
+            poll_interval.tick().await;
         }
     }
 
@@ -195,12 +197,12 @@ impl InputManager {
     ///
     /// Returns a receiver for input events. Events are automatically routed
     /// to the focused window.
-    pub fn subscribe_events(&mut self) -> mpsc::Receiver<InputEvent> {
+    pub const fn subscribe_events(&mut self) -> mpsc::Receiver<InputEvent> {
         // Take the receiver (can only be called once)
         // For production, we'd want to support multiple subscribers
-        self.event_rx
-            .take()
-            .expect("subscribe_events can only be called once")
+        self.event_rx.take().expect(
+            "subscribe_events called multiple times: InputManager has a single event receiver channel (consumed on first call); duplicate call indicates event routing setup bug",
+        )
     }
 
     /// Poll for input events
@@ -209,7 +211,7 @@ impl InputManager {
     ///
     /// **Priority 3 COMPLETE**: Now returns actual events from async streams!
     ///
-    /// Note: This is a simplified API. For streaming, use subscribe_events().
+    /// Note: This is a simplified API. For streaming, use `subscribe_events()`.
     pub async fn poll_events(&mut self) -> Result<Vec<InputEvent>> {
         // For now, return empty - real streaming happens via subscribe_events()
         // This is here for compatibility with the old API
@@ -254,12 +256,14 @@ impl InputManager {
     }
 
     /// Get currently focused window.
+    #[must_use]
     pub fn focused_window(&self) -> Option<WindowId> {
         self.shared_focus.read().map(|g| *g).unwrap_or(None)
     }
 
     /// Get number of devices
-    pub fn device_count(&self) -> usize {
+    #[must_use]
+    pub const fn device_count(&self) -> usize {
         self.devices.len()
     }
 
@@ -269,11 +273,11 @@ impl InputManager {
         self.event_tx
             .send(event)
             .await
-            .map_err(|e| DisplayError::InputError(format!("Failed to inject event: {}", e)))
+            .map_err(|e| DisplayError::InputError(format!("Failed to inject event: {e}")))
     }
 }
 
-/// Thread-safe wrapper for InputManager
+/// Thread-safe wrapper for `InputManager`
 pub type SharedInputManager = std::sync::Arc<tokio::sync::RwLock<InputManager>>;
 
 #[cfg(test)]

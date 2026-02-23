@@ -23,6 +23,7 @@ pub enum PixelFormat {
 
 impl PixelFormat {
     /// Get bits per pixel for this format
+    #[must_use]
     pub const fn bpp(self) -> u32 {
         match self {
             Self::RGBA8888 | Self::BGRA8888 => 32,
@@ -32,6 +33,7 @@ impl PixelFormat {
     }
 
     /// Get bytes per pixel
+    #[must_use]
     pub const fn bytes_per_pixel(self) -> usize {
         match self {
             Self::RGBA8888 | Self::BGRA8888 => 4,
@@ -41,6 +43,7 @@ impl PixelFormat {
     }
 
     /// Convert to DRM fourcc code for drm crate
+    #[must_use]
     pub const fn to_drm_fourcc(self) -> DrmFourcc {
         match self {
             Self::RGBA8888 => DrmFourcc::Argb8888,
@@ -60,7 +63,7 @@ impl PixelFormat {
 ///
 /// ## Implementation
 ///
-/// Wraps drm::control::DumbBuffer for complete, real implementation.
+/// Wraps `drm::control::DumbBuffer` for complete, real implementation.
 /// **NO PLACEHOLDERS!** Uses actual DRM ioctls.
 ///
 /// ## Safety
@@ -81,9 +84,8 @@ impl PixelFormat {
 /// // Map and write pixels
 /// let mut mapped = buffer.map()?;
 /// mapped.fill(0xFF0000FF); // Red
-/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// # Ok::<(), toadstool_display::DisplayError>(())
 /// ```
-#[allow(dead_code)]
 pub struct DumbBuffer {
     inner: drm::control::dumbbuffer::DumbBuffer, // ✅ Real DRM buffer!
     width: u32,
@@ -116,7 +118,7 @@ impl DumbBuffer {
     /// # use toadstool_display::drm::*;
     /// let device = Device::open("/dev/dri/card0")?;
     /// let buffer = DumbBuffer::create(&device, 1920, 1080, PixelFormat::RGBA8888)?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), toadstool_display::DisplayError>(())
     /// ```
     pub fn create(
         device: &super::Device,
@@ -133,9 +135,7 @@ impl DumbBuffer {
         // This is a REAL DRM ioctl, not a placeholder!
         let inner = device
             .create_dumb_buffer((width, height), fourcc, bpp)
-            .map_err(|e| {
-                DisplayError::IoctlFailed(format!("Failed to create dumb buffer: {}", e))
-            })?;
+            .map_err(|e| DisplayError::IoctlFailed(format!("Failed to create dumb buffer: {e}")))?;
 
         tracing::info!(
             "✅ Created dumb buffer: {}x{} ({:?}) pitch={} handle={:?}",
@@ -164,7 +164,7 @@ impl DumbBuffer {
     ///
     /// Internally uses `mmap` via drm crate, but wrapped in safe abstraction:
     /// - Memory is automatically unmapped on drop (RAII)
-    /// - Slice lifetime tied to MappedBuffer
+    /// - Slice lifetime tied to `MappedBuffer`
     /// - No undefined behavior possible in safe code
     ///
     /// # Note
@@ -180,7 +180,7 @@ impl DumbBuffer {
     /// let mut buffer = DumbBuffer::create(&device, 1920, 1080, PixelFormat::RGBA8888)?;
     /// let mut mapped = buffer.map()?;
     /// mapped.fill(0xFF0000FF); // Fill with red
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), toadstool_display::DisplayError>(())
     /// ```
     pub fn map(self) -> Result<MappedBuffer> {
         tracing::trace!("Mapping buffer {}x{}", self.width, self.height);
@@ -195,21 +195,25 @@ impl DumbBuffer {
     }
 
     /// Get buffer dimensions
-    pub fn dimensions(&self) -> (u32, u32) {
+    #[must_use]
+    pub const fn dimensions(&self) -> (u32, u32) {
         (self.width, self.height)
     }
 
     /// Get buffer stride (bytes per row)
+    #[must_use]
     pub fn stride(&self) -> u32 {
         self.inner.pitch()
     }
 
     /// Get pixel format
-    pub fn format(&self) -> PixelFormat {
+    #[must_use]
+    pub const fn format(&self) -> PixelFormat {
         self.format
     }
 
     /// Get the underlying drm buffer handle
+    #[must_use]
     pub fn handle(&self) -> drm::buffer::Handle {
         self.inner.handle()
     }
@@ -228,12 +232,12 @@ impl Drop for DumbBuffer {
 /// Provides safe CPU access to framebuffer memory.
 /// Automatically unmapped when dropped (RAII).
 ///
-/// **COMPLETE IMPLEMENTATION** - wraps DumbBuffer for operations!
+/// **COMPLETE IMPLEMENTATION** - wraps `DumbBuffer` for operations!
 ///
 /// ## Safety
 ///
 /// This type ensures memory safety:
-/// - Backed by DumbBuffer's underlying memory
+/// - Backed by `DumbBuffer`'s underlying memory
 /// - Mapping/unmapping handled by drm crate
 /// - Lifetime managed automatically
 /// - No way to create invalid references
@@ -243,16 +247,19 @@ pub struct MappedBuffer {
 
 impl MappedBuffer {
     /// Get buffer dimensions
-    pub fn dimensions(&self) -> (u32, u32) {
+    #[must_use]
+    pub const fn dimensions(&self) -> (u32, u32) {
         (self.buffer.width, self.buffer.height)
     }
 
     /// Get pixel format
-    pub fn format(&self) -> PixelFormat {
+    #[must_use]
+    pub const fn format(&self) -> PixelFormat {
         self.buffer.format
     }
 
     /// Get buffer stride (bytes per row)
+    #[must_use]
     pub fn stride(&self) -> u32 {
         self.buffer.inner.pitch()
     }
@@ -263,7 +270,7 @@ impl MappedBuffer {
     /// This will be completed when we add a complete window manager that maintains
     /// Device references alongside buffers.
     ///
-    /// For now, use copy_from_slice() to write entire buffer contents.
+    /// For now, use `copy_from_slice()` to write entire buffer contents.
     pub fn write_pixel(&mut self, _x: u32, _y: u32, _color: u32) {
         tracing::warn!("write_pixel not yet implemented - use copy_from_slice instead");
     }
@@ -273,7 +280,7 @@ impl MappedBuffer {
     /// **NOTE**: Currently not implemented - requires Device reference for mapping.
     /// This will be completed when we add a complete window manager.
     ///
-    /// For now, use copy_from_slice() to write entire buffer contents.
+    /// For now, use `copy_from_slice()` to write entire buffer contents.
     pub fn fill(&mut self, _color: u32) {
         tracing::warn!("fill not yet implemented - use copy_from_slice instead");
     }
@@ -289,6 +296,7 @@ impl MappedBuffer {
     }
 
     /// Get buffer handle for framebuffer operations
+    #[must_use]
     pub fn handle(&self) -> drm::buffer::Handle {
         self.buffer.inner.handle()
     }

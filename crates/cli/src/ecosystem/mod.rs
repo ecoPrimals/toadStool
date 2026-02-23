@@ -180,7 +180,7 @@ mod tests {
             address: format!(
                 "{}:{}",
                 toadstool_common::constants::LOCALHOST_IPV4,
-                6000 // Hardcoded test port (old BEARDOG_PORT value for backward compat test)
+                6000 // Test fixture: deterministic port for serialization round-trip test
             )
             .parse()
             .unwrap(),

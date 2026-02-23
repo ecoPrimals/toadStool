@@ -397,24 +397,21 @@ impl ResourceEstimator {
         // Warn about high resource usage
         if cpu_cores > 64 {
             warnings.push(format!(
-                "High CPU usage: {} cores needed. Consider splitting workload.",
-                cpu_cores
+                "High CPU usage: {cpu_cores} cores needed. Consider splitting workload."
             ));
         }
 
         let memory_gb = memory_bytes / (1024 * 1024 * 1024);
         if memory_gb > 128 {
             warnings.push(format!(
-                "High memory usage: {} GB needed. Consider streaming data.",
-                memory_gb
+                "High memory usage: {memory_gb} GB needed. Consider streaming data."
             ));
         }
 
         let gpu_memory_gb = gpu_memory_bytes / (1024 * 1024 * 1024);
         if gpu_memory_gb > 48 {
             warnings.push(format!(
-                "High GPU memory usage: {} GB needed. Consider model sharding.",
-                gpu_memory_gb
+                "High GPU memory usage: {gpu_memory_gb} GB needed. Consider model sharding."
             ));
         }
 
@@ -663,6 +660,92 @@ mod tests {
         // Parallel: total = 4096+8192 = 12288 MB
         let expected = (4096 + 8192) * 1024 * 1024;
         assert_eq!(est.gpu_memory_bytes, expected);
+    }
+
+    // ── Default instance ─────────────────────────────────────────────────────
+
+    // ── Warnings ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_high_cpu_generates_warning() {
+        let estimator = ResourceEstimator::new();
+        // Parallel nodes: 33+33 = 66 cores > 64 threshold
+        let graph = ExecutionGraph {
+            id: "high-cpu".to_string(),
+            nodes: vec![simple_node("a", 33.0), simple_node("b", 33.0)],
+            edges: vec![],
+            metadata: HashMap::new(),
+        };
+        let est = estimator.estimate(&graph).unwrap();
+        assert!(
+            est.warnings.iter().any(|w| w.contains("CPU")),
+            "Expected high CPU warning, got: {:?}",
+            est.warnings
+        );
+    }
+
+    #[test]
+    fn test_high_memory_generates_warning() {
+        let estimator = ResourceEstimator::new();
+        let graph = ExecutionGraph {
+            id: "high-mem".to_string(),
+            nodes: vec![GraphNode {
+                id: "big".to_string(),
+                primal: "toadstool".to_string(),
+                operation: "cpu_compute".to_string(),
+                duration: None,
+                requirements: NodeResourceRequirements {
+                    memory: Some(MemoryRequirements {
+                        min_bytes: 130 * 1024 * 1024 * 1024, // 130 GB > 128
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                metadata: HashMap::new(),
+            }],
+            edges: vec![],
+            metadata: HashMap::new(),
+        };
+        let est = estimator.estimate(&graph).unwrap();
+        assert!(
+            est.warnings.iter().any(|w| w.contains("memory")),
+            "Expected high memory warning, got: {:?}",
+            est.warnings
+        );
+    }
+
+    #[test]
+    fn test_high_gpu_memory_generates_warning() {
+        let estimator = ResourceEstimator::new();
+        let graph = ExecutionGraph {
+            id: "high-gpu".to_string(),
+            nodes: vec![GraphNode {
+                id: "gpu".to_string(),
+                primal: "toadstool".to_string(),
+                operation: "gpu_compute".to_string(),
+                duration: None,
+                requirements: NodeResourceRequirements {
+                    gpu: Some(GpuRequirements {
+                        min_units: 1,
+                        max_units: None,
+                        gpu_type: None,
+                        min_memory_bytes: Some(50 * 1024 * 1024 * 1024), // 50 GB > 48
+                    }),
+                    ..Default::default()
+                },
+                metadata: HashMap::new(),
+            }],
+            edges: vec![],
+            metadata: HashMap::new(),
+        };
+        let est = estimator.estimate(&graph).unwrap();
+        assert!(
+            est.warnings
+                .iter()
+                .any(|w| w.to_lowercase().contains("gpu")),
+            "Expected high GPU memory warning, got: {:?}",
+            est.warnings
+        );
     }
 
     // ── Default instance ─────────────────────────────────────────────────────

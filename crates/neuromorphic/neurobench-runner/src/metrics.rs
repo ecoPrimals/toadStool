@@ -1,6 +1,6 @@
-//! Metrics collection for NeuroBench
+//! Metrics collection for `NeuroBench`
 //!
-//! Provides detailed metric tracking beyond the summary in BenchmarkResult.
+//! Provides detailed metric tracking beyond the summary in `BenchmarkResult`.
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -39,12 +39,13 @@ pub struct LatencyMetrics {
 
 impl LatencyMetrics {
     /// Calculate metrics from raw samples
+    #[must_use]
     pub fn from_samples(samples: Vec<Duration>) -> Self {
         if samples.is_empty() {
             return Self::default();
         }
 
-        let mut sorted: Vec<_> = samples.to_vec();
+        let mut sorted: Vec<_> = samples.clone();
         sorted.sort();
 
         let n = sorted.len();
@@ -53,7 +54,7 @@ impl LatencyMetrics {
         let median = sorted[n / 2];
 
         // Mean
-        let total_nanos: u128 = sorted.iter().map(|d| d.as_nanos()).sum();
+        let total_nanos: u128 = sorted.iter().map(std::time::Duration::as_nanos).sum();
         let mean_nanos = total_nanos / n as u128;
         let mean = Duration::from_nanos(mean_nanos as u64);
 
@@ -114,8 +115,8 @@ impl PowerMetrics {
             return Self::default();
         }
 
-        let min_w = samples.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_w = samples.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let min_w = samples.iter().copied().fold(f64::INFINITY, f64::min);
+        let max_w = samples.iter().copied().fold(f64::NEG_INFINITY, f64::max);
         let mean_w = samples.iter().sum::<f64>() / samples.len() as f64;
 
         Self {
@@ -166,6 +167,7 @@ pub struct AccuracyMetrics {
 
 impl AccuracyMetrics {
     /// Create new accuracy metrics
+    #[must_use]
     pub fn new(num_classes: usize) -> Self {
         Self {
             num_classes,

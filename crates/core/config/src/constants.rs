@@ -97,7 +97,7 @@ pub mod primals {
     /// **DEPRECATED**: Discover coordinator by capability, not hardcoded name
     pub const SONGBIRD: &str = "songbird";
 
-    /// BearDog security service identifier  
+    /// BearDog security service identifier\
     /// **DEPRECATED**: Discover security service by capability, not hardcoded name
     pub const BEARDOG: &str = "beardog";
 
@@ -126,7 +126,7 @@ pub mod network {
     /// Localhost address
     pub const LOCALHOST: &str = "127.0.0.1";
 
-    /// IPv6 localhost
+    /// `IPv6` localhost
     pub const LOCALHOST_V6: &str = "::1";
 
     /// Default HTTP scheme

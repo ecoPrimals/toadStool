@@ -119,7 +119,8 @@ pub fn gamma(x: f64) -> Result<f64> {
 }
 
 #[allow(dead_code)]
-const WGSL_INCOMPLETE_GAMMA_F64: &str = include_str!("../shaders/special/incomplete_gamma_f64.wgsl");
+const WGSL_INCOMPLETE_GAMMA_F64: &str =
+    include_str!("../shaders/special/incomplete_gamma_f64.wgsl");
 
 /// Lower incomplete gamma function: γ(a, x) = ∫₀ˣ t^(a-1) e^(-t) dt
 ///
@@ -184,7 +185,8 @@ pub fn upper_incomplete_gamma(a: f64, x: f64) -> Result<f64> {
 }
 
 #[allow(dead_code)]
-const WGSL_REGULARIZED_GAMMA_F64: &str = include_str!("../shaders/special/regularized_gamma_f64.wgsl");
+const WGSL_REGULARIZED_GAMMA_F64: &str =
+    include_str!("../shaders/special/regularized_gamma_f64.wgsl");
 
 /// Regularized lower incomplete gamma function: P(a, x) = γ(a, x) / Γ(a)
 ///

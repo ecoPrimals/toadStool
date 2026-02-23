@@ -12,6 +12,8 @@ use tarpc::context::Context;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
+use crate::errors::{ServerError, ServerResult};
+
 // Deep debt solution: Use pure RPC types from local module
 use crate::rpc_types::{
     AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, HealthStatus,
@@ -22,8 +24,8 @@ use crate::rpc_types::{
 pub struct ToadStoolTarpcServer {
     /// Service start time
     start_time: Instant,
-    /// Service version
-    version: String,
+    /// Service version (`Arc<str>` avoids allocation on spawn-per-connection clone)
+    version: Arc<str>,
     /// Active workloads
     workloads: Arc<RwLock<std::collections::HashMap<String, WorkloadResult>>>,
     /// Workload executor (real implementation, not mock)
@@ -42,7 +44,7 @@ impl ToadStoolTarpcServer {
     async fn calculate_resource_utilization(&self) -> f32 {
         let active_count = self.workloads.read().await.len();
         let max_capacity = std::thread::available_parallelism()
-            .map(|n| n.get())
+            .map(std::num::NonZero::get)
             .unwrap_or(4)
             * 4; // ~4 workloads per core
 
@@ -102,13 +104,13 @@ impl ToadStoolTarpcServer {
     ///
     /// Pass `error_count` to share the counter with JSON-RPC server for unified monitoring.
     pub fn new(
-        version: String,
+        version: impl AsRef<str>,
         executor: Arc<dyn WorkloadExecutor + Send + Sync>,
         error_count: Option<Arc<AtomicU64>>,
     ) -> Self {
         Self {
             start_time: Instant::now(),
-            version,
+            version: Arc::from(version.as_ref()),
             workloads: Arc::new(RwLock::new(std::collections::HashMap::new())),
             executor,
             error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
@@ -119,10 +121,7 @@ impl ToadStoolTarpcServer {
     /// Per wateringHole standard: JSON-RPC 2.0 is PRIMARY, tarpc is OPTIONAL
     ///
     /// Deep debt principle: No TCP hardcoding, use Unix sockets for multi-instance support
-    pub async fn serve_unix(
-        self,
-        socket_path: impl AsRef<std::path::Path>,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn serve_unix(self, socket_path: impl AsRef<std::path::Path>) -> ServerResult<()> {
         use tarpc::server::{BaseChannel, Channel};
         use tokio::net::UnixListener;
         use tokio_serde::formats::Json;
@@ -131,27 +130,34 @@ impl ToadStoolTarpcServer {
 
         // Ensure parent directory exists (biomeOS requirement for custom socket paths)
         if let Some(parent) = socket_path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create socket directory {:?}: {}", parent, e))?;
+            std::fs::create_dir_all(parent).map_err(|e| {
+                ServerError::Initialization(format!(
+                    "Failed to create socket directory {parent:?}: {e}"
+                ))
+            })?;
             info!("Ensured socket directory exists: {:?}", parent);
         }
 
         // Clean up old socket if exists
         if socket_path.exists() {
             info!("Removing old socket file: {:?}", socket_path);
-            std::fs::remove_file(socket_path)?;
+            std::fs::remove_file(socket_path).map_err(|e| ServerError::Network(e.to_string()))?;
         }
 
         info!("tarpc server binding to Unix socket: {:?}", socket_path);
-        let listener = UnixListener::bind(socket_path)?;
+        let listener =
+            UnixListener::bind(socket_path).map_err(|e| ServerError::Network(e.to_string()))?;
 
         // Set permissions to user-only (0600)
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = std::fs::metadata(socket_path)?.permissions();
+            let mut perms = std::fs::metadata(socket_path)
+                .map_err(|e| ServerError::Internal(e.to_string()))?
+                .permissions();
             perms.set_mode(0o600); // Owner read+write only
-            std::fs::set_permissions(socket_path, perms)?;
+            std::fs::set_permissions(socket_path, perms)
+                .map_err(|e| ServerError::Internal(e.to_string()))?;
             info!("Set socket permissions to 0600 (user-only)");
         }
 
@@ -161,7 +167,10 @@ impl ToadStoolTarpcServer {
         );
 
         loop {
-            let (stream, _addr) = listener.accept().await?;
+            let (stream, _addr) = listener
+                .accept()
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
             let server = self.clone();
 
             tokio::spawn(async move {
@@ -187,15 +196,14 @@ impl ToadStoolTarpcServer {
         since = "2.2.0",
         note = "Use serve_unix() for production. TCP hardcoding violates deep debt principles."
     )]
-    pub async fn serve_tcp_debug(
-        self,
-        addr: SocketAddr,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn serve_tcp_debug(self, addr: SocketAddr) -> ServerResult<()> {
         warn!("⚠️  TCP mode is DEBUG ONLY - violates deep debt principles");
         warn!("⚠️  Use Unix sockets for production (serve_unix)");
         info!("tarpc TCP debug endpoint requested on: {addr} — use serve_unix() or serve_tcp() instead");
 
-        Err("serve_tcp_debug is deprecated — use serve_unix() or serve_tcp()".into())
+        Err(ServerError::Execution(
+            "serve_tcp_debug is deprecated — use serve_unix() or serve_tcp()".to_string(),
+        ))
     }
 
     /// Start tarpc server on TCP listener (isomorphic fallback)
@@ -204,18 +212,20 @@ impl ToadStoolTarpcServer {
     ///
     /// This method is used only when Unix sockets fail due to platform constraints
     /// (SELinux, Android, etc.). The listener is pre-bound to 127.0.0.1:0 for security.
-    pub async fn serve_tcp(
-        self,
-        listener: tokio::net::TcpListener,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn serve_tcp(self, listener: tokio::net::TcpListener) -> ServerResult<()> {
         use tarpc::server::{BaseChannel, Channel};
         use tokio_serde::formats::Json;
 
-        let local_addr = listener.local_addr()?;
+        let local_addr = listener
+            .local_addr()
+            .map_err(|e| ServerError::Network(e.to_string()))?;
         info!("✅ tarpc server listening on TCP: {}", local_addr);
 
         loop {
-            let (stream, _addr) = listener.accept().await?;
+            let (stream, _addr) = listener
+                .accept()
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
             let server = self.clone();
 
             tokio::spawn(async move {
@@ -239,7 +249,7 @@ impl Clone for ToadStoolTarpcServer {
     fn clone(&self) -> Self {
         Self {
             start_time: self.start_time,
-            version: self.version.clone(),
+            version: Arc::clone(&self.version),
             workloads: Arc::clone(&self.workloads),
             executor: Arc::clone(&self.executor),
             error_count: Arc::clone(&self.error_count),
@@ -280,7 +290,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         let workloads = self.workloads.read().await;
         workloads.get(&workload_id).cloned().ok_or_else(|| {
             self.error_count.fetch_add(1, Ordering::Relaxed);
-            format!("Workload not found: {}", workload_id)
+            format!("Workload not found: {workload_id}")
         })
     }
 
@@ -332,7 +342,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
 
         Ok(HealthStatus {
             healthy: true,
-            version: self.version.clone(),
+            version: self.version.as_ref().to_string(),
             uptime_secs: uptime.as_secs(),
             resource_utilization: self.calculate_resource_utilization().await,
             active_workloads: active_count,
@@ -374,7 +384,7 @@ impl StandaloneExecutor {
                 compute_units: vec![ComputeUnit {
                     id: "cpu-0".to_string(),
                     unit_type: "cpu".to_string(),
-                    name: format!("CPU Compute ({} cores)", cpu_cores),
+                    name: format!("CPU Compute ({cpu_cores} cores)"),
                     cores: cpu_cores,
                     memory_bytes: total_memory,
                     tflops: Self::estimate_cpu_tflops(cpu_cores),
@@ -420,7 +430,7 @@ impl StandaloneExecutor {
             return 0.0;
         }
 
-        let total_usage: f32 = cpus.iter().map(|cpu| cpu.cpu_usage()).sum();
+        let total_usage: f32 = cpus.iter().map(sysinfo::Cpu::cpu_usage).sum();
         total_usage / cpus.len() as f32
     }
 
@@ -498,7 +508,7 @@ impl WorkloadExecutor for StandaloneExecutor {
 
         // Estimate cores used based on utilization delta
         let total_cores = std::thread::available_parallelism()
-            .map(|n| n.get())
+            .map(std::num::NonZero::get)
             .unwrap_or(4);
         let cores_used = ((avg_cpu_util / 100.0) * total_cores as f32).ceil() as u32;
 
@@ -580,7 +590,7 @@ mod tests {
         let executor = Arc::new(StandaloneExecutor::new());
         let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor, None);
 
-        assert_eq!(server.version, "0.1.0");
+        assert_eq!(server.version.as_ref(), "0.1.0");
         assert!(server.workloads.read().await.is_empty());
     }
 
@@ -910,7 +920,8 @@ mod tests {
         let result = server.serve_tcp_debug("127.0.0.1:0".parse().unwrap()).await;
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not implemented"));
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("deprecated") || err_msg.contains("not implemented"));
     }
 
     #[tokio::test]

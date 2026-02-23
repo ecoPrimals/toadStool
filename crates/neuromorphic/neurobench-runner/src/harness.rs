@@ -1,4 +1,4 @@
-//! Benchmark harness for running NeuroBench workloads
+//! Benchmark harness for running `NeuroBench` workloads
 //!
 //! Coordinates model loading, dataset loading, inference, and metric collection.
 //!
@@ -26,7 +26,7 @@ use tracing::{debug, info, warn};
 /// Harness configuration
 #[derive(Debug, Clone)]
 pub struct HarnessConfig {
-    /// PCIe address of the Akida device
+    /// `PCIe` address of the Akida device
     pub device_id: String,
     /// Backend selection (Auto, Kernel, Userspace, Vfio)
     pub backend: BackendSelection,
@@ -260,8 +260,7 @@ impl Harness {
             Err(e) => {
                 // Deep Debt: Don't use mock model - fail clearly when model file is missing
                 return Err(Error::ModelLoad(format!(
-                    "Model file not found: {} ({}). NeuroBench requires a valid model file.",
-                    model_path, e
+                    "Model file not found: {model_path} ({e}). NeuroBench requires a valid model file."
                 )));
             }
         }
@@ -270,6 +269,7 @@ impl Harness {
     }
 
     /// Get device info
+    #[must_use]
     pub fn device_info(&self) -> String {
         format!(
             "{} ({:?})",
@@ -284,7 +284,7 @@ impl Harness {
 // ============================================================================
 
 /// Get data directory name for benchmark
-fn benchmark_data_dir(benchmark: Benchmark) -> &'static str {
+const fn benchmark_data_dir(benchmark: Benchmark) -> &'static str {
     match benchmark {
         Benchmark::DvsGesture => "dvs_gesture",
         Benchmark::KeywordFscil => "keyword_fscil",
@@ -309,7 +309,7 @@ fn sample_to_f32(sample: &Sample, benchmark: Benchmark) -> Vec<f32> {
         .input
         .iter()
         .take(expected_size)
-        .map(|&b| (b as f32) / 255.0)
+        .map(|&b| f32::from(b) / 255.0)
         .collect()
 }
 

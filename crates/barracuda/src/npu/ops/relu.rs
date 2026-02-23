@@ -59,46 +59,26 @@ pub fn npu_relu(input: &[f32]) -> Result<Vec<f32>> {
     // CRITICAL: Use WGSL shader (same math as GPU/CPU!)
     // ═══════════════════════════════════════════════════════════
 
-    use crate::device::test_pool::get_test_device_sync;
+    use crate::device::test_pool::run_with_sync_device;
     use crate::tensor::Tensor;
 
-    // Get device from shared pool (thread-safe concurrent access)
-    let device = get_test_device_sync();
+    run_with_sync_device(|device| {
+        let input_len = input.len();
+        let tensor = Tensor::from_vec_on_sync(input.to_vec(), vec![input_len], device)?;
+        let result_tensor = tensor.relu()?;
+        let output = result_tensor.to_vec()?;
 
-    // Create tensor from raw data
-    let input_len = input.len();
-    let tensor = Tensor::from_vec_on_sync(input.to_vec(), vec![input_len], device)?;
-
-    // Execute ReLU using WGSL shader (same as GPU/CPU!)
-    // This uses ops/relu.rs → shaders/relu.wgsl
-    let result_tensor = tensor.relu()?;
-
-    // Extract result
-    let output = result_tensor.to_vec()?;
-
-    // ═══════════════════════════════════════════════════════════
-    // NPU-SPECIFIC OPTIMIZATION: Event encoding (optional)
-    // ═══════════════════════════════════════════════════════════
-
-    let sparsity = output.iter().filter(|&&x| x == 0.0).count() as f32 / output.len() as f32;
-
-    log::debug!(
-        "NPU ReLU (WGSL) complete: {:.1}% sparsity created",
-        sparsity * 100.0
-    );
-
-    // For sparse outputs, encode as events for energy savings
-    if sparsity > 0.3 {
-        let codec = EventCodec::default();
-        let events = codec.encode(&output);
+        let sparsity = output.iter().filter(|&&x| x == 0.0).count() as f32 / output.len() as f32;
         log::debug!(
-            "NPU event encoding: {} events ({}% reduction)",
-            events.len(),
-            ((1.0 - events.len() as f32 / output.len() as f32) * 100.0)
+            "NPU ReLU (WGSL) complete: {:.1}% sparsity created",
+            sparsity * 100.0
         );
-    }
-
-    Ok(output)
+        if sparsity > 0.3 {
+            let codec = EventCodec::default();
+            let _events = codec.encode(&output);
+        }
+        Ok(output)
+    })
 }
 
 /// NPU-optimized Leaky ReLU using WGSL (universal compute)

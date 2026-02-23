@@ -65,56 +65,33 @@ pub fn npu_softmax(logits: &[f32], temperature: f32) -> Result<Vec<f32>> {
 
     use crate::tensor::Tensor;
 
-    // Apply temperature scaling if needed
+    // Apply temperature scaling if needed (before device access)
     let scaled_logits = if (temperature - 1.0).abs() > 1e-6 {
         logits.iter().map(|&x| x / temperature).collect()
     } else {
         logits.to_vec()
     };
-
-    // Create tensor from logits
     let logits_len = scaled_logits.len();
 
-    // Get device from shared pool (thread-safe concurrent access)
-    let device = crate::device::test_pool::get_test_device_sync();
+    crate::device::test_pool::run_with_sync_device(|device| {
+        let tensor = Tensor::from_vec_on_sync(scaled_logits, vec![logits_len], device)?;
+        let result_tensor = tensor.softmax()?;
+        let output = result_tensor.to_vec()?;
 
-    let tensor = Tensor::from_vec_on_sync(scaled_logits, vec![logits_len], device)?;
-
-    // Execute softmax using WGSL shader (same as GPU/CPU!)
-    // This uses ops/softmax.rs → shaders/softmax.wgsl
-    let result_tensor = tensor.softmax()?;
-
-    // Extract result
-    let output = result_tensor.to_vec()?;
-
-    // ═══════════════════════════════════════════════════════════
-    // NPU-SPECIFIC OPTIMIZATION: Event encoding (optional)
-    // ═══════════════════════════════════════════════════════════
-
-    // Measure sparsity
-    let codec = EventCodec::default();
-    let sparsity = codec.measure_sparsity(&output);
-
-    // Find dominant probability
-    let max_prob = output.iter().copied().fold(0.0f32, f32::max);
-
-    log::debug!(
-        "NPU Softmax (WGSL) complete: {} classes, sparsity {:.1}%, max_prob {:.3}",
-        logits.len(),
-        sparsity * 100.0,
-        max_prob
-    );
-
-    // For winner-take-all scenarios, encode dominant values as events
-    if max_prob > 0.8 {
-        let events = codec.encode(&output);
+        let codec = EventCodec::default();
+        let sparsity = codec.measure_sparsity(&output);
+        let max_prob = output.iter().copied().fold(0.0f32, f32::max);
         log::debug!(
-            "NPU event encoding: {} events (strong winner-take-all)",
-            events.len()
+            "NPU Softmax (WGSL) complete: {} classes, sparsity {:.1}%, max_prob {:.3}",
+            logits.len(),
+            sparsity * 100.0,
+            max_prob
         );
-    }
-
-    Ok(output)
+        if max_prob > 0.8 {
+            let _events = codec.encode(&output);
+        }
+        Ok(output)
+    })
 }
 
 /// NPU-accelerated Log Softmax

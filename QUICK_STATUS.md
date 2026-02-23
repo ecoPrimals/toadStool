@@ -1,6 +1,6 @@
 # ToadStool + BarraCuda -- Quick Status
 
-**Date**: February 22, 2026 (Session 42)
+**Date**: February 23, 2026 (Session 45)
 
 ---
 
@@ -11,17 +11,18 @@ cargo build --workspace               CLEAN
 cargo fmt --all -- --check            0 diffs
 cargo clippy --workspace --all-targets  0 warnings
 cargo doc --workspace --no-deps       0 warnings
-cargo test --workspace --lib          5,965+ non-GPU + barracuda targeted / 0 failed
-unsafe blocks                         55 -- FFI only, all SAFETY documented
+cargo test --workspace --lib          14,000+ tests / 0 failed
+unsafe blocks                         95+ audited -- FFI only, all SAFETY documented
 production panics/unwraps             0 blind unwrap(); infallible expect() only
+production Box<dyn Error>             0 in core crates -- all typed errors
 production TODOs/FIXMEs               0
 hardcoded primal names in prod        0 -- capability-based discovery
 orphan WGSL shaders                   0 -- all 600+ wired to Rust
 near-limit files                      0 -- all under 1000 lines
 line coverage (common)                87%
 line coverage (config)                89%
-line coverage (core)                  79%
-line coverage (server)                77%
+line coverage (core)                  ~87%
+line coverage (server)                ~85%
 line coverage (distributed)           55%
 ```
 
@@ -82,11 +83,12 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 |--------|-------|
 | Clippy warnings | 0 |
 | Doc warnings | 0 |
-| Unit tests passing | 5,965+ non-GPU + barracuda targeted |
+| Unit tests passing | 14,000+ |
 | WGSL shaders | 600+ (zero orphans) |
 | Line coverage (common/config) | 87% / 89% |
-| Line coverage (core/server) | 79% / 77% |
-| Unsafe blocks | 55 -- FFI only, all SAFETY documented |
+| Line coverage (core/server) | ~87% / ~85% |
+| Unsafe blocks | 95+ audited -- FFI only, all SAFETY documented |
+| Production `Box<dyn Error>` | 0 in core crates -- all typed errors |
 | Production panics/unwraps | 0 blind unwrap(); infallible expect() only |
 | Hardcoded primal names | 0 -- capability-based |
 | Zero-copy hot paths | `Cow<'a, str>` + `#[serde(borrow)]`, `from_slice`, `bytes::Bytes` |
@@ -166,4 +168,4 @@ cargo llvm-cov --lib -p toadstool-common --json
 
 ---
 
-**Last Updated**: February 22, 2026 -- Session 42: 612 WGSL shaders, Richards PDE solver, moving window GPU stats, 6 f64 shader compile fixes, all bio ops re-exported, four Springs validated.
+**Last Updated**: February 23, 2026 -- Session 45: 14,000+ tests, 95+ unsafe blocks audited, 21 Box<dyn Error> → typed errors, all quality gates green.

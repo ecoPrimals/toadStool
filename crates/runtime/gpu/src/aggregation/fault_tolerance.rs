@@ -134,10 +134,10 @@ impl PartialResultSet {
             .iter()
             .filter_map(|status| match status {
                 PartialResultStatus::Failed { tower_id, error } => {
-                    Some(format!("Tower {} failed: {}", tower_id, error))
+                    Some(format!("Tower {tower_id} failed: {error}"))
                 }
                 PartialResultStatus::Timeout { tower_id } => {
-                    Some(format!("Tower {} timed out", tower_id))
+                    Some(format!("Tower {tower_id} timed out"))
                 }
                 _ => None,
             })

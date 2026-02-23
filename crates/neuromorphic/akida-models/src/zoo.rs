@@ -62,7 +62,7 @@ pub enum ZooModel {
 
 impl ZooModel {
     /// Get model filename
-    pub fn filename(&self) -> &'static str {
+    pub const fn filename(&self) -> &'static str {
         match self {
             Self::AkidaNet05_160 => "akidanet_05_160.fbz",
             Self::AkidaNet10_224 => "akidanet_10_224.fbz",
@@ -78,7 +78,7 @@ impl ZooModel {
     }
 
     /// Get model description
-    pub fn description(&self) -> &'static str {
+    pub const fn description(&self) -> &'static str {
         match self {
             Self::AkidaNet05_160 => "AkidaNet ImageNet classifier (0.5 width, 160×160)",
             Self::AkidaNet10_224 => "AkidaNet ImageNet classifier (1.0 width, 224×224)",
@@ -94,7 +94,7 @@ impl ZooModel {
     }
 
     /// Get expected model size (approximate)
-    pub fn expected_size_bytes(&self) -> usize {
+    pub const fn expected_size_bytes(&self) -> usize {
         match self {
             Self::AkidaNet05_160 => 500_000,
             Self::AkidaNet10_224 => 2_000_000,
@@ -110,7 +110,7 @@ impl ZooModel {
     }
 
     /// Get all available models
-    pub fn all() -> &'static [ZooModel] {
+    pub const fn all() -> &'static [Self] {
         &[
             Self::AkidaNet05_160,
             Self::AkidaNet10_224,
@@ -126,7 +126,7 @@ impl ZooModel {
     }
 
     /// Get models for `NeuroBench` benchmarks
-    pub fn neurobench_models() -> &'static [ZooModel] {
+    pub const fn neurobench_models() -> &'static [Self] {
         &[
             Self::DvsGesture,
             Self::DsCnnKws,
@@ -136,7 +136,7 @@ impl ZooModel {
     }
 
     /// Get task category
-    pub fn task(&self) -> ModelTask {
+    pub const fn task(&self) -> ModelTask {
         match self {
             Self::AkidaNet05_160 | Self::AkidaNet10_224 | Self::MobileNetV2 | Self::ViTTiny => {
                 ModelTask::ImageClassification

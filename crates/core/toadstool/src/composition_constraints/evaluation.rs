@@ -47,10 +47,11 @@ impl ConstraintEvaluation {
         self.results.get(constraint_name)
     }
 
-    pub fn unsatisfied_hard_constraints(&self) -> Vec<(&String, &ConstraintSatisfaction)> {
+    pub fn unsatisfied_hard_constraints(&self) -> Vec<(&str, &ConstraintSatisfaction)> {
         self.results
             .iter()
             .filter(|(_, sat)| !sat.is_satisfied())
+            .map(|(k, v)| (k.as_str(), v))
             .collect()
     }
 

@@ -33,13 +33,13 @@ pub struct FeatureFlags {
     /// Enable federation across instances
     pub enable_federation: bool,
 
-    /// Enable GraphQL API
+    /// Enable `GraphQL` API
     pub enable_graphql: bool,
 
     /// Enable gRPC API
     pub enable_grpc: bool,
 
-    /// Enable OpenAPI documentation
+    /// Enable `OpenAPI` documentation
     pub enable_openapi: bool,
 
     /// Enable automatic configuration

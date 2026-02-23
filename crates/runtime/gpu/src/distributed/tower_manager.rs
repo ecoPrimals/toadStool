@@ -234,6 +234,7 @@ mod tests {
     async fn test_register_tower() {
         let manager = TowerManager::new("local".to_string());
 
+        // Test fixture: placeholder address for unit test (production uses Songbird discovery)
         let endpoint = RemoteTowerEndpoint {
             tower_id: "remote-1".to_string(),
             address: "10.0.0.2:8080".to_string(),

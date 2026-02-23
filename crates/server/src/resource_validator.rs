@@ -233,7 +233,7 @@ impl ResourceValidator {
         let network_bandwidth_mbps = if networks.iter().count() > 0 {
             // Sum received bytes across all interfaces as bandwidth indicator
             // Most physical NICs are 1Gbps+, but we estimate conservatively
-            let total_received: u64 = networks.values().map(|n| n.received()).sum();
+            let total_received: u64 = networks.values().map(sysinfo::NetworkData::received).sum();
             // If we've seen significant traffic, assume at least 1Gbps
             // Otherwise fall back to conservative 100Mbps estimate
             if total_received > 1_000_000_000 {
@@ -289,8 +289,7 @@ impl ResourceValidator {
 
     /// Discover GPUs using wgpu (vendor-agnostic, part of barraCuda)
     #[cfg(feature = "gpu-discovery")]
-    async fn discover_gpus_via_wgpu(
-    ) -> Result<Vec<GpuInfo>, Box<dyn std::error::Error + Send + Sync>> {
+    async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
@@ -320,8 +319,7 @@ impl ResourceValidator {
 
     /// Fallback when GPU discovery not available
     #[cfg(not(feature = "gpu-discovery"))]
-    async fn discover_gpus_via_wgpu(
-    ) -> Result<Vec<GpuInfo>, Box<dyn std::error::Error + Send + Sync>> {
+    async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
         Ok(Vec::new())
     }
 

@@ -62,10 +62,10 @@
 
 /// # ⚠️ PARTIALLY DEPRECATED: Network-related default values
 ///
-/// **Primal ports (SONGBIRD_PORT, BEARDOG_PORT, etc.) are deprecated.**
+/// **Primal ports (`SONGBIRD_PORT`, `BEARDOG_PORT`, etc.) are deprecated.**
 /// Use `RuntimeDiscovery` with capability-based discovery instead.
 ///
-/// **Self-configuration (API_PORT, METRICS_PORT) remains valid** - these are ToadStool's own ports.
+/// **Self-configuration (`API_PORT`, `METRICS_PORT`) remains valid** - these are ToadStool's own ports.
 ///
 /// # Modern Example
 ///
@@ -132,7 +132,7 @@ pub mod network {
     #[deprecated(note = "Use capability-based discovery for AI services")]
     pub const AI_FALLBACK_PORT: u16 = 8083;
 
-    /// Port for JSON-RPC event streaming (replaces deprecated WebSocket)
+    /// Port for JSON-RPC event streaming (replaces deprecated `WebSocket`)
     /// ✅ Self-configuration
     pub const EVENTS_PORT: u16 = 8086;
 
@@ -297,7 +297,7 @@ pub mod storage {
     /// Default Redis port
     pub const REDIS_PORT: u16 = 6379;
 
-    /// Default PostgreSQL port
+    /// Default `PostgreSQL` port
     pub const POSTGRES_PORT: u16 = 5432;
 }
 
@@ -374,6 +374,7 @@ pub mod resources {
 pub mod endpoints {
     /// Default API endpoint
     /// ✅ VALID: Self-knowledge - ToadStool's own API endpoint
+    #[must_use]
     pub fn api() -> String {
         format!("http://localhost:{}", super::network::API_PORT)
     }
@@ -383,6 +384,7 @@ pub mod endpoints {
     /// Uses the standard ToadStool API port. In production, prefer
     /// capability-based discovery over this fallback endpoint.
     #[deprecated(note = "Use capability-based discovery via discover_or_fallback() instead")]
+    #[must_use]
     pub fn cloud() -> String {
         format!("http://localhost:{}", super::network::API_PORT)
     }
@@ -485,42 +487,50 @@ pub mod durations {
     use std::time::Duration;
 
     /// Default execution timeout as Duration
-    pub fn execution() -> Duration {
+    #[must_use]
+    pub const fn execution() -> Duration {
         Duration::from_millis(timeouts::EXECUTION_MS)
     }
 
     /// Default health check interval as Duration
-    pub fn health_check() -> Duration {
+    #[must_use]
+    pub const fn health_check() -> Duration {
         Duration::from_millis(timeouts::HEALTH_CHECK_MS)
     }
 
     /// Default connection timeout as Duration
-    pub fn connection() -> Duration {
+    #[must_use]
+    pub const fn connection() -> Duration {
         Duration::from_millis(timeouts::CONNECTION_MS)
     }
 
     /// Default request timeout as Duration
-    pub fn request() -> Duration {
+    #[must_use]
+    pub const fn request() -> Duration {
         Duration::from_millis(timeouts::REQUEST_MS)
     }
 
     /// Default idle timeout as Duration
-    pub fn idle() -> Duration {
+    #[must_use]
+    pub const fn idle() -> Duration {
         Duration::from_millis(timeouts::IDLE_MS)
     }
 
     /// Default discovery timeout as Duration
-    pub fn discovery() -> Duration {
+    #[must_use]
+    pub const fn discovery() -> Duration {
         Duration::from_millis(timeouts::DISCOVERY_MS)
     }
 
     /// Default discovery interval as Duration
-    pub fn discovery_interval() -> Duration {
+    #[must_use]
+    pub const fn discovery_interval() -> Duration {
         Duration::from_millis(timeouts::DISCOVERY_INTERVAL_MS)
     }
 
     /// Default keepalive timeout as Duration
-    pub fn keepalive() -> Duration {
+    #[must_use]
+    pub const fn keepalive() -> Duration {
         Duration::from_secs(timeouts::KEEPALIVE_SEC)
     }
 }
@@ -572,11 +582,7 @@ mod tests {
         // Verify all ports are unique
         for (i, &port1) in ports.iter().enumerate() {
             for &port2 in ports.iter().skip(i + 1) {
-                assert_ne!(
-                    port1, port2,
-                    "Ports must be distinct: {} vs {}",
-                    port1, port2
-                );
+                assert_ne!(port1, port2, "Ports must be distinct: {port1} vs {port2}");
             }
         }
     }
@@ -585,37 +591,33 @@ mod tests {
     fn test_port_ranges_are_valid() {
         // Use runtime assertions in tests instead of const assertions
         // These will be evaluated at test time, not compile time
-        if ports::CONTAINER_START >= ports::CONTAINER_END {
-            panic!(
-                "Container port range must be valid: START={} END={}",
-                ports::CONTAINER_START,
-                ports::CONTAINER_END
-            );
-        }
-        if ports::RANGE_START >= ports::RANGE_END {
-            panic!(
-                "General port range must be valid: START={} END={}",
-                ports::RANGE_START,
-                ports::RANGE_END
-            );
-        }
+        assert!(
+            ports::CONTAINER_START < ports::CONTAINER_END,
+            "Container port range must be valid: START={} END={}",
+            ports::CONTAINER_START,
+            ports::CONTAINER_END
+        );
+        assert!(
+            ports::RANGE_START < ports::RANGE_END,
+            "General port range must be valid: START={} END={}",
+            ports::RANGE_START,
+            ports::RANGE_END
+        )
     }
 
     #[test]
     fn test_timeouts_are_positive() {
         // Use runtime checks in tests instead of const assertions
-        if timeouts::EXECUTION_MS == 0 {
-            panic!("EXECUTION_MS must be positive");
-        }
-        if timeouts::HEALTH_CHECK_MS == 0 {
-            panic!("HEALTH_CHECK_MS must be positive");
-        }
-        if timeouts::CONNECTION_MS == 0 {
-            panic!("CONNECTION_MS must be positive");
-        }
-        if timeouts::REQUEST_MS == 0 {
-            panic!("REQUEST_MS must be positive");
-        }
+        assert!(timeouts::EXECUTION_MS != 0, "EXECUTION_MS must be positive");
+        assert!(
+            timeouts::HEALTH_CHECK_MS != 0,
+            "HEALTH_CHECK_MS must be positive"
+        );
+        assert!(
+            timeouts::CONNECTION_MS != 0,
+            "CONNECTION_MS must be positive"
+        );
+        assert!(timeouts::REQUEST_MS != 0, "REQUEST_MS must be positive")
     }
 
     #[test]
@@ -631,12 +633,15 @@ mod tests {
     #[test]
     fn test_durations_conversion() {
         let exec_duration = durations::execution();
-        assert_eq!(exec_duration.as_millis(), timeouts::EXECUTION_MS as u128);
+        assert_eq!(
+            exec_duration.as_millis(),
+            u128::from(timeouts::EXECUTION_MS)
+        );
 
         let health_duration = durations::health_check();
         assert_eq!(
             health_duration.as_millis(),
-            timeouts::HEALTH_CHECK_MS as u128
+            u128::from(timeouts::HEALTH_CHECK_MS)
         );
     }
 

@@ -96,8 +96,7 @@ impl MatrixMerger {
                 {
                     if *cell {
                         return Err(ToadStoolError::runtime(format!(
-                            "Overlap detected at ({}, {}) between multiple chunks",
-                            row, col
+                            "Overlap detected at ({row}, {col}) between multiple chunks"
                         )));
                     }
                     *cell = true;
@@ -122,8 +121,7 @@ impl MatrixMerger {
             for (col, &cell) in coverage_row.iter().enumerate().take(self.total_cols) {
                 if !cell {
                     return Err(ToadStoolError::runtime(format!(
-                        "Gap in coverage at position ({}, {})",
-                        row, col
+                        "Gap in coverage at position ({row}, {col})"
                     )));
                 }
             }
@@ -179,7 +177,7 @@ pub struct VectorMerger;
 impl VectorMerger {
     /// Concatenate vectors (zero-copy via extend)
     pub fn concatenate(vectors: Vec<Vec<f32>>) -> Vec<f32> {
-        let total_len: usize = vectors.iter().map(|v| v.len()).sum();
+        let total_len: usize = vectors.iter().map(std::vec::Vec::len).sum();
         let mut result = Vec::with_capacity(total_len);
 
         for vector in vectors {

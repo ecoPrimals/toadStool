@@ -42,6 +42,7 @@ pub struct WindowId(uuid::Uuid);
 
 impl WindowId {
     /// Create a new window ID
+    #[must_use]
     pub fn new() -> Self {
         Self(uuid::Uuid::new_v4())
     }
@@ -50,12 +51,13 @@ impl WindowId {
     pub fn from_string(s: &str) -> Result<Self> {
         uuid::Uuid::parse_str(s)
             .map(Self)
-            .map_err(|e| DisplayError::IpcError(format!("Invalid window ID: {}", e)))
+            .map_err(|e| DisplayError::IpcError(format!("Invalid window ID: {e}")))
     }
 
     /// Convert to string
     ///
     /// Note: Also available via `Display` trait (`format!("{}", id)`)
+    #[must_use]
     pub fn as_string(&self) -> String {
         self.0.to_string()
     }
@@ -104,7 +106,7 @@ pub struct WindowInfo {
     pub width: u32,
     /// Window height
     pub height: u32,
-    /// Scale factor (for HiDPI)
+    /// Scale factor (for `HiDPI`)
     pub scale_factor: f32,
     /// Whether this window is focused
     pub focused: bool,
@@ -136,7 +138,7 @@ pub struct Window {
 
 impl Window {
     /// Create a new window
-    fn new(
+    const fn new(
         id: WindowId,
         framebuffer: DumbBuffer,
         width: u32,
@@ -155,16 +157,19 @@ impl Window {
     }
 
     /// Get window ID
-    pub fn id(&self) -> WindowId {
+    #[must_use]
+    pub const fn id(&self) -> WindowId {
         self.id
     }
 
     /// Get window dimensions
-    pub fn size(&self) -> (u32, u32) {
+    #[must_use]
+    pub const fn size(&self) -> (u32, u32) {
         (self.width, self.height)
     }
 
     /// Get window info
+    #[must_use]
     pub fn info(&self) -> WindowInfo {
         WindowInfo {
             width: self.width,
@@ -176,12 +181,13 @@ impl Window {
     }
 
     /// Get framebuffer reference
-    pub fn framebuffer(&self) -> &DumbBuffer {
+    #[must_use]
+    pub const fn framebuffer(&self) -> &DumbBuffer {
         &self.framebuffer
     }
 
     /// Set focus state
-    fn set_focused(&mut self, focused: bool) {
+    const fn set_focused(&mut self, focused: bool) {
         self.focused = focused;
     }
 }
@@ -334,7 +340,7 @@ impl WindowManager {
         self.windows
             .get(&id)
             .ok_or(DisplayError::WindowNotFound(id))
-            .map(|w| w.info())
+            .map(Window::info)
     }
 
     /// Set focused window
@@ -357,7 +363,8 @@ impl WindowManager {
     }
 
     /// Get currently focused window
-    pub fn get_focused(&self) -> Option<WindowId> {
+    #[must_use]
+    pub const fn get_focused(&self) -> Option<WindowId> {
         self.focused
     }
 
@@ -369,17 +376,20 @@ impl WindowManager {
     }
 
     /// Get number of windows
+    #[must_use]
     pub fn window_count(&self) -> usize {
         self.windows.len()
     }
 
     /// List all window IDs
+    #[must_use]
     pub fn list_windows(&self) -> Vec<WindowId> {
         self.windows.keys().copied().collect()
     }
 
     /// Get DRM backend reference
-    pub fn drm(&self) -> &Arc<DrmBackend> {
+    #[must_use]
+    pub const fn drm(&self) -> &Arc<DrmBackend> {
         &self.drm
     }
 }

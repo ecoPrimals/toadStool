@@ -111,6 +111,7 @@ pub mod coordinator_executor;
 pub mod cross_gate; // Cross-gate compute delegation (job routing across mesh)
 pub mod errors;
 pub mod gpu_job_queue; // GPU compute job queue (compute.submit/status/result/cancel/list)
+pub mod gpu_system; // GPU system query helpers (query_gpu_devices, query_gpu_memory)
 
 // Graph types for collaborative intelligence - modularized for code size compliance
 pub mod graph_edge;

@@ -530,16 +530,16 @@ command = "/bin/echo"
         let result = convert_to_workload_spec(&workload, env_overrides);
         assert!(result.is_ok());
 
-        match result.unwrap() {
-            WorkloadSpec::Native {
-                env_vars,
-                working_dir,
-                ..
-            } => {
-                assert_eq!(env_vars.get("VAR1"), Some(&"value1".to_string()));
-                assert_eq!(working_dir, Some(PathBuf::from("/app")));
-            }
-            _ => panic!("Expected Native workload spec"),
+        let spec = result.unwrap();
+        assert!(matches!(spec, WorkloadSpec::Native { .. }));
+        if let WorkloadSpec::Native {
+            env_vars,
+            working_dir,
+            ..
+        } = &spec
+        {
+            assert_eq!(env_vars.get("VAR1"), Some(&"value1".to_string()));
+            assert_eq!(working_dir, &Some(PathBuf::from("/app")));
         }
     }
 
@@ -568,14 +568,16 @@ command = "/bin/echo"
         let result = convert_to_workload_spec(&workload, HashMap::new());
         assert!(result.is_ok());
 
-        match result.unwrap() {
-            WorkloadSpec::Python { source, .. } => match source {
-                toadstool::workload::PythonSource::Code { code } => {
-                    assert!(code.contains("hello"));
-                }
-                _ => panic!("Expected Code source"),
-            },
-            _ => panic!("Expected Python workload spec"),
+        let spec = result.unwrap();
+        assert!(matches!(spec, WorkloadSpec::Python { .. }));
+        if let WorkloadSpec::Python { source, .. } = &spec {
+            assert!(matches!(
+                source,
+                toadstool::workload::PythonSource::Code { .. }
+            ));
+            if let toadstool::workload::PythonSource::Code { code } = source {
+                assert!(code.contains("hello"));
+            }
         }
     }
 
@@ -604,14 +606,16 @@ command = "/bin/echo"
         let result = convert_to_workload_spec(&workload, HashMap::new());
         assert!(result.is_ok());
 
-        match result.unwrap() {
-            WorkloadSpec::Python { source, .. } => match source {
-                toadstool::workload::PythonSource::File { path } => {
-                    assert_eq!(path, PathBuf::from("script.py"));
-                }
-                _ => panic!("Expected File source"),
-            },
-            _ => panic!("Expected Python workload spec"),
+        let spec = result.unwrap();
+        assert!(matches!(spec, WorkloadSpec::Python { .. }));
+        if let WorkloadSpec::Python { source, .. } = &spec {
+            assert!(matches!(
+                source,
+                toadstool::workload::PythonSource::File { .. }
+            ));
+            if let toadstool::workload::PythonSource::File { path } = source {
+                assert_eq!(path, &PathBuf::from("script.py"));
+            }
         }
     }
 
@@ -793,12 +797,10 @@ command = "/bin/echo"
         };
 
         let result = convert_to_workload_spec(&workload, overrides).unwrap();
-        match result {
-            WorkloadSpec::Native { env_vars, .. } => {
-                assert_eq!(env_vars.get("VAR1"), Some(&"override".to_string()));
-                assert_eq!(env_vars.get("VAR2"), Some(&"new".to_string()));
-            }
-            _ => panic!("Expected Native workload"),
+        assert!(matches!(result, WorkloadSpec::Native { .. }));
+        if let WorkloadSpec::Native { env_vars, .. } = &result {
+            assert_eq!(env_vars.get("VAR1"), Some(&"override".to_string()));
+            assert_eq!(env_vars.get("VAR2"), Some(&"new".to_string()));
         }
     }
 }

@@ -1,13 +1,13 @@
-# ToadStool + BarraCuda
+# ToadStool + BarraCUDA
 
-**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 42 -- February 22, 2026
+**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 45 -- February 23, 2026
 
 ---
 
 ## What Is This?
 
 - **ToadStool** -- Hardware infrastructure primal. Discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. Ollama model lifecycle management. Distributed workload dispatch across machines. Cloud cost estimation, compliance validation, and federation. ecoBin compliant: single binary, pure Rust, cross-architecture, cross-platform.
-- **BarraCuda** (**bar**rier-free **r**ust-**a**bstracted **C**omputationally **U**nified **D**imensionalized **A**lgebra) -- Unified math library. **Shader-first architecture**: 612 WGSL shaders (zero orphans -- every shader wired to Rust) as the primary math implementation. ToadStool dispatches to GPU or CPU based on hardware. Dedicated Conv2D, MaxPool2D, AvgPool2D compute shaders for neural network ops. **Nuclear physics**: HFB (Hartree-Fock-Bogoliubov) GPU-resident SCF suite -- 5 spherical + 6 axially-deformed shaders on cylindrical (ρ,z) grids; potentials, Hamiltonian, density, energy, BCS bisection, wavefunctions. **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde, lattice QCD, bio/genomics) -- same math for physics, ML, life science, and audio. **Complete MathOp coverage**: GPU and CPU executors handle all shape ops, binary ops, activations, and batch matmul. **TensorSession**: batched operation recording with single-submit execution (add, mul, fma, scale, matmul, relu, gelu, softmax, layer_norm, attention). **25 bio/evolution GPU ops**: ANI, dN/dS, HMM, DADA2, SNP, pangenome, quality filter, RF inference, ODE sweep, locus variance, pairwise Hamming/Jaccard/L2, spatial PD payoff, batch fitness, Hill gate, multi-objective fitness, swarm NN, k-mer histogram, taxonomy FC, UniFrac. **PDE solvers**: Crank-Nicolson (heat, Schrodinger), Richards unsaturated flow (van Genuchten-Mualem). **Moving window statistics** GPU op for IoT sensor streams. **ESN GPU-train → NPU-deploy**: export/import weights pipeline. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
+- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: 600+ WGSL shaders (zero orphans -- every shader wired to Rust) as the primary math implementation. ToadStool dispatches to GPU or CPU based on hardware. Dedicated Conv2D, MaxPool2D, AvgPool2D compute shaders for neural network ops. **Nuclear physics**: HFB (Hartree-Fock-Bogoliubov) GPU-resident SCF suite -- 5 spherical + 6 axially-deformed shaders on cylindrical (ρ,z) grids; potentials, Hamiltonian, density, energy, BCS bisection, wavefunctions. **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde, lattice QCD, bio/genomics) -- same math for physics, ML, life science, and audio. **Complete MathOp coverage**: GPU and CPU executors handle all shape ops, binary ops, activations, and batch matmul. **TensorSession**: batched operation recording with single-submit execution (add, mul, fma, scale, matmul, relu, gelu, softmax, layer_norm, attention). **25 bio/evolution GPU ops**: ANI, dN/dS, HMM, DADA2, SNP, pangenome, quality filter, RF inference, ODE sweep, locus variance, pairwise Hamming/Jaccard/L2, spatial PD payoff, batch fitness, Hill gate, multi-objective fitness, swarm NN, k-mer histogram, taxonomy FC, UniFrac. **PDE solvers**: Crank-Nicolson (heat, Schrodinger), Richards unsaturated flow (van Genuchten-Mualem). **Moving window statistics** GPU op for IoT sensor streams. **ESN GPU-train → NPU-deploy**: export/import weights pipeline. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
 
 ---
 
@@ -34,15 +34,15 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace --lib` | 5,965+ unit tests passing |
+| `cargo test --workspace --lib` | 14,000+ tests passing |
 | Four springs validation | 4,000+ acceptance checks |
-| `unsafe` blocks | FFI only (VFIO, DRM, alloc) -- all SAFETY documented |
+| `unsafe` blocks | 95+ audited -- FFI only, all SAFETY documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Hardcoded primal names | 0 -- capability-based discovery throughout |
 | Orphan shaders | 0 -- all 600+ WGSL shaders wired to Rust |
 | TODOs/FIXMEs in production | 0 |
 | File size limit | All files under 1000 lines |
-| Line coverage (core crates) | common 87%, config 89%, core 79%, server 77% |
+| Line coverage (core crates) | common 87%, config 89%, core ~87%, server ~85% |
 
 ---
 
@@ -95,7 +95,7 @@ TinyLlama-1.1B split across two machines over LAN TCP:
 ```
 Applications (hotSpring, NUCLEUS inference, etc.)
        |
-BarraCuda: 600+ WGSL Shaders (SHADER-FIRST)
+BarraCUDA: 600+ WGSL Shaders (SHADER-FIRST)
   ALL math is WGSL primary -- ToadStool dispatches to GPU/CPU
   Zero orphan shaders -- every WGSL file wired to Rust
   NN ops: Conv2D, MaxPool2D, AvgPool2D (dedicated WGSL compute shaders)
@@ -221,7 +221,7 @@ toadStool/
 6. **Honest documentation** -- no aspirational claims as facts; ML stubs return `ModelNotLoaded`/`ModelBackendRequired`
 7. **Vendor-agnostic** -- WGSL over CUDA/ROCm, any GPU works
 8. **Sovereign compute** -- no vendor lock-in, pure Rust core
-9. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (55 blocks audited)
+9. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (95+ blocks audited)
 10. **Shared error tracking** -- `AtomicU64` counter across all server transports
 
 ### Quality Metrics
@@ -230,18 +230,19 @@ toadStool/
 |--------|-------|
 | Clippy warnings | 0 |
 | Doc warnings | 0 |
-| Unit tests passing | 5,965+ |
+| Unit tests passing | 14,000+ |
 | Build warnings | 0 |
 | Line coverage (common) | 87% |
 | Line coverage (config) | 89% |
-| Line coverage (core) | 79% |
-| Line coverage (server) | 77% |
+| Line coverage (core) | ~87% |
+| Line coverage (server) | ~85% |
 | Line coverage (distributed) | 55% |
-| `unsafe` blocks | 55 -- all FFI, all SAFETY documented |
+| `unsafe` blocks | 95+ audited -- all FFI, all SAFETY documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
+| Production `Box<dyn Error>` | 0 in core crates -- all typed errors |
 | Hardcoded primal names in prod | 0 |
 | WGSL shaders | 600+ (zero orphans) |
-| Dead code annotations | Audited -- 38 remaining all verified legitimate |
+| Dead code annotations | Audited -- all verified legitimate |
 | Four springs validation | 4,000+ acceptance checks |
 
 ---
@@ -249,35 +250,36 @@ toadStool/
 ## What Needs Evolution
 
 ### Next
-- **Test coverage -> 90%** -- server and distributed crates need integration-style tests with mocks for I/O paths
-- **NPU model pipeline** -- train/compile/deploy from Rust
+- **Test coverage -> 90%** -- planner (49%), ecosystem (62%), detector (65%) are lowest remaining
+- **NPU model pipeline** -- train/compile/deploy from Rust (awaiting hardware)
 - **burn-inference models** -- BERT/Whisper/YOLO (currently return `ModelNotLoaded`/`ModelBackendRequired`)
 - **W-001/W-003** -- Mesa NAK upstream patches pending Titan V validation
 
+### Completed (Session 45: Deep Debt Evolution, Feb 23, 2026)
+- 21 `Box<dyn Error>` → typed errors in server/core production code
+- 20+ barracuda shader/device test fixes (atanh, batch_pair_reduce_f64, NPU ops, ESN)
+- 38 new coverage tests (planner, ecosystem, detector)
+- 95+ unsafe blocks audited with SAFETY comments; 0 `NonNull::new_unchecked` remaining
+- 14 manual + 100+ auto clippy pedantic fixes; WebSocket deprecation audit complete
+- Production sleep → `tokio::time::interval`; clone reduction in hot paths
+- All quality gates green: 0 clippy, 0 doc warnings, 0 fmt diffs, 14,000+ tests passing
+
+### Completed (Sessions 43-44: Deep Debt + Sleep Elimination, Feb 22, 2026)
+- Refactored oversized files; `gpu_job_queue.rs` 1127→344 lines; normalization/tensor_ops modularized
+- 33+ production/test sleeps → event-driven (Notify, channel, interval, black_box)
+- `Box<dyn Error>` → `ConfigError`/`TarpcClientError`; gRPC stub → JSON-RPC IPC
+- Hardcoded ports/paths → env vars + XDG resolution; WebSocket deprecated
+- `NonNull::new_unchecked` → safe alternatives; VFIO `expect()` → error propagation
+
 ### Completed (Sessions 39-41: Spring Absorption, PDE, f64 Bug Fix)
-- **S41**: Fixed 6 f64 shaders using `compile_shader()` instead of `compile_shader_f64()` (wetSpring critical blocker -- ODE, GEMM, Hill, pair-reduce, tolerance-search, KMD)
-- **S41**: `cpu_conv_pool` functions promoted to `pub` (unblocks neuralSpring LeNet-5); all 25 bio ops re-exported at crate root
-- **S40**: 1D Richards equation solver (van Genuchten-Mualem soil hydraulics, Picard/Crank-Nicolson) for airSpring precision agriculture
-- **S40**: Moving window statistics GPU op (mean/var/min/max over sliding windows for IoT sensor streams)
-- **S40**: Dependency audit -- workspace already pure Rust; libc confined to akida VFIO ioctls
-- **S39**: Absorbed 7 neuralSpring + 3 wetSpring + 11 hotSpring HFB physics shaders (600+ WGSL total)
-- **S39**: S-14 Naive matmul tier removed (barrier-safe Tiled16 minimum); S-15 matmul hang fix; S-16 transpose dispatch fix
-- **S39**: `GemmCachedF64::execute_to_buffer()`, `barracuda::math` module, `FlatTree` CSR, `sparse_eigh`, `quantize_affine_i8`
+- 6 f64 shader compile fixes; Richards PDE solver; moving window GPU stats
+- Absorbed 7 neuralSpring + 3 wetSpring + 11 hotSpring HFB physics shaders (600+ WGSL)
+- All 25 bio ops re-exported; `cpu_conv_pool` promoted to `pub`
 
-### Completed (Sessions 32-38: Deep Debt, Precision, Coverage)
-- Zero clippy warnings workspace-wide; zero blind `unwrap()` in production
-- TS-001/TS-003/TS-004 precision fixes; S-13 PooledBuffer race fix
-- HFB nuclear physics (spherical + deformed) + lattice QCD absorption
-- Capability-based discovery; thiserror 2.0; zero-copy JSON-RPC
-- Conv2D/MaxPool2D/AvgPool2D WGSL; FHE fault injection; edge runtime
-- 3,847+ workspace tests; coverage: common 87%, config 89%, core 79%, server 77%
-
-### Completed (Sessions 31-31h)
-- 55 orphan shaders wired, clippy clean sweep, dead code audit
-- GpuExecutor 31 MathOps wired, CpuExecutor full dispatch, LU/QR/SVD refactoring
-- Batched eigendecomposition, generalized eigensolver, TensorSession ML ops
-- safetensors + GGUF weight loading, INT4/INT8 quantized WGSL shaders
-- Four Springs absorption (hotSpring + wetSpring + neuralSpring + airSpring)
+### Completed (Sessions 31-38: Deep Debt, Precision, Coverage, Shaders)
+- Zero clippy warnings; zero blind `unwrap()`; TS-001/TS-003/TS-004 precision fixes
+- HFB nuclear physics; lattice QCD; capability-based discovery; thiserror 2.0; zero-copy JSON-RPC
+- 55 orphan shaders wired; GpuExecutor 31 MathOps; Four Springs validated (4,000+ checks)
 
 See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
@@ -305,4 +307,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 22, 2026 -- Session 41: 6 f64 shader compile bug fixes, Richards PDE solver, moving window GPU stats, 600+ WGSL shaders, all bio ops re-exported, four Springs validated.
+**Last Updated**: February 23, 2026 -- Session 45: 14,000+ tests, 95+ unsafe blocks audited, 21 Box<dyn Error> → typed errors, barracuda shader fixes, all quality gates green.

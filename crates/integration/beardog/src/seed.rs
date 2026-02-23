@@ -20,7 +20,7 @@ pub struct SeedQuality {
 impl SeedQuality {
     /// Create new quality score
     #[must_use]
-    pub fn new(score: f32, machine: f32, human: f32) -> Self {
+    pub const fn new(score: f32, machine: f32, human: f32) -> Self {
         Self {
             score: score.clamp(0.0, 1.0),
             machine_quality: machine.clamp(0.0, 1.0),
@@ -147,7 +147,7 @@ mod tests {
         let quality = SeedQuality::new(0.95, 0.9, 0.8);
         let mixing = EntropyMixing::beardog_standard();
 
-        let seed = EphemeralSeed::new(seed_data.clone(), EntropySource::Mixed, mixing, quality);
+        let seed = EphemeralSeed::new(seed_data, EntropySource::Mixed, mixing, quality);
 
         assert!(seed.is_valid());
         assert!(seed.is_fresh());

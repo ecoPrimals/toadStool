@@ -2,7 +2,7 @@
 //!
 //! Normalize each sample independently (for style transfer, etc).
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use super::super::{executor::WgpuExecutor, types::*};
@@ -30,7 +30,7 @@ impl WgpuExecutor {
             "InstanceNorm: beta size must match channels"
         );
 
-        let shader_source = include_str!("../shaders/instancenorm.wgsl");
+        let shader_source = include_str!("../../shaders/instancenorm.wgsl");
 
         let input_buffer = self.create_input_buffer(input, "InstanceNorm Input");
         let gamma_buffer = self.create_input_buffer(&config.gamma, "InstanceNorm Gamma");
@@ -166,14 +166,4 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
         self.read_buffer(&staging_buffer, total_size).await
     }
-
-    /// Execute RMS Normalization
-    ///
-    /// Simpler alternative to LayerNorm used in modern transformers.
-    /// RMSNorm(x) = x / sqrt(mean(x²) + epsilon) * gamma
-    ///
-    /// No mean subtraction, only RMS scaling - faster and simpler than LayerNorm.
-    /// Used in: LLaMA, GPT-NeoX, T5, modern large language models.
-    ///
-    /// Deep Debt: Runtime dimensions, learnable scale parameters.
 }

@@ -204,7 +204,7 @@ mod tests {
         drop(objs);
 
         let obj_reuse = pool.get().await;
-        assert_eq!(obj_reuse.get(), Some(&String::from("allocated")));
+        assert_eq!(obj_reuse.get().map(|s| s.as_str()), Some("allocated"));
 
         let stats = pool.get_stats().await;
         assert_eq!(stats.total_deallocations, 5);

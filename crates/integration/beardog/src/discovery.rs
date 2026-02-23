@@ -186,7 +186,7 @@ impl EntropyClient {
 
     /// Check if bearDog service is available
     #[must_use]
-    pub fn is_available(&self) -> bool {
+    pub const fn is_available(&self) -> bool {
         self.available
     }
 

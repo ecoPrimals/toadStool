@@ -216,11 +216,11 @@ fn bgl_entry(idx: u32, ty: wgpu::BufferBindingType) -> wgpu::BindGroupLayoutEntr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device_if_gpu_available;
+    use crate::device::test_pool::get_test_device_if_f64_gpu_available;
 
     #[tokio::test]
     async fn test_dot_product_identity() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
         // 2 vectors [1,0], [0,1]: dot = 0; [1,0]·[1,0] = 1
@@ -237,7 +237,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_squared_l2() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
         // ||[3,4] - [0,0]||² = 25

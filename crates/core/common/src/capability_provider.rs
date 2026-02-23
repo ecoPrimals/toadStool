@@ -158,16 +158,19 @@ impl CapabilityProvider {
     ///
     /// WARNING: Do NOT use this for logic decisions!
     /// Use capabilities, not names, for behavior.
+    #[must_use]
     pub fn service_name(&self) -> &str {
         &self.service_name
     }
 
     /// Get capabilities offered by this provider
+    #[must_use]
     pub fn capabilities(&self) -> &[Capability] {
         &self.capabilities
     }
 
     /// Check if provider offers a specific capability
+    #[must_use]
     pub fn has_capability(&self, cap: &Capability) -> bool {
         self.capabilities.contains(cap)
     }
@@ -247,7 +250,10 @@ fn capability_to_string(cap: &Capability) -> String {
 }
 
 fn string_to_capability(s: &str) -> Capability {
-    use crate::primal_identity::*;
+    use crate::primal_identity::{
+        AuthCapability, Capability, ComputeCapability, CoordinationCapability, CryptoCapability,
+        DiscoveryCapability, StorageCapability,
+    };
 
     // Parse actual capability variants, use Custom for unknown
     match s {

@@ -3,6 +3,8 @@
 //! Week 14 Day 4: Client Error Tests
 //! Target: Achieve complete coverage of client/error.rs
 
+#![allow(deprecated)] // ClientError::WebSocket deprecated; tests validate backward compat
+
 use std::fmt::Write;
 use toadstool_client::{ClientError, ClientResult};
 

@@ -26,14 +26,16 @@ pub enum DegradationStrategy {
 
 impl GracefulDegradation {
     /// Create a new graceful degradation handler
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             strategy: DegradationStrategy::Fallback,
         }
     }
 
     /// Create with specific strategy
-    pub fn with_strategy(strategy: DegradationStrategy) -> Self {
+    #[must_use]
+    pub const fn with_strategy(strategy: DegradationStrategy) -> Self {
         Self { strategy }
     }
 
@@ -44,8 +46,7 @@ impl GracefulDegradation {
     ) -> ToadStoolResult<CapabilityHandle> {
         match self.strategy {
             DegradationStrategy::Fail => Err(ToadStoolError::not_found(format!(
-                "Required capability not available: {:?}",
-                capability
+                "Required capability not available: {capability:?}"
             ))),
 
             DegradationStrategy::Fallback => {
@@ -69,8 +70,7 @@ impl GracefulDegradation {
         // - Local implementations (e.g., local file storage)
 
         Err(ToadStoolError::not_found(format!(
-            "Capability not available and no fallback: {:?}",
-            capability
+            "Capability not available and no fallback: {capability:?}"
         )))
     }
 
@@ -83,8 +83,7 @@ impl GracefulDegradation {
         // Useful for non-critical capabilities
 
         Err(ToadStoolError::not_found(format!(
-            "No-op mode not yet implemented for: {:?}",
-            capability
+            "No-op mode not yet implemented for: {capability:?}"
         )))
     }
 }

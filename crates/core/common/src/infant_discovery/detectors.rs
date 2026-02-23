@@ -17,12 +17,12 @@
 //! ## Evolution (Feb 15, 2026)
 //!
 //! Removed vendor-specific detectors:
-//! - KubernetesDetector (vendor lock-in)
-//! - DockerDetector (vendor lock-in)
-//! - ConsulDetector (vendor lock-in)
-//! - CloudDetector (AWS/GCP/Azure - vendor lock-in)
+//! - `KubernetesDetector` (vendor lock-in)
+//! - `DockerDetector` (vendor lock-in)
+//! - `ConsulDetector` (vendor lock-in)
+//! - `CloudDetector` (AWS/GCP/Azure - vendor lock-in)
 //!
-//! Kept: BareMetalDetector (hardware capabilities)
+//! Kept: `BareMetalDetector` (hardware capabilities)
 
 use std::future::Future;
 use std::pin::Pin;
@@ -135,11 +135,11 @@ impl SubstrateDetector for BareMetalDetector {
 ///
 /// ## Evolution (Feb 15, 2026)
 ///
-/// Only BareMetalDetector remains. Vendor-specific detectors removed:
-/// - No KubernetesDetector (Songbird handles service discovery)
-/// - No DockerDetector (container detection is generic now)
-/// - No ConsulDetector (Songbird handles service mesh)
-/// - No CloudDetector (vendor lock-in, not our concern)
+/// Only `BareMetalDetector` remains. Vendor-specific detectors removed:
+/// - No `KubernetesDetector` (Songbird handles service discovery)
+/// - No `DockerDetector` (container detection is generic now)
+/// - No `ConsulDetector` (Songbird handles service mesh)
+/// - No `CloudDetector` (vendor lock-in, not our concern)
 #[must_use]
 pub fn standard_detectors() -> Vec<Box<dyn SubstrateDetector>> {
     vec![Box::new(BareMetalDetector::new())]
@@ -149,7 +149,7 @@ pub fn standard_detectors() -> Vec<Box<dyn SubstrateDetector>> {
 // Legacy type aliases for backward compatibility
 // ============================================================================
 
-/// CloudEnvironment is deprecated - use HardwareEnvironment
+/// `CloudEnvironment` is deprecated - use `HardwareEnvironment`
 #[deprecated(
     since = "0.16.0",
     note = "Use HardwareEnvironment instead - vendor detection removed"

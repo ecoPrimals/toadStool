@@ -2,7 +2,7 @@
 //!
 //! Normalize within groups of channels.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use super::super::{executor::WgpuExecutor, types::*};
@@ -38,7 +38,7 @@ impl WgpuExecutor {
         let channels_per_group = channels / config.num_groups;
         let total_groups = batch_size * config.num_groups;
 
-        let shader_source = include_str!("../shaders/groupnorm.wgsl");
+        let shader_source = include_str!("../../shaders/groupnorm.wgsl");
 
         // Create buffers
         let input_buffer = self.create_input_buffer(input, "GroupNorm Input");
@@ -267,14 +267,4 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
         self.read_buffer(&staging_buffer, total_size).await
     }
-
-    /// Execute Instance Normalization
-    ///
-    /// Normalizes each instance (batch sample) independently across spatial dimensions.
-    /// Computes mean and variance over (height, width) for each (batch, channel) pair.
-    ///
-    /// Used in: Style transfer, GANs, real-time image generation.
-    /// Benefits: No batch dependency, works well for style/texture tasks.
-    ///
-    /// Deep Debt: All dimensions determined at runtime, learnable parameters.
 }

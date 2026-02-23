@@ -38,7 +38,7 @@ pub enum AuditEventType {
 impl AuditEventType {
     /// Get string representation
     #[must_use]
-    pub fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &str {
         match self {
             Self::MemoryAllocated => "memory_allocated",
             Self::MemoryDeallocated => "memory_deallocated",
@@ -163,7 +163,7 @@ pub struct AuditLogger {
 impl AuditLogger {
     /// Create a new audit logger
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             events: Vec::new(),
             next_sequence: 0,
@@ -280,13 +280,13 @@ impl AuditLogger {
 
     /// Get number of events in log
     #[must_use]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.events.len()
     }
 
     /// Check if log is empty
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.events.is_empty()
     }
 

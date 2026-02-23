@@ -30,7 +30,7 @@ impl DrmBackend {
     ///
     /// ```rust,no_run
     /// # use toadstool_display::DrmBackend;
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # fn main() -> toadstool_display::Result<()> {
     /// let drm = DrmBackend::open("/dev/dri/card0")?;
     /// # Ok(())
     /// # }

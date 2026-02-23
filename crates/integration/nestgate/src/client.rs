@@ -219,11 +219,7 @@ impl StorageClient {
     /// # Errors
     ///
     /// Returns an error if the artifact storage fails or the `NestGate` service is unavailable
-    pub fn store_artifact(
-        &self,
-        _name: &str,
-        data: &[u8],
-    ) -> Result<StorageResult, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn store_artifact(&self, _name: &str, data: &[u8]) -> Result<StorageResult, NestGateError> {
         let id = Uuid::new_v4();
         let checksum = Self::calculate_checksum(data);
 
@@ -266,10 +262,7 @@ impl StorageClient {
     /// # Errors
     ///
     /// Returns an error if the artifact ID is invalid or the `NestGate` service is unavailable
-    pub fn retrieve_artifact(
-        &self,
-        _id: Uuid,
-    ) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn retrieve_artifact(&self, _id: Uuid) -> Result<Option<Vec<u8>>, NestGateError> {
         // Check cache first if enabled
         if self.config.cache.as_ref().is_some_and(|c| c.enabled) {
             // Cache lookup would go here

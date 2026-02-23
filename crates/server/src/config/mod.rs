@@ -16,6 +16,10 @@ pub struct ServerConfig {
     pub enable_api: bool,
 
     /// Enable WebSocket for real-time events
+    #[deprecated(
+        since = "0.5.0",
+        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
+    )]
     pub enable_websocket: bool,
 
     /// Enable CORS for API access
@@ -86,6 +90,11 @@ impl ServerConfig {
 
     /// Enable or disable WebSocket
     #[must_use]
+    #[deprecated(
+        since = "0.5.0",
+        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
+    )]
+    #[allow(deprecated)]
     pub fn enable_websocket(mut self, enabled: bool) -> Self {
         self.enable_websocket = enabled;
         self
@@ -302,6 +311,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_server_config_builder_chain() {
         let config = ServerConfig::default()
             .bind_address("127.0.0.1:0".to_string())

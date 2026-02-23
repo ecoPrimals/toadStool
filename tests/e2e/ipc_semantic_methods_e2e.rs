@@ -169,7 +169,11 @@ fn test_semantic_domains_coverage() {
 
     // Verify each domain has multiple operations
     for domain in &domains {
-        let ops: Vec<&String> = methods.iter().filter(|m| m.starts_with(domain)).collect();
+        let ops: Vec<&str> = methods
+            .iter()
+            .filter(|m| m.starts_with(domain))
+            .map(String::as_str)
+            .collect();
         assert!(
             ops.len() >= 3,
             "Domain {} should have at least 3 operations, got {}",

@@ -10,6 +10,7 @@
 //! - **Fast AND Safe**: Validated data transfers, efficient execution
 
 use crate::{AkidaDevice, AkidaError, Result};
+use bytes::Bytes;
 use std::time::Instant;
 use tracing::{debug, info};
 
@@ -172,7 +173,7 @@ impl InferenceExecutor {
         info!("✅ Inference complete in {:?}", total_duration);
 
         Ok(InferenceResult {
-            output,
+            output: Bytes::from(output),
             input_transfer_duration: transfer_duration,
             output_transfer_duration: output_duration,
             total_duration,
@@ -190,8 +191,8 @@ impl InferenceExecutor {
 /// Inference result with metrics
 #[derive(Debug, Clone)]
 pub struct InferenceResult {
-    /// Output data
-    pub output: Vec<u8>,
+    /// Output data (Bytes enables zero-copy sharing of results)
+    pub output: Bytes,
 
     /// Input transfer duration
     pub input_transfer_duration: std::time::Duration,
@@ -228,7 +229,7 @@ impl InferenceResult {
 ///
 /// **Deep Debt**: Capability-based estimation!
 /// Not hardcoded, scales with data size.
-fn estimate_inference_timeout(input_size_bytes: usize) -> u64 {
+const fn estimate_inference_timeout(input_size_bytes: usize) -> u64 {
     // Base timeout: 100ms
     // Add 1ms per KB of input
     let base_timeout = 100;

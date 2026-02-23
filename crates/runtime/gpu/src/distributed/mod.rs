@@ -42,11 +42,12 @@ use uuid::Uuid;
 /// # Example
 ///
 /// ```no_run
-/// use toadstool_runtime_gpu::distributed::DistributedGpuScheduler;
-/// use toadstool_runtime_gpu::scheduler::{UniversalComputeScheduler, SchedulingPolicy};
 /// use std::sync::Arc;
+/// use toadstool::error::ToadStoolResult;
+/// use toadstool_runtime_gpu::distributed::DistributedGpuScheduler;
+/// use toadstool_runtime_gpu::scheduler::{SchedulingPolicy, UniversalComputeScheduler};
 ///
-/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// # async fn example() -> ToadStoolResult<()> {
 /// let local = Arc::new(UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch));
 /// let scheduler = DistributedGpuScheduler::new(local);
 ///
@@ -412,9 +413,8 @@ impl DistributedGpuScheduler {
         // Deep Debt: Return explicit error instead of fake success
         // Remote execution requires biomeOS tower infrastructure
         Err(ToadStoolError::not_supported(format!(
-            "Remote GPU execution to {} not yet implemented. \
-             Use local execution or await biomeOS tower integration.",
-            address
+            "Remote GPU execution to {address} not yet implemented. \
+             Use local execution or await biomeOS tower integration."
         )))
     }
 }
@@ -443,6 +443,7 @@ mod tests {
         ));
         let scheduler = DistributedGpuScheduler::new(local);
 
+        // Test fixture: placeholder address for unit test (production uses Songbird discovery)
         let endpoint = RemoteTowerEndpoint {
             tower_id: "remote-1".to_string(),
             address: "10.0.0.2:8080".to_string(),

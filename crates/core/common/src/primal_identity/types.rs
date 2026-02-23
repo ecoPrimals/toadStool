@@ -1,6 +1,6 @@
 //! Primal identity type definitions
 //!
-//! Capability enums and ServiceEndpoint - the core types for capability-based discovery.
+//! Capability enums and `ServiceEndpoint` - the core types for capability-based discovery.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -214,6 +214,10 @@ impl ServiceEndpoint {
     }
 
     /// Create a new `WebSocket` endpoint
+    #[deprecated(
+        since = "0.5.0",
+        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
+    )]
     pub fn websocket(host: impl Into<String>, port: u16) -> Self {
         Self {
             protocol: "ws".to_string(),

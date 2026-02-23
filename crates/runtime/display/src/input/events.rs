@@ -115,16 +115,19 @@ pub struct KeyCode(u32);
 
 impl KeyCode {
     /// Create a new key code
+    #[must_use]
     pub const fn new(code: u32) -> Self {
         Self(code)
     }
 
     /// Create from raw code
+    #[must_use]
     pub const fn from_raw(code: u32) -> Self {
         Self(code)
     }
 
     /// Get raw code
+    #[must_use]
     pub const fn raw(self) -> u32 {
         self.0
     }
@@ -300,6 +303,7 @@ pub struct Modifiers {
 
 impl Modifiers {
     /// Create with no modifiers
+    #[must_use]
     pub const fn none() -> Self {
         Self {
             shift: false,
@@ -310,6 +314,7 @@ impl Modifiers {
     }
 
     /// Check if any modifiers are active
+    #[must_use]
     pub const fn any(self) -> bool {
         self.shift || self.ctrl || self.alt || self.logo
     }

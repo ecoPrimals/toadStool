@@ -3,7 +3,7 @@
 /// Default GPU max parallel compute invocations per workgroup dimension
 pub const DEFAULT_MAX_COMPUTE_INVOCATIONS: u32 = 1024;
 
-/// Default max buffer size (1 GiB)
+/// Default max buffer size (1 `GiB`)
 pub const DEFAULT_MAX_BUFFER_SIZE: u64 = 1_073_741_824;
 
 /// Default hash bucket count for unique operations

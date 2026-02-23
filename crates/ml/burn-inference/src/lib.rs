@@ -1,7 +1,7 @@
 //! Burn-based ML inference for ToadStool
 //!
 //! This crate provides cross-platform ML inference using Burn with wgpu backend.
-//! It enables running HuggingFace models on NVIDIA, AMD, or any wgpu-compatible hardware.
+//! It enables running `HuggingFace` models on NVIDIA, AMD, or any wgpu-compatible hardware.
 //!
 //! # Example
 //!

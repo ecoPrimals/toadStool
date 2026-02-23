@@ -2,7 +2,7 @@
 //!
 //! ## Evolution (Feb 15, 2026)
 //!
-//! Tests updated to focus on BareMetalDetector only.
+//! Tests updated to focus on `BareMetalDetector` only.
 //! Vendor-specific detectors (Kubernetes, Docker, Consul, Cloud) removed.
 //! ToadStool only cares about hardware capabilities - service discovery
 //! is delegated to Songbird (comms primal).
@@ -143,7 +143,7 @@ fn test_hardware_environment_clone() {
 #[test]
 fn test_hardware_environment_debug() {
     let env = HardwareEnvironment::default();
-    let debug = format!("{:?}", env);
+    let debug = format!("{env:?}");
     assert!(debug.contains("HardwareEnvironment"));
 }
 

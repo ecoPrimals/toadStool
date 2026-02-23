@@ -1,11 +1,11 @@
 //! Model loaders for various formats
 //!
-//! Supports loading models from HuggingFace Hub (safetensors) and llama.cpp (GGUF).
+//! Supports loading models from `HuggingFace` Hub (safetensors) and llama.cpp (GGUF).
 //!
 //! ## Supported Formats
 //!
-//! - **Safetensors**: HuggingFace standard format, full precision (F32, F16, BF16)
-//! - **GGUF**: llama.cpp format, supports quantized models (Q4_0, Q8_0, etc.)
+//! - **Safetensors**: `HuggingFace` standard format, full precision (F32, F16, BF16)
+//! - **GGUF**: llama.cpp format, supports quantized models (`Q4_0`, `Q8_0`, etc.)
 
 pub mod gguf;
 pub mod safetensors;
@@ -30,8 +30,7 @@ pub fn load_weights<P: AsRef<Path>>(path: P) -> Result<ModelWeights> {
             "gguf" => gguf::load(path),
             "safetensors" => safetensors::load(path),
             _ => Err(crate::Error::ModelLoad(format!(
-                "Unknown file extension: {} (expected .gguf or .safetensors)",
-                ext
+                "Unknown file extension: {ext} (expected .gguf or .safetensors)"
             ))),
         };
     }
@@ -109,11 +108,13 @@ pub enum DataType {
 
 impl WeightTensor {
     /// Get number of elements
+    #[must_use]
     pub fn numel(&self) -> usize {
         self.shape.iter().product()
     }
 
     /// Get data as f32 slice (for F32 tensors)
+    #[must_use]
     pub fn as_f32(&self) -> Option<&[f32]> {
         if matches!(self.dtype, DataType::F32) {
             Some(bytemuck::cast_slice(&self.data))

@@ -3,6 +3,7 @@
 //! Handles parsing of quantized weight data from Akida models.
 
 use crate::error::{AkidaModelError, Result};
+use bytes::Bytes;
 
 /// Weight quantization configuration
 #[derive(Debug, Clone, PartialEq)]
@@ -23,8 +24,8 @@ pub struct WeightData {
     /// Quantization configuration
     pub quantization: QuantizationConfig,
 
-    /// Raw weight bytes
-    pub data: Vec<u8>,
+    /// Raw weight bytes (Bytes enables zero-copy cloning for large model weights)
+    pub data: Bytes,
 
     /// Weight dimensions (if available)
     pub shape: Option<Vec<usize>>,
@@ -32,10 +33,10 @@ pub struct WeightData {
 
 impl WeightData {
     /// Create new weight data
-    pub fn new(quantization: QuantizationConfig, data: Vec<u8>) -> Self {
+    pub fn new(quantization: QuantizationConfig, data: impl Into<Bytes>) -> Self {
         Self {
             quantization,
-            data,
+            data: data.into(),
             shape: None,
         }
     }
@@ -85,7 +86,7 @@ impl WeightData {
 
     /// Decode 1-bit weights
     fn decode_1bit(&self, weights: &mut Vec<f32>) {
-        for &byte in &self.data {
+        for &byte in self.data.as_ref() {
             for bit_idx in 0..8 {
                 let bit = (byte >> bit_idx) & 1;
                 let quantized = i32::from(bit) - self.quantization.offset;
@@ -98,7 +99,7 @@ impl WeightData {
 
     /// Decode 2-bit weights
     fn decode_2bit(&self, weights: &mut Vec<f32>) {
-        for &byte in &self.data {
+        for &byte in self.data.as_ref() {
             for shift in (0..8).step_by(2) {
                 let value = (byte >> shift) & 0b11;
                 let quantized = i32::from(value) - self.quantization.offset;
@@ -111,7 +112,7 @@ impl WeightData {
 
     /// Decode 4-bit weights
     fn decode_4bit(&self, weights: &mut Vec<f32>) {
-        for &byte in &self.data {
+        for &byte in self.data.as_ref() {
             // Low nibble
             let low = byte & 0x0F;
             let quantized_low = i32::from(low) - self.quantization.offset;
@@ -130,7 +131,7 @@ impl WeightData {
 
     /// Decode 8-bit weights
     fn decode_8bit(&self, weights: &mut Vec<f32>) {
-        for &byte in &self.data {
+        for &byte in self.data.as_ref() {
             let quantized = i32::from(byte) - self.quantization.offset;
             #[allow(clippy::cast_precision_loss)]
             let weight = quantized as f32 * self.quantization.scale;
@@ -166,7 +167,7 @@ pub fn extract_weights(data: &[u8]) -> Result<Vec<WeightData>> {
             }
 
             // Create weight data (default 4-bit quantization)
-            let weight_block = data[block_start..block_end].to_vec();
+            let weight_block = Bytes::copy_from_slice(&data[block_start..block_end]);
             let quant = QuantizationConfig {
                 bits: 4,
                 scale: 1.0,

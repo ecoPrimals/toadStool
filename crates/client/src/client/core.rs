@@ -148,7 +148,7 @@ impl ToadStoolClient {
             .rpc_client
             .call("compute.cancel", params)
             .await
-            .map_err(|e| ClientError::Server(format!("compute.cancel failed: {}", e)))?;
+            .map_err(|e| ClientError::Server(format!("compute.cancel failed: {e}")))?;
 
         info!("Execution cancelled successfully: {}", execution_id);
         Ok(())
@@ -163,9 +163,13 @@ impl ToadStoolClient {
 
         let max_wait = Duration::from_secs(300);
         let poll_interval = Duration::from_millis(500);
+        let mut interval = tokio::time::interval(poll_interval);
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         let start = std::time::Instant::now();
 
         while start.elapsed() < max_wait {
+            interval.tick().await;
+
             let status_result = self
                 .rpc_client
                 .call(
@@ -213,8 +217,6 @@ impl ToadStoolClient {
                     break;
                 }
             }
-
-            tokio::time::sleep(poll_interval).await;
         }
 
         Err(ClientError::Http(
@@ -232,7 +234,7 @@ impl ToadStoolClient {
             .rpc_client
             .call("toadstool.health", serde_json::json!({}))
             .await
-            .map_err(|e| ClientError::Server(format!("toadstool.health failed: {}", e)))?;
+            .map_err(|e| ClientError::Server(format!("toadstool.health failed: {e}")))?;
 
         let jobs: serde_json::Value = self
             .rpc_client
@@ -243,20 +245,20 @@ impl ToadStoolClient {
         let counts = jobs.get("counts").and_then(|c| c.as_object());
         let pending = counts
             .and_then(|m| m.get("pending"))
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(0);
         let running = counts
             .and_then(|m| m.get("running"))
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(0);
         let _completed = counts
             .and_then(|m| m.get("completed"))
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(0);
 
         let healthy = health
             .get("healthy")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(true);
 
         Ok(ClusterStatus {
@@ -274,11 +276,11 @@ impl ToadStoolClient {
             .rpc_client
             .call("toadstool.health", serde_json::json!({}))
             .await
-            .map_err(|e| ClientError::Server(format!("Health check failed: {}", e)))?;
+            .map_err(|e| ClientError::Server(format!("Health check failed: {e}")))?;
 
         let healthy = result
             .get("healthy")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
 
         if healthy {

@@ -85,15 +85,15 @@ mod tests {
     #[test]
     fn test_process_type_variants() {
         let primal = ProcessType::Primal("songbird".to_string());
-        match primal {
-            ProcessType::Primal(name) => assert_eq!(name, "songbird"),
-            _ => panic!("Expected Primal variant"),
+        assert!(matches!(primal, ProcessType::Primal(_)));
+        if let ProcessType::Primal(name) = primal {
+            assert_eq!(name, "songbird");
         }
 
         let service = ProcessType::Service("postgres".to_string());
-        match service {
-            ProcessType::Service(name) => assert_eq!(name, "postgres"),
-            _ => panic!("Expected Service variant"),
+        assert!(matches!(service, ProcessType::Service(_)));
+        if let ProcessType::Service(name) = service {
+            assert_eq!(name, "postgres");
         }
     }
 
@@ -221,7 +221,10 @@ mod tests {
     fn test_wasi_execution_config_with_environment() {
         let mut env = HashMap::new();
         env.insert("PATH".to_string(), "/usr/bin".to_string());
-        env.insert("HOME".to_string(), "/home/user".to_string());
+        env.insert(
+            "HOME".to_string(),
+            std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()),
+        );
 
         let config = WasiExecutionConfig {
             stdin: None,

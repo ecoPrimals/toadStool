@@ -18,7 +18,7 @@ pub const SHORT_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 pub const LONG_REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Connection/startup timeout (10 seconds). Used for IPC and service startup.
-/// Previously named WS_CONNECT_TIMEOUT; WebSocket has been removed.
+/// Previously named `WS_CONNECT_TIMEOUT`; `WebSocket` has been removed.
 pub const CONNECTION_STARTUP_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Health check timeout (3 seconds)

@@ -400,4 +400,117 @@ mod tests {
         let err = CloudError::ProviderUnavailable("AWS".to_string());
         assert!(err.to_string().contains("AWS"));
     }
+
+    #[test]
+    fn test_cloud_error_all_variants() {
+        assert!(CloudError::RegionUnsupported("eu-west".to_string())
+            .to_string()
+            .contains("eu-west"));
+        assert!(CloudError::InsufficientCapacity("no GPU".to_string())
+            .to_string()
+            .contains("no GPU"));
+        assert!(CloudError::DeploymentFailed("timeout".to_string())
+            .to_string()
+            .contains("timeout"));
+        assert!(CloudError::MigrationFailed("network".to_string())
+            .to_string()
+            .contains("network"));
+        assert!(CloudError::AuthenticationFailed("invalid key".to_string())
+            .to_string()
+            .contains("invalid key"));
+        assert!(CloudError::NetworkError("refused".to_string())
+            .to_string()
+            .contains("refused"));
+        assert!(CloudError::InvalidConfiguration("missing".to_string())
+            .to_string()
+            .contains("missing"));
+        assert!(CloudError::Unknown("mystery".to_string())
+            .to_string()
+            .contains("mystery"));
+    }
+
+    #[test]
+    fn test_workload_location_cloud() {
+        let loc = WorkloadLocation::Cloud {
+            provider: "AWS".to_string(),
+            region: "us-east-1".to_string(),
+            instance_id: "i-abc123".to_string(),
+        };
+        match &loc {
+            WorkloadLocation::Cloud {
+                provider,
+                region,
+                instance_id,
+            } => {
+                assert_eq!(provider, "AWS");
+                assert_eq!(region, "us-east-1");
+                assert_eq!(instance_id, "i-abc123");
+            }
+            _ => panic!("Expected Cloud variant"),
+        }
+    }
+
+    #[test]
+    fn test_workload_spec_construction() {
+        let spec = WorkloadSpec {
+            id: "wl-1".to_string(),
+            memory_gb: 8.0,
+            cpu_cores: 4,
+            requires_gpu: true,
+            preferred_gpu_type: Some("A100".to_string()),
+            estimated_runtime_hours: Some(2.5),
+            custom: HashMap::new(),
+        };
+        assert_eq!(spec.id, "wl-1");
+        assert_eq!(spec.memory_gb, 8.0);
+        assert!(spec.requires_gpu);
+        assert_eq!(spec.preferred_gpu_type.as_deref(), Some("A100"));
+    }
+
+    #[test]
+    fn test_cost_estimate_construction() {
+        let mut breakdown = HashMap::new();
+        breakdown.insert("compute".to_string(), 5.0);
+        let est = CostEstimate {
+            cost_per_hour: 5.0,
+            estimated_total_cost: Some(50.0),
+            breakdown,
+        };
+        assert_eq!(est.cost_per_hour, 5.0);
+        assert_eq!(est.estimated_total_cost, Some(50.0));
+        assert_eq!(est.breakdown.get("compute"), Some(&5.0));
+    }
+
+    #[test]
+    fn test_gpu_type_construction() {
+        let gpu = GpuType {
+            name: "A100".to_string(),
+            memory_gb: 40.0,
+            compute_capability: Some("8.0".to_string()),
+            cost_per_hour: 3.5,
+            available_regions: vec!["us-west-1".to_string()],
+        };
+        assert_eq!(gpu.name, "A100");
+        assert_eq!(gpu.memory_gb, 40.0);
+    }
+
+    #[test]
+    fn test_cloud_provider_registry_default() {
+        let registry = CloudProviderRegistry::default();
+        assert!(registry.available_providers().is_empty());
+    }
+
+    #[test]
+    fn test_workload_health_unhealthy() {
+        let health = WorkloadHealth::Unhealthy {
+            reason: "crash".to_string(),
+        };
+        assert!(matches!(health, WorkloadHealth::Unhealthy { .. }));
+    }
+
+    #[test]
+    fn test_workload_health_unknown() {
+        let health = WorkloadHealth::Unknown;
+        assert_eq!(health, WorkloadHealth::Unknown);
+    }
 }

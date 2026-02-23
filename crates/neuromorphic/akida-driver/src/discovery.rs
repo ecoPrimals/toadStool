@@ -96,7 +96,7 @@ impl DeviceManager {
 
     /// Get number of discovered devices
     #[must_use]
-    pub fn device_count(&self) -> usize {
+    pub const fn device_count(&self) -> usize {
         self.devices.len()
     }
 

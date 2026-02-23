@@ -222,9 +222,12 @@ pub async fn launch_toadstool(config: LaunchConfig) -> Result<()> {
         }
     }
 
-    // Try to discover endpoint (with retries)
+    // Try to discover endpoint (polling with interval instead of sleep)
     let start = std::time::Instant::now();
     let mut last_error = None;
+    let poll_interval = Duration::from_millis(500);
+    let mut interval = tokio::time::interval(poll_interval);
+    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     while start.elapsed() < config.startup_timeout {
         match discover_toadstool_endpoint().await {
@@ -234,9 +237,9 @@ pub async fn launch_toadstool(config: LaunchConfig) -> Result<()> {
             }
             Err(e) => {
                 last_error = Some(e);
-                tokio::time::sleep(Duration::from_millis(500)).await;
             }
         }
+        interval.tick().await;
     }
 
     Err(anyhow::anyhow!(

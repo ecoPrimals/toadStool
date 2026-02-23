@@ -21,7 +21,7 @@
 //! ```rust,no_run
 //! use toadstool_display::ipc::DisplayClient;
 //!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! # async fn example() -> toadstool_display::Result<()> {
 //! // Zero configuration - automatic discovery!
 //! let mut client = DisplayClient::discover().await?;
 //!
@@ -30,7 +30,7 @@
 //! # }
 //! ```
 
-use super::types::*;
+use super::types::{DisplayCapabilitiesInfo, JsonRpcRequest, JsonRpcResponse};
 use crate::window::{CreateWindowRequest, WindowId, WindowInfo};
 use crate::{DisplayError, Result};
 use std::net::SocketAddr;
@@ -49,7 +49,7 @@ pub enum IpcEndpoint {
 
 /// Polymorphic async stream trait
 ///
-/// Allows DisplayClient to work with both UnixStream and TcpStream transparently.
+/// Allows `DisplayClient` to work with both `UnixStream` and `TcpStream` transparently.
 trait AsyncStream: AsyncRead + AsyncWrite + Unpin + Send {}
 
 // Implement for both stream types
@@ -66,7 +66,7 @@ impl AsyncStream for TcpStream {}
 /// use toadstool_display::ipc::DisplayClient;
 /// use toadstool_display::window::CreateWindowRequest;
 ///
-/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// # async fn example() -> toadstool_display::Result<()> {
 /// // Automatic discovery!
 /// let mut client = DisplayClient::discover().await?;
 ///
@@ -95,7 +95,7 @@ impl DisplayClient {
     ///
     /// ```rust,no_run
     /// # use toadstool_display::ipc::DisplayClient;
-    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn example() -> toadstool_display::Result<()> {
     /// let mut client = DisplayClient::discover().await?;
     /// // Works on Linux (Unix) AND Android (TCP)!
     /// # Ok(())
@@ -145,7 +145,7 @@ impl DisplayClient {
 
     /// Get candidate Unix socket paths
     ///
-    /// **XDG-compliant**: Uses PlatformPaths for consistent path resolution
+    /// **XDG-compliant**: Uses `PlatformPaths` for consistent path resolution
     fn get_socket_paths() -> Vec<PathBuf> {
         use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 
@@ -197,7 +197,7 @@ impl DisplayClient {
 
     /// Get candidate TCP discovery file paths
     ///
-    /// **XDG-compliant**: Uses PlatformPaths for consistent path resolution
+    /// **XDG-compliant**: Uses `PlatformPaths` for consistent path resolution
     fn get_tcp_discovery_file_candidates() -> Vec<PathBuf> {
         use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 
@@ -231,9 +231,9 @@ impl DisplayClient {
             IpcEndpoint::UnixSocket(path) => {
                 tracing::info!("🔌 Connecting via Unix socket...");
 
-                let stream = UnixStream::connect(path).await.map_err(|e| {
-                    DisplayError::IpcError(format!("Unix connection failed: {}", e))
-                })?;
+                let stream = UnixStream::connect(path)
+                    .await
+                    .map_err(|e| DisplayError::IpcError(format!("Unix connection failed: {e}")))?;
 
                 tracing::info!("✅ Connected to display server (Unix socket)");
 
@@ -247,7 +247,7 @@ impl DisplayClient {
 
                 let stream = TcpStream::connect(addr)
                     .await
-                    .map_err(|e| DisplayError::IpcError(format!("TCP connection failed: {}", e)))?;
+                    .map_err(|e| DisplayError::IpcError(format!("TCP connection failed: {e}")))?;
 
                 tracing::info!("✅ Connected to display server (TCP fallback)");
 
@@ -268,7 +268,7 @@ impl DisplayClient {
 
         let stream = UnixStream::connect(&path)
             .await
-            .map_err(|e| DisplayError::IpcError(format!("Connection failed: {}", e)))?;
+            .map_err(|e| DisplayError::IpcError(format!("Connection failed: {e}")))?;
 
         tracing::info!("✅ Connected to display server");
 
@@ -279,7 +279,8 @@ impl DisplayClient {
     }
 
     /// Get connected endpoint
-    pub fn endpoint(&self) -> &IpcEndpoint {
+    #[must_use]
+    pub const fn endpoint(&self) -> &IpcEndpoint {
         &self.endpoint
     }
 
@@ -289,17 +290,17 @@ impl DisplayClient {
     async fn send_request(&mut self, request: JsonRpcRequest) -> Result<JsonRpcResponse> {
         // Serialize request
         let request_json = serde_json::to_string(&request)
-            .map_err(|e| DisplayError::IpcError(format!("Serialization error: {}", e)))?;
+            .map_err(|e| DisplayError::IpcError(format!("Serialization error: {e}")))?;
 
         // Send request
         self.stream
             .write_all(request_json.as_bytes())
             .await
-            .map_err(|e| DisplayError::IpcError(format!("Write error: {}", e)))?;
+            .map_err(|e| DisplayError::IpcError(format!("Write error: {e}")))?;
         self.stream
             .write_all(b"\n")
             .await
-            .map_err(|e| DisplayError::IpcError(format!("Write error: {}", e)))?;
+            .map_err(|e| DisplayError::IpcError(format!("Write error: {e}")))?;
 
         // Read response (using BufReader directly on the stream)
         let mut reader = BufReader::new(&mut self.stream);
@@ -308,11 +309,10 @@ impl DisplayClient {
         reader
             .read_line(&mut line)
             .await
-            .map_err(|e| DisplayError::IpcError(format!("Read error: {}", e)))?;
+            .map_err(|e| DisplayError::IpcError(format!("Read error: {e}")))?;
 
         // Parse response
-        serde_json::from_str(&line)
-            .map_err(|e| DisplayError::IpcError(format!("Parse error: {}", e)))
+        serde_json::from_str(&line).map_err(|e| DisplayError::IpcError(format!("Parse error: {e}")))
     }
 
     /// Create a window
@@ -394,7 +394,7 @@ impl DisplayClient {
 
         if let Some(result) = response.result {
             serde_json::from_value(result)
-                .map_err(|e| DisplayError::IpcError(format!("Parse error: {}", e)))
+                .map_err(|e| DisplayError::IpcError(format!("Parse error: {e}")))
         } else if let Some(error) = response.error {
             Err(DisplayError::IpcError(format!(
                 "Server error: {}",
@@ -413,7 +413,7 @@ impl DisplayClient {
 
         if let Some(result) = response.result {
             serde_json::from_value(result)
-                .map_err(|e| DisplayError::IpcError(format!("Parse error: {}", e)))
+                .map_err(|e| DisplayError::IpcError(format!("Parse error: {e}")))
         } else if let Some(error) = response.error {
             Err(DisplayError::IpcError(format!(
                 "Server error: {}",
@@ -427,6 +427,7 @@ impl DisplayClient {
     /// Get endpoint string for display purposes
     ///
     /// **Helper for health checks and monitoring**
+    #[must_use]
     pub fn endpoint_string(&self) -> String {
         match &self.endpoint {
             IpcEndpoint::UnixSocket(path) => path.display().to_string(),
@@ -437,7 +438,8 @@ impl DisplayClient {
     /// Get transport name for display purposes
     ///
     /// **Helper for health checks and monitoring**
-    pub fn transport_name(&self) -> &str {
+    #[must_use]
+    pub const fn transport_name(&self) -> &str {
         match &self.endpoint {
             IpcEndpoint::UnixSocket(_) => "unix",
             IpcEndpoint::TcpLocal(_) => "tcp",

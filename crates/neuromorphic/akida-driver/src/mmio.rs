@@ -270,12 +270,12 @@ impl MappedRegion {
     }
 
     /// Get BAR type
-    pub fn bar(&self) -> Bar {
+    pub const fn bar(&self) -> Bar {
         self.bar
     }
 
     /// Get region size
-    pub fn size(&self) -> usize {
+    pub const fn size(&self) -> usize {
         self.size
     }
 }

@@ -53,7 +53,7 @@ impl KeyStore {
     }
 
     fn get_symmetric(&self, key_id: &str) -> Option<&[u8]> {
-        self.symmetric.get(key_id).map(|v| v.as_slice())
+        self.symmetric.get(key_id).map(Vec::as_slice)
     }
 
     fn get_signing(&self, key_id: &str) -> Option<&SigningKey> {
@@ -168,7 +168,10 @@ impl SecurityProvider for SoftwareHsmProvider {
         let raw_key = store
             .get_symmetric(&metadata.key_id)
             .ok_or_else(|| {
-                ToadStoolError::not_found(format!("Key '{}' not found", metadata.key_id))
+                ToadStoolError::not_found(format!(
+                    "Key '{key_id}' not found",
+                    key_id = metadata.key_id
+                ))
             })?
             .to_vec();
         drop(store);

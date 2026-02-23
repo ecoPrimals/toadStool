@@ -81,7 +81,7 @@ pub const PROMETHEUS_FALLBACK_PORT: u16 = 9090;
 #[deprecated(note = "Use discovery or GRAFANA_URL environment variable instead")]
 pub const GRAFANA_FALLBACK_PORT: u16 = 3000;
 
-/// Consul default fallback port (prefer discovery or CONSUL_HTTP_ADDR environment variable)
+/// Consul default fallback port (prefer discovery or `CONSUL_HTTP_ADDR` environment variable)
 #[deprecated(note = "Use discovery or CONSUL_HTTP_ADDR environment variable instead")]
 pub const CONSUL_FALLBACK_PORT: u16 = 8500;
 
@@ -119,9 +119,17 @@ pub const HTTP_PROTOCOL: &str = "http://";
 pub const HTTPS_PROTOCOL: &str = "https://";
 
 /// `WebSocket` protocol prefix
+#[deprecated(
+    since = "0.5.0",
+    note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
+)]
 pub const WS_PROTOCOL: &str = "ws://";
 
 /// Secure `WebSocket` protocol prefix
+#[deprecated(
+    since = "0.5.0",
+    note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
+)]
 pub const WSS_PROTOCOL: &str = "wss://";
 
 // ============================================================================
@@ -142,12 +150,22 @@ pub fn https_url(host: &str, port: u16) -> String {
 
 /// Build `WebSocket` URL from host and port
 #[must_use]
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.5.0",
+    note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
+)]
 pub fn ws_url(host: &str, port: u16) -> String {
     format!("{WS_PROTOCOL}{host}:{port}")
 }
 
 /// Build secure `WebSocket` URL from host and port
 #[must_use]
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.5.0",
+    note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
+)]
 pub fn wss_url(host: &str, port: u16) -> String {
     format!("{WSS_PROTOCOL}{host}:{port}")
 }
@@ -171,38 +189,45 @@ pub fn default_https_url() -> String {
 /// Get Consul HTTP address from environment or default
 ///
 /// Priority:
-/// 1. CONSUL_HTTP_ADDR environment variable (full URL)
-/// 2. CONSUL_HOST + CONSUL_PORT environment variables
-/// 3. Fallback to localhost:8500
+/// 1. `CONSUL_HTTP_ADDR` environment variable (full URL)
+/// 2. `CONSUL_HOST` + `CONSUL_PORT` environment variables
+/// 3. `TOADSTOOL_CONSUL_DEFAULT_ADDR` (full URL override for fallback)
+/// 4. Fallback to localhost:8500
 #[must_use]
 #[allow(deprecated)]
 pub fn consul_http_addr() -> String {
     std::env::var("CONSUL_HTTP_ADDR").unwrap_or_else(|_| {
-        let host = std::env::var("CONSUL_HOST").unwrap_or_else(|_| DEFAULT_HOSTNAME.to_string());
-        let port = std::env::var("CONSUL_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(CONSUL_FALLBACK_PORT);
-        http_url(&host, port)
+        std::env::var("TOADSTOOL_CONSUL_DEFAULT_ADDR").unwrap_or_else(|_| {
+            let host =
+                std::env::var("CONSUL_HOST").unwrap_or_else(|_| DEFAULT_HOSTNAME.to_string());
+            let port = std::env::var("CONSUL_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(CONSUL_FALLBACK_PORT);
+            http_url(&host, port)
+        })
     })
 }
 
 /// Get etcd endpoints from environment or default
 ///
 /// Priority:
-/// 1. ETCD_ENDPOINTS environment variable (comma-separated URLs)
-/// 2. ETCD_HOST + ETCD_PORT environment variables
-/// 3. Fallback to localhost:2379
+/// 1. `ETCD_ENDPOINTS` environment variable (comma-separated URLs)
+/// 2. `ETCD_HOST` + `ETCD_PORT` environment variables
+/// 3. `TOADSTOOL_ETCD_DEFAULT_ENDPOINTS` (full URL override for fallback)
+/// 4. Fallback to localhost:2379
 #[must_use]
 #[allow(deprecated)]
 pub fn etcd_endpoints() -> String {
     std::env::var("ETCD_ENDPOINTS").unwrap_or_else(|_| {
-        let host = std::env::var("ETCD_HOST").unwrap_or_else(|_| DEFAULT_HOSTNAME.to_string());
-        let port = std::env::var("ETCD_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(ETCD_FALLBACK_PORT);
-        http_url(&host, port)
+        std::env::var("TOADSTOOL_ETCD_DEFAULT_ENDPOINTS").unwrap_or_else(|_| {
+            let host = std::env::var("ETCD_HOST").unwrap_or_else(|_| DEFAULT_HOSTNAME.to_string());
+            let port = std::env::var("ETCD_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(ETCD_FALLBACK_PORT);
+            http_url(&host, port)
+        })
     })
 }
 
@@ -243,6 +268,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_protocol_constants() {
         assert_eq!(HTTP_PROTOCOL, "http://");
         assert_eq!(HTTPS_PROTOCOL, "https://");
@@ -251,6 +277,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_protocol_format() {
         assert!(HTTP_PROTOCOL.ends_with("://"));
         assert!(HTTPS_PROTOCOL.ends_with("://"));
@@ -270,11 +297,13 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_ws_url() {
         assert_eq!(ws_url("localhost", 8081), "ws://localhost:8081");
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_wss_url() {
         assert_eq!(wss_url("example.com", 443), "wss://example.com:443");
     }
@@ -336,5 +365,33 @@ mod tests {
         assert_eq!(endpoints, "http://etcd.local:2379");
         std::env::remove_var("ETCD_HOST");
         std::env::remove_var("ETCD_PORT");
+    }
+
+    #[test]
+    fn test_consul_toadstool_default_addr() {
+        std::env::remove_var("CONSUL_HTTP_ADDR");
+        std::env::remove_var("CONSUL_HOST");
+        std::env::remove_var("CONSUL_PORT");
+        std::env::set_var(
+            "TOADSTOOL_CONSUL_DEFAULT_ADDR",
+            "http://consul.override:8600",
+        );
+        let addr = consul_http_addr();
+        assert_eq!(addr, "http://consul.override:8600");
+        std::env::remove_var("TOADSTOOL_CONSUL_DEFAULT_ADDR");
+    }
+
+    #[test]
+    fn test_etcd_toadstool_default_endpoints() {
+        std::env::remove_var("ETCD_ENDPOINTS");
+        std::env::remove_var("ETCD_HOST");
+        std::env::remove_var("ETCD_PORT");
+        std::env::set_var(
+            "TOADSTOOL_ETCD_DEFAULT_ENDPOINTS",
+            "http://etcd.override:2380",
+        );
+        let endpoints = etcd_endpoints();
+        assert_eq!(endpoints, "http://etcd.override:2380");
+        std::env::remove_var("TOADSTOOL_ETCD_DEFAULT_ENDPOINTS");
     }
 }

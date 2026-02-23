@@ -3,7 +3,12 @@
 //! This module provides extensions like `ToadStoolErrorWithCode` that add
 //! structured error codes to ToadStool errors, along with comprehensive tests.
 
-use super::types::*;
+use super::types::ToadStoolError;
+#[cfg(test)]
+use super::types::{
+    ConfigError, ExecutionError, IntegrationError, NetworkError, ResourceError, SecurityError,
+    SystemError, ToadStoolResult,
+};
 use crate::error_codes::ErrorCode;
 
 // ============================================================================

@@ -31,17 +31,17 @@ pub fn verify_setup(devices: &[AkidaDevice]) -> Result<()> {
 }
 
 fn verify_pcie_enabled(pcie_address: &str) -> Result<()> {
-    let enable_path = format!("/sys/bus/pci/devices/{}/enable", pcie_address);
+    let enable_path = format!("/sys/bus/pci/devices/{pcie_address}/enable");
     let enabled = fs::read_to_string(&enable_path)?;
 
     if enabled.trim() != "1" {
-        bail!("Device {} not enabled", pcie_address);
+        bail!("Device {pcie_address} not enabled");
     }
 
     // Check BARs are accessible
-    let resource_path = format!("/sys/bus/pci/devices/{}/resource0", pcie_address);
+    let resource_path = format!("/sys/bus/pci/devices/{pcie_address}/resource0");
     if !std::path::Path::new(&resource_path).exists() {
-        bail!("BAR resources not accessible for {}", pcie_address);
+        bail!("BAR resources not accessible for {pcie_address}");
     }
 
     tracing::debug!("✅ {} verified", pcie_address);
@@ -76,7 +76,7 @@ fn verify_device_nodes() -> Result<()> {
         let permissions = metadata.permissions();
 
         if permissions.mode() & 0o666 != 0o666 {
-            bail!("Incorrect permissions on {}", node);
+            bail!("Incorrect permissions on {node}");
         }
     }
 

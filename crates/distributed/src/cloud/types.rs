@@ -601,7 +601,7 @@ pub struct CloudHealthChecker {
 impl CloudHealthChecker {
     pub fn new(provider: String) -> Self {
         Self {
-            endpoint: format!("https://{}.amazonaws.com", provider),
+            endpoint: format!("https://{provider}.amazonaws.com"),
             check_interval: timeouts::HEALTH_CHECK_INTERVAL,
             timeout: timeouts::TCP_CONNECT_TIMEOUT,
         }

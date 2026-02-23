@@ -76,7 +76,7 @@ impl RuntimeDiscovery {
 
     /// Set cache TTL
     #[must_use]
-    pub fn with_cache_ttl(mut self, ttl: Duration) -> Self {
+    pub const fn with_cache_ttl(mut self, ttl: Duration) -> Self {
         self.cache_ttl = ttl;
         self
     }

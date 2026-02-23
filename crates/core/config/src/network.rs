@@ -86,7 +86,7 @@ pub fn default_squirrel_endpoint() -> String {
 
 /// Generate default `ToadStool` API endpoint (self-knowledge)
 ///
-/// ⚠️ **DEPRECATED**: Use PrimalIdentity for self-knowledge instead.
+/// ⚠️ **DEPRECATED**: Use `PrimalIdentity` for self-knowledge instead.
 #[deprecated(
     since = "0.7.0",
     note = "Use PrimalIdentity to get own endpoint instead"

@@ -425,7 +425,7 @@ impl CapacityInfo {
                     && !fs.contains("squashfs")
                     && !fs.contains("overlay")
             })
-            .map(|disk| disk.available_space())
+            .map(sysinfo::Disk::available_space)
             .sum();
         Self {
             cpu_cores,
@@ -908,7 +908,10 @@ impl SubscriptionManager {
 
     /// Subscribe to a named channel, creating it if it does not yet exist.
     pub fn subscribe(&self, channel: &str) -> broadcast::Receiver<SongbirdBroadcastMessage> {
-        let mut guard = self.channels.lock().unwrap_or_else(|e| e.into_inner());
+        let mut guard = self
+            .channels
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         guard
             .entry(channel.to_string())
             .or_insert_with(|| broadcast::channel(64).0)
@@ -921,7 +924,7 @@ impl SubscriptionManager {
     pub fn publish(&self, channel: &str, msg: SongbirdBroadcastMessage) -> usize {
         self.channels
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .get(channel)
             .and_then(|tx| tx.send(msg).ok())
             .unwrap_or(0)
@@ -931,7 +934,7 @@ impl SubscriptionManager {
     pub fn close_channel(&self, channel: &str) {
         self.channels
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(channel);
     }
 }

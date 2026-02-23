@@ -34,7 +34,7 @@ use std::sync::Arc;
 ///
 /// ```rust,no_run
 /// # use toadstool_display::drm::Device;
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # fn main() -> toadstool_display::Result<()> {
 /// let device = Device::open("/dev/dri/card0")?;
 /// let caps = device.query_capabilities()?;
 /// # Ok(())
@@ -77,7 +77,7 @@ impl Device {
     /// ```rust,no_run
     /// # use toadstool_display::drm::Device;
     /// let device = Device::open("/dev/dri/card0")?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), toadstool_display::DisplayError>(())
     /// ```
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref().to_path_buf();
@@ -130,7 +130,7 @@ impl Device {
     /// let device = Device::open("/dev/dri/card0")?;
     /// let caps = device.query_capabilities()?;
     /// println!("Driver: {} {}", caps.driver_name, caps.driver_version);
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), toadstool_display::DisplayError>(())
     /// ```
     pub fn query_capabilities(&self) -> Result<DeviceCapabilities> {
         tracing::debug!("Querying capabilities for: {}", self.path.display());
@@ -227,7 +227,7 @@ impl Device {
     /// for path in devices {
     ///     println!("Found DRM device: {}", path.display());
     /// }
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), toadstool_display::DisplayError>(())
     /// ```
     pub fn discover_all() -> Result<Vec<PathBuf>> {
         tracing::info!("🔍 Discovering DRM devices (self-knowledge)...");

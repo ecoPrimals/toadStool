@@ -102,6 +102,7 @@ pub mod test {
     /// Generate unique test port
     ///
     /// Uses process ID and test number to ensure uniqueness
+    #[must_use]
     pub fn unique_port(test_id: u16) -> u16 {
         BASE + (std::process::id() as u16 % 1000) + test_id
     }
@@ -132,26 +133,31 @@ pub fn resolve_port(env_value: Option<&str>, default: u16) -> u16 {
 /// ```bash
 /// TOADSTOOL_SERVER_PORT=9000 ./toadstool-server
 /// ```
+#[must_use]
 pub fn get_port_with_env(default: u16, env_var: &str) -> u16 {
     resolve_port(std::env::var(env_var).ok().as_deref(), default)
 }
 
 /// Get ToadStool server port (with environment override)
+#[must_use]
 pub fn server_port() -> u16 {
     get_port_with_env(toadstool::SERVER, "TOADSTOOL_SERVER_PORT")
 }
 
 /// Get ToadStool GPU compute port (with environment override)
+#[must_use]
 pub fn gpu_compute_port() -> u16 {
     get_port_with_env(toadstool::GPU_COMPUTE, "TOADSTOOL_GPU_PORT")
 }
 
 /// Get ToadStool distributed scheduler port (with environment override)
+#[must_use]
 pub fn distributed_port() -> u16 {
     get_port_with_env(toadstool::DISTRIBUTED, "TOADSTOOL_DISTRIBUTED_PORT")
 }
 
 /// Get metrics port (with environment override)
+#[must_use]
 pub fn metrics_port() -> u16 {
     get_port_with_env(toadstool::METRICS, "TOADSTOOL_METRICS_PORT")
 }
@@ -173,8 +179,9 @@ pub fn metrics_port() -> u16 {
 /// let port = get_toadstool_port("SERVER", toadstool::SERVER);
 /// // Returns 9000 if env var set, otherwise 8084
 /// ```
+#[must_use]
 pub fn get_toadstool_port(name: &str, default: u16) -> u16 {
-    get_port_with_env(default, &format!("TOADSTOOL_{}_PORT", name))
+    get_port_with_env(default, &format!("TOADSTOOL_{name}_PORT"))
 }
 
 /// Get other primal port with environment override
@@ -200,8 +207,9 @@ pub fn get_toadstool_port(name: &str, default: u16) -> u16 {
 /// let port = get_primal_port("SONGBIRD", fallback::SONGBIRD);
 /// // Returns 9080 if env var set, otherwise 8080
 /// ```
+#[must_use]
 pub fn get_primal_port(primal: &str, fallback_port: u16) -> u16 {
-    get_port_with_env(fallback_port, &format!("{}_PORT", primal))
+    get_port_with_env(fallback_port, &format!("{primal}_PORT"))
 }
 
 /// Get primal endpoint with environment override
@@ -225,8 +233,9 @@ pub fn get_primal_port(primal: &str, fallback_port: u16) -> u16 {
 /// let endpoint = get_primal_endpoint("NONEXISTENT");
 /// // Returns None
 /// ```
+#[must_use]
 pub fn get_primal_endpoint(primal: &str) -> Option<String> {
-    std::env::var(format!("{}_ENDPOINT", primal)).ok()
+    std::env::var(format!("{primal}_ENDPOINT")).ok()
 }
 
 #[cfg(test)]

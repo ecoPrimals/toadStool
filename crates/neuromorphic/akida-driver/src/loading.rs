@@ -10,6 +10,7 @@
 //! - **Observable**: Comprehensive tracing for debugging
 
 use crate::{AkidaDevice, AkidaError, Capabilities, Result};
+use bytes::Bytes;
 use tracing::{debug, info, warn};
 
 /// Model loading configuration
@@ -59,7 +60,7 @@ impl LoadConfig {
 
     /// Create minimal configuration for testing
     #[cfg(test)]
-    pub fn minimal(device_index: usize) -> Self {
+    pub const fn minimal(device_index: usize) -> Self {
         Self {
             device_index,
             chunk_size: 1024,
@@ -78,8 +79,8 @@ impl LoadConfig {
 /// Program knows its own requirements from introspection.
 #[derive(Debug, Clone)]
 pub struct ModelProgram {
-    /// Raw program binary
-    pub data: Vec<u8>,
+    /// Raw program binary (Bytes enables zero-copy cloning for large model data)
+    pub data: Bytes,
 
     /// Expected memory usage (bytes)
     pub memory_bytes: usize,
@@ -115,7 +116,8 @@ impl ModelProgram {
     ///
     /// **Deep Debt**: Self-knowledge!
     /// Program knows its own requirements, no external config.
-    pub fn new(data: Vec<u8>) -> Self {
+    pub fn new(data: impl Into<Bytes>) -> Self {
+        let data = data.into();
         let memory_bytes = data.len();
 
         // Calculate simple checksum for validation
@@ -325,7 +327,7 @@ pub struct LoadMetrics {
 }
 
 impl LoadMetrics {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             bytes_transferred: 0,
             chunks_transferred: 0,
@@ -351,7 +353,7 @@ fn calculate_throughput(bytes: usize, seconds: f64) -> f64 {
 /// **Deep Debt**: Self-knowledge with fallback!
 /// This is a heuristic fallback. Real implementation should extract
 /// NPU count from model layer metadata.
-fn estimate_npu_requirement(memory_bytes: usize) -> u32 {
+const fn estimate_npu_requirement(memory_bytes: usize) -> u32 {
     match memory_bytes {
         0..=10_000 => 1,           // Tiny: 1 NPU
         10_001..=100_000 => 10,    // Small: 10 NPUs

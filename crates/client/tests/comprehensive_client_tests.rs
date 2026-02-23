@@ -28,7 +28,13 @@ fn test_client_config_default() {
         config.max_retries,
         toadstool_config::defaults::retries::MAX_ATTEMPTS
     );
-    assert!(config.enable_websocket);
+    #[allow(deprecated)]
+    {
+        assert!(
+            !config.enable_websocket,
+            "WebSocket disabled by default since deprecation"
+        );
+    }
 }
 
 #[test]

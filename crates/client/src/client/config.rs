@@ -45,6 +45,10 @@ pub struct ClientConfig {
     pub request_timeout: Duration,
 
     /// WebSocket connection timeout
+    #[deprecated(
+        since = "0.5.0",
+        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
+    )]
     pub websocket_timeout: Duration,
 
     /// Maximum retry attempts
@@ -63,6 +67,10 @@ pub struct ClientConfig {
     pub auth: Option<AuthConfig>,
 
     /// Enable WebSocket real-time events
+    #[deprecated(
+        since = "0.5.0",
+        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
+    )]
     pub enable_websocket: bool,
 
     /// Custom HTTP headers
@@ -70,6 +78,7 @@ pub struct ClientConfig {
 }
 
 impl Default for ClientConfig {
+    #[allow(deprecated)]
     fn default() -> Self {
         Self {
             base_url: std::env::var("TOADSTOOL_API_URL").unwrap_or_else(|_| {
@@ -105,7 +114,7 @@ impl Default for ClientConfig {
             enable_websocket: std::env::var("TOADSTOOL_ENABLE_WEBSOCKET")
                 .ok()
                 .and_then(|v| v.parse().ok())
-                .unwrap_or(true),
+                .unwrap_or(false),
             custom_headers: HashMap::new(),
         }
     }

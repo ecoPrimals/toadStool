@@ -128,7 +128,7 @@ impl UnixJsonRpcClient {
 
         // Serialize request
         let request_json = serde_json::to_string(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
 
         // Split stream for concurrent read/write
         let (reader, mut writer) = stream.into_split();
@@ -137,15 +137,15 @@ impl UnixJsonRpcClient {
         writer
             .write_all(request_json.as_bytes())
             .await
-            .map_err(|e| ToadStoolError::network(format!("Failed to send request: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to send request: {e}")))?;
         writer
             .write_all(b"\n")
             .await
-            .map_err(|e| ToadStoolError::network(format!("Failed to send newline: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to send newline: {e}")))?;
         writer
             .flush()
             .await
-            .map_err(|e| ToadStoolError::network(format!("Failed to flush: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to flush: {e}")))?;
 
         // Read response (newline-delimited JSON)
         let mut reader = BufReader::new(reader);
@@ -153,11 +153,11 @@ impl UnixJsonRpcClient {
         reader
             .read_line(&mut response_line)
             .await
-            .map_err(|e| ToadStoolError::network(format!("Failed to read response: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to read response: {e}")))?;
 
         // Parse JSON-RPC response
         let response: JsonRpcResponse = serde_json::from_slice(response_line.as_bytes())
-            .map_err(|e| ToadStoolError::network(format!("Invalid JSON-RPC response: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Invalid JSON-RPC response: {e}")))?;
 
         // Check for JSON-RPC error
         if let Some(error) = response.error {
@@ -199,7 +199,7 @@ impl UnixJsonRpcClient {
     ) -> ToadStoolResult<T> {
         let result = self.call(method, params).await?;
         serde_json::from_value(result)
-            .map_err(|e| ToadStoolError::network(format!("Failed to deserialize response: {}", e)))
+            .map_err(|e| ToadStoolError::network(format!("Failed to deserialize response: {e}")))
     }
 
     /// Check if socket exists and is accessible
@@ -210,6 +210,7 @@ impl UnixJsonRpcClient {
     }
 
     /// Get socket path (for diagnostics)
+    #[must_use]
     pub fn socket_path(&self) -> &Path {
         &self.socket_path
     }

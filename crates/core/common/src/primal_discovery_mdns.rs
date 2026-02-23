@@ -1,4 +1,4 @@
-//! Integration adapter between primal_discovery and mDNS
+//! Integration adapter between `primal_discovery` and mDNS
 //!
 //! This module provides mDNS-SD (multicast DNS service discovery) for finding
 //! Primal services on the local network. Pure Rust implementation using `mdns-sd`.
@@ -45,9 +45,8 @@ impl MdnsAdapter {
     ///
     /// Initializes the mDNS daemon for service discovery.
     pub async fn new(config: DiscoveryConfig) -> Result<Self, DiscoveryError> {
-        let daemon = ServiceDaemon::new().map_err(|e| {
-            DiscoveryError::MDnsError(format!("Failed to create mDNS daemon: {}", e))
-        })?;
+        let daemon = ServiceDaemon::new()
+            .map_err(|e| DiscoveryError::MDnsError(format!("Failed to create mDNS daemon: {e}")))?;
 
         Ok(Self {
             daemon,
@@ -79,7 +78,7 @@ impl MdnsAdapter {
 
         // Start browsing for services
         let receiver = self.daemon.browse(TOADSTOOL_SERVICE_TYPE).map_err(|e| {
-            DiscoveryError::MDnsError(format!("Failed to browse mDNS services: {}", e))
+            DiscoveryError::MDnsError(format!("Failed to browse mDNS services: {e}"))
         })?;
 
         let mut discovered = Vec::new();
@@ -103,7 +102,9 @@ impl MdnsAdapter {
 
                         // Extract instance_id
                         if key == "instance_id" {
-                            instance_id = info.get_property_val_str(key).map(|s| s.to_string());
+                            instance_id = info
+                                .get_property_val_str(key)
+                                .map(std::string::ToString::to_string);
                         }
 
                         // Extract capabilities (cap_{name}={version})
@@ -124,7 +125,7 @@ impl MdnsAdapter {
                             info.get_hostname().to_string()
                         };
                         let port = info.get_port();
-                        let url = format!("http://{}:{}", host, port);
+                        let url = format!("http://{host}:{port}");
 
                         let service_id = instance_id
                             .unwrap_or_else(|| format!("{}:{}", info.get_hostname(), port));
@@ -165,7 +166,7 @@ impl MdnsAdapter {
         );
 
         let receiver = self.daemon.browse(TOADSTOOL_SERVICE_TYPE).map_err(|e| {
-            DiscoveryError::MDnsError(format!("Failed to browse mDNS services: {}", e))
+            DiscoveryError::MDnsError(format!("Failed to browse mDNS services: {e}"))
         })?;
 
         let mut discovered = Vec::new();
@@ -185,7 +186,9 @@ impl MdnsAdapter {
                     for prop in info.get_properties().iter() {
                         let key = prop.key();
                         if key == "instance_id" {
-                            instance_id = info.get_property_val_str(key).map(|s| s.to_string());
+                            instance_id = info
+                                .get_property_val_str(key)
+                                .map(std::string::ToString::to_string);
                         }
                         if let Some(cap_name) = key.strip_prefix("cap_") {
                             if !cap_name.ends_with("_features") {
@@ -201,7 +204,7 @@ impl MdnsAdapter {
                         info.get_hostname().to_string()
                     };
                     let port = info.get_port();
-                    let url = format!("http://{}:{}", host, port);
+                    let url = format!("http://{host}:{port}");
 
                     let service_id =
                         instance_id.unwrap_or_else(|| format!("{}:{}", info.get_hostname(), port));
@@ -225,17 +228,19 @@ impl MdnsAdapter {
     }
 
     /// Get the configured timeout
-    pub fn timeout(&self) -> Duration {
+    #[must_use]
+    pub const fn timeout(&self) -> Duration {
         self.timeout
     }
 
     /// Get the configuration
+    #[must_use]
     pub fn config(&self) -> &DiscoveryConfig {
         &self.config
     }
 }
 
-/// Helper to convert mDNS discovered services to PrimalEndpoints
+/// Helper to convert mDNS discovered services to `PrimalEndpoints`
 fn convert_mdns_service_to_endpoint(
     service_id: String,
     capabilities: Vec<String>,

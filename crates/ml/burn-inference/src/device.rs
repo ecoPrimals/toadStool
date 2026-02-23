@@ -14,7 +14,7 @@ pub struct DeviceInfo {
 }
 
 /// Type of compute device
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeviceType {
     /// Discrete GPU (NVIDIA, AMD)
     DiscreteGpu,
@@ -36,12 +36,11 @@ impl BurnDevice {
     /// Auto-select the best available device
     pub fn auto_select() -> Self {
         // Try to get a GPU device
-        match Self::try_wgpu() {
-            Some(device) => device,
-            None => {
-                info!("No GPU available, falling back to CPU");
-                Self::Cpu
-            }
+        if let Some(device) = Self::try_wgpu() {
+            device
+        } else {
+            info!("No GPU available, falling back to CPU");
+            Self::Cpu
         }
     }
 
@@ -54,21 +53,24 @@ impl BurnDevice {
     }
 
     /// Create a specific wgpu device by index
-    pub fn wgpu(index: usize) -> Self {
+    #[must_use]
+    pub const fn wgpu(index: usize) -> Self {
         let device = WgpuDevice::DiscreteGpu(index);
         Self::Wgpu(device)
     }
 
     /// Create a CPU device
-    pub fn cpu() -> Self {
+    #[must_use]
+    pub const fn cpu() -> Self {
         Self::Cpu
     }
 
     /// Get device info
+    #[must_use]
     pub fn info(&self) -> DeviceInfo {
         match self {
             Self::Wgpu(device) => DeviceInfo {
-                name: format!("{:?}", device),
+                name: format!("{device:?}"),
                 device_type: match device {
                     WgpuDevice::DiscreteGpu(_) => DeviceType::DiscreteGpu,
                     WgpuDevice::IntegratedGpu(_) => DeviceType::IntegratedGpu,
@@ -85,12 +87,14 @@ impl BurnDevice {
     }
 
     /// Check if this is a GPU device
-    pub fn is_gpu(&self) -> bool {
+    #[must_use]
+    pub const fn is_gpu(&self) -> bool {
         matches!(self, Self::Wgpu(_))
     }
 }
 
 /// Enumerate all available devices
+#[must_use]
 pub fn enumerate_devices() -> Vec<DeviceInfo> {
     // Always have CPU available, plus wgpu GPU target
     vec![

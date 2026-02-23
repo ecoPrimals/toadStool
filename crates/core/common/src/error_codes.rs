@@ -106,7 +106,7 @@ impl ErrorCode {
     /// Returns `Cow::Borrowed` when no context, `Cow::Owned` when context is provided.
     /// This is the preferred method for performance-critical paths.
     #[must_use]
-    pub fn to_error_message(&self) -> Cow<'static, str> {
+    pub const fn to_error_message(&self) -> Cow<'static, str> {
         // Static formatting without allocation
         Cow::Borrowed(self.message)
     }

@@ -5,9 +5,9 @@
 //! # Requirements
 //!
 //! BERT inference requires:
-//! - **Model weights**: Load from HuggingFace safetensors (e.g. `bert-base-uncased`) or local path
+//! - **Model weights**: Load from `HuggingFace` safetensors (e.g. `bert-base-uncased`) or local path
 //! - **Burn backend**: Enable `burn` with wgpu or ndarray backend in Cargo.toml
-//! - **Tokenizers** (optional): Enable `nlp` feature for HuggingFace tokenizer integration
+//! - **Tokenizers** (optional): Enable `nlp` feature for `HuggingFace` tokenizer integration
 //!
 //! # Example
 //!
@@ -55,18 +55,20 @@ pub struct Bert {
 
 impl Bert {
     /// Create new BERT model
-    pub fn new(config: BertConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: BertConfig) -> Self {
         Self { config }
     }
 
     /// Access model configuration
-    pub fn config(&self) -> &BertConfig {
+    #[must_use]
+    pub const fn config(&self) -> &BertConfig {
         &self.config
     }
 
-    /// Load from HuggingFace Hub or local safetensors.
+    /// Load from `HuggingFace` Hub or local safetensors.
     ///
-    /// **Requires**: Model weights. Download from HuggingFace Hub or use local path.
+    /// **Requires**: Model weights. Download from `HuggingFace` Hub or use local path.
     /// Once the burn backend is integrated, load with `BertModel::from_safetensors(path)`.
     #[cfg_attr(
         feature = "nlp",
@@ -81,7 +83,8 @@ impl Bert {
     }
 
     /// Get number of parameters
-    pub fn num_parameters(&self) -> usize {
+    #[must_use]
+    pub const fn num_parameters(&self) -> usize {
         110_000_000
     }
 

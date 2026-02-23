@@ -95,9 +95,8 @@ impl UnixSocketSecurityProvider {
         })?
         .map_err(|e| {
             ToadStoolError::network(format!(
-                "Failed to connect to {}: {}",
-                self.socket_path.display(),
-                e
+                "Failed to connect to {}: {e}",
+                self.socket_path.display()
             ))
         })?;
 
@@ -113,20 +112,20 @@ impl UnixSocketSecurityProvider {
 
         // Serialize and send
         let request_json = serde_json::to_string(&request)
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize request: {e}")))?;
 
         writer
             .write_all(request_json.as_bytes())
             .await
-            .map_err(|e| ToadStoolError::network(format!("Failed to send request: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to send request: {e}")))?;
         writer
             .write_all(b"\n")
             .await
-            .map_err(|e| ToadStoolError::network(format!("Failed to send newline: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to send newline: {e}")))?;
         writer
             .flush()
             .await
-            .map_err(|e| ToadStoolError::network(format!("Failed to flush: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to flush: {e}")))?;
 
         // Read response with timeout
         let mut buf_reader = BufReader::new(reader);
@@ -144,22 +143,22 @@ impl UnixSocketSecurityProvider {
                 self.timeout_secs
             ))
         })?
-        .map_err(|e| ToadStoolError::network(format!("Failed to read response: {}", e)))?;
+        .map_err(|e| ToadStoolError::network(format!("Failed to read response: {e}")))?;
 
         // Parse response
         let response: JsonRpcResponse<R> = serde_json::from_str(&response_line).map_err(|e| {
             ToadStoolError::runtime(format!(
-                "Failed to parse response: {} (raw: {})",
-                e,
-                response_line.trim()
+                "Failed to parse response: {e} (raw: {raw})",
+                raw = response_line.trim()
             ))
         })?;
 
         // Check for error
         if let Some(error) = response.error {
             return Err(ToadStoolError::runtime(format!(
-                "Remote error ({}): {}",
-                error.code, error.message
+                "Remote error ({code}): {message}",
+                code = error.code,
+                message = error.message
             )));
         }
 

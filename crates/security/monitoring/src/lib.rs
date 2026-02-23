@@ -185,7 +185,7 @@ impl SecurityMonitor {
         let cpu = if cpus.is_empty() {
             0.0_f32
         } else {
-            cpus.iter().map(|c| c.cpu_usage()).sum::<f32>() / cpus.len() as f32
+            cpus.iter().map(sysinfo::Cpu::cpu_usage).sum::<f32>() / cpus.len() as f32
         };
         let mem_used = sys.used_memory();
         let mem_total = sys.total_memory();

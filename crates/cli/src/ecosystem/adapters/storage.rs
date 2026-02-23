@@ -16,6 +16,7 @@
 //! ```
 
 use anyhow::{Context, Result};
+use bytes::Bytes;
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -143,7 +144,8 @@ impl StorageAdapter {
     }
 
     /// Store object in object storage
-    pub async fn put_object(&self, bucket: &str, key: &str, data: Vec<u8>) -> Result<()> {
+    pub async fn put_object(&self, bucket: &str, key: &str, data: impl Into<Bytes>) -> Result<()> {
+        let data = data.into();
         let capability = StandardCapability::StorageObjectS3.id();
 
         let request = Request::new(
@@ -151,7 +153,7 @@ impl StorageAdapter {
             json!({
                 "bucket": bucket,
                 "key": key,
-                "data": base64::encode(&data),
+                "data": base64::encode(data.as_ref()),
             }),
         );
 
@@ -164,7 +166,7 @@ impl StorageAdapter {
     }
 
     /// Retrieve object from object storage
-    pub async fn get_object(&self, bucket: &str, key: &str) -> Result<Vec<u8>> {
+    pub async fn get_object(&self, bucket: &str, key: &str) -> Result<Bytes> {
         let capability = StandardCapability::StorageObjectS3.id();
 
         let request = Request::new(
@@ -189,7 +191,7 @@ impl StorageAdapter {
             .transpose()?
             .ok_or_else(|| anyhow::anyhow!("Missing data in response"))?;
 
-        Ok(bytes)
+        Ok(Bytes::from(bytes))
     }
 
     /// Store key-value pair

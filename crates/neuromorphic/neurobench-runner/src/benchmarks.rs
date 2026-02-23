@@ -1,6 +1,6 @@
-//! NeuroBench benchmark definitions
+//! `NeuroBench` benchmark definitions
 //!
-//! Implements the standard NeuroBench benchmark suite.
+//! Implements the standard `NeuroBench` benchmark suite.
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -22,7 +22,8 @@ pub enum Benchmark {
 
 impl Benchmark {
     /// Get benchmark description
-    pub fn description(&self) -> &'static str {
+    #[must_use]
+    pub const fn description(&self) -> &'static str {
         match self {
             Self::DvsGesture => "Dynamic Vision Sensor gesture recognition (11 classes)",
             Self::KeywordFscil => "Few-shot keyword spotting with incremental classes",
@@ -33,7 +34,8 @@ impl Benchmark {
     }
 
     /// Get number of classes
-    pub fn num_classes(&self) -> usize {
+    #[must_use]
+    pub const fn num_classes(&self) -> usize {
         match self {
             Self::DvsGesture => 11,
             Self::KeywordFscil => 35,   // base + novel
@@ -44,6 +46,7 @@ impl Benchmark {
     }
 
     /// Get expected input shape [batch, channels, height, width] or [batch, timesteps, features]
+    #[must_use]
     pub fn input_shape(&self) -> Vec<usize> {
         match self {
             Self::DvsGesture => vec![1, 2, 128, 128],  // ON/OFF events
@@ -109,7 +112,8 @@ pub struct BenchmarkResult {
 
 impl BenchmarkResult {
     /// Create a new result
-    pub fn new(benchmark: Benchmark) -> Self {
+    #[must_use]
+    pub const fn new(benchmark: Benchmark) -> Self {
         Self {
             benchmark,
             accuracy: 0.0,
@@ -179,10 +183,10 @@ impl BenchmarkResult {
             self.p99_latency.as_secs_f64() * 1000.0
         );
         if let Some(power) = self.mean_power_mw {
-            println!("Mean power:   {:.1} mW", power);
+            println!("Mean power:   {power:.1} mW");
         }
         if let Some(energy) = self.energy_per_inference_uj {
-            println!("Energy/inf:   {:.1} uJ", energy);
+            println!("Energy/inf:   {energy:.1} uJ");
         }
         println!("Samples:      {}", self.num_samples);
     }

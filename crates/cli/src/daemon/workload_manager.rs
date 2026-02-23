@@ -21,7 +21,7 @@ use crate::executor::BiomeExecutor;
 
 /// Workload metadata
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // Some fields used in future phases
+#[allow(dead_code)] // Some fields (environment, timeout_secs) used in future phases
 pub struct WorkloadMetadata {
     /// Workload ID
     pub id: String,
@@ -169,9 +169,9 @@ impl WorkloadManager {
                 }
             }
 
-            // Remove from active workloads after completion (unless persistent)
+            // Remove from active workloads immediately after completion (unless persistent)
+            // Event-driven: cleanup triggered by workload completion, not arbitrary delay
             if !metadata_clone.persistent {
-                tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
                 workloads.write().await.remove(&metadata_clone.id);
                 info!("🧹 Cleaned up workload: {}", metadata_clone.id);
             }
@@ -216,9 +216,9 @@ impl WorkloadManager {
 
         info!("📄 Manifest written to: {}", manifest_path.display());
 
-        // Pending Phase 4: Replace simulation with executor.run_biome(manifest_path).
-        // BiomeExecutor.run_biome() will execute the workload; currently simulate with delay.
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        // TODO Phase 4: Replace simulation with executor.run_biome(manifest_path).
+        // BiomeExecutor.run_biome() will execute the workload; currently return simulated
+        // results immediately (no delay needed for simulation stub).
 
         // Simulate resource usage
         *resource_usage.write().await = Some(ResourceUsage {
@@ -336,12 +336,19 @@ mod tests {
         let id = workload_id.unwrap();
         assert!(!id.is_empty());
 
-        // Give it a moment to process
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        // Wait for status to become available (event-driven: poll until we get a result)
+        let status = tokio::time::timeout(tokio::time::Duration::from_secs(5), async {
+            loop {
+                if let Some(s) = manager.get_workload_status(&id).await {
+                    return s;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await;
 
         // Should be able to get status
-        let status = manager.get_workload_status(&id).await;
-        assert!(status.is_some());
+        assert!(status.is_ok());
     }
 
     #[tokio::test]
@@ -360,9 +367,18 @@ mod tests {
         manager.submit_workload(request.clone()).await.unwrap();
         manager.submit_workload(request).await.unwrap();
 
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-        let workloads = manager.list_workloads().await;
+        // Wait for workloads to be registered (event-driven)
+        let workloads = tokio::time::timeout(tokio::time::Duration::from_secs(5), async {
+            loop {
+                let list = manager.list_workloads().await;
+                if list.len() >= 2 {
+                    return list;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("Workloads should be listed within 5s");
         assert_eq!(workloads.len(), 2);
     }
 }

@@ -3,6 +3,8 @@
 //! Tests for federation functionality in universal compute manager.
 //! Coverage target: Get federation.rs from current low coverage to >80%
 
+#![allow(deprecated)] // setup_websocket_federation deprecated; tests validate error behavior
+
 use anyhow::Result;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use toadstool_cli::universal::operations::FederationOps;

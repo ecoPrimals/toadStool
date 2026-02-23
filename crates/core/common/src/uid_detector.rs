@@ -4,7 +4,7 @@
 //!
 //! ## Deep Debt Evolution
 //!
-//! **Before**: `unsafe { libc::getuid() }` (2 locations, libc dependency)  
+//! **Before**: `unsafe { libc::getuid() }` (2 locations, libc dependency)\
 //! **After**: Pure Rust UID detection (zero unsafe, zero C dependencies!)
 //!
 //! ## Platform Support
@@ -157,7 +157,7 @@ fn get_uid_from_passwd() -> io::Result<u32> {
 
     Err(io::Error::new(
         io::ErrorKind::NotFound,
-        format!("User '{}' not found in /etc/passwd", username),
+        format!("User '{username}' not found in /etc/passwd"),
     ))
 }
 

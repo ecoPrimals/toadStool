@@ -130,8 +130,12 @@ where
     F: FnMut(&HealthCheckResult),
 {
     let mut last_status = None;
+    let mut ticker = tokio::time::interval(interval);
+    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     loop {
+        ticker.tick().await;
+
         match check_display_health().await {
             Ok(result) => {
                 // Only callback if status changed
@@ -156,8 +160,6 @@ where
                 }
             }
         }
-
-        tokio::time::sleep(interval).await;
     }
 }
 

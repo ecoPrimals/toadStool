@@ -400,8 +400,10 @@ mod tests {
         let device = get_test_device();
         let solver = CrankNicolson::new(device).unwrap();
 
-        // Heat equation with fixed boundaries should approach linear profile
-        let n = 50;
+        // Heat equation with fixed boundaries should approach linear profile.
+        // Use n=30 to exercise CPU path (n < 32) — avoids 10k+ GPU round-trips
+        // that cause 10+ min hangs on software renderers (lavapipe/swiftshader).
+        let n = 30;
         let u0 = vec![0.0f32; n]; // Initial: zero everywhere
         let alpha = 1.0;
         let dx = 1.0 / (n + 1) as f32;

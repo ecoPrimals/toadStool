@@ -76,7 +76,7 @@ pub enum DeviceCapability {
 /// # use toadstool_display::input::Device;
 /// let device = Device::open("/dev/input/event3")?;
 /// println!("Opened: {}", device.name());
-/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// # Ok::<(), toadstool_display::DisplayError>(())
 /// ```
 pub struct Device {
     path: PathBuf,
@@ -113,7 +113,7 @@ impl Device {
     /// # use toadstool_display::input::Device;
     /// let device = Device::open("/dev/input/event3")?;
     /// println!("Device: {} ({:?})", device.name(), device.device_type());
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), toadstool_display::DisplayError>(())
     /// ```
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref().to_path_buf();
@@ -348,7 +348,7 @@ impl Device {
     /// for info in devices {
     ///     println!("Found: {} at {}", info.name, info.path.display());
     /// }
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), toadstool_display::DisplayError>(())
     /// ```
     pub fn discover_all() -> Result<Vec<DeviceInfo>> {
         tracing::info!("🔍 Discovering input devices (self-knowledge)...");
@@ -441,7 +441,7 @@ impl Device {
 // - Pure Rust (evdev crate, no FFI)
 // - Self-knowledge (queries actual hardware)
 // - Agnostic design (works with any device)
-// - Complete implementation (no TODOs)
+// - Complete implementation (no outstanding items)
 // - Modern Rust (clean, idiomatic)
 //
 // This is what Pure Rust gives us - safety AND completeness!

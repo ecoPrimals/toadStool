@@ -105,6 +105,12 @@ impl IsolatedMemoryRegion {
     ///
     /// Memory is immediately locked and protected after allocation,
     /// before returning to caller.
+    ///
+    /// # Panics
+    ///
+    /// Never panics. The internal `expect()` is infallible because the null
+    /// case is returned as `Err` above; it exists only to satisfy the
+    /// `NonNull` API.
     pub fn new(size: usize) -> Result<Self> {
         if size == 0 {
             return Err(Error::invalid_layout(size, PAGE_SIZE));
@@ -120,25 +126,27 @@ impl IsolatedMemoryRegion {
         // UNAVOIDABLE UNSAFE: std::alloc::alloc - page-aligned allocation required for mlock.
         // Vec/Box do not support page alignment in stable Rust.
         //
-        // SAFETY: Layout valid (non-zero, power-of-2 PAGE_SIZE alignment).
+        // SAFETY: (1) Layout valid: from_size_align succeeded, size>0, PAGE_SIZE power-of-two;
+        // (2) Returns ptr valid for layout.size() bytes, or null.
         let ptr = unsafe { alloc(layout) };
 
         if ptr.is_null() {
             return Err(Error::memory_allocation("alloc returned null"));
         }
 
-        // SAFETY: ptr is non-null (checked above)
-        let ptr = unsafe { NonNull::new_unchecked(ptr) };
+        // Safe: ptr is non-null (checked above). NonNull::new().expect() replaces new_unchecked.
+        #[allow(clippy::expect_used)] // Infallible: null case returned above
+        let ptr = NonNull::new(ptr).expect("ptr is non-null - checked above");
 
         // Lock memory to prevent swapping (mlock prevents swap to disk)
         #[cfg(target_family = "unix")]
         {
-            // UNAVOIDABLE UNSAFE: rustix::mlock is unsafe (raw pointer, page boundary semantics).
-            // SAFETY: ptr from alloc(layout); aligned_size matches; page-aligned per layout.
+            // UNAVOIDABLE UNSAFE: rustix::mlock - FFI syscall. Must stay unsafe.
+            // SAFETY: (1) ptr from alloc(layout); (2) aligned_size matches physical allocation;
+            // (3) PAGE_SIZE aligned per layout; (4) region [ptr, ptr+aligned_size) valid.
             let result = unsafe { mlock(ptr.as_ptr().cast::<c_void>(), aligned_size) };
             if let Err(e) = result {
-                // Cleanup on failure
-                // SAFETY: ptr was allocated with this layout
+                // SAFETY: ptr from alloc(layout) above; layout unchanged; no references exist.
                 unsafe { dealloc(ptr.as_ptr(), layout) };
                 return Err(Error::memory_lock(format!("mlock failed: {e}")));
             }
@@ -147,8 +155,8 @@ impl IsolatedMemoryRegion {
         // Prevent memory from appearing in core dumps
         #[cfg(target_os = "linux")]
         {
-            // UNAVOIDABLE UNSAFE: madvise operates on raw pointer.
-            // SAFETY: ptr valid, aligned_size matches allocation, page-aligned.
+            // UNAVOIDABLE UNSAFE: rustix::madvise - FFI syscall. Must stay unsafe.
+            // SAFETY: (1) ptr from alloc; (2) aligned_size matches; (3) page-aligned; (4) valid range.
             let result = unsafe {
                 madvise(
                     ptr.as_ptr().cast::<c_void>(),
@@ -187,9 +195,10 @@ impl IsolatedMemoryRegion {
     /// - Memory is valid for the lifetime of the struct
     /// - No concurrent mutable access (enforced by Rust)
     #[must_use]
-    pub fn as_slice(&self) -> &[u8] {
-        // UNAVOIDABLE UNSAFE: from_raw_parts - we own raw ptr, need slice for safe access.
-        // SAFETY: ptr valid, logical_size <= physical_size, lifetime tied to &self.
+    pub const fn as_slice(&self) -> &[u8] {
+        // UNAVOIDABLE UNSAFE: from_raw_parts - no safe ptr→slice when owning raw allocation.
+        // SAFETY: (1) ptr from alloc, valid for physical_size; (2) logical_size <= physical_size;
+        // (3) lifetime tied to &self; (4) no concurrent mutable access (Rust borrow rules).
         unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.logical_size) }
     }
 
@@ -203,9 +212,10 @@ impl IsolatedMemoryRegion {
     /// - Returns a mutable slice with lifetime tied to &mut self
     /// - Ensures exclusive access (only one mutable reference)
     /// - Memory is valid for the lifetime of the struct
-    pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        // UNAVOIDABLE UNSAFE: from_raw_parts_mut - we own raw ptr, need slice for safe access.
-        // SAFETY: ptr valid, logical_size <= physical_size, &mut self gives exclusive access.
+    pub const fn as_mut_slice(&mut self) -> &mut [u8] {
+        // UNAVOIDABLE UNSAFE: from_raw_parts_mut - no safe ptr→slice when owning raw allocation.
+        // SAFETY: (1) ptr valid for physical_size; (2) logical_size <= physical_size;
+        // (3) &mut self gives exclusive access (no aliasing).
         unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.logical_size) }
     }
 
@@ -245,9 +255,9 @@ impl IsolatedMemoryRegion {
     }
 
     /// Get mutable slice of the physical allocation (for internal use like wiping)
-    fn as_physical_slice_mut(&mut self) -> &mut [u8] {
-        // UNAVOIDABLE UNSAFE: from_raw_parts_mut.
-        // SAFETY: ptr valid for physical_size bytes; &mut self gives exclusive access.
+    const fn as_physical_slice_mut(&mut self) -> &mut [u8] {
+        // UNAVOIDABLE UNSAFE: from_raw_parts_mut - internal use for wiping full allocation.
+        // SAFETY: (1) ptr valid for physical_size; (2) &mut self gives exclusive access.
         unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.physical_size) }
     }
 }
@@ -261,8 +271,8 @@ impl Drop for IsolatedMemoryRegion {
         // Step 2: Unlock memory (reverse of mlock)
         #[cfg(target_family = "unix")]
         {
-            // UNAVOIDABLE UNSAFE: rustix::munlock is unsafe.
-            // SAFETY: ptr valid, physical_size matches; was mlocked in new().
+            // UNAVOIDABLE UNSAFE: rustix::munlock - FFI syscall. Must stay unsafe.
+            // SAFETY: (1) ptr from alloc in new(); (2) physical_size matches; (3) was mlocked in new().
             let result = unsafe { munlock(self.ptr.as_ptr().cast::<c_void>(), self.physical_size) };
             if let Err(e) = result {
                 tracing::error!("munlock failed during drop: {e}");
@@ -270,11 +280,9 @@ impl Drop for IsolatedMemoryRegion {
         }
 
         // Step 3: Deallocate memory
-        // SAFETY: ptr from alloc(layout) in new(); layout matches; Drop runs exactly once.
-        // No references exist after wipe() and munlock().
-        unsafe {
-            dealloc(self.ptr.as_ptr(), self.layout);
-        }
+        // SAFETY: (1) ptr from alloc(layout) in new(); (2) layout matches; (3) Drop runs once;
+        // (4) no references exist (wipe/munlock complete, self is being dropped).
+        unsafe { dealloc(self.ptr.as_ptr(), self.layout) }
 
         tracing::trace!(
             "Dropped isolated memory region of {} bytes (physical)",

@@ -261,7 +261,7 @@ mod tests {
 
         // Get an object
         let obj = pool.get().await;
-        assert_eq!(obj.get(), Some(&String::from("test")));
+        assert_eq!(obj.get().map(|s| s.as_str()), Some("test"));
 
         let stats = pool.get_stats().await;
         assert_eq!(stats.total_allocations, 1);
@@ -381,7 +381,7 @@ mod tests {
             .unwrap();
 
         let obj = pool.get().await;
-        assert_eq!(obj.get(), Some(&String::from("test")));
+        assert_eq!(obj.get().map(|s| s.as_str()), Some("test"));
     }
 
     #[tokio::test]

@@ -85,9 +85,8 @@ impl SecurityProviderFactory {
         // Prefer Unix sockets for local communication
         Err(ToadStoolError::runtime(format!(
             "HTTP security provider not supported (not ecoBin-compliant). \
-             Use Unix socket transport instead. Attempted URL: {}. \
+             Use Unix socket transport instead. Attempted URL: {url}. \
              For remote discovery, use mDNS to find Unix socket paths.",
-            url
         )))
     }
 
@@ -118,9 +117,8 @@ impl SecurityProviderFactory {
                 Ok(Arc::new(provider) as Arc<dyn SecurityProvider>)
             }
             Err(e) => Err(ToadStoolError::runtime(format!(
-                "Security provider at {} not responding: {}",
-                path.display(),
-                e
+                "Security provider at {} not responding: {e}",
+                path.display()
             ))),
         }
     }
@@ -138,8 +136,7 @@ impl SecurityProviderFactory {
         Err(ToadStoolError::runtime(format!(
             "TCP security provider not yet implemented. \
              For local communication, prefer Unix sockets. \
-             For remote, use mDNS discovery. Attempted: {}:{}",
-            host, port
+             For remote, use mDNS discovery. Attempted: {host}:{port}",
         )))
     }
 
@@ -199,8 +196,9 @@ impl SecurityProviderFactory {
 /// ```rust,no_run
 /// use toadstool_distributed::security_provider::*;
 /// use toadstool_common::universal_adapter::*;
+/// use toadstool::error::ToadStoolResult;
 ///
-/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// # async fn example() -> ToadStoolResult<()> {
 /// // One-liner: discover and create provider
 /// let provider = discover_security_provider(vec![SecurityFeature::Encryption]).await?;
 ///
@@ -268,7 +266,9 @@ mod tests {
                     min_trust_level: TrustLevel::Low,
                 },
                 metadata: std::collections::HashMap::new(),
-                endpoint: ServiceEndpoint::Http("http://localhost:8080".to_string()),
+                endpoint: ServiceEndpoint::Http(
+                    toadstool_common::constants::network::default_http_url(),
+                ),
                 health: HealthStatus::Healthy,
             },
             CapabilityType::Security {

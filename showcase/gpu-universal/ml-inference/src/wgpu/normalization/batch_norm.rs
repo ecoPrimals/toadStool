@@ -2,7 +2,7 @@
 //!
 //! Normalize activations across batch dimension.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use super::super::{executor::WgpuExecutor, types::*};
@@ -39,7 +39,7 @@ impl WgpuExecutor {
             "BatchNorm: running_var size must equal channels"
         );
 
-        let shader_source = include_str!("../shaders/batchnorm.wgsl");
+        let shader_source = include_str!("../../shaders/batchnorm.wgsl");
 
         // Create input buffers
         let input_buffer = self.create_input_buffer(input, "BatchNorm Input");
@@ -208,11 +208,4 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
         self.read_buffer(&staging_buffer, total_size).await
     }
-
-    /// Execute GroupNorm: Group Normalization
-    ///
-    /// Divides channels into groups and normalizes within each group.
-    /// More stable than BatchNorm for small batch sizes.
-    ///
-    /// Deep Debt: Group count and parameters determined at runtime.
 }

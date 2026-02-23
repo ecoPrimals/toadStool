@@ -8,7 +8,7 @@ use super::*;
 
 static ENV_LOCK: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
 
-pub(crate) fn get_env_lock() -> &'static Mutex<()> {
+pub fn get_env_lock() -> &'static Mutex<()> {
     ENV_LOCK.get_or_init(|| Mutex::new(()))
 }
 
@@ -33,7 +33,9 @@ fn test_env_config_loader() {
 #[test]
 #[allow(deprecated)]
 fn test_network_env_config() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     let original_port = env::var("SONGBIRD_PORT").ok();
     let original_addr = env::var("TOADSTOOL_BIND_ADDRESS").ok();
@@ -60,7 +62,9 @@ fn test_network_env_config() {
 
 #[test]
 fn test_environment_config() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     let original_env = env::var("TOADSTOOL_ENV").ok();
     let original_debug = env::var("TOADSTOOL_DEBUG").ok();
@@ -225,7 +229,9 @@ fn test_security_env_config_from_env() {
 
 #[test]
 fn test_security_env_config_cors_comma_separated() {
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let orig = env::var("TOADSTOOL_CORS_ALLOWED_ORIGINS").ok();
     env::set_var(
         "TOADSTOOL_CORS_ALLOWED_ORIGINS",
@@ -258,7 +264,9 @@ fn test_security_env_config_serialization_roundtrip() {
 fn test_environment_config_apply_to_config() {
     use crate::ToadStoolConfig;
 
-    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = get_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut config = ToadStoolConfig::default();
     let env_config = EnvironmentConfig::from_env();
 
@@ -288,9 +296,9 @@ fn test_environment_config_serialization_roundtrip() {
 #[test]
 fn test_get_env_with_prefix() {
     let suffix = std::process::id();
-    let key = format!("TEST_PREFIX_HELPER_{}", suffix);
+    let key = format!("TEST_PREFIX_HELPER_{suffix}");
     env::set_var(&key, "helper_value");
-    let value = get_env_with_prefix("TEST", &format!("PREFIX_HELPER_{}", suffix), "default");
+    let value = get_env_with_prefix("TEST", &format!("PREFIX_HELPER_{suffix}"), "default");
     assert_eq!(value, "helper_value");
     env::remove_var(&key);
 }

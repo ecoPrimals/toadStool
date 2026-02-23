@@ -9,7 +9,7 @@ pub async fn query_local_capabilities() -> Vec<String> {
     let mut capabilities = vec!["compute".to_string(), "cpu".to_string()];
 
     let cpus = std::thread::available_parallelism()
-        .map(|n| n.get())
+        .map(std::num::NonZero::get)
         .unwrap_or(4);
     if cpus >= 16 {
         capabilities.push("high-core-count".to_string());

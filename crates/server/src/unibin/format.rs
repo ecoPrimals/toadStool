@@ -7,19 +7,20 @@ use std::path::{Path, PathBuf};
 
 use tracing::info;
 
+use crate::errors::{ServerError, ServerResult};
+
 /// Ensure biomeos directory exists with proper permissions
-pub fn ensure_biomeos_directory(
-    runtime_dir: &Path,
-) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+pub fn ensure_biomeos_directory(runtime_dir: &Path) -> ServerResult<PathBuf> {
     let biomeos_dir = runtime_dir.join("biomeos");
 
-    std::fs::create_dir_all(&biomeos_dir)?;
+    std::fs::create_dir_all(&biomeos_dir).map_err(|e| ServerError::Internal(e.to_string()))?;
 
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         let perms = std::fs::Permissions::from_mode(0o700);
-        std::fs::set_permissions(&biomeos_dir, perms)?;
+        std::fs::set_permissions(&biomeos_dir, perms)
+            .map_err(|e| ServerError::Internal(e.to_string()))?;
     }
 
     info!("✅ biomeos directory ensured: {}", biomeos_dir.display());
@@ -34,7 +35,7 @@ pub fn socket_filename_for_family(family_id: &str) -> String {
     if family_id.is_empty() || family_id == "default" {
         "toadstool.sock".to_string()
     } else {
-        format!("toadstool-{}.sock", family_id)
+        format!("toadstool-{family_id}.sock")
     }
 }
 
@@ -46,17 +47,14 @@ pub fn socket_filename_for_family(family_id: &str) -> String {
 /// 3. BIOMEOS_SOCKET_PATH env var
 /// 4. XDG runtime directory
 /// 5. /tmp fallback
-pub fn get_socket_path(
-    family_id: &str,
-    _node_id: &str,
-) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+pub fn get_socket_path(family_id: &str, _node_id: &str) -> ServerResult<PathBuf> {
     if let Ok(socket) = std::env::var("TOADSTOOL_SOCKET") {
         info!("✅ Using socket path from TOADSTOOL_SOCKET: {}", socket);
         return Ok(PathBuf::from(socket));
     }
 
     if let Ok(socket) = std::env::var("PRIMAL_SOCKET") {
-        let socket_with_family = format!("{}-{}", socket, family_id);
+        let socket_with_family = format!("{socket}-{family_id}");
         info!(
             "✅ Using socket path from PRIMAL_SOCKET: {}",
             socket_with_family
@@ -73,7 +71,7 @@ pub fn get_socket_path(
         PathBuf::from(xdg_runtime)
     } else if let Ok(uid_str) = std::fs::read_to_string("/proc/self/loginuid") {
         if let Ok(uid) = uid_str.trim().parse::<u32>() {
-            PathBuf::from(format!("/run/user/{}", uid))
+            PathBuf::from(format!("/run/user/{uid}"))
         } else {
             std::env::var("USER")
                 .ok()
@@ -83,13 +81,13 @@ pub fn get_socket_path(
                         .and_then(|passwd| {
                             passwd
                                 .lines()
-                                .find(|line| line.starts_with(&format!("{}:", user)))
+                                .find(|line| line.starts_with(&format!("{user}:")))
                                 .and_then(|line| {
                                     line.split(':')
                                         .nth(2)
                                         .and_then(|uid| uid.parse::<u32>().ok())
                                 })
-                                .map(|uid| PathBuf::from(format!("/run/user/{}", uid)))
+                                .map(|uid| PathBuf::from(format!("/run/user/{uid}")))
                         })
                 })
                 .unwrap_or_else(std::env::temp_dir)
@@ -110,13 +108,14 @@ pub fn get_socket_path(
     }
 
     let tmp_biomeos = std::env::temp_dir().join("biomeos");
-    std::fs::create_dir_all(&tmp_biomeos)?;
+    std::fs::create_dir_all(&tmp_biomeos).map_err(|e| ServerError::Internal(e.to_string()))?;
 
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         let perms = std::fs::Permissions::from_mode(0o700);
-        std::fs::set_permissions(&tmp_biomeos, perms)?;
+        std::fs::set_permissions(&tmp_biomeos, perms)
+            .map_err(|e| ServerError::Internal(e.to_string()))?;
     }
 
     let socket_filename = socket_filename_for_family(family_id);

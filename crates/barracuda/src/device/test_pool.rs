@@ -6,7 +6,7 @@
 //! **Evolution**: Migrated from once_cell to std::sync::LazyLock (Rust 1.80+)
 
 use crate::device::WgpuDevice;
-use std::sync::{Arc, LazyLock};
+use std::sync::{Arc, LazyLock, Mutex as StdMutex};
 use tokio::sync::Mutex;
 
 /// Global device pool for tests
@@ -39,14 +39,13 @@ pub async fn get_test_device() -> Arc<WgpuDevice> {
     let mut pool = TEST_DEVICE_POOL.lock().await;
 
     if let Some(device) = pool.as_ref() {
-        // Reuse existing device
         return Arc::clone(device);
     }
 
-    // Create new device (first test only)
     let device = Arc::new(
-        WgpuDevice::new()
+        tokio::time::timeout(std::time::Duration::from_secs(10), WgpuDevice::new())
             .await
+            .expect("GPU device creation timed out after 10s -- check driver")
             .expect("Failed to create test device"),
     );
 
@@ -80,13 +79,16 @@ pub async fn get_test_device_if_gpu_available() -> Option<Arc<WgpuDevice>> {
         return Some(Arc::clone(device));
     }
 
-    match WgpuDevice::new_gpu().await {
-        Ok(device) => {
+    let result =
+        tokio::time::timeout(std::time::Duration::from_secs(10), WgpuDevice::new_gpu()).await;
+
+    match result {
+        Ok(Ok(device)) => {
             let device = Arc::new(device);
             *pool = Some(Arc::clone(&device));
             Some(device)
         }
-        Err(_) => None,
+        _ => None,
     }
 }
 
@@ -108,13 +110,19 @@ pub async fn get_test_device_if_f64_gpu_available() -> Option<Arc<WgpuDevice>> {
         return Some(Arc::clone(device));
     }
 
-    match WgpuDevice::new_f64_capable().await {
-        Ok(device) => {
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        WgpuDevice::new_f64_capable(),
+    )
+    .await;
+
+    match result {
+        Ok(Ok(device)) => {
             let device = Arc::new(device);
             *pool = Some(Arc::clone(&device));
             Some(device)
         }
-        Err(_) => None,
+        _ => None,
     }
 }
 
@@ -122,28 +130,76 @@ pub async fn get_test_device_if_f64_gpu_available() -> Option<Arc<WgpuDevice>> {
 // Sync helpers - always available for test modules across crate
 // ============================================================================
 
+/// Serializes sync device access. wgpu/vulkan BindGroupLayout creation is not
+/// safe when the same device is used concurrently from multiple threads.
+static SYNC_DEVICE_MUTEX: StdMutex<()> = StdMutex::new(());
+
+fn get_test_device_sync_inner() -> Arc<WgpuDevice> {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to create Tokio runtime for sync device access")
+        .block_on(get_test_device())
+}
+
+/// Run a closure with exclusive access to the sync test device.
+///
+/// Use this for NPU ops (softmax, layer_norm, etc.) that must not run
+/// concurrently to avoid wgpu BindGroupLayout conflicts.
+pub fn run_with_sync_device<F, R>(f: F) -> R
+where
+    F: FnOnce(Arc<WgpuDevice>) -> R,
+{
+    let _guard = SYNC_DEVICE_MUTEX
+        .lock()
+        .expect("Sync device mutex poisoned");
+    let device = get_test_device_sync_inner();
+    f(device)
+}
+
 /// Sync wrapper for `get_test_device`.
 ///
 /// **Prefer async**: Use `get_test_device().await` in `#[tokio::test]` when possible.
 /// This sync helper exists for test functions that can't be async.
 ///
-/// **Thread-safe**: Multiple tests can call this concurrently — they all get the same device.
+/// **Serialized**: Sync callers are serialized to avoid wgpu BindGroupLayout
+/// conflicts when tests run in parallel (same device, concurrent pipeline creation).
+///
+/// Uses Tokio runtime (not pollster) because get_test_device uses tokio::sync::Mutex
+/// and tokio::time::timeout, which require a Tokio runtime.
 pub fn get_test_device_sync() -> Arc<WgpuDevice> {
-    pollster::block_on(get_test_device())
+    let _guard = SYNC_DEVICE_MUTEX
+        .lock()
+        .expect("Sync device mutex poisoned");
+    get_test_device_sync_inner()
 }
 
 /// Sync wrapper for `get_test_device_if_gpu_available`.
 ///
 /// Returns `None` if only a software adapter is available. Use for tests requiring real GPU.
 pub fn get_test_device_if_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
-    pollster::block_on(get_test_device_if_gpu_available())
+    let _guard = SYNC_DEVICE_MUTEX
+        .lock()
+        .expect("Sync device mutex poisoned");
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to create Tokio runtime for sync GPU device access")
+        .block_on(get_test_device_if_gpu_available())
 }
 
 /// Sync wrapper for `get_test_device_if_f64_gpu_available`.
 ///
 /// Returns `None` if no f64-capable GPU is present. Use for double-precision shader tests.
 pub fn get_test_device_if_f64_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
-    pollster::block_on(get_test_device_if_f64_gpu_available())
+    let _guard = SYNC_DEVICE_MUTEX
+        .lock()
+        .expect("Sync device mutex poisoned");
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to create Tokio runtime for sync f64 device access")
+        .block_on(get_test_device_if_f64_gpu_available())
 }
 
 // ============================================================================

@@ -171,7 +171,7 @@ impl MdnsDiscoveryClient {
         self.cache.write().await.insert(id, cached);
     }
 
-    /// Update last_seen timestamp for a service
+    /// Update `last_seen` timestamp for a service
     async fn touch_service(&self, service_id: &str) {
         if let Some(entry) = self.cache.write().await.get_mut(service_id) {
             entry.last_seen = SystemTime::now();
@@ -188,29 +188,22 @@ impl MdnsDiscoveryClient {
                 // Format: "capability=coordination:service-discovery", "capability=storage:object", etc.
                 let parts: Vec<&str> = cap_str.split(':').collect();
                 match parts.as_slice() {
-                    ["coordination", "service-discovery"] => capabilities.push(
-                        Capability::Coordination(CoordinationCapability::ServiceDiscovery),
-                    ),
-                    ["coordination", _] => capabilities.push(Capability::Coordination(
-                        CoordinationCapability::ServiceDiscovery,
-                    )),
-                    ["storage", "object"] => {
-                        capabilities.push(Capability::Storage(StorageCapability::ObjectStorage))
+                    ["coordination", "service-discovery"] | ["coordination", _] => capabilities
+                        .push(Capability::Coordination(
+                            CoordinationCapability::ServiceDiscovery,
+                        )),
+                    ["storage", "object"] | ["storage", _] => {
+                        capabilities.push(Capability::Storage(StorageCapability::ObjectStorage));
                     }
-                    ["storage", _] => {
-                        capabilities.push(Capability::Storage(StorageCapability::ObjectStorage))
-                    }
-                    ["compute", "native"] => {
-                        capabilities.push(Capability::Compute(ComputeCapability::NativeExecution))
-                    }
-                    ["compute", _] => {
-                        capabilities.push(Capability::Compute(ComputeCapability::NativeExecution))
+                    ["compute", "native"] | ["compute", _] => {
+                        capabilities.push(Capability::Compute(ComputeCapability::NativeExecution));
                     }
                     ["authentication", _] => {
-                        capabilities.push(Capability::Authentication(AuthCapability::UserAuth))
+                        capabilities.push(Capability::Authentication(AuthCapability::UserAuth));
                     }
                     ["discovery", "mdns"] => {
-                        capabilities.push(Capability::Discovery(DiscoveryCapability::MdnsDiscovery))
+                        capabilities
+                            .push(Capability::Discovery(DiscoveryCapability::MdnsDiscovery));
                     }
                     ["discovery", _] => capabilities.push(Capability::Discovery(
                         DiscoveryCapability::CapabilityDiscovery,
@@ -223,7 +216,7 @@ impl MdnsDiscoveryClient {
         capabilities
     }
 
-    /// Convert mDNS service record to DiscoveredService
+    /// Convert mDNS service record to `DiscoveredService`
     ///
     /// Note: Helper function for future mdns-sd integration.
     /// Currently using cache-based discovery.
@@ -328,7 +321,7 @@ impl DiscoveryClient for MdnsDiscoveryClient {
         //
         // For now, we track advertised services for future integration
         if !service.endpoints.is_empty() {
-            let hostname = format!("{}.local", service_id);
+            let hostname = format!("{service_id}.local");
 
             self.advertised_services
                 .write()

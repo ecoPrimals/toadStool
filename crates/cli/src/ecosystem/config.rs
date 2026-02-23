@@ -130,12 +130,16 @@ impl ServiceDiscoveryConfig {
             vec![
                 Some(strategy.home_dir().join(".toadstool/services.toml")),
                 Some(PathBuf::from(".toadstool/config.toml")),
-                Some(PathBuf::from("/etc/toadstool/services.toml")),
+                Some(PathBuf::from(
+                    super::constants::paths::SYSTEM_SERVICES_CONFIG,
+                )),
             ]
         } else {
             vec![
                 Some(PathBuf::from(".toadstool/config.toml")),
-                Some(PathBuf::from("/etc/toadstool/services.toml")),
+                Some(PathBuf::from(
+                    super::constants::paths::SYSTEM_SERVICES_CONFIG,
+                )),
             ]
         };
 

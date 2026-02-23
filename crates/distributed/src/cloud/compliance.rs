@@ -136,7 +136,7 @@ impl CloudComplianceEnforcer {
     /// Produce a full compliance report for a provider.
     pub fn report_for_provider(&self, provider_name: &str) -> ToadStoolResult<ComplianceReport> {
         let capabilities = self.provider_compliance.get(provider_name).ok_or_else(|| {
-            ComplianceError::CheckFailed(format!("Provider '{}' not registered", provider_name))
+            ComplianceError::CheckFailed(format!("Provider '{provider_name}' not registered"))
         })?;
 
         let mut checks = Vec::new();
@@ -213,7 +213,7 @@ impl CloudComplianceEnforcer {
                 result: CheckResult::Pass,
             }
         } else {
-            let names: Vec<String> = missing.iter().map(|c| format!("{:?}", c)).collect();
+            let names: Vec<String> = missing.iter().map(|c| format!("{c:?}")).collect();
             ComplianceCheck {
                 check_name: "certifications".to_string(),
                 result: CheckResult::Fail {
@@ -266,8 +266,7 @@ impl CloudComplianceEnforcer {
                 check_name: "data_sovereignty".to_string(),
                 result: CheckResult::Fail {
                     reason: format!(
-                        "Provider regions {:?} do not include required regions: {:?}",
-                        provider_region_names, missing
+                        "Provider regions {provider_region_names:?} do not include required regions: {missing:?}",
                     ),
                 },
             });
@@ -284,7 +283,7 @@ impl CloudComplianceEnforcer {
                     check_name: "data_sovereignty".to_string(),
                     result: CheckResult::Fail {
                         reason: format!(
-                            "Data type '{}' requires regions {:?}; provider lacks them",
+                            "Data type '{0}' requires regions {1:?}; provider lacks them",
                             ds.data_type, ds.allowed_regions
                         ),
                     },
@@ -308,16 +307,14 @@ impl CloudComplianceEnforcer {
 
         for req in self.security_tier.required_features() {
             let has = provider_features.contains(req);
-            let name = format!("security_{:?}", req)
-                .to_lowercase()
-                .replace(' ', "_");
+            let name = format!("security_{req:?}").to_lowercase().replace(' ', "_");
             checks.push(ComplianceCheck {
                 check_name: name,
                 result: if has {
                     CheckResult::Pass
                 } else {
                     CheckResult::Fail {
-                        reason: format!("Required feature {:?} not in provider capabilities", req),
+                        reason: format!("Required feature {req:?} not in provider capabilities"),
                     }
                 },
             });

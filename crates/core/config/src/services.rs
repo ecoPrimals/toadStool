@@ -103,7 +103,7 @@ pub struct ServiceEndpoint {
     #[serde(rename = "type")]
     pub service_type: ServiceType,
 
-    /// Endpoint URL/address (e.g., "http://localhost:7777")
+    /// Endpoint URL/address (e.g., "<http://localhost:7777>")
     pub endpoint: String,
 
     /// Port (optional, extracted from endpoint if not specified)
@@ -144,7 +144,7 @@ impl ServiceEndpoint {
 
     /// Set port
     #[must_use]
-    pub fn with_port(mut self, port: u16) -> Self {
+    pub const fn with_port(mut self, port: u16) -> Self {
         self.port = Some(port);
         self
     }
@@ -360,7 +360,7 @@ impl ServiceRegistry {
     pub fn from_toml_file(path: impl AsRef<Path>) -> ServiceResult<Self> {
         let contents = std::fs::read_to_string(path)?;
         let registry: Self = toml::from_str(&contents)
-            .map_err(|e| ServiceError::Parse(format!("TOML parse error: {}", e)))?;
+            .map_err(|e| ServiceError::Parse(format!("TOML parse error: {e}")))?;
         Ok(registry)
     }
 
@@ -371,7 +371,7 @@ impl ServiceRegistry {
     pub fn from_json_file(path: impl AsRef<Path>) -> ServiceResult<Self> {
         let contents = std::fs::read_to_string(path)?;
         let registry: Self = serde_json::from_str(&contents)
-            .map_err(|e| ServiceError::Parse(format!("JSON parse error: {}", e)))?;
+            .map_err(|e| ServiceError::Parse(format!("JSON parse error: {e}")))?;
         Ok(registry)
     }
 }

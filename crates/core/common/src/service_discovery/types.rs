@@ -50,18 +50,22 @@ pub struct DiscoveredService {
 }
 
 impl DiscoveredService {
+    #[must_use]
     pub fn has_capability(&self, capability: &Capability) -> bool {
         self.capabilities.contains(capability)
     }
 
+    #[must_use]
     pub fn primary_endpoint(&self) -> Option<&ServiceEndpoint> {
         self.endpoints.first()
     }
 
+    #[must_use]
     pub fn healthy_endpoints(&self) -> Vec<&ServiceEndpoint> {
         self.endpoints.iter().collect()
     }
 
+    #[must_use]
     pub fn is_fresh(&self, ttl: Duration) -> bool {
         self.last_seen
             .elapsed()
@@ -90,5 +94,5 @@ pub enum DiscoveryMethod {
     Environment,
     ConfigFile { path: String },
     Registry { endpoint: String },
-    Multi(Vec<DiscoveryMethod>),
+    Multi(Vec<Self>),
 }

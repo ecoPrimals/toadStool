@@ -66,7 +66,7 @@ async fn test_find_peer_with_success() {
             .await
             .unwrap();
 
-        let found = PrimalCapabilities::find_peer_with("gpu-nvidia").await;
+        let found = PrimalCapabilities::find_peer_with_in("gpu-nvidia", &discovery_base).await;
         assert!(found.is_ok());
         let found = found.unwrap();
         assert_eq!(found.primal_id, "peer-gpu-123");
@@ -100,7 +100,7 @@ async fn test_find_peer_with_partial_match() {
             .await
             .unwrap();
 
-        let found = PrimalCapabilities::find_peer_with("nvidia").await;
+        let found = PrimalCapabilities::find_peer_with_in("nvidia", &discovery_base).await;
         assert!(found.is_ok());
         assert!(found
             .unwrap()
@@ -113,8 +113,10 @@ async fn test_find_peer_with_partial_match() {
 
 #[tokio::test]
 async fn test_find_peer_with_not_found() {
-    with_temp_discovery(|_| async {
-        let result = PrimalCapabilities::find_peer_with("nonexistent-capability-xyz").await;
+    with_temp_discovery(|discovery_base| async move {
+        let result =
+            PrimalCapabilities::find_peer_with_in("nonexistent-capability-xyz", &discovery_base)
+                .await;
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.contains("No peer found"));
@@ -125,8 +127,8 @@ async fn test_find_peer_with_not_found() {
 
 #[tokio::test]
 async fn test_find_peer_with_empty_dir() {
-    with_temp_discovery(|_| async {
-        let result = PrimalCapabilities::find_peer_with("compute").await;
+    with_temp_discovery(|discovery_base| async move {
+        let result = PrimalCapabilities::find_peer_with_in("compute", &discovery_base).await;
         assert!(result.is_err());
     })
     .await;
@@ -189,8 +191,8 @@ async fn test_find_all_peers_nonexistent_discovery_dir() {
 
 #[tokio::test]
 async fn test_find_all_peers_empty() {
-    with_temp_discovery(|_| async {
-        let peers = PrimalCapabilities::find_all_peers().await;
+    with_temp_discovery(|discovery_base| async move {
+        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base).await;
         assert!(peers.is_ok());
         assert!(peers.unwrap().is_empty());
     })
@@ -246,7 +248,7 @@ async fn test_find_all_peers_populated() {
         .await
         .unwrap();
 
-        let peers = PrimalCapabilities::find_all_peers().await;
+        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base).await;
         assert!(peers.is_ok());
         let peers = peers.unwrap();
         assert_eq!(peers.len(), 2);
@@ -267,7 +269,7 @@ async fn test_find_all_peers_skips_non_json() {
             .await
             .unwrap();
 
-        let peers = PrimalCapabilities::find_all_peers().await;
+        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base).await;
         assert!(peers.is_ok());
         assert!(peers.unwrap().is_empty());
     })

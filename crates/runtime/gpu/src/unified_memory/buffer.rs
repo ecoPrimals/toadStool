@@ -4,6 +4,7 @@ use crate::unified_memory::{
     backend::{BackendAllocation, UnifiedMemoryBackend},
     types::*,
 };
+use bytes::Bytes;
 use std::collections::HashMap;
 use std::ptr::NonNull;
 use std::sync::{
@@ -106,16 +107,14 @@ impl UnifiedBuffer {
         let ptr_val = self.cpu_ptr.as_ptr() as usize;
         if ptr_val < 4096 {
             return Err(ToadStoolError::runtime(format!(
-                "CPU pointer value {} is in NULL page (invalid)",
-                ptr_val
+                "CPU pointer value {ptr_val} is in NULL page (invalid)"
             )));
         }
 
         // Check pointer alignment (must be properly aligned)
         if !ptr_val.is_multiple_of(std::mem::align_of::<u8>()) {
             return Err(ToadStoolError::runtime(format!(
-                "CPU pointer {:#x} is not properly aligned",
-                ptr_val
+                "CPU pointer {ptr_val:#x} is not properly aligned"
             )));
         }
 
@@ -206,7 +205,8 @@ impl UnifiedBuffer {
         );
 
         // DEEP DEBT EVOLUTION: Convert to NonNull for compile-time null safety
-        // This assertion ensures the pointer is valid before conversion
+        // Use safe NonNull::new().expect() instead of new_unchecked - assertions
+        // guarantee non-null, so expect() documents the invariant without unsafe.
         assert!(
             !cpu_ptr.is_null(),
             "CPU pointer cannot be null at buffer creation"
@@ -217,9 +217,8 @@ impl UnifiedBuffer {
         );
         assert!(size > 0, "Buffer size cannot be zero");
 
-        // SAFETY: The three assertions above guarantee cpu_ptr is non-null and
-        // outside the null page. NonNull::new cannot return None here.
-        let cpu_ptr_nonnull = unsafe { NonNull::new_unchecked(cpu_ptr) };
+        let cpu_ptr_nonnull =
+            NonNull::new(cpu_ptr).expect("CPU pointer cannot be null at buffer creation");
 
         Self {
             id,
@@ -254,7 +253,10 @@ impl UnifiedBuffer {
 
     /// Get current synchronization state
     pub fn sync_state(&self) -> SyncState {
-        *self.sync_state.read().unwrap_or_else(|e| e.into_inner())
+        *self
+            .sync_state
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Write data from CPU (async, non-blocking)
@@ -262,7 +264,7 @@ impl UnifiedBuffer {
     /// # Arguments
     ///
     /// * `offset` - Offset in bytes from buffer start
-    /// * `data` - Data to write
+    /// * `data` - Data to write (accepts `&[u8]`, `Vec<u8>`, `Bytes`, or any `AsRef<[u8]>`)
     ///
     /// # Errors
     ///
@@ -270,7 +272,12 @@ impl UnifiedBuffer {
     /// - Buffer has been freed
     /// - Write would overflow buffer
     /// - Pointer is invalid
-    pub async fn write_async(&mut self, offset: usize, data: &[u8]) -> ToadStoolResult<()> {
+    pub async fn write_async<D: AsRef<[u8]>>(
+        &mut self,
+        offset: usize,
+        data: D,
+    ) -> ToadStoolResult<()> {
+        let data = data.as_ref();
         // Handle zero-length write
         if data.is_empty() {
             return Ok(());
@@ -319,13 +326,16 @@ impl UnifiedBuffer {
         target_slice.copy_from_slice(data);
 
         // Update sync state
-        *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::CpuModified;
+        *self
+            .sync_state
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = SyncState::CpuModified;
 
         // Update metadata
         if let Some(metadata) = self
             .allocations
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .get_mut(&self.id)
         {
             metadata.record_access();
@@ -343,6 +353,9 @@ impl UnifiedBuffer {
 
     /// Read data to CPU (async, non-blocking)
     ///
+    /// Returns [`Bytes`] for zero-copy cloning when passing data across threads/tasks.
+    /// Use `.to_vec()` if you need mutable access to the result.
+    ///
     /// # Arguments
     ///
     /// * `offset` - Offset in bytes from buffer start
@@ -354,10 +367,10 @@ impl UnifiedBuffer {
     /// - Buffer has been freed
     /// - Read would overflow buffer
     /// - Pointer is invalid
-    pub async fn read_async(&self, offset: usize, len: usize) -> ToadStoolResult<Vec<u8>> {
+    pub async fn read_async(&self, offset: usize, len: usize) -> ToadStoolResult<Bytes> {
         // Handle zero-length read
         if len == 0 {
-            return Ok(Vec::new());
+            return Ok(Bytes::new());
         }
 
         // Validate buffer is still valid
@@ -397,14 +410,14 @@ impl UnifiedBuffer {
         let buffer_slice = self.as_cpu_slice()?;
         let source_slice = &buffer_slice[offset..offset + len];
 
-        // Now use safe Vec::from to copy (no unsafe here!)
-        let result = source_slice.to_vec();
+        // Use Bytes for zero-copy clone when passing across threads/tasks
+        let result = Bytes::copy_from_slice(source_slice);
 
         // Update metadata
         if let Some(metadata) = self
             .allocations
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .get_mut(&self.id)
         {
             metadata.record_access();
@@ -425,15 +438,24 @@ impl UnifiedBuffer {
     /// Ensures CPU writes are visible to GPU.
     /// No-op if buffer is already synced or if using coherent memory.
     pub async fn sync_to_device(&self) -> ToadStoolResult<()> {
-        let state = *self.sync_state.read().unwrap_or_else(|e| e.into_inner());
+        let state = *self
+            .sync_state
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         match state {
             SyncState::Synced | SyncState::GpuModified => Ok(()),
             SyncState::CpuModified => {
                 if let Some(allocation) = &self.allocation {
                     self.backend.sync_cpu_to_device(allocation).await?;
-                    *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::Synced;
-                    let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
+                    *self
+                        .sync_state
+                        .write()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) = SyncState::Synced;
+                    let mut metrics = self
+                        .metrics
+                        .write()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                     metrics.cpu_to_gpu_syncs += 1;
                     metrics.bytes_synced += self.size as u64;
                     tracing::trace!("Synced buffer {} to device", self.id);
@@ -444,7 +466,10 @@ impl UnifiedBuffer {
                 tracing::warn!("Sync conflict for buffer {}, CPU wins", self.id);
                 if let Some(allocation) = &self.allocation {
                     self.backend.sync_cpu_to_device(allocation).await?;
-                    *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::Synced;
+                    *self
+                        .sync_state
+                        .write()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) = SyncState::Synced;
                 }
                 Ok(())
             }
@@ -456,15 +481,24 @@ impl UnifiedBuffer {
     /// Ensures GPU writes are visible to CPU.
     /// No-op if buffer is already synced or if using coherent memory.
     pub async fn sync_to_cpu(&self) -> ToadStoolResult<()> {
-        let state = *self.sync_state.read().unwrap_or_else(|e| e.into_inner());
+        let state = *self
+            .sync_state
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         match state {
             SyncState::Synced | SyncState::CpuModified => Ok(()),
             SyncState::GpuModified => {
                 if let Some(allocation) = &self.allocation {
                     self.backend.sync_device_to_cpu(allocation).await?;
-                    *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::Synced;
-                    let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
+                    *self
+                        .sync_state
+                        .write()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) = SyncState::Synced;
+                    let mut metrics = self
+                        .metrics
+                        .write()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                     metrics.gpu_to_cpu_syncs += 1;
                     metrics.bytes_synced += self.size as u64;
                     tracing::trace!("Synced buffer {} to CPU", self.id);
@@ -475,7 +509,10 @@ impl UnifiedBuffer {
                 tracing::warn!("Sync conflict for buffer {}, GPU wins", self.id);
                 if let Some(allocation) = &self.allocation {
                     self.backend.sync_device_to_cpu(allocation).await?;
-                    *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::Synced;
+                    *self
+                        .sync_state
+                        .write()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) = SyncState::Synced;
                 }
                 Ok(())
             }
@@ -492,14 +529,20 @@ impl UnifiedBuffer {
 
     /// Mark GPU as modified (call after GPU kernel execution).
     pub fn mark_gpu_modified(&self) {
-        *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::GpuModified;
+        *self
+            .sync_state
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = SyncState::GpuModified;
     }
 
     /// Fill buffer with value.
     pub async fn fill(&mut self, value: u8) -> ToadStoolResult<()> {
         let buffer_slice = self.as_cpu_slice_mut()?;
         buffer_slice.fill(value);
-        *self.sync_state.write().unwrap_or_else(|e| e.into_inner()) = SyncState::CpuModified;
+        *self
+            .sync_state
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = SyncState::CpuModified;
 
         Ok(())
     }
@@ -517,7 +560,7 @@ impl Drop for UnifiedBuffer {
             // Remove from tracking
             self.allocations
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .remove(&self.id);
 
             // Update total allocated atomically
@@ -530,7 +573,10 @@ impl Drop for UnifiedBuffer {
             // consistent: active_allocations, total_allocated, and
             // deallocation_count are all updated atomically under the write lock.
             {
-                let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
+                let mut metrics = self
+                    .metrics
+                    .write()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 metrics.deallocation_count += 1;
                 metrics.active_allocations = metrics.active_allocations.saturating_sub(1);
                 metrics.total_allocated = new_total;
@@ -673,7 +719,7 @@ mod tests {
         let result = buffer.read_async(0, 1024).await.unwrap();
         eprintln!("Read complete");
 
-        assert_eq!(data, result);
+        assert_eq!(data.as_slice(), result.as_ref());
         eprintln!("=== Test passed ===");
     }
 

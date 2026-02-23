@@ -59,19 +59,19 @@ fn main(
         let base_a = (b * config.n_a + i) * D;
         let base_b = (b * config.n_b + j) * D;
 
-        var acc = 0.0;
+        var acc: f64 = f64(0.0);
 
         for (var d = 0u; d < D; d = d + 1u) {
             let a = mat_a[base_a + d];
             let bv = mat_b[base_b + d];
 
             if (op == 0u) {
-                // Dot product
-                acc = fma(a, bv, acc);
+                // Dot product — use explicit mul-add (fma f64 not universally supported in Naga)
+                acc = a * bv + acc;
             } else if (op == 1u) {
-                // Squared L2
+                // Squared L2 — use explicit mul-add
                 let diff = a - bv;
-                acc = fma(diff, diff, acc);
+                acc = diff * diff + acc;
             } else if (op == 2u) {
                 // L1 distance
                 acc = acc + abs(a - bv);

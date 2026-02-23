@@ -31,7 +31,7 @@ use toadstool_common::constants::PRIMAL_NAME;
 /// ```rust,no_run
 /// # use toadstool_display::DisplayCapabilities;
 /// #[tokio::main]
-/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// async fn main() -> toadstool_display::Result<()> {
 ///     // Discover own capabilities (self-knowledge!)
 ///     let caps = DisplayCapabilities::discover_self().await?;
 ///     
@@ -128,7 +128,7 @@ impl DisplayCapabilities {
     /// ```rust,no_run
     /// # use toadstool_display::DisplayCapabilities;
     /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// async fn main() -> toadstool_display::Result<()> {
     ///     let caps = DisplayCapabilities::discover_self().await?;
     ///     println!("Found {} displays", caps.displays.len());
     ///     println!("Found {} input devices", caps.input_devices.len());
@@ -235,7 +235,7 @@ impl DisplayCapabilities {
     /// ```rust,no_run
     /// # use toadstool_display::DisplayCapabilities;
     /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// async fn main() -> toadstool_display::Result<()> {
     ///     let caps = DisplayCapabilities::discover_self().await?;
     ///     caps.announce().await?;
     ///     println!("Announced capabilities!");
@@ -253,7 +253,7 @@ impl DisplayCapabilities {
         let filepath = discovery_dir.join(filename);
 
         let json = serde_json::to_string_pretty(self)
-            .map_err(|e| DisplayError::IpcError(format!("JSON serialization failed: {}", e)))?;
+            .map_err(|e| DisplayError::IpcError(format!("JSON serialization failed: {e}")))?;
 
         tokio::fs::write(&filepath, json).await?;
 
@@ -272,7 +272,7 @@ impl DisplayCapabilities {
     /// ```rust,no_run
     /// # use toadstool_display::DisplayCapabilities;
     /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// async fn main() -> toadstool_display::Result<()> {
     ///     let backends = DisplayCapabilities::find_all().await?;
     ///     for backend in backends {
     ///         println!("Found: {} at {}",

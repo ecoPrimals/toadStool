@@ -38,7 +38,7 @@ pub enum CapabilityType {
 
     /// Intelligence capabilities (AI, ML, analysis, natural language)
     ///
-    /// Could be provided by: squirrel, OpenAI, local models, etc.
+    /// Could be provided by: squirrel, `OpenAI`, local models, etc.
     Intelligence {
         features: Vec<IntelligenceFeature>,
         model_types: Vec<ModelType>,
@@ -199,7 +199,7 @@ pub enum NetworkFeature {
     UDP,
     /// Unix sockets
     UnixSockets,
-    /// WebSocket support
+    /// `WebSocket` support
     WebSocket,
     /// gRPC support
     GRPC,
@@ -335,7 +335,8 @@ pub struct CapabilityHandle {
 
 impl CapabilityHandle {
     /// Create a new capability handle
-    pub fn new(provider: CapabilityInfo, capability: CapabilityType) -> Self {
+    #[must_use]
+    pub const fn new(provider: CapabilityInfo, capability: CapabilityType) -> Self {
         Self {
             provider,
             capability,
@@ -343,22 +344,26 @@ impl CapabilityHandle {
     }
 
     /// Get the capability type
-    pub fn capability_type(&self) -> &CapabilityType {
+    #[must_use]
+    pub const fn capability_type(&self) -> &CapabilityType {
         &self.capability
     }
 
     /// Get the service endpoint
-    pub fn endpoint(&self) -> &ServiceEndpoint {
+    #[must_use]
+    pub const fn endpoint(&self) -> &ServiceEndpoint {
         &self.provider.endpoint
     }
 
     /// Get provider metadata (for introspection only)
-    pub fn metadata(&self) -> &HashMap<String, String> {
+    #[must_use]
+    pub const fn metadata(&self) -> &HashMap<String, String> {
         &self.provider.metadata
     }
 
     /// Check if provider is healthy
-    pub fn is_healthy(&self) -> bool {
+    #[must_use]
+    pub const fn is_healthy(&self) -> bool {
         matches!(
             self.provider.health,
             HealthStatus::Healthy | HealthStatus::Degraded
@@ -366,6 +371,7 @@ impl CapabilityHandle {
     }
 
     /// Get provider ID (for logging/debugging only, NOT for business logic!)
+    #[must_use]
     pub fn provider_id(&self) -> &str {
         &self.provider.provider_id
     }
@@ -382,11 +388,9 @@ mod tests {
             min_trust_level: TrustLevel::High,
         };
 
-        match security {
-            CapabilityType::Security { features, .. } => {
-                assert_eq!(features.len(), 2);
-            }
-            _ => panic!("Should be Security variant"),
+        assert!(matches!(security, CapabilityType::Security { .. }));
+        if let CapabilityType::Security { features, .. } = &security {
+            assert_eq!(features.len(), 2);
         }
     }
 

@@ -13,7 +13,7 @@ pub struct Shape {
 
 impl Shape {
     /// Create new shape
-    pub fn new(dims: Vec<usize>) -> Self {
+    pub const fn new(dims: Vec<usize>) -> Self {
         Self { dims }
     }
 
@@ -25,19 +25,19 @@ impl Shape {
 
     /// Get number of dimensions
     #[must_use]
-    pub fn rank(&self) -> usize {
+    pub const fn rank(&self) -> usize {
         self.dims.len()
     }
 
     /// Check if shape is scalar (0-D)
     #[must_use]
-    pub fn is_scalar(&self) -> bool {
+    pub const fn is_scalar(&self) -> bool {
         self.dims.is_empty()
     }
 
     /// Check if shape is 1-D
     #[must_use]
-    pub fn is_vector(&self) -> bool {
+    pub const fn is_vector(&self) -> bool {
         self.dims.len() == 1
     }
 }

@@ -107,7 +107,7 @@ impl JsonRpcError {
     pub fn method_not_found(method: &str) -> Self {
         Self {
             code: Self::METHOD_NOT_FOUND,
-            message: Cow::Owned(format!("Method not found: {}", method)),
+            message: Cow::Owned(format!("Method not found: {method}")),
             data: None,
         }
     }
@@ -148,7 +148,7 @@ impl JsonWorkloadSubmission {
 
         let data = STANDARD
             .decode(&self.data)
-            .map_err(|e| format!("Invalid base64 data: {}", e))?;
+            .map_err(|e| format!("Invalid base64 data: {e}"))?;
 
         Ok(TarpcWorkloadSubmission {
             workload_id: self.workload_id,

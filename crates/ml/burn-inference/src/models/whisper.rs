@@ -5,7 +5,7 @@
 //! # Requirements
 //!
 //! Whisper inference requires:
-//! - **Model weights**: Load from HuggingFace (e.g. `openai/whisper-tiny`) or local safetensors
+//! - **Model weights**: Load from `HuggingFace` (e.g. `openai/whisper-tiny`) or local safetensors
 //! - **Burn backend**: Enable `burn` with wgpu or ndarray backend in Cargo.toml
 //! - **Audio**: 16 kHz mono PCM float32 input
 //!
@@ -33,7 +33,8 @@ pub struct WhisperConfig {
 
 impl WhisperConfig {
     /// Whisper-tiny configuration
-    pub fn tiny() -> Self {
+    #[must_use]
+    pub const fn tiny() -> Self {
         Self {
             d_model: 384,
             encoder_layers: 4,
@@ -45,7 +46,8 @@ impl WhisperConfig {
     }
 
     /// Whisper-base configuration
-    pub fn base() -> Self {
+    #[must_use]
+    pub const fn base() -> Self {
         Self {
             d_model: 512,
             encoder_layers: 6,
@@ -71,11 +73,12 @@ pub struct Whisper {
 
 impl Whisper {
     /// Create new Whisper model
-    pub fn new(config: WhisperConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: WhisperConfig) -> Self {
         Self { config }
     }
 
-    /// Load from HuggingFace Hub or local safetensors.
+    /// Load from `HuggingFace` Hub or local safetensors.
     ///
     /// **Requires**: Model weights. Load with `WhisperModel::from_safetensors(path)` once integrated.
     pub fn from_pretrained(model_id: &str) -> Result<Self> {
@@ -97,7 +100,8 @@ impl Whisper {
     }
 
     /// Get number of parameters
-    pub fn num_parameters(&self) -> usize {
+    #[must_use]
+    pub const fn num_parameters(&self) -> usize {
         match self.config.d_model {
             384 => 39_000_000, // tiny
             512 => 74_000_000, // base

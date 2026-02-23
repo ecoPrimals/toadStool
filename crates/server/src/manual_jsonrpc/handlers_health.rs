@@ -2,22 +2,20 @@
 
 use std::sync::atomic::Ordering;
 
-#[allow(deprecated)]
-use toadstool_common::interned_strings::primals;
+use toadstool_common::constants::PRIMAL_NAME;
 
-use crate::gpu_job_queue::{query_gpu_devices, query_gpu_memory};
+use crate::gpu_system::{query_gpu_devices, query_gpu_memory};
 
 use super::{
     JsonRpcRequest, JsonRpcResponse, ManualJsonRpcServer, JSONRPC_VERSION, SERIALIZATION_FAILED,
 };
 
 impl ManualJsonRpcServer {
-    #[allow(deprecated)]
     pub(crate) async fn handle_health(&self, request: JsonRpcRequest) -> serde_json::Value {
         self.success_response(
             serde_json::json!({
                 "healthy": true,
-                "service": primals::TOADSTOOL,
+                "service": PRIMAL_NAME,
                 "version": self.version,
                 "error_count": self.error_count.load(Ordering::Relaxed),
                 "uptime_secs": self.start_time.elapsed().as_secs(),
@@ -33,7 +31,6 @@ impl ManualJsonRpcServer {
         )
     }
 
-    #[allow(deprecated)]
     pub(crate) async fn handle_discover_capabilities(
         &self,
         request: JsonRpcRequest,
@@ -85,7 +82,7 @@ impl ManualJsonRpcServer {
                 "gate.route"
             ],
             "version": self.version,
-            "primal": primals::TOADSTOOL
+            "primal": PRIMAL_NAME
         });
 
         serde_json::to_value(JsonRpcResponse {

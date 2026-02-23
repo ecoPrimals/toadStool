@@ -1,7 +1,7 @@
 //! Pre-defined model architectures
 //!
 //! This module provides common model architectures that can be loaded
-//! from HuggingFace Hub or local files.
+//! from `HuggingFace` Hub or local files.
 
 pub mod bert;
 pub mod vision;

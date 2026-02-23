@@ -39,6 +39,9 @@ serde_yaml = { workspace = true }
 
 # HTTP client for distributed execution
 
+# Zero-copy data handling (Bytes = Arc<[u8]>, clone is O(1) refcount bump)
+bytes = { workspace = true }
+
 # Utilities
 uuid = { version = "1.8", features = ["v4", "serde"] }
 tracing = "0.1"

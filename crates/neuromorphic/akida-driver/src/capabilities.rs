@@ -287,7 +287,7 @@ impl PcieConfig {
         Ok(Self::new(generation, lanes))
     }
 
-    fn generation_to_speed(generation: u8) -> f32 {
+    const fn generation_to_speed(generation: u8) -> f32 {
         match generation {
             1 => 2.5,
             2 => 5.0,

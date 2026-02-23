@@ -1,7 +1,7 @@
 //! Complete Primal Discovery with mDNS Integration
 //!
 //! This module completes the capability-based discovery system by wiring up
-//! mDNS service discovery with the PrimalDiscovery interface.
+//! mDNS service discovery with the `PrimalDiscovery` interface.
 //!
 //! # Philosophy
 //!
@@ -62,7 +62,6 @@ struct CachedEndpoint {
     service: DiscoveredService,
     #[allow(dead_code)] // Reserved for future cache expiration logic
     discovered_at: Instant,
-    #[allow(dead_code)] // Reserved for future health check logic
     last_checked: Instant,
 }
 
@@ -288,8 +287,7 @@ impl PrimalDiscoveryEngine {
 
         // 4. Not found
         Err(ToadStoolError::not_found(format!(
-            "No service found with capability: {}",
-            capability_str
+            "No service found with capability: {capability_str}"
         )))
     }
 
@@ -375,7 +373,7 @@ impl PrimalDiscoveryEngine {
         };
 
         DiscoveredService {
-            id: Some(format!("{}-fallback", capability_str)),
+            id: Some(format!("{capability_str}-fallback")),
             capabilities: vec![capability.clone()],
             endpoints: vec![endpoint],
             healthy: true, // Assume healthy until health check proves otherwise

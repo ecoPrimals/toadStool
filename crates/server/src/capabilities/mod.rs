@@ -127,16 +127,16 @@ impl PrimalCapabilities {
         // Create discovery directory if needed
         fs::create_dir_all(&discovery_dir)
             .await
-            .map_err(|e| format!("Failed to create discovery directory: {}", e))?;
+            .map_err(|e| format!("Failed to create discovery directory: {e}"))?;
 
         // Write capability file
         let capability_file = discovery_dir.join(format!("{}.json", self.primal_id));
         let json = serde_json::to_string_pretty(&self)
-            .map_err(|e| format!("Failed to serialize capabilities: {}", e))?;
+            .map_err(|e| format!("Failed to serialize capabilities: {e}"))?;
 
         fs::write(&capability_file, json)
             .await
-            .map_err(|e| format!("Failed to write capability file: {}", e))?;
+            .map_err(|e| format!("Failed to write capability file: {e}"))?;
 
         info!("📢 Announced capabilities: {}", capability_file.display());
         info!("   Deep debt principle: Peer discovery, not centralized registry!");
@@ -148,19 +148,27 @@ impl PrimalCapabilities {
     ///
     /// Deep debt principle: Runtime discovery!
     pub async fn find_peer_with(capability: &str) -> Result<Self, String> {
-        debug!("🔍 Searching for peer with capability: {}", capability);
+        Self::find_peer_with_in(capability, &discovery_directory()).await
+    }
 
-        let discovery_dir = discovery_directory();
+    /// Find peer with specific capability in a given discovery directory.
+    ///
+    /// Testable variant that avoids global env var mutation.
+    pub async fn find_peer_with_in(
+        capability: &str,
+        discovery_dir: &std::path::Path,
+    ) -> Result<Self, String> {
+        debug!("🔍 Searching for peer with capability: {}", capability);
 
         // Read all capability files
         let mut entries = fs::read_dir(&discovery_dir)
             .await
-            .map_err(|e| format!("Failed to read discovery directory: {}", e))?;
+            .map_err(|e| format!("Failed to read discovery directory: {e}"))?;
 
         while let Some(entry) = entries
             .next_entry()
             .await
-            .map_err(|e| format!("Failed to read entry: {}", e))?
+            .map_err(|e| format!("Failed to read entry: {e}"))?
         {
             let path = entry.path();
 
@@ -186,27 +194,32 @@ impl PrimalCapabilities {
             }
         }
 
-        Err(format!("No peer found with capability '{}'", capability))
+        Err(format!("No peer found with capability '{capability}'"))
     }
 
     /// Find all peers
     ///
     /// Deep debt principle: Peer discovery at runtime!
     pub async fn find_all_peers() -> Result<Vec<Self>, String> {
-        debug!("🔍 Discovering all peers");
+        Self::find_all_peers_in(&discovery_directory()).await
+    }
 
-        let discovery_dir = discovery_directory();
+    /// Find all peers in a given discovery directory.
+    ///
+    /// Testable variant that avoids global env var mutation.
+    pub async fn find_all_peers_in(discovery_dir: &std::path::Path) -> Result<Vec<Self>, String> {
+        debug!("🔍 Discovering all peers");
         let mut peers = Vec::new();
 
         // Read all capability files
         let mut entries = fs::read_dir(&discovery_dir)
             .await
-            .map_err(|e| format!("Failed to read discovery directory: {}", e))?;
+            .map_err(|e| format!("Failed to read discovery directory: {e}"))?;
 
         while let Some(entry) = entries
             .next_entry()
             .await
-            .map_err(|e| format!("Failed to read entry: {}", e))?
+            .map_err(|e| format!("Failed to read entry: {e}"))?
         {
             let path = entry.path();
 
@@ -236,7 +249,7 @@ impl PrimalCapabilities {
         if capability_file.exists() {
             fs::remove_file(&capability_file)
                 .await
-                .map_err(|e| format!("Failed to remove capability file: {}", e))?;
+                .map_err(|e| format!("Failed to remove capability file: {e}"))?;
 
             info!("🧹 Cleaned up capability announcement");
         }
@@ -250,7 +263,7 @@ impl PrimalCapabilities {
 /// Deep debt principle: Self-knowledge only!
 pub fn query_system_resources() -> SystemResources {
     let cpu_cores = std::thread::available_parallelism()
-        .map(|n| n.get())
+        .map(std::num::NonZero::get)
         .unwrap_or(4);
 
     // Query memory (Pure Rust via sysinfo!)
@@ -303,7 +316,7 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
 
                 // Try to read GPU info
                 let info_path = gpu_path.join("information");
-                let mut name = format!("NVIDIA GPU {}", device_id);
+                let mut name = format!("NVIDIA GPU {device_id}");
                 let mut memory_bytes = 0u64;
 
                 if let Ok(info) = std::fs::read_to_string(&info_path) {
@@ -535,7 +548,7 @@ pub fn build_capabilities(resources: &SystemResources) -> Vec<String> {
 
     // GPU capabilities
     for (i, gpu) in resources.gpu_devices.iter().enumerate() {
-        capabilities.push(format!("gpu-{}", i));
+        capabilities.push(format!("gpu-{i}"));
         capabilities.push(format!("gpu-{}", gpu.vendor));
         capabilities.push(format!("gpu-{}-{}", gpu.vendor, gpu.name));
     }
@@ -562,7 +575,7 @@ fn default_socket_path(primal_id: &str) -> PathBuf {
     runtime_base_dir()
         .join("ecoPrimals")
         .join("sockets")
-        .join(format!("{}.sock", primal_id))
+        .join(format!("{primal_id}.sock"))
 }
 
 #[cfg(test)]

@@ -9,9 +9,8 @@ use serde::Deserialize;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
+use crate::constants::PRIMAL_NAME;
 use crate::discovery_defaults::{DiscoveryConfig, LocalhostFallbacks};
-#[allow(deprecated)]
-use crate::interned_strings::primals;
 use crate::primal_identity::{
     AuthCapability, Capability, CoordinationCapability, CryptoCapability, PrimalIdentity,
     ServiceEndpoint, StorageCapability,
@@ -167,7 +166,7 @@ impl ServiceDiscovery {
         }
         if !successful && all_services.is_empty() && self.fallbacks.should_use_fallback() {
             info!("Using localhost fallbacks for development");
-            return self.discover_from_fallbacks().await;
+            return self.discover_from_fallbacks();
         }
         Ok(all_services)
     }
@@ -194,7 +193,7 @@ impl ServiceDiscovery {
                     .strip_prefix("TOADSTOOL_SERVICE_")
                     .and_then(|s| s.strip_suffix("_URL"))
                     .unwrap_or("unknown");
-                let cap_key = format!("TOADSTOOL_SERVICE_{}_CAPABILITIES", service_name);
+                let cap_key = format!("TOADSTOOL_SERVICE_{service_name}_CAPABILITIES");
                 let capabilities_str = std::env::var(&cap_key).unwrap_or_default();
                 let service = DiscoveredService {
                     id: format!("env-{}", service_name.to_lowercase()),
@@ -413,8 +412,7 @@ impl ServiceDiscovery {
             .as_slice()
             .windows(blank.len())
             .position(|w| w == blank)
-            .map(|pos| &response[pos + blank.len()..])
-            .unwrap_or(&response[..]);
+            .map_or(&response[..], |pos| &response[pos + blank.len()..]);
 
         let config_file: ConfigFile =
             serde_json::from_slice(body).map_err(|e| DiscoveryError::InvalidResponse {
@@ -461,17 +459,16 @@ impl ServiceDiscovery {
         Ok(services)
     }
 
-    async fn discover_from_fallbacks(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
+    fn discover_from_fallbacks(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
         let mut services = Vec::new();
         if !self.fallbacks.should_use_fallback() {
             return Ok(services);
         }
         info!("Using localhost fallbacks for development");
-        #[allow(deprecated)]
-        if let Some(url) = self.fallbacks.get_fallback_url(primals::TOADSTOOL) {
+        if let Some(url) = self.fallbacks.get_fallback_url(PRIMAL_NAME) {
             services.push(DiscoveredService {
-                id: format!("fallback-{}", primals::TOADSTOOL),
-                name: primals::TOADSTOOL.to_string(),
+                id: format!("fallback-{}", PRIMAL_NAME),
+                name: PRIMAL_NAME.to_string(),
                 version: "dev".to_string(),
                 capabilities: vec![Capability::Compute(
                     crate::primal_identity::ComputeCapability::NativeExecution,

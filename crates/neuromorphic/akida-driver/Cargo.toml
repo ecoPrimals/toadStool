@@ -12,6 +12,9 @@ categories = ["hardware-support", "science"]
 [dependencies]
 # Error handling
 thiserror = { workspace = true }
+
+# Zero-copy binary data for model program and inference results
+bytes = { workspace = true }
 anyhow = "1"
 
 # Logging

@@ -19,10 +19,13 @@ impl ManualJsonRpcServer {
             None => return self.error_response(INVALID_PARAMS, "Missing params", &request),
         };
 
-        let priority = params.get("priority").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+        let priority = params
+            .get("priority")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0) as u32;
         let vram_hint = params
             .get("vram_required_mb")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(4096);
 
         let job_type: JobType = match serde_json::from_value(params) {

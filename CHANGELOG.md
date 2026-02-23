@@ -5,6 +5,41 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - February 23, 2026 (Sessions 43-45 — Deep Debt Evolution)
+
+### Session 45 (Feb 23, 2026)
+
+- **Box<dyn Error> → typed errors**: 21 production usages eliminated across server, core, and client crates
+- **Barracuda shader fixes**: `atanh.wgsl` bind group layout, `batch_pair_reduce_f64.wgsl` fma→multiply+add, NPU test serialization
+- **Coverage**: 38 new tests (planner +9, ecosystem +8, detector +21); core ~87%, server ~85%
+- **Unsafe audit**: 95+ blocks documented, last `NonNull::new_unchecked` evolved to safe, 50+ SAFETY comments
+- **Clippy pedantic**: 14 manual + 100+ auto fixes across distributed/display/gpu crates
+- **Event-driven**: Production polling → `tokio::time::interval` (launcher, client, health)
+- **Clone reduction**: `Arc<str>` version string, ref-based IPC, borrow-based coordinator
+- **Zero-copy**: `read_async` → `bytes::Bytes`, `write_async` → `impl AsRef<[u8]>`
+- **Hardcoding**: Primal integration + Consul/etcd endpoints configurable via env vars
+- **WebSocket**: `WS_PROTOCOL_VERSION` and `ClientError::WebSocket` deprecated; `tokio-tungstenite` removed
+- **Test isolation**: ENV_MUTEX for env-var-mutating detector tests; 5 pre-existing error conversion test failures fixed
+
+### Session 44 (Feb 22, 2026)
+
+- **Sleep elimination**: 33+ production/test sleeps → event-driven (Notify, channel, interval, black_box)
+- **Peer discovery isolation**: `find_peer_with_in()`/`find_all_peers_in()` path-based variants
+- **GPU test robustness**: 10s device creation timeout; Crank-Nicolson CPU path for unit tests
+- **8 core crates**: all lib tests pass concurrently in 43s, 0 failures
+
+### Session 43 (Feb 22, 2026)
+
+- **File refactoring**: `gpu_job_queue.rs` 1127→344 lines; `normalization.rs` 2283→11 modules; `tensor_ops.rs` 2044→8 modules
+- **Typed errors**: `Box<dyn Error>` → `ConfigError` (config), `TarpcClientError` (client)
+- **gRPC stub evolved**: Unix socket JSON-RPC (UNIVERSAL_IPC_STANDARD_V3)
+- **Unsafe evolution**: `NonNull::new_unchecked` → safe alternatives; VFIO `expect()` → error propagation
+- **Clippy pedantic+nursery**: auto-fix 122 files
+- **Hardcoding**: Ports → env vars; paths → XDG resolution; primal names → capability discovery
+- **Coverage expansion**: Core 79%→~86% (+30 tests), Server 77%→~83% (+23 tests)
+- **Idiomatic**: `&String`→`&str`, `&Vec<T>`→`&[T]`, test `panic!`→`assert!(matches!(...))`
+- **ecoBin**: Exit code 130 (SIGINT), WebSocket deprecated with JSON-RPC 2.0 primary
+
 ## [Unreleased] - February 21, 2026 (Session 31h — Deep Debt Polish)
 
 ### Clippy Clean Sweep (Session 31h)

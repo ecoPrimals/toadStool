@@ -50,7 +50,7 @@ fn test_toadstool_id_equality() {
 #[test]
 fn test_toadstool_id_debug() {
     let id = ToadStoolId::new();
-    let debug_str = format!("{:?}", id);
+    let debug_str = format!("{id:?}");
     assert!(!debug_str.is_empty());
 }
 
@@ -116,7 +116,7 @@ fn test_timestamp_clone() {
 #[test]
 fn test_timestamp_debug() {
     let ts = Timestamp::now();
-    let debug_str = format!("{:?}", ts);
+    let debug_str = format!("{ts:?}");
     assert!(!debug_str.is_empty());
 }
 

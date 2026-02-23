@@ -98,10 +98,18 @@ pub mod protocols {
     /// gRPC protocol
     pub const GRPC: &str = "grpc";
 
-    /// WebSocket protocol
+    /// `WebSocket` protocol
+    #[deprecated(
+        since = "0.5.0",
+        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
+    )]
     pub const WEBSOCKET: &str = "websocket";
 
-    /// Secure WebSocket protocol
+    /// Secure `WebSocket` protocol
+    #[deprecated(
+        since = "0.5.0",
+        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
+    )]
     pub const WSS: &str = "wss";
 
     /// JSON-RPC protocol
@@ -211,6 +219,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_protocols() {
         assert_eq!(protocols::HTTP, "http");
         assert_eq!(protocols::GRPC, "grpc");

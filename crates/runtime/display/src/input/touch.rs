@@ -37,9 +37,9 @@ struct TouchPoint {
 ///
 /// Linux Multi-Touch Protocol Type B uses slots:
 /// - Each slot represents a potential touch point
-/// - ABS_MT_SLOT selects which slot to update
-/// - ABS_MT_TRACKING_ID indicates touch start/end (-1 = end)
-/// - ABS_MT_POSITION_X/Y provide coordinates
+/// - `ABS_MT_SLOT` selects which slot to update
+/// - `ABS_MT_TRACKING_ID` indicates touch start/end (-1 = end)
+/// - `ABS_MT_POSITION_X/Y` provide coordinates
 ///
 /// **Deep Debt Compliance:**
 /// - ✅ No assumptions about max touches (grows dynamically)
@@ -67,6 +67,7 @@ struct PartialUpdate {
 
 impl TouchTracker {
     /// Create a new touch tracker
+    #[must_use]
     pub fn new() -> Self {
         Self {
             current_slot: 0,
@@ -121,7 +122,7 @@ impl TouchTracker {
         }
     }
 
-    /// Finalize pending updates (called on SYN_REPORT)
+    /// Finalize pending updates (called on `SYN_REPORT`)
     ///
     /// Returns a list of touch events ready to emit.
     ///
@@ -195,11 +196,13 @@ impl TouchTracker {
     }
 
     /// Get active touch count
+    #[must_use]
     pub fn active_count(&self) -> usize {
         self.slots.len()
     }
 
     /// Get all active touch IDs
+    #[must_use]
     pub fn active_touches(&self) -> Vec<u32> {
         self.slots.values().map(|t| t.touch_id).collect()
     }
@@ -211,7 +214,8 @@ impl Default for TouchTracker {
     }
 }
 
-/// Convert touch events to InputEvents
+/// Convert touch events to `InputEvents`
+#[must_use]
 pub fn touch_events_to_input_events(
     touches: Vec<(u32, TouchPhase, i32, i32)>,
     window: WindowId,
@@ -342,7 +346,7 @@ mod tests {
 
         // All should have unique IDs
         let mut ids: Vec<_> = events.iter().map(|e| e.0).collect();
-        ids.sort();
+        ids.sort_unstable();
         ids.dedup();
         assert_eq!(ids.len(), 10); // No duplicates
     }

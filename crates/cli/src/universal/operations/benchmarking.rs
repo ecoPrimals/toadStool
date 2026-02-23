@@ -6,7 +6,7 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::future::Future;
 use tokio::fs;
-use tokio::time::{Duration, Instant};
+use tokio::time::Instant;
 
 use crate::universal::types::{BenchmarkTest, BenchmarkType, SystemInfo};
 
@@ -175,12 +175,15 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
     }
 
     async fn run_network_benchmark(&self) -> Result<BenchmarkTest> {
-        // Network loopback test
+        // Network loopback test: measure actual work via black_box to prevent optimization
         let start = Instant::now();
 
-        // ⚠️ INTENTIONAL DELAY: Benchmarking baseline timing
-        // This sleep is intentional to establish a performance baseline
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        // Real micro-benchmark: simulate network-like work (prevents optimization)
+        let mut result = 0u64;
+        for i in 0..10_000 {
+            result = std::hint::black_box(result.wrapping_add(i));
+        }
+        let _ = std::hint::black_box(result);
 
         let duration = start.elapsed();
         let score = 1000.0 / duration.as_millis() as f64; // Latency score
@@ -196,11 +199,14 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
     }
 
     async fn run_wasm_benchmark(&self) -> Result<BenchmarkTest> {
-        // WASM execution test
+        // WASM execution test: CPU micro-operations (placeholder until WASM runtime integrated)
         let start = Instant::now();
 
-        // ⚠️ INTENTIONAL DELAY: Benchmarking baseline timing
-        tokio::time::sleep(Duration::from_millis(5)).await;
+        let mut result = 0u64;
+        for i in 0..5_000 {
+            result = std::hint::black_box(result.wrapping_add(i));
+        }
+        let _ = std::hint::black_box(result);
 
         let duration = start.elapsed();
         let score = 1000.0 / duration.as_millis() as f64;
@@ -216,11 +222,15 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
     }
 
     async fn run_container_benchmark(&self) -> Result<BenchmarkTest> {
-        // Container startup test
+        // Container startup test: measure process-spawn-like overhead (CPU work)
+        // TODO: Replace with actual container runtime measurement when available
         let start = Instant::now();
 
-        // ⚠️ INTENTIONAL DELAY: Benchmarking baseline timing
-        tokio::time::sleep(Duration::from_millis(20)).await;
+        let mut result = 0u64;
+        for i in 0..20_000 {
+            result = std::hint::black_box(result.wrapping_add(i));
+        }
+        let _ = std::hint::black_box(result);
 
         let duration = start.elapsed();
         let score = 1000.0 / duration.as_millis() as f64;

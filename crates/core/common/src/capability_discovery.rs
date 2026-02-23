@@ -135,7 +135,7 @@ impl CapabilityDiscovery {
             Ok(services) if !services.is_empty() => Ok(services),
             Ok(_) if self.enable_localhost_fallback => {
                 // Fallback for development
-                self.try_localhost_fallback(&capability).await
+                Ok(self.try_localhost_fallback(&capability))
             }
             Ok(_) => Err(DiscoveryError::NoServicesFound(format!("{capability:?}"))),
             Err(e) => Err(DiscoveryError::DiscoveryFailed(e.to_string())),
@@ -218,12 +218,9 @@ impl CapabilityDiscovery {
     }
 
     /// Try localhost fallback for development
-    async fn try_localhost_fallback(
-        &self,
-        _capability: &Capability,
-    ) -> Result<Vec<DiscoveredService>, DiscoveryError> {
+    fn try_localhost_fallback(&self, _capability: &Capability) -> Vec<DiscoveredService> {
         // Return empty for now - localhost fallback should use environment variables
-        Ok(vec![])
+        vec![]
     }
 }
 
@@ -378,16 +375,18 @@ mod tests {
     #[test]
     fn test_discovery_config_production_env() {
         // Test production environment disables fallback
-        std::env::set_var("TOADSTOOL_ENV", "production");
+        // SAFETY: Sync test, distinct env var, restored immediately. Rust 2024 forward-compat.
+        unsafe { std::env::set_var("TOADSTOOL_ENV", "production") };
         let config = DiscoveryConfig::default();
         assert!(!config.enable_localhost_fallback);
-        std::env::remove_var("TOADSTOOL_ENV");
+        unsafe { std::env::remove_var("TOADSTOOL_ENV") };
     }
 
     #[test]
     fn test_discovery_config_development_env() {
         // Test development environment enables fallback
-        std::env::remove_var("TOADSTOOL_ENV");
+        // SAFETY: Sync test, distinct env var. Rust 2024 forward-compat.
+        unsafe { std::env::remove_var("TOADSTOOL_ENV") };
         let config = DiscoveryConfig::default();
         assert!(config.enable_localhost_fallback);
     }

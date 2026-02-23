@@ -56,9 +56,9 @@ pub fn setup_device_permissions() -> Result<()> {
     Ok(())
 }
 
-/// Set permissions on PCIe resource files
+/// Set permissions on `PCIe` resource files
 pub fn setup_pcie_permissions(pcie_address: &str) -> Result<()> {
-    let device_path = format!("/sys/bus/pci/devices/{}", pcie_address);
+    let device_path = format!("/sys/bus/pci/devices/{pcie_address}");
 
     // Set permissions on resource files
     for entry in fs::read_dir(&device_path)? {

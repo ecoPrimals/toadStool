@@ -1,4 +1,4 @@
-# Status -- February 22, 2026 (Sessions 32-42: Deep Debt Evolution + Spring Absorption)
+# Status -- February 23, 2026 (Sessions 32-45: Deep Debt Evolution + Spring Absorption)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace --lib` | PASS | **5,965+ non-GPU tests + barracuda targeted** |
+| `cargo test --workspace --lib` | PASS | **14,000+ tests passing** |
 | hotSpring validation | PASS | **195/195 acceptance checks** |
 | wetSpring validation | PASS | **728 Rust tests, 95 experiments** |
 | neuralSpring validation | PASS | **1,560+ checks, 115 binaries** |
@@ -17,10 +17,11 @@
 | Hardcoded primal names | PASS | **0 -- capability-based discovery** |
 | Line coverage (common) | PASS | **87%** |
 | Line coverage (config) | PASS | **89%** |
-| Line coverage (core) | PASS | **79%** |
-| Line coverage (server) | PASS | **77%** |
+| Line coverage (core) | PASS | **~87%** |
+| Line coverage (server) | PASS | **~85%** |
 | Line coverage (distributed) | PASS | **55%** |
-| `unsafe` blocks | PASS | **55 blocks -- all SAFETY documented** |
+| `unsafe` blocks | PASS | **95+ blocks audited -- all SAFETY documented** |
+| Production `Box<dyn Error>` | PASS | **0 in core crates -- all typed errors** |
 | Production panics/unwraps | PASS | **Zero blind unwrap(); infallible expect() only** |
 | TODOs/FIXMEs/HACKs | PASS | **Zero in production code** |
 | File size limit | PASS | **All files under 1000 lines** |
@@ -29,6 +30,22 @@
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
 
 ---
+
+## Session 45: Deep Debt Evolution (Feb 23, 2026)
+
+- **Box<dyn Error> → typed errors**: 21 production usages eliminated (tarpc_server, manual_jsonrpc, unibin, resource_validator, production_hardening)
+- **Barracuda fixes**: `atanh.wgsl` bind group layout, `batch_pair_reduce_f64.wgsl` fma→multiply+add, NPU test serialization (`SYNC_DEVICE_MUTEX`)
+- **Coverage expansion**: 38 new tests (planner +9, ecosystem +8, detector +21)
+- **Unsafe audit**: 95+ blocks documented; last `NonNull::new_unchecked` evolved to safe; 50+ SAFETY comments on env-var test blocks
+- **Clippy pedantic**: 14 manual fixes (unnecessary_wraps, unused_async, match_same_arms) + 100+ auto-fixes across distributed/display/gpu crates
+- **Event-driven**: Production polling loops → `tokio::time::interval` (launcher, client, health)
+- **Clone reduction**: `Arc<str>` for version string, ref-based IPC params, borrow-based coordinator
+- **Zero-copy**: `read_async` returns `bytes::Bytes`, `write_async` accepts `impl AsRef<[u8]>`
+- **Hardcoding**: Primal integration and Consul/etcd endpoints configurable via env vars
+- **WebSocket deprecation**: `WS_PROTOCOL_VERSION` and `ClientError::WebSocket` deprecated, `tokio-tungstenite` removed
+- **Error conversion tests**: 5 pre-existing failures fixed (mismatched expected strings)
+- **Test isolation**: ENV_MUTEX for all env-var-mutating detector tests
+- **All quality gates green**: 0 clippy, 0 doc warnings, 0 fmt diffs, 14,000+ tests passing
 
 ## Session 41: f64 Shader Compile Fix + API Exposure (Feb 22, 2026)
 

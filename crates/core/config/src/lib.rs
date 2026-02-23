@@ -387,6 +387,9 @@ pub mod production {
     pub const DEFAULT_PROD_DATABASE_MODE: &str = "clustered";
 }
 
+// Re-export configuration error types (before types mod so crate::ConfigError resolves)
+pub use runtime_defaults::{ConfigError, ConfigResult};
+
 // ===== Configuration Type Definitions =====
 // Refactored into domain-specific modules under types/
 // See types/ directory for organized configuration types

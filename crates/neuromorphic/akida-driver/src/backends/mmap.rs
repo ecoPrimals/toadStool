@@ -99,10 +99,9 @@ impl MmapRegion {
             )
             .map_err(|e| AkidaError::capability_query_failed(format!("mmap failed: {e}")))?;
 
-            // SAFETY: rustix mmap returns a valid pointer on success (no MAP_FAILED check needed)
-            // - The pointer points to mapped memory of at least `size` bytes
-            // - The cast to *mut u8 is valid (byte-aligned memory)
-            NonNull::new_unchecked(addr.cast::<u8>())
+            // EVOLVED: NonNull::new + expect is safe; rustix returns non-null on Ok
+            NonNull::new(addr.cast::<u8>())
+                .expect("rustix mmap returns non-null pointer on success")
         };
 
         tracing::info!(

@@ -2,7 +2,10 @@
 //!
 //! Provides a fluent builder pattern for constructing capability requests.
 
-use super::capability_types::*;
+use super::capability_types::{
+    CapabilityType, CoordinationFeature, IntelligenceFeature, ModelType, SecurityFeature,
+    StorageFeature, TrustLevel,
+};
 
 /// Builder for capability requests
 pub struct CapabilityRequestBuilder {
@@ -12,11 +15,13 @@ pub struct CapabilityRequestBuilder {
 
 impl CapabilityRequestBuilder {
     /// Create a new request builder
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self { capability: None }
     }
 
     /// Request security capability
+    #[must_use]
     pub fn security(self) -> SecurityRequestBuilder {
         SecurityRequestBuilder {
             features: vec![],
@@ -25,6 +30,7 @@ impl CapabilityRequestBuilder {
     }
 
     /// Request storage capability
+    #[must_use]
     pub fn storage(self) -> StorageRequestBuilder {
         StorageRequestBuilder {
             features: vec![],
@@ -33,6 +39,7 @@ impl CapabilityRequestBuilder {
     }
 
     /// Request coordination capability
+    #[must_use]
     pub fn coordination(self) -> CoordinationRequestBuilder {
         CoordinationRequestBuilder {
             features: vec![],
@@ -41,6 +48,7 @@ impl CapabilityRequestBuilder {
     }
 
     /// Request intelligence capability
+    #[must_use]
     pub fn intelligence(self) -> IntelligenceRequestBuilder {
         IntelligenceRequestBuilder {
             features: vec![],
@@ -63,30 +71,35 @@ pub struct SecurityRequestBuilder {
 
 impl SecurityRequestBuilder {
     /// Add encryption feature
+    #[must_use]
     pub fn with_encryption(mut self) -> Self {
         self.features.push(SecurityFeature::Encryption);
         self
     }
 
     /// Add signing feature
+    #[must_use]
     pub fn with_signing(mut self) -> Self {
         self.features.push(SecurityFeature::Signing);
         self
     }
 
     /// Add audit feature
+    #[must_use]
     pub fn with_audit(mut self) -> Self {
         self.features.push(SecurityFeature::Audit);
         self
     }
 
     /// Set minimum trust level
-    pub fn min_trust_level(mut self, level: TrustLevel) -> Self {
+    #[must_use]
+    pub const fn min_trust_level(mut self, level: TrustLevel) -> Self {
         self.min_trust_level = level;
         self
     }
 
     /// Build the capability type
+    #[must_use]
     pub fn build(self) -> CapabilityType {
         CapabilityType::Security {
             features: self.features,
@@ -103,30 +116,35 @@ pub struct StorageRequestBuilder {
 
 impl StorageRequestBuilder {
     /// Add compression feature
+    #[must_use]
     pub fn with_compression(mut self) -> Self {
         self.features.push(StorageFeature::Compression);
         self
     }
 
     /// Add encryption feature
+    #[must_use]
     pub fn with_encryption(mut self) -> Self {
         self.features.push(StorageFeature::Encryption);
         self
     }
 
     /// Add versioning feature
+    #[must_use]
     pub fn with_versioning(mut self) -> Self {
         self.features.push(StorageFeature::Versioning);
         self
     }
 
     /// Set minimum throughput
-    pub fn min_throughput_mbps(mut self, throughput: u64) -> Self {
+    #[must_use]
+    pub const fn min_throughput_mbps(mut self, throughput: u64) -> Self {
         self.min_throughput_mbps = Some(throughput);
         self
     }
 
     /// Build the capability type
+    #[must_use]
     pub fn build(self) -> CapabilityType {
         CapabilityType::Storage {
             features: self.features,
@@ -143,24 +161,28 @@ pub struct CoordinationRequestBuilder {
 
 impl CoordinationRequestBuilder {
     /// Add service discovery feature
+    #[must_use]
     pub fn with_service_discovery(mut self) -> Self {
         self.features.push(CoordinationFeature::ServiceDiscovery);
         self
     }
 
     /// Add load balancing feature
+    #[must_use]
     pub fn with_load_balancing(mut self) -> Self {
         self.features.push(CoordinationFeature::LoadBalancing);
         self
     }
 
     /// Set maximum latency
-    pub fn max_latency_ms(mut self, latency: u64) -> Self {
+    #[must_use]
+    pub const fn max_latency_ms(mut self, latency: u64) -> Self {
         self.max_latency_ms = Some(latency);
         self
     }
 
     /// Build the capability type
+    #[must_use]
     pub fn build(self) -> CapabilityType {
         CapabilityType::Coordination {
             features: self.features,
@@ -177,24 +199,28 @@ pub struct IntelligenceRequestBuilder {
 
 impl IntelligenceRequestBuilder {
     /// Add natural language feature
+    #[must_use]
     pub fn with_natural_language(mut self) -> Self {
         self.features.push(IntelligenceFeature::NaturalLanguage);
         self
     }
 
     /// Add code generation feature
+    #[must_use]
     pub fn with_code_generation(mut self) -> Self {
         self.features.push(IntelligenceFeature::CodeGeneration);
         self
     }
 
     /// Add LLM model type
+    #[must_use]
     pub fn with_llm(mut self) -> Self {
         self.model_types.push(ModelType::LLM);
         self
     }
 
     /// Build the capability type
+    #[must_use]
     pub fn build(self) -> CapabilityType {
         CapabilityType::Intelligence {
             features: self.features,
@@ -216,15 +242,14 @@ mod tests {
             .min_trust_level(TrustLevel::High)
             .build();
 
-        match capability {
-            CapabilityType::Security {
-                features,
-                min_trust_level,
-            } => {
-                assert_eq!(features.len(), 2);
-                assert_eq!(min_trust_level, TrustLevel::High);
-            }
-            _ => panic!("Should be Security capability"),
+        assert!(matches!(capability, CapabilityType::Security { .. }));
+        if let CapabilityType::Security {
+            features,
+            min_trust_level,
+        } = &capability
+        {
+            assert_eq!(features.len(), 2);
+            assert_eq!(*min_trust_level, TrustLevel::High);
         }
     }
 
@@ -237,15 +262,14 @@ mod tests {
             .min_throughput_mbps(100)
             .build();
 
-        match capability {
-            CapabilityType::Storage {
-                features,
-                min_throughput_mbps,
-            } => {
-                assert_eq!(features.len(), 2);
-                assert_eq!(min_throughput_mbps, Some(100));
-            }
-            _ => panic!("Should be Storage capability"),
+        assert!(matches!(capability, CapabilityType::Storage { .. }));
+        if let CapabilityType::Storage {
+            features,
+            min_throughput_mbps,
+        } = &capability
+        {
+            assert_eq!(features.len(), 2);
+            assert_eq!(*min_throughput_mbps, Some(100));
         }
     }
 
@@ -258,15 +282,14 @@ mod tests {
             .max_latency_ms(10)
             .build();
 
-        match capability {
-            CapabilityType::Coordination {
-                features,
-                max_latency_ms,
-            } => {
-                assert_eq!(features.len(), 2);
-                assert_eq!(max_latency_ms, Some(10));
-            }
-            _ => panic!("Should be Coordination capability"),
+        assert!(matches!(capability, CapabilityType::Coordination { .. }));
+        if let CapabilityType::Coordination {
+            features,
+            max_latency_ms,
+        } = &capability
+        {
+            assert_eq!(features.len(), 2);
+            assert_eq!(*max_latency_ms, Some(10));
         }
     }
 
@@ -278,15 +301,14 @@ mod tests {
             .with_llm()
             .build();
 
-        match capability {
-            CapabilityType::Intelligence {
-                features,
-                model_types,
-            } => {
-                assert_eq!(features.len(), 1);
-                assert_eq!(model_types.len(), 1);
-            }
-            _ => panic!("Should be Intelligence capability"),
+        assert!(matches!(capability, CapabilityType::Intelligence { .. }));
+        if let CapabilityType::Intelligence {
+            features,
+            model_types,
+        } = &capability
+        {
+            assert_eq!(features.len(), 1);
+            assert_eq!(model_types.len(), 1);
         }
     }
 }

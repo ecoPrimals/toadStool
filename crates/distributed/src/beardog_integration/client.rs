@@ -219,8 +219,7 @@ impl BearDogClient {
         let socket_path = discover_crypto_socket()
             .await
             .map_err(|e| ToadStoolError::configuration(format!(
-                "No crypto service discovered: {}. Ensure a crypto provider (e.g., BearDog) is running.",
-                e
+                "No crypto service discovered: {e}. Ensure a crypto provider (e.g., BearDog) is running.",
             )))?;
 
         let rpc_client = UnixJsonRpcClient::new(socket_path);
@@ -280,14 +279,14 @@ impl BearDogClient {
             .await
             .map_err(|e| {
                 tracing::warn!("Beardog capabilities query failed: {}", e);
-                ToadStoolError::network(format!("Beardog crypto capabilities query failed: {}", e))
+                ToadStoolError::network(format!("Beardog crypto capabilities query failed: {e}"))
             })?;
 
         // Parse the response into CryptoCapability
         let algorithms: Vec<String> = response
             .get("algorithms")
             .and_then(|v: &serde_json::Value| v.as_array())
-            .map(|arr: &Vec<serde_json::Value>| {
+            .map(|arr| {
                 arr.iter()
                     .filter_map(|v: &serde_json::Value| v.as_str().map(String::from))
                     .collect()
@@ -323,7 +322,7 @@ impl BearDogClient {
     /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no TLS, no ring!)
     pub async fn encrypt(&self, request: EncryptionRequest) -> ToadStoolResult<EncryptionResponse> {
         let params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
 
         self.rpc_client.call_typed("beardog.encrypt", params).await
     }
@@ -333,7 +332,7 @@ impl BearDogClient {
     /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no TLS, no ring!)
     pub async fn decrypt(&self, request: EncryptionRequest) -> ToadStoolResult<EncryptionResponse> {
         let params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
 
         self.rpc_client.call_typed("beardog.decrypt", params).await
     }
@@ -346,7 +345,7 @@ impl BearDogClient {
         request: KeyManagementRequest,
     ) -> ToadStoolResult<KeyManagementResponse> {
         let params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
 
         self.rpc_client
             .call_typed("beardog.key_management", params)
@@ -365,7 +364,7 @@ impl BearDogClient {
         };
 
         let params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
 
         self.rpc_client.call_typed("beardog.sign", params).await
     }
@@ -387,7 +386,7 @@ impl BearDogClient {
         };
 
         let params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
 
         let result: VerificationResponse =
             self.rpc_client.call_typed("beardog.verify", params).await?;
@@ -403,7 +402,7 @@ impl BearDogClient {
         request: &crate::security_provider::PermissionRequest,
     ) -> ToadStoolResult<PermissionResponse> {
         let params = serde_json::to_value(request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
 
         self.rpc_client
             .call_typed("beardog.create_permission", params)
@@ -418,7 +417,7 @@ impl BearDogClient {
         permission: &crate::security_provider::SecurityPermission,
     ) -> ToadStoolResult<bool> {
         let params = serde_json::to_value(permission)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
 
         let result: ValidationResponse = self
             .rpc_client
@@ -441,7 +440,7 @@ impl BearDogClient {
         };
 
         let mut params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
 
         // Add permission_id to params
         if let Some(obj) = params.as_object_mut() {
@@ -625,7 +624,7 @@ impl toadstool::encryption::CryptoProvider for BearDogClient {
                 ))
             }
             super::types::KeyOperationResult::Error { message } => Err(ToadStoolError::runtime(
-                format!("BearDog key generation failed: {}", message),
+                format!("BearDog key generation failed: {message}"),
             )),
             _ => Err(ToadStoolError::runtime("Unexpected response from BearDog")),
         }
@@ -653,7 +652,7 @@ impl toadstool::encryption::CryptoProvider for BearDogClient {
                 toadstool::encryption::SecurityLevel::Standard, // Default, should be in response
             )),
             super::types::KeyOperationResult::Error { message } => Err(ToadStoolError::not_found(
-                format!("BearDog key not found: {}", message),
+                format!("BearDog key not found: {message}"),
             )),
             _ => Err(ToadStoolError::runtime("Unexpected response from BearDog")),
         }

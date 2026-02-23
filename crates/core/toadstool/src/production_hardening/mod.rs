@@ -7,6 +7,7 @@ mod resource_leak;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::ToadStoolResult;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -78,7 +79,7 @@ impl ProductionHardeningManager {
 
     /// Start background tasks: resource-leak cleanup loop and memory-pressure
     /// monitoring. Idempotent — safe to call multiple times.
-    pub async fn initialize(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn initialize(&self) -> ToadStoolResult<()> {
         if self.config.enable_leak_detection {
             self.leak_detector.start_cleanup_task().await;
         }

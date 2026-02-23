@@ -2,9 +2,6 @@
 
 use std::path::PathBuf;
 
-#[allow(deprecated)]
-use crate::interned_strings::primals;
-
 use super::env::SocketPathEnv;
 use super::paths;
 
@@ -84,18 +81,17 @@ pub async fn discover_coordination_socket() -> Result<PathBuf, SocketDiscoveryEr
     .await
 }
 
-/// Helper: Map capability to biomeOS standard path (fallback during transition)
-#[allow(deprecated)]
+/// Helper: Map capability to biomeOS standard socket path (fallback during transition)
 fn capability_to_biomeos_fallback(
     capability: &crate::primal_identity::Capability,
 ) -> Result<PathBuf, SocketDiscoveryError> {
     use crate::primal_identity::Capability;
 
     let service_name = match capability {
-        Capability::Crypto(_) => primals::BEARDOG,
-        Capability::Storage(_) => primals::NESTGATE,
-        Capability::Coordination(_) => primals::SONGBIRD,
-        Capability::Compute(_) => primals::TOADSTOOL,
+        Capability::Crypto(_) => "beardog",
+        Capability::Storage(_) => "nestgate",
+        Capability::Coordination(_) => "songbird",
+        Capability::Compute(_) => "toadstool",
         _ => {
             return Err(SocketDiscoveryError::NoSocketFound(format!(
                 "No fallback path for capability: {capability:?}"

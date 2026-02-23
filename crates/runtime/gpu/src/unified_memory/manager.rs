@@ -345,7 +345,7 @@ impl UniversalUnifiedMemory {
         let metadata = UnifiedBufferMetadata::new(id, size, flags);
         self.allocations
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(id, metadata);
 
         // Update metrics
@@ -370,7 +370,10 @@ impl UniversalUnifiedMemory {
 
         // Update stats
         if self.config.enable_metrics {
-            let mut stats = self.metrics.write().unwrap_or_else(|e| e.into_inner());
+            let mut stats = self
+                .metrics
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             stats.allocation_count += 1;
             stats.active_allocations += 1;
             stats.total_allocated = new_total;
@@ -411,7 +414,7 @@ impl UniversalUnifiedMemory {
     pub fn stats(&self) -> UnifiedMemoryStats {
         self.metrics
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
     }
 
@@ -419,7 +422,7 @@ impl UniversalUnifiedMemory {
     pub fn active_allocations(&self) -> usize {
         self.allocations
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .len()
     }
 

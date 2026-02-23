@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 21, 2026
+**Last Updated**: February 23, 2026
 
 ---
 
@@ -27,19 +27,20 @@
 
 ---
 
-## Current State (Session 38 — February 22, 2026)
+## Current State (Session 45 — February 23, 2026)
 
-- **3,847+ non-GPU tests + barracuda targeted**, 0 failing | all quality gates green
-- **589+ WGSL shaders** — zero orphans, every shader wired to Rust
-- **Zero clippy warnings** workspace-wide (8 intentional deprecation notes in legacy module)
-- **Zero blind unwrap()** in production code — infallible `expect()` only
-- **2,700+ three springs validation** — hotSpring + wetSpring + neuralSpring
-- **HFB nuclear physics** — spherical (5 shaders) + axially-deformed (5 shaders) on cylindrical grids
+- **14,000+ tests**, 0 failing | all quality gates green
+- **600+ WGSL shaders** — zero orphans, every shader wired to Rust
+- **Zero clippy warnings** workspace-wide | zero doc warnings | zero fmt diffs
+- **Zero blind unwrap()**, zero `Box<dyn Error>`, zero TODO/FIXME in production code
+- **95+ unsafe blocks** — all FFI/hardware, all SAFETY documented
+- **4,000+ four springs validation** — hotSpring + wetSpring + neuralSpring + airSpring
+- **HFB nuclear physics** — 11 spherical + deformed shaders on cylindrical grids
 - **25 bio/evolution GPU ops** — HMM, ANI, SNP, dN/dS, pangenome, Hill gate, swarm NN, etc.
 - **Sovereign Compute Phases 0–3** — `WgslOptimizer` live in `compile_shader_f64()` hot path
 - **Scientific middleware** — 14 modules, 400+ tests, 0 unsafe
 - **36 JSON-RPC methods** across 8 domains
-- **Distributed networking** — least-loaded node selection, federation TCP discovery, edge device probing
+- **Coverage**: common 87%, config 89%, core ~87%, server ~85%
 
 ---
 
@@ -130,4 +131,4 @@ specs/                     -- Technical specifications
 
 ---
 
-**Last Updated**: February 22, 2026 — Session 38
+**Last Updated**: February 23, 2026 — Session 45
