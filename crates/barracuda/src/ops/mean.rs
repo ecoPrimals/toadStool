@@ -50,17 +50,13 @@ impl Mean {
 
         match self.dim {
             None => {
-                // Global mean reduction
+                // Global mean reduction — single-workgroup shader that loops
+                // over all elements internally (workgroup_size=1).
                 let size: usize = shape.iter().product();
-                // Deep Debt Evolution: Capability-based dispatch
-                let caps = DeviceCapabilities::from_device(device);
-                let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-                let num_workgroups = (size as u32).div_ceil(optimal_wg_size);
 
-                // Create output buffer for partial results
                 let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some("Mean Reduce Output"),
-                    size: (num_workgroups as usize * std::mem::size_of::<f32>()) as u64,
+                    size: std::mem::size_of::<f32>() as u64,
                     usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
                     mapped_at_creation: false,
                 });
@@ -164,7 +160,7 @@ impl Mean {
                             label: Some("Mean Reduce Pipeline"),
                             layout: Some(&pipeline_layout),
                             module: &shader_module,
-                            entry_point: "main",
+                            entry_point: "mean_reduce",
                             cache: None,
                             compilation_options: Default::default(),
                         });
@@ -185,20 +181,13 @@ impl Mean {
                         });
                     compute_pass.set_pipeline(&compute_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
-                    // Deep Debt Evolution: Capability-based dispatch
-                    compute_pass.dispatch_workgroups(num_workgroups.max(1), 1, 1);
+                    compute_pass.dispatch_workgroups(1, 1, 1);
                 }
 
                 device.queue.submit(Some(encoder.finish()));
 
-                // Read back partial results and reduce them on CPU
-                let partial_results =
-                    device.read_buffer_f32(&output_buffer, num_workgroups as usize)?;
-                let global_sum: f32 = partial_results.iter().sum();
-                let global_mean = global_sum / size as f32;
-
-                // Return scalar tensor
-                Ok(Tensor::new(vec![global_mean], vec![], device.clone()))
+                let result = device.read_buffer_f32(&output_buffer, 1)?;
+                Ok(Tensor::new(result, vec![], device.clone()))
             }
             Some(dim) => {
                 // Dimension-wise mean reduction
