@@ -1,23 +1,25 @@
-//! Gamma and Incomplete Gamma Functions
+//! Gamma and Incomplete Gamma Functions — CPU reference implementations.
 //!
-//! Implementations of gamma-related special functions commonly used in
-//! statistics, physics, and scientific computing.
+//! **Shader-first architecture**: These functions have f64 WGSL equivalents in
+//! `shaders/math/math_f64_special.wgsl` (`gamma_f64`, `lgamma_f64`, `digamma_f64`,
+//! `regularized_gamma_f64`, `incomplete_gamma_f64`, `beta_f64`, `ln_beta_f64`).
+//! GPU pipelines that need these operations should use the shader versions
+//! via `compile_shader_f64()`. These CPU functions serve as:
+//! - Reference implementations for shader validation
+//! - Building blocks for CPU-side test/validation code
+//! - Scalar fallbacks where GPU dispatch overhead exceeds compute cost
 //!
 //! # Functions
 //!
-//! - `gamma(x)` - Complete gamma function Γ(x)
-//! - `ln_gamma(x)` - Natural log of gamma function, ln(Γ(x))
-//! - `lower_incomplete_gamma(a, x)` - Lower incomplete gamma γ(a, x)
-//! - `upper_incomplete_gamma(a, x)` - Upper incomplete gamma Γ(a, x)
-//! - `regularized_gamma_p(a, x)` - P(a, x) = γ(a, x) / Γ(a)
-//! - `regularized_gamma_q(a, x)` - Q(a, x) = Γ(a, x) / Γ(a) = 1 - P(a, x)
-//!
-//! # Applications
-//!
-//! - Chi-squared distribution CDF
-//! - Poisson distribution
-//! - Nuclear physics (shell model)
-//! - Statistical hypothesis testing
+//! - `gamma(x)` — Γ(x) → shader: `gamma_f64()`
+//! - `ln_gamma(x)` — ln(Γ(x)) → shader: `lgamma_f64()`
+//! - `lower_incomplete_gamma(a, x)` — γ(a,x)
+//! - `upper_incomplete_gamma(a, x)` — Γ(a,x)
+//! - `regularized_gamma_p(a, x)` — P(a,x) → shader: `regularized_gamma_f64()`
+//! - `regularized_gamma_q(a, x)` — Q(a,x) = 1 - P(a,x)
+//! - `digamma(x)` — ψ(x) → shader: `digamma_f64()`
+//! - `beta(a, b)` — B(a,b) → shader: `beta_f64()`
+//! - `ln_beta(a, b)` → shader: `ln_beta_f64()`
 //!
 //! # References
 //!

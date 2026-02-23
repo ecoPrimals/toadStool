@@ -26,7 +26,12 @@
 //! let (forces, energy) = pppm.compute(&positions, &charges)?;
 //! ```
 
+#[cfg(test)]
 use std::f64::consts::PI;
+use std::sync::Arc;
+
+use crate::device::WgpuDevice;
+use crate::ops::fft::Fft3DF64;
 
 use super::{
     compute_short_range, dipole_correction, interpolate_forces, self_energy_correction,
@@ -36,6 +41,7 @@ use super::{
 /// PPPM Electrostatics Solver
 ///
 /// Provides efficient O(N log N) electrostatics for periodic systems.
+/// Always uses GPU FFT for k-space solves.
 #[derive(Clone)]
 pub struct Pppm {
     /// PPPM configuration parameters
@@ -43,13 +49,20 @@ pub struct Pppm {
 
     /// Precomputed Green's function G(k)
     greens: GreensFunction,
+
+    /// GPU device for FFT execution
+    device: Arc<WgpuDevice>,
 }
 
 impl Pppm {
-    /// Create a new PPPM solver with given parameters
-    pub fn new(params: PppmParams) -> Self {
+    /// Create a new PPPM solver with given parameters and GPU device
+    pub fn new(device: Arc<WgpuDevice>, params: PppmParams) -> Self {
         let greens = GreensFunction::new(&params);
-        Self { params, greens }
+        Self {
+            params,
+            greens,
+            device,
+        }
     }
 
     /// Compute electrostatic forces and total energy
@@ -138,40 +151,58 @@ impl Pppm {
         &self.params
     }
 
-    /// Forward FFT: convert charge mesh to k-space
-    ///
-    /// Uses CPU FFT for now. GPU acceleration via Fft3D would be:
-    /// ```ignore
-    /// let tensor = Tensor::from_data(&complex_mesh, shape, device)?;
-    /// let fft = Fft3D::new(tensor, kx, ky, kz)?;
-    /// let result = fft.execute()?;
-    /// ```
+    /// Forward FFT: convert charge mesh to k-space (GPU)
     fn forward_fft(&self, mesh: &ChargeMesh) -> Result<Vec<f64>, PppmError> {
         let [kx, ky, kz] = self.params.mesh_dims;
+
+        if !kx.is_power_of_two() || !ky.is_power_of_two() || !kz.is_power_of_two() {
+            return Err(PppmError::FftError(format!(
+                "Mesh dimensions must be powers of 2 for GPU FFT, got ({}, {}, {})",
+                kx, ky, kz
+            )));
+        }
+
         let size = kx * ky * kz;
 
         // Convert real mesh to complex (imaginary = 0)
         let mut complex = vec![0.0f64; size * 2];
         for i in 0..size {
             complex[i * 2] = mesh.values[i];
-            // complex[i * 2 + 1] = 0.0 (already zero)
         }
 
-        // CPU 3D FFT via dimension-wise decomposition
-        self.fft_3d_cpu(&mut complex, kx, ky, kz, false)?;
+        let fft = Fft3DF64::new(self.device.clone(), kx, ky, kz)
+            .map_err(|e| PppmError::FftError(e.to_string()))?;
 
-        Ok(complex)
+        let result = pollster::block_on(fft.forward(&complex))
+            .map_err(|e| PppmError::FftError(e.to_string()))?;
+
+        Ok(result)
     }
 
-    /// Backward FFT: convert k-space potential to real-space mesh
+    /// Backward FFT: convert k-space potential to real-space mesh (GPU)
     fn backward_fft(&self, phi_k: &[f64]) -> Result<PotentialMesh, PppmError> {
         let [kx, ky, kz] = self.params.mesh_dims;
+
+        if !kx.is_power_of_two() || !ky.is_power_of_two() || !kz.is_power_of_two() {
+            return Err(PppmError::FftError(format!(
+                "Mesh dimensions must be powers of 2 for GPU FFT, got ({}, {}, {})",
+                kx, ky, kz
+            )));
+        }
+
         let size = kx * ky * kz;
 
-        let mut complex = phi_k.to_vec();
+        let fft = Fft3DF64::new(self.device.clone(), kx, ky, kz)
+            .map_err(|e| PppmError::FftError(e.to_string()))?;
 
-        // Inverse FFT
-        self.fft_3d_cpu(&mut complex, kx, ky, kz, true)?;
+        let mut complex = pollster::block_on(fft.inverse(phi_k))
+            .map_err(|e| PppmError::FftError(e.to_string()))?;
+
+        // Normalize for inverse FFT (Fft3DF64 doesn't normalize)
+        let scale = 1.0 / (kx * ky * kz) as f64;
+        for v in complex.iter_mut() {
+            *v *= scale;
+        }
 
         // Extract real part as potential
         let mut values = vec![0.0; size];
@@ -186,9 +217,8 @@ impl Pppm {
         ))
     }
 
-    /// CPU 3D FFT using dimension-wise 1D FFTs
-    ///
-    /// This is the reference implementation. For production, use GPU FFT.
+    /// CPU 3D FFT using dimension-wise 1D FFTs (test only)
+    #[cfg(test)]
     fn fft_3d_cpu(
         &self,
         data: &mut [f64],
@@ -269,6 +299,7 @@ impl Pppm {
     }
 
     /// CPU 1D FFT (Cooley-Tukey radix-2)
+    #[cfg(test)]
     fn fft_1d_cpu(&self, data: &mut [f64], n: usize, inverse: bool) {
         // Bit-reversal permutation
         let mut j = 0;
@@ -348,10 +379,14 @@ impl std::error::Error for PppmError {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device_if_f64_gpu_available_sync;
     use crate::ops::md::electrostatics::PppmAccuracy;
 
     #[test]
     fn test_pppm_two_opposite_charges() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let params = PppmParams::custom(
             2,
             [10.0, 10.0, 10.0],
@@ -361,7 +396,7 @@ mod tests {
             4,   // order
         );
 
-        let pppm = Pppm::new(params);
+        let pppm = Pppm::new(device, params);
 
         // Two opposite charges
         let positions = vec![[4.0, 5.0, 5.0], [6.0, 5.0, 5.0]];
@@ -397,9 +432,12 @@ mod tests {
 
     #[test]
     fn test_pppm_two_like_charges() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let params = PppmParams::custom(2, [10.0, 10.0, 10.0], [8, 8, 8], 2.0, 3.0, 4);
 
-        let pppm = Pppm::new(params);
+        let pppm = Pppm::new(device, params);
 
         // Two positive charges
         let positions = vec![[4.0, 5.0, 5.0], [6.0, 5.0, 5.0]];
@@ -434,8 +472,11 @@ mod tests {
 
     #[test]
     fn test_pppm_neutral_system() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let params = PppmParams::auto(4, 10.0, PppmAccuracy::Medium);
-        let pppm = Pppm::new(params);
+        let pppm = Pppm::new(device, params);
 
         // Neutral system: +1 +1 -1 -1
         let positions = vec![
@@ -460,8 +501,11 @@ mod tests {
 
     #[test]
     fn test_pppm_empty_system() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let params = PppmParams::auto(0, 10.0, PppmAccuracy::Low);
-        let pppm = Pppm::new(params);
+        let pppm = Pppm::new(device, params);
 
         let (forces, energy) = pppm.compute(&[], &[]).unwrap();
 
@@ -471,8 +515,11 @@ mod tests {
 
     #[test]
     fn test_pppm_size_mismatch() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let params = PppmParams::auto(2, 10.0, PppmAccuracy::Low);
-        let pppm = Pppm::new(params);
+        let pppm = Pppm::new(device, params);
 
         let result = pppm.compute(&[[0.0, 0.0, 0.0]], &[1.0, 2.0]);
 
@@ -485,8 +532,11 @@ mod tests {
 
     #[test]
     fn test_fft_1d_roundtrip() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let params = PppmParams::auto(10, 10.0, PppmAccuracy::Medium);
-        let pppm = Pppm::new(params);
+        let pppm = Pppm::new(device, params);
 
         // Simple complex signal
         let mut data = vec![1.0, 0.0, 2.0, 0.0, 3.0, 0.0, 4.0, 0.0]; // n=4

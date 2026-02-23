@@ -29,17 +29,15 @@ impl BesselI0F64 {
         if x.is_empty() {
             return Ok(vec![]);
         }
-        let size = x.len();
-        if size < 256 {
-            return Ok(self.i0_cpu(x));
-        }
         self.i0_gpu(x)
     }
 
+    #[cfg(test)]
     fn i0_cpu(&self, x: &[f64]) -> Vec<f64> {
         x.iter().map(|&xi| Self::i0_scalar(xi)).collect()
     }
 
+    #[cfg(test)]
     fn i0_scalar(x: f64) -> f64 {
         let ax = x.abs();
         if ax < 3.75 {

@@ -1,16 +1,20 @@
-//! Debug PPPM CPU vs GPU - run: cargo run -p barracuda --no-default-features --example pppm_debug
+//! Debug PPPM (GPU FFT) - run: cargo run -p barracuda --example pppm_debug
 
+use barracuda::device::WgpuDevice;
 use barracuda::ops::md::electrostatics::{
     compute_short_range, dipole_correction, self_energy_correction, spread_charges_with_coeffs,
     GreensFunction, Pppm, PppmCpuFft, PppmParams,
 };
+use std::sync::Arc;
 
 fn main() {
+    let device =
+        Arc::new(pollster::block_on(WgpuDevice::new()).expect("GPU required for PPPM example"));
     let params = PppmParams::custom(2, [10.0, 10.0, 10.0], [8, 8, 8], 2.0, 3.0, 4);
     let positions = vec![[4.0, 5.0, 5.0], [6.0, 5.0, 5.0]];
     let charges = vec![1.0, -1.0];
 
-    let pppm = Pppm::new(params.clone());
+    let pppm = Pppm::new(device.clone(), params.clone());
     let (forces, energy) = pppm.compute(&positions, &charges).unwrap();
 
     let (_e_short_forces, e_short) = compute_short_range(&positions, &charges, &params);

@@ -1,4 +1,4 @@
-//! LogSumExp - Pure WGSL
+//! LogSumExp - Pure WGSL (f64)
 //!
 //! Deep Debt Principles:
 //! - Self-knowledge: Operation knows its computation
@@ -7,8 +7,9 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 //!
-//! Computes log-sum-exp with numerical stability.
+//! Computes log-sum-exp with numerical stability (f64 precision).
 //! Used in softmax, log-likelihood computations.
+//! Expects f64 input tensor (use Tensor::from_data_pod with &[f64]).
 
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
@@ -26,9 +27,15 @@ impl LogSumExp {
         Self { input }
     }
 
-    /// Get the WGSL shader source
+    /// f32 WGSL shader source (legacy, retained as fossil reference).
+    #[allow(dead_code)]
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/math/logsumexp.wgsl")
+    }
+
+    /// f64 version for universal math library portability.
+    pub fn wgsl_shader_f64() -> &'static str {
+        include_str!("../shaders/math/logsumexp_f64.wgsl")
     }
 
     /// Execute the logsumexp operation
@@ -39,8 +46,8 @@ impl LogSumExp {
         // Access input buffer directly (zero-copy)
         let input_buffer = self.input.buffer();
 
-        // Output is a single scalar
-        let output_buffer = device.create_buffer_f32(1)?;
+        // Output is a single scalar (f64)
+        let output_buffer = device.create_buffer_f64(1)?;
 
         // Create uniform buffer for parameters
         #[repr(C)]
@@ -59,8 +66,9 @@ impl LogSumExp {
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
-        // Compile shader
-        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("LogSumExp Shader"));
+        // Compile shader (f64 with polyfill injection)
+        let shader_module =
+            device.compile_shader_f64(Self::wgsl_shader_f64(), Some("LogSumExp f64"));
 
         // Create bind group layout
         let bind_group_layout =

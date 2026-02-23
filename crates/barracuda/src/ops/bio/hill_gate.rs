@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-//! Hill Gate — Two-input Hill AND gate (f32).
+//! Hill Gate — Two-input Hill AND gate (f64 pipeline).
 //!
 //! Computes f(a, b) = vmax × H(a, K_a, n_a) × H(b, K_b, n_b) where
 //! H(x, K, n) = x^n / (K^n + x^n) is the Hill function. Used for regulatory
@@ -16,6 +16,9 @@ use crate::device::WgpuDevice;
 
 pub const WGSL_HILL_GATE: &str = include_str!("../../shaders/bio/hill_gate.wgsl");
 
+/// f64 version for universal math library portability.
+pub const WGSL_HILL_GATE_F64: &str = include_str!("../../shaders/bio/hill_gate_f64.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct HillGateParams {
@@ -23,16 +26,15 @@ pub struct HillGateParams {
     pub n_b: u32,
     pub mode: u32, // 0 = paired, 1 = grid
     pub _pad: u32,
-    pub k_a: f32,
-    pub k_b: f32,
-    pub n_a_exp: f32,
-    pub n_b_exp: f32,
-    pub vmax: f32,
-    pub _pad2: f32,
-    pub _pad3: f32,
-    pub _pad4: f32,
+    pub k_a: f64,
+    pub k_b: f64,
+    pub n_a_exp: f64,
+    pub n_b_exp: f64,
+    pub vmax: f64,
+    pub _pad2: f64,
 }
 
+/// Hill gate GPU kernel (f64 pipeline).
 pub struct HillGateGpu {
     pipeline: wgpu::ComputePipeline,
     bgl: wgpu::BindGroupLayout,
@@ -95,10 +97,7 @@ impl HillGateGpu {
             push_constant_ranges: &[],
         });
 
-        let module = d.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("HillGate Shader"),
-            source: wgpu::ShaderSource::Wgsl(WGSL_HILL_GATE.into()),
-        });
+        let module = device.compile_shader_f64(WGSL_HILL_GATE_F64, Some("HillGate f64"));
 
         let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("HillGate Pipeline"),
@@ -181,7 +180,7 @@ impl HillGateGpu {
 
 #[cfg(test)]
 mod tests {
-    use super::{HillGateGpu, HillGateParams, WGSL_HILL_GATE};
+    use super::{HillGateGpu, HillGateParams, WGSL_HILL_GATE, WGSL_HILL_GATE_F64};
 
     #[test]
     fn sanity_constants_exported() {
@@ -190,5 +189,20 @@ mod tests {
         assert!(WGSL_HILL_GATE.contains("HillGateParams"));
         assert!(std::any::type_name::<HillGateGpu>().contains("HillGateGpu"));
         assert!(std::any::type_name::<HillGateParams>().contains("HillGateParams"));
+    }
+
+    #[test]
+    fn f64_shader_contains_main() {
+        assert!(WGSL_HILL_GATE_F64.contains("fn main"));
+        assert!(WGSL_HILL_GATE_F64.contains("f64"));
+    }
+
+    #[test]
+    fn f64_shader_compiles_via_naga() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
+        else {
+            return;
+        };
+        device.compile_shader_f64(WGSL_HILL_GATE_F64, Some("hill_gate_f64"));
     }
 }

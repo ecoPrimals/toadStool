@@ -1,7 +1,7 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 22, 2026 -- Sessions 32-41
-**Status**: Production-grade | 0 clippy warnings | 600+ WGSL shaders | 5,965+ tests + barracuda targeted | Coverage: common 87%, config 89%, core 79%, server 77%
+**Updated**: February 23, 2026 -- Sessions 32-49
+**Status**: Production-grade | Shader-first architecture | 645+ WGSL f64 shaders | 14,000+ tests | Zero CPU-only math | Coverage: common 87%, config 89%, core ~87%, server ~85%
 
 ---
 
@@ -107,7 +107,7 @@ Prerequisites:
 - [ ] YOLO (object detection)
 
 ### Test Coverage (target 90%)
-- [ ] Current: common 87%, config 89%, core 79%, server 77%, distributed 55% -- 3,847+ non-GPU tests + barracuda targeted
+- [ ] Current: common 87%, config 89%, core ~87%, server ~85%, distributed 55% -- 14,000+ tests
 - [ ] Gap: async networking paths, GPU-gated paths
 - [ ] Remaining pending test suites: `e2e`, `fhe`, `comprehensive` (require future APIs)
 

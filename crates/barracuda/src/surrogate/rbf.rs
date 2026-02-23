@@ -1,8 +1,11 @@
 //! Radial basis function surrogate for expensive function approximation
 
 use super::kernels::RBFKernel;
+use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use crate::linalg::solve_f64;
+use crate::ops::cdist_wgsl::{compute_distances_f64_gpu, DistanceMetric};
+use std::sync::Arc;
 
 /// RBF surrogate model with polynomial augmentation
 ///
@@ -14,9 +17,7 @@ use crate::linalg::solve_f64;
 /// - wᵢ are weights (learned from data)
 /// - p(x) is a polynomial tail (linear: 1, x₁, ..., xₙ)
 ///
-/// # Dual-Precision Architecture (Future)
-///
-/// Currently CPU f64 only. Future enhancement: GPU f32 cdist → promote → CPU f64 solve.
+/// All math (cdist, solve) dispatches to GPU shaders.
 ///
 /// # Leave-One-Out Cross-Validation
 ///
@@ -30,27 +31,22 @@ use crate::linalg::solve_f64;
 /// ```
 #[derive(Debug)]
 pub struct RBFSurrogate {
+    /// GPU device for cdist and solve
+    device: Arc<WgpuDevice>,
     /// Training points (flattened: [n_train × n_dim])
     train_x: Vec<f64>,
-
     /// Training targets
     train_y: Vec<f64>,
-
     /// RBF weights (length n_train)
     weights: Vec<f64>,
-
     /// Polynomial coefficients (length n_dim + 1)
     poly_coeffs: Vec<f64>,
-
     /// Number of training points
     n_train: usize,
-
     /// Dimension of input space
     n_dim: usize,
-
     /// Kernel function
     kernel: RBFKernel,
-
     /// Smoothing parameter (regularization)
     smoothing: f64,
 }
@@ -59,6 +55,7 @@ impl RBFSurrogate {
     /// Construct from pre-computed parts (used by adaptive dispatch).
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn from_parts(
+        device: Arc<WgpuDevice>,
         train_x: Vec<f64>,
         train_y: Vec<f64>,
         weights: Vec<f64>,
@@ -69,6 +66,7 @@ impl RBFSurrogate {
         smoothing: f64,
     ) -> Self {
         Self {
+            device,
             train_x,
             train_y,
             weights,
@@ -121,6 +119,7 @@ impl RBFSurrogate {
     /// # Ok::<(), barracuda::error::BarracudaError>(())
     /// ```
     pub fn train(
+        device: Arc<WgpuDevice>,
         x_data: &[Vec<f64>],
         y_data: &[f64],
         kernel: RBFKernel,
@@ -150,8 +149,16 @@ impl RBFSurrogate {
         #[allow(clippy::manual_memcpy)]
         let train_x: Vec<f64> = x_data.iter().flat_map(|row| row.iter().copied()).collect();
 
-        // Compute pairwise distances (CPU f64 for now)
-        let distances = compute_distances(&train_x, &train_x, n_train, n_train, n_dim);
+        // Compute pairwise distances on GPU
+        let distances = compute_distances_f64_gpu(
+            device.as_ref(),
+            &train_x,
+            n_train,
+            &train_x,
+            n_train,
+            n_dim,
+            DistanceMetric::Euclidean,
+        )?;
 
         // Assemble augmented system
         let n_poly = n_dim + 1; // 1 + x₁ + x₂ + ... + xₙ
@@ -188,14 +195,15 @@ impl RBFSurrogate {
         b[..n_train].copy_from_slice(y_data);
         // Polynomial constraints are zero (already initialized)
 
-        // Solve linear system
-        let solution = solve_f64(&a, &b, n_total)?;
+        // Solve linear system on GPU
+        let solution = solve_f64(device.clone(), &a, &b, n_total)?;
 
         // Extract weights and polynomial coefficients
         let weights = solution[..n_train].to_vec();
         let poly_coeffs = solution[n_train..].to_vec();
 
         Ok(Self {
+            device,
             train_x,
             train_y: y_data.to_vec(),
             weights,
@@ -237,8 +245,16 @@ impl RBFSurrogate {
         #[allow(clippy::manual_memcpy)]
         let eval_x: Vec<f64> = x_eval.iter().flat_map(|row| row.iter().copied()).collect();
 
-        // Compute distances from evaluation points to training points
-        let distances = compute_distances(&eval_x, &self.train_x, n_eval, self.n_train, self.n_dim);
+        // Compute distances on GPU
+        let distances = compute_distances_f64_gpu(
+            self.device.as_ref(),
+            &eval_x,
+            n_eval,
+            &self.train_x,
+            self.n_train,
+            self.n_dim,
+            DistanceMetric::Euclidean,
+        )?;
 
         let mut predictions = Vec::with_capacity(n_eval);
 
@@ -364,8 +380,16 @@ impl RBFSurrogate {
     fn compute_hat_diagonal(&self) -> Result<Vec<f64>> {
         let n = self.n_train;
 
-        // Compute distance matrix
-        let distances = compute_distances(&self.train_x, &self.train_x, n, n, self.n_dim);
+        // Compute distance matrix on GPU
+        let distances = compute_distances_f64_gpu(
+            self.device.as_ref(),
+            &self.train_x,
+            n,
+            &self.train_x,
+            n,
+            self.n_dim,
+            DistanceMetric::Euclidean,
+        )?;
 
         // Build K_raw (kernel matrix WITHOUT smoothing)
         let mut k_raw = vec![0.0; n * n];
@@ -394,8 +418,8 @@ impl RBFSurrogate {
             let mut e_i = vec![0.0; n];
             e_i[i] = 1.0;
 
-            // Solve K_smooth · w = e_i
-            let w = solve_f64(&k_smooth, &e_i, n)?;
+            // Solve K_smooth · w = e_i on GPU
+            let w = solve_f64(self.device.clone(), &k_smooth, &e_i, n)?;
 
             // H_ii = K_raw[i,:] · w (dot product)
             let h_ii: f64 = (0..n).map(|j| k_raw[i * n + j] * w[j]).sum();
@@ -457,6 +481,7 @@ pub struct LooSmoothing {
 ///
 /// hotSpring validation: `surrogate.rs::loo_cv_optimal_smoothing()`
 pub fn loo_cv_optimal_smoothing(
+    device: Arc<WgpuDevice>,
     x_data: &[Vec<f64>],
     y_data: &[f64],
     kernel: RBFKernel,
@@ -478,7 +503,7 @@ pub fn loo_cv_optimal_smoothing(
 
     for &s in grid {
         // Train surrogate with this smoothing
-        let surrogate = match RBFSurrogate::train(x_data, y_data, kernel, s) {
+        let surrogate = match RBFSurrogate::train(device.clone(), x_data, y_data, kernel, s) {
             Ok(surr) => surr,
             Err(_) => continue, // Skip invalid configurations
         };
@@ -510,9 +535,8 @@ pub fn loo_cv_optimal_smoothing(
     })
 }
 
-/// Compute pairwise Euclidean distances (CPU f64)
-///
-/// Returns flattened distance matrix [n1 × n2]
+/// Compute pairwise Euclidean distances (CPU). Used only in tests.
+#[cfg(test)]
 fn compute_distances(x1: &[f64], x2: &[f64], n1: usize, n2: usize, n_dim: usize) -> Vec<f64> {
     let mut distances = vec![0.0; n1 * n2];
 
@@ -533,15 +557,20 @@ fn compute_distances(x1: &[f64], x2: &[f64], n1: usize, n2: usize, n_dim: usize)
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device_if_f64_gpu_available_sync;
+
+    fn device() -> Option<Arc<WgpuDevice>> {
+        get_test_device_if_f64_gpu_available_sync()
+    }
 
     #[test]
     fn test_rbf_linear_1d() {
-        // Interpolate y = 2x
+        let Some(dev) = device() else { return };
         let x_train = vec![vec![0.0], vec![1.0], vec![2.0]];
         let y_train = vec![0.0, 2.0, 4.0];
-
         let surrogate =
-            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12).unwrap();
+            RBFSurrogate::train(dev, &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12)
+                .unwrap();
 
         // Should interpolate training points exactly
         let y_pred = surrogate.predict(&x_train).unwrap();
@@ -570,8 +599,10 @@ mod tests {
         let x_train: Vec<Vec<f64>> = (0..5).map(|i| vec![i as f64]).collect();
         let y_train: Vec<f64> = (0..5).map(|i| (i * i) as f64).collect();
 
+        let Some(dev) = device() else { return };
         let surrogate =
-            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12).unwrap();
+            RBFSurrogate::train(dev, &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12)
+                .unwrap();
 
         // Should interpolate training points exactly
         let y_pred = surrogate.predict(&x_train).unwrap();
@@ -597,8 +628,10 @@ mod tests {
         ];
         let y_train = vec![0.0, 1.0, 1.0, 2.0];
 
+        let Some(dev) = device() else { return };
         let surrogate =
-            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12).unwrap();
+            RBFSurrogate::train(dev, &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12)
+                .unwrap();
 
         // Test center point
         let y_center = surrogate.predict(&[vec![0.5, 0.5]]).unwrap();
@@ -614,7 +647,9 @@ mod tests {
         let x_train = vec![vec![0.0], vec![1.0], vec![2.0]];
         let y_train = vec![0.0, 1.0, 0.0]; // Peak at x=1
 
+        let Some(dev) = device() else { return };
         let surrogate = RBFSurrogate::train(
+            dev,
             &x_train,
             &y_train,
             RBFKernel::Gaussian { epsilon: 1.0 },
@@ -631,16 +666,18 @@ mod tests {
 
     #[test]
     fn test_rbf_empty_training_data() {
-        let result = RBFSurrogate::train(&[], &[], RBFKernel::ThinPlateSpline, 1e-12);
+        let Some(dev) = device() else { return };
+        let result = RBFSurrogate::train(dev, &[], &[], RBFKernel::ThinPlateSpline, 1e-12);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_rbf_mismatched_lengths() {
+        let Some(dev) = device() else { return };
         let x_train = vec![vec![0.0], vec![1.0]];
-        let y_train = vec![0.0, 1.0, 2.0]; // Wrong length
-
-        let result = RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12);
+        let y_train = vec![0.0, 1.0, 2.0];
+        let result =
+            RBFSurrogate::train(dev, &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12);
         assert!(result.is_err());
     }
 
@@ -652,8 +689,9 @@ mod tests {
         let y_train = vec![0.1, 1.1, 1.9, 3.1, 3.9];
 
         // Use moderate smoothing so LOO-CV is defined
+        let Some(dev) = device() else { return };
         let surrogate =
-            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-6).unwrap();
+            RBFSurrogate::train(dev, &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-6).unwrap();
 
         let loo_rmse = surrogate.loo_cv_rmse().unwrap();
 
@@ -669,8 +707,9 @@ mod tests {
         let x_train = vec![vec![0.0], vec![1.0], vec![2.0]];
         let y_train = vec![0.0, 1.0, 4.0];
 
+        let Some(dev) = device() else { return };
         let surrogate =
-            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-4).unwrap();
+            RBFSurrogate::train(dev, &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-4).unwrap();
 
         let errors = surrogate.loo_cv_errors().unwrap();
 
@@ -690,8 +729,10 @@ mod tests {
         let x_train = vec![vec![0.0], vec![1.0], vec![2.0]];
         let y_train = vec![0.0, 1.0, 4.0];
 
+        let Some(dev) = device() else { return };
         let surrogate =
-            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12).unwrap();
+            RBFSurrogate::train(dev, &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12)
+                .unwrap();
 
         // Should not panic
         let _ = surrogate.loo_cv_rmse();
@@ -708,8 +749,10 @@ mod tests {
         ];
         let y_train = vec![0.0, 1.0, 1.0, 2.0];
 
+        let Some(dev) = device() else { return };
         let surrogate =
-            RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12).unwrap();
+            RBFSurrogate::train(dev, &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12)
+                .unwrap();
 
         assert_eq!(surrogate.n_train(), 4);
         assert_eq!(surrogate.n_dim(), 2);
@@ -731,12 +774,13 @@ mod tests {
         // Noisy quadratic: y ≈ x² + noise
         let y_train = vec![0.1, 0.35, 0.9, 2.3, 4.1, 6.2, 9.1];
 
-        // Use significant smoothing with Gaussian kernel
+        let Some(dev) = device() else { return };
         let surrogate = RBFSurrogate::train(
+            dev,
             &x_train,
             &y_train,
             RBFKernel::Gaussian { epsilon: 1.0 },
-            0.5, // High smoothing to force underfitting
+            0.5,
         )
         .unwrap();
 
@@ -781,10 +825,11 @@ mod tests {
             .map(|x| 2.0 * x[0] + 0.1 * (x[0] * 10.0).sin())
             .collect();
 
+        let Some(dev) = device() else { return };
         let kernel = RBFKernel::Gaussian { epsilon: 1.0 };
-
-        let surrogate_low = RBFSurrogate::train(&x_train, &y_train, kernel, 1e-4).unwrap();
-        let surrogate_high = RBFSurrogate::train(&x_train, &y_train, kernel, 0.5).unwrap();
+        let surrogate_low =
+            RBFSurrogate::train(dev.clone(), &x_train, &y_train, kernel, 1e-4).unwrap();
+        let surrogate_high = RBFSurrogate::train(dev, &x_train, &y_train, kernel, 0.5).unwrap();
 
         let rmse_low = surrogate_low.loo_cv_rmse().unwrap();
         let rmse_high = surrogate_high.loo_cv_rmse().unwrap();

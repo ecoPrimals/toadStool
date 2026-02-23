@@ -30,7 +30,6 @@
 
 use crate::error::{BarracudaError, Result};
 
-#[allow(dead_code)]
 const WGSL_CUBIC_SPLINE_EVAL_F64: &str = include_str!("../shaders/math/cubic_spline_eval_f64.wgsl");
 
 /// Cubic spline interpolator
@@ -170,17 +169,164 @@ impl CubicSpline {
         Ok(result)
     }
 
-    /// Evaluate the spline at multiple points
-    ///
-    /// # Arguments
-    ///
-    /// * `x_eval` - Points at which to evaluate
-    ///
-    /// # Returns
-    ///
-    /// Vector of interpolated values
+    /// Evaluate the spline at multiple points (CPU path).
     pub fn eval_many(&self, x_eval: &[f64]) -> Result<Vec<f64>> {
         x_eval.iter().map(|&x| self.eval(x)).collect()
+    }
+
+    /// Evaluate the spline at multiple points on GPU.
+    ///
+    /// Converts `(y, y2)` representation to `[a, b, c, d]` monomial coefficients
+    /// per segment, then dispatches `cubic_spline_eval_f64.wgsl`.
+    pub fn eval_many_gpu(
+        &self,
+        x_eval: &[f64],
+        device: &crate::device::WgpuDevice,
+    ) -> Result<Vec<f64>> {
+        use bytemuck::{Pod, Zeroable};
+        use wgpu::util::DeviceExt;
+
+        #[repr(C)]
+        #[derive(Copy, Clone, Pod, Zeroable)]
+        struct SplineParams {
+            n_query: u32,
+            n_segments: u32,
+        }
+
+        let n_seg = self.x.len() - 1;
+        let n_query = x_eval.len();
+
+        // Convert (y, y2) to monomial [a, b, c, d] per segment
+        let mut coefs = Vec::with_capacity(n_seg * 4);
+        for i in 0..n_seg {
+            let h = self.x[i + 1] - self.x[i];
+            let a = self.y[i];
+            let b = (self.y[i + 1] - self.y[i]) / h - (2.0 * self.y2[i] + self.y2[i + 1]) * h / 6.0;
+            let c = self.y2[i] / 2.0;
+            let d_coef = (self.y2[i + 1] - self.y2[i]) / (6.0 * h);
+            coefs.extend_from_slice(&[a, b, c, d_coef]);
+        }
+
+        let module = device.compile_shader_f64(WGSL_CUBIC_SPLINE_EVAL_F64, Some("spline_eval_f64"));
+        let d = &device.device;
+        let q = &device.queue;
+
+        let query_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Spline:query"),
+            contents: bytemuck::cast_slice(x_eval),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        let knots_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Spline:knots"),
+            contents: bytemuck::cast_slice(&self.x),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        let coefs_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Spline:coefs"),
+            contents: bytemuck::cast_slice(&coefs),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        let out_size = (n_query * 8) as u64;
+        let result_buf = d.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Spline:result"),
+            size: out_size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let params = SplineParams {
+            n_query: n_query as u32,
+            n_segments: n_seg as u32,
+        };
+        let params_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Spline:params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let bgl = d.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Spline:bgl"),
+            entries: &[
+                bgl_storage(0, true),
+                bgl_storage(1, true),
+                bgl_storage(2, true),
+                bgl_storage(3, false),
+                bgl_uniform(4),
+            ],
+        });
+        let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Spline:bg"),
+            layout: &bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: query_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: knots_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: coefs_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: result_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: params_buf.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pl = d.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Spline:pl"),
+            bind_group_layouts: &[&bgl],
+            push_constant_ranges: &[],
+        });
+        let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Spline:pipeline"),
+            layout: Some(&pl),
+            module: &module,
+            entry_point: "main",
+            compilation_options: Default::default(),
+            cache: None,
+        });
+
+        let mut enc = d.create_command_encoder(&Default::default());
+        {
+            let mut pass = enc.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.dispatch_workgroups((n_query as u32).div_ceil(256), 1, 1);
+        }
+
+        let rb = d.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Spline:rb"),
+            size: out_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        enc.copy_buffer_to_buffer(&result_buf, 0, &rb, 0, out_size);
+        q.submit(Some(enc.finish()));
+
+        let slice = rb.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |r| {
+            tx.send(r).ok();
+        });
+        d.poll(wgpu::Maintain::Wait);
+        rx.recv()
+            .map_err(|_| BarracudaError::Gpu("spline readback".into()))?
+            .map_err(|e| BarracudaError::Gpu(format!("spline map: {e}")))?;
+
+        let data = slice.get_mapped_range();
+        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        rb.unmap();
+
+        Ok(result)
     }
 
     /// Evaluate the first derivative at a point
@@ -411,6 +557,32 @@ fn integrate_segment(x: &[f64], y: &[f64], y2: &[f64], i: usize, x0: f64, x1: f6
     let cubic_right = (term2(t1) - term2(t0)) * h * h * y2[i + 1] / 6.0;
 
     h * (linear_part + cubic_left + cubic_right)
+}
+
+fn bgl_storage(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+fn bgl_uniform(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Uniform,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
 }
 
 #[cfg(test)]

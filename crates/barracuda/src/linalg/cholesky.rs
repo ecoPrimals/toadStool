@@ -1,11 +1,11 @@
-//! Cholesky Decomposition (f64 CPU)
+//! Cholesky Decomposition (f64)
 //!
 //! Computes the Cholesky decomposition of a symmetric positive-definite matrix:
 //! A = L·Lᵀ where L is lower triangular.
 //!
 //! # Algorithm
 //!
-//! Standard Cholesky-Banachiewicz algorithm with O(n³/3) complexity.
+//! GPU-accelerated via CholeskyF64 (WGSL). CPU fallback for tests only.
 //!
 //! # Applications
 //!
@@ -17,7 +17,9 @@
 //!
 //! - Golub & Van Loan, "Matrix Computations", Algorithm 4.2.1
 
+use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
+use std::sync::Arc;
 
 /// Result of Cholesky decomposition A = L·Lᵀ.
 #[derive(Debug, Clone)]
@@ -107,12 +109,13 @@ impl CholeskyDecomposition {
     }
 }
 
-/// Compute Cholesky decomposition of a symmetric positive-definite matrix.
+/// Compute Cholesky decomposition of a symmetric positive-definite matrix (GPU).
 ///
 /// Returns L such that A = L·Lᵀ.
 ///
 /// # Arguments
 ///
+/// * `device` - GPU device for execution
 /// * `a` - n×n symmetric positive-definite matrix (row-major)
 /// * `n` - Matrix dimension
 ///
@@ -122,26 +125,27 @@ impl CholeskyDecomposition {
 ///
 /// # Errors
 ///
-/// Returns error if:
-/// - Matrix dimensions are invalid
-/// - Matrix is not positive definite (diagonal becomes ≤ 0)
-///
-/// # Example
-///
-/// ```
-/// use barracuda::linalg::cholesky_f64;
-///
-/// // Symmetric positive-definite 2×2 matrix
-/// let a = vec![4.0, 2.0, 2.0, 3.0];
-/// let chol = cholesky_f64(&a, 2)?;
-///
-/// // L ≈ [[2, 0], [1, √2]]
-/// // Solve Ax = b
-/// let b = vec![10.0, 8.0];
-/// let x = chol.solve(&b)?;
-/// # Ok::<(), barracuda::error::BarracudaError>(())
-/// ```
-pub fn cholesky_f64(a: &[f64], n: usize) -> Result<CholeskyDecomposition> {
+/// Returns error if matrix dimensions are invalid.
+pub fn cholesky_f64(device: Arc<WgpuDevice>, a: &[f64], n: usize) -> Result<CholeskyDecomposition> {
+    if a.len() != n * n {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("Matrix has {} elements, expected {}×{}", a.len(), n, n),
+        });
+    }
+
+    if n == 0 {
+        return Err(BarracudaError::InvalidInput {
+            message: "Matrix dimension must be positive".to_string(),
+        });
+    }
+
+    let l = crate::ops::linalg::cholesky::CholeskyF64::execute(device, a, n)?;
+    Ok(CholeskyDecomposition { l, n })
+}
+
+/// Compute Cholesky decomposition on CPU (test/benchmark only).
+#[cfg(any(test, feature = "benchmarks"))]
+pub fn cholesky_f64_cpu(a: &[f64], n: usize) -> Result<CholeskyDecomposition> {
     if a.len() != n * n {
         return Err(BarracudaError::InvalidInput {
             message: format!("Matrix has {} elements, expected {}×{}", a.len(), n, n),
@@ -199,7 +203,7 @@ mod tests {
         // A = [[4, 2], [2, 3]]
         // L = [[2, 0], [1, √2]]
         let a = vec![4.0, 2.0, 2.0, 3.0];
-        let chol = cholesky_f64(&a, 2).unwrap();
+        let chol = cholesky_f64_cpu(&a, 2).unwrap();
 
         assert!(approx_eq(chol.l[0], 2.0, 1e-10)); // L[0,0]
         assert!(approx_eq(chol.l[1], 0.0, 1e-10)); // L[0,1]
@@ -211,7 +215,7 @@ mod tests {
     fn test_cholesky_solve() {
         let a = vec![4.0, 2.0, 2.0, 3.0];
         let b = vec![10.0, 8.0];
-        let chol = cholesky_f64(&a, 2).unwrap();
+        let chol = cholesky_f64_cpu(&a, 2).unwrap();
         let x = chol.solve(&b).unwrap();
 
         // Verify Ax = b
@@ -224,7 +228,7 @@ mod tests {
     #[test]
     fn test_cholesky_det() {
         let a = vec![4.0, 2.0, 2.0, 3.0];
-        let chol = cholesky_f64(&a, 2).unwrap();
+        let chol = cholesky_f64_cpu(&a, 2).unwrap();
 
         // det(A) = 4*3 - 2*2 = 8
         assert!(approx_eq(chol.det(), 8.0, 1e-10));
@@ -233,7 +237,7 @@ mod tests {
     #[test]
     fn test_cholesky_identity() {
         let a = vec![1.0, 0.0, 0.0, 1.0];
-        let chol = cholesky_f64(&a, 2).unwrap();
+        let chol = cholesky_f64_cpu(&a, 2).unwrap();
 
         // L = I
         assert!(approx_eq(chol.l[0], 1.0, 1e-10));
@@ -246,7 +250,7 @@ mod tests {
     fn test_cholesky_3x3() {
         // 3×3 SPD matrix
         let a = vec![4.0, 2.0, 1.0, 2.0, 3.0, 1.0, 1.0, 1.0, 3.0];
-        let chol = cholesky_f64(&a, 3).unwrap();
+        let chol = cholesky_f64_cpu(&a, 3).unwrap();
 
         // Verify L·Lᵀ = A
         let mut llt = vec![0.0; 9];
@@ -272,7 +276,7 @@ mod tests {
     #[test]
     fn test_cholesky_inverse() {
         let a = vec![4.0, 2.0, 2.0, 3.0];
-        let chol = cholesky_f64(&a, 2).unwrap();
+        let chol = cholesky_f64_cpu(&a, 2).unwrap();
         let inv = chol.inverse().unwrap();
 
         // A * A⁻¹ = I
@@ -295,13 +299,13 @@ mod tests {
     fn test_cholesky_not_positive_definite() {
         // Not positive definite (eigenvalues: 4, -1)
         let a = vec![1.0, 2.0, 2.0, 1.0];
-        assert!(cholesky_f64(&a, 2).is_err());
+        assert!(cholesky_f64_cpu(&a, 2).is_err());
     }
 
     #[test]
     fn test_cholesky_log_det() {
         let a = vec![4.0, 2.0, 2.0, 3.0];
-        let chol = cholesky_f64(&a, 2).unwrap();
+        let chol = cholesky_f64_cpu(&a, 2).unwrap();
 
         // log(det(A)) = log(8) ≈ 2.079
         let expected = 8.0_f64.ln();
@@ -310,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_cholesky_errors() {
-        assert!(cholesky_f64(&[], 0).is_err());
-        assert!(cholesky_f64(&[1.0, 2.0, 3.0], 2).is_err());
+        assert!(cholesky_f64_cpu(&[], 0).is_err());
+        assert!(cholesky_f64_cpu(&[1.0, 2.0, 3.0], 2).is_err());
     }
 }

@@ -3,7 +3,7 @@
 //! Multi-objective Fitness — GPU kernel.
 //!
 //! Evaluates per-individual multi-objective fitness from genotypes.
-//! Reads genotypes [pop × genome_len] f32, writes fitness [pop × n_obj] f32.
+//! Reads genotypes [pop × genome_len] f64, writes fitness [pop × n_obj] f64.
 //!
 //! Provenance: neuralSpring metalForge → toadStool absorption
 
@@ -15,6 +15,10 @@ use crate::device::WgpuDevice;
 
 pub const WGSL_MULTI_OBJ_FITNESS: &str = include_str!("../../shaders/bio/multi_obj_fitness.wgsl");
 
+/// f64 version for universal math library portability.
+pub const WGSL_MULTI_OBJ_FITNESS_F64: &str =
+    include_str!("../../shaders/bio/multi_obj_fitness_f64.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct MultiObjFitnessParams {
@@ -24,6 +28,7 @@ struct MultiObjFitnessParams {
     _pad: u32,
 }
 
+/// Multi-objective fitness GPU kernel (f64 pipeline).
 pub struct MultiObjFitnessGpu {
     pipeline: wgpu::ComputePipeline,
     bgl: wgpu::BindGroupLayout,
@@ -76,10 +81,8 @@ impl MultiObjFitnessGpu {
             push_constant_ranges: &[],
         });
 
-        let module = d.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("MultiObjFitness Shader"),
-            source: wgpu::ShaderSource::Wgsl(WGSL_MULTI_OBJ_FITNESS.into()),
-        });
+        let module =
+            device.compile_shader_f64(WGSL_MULTI_OBJ_FITNESS_F64, Some("MultiObjFitness f64"));
 
         let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("MultiObjFitness Pipeline"),
@@ -99,8 +102,8 @@ impl MultiObjFitnessGpu {
 
     /// Compute multi-objective fitness for `pop` genotypes of length `genome_len`.
     ///
-    /// `genotypes_buf`: `[pop × genome_len]` f32
-    /// `fitness_buf`: `[pop × n_obj]` f32
+    /// `genotypes_buf`: `[pop × genome_len]` f64
+    /// `fitness_buf`: `[pop × n_obj]` f64
     pub fn dispatch(
         &self,
         genotypes_buf: &wgpu::Buffer,
@@ -158,5 +161,25 @@ impl MultiObjFitnessGpu {
             pass.dispatch_workgroups(total.div_ceil(256), 1, 1);
         }
         q.submit(std::iter::once(encoder.finish()));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn f64_shader_contains_main() {
+        assert!(WGSL_MULTI_OBJ_FITNESS_F64.contains("fn main"));
+        assert!(WGSL_MULTI_OBJ_FITNESS_F64.contains("f64"));
+    }
+
+    #[test]
+    fn f64_shader_compiles_via_naga() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
+        else {
+            return;
+        };
+        device.compile_shader_f64(WGSL_MULTI_OBJ_FITNESS_F64, Some("multi_obj_fitness_f64"));
     }
 }

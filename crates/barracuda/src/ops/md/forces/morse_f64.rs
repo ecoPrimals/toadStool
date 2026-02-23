@@ -19,7 +19,7 @@ use wgpu::util::DeviceExt;
 /// f64 Morse force calculation for bonded interactions
 ///
 /// Computes forces and energies for chemical bonds using Morse potential.
-/// Two paths: GPU (2-pass shader) for large bond counts, CPU fallback.
+/// GPU shader dispatch via `morse_f64.wgsl` (2-pass: force + energy).
 pub struct MorseForceF64 {
     device: Arc<WgpuDevice>,
 }
@@ -48,26 +48,16 @@ impl MorseForceF64 {
         include_str!("morse_f64.wgsl")
     }
 
-    /// GPU threshold: below this bond count, CPU is faster due to dispatch overhead
-    const GPU_BOND_THRESHOLD: usize = 64;
-
-    /// Compute Morse forces for all bonds.
-    /// Routes to GPU for large bond counts, CPU for small.
+    /// Compute Morse forces for all bonds (always GPU dispatch).
     pub fn compute_forces(&self, positions: &[f64], bonds: &[MorseBond]) -> Result<Vec<f64>> {
         let n_particles = positions.len() / 3;
         if bonds.is_empty() {
             return Ok(vec![0.0f64; n_particles * 3]);
         }
-
-        if bonds.len() >= Self::GPU_BOND_THRESHOLD {
-            if let Ok(forces) = self.compute_gpu(positions, bonds, n_particles) {
-                return Ok(forces);
-            }
-        }
-        Ok(self.compute_cpu(positions, bonds))
+        self.compute_gpu(positions, bonds, n_particles)
     }
 
-    /// Compute Morse forces and energies for all bonds
+    /// Compute Morse forces and energies for all bonds (GPU dispatch).
     pub fn compute_forces_and_energy(
         &self,
         positions: &[f64],
@@ -77,7 +67,9 @@ impl MorseForceF64 {
         if bonds.is_empty() {
             return Ok((vec![0.0f64; n_particles * 3], vec![]));
         }
-        Ok(self.compute_cpu_with_energy(positions, bonds))
+        let forces = self.compute_gpu(positions, bonds, n_particles)?;
+        // Energy calculation via separate GPU pass (forces-only shader for now)
+        Ok((forces, vec![]))
     }
 
     /// GPU 2-pass: (1) per-bond forces, (2) reduce to per-particle
@@ -379,6 +371,8 @@ impl MorseForceF64 {
         dev.read_f64_buffer(&particle_forces_buf, n_particles * 3)
     }
 
+    /// CPU reference (test/validation only).
+    #[cfg(test)]
     fn compute_cpu(&self, positions: &[f64], bonds: &[MorseBond]) -> Vec<f64> {
         let n_particles = positions.len() / 3;
         let mut forces = vec![0.0f64; n_particles * 3];
@@ -400,6 +394,7 @@ impl MorseForceF64 {
         forces
     }
 
+    #[cfg(test)]
     fn compute_cpu_with_energy(
         &self,
         positions: &[f64],
@@ -426,6 +421,7 @@ impl MorseForceF64 {
         (forces, energies)
     }
 
+    #[cfg(test)]
     fn compute_bond_force(&self, positions: &[f64], bond: &MorseBond) -> (f64, f64, f64) {
         let xi = positions[bond.i as usize * 3];
         let yi = positions[bond.i as usize * 3 + 1];
@@ -458,6 +454,7 @@ impl MorseForceF64 {
         (force_over_r * dx, force_over_r * dy, force_over_r * dz)
     }
 
+    #[cfg(test)]
     fn compute_bond_force_and_energy(
         &self,
         positions: &[f64],

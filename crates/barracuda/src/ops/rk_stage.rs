@@ -108,12 +108,6 @@ impl RkIntegrator {
             });
         }
 
-        // CPU fallback for small systems
-        if n < 128 {
-            return Ok(self.integrate_cpu(f, t0, y0, t_end, h_init, tol));
-        }
-
-        // Hybrid GPU/CPU integration
         self.integrate_hybrid(f, t0, y0, t_end, h_init, tol)
     }
 

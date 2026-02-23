@@ -70,15 +70,11 @@ impl WeightedDotF64 {
             return Ok(0.0);
         }
 
-        // CPU fallback for small inputs
-        if n < 1024 {
-            return Ok(self.weighted_dot_cpu(weights, a, b));
-        }
-
         self.weighted_dot_gpu(weights, a, b)
     }
 
     /// CPU reference implementation
+    #[cfg(test)]
     fn weighted_dot_cpu(&self, weights: &[f64], a: &[f64], b: &[f64]) -> f64 {
         weights
             .iter()
@@ -99,11 +95,6 @@ impl WeightedDotF64 {
 
         if n == 0 {
             return Ok(0.0);
-        }
-
-        // CPU fallback for small inputs
-        if n < 1024 {
-            return Ok(a.iter().zip(b.iter()).map(|(a, b)| a * b).sum());
         }
 
         // Use weights = 1.0

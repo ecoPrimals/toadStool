@@ -387,35 +387,68 @@ impl BroydenMixer {
         Ok(result)
     }
 
-    /// Compute Broyden γ coefficients
+    /// Compute Broyden γ coefficients via least-squares on CPU.
     ///
-    /// This is small linear algebra (n_history × n_history) done on CPU.
-    fn compute_broyden_gammas(&self, _residual: &[f64]) -> Result<Vec<f64>> {
-        // Simplified: return zeros for now (equivalent to linear mixing with history)
-        // Full implementation requires solving: A·γ = β where
-        // A_ij = <ΔF_i|ΔF_j>, β_i = <ΔF_i|r>
-        // This is O(n_history²) CPU work, not worth GPUing.
-        Ok(vec![0.0; self.dx_history.len()])
+    /// Solves A·γ = β where A_ij = <ΔF_i|ΔF_j>, β_i = <ΔF_i|r>.
+    /// This is O(n_history²) work on a tiny matrix — CPU is appropriate.
+    fn compute_broyden_gammas(&self, residual: &[f64]) -> Result<Vec<f64>> {
+        let m = self.df_history.len();
+        if m == 0 {
+            return Ok(Vec::new());
+        }
+
+        // Build overlap matrix A_ij = <ΔF_i|ΔF_j> and RHS β_i = <ΔF_i|r>
+        let mut a = vec![0.0f64; m * m];
+        let mut beta = vec![0.0f64; m];
+
+        for i in 0..m {
+            beta[i] = dot(&self.df_history[i], residual);
+            for j in 0..m {
+                a[i * m + j] = dot(&self.df_history[i], &self.df_history[j]);
+            }
+        }
+
+        // Solve A·γ = β via Cholesky (A is symmetric positive semi-definite).
+        // Add Tikhonov regularization for stability: A → A + εI
+        let eps = 1e-12;
+        for i in 0..m {
+            a[i * m + i] += eps;
+        }
+
+        solve_symmetric_positive(m, &mut a, &mut beta);
+        Ok(beta)
     }
 
-    /// Apply Broyden update on GPU
+    /// Apply Broyden update on GPU.
+    ///
+    /// x_new = x + α·r - Σ_k γ_k · (Δx_k + α·ΔF_k)
+    ///
+    /// The linear-mixing part (x + α·r) goes through the GPU mixer.
+    /// The Broyden correction is accumulated on CPU (O(n_history × dim)) then
+    /// added to the GPU result. For large dim this could be a second GPU kernel,
+    /// but n_history is typically 5–10 so the CPU path is <1ms.
     async fn broyden_update_gpu(
         &self,
-        _x: &[f64],
-        _residual: &[f64],
-        _gammas: &[f64],
+        x: &[f64],
+        residual: &[f64],
+        gammas: &[f64],
     ) -> Result<Vec<f64>> {
-        // For now, fall back to linear mixing
-        // Full GPU implementation would use the broyden_update kernel
-        self.linear_mixer
-            .mix(
-                _x,
-                &_x.iter()
-                    .zip(_residual)
-                    .map(|(a, b)| a + b)
-                    .collect::<Vec<_>>(),
-            )
-            .await
+        let x_computed: Vec<f64> = x.iter().zip(residual).map(|(a, b)| a + b).collect();
+        let mut result = self.linear_mixer.mix(x, &x_computed).await?;
+
+        let alpha = self.params.alpha;
+        for (k, gamma_k) in gammas.iter().enumerate() {
+            if gamma_k.abs() < 1e-30 {
+                continue;
+            }
+            let dx_k = &self.dx_history[k];
+            let df_k = &self.df_history[k];
+            for i in 0..result.len() {
+                result[i] -= gamma_k * (dx_k[i] + alpha * df_k[i]);
+            }
+        }
+
+        Ok(result)
     }
 
     /// Update history vectors
@@ -432,6 +465,60 @@ impl BroydenMixer {
 
         // Store ΔF (would need previous residual, simplified here)
         self.df_history.push(residual.to_vec());
+    }
+}
+
+/// Inner product of two equal-length slices.
+fn dot(a: &[f64], b: &[f64]) -> f64 {
+    a.iter().zip(b).map(|(x, y)| x * y).sum()
+}
+
+/// In-place Cholesky solve for a small symmetric positive-definite system.
+///
+/// On entry, `a` is the column-major m×m matrix, `b` is the RHS.
+/// On exit, `b` contains the solution.
+fn solve_symmetric_positive(m: usize, a: &mut [f64], b: &mut [f64]) {
+    // Cholesky decomposition: A = L·Lᵀ (in-place, lower triangle in `a`)
+    for j in 0..m {
+        let mut s = a[j * m + j];
+        for k in 0..j {
+            s -= a[j * m + k] * a[j * m + k];
+        }
+        if s <= 0.0 {
+            // Not positive definite — zero out remaining gammas
+            for i in j..m {
+                b[i] = 0.0;
+            }
+            return;
+        }
+        let ljj = s.sqrt();
+        a[j * m + j] = ljj;
+
+        for i in (j + 1)..m {
+            let mut s = a[i * m + j];
+            for k in 0..j {
+                s -= a[i * m + k] * a[j * m + k];
+            }
+            a[i * m + j] = s / ljj;
+        }
+    }
+
+    // Forward substitution: L·y = b
+    for i in 0..m {
+        let mut s = b[i];
+        for k in 0..i {
+            s -= a[i * m + k] * b[k];
+        }
+        b[i] = s / a[i * m + i];
+    }
+
+    // Back substitution: Lᵀ·x = y
+    for i in (0..m).rev() {
+        let mut s = b[i];
+        for k in (i + 1)..m {
+            s -= a[k * m + i] * b[k];
+        }
+        b[i] = s / a[i * m + i];
     }
 }
 
@@ -461,5 +548,22 @@ mod tests {
         for val in &result {
             assert!((val - 1.5).abs() < 1e-10, "Expected 1.5, got {}", val);
         }
+    }
+
+    #[test]
+    fn test_cholesky_solve() {
+        // 2×2 system: [4 2; 2 3] · x = [6; 5] → x = [1; 1]
+        let mut a = vec![4.0, 2.0, 2.0, 3.0];
+        let mut b = vec![6.0, 5.0];
+        solve_symmetric_positive(2, &mut a, &mut b);
+        assert!((b[0] - 1.0).abs() < 1e-10, "x[0]={}", b[0]);
+        assert!((b[1] - 1.0).abs() < 1e-10, "x[1]={}", b[1]);
+    }
+
+    #[test]
+    fn test_dot_product() {
+        let a = vec![1.0, 2.0, 3.0];
+        let b = vec![4.0, 5.0, 6.0];
+        assert!((dot(&a, &b) - 32.0).abs() < 1e-10);
     }
 }

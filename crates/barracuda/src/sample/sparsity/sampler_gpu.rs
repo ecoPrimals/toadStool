@@ -67,7 +67,20 @@ where
             {
                 Ok((s, _diag)) => (s, true),
                 Err(_) => {
-                    match RBFSurrogate::train(&x_data, &y_data, config.kernel, config.smoothing) {
+                    let dev = config
+                        .gpu_device
+                        .as_ref()
+                        .ok_or_else(|| BarracudaError::InvalidInput {
+                            message: "gpu_device required for fallback".to_string(),
+                        })?
+                        .clone();
+                    match RBFSurrogate::train(
+                        dev,
+                        &x_data,
+                        &y_data,
+                        config.kernel,
+                        config.smoothing,
+                    ) {
                         Ok(s) => (s, false),
                         Err(_) => {
                             let nm_result = run_nm_batch(&f, bounds, config, iter, &mut cache)?;
@@ -85,7 +98,14 @@ where
                 }
             }
         } else {
-            match RBFSurrogate::train(&x_data, &y_data, config.kernel, config.smoothing) {
+            let dev = config
+                .gpu_device
+                .as_ref()
+                .ok_or_else(|| BarracudaError::InvalidInput {
+                    message: "gpu_device must be set for sparsity_sampler_gpu".to_string(),
+                })?
+                .clone();
+            match RBFSurrogate::train(dev, &x_data, &y_data, config.kernel, config.smoothing) {
                 Ok(s) => (s, false),
                 Err(_) => {
                     let nm_result = run_nm_batch(&f, bounds, config, iter, &mut cache)?;

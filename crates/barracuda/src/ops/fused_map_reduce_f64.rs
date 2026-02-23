@@ -162,11 +162,6 @@ impl FusedMapReduceF64 {
             });
         }
 
-        // Small arrays: CPU fallback is faster
-        if n < 1024 {
-            return self.execute_cpu(data, total, map_op, reduce_op);
-        }
-
         // Create input buffer
         let input_buffer =
             self.device
@@ -404,6 +399,7 @@ impl FusedMapReduceF64 {
     }
 
     /// CPU fallback for small arrays (faster due to no dispatch overhead)
+    #[cfg(test)]
     fn execute_cpu(
         &self,
         data: &[f64],

@@ -1,15 +1,17 @@
 //! Linear system solvers
 
+use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
+use crate::ops::linalg::LinSolveF64;
+use std::sync::Arc;
 
-/// Solve Ax = b using Gauss-Jordan elimination with partial pivoting
+/// Solve Ax = b using GPU Gaussian elimination with partial pivoting (f64)
 ///
-/// This is a direct method that works for general square matrices.
-/// For symmetric positive definite matrices, Cholesky decomposition
-/// is more efficient (future implementation).
+/// Dispatches to `linsolve_f64.wgsl` shader. All production math uses GPU.
 ///
 /// # Arguments
 ///
+/// * `device` - GPU device (Arc<WgpuDevice>)
 /// * `a` - Coefficient matrix (row-major, n×n)
 /// * `b` - Right-hand side vector (length n)
 /// * `n` - Matrix dimension
@@ -18,50 +20,51 @@ use crate::error::{BarracudaError, Result};
 ///
 /// Solution vector x, or error if matrix is singular
 ///
-/// # Precision
-///
-/// f64 on CPU. For f32 GPU version, use the `linsolve.wgsl` shader.
-///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use barracuda::linalg::solve_f64;
+/// use barracuda::device::WgpuDevice;
+/// use std::sync::Arc;
 ///
-/// // Solve:
-/// //   2x + y = 5
-/// //   x + 3y = 8
-/// //
-/// // Matrix form: [2 1] [x]   [5]
-/// //              [1 3] [y] = [8]
-///
-/// let a = vec![
-///     2.0, 1.0,
-///     1.0, 3.0,
-/// ];
+/// # async fn example() -> barracuda::error::Result<()> {
+/// let device = Arc::new(WgpuDevice::new().await?);
+/// let a = vec![2.0, 1.0, 1.0, 3.0];
 /// let b = vec![5.0, 8.0];
-///
-/// let x = solve_f64(&a, &b, 2)?;
-///
-/// // Solution: x=1, y=3
-/// assert!((x[0] - 1.0).abs() < 1e-10);
-/// assert!((x[1] - 3.0).abs() < 1e-10);
-/// # Ok::<(), barracuda::error::BarracudaError>(())
+/// let x = solve_f64(device, &a, &b, 2)?;
+/// # Ok(())
+/// # }
 /// ```
-///
-/// # Algorithm
-///
-/// 1. **Forward elimination** with partial pivoting
-///     - For each column k, find row with largest |a[i,k]|
-///     - Swap rows to bring pivot to diagonal
-///     - Eliminate column k below diagonal
-/// 2. **Backward substitution**
-///     - Solve for x from bottom to top
-///
-/// # References
-///
-/// - Golub & Van Loan, "Matrix Computations", 4th ed., Algorithm 3.4.1
-/// - numpy.linalg.solve
-pub fn solve_f64(a: &[f64], b: &[f64], n: usize) -> Result<Vec<f64>> {
+pub fn solve_f64(device: Arc<WgpuDevice>, a: &[f64], b: &[f64], n: usize) -> Result<Vec<f64>> {
+    if a.len() != n * n {
+        return Err(BarracudaError::InvalidInput {
+            message: format!(
+                "Matrix size mismatch: expected {}×{} = {}, got {}",
+                n,
+                n,
+                n * n,
+                a.len()
+            ),
+        });
+    }
+
+    if b.len() != n {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("Vector size mismatch: expected {}, got {}", n, b.len()),
+        });
+    }
+
+    if n == 0 {
+        return Ok(Vec::new());
+    }
+
+    let solver = LinSolveF64::new(device);
+    solver.solve(a, b, n)
+}
+
+/// CPU fallback for solve_f64 (Gauss-Jordan). Used only in tests.
+#[cfg(test)]
+fn solve_f64_cpu(a: &[f64], b: &[f64], n: usize) -> Result<Vec<f64>> {
     if a.len() != n * n {
         return Err(BarracudaError::InvalidInput {
             message: format!(
@@ -154,17 +157,18 @@ pub fn solve_f64(a: &[f64], b: &[f64], n: usize) -> Result<Vec<f64>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device_if_f64_gpu_available_sync;
+
+    fn device() -> Option<Arc<WgpuDevice>> {
+        get_test_device_if_f64_gpu_available_sync()
+    }
 
     #[test]
     fn test_solve_f64_2x2() {
-        // 2x + y = 5
-        // x + 3y = 8
-        // Solution: x = 1.4, y = 2.2
+        let Some(dev) = device() else { return };
         let a = vec![2.0, 1.0, 1.0, 3.0];
         let b = vec![5.0, 8.0];
-
-        let x = solve_f64(&a, &b, 2).unwrap();
-
+        let x = solve_f64(dev, &a, &b, 2).unwrap();
         assert!((x[0] - 1.4).abs() < 1e-10);
         assert!((x[1] - 2.2).abs() < 1e-10);
     }
@@ -177,7 +181,8 @@ mod tests {
         let a = vec![3.0, 2.0, -1.0, 2.0, -2.0, 4.0, -1.0, 0.5, -1.0];
         let b = vec![1.0, -2.0, 0.0];
 
-        let x = solve_f64(&a, &b, 3).unwrap();
+        let Some(dev) = device() else { return };
+        let x = solve_f64(dev, &a, &b, 3).unwrap();
 
         // Solution: x=1, y=-2, z=-2
         assert!((x[0] - 1.0).abs() < 1e-10);
@@ -191,7 +196,8 @@ mod tests {
         let a = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
         let b = vec![5.0, 7.0, 9.0];
 
-        let x = solve_f64(&a, &b, 3).unwrap();
+        let Some(dev) = device() else { return };
+        let x = solve_f64(dev, &a, &b, 3).unwrap();
 
         assert!((x[0] - 5.0).abs() < 1e-14);
         assert!((x[1] - 7.0).abs() < 1e-14);
@@ -204,7 +210,8 @@ mod tests {
         let a = vec![2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 4.0];
         let b = vec![6.0, 9.0, 12.0];
 
-        let x = solve_f64(&a, &b, 3).unwrap();
+        let Some(dev) = device() else { return };
+        let x = solve_f64(dev, &a, &b, 3).unwrap();
 
         assert!((x[0] - 3.0).abs() < 1e-14);
         assert!((x[1] - 3.0).abs() < 1e-14);
@@ -213,49 +220,46 @@ mod tests {
 
     #[test]
     fn test_solve_f64_singular_matrix() {
-        // Singular matrix (row 2 = row 1)
+        // GPU LinSolveF64 returns zeros for singular; CPU detects and returns Err.
+        // Test CPU path (solve_f64_cpu) for singularity detection.
         let a = vec![1.0, 2.0, 1.0, 2.0];
         let b = vec![1.0, 1.0];
-
-        let result = solve_f64(&a, &b, 2);
+        let result = solve_f64_cpu(&a, &b, 2);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_solve_f64_size_mismatch() {
-        let a = vec![1.0, 2.0, 3.0]; // Wrong size
+        let Some(dev) = device() else { return };
+        let a = vec![1.0, 2.0, 3.0];
         let b = vec![1.0, 2.0];
-
-        let result = solve_f64(&a, &b, 2);
+        let result = solve_f64(dev, &a, &b, 2);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_solve_f64_empty() {
-        let x = solve_f64(&[], &[], 0).unwrap();
+        let Some(dev) = device() else { return };
+        let x = solve_f64(dev, &[], &[], 0).unwrap();
         assert_eq!(x.len(), 0);
     }
 
     #[test]
     fn test_solve_f64_large_well_conditioned() {
-        // 5×5 well-conditioned system
+        let Some(dev) = device() else { return };
         let n = 5;
         let mut a = vec![0.0; n * n];
         let mut b = vec![0.0; n];
-
-        // Create a diagonally dominant matrix (well-conditioned)
         for i in 0..n {
-            a[i * n + i] = 10.0; // Diagonal
+            a[i * n + i] = 10.0;
             b[i] = (i + 1) as f64;
-
             for j in 0..n {
                 if i != j {
-                    a[i * n + j] = 0.1; // Off-diagonal
+                    a[i * n + j] = 0.1;
                 }
             }
         }
-
-        let x = solve_f64(&a, &b, n).unwrap();
+        let x = solve_f64(dev, &a, &b, n).unwrap();
 
         // Verify Ax = b
         for i in 0..n {

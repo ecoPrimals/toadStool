@@ -54,12 +54,6 @@ impl MovingWindowStats {
             });
         }
 
-        let n_out = n - window_size + 1;
-
-        if n < 256 || n_out < 64 {
-            return Ok(Self::compute_cpu(input, window_size));
-        }
-
         self.compute_gpu(input, window_size)
     }
 
@@ -283,6 +277,7 @@ impl MovingWindowStats {
         })
     }
 
+    #[cfg(test)]
     fn compute_cpu(input: &[f32], window_size: usize) -> MovingWindowResult {
         let n_out = input.len() - window_size + 1;
         let w = window_size as f32;

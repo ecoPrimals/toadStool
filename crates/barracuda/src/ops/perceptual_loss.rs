@@ -74,16 +74,13 @@ impl PerceptualLoss {
             .map(|w| w.shape().iter().product::<usize>())
             .unwrap_or(0) as u32;
 
-        // Create weights buffer (or dummy buffer if None)
+        // Owned dummy buffer if weights are None (keeps it alive for bind group creation)
+        let dummy_buf;
         let weights_buffer = if let Some(ref w) = self.weights {
             w.buffer()
         } else {
-            // Create dummy buffer (won't be used) - store in a variable that lives long enough
-            // We'll create a minimal buffer that won't be accessed
-            let dummy = device.create_buffer_f32(1)?;
-            // Store in a way that keeps it alive - we'll use a Box to extend lifetime
-            // Actually, we can just use the buffer directly since it's only used in bind group
-            &*Box::leak(Box::new(dummy))
+            dummy_buf = device.create_buffer_f32(1)?;
+            &dummy_buf
         };
 
         // Create uniform buffer for parameters

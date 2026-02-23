@@ -1,13 +1,13 @@
 # ToadStool + BarraCUDA
 
-**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 45 -- February 23, 2026
+**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 49 -- February 23, 2026
 
 ---
 
 ## What Is This?
 
 - **ToadStool** -- Hardware infrastructure primal. Discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. Ollama model lifecycle management. Distributed workload dispatch across machines. Cloud cost estimation, compliance validation, and federation. ecoBin compliant: single binary, pure Rust, cross-architecture, cross-platform.
-- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: 600+ WGSL shaders (zero orphans -- every shader wired to Rust) as the primary math implementation. ToadStool dispatches to GPU or CPU based on hardware. Dedicated Conv2D, MaxPool2D, AvgPool2D compute shaders for neural network ops. **Nuclear physics**: HFB (Hartree-Fock-Bogoliubov) GPU-resident SCF suite -- 5 spherical + 6 axially-deformed shaders on cylindrical (ρ,z) grids; potentials, Hamiltonian, density, energy, BCS bisection, wavefunctions. **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde, lattice QCD, bio/genomics) -- same math for physics, ML, life science, and audio. **Complete MathOp coverage**: GPU and CPU executors handle all shape ops, binary ops, activations, and batch matmul. **TensorSession**: batched operation recording with single-submit execution (add, mul, fma, scale, matmul, relu, gelu, softmax, layer_norm, attention). **25 bio/evolution GPU ops**: ANI, dN/dS, HMM, DADA2, SNP, pangenome, quality filter, RF inference, ODE sweep, locus variance, pairwise Hamming/Jaccard/L2, spatial PD payoff, batch fitness, Hill gate, multi-objective fitness, swarm NN, k-mer histogram, taxonomy FC, UniFrac. **PDE solvers**: Crank-Nicolson (heat, Schrodinger), Richards unsaturated flow (van Genuchten-Mualem). **Moving window statistics** GPU op for IoT sensor streams. **ESN GPU-train → NPU-deploy**: export/import weights pipeline. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
+- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: 645+ WGSL shaders at f64 precision (zero orphans -- every shader wired to Rust). **All math originates as WGSL** -- barracuda does not care about hardware; toadstool routes to the best substrate at runtime. CPU reference implementations gated behind `#[cfg(test)]`. f64 transcendentals (exp, log, pow, sin, cos, etc.) fully covered via `compile_shader_f64()` polyfill pipeline -- works on every GPU regardless of native f64 support. **Nuclear physics**: HFB GPU-resident SCF suite -- 5 spherical + 6 axially-deformed shaders on cylindrical grids. **Lattice QCD**: 14 GPU shaders + host orchestration (Wilson action, HMC, Dirac, CG solver, pseudofermion). **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde, bio/genomics) -- same math for physics, ML, life science, and audio. All linalg GPU-dispatched: solve, cholesky, QR, SVD, LU via WGSL. RBF surrogates use GPU cdist + GPU solve. PPPM electrostatics use GPU FFT. **Complete MathOp coverage**: GPU and CPU executors handle all shape ops, binary ops, activations, batch matmul. **25 bio/evolution GPU ops**. **PDE solvers**: Crank-Nicolson, Richards unsaturated flow. **Moving window statistics** GPU op. **ESN GPU-train → NPU-deploy** pipeline. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
 
 ---
 
@@ -39,7 +39,8 @@ Nest    = Tower  + NestGate           <- storage
 | `unsafe` blocks | 95+ audited -- FFI only, all SAFETY documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Hardcoded primal names | 0 -- capability-based discovery throughout |
-| Orphan shaders | 0 -- all 600+ WGSL shaders wired to Rust |
+| Orphan shaders | 0 -- all 645+ WGSL shaders wired to Rust |
+| CPU-only math in production | 0 -- all math dispatches GPU shaders |
 | TODOs/FIXMEs in production | 0 |
 | File size limit | All files under 1000 lines |
 | Line coverage (core crates) | common 87%, config 89%, core ~87%, server ~85% |
@@ -60,7 +61,7 @@ Zero CUDA. Zero ROCm. Pure Vulkan via WGPU. Bit-identical results.
 
 ### GPU FP64 Scientific Computing
 
-Pure-GPU double precision with `math_f64.wgsl` library:
+Pure-GPU double precision with `math_f64.wgsl` polyfill library (exp, log, pow, sin, cos, tan, gamma, erf -- auto-injected by `compile_shader_f64()`):
 
 | GPU | SHADER_F64 | Observed FP64:FP32 Ratio | Notes |
 |-----|-----------|-------------------------|-------|
@@ -95,12 +96,15 @@ TinyLlama-1.1B split across two machines over LAN TCP:
 ```
 Applications (hotSpring, NUCLEUS inference, etc.)
        |
-BarraCUDA: 600+ WGSL Shaders (SHADER-FIRST)
-  ALL math is WGSL primary -- ToadStool dispatches to GPU/CPU
-  Zero orphan shaders -- every WGSL file wired to Rust
-  NN ops: Conv2D, MaxPool2D, AvgPool2D (dedicated WGSL compute shaders)
+BarraCUDA: 645+ WGSL f64 Shaders (SHADER-FIRST — ALL MATH)
+  All math originates as WGSL f64 — barracuda does not care about hardware
+  compile_shader_f64() polyfills transcendentals (exp, log, pow, sin, cos...)
+  Zero orphan shaders — every WGSL file wired to Rust
+  CPU reference impls gated #[cfg(test)] only
+  Linalg: solve, cholesky, QR, SVD, LU — all GPU-dispatched
   Middleware: linalg, numerical, special, stats, optimize, surrogate, sample, pde
-  Bio: 25 GPU ops | Physics: 11 HFB shaders | Lattice QCD: 5 shaders
+  Bio: 25 GPU ops | Physics: 11 HFB shaders | Lattice QCD: 14 shaders
+  MD: VV, RDF, MSD, PPPM (GPU FFT), force fields — all GPU
   Proven: identical results NVIDIA + AMD, validated by 4 Springs (4,000+ checks)
        |
 ToadStool: Hardware Discovery + Orchestration + Dispatch
@@ -178,7 +182,7 @@ cargo llvm-cov --lib -p toadstool-common --json
 ```
 toadStool/
 +-- crates/                        43 crates
-|   +-- barracuda/                 600+ WGSL shaders, tensor ops, NN ops, HFB nuclear physics, ESN, PDE solvers, scientific middleware
+|   +-- barracuda/                 645+ WGSL f64 shaders (shader-first), tensor ops, linalg, MD, HFB physics, lattice QCD, ESN, PDE, scientific middleware
 |   +-- core/
 |   |   +-- common/                Shared types, constants, primal identity, ecosystem IDs, error types
 |   |   +-- config/                Centralized configuration (env-aware, network config)
@@ -213,16 +217,18 @@ toadStool/
 
 ### Deep Debt Principles
 
-1. **Modern idiomatic Rust** -- parameter-based APIs, zero global state mutation, thiserror 2.0
-2. **Capability-based discovery** -- self-knowledge principle: only `PRIMAL_NAME` is known; everything else discovered at runtime
-3. **Zero-copy hot paths** -- `Cow<'a, str>` with `#[serde(borrow)]` on JSON-RPC types, `serde_json::from_slice`, `bytes::Bytes` on binary payloads
-4. **No hardcoding** -- well-known ecosystem constants for integration; core logic discovers by capability
-5. **Mocks isolated to testing** -- all `#[cfg(test)]` gated; production code is complete implementations
-6. **Honest documentation** -- no aspirational claims as facts; ML stubs return `ModelNotLoaded`/`ModelBackendRequired`
-7. **Vendor-agnostic** -- WGSL over CUDA/ROCm, any GPU works
-8. **Sovereign compute** -- no vendor lock-in, pure Rust core
-9. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (95+ blocks audited)
-10. **Shared error tracking** -- `AtomicU64` counter across all server transports
+1. **Shader-first math** -- all math originates as WGSL f64 shaders. Barracuda does not care about hardware. CPU reference code gated `#[cfg(test)]`.
+2. **f64 portability** -- `compile_shader_f64()` auto-injects software polyfills (exp, log, pow, sin, cos, etc.) on drivers lacking native support. Every GPU runs every shader.
+3. **Modern idiomatic Rust** -- parameter-based APIs, zero global state mutation, thiserror 2.0
+4. **Capability-based discovery** -- self-knowledge principle: only `PRIMAL_NAME` is known; everything else discovered at runtime
+5. **Zero-copy hot paths** -- `Cow<'a, str>` with `#[serde(borrow)]` on JSON-RPC types, `serde_json::from_slice`, `bytes::Bytes` on binary payloads
+6. **No hardcoding** -- well-known ecosystem constants for integration; core logic discovers by capability
+7. **Mocks isolated to testing** -- all `#[cfg(test)]` gated; production code is complete implementations
+8. **Honest documentation** -- no aspirational claims as facts; ML stubs return `ModelNotLoaded`/`ModelBackendRequired`
+9. **Vendor-agnostic** -- WGSL over CUDA/ROCm, any GPU works
+10. **Sovereign compute** -- no vendor lock-in, pure Rust core, no external math dependencies
+11. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (95+ blocks audited)
+12. **Shared error tracking** -- `AtomicU64` counter across all server transports
 
 ### Quality Metrics
 
@@ -241,7 +247,7 @@ toadStool/
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors |
 | Hardcoded primal names in prod | 0 |
-| WGSL shaders | 600+ (zero orphans) |
+| WGSL shaders | 645+ (zero orphans, all f64 shader-first) |
 | Dead code annotations | Audited -- all verified legitimate |
 | Four springs validation | 4,000+ acceptance checks |
 
@@ -250,36 +256,37 @@ toadStool/
 ## What Needs Evolution
 
 ### Next
+- **`eigh_f64` GPU wrapper** -- Jacobi eigenvalue solver has multi-pass WGSL shader, needs orchestration wrapper
+- **Conv2D/Pool stride/padding/channels** -- WGSL exists but lacks full parameter support (D-S46-001)
 - **Test coverage -> 90%** -- planner (49%), ecosystem (62%), detector (65%) are lowest remaining
 - **NPU model pipeline** -- train/compile/deploy from Rust (awaiting hardware)
 - **burn-inference models** -- BERT/Whisper/YOLO (currently return `ModelNotLoaded`/`ModelBackendRequired`)
 - **W-001/W-003** -- Mesa NAK upstream patches pending Titan V validation
+
+### Completed (Sessions 46-49: Shader-First Architecture, Feb 23, 2026)
+- **S49e-f: Zero CPU-only math** -- 27+ threshold-gated CPU fallbacks eliminated, 6 always-CPU ops wired to GPU, linalg (solve, cholesky) GPU-dispatched, RBF surrogate GPU pipeline (cdist + solve), PPPM electrostatics GPU FFT
+- **S49c-d: Force field + MD GPU enforcement** -- Velocity-Verlet, MSD, cubic spline, RDF, cdist all GPU-first. Coulomb, Morse, Born-Mayer, Yukawa CPU fallbacks removed. Special functions documented shader-first.
+- **S49: Spring shader ingestion** -- 13 f32→f64 evolutions (bio, ESN, numerical). All 4 springs absorbed at f64.
+- **S48: Lattice QCD GPU orchestration** -- CG solver + full HMC trajectory host loops
+- **S47: Lattice QCD shaders** -- 14 WGSL shaders (Wilson action, HMC leapfrog, Dirac, pseudofermion, polyakov loop). CPU lattice code gated `#[cfg(test)]`.
+- **S46: Cross-project absorption** -- hotSpring, neuralSpring, wetSpring shader absorption complete
+- **f64 transcendental coverage** -- `compile_shader_f64()` auto-injects `math_f64.wgsl` polyfills (exp, log, pow, sin, cos, gamma, erf) on all drivers
 
 ### Completed (Session 45: Deep Debt Evolution, Feb 23, 2026)
 - 21 `Box<dyn Error>` → typed errors in server/core production code
 - 20+ barracuda shader/device test fixes (atanh, batch_pair_reduce_f64, NPU ops, ESN)
 - 38 new coverage tests (planner, ecosystem, detector)
 - 95+ unsafe blocks audited with SAFETY comments; 0 `NonNull::new_unchecked` remaining
-- 14 manual + 100+ auto clippy pedantic fixes; WebSocket deprecation audit complete
-- Production sleep → `tokio::time::interval`; clone reduction in hot paths
-- All quality gates green: 0 clippy, 0 doc warnings, 0 fmt diffs, 14,000+ tests passing
 
 ### Completed (Sessions 43-44: Deep Debt + Sleep Elimination, Feb 22, 2026)
 - Refactored oversized files; `gpu_job_queue.rs` 1127→344 lines; normalization/tensor_ops modularized
 - 33+ production/test sleeps → event-driven (Notify, channel, interval, black_box)
-- `Box<dyn Error>` → `ConfigError`/`TarpcClientError`; gRPC stub → JSON-RPC IPC
-- Hardcoded ports/paths → env vars + XDG resolution; WebSocket deprecated
-- `NonNull::new_unchecked` → safe alternatives; VFIO `expect()` → error propagation
 
-### Completed (Sessions 39-41: Spring Absorption, PDE, f64 Bug Fix)
+### Completed (Sessions 31-41: Foundation, Springs, Physics, Shaders)
+- Zero clippy warnings; zero blind `unwrap()`; HFB nuclear physics; lattice QCD
+- Capability-based discovery; thiserror 2.0; zero-copy JSON-RPC; Four Springs validated
+- 600→645+ WGSL shaders; 55 orphan shaders wired; GpuExecutor 31 MathOps
 - 6 f64 shader compile fixes; Richards PDE solver; moving window GPU stats
-- Absorbed 7 neuralSpring + 3 wetSpring + 11 hotSpring HFB physics shaders (600+ WGSL)
-- All 25 bio ops re-exported; `cpu_conv_pool` promoted to `pub`
-
-### Completed (Sessions 31-38: Deep Debt, Precision, Coverage, Shaders)
-- Zero clippy warnings; zero blind `unwrap()`; TS-001/TS-003/TS-004 precision fixes
-- HFB nuclear physics; lattice QCD; capability-based discovery; thiserror 2.0; zero-copy JSON-RPC
-- 55 orphan shaders wired; GpuExecutor 31 MathOps; Four Springs validated (4,000+ checks)
 
 See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
@@ -289,10 +296,10 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| W-001 | f64 `exp`/`log` workaround for NVK/RADV open-source drivers | Active -- software fallback ~2x penalty; upstream ACO/NAK fix pending Titan V validation |
+| W-001 | f64 `exp`/`log` workaround for NVK/RADV open-source drivers | Active -- `compile_shader_f64()` polyfill handles it; upstream ACO/NAK fix pending Titan V validation |
 | W-003 | NAK compiler scheduling gap (SM70 Volta) | Active -- Phases 0-3 live in `compile_shader_f64()`; Titan V benchmark pending; Mesa MR ready |
+| D-S46-001 | Conv2D/Pool stride/padding/channels in WGSL | Carried -- shaders exist but lack full parametric support |
 | D-S18-002 | cubecl transitive `dirs-sys` | Low -- needs upstream PR replacing `dirs` with `etcetera` |
-| D-S20-003 | neuralSpring `evolved/` (~2075 lines) | Carried -- barracuda APIs ready; neuralSpring team migration pending |
 
 See [DEBT.md](DEBT.md) for full register and evolution paths.
 
@@ -307,4 +314,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 23, 2026 -- Session 45: 14,000+ tests, 95+ unsafe blocks audited, 21 Box<dyn Error> → typed errors, barracuda shader fixes, all quality gates green.
+**Last Updated**: February 23, 2026 -- Session 49: Shader-first architecture complete. 645+ WGSL f64 shaders, zero CPU-only math in production, f64 transcendental polyfills, lattice QCD GPU orchestration, linalg/RBF/PPPM all GPU-dispatched, all quality gates green.

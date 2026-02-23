@@ -30,17 +30,15 @@ impl BesselJ1F64 {
             return Ok(vec![]);
         }
 
-        let size = x.len();
-        if size < 256 {
-            return Ok(self.j1_cpu(x));
-        }
         self.j1_gpu(x)
     }
 
+    #[cfg(test)]
     fn j1_cpu(&self, x: &[f64]) -> Vec<f64> {
         x.iter().map(|&xi| Self::j1_scalar(xi)).collect()
     }
 
+    #[cfg(test)]
     fn j1_scalar(x: f64) -> f64 {
         let ax = x.abs();
         if ax >= 8.0 {

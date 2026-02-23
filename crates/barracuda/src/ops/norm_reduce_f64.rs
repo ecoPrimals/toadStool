@@ -71,31 +71,23 @@ impl NormReduceF64 {
 
     /// Compute generic p-norm: (sum(|x|^p))^(1/p)
     ///
-    /// Note: Falls back to CPU for arbitrary p since many GPUs (especially AMD)
-    /// don't support f64 log/exp operations required for pow.
-    pub fn p_norm(_device: Arc<WgpuDevice>, data: &[f64], p: f64) -> Result<f64> {
+    /// Dispatches `norm_p_f64` WGSL shader. `compile_shader_f64()` auto-injects
+    /// software `pow_f64` on drivers lacking native f64 pow (NVK, RADV, Ada).
+    pub fn p_norm(device: Arc<WgpuDevice>, data: &[f64], p: f64) -> Result<f64> {
         if data.is_empty() {
             return Ok(0.0);
         }
         if p == 1.0 {
-            // CPU fallback for L1
-            return Ok(data.iter().map(|x| x.abs()).sum());
+            return Self::l1(device, data);
         }
         if p == 2.0 {
-            // CPU fallback for L2
-            let sum_sq: f64 = data.iter().map(|x| x * x).sum();
-            return Ok(sum_sq.sqrt());
+            return Self::l2(device, data);
         }
         if p.is_infinite() && p > 0.0 {
-            // CPU fallback for Linf
-            return Ok(data
-                .iter()
-                .map(|x| x.abs())
-                .fold(f64::NEG_INFINITY, f64::max));
+            return Self::linf(device, data);
         }
 
-        // CPU fallback for generic p-norm (GPU f64 pow not widely supported)
-        let sum_p: f64 = data.iter().map(|x| x.abs().powf(p)).sum();
+        let sum_p = Self::reduce_op(device, data, "norm_p_f64", Some(p))?;
         Ok(sum_p.powf(1.0 / p))
     }
 

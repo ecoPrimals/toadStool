@@ -153,6 +153,7 @@ pub struct TrainingDiagnostics {
 /// # Ok::<(), barracuda::error::BarracudaError>(())
 /// ```
 pub fn train_adaptive(
+    device: Arc<WgpuDevice>,
     x_data: &[Vec<f64>],
     y_data: &[f64],
     kernel: RBFKernel,
@@ -192,9 +193,9 @@ pub fn train_adaptive(
         compute_distances_f64(&train_x, &train_x, n_train, n_train, n_dim)
     };
 
-    // Assemble and solve (always f64)
+    // Assemble and solve (always f64, GPU)
     let surrogate = assemble_and_solve(
-        &train_x, &distances, y_data, kernel, smoothing, n_train, n_dim,
+        device, &train_x, &distances, y_data, kernel, smoothing, n_train, n_dim,
     )?;
 
     let diagnostics = TrainingDiagnostics {
@@ -284,14 +285,21 @@ pub async fn train_adaptive_gpu(
         .collect();
 
     // Compute pairwise distances on GPU
-    let distances = compute_distances_gpu(&train_x_f32, n_train, n_dim, device).await?;
+    let distances = compute_distances_gpu(&train_x_f32, n_train, n_dim, device.clone()).await?;
 
     // Flatten training data to f64 for kernel/solve
     let train_x: Vec<f64> = x_data.iter().flat_map(|row| row.iter().copied()).collect();
 
-    // Assemble and solve (always f64)
+    // Assemble and solve (always f64, GPU)
     let surrogate = assemble_and_solve(
-        &train_x, &distances, y_data, kernel, smoothing, n_train, n_dim,
+        device.clone(),
+        &train_x,
+        &distances,
+        y_data,
+        kernel,
+        smoothing,
+        n_train,
+        n_dim,
     )?;
 
     let diagnostics = TrainingDiagnostics {
@@ -336,6 +344,7 @@ async fn compute_distances_gpu(
 ///
 /// Useful for verifying that the f32 path doesn't introduce significant error.
 pub fn train_with_validation(
+    device: Arc<WgpuDevice>,
     x_data: &[Vec<f64>],
     y_data: &[f64],
     kernel: RBFKernel,
@@ -373,8 +382,9 @@ pub fn train_with_validation(
         .map(|(a, b)| (a - b).abs())
         .fold(0.0_f64, f64::max);
 
-    // Use f64 distances for the actual solve
+    // Use f64 distances for the actual solve (GPU)
     let surrogate = assemble_and_solve(
+        device,
         &train_x,
         &distances_f64,
         y_data,
@@ -398,6 +408,7 @@ pub fn train_with_validation(
 
 /// Assemble the augmented system and solve for RBF weights.
 fn assemble_and_solve(
+    device: Arc<WgpuDevice>,
     train_x: &[f64],
     distances: &[f64],
     y_data: &[f64],
@@ -434,11 +445,12 @@ fn assemble_and_solve(
 
     b[..n_train].copy_from_slice(y_data);
 
-    let solution = solve_f64(&a, &b, n_total)?;
+    let solution = solve_f64(device.clone(), &a, &b, n_total)?;
     let weights = solution[..n_train].to_vec();
     let poly_coeffs = solution[n_train..].to_vec();
 
     Ok(RBFSurrogate::from_parts(
+        device,
         train_x.to_vec(),
         y_data.to_vec(),
         weights,

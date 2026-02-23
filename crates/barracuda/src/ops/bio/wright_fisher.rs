@@ -21,6 +21,10 @@ use crate::device::WgpuDevice;
 
 pub const WGSL_WRIGHT_FISHER: &str = include_str!("../../shaders/bio/wright_fisher_step.wgsl");
 
+/// f64 version for universal math library portability.
+pub const WGSL_WRIGHT_FISHER_F64: &str =
+    include_str!("../../shaders/bio/wright_fisher_step_f64.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct WfParams {
@@ -30,7 +34,7 @@ struct WfParams {
     _pad: u32,
 }
 
-/// Wright-Fisher drift + selection GPU kernel.
+/// Wright-Fisher drift + selection GPU kernel (f64 pipeline).
 pub struct WrightFisherGpu {
     pipeline: wgpu::ComputePipeline,
     bgl: wgpu::BindGroupLayout,
@@ -58,10 +62,7 @@ impl WrightFisherGpu {
             push_constant_ranges: &[],
         });
 
-        let module = d.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("WrightFisher Shader"),
-            source: wgpu::ShaderSource::Wgsl(WGSL_WRIGHT_FISHER.into()),
-        });
+        let module = device.compile_shader_f64(WGSL_WRIGHT_FISHER_F64, Some("WrightFisher f64"));
 
         let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("WrightFisher Pipeline"),
@@ -81,9 +82,9 @@ impl WrightFisherGpu {
 
     /// Dispatch one Wright-Fisher generation.
     ///
-    /// `freq_in_buf`:    `[n_pops × n_loci]` f32 — allele frequencies
-    /// `selection_buf`:  `[n_loci]` f32 — selection coefficients
-    /// `freq_out_buf`:   `[n_pops × n_loci]` f32 — output frequencies
+    /// `freq_in_buf`:    `[n_pops × n_loci]` f64 — allele frequencies
+    /// `selection_buf`:  `[n_loci]` f64 — selection coefficients
+    /// `freq_out_buf`:   `[n_pops × n_loci]` f64 — output frequencies
     /// `prng_state_buf`: `[n_pops × n_loci × 4]` u32 — PRNG state
     pub fn dispatch(
         &self,
@@ -177,5 +178,25 @@ fn uniform_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
             min_binding_size: None,
         },
         count: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn f64_shader_contains_wright_fisher() {
+        assert!(WGSL_WRIGHT_FISHER_F64.contains("fn wright_fisher"));
+        assert!(WGSL_WRIGHT_FISHER_F64.contains("f64"));
+    }
+
+    #[test]
+    fn f64_shader_compiles_via_naga() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
+        else {
+            return;
+        };
+        device.compile_shader_f64(WGSL_WRIGHT_FISHER_F64, Some("wright_fisher_f64"));
     }
 }

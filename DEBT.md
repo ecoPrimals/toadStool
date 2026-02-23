@@ -342,17 +342,14 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 
 ---
 
-### F-005: Production TODOs
+### F-005: Production TODOs — RESOLVED
 
-**Priority**: MEDIUM — gaps in implemented functionality
-**Items** (production files only, not research/examples):
-- `crates/security_provider/factory.rs:160-161` — `TODO: LocalKeyringProvider`, `SoftwareHSMProvider` — security key storage backends missing
-- `crates/runtime/gpu/src/cpu_resource.rs:151` — `TODO: Detect RISC-V 'V' vector extension` — CPU capability incomplete for RISC-V targets
-- `crates/runtime/display/src/input/events.rs:157` — `TODO: Add more key codes` — input handling incomplete
-- `crates/runtime/display/src/input/mod.rs:135` — `TODO: Get focused window somehow` — window focus state unimplemented
-- `crates/runtime/orchestration/src/load_balancer.rs:11` — `TODO: multi-instance load balancing` — field exists but dynamic balancing not wired
-- `crates/auto_config/src/hardware/cpu.rs:278` — RISC-V vector extension detection duplicate of above
-- `crates/cli/src/main.rs:397` — `TODO: UniBin Phase 3 - Full server daemon integration` — server/daemon subcommand partially wired
+**Status**: RESOLVED — All items resolved across S6-S45 (R-034, R-035, R-047, S6-004, S7-005, S7-006)
+**Verification**: Zero TODO/FIXME in production Rust code. Only remaining TODOs are:
+- 1 research TODO in `akida-reservoir-research` (legitimate — NPU hardware dependency)
+- 1 roadmap TODO in `cli/daemon/workload_manager.rs` (Phase 4 executor — feature work)
+- 1 roadmap TODO in `cli/universal/operations/benchmarking.rs` (container benchmark — feature work)
+- 16 `TODO(component-model)` in WASM test file (gated behind unimplemented feature flag)
 
 ---
 
@@ -1297,3 +1294,26 @@ updated.  All four sites plus HTTP semantic wiring fixed:
 | W-003 | NAK compiler Titan V hardware validation for ILP speedup | Carried |
 | W-005 | GPU-resident VACF (Velocity Autocorrelation Function) | ✅ RESOLVED S46 — `vacf_batch_f64.wgsl` + `GpuVelocityRing` + `VacfBatchGpu` |
 | D-S46-001 | Conv2D/Pool WGSL shader evolution (stride/padding/channels/batch) | New — GPU shaders exist but lack full parameter support; CPU fallback active |
+| D-S47-001 | GPU CG Solver orchestration | ✅ RESOLVED S48 — `GpuCgSolver` multi-dispatch loop (Dirac + dot + axpy + xpay + reduce) |
+| D-S47-002 | GPU HMC Trajectory orchestration | ✅ RESOLVED S48 — `GpuHmcTrajectory` full dynamical fermion HMC (leapfrog + force + CG + accept/reject) |
+| D-S49-001 | f32→f64 shader evolution (13 shaders) | ✅ RESOLVED S49 — bio (7), numerical/ML (4), ESN (2) all evolved, Naga-validated |
+| D-S49-002 | heat_current_f64.wgsl GPU absorption | ✅ RESOLVED S49 — `HeatCurrentGpu` + Yukawa heat current shader from hotSpring |
+| D-S49-003 | f64 GPU pipelines wiring | ✅ RESOLVED S49 — all 11 `*Gpu` structs now use `compile_shader_f64()` as primary path |
+| D-S49-004 | Broyden mixer stub (zeros) | ✅ RESOLVED S49 — Cholesky solve for γ coefficients, proper Broyden correction |
+| D-S49-005 | Box::leak in perceptual_loss | ✅ RESOLVED S49 — replaced with owned local binding |
+| D-S49c-001 | RDF histogram CPU-only (O(N²)) | ✅ RESOLVED S49c — `RdfHistogramF64` wired to `rdf_histogram_f64.wgsl` GPU dispatch (atomic histogram) |
+| D-S49c-002 | cdist shader f32-only | ✅ RESOLVED S49c — `cdist_f64.wgsl` created (Euclidean/Manhattan/Cosine) + `compute_distances_f64_gpu()` standalone API |
+| D-S49d-001 | VelocityVerlet CPU-only step() | ✅ RESOLVED S49d — GPU pipeline (3 entry points) via `compile_shader_f64()`, CPU removed |
+| D-S49d-002 | MSD observable missing shader | ✅ RESOLVED S49d — `msd_f64.wgsl` (native f64) + `MsdGpu` wrapper with per-lag dispatch |
+| D-S49d-003 | Cubic spline eval unused shader | ✅ RESOLVED S49d — Shader evolved to native f64, `eval_many_gpu()` with monomial coefficient conversion |
+| D-S49d-004 | Force CPU fallbacks | ✅ RESOLVED S49d — Coulomb, Morse, Born-Mayer, Yukawa: CPU gates removed, always GPU dispatch; CPU functions gated `#[cfg(test)]` |
+| D-S49d-005 | Special functions undocumented shader duality | ✅ RESOLVED S49d — `gamma.rs`, `laguerre.rs` documented with per-function WGSL shader equivalents |
+| D-S49e-001 | 27+ threshold-gated CPU fallbacks | ✅ RESOLVED S49e — All `if n < THRESHOLD` gates removed across 20+ ops; always GPU dispatch |
+| D-S49e-002 | KineticEnergyF64 always CPU | ✅ RESOLVED S49e — Full GPU dispatch via `kinetic_energy_f64.wgsl` pipeline |
+| D-S49e-003 | Variance/Covariance/Correlation always CPU | ✅ RESOLVED S49e — All 3 wired to GPU shaders, evolved to native `array<f64>` |
+| D-S49e-004 | DigammaF64 always CPU | ✅ RESOLVED S49e — Wired to `digamma_f64.wgsl` via `compile_shader_f64()` f64 polyfill |
+| D-S49e-005 | BetaF64 always CPU | ✅ RESOLVED S49e — Wired to `beta_f64.wgsl` via `compile_shader_f64()` f64 polyfill |
+| D-S49f-001 | `solve_f64` CPU Gauss-Jordan | ✅ RESOLVED S49f — GPU via `LinSolveF64` / `linsolve_f64.wgsl` |
+| D-S49f-002 | `cholesky_f64` CPU decomposition | ✅ RESOLVED S49f — GPU via `CholeskyF64` / `cholesky_f64.wgsl` |
+| D-S49f-003 | RBF surrogate CPU pipeline | ✅ RESOLVED S49f — GPU cdist (`cdist_f64.wgsl`) + GPU solve; `RBFSurrogate` holds device |
+| D-S49f-004 | PPPM CPU FFT | ✅ RESOLVED S49f — `Pppm` uses `Fft3DF64` GPU pipeline |

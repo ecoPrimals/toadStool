@@ -49,20 +49,15 @@ impl BesselJ0F64 {
             return Ok(vec![]);
         }
 
-        let size = x.len();
-
-        // CPU fallback for small inputs
-        if size < 256 {
-            return Ok(self.j0_cpu(x));
-        }
-
         self.j0_gpu(x)
     }
 
+    #[cfg(test)]
     fn j0_cpu(&self, x: &[f64]) -> Vec<f64> {
         x.iter().map(|&xi| Self::j0_scalar(xi)).collect()
     }
 
+    #[cfg(test)]
     fn j0_scalar(x: f64) -> f64 {
         let ax = x.abs();
         if ax >= 8.0 {

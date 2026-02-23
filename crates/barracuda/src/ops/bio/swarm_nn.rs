@@ -3,8 +3,8 @@
 //! Swarm NN Forward — GPU kernel.
 //!
 //! Forward pass for a population of neural network controllers.
-//! Reads weights [n_controllers × weights_per_ctrl] f32 and inputs
-//! [n_controllers × n_evals × input_dim] f32, writes actions
+//! Reads weights [n_controllers × weights_per_ctrl] f64 and inputs
+//! [n_controllers × n_evals × input_dim] f64, writes actions
 //! [n_controllers × n_evals] u32.
 //!
 //! Provenance: neuralSpring metalForge → toadStool absorption
@@ -16,6 +16,10 @@ use wgpu::util::DeviceExt;
 use crate::device::WgpuDevice;
 
 pub const WGSL_SWARM_NN_FORWARD: &str = include_str!("../../shaders/bio/swarm_nn_forward.wgsl");
+
+/// f64 version for universal math library portability.
+pub const WGSL_SWARM_NN_FORWARD_F64: &str =
+    include_str!("../../shaders/bio/swarm_nn_forward_f64.wgsl");
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -30,6 +34,7 @@ pub struct SwarmNnParams {
     pub _pad2: u32,
 }
 
+/// Swarm NN forward GPU kernel (f64 pipeline).
 pub struct SwarmNnGpu {
     pipeline: wgpu::ComputePipeline,
     bgl: wgpu::BindGroupLayout,
@@ -92,10 +97,7 @@ impl SwarmNnGpu {
             push_constant_ranges: &[],
         });
 
-        let module = d.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("SwarmNn Shader"),
-            source: wgpu::ShaderSource::Wgsl(WGSL_SWARM_NN_FORWARD.into()),
-        });
+        let module = device.compile_shader_f64(WGSL_SWARM_NN_FORWARD_F64, Some("SwarmNn f64"));
 
         let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("SwarmNn Pipeline"),
@@ -115,8 +117,8 @@ impl SwarmNnGpu {
 
     /// Run forward pass for swarm of neural network controllers.
     ///
-    /// `weights_buf`: `[n_controllers × weights_per_ctrl]` f32
-    /// `inputs_buf`: `[n_controllers × n_evals × input_dim]` f32
+    /// `weights_buf`: `[n_controllers × weights_per_ctrl]` f64
+    /// `inputs_buf`: `[n_controllers × n_evals × input_dim]` f64
     /// `actions_buf`: `[n_controllers × n_evals]` u32
     pub fn dispatch(
         &self,
@@ -172,5 +174,25 @@ impl SwarmNnGpu {
             pass.dispatch_workgroups(total.div_ceil(256), 1, 1);
         }
         q.submit(std::iter::once(encoder.finish()));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn f64_shader_contains_main() {
+        assert!(WGSL_SWARM_NN_FORWARD_F64.contains("fn main"));
+        assert!(WGSL_SWARM_NN_FORWARD_F64.contains("f64"));
+    }
+
+    #[test]
+    fn f64_shader_compiles_via_naga() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
+        else {
+            return;
+        };
+        device.compile_shader_f64(WGSL_SWARM_NN_FORWARD_F64, Some("swarm_nn_forward_f64"));
     }
 }

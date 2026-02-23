@@ -100,18 +100,11 @@ impl CyclicReductionF64 {
             return Ok(vec![d[0] / b[0]]);
         }
 
-        // Use GPU serial solver for medium sizes (faster than CPU due to memory bandwidth)
-        // GPU parallel cyclic reduction is O(log n) but has synchronization complexity
-        // For small systems, CPU is faster; for medium, GPU serial; for huge, GPU parallel
-        if n < 64 {
-            return Ok(self.solve_cpu_thomas(a, b, c, d));
-        }
-
-        // Use GPU serial solver (Thomas algorithm in single kernel - no sync issues)
         self.solve_gpu_serial(a, b, c, d)
     }
 
     /// CPU Thomas algorithm (O(n) sequential)
+    #[cfg(test)]
     fn solve_cpu_thomas(&self, a: &[f64], b: &[f64], c: &[f64], d: &[f64]) -> Vec<f64> {
         let n = b.len();
         let mut c_prime = vec![0.0f64; n];

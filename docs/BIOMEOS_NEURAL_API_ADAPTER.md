@@ -78,8 +78,7 @@ This document specifies the adapter layer for converting between biomeOS's Neura
 
 ### Assumed biomeOS Neural API Format
 
-**Note**: This is a DRAFT based on common neural graph representations.  
-**TODO**: Update with actual biomeOS specification when available.
+**Note**: Draft based on common neural graph representations. Update when biomeOS specification stabilizes.
 
 ```json
 {

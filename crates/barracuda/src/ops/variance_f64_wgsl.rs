@@ -10,9 +10,12 @@
 //! - Normalization
 //! - Feature scaling
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
-use crate::error::Result;
+use crate::error::{BarracudaError, Result};
+use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
 
 /// Simple variance reduction variant (scalar path).
 pub const WGSL_VARIANCE_SIMPLE: &str = include_str!("../shaders/misc/variance_simple.wgsl");
@@ -20,21 +23,99 @@ pub const WGSL_VARIANCE_SIMPLE: &str = include_str!("../shaders/misc/variance_si
 /// Special variance shader.
 pub const WGSL_VARIANCE_SPECIAL: &str = include_str!("../shaders/special/variance.wgsl");
 
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct Params {
+    size: u32,
+    num_vectors: u32,
+    stride: u32,
+    ddof: u32,
+    mode: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+}
+
 /// f64 Variance/StdDev evaluator
 pub struct VarianceF64 {
-    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
+    pipeline: wgpu::ComputePipeline,
+    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl VarianceF64 {
-    /// Create new Variance f64 operation
-    pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        Ok(Self { device })
-    }
-
-    #[allow(dead_code)]
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/special/variance_f64.wgsl")
+    }
+
+    /// Create new Variance f64 operation
+    pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
+        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("VarianceF64"));
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("VarianceF64 BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("VarianceF64 PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("VarianceF64 Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
+            });
+
+        Ok(Self {
+            device,
+            pipeline,
+            bind_group_layout,
+        })
     }
 
     /// Compute variance of a vector (population variance, ddof=0)
@@ -53,8 +134,110 @@ impl VarianceF64 {
             return Ok(0.0);
         }
 
-        // CPU fallback for reliability
-        Ok(Self::variance_cpu(data, ddof))
+        let n = data.len();
+        let params = Params {
+            size: n as u32,
+            num_vectors: 1,
+            stride: n as u32,
+            ddof: ddof as u32,
+            mode: 0,
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+        };
+
+        let input_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("VarianceF64 Input"),
+                contents: bytemuck::cast_slice(data),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let output_size = std::mem::size_of::<f64>();
+        let output_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("VarianceF64 Output"),
+            size: output_size as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let params_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("VarianceF64 Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("VarianceF64 BG"),
+                layout: &self.bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: input_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: output_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                ],
+            });
+
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("VarianceF64 Encoder"),
+                });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("VarianceF64 Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(1u32.div_ceil(WORKGROUP_SIZE_1D).max(1), 1, 1);
+        }
+
+        let staging_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("VarianceF64 Staging"),
+            size: output_size as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        encoder.copy_buffer_to_buffer(&output_buf, 0, &staging_buf, 0, output_size as u64);
+
+        self.device.queue.submit(Some(encoder.finish()));
+
+        let buffer_slice = staging_buf.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+        self.device.device.poll(wgpu::Maintain::Wait);
+        rx.recv()
+            .map_err(|e| BarracudaError::Gpu(format!("Variance readback: {}", e)))?
+            .map_err(|e| BarracudaError::Gpu(format!("Variance map: {:?}", e)))?;
+
+        let data = buffer_slice.get_mapped_range();
+        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging_buf.unmap();
+
+        Ok(result[0])
     }
 
     /// Compute standard deviation (population, ddof=0)
@@ -67,6 +250,7 @@ impl VarianceF64 {
         Ok(self.sample_variance(data)?.sqrt())
     }
 
+    #[cfg(test)]
     fn variance_cpu(data: &[f64], ddof: usize) -> f64 {
         let n = data.len();
         if n <= ddof {

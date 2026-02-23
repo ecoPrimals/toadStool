@@ -18,6 +18,10 @@ use crate::device::WgpuDevice;
 
 pub const WGSL_BATCH_FITNESS_EVAL: &str = include_str!("../../shaders/ml/batch_fitness_eval.wgsl");
 
+/// f64 version for universal math library portability.
+pub const WGSL_BATCH_FITNESS_EVAL_F64: &str =
+    include_str!("../../shaders/ml/batch_fitness_eval_f64.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct FitnessParams {
@@ -25,6 +29,7 @@ struct FitnessParams {
     genome_len: u32,
 }
 
+/// Batch fitness evaluation GPU kernel (f64 pipeline).
 pub struct BatchFitnessGpu {
     pipeline: wgpu::ComputePipeline,
     bgl: wgpu::BindGroupLayout,
@@ -87,10 +92,8 @@ impl BatchFitnessGpu {
             push_constant_ranges: &[],
         });
 
-        let module = d.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("BatchFitness Shader"),
-            source: wgpu::ShaderSource::Wgsl(WGSL_BATCH_FITNESS_EVAL.into()),
-        });
+        let module =
+            device.compile_shader_f64(WGSL_BATCH_FITNESS_EVAL_F64, Some("BatchFitness f64"));
 
         let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("BatchFitness Pipeline"),
@@ -110,9 +113,9 @@ impl BatchFitnessGpu {
 
     /// Evaluate linear fitness for `pop_size` individuals, each with `genome_len` traits.
     ///
-    /// `population_buf`: `[pop_size × genome_len]` f32 (row-major genotypes)
-    /// `weights_buf`:    `[genome_len]` f32
-    /// `fitness_buf`:    `[pop_size]` f32 (output)
+    /// `population_buf`: `[pop_size × genome_len]` f64 (row-major genotypes)
+    /// `weights_buf`:    `[genome_len]` f64
+    /// `fitness_buf`:    `[pop_size]` f64 (output)
     pub fn dispatch(
         &self,
         population_buf: &wgpu::Buffer,
@@ -170,5 +173,25 @@ impl BatchFitnessGpu {
             pass.dispatch_workgroups(pop_size.div_ceil(256), 1, 1);
         }
         q.submit(std::iter::once(encoder.finish()));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn f64_shader_contains_batch_fitness_linear() {
+        assert!(WGSL_BATCH_FITNESS_EVAL_F64.contains("fn batch_fitness_linear"));
+        assert!(WGSL_BATCH_FITNESS_EVAL_F64.contains("f64"));
+    }
+
+    #[test]
+    fn f64_shader_compiles_via_naga() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
+        else {
+            return;
+        };
+        device.compile_shader_f64(WGSL_BATCH_FITNESS_EVAL_F64, Some("batch_fitness_f64"));
     }
 }

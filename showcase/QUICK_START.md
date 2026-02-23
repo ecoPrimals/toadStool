@@ -95,11 +95,11 @@ toadstool migrate counter --to docker
    - Tests pure computation speed
    - Shows substrate overhead
 
-2. **I/O** (File operations) ⏳ TODO
+2. **I/O** (File operations)
    - Tests disk performance
    - Shows filesystem differences
 
-3. **Memory** (Array operations) ⏳ TODO
+3. **Memory** (Array operations)
    - Tests memory bandwidth
    - Shows allocation overhead
 
@@ -172,9 +172,9 @@ vim scripts/demo-migration.sh
 showcase/
 ├── README.md                    - Full docs
 ├── QUICK_START.md              - This file
-├── showcase.sh                  - Main runner (TODO)
+├── showcase.sh                  - Main runner
 ├── workloads/*.toml            - Workload definitions
-├── scripts/*.sh                - Demo scripts (TODO)
+├── scripts/*.sh                - Demo scripts
 └── utils/verify.sh             - ✅ WORKS!
 ```
 

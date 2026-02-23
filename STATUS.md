@@ -1,4 +1,4 @@
-# Status -- February 23, 2026 (Sessions 32-45: Deep Debt Evolution + Spring Absorption)
+# Status -- February 23, 2026 (Sessions 32-49: Shader-First Architecture + Deep Debt)
 
 ## Quality Gates
 
@@ -25,11 +25,22 @@
 | Production panics/unwraps | PASS | **Zero blind unwrap(); infallible expect() only** |
 | TODOs/FIXMEs/HACKs | PASS | **Zero in production code** |
 | File size limit | PASS | **All files under 1000 lines** |
-| WGSL shaders | PASS | **600+ (zero orphans)** |
+| WGSL shaders | PASS | **645+ (zero orphans, all f64 shader-first)** |
+| CPU-only math in prod | PASS | **Zero — all math dispatches GPU shaders** |
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
 
 ---
+
+## Sessions 46-49: Shader-First Architecture (Feb 23, 2026)
+
+- **S49e-f: Zero CPU-only math** -- 27+ threshold-gated CPU fallbacks eliminated, 6 always-CPU ops wired to GPU, linalg (solve, cholesky) GPU-dispatched, RBF surrogate GPU pipeline (cdist + solve), PPPM electrostatics GPU FFT
+- **S49c-d: Force field + MD GPU enforcement** -- Velocity-Verlet, MSD, cubic spline, RDF, cdist all GPU-first. Coulomb, Morse, Born-Mayer, Yukawa CPU fallbacks removed.
+- **S49: Spring shader ingestion** -- 13 f32→f64 evolutions (bio, ESN, numerical). All 4 springs absorbed at f64.
+- **S48: Lattice QCD GPU orchestration** -- CG solver + full HMC trajectory host loops
+- **S47: Lattice QCD shaders** -- 14 WGSL shaders. CPU lattice code gated `#[cfg(test)]`.
+- **S46: Cross-project absorption** -- hotSpring, neuralSpring, wetSpring shader absorption complete
+- **f64 transcendental coverage** -- `compile_shader_f64()` auto-injects `math_f64.wgsl` polyfills on all drivers
 
 ## Session 45: Deep Debt Evolution (Feb 23, 2026)
 
@@ -57,7 +68,7 @@ Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showc
 ## Session 40: Richards PDE + Moving Window Stats + Dependency Audit (Feb 22, 2026)
 
 - **Richards**: 1D unsaturated zone water flow solver (van Genuchten-Mualem, Picard iteration, Crank-Nicolson) with 4 tests (airSpring absorption)
-- **Moving window stats**: WGSL GPU kernel computing mean/var/min/max over sliding windows for IoT sensor streams; CPU fallback for N<256
+- **Moving window stats**: WGSL GPU kernel computing mean/var/min/max over sliding windows for IoT sensor streams; always GPU dispatch
 - **Dependency audit**: workspace already pure Rust; libc confined to akida VFIO ioctls
 - **Dead code sweep**: 38 `#[allow(dead_code)]` all verified legitimate
 

@@ -10,8 +10,8 @@
 //
 // Note: Requires GPU f64 support including log/sin/cos operations.
 
-@group(0) @binding(0) var<storage, read> input: array<vec2<u32>>;
-@group(0) @binding(1) var<storage, read_write> output: array<vec2<u32>>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
 @group(0) @binding(2) var<uniform> params: Params;
 
 struct Params {
@@ -91,7 +91,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (idx >= params.size) {
         return;
     }
-    let x = bitcast<f64>(input[idx]);
+    let x = input[idx];
     let result = digamma_f64(x);
-    output[idx] = bitcast<vec2<u32>>(result);
+    output[idx] = result;
 }

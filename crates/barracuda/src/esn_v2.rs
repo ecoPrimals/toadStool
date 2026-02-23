@@ -125,6 +125,13 @@ pub const WGSL_ESN_RESERVOIR_UPDATE: &str = include_str!("shaders/ml/esn_reservo
 /// Separated from reservoir update so readout can run on CPU while reservoir runs on GPU/NPU.
 pub const WGSL_ESN_READOUT: &str = include_str!("shaders/ml/esn_readout.wgsl");
 
+/// f64 version of the reservoir update for universal math library portability.
+pub const WGSL_ESN_RESERVOIR_UPDATE_F64: &str =
+    include_str!("shaders/ml/esn_reservoir_update_f64.wgsl");
+
+/// f64 version of the readout for universal math library portability.
+pub const WGSL_ESN_READOUT_F64: &str = include_str!("shaders/ml/esn_readout_f64.wgsl");
+
 /// Result of [`ESN::export_weights`]: `(w_in, w_res, w_out)` as flat f32 vectors.
 pub type ExportedWeights = (Vec<f32>, Vec<f32>, Option<Vec<f32>>);
 

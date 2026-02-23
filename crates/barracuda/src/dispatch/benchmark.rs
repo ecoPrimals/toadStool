@@ -29,6 +29,7 @@
 //! println!("{}", results.summary());
 //! ```
 
+use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -309,16 +310,19 @@ pub struct BenchmarkSuite {
     config: BenchmarkConfig,
     gpu_available: bool,
     gpu_name: Option<String>,
+    /// GPU device (when available) for ops that require it (solve, etc.)
+    gpu_device: Option<Arc<WgpuDevice>>,
 }
 
 impl BenchmarkSuite {
     /// Create a new benchmark suite
     pub fn new(config: BenchmarkConfig) -> Self {
-        let (gpu_available, gpu_name) = check_gpu();
+        let (gpu_available, gpu_name, gpu_device) = check_gpu();
         Self {
             config,
             gpu_available,
             gpu_name,
+            gpu_device,
         }
     }
 
@@ -385,20 +389,17 @@ impl BenchmarkSuite {
         // Generate test data
         let data = generate_test_data(operation, size);
 
-        // Warmup
         for _ in 0..self.config.warmup_iterations {
-            run_cpu_operation(operation, &data)?;
+            run_cpu_operation(operation, &data, self.gpu_device.as_ref())?;
         }
 
-        // Timed iterations
         let mut times = Vec::with_capacity(self.config.timed_iterations);
         for _ in 0..self.config.timed_iterations {
             let start = Instant::now();
-            run_cpu_operation(operation, &data)?;
+            run_cpu_operation(operation, &data, self.gpu_device.as_ref())?;
             times.push(start.elapsed());
         }
 
-        // Return median
         times.sort();
         Ok(times[times.len() / 2])
     }
@@ -412,20 +413,17 @@ impl BenchmarkSuite {
         // Generate test data
         let data = generate_test_data(operation, size);
 
-        // Warmup
         for _ in 0..self.config.warmup_iterations {
-            run_gpu_operation(operation, &data)?;
+            run_gpu_operation(operation, &data, self.gpu_device.as_ref())?;
         }
 
-        // Timed iterations
         let mut times = Vec::with_capacity(self.config.timed_iterations);
         for _ in 0..self.config.timed_iterations {
             let start = Instant::now();
-            run_gpu_operation(operation, &data)?;
+            run_gpu_operation(operation, &data, self.gpu_device.as_ref())?;
             times.push(start.elapsed());
         }
 
-        // Return median
         times.sort();
         Ok(times[times.len() / 2])
     }
@@ -496,14 +494,17 @@ impl BenchmarkSuite {
     }
 }
 
-/// Probe GPU availability and return `(is_available, adapter_name)`.
+/// Probe GPU availability and return `(is_available, adapter_name, device)`.
 ///
 /// Uses `WgpuDevice::new()` for a consistent probe rather than duplicating
 /// low-level wgpu setup code.
-fn check_gpu() -> (bool, Option<String>) {
+fn check_gpu() -> (bool, Option<String>, Option<Arc<crate::device::WgpuDevice>>) {
     match pollster::block_on(crate::device::WgpuDevice::new()) {
-        Ok(device) => (true, Some(device.adapter_info().name.clone())),
-        Err(_) => (false, None),
+        Ok(device) => {
+            let name = device.adapter_info().name.clone();
+            (true, Some(name), Some(Arc::new(device)))
+        }
+        Err(_) => (false, None, None),
     }
 }
 
@@ -554,7 +555,11 @@ fn generate_test_data(operation: &str, size: usize) -> TestData {
 }
 
 /// Run CPU operation for benchmarking
-fn run_cpu_operation(operation: &str, test_data: &TestData) -> Result<()> {
+fn run_cpu_operation(
+    operation: &str,
+    test_data: &TestData,
+    gpu_device: Option<&Arc<WgpuDevice>>,
+) -> Result<()> {
     let data = &test_data.data;
     let size = test_data.size;
 
@@ -620,16 +625,27 @@ fn run_cpu_operation(operation: &str, test_data: &TestData) -> Result<()> {
             }
         }
         "cholesky" => {
-            let _ = crate::linalg::cholesky_f64(data, size);
+            #[cfg(feature = "benchmarks")]
+            let _ = crate::linalg::cholesky::cholesky_f64_cpu(data, size);
+            #[cfg(not(feature = "benchmarks"))]
+            return Err(BarracudaError::InvalidInput {
+                message: "cholesky CPU benchmark requires --features benchmarks".into(),
+            });
         }
         "lu" => {
-            // LU via Cholesky approximation for benchmarking
-            let _ = crate::linalg::cholesky_f64(data, size);
+            #[cfg(feature = "benchmarks")]
+            let _ = crate::linalg::cholesky::cholesky_f64_cpu(data, size);
+            #[cfg(not(feature = "benchmarks"))]
+            return Err(BarracudaError::InvalidInput {
+                message: "lu CPU benchmark requires --features benchmarks".into(),
+            });
         }
         "qr" => {
-            // QR via solve approximation for benchmarking
             let b: Vec<f64> = (0..size).map(|i| (i as f64).sin()).collect();
-            let _ = crate::linalg::solve_f64(data, &b, size);
+            let dev = gpu_device.ok_or_else(|| BarracudaError::InvalidInput {
+                message: "qr benchmark requires GPU".into(),
+            })?;
+            let _ = crate::linalg::solve_f64(dev.clone(), data, &b, size);
         }
         "svd" => {
             // SVD via eigh approximation for benchmarking (symmetric part)
@@ -640,7 +656,10 @@ fn run_cpu_operation(operation: &str, test_data: &TestData) -> Result<()> {
         }
         "solve" => {
             let b: Vec<f64> = (0..size).map(|i| (i as f64).sin()).collect();
-            let _ = crate::linalg::solve_f64(data, &b, size);
+            let dev = gpu_device.ok_or_else(|| BarracudaError::InvalidInput {
+                message: "solve benchmark requires GPU".into(),
+            })?;
+            let _ = crate::linalg::solve_f64(dev.clone(), data, &b, size);
         }
         "cdist" => {
             // Pairwise distances (N points × D dimensions)
@@ -699,7 +718,11 @@ fn run_cpu_operation(operation: &str, test_data: &TestData) -> Result<()> {
 ///
 /// This allows the dispatch system to determine optimal CPU/GPU thresholds
 /// even without GPU hardware present.
-fn run_gpu_operation(operation: &str, test_data: &TestData) -> Result<()> {
+fn run_gpu_operation(
+    operation: &str,
+    test_data: &TestData,
+    _gpu_device: Option<&Arc<WgpuDevice>>,
+) -> Result<()> {
     // GPU operations have fixed overhead + linear scaling with problem size
     // GPU becomes faster at large sizes but has overhead at small sizes
 
@@ -803,9 +826,9 @@ mod tests {
     #[test]
     fn test_run_cpu_operation() {
         let data = generate_test_data("erf", 100);
-        assert!(run_cpu_operation("erf", &data).is_ok());
+        assert!(run_cpu_operation("erf", &data, None).is_ok());
 
         let data = generate_test_data("sum", 100);
-        assert!(run_cpu_operation("sum", &data).is_ok());
+        assert!(run_cpu_operation("sum", &data, None).is_ok());
     }
 }

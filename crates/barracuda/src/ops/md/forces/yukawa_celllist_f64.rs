@@ -70,8 +70,7 @@ impl YukawaCellListF64 {
 
     /// Compute Yukawa forces using cell-list algorithm
     ///
-    /// For N >= 256, dispatches the GPU shader with sorted particles.
-    /// For N < 256, uses CPU fallback (driver overhead dominates).
+    /// Always dispatches the GPU shader with sorted particles.
     pub fn compute_forces(
         &self,
         positions: &[f64],
@@ -80,11 +79,6 @@ impl YukawaCellListF64 {
         let n = positions.len() / 3;
         if n == 0 {
             return Ok((vec![], vec![]));
-        }
-
-        if n < 256 {
-            let cell_data = self.build_cell_list(positions, params)?;
-            return Ok(self.compute_cpu(positions, params, &cell_data));
         }
 
         self.compute_gpu(positions, params)
@@ -338,6 +332,7 @@ impl YukawaCellListF64 {
         Ok((sorted_positions, particle_indices, cell_start, cell_count))
     }
 
+    #[cfg(test)]
     fn build_cell_list(
         &self,
         positions: &[f64],
@@ -375,6 +370,8 @@ impl YukawaCellListF64 {
         cx + cy * params.n_cells[0] + cz * params.n_cells[0] * params.n_cells[1]
     }
 
+    /// CPU reference (test/validation only — production always dispatches shader).
+    #[cfg(test)]
     fn compute_cpu(
         &self,
         positions: &[f64],
@@ -450,10 +447,12 @@ impl YukawaCellListF64 {
         (forces, energies)
     }
 
+    #[cfg(test)]
     fn pbc_delta(&self, delta: f64, box_size: f64) -> f64 {
         delta - box_size * (delta / box_size).round()
     }
 
+    #[cfg(test)]
     fn get_neighbor_cells(&self, cell_idx: usize, params: &CellListParams) -> Vec<usize> {
         let nx = params.n_cells[0];
         let ny = params.n_cells[1];

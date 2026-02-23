@@ -46,13 +46,10 @@ impl SphericalHarmonicsF64 {
             return Ok(vec![0.0; size]);
         }
 
-        if size < 256 {
-            return Ok(self.ylm_cpu(theta_phi, l, m));
-        }
-
         self.ylm_gpu(theta_phi, l, m)
     }
 
+    #[cfg(test)]
     fn ylm_cpu(&self, theta_phi: &[f64], l: u32, m: i32) -> Vec<f64> {
         let size = theta_phi.len() / 2;
         let _abs_m = m.unsigned_abs(); // Used in GPU path
@@ -66,6 +63,7 @@ impl SphericalHarmonicsF64 {
         result
     }
 
+    #[cfg(test)]
     fn factorial(n: u32) -> f64 {
         match n {
             0 | 1 => 1.0,
@@ -73,6 +71,7 @@ impl SphericalHarmonicsF64 {
         }
     }
 
+    #[cfg(test)]
     fn double_factorial(m: u32) -> f64 {
         if m == 0 {
             return 1.0;
@@ -80,6 +79,7 @@ impl SphericalHarmonicsF64 {
         (1..=m).map(|k| (2 * k - 1) as f64).product()
     }
 
+    #[cfg(test)]
     fn assoc_legendre(l: u32, m: u32, x: f64) -> f64 {
         if m > l {
             return 0.0;
@@ -123,6 +123,7 @@ impl SphericalHarmonicsF64 {
         pl_m1
     }
 
+    #[cfg(test)]
     fn ylm_scalar(l: u32, m: i32, theta: f64, phi: f64) -> f64 {
         let abs_m = m.unsigned_abs();
         if abs_m > l {

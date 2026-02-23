@@ -1,9 +1,11 @@
 //! CPU path for SparsitySampler algorithm.
 
+use crate::device::WgpuDevice;
 use crate::optimize::eval_record::EvaluationCache;
 use crate::optimize::multi_start::SolverResult;
 use crate::sample::latin_hypercube;
 use crate::surrogate::{loo_cv_optimal_smoothing, RBFSurrogate};
+use std::sync::Arc;
 
 use super::filter::compute_surrogate_rmse;
 use super::filter::filter_training_data;
@@ -48,6 +50,7 @@ where
 
 /// Run the SparsitySampler algorithm (CPU path).
 pub fn sparsity_sampler<F>(
+    device: Arc<WgpuDevice>,
     f: F,
     bounds: &[(f64, f64)],
     config: &SparsitySamplerConfig,
@@ -116,27 +119,34 @@ where
 
         // Auto-smoothing via LOO-CV grid search (if enabled)
         if config.auto_smoothing {
-            if let Ok(result) = loo_cv_optimal_smoothing(&x_data, &y_data, config.kernel, None) {
+            if let Ok(result) =
+                loo_cv_optimal_smoothing(device.clone(), &x_data, &y_data, config.kernel, None)
+            {
                 current_smoothing = result.smoothing;
             }
         }
 
-        let surrogate =
-            match RBFSurrogate::train(&x_data, &y_data, config.kernel, current_smoothing) {
-                Ok(s) => s,
-                Err(_) => {
-                    let nm_result = run_nm_batch(&f, bounds, config, iter, &mut cache)?;
-                    iteration_results.push(IterationResult {
-                        iteration: iter,
-                        best_f: nm_result.f_best,
-                        n_new_evals: cache.len() - iter_start_evals,
-                        total_evals: cache.len(),
-                        surrogate_error: None,
-                        used_gpu: false,
-                    });
-                    continue;
-                }
-            };
+        let surrogate = match RBFSurrogate::train(
+            device.clone(),
+            &x_data,
+            &y_data,
+            config.kernel,
+            current_smoothing,
+        ) {
+            Ok(s) => s,
+            Err(_) => {
+                let nm_result = run_nm_batch(&f, bounds, config, iter, &mut cache)?;
+                iteration_results.push(IterationResult {
+                    iteration: iter,
+                    best_f: nm_result.f_best,
+                    n_new_evals: cache.len() - iter_start_evals,
+                    total_evals: cache.len(),
+                    surrogate_error: None,
+                    used_gpu: false,
+                });
+                continue;
+            }
+        };
 
         let surrogate_error = surrogate
             .loo_cv_rmse()

@@ -64,11 +64,6 @@ impl Correlation {
             });
         }
 
-        // CPU fallback for small inputs
-        if n < 256 {
-            return Ok(self.correlate_cpu(x, y));
-        }
-
         self.correlate_gpu(x, y)
     }
 
@@ -100,21 +95,11 @@ impl Correlation {
             });
         }
 
-        // CPU fallback for small batches
-        if num_pairs < 16 || size < 64 {
-            return Ok((0..num_pairs)
-                .map(|i| {
-                    let start = i * size;
-                    let end = start + size;
-                    self.correlate_cpu(&x_batch[start..end], &y_batch[start..end])
-                })
-                .collect());
-        }
-
         self.correlate_batch_gpu(x_batch, y_batch, size, num_pairs)
     }
 
     /// CPU reference implementation
+    #[cfg(test)]
     fn correlate_cpu(&self, x: &[f32], y: &[f32]) -> f32 {
         let n = x.len() as f32;
         let mean_x: f32 = x.iter().sum::<f32>() / n;

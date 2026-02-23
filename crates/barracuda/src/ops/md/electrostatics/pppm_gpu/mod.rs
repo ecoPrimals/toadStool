@@ -699,9 +699,9 @@ mod tests {
         let charges = vec![1.0, -1.0];
         let params = PppmParams::custom(2, [10.0, 10.0, 10.0], [8, 8, 8], 2.0, 3.0, 4);
 
-        // CPU reference
+        // Reference (Pppm now uses GPU FFT)
         let pos_3d: Vec<[f64; 3]> = positions.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let cpu_pppm = Pppm::new(params.clone());
+        let cpu_pppm = Pppm::new(device.clone(), params.clone());
         let (cpu_forces, cpu_energy) = cpu_pppm.compute(&pos_3d, &charges).unwrap();
 
         // GPU version

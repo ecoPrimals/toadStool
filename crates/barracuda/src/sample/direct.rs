@@ -27,10 +27,12 @@
 //! hotSpring validation: `surrogate.rs::round_based_direct_optimization()`
 //! Result: χ²/datum = 1.19 on L1 (82% better than scipy)
 
+use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use crate::optimize::eval_record::EvaluationCache;
 use crate::sample::latin_hypercube;
 use crate::surrogate::{loo_cv_optimal_smoothing, RBFKernel, RBFSurrogate};
+use std::sync::Arc;
 
 /// Configuration for direct round-based optimization.
 #[derive(Debug, Clone)]
@@ -199,6 +201,7 @@ impl DirectSamplerResult {
 /// println!("Best: {:?} = {}", result.x_best, result.f_best);
 /// ```
 pub fn direct_sampler<F>(
+    device: Arc<WgpuDevice>,
     f: F,
     bounds: &[(f64, f64)],
     config: &DirectSamplerConfig,
@@ -260,14 +263,14 @@ where
         let surrogate_rmse = if x_data.len() >= 2 {
             // Auto-smoothing via LOO-CV
             let smoothing = if config.auto_smoothing {
-                loo_cv_optimal_smoothing(&x_data, &y_data, config.kernel, None)
+                loo_cv_optimal_smoothing(device.clone(), &x_data, &y_data, config.kernel, None)
                     .map(|r| r.smoothing)
                     .unwrap_or(1e-6)
             } else {
                 1e-6
             };
 
-            match RBFSurrogate::train(&x_data, &y_data, config.kernel, smoothing) {
+            match RBFSurrogate::train(device.clone(), &x_data, &y_data, config.kernel, smoothing) {
                 Ok(surr) => {
                     let rmse = surr.loo_cv_rmse().ok();
                     last_surrogate = Some(surr);
@@ -325,19 +328,20 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device_if_f64_gpu_available_sync;
 
     #[test]
     fn test_direct_sampler_sphere() {
-        // Sphere function: f(x) = Σ xᵢ²
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum();
         let bounds = vec![(-5.0, 5.0), (-5.0, 5.0)];
-
         let config = DirectSamplerConfig::new(42)
             .with_rounds(3)
             .with_solvers(4)
             .with_eval_budget(100);
-
-        let result = direct_sampler(sphere, &bounds, &config).unwrap();
+        let result = direct_sampler(device, sphere, &bounds, &config).unwrap();
 
         // Should find near-zero minimum
         assert!(
@@ -350,6 +354,9 @@ mod tests {
 
     #[test]
     fn test_direct_sampler_with_warm_start() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum();
         let bounds = vec![(-5.0, 5.0), (-5.0, 5.0)];
 
@@ -359,7 +366,7 @@ mod tests {
             .with_solvers(2)
             .with_warm_start(vec![vec![0.1, 0.1]]);
 
-        let result = direct_sampler(sphere, &bounds, &config).unwrap();
+        let result = direct_sampler(device, sphere, &bounds, &config).unwrap();
 
         // Should find very good solution with warm start
         assert!(result.f_best < 0.001);
@@ -367,7 +374,9 @@ mod tests {
 
     #[test]
     fn test_direct_sampler_early_stop() {
-        // Constant function - no improvement possible
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let constant = |_: &[f64]| 1.0;
         let bounds = vec![(-1.0, 1.0)];
 
@@ -375,7 +384,7 @@ mod tests {
             .with_rounds(10)
             .with_patience(2);
 
-        let result = direct_sampler(constant, &bounds, &config).unwrap();
+        let result = direct_sampler(device, constant, &bounds, &config).unwrap();
 
         // Should early stop
         assert!(result.early_stopped);
@@ -384,12 +393,13 @@ mod tests {
 
     #[test]
     fn test_direct_sampler_diagnostics() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum();
         let bounds = vec![(-5.0, 5.0)];
-
         let config = DirectSamplerConfig::new(42).with_rounds(3).with_solvers(2);
-
-        let result = direct_sampler(sphere, &bounds, &config).unwrap();
+        let result = direct_sampler(device, sphere, &bounds, &config).unwrap();
 
         // Check round diagnostics
         assert!(!result.rounds.is_empty());

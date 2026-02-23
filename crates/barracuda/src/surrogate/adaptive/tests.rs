@@ -1,6 +1,7 @@
 //! Tests for adaptive RBF surrogate training
 
 use super::*;
+use crate::device::test_pool::get_test_device_if_f64_gpu_available_sync;
 
 #[test]
 fn test_adaptive_config_default() {
@@ -34,12 +35,14 @@ fn test_adaptive_config_cpu_only() {
 
 #[test]
 fn test_train_adaptive_small_dataset() {
-    // Below threshold → should use f64 path
+    let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let x_train: Vec<Vec<f64>> = (0..5).map(|i| vec![i as f64]).collect();
     let y_train: Vec<f64> = x_train.iter().map(|x| x[0] * x[0]).collect();
-
     let config = AdaptiveConfig::default();
     let (surrogate, diag) = train_adaptive(
+        device,
         &x_train,
         &y_train,
         RBFKernel::ThinPlateSpline,
@@ -68,16 +71,18 @@ fn test_train_adaptive_small_dataset() {
 
 #[test]
 fn test_train_adaptive_uses_f32_above_threshold() {
-    // Set low threshold to trigger f32 path
+    let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let n = 10;
     let x_train: Vec<Vec<f64>> = (0..n).map(|i| vec![i as f64 / n as f64]).collect();
     let y_train: Vec<f64> = x_train
         .iter()
         .map(|x| (x[0] * std::f64::consts::PI).sin())
         .collect();
-
-    let config = AdaptiveConfig::with_threshold(5); // n=10 >= 5 → f32 path
+    let config = AdaptiveConfig::with_threshold(5);
     let (surrogate, diag) = train_adaptive(
+        device,
         &x_train,
         &y_train,
         RBFKernel::ThinPlateSpline,
@@ -104,17 +109,20 @@ fn test_train_adaptive_uses_f32_above_threshold() {
 
 #[test]
 fn test_train_adaptive_force_f64() {
+    let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let n = 10;
     let x_train: Vec<Vec<f64>> = (0..n).map(|i| vec![i as f64]).collect();
     let y_train: Vec<f64> = x_train.iter().map(|x| x[0]).collect();
-
     let config = AdaptiveConfig {
         f32_threshold: 5,
-        force_f64: true, // Override: always f64
+        force_f64: true,
         parallel: true,
         prefer_gpu: false,
     };
     let (_, diag) = train_adaptive(
+        device,
         &x_train,
         &y_train,
         RBFKernel::ThinPlateSpline,
@@ -128,11 +136,19 @@ fn test_train_adaptive_force_f64() {
 
 #[test]
 fn test_train_with_validation() {
+    let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let x_train = vec![vec![0.0], vec![1.0], vec![2.0], vec![3.0], vec![4.0]];
     let y_train = vec![0.0, 1.0, 4.0, 9.0, 16.0];
-
-    let (surrogate, diag) =
-        train_with_validation(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12).unwrap();
+    let (surrogate, diag) = train_with_validation(
+        device,
+        &x_train,
+        &y_train,
+        RBFKernel::ThinPlateSpline,
+        1e-12,
+    )
+    .unwrap();
 
     assert!(!diag.used_f32_distances);
     assert!(diag.max_distance_error.is_some());
@@ -194,7 +210,9 @@ fn test_f32_vs_f64_distances_accuracy() {
 
 #[test]
 fn test_adaptive_2d_function() {
-    // Test with a 2D function: f(x,y) = x² + y²
+    let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let x_train = vec![
         vec![0.0, 0.0],
         vec![1.0, 0.0],
@@ -203,9 +221,9 @@ fn test_adaptive_2d_function() {
         vec![0.5, 0.5],
     ];
     let y_train: Vec<f64> = x_train.iter().map(|x| x[0] * x[0] + x[1] * x[1]).collect();
-
     let config = AdaptiveConfig::default();
     let (surrogate, diag) = train_adaptive(
+        device,
         &x_train,
         &y_train,
         RBFKernel::ThinPlateSpline,
@@ -227,13 +245,21 @@ fn test_adaptive_2d_function() {
 
 #[test]
 fn test_adaptive_errors() {
+    let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let config = AdaptiveConfig::default();
-
-    // Empty data
-    assert!(train_adaptive(&[], &[], RBFKernel::ThinPlateSpline, 1e-12, &config).is_err());
-
-    // Mismatched lengths
     assert!(train_adaptive(
+        device.clone(),
+        &[],
+        &[],
+        RBFKernel::ThinPlateSpline,
+        1e-12,
+        &config
+    )
+    .is_err());
+    assert!(train_adaptive(
+        device.clone(),
         &[vec![0.0], vec![1.0]],
         &[0.0],
         RBFKernel::ThinPlateSpline,
@@ -241,18 +267,19 @@ fn test_adaptive_errors() {
         &config
     )
     .is_err());
-
-    // Validation errors too
-    assert!(train_with_validation(&[], &[], RBFKernel::ThinPlateSpline, 1e-12).is_err());
+    assert!(train_with_validation(device, &[], &[], RBFKernel::ThinPlateSpline, 1e-12).is_err());
 }
 
 #[test]
 fn test_adaptive_gaussian_kernel() {
+    let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let x_train: Vec<Vec<f64>> = (0..8).map(|i| vec![i as f64 * 0.5]).collect();
     let y_train: Vec<f64> = x_train.iter().map(|x| (-x[0] * x[0]).exp()).collect();
-
     let config = AdaptiveConfig::with_threshold(5);
     let (surrogate, diag) = train_adaptive(
+        device,
         &x_train,
         &y_train,
         RBFKernel::Gaussian { epsilon: 1.0 },
@@ -278,7 +305,9 @@ fn test_adaptive_gaussian_kernel() {
 
 #[test]
 fn test_diagnostics_fields() {
-    // Use well-separated points to avoid singularity with TPS kernel
+    let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let x_train = vec![
         vec![0.0, 0.0],
         vec![1.0, 0.0],
@@ -286,9 +315,9 @@ fn test_diagnostics_fields() {
         vec![1.0, 1.0],
     ];
     let y_train = vec![0.0, 1.0, 1.0, 2.0];
-
     let config = AdaptiveConfig::default();
     let (_, diag) = train_adaptive(
+        device,
         &x_train,
         &y_train,
         RBFKernel::ThinPlateSpline,
@@ -304,14 +333,14 @@ fn test_diagnostics_fields() {
     assert!(!diag.used_gpu); // CPU path
 }
 
-// GPU tests require async runtime and real GPU hardware
+// GPU tests require async runtime and f64-capable GPU
 mod gpu_tests {
     use super::*;
-    use crate::device::test_pool::get_test_device_if_gpu_available;
+    use crate::device::test_pool::get_test_device_if_f64_gpu_available;
 
     #[tokio::test]
     async fn test_train_adaptive_gpu_basic() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
 
@@ -347,7 +376,7 @@ mod gpu_tests {
 
     #[tokio::test]
     async fn test_train_adaptive_gpu_2d() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
 
@@ -388,7 +417,7 @@ mod gpu_tests {
 
     #[tokio::test]
     async fn test_train_adaptive_gpu_larger_dataset() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
 
@@ -438,7 +467,7 @@ mod gpu_tests {
 
     #[tokio::test]
     async fn test_train_adaptive_gpu_errors() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
 

@@ -1,6 +1,7 @@
 //! RDF F64 - Radial Distribution Function histogram - f64 precision WGSL
 //!
-//! Deep Debt Principles apply.
+//! GPU-accelerated O(N²) pair-distance histogram with PBC.
+//! Uses `atomic<u32>` bins in WGSL for race-free accumulation.
 //!
 //! Applications:
 //! - Structure analysis in MD
@@ -9,40 +10,85 @@
 
 use crate::device::WgpuDevice;
 use crate::error::Result;
+use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
 
-/// f64 RDF histogram calculator
+const SHADER: &str = include_str!("rdf_histogram_f64.wgsl");
+const WG: u32 = 64;
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct RdfParams {
+    n_particles: u32,
+    n_bins: u32,
+    dr: f64,
+    box_x: f64,
+    box_y: f64,
+    box_z: f64,
+}
+
+/// GPU-accelerated RDF histogram calculator (f64 positions, u32 bins).
 pub struct RdfHistogramF64 {
-    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
+    hist_pipeline: wgpu::ComputePipeline,
+    hist_bgl: wgpu::BindGroupLayout,
 }
 
 impl RdfHistogramF64 {
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        Ok(Self { device })
+        let module = device.compile_shader_f64(SHADER, Some("rdf_histogram_f64"));
+
+        let hist_bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("RDF:bgl"),
+                entries: &[
+                    storage_bgl(0, true),  // positions
+                    storage_bgl(1, false), // histogram (atomic)
+                    uniform_bgl(2),        // params
+                ],
+            });
+
+        let layout = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("RDF:layout"),
+                bind_group_layouts: &[&hist_bgl],
+                push_constant_ranges: &[],
+            });
+
+        let hist_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("RDF:pipeline"),
+                    layout: Some(&layout),
+                    module: &module,
+                    entry_point: "main",
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
+
+        Ok(Self {
+            device,
+            hist_pipeline,
+            hist_bgl,
+        })
     }
 
-    #[allow(dead_code)]
-    fn wgsl_shader() -> &'static str {
-        include_str!("rdf_histogram_f64.wgsl")
-    }
-
-    /// f32 variant shader for GPUs without f64 support
+    /// f32 variant shader for GPUs without f64 support (fossil reference).
     #[allow(dead_code)]
     fn wgsl_shader_f32() -> &'static str {
         include_str!("rdf_histogram.wgsl")
     }
 
-    /// Compute RDF histogram
+    /// Compute RDF histogram on GPU.
     ///
-    /// # Arguments
-    /// * `positions` - Particle positions [N*3]
-    /// * `n_bins` - Number of histogram bins
-    /// * `r_max` - Maximum radius to consider
-    /// * `box_size` - Simulation box dimensions [Lx, Ly, Lz] (for PBC)
-    ///
-    /// # Returns
-    /// Histogram counts [n_bins]
+    /// * `positions` — `[N*3]` f64 particle positions
+    /// * `n_bins`    — number of histogram bins
+    /// * `r_max`     — maximum radius
+    /// * `box_size`  — `[Lx, Ly, Lz]` (PBC)
     pub fn histogram(
         &self,
         positions: &[f64],
@@ -50,10 +96,99 @@ impl RdfHistogramF64 {
         r_max: f64,
         box_size: [f64; 3],
     ) -> Result<Vec<u32>> {
-        Ok(self.histogram_cpu(positions, n_bins, r_max, box_size))
+        let n = positions.len() / 3;
+        let dr = r_max / n_bins as f64;
+
+        let params_data = RdfParams {
+            n_particles: n as u32,
+            n_bins: n_bins as u32,
+            dr,
+            box_x: box_size[0],
+            box_y: box_size[1],
+            box_z: box_size[2],
+        };
+
+        let d = &self.device.device;
+        let q = &self.device.queue;
+
+        let pos_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("RDF:pos"),
+            contents: bytemuck::cast_slice(positions),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+
+        let hist_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("RDF:hist"),
+            contents: bytemuck::cast_slice(&vec![0u32; n_bins]),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+
+        let params_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("RDF:params"),
+            contents: bytemuck::bytes_of(&params_data),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("RDF:bg"),
+            layout: &self.hist_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: pos_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: hist_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buf.as_entire_binding(),
+                },
+            ],
+        });
+
+        let readback = d.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("RDF:readback"),
+            size: (n_bins * 4) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut enc = d.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("RDF:enc"),
+        });
+        {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("RDF:pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.hist_pipeline);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.dispatch_workgroups((n as u32).div_ceil(WG), 1, 1);
+        }
+        enc.copy_buffer_to_buffer(&hist_buf, 0, &readback, 0, (n_bins * 4) as u64);
+        q.submit(Some(enc.finish()));
+
+        let slice = readback.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |r| {
+            tx.send(r).ok();
+        });
+        self.device.device.poll(wgpu::Maintain::Wait);
+        rx.recv()
+            .map_err(|_| crate::error::BarracudaError::Gpu("RDF readback channel closed".into()))?
+            .map_err(|e| crate::error::BarracudaError::Gpu(format!("RDF map: {e}")))?;
+
+        let data = slice.get_mapped_range();
+        let result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        readback.unmap();
+
+        Ok(result)
     }
 
-    /// Compute normalized g(r)
+    /// Compute normalized g(r) on GPU.
     ///
     /// g(r) = histogram / (N * ρ * V_shell)
     /// where V_shell = 4π/3 * ((r+dr)³ - r³)
@@ -77,61 +212,44 @@ impl RdfHistogramF64 {
             let r_lo = i as f64 * dr;
             let r_hi = (i + 1) as f64 * dr;
             let r_mid = (r_lo + r_hi) / 2.0;
-
-            // Volume of spherical shell
             let v_shell = 4.0 / 3.0 * std::f64::consts::PI * (r_hi.powi(3) - r_lo.powi(3));
-
-            // Expected pairs in shell at uniform density
             let expected = density * v_shell * (n - 1) as f64 / 2.0;
 
-            let g = if expected > 0.0 {
+            r.push(r_mid);
+            gr.push(if expected > 0.0 {
                 hist[i] as f64 / expected
             } else {
                 0.0
-            };
-
-            r.push(r_mid);
-            gr.push(g);
+            });
         }
 
         Ok((r, gr))
     }
+}
 
-    fn pbc_delta(&self, delta: f64, box_size: f64) -> f64 {
-        delta - box_size * (delta / box_size).round()
+fn storage_bgl(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
     }
+}
 
-    fn histogram_cpu(
-        &self,
-        positions: &[f64],
-        n_bins: usize,
-        r_max: f64,
-        box_size: [f64; 3],
-    ) -> Vec<u32> {
-        let n = positions.len() / 3;
-        let dr = r_max / n_bins as f64;
-        let mut hist = vec![0u32; n_bins];
-
-        for i in 0..n {
-            let xi = positions[i * 3];
-            let yi = positions[i * 3 + 1];
-            let zi = positions[i * 3 + 2];
-
-            for j in (i + 1)..n {
-                let dx = self.pbc_delta(positions[j * 3] - xi, box_size[0]);
-                let dy = self.pbc_delta(positions[j * 3 + 1] - yi, box_size[1]);
-                let dz = self.pbc_delta(positions[j * 3 + 2] - zi, box_size[2]);
-
-                let r = (dx * dx + dy * dy + dz * dz).sqrt();
-                let bin = (r / dr) as usize;
-
-                if bin < n_bins {
-                    hist[bin] += 1;
-                }
-            }
-        }
-
-        hist
+fn uniform_bgl(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Uniform,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
     }
 }
 

@@ -69,16 +69,6 @@ impl CoulombForceF64 {
             });
         }
 
-        if n < 32 {
-            return Ok(self.compute_cpu(
-                positions,
-                charges,
-                coulomb_constant.unwrap_or(1.0),
-                cutoff_radius.unwrap_or(f64::INFINITY),
-                softening.unwrap_or(1e-10),
-            ));
-        }
-
         self.compute_gpu(
             positions,
             charges,
@@ -113,13 +103,11 @@ impl CoulombForceF64 {
         let cutoff = cutoff_radius.unwrap_or(f64::INFINITY);
         let eps = softening.unwrap_or(1e-10);
 
-        if n < 32 {
-            return Ok(self.compute_cpu_with_energy(positions, charges, k, cutoff, eps));
-        }
-
         self.compute_gpu_with_energy(positions, charges, k, cutoff, eps)
     }
 
+    /// CPU reference (test/validation only — production always dispatches shader).
+    #[cfg(test)]
     fn compute_cpu(
         &self,
         positions: &[f64],
@@ -171,6 +159,7 @@ impl CoulombForceF64 {
         forces
     }
 
+    #[cfg(test)]
     fn compute_cpu_with_energy(
         &self,
         positions: &[f64],

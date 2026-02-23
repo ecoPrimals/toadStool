@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-//! Adaptive Dormand-Prince RK45 for regulatory networks — GPU kernel.
+//! Adaptive Dormand-Prince RK45 for regulatory networks — GPU kernel (f64).
 //!
 //! Single adaptive step of the Dormand-Prince 5(4) embedded pair.
 //! Each thread handles one independent ODE system with Hill function kinetics.
@@ -20,6 +20,10 @@ use crate::device::WgpuDevice;
 
 pub const WGSL_RK45_ADAPTIVE: &str = include_str!("../shaders/numerical/rk45_adaptive.wgsl");
 
+/// f64 version for universal math library portability.
+pub const WGSL_RK45_ADAPTIVE_F64: &str =
+    include_str!("../shaders/numerical/rk45_adaptive_f64.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct Rk45Params {
@@ -27,10 +31,8 @@ struct Rk45Params {
     dim: u32,
     n_coeffs: u32,
     _pad: u32,
-    dt: f32,
-    _pad2: f32,
-    _pad3: f32,
-    _pad4: f32,
+    dt: f64,
+    _pad2: f64,
 }
 
 /// Adaptive Dormand-Prince RK45 GPU kernel for regulatory network ODEs.
@@ -62,10 +64,7 @@ impl Rk45AdaptiveGpu {
             push_constant_ranges: &[],
         });
 
-        let module = d.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("RK45 Shader"),
-            source: wgpu::ShaderSource::Wgsl(WGSL_RK45_ADAPTIVE.into()),
-        });
+        let module = device.compile_shader_f64(WGSL_RK45_ADAPTIVE_F64, Some("RK45 f64"));
 
         let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("RK45 Pipeline"),
@@ -83,13 +82,13 @@ impl Rk45AdaptiveGpu {
         }
     }
 
-    /// Dispatch one adaptive RK45 step.
+    /// Dispatch one adaptive RK45 step (f64 pipeline).
     ///
-    /// `state_buf`:     `[n_systems × dim]` f32 — current ODE state
-    /// `coeffs_buf`:    `[n_systems × n_coeffs]` f32 — per-system coefficients
-    /// `new_state_buf`: `[n_systems × dim]` f32 — output state (5th order)
-    /// `error_buf`:     `[n_systems × dim]` f32 — per-variable absolute error
-    /// `scratch_buf`:   `[n_systems × dim × 8]` f32 — k-stage + tmp workspace
+    /// `state_buf`:     `[n_systems × dim]` f64 — current ODE state
+    /// `coeffs_buf`:    `[n_systems × n_coeffs]` f64 — per-system coefficients
+    /// `new_state_buf`: `[n_systems × dim]` f64 — output state (5th order)
+    /// `error_buf`:     `[n_systems × dim]` f64 — per-variable absolute error
+    /// `scratch_buf`:   `[n_systems × dim × 8]` f64 — k-stage + tmp workspace
     #[allow(clippy::too_many_arguments)]
     pub fn dispatch(
         &self,
@@ -101,7 +100,7 @@ impl Rk45AdaptiveGpu {
         n_systems: u32,
         dim: u32,
         n_coeffs: u32,
-        dt: f32,
+        dt: f64,
     ) {
         let d = self.device.device();
         let q = self.device.queue();
@@ -113,8 +112,6 @@ impl Rk45AdaptiveGpu {
             _pad: 0,
             dt,
             _pad2: 0.0,
-            _pad3: 0.0,
-            _pad4: 0.0,
         };
         let params_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("RK45 Params"),

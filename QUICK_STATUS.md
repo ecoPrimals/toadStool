@@ -1,6 +1,6 @@
 # ToadStool + BarraCuda -- Quick Status
 
-**Date**: February 23, 2026 (Session 45)
+**Date**: February 23, 2026 (Session 49)
 
 ---
 
@@ -17,7 +17,8 @@ production panics/unwraps             0 blind unwrap(); infallible expect() only
 production Box<dyn Error>             0 in core crates -- all typed errors
 production TODOs/FIXMEs               0
 hardcoded primal names in prod        0 -- capability-based discovery
-orphan WGSL shaders                   0 -- all 600+ wired to Rust
+orphan WGSL shaders                   0 -- all 645+ wired to Rust
+CPU-only math in production            0 -- all math dispatches GPU shaders
 near-limit files                      0 -- all under 1000 lines
 line coverage (common)                87%
 line coverage (config)                89%
@@ -43,16 +44,19 @@ ToadStool (Hardware Infrastructure Primal)
   43 crates, 3 GPUs across 2 machines, 2 vendors (NVIDIA + AMD)
 
 BarraCuda (Universal Compute Engine -- SHADER-FIRST F64)
-  612 WGSL shaders, zero orphans -- every shader wired to Rust
-  NN compute shaders: Conv2D, MaxPool2D, AvgPool2D
-  FP64-by-default: Both CPU and GPU use f64
+  645+ WGSL f64 shaders, zero orphans -- ALL math originates as WGSL
+  Zero CPU-only math in production -- CPU gated #[cfg(test)] only
+  compile_shader_f64() polyfills transcendentals (exp, log, pow, sin, cos...)
+  Linalg GPU: solve, cholesky, QR, SVD, LU all dispatch WGSL shaders
   SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2 vs 1:64)
   Bit-identical results: RTX 4070 = RTX 3090 = RX 6950 XT
   TensorSession: batched op recording with single-submit execution
   GpuExecutor: 31 MathOps | CpuExecutor: full dispatch
   Scientific middleware: 14 modules, 400+ tests, 0 unsafe
-  25 bio/evolution GPU ops, 11 HFB nuclear physics, spectral theory, lattice QCD
+  25 bio/evolution GPU ops, 11 HFB nuclear physics, lattice QCD (14 shaders + HMC/CG)
+  MD: VV, RDF, MSD, PPPM (GPU FFT), all force fields GPU-dispatched
   PDE: Crank-Nicolson, Richards unsaturated flow | Stats: moving window GPU
+  RBF surrogate: GPU cdist + GPU solve pipeline
   Four Springs validated: 4,000+ acceptance checks
 
 Sovereign Compute (WgslOptimizer -- Phases 0-3 complete)
@@ -101,7 +105,7 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 
 ## What Works
 
-- 612 WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
+- 645+ WGSL f64 shaders on any GPU (NVIDIA, AMD via Vulkan)
 - Distributed LLM inference across machines (39.85 tok/s, BearDog encrypted)
 - Hardware discovery (GPUs, NPUs, CPUs) -- pure Rust, no scripts
 - JSON-RPC 2.0 + tarpc 0.34 IPC over Unix sockets (36 methods)
@@ -168,4 +172,4 @@ cargo llvm-cov --lib -p toadstool-common --json
 
 ---
 
-**Last Updated**: February 23, 2026 -- Session 45: 14,000+ tests, 95+ unsafe blocks audited, 21 Box<dyn Error> → typed errors, all quality gates green.
+**Last Updated**: February 23, 2026 -- Session 49: Shader-first architecture complete. 645+ WGSL f64 shaders, zero CPU-only math, f64 transcendental polyfills, all quality gates green.

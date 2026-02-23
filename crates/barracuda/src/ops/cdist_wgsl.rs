@@ -43,8 +43,15 @@ impl Cdist {
         }
     }
 
+    /// f32 WGSL shader (legacy, retained as fossil reference).
+    #[allow(dead_code)]
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/misc/cdist.wgsl")
+    }
+
+    /// f64 version for universal math library portability.
+    pub fn wgsl_shader_f64() -> &'static str {
+        include_str!("../shaders/misc/cdist_f64.wgsl")
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -211,6 +218,179 @@ impl Tensor {
     }
 }
 
+/// Standalone f64 pairwise distance computation (no Tensor needed).
+///
+/// * `x1` — `[n1 * d]` f64 flattened row-major
+/// * `x2` — `[n2 * d]` f64 flattened row-major
+///
+/// Returns `[n1 * n2]` f64 distance matrix.
+pub fn compute_distances_f64_gpu(
+    device: &crate::device::WgpuDevice,
+    x1: &[f64],
+    n1: usize,
+    x2: &[f64],
+    n2: usize,
+    n_dim: usize,
+    metric: DistanceMetric,
+) -> Result<Vec<f64>> {
+    use bytemuck::{Pod, Zeroable};
+    use wgpu::util::DeviceExt;
+
+    #[repr(C)]
+    #[derive(Copy, Clone, Pod, Zeroable)]
+    struct CdistParams {
+        m: u32,
+        n: u32,
+        d: u32,
+        metric: u32,
+    }
+
+    let module = device.compile_shader_f64(Cdist::wgsl_shader_f64(), Some("cdist_f64"));
+    let d = &device.device;
+    let q = &device.queue;
+
+    let a_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("cdist:a"),
+        contents: bytemuck::cast_slice(x1),
+        usage: wgpu::BufferUsages::STORAGE,
+    });
+    let b_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("cdist:b"),
+        contents: bytemuck::cast_slice(x2),
+        usage: wgpu::BufferUsages::STORAGE,
+    });
+    let out_size = (n1 * n2 * 8) as u64;
+    let out_buf = d.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("cdist:out"),
+        size: out_size,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
+    });
+    let params = CdistParams {
+        m: n1 as u32,
+        n: n2 as u32,
+        d: n_dim as u32,
+        metric: metric as u32,
+    };
+    let params_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("cdist:params"),
+        contents: bytemuck::bytes_of(&params),
+        usage: wgpu::BufferUsages::UNIFORM,
+    });
+
+    let bgl = d.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("cdist_f64:bgl"),
+        entries: &[
+            bgl_storage(0, true),
+            bgl_storage(1, true),
+            bgl_storage(2, false),
+            bgl_uniform(3),
+        ],
+    });
+
+    let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("cdist_f64:bg"),
+        layout: &bgl,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: a_buf.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: b_buf.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: out_buf.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: params_buf.as_entire_binding(),
+            },
+        ],
+    });
+
+    let pl = d.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("cdist_f64:pl"),
+        bind_group_layouts: &[&bgl],
+        push_constant_ranges: &[],
+    });
+    let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        label: Some("cdist_f64:pipeline"),
+        layout: Some(&pl),
+        module: &module,
+        entry_point: "main",
+        compilation_options: Default::default(),
+        cache: None,
+    });
+
+    let mut enc = d.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("cdist_f64:enc"),
+    });
+    {
+        let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("cdist_f64:pass"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&pipeline);
+        pass.set_bind_group(0, &bg, &[]);
+        pass.dispatch_workgroups((n1 as u32).div_ceil(16), (n2 as u32).div_ceil(16), 1);
+    }
+
+    let readback = d.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("cdist_f64:rb"),
+        size: out_size,
+        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    enc.copy_buffer_to_buffer(&out_buf, 0, &readback, 0, out_size);
+    q.submit(Some(enc.finish()));
+
+    let slice = readback.slice(..);
+    let (tx, rx) = std::sync::mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |r| {
+        tx.send(r).ok();
+    });
+    d.poll(wgpu::Maintain::Wait);
+    rx.recv()
+        .map_err(|_| crate::error::BarracudaError::Gpu("cdist readback channel".into()))?
+        .map_err(|e| crate::error::BarracudaError::Gpu(format!("cdist map: {e}")))?;
+
+    let data = slice.get_mapped_range();
+    let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
+    drop(data);
+    readback.unmap();
+
+    Ok(result)
+}
+
+fn bgl_storage(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+fn bgl_uniform(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Uniform,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -221,7 +401,6 @@ mod tests {
         let Some(device) = get_test_device_if_gpu_available().await else {
             return;
         };
-        // Two 2D points: (0,0) and (3,4)
         let a_data = vec![0.0, 0.0];
         let b_data = vec![3.0, 4.0];
 
@@ -235,7 +414,6 @@ mod tests {
         let result = a.cdist_wgsl(b, DistanceMetric::Euclidean).unwrap();
         let output = result.to_vec().unwrap();
 
-        // Distance = sqrt(3^2 + 4^2) = 5.0
         assert!((output[0] - 5.0).abs() < 1e-5);
     }
 
@@ -257,7 +435,34 @@ mod tests {
         let result = a.cdist_wgsl(b, DistanceMetric::Manhattan).unwrap();
         let output = result.to_vec().unwrap();
 
-        // Distance = |3| + |4| = 7.0
         assert!((output[0] - 7.0).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_cdist_f64_euclidean() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        // 2 points in 3D: (1,2,3) and (4,6,3)
+        let x1 = vec![1.0_f64, 2.0, 3.0, 0.0, 0.0, 0.0];
+        let x2 = vec![4.0_f64, 6.0, 3.0];
+
+        let result =
+            compute_distances_f64_gpu(&device, &x1, 2, &x2, 1, 3, DistanceMetric::Euclidean)
+                .unwrap();
+
+        // d((1,2,3),(4,6,3)) = sqrt(9+16+0) = 5.0
+        assert!(
+            (result[0] - 5.0).abs() < 1e-10,
+            "expected 5.0, got {}",
+            result[0]
+        );
+        // d((0,0,0),(4,6,3)) = sqrt(16+36+9) = sqrt(61) ≈ 7.8102
+        let expected = 61.0_f64.sqrt();
+        assert!(
+            (result[1] - expected).abs() < 1e-10,
+            "expected {expected}, got {}",
+            result[1]
+        );
     }
 }

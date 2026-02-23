@@ -72,11 +72,6 @@ impl Covariance {
             });
         }
 
-        // CPU fallback for small inputs
-        if n < 256 {
-            return Ok(self.covariance_cpu(x, y, ddof));
-        }
-
         self.covariance_gpu(x, y, ddof)
     }
 
@@ -96,6 +91,7 @@ impl Covariance {
     }
 
     /// CPU reference implementation
+    #[cfg(test)]
     fn covariance_cpu(&self, x: &[f32], y: &[f32], ddof: u32) -> f32 {
         let n = x.len() as f32;
         let mean_x: f32 = x.iter().sum::<f32>() / n;

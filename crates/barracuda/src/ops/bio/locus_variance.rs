@@ -19,6 +19,9 @@ use crate::device::WgpuDevice;
 
 pub const WGSL_LOCUS_VARIANCE: &str = include_str!("../../shaders/bio/locus_variance.wgsl");
 
+/// f64 version for universal math library portability.
+pub const WGSL_LOCUS_VARIANCE_F64: &str = include_str!("../../shaders/bio/locus_variance_f64.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct VarianceParams {
@@ -26,6 +29,7 @@ struct VarianceParams {
     n_loci: u32,
 }
 
+/// Per-locus allele frequency variance GPU kernel (f64 pipeline).
 pub struct LocusVarianceGpu {
     pipeline: wgpu::ComputePipeline,
     bgl: wgpu::BindGroupLayout,
@@ -78,10 +82,7 @@ impl LocusVarianceGpu {
             push_constant_ranges: &[],
         });
 
-        let module = d.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("LocusVariance Shader"),
-            source: wgpu::ShaderSource::Wgsl(WGSL_LOCUS_VARIANCE.into()),
-        });
+        let module = device.compile_shader_f64(WGSL_LOCUS_VARIANCE_F64, Some("LocusVariance f64"));
 
         let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("LocusVariance Pipeline"),
@@ -101,8 +102,8 @@ impl LocusVarianceGpu {
 
     /// Compute per-locus allele frequency variance across populations.
     ///
-    /// `allele_freqs_buf`: `[n_pops × n_loci]` f32
-    /// `output_buf`:       `[n_loci]` f32
+    /// `allele_freqs_buf`: `[n_pops × n_loci]` f64
+    /// `output_buf`:       `[n_loci]` f64
     pub fn dispatch(
         &self,
         allele_freqs_buf: &wgpu::Buffer,
@@ -152,5 +153,25 @@ impl LocusVarianceGpu {
             pass.dispatch_workgroups(n_loci.div_ceil(256), 1, 1);
         }
         q.submit(std::iter::once(encoder.finish()));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn f64_shader_contains_locus_variance() {
+        assert!(WGSL_LOCUS_VARIANCE_F64.contains("fn locus_variance"));
+        assert!(WGSL_LOCUS_VARIANCE_F64.contains("f64"));
+    }
+
+    #[test]
+    fn f64_shader_compiles_via_naga() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
+        else {
+            return;
+        };
+        device.compile_shader_f64(WGSL_LOCUS_VARIANCE_F64, Some("locus_variance_f64"));
     }
 }

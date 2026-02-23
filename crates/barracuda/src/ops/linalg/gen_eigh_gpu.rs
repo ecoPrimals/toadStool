@@ -196,8 +196,8 @@ impl GenEighGpu {
             });
         }
 
-        // Step 1: Cholesky decomposition of B = LLᵀ (CPU - fast O(n³/3))
-        let chol = cholesky_f64(b, n)?;
+        // Step 1: Cholesky decomposition of B = LLᵀ (GPU)
+        let chol = cholesky_f64(device.clone(), b, n)?;
         let l = &chol.l;
 
         // Step 2: Transform A to standard form: C = L⁻¹ A L⁻ᵀ (CPU)
@@ -275,7 +275,7 @@ impl GenEighGpu {
             let b = &b_batch[offset..offset + n * n];
 
             // Cholesky
-            let chol = cholesky_f64(b, n)?;
+            let chol = cholesky_f64(device.clone(), b, n)?;
             let l = &chol.l;
 
             // Store L for back-transform

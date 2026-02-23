@@ -157,11 +157,6 @@ impl BatchedElementwiseF64 {
             });
         }
 
-        // Small batches: CPU fallback is faster
-        if batch_size < 64 {
-            return self.execute_cpu(data, batch_size, op, aux_param);
-        }
-
         // Create input buffer
         let input_buffer =
             self.device
@@ -280,6 +275,7 @@ impl BatchedElementwiseF64 {
     }
 
     /// CPU fallback for small batches
+    #[cfg(test)]
     fn execute_cpu(
         &self,
         data: &[f64],
@@ -382,9 +378,10 @@ impl BatchedElementwiseF64 {
 }
 
 // ============================================================================
-// CPU REFERENCE IMPLEMENTATIONS (for fallback and validation)
+// CPU REFERENCE IMPLEMENTATIONS (for tests and validation)
 // ============================================================================
 
+#[cfg(test)]
 /// FAO-56 Penman-Monteith ET₀ (CPU reference)
 fn fao56_et0_cpu(
     tmax: f64,
@@ -463,6 +460,7 @@ fn fao56_et0_cpu(
     numerator / denominator
 }
 
+#[cfg(test)]
 /// Water balance daily update (CPU reference)
 fn water_balance_cpu(dr_prev: f64, precip: f64, irrig: f64, etc: f64, taw: f64, raw: f64) -> f64 {
     // Stress coefficient

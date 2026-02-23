@@ -1,6 +1,6 @@
-//! KINETIC ENERGY F64 - Per-particle and total kinetic energy - f64 precision WGSL
+//! KINETIC ENERGY F64 — Per-particle and total kinetic energy — GPU shader dispatch.
 //!
-//! Deep Debt Principles apply.
+//! All math originates as `kinetic_energy_f64.wgsl`.
 //!
 //! Applications:
 //! - Temperature calculation: T = 2*KE_total / (3*N*k_B)
@@ -9,73 +9,204 @@
 
 use crate::device::WgpuDevice;
 use crate::error::Result;
+use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
 
-/// f64 Kinetic energy calculator
+const SHADER: &str = include_str!("kinetic_energy_f64.wgsl");
+const WG: u32 = 256;
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct KeParams {
+    n_particles: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+}
+
+/// GPU-accelerated f64 kinetic energy calculator.
 pub struct KineticEnergyF64 {
-    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
+    pipeline: wgpu::ComputePipeline,
+    bgl: wgpu::BindGroupLayout,
 }
 
 impl KineticEnergyF64 {
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        Ok(Self { device })
+        let module = device.compile_shader_f64(SHADER, Some("kinetic_energy_f64"));
+
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("KE:bgl"),
+                entries: &[
+                    storage_bgl(0, true),  // velocities
+                    storage_bgl(1, true),  // masses
+                    storage_bgl(2, false), // ke_buf
+                    uniform_bgl(3),        // params
+                ],
+            });
+
+        let layout = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("KE:layout"),
+                bind_group_layouts: &[&bgl],
+                push_constant_ranges: &[],
+            });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("KE:pipeline"),
+                layout: Some(&layout),
+                module: &module,
+                entry_point: "main",
+                compilation_options: Default::default(),
+                cache: None,
+            });
+
+        Ok(Self {
+            device,
+            pipeline,
+            bgl,
+        })
     }
 
-    #[allow(dead_code)]
-    fn wgsl_shader() -> &'static str {
-        include_str!("kinetic_energy_f64.wgsl")
-    }
-
-    /// Compute per-particle kinetic energy KE_i = ½m_i v_i²
-    ///
-    /// # Arguments
-    /// * `velocities` - Particle velocities [N*3]
-    /// * `masses` - Particle masses [N]
-    ///
-    /// # Returns
-    /// Per-particle kinetic energies [N]
+    /// Compute per-particle KE on GPU: KE_i = ½ m_i v_i²
     pub fn per_particle(&self, velocities: &[f64], masses: &[f64]) -> Result<Vec<f64>> {
-        Ok(self.per_particle_cpu(velocities, masses))
+        let n = masses.len();
+        let d = &self.device.device;
+        let q = &self.device.queue;
+
+        let vel_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("KE:vel"),
+            contents: bytemuck::cast_slice(velocities),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        let mass_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("KE:mass"),
+            contents: bytemuck::cast_slice(masses),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        let out_size = (n * 8) as u64;
+        let ke_buf = d.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("KE:out"),
+            size: out_size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let params = KeParams {
+            n_particles: n as u32,
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+        };
+        let params_buf = d.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("KE:params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("KE:bg"),
+            layout: &self.bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: vel_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: mass_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: ke_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buf.as_entire_binding(),
+                },
+            ],
+        });
+
+        let rb = d.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("KE:rb"),
+            size: out_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut enc = d.create_command_encoder(&Default::default());
+        {
+            let mut pass = enc.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &bg, &[]);
+            pass.dispatch_workgroups((n as u32).div_ceil(WG), 1, 1);
+        }
+        enc.copy_buffer_to_buffer(&ke_buf, 0, &rb, 0, out_size);
+        q.submit(Some(enc.finish()));
+
+        let slice = rb.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |r| {
+            tx.send(r).ok();
+        });
+        d.poll(wgpu::Maintain::Wait);
+        rx.recv()
+            .map_err(|_| crate::error::BarracudaError::Gpu("KE readback".into()))?
+            .map_err(|e| crate::error::BarracudaError::Gpu(format!("KE map: {e}")))?;
+
+        let data = slice.get_mapped_range();
+        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        rb.unmap();
+
+        Ok(result)
     }
 
-    /// Compute total kinetic energy
+    /// Compute total kinetic energy (GPU per-particle, host reduce).
     pub fn total(&self, velocities: &[f64], masses: &[f64]) -> Result<f64> {
         let per_particle = self.per_particle(velocities, masses)?;
         Ok(per_particle.iter().sum())
     }
 
-    /// Compute temperature from kinetic energy
-    ///
-    /// T = 2*KE_total / (3*N*k_B) for 3D system with N particles
-    ///
-    /// # Arguments
-    /// * `velocities` - Particle velocities [N*3]
-    /// * `masses` - Particle masses [N]
-    /// * `k_b` - Boltzmann constant (in appropriate units)
+    /// Compute temperature: T = 2*KE_total / (3*N*k_B).
     pub fn temperature(&self, velocities: &[f64], masses: &[f64], k_b: f64) -> Result<f64> {
         let n = masses.len();
         if n == 0 {
             return Ok(0.0);
         }
         let ke_total = self.total(velocities, masses)?;
-        // T = 2*KE / (3*N*k_B)
         Ok(2.0 * ke_total / (3.0 * n as f64 * k_b))
     }
+}
 
-    fn per_particle_cpu(&self, velocities: &[f64], masses: &[f64]) -> Vec<f64> {
-        let n = masses.len();
-        let mut ke = Vec::with_capacity(n);
+fn storage_bgl(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
 
-        for i in 0..n {
-            let vx = velocities[i * 3];
-            let vy = velocities[i * 3 + 1];
-            let vz = velocities[i * 3 + 2];
-            let v_sq = vx * vx + vy * vy + vz * vz;
-            ke.push(0.5 * masses[i] * v_sq);
-        }
-
-        ke
+fn uniform_bgl(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Uniform,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
     }
 }
 

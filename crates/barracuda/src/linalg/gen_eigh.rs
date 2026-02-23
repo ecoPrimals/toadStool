@@ -28,6 +28,9 @@
 use crate::error::{BarracudaError, Result};
 use crate::linalg::cholesky::{cholesky_f64, CholeskyDecomposition};
 use crate::linalg::eigh::eigh_f64;
+use std::sync::Arc;
+
+use crate::device::WgpuDevice;
 
 /// Generalized eigenvalue decomposition result
 #[derive(Debug, Clone)]
@@ -168,7 +171,12 @@ impl GenEighDecomposition {
 /// assert!((result.eigenvalues[1] - 3.0).abs() < 1e-10);
 /// # Ok::<(), barracuda::error::BarracudaError>(())
 /// ```
-pub fn gen_eigh_f64(a: &[f64], b: &[f64], n: usize) -> Result<GenEighDecomposition> {
+pub fn gen_eigh_f64(
+    device: Arc<WgpuDevice>,
+    a: &[f64],
+    b: &[f64],
+    n: usize,
+) -> Result<GenEighDecomposition> {
     if a.len() != n * n {
         return Err(BarracudaError::InvalidInput {
             message: format!(
@@ -188,8 +196,8 @@ pub fn gen_eigh_f64(a: &[f64], b: &[f64], n: usize) -> Result<GenEighDecompositi
         });
     }
 
-    // Step 1: Cholesky decomposition of B = LLᵀ
-    let chol = cholesky_f64(b, n)?;
+    // Step 1: Cholesky decomposition of B = LLᵀ (GPU)
+    let chol = cholesky_f64(device, b, n)?;
 
     // Step 2: Compute C = L⁻¹ A (L⁻¹)ᵀ
     // First compute L⁻¹ A by solving L Y = A for each column of A
@@ -369,14 +377,18 @@ pub fn gen_eigh_identity_b(a: &[f64], n: usize) -> Result<GenEighDecomposition> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device_if_f64_gpu_available_sync;
 
     #[test]
     fn test_gen_eigh_identity_b() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         // When B = I, gen_eigh should give same results as standard eigh
         let a = vec![4.0, 1.0, 1.0, 3.0];
         let b = vec![1.0, 0.0, 0.0, 1.0]; // Identity
 
-        let result = gen_eigh_f64(&a, &b, 2).unwrap();
+        let result = gen_eigh_f64(device, &a, &b, 2).unwrap();
 
         // Standard eigenvalues of [[4, 1], [1, 3]]
         // Characteristic polynomial: (4-λ)(3-λ) - 1 = λ² - 7λ + 11
@@ -400,11 +412,14 @@ mod tests {
 
     #[test]
     fn test_gen_eigh_scaled_b() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         // If B = 2I, eigenvalues should be halved
         let a = vec![4.0, 0.0, 0.0, 6.0];
         let b = vec![2.0, 0.0, 0.0, 2.0]; // 2I
 
-        let result = gen_eigh_f64(&a, &b, 2).unwrap();
+        let result = gen_eigh_f64(device, &a, &b, 2).unwrap();
 
         // A has eigenvalues 4, 6
         // Gen. eigenvalues with B = 2I should be 4/2 = 2, 6/2 = 3
@@ -422,11 +437,14 @@ mod tests {
 
     #[test]
     fn test_gen_eigh_verify() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         // Test that Ax = λBx holds
         let a = vec![5.0, 2.0, 2.0, 3.0];
         let b = vec![2.0, 1.0, 1.0, 2.0]; // SPD
 
-        let result = gen_eigh_f64(&a, &b, 2).unwrap();
+        let result = gen_eigh_f64(device, &a, &b, 2).unwrap();
 
         let residual = result.verify(&a, &b);
         assert!(residual < 1e-10, "Residual too large: {}", residual);
@@ -434,6 +452,9 @@ mod tests {
 
     #[test]
     fn test_gen_eigh_3x3() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         // 3×3 example
         #[rustfmt::skip]
         let a = vec![
@@ -448,7 +469,7 @@ mod tests {
             0.0, 0.5, 2.0,
         ];
 
-        let result = gen_eigh_f64(&a, &b, 3).unwrap();
+        let result = gen_eigh_f64(device, &a, &b, 3).unwrap();
 
         // Verify all eigenpairs
         let residual = result.verify(&a, &b);
@@ -457,10 +478,13 @@ mod tests {
 
     #[test]
     fn test_gen_eigh_eigenvector_access() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let a = vec![2.0, 1.0, 1.0, 2.0];
         let b = vec![1.0, 0.0, 0.0, 1.0];
 
-        let result = gen_eigh_f64(&a, &b, 2).unwrap();
+        let result = gen_eigh_f64(device, &a, &b, 2).unwrap();
 
         let v0 = result.eigenvector(0).unwrap();
         let v1 = result.eigenvector(1).unwrap();
@@ -474,10 +498,13 @@ mod tests {
 
     #[test]
     fn test_gen_eigh_sort_descending() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let a = vec![1.0, 0.0, 0.0, 3.0];
         let b = vec![1.0, 0.0, 0.0, 1.0];
 
-        let mut result = gen_eigh_f64(&a, &b, 2).unwrap();
+        let mut result = gen_eigh_f64(device, &a, &b, 2).unwrap();
 
         // Initially ascending (1, 3)
         assert!(result.eigenvalues[0] < result.eigenvalues[1]);
@@ -492,29 +519,37 @@ mod tests {
 
     #[test]
     fn test_gen_eigh_non_spd_b_error() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let a = vec![1.0, 0.0, 0.0, 1.0];
         // B is not positive definite (has negative eigenvalue)
         let b = vec![1.0, 2.0, 2.0, 1.0]; // Eigenvalues: 3, -1
 
-        let result = gen_eigh_f64(&a, &b, 2);
+        let result = gen_eigh_f64(device, &a, &b, 2);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_gen_eigh_dimension_mismatch() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let a = vec![1.0, 0.0, 0.0, 1.0];
         let b = vec![1.0, 0.0, 0.0]; // Wrong size
 
-        let result = gen_eigh_f64(&a, &b, 2);
+        let result = gen_eigh_f64(device, &a, &b, 2);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_gen_eigh_trace() {
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let a = vec![3.0, 1.0, 1.0, 3.0];
         let b = vec![1.0, 0.0, 0.0, 1.0];
-
-        let result = gen_eigh_f64(&a, &b, 2).unwrap();
+        let result = gen_eigh_f64(device, &a, &b, 2).unwrap();
 
         // With B = I, trace of eigenvalues = trace of A = 6
         let trace = result.trace();
@@ -527,20 +562,19 @@ mod tests {
 
     #[test]
     fn test_gen_eigh_larger_matrix() {
-        // 5×5 random-ish SPD matrices
+        let Some(device) = get_test_device_if_f64_gpu_available_sync() else {
+            return;
+        };
         let n = 5;
         let mut a = vec![0.0; n * n];
         let mut b = vec![0.0; n * n];
-
-        // Build SPD matrices: M = VVᵀ + εI
         for i in 0..n {
             for j in 0..n {
                 a[i * n + j] = if i == j { 5.0 } else { 0.5 };
                 b[i * n + j] = if i == j { 2.0 } else { 0.1 };
             }
         }
-
-        let result = gen_eigh_f64(&a, &b, n).unwrap();
+        let result = gen_eigh_f64(device, &a, &b, n).unwrap();
 
         let residual = result.verify(&a, &b);
         assert!(residual < 1e-8, "Residual too large for 5×5: {}", residual);

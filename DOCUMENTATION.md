@@ -27,18 +27,20 @@
 
 ---
 
-## Current State (Session 45 — February 23, 2026)
+## Current State (Session 49 — February 23, 2026)
 
+- **Shader-first architecture complete** — all math originates as WGSL f64 shaders
+- **645+ WGSL f64 shaders** — zero orphans, zero CPU-only math in production
 - **14,000+ tests**, 0 failing | all quality gates green
-- **600+ WGSL shaders** — zero orphans, every shader wired to Rust
+- **`compile_shader_f64()` polyfills** — exp, log, pow, sin, cos, gamma, erf on every GPU
 - **Zero clippy warnings** workspace-wide | zero doc warnings | zero fmt diffs
 - **Zero blind unwrap()**, zero `Box<dyn Error>`, zero TODO/FIXME in production code
+- **Linalg GPU-dispatched** — solve, cholesky, QR, SVD, LU via WGSL shaders
+- **Lattice QCD** — 14 GPU shaders + CG solver + HMC trajectory orchestration
+- **MD fully GPU** — VV, RDF, MSD, PPPM (GPU FFT), all force fields
+- **RBF surrogate GPU pipeline** — cdist + solve, adaptive sampling
 - **95+ unsafe blocks** — all FFI/hardware, all SAFETY documented
 - **4,000+ four springs validation** — hotSpring + wetSpring + neuralSpring + airSpring
-- **HFB nuclear physics** — 11 spherical + deformed shaders on cylindrical grids
-- **25 bio/evolution GPU ops** — HMM, ANI, SNP, dN/dS, pangenome, Hill gate, swarm NN, etc.
-- **Sovereign Compute Phases 0–3** — `WgslOptimizer` live in `compile_shader_f64()` hot path
-- **Scientific middleware** — 14 modules, 400+ tests, 0 unsafe
 - **36 JSON-RPC methods** across 8 domains
 - **Coverage**: common 87%, config 89%, core ~87%, server ~85%
 

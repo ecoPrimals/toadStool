@@ -122,11 +122,6 @@ impl BrayCurtisF64 {
 
         let n_pairs = n_samples * (n_samples - 1) / 2;
 
-        // Small inputs: CPU fallback is faster
-        if n_samples < 32 {
-            return self.condensed_distance_matrix_cpu(samples, n_samples, n_features);
-        }
-
         // Create input buffer
         let input_buffer =
             self.device
@@ -245,6 +240,7 @@ impl BrayCurtisF64 {
     }
 
     /// CPU fallback for small inputs
+    #[cfg(test)]
     fn condensed_distance_matrix_cpu(
         &self,
         samples: &[f64],
@@ -285,6 +281,7 @@ impl BrayCurtisF64 {
 }
 
 /// CPU reference: Bray-Curtis distance between samples i and j
+#[cfg(test)]
 fn bray_curtis_cpu(samples: &[f64], i: usize, j: usize, n_features: usize) -> f64 {
     let base_i = i * n_features;
     let base_j = j * n_features;

@@ -1,18 +1,7 @@
 //! Linear algebra operations for scientific computing
 //!
-//! This module provides high-precision (f64) linear algebra operations
-//! for scientific computing workflows. While BarraCuda's GPU shaders
-//! operate in f32 for maximum throughput, many scientific applications
-//! require f64 precision for numerical stability.
-//!
-//! # Dual-Precision Architecture
-//!
-//! BarraCuda uses a dual-precision pattern for optimal performance:
-//! - **GPU (f32)**: Fast pairwise operations (cdist, matmul)
-//! - **CPU (f64)**: Numerically sensitive operations (linear solves, eigendecomp)
-//!
-//! This gives ~90% of GPU speedup while maintaining scientific precision
-//! where it matters.
+//! This module provides f64 linear algebra operations dispatched to GPU
+//! shaders. All production math uses GPU (no CPU-only paths).
 //!
 //! # Available Operations
 //!
@@ -50,13 +39,18 @@
 //!
 //! # Examples
 //!
-//! ```
+//! ```no_run
 //! use barracuda::linalg::{solve_f64, lu_decompose, qr_decompose};
+//! use barracuda::device::WgpuDevice;
+//! use std::sync::Arc;
 //!
-//! // Direct solve: Ax = b
-//! let a = vec![2.0, 1.0, 1.0, 3.0];  // 2×2 matrix
+//! # async fn example() -> barracuda::error::Result<()> {
+//! let device = Arc::new(WgpuDevice::new().await?);
+//! let a = vec![2.0, 1.0, 1.0, 3.0];
 //! let b = vec![5.0, 8.0];
-//! let x = solve_f64(&a, &b, 2)?;
+//! let x = solve_f64(device, &a, &b, 2)?;
+//! # Ok(())
+//! # }
 //!
 //! // LU decomposition for multiple solves
 //! let lu = lu_decompose(&a, 2)?;

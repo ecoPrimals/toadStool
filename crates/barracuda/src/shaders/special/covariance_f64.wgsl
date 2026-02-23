@@ -1,15 +1,15 @@
 // Covariance computation — f64 precision
 // Cov(X,Y) = E[(X-μx)(Y-μy)] = Σ(x-μx)(y-μy) / (n - ddof)
 //
-// Input: two vectors x and y of same length (as vec2<u32> for f64)
+// Input: two vectors x and y of same length (f64)
 // Output: covariance value per pair
 //
 // Applications: portfolio theory, PCA, Kalman filters
 // Reference: Standard statistical formula
 
-@group(0) @binding(0) var<storage, read> x: array<vec2<u32>>;
-@group(0) @binding(1) var<storage, read> y: array<vec2<u32>>;
-@group(0) @binding(2) var<storage, read_write> output: array<vec2<u32>>;
+@group(0) @binding(0) var<storage, read> x: array<f64>;
+@group(0) @binding(1) var<storage, read> y: array<f64>;
+@group(0) @binding(2) var<storage, read_write> output: array<f64>;
 @group(0) @binding(3) var<uniform> params: Params;
 
 struct Params {
@@ -30,7 +30,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let ddof = params.ddof;
 
     if (size <= ddof) {
-        output[idx] = bitcast<vec2<u32>>(f64(0.0));
+        output[idx] = f64(0.0);
         return;
     }
 
@@ -41,8 +41,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var sum_x: f64 = f64(0.0);
     var sum_y: f64 = f64(0.0);
     for (var i = 0u; i < size; i = i + 1u) {
-        sum_x = sum_x + bitcast<f64>(x[x_offset + i]);
-        sum_y = sum_y + bitcast<f64>(y[y_offset + i]);
+        sum_x = sum_x + x[x_offset + i];
+        sum_y = sum_y + y[y_offset + i];
     }
     let mean_x = sum_x / f64(size);
     let mean_y = sum_y / f64(size);
@@ -50,11 +50,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     // Pass 2: compute covariance
     var cov_sum: f64 = f64(0.0);
     for (var i = 0u; i < size; i = i + 1u) {
-        let dx = bitcast<f64>(x[x_offset + i]) - mean_x;
-        let dy = bitcast<f64>(y[y_offset + i]) - mean_y;
+        let dx = x[x_offset + i] - mean_x;
+        let dy = y[y_offset + i] - mean_y;
         cov_sum = cov_sum + dx * dy;
     }
 
     let result = cov_sum / f64(size - ddof);
-    output[idx] = bitcast<vec2<u32>>(result);
+    output[idx] = result;
 }

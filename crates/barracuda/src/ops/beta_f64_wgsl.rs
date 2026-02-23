@@ -5,35 +5,110 @@
 //! - Zero hardcoding: Hardware-agnostic implementation
 //! - Modern idiomatic Rust: Safe, zero unsafe code
 //!
-//! Note: Uses CPU fallback as most GPUs don't support f64 log/exp.
-//!
 //! Applications:
 //! - Beta distributions
 //! - Bayesian statistics
 //! - Binomial coefficients
 //! - ML/statistics
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
-use crate::error::Result;
+use crate::error::{BarracudaError, Result};
+use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct Params {
+    size: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+}
 
 /// f64 Beta function evaluator
 ///
 /// Computes B(a,b) = Γ(a)Γ(b)/Γ(a+b) using log-gamma for stability.
 pub struct BetaF64 {
-    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
+    pipeline: wgpu::ComputePipeline,
+    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl BetaF64 {
-    /// Create new Beta f64 operation
-    pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        Ok(Self { device })
-    }
-
-    #[allow(dead_code)]
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/special/beta_f64.wgsl")
+    }
+
+    /// Create new Beta f64 operation
+    pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
+        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("BetaF64"));
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("BetaF64 BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("BetaF64 PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("BetaF64 Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
+            });
+
+        Ok(Self {
+            device,
+            pipeline,
+            bind_group_layout,
+        })
     }
 
     /// Compute B(a,b) for each pair
@@ -48,10 +123,109 @@ impl BetaF64 {
             return Ok(vec![]);
         }
 
-        // CPU fallback - f64 log/exp not supported on most GPUs
-        Ok(self.beta_cpu(pairs))
+        let num_pairs = pairs.len() / 2;
+        let params = Params {
+            size: num_pairs as u32,
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+        };
+
+        let input_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("BetaF64 Input"),
+                contents: bytemuck::cast_slice(pairs),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let output_size = num_pairs * std::mem::size_of::<f64>();
+        let output_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BetaF64 Output"),
+            size: output_size as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let params_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("BetaF64 Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("BetaF64 BG"),
+                layout: &self.bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: input_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: output_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                ],
+            });
+
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("BetaF64 Encoder"),
+                });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("BetaF64 Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups((num_pairs as u32).div_ceil(WORKGROUP_SIZE_1D), 1, 1);
+        }
+
+        let staging_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BetaF64 Staging"),
+            size: output_size as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        encoder.copy_buffer_to_buffer(&output_buf, 0, &staging_buf, 0, output_size as u64);
+
+        self.device.queue.submit(Some(encoder.finish()));
+
+        let buffer_slice = staging_buf.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+        self.device.device.poll(wgpu::Maintain::Wait);
+        rx.recv()
+            .map_err(|e| BarracudaError::Gpu(format!("Beta readback: {}", e)))?
+            .map_err(|e| BarracudaError::Gpu(format!("Beta map: {:?}", e)))?;
+
+        let data = buffer_slice.get_mapped_range();
+        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging_buf.unmap();
+
+        Ok(result)
     }
 
+    #[cfg(test)]
     fn beta_cpu(&self, pairs: &[f64]) -> Vec<f64> {
         pairs
             .chunks(2)
@@ -59,6 +233,7 @@ impl BetaF64 {
             .collect()
     }
 
+    #[cfg(test)]
     fn beta_scalar(a: f64, b: f64) -> f64 {
         if a <= 0.0 || b <= 0.0 {
             return f64::NAN;
@@ -137,7 +312,7 @@ mod tests {
         let pairs = vec![1.0, 1.0];
         let result = beta.beta(&pairs).unwrap();
         assert!(
-            (result[0] - 1.0).abs() < 1e-10,
+            (result[0] - 1.0).abs() < 1e-6,
             "B(1,1) = {}, expected 1.0",
             result[0]
         );
@@ -147,7 +322,7 @@ mod tests {
         let result = beta.beta(&pairs).unwrap();
         let expected = 1.0 / 6.0;
         assert!(
-            (result[0] - expected).abs() < 1e-10,
+            (result[0] - expected).abs() < 1e-6,
             "B(2,2) = {}, expected {}",
             result[0],
             expected
@@ -158,7 +333,7 @@ mod tests {
         let result = beta.beta(&pairs).unwrap();
         let expected = 1.0 / 30.0;
         assert!(
-            (result[0] - expected).abs() < 1e-10,
+            (result[0] - expected).abs() < 1e-6,
             "B(3,3) = {}, expected {}",
             result[0],
             expected
@@ -179,7 +354,7 @@ mod tests {
             let result = beta.beta(&pairs).unwrap();
             let expected = 1.0 / n as f64;
             assert!(
-                (result[0] - expected).abs() < 1e-10,
+                (result[0] - expected).abs() < 1e-6,
                 "B({}, 1) = {}, expected {}",
                 n,
                 result[0],

@@ -1,34 +1,40 @@
-//! Observable Computation for Molecular Dynamics
+//! Observable Computation for Molecular Dynamics — Shader-First Architecture.
 //!
-//! GPU kernels and CPU utilities for computing physical observables.
+//! All underlying math originates as f64 WGSL shaders. High-level analysis
+//! functions (`compute_rdf`, `compute_vacf`, etc.) orchestrate snapshot
+//! iteration and normalization around GPU kernels.
 //!
-//! **GPU Observables**:
-//! - Kinetic energy (per-particle, for temperature)
-//! - RDF histogram (pair distances with atomicAdd)
-//! - SSF (static structure factor) - **GPU accelerated** for paper parity
+//! **GPU Observables** (shader-dispatched):
+//! - [`KineticEnergyF64`] — per-particle KE via `kinetic_energy_f64.wgsl`
+//! - [`RdfHistogramF64`] — pair-distance histogram via `rdf_histogram_f64.wgsl`
+//! - [`SsfGpu`] — static structure factor via `ssf_f64.wgsl`
+//! - [`VacfGpu`] / [`VacfBatchGpu`] — velocity autocorrelation via `vacf_f64.wgsl`
+//! - [`MsdGpu`] — mean-squared displacement via `msd_f64.wgsl`
+//! - [`HeatCurrentGpu`] — heat current via `heat_current_f64.wgsl`
+//! - [`StressVirialGpu`] — stress tensor via `stress_virial_f64.wgsl`
 //!
-//! **CPU Post-Processing** (from GPU snapshots):
-//! - VACF (velocity autocorrelation)
-//! - MSD (mean-squared displacement for diffusion)
-//! - Energy statistics and drift
+//! **Snapshot orchestration** (control flow only, math in shaders):
+//! - `compute_rdf` / `compute_vacf` / `compute_ssf` / `compute_msd`
+//! - `validate_energy` — CPU statistics over scalar energy history
 //!
 //! **Deep Debt Compliance**:
-//! - ✅ WGSL shader-first (separate .wgsl files)
+//! - ✅ WGSL shader-first (all math as .wgsl, CPU gated `#[cfg(test)]`)
 //! - ✅ Full f64 precision
 //! - ✅ Zero unsafe code
 
-#[allow(dead_code)]
-const WGSL_MSD_F64: &str = include_str!("msd_f64.wgsl");
-
+pub mod heat_current_gpu;
 mod kinetic_energy;
 mod kinetic_energy_f64;
+pub mod msd_gpu;
 mod rdf_f64;
 mod ssf_gpu;
 pub mod transport_gpu;
 mod vacf_gpu;
 
+pub use heat_current_gpu::HeatCurrentGpu;
 pub use kinetic_energy::KineticEnergy;
 pub use kinetic_energy_f64::KineticEnergyF64;
+pub use msd_gpu::MsdGpu;
 pub use rdf_f64::RdfHistogramF64;
 pub use ssf_gpu::SsfGpu;
 pub use transport_gpu::{GpuVelocityRing, StressVirialGpu, VacfBatchGpu};

@@ -3,20 +3,22 @@
 use super::filter::compute_surrogate_rmse;
 use super::sampler::sparsity_sampler;
 use super::*;
+use crate::device::test_pool::get_test_device_if_f64_gpu_available_sync;
 use crate::surrogate::{RBFKernel, RBFSurrogate};
 
 #[test]
 fn test_sparsity_sampler_quadratic() {
+    let Some(dev) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let f = |x: &[f64]| (x[0] - 2.0).powi(2) + (x[1] - 3.0).powi(2);
     let bounds = vec![(-10.0, 10.0), (-10.0, 10.0)];
-
     let config = SparsitySamplerConfig::new(2, 42)
         .with_initial_samples(20)
         .with_solvers(4)
         .with_eval_budget(30)
         .with_iterations(3);
-
-    let result = sparsity_sampler(f, &bounds, &config).unwrap();
+    let result = sparsity_sampler(dev, f, &bounds, &config).unwrap();
 
     assert!((result.x_best[0] - 2.0).abs() < 2.0);
     assert!((result.x_best[1] - 3.0).abs() < 2.0);
@@ -27,6 +29,9 @@ fn test_sparsity_sampler_quadratic() {
 
 #[test]
 fn test_sparsity_sampler_rosenbrock() {
+    let Some(dev) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let rosenbrock = |x: &[f64]| (1.0 - x[0]).powi(2) + 100.0 * (x[1] - x[0].powi(2)).powi(2);
     let bounds = vec![(-5.0, 5.0), (-5.0, 5.0)];
 
@@ -36,7 +41,7 @@ fn test_sparsity_sampler_rosenbrock() {
         .with_eval_budget(50)
         .with_iterations(5);
 
-    let result = sparsity_sampler(rosenbrock, &bounds, &config).unwrap();
+    let result = sparsity_sampler(dev, rosenbrock, &bounds, &config).unwrap();
 
     assert!(
         result.f_best < 50.0,
@@ -48,15 +53,16 @@ fn test_sparsity_sampler_rosenbrock() {
 
 #[test]
 fn test_sparsity_sampler_captures_all_evals() {
+    let Some(dev) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let f = |x: &[f64]| x[0].powi(2) + x[1].powi(2);
     let bounds = vec![(-5.0, 5.0), (-5.0, 5.0)];
-
     let config = SparsitySamplerConfig::new(2, 42)
         .with_initial_samples(10)
         .with_solvers(3)
         .with_iterations(2);
-
-    let result = sparsity_sampler(f, &bounds, &config).unwrap();
+    let result = sparsity_sampler(dev, f, &bounds, &config).unwrap();
 
     assert!(
         result.cache.len() >= 10,
@@ -69,16 +75,17 @@ fn test_sparsity_sampler_captures_all_evals() {
 
 #[test]
 fn test_sparsity_sampler_iteration_diagnostics() {
+    let Some(dev) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let f = |x: &[f64]| x[0].powi(2);
     let bounds = vec![(-5.0, 5.0)];
-
     let config = SparsitySamplerConfig::new(1, 42)
         .with_initial_samples(10)
         .with_solvers(3)
         .with_eval_budget(20)
         .with_iterations(3);
-
-    let result = sparsity_sampler(f, &bounds, &config).unwrap();
+    let result = sparsity_sampler(dev, f, &bounds, &config).unwrap();
 
     assert_eq!(result.iteration_results.len(), 3);
 
@@ -124,29 +131,32 @@ fn test_sparsity_sampler_total_budget() {
 
 #[test]
 fn test_sparsity_sampler_errors() {
+    let Some(dev) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let f = |x: &[f64]| x[0].powi(2);
-
     let config = SparsitySamplerConfig::new(1, 42);
     let empty_bounds: [(f64, f64); 0] = [];
-    assert!(sparsity_sampler(f, &empty_bounds, &config).is_err());
+    assert!(sparsity_sampler(dev.clone(), f, &empty_bounds, &config).is_err());
 
     let bounds = [(0.0, 1.0)];
     let config = SparsitySamplerConfig::new(1, 42).with_initial_samples(1);
-    assert!(sparsity_sampler(f, &bounds, &config).is_err());
+    assert!(sparsity_sampler(dev, f, &bounds, &config).is_err());
 }
 
 #[test]
 fn test_sparsity_sampler_1d() {
+    let Some(dev) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let f = |x: &[f64]| (x[0] - 3.0).powi(2) + 1.0;
     let bounds = vec![(-10.0, 10.0)];
-
     let config = SparsitySamplerConfig::new(1, 42)
         .with_initial_samples(10)
         .with_solvers(4)
         .with_eval_budget(30)
         .with_iterations(3);
-
-    let result = sparsity_sampler(f, &bounds, &config).unwrap();
+    let result = sparsity_sampler(dev, f, &bounds, &config).unwrap();
 
     assert!(
         (result.x_best[0] - 3.0).abs() < 2.0,
@@ -158,16 +168,17 @@ fn test_sparsity_sampler_1d() {
 
 #[test]
 fn test_sparsity_sampler_with_gaussian_kernel() {
+    let Some(dev) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let f = |x: &[f64]| x[0].powi(2) + x[1].powi(2);
     let bounds = vec![(-5.0, 5.0), (-5.0, 5.0)];
-
     let config = SparsitySamplerConfig::new(2, 42)
         .with_initial_samples(15)
         .with_solvers(3)
         .with_iterations(2)
         .with_kernel(RBFKernel::Gaussian { epsilon: 0.5 });
-
-    let result = sparsity_sampler(f, &bounds, &config).unwrap();
+    let result = sparsity_sampler(dev, f, &bounds, &config).unwrap();
 
     assert!(result.f_best < 10.0);
     assert!(result.surrogate.is_some());
@@ -175,11 +186,13 @@ fn test_sparsity_sampler_with_gaussian_kernel() {
 
 #[test]
 fn test_surrogate_rmse() {
+    let Some(dev) = get_test_device_if_f64_gpu_available_sync() else {
+        return;
+    };
     let x_train = vec![vec![0.0], vec![1.0], vec![2.0], vec![3.0]];
     let y_train = vec![0.0, 1.0, 4.0, 9.0];
-
     let surrogate =
-        RBFSurrogate::train(&x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12).unwrap();
+        RBFSurrogate::train(dev, &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12).unwrap();
 
     let rmse = compute_surrogate_rmse(&surrogate, &x_train, &y_train);
     assert!(

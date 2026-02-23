@@ -1,8 +1,8 @@
 // Beta function B(a,b) = Γ(a)Γ(b)/Γ(a+b) — f64 precision
 // For numerical stability: B(a,b) = exp(lgamma(a) + lgamma(b) - lgamma(a+b))
 //
-// Input: pairs [a₀, b₀, a₁, b₁, ...] interleaved (as vec2<u32> for f64)
-// Output: [B(a₀,b₀), B(a₁,b₁), ...] (as vec2<u32> for f64)
+// Input: pairs [a₀, b₀, a₁, b₁, ...] interleaved (f64)
+// Output: [B(a₀,b₀), B(a₁,b₁), ...]
 //
 // Applications: Beta distributions, Bayesian statistics, binomial coefficients
 // Reference: Abramowitz & Stegun §6.2
@@ -10,8 +10,8 @@
 // Note: Requires GPU f64 support including log/exp operations.
 // Many GPUs (especially AMD) may not support f64 transcendentals.
 
-@group(0) @binding(0) var<storage, read> input: array<vec2<u32>>;
-@group(0) @binding(1) var<storage, read_write> output: array<vec2<u32>>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
 @group(0) @binding(2) var<uniform> params: Params;
 
 struct Params {
@@ -67,12 +67,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (idx >= params.size) {
         return;
     }
-    
+
     // Input is interleaved pairs: [a₀, b₀, a₁, b₁, ...]
-    // Each f64 is stored as vec2<u32>
-    let a = bitcast<f64>(input[idx * 2u]);
-    let b = bitcast<f64>(input[idx * 2u + 1u]);
-    
+    let a = input[idx * 2u];
+    let b = input[idx * 2u + 1u];
+
     let result = beta_f64(a, b);
-    output[idx] = bitcast<vec2<u32>>(result);
+    output[idx] = result;
 }

@@ -1,4 +1,4 @@
-//! PRNG Xoshiro128** - High-quality 32-bit pseudorandom number generator - Pure WGSL
+//! PRNG Xoshiro128** - High-quality pseudorandom f64 generator - Pure WGSL
 //!
 //! Deep Debt Principles:
 //! - Self-knowledge: Operation knows its computation
@@ -6,6 +6,9 @@
 //! - Modern idiomatic Rust: Safe, zero unsafe code
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
+//!
+//! f64 pipeline: seeds as array<u32> (1 per output, expanded to 4-stride),
+//! output as array<f64> in [0, 1).
 
 use crate::device::DeviceCapabilities;
 use crate::error::Result;
@@ -22,19 +25,39 @@ impl PrngXoshiro {
         Self { seeds, offset }
     }
 
+    /// f32 WGSL shader source (legacy, retained as fossil reference).
+    #[allow(dead_code)]
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/misc/prng_xoshiro.wgsl")
     }
 
+    /// f64 version for universal math library portability.
+    pub fn wgsl_shader_f64() -> &'static str {
+        include_str!("../shaders/misc/prng_xoshiro_f64.wgsl")
+    }
+
     pub fn execute(self) -> Result<Tensor> {
         let device = self.seeds.device();
-        let size: usize = self.seeds.shape().iter().product();
+        let seed_count: usize = self.seeds.shape().iter().product();
 
-        if size == 0 {
+        if seed_count == 0 {
             return Ok(Tensor::new(vec![], vec![0], device.clone()));
         }
 
-        let output_buffer = device.create_buffer_f32(size)?;
+        // f64 shader expects 4 u32s per output (seed_base = idx * 4); expand 1→4 stride
+        let seeds_data = device.read_buffer_u32(self.seeds.buffer(), seed_count)?;
+        let expanded: Vec<u32> = (0..seed_count)
+            .flat_map(|i| [seeds_data[i], 0u32, 0u32, 0u32])
+            .collect();
+        let seeds_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("PRNG Xoshiro seeds expanded"),
+                contents: bytemuck::cast_slice(&expanded),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let output_buffer = device.create_buffer_f64(seed_count)?;
 
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -44,7 +67,7 @@ impl PrngXoshiro {
         }
 
         let params = Params {
-            size: size as u32,
+            size: seed_count as u32,
             offset: self.offset,
         };
         let params_buffer = device
@@ -59,7 +82,7 @@ impl PrngXoshiro {
             device
                 .device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("PRNG Xoshiro Bind Group Layout"),
+                    label: Some("PRNG Xoshiro f64 Bind Group Layout"),
                     entries: &[
                         wgpu::BindGroupLayoutEntry {
                             binding: 0,
@@ -100,7 +123,7 @@ impl PrngXoshiro {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: self.seeds.buffer().as_entire_binding(),
+                    resource: seeds_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -113,7 +136,7 @@ impl PrngXoshiro {
             ],
         });
 
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("PRNG Xoshiro"));
+        let shader = device.compile_shader_f64(Self::wgsl_shader_f64(), Some("PRNG Xoshiro f64"));
 
         let pipeline_layout =
             device
@@ -149,7 +172,7 @@ impl PrngXoshiro {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             let caps = DeviceCapabilities::from_device(device);
-            let workgroups = caps.dispatch_1d(size as u32);
+            let workgroups = caps.dispatch_1d(seed_count as u32);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -164,7 +187,7 @@ impl PrngXoshiro {
 }
 
 impl Tensor {
-    /// Generate random f32 values in [0, 1) using xoshiro128** PRNG.
+    /// Generate random f64 values in [0, 1) using xoshiro128** PRNG.
     /// Seeds tensor must contain u32 data (use Tensor::from_data_pod with u32).
     pub fn prng_xoshiro(self, offset: u32) -> Result<Self> {
         PrngXoshiro::new(self, offset).execute()
@@ -189,7 +212,7 @@ mod tests {
         let seeds: Vec<u32> = vec![1, 2, 3, 4, 5, 100, 200, 300];
         let seeds_tensor = Tensor::from_data_pod(&seeds, vec![8], device.clone()).unwrap();
         let output = seeds_tensor.prng_xoshiro(0).unwrap();
-        let result = output.to_vec().unwrap();
+        let result = output.to_f64_vec().unwrap();
         assert_eq!(result.len(), 8);
         assert!(result
             .iter()

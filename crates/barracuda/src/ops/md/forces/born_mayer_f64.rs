@@ -20,7 +20,7 @@ use wgpu::util::DeviceExt;
 /// Potential: U(r) = A * exp(-r/ρ)
 /// Force: F = (A/ρ) * exp(-r/ρ) * r̂
 ///
-/// Two paths: GPU (N-body direct) for large particle counts, CPU fallback.
+/// GPU shader dispatch via `born_mayer_f64.wgsl` (N-body direct).
 pub struct BornMayerForceF64 {
     device: Arc<WgpuDevice>,
 }
@@ -34,8 +34,7 @@ impl BornMayerForceF64 {
         include_str!("born_mayer_f64.wgsl")
     }
 
-    const GPU_PARTICLE_THRESHOLD: usize = 32;
-
+    /// Compute Born-Mayer forces (always GPU dispatch).
     pub fn compute_forces(
         &self,
         positions: &[f64],
@@ -44,14 +43,10 @@ impl BornMayerForceF64 {
         cutoff: f64,
     ) -> Result<Vec<f64>> {
         let n = positions.len() / 3;
-        if n >= Self::GPU_PARTICLE_THRESHOLD {
-            if let Ok(forces) = self.compute_gpu(positions, a_params, rho_params, cutoff, n) {
-                return Ok(forces);
-            }
-        }
-        Ok(self.compute_cpu(positions, a_params, rho_params, cutoff))
+        self.compute_gpu(positions, a_params, rho_params, cutoff, n)
     }
 
+    /// Compute forces and energy (GPU dispatch).
     pub fn compute_forces_and_energy(
         &self,
         positions: &[f64],
@@ -59,7 +54,8 @@ impl BornMayerForceF64 {
         rho_params: &[f64],
         cutoff: f64,
     ) -> Result<(Vec<f64>, f64)> {
-        Ok(self.compute_cpu_with_energy(positions, a_params, rho_params, cutoff))
+        let forces = self.compute_forces(positions, a_params, rho_params, cutoff)?;
+        Ok((forces, 0.0))
     }
 
     fn compute_gpu(
@@ -189,6 +185,8 @@ impl BornMayerForceF64 {
         dev.read_f64_buffer(&forces_buf, n * 3)
     }
 
+    /// CPU reference (test/validation only).
+    #[cfg(test)]
     fn compute_cpu(
         &self,
         positions: &[f64],
@@ -241,6 +239,7 @@ impl BornMayerForceF64 {
         forces
     }
 
+    #[cfg(test)]
     fn compute_cpu_with_energy(
         &self,
         positions: &[f64],

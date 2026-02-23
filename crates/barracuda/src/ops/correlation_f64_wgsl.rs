@@ -10,25 +10,112 @@
 //! - Feature selection
 //! - Portfolio analysis
 
+use crate::device::capabilities::WORKGROUP_SIZE_1D;
 use crate::device::WgpuDevice;
-use crate::error::Result;
+use crate::error::{BarracudaError, Result};
+use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct Params {
+    size: u32,
+    num_pairs: u32,
+    stride: u32,
+    _pad: u32,
+}
 
 /// f64 Pearson correlation evaluator
 pub struct CorrelationF64 {
-    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
+    pipeline: wgpu::ComputePipeline,
+    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl CorrelationF64 {
-    /// Create new Correlation f64 operation
-    pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
-        Ok(Self { device })
-    }
-
-    #[allow(dead_code)]
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/special/correlation_f64.wgsl")
+    }
+
+    /// Create new Correlation f64 operation
+    pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
+        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("CorrelationF64"));
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("CorrelationF64 BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("CorrelationF64 PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("CorrelationF64 Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
+            });
+
+        Ok(Self {
+            device,
+            pipeline,
+            bind_group_layout,
+        })
     }
 
     /// Compute Pearson correlation coefficient between two vectors
@@ -42,10 +129,122 @@ impl CorrelationF64 {
             return Ok(0.0);
         }
 
-        // CPU fallback for reliability
-        Ok(Self::correlation_cpu(x, y))
+        let n = x.len();
+        let params = Params {
+            size: n as u32,
+            num_pairs: 1,
+            stride: n as u32,
+            _pad: 0,
+        };
+
+        let x_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("CorrelationF64 X"),
+                contents: bytemuck::cast_slice(x),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let y_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("CorrelationF64 Y"),
+                contents: bytemuck::cast_slice(y),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let output_size = std::mem::size_of::<f64>();
+        let output_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("CorrelationF64 Output"),
+            size: output_size as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let params_buf = self
+            .device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("CorrelationF64 Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("CorrelationF64 BG"),
+                layout: &self.bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: x_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: y_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: output_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                ],
+            });
+
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("CorrelationF64 Encoder"),
+                });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("CorrelationF64 Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(1u32.div_ceil(WORKGROUP_SIZE_1D).max(1), 1, 1);
+        }
+
+        let staging_buf = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("CorrelationF64 Staging"),
+            size: output_size as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        encoder.copy_buffer_to_buffer(&output_buf, 0, &staging_buf, 0, output_size as u64);
+
+        self.device.queue.submit(Some(encoder.finish()));
+
+        let buffer_slice = staging_buf.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+        self.device.device.poll(wgpu::Maintain::Wait);
+        rx.recv()
+            .map_err(|e| BarracudaError::Gpu(format!("Correlation readback: {}", e)))?
+            .map_err(|e| BarracudaError::Gpu(format!("Correlation map: {:?}", e)))?;
+
+        let data = buffer_slice.get_mapped_range();
+        let result: Vec<f64> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging_buf.unmap();
+
+        Ok(result[0])
     }
 
+    #[cfg(test)]
     fn correlation_cpu(x: &[f64], y: &[f64]) -> f64 {
         let n = x.len();
         if n == 0 {

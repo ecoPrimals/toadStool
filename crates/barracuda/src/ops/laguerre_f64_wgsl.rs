@@ -51,13 +51,6 @@ impl LaguerreF64 {
             return Ok(vec![]);
         }
 
-        let size = x.len();
-
-        // CPU fallback for small inputs
-        if size < 256 {
-            return Ok(self.laguerre_cpu(x, n, alpha));
-        }
-
         self.laguerre_gpu(x, n, alpha)
     }
 
@@ -66,12 +59,14 @@ impl LaguerreF64 {
         self.laguerre(x, n, 0.0)
     }
 
+    #[cfg(test)]
     fn laguerre_cpu(&self, x: &[f64], n: u32, alpha: f64) -> Vec<f64> {
         x.iter()
             .map(|&xi| Self::laguerre_scalar(n, alpha, xi))
             .collect()
     }
 
+    #[cfg(test)]
     fn laguerre_scalar(n: u32, alpha: f64, x: f64) -> f64 {
         if n == 0 {
             return 1.0;

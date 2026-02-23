@@ -102,15 +102,11 @@ impl CrankNicolson {
             }
         };
 
-        // CPU fallback for small grids
-        if n < 32 || n_steps < 10 {
-            return Ok(self.solve_cpu(u0, r, n_steps, left_val, right_val));
-        }
-
         self.solve_gpu(u0, r, n_steps, left_val, right_val)
     }
 
     /// CPU reference implementation (Thomas algorithm)
+    #[cfg(test)]
     fn solve_cpu(
         &self,
         u0: &[f32],

@@ -1,4 +1,8 @@
-//! Generalized Laguerre polynomials
+//! Generalized Laguerre polynomials — CPU reference implementations.
+//!
+//! **Shader-first architecture**: f64 WGSL equivalents in `shaders/math/`
+//! (`laguerre_f64.wgsl`, `laguerre_generalized_f64.wgsl`). GPU pipelines
+//! should use shader versions. These CPU functions are reference/validation.
 //!
 //! Computes L_n^(α)(x), the generalized (associated) Laguerre polynomials,
 //! using the three-term recurrence relation. These arise naturally in:

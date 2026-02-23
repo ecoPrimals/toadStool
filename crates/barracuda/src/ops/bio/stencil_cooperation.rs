@@ -21,6 +21,10 @@ use crate::device::WgpuDevice;
 pub const WGSL_STENCIL_COOPERATION: &str =
     include_str!("../../shaders/bio/stencil_cooperation.wgsl");
 
+/// f64 version for universal math library portability.
+pub const WGSL_STENCIL_COOPERATION_F64: &str =
+    include_str!("../../shaders/bio/stencil_cooperation_f64.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct StencilParams {
@@ -30,7 +34,7 @@ struct StencilParams {
     _pad: u32,
 }
 
-/// Fermi imitation dynamics GPU kernel.
+/// Fermi imitation dynamics GPU kernel (f64 pipeline).
 ///
 /// Updates strategy grid based on fitness comparison with Moore neighbors.
 pub struct StencilCooperationGpu {
@@ -59,10 +63,8 @@ impl StencilCooperationGpu {
             push_constant_ranges: &[],
         });
 
-        let module = d.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("StencilCoop Shader"),
-            source: wgpu::ShaderSource::Wgsl(WGSL_STENCIL_COOPERATION.into()),
-        });
+        let module =
+            device.compile_shader_f64(WGSL_STENCIL_COOPERATION_F64, Some("StencilCoop f64"));
 
         let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("StencilCoop Pipeline"),
@@ -83,7 +85,7 @@ impl StencilCooperationGpu {
     /// Dispatch one imitation dynamics step.
     ///
     /// `strategies_buf`:     `[grid_size²]` u32 — current strategies
-    /// `fitness_buf`:        `[grid_size²]` f32 — pre-computed fitness
+    /// `fitness_buf`:        `[grid_size²]` f64 — pre-computed fitness
     /// `new_strategies_buf`: `[grid_size²]` u32 — output strategies
     /// `kappa`:              selection intensity (temperature)
     /// `step`:               current generation (for neighbor rotation)
@@ -93,7 +95,7 @@ impl StencilCooperationGpu {
         fitness_buf: &wgpu::Buffer,
         new_strategies_buf: &wgpu::Buffer,
         grid_size: u32,
-        kappa: f32,
+        kappa: f64,
         step: u32,
     ) {
         let d = self.device.device();
@@ -174,5 +176,25 @@ fn uniform_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
             min_binding_size: None,
         },
         count: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn f64_shader_contains_stencil_update() {
+        assert!(WGSL_STENCIL_COOPERATION_F64.contains("fn stencil_update"));
+        assert!(WGSL_STENCIL_COOPERATION_F64.contains("f64"));
+    }
+
+    #[test]
+    fn f64_shader_compiles_via_naga() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
+        else {
+            return;
+        };
+        device.compile_shader_f64(WGSL_STENCIL_COOPERATION_F64, Some("stencil_coop_f64"));
     }
 }

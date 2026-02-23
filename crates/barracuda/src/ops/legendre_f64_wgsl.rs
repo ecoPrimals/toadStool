@@ -50,13 +50,6 @@ impl LegendreF64 {
             return Ok(vec![]);
         }
 
-        let size = x.len();
-
-        // CPU fallback for small inputs
-        if size < 256 {
-            return Ok(self.legendre_cpu(x, n));
-        }
-
         self.execute_kernel(x, n, 0, false)
     }
 
@@ -79,26 +72,22 @@ impl LegendreF64 {
             return Ok(vec![0.0; x.len()]);
         }
 
-        let size = x.len();
-
-        // CPU fallback for small inputs
-        if size < 256 {
-            return Ok(self.assoc_legendre_cpu(x, n, m));
-        }
-
         self.execute_kernel(x, n, m, true)
     }
 
+    #[cfg(test)]
     fn legendre_cpu(&self, x: &[f64], n: u32) -> Vec<f64> {
         x.iter().map(|&xi| Self::legendre_scalar(n, xi)).collect()
     }
 
+    #[cfg(test)]
     fn assoc_legendre_cpu(&self, x: &[f64], n: u32, m: u32) -> Vec<f64> {
         x.iter()
             .map(|&xi| Self::assoc_legendre_scalar(n, m, xi))
             .collect()
     }
 
+    #[cfg(test)]
     fn legendre_scalar(n: u32, x: f64) -> f64 {
         if n == 0 {
             return 1.0;
@@ -120,6 +109,7 @@ impl LegendreF64 {
         p_curr
     }
 
+    #[cfg(test)]
     fn double_factorial(m: u32) -> f64 {
         if m == 0 {
             return 1.0;
@@ -131,6 +121,7 @@ impl LegendreF64 {
         r
     }
 
+    #[cfg(test)]
     fn assoc_legendre_scalar(n: u32, m: u32, x: f64) -> f64 {
         if m > n {
             return 0.0;
