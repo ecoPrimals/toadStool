@@ -160,7 +160,8 @@ pub(super) fn execute_projection(
     const TILE_SIZE: u32 = 16;
     let workgroups_x = (op.batch_size() as u32).div_ceil(TILE_SIZE).max(1);
     let workgroups_y = (op.num_heads() as u32).div_ceil(TILE_SIZE).max(1);
-    let workgroups_z = (op.seq_len() as u32).div_ceil(TILE_SIZE).max(1);
+    // @workgroup_size(16, 16, 1): z tile is 1, need one workgroup per seq position
+    let workgroups_z = op.seq_len() as u32;
     compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
 
     Ok(output_buffer)
@@ -304,7 +305,8 @@ pub(super) fn execute_output_projection(
     const TILE_SIZE: u32 = 16;
     let workgroups_x = (op.batch_size() as u32).div_ceil(TILE_SIZE).max(1);
     let workgroups_y = (op.seq_len() as u32).div_ceil(TILE_SIZE).max(1);
-    let workgroups_z = (op.d_model() as u32).div_ceil(TILE_SIZE).max(1);
+    // @workgroup_size(16, 16, 1): z tile is 1, need one workgroup per output dim
+    let workgroups_z = op.d_model() as u32;
     compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
 
     Ok(output_buffer)

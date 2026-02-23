@@ -24,12 +24,14 @@ mod kinetic_energy;
 mod kinetic_energy_f64;
 mod rdf_f64;
 mod ssf_gpu;
+pub mod transport_gpu;
 mod vacf_gpu;
 
 pub use kinetic_energy::KineticEnergy;
 pub use kinetic_energy_f64::KineticEnergyF64;
 pub use rdf_f64::RdfHistogramF64;
 pub use ssf_gpu::SsfGpu;
+pub use transport_gpu::{GpuVelocityRing, StressVirialGpu, VacfBatchGpu};
 pub use vacf_gpu::VacfGpu;
 
 use std::f64::consts::PI;

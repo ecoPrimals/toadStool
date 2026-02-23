@@ -1,7 +1,51 @@
 # Deep Debt Status Report
 
-**Sessions 32-45 -- February 23, 2026**
+**Sessions 32-46 -- February 23, 2026**
 **Status**: PRODUCTION-GRADE | All quality gates green | 0 clippy warnings | 0 doc warnings | 14,000+ tests | Coverage: common 87%, config 89%, core ~87%, server ~85%
+
+---
+
+## Session S46 Evolution (Feb 23, 2026)
+
+### Cross-Project Absorption (hotSpring, neuralSpring, wetSpring)
+
+**Lattice QCD — CPU Reference Implementations (hotSpring):**
+- `cpu_complex.rs`: `Complex64` struct with full arithmetic, conjugate, abs — reference for GPU complex ops
+- `cpu_su3.rs`: `Su3Matrix` struct with multiplication, adjoint, trace, reunitarization, random generation
+- `constants.rs`: LCG PRNG (deterministic reproducibility), `LATTICE_DIVISION_GUARD`
+- `wilson.rs`: `Lattice` struct — cold/hot start, plaquette, Wilson action, gauge force, site indexing
+- `cpu_dirac.rs`: `FermionField`, staggered Dirac operator, `apply_dirac`/`apply_dirac_adjoint`/`apply_dirac_sq`, CG solver
+- `pseudofermion.rs`: `PseudofermionConfig`, `DynamicalHmcConfig`, `dynamical_hmc_trajectory` — full dynamical fermion HMC
+
+**MD Transport Observables (hotSpring):**
+- `stress_virial_f64.wgsl`: Per-particle stress tensor (σ_xy) for Green-Kubo viscosity
+- `vacf_batch_f64.wgsl`: Batched Velocity Autocorrelation Function — C(lag) across all time origins in single dispatch
+- `transport_gpu.rs`: `VacfBatchGpu`, `StressVirialGpu`, `GpuVelocityRing` (GPU-resident ring buffer)
+
+**Game Theory / Population Genetics (neuralSpring):**
+- `stencil_cooperation.wgsl`: Fermi imitation dynamics on 2D grid — strategy update via fitness comparison
+- `wright_fisher_step.wgsl`: One generation of Wright-Fisher drift + selection
+- `stencil_cooperation.rs` / `wright_fisher.rs`: GPU wrappers with pipeline creation
+
+**Numerical ODE Solvers (neuralSpring):**
+- `rk45_adaptive.wgsl`: Adaptive Dormand-Prince 5(4) RK45 for regulatory network ODEs
+- `rk45_adaptive.rs`: GPU wrapper with error estimation and step-size control
+
+**Biological ODE Models (wetSpring):**
+- 5 RK4 WGSL shaders: `phage_defense_ode_rk4_f64.wgsl`, `bistable_ode_rk4_f64.wgsl`, `multi_signal_ode_rk4_f64.wgsl`, `cooperation_ode_rk4_f64.wgsl`, `capacitor_ode_rk4_f64.wgsl`
+
+### Bug Fixes
+
+- **MHA Projection Under-Dispatch**: Fixed `workgroups_z` in `multi_head_attention/compute.rs` — was using `div_ceil(TILE_SIZE)` instead of full dimension, causing missing outputs for larger inputs
+- **Conv2D/Pool GPU Wiring**: Documented WGSL shader evolution needed for stride/padding/channels/batch support; CPU fallback clarified in `gpu_executor.rs`
+
+### Quality Gates (all green)
+
+- `cargo check --all`: 0 errors
+- `cargo clippy --package barracuda`: 0 warnings
+- `cargo fmt --all -- --check`: 0 diffs
+- **43 new module tests passing** (lattice: 39, transport_gpu: 3, MHA: 1)
+- **7,270 tests passing** across toadstool-common, toadstool-config, toadstool, toadstool-server (0 failures)
 
 ---
 
@@ -98,6 +142,7 @@
 - toadstool-client: 322 passed, 0 failed
 - toadstool (main): 1,700+ passed, 0 failed
 - barracuda: all pass at `--test-threads=2` (GPU contention under max parallelism is a known driver limitation)
+- **S46**: 7,270 across common/config/core/server + 43 new barracuda module tests — 0 failures
 
 ---
 
@@ -364,8 +409,13 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | Milestone | Session |
 |-----------|---------|
 | MD pipeline (thermostats + PPPM GPU) | S28 |
+| MD transport observables (stress tensor, batched VACF, GPU velocity ring) | S46 |
 | HFB nuclear physics (11 spherical + deformed shaders) | S36-S39 |
-| Lattice QCD (5 shaders: Wilson, HMC, Higgs, Dirac, CG) | S31d |
+| Lattice QCD (5 GPU shaders: Wilson, HMC, Higgs, Dirac, CG) | S31d |
+| Lattice QCD CPU reference (Complex64, SU3, Lattice, Dirac, CG, Pseudofermion HMC) | S46 |
+| Game theory / population genetics (Fermi imitation, Wright-Fisher drift) | S46 |
+| Adaptive ODE solvers (Dormand-Prince RK45) | S46 |
+| 5 biological ODE RK4 shaders (phage, bistable, multi-signal, cooperation, capacitor) | S46 |
 | 25 bio/evolution GPU ops (ANI, HMM, SNP, pangenome, etc.) | S31d-S39 |
 | PDE solvers (Crank-Nicolson, Richards unsaturated flow) | S39-S40 |
 | ESN export/import weights (GPU-train → NPU-deploy) | S36 |
@@ -412,6 +462,8 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | W-003 | NAK Mesa patches (5 deficiencies) | Medium | Pending Titan V validation |
 | D-S18-002 | cubecl `dirs-sys` transitive | Low | Needs upstream PR (cubecl `dirs` → `etcetera`). See `docs/debt/D-S18-002-cubecl-dirs-sys.md` |
 | D-S20-003 | neuralSpring `evolved/` migration | Low | Awaiting neuralSpring team |
+| D-S46-001 | Conv2D/Pool WGSL shader evolution | Medium | Shaders exist but lack stride/padding/channels/batch; CPU fallback active |
+| ~~W-005~~ | ~~GPU-resident VACF~~ | — | ✅ RESOLVED S46 |
 | — | Test coverage → 90% | Medium | Core ~87%, server ~85%. Gaps: planner (49%), ecosystem (62%), detector (65%) |
 | — | NPU model pipeline | Low | Awaiting hardware |
 | — | burn-inference full implementations | Low | Future |

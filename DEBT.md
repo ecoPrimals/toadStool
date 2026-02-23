@@ -1295,4 +1295,5 @@ updated.  All four sites plus HTTP semantic wiring fixed:
 | D-S20-003 | neuralSpring `evolved/` retirement (needs neuralSpring team migration) | Carried |
 | D-S21-003 | wetSpring `GemmCached` → barracuda session-cached type (future design) | Carried (partial) |
 | W-003 | NAK compiler Titan V hardware validation for ILP speedup | Carried |
-| W-005 | GPU-resident VACF (Velocity Autocorrelation Function) | Carried |
+| W-005 | GPU-resident VACF (Velocity Autocorrelation Function) | ✅ RESOLVED S46 — `vacf_batch_f64.wgsl` + `GpuVelocityRing` + `VacfBatchGpu` |
+| D-S46-001 | Conv2D/Pool WGSL shader evolution (stride/padding/channels/batch) | New — GPU shaders exist but lack full parameter support; CPU fallback active |

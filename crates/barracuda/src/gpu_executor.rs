@@ -481,9 +481,10 @@ impl ComputeExecutor for GpuExecutor {
                 first
             }
 
-            // ── Convolution ops: CPU fallback; dedicated WGSL shaders exist ───
-            // ops/nn/conv2d.wgsl, maxpool2d.wgsl, avgpool2d.wgsl provide GPU
-            // acceleration when wired; routing to CPU for now.
+            // ── Convolution ops: CPU fallback (stride/padding/channels evolution needed)
+            // ops/conv2d.wgsl handles basic 2D conv (no stride/padding/batch/channels).
+            // Wire to GPU once the WGSL shaders support the full MathOp parameter set
+            // (stride, padding, dilation, groups, batch, channels) — tracked in DEBT.md.
             MathOp::Conv2D { .. } | MathOp::MaxPool2D { .. } | MathOp::AvgPool2D { .. } => {
                 let cpu = CpuExecutor::new();
                 // Transfer inputs to CPU, execute, then transfer result back to GPU

@@ -24,8 +24,14 @@
 
 pub mod cg;
 pub mod complex_f64;
+pub mod constants;
+pub mod cpu_complex;
+pub mod cpu_dirac;
+pub mod cpu_su3;
 pub mod dirac;
 pub mod higgs_u1;
 pub mod hmc_force_su3;
 pub mod plaquette;
+pub mod pseudofermion;
 pub mod su3;
+pub mod wilson;
