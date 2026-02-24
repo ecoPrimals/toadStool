@@ -11,12 +11,16 @@ struct AvgPool2DParams {
     input_height: u32,
     pool_size: u32,
     stride: u32,
+    pad_h: u32,
+    pad_w: u32,
 }
 
 pub struct AvgPool2D {
     input: Tensor,
     pool_size: usize,
     stride: usize,
+    pad_h: usize,
+    pad_w: usize,
 }
 
 impl AvgPool2D {
@@ -25,6 +29,24 @@ impl AvgPool2D {
             input,
             pool_size,
             stride,
+            pad_h: 0,
+            pad_w: 0,
+        }
+    }
+
+    pub fn with_padding(
+        input: Tensor,
+        pool_size: usize,
+        stride: usize,
+        pad_h: usize,
+        pad_w: usize,
+    ) -> Self {
+        Self {
+            input,
+            pool_size,
+            stride,
+            pad_h,
+            pad_w,
         }
     }
 
@@ -35,11 +57,12 @@ impl AvgPool2D {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
 
-        // Assume input shape is [height, width]
         let input_height = self.input.shape()[0];
         let input_width = self.input.shape()[1];
-        let output_height = input_height / self.stride;
-        let output_width = input_width / self.stride;
+        let output_height =
+            (input_height + 2 * self.pad_h - self.pool_size) / self.stride + 1;
+        let output_width =
+            (input_width + 2 * self.pad_w - self.pool_size) / self.stride + 1;
         let output_size = output_height * output_width;
 
         let output_buffer = device.create_buffer_f32(output_size)?;
@@ -49,6 +72,8 @@ impl AvgPool2D {
             input_height: input_height as u32,
             pool_size: self.pool_size as u32,
             stride: self.stride as u32,
+            pad_h: self.pad_h as u32,
+            pad_w: self.pad_w as u32,
         };
 
         let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -172,6 +197,16 @@ impl Tensor {
     pub fn avgpool2d(self, pool_size: usize, stride: usize) -> Result<Self> {
         AvgPool2D::new(self, pool_size, stride).execute()
     }
+
+    pub fn avgpool2d_padded(
+        self,
+        pool_size: usize,
+        stride: usize,
+        pad_h: usize,
+        pad_w: usize,
+    ) -> Result<Self> {
+        AvgPool2D::with_padding(self, pool_size, stride, pad_h, pad_w).execute()
+    }
 }
 
 #[cfg(test)]
@@ -186,8 +221,20 @@ mod tests {
         pool_size: usize,
         stride: usize,
     ) -> Vec<f32> {
-        let output_h = input_h / stride;
-        let output_w = input_w / stride;
+        avgpool2d_cpu_padded(input, input_h, input_w, pool_size, stride, 0, 0)
+    }
+
+    fn avgpool2d_cpu_padded(
+        input: &[f32],
+        input_h: usize,
+        input_w: usize,
+        pool_size: usize,
+        stride: usize,
+        pad_h: usize,
+        pad_w: usize,
+    ) -> Vec<f32> {
+        let output_h = (input_h + 2 * pad_h - pool_size) / stride + 1;
+        let output_w = (input_w + 2 * pad_w - pool_size) / stride + 1;
         let mut result = vec![0.0; output_h * output_w];
 
         for i in 0..output_h {
@@ -196,10 +243,14 @@ mod tests {
                 let mut count = 0;
                 for pi in 0..pool_size {
                     for pj in 0..pool_size {
-                        let in_i = i * stride + pi;
-                        let in_j = j * stride + pj;
-                        if in_i < input_h && in_j < input_w {
-                            sum += input[in_i * input_w + in_j];
+                        let in_i = (i * stride + pi) as isize - pad_h as isize;
+                        let in_j = (j * stride + pj) as isize - pad_w as isize;
+                        if in_i >= 0
+                            && (in_i as usize) < input_h
+                            && in_j >= 0
+                            && (in_j as usize) < input_w
+                        {
+                            sum += input[in_i as usize * input_w + in_j as usize];
                             count += 1;
                         }
                     }
@@ -353,5 +404,31 @@ mod tests {
             "Max error: {} exceeds FP32 threshold",
             max_error
         );
+    }
+
+    #[tokio::test]
+    async fn test_avgpool2d_with_padding() {
+        let Some(device) = get_test_device_if_gpu_available().await else {
+            return;
+        };
+        // 4x4 input, pool=3, stride=1, pad=1 -> 4x4 output
+        let input_data: Vec<f32> = (1..=16).map(|i| i as f32).collect();
+
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4, 4], device)
+            .await
+            .unwrap();
+
+        let result = input.avgpool2d_padded(3, 1, 1, 1).unwrap();
+        assert_eq!(result.shape(), &[4, 4]);
+
+        let output = result.to_vec().unwrap();
+        let expected = avgpool2d_cpu_padded(&input_data, 4, 4, 3, 1, 1, 1);
+
+        for (i, (r, e)) in output.iter().zip(expected.iter()).enumerate() {
+            assert!(
+                (r - e).abs() < 1e-5,
+                "mismatch at {i}: gpu={r}, cpu={e}"
+            );
+        }
     }
 }

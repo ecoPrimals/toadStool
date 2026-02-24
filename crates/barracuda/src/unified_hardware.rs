@@ -622,16 +622,147 @@ pub const PCIE_DMA_LATENCY_US: f64 = 5.0;
 /// Empirical GPU dispatch overhead in microseconds (queue submit + readback).
 pub const GPU_DISPATCH_OVERHEAD_US: f64 = 1500.0;
 
+// =============================================================================
+// BandwidthTier — PCIe generation classification for transfer cost modelling
+// =============================================================================
+
+/// PCIe/interconnect bandwidth tier for transfer cost estimation.
+///
+/// Runtime-detected from GPU adapter name heuristics. Used by
+/// `dispatch_with_transfer_cost()` to factor data movement cost
+/// into the CPU/GPU dispatch decision.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BandwidthTier {
+    /// PCIe 3.0 x16 — ~15.75 GB/s (Titan V, RTX 2000 series)
+    PciE3x16,
+    /// PCIe 4.0 x16 — ~31.5 GB/s (RTX 3000/4000, RX 6000/7000)
+    PciE4x16,
+    /// PCIe 5.0 x16 — ~63 GB/s (next-gen data center)
+    PciE5x16,
+    /// NVLink — ~300 GB/s (A100, H100 multi-GPU)
+    NvLink,
+    /// Shared/unified memory — effectively infinite (Apple M-series, integrated)
+    SharedMemory,
+    /// Unknown — conservative fallback (PCIe 3.0 assumptions)
+    Unknown,
+}
+
+impl BandwidthTier {
+    /// Theoretical unidirectional bandwidth in GB/s.
+    #[must_use]
+    pub const fn bandwidth_gbps(self) -> f64 {
+        match self {
+            BandwidthTier::PciE3x16 => 15.75,
+            BandwidthTier::PciE4x16 => 31.5,
+            BandwidthTier::PciE5x16 => 63.0,
+            BandwidthTier::NvLink => 300.0,
+            BandwidthTier::SharedMemory => 1000.0,
+            BandwidthTier::Unknown => 15.75,
+        }
+    }
+
+    /// Estimated DMA latency in microseconds.
+    #[must_use]
+    pub const fn latency_us(self) -> f64 {
+        match self {
+            BandwidthTier::SharedMemory => 0.1,
+            BandwidthTier::NvLink => 1.0,
+            _ => PCIE_DMA_LATENCY_US,
+        }
+    }
+
+    /// Build a `TransferCost` from this tier's characteristics.
+    #[must_use]
+    pub const fn transfer_cost(self) -> TransferCost {
+        TransferCost {
+            latency_us: self.latency_us(),
+            bandwidth_gbps: self.bandwidth_gbps(),
+        }
+    }
+
+    /// Detect bandwidth tier from GPU adapter name (heuristic).
+    ///
+    /// Falls back to `Unknown` when the name doesn't match any known pattern.
+    #[must_use]
+    pub fn detect_from_adapter_name(name: &str) -> Self {
+        let lower = name.to_lowercase();
+
+        // NVLink: data-center GPUs (multi-GPU interconnect)
+        if lower.contains("a100")
+            || lower.contains("h100")
+            || lower.contains("h200")
+        {
+            return BandwidthTier::NvLink;
+        }
+
+        // Shared memory: Apple Silicon (unified), software renderers
+        if lower.contains("apple")
+            || lower.contains("llvmpipe")
+            || lower.contains("swiftshader")
+        {
+            return BandwidthTier::SharedMemory;
+        }
+
+        // PCIe 5.0: next-gen data center
+        if lower.contains("b100") || lower.contains("b200") {
+            return BandwidthTier::PciE5x16;
+        }
+
+        // PCIe 4.0: RTX 3000/4000, RX 6000/7000, Intel Arc, MI200+
+        if lower.contains("rtx 30")
+            || lower.contains("rtx 40")
+            || lower.contains("rx 6")
+            || lower.contains("rx 7")
+            || lower.contains("arc")
+            || lower.contains("a770")
+            || lower.contains("a750")
+            || lower.contains("mi2")
+            || lower.contains("mi3")
+        {
+            return BandwidthTier::PciE4x16;
+        }
+
+        // PCIe 3.0: RTX 2000, Titan V, V100
+        if lower.contains("rtx 20")
+            || lower.contains("titan v")
+            || lower.contains("v100")
+            || lower.contains("gv100")
+        {
+            return BandwidthTier::PciE3x16;
+        }
+
+        BandwidthTier::Unknown
+    }
+}
+
 /// Select optimal mixed substrate for a workload.
 ///
 /// Uses a cost model: if compute dominates transfer, route to target;
 /// otherwise stay on source to avoid transfer overhead.
+///
+/// Uses default PCIe 4.0 bandwidth. For tier-aware routing, use
+/// [`mixed_substrate_with_tier`].
 #[must_use]
 pub fn mixed_substrate(
     compute_us: f64,
     data_bytes: usize,
     source: HardwareType,
     target: HardwareType,
+) -> MixedSubstrate {
+    mixed_substrate_with_tier(compute_us, data_bytes, source, target, BandwidthTier::PciE4x16)
+}
+
+/// Select optimal mixed substrate with explicit bandwidth tier.
+///
+/// Like [`mixed_substrate`] but uses the provided [`BandwidthTier`] for
+/// transfer cost estimation instead of defaulting to PCIe 4.0.
+#[must_use]
+pub fn mixed_substrate_with_tier(
+    compute_us: f64,
+    data_bytes: usize,
+    source: HardwareType,
+    target: HardwareType,
+    tier: BandwidthTier,
 ) -> MixedSubstrate {
     if source == target {
         return match source {
@@ -642,10 +773,7 @@ pub fn mixed_substrate(
         };
     }
 
-    let cost = TransferCost {
-        latency_us: PCIE_DMA_LATENCY_US,
-        bandwidth_gbps: PCIE4_X16_BANDWIDTH_GBPS,
-    };
+    let cost = tier.transfer_cost();
     let transfer_us = cost.estimated_us(data_bytes) + GPU_DISPATCH_OVERHEAD_US;
 
     if compute_us > transfer_us {
@@ -779,5 +907,106 @@ mod tests {
         assert!(cost.latency_us > 0.0);
         assert!(cost.bandwidth_gbps > 0.0);
         assert!(cost.estimated_us(1_048_576) > cost.latency_us);
+    }
+
+    // BandwidthTier tests
+
+    #[test]
+    fn test_bandwidth_tier_values() {
+        assert!((BandwidthTier::PciE3x16.bandwidth_gbps() - 15.75).abs() < 0.01);
+        assert!((BandwidthTier::PciE4x16.bandwidth_gbps() - 31.5).abs() < 0.01);
+        assert!((BandwidthTier::PciE5x16.bandwidth_gbps() - 63.0).abs() < 0.01);
+        assert!(BandwidthTier::NvLink.bandwidth_gbps() > 200.0);
+        assert!(BandwidthTier::SharedMemory.bandwidth_gbps() > 500.0);
+    }
+
+    #[test]
+    fn test_bandwidth_tier_detect_nvidia() {
+        assert_eq!(
+            BandwidthTier::detect_from_adapter_name("NVIDIA GeForce RTX 4070"),
+            BandwidthTier::PciE4x16
+        );
+        assert_eq!(
+            BandwidthTier::detect_from_adapter_name("NVIDIA GeForce RTX 3090"),
+            BandwidthTier::PciE4x16
+        );
+        assert_eq!(
+            BandwidthTier::detect_from_adapter_name("NVIDIA GeForce RTX 2080 Ti"),
+            BandwidthTier::PciE3x16
+        );
+        assert_eq!(
+            BandwidthTier::detect_from_adapter_name("NVIDIA TITAN V"),
+            BandwidthTier::PciE3x16
+        );
+        assert_eq!(
+            BandwidthTier::detect_from_adapter_name("NVIDIA A100"),
+            BandwidthTier::NvLink
+        );
+        assert_eq!(
+            BandwidthTier::detect_from_adapter_name("NVIDIA H100"),
+            BandwidthTier::NvLink
+        );
+    }
+
+    #[test]
+    fn test_bandwidth_tier_detect_amd() {
+        assert_eq!(
+            BandwidthTier::detect_from_adapter_name("AMD Radeon RX 7900 XTX"),
+            BandwidthTier::PciE4x16
+        );
+        assert_eq!(
+            BandwidthTier::detect_from_adapter_name("AMD Radeon RX 6950 XT"),
+            BandwidthTier::PciE4x16
+        );
+    }
+
+    #[test]
+    fn test_bandwidth_tier_detect_special() {
+        assert_eq!(
+            BandwidthTier::detect_from_adapter_name("Apple M2 Pro"),
+            BandwidthTier::SharedMemory
+        );
+        assert_eq!(
+            BandwidthTier::detect_from_adapter_name("llvmpipe"),
+            BandwidthTier::SharedMemory
+        );
+        assert_eq!(
+            BandwidthTier::detect_from_adapter_name("Unknown GPU XYZ"),
+            BandwidthTier::Unknown
+        );
+    }
+
+    #[test]
+    fn test_bandwidth_tier_transfer_cost() {
+        let cost = BandwidthTier::PciE4x16.transfer_cost();
+        assert!((cost.bandwidth_gbps - 31.5).abs() < 0.01);
+        let one_mb_us = cost.estimated_us(1_048_576);
+        assert!(one_mb_us > cost.latency_us);
+    }
+
+    #[test]
+    fn test_mixed_substrate_with_tier_shared_memory_transfers() {
+        // Compute time must exceed dispatch overhead (1500 µs) + negligible
+        // transfer cost for SharedMemory to trigger a cross-device transfer.
+        let sub = mixed_substrate_with_tier(
+            5_000.0,
+            1_048_576,
+            HardwareType::CPU,
+            HardwareType::GPU,
+            BandwidthTier::SharedMemory,
+        );
+        assert_eq!(sub, MixedSubstrate::CpuToGpu);
+    }
+
+    #[test]
+    fn test_mixed_substrate_with_tier_pcie3_avoids_small_transfer() {
+        let sub = mixed_substrate_with_tier(
+            100.0, // small compute
+            1024,
+            HardwareType::CPU,
+            HardwareType::GPU,
+            BandwidthTier::PciE3x16,
+        );
+        assert_eq!(sub, MixedSubstrate::CpuOnly);
     }
 }

@@ -35,6 +35,9 @@ pub mod sparse_gemm_f64;
 // TransE knowledge graph triple scoring (f64 GPU)
 pub mod transe_score_f64;
 
+// 1D peak detection with prominence and width (f64 GPU)
+pub mod peak_detect_f64;
+
 // Attention mechanisms (Phase 4 - Universal Compute)
 pub mod alibi;
 pub mod attention;

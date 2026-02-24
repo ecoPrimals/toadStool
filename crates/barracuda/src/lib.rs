@@ -221,8 +221,8 @@ pub mod prelude {
     };
     #[cfg(feature = "gpu")]
     pub use crate::dispatch::{
-        batch_fitness_substrate, dispatch_for, hmm_substrate, ode_substrate, pairwise_substrate,
-        spatial_substrate, DispatchConfig, DispatchTarget,
+        batch_fitness_substrate, dispatch_for, dispatch_with_transfer_cost, hmm_substrate,
+        ode_substrate, pairwise_substrate, spatial_substrate, DispatchConfig, DispatchTarget,
     };
     #[cfg(feature = "gpu")]
     pub use crate::multi_gpu::{

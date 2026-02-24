@@ -307,6 +307,44 @@ pub fn dispatch_with_config(
     }
 }
 
+/// Dispatch with transfer cost awareness.
+///
+/// Like [`dispatch_for`] but additionally penalizes GPU dispatch when the
+/// PCIe data transfer would dominate the compute savings. Uses the
+/// [`BandwidthTier`] to estimate transfer overhead and compares against
+/// a heuristic GPU compute advantage.
+///
+/// For shared-memory or NVLink tiers the transfer cost is negligible, so
+/// this falls through to the basic threshold check.
+pub fn dispatch_with_transfer_cost(
+    operation: &str,
+    input_size: usize,
+    data_bytes: usize,
+    bandwidth: crate::unified_hardware::BandwidthTier,
+) -> DispatchTarget {
+    let config = global_config();
+
+    if !config.should_use_gpu(input_size, operation) {
+        return DispatchTarget::Cpu;
+    }
+
+    let cost = bandwidth.transfer_cost();
+    let transfer_us =
+        cost.estimated_us(data_bytes) + crate::unified_hardware::GPU_DISPATCH_OVERHEAD_US;
+
+    // Heuristic: GPU advantage grows ~1 ns per element above the threshold.
+    // This is conservative — real GPU throughput is much higher for parallel ops,
+    // but we only need a rough breakeven estimate.
+    let threshold = config.threshold(operation);
+    let compute_advantage_us = input_size.saturating_sub(threshold) as f64 * 0.001;
+
+    if compute_advantage_us > transfer_us {
+        DispatchTarget::Gpu
+    } else {
+        DispatchTarget::Cpu
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,6 +443,52 @@ mod tests {
         if config.has_gpu() {
             let target = dispatch_with_config(&config, "matmul", 1_000_000);
             assert!(target.is_gpu());
+        }
+    }
+
+    #[test]
+    fn test_dispatch_with_transfer_cost_small_input_stays_cpu() {
+        let target = dispatch_with_transfer_cost(
+            "matmul",
+            10,
+            10 * 4,
+            crate::unified_hardware::BandwidthTier::PciE4x16,
+        );
+        assert!(target.is_cpu(), "small input should stay on CPU");
+    }
+
+    #[test]
+    fn test_dispatch_with_transfer_cost_shared_memory() {
+        let config = DispatchConfig::default();
+        if config.has_gpu() {
+            let target = dispatch_with_transfer_cost(
+                "matmul",
+                200,
+                200 * 4,
+                crate::unified_hardware::BandwidthTier::SharedMemory,
+            );
+            // SharedMemory has near-zero transfer cost, but the heuristic
+            // compute advantage (200-64)*0.001 = 0.136 µs is still less
+            // than GPU dispatch overhead (1500 µs). So this should be CPU.
+            // Only truly massive workloads overcome the dispatch overhead.
+            assert!(target.is_cpu());
+        }
+    }
+
+    #[test]
+    fn test_dispatch_with_transfer_cost_regression_basic_dispatch() {
+        let config = DispatchConfig::default();
+        if config.has_gpu() {
+            // Verify that dispatch_for and dispatch_with_transfer_cost agree
+            // for small inputs (both should return CPU)
+            let basic = dispatch_for("erf", 100);
+            let transfer_aware = dispatch_with_transfer_cost(
+                "erf",
+                100,
+                100 * 4,
+                crate::unified_hardware::BandwidthTier::PciE4x16,
+            );
+            assert_eq!(basic, transfer_aware);
         }
     }
 

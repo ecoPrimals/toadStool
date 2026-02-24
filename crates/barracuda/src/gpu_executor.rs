@@ -556,9 +556,7 @@ impl ComputeExecutor for GpuExecutor {
                 padding: (pad_h, pad_w),
             } => {
                 let in_desc = inputs[0].descriptor();
-                let use_gpu = *pad_h == 0
-                    && *pad_w == 0
-                    && *k_h == *k_w
+                let use_gpu = *k_h == *k_w
                     && *stride_h == *stride_w
                     && in_desc.shape.len() >= 2;
 
@@ -570,20 +568,20 @@ impl ComputeExecutor for GpuExecutor {
                         in_desc.shape[3],
                     );
                     if n == 1 && c == 1 {
-                        Some((vec![h, w], *k_h, *stride_h))
+                        Some((vec![h, w], *k_h, *stride_h, *pad_h, *pad_w))
                     } else {
                         None
                     }
                 } else if use_gpu && in_desc.shape.len() == 2 {
-                    Some((in_desc.shape.clone(), *k_h, *stride_h))
+                    Some((in_desc.shape.clone(), *k_h, *stride_h, *pad_h, *pad_w))
                 } else {
                     None
                 };
 
-                if let Some((in_shape, pool_size, stride)) = gpu_params {
+                if let Some((in_shape, pool_size, stride, ph, pw)) = gpu_params {
                     let input_t = build_tensor(&inputs[0], &self.device).await?;
                     let input_2d_t = input_t.reshape(in_shape)?;
-                    let out = input_2d_t.maxpool2d(pool_size, stride)?;
+                    let out = input_2d_t.maxpool2d_padded(pool_size, stride, ph, pw)?;
                     if in_desc.shape.len() == 4 {
                         out.reshape(vec![1, 1, out.shape()[0], out.shape()[1]])?
                     } else {
@@ -607,9 +605,7 @@ impl ComputeExecutor for GpuExecutor {
                 padding: (pad_h, pad_w),
             } => {
                 let in_desc = inputs[0].descriptor();
-                let use_gpu = *pad_h == 0
-                    && *pad_w == 0
-                    && *k_h == *k_w
+                let use_gpu = *k_h == *k_w
                     && *stride_h == *stride_w
                     && in_desc.shape.len() >= 2;
 
@@ -621,20 +617,20 @@ impl ComputeExecutor for GpuExecutor {
                         in_desc.shape[3],
                     );
                     if n == 1 && c == 1 {
-                        Some((vec![h, w], *k_h, *stride_h))
+                        Some((vec![h, w], *k_h, *stride_h, *pad_h, *pad_w))
                     } else {
                         None
                     }
                 } else if use_gpu && in_desc.shape.len() == 2 {
-                    Some((in_desc.shape.clone(), *k_h, *stride_h))
+                    Some((in_desc.shape.clone(), *k_h, *stride_h, *pad_h, *pad_w))
                 } else {
                     None
                 };
 
-                if let Some((in_shape, pool_size, stride)) = gpu_params {
+                if let Some((in_shape, pool_size, stride, ph, pw)) = gpu_params {
                     let input_t = build_tensor(&inputs[0], &self.device).await?;
                     let input_2d_t = input_t.reshape(in_shape)?;
-                    input_2d_t.avgpool2d(pool_size, stride)?
+                    input_2d_t.avgpool2d_padded(pool_size, stride, ph, pw)?
                 } else {
                     let cpu = CpuExecutor::new();
                     let mut cpu_inputs = Vec::with_capacity(inputs.len());

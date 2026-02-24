@@ -204,7 +204,7 @@ impl<'a> TranseScoreF64<'a> {
         let data = slice.get_mapped_range();
         let result: Vec<f64> = data
             .chunks_exact(8)
-            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
+            .map(|chunk| f64::from_le_bytes(chunk.try_into().expect("8-byte f64 chunk")))
             .collect();
         drop(data);
         staging.unmap();
