@@ -400,7 +400,7 @@ impl CrankNicolson {
                 ],
             });
 
-        let workgroup_size = 256;
+        let workgroup_size = crate::device::capabilities::WORKGROUP_SIZE_1D as usize;
         let n_workgroups = n.div_ceil(workgroup_size);
 
         // Time-stepping loop

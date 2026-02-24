@@ -15,11 +15,15 @@
 //! - Safe Rust wrapper (no unsafe code)
 //! - Runtime-configured dimensions and batch size
 
+use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
+
+const WGSL_DF64_CORE: &str = include_str!("../../shaders/math/df64_core.wgsl");
+const GEMM_SHADER_DF64: &str = include_str!("../../shaders/linalg/gemm_df64.wgsl");
 
 /// Parameters for GEMM shader (must match WGSL struct layout)
 #[repr(C)]
@@ -64,6 +68,16 @@ impl GemmF64 {
 
     fn wgsl_shader() -> &'static str {
         Self::WGSL
+    }
+
+    fn wgsl_shader_for_device(device: &WgpuDevice) -> String {
+        let profile = GpuDriverProfile::from_device(device);
+        let strategy = profile.fp64_strategy();
+        tracing::info!(?strategy, "GEMM: using {:?} FP64 strategy", strategy);
+        match strategy {
+            Fp64Strategy::Native => Self::wgsl_shader().to_string(),
+            Fp64Strategy::Hybrid => format!("{WGSL_DF64_CORE}\n{GEMM_SHADER_DF64}"),
+        }
     }
 
     /// Execute batched matrix multiply: C = A * B
@@ -147,8 +161,8 @@ impl GemmF64 {
         let params = GemmParams::new(m as u32, k as u32, n as u32, batch_size as u32, alpha, beta);
         let params_buffer = device.create_uniform_buffer("GEMM Params", &params);
 
-        // Compile shader and create pipeline
-        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("GEMM f64"));
+        let src = Self::wgsl_shader_for_device(&device);
+        let shader = device.compile_shader_f64(&src, Some("GEMM f64"));
 
         let bgl = device
             .device
@@ -363,7 +377,8 @@ impl GemmCachedF64 {
                 bind_group_layouts: &[&bgl],
                 push_constant_ranges: &[],
             });
-        let shader = dev.compile_shader_f64(GemmF64::wgsl_shader(), Some("GemmCached"));
+        let src = GemmF64::wgsl_shader_for_device(dev);
+        let shader = dev.compile_shader_f64(&src, Some("GemmCached"));
         let pipeline = Arc::new(dev.device.create_compute_pipeline(
             &wgpu::ComputePipelineDescriptor {
                 label: Some("GemmCached Pipeline"),

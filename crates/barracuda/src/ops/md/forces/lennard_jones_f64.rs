@@ -11,10 +11,14 @@
 //! **Force**: F = 24ε/r * [2(σ/r)^12 - (σ/r)^6] * r̂
 
 use crate::device::capabilities::WORKGROUP_SIZE_1D;
+use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
+
+const WGSL_DF64_CORE: &str = include_str!("../../../shaders/math/df64_core.wgsl");
+const LJ_SHADER_DF64: &str = include_str!("lennard_jones_df64.wgsl");
 
 /// f64 Lennard-Jones force computation
 ///
@@ -28,6 +32,16 @@ pub struct LennardJonesF64;
 impl LennardJonesF64 {
     fn wgsl_shader() -> &'static str {
         include_str!("lennard_jones_f64.wgsl")
+    }
+
+    fn wgsl_shader_for_device(device: &WgpuDevice) -> String {
+        let profile = GpuDriverProfile::from_device(device);
+        let strategy = profile.fp64_strategy();
+        tracing::info!(?strategy, "LJ F64: using {:?} FP64 strategy", strategy);
+        match strategy {
+            Fp64Strategy::Native => Self::wgsl_shader().to_string(),
+            Fp64Strategy::Hybrid => format!("{WGSL_DF64_CORE}\n{LJ_SHADER_DF64}"),
+        }
     }
 
     /// Compute LJ forces with per-particle parameters
@@ -191,8 +205,8 @@ impl LennardJonesF64 {
             ],
         });
 
-        // Compile shader
-        let shader = device.compile_shader_f64(Self::wgsl_shader(), Some("LJ F64"));
+        let src = Self::wgsl_shader_for_device(&device);
+        let shader = device.compile_shader_f64(&src, Some("LJ F64"));
 
         let pipeline_layout =
             device

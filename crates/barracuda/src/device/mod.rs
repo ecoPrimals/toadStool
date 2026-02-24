@@ -23,6 +23,7 @@ pub mod async_submit;
 pub mod autotune;
 pub mod cache_hierarchy;
 pub mod capabilities;
+pub mod compute_pipeline;
 pub mod driver_profile; // GPU driver/compiler identity + shader strategies (D-S17-002 refactor)
 pub mod kernel_router; // Unified Math → Hardware routing (Feb 15, 2026)
 pub mod latency; // LatencyModel trait + Sm70/Rdna2/AppleM/Conservative/Measured (SOVEREIGN Phase 2, Feb 2026)
@@ -66,6 +67,7 @@ pub use capabilities::{
     CompilerKind, DeviceCapabilities, DriverKind, EigensolveStrategy, Fp64Rate, Fp64Strategy,
     GpuArch, GpuDriverProfile, Workaround, WorkloadType,
 };
+pub use compute_pipeline::{storage_bgl_entry, uniform_bgl_entry, ComputeDispatch};
 pub use kernel_router::{ComputeWorkload, KernelRouter, KernelTarget, NpuModelInfo};
 pub use registry::{
     BackendInfo, DeviceCapabilities as PhysicalDeviceCapabilities, DeviceRegistry, DeviceVendor,

@@ -122,6 +122,20 @@ impl BarracudaError {
     pub fn resource_exhausted(msg: impl Into<String>) -> Self {
         Self::ResourceExhausted(msg.into())
     }
+
+    /// Wrap any `Display` error as a GPU error with contextual message.
+    ///
+    /// Replaces the verbose `map_err(|e| BarracudaError::Gpu(format!("ctx: {e}")))`
+    /// pattern that appears across 50+ GPU ops.
+    ///
+    /// # Example
+    /// ```ignore
+    /// buffer.slice(..).map_async(MapMode::Read, |_| {})
+    ///     .map_err(|e| BarracudaError::gpu_ctx("buffer map", e))?;
+    /// ```
+    pub fn gpu_ctx(context: &str, err: impl std::fmt::Display) -> Self {
+        Self::Gpu(format!("{context}: {err}"))
+    }
 }
 
 #[cfg(test)]
