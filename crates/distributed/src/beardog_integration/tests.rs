@@ -994,4 +994,102 @@ mod tests {
         assert!(parsed.valid);
         assert!(parsed.details.is_none());
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // parse_capabilities_from_json (client.rs) - pure logic tests
+    // ═══════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn test_parse_capabilities_from_json_full() {
+        let json = serde_json::json!({
+            "algorithms": ["aes-256-gcm", "chacha20poly1305"],
+            "security_level": "enhanced",
+            "hardware_backed": true
+        });
+        let cap = BearDogClient::parse_capabilities_from_json(&json);
+        assert_eq!(cap.algorithms, vec!["aes-256-gcm", "chacha20poly1305"]);
+        assert!(matches!(
+            cap.security_level,
+            toadstool::encryption::SecurityLevel::Enhanced
+        ));
+        assert!(cap.hardware_backed);
+    }
+
+    #[test]
+    fn test_parse_capabilities_from_json_standard_level() {
+        let json = serde_json::json!({
+            "algorithms": ["aes-256-gcm"],
+            "security_level": "standard",
+            "hardware_backed": false
+        });
+        let cap = BearDogClient::parse_capabilities_from_json(&json);
+        assert!(matches!(
+            cap.security_level,
+            toadstool::encryption::SecurityLevel::Standard
+        ));
+    }
+
+    #[test]
+    fn test_parse_capabilities_from_json_hardware_secured() {
+        let json = serde_json::json!({
+            "algorithms": [],
+            "security_level": "hardware_secured",
+            "hardware_backed": true
+        });
+        let cap = BearDogClient::parse_capabilities_from_json(&json);
+        assert!(matches!(
+            cap.security_level,
+            toadstool::encryption::SecurityLevel::HardwareSecured
+        ));
+    }
+
+    #[test]
+    fn test_parse_capabilities_from_json_hardware_alias() {
+        let json = serde_json::json!({
+            "security_level": "hardware"
+        });
+        let cap = BearDogClient::parse_capabilities_from_json(&json);
+        assert!(matches!(
+            cap.security_level,
+            toadstool::encryption::SecurityLevel::HardwareSecured
+        ));
+    }
+
+    #[test]
+    fn test_parse_capabilities_from_json_empty_defaults() {
+        let json = serde_json::json!({});
+        let cap = BearDogClient::parse_capabilities_from_json(&json);
+        assert_eq!(
+            cap.algorithms,
+            vec!["chacha20poly1305".to_string(), "aes-256-gcm".to_string()]
+        );
+        assert!(matches!(
+            cap.security_level,
+            toadstool::encryption::SecurityLevel::Enhanced
+        ));
+        assert!(!cap.hardware_backed);
+    }
+
+    #[test]
+    fn test_parse_capabilities_from_json_unknown_level_defaults_to_enhanced() {
+        let json = serde_json::json!({
+            "security_level": "unknown_level"
+        });
+        let cap = BearDogClient::parse_capabilities_from_json(&json);
+        assert!(matches!(
+            cap.security_level,
+            toadstool::encryption::SecurityLevel::Enhanced
+        ));
+    }
+
+    #[test]
+    fn test_parse_capabilities_from_json_filters_non_string_algorithms() {
+        let json = serde_json::json!({
+            "algorithms": ["aes", 123, "chacha", null, "gcm"],
+            "security_level": "standard",
+            "hardware_backed": false
+        });
+        let cap = BearDogClient::parse_capabilities_from_json(&json);
+        assert_eq!(cap.algorithms, vec!["aes", "chacha", "gcm"]);
+    }
 }

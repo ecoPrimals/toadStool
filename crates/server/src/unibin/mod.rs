@@ -31,6 +31,31 @@ pub mod exit_codes {
 use crate::tarpc_server::ToadStoolTarpcServer;
 use crate::ManualJsonRpcServer;
 
+/// Resolve family ID from CLI override or environment (testable helper)
+#[must_use]
+pub fn resolve_family_id(family_id_override: Option<String>) -> String {
+    family_id_override
+        .or_else(|| std::env::var("TOADSTOOL_FAMILY_ID").ok())
+        .or_else(|| std::env::var("TOADSTOOL_FAMILY").ok())
+        .or_else(|| std::env::var("BIOMEOS_FAMILY_ID").ok())
+        .unwrap_or_else(|| {
+            warn!("No family ID (CLI or env) set, using 'default'");
+            warn!("For multi-instance support, use --family-id=nat0 or set one of:");
+            warn!("  export TOADSTOOL_FAMILY_ID=nat0 (primal-specific)");
+            warn!("  export BIOMEOS_FAMILY_ID=nat0 (orchestrator-provided)");
+            "default".to_string()
+        })
+}
+
+/// Resolve node ID from environment (testable helper)
+#[must_use]
+pub fn resolve_node_id() -> String {
+    std::env::var("TOADSTOOL_NODE_ID").unwrap_or_else(|_| {
+        info!("TOADSTOOL_NODE_ID not set, using 'default'");
+        "default".to_string()
+    })
+}
+
 /// Shutdown signal type for ecoBin compliance
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShutdownSignal {
@@ -52,22 +77,8 @@ pub async fn run_server_main(
     );
     info!("CPU, GPU, Neuromorphic - Different orders of the same architecture");
 
-    let family_id = family_id_override
-        .or_else(|| std::env::var("TOADSTOOL_FAMILY_ID").ok())
-        .or_else(|| std::env::var("TOADSTOOL_FAMILY").ok())
-        .or_else(|| std::env::var("BIOMEOS_FAMILY_ID").ok())
-        .unwrap_or_else(|| {
-            warn!("No family ID (CLI or env) set, using 'default'");
-            warn!("For multi-instance support, use --family-id=nat0 or set one of:");
-            warn!("  export TOADSTOOL_FAMILY_ID=nat0 (primal-specific)");
-            warn!("  export BIOMEOS_FAMILY_ID=nat0 (orchestrator-provided)");
-            "default".to_string()
-        });
-
-    let node_id = std::env::var("TOADSTOOL_NODE_ID").unwrap_or_else(|_| {
-        info!("TOADSTOOL_NODE_ID not set, using 'default'");
-        "default".to_string()
-    });
+    let family_id = resolve_family_id(family_id_override);
+    let node_id = resolve_node_id();
 
     info!("Family ID: {}", family_id);
     info!("Node ID: {}", node_id);

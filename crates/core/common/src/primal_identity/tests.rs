@@ -756,3 +756,123 @@ fn test_discovered_service_serde_roundtrip_empty() {
     assert_eq!(service.healthy, restored.healthy);
     assert!(restored.capabilities.is_empty());
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Additional edge case tests for coverage
+// ═══════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_discovered_service_has_capability_multiple_same_type() {
+    let service = DiscoveredService {
+        id: None,
+        capabilities: vec![
+            Capability::Compute(ComputeCapability::NativeExecution),
+            Capability::Compute(ComputeCapability::GpuCompute),
+        ],
+        endpoints: vec![],
+        healthy: true,
+        metadata: HashMap::new(),
+    };
+    assert!(service.has_capability(&Capability::Compute(ComputeCapability::NativeExecution)));
+    assert!(service.has_capability(&Capability::Compute(ComputeCapability::GpuCompute)));
+}
+
+#[test]
+fn test_discovered_service_endpoints_for_protocol_nonexistent() {
+    let service = DiscoveredService {
+        id: None,
+        capabilities: vec![],
+        endpoints: vec![ServiceEndpoint::http("localhost", 8080)],
+        healthy: true,
+        metadata: HashMap::new(),
+    };
+    let grpc_eps = service.endpoints_for_protocol("grpc");
+    assert!(grpc_eps.is_empty());
+}
+
+#[test]
+fn test_toadstool_identity_version_contains_semver() {
+    let identity = ToadStoolIdentity::new();
+    let version = identity.version();
+    assert!(!version.is_empty());
+    assert!(
+        version
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_digit())
+            .unwrap_or(false)
+            || version.contains('.')
+    );
+}
+
+#[test]
+fn test_discovered_service_with_id_some() {
+    let service = DiscoveredService {
+        id: Some("svc-123".to_string()),
+        capabilities: vec![],
+        endpoints: vec![],
+        healthy: true,
+        metadata: HashMap::new(),
+    };
+    assert_eq!(service.id.as_deref(), Some("svc-123"));
+}
+
+#[test]
+fn test_capability_compute_edge_execution() {
+    let cap = Capability::Compute(ComputeCapability::EdgeExecution);
+    let json = serde_json::to_string(&cap).expect("serialize");
+    let restored: Capability = serde_json::from_str(&json).expect("deserialize");
+    assert!(matches!(
+        restored,
+        Capability::Compute(ComputeCapability::EdgeExecution)
+    ));
+}
+
+#[test]
+fn test_capability_compute_specialty_hardware() {
+    let cap = Capability::Compute(ComputeCapability::SpecialtyHardware);
+    let json = serde_json::to_string(&cap).expect("serialize");
+    let restored: Capability = serde_json::from_str(&json).expect("deserialize");
+    assert!(matches!(
+        restored,
+        Capability::Compute(ComputeCapability::SpecialtyHardware)
+    ));
+}
+
+#[test]
+fn test_capability_storage_all_variants_serde() {
+    let variants = [
+        StorageCapability::BlockStorage,
+        StorageCapability::FileStorage,
+        StorageCapability::Database,
+        StorageCapability::Cache,
+        StorageCapability::ArtifactStorage,
+    ];
+    for cap in &variants {
+        let cap_enum = Capability::Storage(cap.clone());
+        let json = serde_json::to_string(&cap_enum).expect("serialize");
+        let restored: Capability = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(&cap_enum, &restored);
+    }
+}
+
+#[test]
+fn test_discovered_service_metadata_roundtrip() {
+    let mut meta = HashMap::new();
+    meta.insert("region".to_string(), "us-east".to_string());
+    meta.insert("version".to_string(), "2.0".to_string());
+    let service = DiscoveredService {
+        id: Some("m".to_string()),
+        capabilities: vec![Capability::Compute(ComputeCapability::GpuCompute)],
+        endpoints: vec![ServiceEndpoint::http("x", 80)],
+        healthy: true,
+        metadata: meta.clone(),
+    };
+    let json = serde_json::to_string(&service).unwrap();
+    let restored: DiscoveredService = serde_json::from_str(&json).unwrap();
+    assert_eq!(
+        restored.metadata.get("region"),
+        Some(&"us-east".to_string())
+    );
+    assert_eq!(restored.metadata.get("version"), Some(&"2.0".to_string()));
+}

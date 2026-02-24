@@ -453,3 +453,133 @@ async fn test_tarpc_server_version_reflected_in_health() {
     assert!(health.is_ok());
     assert_eq!(health.unwrap().version, "2.3.4");
 }
+
+#[tokio::test]
+async fn test_health_status_serialization() {
+    use crate::rpc_types::HealthStatus;
+    let status = HealthStatus {
+        healthy: true,
+        version: "1.2.3".to_string(),
+        uptime_secs: 3600,
+        resource_utilization: 0.5,
+        active_workloads: 2,
+        queued_workloads: 1,
+        error_count: 0,
+    };
+    let json = serde_json::to_string(&status).expect("serialize");
+    let restored: HealthStatus = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(restored.healthy, status.healthy);
+    assert_eq!(restored.version, status.version);
+    assert_eq!(restored.uptime_secs, status.uptime_secs);
+    assert!((restored.resource_utilization - status.resource_utilization).abs() < 0.001);
+}
+
+#[tokio::test]
+async fn test_compute_capabilities_serialization() {
+    let caps = ComputeCapabilities {
+        service_id: "test-svc".to_string(),
+        compute_units: vec![ComputeUnit {
+            id: "unit-1".to_string(),
+            unit_type: "cpu".to_string(),
+            name: "Test CPU".to_string(),
+            cores: 8,
+            memory_bytes: 16_000_000_000,
+            tflops: Some(0.8),
+            utilization: 0.25,
+        }],
+        supported_workload_types: vec!["cpu_compute".to_string(), "gpu_compute".to_string()],
+        available_resources: AvailableResources {
+            total_cpu_cores: 8,
+            available_cpu_cores: 6,
+            total_memory_bytes: 16_000_000_000,
+            available_memory_bytes: 8_000_000_000,
+            total_gpu_memory_bytes: Some(24_000_000_000),
+            available_gpu_memory_bytes: Some(12_000_000_000),
+            cpu_utilization: 25.0,
+            memory_utilization: 50.0,
+            gpu_utilization: Some(50.0),
+        },
+        metadata: std::collections::HashMap::new(),
+    };
+    let json = serde_json::to_string(&caps).expect("serialize");
+    let restored: ComputeCapabilities = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(restored.service_id, caps.service_id);
+    assert_eq!(restored.compute_units.len(), caps.compute_units.len());
+    assert_eq!(restored.compute_units[0].tflops, Some(0.8));
+}
+
+struct CancelFailingExecutor;
+
+#[async_trait::async_trait]
+impl WorkloadExecutor for CancelFailingExecutor {
+    async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
+        Ok(WorkloadResult {
+            workload_id: submission.workload_id,
+            status: WorkloadStatus::Running,
+            data: None,
+            error: None,
+            metrics: ExecutionMetrics {
+                queued_duration_secs: 0.0,
+                execution_duration_secs: 0.0,
+                cpu_cores_used: 1,
+                memory_used_bytes: 0,
+                gpu_memory_used_bytes: None,
+            },
+        })
+    }
+
+    async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
+        Ok(ComputeCapabilities {
+            service_id: "cancel-fail".to_string(),
+            compute_units: vec![],
+            supported_workload_types: vec!["cpu_compute".to_string()],
+            available_resources: AvailableResources {
+                total_cpu_cores: 4,
+                available_cpu_cores: 4,
+                total_memory_bytes: 8_000_000_000,
+                available_memory_bytes: 4_000_000_000,
+                total_gpu_memory_bytes: None,
+                available_gpu_memory_bytes: None,
+                cpu_utilization: 0.0,
+                memory_utilization: 50.0,
+                gpu_utilization: None,
+            },
+            metadata: std::collections::HashMap::new(),
+        })
+    }
+
+    async fn cancel(&self, workload_id: &str) -> Result<(), String> {
+        let _ = workload_id;
+        Err("cancel failed".to_string())
+    }
+}
+
+#[tokio::test]
+async fn test_cancel_workload_executor_error() {
+    let executor = Arc::new(CancelFailingExecutor);
+    let server = ToadStoolTarpcServer::new("v1", executor, None);
+
+    let submission = mk_submission("cancel-fail-test", "cpu_compute", vec![]);
+    server
+        .clone()
+        .submit_workload(tarpc::context::current(), submission)
+        .await
+        .expect("submit ok");
+
+    let result = server
+        .clone()
+        .cancel_workload(tarpc::context::current(), "cancel-fail-test".to_string())
+        .await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("cancel failed"));
+}
+
+#[tokio::test]
+async fn test_standalone_executor_estimate_cpu_tflops_via_capabilities() {
+    let exec = StandaloneExecutor::new();
+    let caps = exec.query_capabilities().await.expect("capabilities");
+    assert!(!caps.compute_units.is_empty());
+    let unit = &caps.compute_units[0];
+    let expected_tflops = (unit.cores as f64) * 0.1;
+    assert_eq!(unit.tflops, Some(expected_tflops));
+}

@@ -127,3 +127,134 @@ impl Default for InterInstanceCommunication {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_child_resource_allocator_new() {
+        let allocator = ChildResourceAllocator::new();
+        let _ = allocator;
+    }
+
+    #[test]
+    fn test_child_resource_allocator_default() {
+        let allocator = ChildResourceAllocator::default();
+        let _ = allocator;
+    }
+
+    #[test]
+    fn test_inter_instance_communication_new() {
+        let comm = InterInstanceCommunication::new();
+        let _ = comm;
+    }
+
+    #[test]
+    fn test_inter_instance_communication_default() {
+        let comm = InterInstanceCommunication::default();
+        let _ = comm;
+    }
+
+    #[test]
+    fn test_communication_channel_debug_clone() {
+        let channel = CommunicationChannel {
+            channel_id: "ch-1".to_string(),
+            endpoint: "http://127.0.0.1:8080".to_string(),
+            last_activity: std::time::SystemTime::now(),
+        };
+        let cloned = channel.clone();
+        assert_eq!(channel.channel_id, cloned.channel_id);
+        assert!(format!("{:?}", channel).contains("ch-1"));
+    }
+
+    #[test]
+    fn test_child_toadstool_instance_debug_clone() {
+        let instance = ChildToadStoolInstance {
+            instance_id: "inst-1".to_string(),
+            process_handle: ProcessHandle::default(),
+            resource_allocation: ResourceAllocation::default(),
+            endpoint: "http://127.0.0.1:8084/inst-1".to_string(),
+            status: InstanceStatus::Starting,
+            started_at: Utc::now(),
+        };
+        let cloned = instance.clone();
+        assert_eq!(instance.instance_id, cloned.instance_id);
+        assert_eq!(instance.endpoint, cloned.endpoint);
+    }
+
+    #[tokio::test]
+    async fn test_recursive_hosting_manager_new() {
+        let config = RecursiveHostingConfig {
+            enabled: true,
+            current_depth: 0,
+            max_depth: 3,
+            parent_toadstool: None,
+            child_toadstools: vec![],
+            child_resource_allocation: crate::types::ResourceAllocationStrategy::Fair,
+        };
+        let manager = RecursiveHostingManager::new(config).await;
+        assert!(manager.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_recursive_hosting_manager_create_child_instance() {
+        let config = RecursiveHostingConfig {
+            enabled: true,
+            current_depth: 0,
+            max_depth: 3,
+            parent_toadstool: None,
+            child_toadstools: vec![],
+            child_resource_allocation: crate::types::ResourceAllocationStrategy::Fair,
+        };
+        let manager = RecursiveHostingManager::new(config)
+            .await
+            .expect("manager creation");
+
+        let hosting_config = ToadStoolHostingConfig {
+            enabled: true,
+            mode: "child".to_string(),
+            resource_limits: HashMap::new(),
+            security_settings: HashMap::new(),
+            resource_allocation: Some(ResourceAllocation::default()),
+        };
+
+        let result = manager.create_child_instance(hosting_config).await;
+        assert!(result.is_ok());
+        let instance = result.expect("instance");
+        assert!(!instance.instance_id.is_empty());
+        assert!(instance.endpoint.contains(&instance.instance_id));
+        assert!(matches!(instance.status, InstanceStatus::Starting));
+    }
+
+    #[tokio::test]
+    async fn test_recursive_hosting_manager_create_child_with_custom_port() {
+        std::env::set_var("TOADSTOOL_API_PORT", "9999");
+        let config = RecursiveHostingConfig {
+            enabled: true,
+            current_depth: 0,
+            max_depth: 3,
+            parent_toadstool: None,
+            child_toadstools: vec![],
+            child_resource_allocation: crate::types::ResourceAllocationStrategy::Fair,
+        };
+        let manager = RecursiveHostingManager::new(config)
+            .await
+            .expect("manager creation");
+
+        let hosting_config = ToadStoolHostingConfig {
+            enabled: true,
+            mode: "child".to_string(),
+            resource_limits: HashMap::new(),
+            security_settings: HashMap::new(),
+            resource_allocation: None,
+        };
+
+        let result = manager.create_child_instance(hosting_config).await;
+        assert!(result.is_ok());
+        let instance = result.expect("instance");
+        assert!(instance.endpoint.contains("9999"));
+        std::env::remove_var("TOADSTOOL_API_PORT");
+    }
+}

@@ -38,6 +38,45 @@ pub struct BearDogClient {
 }
 
 impl BearDogClient {
+    /// Parse CryptoCapability from JSON response (pure function, testable without network)
+    #[doc(hidden)]
+    pub fn parse_capabilities_from_json(
+        response: &serde_json::Value,
+    ) -> toadstool::encryption::CryptoCapability {
+        let algorithms: Vec<String> = response
+            .get("algorithms")
+            .and_then(|v: &serde_json::Value| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v: &serde_json::Value| v.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_else(|| vec!["chacha20poly1305".to_string(), "aes-256-gcm".to_string()]);
+
+        let security_level = response
+            .get("security_level")
+            .and_then(|v: &serde_json::Value| v.as_str())
+            .map(|s: &str| match s.to_lowercase().as_str() {
+                "standard" => toadstool::encryption::SecurityLevel::Standard,
+                "hardware_secured" | "hardware" => {
+                    toadstool::encryption::SecurityLevel::HardwareSecured
+                }
+                _ => toadstool::encryption::SecurityLevel::Enhanced,
+            })
+            .unwrap_or(toadstool::encryption::SecurityLevel::Enhanced);
+
+        let hardware_backed = response
+            .get("hardware_backed")
+            .and_then(|v: &serde_json::Value| v.as_bool())
+            .unwrap_or(false);
+
+        toadstool::encryption::CryptoCapability {
+            algorithms,
+            security_level,
+            hardware_backed,
+        }
+    }
+
     /// Create new BearDog client with capability-based discovery (RECOMMENDED)
     ///
     /// **Deep Debt Compliant**: Discovers crypto service by capability, not name.
@@ -101,38 +140,7 @@ impl BearDogClient {
                 ToadStoolError::network(format!("Beardog crypto capabilities query failed: {e}"))
             })?;
 
-        let algorithms: Vec<String> = response
-            .get("algorithms")
-            .and_then(|v: &serde_json::Value| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v: &serde_json::Value| v.as_str().map(String::from))
-                    .collect()
-            })
-            .unwrap_or_else(|| vec!["chacha20poly1305".to_string(), "aes-256-gcm".to_string()]);
-
-        let security_level = response
-            .get("security_level")
-            .and_then(|v: &serde_json::Value| v.as_str())
-            .map(|s: &str| match s.to_lowercase().as_str() {
-                "standard" => toadstool::encryption::SecurityLevel::Standard,
-                "hardware_secured" | "hardware" => {
-                    toadstool::encryption::SecurityLevel::HardwareSecured
-                }
-                _ => toadstool::encryption::SecurityLevel::Enhanced,
-            })
-            .unwrap_or(toadstool::encryption::SecurityLevel::Enhanced);
-
-        let hardware_backed = response
-            .get("hardware_backed")
-            .and_then(|v: &serde_json::Value| v.as_bool())
-            .unwrap_or(false);
-
-        Ok(toadstool::encryption::CryptoCapability {
-            algorithms,
-            security_level,
-            hardware_backed,
-        })
+        Ok(Self::parse_capabilities_from_json(&response))
     }
 
     /// Encrypt data using BearDog via unix socket

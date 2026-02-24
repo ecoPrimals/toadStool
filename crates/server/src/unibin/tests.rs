@@ -5,6 +5,7 @@ use super::execution::{
 };
 use super::format::{ensure_biomeos_directory, get_socket_path, socket_filename_for_family};
 use super::*;
+use super::{resolve_family_id, resolve_node_id};
 
 #[test]
 fn socket_filename_for_family_default() {
@@ -169,6 +170,105 @@ fn write_tcp_discovery_file_ipv6() {
     let file_path = temp_dir.path().join("ipv6-discovery.txt");
     let content = std::fs::read_to_string(&file_path).expect("file read");
     assert_eq!(content, "tcp:[::1]:9000");
+}
+
+// ── resolve_family_id / resolve_node_id ─────────────────────────────────────
+
+#[test]
+fn resolve_family_id_override_takes_precedence() {
+    let result = resolve_family_id(Some("cli-override".to_string()));
+    assert_eq!(result, "cli-override");
+}
+
+#[test]
+fn resolve_family_id_default_when_none() {
+    let old_fid = std::env::var("TOADSTOOL_FAMILY_ID").ok();
+    let old_fam = std::env::var("TOADSTOOL_FAMILY").ok();
+    let old_biome = std::env::var("BIOMEOS_FAMILY_ID").ok();
+    std::env::remove_var("TOADSTOOL_FAMILY_ID");
+    std::env::remove_var("TOADSTOOL_FAMILY");
+    std::env::remove_var("BIOMEOS_FAMILY_ID");
+
+    let result = resolve_family_id(None);
+    assert_eq!(result, "default");
+
+    if let Some(v) = old_fid {
+        std::env::set_var("TOADSTOOL_FAMILY_ID", v);
+    }
+    if let Some(v) = old_fam {
+        std::env::set_var("TOADSTOOL_FAMILY", v);
+    }
+    if let Some(v) = old_biome {
+        std::env::set_var("BIOMEOS_FAMILY_ID", v);
+    }
+}
+
+#[test]
+fn resolve_family_id_from_toadstool_family_id_env() {
+    let old = std::env::var("TOADSTOOL_FAMILY_ID").ok();
+    std::env::set_var("TOADSTOOL_FAMILY_ID", "env-nat0");
+
+    let result = resolve_family_id(None);
+    assert_eq!(result, "env-nat0");
+
+    if let Some(v) = old {
+        std::env::set_var("TOADSTOOL_FAMILY_ID", v);
+    } else {
+        std::env::remove_var("TOADSTOOL_FAMILY_ID");
+    }
+}
+
+#[test]
+fn resolve_family_id_from_biomeos_family_id_env() {
+    let old_fid = std::env::var("TOADSTOOL_FAMILY_ID").ok();
+    let old_fam = std::env::var("TOADSTOOL_FAMILY").ok();
+    std::env::remove_var("TOADSTOOL_FAMILY_ID");
+    std::env::remove_var("TOADSTOOL_FAMILY");
+    let old_biome = std::env::var("BIOMEOS_FAMILY_ID").ok();
+    std::env::set_var("BIOMEOS_FAMILY_ID", "biomeos-nat1");
+
+    let result = resolve_family_id(None);
+    assert_eq!(result, "biomeos-nat1");
+
+    if let Some(v) = old_fid {
+        std::env::set_var("TOADSTOOL_FAMILY_ID", v);
+    }
+    if let Some(v) = old_fam {
+        std::env::set_var("TOADSTOOL_FAMILY", v);
+    }
+    if let Some(v) = old_biome {
+        std::env::set_var("BIOMEOS_FAMILY_ID", v);
+    } else {
+        std::env::remove_var("BIOMEOS_FAMILY_ID");
+    }
+}
+
+#[test]
+fn resolve_node_id_default_when_unset() {
+    let old = std::env::var("TOADSTOOL_NODE_ID").ok();
+    std::env::remove_var("TOADSTOOL_NODE_ID");
+
+    let result = resolve_node_id();
+    assert_eq!(result, "default");
+
+    if let Some(v) = old {
+        std::env::set_var("TOADSTOOL_NODE_ID", v);
+    }
+}
+
+#[test]
+fn resolve_node_id_from_env() {
+    let old = std::env::var("TOADSTOOL_NODE_ID").ok();
+    std::env::set_var("TOADSTOOL_NODE_ID", "node-42");
+
+    let result = resolve_node_id();
+    assert_eq!(result, "node-42");
+
+    if let Some(v) = old {
+        std::env::set_var("TOADSTOOL_NODE_ID", v);
+    } else {
+        std::env::remove_var("TOADSTOOL_NODE_ID");
+    }
 }
 
 #[test]
