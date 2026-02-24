@@ -86,11 +86,23 @@ pub struct GpuHmcBuffers {
 }
 
 impl GpuHmcBuffers {
-    pub fn new(device: &WgpuDevice, config: &GpuHmcConfig) -> Self {
+    pub fn new(device: &WgpuDevice, config: &GpuHmcConfig) -> Result<Self> {
+        use crate::device::driver_profile::GpuDriverProfile;
+
         let volume = (config.nt * config.nx * config.ny * config.nz) as usize;
         let n_links = volume * 4;
         let link_bytes = (n_links * 18 * std::mem::size_of::<f64>()) as u64;
         let field_bytes = (volume * 6 * std::mem::size_of::<f64>()) as u64;
+
+        // NVK buffer guard: estimate total allocation and check driver limits
+        let n_link_bufs = 6u64; // links, backup, momenta, gauge/fermion/total force
+        let n_field_bufs = 2 + config.n_flavors_over_4 as u64 + 5; // phi + eta + dirac_tmp + CG bufs
+        let scalar_bufs = (volume as u64 + n_links as u64 + volume as u64 * 2)
+            * std::mem::size_of::<u32>() as u64;
+        let total_estimate = n_link_bufs * link_bytes + n_field_bufs * field_bytes + scalar_bufs;
+
+        let profile = GpuDriverProfile::from_device(device);
+        profile.check_allocation_safe(total_estimate)?;
 
         let make_link_buf = |label: &str| {
             device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -118,7 +130,7 @@ impl GpuHmcBuffers {
             .map(|i| make_field_buf(&format!("hmc:phi_{i}")))
             .collect();
 
-        Self {
+        Ok(Self {
             links: make_link_buf("hmc:links"),
             links_backup: make_link_buf("hmc:links_backup"),
             momenta: make_link_buf("hmc:momenta"),
@@ -169,7 +181,7 @@ impl GpuHmcBuffers {
             eta: make_field_buf("hmc:eta"),
             dirac_tmp: make_field_buf("hmc:dirac_tmp"),
             cg: GpuCgBuffers::new(device, volume),
-        }
+        })
     }
 }
 

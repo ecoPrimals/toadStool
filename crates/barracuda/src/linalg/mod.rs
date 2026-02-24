@@ -61,37 +61,45 @@
 //! # }
 //! ```
 
-pub mod cholesky;
-pub mod eigh;
-pub mod gen_eigh;
-pub mod graph;
+// CPU-only linear algebra (always available)
 pub mod nmf;
 pub mod ridge;
-pub mod solve;
-pub mod sparse;
 
-// Re-export solve
-pub use solve::{solve_f64, solve_f64_cpu};
-
-// Re-export LU decomposition from ops/linalg (already f64)
-pub use crate::ops::linalg::{lu_decompose, lu_det, lu_inverse, lu_solve, LuDecomposition};
-
-// Re-export QR decomposition from ops/linalg (already f64)
-pub use crate::ops::linalg::{qr_decompose, qr_least_squares, QrDecomposition};
-
-// Re-export SVD decomposition from ops/linalg (already f64)
-pub use crate::ops::linalg::{svd_decompose, svd_pinv, svd_values, SvdDecomposition};
-
-// Re-export tridiagonal solver from ops/linalg
-pub use crate::ops::linalg::tridiagonal_solve;
-/// Alias for tridiagonal_solve (consistency with other _f64 functions)
-pub use crate::ops::linalg::tridiagonal_solve as tridiagonal_solve_f64;
-
-// Export new f64 CPU implementations
-pub use cholesky::cholesky_f64;
-pub use eigh::eigh_f64;
-pub use gen_eigh::{gen_eigh_f64, gen_eigh_identity_b, GenEighDecomposition};
-pub use graph::{belief_propagation_chain, disordered_laplacian, effective_rank, graph_laplacian};
 pub use nmf::{cosine_similarity, nmf, relative_reconstruction_error, top_k_predictions};
 pub use nmf::{NmfConfig, NmfObjective, NmfResult};
 pub use ridge::{ridge_regression, RidgeResult};
+
+// GPU-dependent linear algebra (requires "gpu" feature)
+#[cfg(feature = "gpu")]
+pub mod cholesky;
+#[cfg(feature = "gpu")]
+pub mod eigh;
+#[cfg(feature = "gpu")]
+pub mod gen_eigh;
+#[cfg(feature = "gpu")]
+pub mod graph;
+#[cfg(feature = "gpu")]
+pub mod solve;
+#[cfg(feature = "gpu")]
+pub mod sparse;
+
+#[cfg(feature = "gpu")]
+pub use solve::{solve_f64, solve_f64_cpu};
+#[cfg(feature = "gpu")]
+pub use crate::ops::linalg::{lu_decompose, lu_det, lu_inverse, lu_solve, LuDecomposition};
+#[cfg(feature = "gpu")]
+pub use crate::ops::linalg::{qr_decompose, qr_least_squares, QrDecomposition};
+#[cfg(feature = "gpu")]
+pub use crate::ops::linalg::{svd_decompose, svd_pinv, svd_values, SvdDecomposition};
+#[cfg(feature = "gpu")]
+pub use crate::ops::linalg::tridiagonal_solve;
+#[cfg(feature = "gpu")]
+pub use crate::ops::linalg::tridiagonal_solve as tridiagonal_solve_f64;
+#[cfg(feature = "gpu")]
+pub use cholesky::cholesky_f64;
+#[cfg(feature = "gpu")]
+pub use eigh::eigh_f64;
+#[cfg(feature = "gpu")]
+pub use gen_eigh::{gen_eigh_f64, gen_eigh_identity_b, GenEighDecomposition};
+#[cfg(feature = "gpu")]
+pub use graph::{belief_propagation_chain, disordered_laplacian, effective_rank, graph_laplacian};

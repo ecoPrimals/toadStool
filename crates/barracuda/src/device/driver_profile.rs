@@ -30,6 +30,7 @@
 use std::fmt;
 
 use crate::device::WgpuDevice;
+use crate::error::{BarracudaError, Result};
 
 // ── Driver identity ───────────────────────────────────────────────────────────
 
@@ -119,6 +120,9 @@ pub enum Workaround {
     /// compile native f64 transcendentals (pow, exp, log). Discovered by
     /// wetSpring on RTX 4070 (Feb 2026). Workaround: inject polyfill functions.
     NvvmAdaF64Transcendentals,
+    /// NVK (nouveau) PTE fault on large combined allocations (>~1.4 GB).
+    /// Conservative limit of 1.2 GB total. File upstream bug in drm_gpuvm.
+    NvkLargeBufferLimit,
 }
 
 // ── Eigensolve strategy ───────────────────────────────────────────────────────
@@ -286,6 +290,50 @@ impl GpuDriverProfile {
         crate::device::latency::model_for_arch(self.arch)
     }
 
+    // ── Allocation safety ─────────────────────────────────────────────────────
+
+    /// Maximum safe combined allocation in bytes, or `None` if unlimited.
+    ///
+    /// On NVK (nouveau), the kernel driver can PTE-fault when combined GPU
+    /// allocations exceed ~1.4 GB (observed on GV100/Titan V). We use a
+    /// conservative 1.2 GB limit to avoid silent device loss.
+    #[must_use]
+    pub fn max_safe_total_allocation(&self) -> Option<u64> {
+        if self.workarounds.contains(&Workaround::NvkLargeBufferLimit) {
+            Some(1_200_000_000) // 1.2 GB
+        } else {
+            None
+        }
+    }
+
+    /// Check whether a combined allocation of `total_bytes` is safe on this
+    /// driver. Returns `Ok(())` if safe, or `Err(DeviceLimitExceeded)` with a
+    /// diagnostic message suggesting Mesa git HEAD.
+    pub fn check_allocation_safe(&self, total_bytes: u64) -> Result<()> {
+        if let Some(limit) = self.max_safe_total_allocation() {
+            if total_bytes > limit {
+                tracing::warn!(
+                    total_bytes,
+                    safe_limit = limit,
+                    "NVK large-buffer limit exceeded — nouveau PTE fault likely. \
+                     Consider using Mesa git HEAD which may have the drm_gpuvm fix."
+                );
+                return Err(BarracudaError::DeviceLimitExceeded {
+                    message: format!(
+                        "NVK (nouveau) driver unsafe for {:.1} MB combined allocation; \
+                         limit is {:.1} MB to avoid kernel PTE fault. \
+                         Try Mesa git HEAD or the proprietary NVIDIA driver.",
+                        total_bytes as f64 / 1e6,
+                        limit as f64 / 1e6,
+                    ),
+                    requested_bytes: total_bytes,
+                    safe_limit_bytes: limit,
+                });
+            }
+        }
+        Ok(())
+    }
+
     // ── Internal detection helpers ────────────────────────────────────────────
 
     fn detect_driver(device: &WgpuDevice) -> DriverKind {
@@ -388,6 +436,7 @@ impl GpuDriverProfile {
         if driver == DriverKind::Nvk {
             w.push(Workaround::NvkExpF64Crash);
             w.push(Workaround::NvkLogF64Crash);
+            w.push(Workaround::NvkLargeBufferLimit);
         }
         if driver == DriverKind::NvidiaProprietary && arch == GpuArch::Ada {
             w.push(Workaround::NvvmAdaF64Transcendentals);
@@ -448,6 +497,27 @@ mod tests {
     fn fp64_strategy_hybrid_for_software() {
         let p = make_profile(Fp64Rate::Software, GpuArch::Software);
         assert_eq!(p.fp64_strategy(), Fp64Strategy::Hybrid);
+    }
+
+    #[test]
+    fn nvk_allocation_guard_rejects_large() {
+        let p = GpuDriverProfile {
+            driver: DriverKind::Nvk,
+            compiler: CompilerKind::Nak,
+            arch: GpuArch::Volta,
+            fp64_rate: Fp64Rate::Full,
+            workarounds: vec![Workaround::NvkLargeBufferLimit],
+        };
+        assert!(p.max_safe_total_allocation().is_some());
+        assert!(p.check_allocation_safe(500_000_000).is_ok());
+        assert!(p.check_allocation_safe(1_500_000_000).is_err());
+    }
+
+    #[test]
+    fn non_nvk_allocation_guard_allows_any() {
+        let p = make_profile(Fp64Rate::Full, GpuArch::Volta);
+        assert!(p.max_safe_total_allocation().is_none());
+        assert!(p.check_allocation_safe(10_000_000_000).is_ok());
     }
 
     #[test]

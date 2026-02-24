@@ -481,9 +481,10 @@ impl ComputeExecutor for GpuExecutor {
                 first
             }
 
-            // ── Convolution ops (GPU via simple WGSL shaders) ───────────────────
-            // Simple shaders support single-channel 2D [H,W]. For NCHW with N=1,C=1
-            // we reshape; for stride/padding/dilation or multi-channel, fall back to CPU.
+            // ── Convolution ops (full NCHW GPU via Conv2dGpu) ──────────────────
+            // Uses the full NCHW shader with stride, padding, dilation, groups.
+            // Handles 2D inputs by promoting to [1,1,H,W], and falls back to
+            // the simple Conv2D op for trivial 2D cases without NCHW overhead.
             MathOp::Conv2D {
                 stride: (stride_h, stride_w),
                 padding: (pad_h, pad_w),
@@ -498,62 +499,45 @@ impl ComputeExecutor for GpuExecutor {
                 let in_desc = inputs[0].descriptor();
                 let kernel_desc = inputs[1].descriptor();
 
-                let use_gpu = *groups == 1
+                let can_nchw = in_desc.shape.len() == 4 && kernel_desc.shape.len() == 4;
+                let can_promote_2d = in_desc.shape.len() == 2
+                    && kernel_desc.shape.len() >= 2
                     && *stride_h == 1
                     && *stride_w == 1
                     && *pad_h == 0
                     && *pad_w == 0
                     && *dil_h == 1
                     && *dil_w == 1
-                    && in_desc.shape.len() >= 2
-                    && kernel_desc.shape.len() >= 2;
+                    && *groups == 1;
 
-                let input_2d = if use_gpu && in_desc.shape.len() == 4 {
-                    let (n, c, h, w) = (
-                        in_desc.shape[0],
-                        in_desc.shape[1],
-                        in_desc.shape[2],
-                        in_desc.shape[3],
-                    );
-                    if n == 1 && c == 1 {
-                        let k_shape = &kernel_desc.shape;
-                        let (c_out, k_c_in, k_h, k_w) = if k_shape.len() == 4 {
-                            (k_shape[0], k_shape[1], k_shape[2], k_shape[3])
-                        } else {
-                            (1, 1, k_shape[0], k_shape[1])
-                        };
-                        if c_out == 1 && k_c_in == 1 {
-                            Some((vec![h, w], vec![k_h, k_w]))
-                        } else {
-                            None
-                        }
+                if can_nchw {
+                    let input_t = build_tensor(&inputs[0], &self.device).await?;
+                    let kernel_t = build_tensor(&inputs[1], &self.device).await?;
+                    let bias_t = if inputs.len() > 2 {
+                        Some(build_tensor(&inputs[2], &self.device).await?)
                     } else {
                         None
+                    };
+                    crate::ops::nn::Conv2dGpu {
+                        input: input_t,
+                        kernel: kernel_t,
+                        bias: bias_t,
+                        stride: (*stride_h, *stride_w),
+                        padding: (*pad_h, *pad_w),
+                        dilation: (*dil_h, *dil_w),
+                        groups: *groups,
                     }
-                } else if use_gpu && in_desc.shape.len() == 2 {
-                    let h = in_desc.shape[0];
-                    let w = in_desc.shape[1];
+                    .execute()?
+                } else if can_promote_2d {
+                    let input_t = build_tensor(&inputs[0], &self.device).await?;
+                    let kernel_t = build_tensor(&inputs[1], &self.device).await?;
                     let (k_h, k_w) = if kernel_desc.shape.len() == 2 {
                         (kernel_desc.shape[0], kernel_desc.shape[1])
                     } else {
                         (kernel_desc.shape[2], kernel_desc.shape[3])
                     };
-                    Some((vec![h, w], vec![k_h, k_w]))
-                } else {
-                    None
-                };
-
-                if let Some((in_shape, k_shape)) = input_2d {
-                    let input_t = build_tensor(&inputs[0], &self.device).await?;
-                    let kernel_t = build_tensor(&inputs[1], &self.device).await?;
-                    let input_2d_t = input_t.reshape(in_shape)?;
-                    let kernel_2d_t = kernel_t.reshape(k_shape)?;
-                    let out = input_2d_t.conv2d(&kernel_2d_t)?;
-                    if in_desc.shape.len() == 4 {
-                        out.reshape(vec![1, 1, out.shape()[0], out.shape()[1]])?
-                    } else {
-                        out
-                    }
+                    let kernel_2d = kernel_t.reshape(vec![k_h, k_w])?;
+                    input_t.conv2d(&kernel_2d)?
                 } else {
                     let cpu = CpuExecutor::new();
                     let mut cpu_inputs = Vec::with_capacity(inputs.len());

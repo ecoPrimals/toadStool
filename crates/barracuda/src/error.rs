@@ -59,6 +59,13 @@ pub enum BarracudaError {
     #[error("Resource exhausted: {0}")]
     ResourceExhausted(String),
 
+    #[error("Device limit exceeded: {message} (requested {requested_bytes} bytes, safe limit {safe_limit_bytes} bytes)")]
+    DeviceLimitExceeded {
+        message: String,
+        requested_bytes: u64,
+        safe_limit_bytes: u64,
+    },
+
     #[error("Not implemented: {feature}")]
     NotImplemented { feature: String },
 }

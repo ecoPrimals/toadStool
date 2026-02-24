@@ -79,6 +79,7 @@ pub mod gamma;
 pub mod hermite;
 pub mod laguerre;
 pub mod legendre;
+#[cfg(feature = "gpu")]
 pub mod screened_coulomb;
 
 // Re-export CPU functions
@@ -98,14 +99,23 @@ pub use gamma::{
 pub use hermite::hermite;
 pub use laguerre::{laguerre, laguerre_all, laguerre_simple};
 pub use legendre::{assoc_legendre, legendre};
+#[cfg(feature = "gpu")]
 pub use screened_coulomb::screened_coulomb_eigenvalues;
 
-// Re-export GPU ops for batch processing
+// Re-export GPU ops for batch processing (requires GPU feature)
+#[cfg(feature = "gpu")]
 pub use crate::ops::bessel_i0_wgsl::BesselI0 as BesselI0Gpu;
+#[cfg(feature = "gpu")]
 pub use crate::ops::bessel_j0_wgsl::BesselJ0 as BesselJ0Gpu;
+#[cfg(feature = "gpu")]
 pub use crate::ops::bessel_j1_wgsl::BesselJ1 as BesselJ1Gpu;
+#[cfg(feature = "gpu")]
 pub use crate::ops::bessel_k0_wgsl::BesselK0 as BesselK0Gpu;
+#[cfg(feature = "gpu")]
 pub use crate::ops::erf_wgsl::Erf as ErfGpu;
+#[cfg(feature = "gpu")]
 pub use crate::ops::erfc_wgsl::Erfc as ErfcGpu;
+#[cfg(feature = "gpu")]
 pub use crate::ops::lgamma_wgsl::Lgamma as LgammaGpu;
+#[cfg(feature = "gpu")]
 pub use crate::ops::spherical_harmonics_wgsl::SphericalHarmonics as SphericalHarmonicsGpu;

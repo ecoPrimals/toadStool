@@ -16,13 +16,11 @@ anyhow = "1.0"
 thiserror = { workspace = true }
 
 # GPU compute (WebGPU - hardware agnostic, handles CPU/GPU/NPU/TPU!)
-# Uses workspace wgpu v22 - Pure Rust, no renderdoc C dependency
-wgpu = { workspace = true }
-# pollster: minimal single-threaded executor for sync→async bridge points.
-# Pure Rust, no runtime overhead. Replaces the removed `futures` crate.
-# futures dep eliminated: join_all → sequential tokio await, block_on → pollster.
-pollster = "0.3"
-bytemuck = { version = "1.14", features = ["derive"] }
+# Optional: enable with the "gpu" feature for GPU acceleration.
+# Without GPU, barracuda provides CPU-only math (special, numerical, linalg).
+wgpu = { workspace = true, optional = true }
+pollster = { version = "0.3", optional = true }
+bytemuck = { version = "1.14", features = ["derive"], optional = true }
 
 # Async runtime (needed for all async operations)
 tokio = { version = "1.35", features = ["sync", "time", "macros", "rt-multi-thread"] }
@@ -64,7 +62,10 @@ wgpu = { workspace = true }
 unwrap_used = "warn"
 
 [features]
-default = []
+default = ["gpu"]
+
+# GPU acceleration via wgpu/WebGPU. Without this, only CPU math is available.
+gpu = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
 
 # Serialization support for calibration caching
 serde = []

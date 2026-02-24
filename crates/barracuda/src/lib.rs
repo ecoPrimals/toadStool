@@ -77,45 +77,79 @@
 // Some if-blocks are structurally identical but semantically different (e.g., kldiv_loss)
 #![allow(clippy::if_same_then_else)]
 
-pub mod compute_graph; // Lazy execution for operation batching
-pub mod device;
+// ── CPU-only modules (always available, no GPU dependency) ────────────────────
 pub mod error;
-pub mod esn_v2; // High-level Echo State Network API
-pub mod genomics; // High-level Bioinformatics/Genomics API
-pub mod multi_gpu; // Multi-GPU workload distribution
-pub mod nn; // High-level Neural Network Training API
-pub mod npu;
-pub mod ops;
-pub mod resource_quota; // Resource quota management for multi-tenant compute
-pub mod session;
-pub mod shaders; // Generic precision shader templates (f16/f32/f64)
-pub mod snn; // High-level Spiking Neural Network API
-pub mod tensor;
-pub mod timeseries; // High-level Time Series API
-pub mod utils; // Utility functions for operations
-pub mod vision; // High-level Computer Vision API
-pub mod workload; // Workload analysis, device selection, auto-batching
-
-pub mod auto_tensor;
-pub mod benchmarks;
-pub mod cpu_conv_pool;
-pub mod cpu_executor;
-pub mod dispatch; // Auto-dispatch for CPU/GPU routing
-pub mod gpu_executor;
-pub mod interpolate; // Interpolation methods (cubic spline, etc.)
 pub mod linalg;
-pub mod npu_executor; // NPU executor for ComputeExecutor interface
 pub mod numerical;
-pub mod optimize;
-pub mod pde;
-pub mod pipeline; // Heterogeneous compute pipeline orchestration
-pub mod provenance; // Cross-Spring provenance tags (L-005)
-pub mod sample;
-pub mod scheduler;
 pub mod special;
-pub mod spectral; // Spectral theory: Lanczos, Anderson localization, Hofstadter (hotSpring v0.6.0)
-pub mod tolerances; // Centralized validation tolerances (M-010)
-pub mod validation; // Validation harness for structured pass/fail checks (neuralSpring absorption)
+pub mod tolerances;
+pub mod validation;
+
+// ── GPU-dependent modules (require the "gpu" feature) ────────────────────────
+#[cfg(feature = "gpu")]
+pub mod auto_tensor;
+#[cfg(feature = "gpu")]
+pub mod benchmarks;
+#[cfg(feature = "gpu")]
+pub mod compute_graph;
+#[cfg(feature = "gpu")]
+pub mod cpu_conv_pool;
+#[cfg(feature = "gpu")]
+pub mod cpu_executor;
+#[cfg(feature = "gpu")]
+pub mod device;
+#[cfg(feature = "gpu")]
+pub mod dispatch;
+#[cfg(feature = "gpu")]
+pub mod esn_v2;
+#[cfg(feature = "gpu")]
+pub mod genomics;
+#[cfg(feature = "gpu")]
+pub mod gpu_executor;
+#[cfg(feature = "gpu")]
+pub mod interpolate;
+#[cfg(feature = "gpu")]
+pub mod multi_gpu;
+#[cfg(feature = "gpu")]
+pub mod nn;
+#[cfg(feature = "gpu")]
+pub mod npu;
+#[cfg(feature = "gpu")]
+pub mod npu_executor;
+#[cfg(feature = "gpu")]
+pub mod ops;
+#[cfg(feature = "gpu")]
+pub mod optimize;
+#[cfg(feature = "gpu")]
+pub mod pde;
+#[cfg(feature = "gpu")]
+pub mod pipeline;
+#[cfg(feature = "gpu")]
+pub mod provenance;
+#[cfg(feature = "gpu")]
+pub mod resource_quota;
+#[cfg(feature = "gpu")]
+pub mod sample;
+#[cfg(feature = "gpu")]
+pub mod scheduler;
+#[cfg(feature = "gpu")]
+pub mod session;
+#[cfg(feature = "gpu")]
+pub mod shaders;
+#[cfg(feature = "gpu")]
+pub mod snn;
+#[cfg(feature = "gpu")]
+pub mod spectral;
+#[cfg(feature = "gpu")]
+pub mod tensor;
+#[cfg(feature = "gpu")]
+pub mod timeseries;
+#[cfg(feature = "gpu")]
+pub mod utils;
+#[cfg(feature = "gpu")]
+pub mod vision;
+#[cfg(feature = "gpu")]
+pub mod workload;
 
 /// CPU-only math functions (convenience alias for `special`).
 ///
@@ -128,16 +162,21 @@ pub mod math {
         regularized_gamma_q,
     };
 }
-pub mod staging; // Unidirectional compute pipeline staging buffers
 pub mod stats;
+
+#[cfg(feature = "gpu")]
+pub mod staging;
+#[cfg(feature = "gpu")]
 pub mod surrogate;
+#[cfg(feature = "gpu")]
 pub mod unified_hardware;
+#[cfg(feature = "gpu")]
 pub mod unified_math;
 
-// Re-export commonly used operations
+#[cfg(feature = "gpu")]
 pub use ops::sparse_matmul_quantized::sparse_matmul_quantized;
 
-// Bio / life-science GPU primitives (wetSpring handoff v4, Feb 2026)
+#[cfg(feature = "gpu")]
 pub use ops::bio::{
     AniBatchF64, BatchFitnessGpu, Dada2EStepGpu, DnDsBatchF64, FelsensteinGpu, FelsensteinResult,
     FlatForest, FlatTree, GillespieConfig, GillespieGpu, GillespieResult, HillGateGpu,
@@ -150,43 +189,50 @@ pub use ops::bio::{
 
 /// Prelude: Common imports for using barracuda
 pub mod prelude {
+    pub use crate::error::{BarracudaError, Result};
+
+    #[cfg(feature = "gpu")]
     pub use crate::compute_graph::ComputeGraph;
+    #[cfg(feature = "gpu")]
     pub use crate::device::{
         Auto, AutoTuner, Capability, Device, DeviceCapabilities, DeviceContext, DeviceInfo,
         GpuCalibration, WgpuDevice, WorkloadHint, GLOBAL_TUNER,
     };
-    pub use crate::error::{BarracudaError, Result};
+    #[cfg(feature = "gpu")]
     pub use crate::esn_v2::{ESNConfig, ESN};
+    #[cfg(feature = "gpu")]
     pub use crate::genomics::{
         CompositionReport, MotifMatch, QualityReport, SequenceAnalyzer, SequenceConfig,
     };
-    pub use crate::nn::{Layer, LossFunction, Optimizer}; // NeuralNetwork removed - use direct ops
+    #[cfg(feature = "gpu")]
+    pub use crate::nn::{Layer, LossFunction, Optimizer};
+    #[cfg(feature = "gpu")]
     pub use crate::session::{SessionTensor, TensorSession};
+    #[cfg(feature = "gpu")]
     pub use crate::snn::{SNNConfig, SNNLayer, SpikingNetwork};
+    #[cfg(feature = "gpu")]
     pub use crate::tensor::Tensor;
-
-    // NEW v2.0: Workload analysis & NPU backend
+    #[cfg(feature = "gpu")]
     pub use crate::npu::{EventCodec, NpuMlBackend};
+    #[cfg(feature = "gpu")]
     pub use crate::workload::{
         ComputeDevice, DeviceHint, DeviceSelector, Priority, SparsityAnalyzer, WorkloadClassifier,
         WorkloadType,
     };
-
-    // Auto-dispatch for CPU/GPU routing
+    #[cfg(feature = "gpu")]
     pub use crate::dispatch::{
         batch_fitness_substrate, dispatch_for, hmm_substrate, ode_substrate, pairwise_substrate,
         spatial_substrate, DispatchConfig, DispatchTarget,
     };
-
-    // Multi-GPU and resource quota management
+    #[cfg(feature = "gpu")]
     pub use crate::multi_gpu::{
         DeviceLease, DeviceRequirements, GpuPool, GpuVendor, MultiDevicePool, WorkloadConfig,
     };
-    // Note: multi_gpu::DeviceInfo aliased to avoid conflict with device::DeviceInfo
+    #[cfg(feature = "gpu")]
     pub use crate::multi_gpu::DeviceInfo as GpuDeviceInfo;
+    #[cfg(feature = "gpu")]
     pub use crate::resource_quota::{presets as quota_presets, QuotaTracker, ResourceQuota};
-
-    // Unidirectional pipeline staging
+    #[cfg(feature = "gpu")]
     pub use crate::staging::{
         BufferDirection, GpuRingBuffer, PipelineStats, RingBufferConfig, UnidirectionalConfig,
         UnidirectionalPipeline, WorkHandle, WriteHandle,

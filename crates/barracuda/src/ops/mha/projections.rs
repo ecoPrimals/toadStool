@@ -1,25 +1,39 @@
-//! GPU projection operations for Multi-Head Attention
+//! Decomposed projection operations for Multi-Head Attention.
 //!
-//! This module contains the WGSL-based projection operations that transform
-//! input tensors through learned weight matrices with head splitting/concatenation.
+//! Instead of fusing matmul + head reshape into a single kernel (which causes
+//! GPU watchdog timeouts at production sizes due to O(d_model) per-thread loops),
+//! we compose two validated primitives:
+//!
+//! 1. `Tensor::matmul` — tiled, shared-memory GPU matmul (validated across codebase)
+//! 2. `head_split.wgsl` / `head_concat.wgsl` — pure data-movement reshapes (validated)
+//!
+//! This resolves S-03b: MHA projection hangs at (B=4, S=128, H=8, d=512).
+
+use std::sync::Arc;
+
+use wgpu::util::DeviceExt;
 
 use super::{MhaParams, MultiHeadAttention};
+use crate::device::WgpuDevice;
 use crate::error::Result;
 use crate::tensor::Tensor;
 
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct HeadReshapeParams {
+    batch_size: u32,
+    seq_len: u32,
+    num_heads: u32,
+    head_dim: u32,
+}
+
 impl MultiHeadAttention {
-    /// Projection shader: [B,S,D] + [D,D] → [B,H,S,D/H]
-    pub(super) fn shader_projection() -> &'static str {
-        include_str!("../../shaders/attention/mha_projection.wgsl")
-    }
-
-    /// Output shader: [B,H,S,D/H] + [D,D] → [B,S,D]
-    pub(super) fn shader_output() -> &'static str {
-        include_str!("../../shaders/tensor/mha_output.wgsl")
-    }
-
-    /// Project input through weight with head splitting
-    /// [B, S, D] + [D, D] → [B, H, S, D/H]
+    /// Project input through weight matrix, then split into attention heads.
+    ///
+    /// `[B, S, D] × [D, D] → [B, S, D] → head_split → [B, H, S, D/H]`
+    ///
+    /// Derives seq_len from the input tensor (supports cross-attention where
+    /// K/V have different seq_len from Q).
     pub(super) fn project_with_head_split(
         &self,
         input: &Tensor,
@@ -27,82 +41,91 @@ impl MultiHeadAttention {
         params: &MhaParams,
     ) -> Result<Tensor> {
         let device = input.device();
+        let b = params.batch_size as usize;
+        let s = input.shape()[1]; // actual seq_len from tensor, not params
+        let d = params.d_model as usize;
+        let h = params.num_heads as usize;
+        let hd = params.head_dim as usize;
 
-        // Output size: [B, H, S, D/H]
-        let output_size =
-            (params.batch_size * params.num_heads * params.seq_len * params.head_dim) as usize;
-        let output_buffer = device.create_buffer_f32(output_size)?;
+        let input_2d = input.clone().reshape(vec![b * s, d])?;
+        let weight_2d = weight.clone().reshape(vec![d, d])?;
+        let projected_2d = input_2d.matmul(&weight_2d)?;
+        let projected = projected_2d.reshape(vec![b, s, d])?;
 
-        // Create params buffer
-        let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("MHA Projection Params"),
-            size: std::mem::size_of::<MhaParams>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        device
-            .queue
-            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(params));
+        Self::dispatch_head_split(device, &projected, b, s, h, hd)
+    }
 
-        // Compile shader
-        let shader = device.compile_shader(Self::shader_projection(), Some("MHA Projection"));
+    /// Concatenate attention heads, then project through output weight.
+    ///
+    /// `[B, H, S, D/H] → head_concat → [B, S, D] × [D, D] → [B, S, D]`
+    ///
+    /// Decomposed from the fused `mha_output.wgsl` that caused GPU hangs.
+    pub(super) fn concat_and_project(
+        &self,
+        attention_out: &Tensor,
+        w_o: &Tensor,
+        params: &MhaParams,
+    ) -> Result<Tensor> {
+        let device = attention_out.device();
+        let b = params.batch_size as usize;
+        let s = params.seq_len as usize;
+        let d = params.d_model as usize;
+        let h = params.num_heads as usize;
+        let hd = params.head_dim as usize;
 
-        // Create bind group layout
+        // Step 1: Head concat — [B, H, S, D] → [B, S, H*D]
+        let concatenated = Self::dispatch_head_concat(device, attention_out, b, s, h, hd)?;
+
+        // Step 2: Matmul — [B*S, D] × [D, D] → [B*S, D] → [B, S, D]
+        let concat_2d = concatenated.reshape(vec![b * s, d])?;
+        let w_o_2d = w_o.clone().reshape(vec![d, d])?;
+        let output_2d = concat_2d.matmul(&w_o_2d)?;
+        output_2d.reshape(vec![b, s, d])
+    }
+
+    fn dispatch_head_split(
+        device: &Arc<WgpuDevice>,
+        input: &Tensor,
+        batch_size: usize,
+        seq_len: usize,
+        num_heads: usize,
+        head_dim: usize,
+    ) -> Result<Tensor> {
+        let total = batch_size * num_heads * seq_len * head_dim;
+        let output_buffer = device.create_buffer_f32(total)?;
+
+        let params = HeadReshapeParams {
+            batch_size: batch_size as u32,
+            seq_len: seq_len as u32,
+            num_heads: num_heads as u32,
+            head_dim: head_dim as u32,
+        };
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("head_split params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let shader = device.compile_shader(
+            include_str!("../../shaders/tensor/head_split.wgsl"),
+            Some("head_split"),
+        );
+
         let bgl = device
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("MHA Projection BGL"),
+                label: Some("head_split BGL"),
                 entries: &[
-                    // Input
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // Weight
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // Output
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // Params
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
+                    Self::storage_entry(0, true),
+                    Self::storage_entry(1, false),
+                    Self::uniform_entry(2),
                 ],
             });
 
-        // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("MHA Projection BG"),
+            label: Some("head_split BG"),
             layout: &bgl,
             entries: &[
                 wgpu::BindGroupEntry {
@@ -111,247 +134,178 @@ impl MultiHeadAttention {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: weight.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
                     resource: output_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 3,
+                    binding: 2,
                     resource: params_buffer.as_entire_binding(),
                 },
             ],
         });
 
-        // Create pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("MHA Projection Pipeline Layout"),
-                    bind_group_layouts: &[&bgl],
-                    push_constant_ranges: &[],
-                });
+        let pipeline = Self::make_pipeline(device, &shader, &bgl, "head_split");
+        let workgroups = (total as u32).div_ceil(256);
 
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("MHA Projection Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        // Encode and dispatch
         let mut encoder = device
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("MHA Projection Encoder"),
+                label: Some("head_split"),
             });
-
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("MHA Projection Pass"),
+                label: Some("head_split"),
                 timestamp_writes: None,
             });
-
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-
-            // Dispatch: one thread per (batch, head, seq) - each processes head_dim.
-            // The shader uses @workgroup_size(16, 16, 1) — z tile is 1, so we need
-            // exactly `seq_len` workgroups in z (not seq_len/16).  Dividing by 16
-            // would skip all but the first workgroup's z-slice (positions 1..seq_len-1
-            // would stay zero).
-            let workgroups_x = params.batch_size.div_ceil(16);
-            let workgroups_y = params.num_heads.div_ceil(16);
-            let workgroups_z = params.seq_len; // @workgroup_size z=1
-            pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+            pass.dispatch_workgroups(workgroups, 1, 1);
         }
-
         device.queue.submit(Some(encoder.finish()));
         device.device.poll(wgpu::Maintain::Wait);
 
-        // Create output tensor: [B, H, S, D/H]
         Ok(Tensor::from_buffer(
             output_buffer,
-            vec![
-                params.batch_size as usize,
-                params.num_heads as usize,
-                params.seq_len as usize,
-                params.head_dim as usize,
-            ],
+            vec![batch_size, num_heads, seq_len, head_dim],
             device.clone(),
         ))
     }
 
-    /// Concatenate heads and project through output weight
-    /// [B, H, S, D/H] + [D, D] → [B, S, D]
-    pub(super) fn concat_and_project(
-        &self,
-        attention_out: &Tensor,
-        w_o: &Tensor,
-        params: &MhaParams,
+    fn dispatch_head_concat(
+        device: &Arc<WgpuDevice>,
+        input: &Tensor,
+        batch_size: usize,
+        seq_len: usize,
+        num_heads: usize,
+        head_dim: usize,
     ) -> Result<Tensor> {
-        let device = attention_out.device();
+        let total = batch_size * num_heads * seq_len * head_dim;
+        let d_model = num_heads * head_dim;
+        let output_buffer = device.create_buffer_f32(total)?;
 
-        // Output size: [B, S, D]
-        let output_size = (params.batch_size * params.seq_len * params.d_model) as usize;
-        let output_buffer = device.create_buffer_f32(output_size)?;
+        let params = HeadReshapeParams {
+            batch_size: batch_size as u32,
+            seq_len: seq_len as u32,
+            num_heads: num_heads as u32,
+            head_dim: head_dim as u32,
+        };
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("head_concat params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
-        // Create params buffer
-        let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("MHA Output Params"),
-            size: std::mem::size_of::<MhaParams>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        device
-            .queue
-            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(params));
+        let shader = device.compile_shader(
+            include_str!("../../shaders/tensor/head_concat.wgsl"),
+            Some("head_concat"),
+        );
 
-        // Compile shader
-        let shader = device.compile_shader(Self::shader_output(), Some("MHA Output"));
-
-        // Create bind group layout
         let bgl = device
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("MHA Output BGL"),
+                label: Some("head_concat BGL"),
                 entries: &[
-                    // Attention output (heads)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // Output weight
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // Output
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    // Params
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
+                    Self::storage_entry(0, true),
+                    Self::storage_entry(1, false),
+                    Self::uniform_entry(2),
                 ],
             });
 
-        // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("MHA Output BG"),
+            label: Some("head_concat BG"),
             layout: &bgl,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: attention_out.buffer().as_entire_binding(),
+                    resource: input.buffer().as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: w_o.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
                     resource: output_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 3,
+                    binding: 2,
                     resource: params_buffer.as_entire_binding(),
                 },
             ],
         });
 
-        // Create pipeline
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("MHA Output Pipeline Layout"),
-                    bind_group_layouts: &[&bgl],
-                    push_constant_ranges: &[],
-                });
+        let pipeline = Self::make_pipeline(device, &shader, &bgl, "head_concat");
+        let workgroups = (total as u32).div_ceil(256);
 
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("MHA Output Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                cache: None,
-                compilation_options: Default::default(),
-            });
-
-        // Encode and dispatch
         let mut encoder = device
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("MHA Output Encoder"),
+                label: Some("head_concat"),
             });
-
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("MHA Output Pass"),
+                label: Some("head_concat"),
                 timestamp_writes: None,
             });
-
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-
-            // Dispatch: one thread per (batch, seq, output_dim).
-            // The shader uses @workgroup_size(16, 16, 1) — z tile is 1, so we need
-            // exactly `d_model` workgroups in z (not d_model/16).  Dividing by 16
-            // would cover only the first 16 output dimensions; the rest stay zero.
-            let workgroups_x = params.batch_size.div_ceil(16);
-            let workgroups_y = params.seq_len.div_ceil(16);
-            let workgroups_z = params.d_model; // @workgroup_size z=1
-            pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+            pass.dispatch_workgroups(workgroups, 1, 1);
         }
-
         device.queue.submit(Some(encoder.finish()));
         device.device.poll(wgpu::Maintain::Wait);
 
-        // Create output tensor: [B, S, D]
         Ok(Tensor::from_buffer(
             output_buffer,
-            vec![
-                params.batch_size as usize,
-                params.seq_len as usize,
-                params.d_model as usize,
-            ],
+            vec![batch_size, seq_len, d_model],
             device.clone(),
         ))
+    }
+
+    fn storage_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
+        wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only },
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }
+    }
+
+    fn uniform_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
+        wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }
+    }
+
+    fn make_pipeline(
+        device: &WgpuDevice,
+        shader: &wgpu::ShaderModule,
+        bgl: &wgpu::BindGroupLayout,
+        label: &str,
+    ) -> wgpu::ComputePipeline {
+        let layout = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some(label),
+                bind_group_layouts: &[bgl],
+                push_constant_ranges: &[],
+            });
+        device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(label),
+                layout: Some(&layout),
+                module: shader,
+                entry_point: "main",
+                cache: None,
+                compilation_options: Default::default(),
+            })
     }
 }

@@ -12,6 +12,9 @@ pub mod linalg;
 // Interpolation operations (RBF, splines, etc.)
 pub mod interpolation;
 
+// Full NCHW neural network operations (Conv2D GPU with stride/pad/dil/groups)
+pub mod nn;
+
 // Mixing operations for SCF solvers (Broyden, linear)
 // Validated by hotSpring nuclear EOS study (169/169 acceptance checks)
 pub mod mixing;
@@ -25,6 +28,12 @@ pub mod npu_bridge;
 
 // Neuromorphic operations (NPU/GPU/CPU universal)
 pub mod sparse_matmul_quantized;
+
+// Sparse GEMM: CSR × Dense matrix multiplication (f64 GPU)
+pub mod sparse_gemm_f64;
+
+// TransE knowledge graph triple scoring (f64 GPU)
+pub mod transe_score_f64;
 
 // Attention mechanisms (Phase 4 - Universal Compute)
 pub mod alibi;
