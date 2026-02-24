@@ -206,7 +206,23 @@ mod tests {
     #[test]
     fn test_version_constant() {
         assert!(!VERSION.is_empty());
-        assert!(VERSION.chars().next().unwrap().is_ascii_digit());
+        assert!(VERSION
+            .chars()
+            .next()
+            .expect("VERSION should have at least one char")
+            .is_ascii_digit());
+    }
+
+    #[test]
+    fn test_init_succeeds_or_tracing_already_initialized() {
+        // init() sets up tracing; may fail if another test already initialized it
+        let result = init();
+        if let Err(e) = result {
+            assert!(
+                e.to_string().to_lowercase().contains("tracing"),
+                "Unexpected init error: {e}"
+            );
+        }
     }
 
     #[test]

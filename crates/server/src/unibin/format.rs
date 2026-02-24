@@ -188,6 +188,62 @@ mod tests {
     }
 
     #[test]
+    fn ensure_biomeos_directory_fails_when_parent_is_file() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let file_path = temp_dir.path().join("not_a_dir");
+        std::fs::File::create(&file_path).expect("create file");
+
+        let result = ensure_biomeos_directory(&file_path);
+        assert!(
+            result.is_err(),
+            "create_dir_all on path with file parent should fail"
+        );
+    }
+
+    #[test]
+    fn get_socket_path_from_toadstool_socket_env() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = temp_dir.path().join("custom-toadstool.sock");
+        let path_str = socket_path.to_string_lossy().to_string();
+        let old = std::env::var("TOADSTOOL_SOCKET").ok();
+        std::env::set_var("TOADSTOOL_SOCKET", &path_str);
+
+        let result = get_socket_path("any-family", "any-node");
+        if let Some(v) = old {
+            std::env::set_var("TOADSTOOL_SOCKET", v);
+        } else {
+            std::env::remove_var("TOADSTOOL_SOCKET");
+        }
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), socket_path);
+    }
+
+    #[test]
+    fn get_socket_path_from_primal_socket_with_family_suffix() {
+        let old_toad = std::env::var("TOADSTOOL_SOCKET").ok();
+        let old_biome = std::env::var("BIOMEOS_SOCKET_PATH").ok();
+        std::env::remove_var("TOADSTOOL_SOCKET");
+        std::env::set_var("PRIMAL_SOCKET", "/run/primal");
+        std::env::remove_var("BIOMEOS_SOCKET_PATH");
+
+        let result = get_socket_path("family-x", "node1");
+        if let Some(v) = old_toad {
+            std::env::set_var("TOADSTOOL_SOCKET", v);
+        }
+        if let Some(v) = old_biome {
+            std::env::set_var("BIOMEOS_SOCKET_PATH", v);
+        }
+        std::env::remove_var("PRIMAL_SOCKET");
+
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            std::path::PathBuf::from("/run/primal-family-x")
+        );
+    }
+
+    #[test]
     fn get_socket_path_temp_dir_fallback_no_xdg() {
         let old_toad = std::env::var("TOADSTOOL_SOCKET").ok();
         let old_primal = std::env::var("PRIMAL_SOCKET").ok();

@@ -688,7 +688,10 @@ async fn test_create_channel_empty_endpoints_fails() {
     };
     let result = manager.create_channel(&service).await;
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("No endpoint"));
+    assert!(result
+        .expect_err("expected no endpoint error")
+        .to_string()
+        .contains("No endpoint"));
 }
 
 #[tokio::test]

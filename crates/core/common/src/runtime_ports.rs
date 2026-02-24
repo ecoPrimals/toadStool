@@ -252,4 +252,93 @@ mod tests {
             "Could not find available port after 10 attempts"
         );
     }
+
+    #[test]
+    fn test_discover_port_with_preference_available() {
+        let discovery = RuntimePortDiscovery::new().with_range(25000..25100);
+        let preferred = 25050u16;
+        let port = discovery.discover_port(Some(preferred));
+        assert!(port.is_ok());
+        let port = port.expect("port");
+        assert!(port >= 25000 && port < 25100);
+    }
+
+    #[test]
+    fn test_discover_port_with_preference_unavailable_finds_alternative() {
+        let discovery = RuntimePortDiscovery::new().with_range(17000..17100);
+        let port = discovery.discover_port(Some(80));
+        assert!(port.is_ok());
+        let port = port.expect("port");
+        assert_ne!(port, 80);
+        assert!(port >= 1024);
+    }
+
+    #[test]
+    fn test_discover_ports_zero() {
+        let discovery = RuntimePortDiscovery::new();
+        let ports = discovery.discover_ports(0);
+        assert!(ports.is_ok());
+        assert!(ports.expect("ports").is_empty());
+    }
+
+    #[test]
+    fn test_discover_ports_returns_valid_ports() {
+        let discovery = RuntimePortDiscovery::new().with_range(28000..28100);
+        let ports = discovery.discover_ports(5);
+        assert!(ports.is_ok());
+        let ports = ports.expect("ports");
+        assert_eq!(ports.len(), 5);
+        for port in &ports {
+            assert!(*port >= 28000 && *port < 28100);
+        }
+    }
+
+    #[test]
+    fn test_discover_port_with_preference_function() {
+        let port = discover_port_with_preference(9999);
+        assert!(port.is_ok());
+        let port = port.expect("port");
+        assert!(port >= 1024);
+    }
+
+    #[test]
+    fn test_runtime_port_discovery_builder_all_interfaces() {
+        let discovery = RuntimePortDiscovery::new().all_interfaces();
+        let port = discovery.discover_port(None);
+        assert!(port.is_ok());
+    }
+
+    #[test]
+    fn test_runtime_port_discovery_builder_localhost_only() {
+        let discovery = RuntimePortDiscovery::new().localhost_only();
+        let port = discovery.discover_port(None);
+        assert!(port.is_ok());
+    }
+
+    #[test]
+    fn test_runtime_port_discovery_default_range() {
+        let discovery = RuntimePortDiscovery::default();
+        let port = discovery.discover_port(None);
+        assert!(port.is_ok());
+        let port = port.expect("port");
+        assert!(port >= 8000);
+        assert!(port < 9000);
+    }
+
+    #[test]
+    fn test_port_error_display() {
+        let err = PortError::BindFailed {
+            port: 8080,
+            reason: "Address already in use".to_string(),
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("8080"));
+        assert!(msg.contains("Address already in use"));
+    }
+
+    #[test]
+    fn test_port_error_no_available() {
+        let err = PortError::NoAvailablePorts;
+        assert!(!err.to_string().is_empty());
+    }
 }

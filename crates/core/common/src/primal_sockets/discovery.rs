@@ -82,7 +82,7 @@ pub async fn discover_coordination_socket() -> Result<PathBuf, SocketDiscoveryEr
 }
 
 /// Helper: Map capability to biomeOS standard socket path (fallback during transition)
-fn capability_to_biomeos_fallback(
+pub(crate) fn capability_to_biomeos_fallback(
     capability: &crate::primal_identity::Capability,
 ) -> Result<PathBuf, SocketDiscoveryError> {
     use crate::primal_identity::Capability;
@@ -182,5 +182,58 @@ mod tests {
         let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
         let path = resolve_socket_path_for_service("toadstool", &env_snapshot, None);
         assert!(path.to_string_lossy().contains("toadstool"));
+    }
+
+    #[test]
+    fn test_capability_to_biomeos_fallback_crypto() {
+        use crate::primal_identity::{Capability, CryptoCapability};
+        let path =
+            capability_to_biomeos_fallback(&Capability::Crypto(CryptoCapability::Encryption));
+        assert!(path.is_ok());
+        let path = path.expect("path");
+        assert!(path.to_string_lossy().contains("beardog"));
+    }
+
+    #[test]
+    fn test_capability_to_biomeos_fallback_storage() {
+        use crate::primal_identity::{Capability, StorageCapability};
+        let path =
+            capability_to_biomeos_fallback(&Capability::Storage(StorageCapability::ObjectStorage));
+        assert!(path.is_ok());
+        let path = path.expect("path");
+        assert!(path.to_string_lossy().contains("nestgate"));
+    }
+
+    #[test]
+    fn test_capability_to_biomeos_fallback_unknown_returns_error() {
+        use crate::primal_identity::{Capability, DiscoveryCapability};
+        let result = capability_to_biomeos_fallback(&Capability::Discovery(
+            DiscoveryCapability::MdnsDiscovery,
+        ));
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("No fallback") || err.to_string().contains("Discovery"));
+    }
+
+    #[test]
+    fn test_capability_to_biomeos_fallback_compute() {
+        use crate::primal_identity::{Capability, ComputeCapability};
+        let path = capability_to_biomeos_fallback(&Capability::Compute(
+            ComputeCapability::NativeExecution,
+        ));
+        assert!(path.is_ok());
+        let path = path.expect("path");
+        assert!(path.to_string_lossy().contains("toadstool"));
+    }
+
+    #[test]
+    fn test_capability_to_biomeos_fallback_coordination() {
+        use crate::primal_identity::{Capability, CoordinationCapability};
+        let path = capability_to_biomeos_fallback(&Capability::Coordination(
+            CoordinationCapability::ServiceDiscovery,
+        ));
+        assert!(path.is_ok());
+        let path = path.expect("path");
+        assert!(path.to_string_lossy().contains("songbird"));
     }
 }

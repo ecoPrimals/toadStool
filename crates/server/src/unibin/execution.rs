@@ -291,6 +291,42 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn create_executor_standalone_mode_true_uppercase() {
+        let old = std::env::var("TOADSTOOL_STANDALONE").ok();
+        std::env::set_var("TOADSTOOL_STANDALONE", "TRUE");
+
+        let result = create_executor("test-family").await;
+        if let Some(v) = old {
+            std::env::set_var("TOADSTOOL_STANDALONE", v);
+        } else {
+            std::env::remove_var("TOADSTOOL_STANDALONE");
+        }
+
+        assert!(
+            result.is_ok(),
+            "standalone executor with TRUE should succeed: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn write_tcp_discovery_file_fails_on_readonly_dir() {
+        let old = std::env::var("XDG_RUNTIME_DIR").ok();
+        std::env::set_var("XDG_RUNTIME_DIR", "/proc/self");
+
+        let addr: std::net::SocketAddr = "127.0.0.1:0".parse().expect("valid addr");
+        let result = write_tcp_discovery_file("toadstool-test-readonly", &addr);
+
+        if let Some(v) = old {
+            std::env::set_var("XDG_RUNTIME_DIR", v);
+        } else {
+            std::env::remove_var("XDG_RUNTIME_DIR");
+        }
+
+        assert!(result.is_err(), "writing to /proc/self should fail");
+    }
+
+    #[tokio::test]
     async fn create_executor_integrated_mode_when_standalone_unset() {
         let old = std::env::var("TOADSTOOL_STANDALONE").ok();
         std::env::remove_var("TOADSTOOL_STANDALONE");

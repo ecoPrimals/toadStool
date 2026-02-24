@@ -295,3 +295,170 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    use crate::primal_identity::{
+        Capability, ComputeCapability, CoordinationCapability, ServiceEndpoint, StorageCapability,
+    };
+
+    use super::*;
+
+    #[test]
+    fn test_parse_capabilities_empty() {
+        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
+        let caps = discovery.parse_capabilities("");
+        assert!(caps.is_empty());
+    }
+
+    #[test]
+    fn test_parse_capabilities_coordination() {
+        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
+        let caps = discovery.parse_capabilities("coordination");
+        assert_eq!(caps.len(), 1);
+        assert!(matches!(
+            caps[0],
+            Capability::Coordination(CoordinationCapability::ServiceDiscovery)
+        ));
+    }
+
+    #[test]
+    fn test_parse_capabilities_storage() {
+        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
+        let caps = discovery.parse_capabilities("storage");
+        assert_eq!(caps.len(), 1);
+        assert!(matches!(
+            caps[0],
+            Capability::Storage(StorageCapability::ObjectStorage)
+        ));
+    }
+
+    #[test]
+    fn test_parse_capabilities_compute() {
+        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
+        let caps = discovery.parse_capabilities("compute");
+        assert_eq!(caps.len(), 1);
+        assert!(matches!(
+            caps[0],
+            Capability::Compute(ComputeCapability::NativeExecution)
+        ));
+    }
+
+    #[test]
+    fn test_parse_capabilities_multiple() {
+        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
+        let caps = discovery.parse_capabilities("coordination, storage, compute");
+        assert_eq!(caps.len(), 3);
+    }
+
+    #[test]
+    fn test_parse_capabilities_unknown_filtered() {
+        let discovery = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
+        let caps = discovery.parse_capabilities("coordination, unknown_cap, storage");
+        assert_eq!(caps.len(), 2);
+    }
+
+    #[test]
+    fn test_discovered_service_has_capability() {
+        let service = DiscoveredService {
+            id: "test-1".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![
+                Capability::Compute(ComputeCapability::NativeExecution),
+                Capability::Storage(StorageCapability::ObjectStorage),
+            ],
+            endpoints: vec![],
+            metadata: std::collections::HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        };
+        assert!(service.has_capability(&Capability::Compute(ComputeCapability::NativeExecution)));
+        assert!(service.has_capability(&Capability::Storage(StorageCapability::ObjectStorage)));
+        assert!(!service.has_capability(&Capability::Coordination(
+            CoordinationCapability::ServiceDiscovery
+        )));
+    }
+
+    #[test]
+    fn test_discovered_service_is_fresh() {
+        let now = SystemTime::now();
+        let service = DiscoveredService {
+            id: "test-1".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![],
+            metadata: std::collections::HashMap::new(),
+            discovered_at: now,
+            last_seen: now,
+            healthy: true,
+        };
+        assert!(service.is_fresh(Duration::from_secs(60)));
+    }
+
+    #[test]
+    fn test_discovered_service_is_stale() {
+        let old = UNIX_EPOCH;
+        let service = DiscoveredService {
+            id: "test-1".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![],
+            metadata: std::collections::HashMap::new(),
+            discovered_at: old,
+            last_seen: old,
+            healthy: true,
+        };
+        assert!(!service.is_fresh(Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn test_discovered_service_primary_endpoint() {
+        let endpoint =
+            ServiceEndpoint::from_url_string("http://localhost:8080").expect("valid url");
+        let service = DiscoveredService {
+            id: "test-1".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![endpoint.clone()],
+            metadata: std::collections::HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        };
+        assert_eq!(service.primary_endpoint(), Some(&endpoint));
+    }
+
+    #[test]
+    fn test_discovered_service_healthy_endpoints() {
+        let endpoint =
+            ServiceEndpoint::from_url_string("http://localhost:8080").expect("valid url");
+        let service = DiscoveredService {
+            id: "test-1".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![endpoint.clone()],
+            metadata: std::collections::HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        };
+        let healthy = service.healthy_endpoints();
+        assert_eq!(healthy.len(), 1);
+    }
+
+    #[test]
+    fn test_discovery_method_variants() {
+        assert_eq!(DiscoveryMethod::Auto, DiscoveryMethod::Auto);
+        assert_eq!(DiscoveryMethod::Mdns, DiscoveryMethod::Mdns);
+        assert_eq!(DiscoveryMethod::Environment, DiscoveryMethod::Environment);
+        assert_ne!(DiscoveryMethod::Auto, DiscoveryMethod::Mdns);
+    }
+}

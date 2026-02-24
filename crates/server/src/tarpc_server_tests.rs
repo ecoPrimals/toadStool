@@ -65,6 +65,14 @@ fn test_tarpc_server_new_with_error_count() {
 }
 
 #[test]
+fn test_tarpc_server_new_with_version_arc_str() {
+    let executor = Arc::new(MockExecutor);
+    let version: Arc<str> = Arc::from("arc-version");
+    let server = ToadStoolTarpcServer::new(version, executor, None);
+    assert_eq!(server.version.as_ref(), "arc-version");
+}
+
+#[test]
 fn test_tarpc_server_clone() {
     let executor = Arc::new(MockExecutor);
     let server = ToadStoolTarpcServer::new("v1", executor, None);
@@ -305,6 +313,20 @@ async fn test_query_capabilities_executor_error() {
 }
 
 #[tokio::test]
+async fn test_query_capabilities_executor_error_increments_error_count() {
+    let executor = Arc::new(FailingExecutor);
+    let error_count = Arc::new(AtomicU64::new(0));
+    let server = ToadStoolTarpcServer::new("v1", executor, Some(Arc::clone(&error_count)));
+
+    let _ = server
+        .clone()
+        .query_capabilities(tarpc::context::current())
+        .await;
+
+    assert_eq!(error_count.load(Ordering::Relaxed), 1);
+}
+
+#[tokio::test]
 async fn test_query_status_not_found_increments_error_count() {
     let executor = Arc::new(MockExecutor);
     let error_count = Arc::new(AtomicU64::new(0));
@@ -382,6 +404,71 @@ async fn test_list_workloads_after_submit() {
     let workloads = list.unwrap();
     assert_eq!(workloads.len(), 1);
     assert_eq!(workloads[0].workload_id, "list-test");
+}
+
+#[tokio::test]
+async fn test_health_check_with_active_workloads() {
+    struct QueuedExecutor;
+
+    #[async_trait::async_trait]
+    impl WorkloadExecutor for QueuedExecutor {
+        async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
+            Ok(WorkloadResult {
+                workload_id: submission.workload_id,
+                status: WorkloadStatus::Queued,
+                data: None,
+                error: None,
+                metrics: ExecutionMetrics {
+                    queued_duration_secs: 0.0,
+                    execution_duration_secs: 0.0,
+                    cpu_cores_used: 1,
+                    memory_used_bytes: 0,
+                    gpu_memory_used_bytes: None,
+                },
+            })
+        }
+
+        async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
+            Ok(ComputeCapabilities {
+                service_id: "queued".to_string(),
+                compute_units: vec![],
+                supported_workload_types: vec!["cpu_compute".to_string()],
+                available_resources: AvailableResources {
+                    total_cpu_cores: 4,
+                    available_cpu_cores: 4,
+                    total_memory_bytes: 8_000_000_000,
+                    available_memory_bytes: 4_000_000_000,
+                    total_gpu_memory_bytes: None,
+                    available_gpu_memory_bytes: None,
+                    cpu_utilization: 0.0,
+                    memory_utilization: 50.0,
+                    gpu_utilization: None,
+                },
+                metadata: std::collections::HashMap::new(),
+            })
+        }
+
+        async fn cancel(&self, _workload_id: &str) -> Result<(), String> {
+            Ok(())
+        }
+    }
+
+    let executor = Arc::new(QueuedExecutor);
+    let server = ToadStoolTarpcServer::new("v1", executor, None);
+
+    let submission = mk_submission("queued-wl", "cpu_compute", vec![]);
+    server
+        .clone()
+        .submit_workload(tarpc::context::current(), submission)
+        .await
+        .expect("submit ok");
+
+    let health = server.clone().health_check(tarpc::context::current()).await;
+    assert!(health.is_ok());
+    let h = health.expect("health check succeeded");
+    assert!(h.healthy);
+    assert_eq!(h.active_workloads, 1);
+    assert_eq!(h.queued_workloads, 1);
 }
 
 #[tokio::test]
@@ -572,6 +659,27 @@ async fn test_cancel_workload_executor_error() {
         .await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("cancel failed"));
+}
+
+#[tokio::test]
+async fn test_cancel_workload_executor_error_increments_error_count() {
+    let executor = Arc::new(CancelFailingExecutor);
+    let error_count = Arc::new(AtomicU64::new(0));
+    let server = ToadStoolTarpcServer::new("v1", executor, Some(Arc::clone(&error_count)));
+
+    let submission = mk_submission("cancel-err-count", "cpu_compute", vec![]);
+    server
+        .clone()
+        .submit_workload(tarpc::context::current(), submission)
+        .await
+        .expect("submit ok");
+
+    let _ = server
+        .clone()
+        .cancel_workload(tarpc::context::current(), "cancel-err-count".to_string())
+        .await;
+
+    assert_eq!(error_count.load(Ordering::Relaxed), 1);
 }
 
 #[tokio::test]

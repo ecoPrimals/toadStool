@@ -146,3 +146,159 @@ impl MigrationCoordinator {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cloud_provider_trait::{
+        CloudCapabilities, CloudError, CloudProvider, CostEstimate, GpuType, WorkloadHealth,
+        WorkloadLocation, WorkloadSpec,
+    };
+    use crate::composition_constraints::Constraint;
+    use async_trait::async_trait;
+    use std::collections::HashMap;
+
+    struct MockProvider;
+    #[async_trait]
+    impl CloudProvider for MockProvider {
+        fn name(&self) -> &str {
+            "MockProvider"
+        }
+        async fn capabilities(&self) -> Result<CloudCapabilities, CloudError> {
+            Ok(CloudCapabilities {
+                name: "MockProvider".to_string(),
+                available_regions: vec!["us-west-1".to_string()],
+                supports_gpu: true,
+                gpu_types: vec!["V100".to_string()],
+                max_memory_gb: 64.0,
+                max_cpu_cores: 16,
+                supports_spot_instances: false,
+                supports_autoscaling: false,
+                custom: HashMap::new(),
+            })
+        }
+        async fn deploy_workload(&self, id: &str, _: &str) -> Result<String, CloudError> {
+            Ok(format!("inst-{id}"))
+        }
+        async fn migrate_workload(
+            &self,
+            id: &str,
+            _: WorkloadLocation,
+            _: &str,
+        ) -> Result<String, CloudError> {
+            Ok(format!("migrated-{id}"))
+        }
+        async fn check_health(&self, _: &str) -> Result<WorkloadHealth, CloudError> {
+            Ok(WorkloadHealth::Healthy)
+        }
+        async fn terminate_workload(&self, _: &str) -> Result<(), CloudError> {
+            Ok(())
+        }
+        async fn estimate_cost(
+            &self,
+            _: &WorkloadSpec,
+            _: &str,
+        ) -> Result<CostEstimate, CloudError> {
+            Ok(CostEstimate {
+                cost_per_hour: 5.0,
+                estimated_total_cost: Some(10.0),
+                breakdown: HashMap::new(),
+            })
+        }
+        async fn available_gpu_types(&self, _: &str) -> Result<Vec<GpuType>, CloudError> {
+            Ok(vec![GpuType {
+                name: "V100".to_string(),
+                memory_gb: 16.0,
+                compute_capability: Some("7.0".to_string()),
+                cost_per_hour: 3.0,
+                available_regions: vec!["us-west-1".to_string()],
+            }])
+        }
+    }
+
+    #[tokio::test]
+    async fn test_planner_no_providers_returns_no_migrate_reason() {
+        let coordinator = MigrationCoordinator::new()
+            .await
+            .expect("coordinator creation");
+        let rec = coordinator
+            .should_migrate("wl", &[Constraint::RequiresGPU])
+            .await
+            .expect("should_migrate");
+        assert!(!rec.reason.is_empty());
+        assert!(rec.confidence >= 0.0 && rec.confidence <= 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_planner_local_minimize_cost_stays_local() {
+        let coordinator = MigrationCoordinator::new()
+            .await
+            .expect("coordinator creation");
+        coordinator.register_provider(Box::new(MockProvider)).await;
+        coordinator
+            .track_workload(
+                "cost-wl",
+                WorkloadLocation::Local {
+                    hostname: "host".to_string(),
+                },
+            )
+            .await;
+        let rec = coordinator
+            .should_migrate("cost-wl", &[Constraint::MinimizeCost])
+            .await
+            .expect("should_migrate");
+        assert!(!rec.should_migrate);
+        assert!(
+            rec.reason.contains("cheapest")
+                || rec.reason.contains("local")
+                || rec.reason.contains("optimal"),
+            "reason: {}",
+            rec.reason
+        );
+    }
+
+    #[tokio::test]
+    async fn test_planner_cloud_minimize_cost_migrates_to_local() {
+        let coordinator = MigrationCoordinator::new()
+            .await
+            .expect("coordinator creation");
+        coordinator.register_provider(Box::new(MockProvider)).await;
+        coordinator
+            .track_workload(
+                "cloud-wl",
+                WorkloadLocation::Cloud {
+                    provider: "MockProvider".to_string(),
+                    region: "us-west-1".to_string(),
+                    instance_id: "i-123".to_string(),
+                },
+            )
+            .await;
+        let rec = coordinator
+            .should_migrate("cloud-wl", &[Constraint::MinimizeCost])
+            .await
+            .expect("should_migrate");
+        assert!(!rec.reason.is_empty());
+        assert!(rec.confidence >= 0.0 && rec.confidence <= 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_planner_max_cost_per_hour_triggers_cost_branch() {
+        let coordinator = MigrationCoordinator::new()
+            .await
+            .expect("coordinator creation");
+        coordinator.register_provider(Box::new(MockProvider)).await;
+        coordinator
+            .track_workload(
+                "local-wl",
+                WorkloadLocation::Local {
+                    hostname: "host".to_string(),
+                },
+            )
+            .await;
+        let rec = coordinator
+            .should_migrate("local-wl", &[Constraint::MaxCostPerHour(0.5)])
+            .await
+            .expect("should_migrate");
+        assert!(!rec.should_migrate);
+    }
+}

@@ -219,6 +219,31 @@ fn resolve_family_id_from_toadstool_family_id_env() {
 }
 
 #[test]
+fn resolve_family_id_from_toadstool_family_env() {
+    let old_fid = std::env::var("TOADSTOOL_FAMILY_ID").ok();
+    std::env::remove_var("TOADSTOOL_FAMILY_ID");
+    let old_fam = std::env::var("TOADSTOOL_FAMILY").ok();
+    std::env::set_var("TOADSTOOL_FAMILY", "toad-family");
+    let old_biome = std::env::var("BIOMEOS_FAMILY_ID").ok();
+    std::env::remove_var("BIOMEOS_FAMILY_ID");
+
+    let result = resolve_family_id(None);
+    assert_eq!(result, "toad-family");
+
+    if let Some(v) = old_fid {
+        std::env::set_var("TOADSTOOL_FAMILY_ID", v);
+    }
+    if let Some(v) = old_fam {
+        std::env::set_var("TOADSTOOL_FAMILY", v);
+    } else {
+        std::env::remove_var("TOADSTOOL_FAMILY");
+    }
+    if let Some(v) = old_biome {
+        std::env::set_var("BIOMEOS_FAMILY_ID", v);
+    }
+}
+
+#[test]
 fn resolve_family_id_from_biomeos_family_id_env() {
     let old_fid = std::env::var("TOADSTOOL_FAMILY_ID").ok();
     let old_fam = std::env::var("TOADSTOOL_FAMILY").ok();
