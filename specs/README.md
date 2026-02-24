@@ -1,6 +1,6 @@
 # ToadStool + BarraCuda Specifications
 
-## Current Status (February 18, 2026)
+## Current Status (February 23, 2026)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
@@ -16,7 +16,15 @@
 - **wetSpring validated**: 48/48 life science checks (Shannon, Simpson, Bray-Curtis)
 - Pure-GPU f64 math library with 27+ transcendental functions
 
-**Latest Updates (Feb 18):**
+**Latest Updates (Feb 23):**
+
+| Update | Impact |
+|--------|--------|
+| **DF64 core streaming** | Hybrid FP64 wired into production HMC — gauge force, plaquette, Wilson action run on FP32 cores (~10× throughput on consumer GPUs) |
+| **HYBRID_FP64_CORE_STREAMING spec** | Complete implementation guide for converting any f64 shader to hybrid DF64 precision across all hardware eras |
+| **Fp64Strategy auto-detection** | `Su3HmcForce`, `WilsonPlaquette`, `GpuWilsonAction` auto-select DF64 vs native f64 at construction |
+
+**Previous (Feb 18):**
 
 | Update | Impact |
 |--------|--------|
@@ -65,8 +73,9 @@
 
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
+| **[HYBRID_FP64_CORE_STREAMING.md](./HYBRID_FP64_CORE_STREAMING.md)** | DF64 core streaming — hybrid FP32/FP64 across all shaders and hardware eras | **Feb 23** | 🔄 Active |
 | **[BARRACUDA_PARITY_ROADMAP.md](./BARRACUDA_PARITY_ROADMAP.md)** | Performance evolution, benchmarks, validated results | **Feb 16** | ✅ Current |
-| **[FP64_GPU_EVOLUTION.md](./FP64_GPU_EVOLUTION.md)** | Pure-GPU f64 math, fossil functions, log_f64 bug fix | **Feb 18** | ✅ Current |
+| **[FP64_GPU_EVOLUTION.md](./FP64_GPU_EVOLUTION.md)** | Pure-GPU f64 math, fossil functions, log_f64 bug fix | **Feb 23** | ✅ Current |
 | **[CROSS_PLATFORM_WORKLOADS.md](./CROSS_PLATFORM_WORKLOADS.md)** | Cross-vendor workload strategy (GPU + NPU) | Feb 13 | ✅ Current |
 | **[CROSS_VENDOR_BENCHMARK_SPEC.md](./CROSS_VENDOR_BENCHMARK_SPEC.md)** | Benchmark methodology and validation | Feb 13 | ✅ Current |
 

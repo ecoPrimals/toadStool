@@ -1,7 +1,12 @@
 # FP64 GPU Evolution — Pure-GPU Transcendental Math
 
-**Date**: February 16, 2026  
+**Date**: February 23, 2026
 **Status**: Implementation complete, validated by hotSpring (195), wetSpring (48), airSpring (70) — 313+ checks
+
+> **See also**: [HYBRID_FP64_CORE_STREAMING.md](./HYBRID_FP64_CORE_STREAMING.md) — the DF64
+> (f32-pair) core-streaming spec for routing bulk f64 math through FP32 cores on consumer
+> GPUs. Delivers ~10× throughput for SU(3) matrix operations. Implementation guide for
+> converting any f64 shader to hybrid precision across all hardware eras.
 
 ---
 
@@ -507,4 +512,43 @@ NVIDIA advertises 1:64 FP64:FP32 ratio on consumer GPUs, but observed ratio is *
 
 ---
 
-*From the ToadStool evolution desk, February 16, 2026*
+---
+
+## DF64 Core Streaming (Feb 23, 2026) ✅
+
+### Background
+
+hotSpring discovered that consumer GPUs (RTX 3090, 4070) use only 1.6% of
+their silicon when running native f64 — 164 FP64 units active, 10,496 FP32
+cores idle. The `df64_core.wgsl` library and `bench_fp64_ratio.rs` benchmark
+proved 9.9× throughput via double-float f32-pair arithmetic.
+
+### What Was Wired
+
+The production HMC pipeline now auto-selects DF64 shaders on consumer GPUs:
+
+| Component | Native f64 Shader | DF64 Hybrid Shader | Auto-Select |
+|-----------|-------------------|-------------------|:-----------:|
+| Gauge force | `su3_hmc_force_f64.wgsl` | `su3_hmc_force_df64.wgsl` | ✅ |
+| Plaquette | `wilson_plaquette_f64.wgsl` | `wilson_plaquette_df64.wgsl` | ✅ |
+| Wilson action | `wilson_action_f64.wgsl` | `wilson_action_df64.wgsl` | ✅ |
+
+New libraries:
+- `su3_df64.wgsl` — DF64 complex arithmetic + SU(3) matrix algebra
+- `su3_df64_preamble()` — Rust shader composition function
+
+Selection mechanism: `GpuDriverProfile::fp64_strategy()` → `Fp64Strategy::Hybrid`
+on consumer GPUs, `Fp64Strategy::Native` on compute-class GPUs. Buffer layout
+unchanged — all existing infrastructure works without modification.
+
+### Impact
+
+~60% of HMC compute (gauge force + plaquette + action) now runs on FP32 cores
+on consumer GPUs. The remaining ~40% (CG solver, random momenta) stays on
+native f64 where it's required for numerical stability.
+
+**Full spec**: [HYBRID_FP64_CORE_STREAMING.md](./HYBRID_FP64_CORE_STREAMING.md)
+
+---
+
+*From the ToadStool evolution desk, February 23, 2026*

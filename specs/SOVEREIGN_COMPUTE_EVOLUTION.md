@@ -379,6 +379,7 @@ without changes. Both paths converge on the same hardware target.
 
 | Spec | Relationship |
 |------|-------------|
+| `HYBRID_FP64_CORE_STREAMING.md` | **Complementary** — ILP fills latency gaps, DF64 fills core utilization gaps. Both multiply throughput. |
 | `FP64_GPU_EVOLUTION.md` | Phase 0 complete — fossil functions, capability matrix |
 | `BARRACUDA_PARITY_ROADMAP.md` | Performance parity via WGSL ILP is the next tier |
 | `CROSS_VENDOR_BENCHMARK_SPEC.md` | `bench_f64_builtins` feeds `MeasuredLatencyModel` |
