@@ -191,11 +191,7 @@ impl ToadStoolConfig {
             ));
         }
 
-        if self.runtime.python.index_url.is_empty() {
-            return Err(ConfigError::Invalid(
-                "Python index URL cannot be empty".to_string(),
-            ));
-        }
+        // index_url may be empty (discovered at runtime); must be set before package installs
 
         if self.runtime.python.max_memory == 0 {
             return Err(ConfigError::Invalid(
@@ -576,11 +572,13 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_python_index_url() {
+    fn test_empty_python_index_url_allowed() {
         let mut config = valid_config();
         config.runtime.python.index_url = String::new();
-        let err = config.validate_runtime_config().unwrap_err();
-        assert!(err.to_string().contains("Python index URL"));
+        assert!(
+            config.validate_runtime_config().is_ok(),
+            "empty index_url allowed (discovered at runtime)"
+        );
     }
 
     #[test]
@@ -851,5 +849,29 @@ mod tests {
             ..valid_config()
         };
         assert!(config.validate_runtime_config().is_ok());
+    }
+
+    #[test]
+    fn test_port_range_start_equals_end_fails() {
+        let mut config = valid_config();
+        config.runtime.container.port_range = (9000, 9000);
+        let err = config.validate_runtime_config().unwrap_err();
+        assert!(err.to_string().contains("port range"));
+    }
+
+    #[test]
+    fn test_cpu_usage_zero_invalid() {
+        let mut config = valid_config();
+        config.runtime.resource_limits.max_cpu_usage = 0.0;
+        let err = config.validate_runtime_config().unwrap_err();
+        assert!(err.to_string().contains("Max CPU usage"));
+    }
+
+    #[test]
+    fn test_disk_usage_zero_invalid() {
+        let mut config = valid_config();
+        config.runtime.resource_limits.max_disk_usage = 0.0;
+        let err = config.validate_runtime_config().unwrap_err();
+        assert!(err.to_string().contains("Max disk usage"));
     }
 }

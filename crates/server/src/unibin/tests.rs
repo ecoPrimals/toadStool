@@ -3,7 +3,7 @@
 use super::execution::{
     is_platform_constraint_str, is_selinux_enforcing, write_tcp_discovery_file,
 };
-use super::format::{ensure_biomeos_directory, socket_filename_for_family};
+use super::format::{ensure_biomeos_directory, get_socket_path, socket_filename_for_family};
 use super::*;
 
 #[test]
@@ -178,4 +178,145 @@ fn exit_codes_values() {
     assert_eq!(exit_codes::CONFIG_ERROR, 2);
     assert_eq!(exit_codes::RUNTIME_ERROR, 3);
     assert_eq!(exit_codes::INTERRUPTED, 130);
+}
+
+// ── ShutdownSignal ────────────────────────────────────────────────────────
+
+#[test]
+fn shutdown_signal_sigint() {
+    assert_eq!(ShutdownSignal::Sigint, ShutdownSignal::Sigint);
+    assert!(matches!(ShutdownSignal::Sigint, ShutdownSignal::Sigint));
+}
+
+#[test]
+fn shutdown_signal_sigterm() {
+    assert_eq!(ShutdownSignal::Sigterm, ShutdownSignal::Sigterm);
+}
+
+#[test]
+fn shutdown_signal_error() {
+    let err = ShutdownSignal::Error("test error");
+    assert_eq!(err, ShutdownSignal::Error("test error"));
+}
+
+#[test]
+fn shutdown_signal_variants_differ() {
+    assert_ne!(ShutdownSignal::Sigint, ShutdownSignal::Sigterm);
+    assert_ne!(ShutdownSignal::Sigint, ShutdownSignal::Error("x"));
+    assert_ne!(ShutdownSignal::Sigterm, ShutdownSignal::Error("x"));
+}
+
+// ── get_socket_path (format) ──────────────────────────────────────────────
+
+#[test]
+fn get_socket_path_from_toadstool_socket() {
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let socket_path = temp_dir.path().join("custom.sock");
+    let path_str = socket_path.to_string_lossy().to_string();
+    let old = std::env::var("TOADSTOOL_SOCKET").ok();
+    std::env::set_var("TOADSTOOL_SOCKET", &path_str);
+
+    let result = get_socket_path("family1", "node1");
+    if let Some(v) = old {
+        std::env::set_var("TOADSTOOL_SOCKET", v);
+    } else {
+        std::env::remove_var("TOADSTOOL_SOCKET");
+    }
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), socket_path);
+}
+
+#[test]
+fn get_socket_path_from_primal_socket() {
+    let old = std::env::var("TOADSTOOL_SOCKET").ok();
+    std::env::remove_var("TOADSTOOL_SOCKET");
+    let primal_old = std::env::var("PRIMAL_SOCKET").ok();
+    std::env::set_var("PRIMAL_SOCKET", "/run/primal");
+    let biome_old = std::env::var("BIOMEOS_SOCKET_PATH").ok();
+    std::env::remove_var("BIOMEOS_SOCKET_PATH");
+
+    let result = get_socket_path("nat0", "node1");
+    if let Some(v) = old {
+        std::env::set_var("TOADSTOOL_SOCKET", v);
+    }
+    if let Some(v) = primal_old {
+        std::env::set_var("PRIMAL_SOCKET", v);
+    } else {
+        std::env::remove_var("PRIMAL_SOCKET");
+    }
+    if let Some(v) = biome_old {
+        std::env::set_var("BIOMEOS_SOCKET_PATH", v);
+    }
+
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        std::path::PathBuf::from("/run/primal-nat0")
+    );
+}
+
+#[test]
+fn get_socket_path_from_biomeos_socket_path() {
+    let old_toad = std::env::var("TOADSTOOL_SOCKET").ok();
+    let old_primal = std::env::var("PRIMAL_SOCKET").ok();
+    std::env::remove_var("TOADSTOOL_SOCKET");
+    std::env::remove_var("PRIMAL_SOCKET");
+    let biome_old = std::env::var("BIOMEOS_SOCKET_PATH").ok();
+    std::env::set_var("BIOMEOS_SOCKET_PATH", "/run/biomeos/toadstool.sock");
+
+    let result = get_socket_path("default", "node1");
+    if let Some(v) = old_toad {
+        std::env::set_var("TOADSTOOL_SOCKET", v);
+    }
+    if let Some(v) = old_primal {
+        std::env::set_var("PRIMAL_SOCKET", v);
+    }
+    if let Some(v) = biome_old {
+        std::env::set_var("BIOMEOS_SOCKET_PATH", v);
+    } else {
+        std::env::remove_var("BIOMEOS_SOCKET_PATH");
+    }
+
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        std::path::PathBuf::from("/run/biomeos/toadstool.sock")
+    );
+}
+
+#[test]
+fn get_socket_path_xdg_runtime_dir_fallback() {
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let xdg_path = temp_dir.path().to_string_lossy().to_string();
+    let old_toad = std::env::var("TOADSTOOL_SOCKET").ok();
+    let old_primal = std::env::var("PRIMAL_SOCKET").ok();
+    let old_biome = std::env::var("BIOMEOS_SOCKET_PATH").ok();
+    let old_xdg = std::env::var("XDG_RUNTIME_DIR").ok();
+    std::env::remove_var("TOADSTOOL_SOCKET");
+    std::env::remove_var("PRIMAL_SOCKET");
+    std::env::remove_var("BIOMEOS_SOCKET_PATH");
+    std::env::set_var("XDG_RUNTIME_DIR", &xdg_path);
+
+    let result = get_socket_path("default", "node1");
+    if let Some(v) = old_toad {
+        std::env::set_var("TOADSTOOL_SOCKET", v);
+    }
+    if let Some(v) = old_primal {
+        std::env::set_var("PRIMAL_SOCKET", v);
+    }
+    if let Some(v) = old_biome {
+        std::env::set_var("BIOMEOS_SOCKET_PATH", v);
+    }
+    if let Some(v) = old_xdg {
+        std::env::set_var("XDG_RUNTIME_DIR", v);
+    } else {
+        std::env::remove_var("XDG_RUNTIME_DIR");
+    }
+
+    assert!(result.is_ok());
+    let path = result.unwrap();
+    assert!(path.ends_with("biomeos/toadstool.sock"));
+    // biomeos dir is created by ensure_biomeos_directory; socket file doesn't exist until server binds
+    assert!(path.parent().unwrap().exists());
 }

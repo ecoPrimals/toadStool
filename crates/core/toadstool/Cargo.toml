@@ -70,6 +70,7 @@ pollster = { version = "0.3", optional = true }
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
+temp-env = "0.3"
 toadstool-testing = { path = "../../testing" }
 
 [features]

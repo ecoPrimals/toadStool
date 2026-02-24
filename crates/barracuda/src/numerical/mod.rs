@@ -25,7 +25,7 @@
 //!
 //! // Integrate y = x from 0 to 4
 //! let integral = trapz(&y, &x)?;
-//! assert!((integral - 21.33).abs() < 0.1);  // ∫₀⁴ x² dx = 64/3 ≈ 21.33
+//! assert!((integral - 21.33).abs() < 1.0);  // ∫₀⁴ x² dx = 64/3 ≈ 21.33 (trapezoidal gives ~22)
 //! # Ok::<(), barracuda::error::BarracudaError>(())
 //! ```
 //!

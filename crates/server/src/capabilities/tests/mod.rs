@@ -31,6 +31,7 @@ where
     out
 }
 
+mod capability_query;
 mod discovery_dir;
 mod edge_cases;
 mod peer_discovery;

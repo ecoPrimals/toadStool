@@ -730,4 +730,72 @@ mod tests {
         assert!(r.is_err());
         clear_toadstool_env();
     }
+
+    #[test]
+    fn apply_env_overrides_verbose_false_sets_info() {
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_VERBOSE", "false");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(c.logging.level, "info");
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_invalid_max_memory_returns_error() {
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_MAX_MEMORY", "not-a-number");
+        let mut c = ToadStoolConfig::default();
+        let r = c.apply_env_overrides();
+        assert!(r.is_err());
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_invalid_max_concurrent_returns_error() {
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_MAX_CONCURRENT_EXECUTIONS", "xyz");
+        let mut c = ToadStoolConfig::default();
+        let r = c.apply_env_overrides();
+        assert!(r.is_err());
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_request_timeout() {
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_REQUEST_TIMEOUT", "60");
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert_eq!(
+            c.network.connection.request_timeout,
+            std::time::Duration::from_secs(60)
+        );
+        clear_toadstool_env();
+    }
+
+    #[test]
+    fn apply_env_overrides_invalid_request_timeout_returns_error() {
+        let _g = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        clear_toadstool_env();
+        env::set_var("TOADSTOOL_REQUEST_TIMEOUT", "invalid");
+        let mut c = ToadStoolConfig::default();
+        let r = c.apply_env_overrides();
+        assert!(r.is_err());
+        clear_toadstool_env();
+    }
 }

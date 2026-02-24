@@ -104,46 +104,54 @@ impl ResourceQuota {
     }
 
     /// Set maximum VRAM bytes
+    #[must_use]
     pub fn with_max_vram_bytes(mut self, bytes: u64) -> Self {
         self.max_vram_bytes = Some(bytes);
         self
     }
 
     /// Set maximum VRAM in megabytes (convenience)
+    #[must_use]
     pub fn with_max_vram_mb(self, mb: u64) -> Self {
         self.with_max_vram_bytes(mb * 1024 * 1024)
     }
 
     /// Set maximum VRAM in gigabytes (convenience)
+    #[must_use]
     pub fn with_max_vram_gb(self, gb: u64) -> Self {
         self.with_max_vram_bytes(gb * 1024 * 1024 * 1024)
     }
 
     /// Set maximum number of buffers
+    #[must_use]
     pub fn with_max_buffers(mut self, count: usize) -> Self {
         self.max_buffers = Some(count);
         self
     }
 
     /// Set maximum single buffer size
+    #[must_use]
     pub fn with_max_single_buffer_bytes(mut self, bytes: u64) -> Self {
         self.max_single_buffer_bytes = Some(bytes);
         self
     }
 
     /// Set preferred GPU vendor
+    #[must_use]
     pub fn with_preferred_vendor(mut self, vendor: GpuVendor) -> Self {
         self.preferred_vendor = Some(vendor);
         self
     }
 
     /// Set minimum VRAM required
+    #[must_use]
     pub fn with_min_vram_bytes(mut self, bytes: u64) -> Self {
         self.min_vram_bytes = Some(bytes);
         self
     }
 
     /// Set minimum VRAM in gigabytes (convenience)
+    #[must_use]
     pub fn with_min_vram_gb(self, gb: u64) -> Self {
         self.with_min_vram_bytes(gb * 1024 * 1024 * 1024)
     }

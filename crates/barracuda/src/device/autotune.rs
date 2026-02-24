@@ -64,6 +64,7 @@ impl AutoTuner {
     }
 
     /// Create auto-tuner with persistent cache
+    #[must_use]
     pub fn with_cache(cache_path: PathBuf) -> Self {
         let mut tuner = Self::new();
         tuner.cache_path = Some(cache_path.clone());

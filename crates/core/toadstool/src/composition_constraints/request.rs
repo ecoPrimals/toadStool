@@ -49,16 +49,19 @@ impl CompositionRequest {
         }
     }
 
+    #[must_use]
     pub fn with_constraint(mut self, constraint: Constraint) -> Self {
         self.constraints.push(constraint);
         self
     }
 
+    #[must_use]
     pub fn with_priority(mut self, priority: ConstraintPriority) -> Self {
         self.priority = priority;
         self
     }
 
+    #[must_use]
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
@@ -229,5 +232,39 @@ mod tests {
         let (hard, soft) = request.constraint_count();
         assert_eq!(hard, 0);
         assert_eq!(soft, 0);
+    }
+
+    #[test]
+    fn test_composition_request_new_with_string() {
+        let request = CompositionRequest::new(String::from("dynamic_name"));
+        assert_eq!(request.name, "dynamic_name");
+    }
+
+    #[test]
+    fn test_constraint_priority_equality() {
+        assert_eq!(
+            ConstraintPriority::Background,
+            ConstraintPriority::Background
+        );
+        assert_ne!(ConstraintPriority::Background, ConstraintPriority::Critical);
+    }
+
+    #[test]
+    fn test_composition_request_with_multiple_metadata() {
+        let request = CompositionRequest::new("test")
+            .with_metadata("k1", "v1")
+            .with_metadata("k2", "v2")
+            .with_metadata("k3", "v3");
+        assert_eq!(request.metadata.len(), 3);
+        assert_eq!(request.metadata.get("k2"), Some(&"v2".to_string()));
+    }
+
+    #[test]
+    fn test_composition_request_serde_roundtrip_minimal() {
+        let request = CompositionRequest::new("minimal");
+        let json = serde_json::to_string(&request).unwrap();
+        let deserialized: CompositionRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(request.name, deserialized.name);
+        assert!(deserialized.constraints.is_empty());
     }
 }

@@ -333,30 +333,36 @@ impl DeviceRequirements {
         }
     }
 
+    #[must_use]
     pub fn with_min_vram_bytes(mut self, bytes: u64) -> Self {
         self.min_vram_bytes = Some(bytes);
         self
     }
 
+    #[must_use]
     pub fn with_min_vram_gb(self, gb: u64) -> Self {
         self.with_min_vram_bytes(gb * 1024 * 1024 * 1024)
     }
 
+    #[must_use]
     pub fn prefer_nvidia(mut self) -> Self {
         self.preferred_vendor = Some(GpuVendor::Nvidia);
         self
     }
 
+    #[must_use]
     pub fn prefer_amd(mut self) -> Self {
         self.preferred_vendor = Some(GpuVendor::Amd);
         self
     }
 
+    #[must_use]
     pub fn require_discrete(mut self) -> Self {
         self.require_discrete = true;
         self
     }
 
+    #[must_use]
     pub fn with_min_gflops(mut self, gflops: f64) -> Self {
         self.min_gflops = Some(gflops);
         self

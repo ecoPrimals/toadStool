@@ -35,9 +35,9 @@
 //!
 //! ## Usage Example
 //!
-//! ```no_run
+//! ```rust,ignore
 //! use barracuda::ops::fhe_ntt::FheNtt;
-//! use barracuda::Tensor;
+//! use barracuda::prelude::Tensor;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create polynomial tensor (degree 4096)

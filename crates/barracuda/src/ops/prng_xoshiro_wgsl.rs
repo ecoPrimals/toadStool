@@ -7,8 +7,8 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 //!
-//! f64 pipeline: seeds as array<u32> (1 per output, expanded to 4-stride),
-//! output as array<f64> in [0, 1).
+//! f64 pipeline: seeds as `array<u32>` (1 per output, expanded to 4-stride),
+//! output as `array<f64>` in [0, 1).
 
 use crate::device::DeviceCapabilities;
 use crate::error::Result;

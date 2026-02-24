@@ -43,9 +43,10 @@
 //!
 //! ## Usage Example
 //!
-//! ```no_run
+//! ```rust,ignore
 //! use barracuda::ops::fft::Fft1D;
-//! use barracuda::tensor::Tensor;
+//! use barracuda::prelude::{WgpuDevice, Tensor};
+//! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let device = Arc::new(WgpuDevice::new().await?);

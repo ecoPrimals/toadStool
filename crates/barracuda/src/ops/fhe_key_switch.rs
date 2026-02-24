@@ -41,7 +41,7 @@
 //!
 //! ## Usage Example
 //!
-//! ```no_run
+//! ```rust,ignore
 //! use barracuda::ops::fhe_key_switch::FheKeySwitch;
 //! use barracuda::Tensor;
 //!

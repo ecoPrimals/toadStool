@@ -78,7 +78,7 @@ impl PhyloTree {
 /// # Example
 ///
 /// ```rust,no_run
-/// # use barracuda::device::WgpuDevice;
+/// # use barracuda::prelude::WgpuDevice;
 /// # use barracuda::ops::bio::felsenstein::{FelsensteinGpu, PhyloTree};
 /// # pollster::block_on(async {
 /// let device = WgpuDevice::new().await.unwrap();

@@ -1,10 +1,19 @@
 //! Performance caching for crypto lock system
 
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
 use super::access_control::AccessResult;
 use super::permissions::ExternalTarget;
 
 /// Permission cache for performance optimization
-pub struct PermissionCache;
+///
+/// Thread-safe in-memory cache keyed by external target.
+/// Uses RwLock for read-heavy access patterns.
+pub struct PermissionCache {
+    inner: Arc<RwLock<HashMap<ExternalTarget, CachedResult>>>,
+}
 
 impl Default for PermissionCache {
     fn default() -> Self {
@@ -14,20 +23,34 @@ impl Default for PermissionCache {
 
 impl PermissionCache {
     #[must_use]
-    pub const fn new() -> Self {
-        Self
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(HashMap::new())),
+        }
     }
 
-    pub async fn get(&self, _target: &ExternalTarget) -> Option<CachedResult> {
-        None
+    /// Look up cached permission result for the target
+    pub async fn get(&self, target: &ExternalTarget) -> Option<CachedResult> {
+        let guard = self.inner.read().await;
+        guard.get(target).cloned()
     }
 
-    pub async fn cache_result(&self, _target: ExternalTarget, _result: AccessResult) {}
+    /// Store permission result for the target
+    pub async fn cache_result(&self, target: ExternalTarget, result: AccessResult) {
+        let cached = CachedResult { result };
+        let mut guard = self.inner.write().await;
+        guard.insert(target, cached);
+    }
 
-    pub async fn invalidate_for_target(&self, _target: &ExternalTarget) {}
+    /// Remove cached entry for the target (e.g. when permission is installed/updated)
+    pub async fn invalidate_for_target(&self, target: &ExternalTarget) {
+        let mut guard = self.inner.write().await;
+        guard.remove(target);
+    }
 }
 
 /// Cached permission result
+#[derive(Clone)]
 pub struct CachedResult {
     pub result: AccessResult,
 }

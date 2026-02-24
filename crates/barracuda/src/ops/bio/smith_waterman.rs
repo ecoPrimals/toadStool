@@ -80,7 +80,7 @@ pub struct SwResult {
 /// # Example
 ///
 /// ```rust,no_run
-/// # use barracuda::device::WgpuDevice;
+/// # use barracuda::prelude::WgpuDevice;
 /// # use barracuda::ops::bio::smith_waterman::{SmithWatermanGpu, SwConfig};
 /// # pollster::block_on(async {
 /// let device = WgpuDevice::new().await.unwrap();

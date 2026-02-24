@@ -34,6 +34,7 @@ impl OrchestrationClient {
     }
 
     /// Create with custom discovery engine
+    #[must_use]
     pub fn with_discovery(discovery: Arc<DiscoveryEngine>) -> Self {
         Self { discovery }
     }

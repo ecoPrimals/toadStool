@@ -82,7 +82,7 @@ pub struct GillespieResult {
 /// # Example
 ///
 /// ```rust,no_run
-/// # use barracuda::device::WgpuDevice;
+/// # use barracuda::prelude::WgpuDevice;
 /// # use barracuda::ops::bio::gillespie::{GillespieGpu, GillespieConfig};
 /// # pollster::block_on(async {
 /// let device = WgpuDevice::new().await.unwrap();

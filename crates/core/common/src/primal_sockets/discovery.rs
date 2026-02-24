@@ -106,3 +106,81 @@ fn capability_to_biomeos_fallback(
         None,
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_socket_discovery_error_discovery_failed() {
+        let err = SocketDiscoveryError::DiscoveryFailed("backend init failed".to_string());
+        let msg = err.to_string();
+        assert!(msg.contains("Discovery"));
+        assert!(msg.contains("backend init failed"));
+    }
+
+    #[test]
+    fn test_socket_discovery_error_no_socket_found() {
+        let err = SocketDiscoveryError::NoSocketFound("Capability::Crypto(Encryption)".to_string());
+        let msg = err.to_string();
+        assert!(msg.contains("socket") || msg.contains("Crypto"));
+    }
+
+    #[test]
+    fn test_socket_discovery_error_invalid_endpoint() {
+        let err = SocketDiscoveryError::InvalidEndpoint("bad path".to_string());
+        let msg = err.to_string();
+        assert!(msg.contains("Invalid"));
+        assert!(msg.contains("bad path"));
+    }
+
+    #[test]
+    fn test_socket_discovery_error_debug() {
+        let err = SocketDiscoveryError::NoSocketFound("test".to_string());
+        let _ = format!("{:?}", err);
+    }
+
+    #[test]
+    fn test_socket_discovery_error_is_std_error() {
+        use std::error::Error;
+        let err = SocketDiscoveryError::DiscoveryFailed("test".to_string());
+        assert!(err.source().is_none());
+    }
+
+    /// Test capability_to_biomeos fallback mapping via paths - Crypto -> beardog
+    #[test]
+    fn test_capability_fallback_path_crypto() {
+        use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
+        let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
+        let path = resolve_socket_path_for_service("beardog", &env_snapshot, None);
+        assert!(path.to_string_lossy().contains("beardog"));
+        assert!(path.to_string_lossy().ends_with("beardog.sock"));
+    }
+
+    /// Test capability_to_biomeos fallback mapping - Storage -> nestgate
+    #[test]
+    fn test_capability_fallback_path_storage() {
+        use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
+        let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
+        let path = resolve_socket_path_for_service("nestgate", &env_snapshot, None);
+        assert!(path.to_string_lossy().contains("nestgate"));
+    }
+
+    /// Test capability_to_biomeos fallback mapping - Coordination -> songbird
+    #[test]
+    fn test_capability_fallback_path_coordination() {
+        use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
+        let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
+        let path = resolve_socket_path_for_service("songbird", &env_snapshot, None);
+        assert!(path.to_string_lossy().contains("songbird"));
+    }
+
+    /// Test capability_to_biomeos fallback mapping - Compute -> toadstool
+    #[test]
+    fn test_capability_fallback_path_compute() {
+        use crate::primal_sockets::{resolve_socket_path_for_service, SocketPathEnv};
+        let env_snapshot = SocketPathEnv::with_runtime_dir("/tmp/test");
+        let path = resolve_socket_path_for_service("toadstool", &env_snapshot, None);
+        assert!(path.to_string_lossy().contains("toadstool"));
+    }
+}

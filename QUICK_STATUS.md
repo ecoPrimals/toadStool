@@ -1,6 +1,6 @@
 # ToadStool + BarraCuda -- Quick Status
 
-**Date**: February 23, 2026 (Session 49)
+**Date**: February 23, 2026 (Session 50)
 
 ---
 
@@ -10,21 +10,26 @@
 cargo build --workspace               CLEAN
 cargo fmt --all -- --check            0 diffs
 cargo clippy --workspace --all-targets  0 warnings
+cargo deny check licenses bans sources  all passing
 cargo doc --workspace --no-deps       0 warnings
 cargo test --workspace --lib          14,000+ tests / 0 failed
+  core 5 crates alone                 4,009 tests / 0 failed
 unsafe blocks                         95+ audited -- FFI only, all SAFETY documented
 production panics/unwraps             0 blind unwrap(); infallible expect() only
 production Box<dyn Error>             0 in core crates -- all typed errors
 production TODOs/FIXMEs               0
 hardcoded primal names in prod        0 -- capability-based discovery
+hardcoded ports in prod               0 -- all port 0 (OS-assigned/discovered)
+hardcoded cloud URLs in prod          0 -- sovereignty-compliant
 orphan WGSL shaders                   0 -- all 645+ wired to Rust
 CPU-only math in production            0 -- all math dispatches GPU shaders
-near-limit files                      0 -- all under 1000 lines
-line coverage (common)                87%
-line coverage (config)                89%
-line coverage (core)                  ~87%
-line coverage (server)                ~85%
-line coverage (distributed)           55%
+near-limit files                      0 -- all 2,614 .rs files under 1000 lines
+line coverage (5 core crates)         84.33% (73,637 lines instrumented)
+  config                              89.3%
+  server                              85.7%
+  common                              84.1%
+  toadstool                           83.3%
+  distributed                         81.6%
 ```
 
 ---
@@ -85,12 +90,12 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 
 | Metric | Value |
 |--------|-------|
-| Clippy warnings | 0 |
+| Clippy warnings (full workspace) | 0 |
 | Doc warnings | 0 |
-| Unit tests passing | 14,000+ |
-| WGSL shaders | 600+ (zero orphans) |
-| Line coverage (common/config) | 87% / 89% |
-| Line coverage (core/server) | ~87% / ~85% |
+| Unit tests (5 core crates) | 4,009 |
+| Unit tests (full workspace) | 14,000+ |
+| WGSL shaders | 645+ (zero orphans) |
+| Line coverage (5 core crates) | 84.33% |
 | Unsafe blocks | 95+ audited -- FFI only, all SAFETY documented |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors |
 | Production panics/unwraps | 0 blind unwrap(); infallible expect() only |
@@ -172,4 +177,4 @@ cargo llvm-cov --lib -p toadstool-common --json
 
 ---
 
-**Last Updated**: February 23, 2026 -- Session 49: Shader-first architecture complete. 645+ WGSL f64 shaders, zero CPU-only math, f64 transcendental polyfills, all quality gates green.
+**Last Updated**: February 23, 2026 -- Session 50: Deep audit remediation. Coverage 73% → 84.33% (+1,100 tests, 4,009 total), zero clippy across entire workspace, zero blind unwraps in production, cargo-deny licenses/bans/sources all passing, zero hardcoded ports/URLs, all 2,614 files <1000 lines, 12 large files refactored, mocks isolated to test, unsafe reduced with temp_env, mock server infrastructure for integration testing.

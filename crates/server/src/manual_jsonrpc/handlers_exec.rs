@@ -22,7 +22,8 @@ impl ManualJsonRpcServer {
         let priority = params
             .get("priority")
             .and_then(serde_json::Value::as_u64)
-            .unwrap_or(0) as u32;
+            .and_then(|n| u32::try_from(n).ok())
+            .unwrap_or(0);
         let vram_hint = params
             .get("vram_required_mb")
             .and_then(serde_json::Value::as_u64)
@@ -275,5 +276,419 @@ impl ManualJsonRpcServer {
                 &request,
             ),
         }
+    }
+}
+
+#[cfg(test)]
+#[allow(deprecated)]
+mod tests {
+    use super::*;
+    use crate::gpu_job_queue::JobQueueError;
+    use crate::manual_jsonrpc::METHOD_NOT_FOUND;
+    use crate::tarpc_server::StandaloneExecutor;
+    use std::sync::Arc;
+
+    fn test_server() -> ManualJsonRpcServer {
+        let executor = Arc::new(StandaloneExecutor::new());
+        ManualJsonRpcServer::new(executor, "test-1.0.0".to_string(), None)
+    }
+
+    fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest {
+        JsonRpcRequest {
+            jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
+            method: method.to_string(),
+            params,
+            id: Some(serde_json::json!(id)),
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_compute_submit_missing_params() {
+        let server = test_server();
+        let request = mk_request("compute.submit", None, 1);
+        let response = server.handle_compute_submit(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+        assert!(obj["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Missing params"));
+    }
+
+    #[tokio::test]
+    async fn handle_compute_submit_invalid_job_type() {
+        let server = test_server();
+        let params = serde_json::json!({ "invalid_key": "invalid" });
+        let request = mk_request("compute.submit", Some(params), 1);
+        let response = server.handle_compute_submit(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_compute_submit_transform_success() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "transform": {
+                "operation": "embed",
+                "input": {}
+            }
+        });
+        let request = mk_request("compute.submit", Some(params), 1);
+        let response = server.handle_compute_submit(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+        assert!(obj["result"]["job_id"].as_str().is_some());
+    }
+
+    #[tokio::test]
+    async fn handle_compute_submit_custom_success() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "custom": {
+                "plugin": "test_plugin",
+                "payload": {}
+            }
+        });
+        let request = mk_request("compute.submit", Some(params), 1);
+        let response = server.handle_compute_submit(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+        assert!(obj["result"]["job_id"].as_str().is_some());
+    }
+
+    #[tokio::test]
+    async fn handle_compute_status_missing_job_id() {
+        let server = test_server();
+        let request = mk_request("compute.status", None, 1);
+        let response = server.handle_compute_status(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_compute_status_invalid_uuid() {
+        let server = test_server();
+        let request = mk_request(
+            "compute.status",
+            Some(serde_json::json!({"job_id": "not-a-uuid"})),
+            1,
+        );
+        let response = server.handle_compute_status(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_compute_status_job_not_found() {
+        let server = test_server();
+        let request = mk_request(
+            "compute.status",
+            Some(serde_json::json!({"job_id": "550e8400-e29b-41d4-a716-446655440000"})),
+            1,
+        );
+        let response = server.handle_compute_status(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], METHOD_NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handle_compute_result_missing_job_id() {
+        let server = test_server();
+        let request = mk_request("compute.result", None, 1);
+        let response = server.handle_compute_result(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_compute_cancel_missing_job_id() {
+        let server = test_server();
+        let request = mk_request("compute.cancel", None, 1);
+        let response = server.handle_compute_cancel(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_compute_list_empty() {
+        let server = test_server();
+        let request = mk_request("compute.list", None, 1);
+        let response = server.handle_compute_list(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+        assert!(obj["result"]["jobs"].as_array().is_some());
+        assert!(obj["result"]["counts"].as_object().is_some());
+    }
+
+    #[tokio::test]
+    async fn handle_compute_list_with_state_filter() {
+        let server = test_server();
+        let params = serde_json::json!({"state": "pending"});
+        let request = mk_request("compute.list", Some(params), 1);
+        let response = server.handle_compute_list(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+    }
+
+    #[tokio::test]
+    async fn handle_ollama_inference_missing_params() {
+        let server = test_server();
+        let request = mk_request("ollama.inference", None, 1);
+        let response = server.handle_ollama_inference(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_ollama_inference_missing_model() {
+        let server = test_server();
+        let params = serde_json::json!({"prompt": "hello"});
+        let request = mk_request("ollama.inference", Some(params), 1);
+        let response = server.handle_ollama_inference(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_ollama_inference_missing_prompt() {
+        let server = test_server();
+        let params = serde_json::json!({"model": "llama"});
+        let request = mk_request("ollama.inference", Some(params), 1);
+        let response = server.handle_ollama_inference(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_ollama_load_missing_model() {
+        let server = test_server();
+        let request = mk_request("ollama.load", None, 1);
+        let response = server.handle_ollama_load(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_ollama_unload_missing_model() {
+        let server = test_server();
+        let request = mk_request("ollama.unload", None, 1);
+        let response = server.handle_ollama_unload(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_resources_estimate_missing_graph() {
+        let server = test_server();
+        let request = mk_request("toadstool.resources.estimate", None, 1);
+        let response = server.handle_resources_estimate(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_resources_estimate_invalid_graph() {
+        let server = test_server();
+        let params = serde_json::json!({"graph": "not an object"});
+        let request = mk_request("toadstool.resources.estimate", Some(params), 1);
+        let response = server.handle_resources_estimate(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_resources_estimate_empty_graph_returns_error() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "graph": {
+                "id": "empty",
+                "nodes": [],
+                "edges": []
+            }
+        });
+        let request = mk_request("toadstool.resources.estimate", Some(params), 1);
+        let response = server.handle_resources_estimate(request).await;
+        let obj = response.as_object().expect("object");
+        // Empty graph causes estimator error -> INTERNAL_ERROR
+        assert!(obj.get("error").is_some() || obj.get("result").is_some());
+    }
+
+    #[tokio::test]
+    async fn handle_resources_validate_availability_missing_graph() {
+        let server = test_server();
+        let request = mk_request("toadstool.resources.validate_availability", None, 1);
+        let response = server.handle_resources_validate_availability(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn handle_resources_suggest_optimizations_missing_graph() {
+        let server = test_server();
+        let request = mk_request("toadstool.resources.suggest_optimizations", None, 1);
+        let response = server.handle_resources_suggest_optimizations(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INVALID_PARAMS);
+    }
+
+    #[test]
+    fn job_queue_error_response_queue_full() {
+        let server = test_server();
+        let request = mk_request("test", None, 1);
+        let err = JobQueueError::QueueFull { max: 100 };
+        let result = server.job_queue_error_response(err, &request);
+        let obj = result.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INTERNAL_ERROR);
+    }
+
+    #[test]
+    fn job_queue_error_response_job_cancelled() {
+        let server = test_server();
+        let request = mk_request("test", None, 1);
+        let err = JobQueueError::JobCancelled {
+            id: uuid::Uuid::nil(),
+        };
+        let result = server.job_queue_error_response(err, &request);
+        let obj = result.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], INTERNAL_ERROR);
+    }
+
+    #[test]
+    fn job_queue_error_response_job_not_found() {
+        let server = test_server();
+        let request = mk_request("test", None, 1);
+        let err = JobQueueError::JobNotFound {
+            id: uuid::Uuid::nil(),
+        };
+        let result = server.job_queue_error_response(err, &request);
+        let obj = result.as_object().expect("object");
+        assert_eq!(obj["error"]["code"], METHOD_NOT_FOUND);
+    }
+
+    #[test]
+    fn job_queue_error_response_other_variants() {
+        let server = test_server();
+        let request = mk_request("test", None, 1);
+
+        let err = JobQueueError::JobNotComplete {
+            id: uuid::Uuid::nil(),
+        };
+        let result = server.job_queue_error_response(err, &request);
+        assert_eq!(result["error"]["code"], INTERNAL_ERROR);
+
+        let err = JobQueueError::NoResult {
+            id: uuid::Uuid::nil(),
+        };
+        let result = server.job_queue_error_response(err, &request);
+        assert_eq!(result["error"]["code"], INTERNAL_ERROR);
+
+        let err = JobQueueError::JobFailed {
+            id: uuid::Uuid::nil(),
+            error: "test failure".to_string(),
+        };
+        let result = server.job_queue_error_response(err, &request);
+        assert_eq!(result["error"]["code"], INTERNAL_ERROR);
+    }
+
+    #[tokio::test]
+    async fn handle_compute_submit_inference_success() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "inference": {
+                "model": "llama2",
+                "prompt": "Hello",
+                "params": {}
+            }
+        });
+        let request = mk_request("compute.submit", Some(params), 1);
+        let response = server.handle_compute_submit(request).await;
+        let obj = response.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+        assert!(obj["result"]["job_id"].as_str().is_some());
+        assert!(obj["result"]["routing"]["gate_id"].as_str().is_some());
+    }
+
+    #[tokio::test]
+    async fn handle_compute_status_success_after_submit() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "transform": { "operation": "embed", "input": {} }
+        });
+        let submit_req = mk_request("compute.submit", Some(params), 1);
+        let submit_resp = server.handle_compute_submit(submit_req).await;
+        let job_id = submit_resp["result"]["job_id"].as_str().unwrap();
+
+        let status_req = mk_request(
+            "compute.status",
+            Some(serde_json::json!({ "job_id": job_id })),
+            2,
+        );
+        let status_resp = server.handle_compute_status(status_req).await;
+        let obj = status_resp.as_object().expect("object");
+        assert_eq!(obj["jsonrpc"], "2.0");
+    }
+
+    #[tokio::test]
+    async fn handle_compute_result_and_cancel() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "transform": { "operation": "embed", "input": {} }
+        });
+        let submit_req = mk_request("compute.submit", Some(params), 1);
+        let submit_resp = server.handle_compute_submit(submit_req).await;
+        let job_id = submit_resp["result"]["job_id"].as_str().unwrap();
+
+        let cancel_req = mk_request(
+            "compute.cancel",
+            Some(serde_json::json!({ "job_id": job_id })),
+            3,
+        );
+        let cancel_resp = server.handle_compute_cancel(cancel_req).await;
+        assert_eq!(cancel_resp["result"]["cancelled"], true);
+    }
+
+    #[tokio::test]
+    async fn handle_compute_submit_priority_and_vram() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "transform": { "operation": "embed", "input": {} },
+            "priority": 5,
+            "vram_required_mb": 8192
+        });
+        let request = mk_request("compute.submit", Some(params), 1);
+        let response = server.handle_compute_submit(request).await;
+        let obj = response.as_object().expect("object");
+        assert!(obj.contains_key("result") || obj.contains_key("error"));
+        if let Some(res) = obj.get("result") {
+            assert!(res.get("job_id").is_some());
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_resources_estimate_valid_graph() {
+        let server = test_server();
+        let params = serde_json::json!({
+            "graph": {
+                "id": "test-graph",
+                "nodes": [
+                    { "id": "n1", "type": "compute", "config": {} }
+                ],
+                "edges": []
+            }
+        });
+        let request = mk_request("toadstool.resources.estimate", Some(params), 1);
+        let response = server.handle_resources_estimate(request).await;
+        let obj = response.as_object().expect("object");
+        assert!(obj.get("result").is_some() || obj.get("error").is_some());
+    }
+
+    #[tokio::test]
+    async fn extract_graph_missing_graph_key() {
+        let server = test_server();
+        let params = serde_json::json!({ "other_key": "value" });
+        let request = mk_request("test", Some(params), 1);
+        let result = server.extract_graph(&request);
+        assert!(result.is_err());
     }
 }

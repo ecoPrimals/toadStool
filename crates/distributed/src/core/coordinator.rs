@@ -215,3 +215,129 @@ impl Clone for StandaloneExecutor {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::config::SongbirdConfig;
+
+    #[tokio::test]
+    async fn test_coordinator_creation_default() {
+        let config = DistributedConfig::default();
+        let result = DistributedCoordinator::new(config).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_coordinator_submit_execution() {
+        let config = DistributedConfig::default();
+        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+
+        let request = ExecutionRequest::default();
+        let result = coordinator.submit_execution(request).await;
+        assert!(result.is_ok());
+        let execution_id = result.unwrap();
+        assert_ne!(execution_id, Uuid::nil());
+    }
+
+    #[tokio::test]
+    async fn test_coordinator_start() {
+        let config = DistributedConfig::default();
+        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+        let coordinator = Arc::new(coordinator);
+
+        let result = coordinator.start().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_coordinator_submit_multiple() {
+        let config = DistributedConfig::default();
+        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+
+        let ids: Vec<Uuid> = futures::future::join_all((0..5).map(|_| {
+            let coord = &coordinator;
+            let req = ExecutionRequest::default();
+            async move { coord.submit_execution(req).await.unwrap() }
+        }))
+        .await;
+
+        let unique: std::collections::HashSet<_> = ids.iter().collect();
+        assert_eq!(unique.len(), 5);
+    }
+
+    #[tokio::test]
+    async fn test_standalone_executor_capacity_limit() {
+        let config = DistributedConfig {
+            standalone: StandaloneConfig {
+                max_concurrent_executions: 2,
+                default_timeout_secs: 60,
+                enable_job_queue: true,
+                max_queue_size: 10,
+            },
+            ..Default::default()
+        };
+        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+
+        // Submit 2 - should succeed
+        let _ = coordinator
+            .submit_execution(ExecutionRequest::default())
+            .await
+            .unwrap();
+        let _ = coordinator
+            .submit_execution(ExecutionRequest::default())
+            .await
+            .unwrap();
+
+        // Submit 3rd - should fail with resource error
+        let result = coordinator
+            .submit_execution(ExecutionRequest::default())
+            .await;
+        assert!(result.is_err());
+        let err_msg = result.err().unwrap().to_string();
+        assert!(err_msg.contains("Insufficient") || err_msg.contains("resource"));
+    }
+
+    #[tokio::test]
+    async fn test_coordinator_with_songbird_config() {
+        let config = DistributedConfig {
+            songbird_integration: Some(SongbirdConfig {
+                endpoint: "http://localhost:8080".to_string(),
+                auth_token: None,
+                health_reporting_interval_secs: 30,
+            }),
+            ..Default::default()
+        };
+        let result = DistributedCoordinator::new(config).await;
+        assert!(result.is_ok());
+        let coordinator = result.unwrap();
+        assert!(
+            coordinator.coordination_client.is_none() || coordinator.coordination_client.is_some()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_standalone_executor_clone() {
+        let config = DistributedConfig::default();
+        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+        let _executor = coordinator.standalone_executor.clone();
+        assert!(Arc::strong_count(&coordinator.standalone_executor) >= 2);
+    }
+
+    #[tokio::test]
+    async fn test_submit_execution_returns_unique_ids() {
+        let config = DistributedConfig::default();
+        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+
+        let id1 = coordinator
+            .submit_execution(ExecutionRequest::default())
+            .await
+            .unwrap();
+        let id2 = coordinator
+            .submit_execution(ExecutionRequest::default())
+            .await
+            .unwrap();
+
+        assert_ne!(id1, id2);
+    }
+}

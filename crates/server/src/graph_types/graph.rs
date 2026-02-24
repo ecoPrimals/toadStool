@@ -25,6 +25,11 @@ enum Color {
 }
 
 impl ExecutionGraph {
+    /// Validate graph structure (nodes, edges, no cycles)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if graph is empty, has duplicate node IDs, invalid edges, self-edges, or cycles.
     pub fn validate(&self) -> Result<(), GraphValidationError> {
         if self.nodes.is_empty() {
             return Err(GraphValidationError::EmptyGraph);

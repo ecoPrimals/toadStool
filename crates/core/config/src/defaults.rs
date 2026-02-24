@@ -94,43 +94,25 @@ pub mod network {
     pub const LOCALHOST: &str = "127.0.0.1";
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // LEGACY FALLBACK PORT CONSTANTS
+    // PRIMAL DISCOVERY PORTS (OS-ASSIGNED)
     // ═══════════════════════════════════════════════════════════════════════════
     //
-    // These are last-resort fallback ports used when:
-    //   1. Environment variable is not set
-    //   2. Runtime discovery has not yet found the service
-    //
-    // Production code should ALWAYS prefer capability-based discovery:
-    //   let coordinators = discovery.discover_capability(&Capability::Coordination).await?;
-    //
-    // These constants exist solely to centralize magic numbers that were
-    // previously scattered as literals across config_utils.rs and env_config.rs.
+    // Port 0 means "not configured / discover at runtime". Primals discover each
+    // other via IPC capability resolution, not hardcoded ports. These exist only
+    // as sentinel values; actual endpoints come from RuntimeDiscovery.
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /// Legacy fallback port for coordination primals (e.g., Songbird)
-    ///
-    /// **Prefer**: `RuntimeDiscovery::discover_capability(&Capability::Coordination)`
-    #[deprecated(note = "Use capability-based discovery for coordination services")]
-    pub const COORDINATION_FALLBACK_PORT: u16 = 8080;
+    /// Coordination primals (e.g., Songbird). Port discovered via capability resolution at runtime.
+    pub const COORDINATION_FALLBACK_PORT: u16 = 0;
 
-    /// Legacy fallback port for security primals (e.g., BearDog)
-    ///
-    /// **Prefer**: `RuntimeDiscovery::discover_capability(&Capability::Crypto)`
-    #[deprecated(note = "Use capability-based discovery for security services")]
-    pub const SECURITY_FALLBACK_PORT: u16 = 8081;
+    /// Security primals (e.g., BearDog). Port discovered via capability resolution at runtime.
+    pub const SECURITY_FALLBACK_PORT: u16 = 0;
 
-    /// Legacy fallback port for storage primals (e.g., NestGate)
-    ///
-    /// **Prefer**: `RuntimeDiscovery::discover_capability(&Capability::Storage)`
-    #[deprecated(note = "Use capability-based discovery for storage services")]
-    pub const STORAGE_FALLBACK_PORT: u16 = 8082;
+    /// Storage primals (e.g., NestGate). Port discovered via capability resolution at runtime.
+    pub const STORAGE_FALLBACK_PORT: u16 = 0;
 
-    /// Legacy fallback port for AI primals (e.g., Squirrel)
-    ///
-    /// **Prefer**: `RuntimeDiscovery::discover_capability(&Capability::AI)`
-    #[deprecated(note = "Use capability-based discovery for AI services")]
-    pub const AI_FALLBACK_PORT: u16 = 8083;
+    /// AI primals (e.g., Squirrel). Port discovered via capability resolution at runtime.
+    pub const AI_FALLBACK_PORT: u16 = 0;
 
     /// Port for JSON-RPC event streaming (replaces deprecated `WebSocket`)
     /// ✅ Self-configuration
@@ -571,15 +553,15 @@ mod tests {
 
     #[test]
     fn test_network_ports_are_distinct() {
+        // Self-configuration ports only; primal ports (0) discovered at runtime
         let ports = [
-            8080, // Removed: network::SONGBIRD_PORT
-            8081, // Removed: network::BEARDOG_PORT
-            8082, // Removed: network::NESTGATE_PORT
-            8083, // Removed: network::SQUIRREL_PORT
             network::API_PORT,
+            network::METRICS_PORT,
+            network::DISCOVERY_PORT,
+            network::EVENTS_PORT,
+            network::FEDERATION_PORT,
         ];
 
-        // Verify all ports are unique
         for (i, &port1) in ports.iter().enumerate() {
             for &port2 in ports.iter().skip(i + 1) {
                 assert_ne!(port1, port2, "Ports must be distinct: {port1} vs {port2}");

@@ -249,4 +249,65 @@ mod tests {
         let id2 = generate_id();
         assert_ne!(id1, id2);
     }
+
+    #[test]
+    fn test_toadstool_id_new() {
+        let id = ToadStoolId::new();
+        assert_ne!(id.inner(), uuid::Uuid::nil());
+    }
+
+    #[test]
+    fn test_toadstool_id_default() {
+        let id = ToadStoolId::default();
+        assert_ne!(id.inner(), uuid::Uuid::nil());
+    }
+
+    #[test]
+    fn test_toadstool_id_equality() {
+        let id = ToadStoolId::new();
+        assert_eq!(id, id);
+    }
+
+    #[test]
+    fn test_toadstool_id_debug() {
+        let id = ToadStoolId::new();
+        let debug_str = format!("{:?}", id);
+        assert!(!debug_str.is_empty());
+    }
+
+    #[test]
+    fn test_timestamp_now() {
+        let ts = Timestamp::now();
+        assert!(ts.inner().elapsed().is_ok());
+    }
+
+    #[test]
+    fn test_timestamp_current() {
+        let ts = Timestamp::current();
+        assert!(ts.inner().elapsed().is_ok());
+    }
+
+    #[test]
+    fn test_timestamp_inner() {
+        let ts = Timestamp::now();
+        let inner = ts.inner();
+        assert_eq!(ts.inner(), inner);
+    }
+
+    #[test]
+    fn test_format_bytes_large() {
+        assert_eq!(format_bytes(1_073_741_824), "1.0 GB");
+        assert_eq!(format_bytes(1_099_511_627_776), "1.0 TB");
+    }
+
+    #[test]
+    fn test_string_extensions_truncate_boundary() {
+        assert_eq!("hi".truncate_to(2), "hi");
+        assert_eq!("hello".truncate_to(5), "hello");
+    }
+
+    #[test]
+    fn test_string_extensions_truncate_saturating() {
+        assert_eq!("x".truncate_to(0), "...");
+    }
 }

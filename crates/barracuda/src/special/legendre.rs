@@ -91,7 +91,7 @@ pub fn legendre(n: usize, x: f64) -> f64 {
 /// # Examples
 ///
 /// ```
-/// use barracuda::special::legendre_all;
+/// use barracuda::special::legendre::legendre_all;
 ///
 /// let p = legendre_all(3, 0.5);
 /// assert_eq!(p.len(), 4);

@@ -39,9 +39,9 @@
 //!
 //! ## Usage Example
 //!
-//! ```no_run
+//! ```rust,ignore
 //! use barracuda::ops::fhe_rotate::FheRotate;
-//! use barracuda::Tensor;
+//! use barracuda::prelude::Tensor;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // CKKS ciphertext (degree 4096)

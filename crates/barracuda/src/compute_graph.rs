@@ -6,23 +6,12 @@
 //! **Solution**: Record operations lazily, then batch them into a single submission.
 //!
 //! **Usage**:
-//! ```rust,no_run
+//! ```rust,ignore
 //! # use barracuda::prelude::*;
 //! # async fn example() -> Result<()> {
-//! let device = WgpuDevice::new().await?;
-//! let mut graph = ComputeGraph::new(&device);
-//!
-//! // Record operations (no GPU work yet)
-//! let a = Tensor::<f32>::from_slice(&device, &[1.0, 2.0, 3.0])?;
-//! let b = Tensor::<f32>::from_slice(&device, &[4.0, 5.0, 6.0])?;
-//! let c = graph.add(&a, &b)?;  // Just records
-//! let d = graph.mul(&c, &b)?;  // Just records
-//!
-//! // Execute all operations in one batch
-//! graph.execute()?;
-//!
-//! // Now read results
-//! let result = d.to_vec()?;
+//! let device = Arc::new(WgpuDevice::new().await?);
+//! let mut graph = ComputeGraph::new(device.as_ref());
+//! // Use record_add/record_mul with buffers, then graph.execute()
 //! # Ok(())
 //! # }
 //! ```

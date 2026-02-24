@@ -136,3 +136,187 @@ fn test_primal_type_config_toadstool_variant() {
     let primal = PrimalTypeConfig::ToadStool(toad_config);
     assert!(matches!(primal, PrimalTypeConfig::ToadStool(c) if c.enabled));
 }
+
+// ── DEEP tests: signature bypass, expiry, public key, token audience ───
+
+fn config_signature_validation_disabled() -> AuthManagerConfig {
+    AuthManagerConfig {
+        beardog_endpoint: "http://localhost:9090".to_string(),
+        token_refresh_interval: TOKEN_REFRESH_INTERVAL,
+        signature_validation: false,
+        timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
+        replay_protection: true,
+        signing_key_seed: None,
+        token_audience: vec![well_known::SONGBIRD.to_string()],
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_sign_token_request_disabled_returns_signature_disabled() {
+    let config = config_signature_validation_disabled();
+    let manager = AuthenticationManager::with_inmemory(config);
+    let token = manager.get_current_token().await.expect("token");
+    let sig = manager
+        .sign_token_request(&token, well_known::NESTGATE)
+        .await
+        .unwrap();
+    assert_eq!(sig, "signature_disabled");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_sign_verification_request_disabled_returns_signature_disabled() {
+    let config = config_signature_validation_disabled();
+    let manager = AuthenticationManager::with_inmemory(config);
+    let sig = manager
+        .sign_verification_request(well_known::SONGBIRD)
+        .await
+        .unwrap();
+    assert_eq!(sig, "signature_disabled");
+}
+
+#[test]
+fn test_get_public_key_invalid_base64_returns_none() {
+    let config = AuthManagerConfig {
+        beardog_endpoint: String::new(),
+        token_refresh_interval: TOKEN_REFRESH_INTERVAL,
+        signature_validation: true,
+        timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
+        replay_protection: true,
+        signing_key_seed: Some("!!!invalid-base64!!!".to_string()),
+        token_audience: vec![],
+    };
+    let manager = AuthenticationManager::with_inmemory(config);
+    assert!(manager.get_public_key().is_none());
+}
+
+#[test]
+fn test_get_public_key_wrong_length_returns_none() {
+    use base64::{engine::general_purpose, Engine as _};
+    let short = general_purpose::STANDARD.encode(&[1u8; 16]);
+    let config = AuthManagerConfig {
+        beardog_endpoint: String::new(),
+        token_refresh_interval: TOKEN_REFRESH_INTERVAL,
+        signature_validation: true,
+        timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
+        replay_protection: true,
+        signing_key_seed: Some(short),
+        token_audience: vec![],
+    };
+    let manager = AuthenticationManager::with_inmemory(config);
+    assert!(manager.get_public_key().is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_sign_payload_invalid_base64_returns_error() {
+    let config = AuthManagerConfig {
+        beardog_endpoint: String::new(),
+        token_refresh_interval: TOKEN_REFRESH_INTERVAL,
+        signature_validation: true,
+        timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
+        replay_protection: true,
+        signing_key_seed: Some("not-valid-base64!!!".to_string()),
+        token_audience: vec![],
+    };
+    let manager = AuthenticationManager::with_inmemory(config);
+    let token = manager.get_current_token().await.expect("token");
+    let result = manager
+        .sign_token_request(&token, well_known::SONGBIRD)
+        .await;
+    assert!(result.is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_sign_payload_wrong_key_length_returns_error() {
+    use base64::{engine::general_purpose, Engine as _};
+    let bad_len = general_purpose::STANDARD.encode(&[0u8; 64]);
+    let config = AuthManagerConfig {
+        beardog_endpoint: String::new(),
+        token_refresh_interval: TOKEN_REFRESH_INTERVAL,
+        signature_validation: true,
+        timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
+        replay_protection: true,
+        signing_key_seed: Some(bad_len),
+        token_audience: vec![],
+    };
+    let manager = AuthenticationManager::with_inmemory(config);
+    let token = manager.get_current_token().await.expect("token");
+    let result = manager
+        .sign_token_request(&token, well_known::SONGBIRD)
+        .await;
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_default_token_audience_from_env() {
+    temp_env::with_var("TOADSTOOL_AUTH_AUDIENCE", Some("primal-a,primal-b"), || {
+        let config = AuthManagerConfig::default();
+        assert_eq!(config.token_audience.len(), 2);
+        assert!(config.token_audience.contains(&"primal-a".to_string()));
+        assert!(config.token_audience.contains(&"primal-b".to_string()));
+    });
+}
+
+#[test]
+fn test_default_token_audience_self_and_platform_when_no_env() {
+    temp_env::with_var("TOADSTOOL_AUTH_AUDIENCE", None::<&str>, || {
+        let config = AuthManagerConfig::default();
+        assert!(!config.token_audience.is_empty());
+        assert!(config
+            .token_audience
+            .contains(&audience::PLATFORM_AUDIENCE.to_string()));
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_start_and_stop_token_refresh() {
+    let mut config = test_config();
+    config.token_refresh_interval = std::time::Duration::from_secs(3600);
+    let mut manager = AuthenticationManager::with_inmemory(config);
+    let start_result = manager.start_token_refresh().await;
+    assert!(start_result.is_ok());
+    manager.stop_token_refresh();
+}
+
+#[test]
+fn test_verification_result_construction() {
+    let result = VerificationResult {
+        total_primals: 2,
+        valid_tokens: 1,
+        results: HashMap::new(),
+        verification_time: chrono::Utc::now(),
+    };
+    assert_eq!(result.total_primals, 2);
+    assert_eq!(result.valid_tokens, 1);
+}
+
+#[test]
+fn test_propagation_result_construction() {
+    let result = PropagationResult {
+        total_primals: 3,
+        successful_propagations: 2,
+        results: HashMap::new(),
+        token_id: "tok-1".to_string(),
+        propagation_time: chrono::Utc::now(),
+    };
+    assert_eq!(result.total_primals, 3);
+    assert_eq!(result.successful_propagations, 2);
+}
+
+#[test]
+fn test_token_propagation_status_variants() {
+    use TokenPropagationStatus::*;
+    let _ = Success;
+    let _ = Failed("msg".into());
+    let _ = Pending;
+    let _ = Skipped("reason".into());
+}
+
+#[test]
+fn test_token_verification_status_variants() {
+    use super::tokens::TokenVerificationStatus;
+    let _ = TokenVerificationStatus::Valid;
+    let _ = TokenVerificationStatus::Expired;
+    let _ = TokenVerificationStatus::Invalid;
+    let _ = TokenVerificationStatus::NotFound;
+    let _ = TokenVerificationStatus::Error("e".into());
+}

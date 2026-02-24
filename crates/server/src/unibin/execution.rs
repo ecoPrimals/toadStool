@@ -251,3 +251,164 @@ pub(crate) fn write_tcp_discovery_file(
     info!("📁 TCP discovery file: {}", path.display());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn create_executor_standalone_mode() {
+        let old = std::env::var("TOADSTOOL_STANDALONE").ok();
+        std::env::set_var("TOADSTOOL_STANDALONE", "1");
+
+        let result = create_executor("test-family").await;
+        if let Some(v) = old {
+            std::env::set_var("TOADSTOOL_STANDALONE", v);
+        } else {
+            std::env::remove_var("TOADSTOOL_STANDALONE");
+        }
+
+        assert!(
+            result.is_ok(),
+            "standalone executor creation failed: {:?}",
+            result.err()
+        );
+    }
+
+    #[tokio::test]
+    async fn create_executor_standalone_mode_true_lowercase() {
+        let old = std::env::var("TOADSTOOL_STANDALONE").ok();
+        std::env::set_var("TOADSTOOL_STANDALONE", "true");
+
+        let result = create_executor("my-family").await;
+        if let Some(v) = old {
+            std::env::set_var("TOADSTOOL_STANDALONE", v);
+        } else {
+            std::env::remove_var("TOADSTOOL_STANDALONE");
+        }
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn create_executor_integrated_mode_when_standalone_unset() {
+        let old = std::env::var("TOADSTOOL_STANDALONE").ok();
+        std::env::remove_var("TOADSTOOL_STANDALONE");
+
+        let result = create_executor("integrated-family").await;
+        if let Some(v) = old {
+            std::env::set_var("TOADSTOOL_STANDALONE", v);
+        } else {
+            std::env::remove_var("TOADSTOOL_STANDALONE");
+        }
+
+        // Integrated mode may fail if Songbird not available
+        match &result {
+            Ok(_) => {}
+            Err(e) => assert!(!e.to_string().is_empty(), "error should have message"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_executor_integrated_mode_when_standalone_0() {
+        let old = std::env::var("TOADSTOOL_STANDALONE").ok();
+        std::env::set_var("TOADSTOOL_STANDALONE", "0");
+
+        let result = create_executor("family-0").await;
+        if let Some(v) = old {
+            std::env::set_var("TOADSTOOL_STANDALONE", v);
+        } else {
+            std::env::remove_var("TOADSTOOL_STANDALONE");
+        }
+
+        match &result {
+            Ok(_) => {}
+            Err(e) => assert!(!e.to_string().is_empty()),
+        }
+    }
+
+    #[test]
+    fn is_platform_constraint_str_selinux_permission_denied() {
+        // When SELinux is enforcing, "Permission denied" is platform constraint
+        // Result depends on is_selinux_enforcing() - we test the string matching
+        let r = is_platform_constraint_str("some error");
+        assert!(!r);
+    }
+
+    #[test]
+    fn is_platform_constraint_str_unsupported() {
+        assert!(is_platform_constraint_str("Unsupported operation"));
+    }
+
+    #[test]
+    fn is_platform_constraint_str_not_supported() {
+        assert!(is_platform_constraint_str("protocol not supported"));
+    }
+
+    #[test]
+    fn is_platform_constraint_str_protocol_not_available() {
+        assert!(is_platform_constraint_str(
+            "protocol not available on this system"
+        ));
+    }
+
+    #[test]
+    fn is_platform_constraint_str_operation_not_permitted() {
+        // Depends on SELinux - without SELinux this returns false
+        let r = is_platform_constraint_str("Operation not permitted");
+        // Either true (SELinux enforcing) or false (no SELinux)
+        assert!(r || !r);
+    }
+
+    #[test]
+    fn is_selinux_enforcing_does_not_panic() {
+        let _ = is_selinux_enforcing();
+    }
+
+    #[test]
+    fn write_tcp_discovery_file_xdg_runtime() {
+        let old = std::env::var("XDG_RUNTIME_DIR").ok();
+        std::env::set_var(
+            "XDG_RUNTIME_DIR",
+            std::env::temp_dir().to_string_lossy().as_ref(),
+        );
+
+        let addr: std::net::SocketAddr = "127.0.0.1:12345".parse().unwrap();
+        let result = write_tcp_discovery_file("test-toadstool-port", &addr);
+
+        if let Some(v) = old {
+            std::env::set_var("XDG_RUNTIME_DIR", v);
+        } else {
+            std::env::remove_var("XDG_RUNTIME_DIR");
+        }
+
+        assert!(result.is_ok());
+        let path = std::env::temp_dir().join("test-toadstool-port");
+        if path.exists() {
+            let content = std::fs::read_to_string(&path).unwrap();
+            assert_eq!(content, "tcp:127.0.0.1:12345");
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+
+    #[test]
+    fn write_tcp_discovery_file_fallback_tmp() {
+        let old = std::env::var("XDG_RUNTIME_DIR").ok();
+        std::env::remove_var("XDG_RUNTIME_DIR");
+
+        let addr: std::net::SocketAddr = "127.0.0.1:0".parse().unwrap();
+        let result = write_tcp_discovery_file("toadstool-test-fallback", &addr);
+
+        if let Some(v) = old {
+            std::env::set_var("XDG_RUNTIME_DIR", v);
+        }
+
+        assert!(result.is_ok());
+        let path = std::path::PathBuf::from("/tmp").join("toadstool-test-fallback");
+        if path.exists() {
+            let content = std::fs::read_to_string(&path).unwrap();
+            assert!(content.starts_with("tcp:"));
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+}

@@ -76,6 +76,7 @@ impl NelderMeadGpu {
     }
 
     /// Set Nelder-Mead parameters
+    #[must_use]
     pub fn with_params(mut self, alpha: f64, gamma: f64, rho: f64, sigma: f64) -> Self {
         self.alpha = alpha;
         self.gamma = gamma;

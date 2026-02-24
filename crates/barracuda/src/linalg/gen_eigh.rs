@@ -156,20 +156,22 @@ impl GenEighDecomposition {
 ///
 /// # Example
 ///
-/// ```
+/// ```no_run
 /// use barracuda::linalg::gen_eigh_f64;
+/// use barracuda::prelude::WgpuDevice;
+/// use std::sync::Arc;
 ///
-/// // Simple 2×2 example: A = [[2, 1], [1, 2]], B = [[1, 0], [0, 1]] (identity)
+/// # async fn example() -> barracuda::error::Result<()> {
+/// let device = Arc::new(WgpuDevice::new().await?);
 /// let a = vec![2.0, 1.0, 1.0, 2.0];
 /// let b = vec![1.0, 0.0, 0.0, 1.0];
 ///
-/// let result = gen_eigh_f64(&a, &b, 2)?;
+/// let result = gen_eigh_f64(device, &a, &b, 2)?;
 ///
-/// // With B = I, this reduces to standard eigenvalue problem
-/// // Eigenvalues should be 1 and 3
 /// assert!((result.eigenvalues[0] - 1.0).abs() < 1e-10);
 /// assert!((result.eigenvalues[1] - 3.0).abs() < 1e-10);
-/// # Ok::<(), barracuda::error::BarracudaError>(())
+/// # Ok(())
+/// # }
 /// ```
 pub fn gen_eigh_f64(
     device: Arc<WgpuDevice>,

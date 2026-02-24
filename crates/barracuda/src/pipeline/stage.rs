@@ -85,6 +85,7 @@ impl StageConfig {
     }
 
     /// Set target device
+    #[must_use]
     pub fn with_target(mut self, target: Target) -> Self {
         self.target = target;
         self
@@ -97,12 +98,14 @@ impl StageConfig {
     }
 
     /// Set timeout
+    #[must_use]
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
     /// Set cost estimate
+    #[must_use]
     pub fn with_cost(mut self, cost: f64) -> Self {
         self.cost_estimate = cost;
         self

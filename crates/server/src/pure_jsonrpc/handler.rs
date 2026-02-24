@@ -299,7 +299,8 @@ impl JsonRpcHandler {
         let priority = params
             .get("priority")
             .and_then(serde_json::Value::as_u64)
-            .unwrap_or(0) as u32;
+            .and_then(|n| u32::try_from(n).ok())
+            .unwrap_or(0);
 
         match self.job_queue.submit(job_type, priority).await {
             Ok(job_id) => Ok(serde_json::json!({"job_id": job_id})),

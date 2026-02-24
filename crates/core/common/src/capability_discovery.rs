@@ -71,6 +71,10 @@ impl CapabilityDiscovery {
     /// Automatically detects available discovery methods:
     /// - mDNS/DNS-SD via Songbird (if on local network)
     /// - Environment variables (always available)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if discovery backend cannot be initialized.
     pub fn new() -> Result<Self, DiscoveryError> {
         Self::with_config(&DiscoveryConfig::default())
     }
@@ -94,6 +98,10 @@ impl CapabilityDiscovery {
     /// Find services by capability
     ///
     /// Returns ALL services providing the requested capability.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if timeout expires, discovery fails, or no services found (when localhost fallback disabled).
     /// Caller can choose based on additional criteria (latency, trust level, etc.)
     ///
     /// ## Multi-Provider Example
@@ -143,6 +151,10 @@ impl CapabilityDiscovery {
     }
 
     /// Find the "best" service for a capability
+    ///
+    /// # Errors
+    ///
+    /// Returns error if [`find_by_capability`](Self::find_by_capability) fails or no services available.
     ///
     /// Selection criteria (in order):
     /// 1. Healthy services preferred
@@ -374,21 +386,18 @@ mod tests {
 
     #[test]
     fn test_discovery_config_production_env() {
-        // Test production environment disables fallback
-        // SAFETY: Sync test, distinct env var, restored immediately. Rust 2024 forward-compat.
-        unsafe { std::env::set_var("TOADSTOOL_ENV", "production") };
-        let config = DiscoveryConfig::default();
-        assert!(!config.enable_localhost_fallback);
-        unsafe { std::env::remove_var("TOADSTOOL_ENV") };
+        temp_env::with_var("TOADSTOOL_ENV", Some("production"), || {
+            let config = DiscoveryConfig::default();
+            assert!(!config.enable_localhost_fallback);
+        });
     }
 
     #[test]
     fn test_discovery_config_development_env() {
-        // Test development environment enables fallback
-        // SAFETY: Sync test, distinct env var. Rust 2024 forward-compat.
-        unsafe { std::env::remove_var("TOADSTOOL_ENV") };
-        let config = DiscoveryConfig::default();
-        assert!(config.enable_localhost_fallback);
+        temp_env::with_var_unset("TOADSTOOL_ENV", || {
+            let config = DiscoveryConfig::default();
+            assert!(config.enable_localhost_fallback);
+        });
     }
 
     #[test]
@@ -533,5 +542,94 @@ mod tests {
         let m = DiscoveryMethod::Mdns;
         let m2 = m;
         assert!(matches!(m2, DiscoveryMethod::Mdns));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Additional tests for capability discovery logic and error paths
+    // ═══════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn test_find_best_empty_services_returns_error() {
+        use crate::primal_identity::{Capability, CryptoCapability};
+
+        let result = std::thread::spawn(|| {
+            let config = DiscoveryConfig {
+                timeout: Duration::from_millis(50),
+                enable_localhost_fallback: false,
+                methods: vec![DiscoveryMethod::Environment],
+            };
+            let discovery = CapabilityDiscovery::with_config(&config).expect("discovery");
+            let runtime = tokio::runtime::Runtime::new().expect("runtime");
+            runtime.block_on(discovery.find_best(Capability::Crypto(CryptoCapability::Encryption)))
+        })
+        .join()
+        .expect("thread ok");
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(
+                err,
+                DiscoveryError::NoServicesFound(_)
+                    | DiscoveryError::Timeout
+                    | DiscoveryError::DiscoveryFailed(_)
+            ),
+            "unexpected error: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_discovery_config_default_methods() {
+        let config = DiscoveryConfig::default();
+        assert_eq!(config.methods.len(), 1);
+        assert!(matches!(config.methods[0], DiscoveryMethod::Auto));
+    }
+
+    #[test]
+    fn test_discovery_error_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<DiscoveryError>();
+    }
+
+    #[test]
+    fn test_discovery_config_debug() {
+        let config = DiscoveryConfig::default();
+        let debug_str = format!("{:?}", config);
+        assert!(debug_str.contains("DiscoveryConfig"));
+    }
+
+    #[test]
+    fn test_discovery_method_debug() {
+        let m = DiscoveryMethod::Auto;
+        let debug_str = format!("{:?}", m);
+        assert!(!debug_str.is_empty());
+    }
+
+    #[test]
+    fn test_capability_discovery_new_creates_valid_instance() {
+        let discovery = CapabilityDiscovery::new().expect("discovery");
+        assert!(std::mem::size_of_val(&discovery) > 0);
+    }
+
+    #[test]
+    fn test_capability_discovery_with_config_succeeds() {
+        let config = DiscoveryConfig {
+            timeout: Duration::from_secs(30),
+            enable_localhost_fallback: true,
+            methods: vec![DiscoveryMethod::Auto],
+        };
+        let discovery = CapabilityDiscovery::with_config(&config);
+        assert!(discovery.is_ok());
+    }
+
+    #[test]
+    fn test_try_localhost_fallback_returns_empty() {
+        use crate::primal_identity::{Capability, CryptoCapability};
+
+        let config = DiscoveryConfig::default();
+        let discovery = CapabilityDiscovery::with_config(&config).expect("discovery");
+        let fallback =
+            discovery.try_localhost_fallback(&Capability::Crypto(CryptoCapability::Encryption));
+        assert!(fallback.is_empty());
     }
 }

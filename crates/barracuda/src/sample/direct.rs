@@ -77,36 +77,42 @@ impl DirectSamplerConfig {
     }
 
     /// Set number of optimization rounds.
+    #[must_use]
     pub fn with_rounds(mut self, n: usize) -> Self {
         self.n_rounds = n;
         self
     }
 
     /// Set number of NM solvers per round.
+    #[must_use]
     pub fn with_solvers(mut self, n: usize) -> Self {
         self.n_solvers = n;
         self
     }
 
     /// Set max evaluations per solver.
+    #[must_use]
     pub fn with_eval_budget(mut self, n: usize) -> Self {
         self.max_eval_per_solver = n;
         self
     }
 
     /// Set NM convergence tolerance.
+    #[must_use]
     pub fn with_tolerance(mut self, tol: f64) -> Self {
         self.tol = tol;
         self
     }
 
     /// Set early stopping patience.
+    #[must_use]
     pub fn with_patience(mut self, p: usize) -> Self {
         self.patience = p;
         self
     }
 
     /// Set warm-start seeds from previous optimization.
+    #[must_use]
     pub fn with_warm_start(mut self, seeds: Vec<Vec<f64>>) -> Self {
         self.warm_start_seeds = seeds;
         self

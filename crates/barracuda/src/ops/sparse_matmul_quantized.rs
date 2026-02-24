@@ -21,7 +21,7 @@
 //!
 //! ```no_run
 //! use barracuda::sparse_matmul_quantized;
-//! use barracuda::WgpuDevice;
+//! use barracuda::prelude::WgpuDevice;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let device = WgpuDevice::new().await?;
@@ -33,8 +33,8 @@
 //! let dense_vec = vec![100, -50];     // int8 input
 //!
 //! let result = sparse_matmul_quantized(
-//!     &device.device,
-//!     &device.queue,
+//!     device.device(),
+//!     device.queue(),
 //!     &values,
 //!     &rows,
 //!     &cols,

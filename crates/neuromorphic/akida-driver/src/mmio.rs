@@ -160,7 +160,10 @@ impl MappedRegion {
         // VFIO_DEVICE_GET_REGION_INFO = _IOWR(';', 100 + 8, ...)
         const VFIO_DEVICE_GET_REGION_INFO: libc::c_ulong = 0xc018_3b68;
 
-        // SAFETY: VFIO ioctl with valid structure
+        // SAFETY: VFIO ioctl is necessary for hardware access. Invariants: (1) device_fd is a valid
+        // file descriptor from an open VFIO device; (2) VfioRegionInfo is properly initialized
+        // with argsz = size_of and index = bar; (3) &raw mut passes mutable reference for
+        // _IOWR (read-write) ioctl; (4) region_info layout matches kernel expectation.
         let ret = unsafe {
             libc::ioctl(
                 device_fd.as_raw_fd(),
@@ -185,11 +188,10 @@ impl MappedRegion {
             region_info.flags
         );
 
-        // Map the region using rustix (pure Rust mmap wrapper)
-        // SAFETY: We have exclusive access via VFIO device fd
-        // - device_fd is valid (passed from VFIO device open)
-        // - region_info contains valid size/offset from VFIO ioctl
-        // - rustix returns Result, so no MAP_FAILED check needed
+        // Map the region using rustix (pure Rust mmap wrapper).
+        // SAFETY: (1) device_fd valid from VFIO device open; (2) region_info.size and
+        // region_info.offset from successful VFIO_DEVICE_GET_REGION_INFO; (3) memory mapped
+        // is exclusive to this process via VFIO/IOMMU; (4) ptr valid for size bytes or null on error.
         let ptr = unsafe {
             mmap(
                 std::ptr::null_mut(),
@@ -228,7 +230,8 @@ impl MappedRegion {
     /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn read32(&self, offset: usize) -> u32 {
         assert!(offset + 4 <= self.size, "Register offset out of bounds");
-        // SAFETY: Offset is within bounds, ptr is valid
+        // SAFETY: (1) ptr from mmap in map(), valid for self.size; (2) offset+4 <= size;
+        // (3) read_volatile required for MMIO (hardware can change value); (4) no uninit reads.
         unsafe { std::ptr::read_volatile(self.ptr.add(offset).cast::<u32>()) }
     }
 
@@ -239,7 +242,7 @@ impl MappedRegion {
     /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn write32(&self, offset: usize, value: u32) {
         assert!(offset + 4 <= self.size, "Register offset out of bounds");
-        // SAFETY: Offset is within bounds, ptr is valid
+        // SAFETY: (1) ptr from mmap; (2) offset+4 <= size; (3) write_volatile for MMIO side effects.
         unsafe {
             std::ptr::write_volatile(self.ptr.add(offset).cast::<u32>(), value);
         }
@@ -252,7 +255,7 @@ impl MappedRegion {
     /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn read64(&self, offset: usize) -> u64 {
         assert!(offset + 8 <= self.size, "Register offset out of bounds");
-        // SAFETY: Offset is within bounds, ptr is valid
+        // SAFETY: (1) ptr from mmap; (2) offset+8 <= size; (3) read_volatile for MMIO; (4) aligned.
         unsafe { std::ptr::read_volatile(self.ptr.add(offset).cast::<u64>()) }
     }
 
@@ -263,7 +266,7 @@ impl MappedRegion {
     /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn write64(&self, offset: usize, value: u64) {
         assert!(offset + 8 <= self.size, "Register offset out of bounds");
-        // SAFETY: Offset is within bounds, ptr is valid
+        // SAFETY: (1) ptr from mmap; (2) offset+8 <= size; (3) write_volatile for MMIO.
         unsafe {
             std::ptr::write_volatile(self.ptr.add(offset).cast::<u64>(), value);
         }
@@ -282,8 +285,8 @@ impl MappedRegion {
 
 impl Drop for MappedRegion {
     fn drop(&mut self) {
-        // SAFETY: ptr was created by mmap with this size
-        // Using rustix munmap (pure Rust, better error handling)
+        // SAFETY: (1) ptr from mmap() in map() with self.size; (2) munmap is safe with
+        // ptr+size that was previously mapped; (3) Drop runs at most once; (4) no refs after drop.
         unsafe {
             // Ignore error in Drop (can't propagate, would need to log)
             let _ = munmap(self.ptr.cast(), self.size);

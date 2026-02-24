@@ -230,7 +230,7 @@ pedantic = { level = "warn", priority = -1 }
 missing_errors_doc = "allow"       # Too verbose for every Result
 missing_panics_doc = "allow"       # Most panics are obvious
 module_name_repetitions = "allow"  # Common in domain modeling
-must_use_candidate = "allow"       # Too noisy for builders
+must_use_candidate = "warn"        # Catch builder methods without #[must_use]
 doc_markdown = "allow"             # Too strict about backticks
 wildcard_imports = "allow"         # Useful for test prelude
 uninlined_format_args = "allow"    # Sometimes clearer explicit

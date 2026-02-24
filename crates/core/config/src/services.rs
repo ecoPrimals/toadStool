@@ -933,4 +933,200 @@ port = 7777
             std::env::remove_var(coord_key);
         }
     }
+
+    #[test]
+    fn test_service_registry_from_toml_file_invalid_toml() {
+        use std::io::Write;
+        let temp = std::env::temp_dir().join("toadstool_services_invalid_test.toml");
+        let mut f = std::fs::File::create(&temp).unwrap();
+        f.write_all(b"invalid toml [[[ ").unwrap();
+        drop(f);
+
+        let result = ServiceRegistry::from_toml_file(&temp);
+        std::fs::remove_file(&temp).ok();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, ServiceError::Parse(_)),
+            "Expected Parse error, got {:?}",
+            err
+        );
+    }
+
+    #[test]
+    fn test_service_error_io_from_std_io_error() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let service_err: ServiceError = io_err.into();
+        assert!(format!("{service_err}").contains("file not found"));
+    }
+
+    #[test]
+    fn test_service_registry_toml_deserialize_empty_services() {
+        use std::io::Write;
+        let temp = std::env::temp_dir().join("toadstool_services_empty_test.toml");
+        let content = r#"services = {}"#;
+        let mut f = std::fs::File::create(&temp).unwrap();
+        f.write_all(content.as_bytes()).unwrap();
+        drop(f);
+
+        let result = ServiceRegistry::from_toml_file(&temp);
+        std::fs::remove_file(&temp).ok();
+        let registry = result.unwrap();
+        assert!(registry.is_empty());
+        assert_eq!(registry.len(), 0);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Additional tests for uncovered paths
+    // ═══════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn test_service_registry_from_env_invalid_json_ignored() {
+        let svc_key = "TOADSTOOL_SERVICES";
+        let coord_key = "TOADSTOOL_COORDINATOR";
+        let storage_key = "TOADSTOOL_STORAGE";
+        let orig_svc = std::env::var(svc_key).ok();
+        let orig_coord = std::env::var(coord_key).ok();
+        let orig_storage = std::env::var(storage_key).ok();
+
+        std::env::remove_var(coord_key);
+        std::env::remove_var(storage_key);
+        std::env::set_var(svc_key, r#"{ invalid json }"#);
+
+        let registry = ServiceRegistry::from_env();
+        assert!(registry.is_empty());
+
+        if let Some(v) = orig_svc {
+            std::env::set_var(svc_key, v);
+        } else {
+            std::env::remove_var(svc_key);
+        }
+        if let Some(v) = orig_coord {
+            std::env::set_var(coord_key, v);
+        }
+        if let Some(v) = orig_storage {
+            std::env::set_var(storage_key, v);
+        }
+    }
+
+    #[test]
+    fn test_service_registry_find_by_type_multiple_of_same_type() {
+        let mut registry = ServiceRegistry::new();
+        registry
+            .register(ServiceEndpoint::new(
+                "coord1",
+                ServiceType::Coordinator,
+                "http://localhost:7777",
+            ))
+            .unwrap();
+        registry
+            .register(ServiceEndpoint::new(
+                "coord2",
+                ServiceType::Coordinator,
+                "http://localhost:7778",
+            ))
+            .unwrap();
+
+        let coords = registry.find_by_type(&ServiceType::Coordinator);
+        assert_eq!(coords.len(), 2);
+        let names: Vec<&str> = coords.iter().map(|s| s.name.as_str()).collect();
+        assert!(names.contains(&"coord1"));
+        assert!(names.contains(&"coord2"));
+    }
+
+    #[test]
+    fn test_service_endpoint_with_port_const() {
+        let ep = ServiceEndpoint::new("svc", ServiceType::Compute, "http://localhost:9000")
+            .with_port(9000);
+        assert_eq!(ep.port, Some(9000));
+    }
+
+    #[test]
+    fn test_service_registry_register_or_update_preserves_order() {
+        let mut registry = ServiceRegistry::new();
+        registry.register_or_update(ServiceEndpoint::new(
+            "a",
+            ServiceType::Compute,
+            "http://a:1",
+        ));
+        registry.register_or_update(ServiceEndpoint::new(
+            "b",
+            ServiceType::Compute,
+            "http://b:2",
+        ));
+
+        let compute = registry.find_by_type(&ServiceType::Compute);
+        assert_eq!(compute.len(), 2);
+    }
+
+    #[test]
+    fn test_service_type_custom_serialization() {
+        let custom = ServiceType::Custom("my-service".to_string());
+        let json = serde_json::to_string(&custom).unwrap();
+        let parsed: ServiceType = serde_json::from_str(&json).unwrap();
+        match parsed {
+            ServiceType::Custom(s) => assert_eq!(s, "my-service"),
+            _ => panic!("expected Custom"),
+        }
+    }
+
+    #[test]
+    fn test_service_error_parse_display() {
+        let err = ServiceError::Parse("TOML parse error".into());
+        assert!(format!("{err}").contains("parse"));
+    }
+
+    #[test]
+    fn test_service_registry_from_env_coordinator_with_whitespace() {
+        let key = "TOADSTOOL_COORDINATOR";
+        let orig = std::env::var(key).ok();
+        std::env::set_var(key, "  songbird  :  http://localhost:7777  ");
+
+        let registry = ServiceRegistry::from_env();
+        let coord = registry.coordinator();
+        assert!(coord.is_some());
+        assert_eq!(coord.unwrap().name, "songbird");
+
+        if let Some(v) = orig {
+            std::env::set_var(key, v);
+        } else {
+            std::env::remove_var(key);
+        }
+    }
+
+    #[test]
+    fn test_service_registry_get_returns_correct_endpoint() {
+        let mut registry = ServiceRegistry::new();
+        let ep = ServiceEndpoint::new("test", ServiceType::Cache, "http://cache:6379")
+            .with_health_check("/health")
+            .with_metadata("version", "1.0");
+        registry.register(ep).unwrap();
+
+        let retrieved = registry.get("test").unwrap();
+        assert_eq!(retrieved.endpoint, "http://cache:6379");
+        assert_eq!(retrieved.health_check.as_deref(), Some("/health"));
+        assert_eq!(retrieved.metadata.get("version"), Some(&"1.0".to_string()));
+    }
+
+    #[test]
+    fn test_service_registry_len_increments_on_register() {
+        let mut registry = ServiceRegistry::new();
+        assert_eq!(registry.len(), 0);
+        registry
+            .register(ServiceEndpoint::new(
+                "a",
+                ServiceType::Compute,
+                "http://a:1",
+            ))
+            .unwrap();
+        assert_eq!(registry.len(), 1);
+        registry
+            .register(ServiceEndpoint::new(
+                "b",
+                ServiceType::Storage,
+                "http://b:2",
+            ))
+            .unwrap();
+        assert_eq!(registry.len(), 2);
+    }
 }

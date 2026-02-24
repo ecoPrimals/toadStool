@@ -15,7 +15,8 @@
 //! # Example
 //!
 //! ```no_run
-//! use barracuda::device::{WgpuDevice, DeviceCapabilities};
+//! use barracuda::prelude::{WgpuDevice, DeviceCapabilities};
+//! use barracuda::device::WorkloadType;
 //!
 //! # async fn example() -> barracuda::error::Result<()> {
 //! let device = WgpuDevice::new().await?;

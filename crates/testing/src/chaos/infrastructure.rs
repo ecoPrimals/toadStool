@@ -12,10 +12,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use async_trait::async_trait;
 use tokio::sync::RwLock;
 use tokio::time::timeout;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 use toadstool::ToadStoolResult;
 
@@ -105,10 +104,7 @@ pub enum FaultType {
         restart_delay_ms: u64,
     },
     /// Timeout injection
-    TimeoutInjection {
-        operation: String,
-        delay_ms: u64,
-    },
+    TimeoutInjection { operation: String, delay_ms: u64 },
 }
 
 /// Resource types for exhaustion testing
@@ -120,11 +116,13 @@ pub enum ResourceType {
     Network,
 }
 
+type ValidationFn = Box<dyn Fn(&SystemState) -> Result<(), String> + Send + Sync>;
+
 /// Chaos test scenario builder
 pub struct ChaosScenario {
     name: String,
     faults: Vec<FaultType>,
-    validation: Option<Box<dyn Fn(&SystemState) -> Result<(), String> + Send + Sync>>,
+    validation: Option<ValidationFn>,
     timeout: Duration,
 }
 
@@ -181,9 +179,7 @@ impl ChaosScenario {
             // Validate system state
             let state = engine.get_system_state().await?;
             if let Some(validator) = &self.validation {
-                validator(&state).map_err(|e| {
-                    toadstool::ToadStoolError::Validation(e)
-                })?;
+                validator(&state).map_err(toadstool::ToadStoolError::validation)?;
             }
 
             // Heal all faults
@@ -202,7 +198,7 @@ impl ChaosScenario {
             })
         })
         .await
-        .map_err(|_| toadstool::ToadStoolError::Timeout("Chaos scenario timeout".to_string()))??;
+        .map_err(|_| toadstool::ToadStoolError::timeout("Chaos scenario timeout"))??;
 
         info!(
             "✅ Chaos scenario '{}' completed in {:?}",
@@ -225,8 +221,8 @@ struct ChaosEngine {
 
 /// Active fault tracking
 struct ActiveFault {
-    fault_type: FaultType,
-    injected_at: Instant,
+    _fault_type: FaultType,
+    _injected_at: Instant,
 }
 
 impl ChaosEngine {
@@ -250,16 +246,32 @@ impl ChaosEngine {
         debug!("Injecting fault: {:?}", fault);
 
         match fault {
-            FaultType::NetworkPartition { duration_ms, affected_nodes } => {
-                self.inject_network_partition(*duration_ms, affected_nodes).await?;
+            FaultType::NetworkPartition {
+                duration_ms,
+                affected_nodes,
+            } => {
+                self.inject_network_partition(*duration_ms, affected_nodes)
+                    .await?;
             }
-            FaultType::ResourceExhaustion { resource_type, percentage, duration_ms } => {
-                self.inject_resource_exhaustion(resource_type, *percentage, *duration_ms).await?;
+            FaultType::ResourceExhaustion {
+                resource_type,
+                percentage,
+                duration_ms,
+            } => {
+                self.inject_resource_exhaustion(resource_type, *percentage, *duration_ms)
+                    .await?;
             }
-            FaultType::ServiceCrash { service_name, restart_delay_ms } => {
-                self.inject_service_crash(service_name, *restart_delay_ms).await?;
+            FaultType::ServiceCrash {
+                service_name,
+                restart_delay_ms,
+            } => {
+                self.inject_service_crash(service_name, *restart_delay_ms)
+                    .await?;
             }
-            FaultType::TimeoutInjection { operation, delay_ms } => {
+            FaultType::TimeoutInjection {
+                operation,
+                delay_ms,
+            } => {
                 self.inject_timeout(operation, *delay_ms).await?;
             }
         }
@@ -267,8 +279,8 @@ impl ChaosEngine {
         // Track active fault
         let mut faults = self.active_faults.write().await;
         faults.push(ActiveFault {
-            fault_type: fault.clone(),
-            injected_at: Instant::now(),
+            _fault_type: fault.clone(),
+            _injected_at: Instant::now(),
         });
 
         Ok(())
@@ -281,19 +293,19 @@ impl ChaosEngine {
         _affected_nodes: &[String],
     ) -> ToadStoolResult<()> {
         debug!("Simulating network partition for {}ms", duration_ms);
-        
+
         // Simulate partition by updating system state
         let mut state = self.system_state.write().await;
         state.cluster_healthy = false;
-        
+
         // Simulate partition duration
         let duration = Duration::from_millis(duration_ms);
         tokio::time::sleep(duration).await;
-        
+
         // Partition ends, system begins recovery
         state.cluster_healthy = true;
         state.recovery_count += 1;
-        
+
         Ok(())
     }
 
@@ -305,11 +317,11 @@ impl ChaosEngine {
         duration_ms: u64,
     ) -> ToadStoolResult<()> {
         debug!("Simulating resource exhaustion for {}ms", duration_ms);
-        
+
         // Simulate by slowing operations
         let mut metrics = self.metrics.write().await;
         metrics.max_latency_ms = metrics.max_latency_ms.max(duration_ms);
-        
+
         Ok(())
     }
 
@@ -319,37 +331,36 @@ impl ChaosEngine {
         _service_name: &str,
         restart_delay_ms: u64,
     ) -> ToadStoolResult<()> {
-        debug!("Simulating service crash, restart in {}ms", restart_delay_ms);
-        
+        debug!(
+            "Simulating service crash, restart in {}ms",
+            restart_delay_ms
+        );
+
         let mut state = self.system_state.write().await;
         state.cluster_healthy = false;
-        
+
         // Simulate restart delay
         tokio::time::sleep(Duration::from_millis(restart_delay_ms)).await;
-        
+
         state.cluster_healthy = true;
         state.recovery_count += 1;
-        
+
         Ok(())
     }
 
     /// Inject timeout (simulated)
-    async fn inject_timeout(
-        &self,
-        _operation: &str,
-        delay_ms: u64,
-    ) -> ToadStoolResult<()> {
+    async fn inject_timeout(&self, _operation: &str, delay_ms: u64) -> ToadStoolResult<()> {
         debug!("Injecting timeout: {}ms delay", delay_ms);
-        
+
         let mut metrics = self.metrics.write().await;
         metrics.operations_attempted += 1;
-        
+
         // Simulate delayed operation
         tokio::time::sleep(Duration::from_millis(delay_ms)).await;
-        
+
         metrics.operations_succeeded += 1;
         metrics.avg_latency_ms = (metrics.avg_latency_ms + delay_ms as f64) / 2.0;
-        
+
         Ok(())
     }
 
@@ -368,14 +379,14 @@ impl ChaosEngine {
     /// Heal all active faults
     async fn heal_all(&self) -> ToadStoolResult<()> {
         debug!("Healing all active faults");
-        
+
         let mut faults = self.active_faults.write().await;
         faults.clear();
-        
+
         // Ensure system is healthy
         let mut state = self.system_state.write().await;
         state.cluster_healthy = true;
-        
+
         Ok(())
     }
 }
@@ -411,7 +422,7 @@ mod tests {
             });
 
         let result = scenario.run().await.expect("Scenario should succeed");
-        
+
         assert_eq!(result.faults_injected, 1);
         assert!(result.recovery_successful);
         assert!(result.system_stable);
@@ -419,8 +430,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_resource_exhaustion_scenario() {
-        let scenario = ChaosScenario::new("resource_exhaustion")
-            .with_fault(FaultType::ResourceExhaustion {
+        let scenario =
+            ChaosScenario::new("resource_exhaustion").with_fault(FaultType::ResourceExhaustion {
                 resource_type: ResourceType::Memory,
                 percentage: 80,
                 duration_ms: 50,
@@ -449,4 +460,3 @@ mod tests {
         assert!(result.metrics.recovery_count > 0);
     }
 }
-

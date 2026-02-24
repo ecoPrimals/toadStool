@@ -1,0 +1,45 @@
+//! Hardware-Agnostic Echo State Network (ESN) API
+//!
+//! **EVOLVED v2**: Uses BarraCuda Tensors - Works on ANY hardware!
+//!
+//! This module provides a production-ready interface for training and using
+//! Echo State Networks using BarraCuda's universal Tensor operations.
+//!
+//! # Philosophy
+//!
+//! ESN operations ARE BarraCuda operations! Instead of CPU-specific code,
+//! we use universal tensor operations that work on CPU, GPU, and NPU.
+//!
+//! # Deep Debt Compliance
+//!
+//! - ✅ **Hardware agnostic**: Uses Tensor operations (CPU/GPU/NPU)
+//! - ✅ **Pure Rust**: BarraCuda is 100% Rust
+//! - ✅ **Fast**: Leverages best device for workload
+//! - ✅ **Safe**: Zero unsafe code
+//! - ✅ **Capability-based**: Runtime device discovery
+//! - ✅ **No hardcoding**: User can specify device
+
+mod config;
+mod model;
+
+pub use config::{expect_size, validate_config, ESNConfig};
+pub use model::{ExportedWeights, ESN};
+
+/// GPU shader for fused reservoir update: W_in·input + W_res·state → leaky tanh → new state.
+pub const WGSL_RESERVOIR_UPDATE: &str = include_str!("../shaders/ml/esn_reservoir_update.wgsl");
+
+/// GPU shader for readout: output[i] = W_out[i,:] · state (matrix-vector product).
+pub const WGSL_READOUT: &str = include_str!("../shaders/ml/esn_readout.wgsl");
+
+/// GPU shader for fused reservoir update (alias).
+pub const WGSL_ESN_RESERVOIR_UPDATE: &str = include_str!("../shaders/ml/esn_reservoir_update.wgsl");
+
+/// GPU shader for readout (alias).
+pub const WGSL_ESN_READOUT: &str = include_str!("../shaders/ml/esn_readout.wgsl");
+
+/// f64 version of the reservoir update for universal math library portability.
+pub const WGSL_ESN_RESERVOIR_UPDATE_F64: &str =
+    include_str!("../shaders/ml/esn_reservoir_update_f64.wgsl");
+
+/// f64 version of the readout for universal math library portability.
+pub const WGSL_ESN_READOUT_F64: &str = include_str!("../shaders/ml/esn_readout_f64.wgsl");

@@ -47,6 +47,11 @@ impl MmapRegion {
     /// - Validates file descriptor before mapping
     /// - Checks mmap return value
     /// - Ensures proper cleanup via Drop
+    ///
+    /// # Panics
+    ///
+    /// Panics if `rustix::mm::mmap` returns a null pointer on success
+    /// (should never happen per rustix API contract).
     pub fn new(pcie_address: &str, bar_index: usize) -> Result<Self> {
         let path = format!("/sys/bus/pci/devices/{pcie_address}/resource{bar_index}");
 

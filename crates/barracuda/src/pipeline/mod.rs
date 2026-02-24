@@ -123,12 +123,14 @@ impl BufferSpec {
     }
 
     /// Set label for debugging
+    #[must_use]
     pub fn with_label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
 
     /// Add uniform usage (for parameter buffers)
+    #[must_use]
     pub fn with_uniform(mut self) -> Self {
         self.usage |= wgpu::BufferUsages::UNIFORM;
         self
@@ -169,18 +171,21 @@ impl Stage {
     }
 
     /// Add input buffer names
+    #[must_use]
     pub fn with_inputs(mut self, inputs: &[&str]) -> Self {
         self.inputs = inputs.iter().map(|s| s.to_string()).collect();
         self
     }
 
     /// Add output buffer names
+    #[must_use]
     pub fn with_outputs(mut self, outputs: &[&str]) -> Self {
         self.outputs = outputs.iter().map(|s| s.to_string()).collect();
         self
     }
 
     /// Set workgroup dimensions
+    #[must_use]
     pub fn with_workgroups(mut self, x: u32, y: u32, z: u32) -> Self {
         self.workgroups = (x, y, z);
         self

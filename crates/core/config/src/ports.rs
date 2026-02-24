@@ -104,7 +104,7 @@ pub mod test {
     /// Uses process ID and test number to ensure uniqueness
     #[must_use]
     pub fn unique_port(test_id: u16) -> u16 {
-        BASE + (std::process::id() as u16 % 1000) + test_id
+        BASE + u16::try_from(std::process::id() % 1000).unwrap_or(999) + test_id
     }
 }
 

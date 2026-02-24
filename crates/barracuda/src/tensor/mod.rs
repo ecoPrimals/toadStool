@@ -172,6 +172,7 @@ impl Tensor {
     /// let tensor = Tensor::randn(vec![100, 100]).await?
     ///     .with_hint(WorkloadHint::SmallWorkload); // Prefers CPU
     /// ```
+    #[must_use]
     pub fn with_hint(&self, hint: WorkloadHint) -> Self {
         let preferred_device = Device::select_for_workload(&hint);
         log::debug!("Workload hint: {:?} → Device: {}", hint, preferred_device);
@@ -406,6 +407,7 @@ impl Tensor {
     }
 
     /// Set tensor name (for debugging)
+    #[must_use]
     pub fn with_name(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self

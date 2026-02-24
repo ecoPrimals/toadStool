@@ -29,13 +29,13 @@ impl ReportGenerator {
         let mut report = String::new();
 
         // Header
-        writeln!(report, "# BarraCuda vs CUDA Performance Report\n").unwrap();
+        writeln!(report, "# BarraCuda vs CUDA Performance Report\n").unwrap_or_default();
 
         #[cfg(feature = "benchmarks")]
-        writeln!(report, "**Generated:** {}\n", chrono::Local::now()).unwrap();
+        writeln!(report, "**Generated:** {}\n", chrono::Local::now()).unwrap_or_default();
 
         #[cfg(not(feature = "benchmarks"))]
-        writeln!(report, "**Generated:** [timestamp not available]\n").unwrap();
+        writeln!(report, "**Generated:** [timestamp not available]\n").unwrap_or_default();
 
         // Summary section
         self.write_summary(&mut report);
@@ -48,11 +48,11 @@ impl ReportGenerator {
 
     /// Write summary statistics section
     fn write_summary(&self, report: &mut String) {
-        writeln!(report, "## Summary\n").unwrap();
+        writeln!(report, "## Summary\n").unwrap_or_default();
 
         let total_ops = self.results.len();
         if total_ops == 0 {
-            writeln!(report, "_No benchmark results available._\n").unwrap();
+            writeln!(report, "_No benchmark results available._\n").unwrap_or_default();
             return;
         }
 
@@ -60,7 +60,7 @@ impl ReportGenerator {
         let cuda_count = ops_with_cuda.len();
 
         if cuda_count == 0 {
-            writeln!(report, "_No CUDA comparison data available._\n").unwrap();
+            writeln!(report, "_No CUDA comparison data available._\n").unwrap_or_default();
             return;
         }
 
@@ -79,53 +79,53 @@ impl ReportGenerator {
         let avg_parity =
             ops_with_cuda.iter().map(|r| r.parity_percent).sum::<f64>() / cuda_count as f64;
 
-        writeln!(report, "| Metric | Value |").unwrap();
-        writeln!(report, "|--------|-------|").unwrap();
-        writeln!(report, "| Total Operations | {} |", total_ops).unwrap();
+        writeln!(report, "| Metric | Value |").unwrap_or_default();
+        writeln!(report, "|--------|-------|").unwrap_or_default();
+        writeln!(report, "| Total Operations | {} |", total_ops).unwrap_or_default();
         writeln!(
             report,
             "| Operations with CUDA comparison | {} |",
             cuda_count
         )
-        .unwrap();
+        .unwrap_or_default();
         writeln!(
             report,
             "| ≥90% parity | {} ({:.1}%) |",
             ops_at_90,
             ops_at_90 as f64 / cuda_count as f64 * 100.0
         )
-        .unwrap();
+        .unwrap_or_default();
         writeln!(
             report,
             "| ≥95% parity | {} ({:.1}%) |",
             ops_at_95,
             ops_at_95 as f64 / cuda_count as f64 * 100.0
         )
-        .unwrap();
+        .unwrap_or_default();
         writeln!(
             report,
             "| ≥100% parity (faster) | {} ({:.1}%) |",
             ops_at_100,
             ops_at_100 as f64 / cuda_count as f64 * 100.0
         )
-        .unwrap();
-        writeln!(report, "| Average parity | {:.1}% |", avg_parity).unwrap();
-        writeln!(report).unwrap();
+        .unwrap_or_default();
+        writeln!(report, "| Average parity | {:.1}% |", avg_parity).unwrap_or_default();
+        writeln!(report).unwrap_or_default();
     }
 
     /// Write detailed results for each operation
     fn write_detailed_results(&self, report: &mut String) {
-        writeln!(report, "## Detailed Results\n").unwrap();
+        writeln!(report, "## Detailed Results\n").unwrap_or_default();
 
         for result in &self.results {
-            writeln!(report, "### {}\n", result.operation).unwrap();
-            writeln!(report, "- **Hardware:** {}", result.hardware).unwrap();
+            writeln!(report, "### {}\n", result.operation).unwrap_or_default();
+            writeln!(report, "- **Hardware:** {}", result.hardware).unwrap_or_default();
             writeln!(
                 report,
                 "- **BarraCuda:** {:.3}ms",
                 result.barracuda.median_time.as_secs_f64() * 1000.0
             )
-            .unwrap();
+            .unwrap_or_default();
 
             if let Some(ref cuda) = result.cuda {
                 writeln!(
@@ -133,10 +133,10 @@ impl ReportGenerator {
                     "- **CUDA:** {:.3}ms",
                     cuda.median_time.as_secs_f64() * 1000.0
                 )
-                .unwrap();
-                writeln!(report, "- **Parity:** {:.1}%", result.parity_percent).unwrap();
+                .unwrap_or_default();
+                writeln!(report, "- **Parity:** {:.1}%", result.parity_percent).unwrap_or_default();
             }
-            writeln!(report).unwrap();
+            writeln!(report).unwrap_or_default();
         }
     }
 

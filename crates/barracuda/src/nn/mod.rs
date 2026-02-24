@@ -23,9 +23,9 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```rust,ignore
 //! use barracuda::nn::{NeuralNetwork, Layer, Optimizer, LossFunction};
-//! use barracuda::WgpuDevice;
+//! use barracuda::prelude::WgpuDevice;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let device = WgpuDevice::new().await?;

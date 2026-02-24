@@ -403,4 +403,238 @@ mod tests {
             None => env::remove_var("ENV"),
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Additional tests for uncovered runtime default functions
+    // ═══════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn test_for_current_environment_env_var_priority_toadstool_environment() {
+        let _guard = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let orig_env = env::var("TOADSTOOL_ENVIRONMENT").ok();
+        let orig_env_short = env::var("TOADSTOOL_ENV").ok();
+        let orig_generic = env::var("ENVIRONMENT").ok();
+        let orig_env_generic = env::var("ENV").ok();
+
+        // TOADSTOOL_ENVIRONMENT has highest priority for initial env detection.
+        // Must unset TOADSTOOL_ENV so apply_env_overrides doesn't overwrite.
+        env::set_var("TOADSTOOL_ENVIRONMENT", "prod");
+        env::remove_var("TOADSTOOL_ENV");
+        env::set_var("ENVIRONMENT", "test");
+        env::set_var("ENV", "dev");
+
+        let config = ToadStoolConfig::for_current_environment();
+        assert_eq!(config.app.environment, "prod");
+
+        if let Some(v) = orig_env {
+            env::set_var("TOADSTOOL_ENVIRONMENT", v);
+        } else {
+            env::remove_var("TOADSTOOL_ENVIRONMENT");
+        }
+        if let Some(v) = orig_env_short {
+            env::set_var("TOADSTOOL_ENV", v);
+        } else {
+            env::remove_var("TOADSTOOL_ENV");
+        }
+        if let Some(v) = orig_generic {
+            env::set_var("ENVIRONMENT", v);
+        } else {
+            env::remove_var("ENVIRONMENT");
+        }
+        if let Some(v) = orig_env_generic {
+            env::set_var("ENV", v);
+        } else {
+            env::remove_var("ENV");
+        }
+    }
+
+    #[test]
+    fn test_for_current_environment_env_var_priority_toadstool_env_fallback() {
+        let _guard = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+        let orig = env::var("TOADSTOOL_ENV").ok();
+        env::set_var("TOADSTOOL_ENV", "staging");
+        env::remove_var("ENVIRONMENT");
+        env::remove_var("ENV");
+
+        let config = ToadStoolConfig::for_current_environment();
+        assert_eq!(config.app.environment, "staging");
+
+        if let Some(v) = orig {
+            env::set_var("TOADSTOOL_ENV", v);
+        } else {
+            env::remove_var("TOADSTOOL_ENV");
+        }
+    }
+
+    #[test]
+    fn test_load_with_overrides_success() {
+        temp_env::with_vars_unset(
+            [
+                "TOADSTOOL_ENVIRONMENT",
+                "TOADSTOOL_ENV",
+                "TOADSTOOL_VERBOSE",
+            ],
+            || {
+                let config = ToadStoolConfig::development();
+                let temp_file = NamedTempFile::new().unwrap();
+                config.save_to_file(temp_file.path()).unwrap();
+
+                let result = ToadStoolConfig::load_with_overrides(temp_file.path());
+                assert!(result.is_ok(), "load failed: {:?}", result);
+                let loaded = result.unwrap();
+                assert_eq!(loaded.app.environment, config.app.environment);
+            },
+        );
+    }
+
+    #[test]
+    fn test_load_with_overrides_nonexistent_file() {
+        let result = ToadStoolConfig::load_with_overrides("/nonexistent/path/config.toml");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, ConfigError::Io(_)),
+            "expected Io error, got {:?}",
+            err
+        );
+    }
+
+    #[test]
+    fn test_load_from_env_only_success() {
+        let _guard = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let orig_env = env::var("TOADSTOOL_ENV").ok();
+        env::set_var("TOADSTOOL_ENV", "test");
+
+        let result = ToadStoolConfig::load_from_env_only();
+        assert!(result.is_ok());
+
+        if let Some(v) = orig_env {
+            env::set_var("TOADSTOOL_ENV", v);
+        } else {
+            env::remove_var("TOADSTOOL_ENV");
+        }
+    }
+
+    #[test]
+    fn test_save_to_file_then_load_roundtrip() {
+        let config = ToadStoolConfig::testing();
+        let temp_file = NamedTempFile::new().unwrap();
+        let path = temp_file.path();
+
+        config.save_to_file(path).unwrap();
+        let content = std::fs::read_to_string(path).unwrap();
+        assert!(content.contains("environment"));
+        assert!(content.contains("test"));
+    }
+
+    #[test]
+    fn test_save_to_file_invalid_path() {
+        let config = ToadStoolConfig::default();
+        let result = config.save_to_file("/nonexistent/directory/config.toml");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_to_json_success() {
+        let config = ToadStoolConfig::default();
+        let json = config.to_json().unwrap();
+        assert!(json.contains("\"app\""));
+        assert!(json.contains("\"network\""));
+        assert!(json.contains("\"runtime\""));
+    }
+
+    #[test]
+    fn test_config_error_variants() {
+        let invalid = ConfigError::Invalid("bad".into());
+        assert!(invalid.to_string().contains("bad"));
+
+        let missing = ConfigError::MissingField("name".into());
+        assert!(missing.to_string().contains("name"));
+
+        let io_err = ConfigError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "file not found",
+        ));
+        assert!(io_err.to_string().contains("file not found"));
+
+        let addr_err: ConfigError = "invalid"
+            .parse::<std::net::SocketAddr>()
+            .unwrap_err()
+            .into();
+        assert!(addr_err.to_string().contains("Address"));
+
+        let env_err = ConfigError::Env("TOADSTOOL_ENV".into());
+        assert!(env_err.to_string().contains("TOADSTOOL_ENV"));
+    }
+
+    #[test]
+    fn test_print_summary_no_panic() {
+        let config = ToadStoolConfig::default();
+        config.print_summary();
+    }
+
+    #[test]
+    fn test_print_summary_with_cache() {
+        let mut config = ToadStoolConfig::default();
+        config.cache = Some(crate::BackendCacheConfig::default());
+        config.print_summary();
+    }
+
+    #[test]
+    fn test_print_summary_with_metrics() {
+        let mut config = ToadStoolConfig::default();
+        config.metrics = Some(crate::MetricsConfig::default());
+        config.print_summary();
+    }
+
+    #[test]
+    fn test_print_summary_with_database() {
+        let mut config = ToadStoolConfig::default();
+        config.database = Some(crate::DatabaseConfig {
+            url: "sqlite::memory:".to_string(),
+            database_type: "sqlite".to_string(),
+            max_connections: 10,
+            connection_timeout: std::time::Duration::from_secs(30),
+            query_timeout: std::time::Duration::from_secs(60),
+            enable_migrations: false,
+            migration_dir: "migrations".to_string(),
+        });
+        config.print_summary();
+    }
+
+    #[test]
+    fn test_for_current_environment_defaults_to_development_when_unset() {
+        let _guard = get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+        env::remove_var("TOADSTOOL_ENV");
+        env::remove_var("ENVIRONMENT");
+        env::remove_var("ENV");
+
+        let config = ToadStoolConfig::for_current_environment();
+        assert_eq!(config.app.environment, "development");
+    }
+
+    #[test]
+    fn test_load_with_overrides_invalid_toml() {
+        let temp_file = NamedTempFile::new().unwrap();
+        std::fs::write(temp_file.path(), "invalid toml [[[").unwrap();
+
+        let result = ToadStoolConfig::load_with_overrides(temp_file.path());
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, ConfigError::Toml(_)),
+            "expected Toml error, got {:?}",
+            err
+        );
+    }
 }

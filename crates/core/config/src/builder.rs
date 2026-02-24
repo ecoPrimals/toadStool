@@ -380,7 +380,7 @@ impl ToadStoolConfigTrait for SubstrateConfig {
                         "gpu" => SubstratePreference::Specific(SubstrateType::Gpu),
                         "npu" => SubstratePreference::Specific(SubstrateType::Npu),
                         "tpu" => SubstratePreference::Specific(SubstrateType::Tpu),
-                        "auto" | _ => SubstratePreference::Auto,
+                        _ => SubstratePreference::Auto,
                     }
                 });
 

@@ -76,12 +76,14 @@ impl Rk45Config {
     }
 
     /// Set the initial step size.
+    #[must_use]
     pub fn with_h_init(mut self, h: f64) -> Self {
         self.h_init = h;
         self
     }
 
     /// Set step size bounds.
+    #[must_use]
     pub fn with_step_bounds(mut self, h_min: f64, h_max: f64) -> Self {
         self.h_min = h_min;
         self.h_max = h_max;
@@ -89,12 +91,14 @@ impl Rk45Config {
     }
 
     /// Set maximum number of steps.
+    #[must_use]
     pub fn with_max_steps(mut self, max_steps: usize) -> Self {
         self.max_steps = max_steps;
         self
     }
 
     /// Set safety factor for step size adjustment.
+    #[must_use]
     pub fn with_safety(mut self, safety: f64) -> Self {
         self.safety = safety;
         self

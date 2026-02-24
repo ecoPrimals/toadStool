@@ -230,12 +230,14 @@ impl CudaWorkload {
 
     /// Set compute capability requirement
     /// ✅ ZERO-COPY: Accept any string-like type to avoid unnecessary clones
+    #[must_use]
     pub fn with_compute_capability(mut self, capability: impl Into<String>) -> Self {
         self.compute_capability = Some(capability.into());
         self
     }
 
     /// Set preferred backend
+    #[must_use]
     pub fn with_preferred_backend(mut self, backend: CudaBackend) -> Self {
         self.preferred_backend = Some(backend);
         self

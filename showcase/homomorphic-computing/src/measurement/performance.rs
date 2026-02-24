@@ -6,7 +6,7 @@
 //!
 //! # Example
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_config::builder::*;
 //!
 //! // Use builder pattern for configuration
@@ -49,7 +49,7 @@ pub struct PerformanceMetrics {
 ///
 /// # Configuration
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use toadstool_config::builder::*;
 ///
 /// // Use builder for custom config
@@ -86,7 +86,7 @@ impl PerformanceProfiler {
     /// **Deep Debt**: Runtime configurable via builder pattern
     ///
     /// # Example
-    /// ```rust,no_run
+    /// ```rust,ignore
     /// use toadstool_config::builder::*;
     ///
     /// let config = ProfilerConfigBuilder::new()

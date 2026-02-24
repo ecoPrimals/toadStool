@@ -229,6 +229,10 @@ pub async fn discover_security_provider(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
+    use toadstool_common::universal_adapter::{
+        CapabilityHandle, CapabilityInfo, CapabilityType, HealthStatus, ServiceEndpoint, TrustLevel,
+    };
 
     #[test]
     fn test_factory_creation() {
@@ -256,8 +260,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_http_provider_not_implemented() {
-        use toadstool_common::universal_adapter::*;
-
         let handle = CapabilityHandle::new(
             CapabilityInfo {
                 provider_id: "test".to_string(),
@@ -279,5 +281,136 @@ mod tests {
 
         let result = SecurityProviderFactory::create_from_handle(&handle).await;
         assert!(result.is_err());
+        let err_msg = result.err().unwrap().to_string();
+        assert!(err_msg.contains("HTTP security provider not supported"));
+    }
+
+    #[tokio::test]
+    async fn test_tcp_provider_not_implemented() {
+        let handle = CapabilityHandle::new(
+            CapabilityInfo {
+                provider_id: "test".to_string(),
+                capability: CapabilityType::Security {
+                    features: vec![],
+                    min_trust_level: TrustLevel::Low,
+                },
+                metadata: std::collections::HashMap::new(),
+                endpoint: ServiceEndpoint::Tcp {
+                    host: "localhost".to_string(),
+                    port: 8443,
+                },
+                health: HealthStatus::Healthy,
+            },
+            CapabilityType::Security {
+                features: vec![],
+                min_trust_level: TrustLevel::Low,
+            },
+        );
+
+        let result = SecurityProviderFactory::create_from_handle(&handle).await;
+        assert!(result.is_err());
+        let err_msg = result.err().unwrap().to_string();
+        assert!(err_msg.contains("TCP security provider not yet implemented"));
+    }
+
+    #[tokio::test]
+    async fn test_custom_provider_not_implemented() {
+        let handle = CapabilityHandle::new(
+            CapabilityInfo {
+                provider_id: "test".to_string(),
+                capability: CapabilityType::Security {
+                    features: vec![],
+                    min_trust_level: TrustLevel::Low,
+                },
+                metadata: std::collections::HashMap::new(),
+                endpoint: ServiceEndpoint::Custom {
+                    protocol: "custom".to_string(),
+                    address: "custom://localhost".to_string(),
+                },
+                health: HealthStatus::Healthy,
+            },
+            CapabilityType::Security {
+                features: vec![],
+                min_trust_level: TrustLevel::Low,
+            },
+        );
+
+        let result = SecurityProviderFactory::create_from_handle(&handle).await;
+        assert!(result.is_err());
+        let err_msg = result.err().unwrap().to_string();
+        assert!(err_msg.contains("Custom protocol"));
+    }
+
+    #[tokio::test]
+    async fn test_unix_socket_provider_socket_not_found() {
+        let handle = CapabilityHandle::new(
+            CapabilityInfo {
+                provider_id: "test".to_string(),
+                capability: CapabilityType::Security {
+                    features: vec![],
+                    min_trust_level: TrustLevel::Low,
+                },
+                metadata: std::collections::HashMap::new(),
+                endpoint: ServiceEndpoint::UnixSocket(
+                    Path::new("/nonexistent/path/security.sock").into(),
+                ),
+                health: HealthStatus::Healthy,
+            },
+            CapabilityType::Security {
+                features: vec![],
+                min_trust_level: TrustLevel::Low,
+            },
+        );
+
+        let result = SecurityProviderFactory::create_from_handle(&handle).await;
+        assert!(result.is_err());
+        let err_msg = result.err().unwrap().to_string();
+        assert!(err_msg.contains("not found") || err_msg.contains("socket"));
+    }
+
+    #[tokio::test]
+    async fn test_in_process_provider_succeeds() {
+        let handle = CapabilityHandle::new(
+            CapabilityInfo {
+                provider_id: "test".to_string(),
+                capability: CapabilityType::Security {
+                    features: vec![],
+                    min_trust_level: TrustLevel::Low,
+                },
+                metadata: std::collections::HashMap::new(),
+                endpoint: ServiceEndpoint::InProcess,
+                health: HealthStatus::Healthy,
+            },
+            CapabilityType::Security {
+                features: vec![],
+                min_trust_level: TrustLevel::Low,
+            },
+        );
+
+        let result = SecurityProviderFactory::create_from_handle(&handle).await;
+        assert!(result.is_ok());
+        let provider = result.unwrap();
+        let caps = provider.capabilities().await.unwrap();
+        assert!(!caps.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_mock_provider_encrypt_decrypt() {
+        let provider = SecurityProviderFactory::create_mock();
+        let encrypted = provider.encrypt(b"secret data", None).await.unwrap();
+        assert!(!encrypted.ciphertext.is_empty());
+        let decrypted = provider
+            .decrypt(&encrypted.ciphertext, &encrypted.metadata)
+            .await
+            .unwrap();
+        assert_eq!(decrypted.plaintext, b"secret data");
+    }
+
+    #[tokio::test]
+    async fn test_mock_provider_metadata() {
+        let provider = SecurityProviderFactory::create_mock();
+        let metadata = provider.metadata().await.unwrap();
+        assert!(!metadata.provider_id.is_empty());
+        assert!(!metadata.provider_type.is_empty());
     }
 }

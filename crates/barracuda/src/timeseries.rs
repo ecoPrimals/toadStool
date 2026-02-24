@@ -14,7 +14,7 @@
 //!
 //! ```no_run
 //! use barracuda::timeseries::{TimeSeriesAnalyzer, TimeSeriesModel, ForecastConfig};
-//! use barracuda::WgpuDevice;
+//! use barracuda::prelude::WgpuDevice;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let device = WgpuDevice::new().await?;

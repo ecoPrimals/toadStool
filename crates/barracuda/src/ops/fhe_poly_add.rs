@@ -30,7 +30,7 @@ use wgpu::util::DeviceExt;
 ///
 /// ## Example
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use barracuda::ops::fhe_poly_add::FhePolyAdd;
 /// use barracuda::Tensor;
 ///

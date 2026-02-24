@@ -11,7 +11,7 @@ use std::sync::Arc;
 ///
 /// # Arguments
 ///
-/// * `device` - GPU device (Arc<WgpuDevice>)
+/// * `device` - GPU device (`Arc<WgpuDevice>`)
 /// * `a` - Coefficient matrix (row-major, n×n)
 /// * `b` - Right-hand side vector (length n)
 /// * `n` - Matrix dimension
@@ -24,7 +24,7 @@ use std::sync::Arc;
 ///
 /// ```no_run
 /// use barracuda::linalg::solve_f64;
-/// use barracuda::device::WgpuDevice;
+/// use barracuda::prelude::WgpuDevice;
 /// use std::sync::Arc;
 ///
 /// # async fn example() -> barracuda::error::Result<()> {

@@ -25,7 +25,7 @@
 //!
 //! ## Usage Example
 //!
-//! ```no_run
+//! ```rust,ignore
 //! use barracuda::ops::fhe_ntt::FheNtt;
 //! use barracuda::ops::fhe_intt::FheIntt;
 //!

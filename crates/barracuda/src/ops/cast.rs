@@ -52,6 +52,7 @@ impl Cast {
     }
 
     /// Create a cast operation with a specific mode
+    #[must_use]
     pub fn with_mode(input: Tensor, mode: CastMode) -> Self {
         Self {
             input,
@@ -62,6 +63,7 @@ impl Cast {
     }
 
     /// Create a clamp cast operation
+    #[must_use]
     pub fn with_clamp(input: Tensor, min_val: f32, max_val: f32) -> Self {
         Self {
             input,

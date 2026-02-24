@@ -666,4 +666,182 @@ mod tests {
             architecture: "arm64".to_string(),
         };
     }
+
+    // Additional coverage: CPU detection, GPU fallback, capability reporting
+
+    #[tokio::test]
+    async fn test_detect_traditional_platforms_returns_platforms() {
+        let detector = SubstrateDetector::new();
+        let platforms = detector.detect_traditional_platforms().await.unwrap();
+        assert!(!platforms.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_detect_traditional_platforms_has_os_info() {
+        let detector = SubstrateDetector::new();
+        let platforms = detector.detect_traditional_platforms().await.unwrap();
+        let os = std::env::consts::OS;
+        match os {
+            "linux" => {
+                assert!(platforms
+                    .iter()
+                    .any(|p| matches!(p, PlatformType::Linux { .. })));
+            }
+            "windows" => {
+                assert!(platforms
+                    .iter()
+                    .any(|p| matches!(p, PlatformType::Windows { .. })));
+            }
+            "macos" => {
+                assert!(platforms
+                    .iter()
+                    .any(|p| matches!(p, PlatformType::MacOS { .. })));
+            }
+            _ => {
+                assert!(platforms
+                    .iter()
+                    .any(|p| matches!(p, PlatformType::Other { .. })));
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_detect_container_platforms_returns_vec() {
+        let detector = SubstrateDetector::new();
+        let platforms = detector.detect_container_platforms().await.unwrap();
+        assert!(platforms.iter().all(|p| {
+            matches!(
+                p,
+                PlatformType::Docker | PlatformType::Podman | PlatformType::Containerd
+            )
+        }));
+    }
+
+    #[tokio::test]
+    async fn test_detect_language_runtimes_returns_vec() {
+        let detector = SubstrateDetector::new();
+        let platforms = detector.detect_language_runtimes().await.unwrap();
+        for p in &platforms {
+            assert!(matches!(p, PlatformType::Language { .. }));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_detect_gpu_platforms_without_gpu_returns_empty_or_nvidia_amd() {
+        let detector = SubstrateDetector::new();
+        let platforms = detector.detect_gpu_platforms().await.unwrap();
+        for p in &platforms {
+            if let PlatformType::GPU { vendor, framework } = p {
+                assert!(!vendor.is_empty());
+                assert!(!framework.is_empty());
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_detect_quantum_platforms_returns_vec() {
+        let detector = SubstrateDetector::new();
+        let platforms = detector.detect_quantum_platforms().await.unwrap();
+        for p in &platforms {
+            assert!(matches!(p, PlatformType::Quantum { .. }));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_detect_edge_platforms_returns_vec() {
+        let detector = SubstrateDetector::new();
+        let platforms = detector.detect_edge_platforms().await.unwrap();
+        for p in &platforms {
+            assert!(matches!(
+                p,
+                PlatformType::EdgeDevice { .. } | PlatformType::MCUDevelopment { .. }
+            ));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_detect_biological_platforms_returns_vec() {
+        let detector = SubstrateDetector::new();
+        let platforms = detector.detect_biological_platforms().await.unwrap();
+        for p in &platforms {
+            assert!(matches!(p, PlatformType::BiologicalComputing { .. }));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_detect_neuromorphic_platforms_returns_vec() {
+        let detector = SubstrateDetector::new();
+        let platforms = detector.detect_neuromorphic_platforms().await.unwrap();
+        for p in &platforms {
+            assert!(matches!(p, PlatformType::NeuromorphicComputing { .. }));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_detect_all_combines_capabilities() {
+        let detector = SubstrateDetector::new();
+        let caps = detector.detect_all().await.unwrap();
+        assert!(caps.total_platforms() >= caps.traditional_platforms.len());
+    }
+
+    #[tokio::test]
+    async fn test_detect_all_has_traditional_platforms() {
+        let detector = SubstrateDetector::new();
+        let caps = detector.detect_all().await.unwrap();
+        assert!(!caps.traditional_platforms.is_empty());
+    }
+
+    #[test]
+    fn test_substrate_capabilities_empty_total() {
+        let caps = SubstrateCapabilities {
+            traditional_platforms: vec![],
+            container_platforms: vec![],
+            language_runtimes: vec![],
+            gpu_platforms: vec![],
+            specialized_platforms: vec![],
+            experimental_platforms: vec![],
+        };
+        assert_eq!(caps.total_platforms(), 0);
+    }
+
+    #[test]
+    fn test_platform_type_serialization() {
+        let gpu = PlatformType::GPU {
+            vendor: "NVIDIA".to_string(),
+            framework: "CUDA".to_string(),
+        };
+        let json = serde_json::to_string(&gpu).unwrap();
+        let parsed: PlatformType = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, PlatformType::GPU { .. }));
+    }
+
+    #[test]
+    fn test_substrate_capabilities_serialization() {
+        let caps = SubstrateCapabilities {
+            traditional_platforms: vec![PlatformType::Linux {
+                distribution: "ubuntu".to_string(),
+                architecture: "x86_64".to_string(),
+            }],
+            container_platforms: vec![],
+            language_runtimes: vec![],
+            gpu_platforms: vec![],
+            specialized_platforms: vec![],
+            experimental_platforms: vec![],
+        };
+        let json = serde_json::to_string(&caps).unwrap();
+        let parsed: SubstrateCapabilities = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.total_platforms(), 1);
+    }
+
+    #[test]
+    fn test_platform_type_npu_tpu_variants() {
+        let _gpu_nvidia = PlatformType::GPU {
+            vendor: "NVIDIA".to_string(),
+            framework: "CUDA".to_string(),
+        };
+        let _gpu_amd = PlatformType::GPU {
+            vendor: "AMD".to_string(),
+            framework: "ROCm".to_string(),
+        };
+    }
 }

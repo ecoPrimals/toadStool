@@ -1,7 +1,7 @@
 # Deep Debt Status Report
 
-**Sessions 32-49 -- February 23, 2026**
-**Status**: PRODUCTION-GRADE | Shader-first architecture complete | 645+ WGSL f64 shaders | Zero CPU-only math in production | All quality gates green | 0 clippy warnings | 14,000+ tests
+**Sessions 32-50 -- February 23, 2026**
+**Status**: PRODUCTION-GRADE | Shader-first architecture complete | 645+ WGSL f64 shaders | Zero CPU-only math in production | All quality gates green | 0 clippy warnings | 4,009+ core tests | 84.33% line coverage
 
 ---
 
@@ -213,6 +213,7 @@
 - toadstool (main): 1,700+ passed, 0 failed
 - barracuda: all pass at `--test-threads=2` (GPU contention under max parallelism is a known driver limitation)
 - **S46**: 7,270 across common/config/core/server + 43 new barracuda module tests — 0 failures
+- **S50**: 4,009 tests across 5 core crates (common/config/toadstool/server/distributed) — 0 failures; 84.33% line coverage
 
 ---
 
@@ -451,7 +452,7 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | Typed errors | ✅ S43: `Box<dyn Error>` replaced with `ConfigError`/`TarpcClientError` |
 | Clippy strictness | ✅ Zero errors workspace-wide (S43: pedantic+nursery auto-fix on 122 files) |
 | Dead code hygiene | ✅ 33 files audited, 6 incorrect annotations removed (S31h) |
-| Orphan shader elimination | Zero orphans -- all 691 WGSL wired to Rust |
+| Orphan shader elimination | Zero orphans -- all 645+ WGSL wired to Rust |
 | Hardcoded ports/paths | ✅ S43: Env vars with config defaults; constants for system paths |
 
 ---
@@ -515,9 +516,9 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 
 | Milestone | Session |
 |-----------|---------|
-| 14,000+ tests passing, 0 failures | S45 |
+| 14,000+ tests passing (4,009 in 5 core crates), 0 failures | S45, S50 |
 | Four Springs validation (4,000+ acceptance checks) | S31d |
-| Coverage: common 87%, config 89%, core ~87%, server ~85% | S43, S45 |
+| Coverage: 84.33% line (5 core crates) — config 89%, server 86%, common 84%, toadstool 83%, distributed 82% | S50 |
 | Env-var test isolation (ENV_MUTEX serialization) | S45 |
 | GPU test device pool (10s timeout, SYNC_DEVICE_MUTEX) | S44, S45 |
 | Peer discovery isolation (path-based variants, no env races) | S44 |
@@ -556,7 +557,7 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | ~~D-S49f-003~~ | ~~RBF surrogate CPU-only (distances + solve)~~ | — | ✅ RESOLVED S49f — `RBFSurrogate` holds device, uses `cdist_f64.wgsl` + `linsolve_f64.wgsl` |
 | ~~D-S49f-004~~ | ~~PPPM CPU FFT~~ | — | ✅ RESOLVED S49f — `Pppm` uses `Fft3DF64` (GPU) for forward/backward FFT |
 | ~~W-005~~ | ~~GPU-resident VACF~~ | — | ✅ RESOLVED S46 |
-| — | Test coverage → 90% | Medium | Core ~87%, server ~85%. Gaps: planner (49%), ecosystem (62%), detector (65%) |
+| D-S50-019 | Test coverage → 90% | Medium | 84.33% across 5 core crates (4,009 tests). Remaining ~16% is deep integration/network code |
 | — | NPU model pipeline | Low | Awaiting hardware |
 | — | burn-inference full implementations | Low | Future |
 

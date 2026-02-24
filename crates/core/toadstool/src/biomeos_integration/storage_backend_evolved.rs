@@ -390,4 +390,128 @@ mod tests {
         let cloned = info.clone();
         assert_eq!(cloned.id, info.id);
     }
+
+    // ── DEEP tests: error paths, no-provider, configuration ────────────
+
+    #[tokio::test]
+    async fn test_storage_is_available_returns_false_when_no_provider() {
+        let backend = StorageBackend::new();
+        let available = backend.is_available().await;
+        assert!(!available);
+    }
+
+    #[tokio::test]
+    async fn test_storage_provider_info_returns_none_when_no_provider() {
+        let backend = StorageBackend::new();
+        let info = backend.provider_info().await;
+        assert!(info.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_provision_volume_returns_error_without_provider() {
+        let backend = StorageBackend::new();
+        let req = VolumeRequest {
+            name: "vol".to_string(),
+            size_bytes: 1_000_000,
+            persistent: false,
+            mount_path: None,
+        };
+        let result = backend.provision_volume(req).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(
+                err,
+                StorageBackendError::NoStorageProvider
+                    | StorageBackendError::Capability(_)
+                    | StorageBackendError::ProvisioningFailed(_)
+            ),
+            "expected provider/provisioning error, got {:?}",
+            err
+        );
+    }
+
+    #[tokio::test]
+    async fn test_mount_volume_returns_error_without_provider() {
+        let backend = StorageBackend::new();
+        let result = backend
+            .mount_volume("vol-1", PathBuf::from("/mnt/data"))
+            .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_unmount_volume_returns_no_provider_error() {
+        let backend = StorageBackend::new();
+        let result = backend.unmount_volume("vol-1").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_delete_volume_returns_no_provider_error() {
+        let backend = StorageBackend::new();
+        let result = backend.delete_volume("vol-1").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_volume_status_returns_error_without_provider() {
+        let backend = StorageBackend::new();
+        let result = backend.get_volume_status("vol-1").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_list_volumes_returns_no_provider_error() {
+        let backend = StorageBackend::new();
+        let result = backend.list_volumes().await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_storage_backend_error_capability_conversion() {
+        use toadstool_common::capability_provider::CapabilityError;
+        use toadstool_common::primal_identity::StorageCapability;
+        let cap_err =
+            CapabilityError::NoProviderFound(Capability::Storage(StorageCapability::ObjectStorage));
+        let storage_err: StorageBackendError = cap_err.into();
+        assert!(
+            matches!(storage_err, StorageBackendError::Capability(_)),
+            "expected Capability variant"
+        );
+    }
+
+    #[test]
+    fn test_storage_backend_error_json_conversion() {
+        let json_err = serde_json::from_str::<VolumeInfo>("{]").unwrap_err();
+        let storage_err: StorageBackendError = json_err.into();
+        assert!(!storage_err.to_string().is_empty());
+    }
+
+    #[test]
+    fn test_volume_status_serde_all_variants() {
+        for s in [
+            "creating",
+            "ready",
+            "mounted",
+            "unmounted",
+            "deleting",
+            "error",
+        ] {
+            let parsed: VolumeStatus = serde_json::from_str(&format!("\"{}\"", s)).unwrap();
+            let _ = serde_json::to_string(&parsed).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_volume_request_with_mount_path() {
+        let req = VolumeRequest {
+            name: "data".to_string(),
+            size_bytes: 10_000_000,
+            persistent: true,
+            mount_path: Some(PathBuf::from("/mnt/persistent")),
+        };
+        let json = serde_json::to_value(&req).unwrap();
+        assert_eq!(json["mount_path"].as_str().unwrap(), "/mnt/persistent");
+    }
 }

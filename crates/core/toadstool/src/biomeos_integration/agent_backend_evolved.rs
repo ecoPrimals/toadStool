@@ -547,4 +547,139 @@ mod tests {
         let cloned = info.clone();
         assert_eq!(cloned.id, info.id);
     }
+
+    // ── DEEP tests: error paths, no-provider, capability conversion ─────
+
+    #[tokio::test]
+    async fn test_is_available_returns_false_when_no_provider() {
+        let backend = AgentBackend::new();
+        let available = backend.is_available().await;
+        assert!(!available, "No agent provider configured => not available");
+    }
+
+    #[tokio::test]
+    async fn test_provider_info_returns_none_when_no_provider() {
+        let backend = AgentBackend::new();
+        let info = backend.provider_info().await;
+        assert!(info.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_deploy_agent_returns_error_without_provider() {
+        let backend = AgentBackend::new();
+        let req = DeployAgentRequest {
+            name: "test".to_string(),
+            model: "gpt-4".to_string(),
+            replicas: 1,
+            capabilities: vec![],
+        };
+        let result = backend.deploy_agent(req).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(
+                err,
+                AgentBackendError::NoAgentProvider
+                    | AgentBackendError::Capability(_)
+                    | AgentBackendError::DeploymentFailed(_)
+            ),
+            "expected provider or deployment error, got {:?}",
+            err
+        );
+    }
+
+    #[tokio::test]
+    async fn test_load_model_returns_error_without_provider() {
+        let backend = AgentBackend::new();
+        let req = LoadModelRequest {
+            name: "m".to_string(),
+            model_type: "transformer".to_string(),
+            source: "s3://x".to_string(),
+        };
+        let result = backend.load_model(req).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_scale_agent_returns_error_without_provider() {
+        let backend = AgentBackend::new();
+        let result = backend.scale_agent("agent-1", 2).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_stop_agent_returns_error_without_provider() {
+        let backend = AgentBackend::new();
+        let result = backend.stop_agent("agent-1").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_remove_agent_returns_error_without_provider() {
+        let backend = AgentBackend::new();
+        let result = backend.remove_agent("agent-1").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_agent_status_returns_error_without_provider() {
+        let backend = AgentBackend::new();
+        let result = backend.get_agent_status("agent-1").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_list_agents_returns_no_provider_error() {
+        let backend = AgentBackend::new();
+        let result = backend.list_agents().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_list_models_returns_no_provider_error() {
+        let backend = AgentBackend::new();
+        let result = backend.list_models().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_unload_model_returns_error_without_provider() {
+        let backend = AgentBackend::new();
+        let result = backend.unload_model("model-1").await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_agent_backend_error_capability_conversion() {
+        use toadstool_common::capability_provider::CapabilityError;
+        use toadstool_common::primal_identity::ComputeCapability;
+        let cap_err = CapabilityError::NoProviderFound(Capability::Compute(
+            ComputeCapability::NativeExecution,
+        ));
+        let agent_err: AgentBackendError = cap_err.into();
+        assert!(agent_err.to_string().contains("provider"));
+    }
+
+    #[test]
+    fn test_agent_backend_error_json_conversion() {
+        let json_err = serde_json::from_str::<AgentInfo>("not valid json").unwrap_err();
+        let agent_err: AgentBackendError = json_err.into();
+        assert!(agent_err.to_string().contains("json") || agent_err.to_string().contains("JSON"));
+    }
+
+    #[test]
+    fn test_agent_status_serde_all_variants() {
+        for s in ["deploying", "running", "scaling", "stopped", "failed"] {
+            let parsed: AgentStatus = serde_json::from_str(&format!("\"{}\"", s)).unwrap();
+            let _ = serde_json::to_string(&parsed).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_model_status_serde_all_variants() {
+        for s in ["loading", "ready", "unloading", "error"] {
+            let parsed: ModelStatus = serde_json::from_str(&format!("\"{}\"", s)).unwrap();
+            let _ = serde_json::to_string(&parsed).unwrap();
+        }
+    }
 }

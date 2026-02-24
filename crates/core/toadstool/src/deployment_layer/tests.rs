@@ -194,58 +194,77 @@ async fn test_detect_reset_then_redetect() {
 }
 
 // ── Cloud detection via environment variables ─────────────────────────────────
-// Each test uses a distinct env var not shared with any other test, so they
-// are safe to run in parallel without a mutex guard across the await point.
-//
-// SAFETY: `std::env::set_var`/`remove_var` are unsafe in Rust 1.68+ because
-// concurrent reads can race with modifications. These tests use distinct env
-// vars (AWS_EXECUTION_ENV, GCP_PROJECT, AZURE_SUBSCRIPTION_ID) that no other
-// code reads concurrently during testing. The env var is removed immediately
-// after the detection call completes, minimizing the window for races.
+// Uses temp_env for safe, isolated env var testing.
 
 #[tokio::test]
 async fn test_detect_aws_via_env() {
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe { std::env::set_var("AWS_EXECUTION_ENV", "AWS_ECS_EC2") };
-    let mut detector = LayerDetector::new();
-    let layer = detector.detect().await.expect("detect should succeed");
-    unsafe { std::env::remove_var("AWS_EXECUTION_ENV") };
+    temp_env::with_var("AWS_EXECUTION_ENV", Some("AWS_ECS_EC2"), || {
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let mut detector = LayerDetector::new();
+                let layer = detector.detect().await.expect("detect should succeed");
 
-    // On a machine that doesn't have /.dockerenv etc., AWS should win.
-    if let DeploymentLayer::CloudLayer { provider, .. } = &layer {
-        assert!(matches!(provider, CloudProvider::AWS));
-    }
-    // (On a machine that IS in a container, the container layer wins first —
-    // that's correct behaviour; just ensure no panic occurred.)
+                // On a machine that doesn't have /.dockerenv etc., AWS should win.
+                if let DeploymentLayer::CloudLayer { provider, .. } = &layer {
+                    assert!(matches!(provider, CloudProvider::AWS));
+                }
+                // (On a machine that IS in a container, the container layer wins first —
+                // that's correct behaviour; just ensure no panic occurred.)
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
 #[tokio::test]
 async fn test_detect_gcp_via_env() {
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe { std::env::set_var("GCP_PROJECT", "my-test-project") };
-    let mut detector = LayerDetector::new();
-    let _ = detector
-        .detect()
-        .await
-        .expect("detect with GCP env should succeed");
-    unsafe { std::env::remove_var("GCP_PROJECT") };
+    temp_env::with_var("GCP_PROJECT", Some("my-test-project"), || {
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let mut detector = LayerDetector::new();
+                let _ = detector
+                    .detect()
+                    .await
+                    .expect("detect with GCP env should succeed");
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
 #[tokio::test]
 async fn test_detect_azure_via_env() {
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::set_var(
-            "AZURE_SUBSCRIPTION_ID",
-            "aaaaaaaa-0000-0000-0000-aaaaaaaaaaaa",
-        )
-    };
-    let mut detector = LayerDetector::new();
-    let _ = detector
-        .detect()
-        .await
-        .expect("detect with Azure env should succeed");
-    unsafe { std::env::remove_var("AZURE_SUBSCRIPTION_ID") };
+    temp_env::with_var(
+        "AZURE_SUBSCRIPTION_ID",
+        Some("aaaaaaaa-0000-0000-0000-aaaaaaaaaaaa"),
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let _ = detector
+                        .detect()
+                        .await
+                        .expect("detect with Azure env should succeed");
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
 }
 
 // ── DeploymentLayer helper methods ────────────────────────────────────────────

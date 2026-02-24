@@ -1,6 +1,9 @@
 //! CLI command implementations
 //!
-//! This module contains the implementations of CLI subcommands.
+//! This module contains command definitions and implementations of CLI subcommands.
+
+mod definitions;
+pub use definitions::{Commands, EcosystemCommands, UniversalCommands};
 
 pub mod doctor;
 

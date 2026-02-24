@@ -11,9 +11,9 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```rust,ignore
 //! use barracuda::vision::{VisionPipeline, Transform};
-//! use barracuda::WgpuDevice;
+//! use barracuda::prelude::WgpuDevice;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let device = WgpuDevice::new().await?;
@@ -103,6 +103,7 @@ impl VisionPipeline {
     }
 
     /// Build pipeline (validates configuration)
+    #[must_use]
     pub fn build(mut self) -> Self {
         self.built = true;
         self

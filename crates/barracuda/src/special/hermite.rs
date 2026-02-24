@@ -91,7 +91,7 @@ pub fn hermite(n: usize, x: f64) -> f64 {
 /// # Examples
 ///
 /// ```
-/// use barracuda::special::hermite_all;
+/// use barracuda::special::hermite::hermite_all;
 ///
 /// let h = hermite_all(3, 1.0);
 /// assert_eq!(h.len(), 4);
@@ -142,7 +142,7 @@ pub fn hermite_batch(n: usize, x: &[f64]) -> Vec<f64> {
 /// # Examples
 ///
 /// ```
-/// use barracuda::special::hermite_normalized;
+/// use barracuda::special::hermite::hermite_normalized;
 ///
 /// // ψ₀(0) = π^(-1/4)
 /// let psi0 = hermite_normalized(0, 0.0);

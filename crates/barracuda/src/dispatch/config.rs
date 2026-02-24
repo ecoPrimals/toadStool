@@ -37,6 +37,7 @@ impl DispatchConfig {
     }
 
     /// Create config with custom thresholds
+    #[must_use]
     pub fn with_thresholds(thresholds: HashMap<Arc<str>, usize>) -> Self {
         Self {
             thresholds,

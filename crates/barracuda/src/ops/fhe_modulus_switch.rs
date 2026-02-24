@@ -32,9 +32,9 @@
 //!
 //! ## Usage Example
 //!
-//! ```no_run
+//! ```rust,ignore
 //! use barracuda::ops::fhe_modulus_switch::FheModulusSwitch;
-//! use barracuda::Tensor;
+//! use barracuda::prelude::Tensor;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Ciphertext under large modulus (e.g., after multiplication)

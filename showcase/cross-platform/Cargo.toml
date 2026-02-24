@@ -180,4 +180,5 @@ bytemuck = { version = "1.14", features = ["derive"] }
 
 # Optional: Native CUDA comparison (NVIDIA only)
 # Upgraded from 0.11 to 0.19 for proper device queries (Feb 2026)
-cudarc = { version = "0.19", optional = true, features = ["cuda-version-from-build-system"] }
+# cuda-12050: explicit version for --all-features builds without nvcc (ecoBin)
+cudarc = { version = "0.19", optional = true, features = ["cuda-12050"] }

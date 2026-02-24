@@ -304,3 +304,200 @@ impl StorageBackend for NestGateBackend {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::super::types::{
+        PersistentVolume, ReplicationSettings, StorageProvisioningRequest, VolumeConfig,
+    };
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_replication_settings_serialization() {
+        let settings = ReplicationSettings {
+            enabled: true,
+            factor: 5,
+            strategy: "sync".to_string(),
+        };
+        let json = serde_json::to_value(&settings).unwrap();
+        assert_eq!(json["enabled"], true);
+        assert_eq!(json["factor"], 5);
+        assert_eq!(json["strategy"], "sync");
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_nestgate_backend_new_configuration() {
+        let backend = NestGateBackend::new("http://ignored", "fast-tier", true, 3);
+        assert_eq!(backend.storage_tier, "fast-tier");
+        assert!(backend.replication_enabled);
+        assert_eq!(backend.replication_factor, 3);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_nestgate_backend_new_storage_tier_into() {
+        let tier = String::from("ssd-tier");
+        let backend = NestGateBackend::new("x", tier, false, 1);
+        assert_eq!(backend.storage_tier, "ssd-tier");
+        assert!(!backend.replication_enabled);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_nestgate_backend_new_replication_disabled() {
+        let backend = NestGateBackend::new("", "cold", false, 0);
+        assert!(!backend.replication_enabled);
+        assert_eq!(backend.replication_factor, 0);
+    }
+
+    #[tokio::test]
+    #[allow(deprecated)]
+    async fn test_nestgate_initialize_fails_without_service() {
+        let backend = NestGateBackend::new("", "test", false, 1);
+        let result = backend.initialize().await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.to_string().contains("Failed to connect") || err.to_string().contains("NestGate")
+        );
+    }
+
+    #[test]
+    fn test_storage_provisioning_request_serialization() {
+        let req = StorageProvisioningRequest {
+            volume_name: "test-vol".to_string(),
+            size: "100Gi".to_string(),
+            storage_class: Some("fast".to_string()),
+            access_modes: vec!["ReadWriteOnce".to_string()],
+            backup_policy: Some("daily".to_string()),
+            replication: Some(ReplicationSettings {
+                enabled: true,
+                factor: 3,
+                strategy: "async".to_string(),
+            }),
+        };
+        let json = serde_json::to_value(&req).expect("serialize");
+        assert_eq!(json["volume_name"], "test-vol");
+        assert_eq!(json["size"], "100Gi");
+        assert_eq!(json["replication"]["factor"], 3);
+    }
+
+    #[test]
+    fn test_provision_request_from_volume_config_structure() {
+        let config = VolumeConfig {
+            name: "myvol".to_string(),
+            size: "50Gi".to_string(),
+            storage_class: Some("ssd".to_string()),
+            access_modes: vec!["ReadWriteMany".to_string()],
+            mount_path: None,
+            backup_policy: None,
+        };
+        let req = StorageProvisioningRequest {
+            volume_name: config.name.clone(),
+            size: config.size.clone(),
+            storage_class: config.storage_class.clone(),
+            access_modes: config.access_modes.clone(),
+            backup_policy: config.backup_policy.clone(),
+            replication: None,
+        };
+        assert_eq!(req.volume_name, "myvol");
+        assert_eq!(req.size, "50Gi");
+        assert_eq!(req.storage_class, Some("ssd".to_string()));
+    }
+
+    #[test]
+    fn test_provision_request_from_persistent_volume_structure() {
+        let pv = PersistentVolume {
+            name: "pv-data".to_string(),
+            capacity: "200Gi".to_string(),
+            access_modes: vec!["ReadWriteOnce".to_string(), "ReadOnlyMany".to_string()],
+            storage_class: "standard".to_string(),
+            host_path: Some(PathBuf::from("/data")),
+        };
+        let req = StorageProvisioningRequest {
+            volume_name: pv.name.clone(),
+            size: pv.capacity.clone(),
+            storage_class: Some(pv.storage_class.clone()),
+            access_modes: pv.access_modes.clone(),
+            backup_policy: None,
+            replication: Some(ReplicationSettings {
+                enabled: true,
+                factor: 2,
+                strategy: "sync".to_string(),
+            }),
+        };
+        assert_eq!(req.volume_name, "pv-data");
+        assert_eq!(req.size, "200Gi");
+        assert_eq!(req.storage_class, Some("standard".to_string()));
+        assert_eq!(req.replication.unwrap().strategy, "sync");
+    }
+
+    #[test]
+    fn test_volume_status_serialization_roundtrip() {
+        let available = VolumeStatus::Available;
+        let json = serde_json::to_string(&available).unwrap();
+        let restored: VolumeStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored, VolumeStatus::Available);
+        let err_status = VolumeStatus::Error("disk full".to_string());
+        let json2 = serde_json::to_string(&err_status).unwrap();
+        let restored2: VolumeStatus = serde_json::from_str(&json2).unwrap();
+        assert_eq!(restored2, VolumeStatus::Error("disk full".to_string()));
+    }
+
+    #[test]
+    fn test_mount_volume_params_structure() {
+        let params = serde_json::json!({
+            "volume_name": "vol1",
+            "service_name": "svc-a",
+            "mount_path": "/mnt/data",
+        });
+        assert_eq!(params["volume_name"], "vol1");
+        assert_eq!(params["mount_path"], "/mnt/data");
+    }
+
+    #[test]
+    fn test_unmount_volume_params_structure() {
+        let params = serde_json::json!({
+            "volume_name": "vol1",
+            "service_name": "svc-a",
+        });
+        assert_eq!(params["volume_name"], "vol1");
+        assert!(params.get("mount_path").is_none());
+    }
+
+    #[test]
+    fn test_delete_volume_params_structure() {
+        let params = serde_json::json!({"volume_name": "vol-to-delete"});
+        assert_eq!(params["volume_name"], "vol-to-delete");
+    }
+
+    #[tokio::test]
+    #[allow(deprecated)]
+    async fn test_provision_volume_fails_without_service() {
+        let backend = NestGateBackend::new("", "tier", false, 1);
+        let config = VolumeConfig {
+            name: "test-vol".to_string(),
+            size: "10Gi".to_string(),
+            storage_class: None,
+            access_modes: vec!["ReadWriteOnce".to_string()],
+            mount_path: None,
+            backup_policy: None,
+        };
+        let result = backend.provision_volume(&config).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.to_string().contains("Failed to provision") || err.to_string().contains("test-vol")
+        );
+    }
+
+    #[tokio::test]
+    #[allow(deprecated)]
+    async fn test_list_volumes_fails_without_service() {
+        let backend = NestGateBackend::new("", "tier", false, 1);
+        let result = backend.list_volumes().await;
+        assert!(result.is_err());
+    }
+}

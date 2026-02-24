@@ -811,4 +811,145 @@ mod tests {
         assert!(s.contains("150"));
         assert!(s.contains("100"));
     }
+
+    #[test]
+    fn test_cost_line_item_serde() {
+        let item = CostLineItem {
+            category: "cpu".to_string(),
+            quantity: 4.0,
+            unit: "core-hours".to_string(),
+            unit_price: 0.08,
+            total: 0.32,
+        };
+        let json = serde_json::to_string(&item).unwrap();
+        let parsed: CostLineItem = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.category, "cpu");
+        assert!((parsed.total - 0.32).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_cost_estimate_serde() {
+        let est = CostEstimate {
+            line_items: vec![CostLineItem {
+                category: "cpu".to_string(),
+                quantity: 4.0,
+                unit: "core-hours".to_string(),
+                unit_price: 0.08,
+                total: 0.32,
+            }],
+            total_cost: 0.32,
+            tier: "StandardCompute".to_string(),
+            uses_spot: true,
+            duration_hours: 1.0,
+        };
+        let json = serde_json::to_string(&est).unwrap();
+        let parsed: CostEstimate = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.total_cost, 0.32);
+        assert!(parsed.uses_spot);
+    }
+
+    #[test]
+    fn test_cost_error_variants() {
+        let _ = CostError::InvalidRequirement("bad".to_string());
+        let _ = CostError::ModelNotFound("p1".to_string());
+        let _ = CostError::InvalidDuration;
+        let s = CostError::InvalidRequirement("x".to_string()).to_string();
+        assert!(s.contains("Invalid"));
+    }
+
+    #[test]
+    fn test_infer_pricing_tier_serverless() {
+        let caps = CloudCapabilities {
+            compute_types: vec![ComputeType::VM],
+            storage_types: vec![StorageType::BlockStorage],
+            networking_features: vec![NetworkingFeature::VPC],
+            security_features: vec![SecurityFeature::Encryption],
+            compliance_certifications: vec![],
+            regions: vec![],
+            max_cpu_cores: None,
+            max_memory_gb: None,
+            gpu_support: false,
+            kubernetes_support: false,
+            serverless_support: true,
+        };
+        let tier = infer_pricing_tier(&caps);
+        assert_eq!(tier, PricingTier::Serverless);
+    }
+
+    #[test]
+    fn test_infer_pricing_tier_high_memory() {
+        let caps = CloudCapabilities {
+            compute_types: vec![ComputeType::VM],
+            storage_types: vec![StorageType::BlockStorage],
+            networking_features: vec![NetworkingFeature::VPC],
+            security_features: vec![SecurityFeature::Encryption],
+            compliance_certifications: vec![],
+            regions: vec![],
+            max_cpu_cores: None,
+            max_memory_gb: Some(128),
+            gpu_support: false,
+            kubernetes_support: false,
+            serverless_support: false,
+        };
+        let tier = infer_pricing_tier(&caps);
+        assert_eq!(tier, PricingTier::HighMemoryCompute);
+    }
+
+    #[test]
+    fn test_infer_pricing_tier_bare_metal() {
+        let caps = CloudCapabilities {
+            compute_types: vec![ComputeType::VM, ComputeType::BareMetalC],
+            storage_types: vec![StorageType::BlockStorage],
+            networking_features: vec![NetworkingFeature::VPC],
+            security_features: vec![SecurityFeature::Encryption],
+            compliance_certifications: vec![],
+            regions: vec![],
+            max_cpu_cores: None,
+            max_memory_gb: None,
+            gpu_support: false,
+            kubernetes_support: false,
+            serverless_support: false,
+        };
+        let tier = infer_pricing_tier(&caps);
+        assert_eq!(tier, PricingTier::BareMetalDedicated);
+    }
+
+    #[test]
+    fn test_cloud_cost_model_new_digitalocean() {
+        let model = CloudCostModel::new_digitalocean();
+        assert!(model.cpu_rate > 0.0);
+        assert!(model.memory_rate > 0.0);
+    }
+
+    #[test]
+    fn test_cloud_cost_model_new_hetzner() {
+        let model = CloudCostModel::new_hetzner();
+        assert!(model.cpu_rate > 0.0);
+        assert!(model.storage_rate < 0.2);
+    }
+
+    #[tokio::test]
+    async fn test_estimate_cost_with_spot_pricing() {
+        let cfg = CostConfig {
+            budget_limit: None,
+            cost_tracking_enabled: false,
+            spot_instance_preference: 1.0,
+        };
+        let mut optimizer = CloudCostOptimizer::new(cfg).await.unwrap();
+        optimizer
+            .add_provider_cost_model("p1", &empty_capabilities())
+            .await
+            .unwrap();
+        let req = standard_requirements();
+        let est = optimizer.estimate_cost("p1", &req, 1.0, 0.0).unwrap();
+        assert!(est.uses_spot);
+        assert!(est.total_cost > 0.0);
+    }
+
+    #[test]
+    fn test_cost_error_from_toadstool_error() {
+        let err: ToadStoolError = CostError::InvalidDuration.into();
+        let s = err.to_string();
+        assert!(!s.is_empty());
+    }
 }

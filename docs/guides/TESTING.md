@@ -165,7 +165,7 @@ async fn test_feature_workflow() {
 
 ## See Also
 
-- **[STATUS.md](./STATUS.md)** - Overall project status
-- **[DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md)** - All documentation
-- **[START_HERE.md](./START_HERE.md)** - Getting started guide
+- **[STATUS.md](../../STATUS.md)** - Overall project status
+- **[DOCUMENTATION.md](../../DOCUMENTATION.md)** - Documentation hub
+- **[QUICK_REFERENCE.md](../../QUICK_REFERENCE.md)** - Commands and API reference
 

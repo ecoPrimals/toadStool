@@ -388,10 +388,19 @@ fn test_socket_discovery_error_display() {
 
 #[test]
 fn test_ensure_biomeos_dir_creates_dir() {
-    let result = ensure_biomeos_dir();
-    assert!(result.is_ok());
-    let path = result.unwrap();
-    assert!(path.to_string_lossy().contains("biomeos"));
+    let tmp = tempfile::tempdir().unwrap();
+    let runtime_dir = tmp.path().join("run");
+    temp_env::with_var(
+        "XDG_RUNTIME_DIR",
+        Some(runtime_dir.to_str().unwrap()),
+        || {
+            let result = ensure_biomeos_dir();
+            assert!(result.is_ok(), "ensure_biomeos_dir failed: {:?}", result);
+            let path = result.unwrap();
+            assert!(path.to_string_lossy().contains("biomeos"));
+            assert!(path.exists());
+        },
+    );
 }
 
 #[test]

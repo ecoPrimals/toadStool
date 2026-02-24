@@ -126,3 +126,225 @@ impl SongbirdConnection {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::songbird_integration::types::{
+        GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig,
+        SongbirdConnectionConfig,
+    };
+    use std::collections::HashMap;
+    use toadstool_common::auth::{AuthCredentials, ServiceAuthConfig};
+    use toadstool_common::config_bases::ConnectionPoolConfig;
+
+    fn base_protocol_config(protocol: SongbirdProtocol) -> ProtocolConfig {
+        ProtocolConfig {
+            protocol,
+            http: HttpProtocolConfig {
+                timeout_ms: 5000,
+                max_retries: 3,
+                headers: HashMap::new(),
+            },
+            grpc: GrpcProtocolConfig {
+                timeout_ms: 5000,
+                max_message_size: 1024 * 1024,
+                compression: false,
+            },
+            message_queue: MessageQueueProtocolConfig {
+                queue_name: "default".to_string(),
+                exchange: "default".to_string(),
+                routing_key: "default".to_string(),
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn test_connection_empty_endpoints() {
+        let config = SongbirdConnectionConfig {
+            endpoints: vec![],
+            protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
+            auth_config: ServiceAuthConfig::default(),
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let result = SongbirdConnection::new(config).await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No Songbird endpoints"));
+    }
+
+    #[tokio::test]
+    async fn test_connection_grpc_http_endpoint() {
+        let config = SongbirdConnectionConfig {
+            endpoints: vec!["http://localhost:9999".to_string()],
+            protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
+            auth_config: ServiceAuthConfig::default(),
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let conn = SongbirdConnection::new(config).await.unwrap();
+        assert_eq!(conn.active_endpoint, "http://localhost:9999");
+        assert_eq!(conn.health_status, ConnectionHealth::Healthy);
+        assert!(conn.auth_token.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_connection_grpc_https_endpoint() {
+        let config = SongbirdConnectionConfig {
+            endpoints: vec!["https://songbird.example.com:443".to_string()],
+            protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
+            auth_config: ServiceAuthConfig::default(),
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let conn = SongbirdConnection::new(config).await.unwrap();
+        assert_eq!(conn.health_status, ConnectionHealth::Healthy);
+    }
+
+    #[tokio::test]
+    async fn test_connection_message_queue_endpoint() {
+        let config = SongbirdConnectionConfig {
+            endpoints: vec!["amqp://localhost:5672".to_string()],
+            protocol_config: base_protocol_config(SongbirdProtocol::MessageQueue),
+            auth_config: ServiceAuthConfig::default(),
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let conn = SongbirdConnection::new(config).await.unwrap();
+        assert_eq!(conn.health_status, ConnectionHealth::Healthy);
+        assert_eq!(conn.active_endpoint, "amqp://localhost:5672");
+    }
+
+    #[tokio::test]
+    async fn test_connection_auth_api_key() {
+        let mut creds = AuthCredentials::default();
+        creds.api_key = Some("secret-key".to_string());
+        let config = SongbirdConnectionConfig {
+            endpoints: vec!["http://localhost:8080".to_string()],
+            protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
+            auth_config: ServiceAuthConfig {
+                auth_type: AuthType::ApiKey,
+                credentials: creds,
+            },
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let conn = SongbirdConnection::new(config).await.unwrap();
+        assert_eq!(conn.auth_token, Some("secret-key".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_connection_auth_bearer() {
+        let mut creds = AuthCredentials::default();
+        creds.token = Some("bearer-token-123".to_string());
+        let config = SongbirdConnectionConfig {
+            endpoints: vec!["http://localhost:8080".to_string()],
+            protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
+            auth_config: ServiceAuthConfig {
+                auth_type: AuthType::Bearer,
+                credentials: creds,
+            },
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let conn = SongbirdConnection::new(config).await.unwrap();
+        assert_eq!(conn.auth_token, Some("bearer-token-123".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_connection_auth_oauth2() {
+        let mut creds = AuthCredentials::default();
+        creds.token = Some("oauth2-access-token".to_string());
+        let config = SongbirdConnectionConfig {
+            endpoints: vec!["http://localhost:8080".to_string()],
+            protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
+            auth_config: ServiceAuthConfig {
+                auth_type: AuthType::OAuth2,
+                credentials: creds,
+            },
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let conn = SongbirdConnection::new(config).await.unwrap();
+        assert_eq!(conn.auth_token, Some("oauth2-access-token".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_connection_grpc_invalid_endpoint_then_valid() {
+        let config = SongbirdConnectionConfig {
+            endpoints: vec![
+                "invalid-endpoint".to_string(),
+                "http://localhost:9000".to_string(),
+            ],
+            protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
+            auth_config: ServiceAuthConfig::default(),
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let conn = SongbirdConnection::new(config).await.unwrap();
+        assert_eq!(conn.active_endpoint, "http://localhost:9000");
+        assert_eq!(conn.health_status, ConnectionHealth::Healthy);
+    }
+
+    #[tokio::test]
+    async fn test_connection_all_endpoints_fail_uses_first_degraded() {
+        let config = SongbirdConnectionConfig {
+            endpoints: vec!["invalid".to_string(), "also-invalid".to_string()],
+            protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
+            auth_config: ServiceAuthConfig::default(),
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let conn = SongbirdConnection::new(config).await.unwrap();
+        assert_eq!(conn.active_endpoint, "invalid");
+        assert_eq!(conn.health_status, ConnectionHealth::Degraded);
+    }
+
+    #[tokio::test]
+    async fn test_connection_http_plain_rejected() {
+        let config = SongbirdConnectionConfig {
+            endpoints: vec!["http://localhost:8080".to_string()],
+            protocol_config: base_protocol_config(SongbirdProtocol::HTTP),
+            auth_config: ServiceAuthConfig::default(),
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let conn = SongbirdConnection::new(config).await.unwrap();
+        assert_eq!(conn.health_status, ConnectionHealth::Degraded);
+        assert_eq!(conn.active_endpoint, "http://localhost:8080");
+    }
+
+    #[tokio::test]
+    async fn test_connection_endpoints_preserved() {
+        let config = SongbirdConnectionConfig {
+            endpoints: vec!["http://a:1".to_string(), "http://b:2".to_string()],
+            protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
+            auth_config: ServiceAuthConfig::default(),
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let conn = SongbirdConnection::new(config).await.unwrap();
+        assert_eq!(conn.endpoints.len(), 2);
+        assert_eq!(conn.endpoints[0], "http://a:1");
+        assert_eq!(conn.endpoints[1], "http://b:2");
+    }
+
+    #[tokio::test]
+    async fn test_connection_protocol_config_preserved() {
+        let config = SongbirdConnectionConfig {
+            endpoints: vec!["http://localhost:1".to_string()],
+            protocol_config: base_protocol_config(SongbirdProtocol::GRPC),
+            auth_config: ServiceAuthConfig::default(),
+            pool: ConnectionPoolConfig::default(),
+        };
+
+        let conn = SongbirdConnection::new(config).await.unwrap();
+        assert!(matches!(
+            conn.protocol_config.protocol,
+            SongbirdProtocol::GRPC
+        ));
+    }
+}

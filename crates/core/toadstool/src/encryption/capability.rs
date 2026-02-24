@@ -69,7 +69,9 @@ impl CryptoCapability {
             .iter()
             .filter(|req_alg| self.algorithms.contains(req_alg))
             .count();
-        score += matching_algorithms as u32 * 10;
+        score += u32::try_from(matching_algorithms)
+            .unwrap_or(u32::MAX)
+            .saturating_mul(10);
 
         score
     }

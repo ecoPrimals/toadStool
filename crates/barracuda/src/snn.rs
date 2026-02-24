@@ -29,7 +29,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```rust,ignore
 //! use barracuda::snn::{SpikingNetwork, SNNConfig, SNNLayer};
 //!
 //! // No device needed - pure Rust!

@@ -34,7 +34,7 @@ impl ResourceEnvConfig {
             worker_threads: loader.get_u32(
                 "WORKER_THREADS",
                 std::thread::available_parallelism()
-                    .map(|n| n.get() as u32)
+                    .map(|n| u32::try_from(n.get()).unwrap_or(4))
                     .unwrap_or(4),
             ),
             queue_size: loader.get_u32("QUEUE_SIZE", 10000),

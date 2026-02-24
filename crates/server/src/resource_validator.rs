@@ -190,10 +190,10 @@ impl ResourceValidator {
 
         // Query CPU
         let total_cpu_cores = std::thread::available_parallelism()
-            .map(|n| n.get() as u32)
+            .map(|n| u32::try_from(n.get()).unwrap_or(4))
             .unwrap_or(4);
         // Assume 80% available (rough heuristic, in production would query actual usage)
-        let available_cpu_cores = (total_cpu_cores as f32 * 0.8) as u32;
+        let available_cpu_cores = (total_cpu_cores * 80) / 100;
 
         // Query memory - Pure Rust Evolution (Jan 17, 2026)
         // Migrated from sys-info (C dependency) to sysinfo (100% Pure Rust)

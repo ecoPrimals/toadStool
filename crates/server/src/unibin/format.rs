@@ -123,3 +123,98 @@ pub fn get_socket_path(family_id: &str, _node_id: &str) -> ServerResult<PathBuf>
     info!("⚠️  Using /tmp fallback for dev/testing deployment");
     Ok(tmp_path)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_biomeos_directory_creates_in_runtime_dir() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let result = ensure_biomeos_directory(temp_dir.path());
+        assert!(result.is_ok());
+        let biomeos = result.unwrap();
+        assert!(biomeos.ends_with("biomeos"));
+        assert!(biomeos.exists());
+        assert!(biomeos.is_dir());
+    }
+
+    #[test]
+    fn socket_filename_for_family_empty() {
+        assert_eq!(socket_filename_for_family(""), "toadstool.sock");
+    }
+
+    #[test]
+    fn socket_filename_for_family_default() {
+        assert_eq!(socket_filename_for_family("default"), "toadstool.sock");
+    }
+
+    #[test]
+    fn socket_filename_for_family_custom() {
+        assert_eq!(socket_filename_for_family("nat0"), "toadstool-nat0.sock");
+    }
+
+    #[test]
+    fn get_socket_path_tmp_fallback_when_xdg_not_exists() {
+        let old_toad = std::env::var("TOADSTOOL_SOCKET").ok();
+        let old_primal = std::env::var("PRIMAL_SOCKET").ok();
+        let old_biome = std::env::var("BIOMEOS_SOCKET_PATH").ok();
+        let old_xdg = std::env::var("XDG_RUNTIME_DIR").ok();
+        std::env::remove_var("TOADSTOOL_SOCKET");
+        std::env::remove_var("PRIMAL_SOCKET");
+        std::env::remove_var("BIOMEOS_SOCKET_PATH");
+        std::env::set_var("XDG_RUNTIME_DIR", "/nonexistent-path-12345-abcd");
+
+        let result = get_socket_path("custom", "node1");
+
+        if let Some(v) = old_toad {
+            std::env::set_var("TOADSTOOL_SOCKET", v);
+        }
+        if let Some(v) = old_primal {
+            std::env::set_var("PRIMAL_SOCKET", v);
+        }
+        if let Some(v) = old_biome {
+            std::env::set_var("BIOMEOS_SOCKET_PATH", v);
+        }
+        if let Some(v) = old_xdg {
+            std::env::set_var("XDG_RUNTIME_DIR", v);
+        } else {
+            std::env::remove_var("XDG_RUNTIME_DIR");
+        }
+
+        assert!(result.is_ok());
+        let path = result.unwrap();
+        assert!(path.ends_with("biomeos/toadstool-custom.sock"));
+    }
+
+    #[test]
+    fn get_socket_path_temp_dir_fallback_no_xdg() {
+        let old_toad = std::env::var("TOADSTOOL_SOCKET").ok();
+        let old_primal = std::env::var("PRIMAL_SOCKET").ok();
+        let old_biome = std::env::var("BIOMEOS_SOCKET_PATH").ok();
+        let old_xdg = std::env::var("XDG_RUNTIME_DIR").ok();
+        std::env::remove_var("TOADSTOOL_SOCKET");
+        std::env::remove_var("PRIMAL_SOCKET");
+        std::env::remove_var("BIOMEOS_SOCKET_PATH");
+        std::env::remove_var("XDG_RUNTIME_DIR");
+
+        let result = get_socket_path("default", "node1");
+
+        if let Some(v) = old_toad {
+            std::env::set_var("TOADSTOOL_SOCKET", v);
+        }
+        if let Some(v) = old_primal {
+            std::env::set_var("PRIMAL_SOCKET", v);
+        }
+        if let Some(v) = old_biome {
+            std::env::set_var("BIOMEOS_SOCKET_PATH", v);
+        }
+        if let Some(v) = old_xdg {
+            std::env::set_var("XDG_RUNTIME_DIR", v);
+        }
+
+        assert!(result.is_ok());
+        let path = result.unwrap();
+        assert!(path.ends_with("biomeos/toadstool.sock"));
+    }
+}

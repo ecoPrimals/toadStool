@@ -136,3 +136,117 @@ impl OSLayerManager {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_os_layer_config_default() {
+        let config = OSLayerConfig::default();
+        assert!(config.enabled);
+        assert_eq!(config.default_layer, "linux");
+        assert!(config.available_layers.contains(&"linux".to_string()));
+        assert!(config.available_layers.contains(&"windows".to_string()));
+        assert!(config.available_layers.contains(&"macos".to_string()));
+    }
+
+    #[test]
+    fn test_os_layer_config_custom() {
+        let config = OSLayerConfig {
+            enabled: false,
+            default_layer: "custom".to_string(),
+            available_layers: vec!["custom".to_string()],
+        };
+        assert!(!config.enabled);
+        assert_eq!(config.default_layer, "custom");
+        assert_eq!(config.available_layers.len(), 1);
+    }
+
+    #[test]
+    fn test_os_layer_manager_creation() {
+        let config = OSLayerConfig::default();
+        let manager = OSLayerManager::new(config);
+        assert!(std::mem::size_of_val(&manager) > 0);
+    }
+
+    #[test]
+    fn test_os_layer_config_serialization() {
+        let config = OSLayerConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: OSLayerConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.default_layer, config.default_layer);
+    }
+
+    #[tokio::test]
+    async fn test_os_layer_manager_initialize() {
+        let config = OSLayerConfig {
+            enabled: true,
+            default_layer: "linux".to_string(),
+            available_layers: vec!["linux".to_string()],
+        };
+        let mut manager = OSLayerManager::new(config);
+        let result = manager.initialize().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_os_layer_manager_execute_with_compatibility() {
+        let config = OSLayerConfig {
+            enabled: true,
+            default_layer: "linux".to_string(),
+            available_layers: vec!["linux".to_string()],
+        };
+        let mut manager = OSLayerManager::new(config);
+        manager.initialize().await.unwrap();
+
+        let request = ExecutionRequest::default();
+
+        let result = manager.execute_with_compatibility(request).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_os_layer_manager_layer_not_found() {
+        let config = OSLayerConfig {
+            enabled: true,
+            default_layer: "nonexistent".to_string(),
+            available_layers: vec!["linux".to_string()],
+        };
+        let manager = OSLayerManager::new(config);
+        assert!(manager.compatibility_layers.is_empty());
+
+        let request = ExecutionRequest::default();
+
+        let result = manager.execute_with_compatibility(request).await;
+        assert!(result.is_err());
+        let err_msg = result.err().unwrap().to_string();
+        assert!(err_msg.contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn test_compatibility_layer_enum_initialize() {
+        let mut layer = CompatibilityLayerEnum::Linux(LinuxCompatibilityLayer::new());
+        let result = layer.initialize().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_compatibility_layer_enum_execute() {
+        let mut layer = CompatibilityLayerEnum::Linux(LinuxCompatibilityLayer::new());
+        layer.initialize().await.unwrap();
+
+        let request = ExecutionRequest::default();
+
+        let result = layer.execute_with_compatibility(request).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_compatibility_layer_enum_shutdown() {
+        let mut layer = CompatibilityLayerEnum::Linux(LinuxCompatibilityLayer::new());
+        layer.initialize().await.unwrap();
+        let result = layer.shutdown().await;
+        assert!(result.is_ok());
+    }
+}

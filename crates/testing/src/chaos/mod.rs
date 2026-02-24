@@ -36,6 +36,9 @@ use std::collections::HashMap;
 use std::time::Duration;
 use tracing::{debug, info};
 
+/// Alternative chaos infrastructure with ChaosEngine (simulation-based)
+pub mod infrastructure;
+
 /// Type alias for chaos scenario state validators
 ///
 /// Validators check system state after fault injection to ensure the system

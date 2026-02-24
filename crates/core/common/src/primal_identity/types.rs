@@ -249,3 +249,89 @@ impl ServiceEndpoint {
         format!("{}://{}:{}{}", self.protocol, self.address, self.port, path)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_service_endpoint_url_without_path() {
+        let endpoint = ServiceEndpoint::http("localhost", 8080);
+        assert_eq!(endpoint.url(), "http://localhost:8080");
+    }
+
+    #[test]
+    fn test_service_endpoint_url_with_empty_path() {
+        let endpoint = ServiceEndpoint::http("localhost", 8080).with_path("");
+        assert_eq!(endpoint.url(), "http://localhost:8080");
+    }
+
+    #[test]
+    fn test_service_endpoint_url_with_root_path() {
+        let endpoint = ServiceEndpoint::https("api.example.com", 443).with_path("/");
+        assert_eq!(endpoint.url(), "https://api.example.com:443/");
+    }
+
+    #[test]
+    fn test_service_endpoint_url_with_query_path() {
+        let endpoint = ServiceEndpoint::http("api.example.com", 80).with_path("/v1/query?foo=bar");
+        assert_eq!(endpoint.url(), "http://api.example.com:80/v1/query?foo=bar");
+    }
+
+    #[test]
+    fn test_service_endpoint_with_metadata_chain() {
+        let endpoint = ServiceEndpoint::grpc("localhost", 50051)
+            .with_metadata("key1", "value1")
+            .with_metadata("key2", "value2");
+        assert_eq!(endpoint.metadata.get("key1"), Some(&"value1".to_string()));
+        assert_eq!(endpoint.metadata.get("key2"), Some(&"value2".to_string()));
+    }
+
+    #[test]
+    fn test_capability_hash_for_hashmap_key() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(Capability::Compute(ComputeCapability::GpuCompute));
+        set.insert(Capability::Compute(ComputeCapability::GpuCompute)); // duplicate
+        assert_eq!(set.len(), 1);
+    }
+
+    #[test]
+    fn test_capability_serialize_all_variants() {
+        let variants = [
+            Capability::Compute(ComputeCapability::NativeExecution),
+            Capability::Storage(StorageCapability::ObjectStorage),
+            Capability::Crypto(CryptoCapability::Encryption),
+            Capability::Authentication(AuthCapability::UserAuth),
+            Capability::Coordination(CoordinationCapability::ServiceDiscovery),
+            Capability::Discovery(DiscoveryCapability::CapabilityDiscovery),
+        ];
+        for cap in &variants {
+            let json = serde_json::to_string(cap).expect("serialize");
+            let restored: Capability = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(cap, &restored);
+        }
+    }
+
+    #[test]
+    fn test_service_endpoint_serialize_deserialize() {
+        let endpoint = ServiceEndpoint::http("example.com", 8080)
+            .with_path("/api")
+            .with_metadata("region", "us-west");
+        let json = serde_json::to_string(&endpoint).expect("serialize");
+        let restored: ServiceEndpoint = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(endpoint.protocol, restored.protocol);
+        assert_eq!(endpoint.address, restored.address);
+        assert_eq!(endpoint.port, restored.port);
+        assert_eq!(endpoint.path, restored.path);
+        assert_eq!(endpoint.metadata, restored.metadata);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_service_endpoint_websocket_deprecated() {
+        let endpoint = ServiceEndpoint::websocket("ws.example.com", 8081);
+        assert_eq!(endpoint.protocol, "ws");
+        assert_eq!(endpoint.url(), "ws://ws.example.com:8081");
+    }
+}

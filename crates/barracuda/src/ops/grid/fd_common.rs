@@ -151,18 +151,21 @@ impl<'a> FdPipelineBuilder<'a> {
     }
 
     /// Add a uniform buffer binding
+    #[must_use]
     pub fn with_uniform(mut self, binding: u32) -> Self {
         self.entries.push(uniform_entry(binding));
         self
     }
 
     /// Add a read-only storage buffer binding (input)
+    #[must_use]
     pub fn with_input(mut self, binding: u32) -> Self {
         self.entries.push(storage_readonly_entry(binding));
         self
     }
 
     /// Add a read-write storage buffer binding (output)
+    #[must_use]
     pub fn with_output(mut self, binding: u32) -> Self {
         self.entries.push(storage_readwrite_entry(binding));
         self

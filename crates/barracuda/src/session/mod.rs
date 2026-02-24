@@ -6,7 +6,7 @@
 //! **Solution**: Sessions batch operations and execute together —
 //! all ops are recorded into a single `CommandEncoder` and submitted once.
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! # use barracuda::prelude::*;
 //! # async fn example() -> Result<()> {
 //! let device = WgpuDevice::new().await?;

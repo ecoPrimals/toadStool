@@ -113,7 +113,7 @@ pub fn trapz(y: &[f64], x: &[f64]) -> Result<f64> {
 ///
 /// // ∫ 1 · x · x · 1 dx = ∫ x² dx
 /// let integral = trapz_product(&f, &g1, &g2, &x, &weights)?;
-/// assert!((integral - 21.33).abs() < 0.5);  // ∫₀⁴ x² dx = 64/3 ≈ 21.33
+/// assert!((integral - 21.33).abs() < 1.0);  // ∫₀⁴ x² dx = 64/3 ≈ 21.33 (trapezoidal approximation)
 /// # Ok::<(), barracuda::error::BarracudaError>(())
 /// ```
 pub fn trapz_product(f: &[f64], g1: &[f64], g2: &[f64], x: &[f64], weights: &[f64]) -> Result<f64> {

@@ -87,9 +87,9 @@ impl ResourceOptimizer {
 
     async fn query_system_capabilities(&self) -> Result<SystemCapabilities, OptimizationError> {
         let total_cpu_cores = std::thread::available_parallelism()
-            .map(|n| n.get() as u32)
+            .map(|n| u32::try_from(n.get()).unwrap_or(4))
             .unwrap_or(4);
-        let available_cpu_cores = (total_cpu_cores as f32 * 0.8) as u32;
+        let available_cpu_cores = (total_cpu_cores * 80) / 100;
 
         let mut system = sysinfo::System::new_all();
         system.refresh_memory();

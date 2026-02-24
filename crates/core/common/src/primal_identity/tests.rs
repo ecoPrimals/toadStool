@@ -493,3 +493,266 @@ fn test_capability_serialize_deserialize() {
     let deserialized: Capability = serde_json::from_str(&json).unwrap();
     assert_eq!(custom, deserialized);
 }
+
+#[test]
+fn test_toadstool_identity_builder_pattern() {
+    let identity = ToadStoolIdentity::new().with_endpoints(vec![
+        ServiceEndpoint::http("localhost", 8080),
+        ServiceEndpoint::grpc("localhost", 9090),
+    ]);
+    assert_eq!(identity.endpoints().len(), 2);
+}
+
+#[test]
+fn test_toadstool_identity_add_capability_no_duplicate() {
+    let mut identity = ToadStoolIdentity::new();
+    let cap = Capability::Storage(StorageCapability::ObjectStorage);
+    let count_before = identity.capabilities().len();
+    identity.add_capability(cap.clone());
+    identity.add_capability(cap);
+    assert_eq!(identity.capabilities().len(), count_before + 1);
+}
+
+#[test]
+fn test_primal_identity_trait_object() {
+    let identity = ToadStoolIdentity::new();
+    assert_eq!(identity.primal_name(), "toadstool");
+    assert!(!identity.version().is_empty());
+    assert!(!identity.capabilities().is_empty());
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Additional deep tests for all methods and edge cases
+// ═══════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_toadstool_identity_default_capabilities_contains_all() {
+    let identity = ToadStoolIdentity::new();
+    let caps = identity.capabilities();
+
+    assert!(caps.contains(&Capability::Compute(ComputeCapability::NativeExecution)));
+    assert!(caps.contains(&Capability::Compute(
+        ComputeCapability::ContainerOrchestration
+    )));
+    assert!(caps.contains(&Capability::Compute(ComputeCapability::WasmExecution)));
+    assert!(caps.contains(&Capability::Compute(ComputeCapability::PythonExecution)));
+    assert!(caps.contains(&Capability::Compute(ComputeCapability::GpuCompute)));
+    assert_eq!(caps.len(), 5);
+}
+
+#[test]
+fn test_discovered_service_endpoints_for_protocol_empty() {
+    let service = DiscoveredService {
+        id: None,
+        capabilities: vec![],
+        endpoints: vec![],
+        healthy: true,
+        metadata: HashMap::new(),
+    };
+    let http_eps = service.endpoints_for_protocol("http");
+    assert!(http_eps.is_empty());
+}
+
+#[test]
+fn test_discovered_service_serialize_deserialize() {
+    let service = DiscoveredService {
+        id: Some("svc-1".to_string()),
+        capabilities: vec![Capability::Compute(ComputeCapability::GpuCompute)],
+        endpoints: vec![ServiceEndpoint::http("localhost", 8080)],
+        healthy: true,
+        metadata: {
+            let mut m = HashMap::new();
+            m.insert("version".into(), "1.0".into());
+            m
+        },
+    };
+    let json = serde_json::to_string(&service).unwrap();
+    let restored: DiscoveredService = serde_json::from_str(&json).unwrap();
+    assert_eq!(service.id, restored.id);
+    assert_eq!(service.healthy, restored.healthy);
+    assert_eq!(service.capabilities.len(), restored.capabilities.len());
+}
+
+#[test]
+fn test_service_endpoint_with_path_none_remains_none() {
+    let endpoint = ServiceEndpoint::http("localhost", 8080);
+    assert!(endpoint.path.is_none());
+}
+
+#[test]
+fn test_capability_compute_hash_consistency() {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let cap1 = Capability::Compute(ComputeCapability::WasmExecution);
+    let cap2 = Capability::Compute(ComputeCapability::WasmExecution);
+    let mut h1 = DefaultHasher::new();
+    let mut h2 = DefaultHasher::new();
+    cap1.hash(&mut h1);
+    cap2.hash(&mut h2);
+    assert_eq!(h1.finish(), h2.finish());
+}
+
+#[test]
+fn test_toadstool_identity_add_capability_dedup() {
+    let mut identity = ToadStoolIdentity::new();
+    let cap = Capability::Compute(ComputeCapability::EdgeExecution);
+    let len_before = identity.capabilities().len();
+    identity.add_capability(cap.clone());
+    identity.add_capability(cap);
+    assert_eq!(identity.capabilities().len(), len_before + 1);
+}
+
+#[test]
+fn test_discovered_service_has_capability_empty_caps() {
+    let service = DiscoveredService {
+        id: None,
+        capabilities: vec![],
+        endpoints: vec![],
+        healthy: false,
+        metadata: HashMap::new(),
+    };
+    assert!(!service.has_capability(&Capability::Compute(ComputeCapability::GpuCompute)));
+    assert!(!service.has_compute_capability());
+    assert!(!service.has_storage_capability());
+    assert!(!service.has_auth_capability());
+}
+
+#[test]
+fn test_service_endpoint_grpc_with_path() {
+    let endpoint = ServiceEndpoint::grpc("grpc.example.com", 50051).with_path("/service.Greeter");
+    assert_eq!(
+        endpoint.url(),
+        "grpc://grpc.example.com:50051/service.Greeter"
+    );
+}
+
+#[test]
+fn test_service_endpoint_https_with_path() {
+    let endpoint = ServiceEndpoint::https("api.secure.com", 443).with_path("/v2/graphql");
+    assert_eq!(endpoint.url(), "https://api.secure.com:443/v2/graphql");
+}
+
+#[test]
+fn test_coordination_capability_all_variants() {
+    let _ = CoordinationCapability::ServiceDiscovery;
+    let _ = CoordinationCapability::LoadBalancing;
+    let _ = CoordinationCapability::HealthChecking;
+    let _ = CoordinationCapability::ConfigManagement;
+    let _ = CoordinationCapability::WorkflowOrchestration;
+}
+
+#[test]
+fn test_discovered_service_endpoints_for_protocol_mixed() {
+    let service = DiscoveredService {
+        id: None,
+        capabilities: vec![],
+        endpoints: vec![
+            ServiceEndpoint::grpc("grpc1", 50051),
+            ServiceEndpoint::grpc("grpc2", 50052),
+            ServiceEndpoint::http("http1", 8080),
+        ],
+        healthy: true,
+        metadata: HashMap::new(),
+    };
+    let grpc_eps = service.endpoints_for_protocol("grpc");
+    assert_eq!(grpc_eps.len(), 2);
+}
+
+#[test]
+fn test_capability_coordination_default() {
+    let default = CoordinationCapability::default();
+    assert_eq!(default, CoordinationCapability::ServiceDiscovery);
+}
+
+#[test]
+fn test_primal_identity_metadata_platform_arch() {
+    let identity = ToadStoolIdentity::new();
+    let meta = identity.metadata();
+    assert!(meta.contains_key("platform"));
+    assert!(meta.contains_key("arch"));
+    assert!(meta.get("platform").map(|s| !s.is_empty()).unwrap_or(false));
+}
+
+#[test]
+fn test_service_endpoint_eq() {
+    let ep1 = ServiceEndpoint::http("localhost", 8080);
+    let ep2 = ServiceEndpoint::http("localhost", 8080);
+    assert_eq!(ep1, ep2);
+}
+
+#[test]
+fn test_discovered_service_clone() {
+    let service = DiscoveredService {
+        id: Some("x".into()),
+        capabilities: vec![Capability::Compute(ComputeCapability::GpuCompute)],
+        endpoints: vec![ServiceEndpoint::http("a", 1)],
+        healthy: true,
+        metadata: HashMap::new(),
+    };
+    let cloned = service.clone();
+    assert_eq!(service.id, cloned.id);
+    assert_eq!(service.capabilities, cloned.capabilities);
+}
+
+#[test]
+fn test_discovered_service_has_coordination_capability() {
+    let service = DiscoveredService {
+        id: None,
+        capabilities: vec![Capability::Coordination(
+            CoordinationCapability::ServiceDiscovery,
+        )],
+        endpoints: vec![],
+        healthy: true,
+        metadata: HashMap::new(),
+    };
+    assert!(service.has_capability(&Capability::Coordination(
+        CoordinationCapability::ServiceDiscovery
+    )));
+}
+
+#[test]
+fn test_discovered_service_has_discovery_capability() {
+    let service = DiscoveredService {
+        id: None,
+        capabilities: vec![Capability::Discovery(DiscoveryCapability::MdnsDiscovery)],
+        endpoints: vec![],
+        healthy: true,
+        metadata: HashMap::new(),
+    };
+    assert!(service.has_capability(&Capability::Discovery(DiscoveryCapability::MdnsDiscovery)));
+}
+
+#[test]
+fn test_toadstool_identity_capabilities_clone() {
+    let identity = ToadStoolIdentity::new();
+    let caps1 = identity.capabilities();
+    let caps2 = identity.capabilities();
+    assert_eq!(caps1.len(), caps2.len());
+}
+
+#[test]
+fn test_toadstool_identity_endpoints_clone() {
+    let identity =
+        ToadStoolIdentity::new().with_endpoints(vec![ServiceEndpoint::http("localhost", 8080)]);
+    let eps1 = identity.endpoints();
+    let eps2 = identity.endpoints();
+    assert_eq!(eps1.len(), eps2.len());
+    assert_eq!(eps1[0].protocol, eps2[0].protocol);
+}
+
+#[test]
+fn test_discovered_service_serde_roundtrip_empty() {
+    let service = DiscoveredService {
+        id: None,
+        capabilities: vec![],
+        endpoints: vec![],
+        healthy: false,
+        metadata: HashMap::new(),
+    };
+    let json = serde_json::to_string(&service).unwrap();
+    let restored: DiscoveredService = serde_json::from_str(&json).unwrap();
+    assert_eq!(service.id, restored.id);
+    assert_eq!(service.healthy, restored.healthy);
+    assert!(restored.capabilities.is_empty());
+}

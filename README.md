@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA
 
-**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 49 -- February 23, 2026
+**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 50 -- February 23, 2026
 
 ---
 
@@ -43,7 +43,9 @@ Nest    = Tower  + NestGate           <- storage
 | CPU-only math in production | 0 -- all math dispatches GPU shaders |
 | TODOs/FIXMEs in production | 0 |
 | File size limit | All files under 1000 lines |
-| Line coverage (core crates) | common 87%, config 89%, core ~87%, server ~85% |
+| `cargo deny check` | All passing — licenses, bans, sources |
+| Hardcoded ports/URLs | 0 — port 0 (OS-assigned), capability-based discovery |
+| Line coverage (5 core crates) | **84.33%** — config 89%, server 86%, common 84%, core 83%, distributed 82% |
 
 ---
 

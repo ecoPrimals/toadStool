@@ -53,12 +53,14 @@ impl MaximinConfig {
     }
 
     /// Set maximum swap iterations.
+    #[must_use]
     pub fn with_max_iter(mut self, max_iter: usize) -> Self {
         self.max_iter = max_iter;
         self
     }
 
     /// Set number of candidate designs.
+    #[must_use]
     pub fn with_candidates(mut self, n_candidates: usize) -> Self {
         self.n_candidates = n_candidates;
         self

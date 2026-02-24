@@ -60,6 +60,7 @@ impl GraphEdge {
     }
 
     /// Add metadata to an edge
+    #[must_use]
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self

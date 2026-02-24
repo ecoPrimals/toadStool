@@ -1,7 +1,7 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 23, 2026 -- Sessions 32-49
-**Status**: Production-grade | Shader-first architecture | 645+ WGSL f64 shaders | 14,000+ tests | Zero CPU-only math | Coverage: common 87%, config 89%, core ~87%, server ~85%
+**Updated**: February 23, 2026 -- Sessions 32-50
+**Status**: Production-grade | Shader-first architecture | 645+ WGSL f64 shaders | 4,009+ core tests | Zero CPU-only math | Coverage: 84.33% across 5 core crates (config 89%, server 86%, common 84%, toadstool 83%, distributed 82%)
 
 ---
 
@@ -30,15 +30,10 @@ NVK becomes a sovereign compute node without proprietary drivers.
 
 ---
 
-### W-005: GPU-Resident VACF
+### W-005: GPU-Resident VACF ✅ RESOLVED (S46)
 
-With `CellListGpu` eliminating the 240 KB rebuild readback, the only remaining
-CPU round-trip is position/velocity snapshots for VACF (velocity autocorrelation)
-computation.  GPU-resident VACF would make production MD 100% unidirectional.
-
-**Approach**: accumulate the velocity autocorrelation sum inline on GPU using a
-running dot-product reduction shader after each `vel_snapshot_interval` iterations.
-Output: `D*` scalar, no snapshot readback needed.
+GPU-resident VACF completed: `vacf_batch_f64.wgsl` + `GpuVelocityRing` + `VacfBatchGpu`.
+Production MD is now 100% unidirectional.
 
 ---
 
@@ -107,8 +102,9 @@ Prerequisites:
 - [ ] YOLO (object detection)
 
 ### Test Coverage (target 90%)
-- [ ] Current: common 87%, config 89%, core ~87%, server ~85%, distributed 55% -- 14,000+ tests
-- [ ] Gap: async networking paths, GPU-gated paths
+- [ ] Current: 84.33% across 5 core crates (config 89%, server 86%, common 84%, toadstool 83%, distributed 82%) — 4,009 tests
+- [ ] Gap: deep integration/network code (~16%) — async service calls, server lifecycle, protocol handlers
+- [ ] Mock infrastructure exists (TCP/Unix socket mock servers) — needs expansion for full coverage
 - [ ] Remaining pending test suites: `e2e`, `fhe`, `comprehensive` (require future APIs)
 
 ### Conv2D/MaxPool2D GPU Executor Wiring (neuralSpring P0)

@@ -12,6 +12,8 @@ cargo fmt --all -- --check
 cargo build --workspace
 cargo clippy --workspace
 cargo test --workspace
+cargo deny check licenses bans sources
+cargo llvm-cov --lib -p toadstool-common -p toadstool-config -p toadstool -p toadstool-server -p toadstool-distributed --summary-only
 ```
 
 ---
@@ -63,6 +65,9 @@ cargo llvm-cov --workspace --ignore-run-fail \
   --exclude homomorphic-computing \
   --exclude barracuda \
   --exclude toadstool-runtime-gpu
+
+# Coverage (all 5 core crates combined)
+cargo llvm-cov --lib -p toadstool-common -p toadstool-config -p toadstool -p toadstool-server -p toadstool-distributed --summary-only
 ```
 
 ---

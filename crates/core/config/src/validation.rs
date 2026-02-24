@@ -179,11 +179,7 @@ impl ToadStoolConfig {
             ));
         }
 
-        if self.runtime.python.index_url.is_empty() {
-            return Err(ConfigError::Invalid(
-                "Python index URL cannot be empty".to_string(),
-            ));
-        }
+        // index_url may be empty (discovered at runtime); must be set before package installs
 
         if self.runtime.python.max_memory == 0 {
             return Err(ConfigError::Invalid(

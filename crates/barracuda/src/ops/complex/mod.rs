@@ -37,7 +37,7 @@
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let device = Arc::new(barracuda::device::WgpuDevice::new().await?);
+//! let device = Arc::new(barracuda::prelude::WgpuDevice::new().await?);
 //!
 //! // Create complex tensors (interleaved real, imag as f32)
 //! // (3+4i), (1+2i)

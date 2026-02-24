@@ -86,4 +86,4 @@ cargo tree -p cubecl
 
 ---
 
-*Analysis: 2026-02-22. Last updated when cubecl 0.10.0-pre.1 / Burn 0.20.1 were current.*
+*Analysis: 2026-02-22. Last updated: 2026-02-23. Verified: dirs-sys still present via burn-inference 0.16 → burn-wgpu → cubecl 0.4.0 → dirs → dirs-sys. cubecl has not yet switched to etcetera; resolution options unchanged.*

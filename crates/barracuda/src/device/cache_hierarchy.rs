@@ -14,9 +14,12 @@
 //!
 //! # Usage
 //!
-//! ```rust
+//! ```no_run
 //! use barracuda::device::{SubstrateMemoryHierarchy, CacheAwareTiler};
+//! use barracuda::prelude::WgpuDevice;
 //!
+//! # async fn example() -> barracuda::error::Result<()> {
+//! let device = WgpuDevice::new().await?;
 //! // Discover cache hierarchy via probing
 //! let hierarchy = SubstrateMemoryHierarchy::probe(&device).await;
 //!
@@ -25,7 +28,9 @@
 //!
 //! // Tile workloads to fit cache
 //! let tiler = CacheAwareTiler::new(hierarchy);
-//! let config = tiler.optimal_tile_size(total_bytes, element_size, 3.0);
+//! let config = tiler.optimal_tile_size(1024, 8, 3.0);
+//! # Ok(())
+//! # }
 //! ```
 
 use crate::device::{SubstrateType, WgpuDevice};

@@ -250,7 +250,8 @@ impl BesselJ1F64 {
         let buffer_slice = staging_buf.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).unwrap();
+            tx.send(result)
+                .expect("map_async callback: receiver must be waiting");
         });
         self.device.device.poll(wgpu::Maintain::Wait);
         rx.recv()

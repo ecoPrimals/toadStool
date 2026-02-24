@@ -307,8 +307,12 @@ impl DeviceRegistry {
 
         // Sort devices: discrete GPUs first, then by vendor preference
         device_order.sort_by(|a, b| {
-            let da = devices.get(a).unwrap();
-            let db = devices.get(b).unwrap();
+            let da = devices
+                .get(a)
+                .expect("device_order entries are keys of devices");
+            let db = devices
+                .get(b)
+                .expect("device_order entries are keys of devices");
 
             // Discrete GPUs first
             let type_ord_a = Self::device_type_order(da.device_type);

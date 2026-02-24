@@ -79,3 +79,51 @@ pub async fn query_local_capabilities() -> Vec<String> {
     tracing::info!("📊 Local capabilities: {:?}", capabilities);
     capabilities
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn query_local_capabilities_returns_non_empty() {
+        let caps = query_local_capabilities().await;
+        assert!(!caps.is_empty(), "capabilities should never be empty");
+    }
+
+    #[tokio::test]
+    async fn query_local_capabilities_always_includes_compute_cpu_orchestration() {
+        let caps = query_local_capabilities().await;
+        assert!(
+            caps.contains(&"compute".to_string()),
+            "should include 'compute': {:?}",
+            caps
+        );
+        assert!(
+            caps.contains(&"cpu".to_string()),
+            "should include 'cpu': {:?}",
+            caps
+        );
+        assert!(
+            caps.contains(&"orchestration".to_string()),
+            "should include 'orchestration': {:?}",
+            caps
+        );
+    }
+
+    #[tokio::test]
+    async fn query_local_capabilities_no_duplicates() {
+        let caps = query_local_capabilities().await;
+        let mut seen = std::collections::HashSet::new();
+        for c in &caps {
+            assert!(seen.insert(c), "duplicate capability '{}' in {:?}", c, caps);
+        }
+    }
+
+    #[tokio::test]
+    async fn query_local_capabilities_all_non_empty() {
+        let caps = query_local_capabilities().await;
+        for c in &caps {
+            assert!(!c.is_empty(), "capability string should not be empty");
+        }
+    }
+}

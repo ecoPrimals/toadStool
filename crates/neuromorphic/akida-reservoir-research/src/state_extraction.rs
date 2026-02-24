@@ -50,6 +50,19 @@ impl StateExtractor {
     ///
     /// This is THE critical function for reservoir computing feasibility.
     ///
+    /// ## RESEARCH TODO (genuinely research-blocked)
+    ///
+    /// Internal layer state extraction is NOT YET IMPLEMENTED in the pure Rust akida-driver.
+    /// Current behaviour: only returns the final inference output as a single "layer".
+    ///
+    /// To implement full extraction, we need to extend akida-driver with:
+    /// 1. `get_layer_output(layer_idx)` in inference.rs
+    /// 2. ioctl interface for NPU layer state queries in io.rs
+    /// 3. Layer metadata parsing from .fbz files in akida-models
+    ///
+    /// See `research_notes()` for detailed implementation plan.
+    /// `BrainChip` Python SDK exposes this; hardware supports it; driver work is the blocker.
+    ///
     /// According to `BrainChip` documentation, the Akida SDK has:
     /// - `model.get_layer(idx)` - retrieve specific layer
     /// - Layer activations can be accessed

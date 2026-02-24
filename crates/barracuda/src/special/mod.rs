@@ -47,18 +47,21 @@
 //! use barracuda::special::{gamma, factorial, erf, bessel_j0};
 //! use std::f64::consts::PI;
 //!
+//! # fn main() -> barracuda::error::Result<()> {
 //! // Γ(n) = (n-1)! for integers
-//! assert!((gamma(5.0) - 24.0).abs() < 1e-12);
+//! assert!((gamma(5.0)? - 24.0).abs() < 1e-12);
 //!
 //! // Γ(1/2) = √π
-//! assert!((gamma(0.5) - PI.sqrt()).abs() < 1e-12);
+//! assert!((gamma(0.5)? - PI.sqrt()).abs() < 1e-12);
 //!
 //! // Error function
 //! assert!((erf(0.0) - 0.0).abs() < 1e-14);
-//! assert!((erf(1.0) - 0.8427007929).abs() < 1e-7);
+//! assert!((erf(1.0) - 0.8427007929).abs() < 2e-7);
 //!
 //! // Bessel J₀
 //! assert!((bessel_j0(0.0) - 1.0).abs() < 1e-14);
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! # References

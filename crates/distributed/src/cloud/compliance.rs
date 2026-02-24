@@ -717,4 +717,116 @@ mod tests {
         let report = enforcer.report_for_provider("low-sec").unwrap();
         assert!(!report.overall_pass);
     }
+
+    #[tokio::test]
+    async fn test_check_result_serialization() {
+        let pass = CheckResult::Pass;
+        let json_pass = serde_json::to_string(&pass).unwrap();
+        let parsed_pass: CheckResult = serde_json::from_str(&json_pass).unwrap();
+        assert!(matches!(parsed_pass, CheckResult::Pass));
+
+        let fail = CheckResult::Fail {
+            reason: "Missing cert".to_string(),
+        };
+        let json_fail = serde_json::to_string(&fail).unwrap();
+        let parsed_fail: CheckResult = serde_json::from_str(&json_fail).unwrap();
+        match parsed_fail {
+            CheckResult::Fail { reason } => assert_eq!(reason, "Missing cert"),
+            _ => panic!("Expected Fail variant"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_compliance_error_display() {
+        let err = ComplianceError::CheckFailed("provider x failed".to_string());
+        assert!(format!("{err}").contains("provider x failed"));
+
+        let err = ComplianceError::NoRegionInfo("aws".to_string());
+        assert!(format!("{err}").contains("aws"));
+        assert!(format!("{err}").contains("region"));
+
+        let err = ComplianceError::InvalidSecurityTier("unknown".to_string());
+        assert!(format!("{err}").contains("unknown"));
+    }
+
+    #[tokio::test]
+    async fn test_data_sovereignty_data_type_requirement_fail() {
+        let cfg = make_config(
+            vec![],
+            vec!["us-east-1".to_string()],
+            vec![DataSovereigntyRequirement {
+                data_type: "pii".to_string(),
+                allowed_regions: vec!["eu-west-1".to_string()],
+                encryption_required: false,
+            }],
+        );
+        let mut enforcer = CloudComplianceEnforcer::new(cfg).await.unwrap();
+        let caps = caps_full_security(vec![Region {
+            name: "us-east-1".to_string(),
+            location: "N. Virginia".to_string(),
+            availability_zones: vec!["us-east-1a".to_string()],
+        }]);
+        enforcer
+            .add_provider_compliance("us_only", &caps)
+            .await
+            .unwrap();
+
+        let report = enforcer.report_for_provider("us_only").unwrap();
+        assert!(!report.overall_pass);
+        let sovereignty_check = report
+            .checks
+            .iter()
+            .find(|c| c.check_name == "data_sovereignty")
+            .expect("data_sovereignty check present");
+        assert!(matches!(sovereignty_check.result, CheckResult::Fail { .. }));
+        if let CheckResult::Fail { reason } = &sovereignty_check.result {
+            assert!(reason.contains("pii"));
+            assert!(reason.contains("eu-west-1"));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_compliance_report_serialization() {
+        let report = ComplianceReport {
+            provider_name: "test-provider".to_string(),
+            checks: vec![ComplianceCheck {
+                check_name: "certifications".to_string(),
+                result: CheckResult::Pass,
+            }],
+            overall_pass: true,
+            compliant_regions: vec!["us-east-1".to_string()],
+        };
+        let json = serde_json::to_string(&report).unwrap();
+        let parsed: ComplianceReport = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.provider_name, "test-provider");
+        assert!(parsed.overall_pass);
+    }
+
+    #[tokio::test]
+    async fn test_compliance_error_from_toadstool_error() {
+        let compliance_err = ComplianceError::CheckFailed("test".to_string());
+        let _toadstool_err: ToadStoolError = compliance_err.into();
+    }
+
+    #[tokio::test]
+    async fn test_compute_compliant_regions_empty_required_returns_all() {
+        let cfg = make_config(vec![], vec![], vec![]);
+        let mut enforcer = CloudComplianceEnforcer::new(cfg).await.unwrap();
+        let caps = caps_full_security(vec![
+            Region {
+                name: "us-east-1".to_string(),
+                location: "N. Virginia".to_string(),
+                availability_zones: vec![],
+            },
+            Region {
+                name: "eu-west-1".to_string(),
+                location: "Ireland".to_string(),
+                availability_zones: vec![],
+            },
+        ]);
+        enforcer.add_provider_compliance("p", &caps).await.unwrap();
+
+        let report = enforcer.report_for_provider("p").unwrap();
+        assert_eq!(report.compliant_regions.len(), 2);
+    }
 }

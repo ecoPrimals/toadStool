@@ -766,4 +766,65 @@ mod tests {
         manager.register_service(service).await.unwrap();
         assert_eq!(manager.service_count().await, 1);
     }
+
+    #[tokio::test]
+    async fn test_count_by_status_removing() {
+        let manager = ServiceManager::new();
+        let s1 = create_test_service("s1", true);
+        let id1 = s1.id.clone();
+        manager.register_service(s1).await.unwrap();
+        manager
+            .update_service_status(&id1, ServiceStatus::Removing)
+            .await;
+
+        assert_eq!(manager.count_by_status(ServiceStatus::Removing).await, 1);
+        assert_eq!(manager.count_by_status(ServiceStatus::Connected).await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_is_capability_available_false_when_service_failed() {
+        let manager = ServiceManager::new();
+        let service = create_test_service("test", true);
+        let service_id = service.id.clone();
+        manager.register_service(service).await.unwrap();
+        manager.mark_failed(&service_id, "connection failed").await;
+
+        let available = manager
+            .is_capability_available(&Capability::Compute(ComputeCapability::NativeExecution))
+            .await;
+        assert!(!available);
+    }
+
+    #[tokio::test]
+    async fn test_get_unhealthy_services_includes_only_failed() {
+        let manager = ServiceManager::new();
+        let s1 = create_test_service("s1", true);
+        let s2 = create_test_service("s2", true);
+        let id1 = s1.id.clone();
+        let id2 = s2.id.clone();
+        manager.register_service(s1).await.unwrap();
+        manager.register_service(s2).await.unwrap();
+
+        manager.mark_connected(&id1).await;
+        manager.mark_disconnected(&id2).await;
+        let unhealthy = manager.get_unhealthy_services().await;
+        assert!(unhealthy.is_empty(), "Disconnected is not error state");
+
+        manager.mark_failed(&id2, "fail").await;
+        let unhealthy = manager.get_unhealthy_services().await;
+        assert_eq!(unhealthy.len(), 1);
+        assert_eq!(unhealthy[0], id2);
+    }
+
+    #[tokio::test]
+    async fn test_primary_endpoint_on_discovered_service() {
+        let manager = ServiceManager::new();
+        let service = create_test_service("ep-test", true);
+        let service_id = service.id.clone();
+        manager.register_service(service).await.unwrap();
+
+        let retrieved = manager.get_service(&service_id).await.unwrap();
+        let primary = retrieved.primary_endpoint();
+        assert!(primary.is_some());
+    }
 }

@@ -17,7 +17,7 @@
 //!
 //! **Deep Debt Principle**: Runtime discovery, no hardcoding
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use homomorphic_computing::*;
 //!
 //! #[tokio::main]

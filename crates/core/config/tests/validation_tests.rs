@@ -350,18 +350,17 @@ fn test_validation_python_executable_empty() {
         .contains("Python executable cannot be empty"));
 }
 
-/// Test Python index URL validation
+/// Test Python index URL: empty allowed (discovered at runtime)
 #[test]
 fn test_validation_python_index_url_empty() {
     let mut config = ToadStoolConfig::default();
     config.runtime.python.index_url = String::new();
 
     let result = config.validate_runtime_config();
-    assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Python index URL cannot be empty"));
+    assert!(
+        result.is_ok(),
+        "empty index_url allowed (sovereignty: no external defaults)"
+    );
 }
 
 /// Test Python max memory validation

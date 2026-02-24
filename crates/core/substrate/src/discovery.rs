@@ -270,7 +270,7 @@ impl HardwareDiscovery {
 
                 // Evolved from num_cpus::get() to std::thread::available_parallelism() (Rust 1.59+)
                 let cores = std::thread::available_parallelism()
-                    .map(|p| p.get() as u32)
+                    .map(|p| u32::try_from(p.get()).unwrap_or(1))
                     .unwrap_or(1);
 
                 let substrate = DiscoveredSubstrate {

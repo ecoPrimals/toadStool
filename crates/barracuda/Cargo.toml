@@ -58,6 +58,9 @@ approx = "0.5"
 proptest = { workspace = true }
 wgpu = { workspace = true }
 
+[lints.clippy]
+unwrap_used = "warn"
+
 [features]
 default = []
 

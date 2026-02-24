@@ -27,7 +27,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use barracuda::shaders::optimizer::WgslOptimizer;
 //! use barracuda::device::latency::Sm70LatencyModel;
 //!

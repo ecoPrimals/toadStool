@@ -525,4 +525,106 @@ mod tests {
             UniversalSubstrateCapabilities::check_command_exists("nonexistent_command_xyz");
         assert!(!not_exists);
     }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_detect_biological_platforms() {
+        let platforms = UniversalSubstrateCapabilities::detect_biological_platforms().await;
+        assert!(platforms.is_ok());
+        assert!(platforms.unwrap().is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_detect_neuromorphic_platforms() {
+        let platforms = UniversalSubstrateCapabilities::detect_neuromorphic_platforms().await;
+        assert!(platforms.is_ok());
+        assert!(platforms.unwrap().is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_detect_quantum_platforms() {
+        let platforms = UniversalSubstrateCapabilities::detect_quantum_platforms().await;
+        assert!(platforms.is_ok());
+        assert!(platforms.unwrap().is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_detect_edge_iot_platforms() {
+        let platforms = UniversalSubstrateCapabilities::detect_edge_iot_platforms().await;
+        assert!(platforms.is_ok());
+        assert!(platforms.unwrap().is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_detect_experimental_platforms() {
+        let platforms = UniversalSubstrateCapabilities::detect_experimental_platforms().await;
+        assert!(platforms.is_ok());
+        assert!(platforms.unwrap().is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_detect_operating_systems() {
+        let systems = UniversalSubstrateCapabilities::detect_operating_systems().await;
+        assert!(systems.is_ok());
+        assert!(!systems.unwrap().is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_detect_specialized_architectures() {
+        let archs = UniversalSubstrateCapabilities::detect_specialized_architectures().await;
+        assert!(archs.is_ok());
+    }
+
+    #[test]
+    fn test_get_memory_gb() {
+        let gb = UniversalSubstrateCapabilities::get_memory_gb();
+        assert!(gb > 0);
+    }
+
+    #[test]
+    fn test_get_command_version() {
+        let version = UniversalSubstrateCapabilities::get_command_version("echo test");
+        assert!(!version.is_empty() || version == "unknown");
+    }
+
+    #[test]
+    fn test_get_linux_distribution() {
+        let dist = UniversalSubstrateCapabilities::get_linux_distribution();
+        assert_eq!(dist, "Ubuntu");
+    }
+
+    #[test]
+    fn test_get_init_system() {
+        let init = UniversalSubstrateCapabilities::get_init_system();
+        assert!(!init.is_empty());
+    }
+
+    #[test]
+    fn test_get_package_manager() {
+        let pkg = UniversalSubstrateCapabilities::get_package_manager();
+        assert!(!pkg.is_empty());
+    }
+
+    #[test]
+    fn test_get_macos_frameworks() {
+        let fw = UniversalSubstrateCapabilities::get_macos_frameworks();
+        assert!(!fw.is_empty());
+    }
+
+    #[test]
+    fn test_get_windows_version() {
+        let ver = UniversalSubstrateCapabilities::get_windows_version();
+        assert_eq!(ver, "10");
+    }
+
+    #[test]
+    fn test_check_opencl_support() {
+        let support = UniversalSubstrateCapabilities::check_opencl_support();
+        assert!(!support);
+    }
+
+    #[test]
+    fn test_get_opencl_compute_units() {
+        let units = UniversalSubstrateCapabilities::get_opencl_compute_units();
+        assert!(units > 0);
+    }
 }

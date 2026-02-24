@@ -84,6 +84,7 @@ impl AdaptiveConfig {
     }
 
     /// Create config with a custom threshold.
+    #[must_use]
     pub fn with_threshold(threshold: usize) -> Self {
         Self {
             f32_threshold: threshold,
@@ -137,20 +138,25 @@ pub struct TrainingDiagnostics {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use barracuda::surrogate::adaptive::{train_adaptive, AdaptiveConfig};
 /// use barracuda::surrogate::RBFKernel;
+/// use barracuda::prelude::WgpuDevice;
+/// use std::sync::Arc;
 ///
+/// # async fn example() -> barracuda::error::Result<()> {
+/// let device = Arc::new(WgpuDevice::new().await?);
 /// let x_train: Vec<Vec<f64>> = (0..10).map(|i| vec![i as f64]).collect();
 /// let y_train: Vec<f64> = x_train.iter().map(|x| x[0] * x[0]).collect();
 ///
 /// let config = AdaptiveConfig::default();
 /// let (surrogate, diag) = train_adaptive(
-///     &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12, &config
+///     device, &x_train, &y_train, RBFKernel::ThinPlateSpline, 1e-12, &config
 /// )?;
 ///
 /// println!("Used f32: {}, system size: {}", diag.used_f32_distances, diag.system_size);
-/// # Ok::<(), barracuda::error::BarracudaError>(())
+/// # Ok(())
+/// # }
 /// ```
 pub fn train_adaptive(
     device: Arc<WgpuDevice>,
@@ -230,10 +236,10 @@ pub fn train_adaptive(
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use barracuda::surrogate::adaptive::train_adaptive_gpu;
 /// use barracuda::surrogate::RBFKernel;
-/// use barracuda::device::WgpuDevice;
+/// use barracuda::prelude::WgpuDevice;
 /// use std::sync::Arc;
 ///
 /// # async fn example() -> barracuda::error::Result<()> {

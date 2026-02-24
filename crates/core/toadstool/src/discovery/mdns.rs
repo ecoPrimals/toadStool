@@ -630,4 +630,101 @@ mod tests {
             eprintln!("mDNS advertise not available in test environment");
         }
     }
+
+    #[test]
+    fn test_parse_service_info_invalid_port_uses_default() {
+        let instance_id = Uuid::new_v4();
+        let mut properties = HashMap::new();
+        properties.insert("instance_id".to_string(), instance_id.to_string());
+        properties.insert("cap_test".to_string(), "1.0".to_string());
+
+        let info = ServiceInfo::new(
+            TOADSTOOL_SERVICE_TYPE,
+            "test",
+            "host.local",
+            "127.0.0.1",
+            0u16,
+            Some(properties),
+        )
+        .expect("ServiceInfo creation");
+
+        let service = parse_service_info_impl(&info).expect("parse should succeed");
+        assert_eq!(service.endpoint, "127.0.0.1:0");
+        assert_eq!(service.capabilities.len(), 1);
+        assert_eq!(service.capability_version("test"), Some("1.0"));
+    }
+
+    #[test]
+    fn test_parse_service_info_capability_no_features() {
+        let instance_id = Uuid::new_v4();
+        let mut properties = HashMap::new();
+        properties.insert("instance_id".to_string(), instance_id.to_string());
+        properties.insert("cap_minimal".to_string(), "2.0".to_string());
+
+        let info = ServiceInfo::new(
+            TOADSTOOL_SERVICE_TYPE,
+            "test",
+            "host.local",
+            "127.0.0.1",
+            8080u16,
+            Some(properties),
+        )
+        .expect("ServiceInfo creation");
+
+        let service = parse_service_info_impl(&info).expect("parse should succeed");
+        assert!(service.has_capability("minimal"));
+        assert_eq!(service.capability_version("minimal"), Some("2.0"));
+        assert!(!service.has_capability_features("minimal", &["x".to_string()]));
+    }
+
+    #[test]
+    fn test_parse_service_info_empty_address_uses_hostname() {
+        let instance_id = Uuid::new_v4();
+        let mut properties = HashMap::new();
+        properties.insert("instance_id".to_string(), instance_id.to_string());
+
+        let info = ServiceInfo::new(
+            TOADSTOOL_SERVICE_TYPE,
+            "test-instance",
+            "myhost.example.com",
+            "",
+            12345u16,
+            Some(properties),
+        )
+        .expect("ServiceInfo creation");
+
+        let service = parse_service_info_impl(&info).expect("parse should succeed");
+        let addresses = info.get_addresses();
+        if addresses.is_empty() {
+            assert_eq!(service.endpoint, "myhost.example.com:12345");
+        }
+    }
+
+    #[test]
+    fn test_discovered_service_has_capability_filter_no_match() {
+        let storage_service = DiscoveredService {
+            instance_id: Uuid::new_v4(),
+            primal_type: "storage".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![Capability {
+                name: "storage".to_string(),
+                version: "1.0".to_string(),
+                features: vec![],
+                characteristics: HashMap::new(),
+            }],
+            endpoint: "localhost:9000".to_string(),
+            protocols: vec!["http".to_string()],
+            discovered_at: chrono::Utc::now(),
+            last_seen: chrono::Utc::now(),
+            metadata: HashMap::new(),
+        };
+
+        let all = vec![storage_service];
+        let matching: Vec<_> = all
+            .into_iter()
+            .filter(|s| s.has_capability("compute"))
+            .collect();
+
+        assert!(matching.is_empty());
+    }
 }

@@ -121,7 +121,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
         // The coordinator will report what THIS instance can do
 
         let cpu_cores = std::thread::available_parallelism()
-            .map(|n| n.get() as u32)
+            .map(|n| u32::try_from(n.get()).unwrap_or(4))
             .unwrap_or(4);
 
         // Query memory - Pure Rust Evolution (Jan 17, 2026)

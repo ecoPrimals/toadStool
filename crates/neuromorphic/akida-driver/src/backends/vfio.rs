@@ -201,19 +201,17 @@ impl DmaBuffer {
         let layout = std::alloc::Layout::from_size_align(size, 4096)
             .map_err(|e| AkidaError::transfer_failed(format!("Invalid DMA buffer layout: {e}")))?;
 
-        // SAFETY: We're allocating memory with a valid layout
-        // - Size > 0 (checked by Layout::from_size_align)
-        // - Alignment is 4096 (page-aligned for DMA)
-        // - We'll deallocate in Drop with the same layout
+        // SAFETY: (1) Layout from from_size_align (size > 0, align 4096); (2) alloc_zeroed
+        // returns valid ptr for layout or null; (3) dealloc in Drop with same layout.
         let vaddr = unsafe { std::alloc::alloc_zeroed(layout) };
 
         if vaddr.is_null() {
             return Err(AkidaError::transfer_failed("Failed to allocate DMA buffer"));
         }
 
-        // Lock the memory in RAM (required for VFIO DMA)
-        // SAFETY: vaddr points to valid, allocated memory of `size` bytes
-        // Using rustix mlock (pure Rust, better error handling)
+        // Lock memory in RAM (required for VFIO DMA - prevents swap, ensures physical pages).
+        // SAFETY: (1) vaddr from alloc_zeroed with layout covering size; (2) size matches
+        // allocation; (3) mlock region [vaddr, vaddr+size) is entirely within our allocation.
         if let Err(e) = unsafe { mlock(vaddr.cast(), size) } {
             // SAFETY: vaddr was allocated above with this exact layout, and we're
             // cleaning up on error before returning
@@ -242,7 +240,8 @@ impl DmaBuffer {
             dma_map.flags
         );
 
-        // SAFETY: VFIO ioctl with valid structure
+        // SAFETY: (1) container_fd valid from VFIO container open; (2) dma_map has argsz,
+        // vaddr/iova/size from our allocation; (3) _IOW ioctl reads dma_map; (4) layout matches kernel.
         let ret = unsafe {
             libc::ioctl(
                 container_fd,
@@ -279,13 +278,15 @@ impl DmaBuffer {
 
     /// Get slice view of buffer for reading
     pub const fn as_slice(&self) -> &[u8] {
-        // SAFETY: vaddr is valid and points to `size` bytes
+        // SAFETY: (1) vaddr from alloc in new(), valid for size; (2) we own the allocation;
+        // (3) &self ensures no concurrent mutation; (4) size unchanged since allocation.
         unsafe { std::slice::from_raw_parts(self.vaddr, self.size) }
     }
 
     /// Get mutable slice view of buffer for writing
     pub const fn as_mut_slice(&mut self) -> &mut [u8] {
-        // SAFETY: vaddr is valid and points to `size` bytes, we have &mut self
+        // SAFETY: (1) vaddr valid for size; (2) &mut self gives exclusive access;
+        // (3) no aliasing; (4) size and alignment correct for [u8].
         unsafe { std::slice::from_raw_parts_mut(self.vaddr, self.size) }
     }
 
@@ -477,7 +478,7 @@ impl NpuBackend for VfioBackend {
             })?;
 
         // Check API version
-        // SAFETY: VFIO ioctl with no arguments
+        // SAFETY: (1) container fd valid; (2) VFIO_GET_API_VERSION is _IO (no ptr arg).
         let api_version =
             unsafe { libc::ioctl(container.as_raw_fd(), ioctls::VFIO_GET_API_VERSION as _) };
 
@@ -573,7 +574,8 @@ impl NpuBackend for VfioBackend {
             AkidaError::capability_query_failed(format!("Invalid PCIe address: {e}"))
         })?;
 
-        // SAFETY: VFIO ioctl with C string argument
+        // SAFETY: (1) group fd valid; (2) pcie_address_cstr is null-terminated;
+        // (3) kernel reads PCIe address string; (4) returns fd or -1.
         let device_fd = unsafe {
             libc::ioctl(
                 group.as_raw_fd(),

@@ -28,9 +28,8 @@
 //!
 //! # Example
 //!
-//! ```no_run
-//! use barracuda::device::{Device, DeviceInfo};
-//! use barracuda::Tensor;
+//! ```rust,ignore
+//! use barracuda::prelude::{Device, DeviceInfo, Tensor};
 //!
 //! // Automatic selection (recommended)
 //! let tensor = Tensor::randn(vec![1000, 1000]).await?;

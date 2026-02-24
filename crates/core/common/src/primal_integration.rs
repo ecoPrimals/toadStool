@@ -100,7 +100,7 @@ pub struct PrimalEndpoint {
     /// Service identifier (e.g., "beardog-1", "nestgate-primary")
     pub service_id: String,
 
-    /// Base URL (e.g., "<http://beardog:6060>")
+    /// Base URL; discovered via capability resolution at runtime.
     pub url: String,
 
     /// Capabilities this service provides
@@ -159,6 +159,10 @@ pub async fn discover_encryption_service() -> DiscoveryResult {
 ///
 /// 1. `TOADSTOOL_CRYPTO_SERVICE_SUBDIR` env var (explicit deployment override)
 /// 2. Canonical capability subdirectory `"security"` (any service may publish here)
+///
+/// # Errors
+///
+/// Returns error if service not found at the given path
 pub async fn discover_beardog_at(base_path: &str) -> DiscoveryResult {
     // Default to "beardog" — the primal's canonical filesystem directory name.
     // Override via TOADSTOOL_CRYPTO_SERVICE_SUBDIR for custom layouts.
@@ -195,6 +199,10 @@ pub async fn discover_storage_service() -> DiscoveryResult {
 ///
 /// 1. `TOADSTOOL_STORAGE_SERVICE_SUBDIR` env var (explicit deployment override)
 /// 2. Canonical capability subdirectory `"storage"` (any service may publish here)
+///
+/// # Errors
+///
+/// Returns error if service not found at the given path
 pub async fn discover_nestgate_at(base_path: &str) -> DiscoveryResult {
     // Default to "nestgate" — the primal's canonical filesystem directory name.
     // Override via TOADSTOOL_STORAGE_SERVICE_SUBDIR for custom layouts.
@@ -293,7 +301,7 @@ pub async fn discover_service_by_capability(capability: &str) -> DiscoveryResult
             "TOADSTOOL_{}_DEFAULT_ENDPOINT",
             capability.to_uppercase().replace('-', "_")
         );
-        let endpoint = std::env::var(&default_var).unwrap_or_else(|_| builtin);
+        let endpoint = std::env::var(&default_var).unwrap_or(builtin);
 
         warn!(
             "⚠️  No {} service found via discovery, using default: {} (override via {})",
@@ -315,20 +323,11 @@ pub async fn discover_service_by_capability(capability: &str) -> DiscoveryResult
 }
 
 /// Built-in default endpoints for known capabilities.
-/// Returns `None` for unknown capabilities (no guess).
-/// Caller overrides via `TOADSTOOL_{CAPABILITY}_DEFAULT_ENDPOINT` env var.
+/// Returns `None` for all capabilities — discovered via capability resolution at runtime.
+/// Caller sets `TOADSTOOL_{CAPABILITY}_ENDPOINT` or discovers via mDNS/registry.
 #[must_use]
-fn builtin_default_endpoint(capability: &str) -> Option<String> {
-    Some(match capability {
-        "encryption" => "http://beardog:6060".to_string(),
-        "storage" => "http://nestgate:8080".to_string(),
-        "coordination" => "http://songbird:6061".to_string(),
-        "mcp" => "http://squirrel:6062".to_string(),
-        "cache" => "redis://redis:6379".to_string(),
-        "database" => "postgres://postgres:5432".to_string(),
-        "object-storage" | "object_storage" => "https://s3.amazonaws.com".to_string(),
-        _ => return None,
-    })
+fn builtin_default_endpoint(_capability: &str) -> Option<String> {
+    None
 }
 
 /// Discover service at filesystem path (development mode)
@@ -361,270 +360,417 @@ fn discover_filesystem_service(base_path: &str, service_name: &str) -> Discovery
 // ============================================================================
 
 /// Discover Redis cache service
+///
+/// # Errors
+///
+/// Returns error if no cache service can be discovered
 pub async fn discover_cache_service() -> DiscoveryResult {
     discover_service_by_capability("cache").await
 }
 
 /// Discover `PostgreSQL` database service
+///
+/// # Errors
+///
+/// Returns error if no database service can be discovered
 pub async fn discover_database_service() -> DiscoveryResult {
     discover_service_by_capability("database").await
 }
 
 /// Discover S3-compatible object storage
+///
+/// # Errors
+///
+/// Returns error if no object storage service can be discovered
 pub async fn discover_object_storage() -> DiscoveryResult {
     discover_service_by_capability("object-storage").await
 }
 
 #[cfg(test)]
-#[allow(clippy::await_holding_lock)]
 mod tests {
     use super::*;
 
-    /// Mutex to serialize tests that modify environment variables.
-    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
     #[tokio::test]
     async fn test_env_var_discovery() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe { std::env::set_var("TOADSTOOL_ENCRYPTION_ENDPOINT", "http://beardog:6060") };
-
-        let result = discover_encryption_service().await;
-        assert!(result.is_ok());
-
-        let endpoints = result.unwrap();
-        assert_eq!(endpoints.len(), 1);
-        assert_eq!(endpoints[0].url, "http://beardog:6060");
-
-        unsafe { std::env::remove_var("TOADSTOOL_ENCRYPTION_ENDPOINT") };
+        temp_env::with_var(
+            "TOADSTOOL_ENCRYPTION_ENDPOINT",
+            Some("http://beardog:6060"),
+            || {
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = discover_encryption_service().await;
+                        assert!(result.is_ok());
+                        let endpoints = result.unwrap();
+                        assert_eq!(endpoints.len(), 1);
+                        assert_eq!(endpoints[0].url, "http://beardog:6060");
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
+        );
     }
 
     #[tokio::test]
     async fn test_discover_encryption_fallback_default() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe {
-            std::env::remove_var("TOADSTOOL_ENCRYPTION_ENDPOINT");
-            std::env::remove_var("TOADSTOOL_SERVICE_ENCRYPTION_URL");
-            std::env::remove_var("TOADSTOOL_ENCRYPTION_DEFAULT_ENDPOINT");
-        }
-
-        let result = discover_encryption_service().await;
-        assert!(
-            result.is_ok(),
-            "encryption discovery should succeed with fallback default"
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_ENCRYPTION_ENDPOINT", None::<&str>),
+                ("TOADSTOOL_SERVICE_ENCRYPTION_URL", None::<&str>),
+                ("TOADSTOOL_ENCRYPTION_DEFAULT_ENDPOINT", None::<&str>),
+            ],
+            || {
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = discover_encryption_service().await;
+                        assert!(
+                            result.is_err(),
+                            "encryption discovery must fail when no env/discovery provides endpoint"
+                        );
+                        assert!(matches!(
+                            result.unwrap_err(),
+                            DiscoveryError::NoServiceFound { capability } if capability == "encryption"
+                        ));
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
         );
-        let endpoints = result.unwrap();
-        assert_eq!(endpoints.len(), 1);
-        assert_eq!(endpoints[0].url, "http://beardog:6060");
-        assert_eq!(endpoints[0].service_id, "encryption-default");
     }
 
     #[tokio::test]
-    async fn test_discover_encryption_fallback_override() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe {
-            std::env::remove_var("TOADSTOOL_ENCRYPTION_ENDPOINT");
-            std::env::remove_var("TOADSTOOL_SERVICE_ENCRYPTION_URL");
-            std::env::set_var(
-                "TOADSTOOL_ENCRYPTION_DEFAULT_ENDPOINT",
-                "http://custom-beardog:9090",
-            );
-        }
-
-        let result = discover_encryption_service().await;
-        assert!(result.is_ok());
-        let endpoints = result.unwrap();
-        assert_eq!(endpoints[0].url, "http://custom-beardog:9090");
-
-        unsafe { std::env::remove_var("TOADSTOOL_ENCRYPTION_DEFAULT_ENDPOINT") };
+    async fn test_discover_encryption_explicit_endpoint() {
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_SERVICE_ENCRYPTION_URL", None::<&str>),
+                (
+                    "TOADSTOOL_ENCRYPTION_ENDPOINT",
+                    Some("http://custom-beardog:9090"),
+                ),
+            ],
+            || {
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = discover_encryption_service().await;
+                        assert!(result.is_ok());
+                        let endpoints = result.unwrap();
+                        assert_eq!(endpoints[0].url, "http://custom-beardog:9090");
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
+        );
     }
 
     #[tokio::test]
     async fn test_no_service_found() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe {
-            std::env::remove_var("TOADSTOOL_NONEXISTENT_ENDPOINT");
-            std::env::remove_var("TOADSTOOL_SERVICE_NONEXISTENT_URL");
-        }
-
-        let result = discover_service_by_capability("nonexistent").await;
-        assert!(result.is_err());
-
-        match result {
-            Err(DiscoveryError::NoServiceFound { capability }) => {
-                assert_eq!(capability, "nonexistent");
-            }
-            _ => panic!("Expected NoServiceFound error"),
-        }
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_NONEXISTENT_ENDPOINT", None::<&str>),
+                ("TOADSTOOL_SERVICE_NONEXISTENT_URL", None::<&str>),
+            ],
+            || {
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = discover_service_by_capability("nonexistent").await;
+                        assert!(result.is_err());
+                        match result {
+                            Err(DiscoveryError::NoServiceFound { capability }) => {
+                                assert_eq!(capability, "nonexistent");
+                            }
+                            _ => panic!("Expected NoServiceFound error"),
+                        }
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
+        );
     }
 
     #[tokio::test]
     async fn test_generic_service_url_env_var() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe {
-            std::env::remove_var("TOADSTOOL_CACHE_ENDPOINT");
-            std::env::set_var("TOADSTOOL_SERVICE_CACHE_URL", "http://redis:6379");
-        }
-
-        let result = discover_service_by_capability("cache").await;
-        assert!(result.is_ok());
-
-        let endpoints = result.unwrap();
-        assert_eq!(endpoints.len(), 1);
-        assert_eq!(endpoints[0].url, "http://redis:6379");
-        assert_eq!(endpoints[0].service_id, "cache-service");
-        assert_eq!(endpoints[0].capabilities, vec!["cache"]);
-
-        unsafe { std::env::remove_var("TOADSTOOL_SERVICE_CACHE_URL") };
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_CACHE_ENDPOINT", None::<&str>),
+                ("TOADSTOOL_SERVICE_CACHE_URL", Some("http://redis:6379")),
+            ],
+            || {
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = discover_service_by_capability("cache").await;
+                        assert!(result.is_ok());
+                        let endpoints = result.unwrap();
+                        assert_eq!(endpoints.len(), 1);
+                        assert_eq!(endpoints[0].url, "http://redis:6379");
+                        assert_eq!(endpoints[0].service_id, "cache-service");
+                        assert_eq!(endpoints[0].capabilities, vec!["cache"]);
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
+        );
     }
 
     #[tokio::test]
     async fn test_discover_storage_service_via_env() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe { std::env::set_var("TOADSTOOL_STORAGE_ENDPOINT", "http://nestgate:8080") };
-
-        let result = discover_storage_service().await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap()[0].url, "http://nestgate:8080");
-
-        unsafe { std::env::remove_var("TOADSTOOL_STORAGE_ENDPOINT") };
+        temp_env::with_var(
+            "TOADSTOOL_STORAGE_ENDPOINT",
+            Some("http://nestgate:8080"),
+            || {
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = discover_storage_service().await;
+                        assert!(result.is_ok());
+                        assert_eq!(result.unwrap()[0].url, "http://nestgate:8080");
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
+        );
     }
 
     #[tokio::test]
     async fn test_discover_coordination_service_via_env() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe { std::env::set_var("TOADSTOOL_COORDINATION_ENDPOINT", "http://songbird:6061") };
-
-        let result = discover_coordination_service().await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap()[0].url, "http://songbird:6061");
-
-        unsafe { std::env::remove_var("TOADSTOOL_COORDINATION_ENDPOINT") };
+        temp_env::with_var(
+            "TOADSTOOL_COORDINATION_ENDPOINT",
+            Some("http://songbird:6061"),
+            || {
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = discover_coordination_service().await;
+                        assert!(result.is_ok());
+                        assert_eq!(result.unwrap()[0].url, "http://songbird:6061");
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
+        );
     }
 
     #[tokio::test]
     async fn test_discover_mcp_service_via_env() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe { std::env::set_var("TOADSTOOL_MCP_ENDPOINT", "http://squirrel:6062") };
-
-        let result = discover_mcp_service().await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap()[0].url, "http://squirrel:6062");
-
-        unsafe { std::env::remove_var("TOADSTOOL_MCP_ENDPOINT") };
+        temp_env::with_var(
+            "TOADSTOOL_MCP_ENDPOINT",
+            Some("http://squirrel:6062"),
+            || {
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = discover_mcp_service().await;
+                        assert!(result.is_ok());
+                        assert_eq!(result.unwrap()[0].url, "http://squirrel:6062");
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
+        );
     }
 
     #[tokio::test]
     async fn test_discover_cache_service_via_env() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe { std::env::set_var("TOADSTOOL_CACHE_ENDPOINT", "redis://localhost:6379") };
-
-        let result = discover_cache_service().await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap()[0].url, "redis://localhost:6379");
-
-        unsafe { std::env::remove_var("TOADSTOOL_CACHE_ENDPOINT") };
+        temp_env::with_var(
+            "TOADSTOOL_CACHE_ENDPOINT",
+            Some("redis://localhost:6379"),
+            || {
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = discover_cache_service().await;
+                        assert!(result.is_ok());
+                        assert_eq!(result.unwrap()[0].url, "redis://localhost:6379");
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
+        );
     }
 
     #[tokio::test]
     async fn test_discover_database_service_via_env() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe { std::env::set_var("TOADSTOOL_DATABASE_ENDPOINT", "postgres://localhost:5432") };
-
-        let result = discover_database_service().await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap()[0].url, "postgres://localhost:5432");
-
-        unsafe { std::env::remove_var("TOADSTOOL_DATABASE_ENDPOINT") };
+        temp_env::with_var(
+            "TOADSTOOL_DATABASE_ENDPOINT",
+            Some("postgres://localhost:5432"),
+            || {
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = discover_database_service().await;
+                        assert!(result.is_ok());
+                        assert_eq!(result.unwrap()[0].url, "postgres://localhost:5432");
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
+        );
     }
 
     #[tokio::test]
     async fn test_discover_object_storage_via_env() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        // object-storage -> TOADSTOOL_OBJECT-STORAGE_ENDPOINT (hyphen in env var)
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe {
-            std::env::set_var(
-                "TOADSTOOL_OBJECT-STORAGE_ENDPOINT",
-                "https://s3.example.com",
-            )
-        };
-
-        let result = discover_object_storage().await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap()[0].url, "https://s3.example.com");
-
-        unsafe { std::env::remove_var("TOADSTOOL_OBJECT-STORAGE_ENDPOINT") };
+        temp_env::with_var(
+            "TOADSTOOL_OBJECT-STORAGE_ENDPOINT",
+            Some("https://s3.example.com"),
+            || {
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = discover_object_storage().await;
+                        assert!(result.is_ok());
+                        assert_eq!(result.unwrap()[0].url, "https://s3.example.com");
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
+        );
     }
 
     #[tokio::test]
     async fn test_discover_beardog_at_filesystem_exists() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
         let temp_dir = std::env::temp_dir();
         let base = temp_dir.join("toadstool_beardog_test");
         let beardog_subdir = base.join("beardog");
         let _ = std::fs::create_dir_all(&beardog_subdir);
+        let base_str = base.to_str().unwrap().to_string();
 
-        // SAFETY: ENV_MUTEX serializes tests; no concurrent env reads.
-        unsafe { std::env::remove_var("TOADSTOOL_CRYPTO_SERVICE_SUBDIR") };
-
-        let result = discover_beardog_at(base.to_str().unwrap()).await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap()[0].service_id, "beardog-fs");
-
+        temp_env::with_var_unset("TOADSTOOL_CRYPTO_SERVICE_SUBDIR", || {
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async move {
+                    let result = discover_beardog_at(&base_str).await;
+                    assert!(result.is_ok());
+                    assert_eq!(result.unwrap()[0].service_id, "beardog-fs");
+                });
+            })
+            .join()
+            .expect("test thread");
+        });
         let _ = std::fs::remove_dir_all(&base);
     }
 
     #[tokio::test]
     async fn test_discover_nestgate_at_filesystem_exists() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
         let temp_dir = std::env::temp_dir();
         let base = temp_dir.join("toadstool_nestgate_test");
         let nestgate_subdir = base.join("nestgate");
         let _ = std::fs::create_dir_all(&nestgate_subdir);
+        let base_str = base.to_str().unwrap().to_string();
 
-        std::env::remove_var("TOADSTOOL_STORAGE_SERVICE_SUBDIR");
-
-        let result = discover_nestgate_at(base.to_str().unwrap()).await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap()[0].service_id, "nestgate-fs");
-
+        temp_env::with_var_unset("TOADSTOOL_STORAGE_SERVICE_SUBDIR", || {
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async move {
+                    let result = discover_nestgate_at(&base_str).await;
+                    assert!(result.is_ok());
+                    assert_eq!(result.unwrap()[0].service_id, "nestgate-fs");
+                });
+            })
+            .join()
+            .expect("test thread");
+        });
         let _ = std::fs::remove_dir_all(&base);
     }
 
     #[tokio::test]
     async fn test_discover_beardog_at_custom_subdir() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
         let temp_dir = std::env::temp_dir();
         let base = temp_dir.join("toadstool_custom_crypto_test");
         let custom_dir = base.join("custom_crypto");
         let _ = std::fs::create_dir_all(&custom_dir);
+        let base_str = base.to_str().unwrap().to_string();
 
-        std::env::set_var("TOADSTOOL_CRYPTO_SERVICE_SUBDIR", "custom_crypto");
-
-        let result = discover_beardog_at(base.to_str().unwrap()).await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap()[0].service_id, "custom_crypto-fs");
-
-        std::env::remove_var("TOADSTOOL_CRYPTO_SERVICE_SUBDIR");
+        temp_env::with_var(
+            "TOADSTOOL_CRYPTO_SERVICE_SUBDIR",
+            Some("custom_crypto"),
+            || {
+                std::thread::spawn(move || {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async move {
+                        let result = discover_beardog_at(&base_str).await;
+                        assert!(result.is_ok());
+                        assert_eq!(result.unwrap()[0].service_id, "custom_crypto-fs");
+                    });
+                })
+                .join()
+                .expect("test thread");
+            },
+        );
         let _ = std::fs::remove_dir_all(&base);
     }
 
     #[tokio::test]
     async fn test_discover_beardog_at_not_found() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        std::env::remove_var("TOADSTOOL_CRYPTO_SERVICE_SUBDIR");
-        let result = discover_beardog_at("/nonexistent/path/12345").await;
-        assert!(result.is_err());
+        temp_env::with_var_unset("TOADSTOOL_CRYPTO_SERVICE_SUBDIR", || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let result = discover_beardog_at("/nonexistent/path/12345").await;
+                    assert!(result.is_err());
+                });
+            })
+            .join()
+            .expect("test thread");
+        });
     }
 
     #[test]

@@ -315,7 +315,10 @@ fn test_get_squirrel_port_default() {
     let original = env::var("SQUIRREL_PORT").ok();
     env::remove_var("SQUIRREL_PORT");
     let port = ConfigUtils::get_squirrel_port();
-    assert!(port > 0);
+    assert_eq!(
+        port, 0,
+        "port 0 = discovered at runtime (capability resolution)"
+    );
     if let Some(v) = original {
         env::set_var("SQUIRREL_PORT", v);
     }

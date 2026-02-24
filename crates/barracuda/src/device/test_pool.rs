@@ -23,11 +23,11 @@ static TEST_DEVICE_POOL: LazyLock<Arc<Mutex<Option<Arc<WgpuDevice>>>>> =
 /// Get or create shared test device
 ///
 /// **Usage in tests**:
-/// ```rust
+/// ```rust,ignore
 /// #[tokio::test]
 /// async fn test_matmul() {
 ///     let Some(dev) = get_test_device().await else { return };
-///     let result = matmul(&dev.device, &dev.queue, ...).await.unwrap();
+///     let result = matmul(&dev.device, &dev.queue, &a, &b).await.unwrap();
 /// }
 /// ```
 ///

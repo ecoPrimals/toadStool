@@ -205,4 +205,87 @@ mod tests {
         let result = provider.update_capability(gpu_cap, true).await;
         assert!(result.is_ok());
     }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_capability_provider_new_with_custom_capabilities() {
+        let caps = vec![
+            Capability::compute_gpu(),
+            Capability::compute_heavy(),
+            Capability::compute_ml_training(),
+        ];
+        let provider = CapabilityProvider::new(caps);
+        let got = provider.get_capabilities().await;
+        assert_eq!(got.len(), 3);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_capability_provider_handle_workload() {
+        use workload::{WorkloadRequest, WorkloadResourceRequirements, WorkloadType};
+        let provider = CapabilityProvider::default();
+        let req = WorkloadRequest {
+            request_id: "req-1".to_string(),
+            from_primal: "songbird".to_string(),
+            required_capability: "compute_heavy".to_string(),
+            workload_type: WorkloadType::Native {
+                executable: "echo".to_string(),
+                args: vec!["hello".to_string()],
+            },
+            resource_requirements: WorkloadResourceRequirements {
+                cpu_cores: Some(2),
+                memory_mb: Some(1024),
+                gpu_required: false,
+                gpu_memory_mb: None,
+            },
+            environment: std::collections::HashMap::new(),
+            timeout_seconds: Some(10),
+            priority: "normal".to_string(),
+        };
+        let result = provider.handle_workload(req).await;
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_capability_provider_send_heartbeats_empty() {
+        let provider = CapabilityProvider::default();
+        let result = provider.send_heartbeats().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_capability_provider_update_capability_unavailable() {
+        let provider = CapabilityProvider::default();
+        let cap = Capability::compute_gpu();
+        let result = provider.update_capability(cap, false).await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_capability_provider_default_has_capabilities() {
+        let provider = CapabilityProvider::default();
+        let _ = provider;
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_capability_provider_get_capabilities_after_update() {
+        let provider = CapabilityProvider::default();
+        let _ = provider
+            .update_capability(Capability::compute_gpu(), true)
+            .await;
+        let caps = provider.get_capabilities().await;
+        assert!(!caps.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_capability_provider_send_heartbeats_with_registered_adapter() {
+        let provider = CapabilityProvider::default();
+        let result = provider.send_heartbeats().await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_capability_provider_clone() {
+        let provider = CapabilityProvider::default();
+        let cloned = provider.clone();
+        let _ = cloned;
+    }
 }

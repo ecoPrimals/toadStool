@@ -30,15 +30,15 @@
 //! ```no_run
 //! use barracuda::genomics::{SequenceAnalyzer, SequenceConfig};
 //!
-//! // No device needed - pure Rust!
+//! # fn main() -> barracuda::error::Result<()> {
 //! let analyzer = SequenceAnalyzer::new(SequenceConfig::default());
-//!
-//! // Analyze sequence
 //! let sequence = b"ATCGATCGATCG";
-//! let report = analyzer.analyze_composition(sequence);
+//! let report = analyzer.analyze_composition(sequence)?;
 //!
 //! println!("GC Content: {:.1}%", report.gc_content * 100.0);
 //! println!("Length: {}", report.length);
+//! # Ok(())
+//! # }
 //! ```
 
 use crate::error::{BarracudaError, Result as BarracudaResult};

@@ -143,6 +143,10 @@ pub struct JsonWorkloadSubmission {
 
 impl JsonWorkloadSubmission {
     /// Convert into tarpc submission (decode base64, consumes self)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if base64 data is invalid.
     pub fn into_tarpc(self) -> Result<TarpcWorkloadSubmission, String> {
         use base64::{engine::general_purpose::STANDARD, Engine as _};
 

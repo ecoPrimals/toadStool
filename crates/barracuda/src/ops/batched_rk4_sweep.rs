@@ -63,7 +63,7 @@ impl TrajectoryResult {
 /// # Example — three exponential decays with different rates
 ///
 /// ```rust,no_run
-/// # use barracuda::device::WgpuDevice;
+/// # use barracuda::prelude::WgpuDevice;
 /// # use barracuda::ops::batched_rk4_sweep::BatchedRK4F64;
 /// # pollster::block_on(async {
 /// let device = WgpuDevice::new().await.unwrap();
@@ -155,7 +155,10 @@ impl BatchedRK4F64 {
             }
         });
 
-        results.into_iter().map(|r| r.unwrap()).collect()
+        results
+            .into_iter()
+            .map(|r| r.expect("join filled every slot"))
+            .collect()
     }
 
     // ─── Adaptive RK45 ───────────────────────────────────────────────────────
@@ -216,7 +219,10 @@ impl BatchedRK4F64 {
             }
         });
 
-        results.into_iter().map(|r| r.unwrap()).collect()
+        results
+            .into_iter()
+            .map(|r| r.expect("join filled every slot"))
+            .collect()
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────

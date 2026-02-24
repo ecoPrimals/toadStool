@@ -1,7 +1,7 @@
 # Chaos Tests Integration Status
 
-**Date**: December 6, 2025  
-**Status**: 🟡 **PARTIAL** - Tests exist but need implementation
+**Date**: February 23, 2026 (Updated)  
+**Status**: 🟢 **WIRED** - Module structure complete; integration-tests chaos tests pass
 
 ---
 

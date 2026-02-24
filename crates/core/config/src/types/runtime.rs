@@ -182,7 +182,7 @@ pub struct PythonConfig {
     /// Virtual environment path (optional)
     pub venv_path: Option<String>,
 
-    /// Package index URL (`PyPI`)
+    /// Package index URL; must be explicitly configured (sovereignty: no external service defaults).
     pub index_url: String,
 
     /// Maximum memory size in bytes
@@ -203,7 +203,7 @@ impl Default for PythonConfig {
         Self {
             executable: "python3".to_string(),
             venv_path: None,
-            index_url: "https://pypi.org/simple".to_string(),
+            index_url: String::new(),
             max_memory: 128 * 1024 * 1024, // 128MB
             max_execution_time: 300,       // 5 minutes
             allowed_modules: vec!["numpy".to_string(), "pandas".to_string()],

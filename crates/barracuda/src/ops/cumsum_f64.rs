@@ -12,7 +12,7 @@
 //!
 //! ```ignore
 //! use barracuda::ops::CumsumF64;
-//! use barracuda::Tensor;
+//! use barracuda::prelude::Tensor;
 //!
 //! // 1D cumsum: [1, 2, 3, 4] → [1, 3, 6, 10]
 //! let result = CumsumF64::execute_1d(&device, &[1.0, 2.0, 3.0, 4.0]).await?;

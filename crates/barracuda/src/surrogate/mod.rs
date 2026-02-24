@@ -19,18 +19,22 @@
 //!
 //! ```no_run
 //! use barracuda::surrogate::{RBFSurrogate, RBFKernel};
+//! use barracuda::prelude::WgpuDevice;
+//! use std::sync::Arc;
 //!
+//! # async fn example() -> barracuda::error::Result<()> {
+//! let device = Arc::new(WgpuDevice::new().await?);
 //! // Training data: y = x²
 //! let x_train = vec![vec![0.0], vec![1.0], vec![2.0], vec![3.0]];
 //! let y_train = vec![0.0, 1.0, 4.0, 9.0];
 //!
 //! // Train surrogate
 //! let surrogate = RBFSurrogate::train(
+//!     device,
 //!     &x_train,
 //!     &y_train,
 //!     RBFKernel::ThinPlateSpline,
-//!     1e-12,  // smoothing parameter
-//!     device,
+//!     1e-12,
 //! )?;
 //!
 //! // Predict at new points
@@ -39,7 +43,8 @@
 //!
 //! assert!((y_pred[0] - 2.25).abs() < 0.1);  // ≈ 1.5²
 //! assert!((y_pred[1] - 6.25).abs() < 0.1);  // ≈ 2.5²
-//! # Ok::<(), barracuda::error::BarracudaError>(())
+//! # Ok(())
+//! # }
 //! ```
 
 pub mod adaptive;

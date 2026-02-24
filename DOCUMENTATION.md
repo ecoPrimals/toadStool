@@ -14,7 +14,7 @@
 | Commands and API reference | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
 | Deep debt progress | [DEEP_DEBT_STATUS.md](DEEP_DEBT_STATUS.md) |
 | Unidirectional pipeline | [UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md) |
-| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-26-total) |
+| See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-36-total) |
 | Try GPU operations | [docs/guides/QUICK_START_GPU.md](docs/guides/QUICK_START_GPU.md) |
 | Learn FHE | [docs/guides/QUICK_START_ENCRYPTION.md](docs/guides/QUICK_START_ENCRYPTION.md) |
 | Use scientific computing | [docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md](docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md) |
@@ -27,7 +27,7 @@
 
 ---
 
-## Current State (Session 49 — February 23, 2026)
+## Current State (Session 50 — February 23, 2026)
 
 - **Shader-first architecture complete** — all math originates as WGSL f64 shaders
 - **645+ WGSL f64 shaders** — zero orphans, zero CPU-only math in production
@@ -42,7 +42,7 @@
 - **95+ unsafe blocks** — all FFI/hardware, all SAFETY documented
 - **4,000+ four springs validation** — hotSpring + wetSpring + neuralSpring + airSpring
 - **36 JSON-RPC methods** across 8 domains
-- **Coverage**: common 87%, config 89%, core ~87%, server ~85%
+- **Coverage**: 84.33% across 5 core crates (4,009 tests)
 
 ---
 
@@ -133,4 +133,4 @@ specs/                     -- Technical specifications
 
 ---
 
-**Last Updated**: February 23, 2026 — Session 45
+**Last Updated**: February 23, 2026 — Session 50

@@ -252,22 +252,24 @@ impl MovingWindowStats {
 
         q.submit(Some(encoder.finish()));
 
-        let read_buf = |buf: &wgpu::Buffer| -> Vec<f32> {
+        let read_buf = |buf: &wgpu::Buffer| -> Result<Vec<f32>> {
             let slice = buf.slice(..);
             let (tx, rx) = std::sync::mpsc::channel();
             slice.map_async(wgpu::MapMode::Read, move |r| {
-                tx.send(r).ok();
+                let _ = tx.send(r);
             });
             self.device.device().poll(wgpu::Maintain::Wait);
-            rx.recv().unwrap().unwrap();
+            rx.recv()
+                .map_err(|e| BarracudaError::Device(format!("Buffer readback channel: {}", e)))?
+                .map_err(|e| BarracudaError::Device(format!("Buffer map: {:?}", e)))?;
             let data = slice.get_mapped_range();
-            bytemuck::cast_slice(&data).to_vec()
+            Ok(bytemuck::cast_slice(&data).to_vec())
         };
 
-        let mean = read_buf(&s_mean);
-        let variance = read_buf(&s_var);
-        let min_vals = read_buf(&s_min);
-        let max_vals = read_buf(&s_max);
+        let mean = read_buf(&s_mean)?;
+        let variance = read_buf(&s_var)?;
+        let min_vals = read_buf(&s_min)?;
+        let max_vals = read_buf(&s_max)?;
 
         Ok(MovingWindowResult {
             mean,

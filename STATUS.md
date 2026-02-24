@@ -1,4 +1,4 @@
-# Status -- February 23, 2026 (Sessions 32-49: Shader-First Architecture + Deep Debt)
+# Status -- February 23, 2026 (Sessions 32-50: Shader-First Architecture + Deep Debt)
 
 ## Quality Gates
 
@@ -15,11 +15,7 @@
 | Pure Rust syscalls | PASS | mmap/mlock via rustix |
 | Zero-copy hot paths | PASS | `Cow<'a, str>` + `#[serde(borrow)]`, `from_slice`, `bytes::Bytes` |
 | Hardcoded primal names | PASS | **0 -- capability-based discovery** |
-| Line coverage (common) | PASS | **87%** |
-| Line coverage (config) | PASS | **89%** |
-| Line coverage (core) | PASS | **~87%** |
-| Line coverage (server) | PASS | **~85%** |
-| Line coverage (distributed) | PASS | **55%** |
+| Line coverage (5 core crates) | PASS | **84.33%** — config 89%, server 86%, common 84%, core 83%, distributed 82% |
 | `unsafe` blocks | PASS | **95+ blocks audited -- all SAFETY documented** |
 | Production `Box<dyn Error>` | PASS | **0 in core crates -- all typed errors** |
 | Production panics/unwraps | PASS | **Zero blind unwrap(); infallible expect() only** |

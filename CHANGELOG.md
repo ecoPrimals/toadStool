@@ -5,7 +5,24 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 23, 2026 (Sessions 43-45 — Deep Debt Evolution)
+## [Unreleased] - February 23, 2026 (Sessions 43-50 — Deep Debt Evolution)
+
+### Session 50 (Feb 23, 2026) — Deep Audit Remediation
+
+- **Coverage**: 73.28% → 84.33% (+1,100 new tests, 4,009 total across 5 core crates)
+- **Clippy**: Zero warnings across entire workspace (was 4 peripheral)
+- **cargo-deny**: Updated to 0.18.5; licenses, bans, sources all passing
+- **Hardcoding eliminated**: All ports set to 0 (OS-assigned), all cloud URLs removed, primal URLs capability-based
+- **Unsafe reduced**: 6 test files migrated from `unsafe env::set_var` to `temp_env` crate
+- **Production mocks evolved**: `PermissionCache` no-op → real in-memory cache (`Arc<RwLock<HashMap>>`)
+- **Builder safety**: `#[must_use]` added across autotune, composition, and other builder patterns
+- **12 large files refactored**: resource_estimator, CLI lib, monitoring, esn_v2, tarpc_server, coulomb_f64, rbf, benchmark, cyclic_reduction — all under 1000 lines
+- **Rustdoc fixed**: 3 HTML tag errors, 36 doc test failures in barracuda resolved
+- **BYOB config**: Updated validation for OS-assigned ports (port 0 is valid)
+- **Mock Songbird**: Fixed test deadlock — mock + client now run on same runtime
+- **Mock server infrastructure**: TCP/Unix socket mock servers for JSON-RPC integration testing
+- **Dependencies**: `cc`/`bindgen` gated behind `native-bindings` feature in specialty crate
+- **Unwrap audit**: Zero blind `unwrap()`/`expect()` in production code confirmed
 
 ### Session 45 (Feb 23, 2026)
 

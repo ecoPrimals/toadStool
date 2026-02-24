@@ -41,26 +41,23 @@
 //!
 //! ```no_run
 //! use barracuda::linalg::{solve_f64, lu_decompose, qr_decompose};
-//! use barracuda::device::WgpuDevice;
+//! use barracuda::prelude::WgpuDevice;
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> barracuda::error::Result<()> {
 //! let device = Arc::new(WgpuDevice::new().await?);
 //! let a = vec![2.0, 1.0, 1.0, 3.0];
 //! let b = vec![5.0, 8.0];
-//! let x = solve_f64(device, &a, &b, 2)?;
-//! # Ok(())
-//! # }
-//!
+//! let x = solve_f64(device.clone(), &a, &b, 2)?;
 //! // LU decomposition for multiple solves
 //! let lu = lu_decompose(&a, 2)?;
-//! let det = lu.det();
-//! let x2 = lu.solve(&b)?;
-//!
+//! let _det = lu.det();
+//! let _x2 = lu.solve(&b)?;
 //! // QR for least squares
-//! let a_overdetermined = vec![1.0, 1.0, 1.0, 2.0, 1.0, 3.0];  // 3×2
-//! let qr = qr_decompose(&a_overdetermined, 3, 2)?;
-//! # Ok::<(), barracuda::error::BarracudaError>(())
+//! let a_overdetermined = vec![1.0, 1.0, 1.0, 2.0, 1.0, 3.0];
+//! let _qr = qr_decompose(&a_overdetermined, 3, 2)?;
+//! # Ok(())
+//! # }
 //! ```
 
 pub mod cholesky;

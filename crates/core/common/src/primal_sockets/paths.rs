@@ -109,12 +109,192 @@ pub fn resolve_socket_path_for_service(
         return path;
     }
     match service_name.to_lowercase().as_str() {
-        s if s == "beardog" || s == "bear-dog" => resolve_beardog_socket_fallback(env),
-        s if s == "songbird" || s == "song-bird" => resolve_songbird_socket_fallback(env),
-        s if s == "nestgate" || s == "nest-gate" => resolve_nestgate_socket_fallback(env),
-        s if s == "squirrel" => resolve_squirrel_socket(env),
-        s if s == "toadstool" || s == "toad-stool" => resolve_toadstool_socket(env),
+        "beardog" | "bear-dog" => resolve_beardog_socket_fallback(env),
+        "songbird" | "song-bird" => resolve_songbird_socket_fallback(env),
+        "nestgate" | "nest-gate" => resolve_nestgate_socket_fallback(env),
+        "squirrel" => resolve_squirrel_socket(env),
+        "toadstool" | "toad-stool" => resolve_toadstool_socket(env),
         "nucleus" | "biomeos" => resolve_nucleus_socket(env),
         _ => resolve_biomeos_dir(env).join(format!("{}.sock", service_name.to_lowercase())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::env::SocketPathEnv;
+    use super::*;
+
+    fn test_env() -> SocketPathEnv {
+        SocketPathEnv {
+            xdg_runtime_dir: Some("/run/user/1000".to_string()),
+            user: Some("testuser".to_string()),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn test_resolve_runtime_dir_xdg_takes_precedence() {
+        let env = test_env();
+        assert_eq!(resolve_runtime_dir(&env), "/run/user/1000");
+    }
+
+    #[test]
+    fn test_resolve_runtime_dir_no_xdg_uses_temp_and_user() {
+        let env = SocketPathEnv {
+            xdg_runtime_dir: None,
+            user: Some("alice".to_string()),
+            ..Default::default()
+        };
+        let dir = resolve_runtime_dir(&env);
+        assert!(dir.contains("toadstool-runtime-alice"));
+    }
+
+    #[test]
+    fn test_resolve_runtime_dir_no_user_uses_default() {
+        let env = SocketPathEnv {
+            xdg_runtime_dir: None,
+            user: None,
+            ..Default::default()
+        };
+        let dir = resolve_runtime_dir(&env);
+        assert!(dir.contains("toadstool-runtime-default"));
+    }
+
+    #[test]
+    fn test_resolve_nucleus_socket_prefers_nucleus_over_biomeos_path() {
+        let env = SocketPathEnv {
+            nucleus_socket: Some("/custom/nucleus.sock".to_string()),
+            biomeos_socket_path: Some("/var/run/biomeos.sock".to_string()),
+            ..test_env()
+        };
+        let path = resolve_nucleus_socket(&env);
+        assert_eq!(path, PathBuf::from("/custom/nucleus.sock"));
+    }
+
+    #[test]
+    fn test_resolve_toadstool_socket_prefers_toadstool_over_biomeos_path() {
+        let env = SocketPathEnv {
+            toadstool_socket: Some("/custom/toad.sock".to_string()),
+            biomeos_socket_path: Some("/var/run/biomeos.sock".to_string()),
+            ..test_env()
+        };
+        let path = resolve_toadstool_socket(&env);
+        assert_eq!(path, PathBuf::from("/custom/toad.sock"));
+    }
+
+    #[test]
+    fn test_resolve_socket_path_override_takes_precedence() {
+        let env = test_env();
+        let override_path = PathBuf::from("/override/custom.sock");
+        let result = resolve_socket_path_for_service("beardog", &env, Some(override_path.clone()));
+        assert_eq!(result, override_path);
+    }
+
+    #[test]
+    fn test_resolve_beardog_socket_with_env_override() {
+        let env = SocketPathEnv {
+            beardog_socket: Some("/custom/beardog.sock".to_string()),
+            ..test_env()
+        };
+        let path = resolve_beardog_socket_fallback(&env);
+        assert_eq!(path, PathBuf::from("/custom/beardog.sock"));
+    }
+
+    #[test]
+    fn test_resolve_songbird_socket_with_env_override() {
+        let env = SocketPathEnv {
+            songbird_socket: Some("/custom/songbird.sock".to_string()),
+            ..test_env()
+        };
+        let path = resolve_songbird_socket_fallback(&env);
+        assert_eq!(path, PathBuf::from("/custom/songbird.sock"));
+    }
+
+    #[test]
+    fn test_resolve_nestgate_socket_with_env_override() {
+        let env = SocketPathEnv {
+            nestgate_socket: Some("/custom/nestgate.sock".to_string()),
+            ..test_env()
+        };
+        let path = resolve_nestgate_socket_fallback(&env);
+        assert_eq!(path, PathBuf::from("/custom/nestgate.sock"));
+    }
+
+    #[test]
+    fn test_resolve_squirrel_socket_with_env_override() {
+        let env = SocketPathEnv {
+            squirrel_socket: Some("/custom/squirrel.sock".to_string()),
+            ..test_env()
+        };
+        let path = resolve_squirrel_socket(&env);
+        assert_eq!(path, PathBuf::from("/custom/squirrel.sock"));
+    }
+
+    #[test]
+    fn test_resolve_nucleus_socket_uses_biomeos_fallback() {
+        let env = SocketPathEnv {
+            nucleus_socket: None,
+            biomeos_socket_path: None,
+            ..test_env()
+        };
+        let path = resolve_nucleus_socket(&env);
+        assert!(path.to_string_lossy().contains("nucleus"));
+        assert!(path.to_string_lossy().ends_with("nucleus.sock"));
+    }
+
+    #[test]
+    fn test_resolve_toadstool_socket_uses_biomeos_fallback() {
+        let env = SocketPathEnv {
+            toadstool_socket: None,
+            biomeos_socket_path: None,
+            ..test_env()
+        };
+        let path = resolve_toadstool_socket(&env);
+        assert!(path.to_string_lossy().contains("toadstool"));
+        assert!(path.to_string_lossy().ends_with("toadstool.sock"));
+    }
+
+    #[test]
+    fn test_resolve_socket_path_unknown_service() {
+        let env = test_env();
+        let path = resolve_socket_path_for_service("unknown_service", &env, None);
+        assert!(path.to_string_lossy().contains("unknown_service"));
+        assert!(path.to_string_lossy().ends_with("unknown_service.sock"));
+    }
+
+    #[test]
+    fn test_resolve_socket_path_service_aliases() {
+        let env = test_env();
+        let bear_dog = resolve_socket_path_for_service("bear-dog", &env, None);
+        let beardog = resolve_socket_path_for_service("beardog", &env, None);
+        assert_eq!(bear_dog, beardog);
+
+        let path = resolve_socket_path_for_service("toad-stool", &env, None);
+        assert!(path.to_string_lossy().contains("toadstool"));
+    }
+
+    #[test]
+    fn test_resolve_biomeos_dir() {
+        let env = test_env();
+        let path = resolve_biomeos_dir(&env);
+        assert!(path.to_string_lossy().contains("biomeos"));
+    }
+
+    #[test]
+    fn test_resolve_family_id_default() {
+        let env = SocketPathEnv {
+            biomeos_family_id: None,
+            ..test_env()
+        };
+        assert_eq!(resolve_family_id(&env), "default");
+    }
+
+    #[test]
+    fn test_resolve_family_id_from_env() {
+        let env = SocketPathEnv {
+            biomeos_family_id: Some("custom-family".to_string()),
+            ..test_env()
+        };
+        assert_eq!(resolve_family_id(&env), "custom-family");
     }
 }

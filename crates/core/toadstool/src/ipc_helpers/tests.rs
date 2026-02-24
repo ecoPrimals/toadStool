@@ -1,16 +1,7 @@
 //! IPC helpers tests
 //!
-//! # Environment Variable Safety
-//!
-//! Several tests in this module modify environment variables (`SONGBIRD_SOCKET`,
-//! `XDG_RUNTIME_DIR`) to test different socket resolution paths. In Rust 1.68+,
-//! `std::env::set_var` and `remove_var` are `unsafe` because concurrent reads
-//! from other threads can race with modifications.
-//!
-//! **Safety invariant**: All env-var-modifying tests acquire `songbird_env_mutex()`
-//! before modifying environment variables. This mutex serializes all such tests,
-//! preventing data races. Each test restores the environment before releasing the
-//! lock, ensuring isolation between tests.
+//! Uses `temp_env` for safe, isolated environment variable testing. No unsafe
+//! env var manipulation; temp_env handles serialization and restoration.
 
 use super::connection::{get_default_songbird_socket, IPC_TIMEOUT};
 use super::*;
@@ -21,35 +12,79 @@ fn test_constants() {
     assert_eq!(IPC_TIMEOUT.as_secs(), 5);
 }
 
-#[tokio::test]
-async fn test_register_with_songbird_graceful_failure() {
-    let _guard = songbird_env_mutex().lock().await;
-    let result = register_with_songbird().await;
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    let err_msg = format!("{}", err);
-    assert!(err_msg.contains("Songbird") || err_msg.contains("connection"));
+#[test]
+fn test_register_with_songbird_graceful_failure() {
+    temp_env::with_var_unset("SONGBIRD_SOCKET", || {
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let result = register_with_songbird().await;
+                assert!(result.is_err());
+                let err = result.unwrap_err();
+                let err_msg = format!("{}", err);
+                assert!(err_msg.contains("Songbird") || err_msg.contains("connection"));
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
-#[tokio::test]
-async fn test_resolve_primal_graceful_failure() {
-    let _guard = songbird_env_mutex().lock().await;
-    let result = resolve_primal("beardog").await;
-    assert!(result.is_err());
+#[test]
+fn test_resolve_primal_graceful_failure() {
+    temp_env::with_var_unset("SONGBIRD_SOCKET", || {
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let result = resolve_primal("beardog").await;
+                assert!(result.is_err());
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
-#[tokio::test]
-async fn test_connect_to_primal_graceful_failure() {
-    let _guard = songbird_env_mutex().lock().await;
-    let result = connect_to_primal("beardog").await;
-    assert!(result.is_err());
+#[test]
+fn test_connect_to_primal_graceful_failure() {
+    temp_env::with_var_unset("SONGBIRD_SOCKET", || {
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let result = connect_to_primal("beardog").await;
+                assert!(result.is_err());
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
-#[tokio::test]
-async fn test_find_by_capability_graceful_failure() {
-    let _guard = songbird_env_mutex().lock().await;
-    let result = find_by_capability("crypto").await;
-    assert!(result.is_err());
+#[test]
+fn test_find_by_capability_graceful_failure() {
+    temp_env::with_var_unset("SONGBIRD_SOCKET", || {
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let result = find_by_capability("crypto").await;
+                assert!(result.is_err());
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
 #[test]
@@ -292,36 +327,24 @@ fn test_get_default_songbird_socket_contains_songbird_sock() {
 
 #[test]
 fn test_get_default_songbird_socket_with_xdg_runtime_dir() {
-    // When XDG_RUNTIME_DIR is set, the socket should be under that directory.
-    // SAFETY: This test runs under the serial test executor (not parallel) and
-    // the env var is restored immediately after use. No other code in this test
-    // reads environment variables concurrently.
-    unsafe { std::env::set_var("XDG_RUNTIME_DIR", "/tmp/test-xdg-runtime") };
-    let path = get_default_songbird_socket();
-    // SAFETY: Restoring env state; same constraints as above.
-    unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
-    assert!(path.starts_with("/tmp/test-xdg-runtime"));
-    assert!(path.ends_with("songbird.sock"));
+    temp_env::with_var("XDG_RUNTIME_DIR", Some("/tmp/test-xdg-runtime"), || {
+        let path = get_default_songbird_socket();
+        assert!(path.starts_with("/tmp/test-xdg-runtime"));
+        assert!(path.ends_with("songbird.sock"));
+    });
 }
 
 // ── Mock Unix socket happy-path tests ────────────────────────────────────────
 //
 // These tests spin up a temporary Unix socket server, point the connection
-// functions at it via SONGBIRD_SOCKET, and exercise the JSON-RPC send/receive
-// paths that are otherwise unreachable in a CI environment with no Songbird.
+// functions at it via SONGBIRD_SOCKET (via temp_env), and exercise the
+// JSON-RPC send/receive paths that are otherwise unreachable in CI.
 //
-// We use a global tokio::sync::Mutex to serialize access to the SONGBIRD_SOCKET
-// env var so that mock tests don't race with the graceful-failure tests.
-
-use std::sync::OnceLock;
-
-fn songbird_env_mutex() -> &'static tokio::sync::Mutex<()> {
-    static M: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
-    M.get_or_init(|| tokio::sync::Mutex::new(()))
-}
+// The mock and connection must run on the SAME tokio runtime to avoid
+// deadlocks (temp_env blocks the calling thread).
 
 /// Spawn a mock Songbird socket that accepts one connection and replies with
-/// the given JSON response (NDJSON framing — newline-delimited), then returns.
+/// the given JSON response (NDJSON framing), then returns.
 async fn spawn_mock_songbird(
     socket_path: &str,
     reply: serde_json::Value,
@@ -335,63 +358,77 @@ async fn spawn_mock_songbird(
     tokio::spawn(async move {
         if let Ok((stream, _)) = listener.accept().await {
             let (read_half, mut write_half) = stream.into_split();
-            // Drain the incoming newline-terminated JSON frame.
             let mut reader = BufReader::new(read_half);
             let mut line = String::new();
             let _ = reader.read_line(&mut line).await;
-            // Write the canned reply.
             let _ = write_half.write_all(reply_line.as_bytes()).await;
             let _ = write_half.flush().await;
         }
     })
 }
 
-#[tokio::test]
-async fn test_register_with_songbird_success_via_mock() {
-    let _guard = songbird_env_mutex().lock().await;
+#[test]
+fn test_register_with_songbird_success_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("songbird.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
 
     let reply = json!({"jsonrpc": "2.0", "result": {"status": "registered"}, "id": 1});
-    let handle = spawn_mock_songbird(&path_str, reply).await;
 
-    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests. The env var
-    // is restored before the lock is released, preventing races with other tests.
-    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
-    let result = register_with_songbird().await;
-    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
-
-    handle.abort();
-    assert!(result.is_ok(), "registration should succeed: {:?}", result);
+    let inner_path = path_str.clone();
+    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
+        let p = inner_path.clone();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let handle = spawn_mock_songbird(&p, reply).await;
+                let result = register_with_songbird().await;
+                handle.abort();
+                assert!(result.is_ok(), "registration should succeed: {:?}", result);
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
-#[tokio::test]
-async fn test_register_with_songbird_error_reply_via_mock() {
-    let _guard = songbird_env_mutex().lock().await;
+#[test]
+fn test_register_with_songbird_error_reply_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("songbird_err.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
 
     let reply = json!({"jsonrpc": "2.0", "error": {"code": -32000, "message": "already registered"}, "id": 1});
-    let handle = spawn_mock_songbird(&path_str, reply).await;
 
-    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests.
-    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
-    let result = register_with_songbird().await;
-    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
-
-    handle.abort();
-    assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Songbird registration failed"));
+    let inner_path = path_str.clone();
+    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
+        let p = inner_path.clone();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let handle = spawn_mock_songbird(&p, reply).await;
+                let result = register_with_songbird().await;
+                handle.abort();
+                assert!(result.is_err());
+                assert!(result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("Songbird registration failed"));
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
-#[tokio::test]
-async fn test_resolve_primal_success_via_mock() {
-    let _guard = songbird_env_mutex().lock().await;
+#[test]
+fn test_resolve_primal_success_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("resolve.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
@@ -401,42 +438,59 @@ async fn test_resolve_primal_success_via_mock() {
         "result": {"endpoint": "/run/user/1000/biomeos/beardog.sock"},
         "id": 1
     });
-    let handle = spawn_mock_songbird(&path_str, reply).await;
 
-    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests.
-    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
-    let result = resolve_primal("beardog").await;
-    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
-
-    handle.abort();
-    assert!(result.is_ok());
-    assert!(result.unwrap().contains("beardog.sock"));
+    let inner_path = path_str.clone();
+    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
+        let p = inner_path.clone();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let handle = spawn_mock_songbird(&p, reply).await;
+                let result = resolve_primal("beardog").await;
+                handle.abort();
+                assert!(result.is_ok());
+                assert!(result.unwrap().contains("beardog.sock"));
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
-#[tokio::test]
-async fn test_resolve_primal_missing_endpoint_returns_error() {
-    let _guard = songbird_env_mutex().lock().await;
+#[test]
+fn test_resolve_primal_missing_endpoint_returns_error() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("resolve_bad.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
 
-    // Reply has result but no endpoint field
     let reply = json!({"jsonrpc": "2.0", "result": {}, "id": 1});
-    let handle = spawn_mock_songbird(&path_str, reply).await;
 
-    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests.
-    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
-    let result = resolve_primal("beardog").await;
-    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
-
-    handle.abort();
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("missing endpoint"));
+    let inner_path = path_str.clone();
+    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
+        let p = inner_path.clone();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let handle = spawn_mock_songbird(&p, reply).await;
+                let result = resolve_primal("beardog").await;
+                handle.abort();
+                assert!(result.is_err());
+                assert!(result.unwrap_err().to_string().contains("missing endpoint"));
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
-#[tokio::test]
-async fn test_find_by_capability_success_via_mock() {
-    let _guard = songbird_env_mutex().lock().await;
+#[test]
+fn test_find_by_capability_success_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("cap.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
@@ -451,36 +505,55 @@ async fn test_find_by_capability_success_via_mock() {
         },
         "id": 1
     });
-    let handle = spawn_mock_songbird(&path_str, reply).await;
 
-    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests.
-    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
-    let result = find_by_capability("compute").await;
-    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
-
-    handle.abort();
-    assert!(result.is_ok());
-    let primals = result.unwrap();
-    assert_eq!(primals.len(), 2);
-    assert!(primals.contains(&"barracuda".to_string()));
+    let inner_path = path_str.clone();
+    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
+        let p = inner_path.clone();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let handle = spawn_mock_songbird(&p, reply).await;
+                let result = find_by_capability("compute").await;
+                handle.abort();
+                assert!(result.is_ok());
+                let primals = result.unwrap();
+                assert_eq!(primals.len(), 2);
+                assert!(primals.contains(&"barracuda".to_string()));
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
-#[tokio::test]
-async fn test_find_by_capability_error_reply() {
-    let _guard = songbird_env_mutex().lock().await;
+#[test]
+fn test_find_by_capability_error_reply() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("cap_err.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
 
     let reply =
         json!({"jsonrpc": "2.0", "error": {"code": -1, "message": "no capabilities"}, "id": 1});
-    let handle = spawn_mock_songbird(&path_str, reply).await;
 
-    // SAFETY: songbird_env_mutex() serializes all env-var-modifying tests.
-    unsafe { std::env::set_var("SONGBIRD_SOCKET", &path_str) };
-    let result = find_by_capability("gpu").await;
-    unsafe { std::env::remove_var("SONGBIRD_SOCKET") };
-
-    handle.abort();
-    assert!(result.is_err());
+    let inner_path = path_str.clone();
+    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
+        let p = inner_path.clone();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let handle = spawn_mock_songbird(&p, reply).await;
+                let result = find_by_capability("gpu").await;
+                handle.abort();
+                assert!(result.is_err());
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }

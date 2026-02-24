@@ -67,10 +67,6 @@ impl ByobExecutorConfig {
             return Err("max_concurrent_deployments must be greater than 0".to_string());
         }
 
-        if self.default_host_port == 0 {
-            return Err("default_host_port must be greater than 0".to_string());
-        }
-
         if self.deployment_timeout.as_secs() < 60 {
             return Err("deployment_timeout must be at least 60 seconds".to_string());
         }
@@ -132,18 +128,12 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_zero_host_port() {
+    fn test_validate_zero_host_port_is_valid() {
         let config = ByobExecutorConfig {
             default_host_port: 0,
             ..Default::default()
         };
-
-        let result = config.validate();
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            "default_host_port must be greater than 0"
-        );
+        assert!(config.validate().is_ok());
     }
 
     #[test]

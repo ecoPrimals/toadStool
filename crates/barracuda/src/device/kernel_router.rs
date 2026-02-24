@@ -22,26 +22,22 @@
 //! # Example
 //!
 //! ```no_run
-//! use barracuda::device::kernel_router::{KernelRouter, ComputeWorkload};
+//! use barracuda::device::kernel_router::{KernelRouter, ComputeWorkload, KernelTarget};
 //!
+//! # fn main() -> barracuda::error::Result<()> {
 //! let router = KernelRouter::new()?;
-//!
-//! // Describe the computation
 //! let workload = ComputeWorkload::SparseInference {
 //!     input_sparsity: 0.95,
-//!     model_name: "edge_classifier",
+//!     model_name: "edge_classifier".to_string(),
 //! };
-//!
-//! // Route to best hardware
 //! let target = router.route(&workload)?;
 //! match target {
-//!     KernelTarget::Npu(model_id) => {
-//!         // Run pre-compiled NPU model
-//!     }
-//!     KernelTarget::Wgsl { shader, device } => {
-//!         // Run WGSL shader on GPU/CPU
-//!     }
+//!     KernelTarget::Npu { model_id: _, .. } => {}
+//!     KernelTarget::Wgsl { shader: _, device: _, .. } => {}
+//!     KernelTarget::Hybrid { .. } => {}
 //! }
+//! # Ok(())
+//! # }
 //! ```
 
 use crate::device::{Device, DeviceSelection};

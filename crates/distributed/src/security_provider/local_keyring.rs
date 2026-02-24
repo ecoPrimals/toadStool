@@ -172,3 +172,96 @@ impl SecurityProvider for LocalKeyringProvider {
         self.inner.health_check().await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_local_keyring_provider_new() {
+        let provider = LocalKeyringProvider::new();
+        let _ = provider;
+    }
+
+    #[test]
+    fn test_local_keyring_provider_default() {
+        let provider = LocalKeyringProvider::default();
+        let _ = provider;
+    }
+
+    #[test]
+    fn test_local_keyring_provider_backend() {
+        let provider = LocalKeyringProvider::new();
+        let backend = provider.backend();
+        assert!(matches!(
+            backend,
+            KeyringBackend::SecretService | KeyringBackend::InMemory
+        ));
+    }
+
+    #[test]
+    fn test_keyring_backend_variants() {
+        let _ = KeyringBackend::SecretService;
+        let _ = KeyringBackend::InMemory;
+        assert_eq!(KeyringBackend::InMemory, KeyringBackend::InMemory);
+        assert_ne!(KeyringBackend::SecretService, KeyringBackend::InMemory);
+    }
+
+    #[tokio::test]
+    async fn test_local_keyring_provider_capabilities() {
+        let provider = LocalKeyringProvider::new();
+        let caps = provider.capabilities().await.unwrap();
+        assert!(!caps.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_local_keyring_provider_metadata() {
+        let provider = LocalKeyringProvider::new();
+        let meta = provider.metadata().await.unwrap();
+        assert_eq!(meta.provider_type, "LocalKeyring");
+        assert!(meta.metadata.contains_key("backend"));
+    }
+
+    #[tokio::test]
+    async fn test_local_keyring_provider_encrypt_decrypt() {
+        let provider = LocalKeyringProvider::new();
+        let data = b"hello world";
+        let enc_result = provider.encrypt(data, None).await.unwrap();
+        let dec_result = provider
+            .decrypt(&enc_result.ciphertext, &enc_result.metadata)
+            .await
+            .unwrap();
+        assert_eq!(dec_result.plaintext, data);
+    }
+
+    #[tokio::test]
+    async fn test_local_keyring_provider_encrypt_with_key_id_tracks() {
+        let provider = LocalKeyringProvider::new();
+        let options = Some(EncryptionOptions {
+            algorithm: None,
+            key_id: Some("test-key-1".to_string()),
+            aad: None,
+        });
+        let enc_result = provider.encrypt(b"data", options).await.unwrap();
+        assert!(!enc_result.ciphertext.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_local_keyring_provider_health_check() {
+        let provider = LocalKeyringProvider::new();
+        let health = provider.health_check().await.unwrap();
+        assert_eq!(health, ProviderHealth::Healthy);
+    }
+
+    #[tokio::test]
+    async fn test_local_keyring_provider_sign_verify() {
+        let provider = LocalKeyringProvider::new();
+        let data = b"sign me";
+        let sign_result = provider.sign(data, None).await.unwrap();
+        let verify_result = provider
+            .verify(data, &sign_result.signature, &sign_result.key_id)
+            .await
+            .unwrap();
+        assert!(matches!(verify_result, VerificationResult::Valid));
+    }
+}

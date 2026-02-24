@@ -334,4 +334,119 @@ mod tests {
         assert_eq!(parse_or(Some("invalid"), 8080u16), 8080);
         assert_eq!(parse_or::<u16>(None, 8080), 8080);
     }
+
+    #[test]
+    fn test_parse_list_or_empty_string() {
+        assert_eq!(parse_list_or(Some(""), vec!["a".to_string()]), vec!["a"]);
+    }
+
+    #[test]
+    fn test_parse_list_or_valid() {
+        let result = parse_list_or(Some("a,b,c"), vec![]);
+        assert_eq!(result, vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn test_parse_list_or_with_spaces() {
+        let result = parse_list_or(Some(" a , b , c "), vec![]);
+        assert_eq!(result, vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn test_parse_list_or_none_returns_default() {
+        let default = vec!["default".to_string()];
+        assert_eq!(parse_list_or(None, default.clone()), default);
+    }
+
+    #[test]
+    fn test_bind_mode_from_str() {
+        use std::str::FromStr;
+        assert_eq!(
+            BindMode::from_str("localhost").unwrap(),
+            BindMode::Localhost
+        );
+        assert_eq!(BindMode::from_str("local").unwrap(), BindMode::Localhost);
+        assert_eq!(BindMode::from_str("all").unwrap(), BindMode::AllInterfaces);
+        assert_eq!(
+            BindMode::from_str("0.0.0.0").unwrap(),
+            BindMode::AllInterfaces
+        );
+        assert_eq!(BindMode::from_str("specific").unwrap(), BindMode::Specific);
+    }
+
+    #[test]
+    fn test_bind_mode_from_str_case_insensitive() {
+        use std::str::FromStr;
+        assert_eq!(
+            BindMode::from_str("Localhost").unwrap(),
+            BindMode::Localhost
+        );
+        assert_eq!(BindMode::from_str("ALL").unwrap(), BindMode::AllInterfaces);
+    }
+
+    #[test]
+    fn test_bind_mode_from_str_invalid() {
+        use std::str::FromStr;
+        assert!(BindMode::from_str("invalid").is_err());
+        assert!(BindMode::from_str("").is_err());
+    }
+
+    #[test]
+    fn test_service_addr() {
+        let config = NetworkConfig::default();
+        let addr = config.service_addr();
+        assert_eq!(
+            addr.ip(),
+            std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))
+        );
+        assert_eq!(addr.port(), ports::toadstool::SERVER);
+    }
+
+    #[test]
+    fn test_api_addr() {
+        let config = NetworkConfig::default();
+        let addr = config.api_addr();
+        assert_eq!(addr.port(), ports::toadstool::SERVER);
+    }
+
+    #[test]
+    fn test_metrics_addr() {
+        let config = NetworkConfig::default();
+        let addr = config.metrics_addr();
+        assert_eq!(addr.port(), ports::toadstool::METRICS);
+    }
+
+    #[test]
+    fn test_health_addr() {
+        let config = NetworkConfig::default();
+        let addr = config.health_addr();
+        assert_eq!(addr.port(), ports::toadstool::HEALTH);
+    }
+
+    #[test]
+    fn test_endpoint_builder_test_config() {
+        let config = NetworkConfig::test();
+        let builder = EndpointBuilder::new(config);
+        assert!(builder.service_url().contains("localhost"));
+        assert!(builder.service_url().contains(":0"));
+    }
+
+    #[test]
+    fn test_endpoint_builder_specific_bind_mode() {
+        use std::net::IpAddr;
+        let config = NetworkConfig {
+            listen_address: IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 1, 100)),
+            service_port: 9000,
+            api_port: 9000,
+            metrics_port: 9000,
+            health_port: 9000,
+            discovery_endpoints: vec![],
+            enable_mdns: false,
+            bind_mode: BindMode::Specific,
+        };
+        let builder = EndpointBuilder::new(config);
+        let url = builder.service_url();
+        assert!(url.contains("192.168.1.100"));
+        assert!(url.contains("9000"));
+    }
 }

@@ -292,3 +292,141 @@ struct SongbirdDeregisterRequest {
 // - SquirrelAdapter (for ML coordination)
 // - BearDogAdapter (for authentication/security)
 // - CustomAdapter (for custom primals)
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_songbird_adapter_new_with_endpoint() {
+        let adapter = SongbirdAdapter::new_with_endpoint(
+            "http://songbird:8080",
+            "http://toadstool:9090".to_string(),
+        )
+        .unwrap();
+        assert_eq!(adapter.primal_name(), "songbird");
+        assert_eq!(adapter.endpoint(), "http://songbird:8080");
+    }
+
+    #[test]
+    fn test_songbird_adapter_new_requires_toadstool_endpoint() {
+        temp_env::with_vars([("TOADSTOOL_ENDPOINT", None::<&str>)], || {
+            let result = SongbirdAdapter::new("http://songbird:8080");
+            match result {
+                Err(e) => assert!(e.to_string().contains("TOADSTOOL_ENDPOINT")),
+                Ok(_) => panic!("expected error when TOADSTOOL_ENDPOINT not set"),
+            }
+        });
+    }
+
+    #[test]
+    fn test_songbird_adapter_new_with_env() {
+        temp_env::with_var("TOADSTOOL_ENDPOINT", Some("http://self:9090"), || {
+            let result = SongbirdAdapter::new("http://songbird:8080");
+            assert!(result.is_ok());
+            let adapter = result.unwrap();
+            assert_eq!(adapter.primal_name(), "songbird");
+            assert_eq!(adapter.endpoint(), "http://songbird:8080");
+        });
+    }
+
+    fn make_test_adapter() -> SongbirdAdapter {
+        SongbirdAdapter::new_with_endpoint(
+            "http://songbird:8080",
+            "http://toadstool:9090".to_string(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_songbird_adapter_send_heartbeat() {
+        let adapter = make_test_adapter();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let result = adapter.send_heartbeat().await;
+            assert!(result.is_ok());
+        });
+    }
+
+    #[test]
+    fn test_songbird_adapter_notify_capability_change() {
+        let adapter = make_test_adapter();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let cap = Capability::compute_heavy();
+            let result = adapter.notify_capability_change(&cap, false).await;
+            assert!(result.is_ok());
+        });
+    }
+
+    #[test]
+    fn test_songbird_adapter_deregister() {
+        let adapter = make_test_adapter();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let result = adapter.deregister().await;
+            assert!(result.is_ok());
+        });
+    }
+
+    #[test]
+    fn test_songbird_adapter_register_capabilities_fails_without_socket() {
+        let adapter = make_test_adapter();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let caps = vec![Capability::compute_heavy()];
+            let result = adapter.register_capabilities(caps).await;
+            assert!(result.is_err());
+        });
+    }
+
+    #[test]
+    fn test_songbird_adapter_register_capabilities_empty() {
+        let adapter = make_test_adapter();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let result = adapter.register_capabilities(vec![]).await;
+            assert!(result.is_err());
+        });
+    }
+
+    #[test]
+    fn test_songbird_adapter_primal_adapter_trait() {
+        let adapter = SongbirdAdapter::new_with_endpoint(
+            "unix:///tmp/songbird.sock",
+            "http://localhost:9090".to_string(),
+        )
+        .unwrap();
+        assert_eq!(adapter.primal_name(), "songbird");
+        assert_eq!(adapter.endpoint(), "unix:///tmp/songbird.sock");
+    }
+
+    #[test]
+    fn test_songbird_adapter_notify_gpu_capability() {
+        let adapter = make_test_adapter();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let cap = Capability::compute_gpu();
+            let result = adapter.notify_capability_change(&cap, true).await;
+            assert!(result.is_ok());
+        });
+    }
+
+    #[test]
+    fn test_songbird_adapter_notify_capability_with_custom_id() {
+        let adapter = make_test_adapter();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let cap = Capability::compute_ml_training();
+            let result = adapter.notify_capability_change(&cap, false).await;
+            assert!(result.is_ok());
+        });
+    }
+
+    #[test]
+    fn test_songbird_adapter_endpoint_preserved() {
+        let ep = "https://custom-songbird.example.com:9999";
+        let adapter = SongbirdAdapter::new_with_endpoint(ep, "http://me:1".to_string()).unwrap();
+        assert_eq!(adapter.endpoint(), ep);
+    }
+}

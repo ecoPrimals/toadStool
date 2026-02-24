@@ -161,7 +161,7 @@ fn check_local_capacity(requirements: &ResourceRequirements) -> ToadStoolResult<
     let mut sys = System::new_all();
     sys.refresh_all();
 
-    let available_cpu_cores = sys.cpus().len() as u32;
+    let available_cpu_cores = u32::try_from(sys.cpus().len()).unwrap_or(u32::MAX);
     let available_memory_mib = sys.available_memory() / (1024 * 1024);
 
     if available_cpu_cores < requirements.min_cpu_cores {
@@ -363,5 +363,95 @@ mod tests {
         let req = ResourceRequirements::from_spec(&spec);
         assert!(req.requires_gpu);
         assert!(req.min_memory_mib >= 1024);
+    }
+
+    #[test]
+    fn test_resource_requirements_from_aiml_spec() {
+        use crate::workload::ai_ml::{AiFramework, AiMlWorkload, AiOperation, ModelSize};
+        let workload = AiMlWorkload {
+            framework: AiFramework::ONNX,
+            operation: AiOperation::Inference,
+            model_size: ModelSize::Medium,
+            batch_size: 32,
+            model_name: None,
+            precision: None,
+            min_throughput: None,
+            max_latency_ms: None,
+        };
+        let spec = WorkloadSpec::AiMl { workload };
+        let req = ResourceRequirements::from_spec(&spec);
+        assert!(req.requires_gpu);
+        assert!(req.min_memory_mib >= 4096);
+    }
+
+    #[test]
+    fn test_resource_requirements_from_cuda_spec() {
+        use crate::workload::cuda::{CudaLaunchConfig, CudaSource, CudaWorkload};
+        let workload = CudaWorkload::new(
+            CudaSource::Ptx {
+                source: "some ptx".into(),
+                entry_point: "main".into(),
+            },
+            CudaLaunchConfig::linear(1, 1),
+        );
+        let spec = WorkloadSpec::Cuda { workload };
+        let req = ResourceRequirements::from_spec(&spec);
+        assert!(req.requires_gpu);
+        assert!(req.min_memory_mib >= 1024);
+    }
+
+    #[test]
+    fn test_resource_requirements_from_native_spec() {
+        let spec = WorkloadSpec::default();
+        let req = ResourceRequirements::from_spec(&spec);
+        assert!(!req.requires_gpu);
+        assert_eq!(req.min_memory_mib, 512);
+        assert_eq!(req.min_cpu_cores, 1);
+    }
+
+    #[test]
+    fn test_resource_requirements_default() {
+        let req = ResourceRequirements::default();
+        assert_eq!(req.min_cpu_cores, 1);
+        assert_eq!(req.min_memory_mib, 512);
+        assert!(!req.requires_gpu);
+    }
+
+    #[test]
+    fn test_preflight_different_cloud_ok() {
+        let r = validate_preflight(
+            &rec(
+                true,
+                Some(MigrationTarget::DifferentCloud {
+                    from_provider: "aws".into(),
+                    to_provider: "gcp".into(),
+                    to_region: "us-west-1".into(),
+                    estimated_cost_per_hour: 1.0,
+                }),
+                0.9,
+            ),
+            &ResourceRequirements::default(),
+        );
+        assert_eq!(r.unwrap(), PreflightOutcome::Ok);
+    }
+
+    #[test]
+    fn test_preflight_outcome_debug() {
+        let _ = format!("{:?}", PreflightOutcome::Ok);
+        let _ = format!("{:?}", PreflightOutcome::InvalidRecommendation);
+        let _ = format!("{:?}", PreflightOutcome::InsufficientLocalCapacity);
+        let _ = format!("{:?}", PreflightOutcome::NoMigrationRequired);
+    }
+
+    #[test]
+    fn test_pre_migration_snapshot_age() {
+        let snapshot = PreMigrationSnapshot {
+            workload_id: "test".to_string(),
+            location_before: None,
+            captured_at: SystemTime::now(),
+        };
+        let age = snapshot.age();
+        assert!(age.is_some());
+        assert!(age.unwrap().as_secs() < 2);
     }
 }

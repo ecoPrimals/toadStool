@@ -599,9 +599,10 @@ pub struct CloudHealthChecker {
 }
 
 impl CloudHealthChecker {
-    pub fn new(provider: String) -> Self {
+    /// Creates a checker with empty endpoint; actual endpoint from config/discovery (no AWS default).
+    pub fn new(_provider: String) -> Self {
         Self {
-            endpoint: format!("https://{provider}.amazonaws.com"),
+            endpoint: String::new(),
             check_interval: timeouts::HEALTH_CHECK_INTERVAL,
             timeout: timeouts::TCP_CONNECT_TIMEOUT,
         }
@@ -678,8 +679,10 @@ mod tests {
     #[test]
     fn test_cloud_health_checker_new() {
         let checker = CloudHealthChecker::new("ec2".to_string());
-        assert!(checker.endpoint.contains("ec2"));
-        assert!(checker.endpoint.contains("amazonaws.com"));
+        assert!(
+            checker.endpoint.is_empty(),
+            "endpoint discovered via config at runtime"
+        );
     }
 
     #[test]

@@ -2,148 +2,185 @@
 //! Covers: cloud metadata getters, env-based detection branches,
 //! DeploymentLayer helpers (description, host_os, guest_os, is_virtualized, has_direct_hardware_access),
 //! CloudProvider/ContainerRuntime variants, Display impl
-use std::sync::Mutex;
 use toadstool::deployment_layer::{
     CloudProvider, ContainerRuntime, DeploymentLayer, LayerDetector,
 };
 
-// Env-var-mutating tests must be serialized to avoid cross-test pollution.
-static ENV_MUTEX: Mutex<()> = Mutex::new(());
-
 // ── Cloud metadata via env vars (when cloud branch wins) ─────────────────────
-// SAFETY: std::env::set_var/remove_var are unsafe in Rust 2024 (concurrent reads can race).
-// All env-mutating tests hold ENV_MUTEX to serialize execution.
-// Each test cleans up its vars immediately after detection.
+// Uses temp_env for safe, isolated env var testing (no unsafe, no cross-test pollution).
 
 #[tokio::test]
 async fn test_detector_aws_with_instance_and_region_env() {
-    let _guard = ENV_MUTEX.lock().unwrap();
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::set_var("AWS_EXECUTION_ENV", "AWS_ECS_EC2");
-        std::env::set_var("AWS_INSTANCE_TYPE", "t3.medium");
-        std::env::set_var("AWS_REGION", "us-west-2");
-    }
-    let mut detector = LayerDetector::new();
-    let layer = detector.detect().await.expect("detect should succeed");
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::remove_var("AWS_EXECUTION_ENV");
-        std::env::remove_var("AWS_INSTANCE_TYPE");
-        std::env::remove_var("AWS_REGION");
-    }
-    if let DeploymentLayer::CloudLayer {
-        provider,
-        instance_type,
-        region,
-    } = &layer
-    {
-        assert!(matches!(provider, CloudProvider::AWS));
-        assert!(instance_type.as_ref().map_or(true, |s| !s.is_empty()));
-        assert!(region.as_ref().map_or(true, |s| !s.is_empty()));
-    }
+    temp_env::with_vars(
+        [
+            ("AWS_EXECUTION_ENV", Some("AWS_ECS_EC2")),
+            ("AWS_INSTANCE_TYPE", Some("t3.medium")),
+            ("AWS_REGION", Some("us-west-2")),
+        ],
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let layer = detector.detect().await.expect("detect should succeed");
+                    if let DeploymentLayer::CloudLayer {
+                        provider,
+                        instance_type,
+                        region,
+                    } = &layer
+                    {
+                        assert!(matches!(provider, CloudProvider::AWS));
+                        assert!(instance_type.as_ref().map_or(true, |s| !s.is_empty()));
+                        assert!(region.as_ref().map_or(true, |s| !s.is_empty()));
+                    }
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
 }
 
 #[tokio::test]
 async fn test_detector_aws_ec2_instance_type_env() {
-    let _guard = ENV_MUTEX.lock().unwrap();
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::set_var("AWS_EXECUTION_ENV", "test");
-        std::env::set_var("EC2_INSTANCE_TYPE", "m5.xlarge");
-    }
-    let mut detector = LayerDetector::new();
-    let _ = detector.detect().await.expect("detect should succeed");
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::remove_var("AWS_EXECUTION_ENV");
-        std::env::remove_var("EC2_INSTANCE_TYPE");
-    }
+    temp_env::with_vars(
+        [
+            ("AWS_EXECUTION_ENV", Some("test")),
+            ("EC2_INSTANCE_TYPE", Some("m5.xlarge")),
+        ],
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let _ = detector.detect().await.expect("detect should succeed");
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
 }
 
 #[tokio::test]
 async fn test_detector_aws_default_region_fallback() {
-    let _guard = ENV_MUTEX.lock().unwrap();
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::set_var("AWS_EXECUTION_ENV", "test");
-        std::env::remove_var("AWS_REGION");
-        std::env::remove_var("AWS_DEFAULT_REGION");
-    }
-    let mut detector = LayerDetector::new();
-    let _ = detector.detect().await.expect("detect should succeed");
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::remove_var("AWS_EXECUTION_ENV");
-    }
+    temp_env::with_vars(
+        [
+            ("AWS_EXECUTION_ENV", Some("test")),
+            ("AWS_REGION", None),
+            ("AWS_DEFAULT_REGION", None),
+        ],
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let _ = detector.detect().await.expect("detect should succeed");
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
 }
 
 #[tokio::test]
 async fn test_detector_gcp_with_zone_env() {
-    let _guard = ENV_MUTEX.lock().unwrap();
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::set_var("GCP_PROJECT", "my-project");
-        std::env::set_var("GCE_ZONE", "us-central1-a");
-        std::env::set_var("GCE_MACHINE_TYPE", "n1-standard-4");
-    }
-    let mut detector = LayerDetector::new();
-    let _ = detector.detect().await.expect("detect should succeed");
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::remove_var("GCP_PROJECT");
-        std::env::remove_var("GCE_ZONE");
-        std::env::remove_var("GCE_MACHINE_TYPE");
-    }
+    temp_env::with_vars(
+        [
+            ("GCP_PROJECT", Some("my-project")),
+            ("GCE_ZONE", Some("us-central1-a")),
+            ("GCE_MACHINE_TYPE", Some("n1-standard-4")),
+        ],
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let _ = detector.detect().await.expect("detect should succeed");
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
 }
 
 #[tokio::test]
 async fn test_detector_azure_with_location_env() {
-    let _guard = ENV_MUTEX.lock().unwrap();
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::set_var("AZURE_SUBSCRIPTION_ID", "sub-id");
-        std::env::set_var("AZURE_LOCATION", "eastus");
-        std::env::set_var("AZURE_VM_SIZE", "Standard_D2s_v3");
-    }
-    let mut detector = LayerDetector::new();
-    let _ = detector.detect().await.expect("detect should succeed");
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::remove_var("AZURE_SUBSCRIPTION_ID");
-        std::env::remove_var("AZURE_LOCATION");
-        std::env::remove_var("AZURE_VM_SIZE");
-    }
+    temp_env::with_vars(
+        [
+            ("AZURE_SUBSCRIPTION_ID", Some("sub-id")),
+            ("AZURE_LOCATION", Some("eastus")),
+            ("AZURE_VM_SIZE", Some("Standard_D2s_v3")),
+        ],
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let _ = detector.detect().await.expect("detect should succeed");
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
 }
 
 #[tokio::test]
 async fn test_detector_lambda_env() {
-    let _guard = ENV_MUTEX.lock().unwrap();
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::set_var("AWS_LAMBDA_FUNCTION_NAME", "my-function");
-    }
-    let mut detector = LayerDetector::new();
-    let _ = detector.detect().await.expect("detect should succeed");
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::remove_var("AWS_LAMBDA_FUNCTION_NAME");
-    }
+    temp_env::with_var("AWS_LAMBDA_FUNCTION_NAME", Some("my-function"), || {
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let mut detector = LayerDetector::new();
+                let _ = detector.detect().await.expect("detect should succeed");
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
 #[tokio::test]
 async fn test_detector_ecs_metadata_env() {
-    let _guard = ENV_MUTEX.lock().unwrap();
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::set_var("ECS_CONTAINER_METADATA_URI", "http://169.254.170.2/v4");
-    }
-    let mut detector = LayerDetector::new();
-    let _ = detector.detect().await.expect("detect should succeed");
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::remove_var("ECS_CONTAINER_METADATA_URI");
-    }
+    temp_env::with_var(
+        "ECS_CONTAINER_METADATA_URI",
+        Some("http://169.254.170.2/v4"),
+        || {
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let mut detector = LayerDetector::new();
+                    let _ = detector.detect().await.expect("detect should succeed");
+                });
+            })
+            .join()
+            .expect("test thread");
+        },
+    );
 }
 
 #[tokio::test]
@@ -411,17 +448,20 @@ fn test_deployment_layer_display_cloud() {
 
 #[tokio::test]
 async fn test_detector_gcp_google_cloud_project_env() {
-    let _guard = ENV_MUTEX.lock().unwrap();
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::set_var("GOOGLE_CLOUD_PROJECT", "test-project");
-    }
-    let mut detector = LayerDetector::new();
-    let _ = detector.detect().await.expect("detect succeeds");
-    // SAFETY: See module-level SAFETY comment above.
-    unsafe {
-        std::env::remove_var("GOOGLE_CLOUD_PROJECT");
-    }
+    temp_env::with_var("GOOGLE_CLOUD_PROJECT", Some("test-project"), || {
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let mut detector = LayerDetector::new();
+                let _ = detector.detect().await.expect("detect succeeds");
+            });
+        })
+        .join()
+        .expect("test thread");
+    });
 }
 
 // ── LayerDetector::default() ────────────────────────────────────────────────────

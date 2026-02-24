@@ -58,6 +58,10 @@ impl RuntimePortDiscovery {
 
     /// Discover an available port, optionally with preference
     ///
+    /// # Errors
+    ///
+    /// Returns error if no port in the preferred range can be bound.
+    ///
     /// Deep Debt: If preferred port is unavailable, finds another.
     /// NO hardcoding, NO assumptions!
     pub fn discover_port(&self, preferred: Option<u16>) -> PortResult<u16> {
@@ -116,6 +120,10 @@ impl RuntimePortDiscovery {
     }
 
     /// Discover multiple ports at once
+    ///
+    /// # Errors
+    ///
+    /// Returns error if any required port cannot be found.
     pub fn discover_ports(&self, count: usize) -> PortResult<Vec<u16>> {
         let mut ports = Vec::with_capacity(count);
         for _ in 0..count {
@@ -149,12 +157,20 @@ impl RuntimePortDiscovery {
 
 /// Convenience function for quick port discovery
 ///
+/// # Errors
+///
+/// Returns error if no available port can be found.
+///
 /// Deep Debt: NO hardcoded defaults, discovers at runtime
 pub fn discover_available_port() -> PortResult<u16> {
     RuntimePortDiscovery::new().discover_port(None)
 }
 
 /// Discover port with preferred value
+///
+/// # Errors
+///
+/// Returns error if preferred and alternative ports cannot be bound.
 ///
 /// Deep Debt: If preferred unavailable, finds alternative
 pub fn discover_port_with_preference(preferred: u16) -> PortResult<u16> {

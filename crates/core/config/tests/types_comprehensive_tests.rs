@@ -311,7 +311,10 @@ fn test_python_config_default() {
 
     assert_eq!(config.executable, "python3");
     assert!(config.venv_path.is_none());
-    assert!(config.index_url.contains("pypi.org"));
+    assert!(
+        config.index_url.is_empty(),
+        "index_url discovered via config (sovereignty)"
+    );
     assert_eq!(config.max_memory, 128 * 1024 * 1024);
     assert_eq!(config.max_execution_time, 300);
     assert!(config.allowed_modules.contains(&"numpy".to_string()));
