@@ -1,6 +1,6 @@
 # ToadStool + BarraCuda -- Quick Status
 
-**Date**: February 24, 2026 (Session 56)
+**Date**: February 24, 2026 (Session 57)
 
 ---
 
@@ -13,7 +13,7 @@ cargo clippy --workspace --all-targets  0 warnings
 cargo deny check licenses bans sources  all passing
 cargo doc --workspace --no-deps       0 warnings
 cargo test --workspace --lib          14,200+ tests / 0 failed
-  core 5 crates alone                 4,176 tests / 0 failed
+  core 5 crates alone                 4,224 tests / 0 failed
 unsafe blocks                         95+ audited -- FFI only, all SAFETY documented
   1 unsafe block removed (vfio.rs)    from_size_align_unchecked -> safe
 production panics/unwraps             0 blind unwrap(); infallible expect() only
@@ -89,7 +89,7 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 |--------|-------|
 | Clippy warnings (full workspace) | 0 |
 | Doc warnings | 0 |
-| Unit tests (5 core crates) | 4,177 |
+| Unit tests (5 core crates) | 4,224 |
 | Unit tests (full workspace) | 14,200+ |
 | WGSL shaders | 650+ (zero orphans) |
 | Unsafe blocks | 95+ audited -- FFI only, all `// SAFETY:` documented |
@@ -137,7 +137,7 @@ barracuda::special        - gamma, chi_squared, Hermite, Legendre, Laguerre, dig
 barracuda::stats          - norm_cdf, norm_ppf, correlation, covariance, variance, bootstrap, chi2, spectral_density, marchenko_pastur
 barracuda::optimize       - Nelder-Mead, BFGS, bisection, Newton, Brent, diagnostics
 barracuda::surrogate      - RBF with 6 kernels, GPU-accelerated training, LOO-CV
-barracuda::sample         - Sobol, LHS, random_uniform, direct_sampler
+barracuda::sample         - Sobol, LHS, random_uniform, direct_sampler, boltzmann_sampling (Metropolis MCMC)
 barracuda::pde            - Crank-Nicolson, Richards unsaturated flow (van Genuchten-Mualem)
 barracuda::interpolate    - Cubic spline (natural/clamped/not-a-knot)
 barracuda::dispatch       - Auto CPU/GPU routing with benchmark suite
@@ -174,4 +174,4 @@ cargo llvm-cov --lib -p toadstool-common --json
 
 ---
 
-**Last Updated**: February 24, 2026 -- Session 56: All cross-spring absorptions complete (46 items). Final 3 neuralSpring LOW items absorbed (belief_propagation, boltzmann_sampling, disordered_laplacian). Idiomatic Rust pass (17 edits). 2 large test files split. 0 clippy errors, 4,177 core tests.
+**Last Updated**: February 24, 2026 -- Session 57: Coverage push (+47 tests across 5 uncovered modules). println! evolved to tracing in config_utils. TOML serialization test un-ignored. 0 clippy errors, 4,224 core tests.

@@ -5,7 +5,20 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 24, 2026 (Sessions 43-56 — Deep Debt Evolution + Cross-Spring Absorption)
+## [Unreleased] - February 24, 2026 (Sessions 43-57 — Deep Debt Evolution + Cross-Spring Absorption + Coverage Push)
+
+### Session 57 (Feb 24, 2026) — Coverage Push + Quality Evolution
+
+- **47 new tests across 5 previously uncovered modules**:
+  - `cloud/cost/optimizer.rs` — 8 tests (budget estimation, spend tracking, edge cases)
+  - `cloud/cost/pricing.rs` — 13 tests (tier inference, cost calculation, all providers)
+  - `gpu_job_queue.rs` — 12 tests (submission, priority, capacity, state filtering)
+  - `cloud/credentials.rs` — 11 tests (AWS/Azure/GCP/K8s creation, serialization)
+  - `cloud/compliance.rs` — 3 tests (sovereignty, region intersection, security tiers)
+- **`println!` → `tracing`**: `config_utils::print_current_config()` evolved from `println!` to `tracing::{info,debug}` for structured logging integration
+- **Test un-ignored**: `test_distributed_config_toml_serialization` — added `toml = "0.8"` to dev-dependencies
+- **Stale processes cleaned**: killed zombie barracuda test process (running since Feb 22)
+- **Quality**: 0 clippy errors, 4,224 core tests (+47), cargo fmt clean
 
 ### Session 56 (Feb 24, 2026) — Final Absorptions + Idiomatic Rust
 

@@ -84,3 +84,4 @@ toadstool-testing = { path = "../testing" }
 tokio-test = "0.4"
 tempfile = "3.0"
 temp-env = "0.3"
+toml = "0.8"

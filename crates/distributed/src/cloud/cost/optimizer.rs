@@ -174,3 +174,165 @@ impl CloudCostOptimizer {
             .unwrap_or_default()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::types::BYTES_PER_GB;
+    use super::*;
+    use crate::cloud::types::{
+        CloudCapabilities, ComputeType, CostConfig, NetworkingFeature, SecurityFeature, StorageType,
+    };
+    use crate::types::resources::{
+        CpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
+    };
+
+    fn empty_capabilities() -> CloudCapabilities {
+        CloudCapabilities {
+            compute_types: vec![ComputeType::VM],
+            storage_types: vec![StorageType::BlockStorage],
+            networking_features: vec![NetworkingFeature::VPC],
+            security_features: vec![SecurityFeature::Encryption],
+            compliance_certifications: vec![],
+            regions: vec![],
+            max_cpu_cores: None,
+            max_memory_gb: None,
+            gpu_support: false,
+            kubernetes_support: false,
+            serverless_support: false,
+        }
+    }
+
+    fn minimal_requirements() -> ResourceRequirements {
+        ResourceRequirements {
+            cpu: CpuRequirements {
+                min_cores: 1.0,
+                max_cores: None,
+            },
+            memory: MemoryRequirements {
+                min_bytes: BYTES_PER_GB,
+                max_bytes: None,
+            },
+            storage: StorageRequirements {
+                min_bytes: BYTES_PER_GB,
+                max_bytes: None,
+            },
+            network: NetworkRequirements {
+                bandwidth_mbps: None,
+                latency_ms: None,
+            },
+            gpu: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cloud_cost_optimizer_construction() {
+        let cfg = CostConfig {
+            budget_limit: Some(500.0),
+            cost_tracking_enabled: true,
+            spot_instance_preference: 0.0,
+        };
+        let optimizer = CloudCostOptimizer::new(cfg).await.unwrap();
+        assert!(optimizer.cost_models.is_empty());
+        assert!(optimizer.capability_models.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_budget_estimation_would_exceed_budget() {
+        let cfg = CostConfig {
+            budget_limit: Some(100.0),
+            cost_tracking_enabled: true,
+            spot_instance_preference: 0.0,
+        };
+        let optimizer = CloudCostOptimizer::new(cfg).await.unwrap();
+        assert!(optimizer.would_exceed_budget(150.0));
+        assert!(!optimizer.would_exceed_budget(50.0));
+    }
+
+    #[tokio::test]
+    async fn test_budget_estimation_no_limit() {
+        let cfg = CostConfig {
+            budget_limit: None,
+            cost_tracking_enabled: false,
+            spot_instance_preference: 0.0,
+        };
+        let optimizer = CloudCostOptimizer::new(cfg).await.unwrap();
+        assert!(!optimizer.would_exceed_budget(1_000_000.0));
+    }
+
+    #[tokio::test]
+    async fn test_edge_case_zero_budget() {
+        let cfg = CostConfig {
+            budget_limit: Some(0.0),
+            cost_tracking_enabled: true,
+            spot_instance_preference: 0.0,
+        };
+        let mut optimizer = CloudCostOptimizer::new(cfg).await.unwrap();
+        optimizer
+            .add_provider_cost_model("p1", &empty_capabilities())
+            .await
+            .unwrap();
+        let req = minimal_requirements();
+        let res = optimizer.estimate_cost("p1", &req, 1.0, 0.0);
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_edge_case_empty_workload_minimal_resources() {
+        let cfg = CostConfig {
+            budget_limit: None,
+            cost_tracking_enabled: false,
+            spot_instance_preference: 0.0,
+        };
+        let mut optimizer = CloudCostOptimizer::new(cfg).await.unwrap();
+        optimizer
+            .add_provider_cost_model("p1", &empty_capabilities())
+            .await
+            .unwrap();
+        let req = minimal_requirements();
+        let est = optimizer.estimate_cost("p1", &req, 1.0, 0.0).unwrap();
+        assert!(est.total_cost > 0.0);
+        assert_eq!(est.duration_hours, 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_record_spend_budget_methods() {
+        let cfg = CostConfig {
+            budget_limit: Some(100.0),
+            cost_tracking_enabled: true,
+            spot_instance_preference: 0.0,
+        };
+        let optimizer = CloudCostOptimizer::new(cfg).await.unwrap();
+        assert!(optimizer.record_spend(50.0, 40.0).is_ok());
+        assert!(optimizer.record_spend(70.0, 40.0).is_err());
+    }
+
+    #[tokio::test]
+    async fn test_estimate_cost_negative_duration_rejected() {
+        let cfg = CostConfig {
+            budget_limit: None,
+            cost_tracking_enabled: false,
+            spot_instance_preference: 0.0,
+        };
+        let mut optimizer = CloudCostOptimizer::new(cfg).await.unwrap();
+        optimizer
+            .add_provider_cost_model("p1", &empty_capabilities())
+            .await
+            .unwrap();
+        let req = minimal_requirements();
+        let res = optimizer.estimate_cost("p1", &req, -1.0, 0.0);
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_estimate_cost_model_not_found() {
+        let cfg = CostConfig {
+            budget_limit: None,
+            cost_tracking_enabled: false,
+            spot_instance_preference: 0.0,
+        };
+        let optimizer = CloudCostOptimizer::new(cfg).await.unwrap();
+        let req = minimal_requirements();
+        let res = optimizer.estimate_cost("unknown-provider", &req, 1.0, 0.0);
+        assert!(res.is_err());
+    }
+}

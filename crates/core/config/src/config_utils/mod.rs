@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::time::Duration;
+use tracing::{debug, info};
 
 use crate::env_config::{EnvConfigLoader, NetworkEnvConfig};
 use crate::network;
@@ -662,77 +663,67 @@ impl ConfigUtils {
     /// Print all current configuration values (for debugging)
     #[cfg(debug_assertions)]
     pub fn print_current_config() {
-        println!("=== ToadStool Configuration ===");
-        println!("Environment: {}", Self::get_environment());
-        println!("Debug: {}", Self::get_debug_mode());
-        println!("Verbose: {}", Self::get_verbose_mode());
-        println!();
+        info!("=== ToadStool Configuration ===");
+        debug!("Environment: {}", Self::get_environment());
+        debug!("Debug: {}", Self::get_debug_mode());
+        debug!("Verbose: {}", Self::get_verbose_mode());
 
-        println!("=== Network Configuration ===");
-        println!("Bind Address: {}", Self::get_bind_address());
-        println!("External Hostname: {}", Self::get_external_hostname());
-        println!("TLS Enabled: {}", Self::get_tls_enabled());
-        println!();
+        info!("=== Network Configuration ===");
+        debug!("Bind Address: {}", Self::get_bind_address());
+        debug!("External Hostname: {}", Self::get_external_hostname());
+        debug!("TLS Enabled: {}", Self::get_tls_enabled());
 
-        println!("=== Service Ports ===");
+        info!("=== Service Ports ===");
         for (service, port) in Self::get_service_ports() {
-            println!("{service}: {port}");
+            debug!("{service}: {port}");
         }
-        println!();
 
-        println!("=== Service Endpoints ===");
+        info!("=== Service Endpoints ===");
         for (service, endpoint) in Self::get_service_endpoints() {
-            println!("{service}: {endpoint}");
+            debug!("{service}: {endpoint}");
         }
-        println!();
 
-        println!("=== Resource Limits ===");
-        println!("Max CPU: {}%", Self::get_max_cpu_usage());
-        println!("Max Memory: {} bytes", Self::get_max_memory_usage());
-        println!("Max Storage: {} bytes", Self::get_max_storage_usage());
-        println!("Worker Threads: {}", Self::get_worker_threads());
-        println!(
+        info!("=== Resource Limits ===");
+        debug!("Max CPU: {}%", Self::get_max_cpu_usage());
+        debug!("Max Memory: {} bytes", Self::get_max_memory_usage());
+        debug!("Max Storage: {} bytes", Self::get_max_storage_usage());
+        debug!("Worker Threads: {}", Self::get_worker_threads());
+        debug!(
             "Max Concurrent Executions: {}",
             Self::get_max_concurrent_executions()
         );
-        println!();
 
-        println!("=== Timeouts ===");
-        println!("Request Timeout: {:?}", Self::get_request_timeout());
-        println!("Connection Timeout: {:?}", Self::get_connection_timeout());
-        println!("Execution Timeout: {:?}", Self::get_execution_timeout());
-        println!();
+        info!("=== Timeouts ===");
+        debug!("Request Timeout: {:?}", Self::get_request_timeout());
+        debug!("Connection Timeout: {:?}", Self::get_connection_timeout());
+        debug!("Execution Timeout: {:?}", Self::get_execution_timeout());
 
-        println!("=== Directories ===");
-        println!("Data Dir: {}", Self::get_data_dir());
-        println!("Cache Dir: {}", Self::get_cache_dir());
-        println!("Temp Dir: {}", Self::get_temp_dir());
-        println!("Log Dir: {}", Self::get_log_dir());
-        println!();
+        info!("=== Directories ===");
+        debug!("Data Dir: {}", Self::get_data_dir());
+        debug!("Cache Dir: {}", Self::get_cache_dir());
+        debug!("Temp Dir: {}", Self::get_temp_dir());
+        debug!("Log Dir: {}", Self::get_log_dir());
 
-        println!("=== Security ===");
-        println!("Auth Enabled: {}", Self::get_auth_enabled());
-        println!("Sandboxing Enabled: {}", Self::get_sandboxing_enabled());
-        println!("Encryption Key Path: {}", Self::get_encryption_key_path());
-        println!();
+        info!("=== Security ===");
+        debug!("Auth Enabled: {}", Self::get_auth_enabled());
+        debug!("Sandboxing Enabled: {}", Self::get_sandboxing_enabled());
+        debug!("Encryption Key Path: {}", Self::get_encryption_key_path());
 
-        println!("=== Monitoring ===");
-        println!("Metrics Enabled: {}", Self::get_metrics_enabled());
-        println!(
+        info!("=== Monitoring ===");
+        debug!("Metrics Enabled: {}", Self::get_metrics_enabled());
+        debug!(
             "Health Checks Enabled: {}",
             Self::get_health_checks_enabled()
         );
-        println!("Metrics Interval: {:?}", Self::get_metrics_interval());
-        println!(
+        debug!("Metrics Interval: {:?}", Self::get_metrics_interval());
+        debug!(
             "Health Check Interval: {:?}",
             Self::get_health_check_interval()
         );
-        println!();
 
-        println!("=== Logging ===");
-        println!("Log Level: {}", Self::get_log_level());
-        println!("Log Dir: {}", Self::get_log_dir());
-        println!();
+        info!("=== Logging ===");
+        debug!("Log Level: {}", Self::get_log_level());
+        debug!("Log Dir: {}", Self::get_log_dir());
     }
 }
 

@@ -829,4 +829,82 @@ mod tests {
         let report = enforcer.report_for_provider("p").unwrap();
         assert_eq!(report.compliant_regions.len(), 2);
     }
+
+    #[tokio::test]
+    async fn test_compliance_validation_data_sovereignty_empty_required() {
+        let cfg = make_config(vec![], vec![], vec![]);
+        let mut enforcer = CloudComplianceEnforcer::new(cfg).await.unwrap();
+        let caps = caps_full_security(vec![Region {
+            name: "us-east-1".to_string(),
+            location: "N. Virginia".to_string(),
+            availability_zones: vec!["us-east-1a".to_string()],
+        }]);
+        enforcer.add_provider_compliance("p", &caps).await.unwrap();
+        let report = enforcer.report_for_provider("p").unwrap();
+        let sovereignty = report
+            .checks
+            .iter()
+            .find(|c| c.check_name == "data_sovereignty")
+            .expect("data_sovereignty check");
+        assert!(matches!(sovereignty.result, CheckResult::Pass));
+    }
+
+    #[tokio::test]
+    async fn test_tier_evaluation_compliant_regions_intersection() {
+        let cfg = make_config(
+            vec![],
+            vec!["us-east-1".to_string(), "eu-west-1".to_string()],
+            vec![],
+        );
+        let mut enforcer = CloudComplianceEnforcer::new(cfg).await.unwrap();
+        let caps = caps_full_security(vec![
+            Region {
+                name: "us-east-1".to_string(),
+                location: "N. Virginia".to_string(),
+                availability_zones: vec![],
+            },
+            Region {
+                name: "ap-south-1".to_string(),
+                location: "Mumbai".to_string(),
+                availability_zones: vec![],
+            },
+        ]);
+        enforcer.add_provider_compliance("p", &caps).await.unwrap();
+        let report = enforcer.report_for_provider("p").unwrap();
+        assert_eq!(report.compliant_regions.len(), 1);
+        assert!(report.compliant_regions.contains(&"us-east-1".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_security_tier_basic_skips_resource_isolation() {
+        let cfg = make_config(vec![], vec![], vec![]);
+        let mut enforcer = CloudComplianceEnforcer::new(cfg)
+            .await
+            .unwrap()
+            .with_security_tier(SecurityTier::Basic);
+        let caps = CloudCapabilities {
+            compute_types: vec![ComputeType::VM],
+            storage_types: vec![StorageType::BlockStorage],
+            networking_features: vec![NetworkingFeature::VPC],
+            security_features: vec![SecurityFeature::Encryption],
+            compliance_certifications: vec![],
+            regions: vec![],
+            max_cpu_cores: None,
+            max_memory_gb: None,
+            gpu_support: false,
+            kubernetes_support: false,
+            serverless_support: false,
+        };
+        enforcer
+            .add_provider_compliance("basic", &caps)
+            .await
+            .unwrap();
+        let report = enforcer.report_for_provider("basic").unwrap();
+        let isolation = report
+            .checks
+            .iter()
+            .find(|c| c.check_name == "resource_isolation")
+            .expect("resource_isolation check");
+        assert!(matches!(isolation.result, CheckResult::Pass));
+    }
 }

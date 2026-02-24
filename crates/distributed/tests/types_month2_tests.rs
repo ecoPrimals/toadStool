@@ -55,9 +55,25 @@ fn test_distributed_config_serialization() {
 }
 
 #[test]
-#[ignore = "Serialization test requires toml crate - add to Cargo.toml [dev-dependencies] if needed"]
 fn test_distributed_config_toml_serialization() {
-    // This test is disabled as toml is not currently a test dependency
+    let config = DistributedConfig {
+        max_workers: 150,
+        heartbeat_interval_secs: 45,
+        enable_load_balancing: true,
+        coordinator_endpoint: "http://coordinator:8080".to_string(),
+    };
+
+    // Serialize to TOML
+    let toml_str = toml::to_string(&config).unwrap();
+
+    // Deserialize from TOML
+    let deserialized: DistributedConfig = toml::from_str(&toml_str).unwrap();
+
+    // Verify roundtrip
+    assert_eq!(deserialized.max_workers, 150);
+    assert_eq!(deserialized.heartbeat_interval_secs, 45);
+    assert!(deserialized.enable_load_balancing);
+    assert_eq!(deserialized.coordinator_endpoint, "http://coordinator:8080");
 }
 
 // ============================================================================

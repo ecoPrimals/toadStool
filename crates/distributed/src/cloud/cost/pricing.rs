@@ -228,3 +228,205 @@ impl CloudCostModel {
         Self::edge_local()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cloud::types::{
+        CloudCapabilities, ComputeType, NetworkingFeature, SecurityFeature, StorageType,
+    };
+
+    fn caps_gpu() -> CloudCapabilities {
+        CloudCapabilities {
+            compute_types: vec![ComputeType::VM, ComputeType::GPU],
+            storage_types: vec![StorageType::BlockStorage],
+            networking_features: vec![NetworkingFeature::VPC],
+            security_features: vec![SecurityFeature::Encryption],
+            compliance_certifications: vec![],
+            regions: vec![],
+            max_cpu_cores: Some(64),
+            max_memory_gb: Some(256),
+            gpu_support: true,
+            kubernetes_support: false,
+            serverless_support: false,
+        }
+    }
+
+    fn caps_serverless() -> CloudCapabilities {
+        CloudCapabilities {
+            compute_types: vec![ComputeType::VM],
+            storage_types: vec![StorageType::BlockStorage],
+            networking_features: vec![NetworkingFeature::VPC],
+            security_features: vec![SecurityFeature::Encryption],
+            compliance_certifications: vec![],
+            regions: vec![],
+            max_cpu_cores: None,
+            max_memory_gb: None,
+            gpu_support: false,
+            kubernetes_support: false,
+            serverless_support: true,
+        }
+    }
+
+    fn caps_high_memory() -> CloudCapabilities {
+        CloudCapabilities {
+            compute_types: vec![ComputeType::VM],
+            storage_types: vec![StorageType::BlockStorage],
+            networking_features: vec![NetworkingFeature::VPC],
+            security_features: vec![SecurityFeature::Encryption],
+            compliance_certifications: vec![],
+            regions: vec![],
+            max_cpu_cores: None,
+            max_memory_gb: Some(128),
+            gpu_support: false,
+            kubernetes_support: false,
+            serverless_support: false,
+        }
+    }
+
+    fn caps_bare_metal() -> CloudCapabilities {
+        CloudCapabilities {
+            compute_types: vec![ComputeType::VM, ComputeType::BareMetalC],
+            storage_types: vec![StorageType::BlockStorage],
+            networking_features: vec![NetworkingFeature::VPC],
+            security_features: vec![SecurityFeature::Encryption],
+            compliance_certifications: vec![],
+            regions: vec![],
+            max_cpu_cores: None,
+            max_memory_gb: None,
+            gpu_support: false,
+            kubernetes_support: false,
+            serverless_support: false,
+        }
+    }
+
+    #[test]
+    fn test_pricing_tier_variants_cpu_cost() {
+        assert_eq!(PricingTier::StandardCompute.cpu_cost_per_core_hour(), 0.08);
+        assert_eq!(
+            PricingTier::HighMemoryCompute.cpu_cost_per_core_hour(),
+            0.12
+        );
+        assert_eq!(PricingTier::GpuAccelerated.cpu_cost_per_core_hour(), 0.15);
+        assert_eq!(
+            PricingTier::BareMetalDedicated.cpu_cost_per_core_hour(),
+            0.25
+        );
+        assert!(PricingTier::Serverless.cpu_cost_per_core_hour() < 0.01);
+        assert_eq!(PricingTier::EdgeLocal.cpu_cost_per_core_hour(), 0.01);
+    }
+
+    #[test]
+    fn test_pricing_tier_variants_gpu_cost() {
+        assert_eq!(PricingTier::GpuAccelerated.gpu_cost_per_gpu_hour(), 2.50);
+        assert_eq!(
+            PricingTier::BareMetalDedicated.gpu_cost_per_gpu_hour(),
+            3.00
+        );
+        assert_eq!(PricingTier::StandardCompute.gpu_cost_per_gpu_hour(), 0.0);
+    }
+
+    #[test]
+    fn test_infer_pricing_tier_gpu() {
+        assert_eq!(infer_pricing_tier(&caps_gpu()), PricingTier::GpuAccelerated);
+    }
+
+    #[test]
+    fn test_infer_pricing_tier_serverless() {
+        assert_eq!(
+            infer_pricing_tier(&caps_serverless()),
+            PricingTier::Serverless
+        );
+    }
+
+    #[test]
+    fn test_infer_pricing_tier_high_memory() {
+        assert_eq!(
+            infer_pricing_tier(&caps_high_memory()),
+            PricingTier::HighMemoryCompute
+        );
+    }
+
+    #[test]
+    fn test_infer_pricing_tier_bare_metal() {
+        assert_eq!(
+            infer_pricing_tier(&caps_bare_metal()),
+            PricingTier::BareMetalDedicated
+        );
+    }
+
+    #[test]
+    fn test_infer_pricing_tier_standard_default() {
+        let caps = CloudCapabilities {
+            compute_types: vec![ComputeType::VM],
+            storage_types: vec![StorageType::BlockStorage],
+            networking_features: vec![NetworkingFeature::VPC],
+            security_features: vec![SecurityFeature::Encryption],
+            compliance_certifications: vec![],
+            regions: vec![],
+            max_cpu_cores: None,
+            max_memory_gb: Some(32),
+            gpu_support: false,
+            kubernetes_support: false,
+            serverless_support: false,
+        };
+        assert_eq!(infer_pricing_tier(&caps), PricingTier::StandardCompute);
+    }
+
+    #[test]
+    fn test_cloud_cost_model_construction() {
+        let standard = CloudCostModel::standard_compute();
+        assert!(standard.cpu_rate > 0.0);
+        assert!(standard.memory_rate > 0.0);
+        assert!(standard.storage_rate > 0.0);
+        assert!(standard.network_rate > 0.0);
+    }
+
+    #[test]
+    fn test_cloud_cost_model_all_tier_constructors() {
+        let models = [
+            CloudCostModel::standard_compute(),
+            CloudCostModel::high_memory(),
+            CloudCostModel::gpu_accelerated(),
+            CloudCostModel::bare_metal_dedicated(),
+            CloudCostModel::serverless(),
+            CloudCostModel::edge_local(),
+        ];
+        for m in models {
+            assert!(m.cpu_rate >= 0.0);
+            assert!(m.memory_rate >= 0.0);
+            assert!(m.storage_rate >= 0.0);
+            assert!(m.network_rate >= 0.0);
+        }
+    }
+
+    #[test]
+    fn test_price_calculation_accuracy_standard() {
+        let model = CloudCostModel::standard_compute();
+        let cpu_cost = 4.0 * 1.0 * model.cpu_rate;
+        assert!((cpu_cost - 0.32).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_price_calculation_accuracy_gpu_tier() {
+        let tier = PricingTier::GpuAccelerated;
+        let gpu_cost = 2.0 * 24.0 * tier.gpu_cost_per_gpu_hour();
+        assert!((gpu_cost - 120.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_cloud_cost_model_legacy_providers() {
+        let aws = CloudCostModel::new_aws();
+        let azure = CloudCostModel::new_azure();
+        let gcp = CloudCostModel::new_gcp();
+        assert!(azure.cpu_rate < aws.cpu_rate);
+        assert!(gcp.cpu_rate < aws.cpu_rate);
+    }
+
+    #[test]
+    fn test_edge_local_zero_storage_network() {
+        let model = CloudCostModel::edge_local();
+        assert_eq!(model.storage_rate, 0.0);
+        assert_eq!(model.network_rate, 0.0);
+    }
+}
