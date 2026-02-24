@@ -25,6 +25,9 @@ impl PrngXoshiro {
         Self { seeds, offset }
     }
 
+    /// Xoshiro128** stateful PRNG (neuralSpring): per-thread state, n_samples per thread.
+    pub const WGSL_XOSHIRO128SS: &str = include_str!("../shaders/misc/xoshiro128ss.wgsl");
+
     /// f32 WGSL shader source (legacy, retained as fossil reference).
     #[allow(dead_code)]
     fn wgsl_shader() -> &'static str {

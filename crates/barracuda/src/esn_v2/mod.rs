@@ -21,9 +21,11 @@
 
 mod config;
 mod model;
+mod npu;
 
 pub use config::{expect_size, validate_config, ESNConfig};
 pub use model::{ExportedWeights, ESN};
+pub use npu::{dequantize_affine_i8_f64, quantize_affine_i8_f64, NpuReadoutWeights};
 
 /// GPU shader for fused reservoir update: W_in·input + W_res·state → leaky tanh → new state.
 pub const WGSL_RESERVOIR_UPDATE: &str = include_str!("../shaders/ml/esn_reservoir_update.wgsl");

@@ -27,6 +27,9 @@ impl LogSumExp {
         Self { input }
     }
 
+    /// Batched logsumexp over rows [batch × width] (neuralSpring).
+    pub const WGSL_LOGSUMEXP_REDUCE: &str = include_str!("../shaders/reduce/logsumexp_reduce.wgsl");
+
     /// f32 WGSL shader source (legacy, retained as fossil reference).
     #[allow(dead_code)]
     fn wgsl_shader() -> &'static str {

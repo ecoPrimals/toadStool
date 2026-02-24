@@ -48,6 +48,7 @@ pub mod su3;
 pub mod su3_extended;
 
 // GPU operators
+pub mod absorbed_shaders;
 pub mod cg;
 pub mod dirac;
 pub mod gpu_cg_solver;

@@ -496,6 +496,20 @@ impl FusedMapReduceF64 {
     pub fn sum(&self, data: &[f64]) -> Result<f64> {
         self.execute(data, 1.0, MapOp::Identity, ReduceOp::Sum)
     }
+
+    /// Convenience method for dot product of two vectors.
+    ///
+    /// Computes Σ a[i] * b[i] using the sum-of-products pattern:
+    /// element-wise products are formed on the host, then reduced on GPU.
+    pub fn dot(&self, a: &[f64], b: &[f64]) -> Result<f64> {
+        if a.len() != b.len() {
+            return Err(crate::error::BarracudaError::InvalidInput {
+                message: format!("dot: length mismatch ({} vs {})", a.len(), b.len()),
+            });
+        }
+        let products: Vec<f64> = a.iter().zip(b.iter()).map(|(x, y)| x * y).collect();
+        self.sum(&products)
+    }
 }
 
 #[cfg(test)]

@@ -62,9 +62,23 @@ pub fn solve_f64(device: Arc<WgpuDevice>, a: &[f64], b: &[f64], n: usize) -> Res
     solver.solve(a, b, n)
 }
 
-/// CPU fallback for solve_f64 (Gauss-Jordan). Used only in tests.
-#[cfg(test)]
-fn solve_f64_cpu(a: &[f64], b: &[f64], n: usize) -> Result<Vec<f64>> {
+/// Solve Ax = b on CPU using Gaussian elimination with partial pivoting (f64).
+///
+/// Use this for **small matrices** (e.g. ESN reservoir sizes 50–200) when a GPU device
+/// is unavailable or when the overhead of GPU dispatch outweighs the benefit. For
+/// matrices larger than ~500×500, prefer [`solve_f64`] with a GPU device.
+///
+/// # Arguments
+///
+/// * `a` - Coefficient matrix (row-major, n×n)
+/// * `b` - Right-hand side vector (length n)
+/// * `n` - Matrix dimension
+///
+/// # Returns
+///
+/// Solution vector x, or error if matrix is singular or inputs are invalid.
+#[must_use]
+pub fn solve_f64_cpu(a: &[f64], b: &[f64], n: usize) -> Result<Vec<f64>> {
     if a.len() != n * n {
         return Err(BarracudaError::InvalidInput {
             message: format!(
@@ -121,9 +135,9 @@ fn solve_f64_cpu(a: &[f64], b: &[f64], n: usize) -> Result<Vec<f64>> {
             });
         }
 
-        // Swap rows k and max_row
+        // Swap rows k and max_row (full row swap)
         if max_row != k {
-            for j in k..=n {
+            for j in 0..=n {
                 aug.swap(k * (n + 1) + j, max_row * (n + 1) + j);
             }
         }
@@ -224,6 +238,52 @@ mod tests {
         // Test CPU path (solve_f64_cpu) for singularity detection.
         let a = vec![1.0, 2.0, 1.0, 2.0];
         let b = vec![1.0, 1.0];
+        let result = solve_f64_cpu(&a, &b, 2);
+        assert!(result.is_err());
+    }
+
+    // ─── solve_f64_cpu tests (no GPU required) ─────────────────────────────
+
+    #[test]
+    fn test_solve_f64_cpu_identity() {
+        // Ix = b should give x = b
+        let a = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+        let b = vec![5.0, 7.0, 9.0];
+        let x = solve_f64_cpu(&a, &b, 3).expect("identity solve should succeed");
+        assert!((x[0] - 5.0).abs() < 1e-14);
+        assert!((x[1] - 7.0).abs() < 1e-14);
+        assert!((x[2] - 9.0).abs() < 1e-14);
+    }
+
+    #[test]
+    fn test_solve_f64_cpu_known_solution() {
+        // 2x + y = 5, x + 3y = 8  =>  x = 1.4, y = 2.2
+        let a = vec![2.0, 1.0, 1.0, 3.0];
+        let b = vec![5.0, 8.0];
+        let x = solve_f64_cpu(&a, &b, 2).expect("2x2 solve should succeed");
+        assert!((x[0] - 1.4).abs() < 1e-10);
+        assert!((x[1] - 2.2).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_solve_f64_cpu_singular_detection() {
+        // Singular matrix: rows are linearly dependent
+        let a = vec![1.0, 2.0, 1.0, 2.0];
+        let b = vec![1.0, 1.0];
+        let result = solve_f64_cpu(&a, &b, 2);
+        assert!(result.is_err(), "singular matrix should return error");
+    }
+
+    #[test]
+    fn test_solve_f64_cpu_empty() {
+        let x = solve_f64_cpu(&[], &[], 0).expect("empty solve should succeed");
+        assert_eq!(x.len(), 0);
+    }
+
+    #[test]
+    fn test_solve_f64_cpu_size_mismatch() {
+        let a = vec![1.0, 2.0, 3.0];
+        let b = vec![1.0, 2.0];
         let result = solve_f64_cpu(&a, &b, 2);
         assert!(result.is_err());
     }

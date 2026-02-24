@@ -139,9 +139,10 @@ pub use ops::bio::{
     AniBatchF64, BatchFitnessGpu, Dada2EStepGpu, DnDsBatchF64, FelsensteinGpu, FelsensteinResult,
     FlatForest, FlatTree, GillespieConfig, GillespieGpu, GillespieResult, HillGateGpu,
     HmmBatchForwardF64, KmerHistogramGpu, LocusVarianceGpu, MultiObjFitnessGpu, PairwiseHammingGpu,
-    PairwiseJaccardGpu, PairwiseL2Gpu, PangenomeClassifyGpu, PhyloTree, QualityFilterGpu,
-    RfBatchInferenceGpu, SmithWatermanGpu, SnpCallingF64, SpatialPayoffGpu, SwConfig, SwResult,
-    SwarmNnGpu, TaxonomyFcGpu, TreeInferenceGpu, UniFracPropagateGpu,
+    PairwiseJaccardGpu, PairwiseL2Gpu, PangenomeClassifyGpu, PhyloTree, QualityConfig,
+    QualityFilterGpu, RfBatchInferenceGpu, SmithWatermanGpu, SnpCallingF64, SpatialPayoffGpu,
+    SwConfig, SwResult, SwarmNnGpu, TaxonomyFcGpu, TreeInferenceGpu, UniFracConfig,
+    UniFracPropagateGpu,
 };
 
 /// Prelude: Common imports for using barracuda

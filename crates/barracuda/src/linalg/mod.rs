@@ -16,7 +16,8 @@
 //!
 //! ## Dense Solvers
 //!
-//! - [`solve_f64`] - General linear solve via Gauss-Jordan
+//! - [`solve_f64`] - General linear solve via Gauss-Jordan (GPU)
+//! - [`solve_f64_cpu`] - CPU fallback for small matrices (no GPU required)
 //! - [`lu_solve`] - Linear solve via LU decomposition
 //! - [`qr_least_squares`] - Least squares via QR
 //! - [`tridiagonal_solve_f64`] - Thomas algorithm for tridiagonal systems
@@ -67,7 +68,7 @@ pub mod solve;
 pub mod sparse;
 
 // Re-export solve
-pub use solve::solve_f64;
+pub use solve::{solve_f64, solve_f64_cpu};
 
 // Re-export LU decomposition from ops/linalg (already f64)
 pub use crate::ops::linalg::{lu_decompose, lu_det, lu_inverse, lu_solve, LuDecomposition};

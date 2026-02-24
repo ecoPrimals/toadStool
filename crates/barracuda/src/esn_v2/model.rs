@@ -7,6 +7,7 @@ use rand::{Rng, SeedableRng};
 use std::sync::Arc;
 
 use super::config::{expect_size, validate_config, ESNConfig};
+use super::npu::{quantize_affine_i8_f64, NpuReadoutWeights};
 
 /// Result of [`ESN::export_weights`]: `(w_in, w_res, w_out)` as flat f32 vectors.
 pub type ExportedWeights = (Vec<f32>, Vec<f32>, Option<Vec<f32>>);
@@ -310,6 +311,33 @@ impl ESN {
     /// Get current reservoir state
     pub fn state(&self) -> &Tensor {
         &self.state
+    }
+
+    /// Export readout weights as int8-quantized NPU format.
+    ///
+    /// Requires the ESN to be trained. Converts f32 readout weights to f64,
+    /// applies affine quantization, and returns `NpuReadoutWeights` suitable
+    /// for NPU deployment (e.g. Akida AKD1000 FC layer).
+    pub fn to_npu_weights(&self) -> BarracudaResult<NpuReadoutWeights> {
+        let w_out = self.w_out.as_ref().ok_or_else(|| {
+            crate::error::BarracudaError::InvalidOperation {
+                op: "ESN::to_npu_weights".to_string(),
+                reason: "ESN has not been trained yet — call train() first".to_string(),
+            }
+        })?;
+
+        let w_out_f32 = w_out.to_vec()?;
+        let w_out_f64: Vec<f64> = w_out_f32.iter().map(|&x| f64::from(x)).collect();
+
+        let (weights_i8, scale, zero_point) = quantize_affine_i8_f64(&w_out_f64);
+
+        Ok(NpuReadoutWeights {
+            weights_i8,
+            scale,
+            zero_point,
+            input_dim: self.config.reservoir_size,
+            output_dim: self.config.output_size,
+        })
     }
 
     /// Export all ESN weights as flat f32 vectors for cross-device deployment.
@@ -618,6 +646,34 @@ mod tests {
         let pred2 = esn.predict(&[5.0]).await.unwrap();
 
         assert_ne!(pred1, pred2, "State should evolve between predictions");
+    }
+
+    #[tokio::test]
+    async fn test_esn_to_npu_weights() {
+        let config = ESNConfig {
+            input_size: 1,
+            reservoir_size: 20,
+            output_size: 1,
+            ..Default::default()
+        };
+
+        let mut esn = ESN::new(config).await.unwrap();
+        let inputs = vec![vec![1.0], vec![2.0], vec![3.0]];
+        let targets = vec![vec![2.0], vec![3.0], vec![4.0]];
+        esn.train(&inputs, &targets).await.unwrap();
+
+        let npu = esn.to_npu_weights().unwrap();
+        assert_eq!(npu.input_dim, 20);
+        assert_eq!(npu.output_dim, 1);
+        assert_eq!(npu.weights_i8.len(), 20);
+        assert!(npu.scale > 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_esn_to_npu_weights_untrained() {
+        let config = ESNConfig::default();
+        let esn = ESN::new(config).await.unwrap();
+        assert!(esn.to_npu_weights().is_err());
     }
 
     #[tokio::test]
