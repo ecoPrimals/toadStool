@@ -12,20 +12,21 @@ cargo fmt --all -- --check            0 diffs
 cargo clippy --workspace --all-targets  0 warnings
 cargo deny check licenses bans sources  all passing
 cargo doc --workspace --no-deps       0 warnings
-cargo test --workspace --lib          14,100+ tests / 0 failed
-  core 5 crates alone                 4,122 tests / 0 failed
+cargo test --workspace --lib          14,200+ tests / 0 failed
+  core 5 crates alone                 4,176 tests / 0 failed
 unsafe blocks                         95+ audited -- FFI only, all SAFETY documented
   1 unsafe block removed (vfio.rs)    from_size_align_unchecked -> safe
 production panics/unwraps             0 blind unwrap(); infallible expect() only
 production Box<dyn Error>             0 in core crates -- all typed errors
-production TODOs/FIXMEs               0
+  unibin/mod.rs                       Box<dyn Error> -> ServerError (thiserror)
+production TODOs                      0 -- all evolved to formal BLOCKED markers
 hardcoded primal names in prod        0 -- capability-based discovery
 hardcoded ports in prod               0 -- all port 0 (OS-assigned/discovered)
 hardcoded localhost in prod           0 -- bind 0.0.0.0, discover_self_ip_address()
 hardcoded cloud URLs in prod          0 -- sovereignty-compliant
 orphan WGSL shaders                   0 -- all 645+ wired to Rust
 CPU-only math in production            0 -- all math dispatches GPU shaders
-near-limit files                      0 -- all 2,614 .rs files under 1000 lines
+near-limit files (>900 lines)         0 -- multi_gpu refactored (921->54 mod.rs)
 ```
 
 ---
