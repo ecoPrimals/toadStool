@@ -28,6 +28,7 @@ pub mod exit_codes {
     pub const INTERRUPTED: i32 = 130;
 }
 
+use crate::errors::ServerError;
 use crate::tarpc_server::ToadStoolTarpcServer;
 use crate::ManualJsonRpcServer;
 
@@ -68,9 +69,7 @@ pub enum ShutdownSignal {
 }
 
 /// Run ToadStool in server/daemon mode
-pub async fn run_server_main(
-    family_id_override: Option<String>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), ServerError> {
     info!(
         "🍄 ToadStool Universal Compute Server v{}",
         env!("CARGO_PKG_VERSION")

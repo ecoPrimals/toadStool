@@ -216,9 +216,9 @@ impl WorkloadManager {
 
         info!("📄 Manifest written to: {}", manifest_path.display());
 
-        // TODO Phase 4: Replace simulation with executor.run_biome(manifest_path).
-        // BiomeExecutor.run_biome() will execute the workload; currently return simulated
-        // results immediately (no delay needed for simulation stub).
+        // BLOCKED(biome-executor): Awaiting BiomeOS executor API for batch workload execution.
+        // run_biome() exists but is designed for interactive foreground mode (waits for SIGINT).
+        // Workload manager needs a run-to-completion API that returns exit code.
 
         // Simulate resource usage
         *resource_usage.write().await = Some(ResourceUsage {

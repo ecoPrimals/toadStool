@@ -223,7 +223,8 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
 
     async fn run_container_benchmark(&self) -> Result<BenchmarkTest> {
         // Container startup test: measure process-spawn-like overhead (CPU work)
-        // TODO: Replace with actual container runtime measurement when available
+        // BLOCKED(container-runtime): Requires OCI container integration for real measurements.
+        // Current stub uses CPU micro-work; real benchmark needs containerd/runc or equivalent.
         let start = Instant::now();
 
         let mut result = 0u64;

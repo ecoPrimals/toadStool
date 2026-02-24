@@ -50,7 +50,7 @@ impl StateExtractor {
     ///
     /// This is THE critical function for reservoir computing feasibility.
     ///
-    /// ## RESEARCH TODO (genuinely research-blocked)
+    /// ## BLOCKED(research): Internal layer state extraction
     ///
     /// Internal layer state extraction is NOT YET IMPLEMENTED in the pure Rust akida-driver.
     /// Current behaviour: only returns the final inference output as a single "layer".
@@ -125,7 +125,7 @@ impl StateExtractor {
             .collect()
     }
 
-    /// RESEARCH TODO: Extend akida-driver to support layer introspection
+    /// BLOCKED(research): Extend akida-driver to support layer introspection
     ///
     /// To properly implement reservoir computing, we need to add:
     ///
