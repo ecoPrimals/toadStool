@@ -66,6 +66,7 @@ pub mod eigh;
 pub mod gen_eigh;
 pub mod graph;
 pub mod nmf;
+pub mod ridge;
 pub mod solve;
 pub mod sparse;
 
@@ -91,3 +92,6 @@ pub use cholesky::cholesky_f64;
 pub use eigh::eigh_f64;
 pub use gen_eigh::{gen_eigh_f64, gen_eigh_identity_b, GenEighDecomposition};
 pub use graph::{belief_propagation_chain, disordered_laplacian, effective_rank, graph_laplacian};
+pub use nmf::{cosine_similarity, nmf, relative_reconstruction_error, top_k_predictions};
+pub use nmf::{NmfConfig, NmfObjective, NmfResult};
+pub use ridge::{ridge_regression, RidgeResult};

@@ -44,8 +44,9 @@ mod stats;
 mod tridiag;
 
 pub use anderson::{
-    anderson_2d, anderson_3d, anderson_hamiltonian, anderson_potential, clean_2d_lattice,
-    clean_3d_lattice, lyapunov_averaged, lyapunov_exponent,
+    anderson_2d, anderson_3d, anderson_3d_correlated, anderson_hamiltonian, anderson_potential,
+    anderson_sweep_averaged, clean_2d_lattice, clean_3d_lattice, find_w_c, lyapunov_averaged,
+    lyapunov_exponent, AndersonSweepPoint,
 };
 pub use batch_ipr::BatchIprGpu;
 pub use hofstadter::{almost_mathieu_hamiltonian, gcd, hofstadter_butterfly, GOLDEN_RATIO};

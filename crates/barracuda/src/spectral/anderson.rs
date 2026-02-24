@@ -246,6 +246,220 @@ pub fn clean_3d_lattice(l: usize) -> SpectralCsrMatrix {
     anderson_3d(l, l, l, 0.0, 0)
 }
 
+/// Construct the 3D Anderson Hamiltonian with spatially correlated disorder.
+///
+/// Applies exponential-kernel smoothing to the random potential with
+/// correlation length `xi_corr` lattice spacings, then rescales to
+/// preserve the target disorder variance W²/12.
+///
+/// When `xi_corr < 0.01` the smoothing is skipped and the result matches
+/// [`anderson_3d`].
+///
+/// # Provenance
+/// Adapted from wetSpring `validate_correlated_disorder.rs` (Feb 2026).
+/// Motivated by Méndez-Bermúdez et al. (2014), J. Phys. A 47, 125101.
+pub fn anderson_3d_correlated(
+    l: usize,
+    disorder: f64,
+    xi_corr: f64,
+    seed: u64,
+) -> SpectralCsrMatrix {
+    let n = l * l * l;
+    let mut rng = LcgRng::new(seed);
+
+    let raw: Vec<f64> = (0..n).map(|_| disorder * (rng.uniform() - 0.5)).collect();
+
+    let potential = if xi_corr < 0.01 {
+        raw
+    } else {
+        let idx_to_xyz = |i: usize| -> (usize, usize, usize) {
+            let iz = i % l;
+            let iy = (i / l) % l;
+            let ix = i / (l * l);
+            (ix, iy, iz)
+        };
+
+        let reach = (3.0 * xi_corr).ceil() as i64;
+        let mut smoothed = vec![0.0; n];
+        for (i, s_val) in smoothed.iter_mut().enumerate() {
+            let (ix, iy, iz) = idx_to_xyz(i);
+            let mut sum = 0.0;
+            let mut norm = 0.0;
+            for dx in -reach..=reach {
+                for dy in -reach..=reach {
+                    for dz in -reach..=reach {
+                        let jx = ix as i64 + dx;
+                        let jy = iy as i64 + dy;
+                        let jz = iz as i64 + dz;
+                        if (0..l as i64).contains(&jx)
+                            && (0..l as i64).contains(&jy)
+                            && (0..l as i64).contains(&jz)
+                        {
+                            let j = (jx as usize * l + jy as usize) * l + jz as usize;
+                            let r = ((dx * dx + dy * dy + dz * dz) as f64).sqrt();
+                            let kernel = (-r / xi_corr).exp();
+                            sum += kernel * raw[j];
+                            norm += kernel;
+                        }
+                    }
+                }
+            }
+            *s_val = sum / norm;
+        }
+
+        let var: f64 = {
+            let mean = smoothed.iter().sum::<f64>() / n as f64;
+            smoothed.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n as f64
+        };
+        let target_var = disorder * disorder / 12.0;
+        let scale = if var > 1e-30 {
+            (target_var / var).sqrt()
+        } else {
+            1.0
+        };
+        smoothed.iter().map(|v| v * scale).collect()
+    };
+
+    let idx = |ix: usize, iy: usize, iz: usize| -> usize { (ix * l + iy) * l + iz };
+
+    let mut row_ptr = Vec::with_capacity(n + 1);
+    let mut col_idx = Vec::new();
+    let mut values = Vec::new();
+    row_ptr.push(0);
+
+    for ix in 0..l {
+        for iy in 0..l {
+            for iz in 0..l {
+                let site = idx(ix, iy, iz);
+                let mut entries: Vec<(usize, f64)> = Vec::new();
+
+                if ix > 0 {
+                    entries.push((idx(ix - 1, iy, iz), -1.0));
+                }
+                if iy > 0 {
+                    entries.push((idx(ix, iy - 1, iz), -1.0));
+                }
+                if iz > 0 {
+                    entries.push((idx(ix, iy, iz - 1), -1.0));
+                }
+                entries.push((site, potential[site]));
+                if iz + 1 < l {
+                    entries.push((idx(ix, iy, iz + 1), -1.0));
+                }
+                if iy + 1 < l {
+                    entries.push((idx(ix, iy + 1, iz), -1.0));
+                }
+                if ix + 1 < l {
+                    entries.push((idx(ix + 1, iy, iz), -1.0));
+                }
+
+                entries.sort_by_key(|&(c, _)| c);
+                for (c, v) in entries {
+                    col_idx.push(c);
+                    values.push(v);
+                }
+                row_ptr.push(col_idx.len());
+            }
+        }
+    }
+
+    SpectralCsrMatrix {
+        n,
+        row_ptr,
+        col_idx,
+        values,
+    }
+}
+
+/// Result of a single disorder-averaged level spacing ratio measurement.
+#[derive(Debug, Clone, Copy)]
+pub struct AndersonSweepPoint {
+    /// Disorder strength W.
+    pub w: f64,
+    /// Mean level spacing ratio ⟨r⟩ over realizations.
+    pub r_mean: f64,
+    /// Standard error of the mean.
+    pub r_stderr: f64,
+}
+
+/// Compute disorder-averaged level spacing ratio ⟨r⟩(W) across a sweep
+/// of disorder strengths.
+///
+/// For each W in `n_w` evenly spaced values from `w_min` to `w_max`,
+/// builds `n_realizations` Anderson 3D Hamiltonians of side length `l`,
+/// diagonalizes via Lanczos, and computes the mean level spacing ratio
+/// with standard error.
+///
+/// # Provenance
+/// Adapted from wetSpring `validate_finite_size_scaling_v2.rs` (Feb 2026).
+/// Oganesyan & Huse (2007), Phys. Rev. B 75, 155111.
+pub fn anderson_sweep_averaged(
+    l: usize,
+    w_min: f64,
+    w_max: f64,
+    n_w: usize,
+    n_realizations: usize,
+    base_seed: u64,
+) -> Vec<AndersonSweepPoint> {
+    use super::lanczos::{lanczos, lanczos_eigenvalues};
+    use super::stats::level_spacing_ratio;
+
+    let n = l * l * l;
+    let mut results = Vec::with_capacity(n_w);
+
+    for wi in 0..n_w {
+        let w = if n_w <= 1 {
+            w_min
+        } else {
+            w_min + (w_max - w_min) * wi as f64 / (n_w - 1) as f64
+        };
+
+        let mut r_values = Vec::with_capacity(n_realizations);
+        for r in 0..n_realizations {
+            let seed = base_seed + (wi * 1000 + r * 100 + l * 10) as u64;
+            let mat = anderson_3d(l, l, l, w, seed);
+            let tri = lanczos(&mat, n, seed);
+            let eigs = lanczos_eigenvalues(&tri);
+            r_values.push(level_spacing_ratio(&eigs));
+        }
+
+        let mean = r_values.iter().sum::<f64>() / n_realizations as f64;
+        let variance = if n_realizations > 1 {
+            r_values.iter().map(|r| (r - mean).powi(2)).sum::<f64>() / (n_realizations - 1) as f64
+        } else {
+            0.0
+        };
+        let stderr = (variance / n_realizations as f64).sqrt();
+
+        results.push(AndersonSweepPoint {
+            w,
+            r_mean: mean,
+            r_stderr: stderr,
+        });
+    }
+
+    results
+}
+
+/// Find the critical disorder W_c by linear interpolation of the ⟨r⟩(W)
+/// sweep through the GOE–Poisson midpoint.
+///
+/// Returns `None` if the midpoint is never crossed.
+///
+/// The standard midpoint is (r_GOE + r_Poisson) / 2 ≈ (0.5307 + 0.3863) / 2 ≈ 0.4585.
+pub fn find_w_c(sweep: &[AndersonSweepPoint], midpoint: f64) -> Option<f64> {
+    let mut last = None;
+    for i in 1..sweep.len() {
+        let (w0, r0) = (sweep[i - 1].w, sweep[i - 1].r_mean);
+        let (w1, r1) = (sweep[i].w, sweep[i].r_mean);
+        if r0 > midpoint && r1 <= midpoint {
+            let t = (midpoint - r0) / (r1 - r0);
+            last = Some(w0 + t * (w1 - w0));
+        }
+    }
+    last
+}
+
 /// LCG RNG for reproducible disorder; used by Anderson models and Lanczos.
 pub(crate) struct LcgRng(u64);
 
@@ -323,5 +537,120 @@ mod tests {
             "3D nnz={}, expected={expected_nnz}",
             mat.nnz()
         );
+    }
+
+    #[test]
+    fn correlated_3d_same_structure_as_uncorrelated() {
+        let l = 6;
+        let mat_c = anderson_3d_correlated(l, 4.0, 2.0, 42);
+        let mat_u = anderson_3d(l, l, l, 4.0, 42);
+        assert_eq!(mat_c.n, mat_u.n);
+        assert_eq!(mat_c.nnz(), mat_u.nnz());
+    }
+
+    #[test]
+    fn correlated_3d_small_xi_matches_uncorrelated() {
+        let l = 4;
+        let mat = anderson_3d_correlated(l, 4.0, 0.001, 42);
+        let mat_u = anderson_3d(l, l, l, 4.0, 42);
+        // Same RNG sequence, so diagonal entries should match
+        for i in 0..mat.n {
+            let diag_c = mat.values[mat.row_ptr[i]..mat.row_ptr[i + 1]]
+                .iter()
+                .zip(&mat.col_idx[mat.row_ptr[i]..mat.row_ptr[i + 1]])
+                .find(|(_, &c)| c == i)
+                .map(|(&v, _)| v)
+                .unwrap();
+            let diag_u = mat_u.values[mat_u.row_ptr[i]..mat_u.row_ptr[i + 1]]
+                .iter()
+                .zip(&mat_u.col_idx[mat_u.row_ptr[i]..mat_u.row_ptr[i + 1]])
+                .find(|(_, &c)| c == i)
+                .map(|(&v, _)| v)
+                .unwrap();
+            assert!(
+                (diag_c - diag_u).abs() < 1e-10,
+                "site {i}: correlated={diag_c}, uncorrelated={diag_u}"
+            );
+        }
+    }
+
+    #[test]
+    fn correlated_3d_smooths_potential() {
+        let l = 8;
+        let mat_u = anderson_3d(l, l, l, 10.0, 99);
+        let mat_c = anderson_3d_correlated(l, 10.0, 3.0, 99);
+
+        // Correlated potential should have lower variance of neighbor differences
+        fn neighbor_var(mat: &SpectralCsrMatrix) -> f64 {
+            let mut diffs = Vec::new();
+            for i in 0..mat.n {
+                let diag = mat.values[mat.row_ptr[i]..mat.row_ptr[i + 1]]
+                    .iter()
+                    .zip(&mat.col_idx[mat.row_ptr[i]..mat.row_ptr[i + 1]])
+                    .find(|(_, &c)| c == i)
+                    .map(|(&v, _)| v)
+                    .unwrap_or(0.0);
+                for idx in mat.row_ptr[i]..mat.row_ptr[i + 1] {
+                    let j = mat.col_idx[idx];
+                    if j != i {
+                        let diag_j = mat.values[mat.row_ptr[j]..mat.row_ptr[j + 1]]
+                            .iter()
+                            .zip(&mat.col_idx[mat.row_ptr[j]..mat.row_ptr[j + 1]])
+                            .find(|(_, &c)| c == j)
+                            .map(|(&v, _)| v)
+                            .unwrap_or(0.0);
+                        diffs.push((diag - diag_j).powi(2));
+                    }
+                }
+            }
+            diffs.iter().sum::<f64>() / diffs.len() as f64
+        }
+
+        let var_u = neighbor_var(&mat_u);
+        let var_c = neighbor_var(&mat_c);
+        assert!(
+            var_c < var_u,
+            "correlated neighbor variance {var_c:.4} should be less than uncorrelated {var_u:.4}"
+        );
+    }
+
+    #[test]
+    fn sweep_averaged_produces_decreasing_r() {
+        // Very small lattice for speed; r should decrease with increasing W
+        let sweep = anderson_sweep_averaged(4, 5.0, 25.0, 3, 2, 42);
+        assert_eq!(sweep.len(), 3);
+        // At W=5, r should be higher (more GOE-like) than at W=25
+        assert!(
+            sweep[0].r_mean > sweep[2].r_mean,
+            "r at W={:.0} ({:.3}) should exceed r at W={:.0} ({:.3})",
+            sweep[0].w,
+            sweep[0].r_mean,
+            sweep[2].w,
+            sweep[2].r_mean
+        );
+    }
+
+    #[test]
+    fn find_w_c_linear_interpolation() {
+        let sweep = vec![
+            AndersonSweepPoint {
+                w: 10.0,
+                r_mean: 0.50,
+                r_stderr: 0.01,
+            },
+            AndersonSweepPoint {
+                w: 15.0,
+                r_mean: 0.46,
+                r_stderr: 0.01,
+            },
+            AndersonSweepPoint {
+                w: 20.0,
+                r_mean: 0.40,
+                r_stderr: 0.01,
+            },
+        ];
+        let midpoint = 0.4585; // (GOE + Poisson) / 2
+        let w_c = find_w_c(&sweep, midpoint).unwrap();
+        assert!(w_c > 10.0 && w_c < 20.0, "W_c={w_c}");
     }
 }

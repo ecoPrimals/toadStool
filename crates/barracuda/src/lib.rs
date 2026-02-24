@@ -115,6 +115,7 @@ pub mod scheduler;
 pub mod special;
 pub mod spectral; // Spectral theory: Lanczos, Anderson localization, Hofstadter (hotSpring v0.6.0)
 pub mod tolerances; // Centralized validation tolerances (M-010)
+pub mod validation; // Validation harness for structured pass/fail checks (neuralSpring absorption)
 
 /// CPU-only math functions (convenience alias for `special`).
 ///
