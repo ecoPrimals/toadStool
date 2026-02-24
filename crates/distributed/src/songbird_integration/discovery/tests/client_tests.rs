@@ -168,3 +168,33 @@ fn test_discovery_client_parse_node_data_minimal() {
     let parsed = result.unwrap();
     assert_eq!(parsed.node_id, "minimal-node");
 }
+
+#[test]
+fn test_discovery_client_clone() {
+    let conn = Arc::new(make_songbird_connection());
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let socket_path = temp_dir.path().join("songbird.sock");
+    let client = DiscoveryClient::for_test(conn, socket_path);
+    let cloned = client.clone();
+    let _ = cloned;
+}
+
+#[test]
+fn test_discovery_client_parse_node_data_missing_endpoints_uses_unknown() {
+    let conn = Arc::new(make_songbird_connection());
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let socket_path = temp_dir.path().join("songbird.sock");
+    let client = DiscoveryClient::for_test(conn, socket_path);
+
+    let node_json = serde_json::json!({
+        "node_id": "defaults-node",
+        "capabilities": {}
+    });
+    let result = client.parse_node_data(&node_json);
+    assert!(result.is_ok());
+    let parsed = result.unwrap();
+    assert_eq!(parsed.node_id, "defaults-node");
+    assert_eq!(parsed.endpoints, vec!["unknown"]);
+    assert_eq!(parsed.protocols, vec!["http"]);
+    assert_eq!(parsed.metadata.version, "unknown");
+}

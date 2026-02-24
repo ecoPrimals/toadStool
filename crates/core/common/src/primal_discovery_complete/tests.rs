@@ -949,6 +949,43 @@ async fn test_fallback_service_metadata_source() {
     assert!(services[0].healthy);
 }
 
+#[test]
+fn test_cache_stats_debug_clone() {
+    let stats = super::CacheStats {
+        total_entries: 5,
+        fresh_entries: 3,
+        stale_entries: 2,
+    };
+    let debug_str = format!("{:?}", stats);
+    assert!(debug_str.contains("total_entries"));
+    assert!(debug_str.contains("5"));
+    let cloned = stats.clone();
+    assert_eq!(cloned.total_entries, stats.total_entries);
+    assert_eq!(cloned.fresh_entries, stats.fresh_entries);
+    assert_eq!(cloned.stale_entries, stats.stale_entries);
+}
+
+#[test]
+fn test_discovery_config_default() {
+    let config = super::DiscoveryConfig::default();
+    assert!(config.cache_ttl.as_secs() >= 1);
+    assert!(config.health_check_interval.as_secs() >= 1);
+}
+
+#[test]
+fn test_discovery_config_custom() {
+    use std::time::Duration;
+    let config = super::DiscoveryConfig {
+        cache_ttl: Duration::from_secs(600),
+        health_check_interval: Duration::from_secs(60),
+        fallbacks: std::collections::HashMap::new(),
+        enable_mdns: false,
+        require_mdns: false,
+    };
+    assert_eq!(config.cache_ttl.as_secs(), 600);
+    assert_eq!(config.health_check_interval.as_secs(), 60);
+}
+
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
 async fn test_cached_endpoint_is_fresh_with_nonzero_ttl() {

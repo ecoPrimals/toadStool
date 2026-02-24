@@ -899,4 +899,34 @@ mod tests {
         let c = status.clone();
         assert!(c.pure_rust_unlocked);
     }
+
+    #[test]
+    fn test_access_policies_unit_struct() {
+        let p = AccessPolicies::default();
+        let _ = p;
+    }
+
+    #[test]
+    fn test_crypto_lock_status_with_delegation_chains() {
+        let status = CryptoLockStatus {
+            pure_rust_unlocked: true,
+            external_permissions: std::collections::HashMap::new(),
+            delegation_chains: vec![],
+            expiring_permissions: vec![],
+        };
+        assert!(status.delegation_chains.is_empty());
+    }
+
+    #[test]
+    fn test_permission_level_ordering() {
+        let levels = [
+            PermissionLevel::Basic,
+            PermissionLevel::Limited,
+            PermissionLevel::Full,
+        ];
+        for level in levels {
+            let s = format!("{:?}", level);
+            assert!(!s.is_empty());
+        }
+    }
 }

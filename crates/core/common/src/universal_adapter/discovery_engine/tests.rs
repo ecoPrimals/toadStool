@@ -238,6 +238,42 @@ async fn test_environment_discovery_intelligence_provider() {
     );
 }
 
+#[test]
+fn test_mdns_source_default_and_with_timeout() {
+    let default = MDnsSource::new();
+    assert_eq!(default.name(), "mdns");
+    let _custom = MDnsSource::with_timeout(10);
+}
+
+#[test]
+fn test_local_registry_capability_from_str_all_variants() {
+    assert!(matches!(
+        LocalRegistrySource::capability_from_str("storage"),
+        CapabilityType::Storage { .. }
+    ));
+    assert!(matches!(
+        LocalRegistrySource::capability_from_str("intelligence"),
+        CapabilityType::Intelligence { .. }
+    ));
+    assert!(matches!(
+        LocalRegistrySource::capability_from_str("network"),
+        CapabilityType::Network { .. }
+    ));
+    assert!(matches!(
+        LocalRegistrySource::capability_from_str("monitoring"),
+        CapabilityType::Monitoring { .. }
+    ));
+}
+
+#[test]
+fn test_local_registry_parse_endpoint() {
+    let http = LocalRegistrySource::parse_endpoint("http://localhost:8080");
+    assert!(http.is_ok());
+    assert!(matches!(http.unwrap(), ServiceEndpoint::Http(_)));
+    let invalid_tcp = LocalRegistrySource::parse_endpoint("tcp://noport");
+    assert!(invalid_tcp.is_err());
+}
+
 #[tokio::test]
 async fn test_mdns_source() {
     let source = MDnsSource::new();

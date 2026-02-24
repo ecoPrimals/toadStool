@@ -932,6 +932,34 @@ async fn test_find_service_prefers_healthy() {
 }
 
 #[tokio::test]
+async fn test_new_no_refresh() {
+    let disc = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
+    assert_eq!(disc.method, DiscoveryMethod::Environment);
+    let all = disc.discover_all().await;
+    assert!(all.is_ok());
+}
+
+#[test]
+fn test_discovery_method_debug() {
+    let m = DiscoveryMethod::Auto;
+    let s = format!("{:?}", m);
+    assert!(s.contains("Auto"));
+
+    let m = DiscoveryMethod::ConfigFile {
+        path: "/path".to_string(),
+    };
+    let s = format!("{:?}", m);
+    assert!(s.contains("ConfigFile"));
+    assert!(s.contains("/path"));
+
+    let m = DiscoveryMethod::Registry {
+        endpoint: "http://x".to_string(),
+    };
+    let s = format!("{:?}", m);
+    assert!(s.contains("Registry"));
+}
+
+#[tokio::test]
 async fn test_parse_capabilities_ignores_unknown() {
     let disc = ServiceDiscovery::new(DiscoveryMethod::Environment)
         .await

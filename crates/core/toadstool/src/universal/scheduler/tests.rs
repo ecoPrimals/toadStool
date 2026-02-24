@@ -607,3 +607,64 @@ async fn test_register_runtime_engine_replaces_existing() {
     let runtimes = scheduler.available_runtimes().await;
     assert_eq!(runtimes.len(), 1, "should replace not duplicate");
 }
+
+// --- Tests exercising scheduler through crate re-export path (mod.rs coverage) ---
+
+#[tokio::test]
+async fn test_universal_scheduler_via_crate_reexport() {
+    use crate::UniversalScheduler;
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry)
+        .await
+        .expect("scheduler creation");
+    assert_eq!(scheduler.get_active_job_count().await, 0);
+}
+
+#[tokio::test]
+async fn test_scheduler_with_runtime_engines_via_crate_reexport() {
+    use crate::UniversalScheduler;
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let mut engines = HashMap::new();
+    engines.insert(
+        RuntimeType::Wasm,
+        Box::new(SimpleMockRuntimeEngine) as Box<dyn RuntimeEngine>,
+    );
+    let scheduler = UniversalScheduler::with_runtime_engines(registry, engines)
+        .await
+        .expect("scheduler with engines");
+    let runtimes = scheduler.available_runtimes().await;
+    assert_eq!(runtimes.len(), 1);
+    assert_eq!(runtimes[0], RuntimeType::Wasm);
+}
+
+#[tokio::test]
+async fn test_schedule_job_native_via_crate_reexport() {
+    use crate::UniversalScheduler;
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry)
+        .await
+        .expect("scheduler creation");
+    let job = make_universal_job(UniversalJobType::Native {
+        executable: "true".to_string(),
+        args: vec![],
+        env: HashMap::new(),
+    });
+    let result = scheduler.schedule_job(job).await;
+    assert!(result.is_ok());
+    let response = result.expect("response");
+    assert_eq!(response.status, ExecutionStatus::Success);
+}
+
+#[tokio::test]
+async fn test_scheduler_find_primals_via_crate_reexport() {
+    use crate::UniversalScheduler;
+    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let scheduler = UniversalScheduler::new(registry)
+        .await
+        .expect("scheduler creation");
+    let capability = PrimalCapability::NativeExecution {
+        architectures: vec!["aarch64".to_string()],
+    };
+    let providers = scheduler.find_primals_by_capability(&capability).await;
+    assert!(providers.is_empty());
+}

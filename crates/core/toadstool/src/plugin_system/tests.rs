@@ -36,7 +36,9 @@ mod tests {
         let mut manager = PluginManager::new();
         let manifest = create_test_manifest("test-plugin");
 
-        manager.register_plugin(manifest).unwrap();
+        manager
+            .register_plugin(manifest)
+            .expect("register should succeed");
         let result = manager.load_plugin("test-plugin");
         assert!(result.is_ok());
 
@@ -49,8 +51,12 @@ mod tests {
         let mut manager = PluginManager::new();
         let manifest = create_test_manifest("test-plugin");
 
-        manager.register_plugin(manifest).unwrap();
-        manager.load_plugin("test-plugin").unwrap();
+        manager
+            .register_plugin(manifest)
+            .expect("register should succeed");
+        manager
+            .load_plugin("test-plugin")
+            .expect("load should succeed");
 
         let result = manager.unload_plugin("test-plugin");
         assert!(result.is_ok());
@@ -64,7 +70,9 @@ mod tests {
         let mut manager = PluginManager::new();
 
         let dep_manifest = create_test_manifest("dependency");
-        manager.register_plugin(dep_manifest).unwrap();
+        manager
+            .register_plugin(dep_manifest)
+            .expect("register dep should succeed");
 
         let mut main_manifest = create_test_manifest("main-plugin");
         main_manifest.dependencies = vec!["dependency".to_string()];
@@ -111,10 +119,10 @@ mod tests {
 
         manager
             .register_plugin(create_test_manifest("plugin1"))
-            .unwrap();
+            .expect("register plugin1 should succeed");
         manager
             .register_plugin(create_test_manifest("plugin2"))
-            .unwrap();
+            .expect("register plugin2 should succeed");
 
         let result = manager.register_plugin(create_test_manifest("plugin3"));
         assert!(result.is_err());
@@ -133,9 +141,15 @@ mod tests {
         let mut manifest3 = create_test_manifest("storage1");
         manifest3.plugin_type = "storage".to_string();
 
-        manager.register_plugin(manifest1).unwrap();
-        manager.register_plugin(manifest2).unwrap();
-        manager.register_plugin(manifest3).unwrap();
+        manager
+            .register_plugin(manifest1)
+            .expect("register manifest1 should succeed");
+        manager
+            .register_plugin(manifest2)
+            .expect("register manifest2 should succeed");
+        manager
+            .register_plugin(manifest3)
+            .expect("register manifest3 should succeed");
 
         let cloud_plugins = manager.plugins_by_type("cloud_provider");
         assert_eq!(cloud_plugins.len(), 2);
@@ -152,7 +166,7 @@ mod tests {
         registry.register("test2".to_string(), 100);
 
         assert_eq!(registry.list().len(), 2);
-        assert_eq!(*registry.get("test1").unwrap(), 42);
+        assert_eq!(*registry.get("test1").expect("test1 should exist"), 42);
         assert!(registry.has("test2"));
     }
 
@@ -161,17 +175,29 @@ mod tests {
         let mut manager = PluginManager::new();
         let manifest = create_test_manifest("test-plugin");
 
-        manager.register_plugin(manifest).unwrap();
+        manager
+            .register_plugin(manifest)
+            .expect("register should succeed");
 
-        let info = manager.get_plugin_info("test-plugin").unwrap();
+        let info = manager
+            .get_plugin_info("test-plugin")
+            .expect("plugin info should exist");
         assert_eq!(info.state, PluginState::Registered);
 
-        manager.load_plugin("test-plugin").unwrap();
-        let info = manager.get_plugin_info("test-plugin").unwrap();
+        manager
+            .load_plugin("test-plugin")
+            .expect("load should succeed");
+        let info = manager
+            .get_plugin_info("test-plugin")
+            .expect("plugin info should exist");
         assert_eq!(info.state, PluginState::Active);
 
-        manager.unload_plugin("test-plugin").unwrap();
-        let info = manager.get_plugin_info("test-plugin").unwrap();
+        manager
+            .unload_plugin("test-plugin")
+            .expect("unload should succeed");
+        let info = manager
+            .get_plugin_info("test-plugin")
+            .expect("plugin info should exist");
         assert_eq!(info.state, PluginState::Unloaded);
     }
 
@@ -185,7 +211,8 @@ mod tests {
         let manifest = create_test_manifest("test");
         let result = manager.register_plugin(manifest);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), PluginError::ConfigError(_)));
+        let err = result.expect_err("expected ConfigError");
+        assert!(matches!(err, PluginError::ConfigError(_)));
     }
 
     #[test]
@@ -193,7 +220,8 @@ mod tests {
         let mut manager = PluginManager::new();
         let result = manager.load_plugin("nonexistent");
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), PluginError::NotFound(_)));
+        let err = result.expect_err("expected NotFound");
+        assert!(matches!(err, PluginError::NotFound(_)));
     }
 
     #[test]
@@ -201,7 +229,8 @@ mod tests {
         let mut manager = PluginManager::new();
         let result = manager.unload_plugin("nonexistent");
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), PluginError::NotFound(_)));
+        let err = result.expect_err("expected NotFound");
+        assert!(matches!(err, PluginError::NotFound(_)));
     }
 
     #[test]
@@ -216,10 +245,8 @@ mod tests {
         };
         let result = manager.register_plugin(manifest);
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            PluginError::InvalidManifest(_)
-        ));
+        let err = result.expect_err("expected InvalidManifest");
+        assert!(matches!(err, PluginError::InvalidManifest(_)));
     }
 
     #[test]
@@ -234,10 +261,8 @@ mod tests {
         };
         let result = manager.register_plugin(manifest);
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            PluginError::InvalidManifest(_)
-        ));
+        let err = result.expect_err("expected InvalidManifest");
+        assert!(matches!(err, PluginError::InvalidManifest(_)));
     }
 
     #[test]
@@ -252,10 +277,8 @@ mod tests {
         };
         let result = manager.register_plugin(manifest);
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            PluginError::InvalidManifest(_)
-        ));
+        let err = result.expect_err("expected InvalidManifest");
+        assert!(matches!(err, PluginError::InvalidManifest(_)));
     }
 
     #[test]
@@ -277,7 +300,10 @@ mod tests {
             "Should discover plugin in subdir, got {:?}",
             discovered
         );
-        assert_eq!(found.unwrap().version, "1.0.0");
+        assert_eq!(
+            found.expect("discovered-plugin should be found").version,
+            "1.0.0"
+        );
     }
 
     #[test]
@@ -285,7 +311,8 @@ mod tests {
         let temp_dir = std::env::temp_dir().join("toadstool_plugin_invalid_test");
         let _ = std::fs::create_dir_all(&temp_dir);
         let manifest_path = temp_dir.join("plugin.json");
-        std::fs::write(&manifest_path, "{ invalid json }").unwrap();
+        std::fs::write(&manifest_path, "{ invalid json }")
+            .expect("write invalid json should succeed");
 
         let mut manager = PluginManager::new();
         manager.add_search_path(temp_dir.clone());
@@ -344,8 +371,12 @@ mod tests {
     fn test_get_plugin_info_returns_manifest() {
         let mut manager = PluginManager::new();
         let manifest = create_test_manifest("info-plugin");
-        manager.register_plugin(manifest.clone()).unwrap();
-        let info = manager.get_plugin_info("info-plugin").unwrap();
+        manager
+            .register_plugin(manifest.clone())
+            .expect("register should succeed");
+        let info = manager
+            .get_plugin_info("info-plugin")
+            .expect("plugin info should exist");
         assert_eq!(info.manifest.name, "info-plugin");
         assert_eq!(info.manifest.version, "1.0.0");
     }
@@ -353,8 +384,8 @@ mod tests {
     #[test]
     fn test_manifest_serialization_roundtrip() {
         let manifest = create_test_manifest("ser-test");
-        let json = serde_json::to_string(&manifest).unwrap();
-        let restored: PluginManifest = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&manifest).expect("serialize manifest");
+        let restored: PluginManifest = serde_json::from_str(&json).expect("deserialize manifest");
         assert_eq!(restored.name, manifest.name);
         assert_eq!(restored.plugin_type, manifest.plugin_type);
     }
@@ -417,9 +448,12 @@ mod tests {
     fn test_typed_registry_get_mut() {
         let mut registry: TypedPluginRegistry<String> = TypedPluginRegistry::new();
         registry.register("k", "value".to_string());
-        let v = registry.get_mut("k").unwrap();
+        let v = registry.get_mut("k").expect("k should exist");
         *v = "updated".to_string();
-        assert_eq!(registry.get("k").unwrap(), "updated");
+        assert_eq!(
+            *registry.get("k").expect("k should exist after update"),
+            "updated"
+        );
     }
 
     #[test]
@@ -485,7 +519,10 @@ mod tests {
             "Should discover partial manifest, got: {:?}",
             discovered.iter().map(|m| &m.name).collect::<Vec<_>>()
         );
-        assert_eq!(found.unwrap().version, "0.1");
+        assert_eq!(
+            found.expect("partial manifest should be found").version,
+            "0.1"
+        );
     }
 
     #[test]
@@ -499,9 +536,15 @@ mod tests {
             entry_point: "libreplace.so".to_string(),
             ..Default::default()
         };
-        manager.register_plugin(m1).unwrap();
-        manager.register_plugin(m2).unwrap();
-        let info = manager.get_plugin_info("replace-me").unwrap();
+        manager
+            .register_plugin(m1)
+            .expect("register m1 should succeed");
+        manager
+            .register_plugin(m2)
+            .expect("register m2 should succeed");
+        let info = manager
+            .get_plugin_info("replace-me")
+            .expect("replace-me should exist");
         assert_eq!(info.manifest.version, "2.0.0");
     }
 
@@ -509,10 +552,18 @@ mod tests {
     fn test_plugin_lifecycle_register_load_unload_register_again() {
         let mut manager = PluginManager::new();
         let manifest = create_test_manifest("cycle-plugin");
-        manager.register_plugin(manifest).unwrap();
-        manager.load_plugin("cycle-plugin").unwrap();
-        manager.unload_plugin("cycle-plugin").unwrap();
-        let info = manager.get_plugin_info("cycle-plugin").unwrap();
+        manager
+            .register_plugin(manifest)
+            .expect("register should succeed");
+        manager
+            .load_plugin("cycle-plugin")
+            .expect("load should succeed");
+        manager
+            .unload_plugin("cycle-plugin")
+            .expect("unload should succeed");
+        let info = manager
+            .get_plugin_info("cycle-plugin")
+            .expect("cycle-plugin should exist");
         assert_eq!(info.state, PluginState::Unloaded);
     }
 
@@ -520,11 +571,19 @@ mod tests {
     fn test_plugin_state_loading_transition() {
         let mut manager = PluginManager::new();
         let manifest = create_test_manifest("state-plugin");
-        manager.register_plugin(manifest).unwrap();
-        let info_before = manager.get_plugin_info("state-plugin").unwrap();
+        manager
+            .register_plugin(manifest)
+            .expect("register should succeed");
+        let info_before = manager
+            .get_plugin_info("state-plugin")
+            .expect("state-plugin should exist");
         assert_eq!(info_before.state, PluginState::Registered);
-        manager.load_plugin("state-plugin").unwrap();
-        let info_after = manager.get_plugin_info("state-plugin").unwrap();
+        manager
+            .load_plugin("state-plugin")
+            .expect("load should succeed");
+        let info_after = manager
+            .get_plugin_info("state-plugin")
+            .expect("state-plugin should exist after load");
         assert_eq!(info_after.state, PluginState::Active);
         assert!(info_after.loaded_at.is_some());
     }
@@ -533,17 +592,27 @@ mod tests {
     fn test_plugin_info_error_field_none_when_loaded() {
         let mut manager = PluginManager::new();
         let manifest = create_test_manifest("ok-plugin");
-        manager.register_plugin(manifest).unwrap();
-        manager.load_plugin("ok-plugin").unwrap();
-        let info = manager.get_plugin_info("ok-plugin").unwrap();
+        manager
+            .register_plugin(manifest)
+            .expect("register should succeed");
+        manager
+            .load_plugin("ok-plugin")
+            .expect("load should succeed");
+        let info = manager
+            .get_plugin_info("ok-plugin")
+            .expect("ok-plugin should exist");
         assert!(info.error.is_none());
     }
 
     #[test]
     fn test_list_plugins_returns_registered_names() {
         let mut manager = PluginManager::new();
-        manager.register_plugin(create_test_manifest("p1")).unwrap();
-        manager.register_plugin(create_test_manifest("p2")).unwrap();
+        manager
+            .register_plugin(create_test_manifest("p1"))
+            .expect("register p1 should succeed");
+        manager
+            .register_plugin(create_test_manifest("p2"))
+            .expect("register p2 should succeed");
         let names = manager.list_plugins();
         assert_eq!(names.len(), 2);
         assert!(names.contains(&"p1".to_string()));
@@ -555,11 +624,13 @@ mod tests {
         let mut manager = PluginManager::new();
         manager
             .register_plugin(create_test_manifest("active1"))
-            .unwrap();
+            .expect("register active1 should succeed");
         manager
             .register_plugin(create_test_manifest("active2"))
-            .unwrap();
-        manager.load_plugin("active1").unwrap();
+            .expect("register active2 should succeed");
+        manager
+            .load_plugin("active1")
+            .expect("load active1 should succeed");
         let active = manager.active_plugins();
         assert_eq!(active.len(), 1);
         assert_eq!(active[0], "active1");
@@ -582,8 +653,8 @@ mod tests {
             .insert("key".to_string(), "value".to_string());
         manifest.author = Some("Author".to_string());
         manifest.description = Some("Desc".to_string());
-        let json = serde_json::to_string(&manifest).unwrap();
-        let restored: PluginManifest = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&manifest).expect("serialize manifest");
+        let restored: PluginManifest = serde_json::from_str(&json).expect("deserialize manifest");
         assert_eq!(restored.metadata.get("key"), Some(&"value".to_string()));
     }
 
@@ -592,8 +663,8 @@ mod tests {
         let mut manifest = create_test_manifest("dep-plugin");
         manifest.dependencies = vec!["dep1".to_string(), "dep2".to_string()];
         manifest.provides = vec!["capability-a".to_string()];
-        let json = serde_json::to_string(&manifest).unwrap();
-        let restored: PluginManifest = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&manifest).expect("serialize manifest");
+        let restored: PluginManifest = serde_json::from_str(&json).expect("deserialize manifest");
         assert_eq!(restored.dependencies.len(), 2);
         assert_eq!(restored.provides.len(), 1);
     }
@@ -612,5 +683,116 @@ mod tests {
     fn test_plugin_manager_default() {
         let manager = PluginManager::default();
         assert_eq!(manager.list_plugins().len(), 0);
+    }
+
+    // ─── PluginCapability trait coverage ─────────────────────────────────────
+
+    #[test]
+    fn test_plugin_capability_trait_mock_implementation() {
+        struct MockCapability {
+            name: String,
+            version: String,
+        }
+        impl PluginCapability for MockCapability {
+            fn capability_name(&self) -> &str {
+                &self.name
+            }
+            fn capability_version(&self) -> &str {
+                &self.version
+            }
+            fn initialize(&mut self) -> Result<(), String> {
+                Ok(())
+            }
+            fn cleanup(&mut self) -> Result<(), String> {
+                Ok(())
+            }
+        }
+        let mut cap = MockCapability {
+            name: "test-cap".to_string(),
+            version: "0.1.0".to_string(),
+        };
+        assert_eq!(cap.capability_name(), "test-cap");
+        assert_eq!(cap.capability_version(), "0.1.0");
+        assert!(cap.initialize().is_ok());
+        assert!(cap.cleanup().is_ok());
+    }
+
+    #[test]
+    fn test_plugin_capability_trait_initialize_failure() {
+        struct FailingCapability;
+        impl PluginCapability for FailingCapability {
+            fn capability_name(&self) -> &str {
+                "failing"
+            }
+            fn capability_version(&self) -> &str {
+                "0.0"
+            }
+            fn initialize(&mut self) -> Result<(), String> {
+                Err("init failed".to_string())
+            }
+            fn cleanup(&mut self) -> Result<(), String> {
+                Err("cleanup failed".to_string())
+            }
+        }
+        let mut cap = FailingCapability;
+        assert!(cap.initialize().is_err());
+        assert!(cap.cleanup().is_err());
+    }
+
+    #[test]
+    fn test_typed_registry_list_returns_correct_names() {
+        let mut registry: TypedPluginRegistry<u64> = TypedPluginRegistry::new();
+        registry.register("alpha", 1u64);
+        registry.register("beta", 2u64);
+        registry.register("gamma", 3u64);
+        let names: Vec<&str> = registry.list();
+        assert_eq!(names.len(), 3);
+        assert!(names.contains(&"alpha"));
+        assert!(names.contains(&"beta"));
+        assert!(names.contains(&"gamma"));
+    }
+
+    #[test]
+    fn test_typed_registry_register_with_into_string() {
+        let mut registry: TypedPluginRegistry<bool> = TypedPluginRegistry::new();
+        registry.register(String::from("dynamic"), true);
+        assert!(registry.has("dynamic"));
+        assert_eq!(*registry.get("dynamic").expect("dynamic exists"), true);
+    }
+
+    #[test]
+    fn test_plugin_manager_with_config_preserves_settings() {
+        let config = PluginConfig {
+            enabled: false,
+            require_signatures: true,
+            max_plugins: 5,
+            plugin_timeout_secs: 120,
+        };
+        let manager = PluginManager::with_config(config);
+        let paths = manager.search_paths();
+        assert!(!paths.is_empty());
+    }
+
+    #[test]
+    fn test_plugin_info_manifest_fields_preserved() {
+        let mut manifest = create_test_manifest("full-info");
+        manifest.author = Some("Test Author".to_string());
+        manifest.description = Some("Test plugin".to_string());
+        manifest.requires_toadstool_version = Some(">=1.0".to_string());
+        manifest.config_schema = Some("{}".to_string());
+
+        let mut manager = PluginManager::new();
+        manager
+            .register_plugin(manifest.clone())
+            .expect("register should succeed");
+        let info = manager
+            .get_plugin_info("full-info")
+            .expect("plugin should exist");
+        assert_eq!(info.manifest.author, Some("Test Author".to_string()));
+        assert_eq!(info.manifest.description, Some("Test plugin".to_string()));
+        assert_eq!(
+            info.manifest.requires_toadstool_version,
+            Some(">=1.0".to_string())
+        );
     }
 }

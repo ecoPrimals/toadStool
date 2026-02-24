@@ -628,4 +628,66 @@ mod tests {
         let memory_gb = req.memory.min_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
         assert!((memory_gb - 16.0).abs() < 0.01);
     }
+
+    #[tokio::test]
+    async fn test_deployment_strategy_variants() {
+        use crate::cloud::types::{
+            DeploymentStrategy, DistributionStrategy, FederatedDeployment, MultiCloudDistribution,
+        };
+
+        let single = DeploymentStrategy::SingleCloud {
+            provider_name: "aws".to_string(),
+        };
+        assert!(matches!(single, DeploymentStrategy::SingleCloud { .. }));
+
+        let multi = DeploymentStrategy::MultiCloud {
+            providers: vec!["aws".to_string(), "gcp".to_string()],
+            distribution: MultiCloudDistribution {
+                providers: vec!["aws".to_string(), "gcp".to_string()],
+                strategy: DistributionStrategy::Equal,
+            },
+        };
+        assert!(matches!(multi, DeploymentStrategy::MultiCloud { .. }));
+
+        let fed = DeploymentStrategy::FederatedDeployment {
+            federation_nodes: vec!["node-1".to_string()],
+        };
+        assert!(matches!(
+            fed,
+            DeploymentStrategy::FederatedDeployment { .. }
+        ));
+
+        let fed_deploy = FederatedDeployment {
+            federation_id: uuid::Uuid::new_v4(),
+            nodes: vec![],
+            coordination_endpoint: "https://fed.example.com".to_string(),
+        };
+        assert!(fed_deploy.nodes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_cloud_deployment_result_variants() {
+        use crate::cloud::types::{CloudDeploymentResult, CloudJobHandle, FederatedDeployment};
+        use chrono::Utc;
+
+        let single = CloudDeploymentResult::Single {
+            provider: "aws".to_string(),
+            handle: CloudJobHandle {
+                job_id: uuid::Uuid::new_v4(),
+                provider_job_id: "pj-1".to_string(),
+                provider_name: "aws".to_string(),
+                created_at: Utc::now(),
+            },
+        };
+        assert!(matches!(single, CloudDeploymentResult::Single { .. }));
+
+        let fed = CloudDeploymentResult::Federated {
+            deployment: FederatedDeployment {
+                federation_id: uuid::Uuid::new_v4(),
+                nodes: vec![],
+                coordination_endpoint: "https://x".to_string(),
+            },
+        };
+        assert!(matches!(fed, CloudDeploymentResult::Federated { .. }));
+    }
 }

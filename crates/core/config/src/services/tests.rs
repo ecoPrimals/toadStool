@@ -3,6 +3,13 @@ mod tests {
     use super::super::*;
 
     #[test]
+    fn test_services_mod_re_exports() {
+        let _registry = ServiceRegistry::default();
+        let _ep = ServiceEndpoint::new("test", ServiceType::Compute, "http://localhost:8080");
+        let _err = ServiceError::NotFound("x".to_string());
+    }
+
+    #[test]
     fn test_service_type_parsing() {
         assert_eq!(
             ServiceType::parse_type("coordinator"),

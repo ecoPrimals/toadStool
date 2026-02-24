@@ -255,3 +255,33 @@ fn test_node_registry_list_nodes() {
     let list = registry.list_nodes();
     assert_eq!(list.len(), 2);
 }
+
+#[test]
+fn test_node_registry_get_nodes_by_types_custom_returns_empty() {
+    let mut registry = NodeRegistry::new();
+    let mut reg = make_node_registration("custom-node", NodeType::ToadStool, 4.0, 8.0, 100.0);
+    reg.node_type = NodeType::Custom("my-custom".to_string());
+    registry.register_node(reg).unwrap();
+    let custom_nodes = registry.get_nodes_by_types(&[NodeType::Custom("my-custom".to_string())]);
+    assert!(
+        custom_nodes.is_empty(),
+        "Custom type filter does not match any node (match only standard types)"
+    );
+}
+
+#[test]
+fn test_node_registry_get_nodes_by_types_songbird() {
+    let mut registry = NodeRegistry::new();
+    registry
+        .register_node(make_node_registration(
+            "sb",
+            NodeType::Songbird,
+            2.0,
+            4.0,
+            50.0,
+        ))
+        .unwrap();
+    let songbirds = registry.get_nodes_by_types(&[NodeType::Songbird]);
+    assert_eq!(songbirds.len(), 1);
+    assert_eq!(songbirds[0].node_id, "sb");
+}

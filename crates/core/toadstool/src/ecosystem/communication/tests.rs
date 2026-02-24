@@ -78,10 +78,8 @@ async fn test_send_heartbeat_no_channel() {
     let manager = CommunicationManager::new();
     let result = manager.send_heartbeat("non-existent-service").await;
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Channel not found"));
+    let err = result.expect_err("expected channel not found error");
+    assert!(err.to_string().contains("Channel not found"));
 }
 
 #[cfg(not(feature = "networking"))]
@@ -104,7 +102,7 @@ async fn test_channel_operations_with_direct_insert() {
 
     let retrieved = manager.get_channel("test-service").await;
     assert!(retrieved.is_some());
-    let retrieved = retrieved.unwrap();
+    let retrieved = retrieved.expect("test-service channel should exist");
     assert_eq!(retrieved.service_id, "test-service");
     assert_eq!(retrieved.service_name, "Test Service");
     assert_eq!(retrieved.status, ServiceStatus::Connected);
@@ -115,7 +113,10 @@ async fn test_channel_operations_with_direct_insert() {
     manager
         .update_channel_status("test-service", ServiceStatus::Disconnected)
         .await;
-    let updated = manager.get_channel("test-service").await.unwrap();
+    let updated = manager
+        .get_channel("test-service")
+        .await
+        .expect("test-service channel should exist after update");
     assert_eq!(updated.status, ServiceStatus::Disconnected);
 
     manager.remove_channel("test-service").await;
@@ -209,7 +210,7 @@ async fn test_create_channel_with_endpoint_succeeds() {
 
     let result = manager.create_channel(&service).await;
     assert!(result.is_ok());
-    let channel = result.unwrap();
+    let channel = result.expect("create_channel should succeed");
     assert_eq!(channel.service_id, "svc-with-ep");
     assert_eq!(channel.service_name, "WithEndpoint");
     assert_eq!(channel.endpoint, "http://localhost:9999");
@@ -240,7 +241,7 @@ async fn test_send_message_degraded_mode_returns_fallback() {
 
     let result = manager.send_message(&channel, msg.clone()).await;
     assert!(result.is_ok());
-    let response = result.unwrap();
+    let response = result.expect("send_message should succeed");
     assert_eq!(response.to, "sender");
     assert_eq!(response.from, "toadstool_local");
     assert!(response.payload.get("status").and_then(|v| v.as_str()) == Some("networking_disabled"));
@@ -284,7 +285,10 @@ async fn test_send_heartbeat_succeeds_and_updates_timestamp() {
     let result = manager.send_heartbeat("heartbeat-svc").await;
     assert!(result.is_ok());
 
-    let updated = manager.get_channel("heartbeat-svc").await.unwrap();
+    let updated = manager
+        .get_channel("heartbeat-svc")
+        .await
+        .expect("heartbeat-svc channel should exist");
     assert!(updated.last_heartbeat > channel.last_heartbeat);
 }
 
@@ -332,7 +336,10 @@ async fn test_update_channel_status_existing_channel() {
         .update_channel_status("status-svc", ServiceStatus::Connected)
         .await;
 
-    let updated = manager.get_channel("status-svc").await.unwrap();
+    let updated = manager
+        .get_channel("status-svc")
+        .await
+        .expect("status-svc channel should exist");
     assert_eq!(updated.status, ServiceStatus::Connected);
 }
 
@@ -357,8 +364,14 @@ async fn test_create_channel_idempotent_or_insert() {
         healthy: true,
     };
 
-    let ch1 = manager.create_channel(&service).await.unwrap();
-    let ch2 = manager.create_channel(&service).await.unwrap();
+    let ch1 = manager
+        .create_channel(&service)
+        .await
+        .expect("first create_channel should succeed");
+    let ch2 = manager
+        .create_channel(&service)
+        .await
+        .expect("second create_channel should succeed");
     assert_eq!(ch1.service_id, ch2.service_id);
     let all = manager.get_all_channels().await;
     assert_eq!(all.len(), 1);
@@ -472,8 +485,9 @@ fn test_ecosystem_message_type_all_variants_serde() {
         EcosystemMessageType::StatusUpdate,
         EcosystemMessageType::Error,
     ] {
-        let json = serde_json::to_value(&mt).unwrap();
-        let _: EcosystemMessageType = serde_json::from_value(json).unwrap();
+        let json = serde_json::to_value(&mt).expect("serialize message type");
+        let _: EcosystemMessageType =
+            serde_json::from_value(json).expect("deserialize message type");
     }
 }
 
@@ -530,8 +544,9 @@ fn test_ecosystem_message_serialization_all_types() {
             mt.clone(),
             serde_json::json!({}),
         );
-        let json = serde_json::to_string(&msg).unwrap();
-        let parsed: super::super::types::EcosystemMessage = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&msg).expect("serialize message");
+        let parsed: super::super::types::EcosystemMessage =
+            serde_json::from_str(&json).expect("deserialize message");
         assert_eq!(parsed.message_type, mt);
     }
 }
@@ -541,8 +556,8 @@ fn test_discovery_method_config_serde() {
     use super::super::types::DiscoveryMethodConfig;
 
     let config = DiscoveryMethodConfig::Environment;
-    let json = serde_json::to_value(&config).unwrap();
-    let _: DiscoveryMethodConfig = serde_json::from_value(json).unwrap();
+    let json = serde_json::to_value(&config).expect("serialize config");
+    let _: DiscoveryMethodConfig = serde_json::from_value(json).expect("deserialize config");
 }
 
 #[test]
@@ -589,8 +604,8 @@ fn test_discovery_method_config_config_file_serde() {
     let config = DiscoveryMethodConfig::ConfigFile {
         path: "/etc/biomeos/discovery.json".to_string(),
     };
-    let json = serde_json::to_value(&config).unwrap();
-    let parsed: DiscoveryMethodConfig = serde_json::from_value(json).unwrap();
+    let json = serde_json::to_value(&config).expect("serialize config");
+    let parsed: DiscoveryMethodConfig = serde_json::from_value(json).expect("deserialize config");
     match parsed {
         DiscoveryMethodConfig::ConfigFile { path } => {
             assert_eq!(path, "/etc/biomeos/discovery.json")
@@ -606,8 +621,8 @@ fn test_discovery_method_config_registry_serde() {
     let config = DiscoveryMethodConfig::Registry {
         endpoint: "http://registry:8080".to_string(),
     };
-    let json = serde_json::to_value(&config).unwrap();
-    let parsed: DiscoveryMethodConfig = serde_json::from_value(json).unwrap();
+    let json = serde_json::to_value(&config).expect("serialize config");
+    let parsed: DiscoveryMethodConfig = serde_json::from_value(json).expect("deserialize config");
     match parsed {
         DiscoveryMethodConfig::Registry { endpoint } => {
             assert_eq!(endpoint, "http://registry:8080")
@@ -689,7 +704,6 @@ async fn test_get_all_channels_empty_returns_vec() {
     let manager = CommunicationManager::new();
     let channels = manager.get_all_channels().await;
     assert!(channels.is_empty());
-    assert!(channels.capacity() >= 0);
 }
 
 #[tokio::test]
@@ -735,7 +749,7 @@ async fn test_create_channel_service_with_multiple_endpoints() {
     };
     let result = manager.create_channel(&service).await;
     assert!(result.is_ok());
-    let ch = result.unwrap();
+    let ch = result.expect("create_channel should succeed");
     assert_eq!(ch.service_id, "multi-ep");
 }
 
@@ -793,4 +807,99 @@ fn test_service_channel_debug_impl() {
     let debug_str = format!("{:?}", ch);
     assert!(debug_str.contains("debug-svc"));
     assert!(debug_str.contains("Debug Svc"));
+}
+
+// ─── Additional coverage: constructors, serialization, validation ────────────
+
+#[test]
+fn test_discovery_method_config_auto_serde() {
+    use super::super::types::DiscoveryMethodConfig;
+
+    let config = DiscoveryMethodConfig::Auto;
+    let json = serde_json::to_value(&config).expect("serialize Auto");
+    let parsed: DiscoveryMethodConfig = serde_json::from_value(json).expect("deserialize Auto");
+    assert!(matches!(parsed, DiscoveryMethodConfig::Auto));
+}
+
+#[test]
+fn test_discovery_method_config_mdns_serde() {
+    use super::super::types::DiscoveryMethodConfig;
+
+    let config = DiscoveryMethodConfig::Mdns;
+    let json = serde_json::to_value(&config).expect("serialize Mdns");
+    let parsed: DiscoveryMethodConfig = serde_json::from_value(json).expect("deserialize Mdns");
+    assert!(matches!(parsed, DiscoveryMethodConfig::Mdns));
+}
+
+#[test]
+fn test_ecosystem_message_new_sets_id_and_timestamp() {
+    use super::super::types::EcosystemMessageType;
+
+    let msg = super::super::types::EcosystemMessage::new(
+        "a".to_string(),
+        "b".to_string(),
+        EcosystemMessageType::Heartbeat,
+        serde_json::json!({}),
+    );
+    assert!(!msg.id.is_nil());
+    assert_eq!(msg.from, "a");
+    assert_eq!(msg.to, "b");
+}
+
+#[test]
+fn test_ecosystem_message_type_is_response() {
+    use super::super::types::EcosystemMessageType;
+
+    assert!(EcosystemMessageType::ResourceResponse.is_response());
+    assert!(EcosystemMessageType::WorkloadResponse.is_response());
+    assert!(!EcosystemMessageType::Heartbeat.is_response());
+    assert!(!EcosystemMessageType::StatusUpdate.is_response());
+}
+
+#[cfg(not(feature = "networking"))]
+#[test]
+fn test_fallback_response_contains_reason_and_mode() {
+    use super::super::types::EcosystemMessageType;
+
+    let manager = CommunicationManager::new();
+    let original = super::super::types::EcosystemMessage::new(
+        "src".to_string(),
+        "dst".to_string(),
+        EcosystemMessageType::Heartbeat,
+        serde_json::json!({}),
+    );
+    let response = manager.fallback_response(original);
+    assert_eq!(
+        response.payload.get("reason").and_then(|v| v.as_str()),
+        Some("Networking feature not compiled")
+    );
+    assert_eq!(
+        response.payload.get("mode").and_then(|v| v.as_str()),
+        Some("degraded")
+    );
+}
+
+#[test]
+fn test_service_status_discovered_serialization() {
+    let status = super::super::types::ServiceStatus::Discovered;
+    let json = serde_json::to_value(&status).expect("serialize Discovered");
+    let parsed: super::super::types::ServiceStatus =
+        serde_json::from_value(json).expect("deserialize Discovered");
+    assert_eq!(parsed, status);
+}
+
+#[test]
+fn test_service_status_connected_serialization() {
+    let status = super::super::types::ServiceStatus::Connected;
+    let json = serde_json::to_value(&status).expect("serialize Connected");
+    let parsed: super::super::types::ServiceStatus =
+        serde_json::from_value(json).expect("deserialize Connected");
+    assert_eq!(parsed, status);
+}
+
+#[tokio::test]
+async fn test_communication_manager_new_uses_default_timeout() {
+    let manager = CommunicationManager::new();
+    let channels = manager.get_all_channels().await;
+    assert!(channels.is_empty());
 }

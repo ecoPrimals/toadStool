@@ -1,7 +1,212 @@
 //! Resource module tests
+//!
+//! Tests use both submodule paths and re-exported API (mod.rs pub use) for coverage.
 
 use super::monitoring::{ResourceMonitor, SystemResourceMonitor};
 use super::types::*;
+
+// --- Tests exercising resources through re-export path (mod.rs coverage) ---
+// These use the public API as re-exported by mod.rs
+
+#[test]
+fn test_resource_requirements_via_reexport() {
+    use super::{CpuRequirements, MemoryRequirements, ResourceRequirements};
+    let req = ResourceRequirements::default();
+    assert_eq!(req.cpu.min_cores, 1.0);
+    assert_eq!(req.memory.min_bytes, 1024 * 1024 * 1024);
+}
+
+#[test]
+fn test_resource_usage_via_reexport() {
+    use super::ResourceUsage;
+    let usage = ResourceUsage::default();
+    assert!(usage.is_empty());
+}
+
+#[test]
+fn test_runtime_metrics_via_reexport() {
+    use super::RuntimeMetrics;
+    let m = RuntimeMetrics::default();
+    assert_eq!(m.cpu.usage_percent, 0.0);
+}
+
+#[test]
+fn test_system_resources_via_reexport() {
+    use super::SystemResources;
+    let sr = SystemResources::default();
+    assert_eq!(sr.total_cpu_cores, 1);
+}
+
+#[test]
+fn test_resource_limits_via_reexport() {
+    use super::ResourceLimits;
+    let limits = ResourceLimits::default();
+    assert!(limits.execution_timeout.is_some());
+}
+
+#[test]
+fn test_resource_requirements_serde_roundtrip_via_reexport() {
+    use super::ResourceRequirements;
+    let req = ResourceRequirements::default();
+    let json = serde_json::to_string(&req).expect("serialize");
+    let parsed: ResourceRequirements = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(parsed.cpu.min_cores, req.cpu.min_cores);
+}
+
+#[test]
+fn test_cpu_requirements_via_reexport() {
+    use super::CpuRequirements;
+    let cpu = CpuRequirements::default();
+    assert_eq!(cpu.min_cores, 1.0);
+}
+
+#[test]
+fn test_memory_requirements_via_reexport() {
+    use super::MemoryRequirements;
+    let mem = MemoryRequirements::default();
+    assert_eq!(mem.min_bytes, 1024 * 1024 * 1024);
+}
+
+#[test]
+fn test_storage_requirements_via_reexport() {
+    use super::StorageRequirements;
+    let storage = StorageRequirements::default();
+    assert_eq!(storage.min_bytes, 1024 * 1024 * 1024);
+}
+
+#[test]
+fn test_network_requirements_via_reexport() {
+    use super::NetworkRequirements;
+    let net = NetworkRequirements::default();
+    assert!(net.min_bandwidth.is_none());
+}
+
+#[test]
+fn test_gpu_requirements_via_reexport() {
+    use super::GpuRequirements;
+    let gpu = GpuRequirements {
+        min_units: 1,
+        max_units: Some(2),
+        gpu_type: Some("CUDA".to_string()),
+        min_memory_bytes: Some(1024 * 1024 * 1024),
+    };
+    assert_eq!(gpu.min_units, 1);
+}
+
+#[test]
+fn test_resource_monitor_trait_via_reexport() {
+    use super::ResourceMonitor;
+    let _monitor = SystemResourceMonitor::new();
+    // Trait object through re-export
+    let _: &dyn ResourceMonitor = &SystemResourceMonitor::default();
+}
+
+#[test]
+fn test_load_averages_via_reexport() {
+    use super::LoadAverages;
+    let load = LoadAverages {
+        one_minute: 1.0,
+        five_minutes: 0.8,
+        fifteen_minutes: 0.5,
+    };
+    assert!((load.one_minute - 1.0).abs() < 0.01);
+}
+
+#[test]
+fn test_network_stats_via_reexport() {
+    use super::NetworkStats;
+    let stats = NetworkStats {
+        bytes_received: 100,
+        bytes_transmitted: 200,
+        packets_received: 10,
+        packets_transmitted: 20,
+        interfaces: 1,
+    };
+    assert_eq!(stats.bytes_received, 100);
+}
+
+#[test]
+fn test_process_info_via_reexport() {
+    use super::{ProcessInfo, ProcessStatus};
+    let info = ProcessInfo {
+        workload_id: "w1".to_string(),
+        process_count: 1,
+        total_cpu_time: 0.5,
+        memory_usage: 1024,
+        status: ProcessStatus::Running,
+    };
+    assert_eq!(info.workload_id, "w1");
+}
+
+#[test]
+fn test_timing_metrics_via_reexport() {
+    use super::TimingMetrics;
+    let t = TimingMetrics::default();
+    assert_eq!(t.duration.num_seconds(), 0);
+}
+
+#[test]
+fn test_cpu_metrics_via_reexport() {
+    use super::CpuMetrics;
+    let m = CpuMetrics::default();
+    assert_eq!(m.usage_percent, 0.0);
+}
+
+#[test]
+fn test_memory_metrics_via_reexport() {
+    use super::MemoryMetrics;
+    let m = MemoryMetrics::default();
+    assert_eq!(m.used_bytes, 0);
+}
+
+#[test]
+fn test_storage_metrics_via_reexport() {
+    use super::StorageMetrics;
+    let m = StorageMetrics::default();
+    assert_eq!(m.bytes_read, 0);
+}
+
+#[test]
+fn test_network_metrics_via_reexport() {
+    use super::NetworkMetrics;
+    let m = NetworkMetrics::default();
+    assert_eq!(m.bytes_sent, 0);
+}
+
+#[test]
+fn test_gpu_metrics_via_reexport() {
+    use super::GpuMetrics;
+    let m = GpuMetrics::default();
+    assert_eq!(m.memory_used_bytes, 0);
+}
+
+#[test]
+fn test_cpu_limits_via_reexport() {
+    use super::CpuLimits;
+    let c = CpuLimits::default();
+    assert!(c.max_cores.is_none());
+}
+
+#[test]
+fn test_memory_limits_via_reexport() {
+    use super::MemoryLimits;
+    let m = MemoryLimits::default();
+    assert!(m.max_bytes.is_none());
+}
+
+#[test]
+fn test_storage_limits_via_reexport() {
+    use super::StorageLimits;
+    let s = StorageLimits::default();
+    assert!(s.max_bytes.is_none());
+}
+
+#[test]
+fn test_network_limits_via_reexport() {
+    use super::NetworkLimits;
+    let n = NetworkLimits::default();
+    assert!(n.max_bandwidth.is_none());
+}
 
 #[test]
 fn test_resource_requirements_default() {

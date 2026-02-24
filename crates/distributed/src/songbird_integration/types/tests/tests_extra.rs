@@ -828,3 +828,81 @@ fn test_universal_job_processor_constructor() {
     };
     assert_eq!(p.processor_id, "proc-1");
 }
+
+// ─── Re-export path tests (types/mod.rs coverage) ────────────────────────────
+
+#[test]
+fn test_load_balancing_advice_constructor() {
+    use std::collections::HashMap;
+    let advice = LoadBalancingAdvice {
+        recommended_nodes: vec!["n1".to_string(), "n2".to_string()],
+        load_distribution: {
+            let mut m = HashMap::new();
+            m.insert("n1".to_string(), 0.6);
+            m.insert("n2".to_string(), 0.4);
+            m
+        },
+        reasoning: "Load balanced".to_string(),
+    };
+    assert_eq!(advice.recommended_nodes.len(), 2);
+    assert!(advice.reasoning.contains("Load balanced"));
+}
+
+#[test]
+fn test_resource_reservation_constructor() {
+    let res = ResourceReservation {
+        reservation_id: uuid::Uuid::new_v4(),
+        resources: ResourceRequirements::default(),
+    };
+    let _ = res.reservation_id;
+    assert!(res.resources.cpu.min_cores >= 0.0);
+}
+
+#[test]
+fn test_network_status_constructor() {
+    let status = NetworkStatus {
+        total_nodes: 5,
+        active_nodes: 4,
+        total_capacity: NodeCapabilities {
+            cpu_cores: 16.0,
+            memory_gb: 32.0,
+            storage_gb: 200.0,
+            gpu_count: 0,
+            specialized_hardware: vec![],
+            software_capabilities: vec![],
+        },
+        current_utilization: 0.75,
+    };
+    assert_eq!(status.total_nodes, 5);
+    assert_eq!(status.active_nodes, 4);
+    assert!((status.current_utilization - 0.75).abs() < 0.01);
+}
+
+#[test]
+fn test_registration_response_constructor() {
+    let resp = RegistrationResponse {
+        node_id: "node-x".to_string(),
+        status: "ok".to_string(),
+        assigned_channels: vec!["ch1".to_string()],
+    };
+    assert_eq!(resp.node_id, "node-x");
+    assert_eq!(resp.assigned_channels.len(), 1);
+}
+
+#[test]
+fn test_types_reexport_load_estimator() {
+    let est = LoadEstimator::default();
+    assert_eq!(est.estimation_model, "linear");
+}
+
+#[test]
+fn test_types_reexport_distribution_algorithm() {
+    let algo = DistributionAlgorithm::RoundRobin;
+    assert!(matches!(algo, DistributionAlgorithm::RoundRobin));
+}
+
+#[test]
+fn test_types_reexport_load_balancing_strategy() {
+    let strategy: LoadBalancingStrategy = "least-loaded".to_string();
+    assert_eq!(strategy, "least-loaded");
+}

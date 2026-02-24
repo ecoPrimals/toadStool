@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use uuid::Uuid;
+#[test]
 fn test_connection_health_variants() {
     let _h = ConnectionHealth::Healthy;
     let _d = ConnectionHealth::Degraded;
