@@ -321,24 +321,23 @@ impl<S: OdeSystem> BatchedOdeRK4<S> {
     }
 }
 
-// -----------------------------------------------------------------------------
-// Test system: exponential decay dy/dt = -k*y
-// -----------------------------------------------------------------------------
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-/// Exponential decay: dy/dt = -k*y, y(0)=y0 → y(t)=y0*exp(-k*t)
-#[allow(dead_code)]
-struct ExponentialDecay;
+    /// Exponential decay: dy/dt = -k*y, y(0)=y0 → y(t)=y0*exp(-k*t)
+    struct ExponentialDecay;
 
-impl OdeSystem for ExponentialDecay {
-    const N_VARS: usize = 1;
-    const N_PARAMS: usize = 1;
+    impl OdeSystem for ExponentialDecay {
+        const N_VARS: usize = 1;
+        const N_PARAMS: usize = 1;
 
-    fn system_name() -> &'static str {
-        "exponential_decay"
-    }
+        fn system_name() -> &'static str {
+            "exponential_decay"
+        }
 
-    fn wgsl_derivative() -> &'static str {
-        r#"
+        fn wgsl_derivative() -> &'static str {
+            r#"
 fn deriv(state: array<f64, 1>, params: array<f64, 1>, t: f64) -> array<f64, 1> {
     let k = params[0];
     var dy: array<f64, 1>;
@@ -346,17 +345,13 @@ fn deriv(state: array<f64, 1>, params: array<f64, 1>, t: f64) -> array<f64, 1> {
     return dy;
 }
 "#
-    }
+        }
 
-    fn cpu_derivative(_t: f64, state: &[f64], params: &[f64]) -> Vec<f64> {
-        let k = params[0];
-        vec![-k * state[0]]
+        fn cpu_derivative(_t: f64, state: &[f64], params: &[f64]) -> Vec<f64> {
+            let k = params[0];
+            vec![-k * state[0]]
+        }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 
     #[test]
     fn test_exponential_decay_cpu_matches_analytical() {

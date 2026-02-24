@@ -299,7 +299,7 @@ impl MultiWorkloadCompositor {
             .memory_bytes
             .map(|b| b as f64 / 1_073_741_824.0)
             .unwrap_or(0.0);
-        let total_cpu = caps.compute.cpu_cores.unwrap_or(0);
+        let total_cpu = caps.compute.cpu_cores.unwrap_or_default();
 
         ResourceUtilization {
             gpu_used,

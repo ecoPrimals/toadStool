@@ -430,7 +430,7 @@ impl SubstrateDetector {
             .arg(command)
             .output()
             .map(|output| output.status.success())
-            .unwrap_or(false)
+            .unwrap_or_default()
     }
 }
 

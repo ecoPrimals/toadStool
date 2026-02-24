@@ -308,7 +308,7 @@ impl CoordinationClient {
         Ok(result
             .get("healthy")
             .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false))
+            .unwrap_or_default())
     }
 
     /// Execute generic coordination request via unix socket

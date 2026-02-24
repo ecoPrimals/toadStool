@@ -170,7 +170,7 @@ mod tests {
                     + '_,
             >,
         > {
-            let endpoint = self.results.get(capability).cloned().unwrap_or(None);
+            let endpoint = self.results.get(capability).cloned().flatten();
             Box::pin(async move { Ok(endpoint) })
         }
 

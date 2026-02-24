@@ -13,6 +13,7 @@
 //! - [`maximin::maximin_lhs`] — Maximin-optimized LHS (maximize min pairwise distance)
 //! - [`sparsity::sparsity_sampler`] — Iterative surrogate-directed sampling (Diaw et al. 2024)
 //! - [`direct::direct_sampler`] — Round-based direct NM on true objective (hotSpring)
+//! - [`metropolis::boltzmann_sampling`] — Metropolis-Hastings MCMC with Boltzmann acceptance
 //! - [`sobol::sobol_sequence`] — Low-discrepancy quasi-random sequences
 //!
 //! # Examples
@@ -44,6 +45,7 @@
 pub mod direct;
 pub mod lhs;
 pub mod maximin;
+pub mod metropolis;
 pub mod sobol;
 pub mod sparsity;
 
@@ -56,5 +58,6 @@ pub const WGSL_METROPOLIS: &str = include_str!("../shaders/sample/metropolis.wgs
 
 pub use direct::{direct_sampler, DirectSamplerConfig, DirectSamplerResult};
 pub use lhs::{latin_hypercube, random_uniform};
+pub use metropolis::{boltzmann_sampling, BoltzmannResult};
 pub use sobol::{sobol_scaled, sobol_sequence, SobolGenerator};
 pub use sparsity::{PenaltyFilter, SparsitySamplerConfig};

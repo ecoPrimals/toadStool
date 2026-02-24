@@ -257,7 +257,7 @@ impl Default for PrimalCapabilitiesConfig {
         Self {
             enabled: std::env::var("ENABLE_PRIMAL_CAPABILITIES")
                 .map(|v| v == "true")
-                .unwrap_or(false),
+                .unwrap_or_default(),
             songbird_endpoint: std::env::var("SONGBIRD_ENDPOINT").ok(),
             squirrel_endpoint: std::env::var("SQUIRREL_ENDPOINT").ok(),
             heartbeat_interval_secs: std::env::var("PRIMAL_HEARTBEAT_INTERVAL")

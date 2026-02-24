@@ -5,7 +5,25 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 24, 2026 (Sessions 43-55 — Deep Debt Evolution + Cross-Spring Absorption)
+## [Unreleased] - February 24, 2026 (Sessions 43-56 — Deep Debt Evolution + Cross-Spring Absorption)
+
+### Session 56 (Feb 24, 2026) — Final Absorptions + Idiomatic Rust
+
+- **3 deferred neuralSpring LOW items absorbed**:
+  - `belief_propagation_chain` → `barracuda::linalg::graph` — chain PGM forward pass (3 tests)
+  - `boltzmann_sampling` → `barracuda::sample::metropolis` — CPU Metropolis MCMC with Box-Muller proposals (3 tests)
+  - `disordered_laplacian` → `barracuda::linalg::graph` — generalized Anderson diagonal disorder (3 tests)
+- **Idiomatic Rust cleanup** (17 edits across 14 files):
+  - 13x `unwrap_or(false)` → `unwrap_or_default()`
+  - 1x `unwrap_or(0)` → `unwrap_or_default()`
+  - 1x `.cloned().unwrap_or(None)` → `.cloned().flatten()`
+  - 1x `.map(|g| g >= 64).unwrap_or(false)` → `.map_or(false, |g| g >= 64)`
+  - `ExponentialDecay` moved from production to `#[cfg(test)]`
+- **2 large test files split**:
+  - `byob_impl_tests.rs` (1127 → 5 files, all under 430 lines)
+  - `primal_discovery_complete/tests.rs` (1016 → 4 files, all under 540 lines)
+- **All cross-spring absorptions now complete** — 46 items across S51-S56
+- **Quality**: 0 clippy errors, 4,177 core tests, 0 files over 1000 lines
 
 ### Session 55 (Feb 24, 2026) — Deep Debt Evolution + Stub Completion
 

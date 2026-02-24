@@ -171,6 +171,6 @@ impl CloudCostOptimizer {
         self.config
             .budget_limit
             .map(|limit| estimate > limit)
-            .unwrap_or(false)
+            .unwrap_or_default()
     }
 }

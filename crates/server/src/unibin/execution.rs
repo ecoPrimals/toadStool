@@ -199,7 +199,7 @@ pub(crate) fn is_selinux_enforcing() -> bool {
         .ok()
         .and_then(|s| s.trim().parse::<u8>().ok())
         .map(|enforce| enforce == 1)
-        .unwrap_or(false)
+        .unwrap_or_default()
 }
 
 /// Wait for shutdown signal (SIGINT or SIGTERM)

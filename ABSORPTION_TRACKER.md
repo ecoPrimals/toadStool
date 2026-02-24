@@ -307,9 +307,16 @@ Sources: neuralSpring baseCamp V18, airSpring TS-001 through TS-004, wateringHol
 | L-010 | PIE build compliance for genomeBin | wateringHole `manifest.toml` | VERIFIED — PIE is default on all Linux targets; documented in `.cargo/config.toml` |
 | L-011 | TS-002: Rust orchestrator for `batched_elementwise_f64` | airSpring | ALREADY PRESENT — `ops::batched_elementwise_f64` exists |
 
-### NOT ABSORBED (Deferred)
+### ABSORBED — S56
 
-- neuralSpring LOW: `belief_propagation_chain`, `boltzmann_sampling`, `disordered_laplacian`
+| ID | Item | Source | Status |
+|----|------|--------|--------|
+| L-012 | `belief_propagation_chain` — chain PGM forward pass | neuralSpring `neural_pgm.rs` | DONE — `barracuda::linalg::graph`, 3 tests |
+| L-013 | `boltzmann_sampling` — CPU Metropolis MCMC | neuralSpring `loss_landscape.rs` | DONE — `barracuda::sample::metropolis`, 3 tests |
+| L-014 | `disordered_laplacian` — Anderson diagonal disorder | neuralSpring `agent_coordination.rs` | DONE — `barracuda::linalg::graph` (generalized), 3 tests |
+
+### NOT ABSORBED (Non-targets)
+
 - hotSpring `boinc_scheduling_comparison.py` — Python research
 - airSpring domain-specific code (ET0, water balance) — stays in airSpring
 - wetSpring V19-V22 experiments — no new primitives
@@ -319,13 +326,12 @@ Sources: neuralSpring baseCamp V18, airSpring TS-001 through TS-004, wateringHol
 
 ## Session Summary
 
-**Sessions 51-54: 43 items completed** (13 HIGH, 19 MEDIUM, 11 LOW)
-**S54 additions**: 6 HIGH + 9 MEDIUM + 2 LOW = 17 new items
-**New tests (S54)**: 16 (graph_laplacian 3, effective_rank 3, numerical_hessian 3, spectral_density 7)
-**New WGSL shaders (S54)**: 5 (symmetrize, laplacian, hessian_column, histogram, metropolis)
-**GPU bug fixes (S54)**: 3 (TS-001 pow_f64, TS-003 acos precision, TS-004 buffer conflict)
-**Quality**: 0 clippy warnings, cargo fmt clean
-**File compliance**: All production .rs files under 1000 lines
+**Sessions 51-56: 46 items completed** (13 HIGH, 19 MEDIUM, 14 LOW)
+**S54**: 6 HIGH + 9 MEDIUM + 2 LOW (baseCamp primitives, GPU fixes, 5 shaders, spectral diagnostics)
+**S55**: Deep debt (3 file refactors, hardcoding, stubs, unsafe audit, 29 tautological assertions)
+**S56**: 3 remaining absorptions (belief_propagation, boltzmann_sampling, disordered_laplacian) + idiomatic Rust pass
+**All tests (S56)**: 25 new tests across S54-S56 + 17 idiomatic cleanup edits
+**Quality**: 0 clippy errors, cargo fmt clean, 4,177 core tests, all files under 1000 lines
 
-*Updated: February 24, 2026 -- Session 54*
-*Next review: GPU runtime integration testing (requires device)*
+*Updated: February 24, 2026 -- Session 56*
+*All cross-spring absorptions complete. Next: GPU runtime integration testing (requires device)*

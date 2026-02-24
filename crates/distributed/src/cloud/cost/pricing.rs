@@ -86,7 +86,7 @@ pub(crate) fn infer_pricing_tier(capabilities: &CloudCapabilities) -> PricingTie
         PricingTier::GpuAccelerated
     } else if capabilities.serverless_support {
         PricingTier::Serverless
-    } else if capabilities.max_memory_gb.map(|g| g >= 64).unwrap_or(false) {
+    } else if capabilities.max_memory_gb.map_or(false, |g| g >= 64) {
         PricingTier::HighMemoryCompute
     } else if capabilities
         .compute_types

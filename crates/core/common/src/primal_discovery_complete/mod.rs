@@ -102,7 +102,7 @@ impl Default for DiscoveryConfig {
 
         let require_mdns = std::env::var("TOADSTOOL_MDNS_REQUIRE")
             .map(|v| v == "true" || v == "1")
-            .unwrap_or(false);
+            .unwrap_or_default();
 
         Self {
             cache_ttl: Duration::from_secs(300), // 5 minutes
@@ -127,7 +127,7 @@ impl DiscoveryConfig {
         if std::env::var("TOADSTOOL_DISCOVERY_FALLBACKS").is_ok()
             || std::env::var("TOADSTOOL_ENV")
                 .map(|e| e == "development")
-                .unwrap_or(false)
+                .unwrap_or_default()
         {
             // DEPRECATED: These fallback ports violate the self-knowledge principle.
             // Use runtime discovery via Songbird/mDNS instead.

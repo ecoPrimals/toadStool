@@ -68,7 +68,7 @@ impl BearDogClient {
         let hardware_backed = response
             .get("hardware_backed")
             .and_then(|v: &serde_json::Value| v.as_bool())
-            .unwrap_or(false);
+            .unwrap_or_default();
 
         toadstool::encryption::CryptoCapability {
             algorithms,

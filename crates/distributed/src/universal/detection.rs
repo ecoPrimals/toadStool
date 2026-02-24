@@ -326,7 +326,7 @@ impl UniversalSubstrateCapabilities {
             .arg(command)
             .output()
             .map(|output| output.status.success())
-            .unwrap_or(false)
+            .unwrap_or_default()
     }
 
     /// Get version string from a command

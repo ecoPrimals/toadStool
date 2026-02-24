@@ -253,7 +253,7 @@ impl Default for DiscoveryConfig {
     fn default() -> Self {
         let is_production = std::env::var("TOADSTOOL_ENV")
             .map(|e| e == "production")
-            .unwrap_or(false);
+            .unwrap_or_default();
 
         Self {
             timeout: Duration::from_secs(5),
