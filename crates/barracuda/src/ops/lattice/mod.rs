@@ -51,6 +51,7 @@ pub mod su3_extended;
 pub mod absorbed_shaders;
 pub mod cg;
 pub mod dirac;
+pub mod gpu_cg_resident;
 pub mod gpu_cg_solver;
 pub mod gpu_hmc_leapfrog;
 pub mod gpu_hmc_trajectory;

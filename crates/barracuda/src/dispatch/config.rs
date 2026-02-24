@@ -127,6 +127,8 @@ fn default_thresholds() -> HashMap<Arc<str>, usize> {
 
     // === Linear Algebra ===
     m.insert(Arc::from("matmul"), 64); // Matrix multiply: 64×64 = 4096 elements
+    m.insert(Arc::from("frobenius_norm"), 4096);
+    m.insert(Arc::from("transpose"), 4096);
     m.insert(Arc::from("cholesky"), 128); // Cholesky decomposition
     m.insert(Arc::from("eigh"), 128); // Symmetric eigenvalue
     m.insert(Arc::from("lu"), 128); // LU decomposition
@@ -148,12 +150,16 @@ fn default_thresholds() -> HashMap<Arc<str>, usize> {
     // === Reductions ===
     m.insert(Arc::from("sum"), 4096); // Reduction needs large N for GPU win
     m.insert(Arc::from("mean"), 4096);
+    m.insert(Arc::from("variance"), 4096);
+    m.insert(Arc::from("l2_distance"), 4096);
     m.insert(Arc::from("max"), 4096);
     m.insert(Arc::from("min"), 4096);
     m.insert(Arc::from("argmax"), 4096);
     m.insert(Arc::from("argmin"), 4096);
 
     // === Element-wise ===
+    m.insert(Arc::from("softmax"), 2048);
+    m.insert(Arc::from("gelu"), 2048);
     m.insert(Arc::from("relu"), 2048);
     m.insert(Arc::from("sigmoid"), 2048);
     m.insert(Arc::from("tanh"), 2048);
@@ -167,6 +173,9 @@ fn default_thresholds() -> HashMap<Arc<str>, usize> {
     m.insert(Arc::from("rbf_kernel"), 200); // RBF kernel evaluation
     m.insert(Arc::from("surrogate_predict"), 100); // Single-point prediction is CPU-only
     m.insert(Arc::from("surrogate_train"), 200); // Training benefits from GPU
+
+    // === Bio (HMM) ===
+    m.insert(Arc::from("hmm"), 5000); // HMM forward step
 
     m
 }

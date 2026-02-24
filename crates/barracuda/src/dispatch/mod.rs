@@ -64,6 +64,7 @@
 
 pub mod benchmark;
 mod config;
+pub mod domain_ops;
 
 pub use benchmark::{
     BenchmarkConfig, BenchmarkResult, BenchmarkSuite, OperationBenchmark, ThresholdResult,
@@ -72,4 +73,8 @@ pub use config::{
     batch_fitness_substrate, dispatch_for, dispatch_with_config, global_config, hmm_substrate,
     ode_substrate, pairwise_substrate, spatial_substrate, Dispatch, DispatchConfig, DispatchTarget,
     DEFAULT_THRESHOLD,
+};
+pub use domain_ops::{
+    frobenius_norm_dispatch, gelu_dispatch, hmm_forward_dispatch, l2_distance_dispatch,
+    matmul_dispatch, mean_dispatch, softmax_dispatch, transpose_dispatch, variance_dispatch,
 };
