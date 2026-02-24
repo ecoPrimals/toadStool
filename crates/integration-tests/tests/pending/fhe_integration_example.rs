@@ -29,87 +29,8 @@ mod fhe_integration {
     /// 5. Execute INTT operation (inverse)
     /// 6. Verify round-trip: INTT(NTT(x)) = x
     #[tokio::test]
-    #[ignore] // Requires GPU hardware
+    #[ignore = "Requires GPU hardware — see api_patterns module for usage examples"]
     async fn example_ntt_roundtrip_degree_4() -> Result<()> {
-        // This is a COMPLETE, WORKING example of the FHE NTT pipeline
-        // Uncomment when GPU hardware is available for testing
-
-        /*
-        use barracuda::device::WgpuDevice;
-        use barracuda::tensor::Tensor;
-        use barracuda::ops::fhe_ntt::FheNtt;
-        use barracuda::ops::fhe_intt::FheIntt;
-        use std::sync::Arc;
-
-        println!("🔬 FHE NTT Round-Trip Integration Test");
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
-        // Step 1: Create GPU device
-        let device = Arc::new(WgpuDevice::new().await?);
-        println!("✅ GPU device created: {}", device.name());
-
-        // Step 2: Prepare test data
-        let degree = 4u32;
-        let modulus = 17u64;  // Small prime for easy verification
-        let root = 4u64;      // Primitive 4th root of unity mod 17
-
-        // Input polynomial: [1, 2, 3, 4]
-        let input_poly = vec![1u64, 2, 3, 4];
-        println!("📊 Input polynomial: {:?}", input_poly);
-
-        // Convert to u32 pairs (GPU format)
-        let input_u32: Vec<u32> = input_poly
-            .iter()
-            .flat_map(|&x| vec![(x & 0xFFFFFFFF) as u32, (x >> 32) as u32])
-            .collect();
-
-        // Step 3: Create input tensor
-        let input_tensor = Tensor::from_slice(&input_u32, vec![degree as usize * 2], device.clone())?;
-        println!("✅ Created input tensor: shape {:?}", input_tensor.shape());
-
-        // Step 4: Execute NTT
-        println!("\n🔄 Executing forward NTT...");
-        let ntt_op = FheNtt::new(input_tensor.clone(), degree, modulus, root)?;
-        let ntt_result = ntt_op.execute()?;
-        println!("✅ NTT complete");
-
-        // Step 5: Execute INTT (inverse)
-        println!("\n🔄 Executing inverse NTT...");
-        let inv_root = mod_inverse(root, modulus);
-        let intt_op = FheIntt::new(ntt_result, degree, modulus, inv_root)?;
-        let intt_result = intt_op.execute()?;
-        println!("✅ INTT complete");
-
-        // Step 6: Read back results
-        let output_u32 = intt_result.to_vec::<u32>().await?;
-        let output_poly: Vec<u64> = output_u32
-            .chunks(2)
-            .map(|c| (c[0] as u64) | ((c[1] as u64) << 32))
-            .collect();
-
-        println!("\n📊 Output polynomial: {:?}", output_poly);
-
-        // Step 7: Verify round-trip
-        println!("\n🧪 Verifying NTT → INTT = identity...");
-        for i in 0..degree as usize {
-            let expected = input_poly[i];
-            let actual = output_poly[i] % modulus;
-            assert_eq!(
-                actual, expected,
-                "Mismatch at index {}: expected {}, got {}",
-                i, expected, actual
-            );
-        }
-
-        println!("✅ Round-trip identity verified!");
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        println!("🎉 FHE NTT pipeline test PASSED");
-
-        */
-
-        println!("ℹ️  FHE integration test skipped (requires GPU)");
-        println!("   To run: cargo test fhe_integration_example -- --ignored --nocapture");
-
         Ok(())
     }
 
@@ -118,82 +39,9 @@ mod fhe_integration {
     /// Demonstrates the complete fast multiplication pipeline:
     /// c(x) = a(x) * b(x) = INTT(NTT(a) ⊙ NTT(b))
     #[tokio::test]
-    #[ignore] // Requires GPU hardware
+    #[ignore = "Requires GPU hardware — see api_patterns module for usage examples"]
     async fn example_fast_poly_multiply_degree_4() -> Result<()> {
-        /*
-        use barracuda::ops::fhe_fast_poly_mul::FheFastPolyMul;
-
-        println!("🔬 Fast Polynomial Multiplication Test");
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
-        // Test parameters
-        let degree = 4u32;
-        let modulus = 17u64;
-        let root = 4u64;
-
-        // Input polynomials
-        let a = vec![1u64, 2, 3, 4];  // a(x) = 1 + 2x + 3x² + 4x³
-        let b = vec![5u64, 6, 7, 8];  // b(x) = 5 + 6x + 7x² + 8x³
-
-        println!("📊 a(x) = {:?}", a);
-        println!("📊 b(x) = {:?}", b);
-
-        // Create tensors and execute
-        let device = Arc::new(WgpuDevice::new().await?);
-        let tensor_a = create_tensor_from_poly(&a, device.clone())?;
-        let tensor_b = create_tensor_from_poly(&b, device.clone())?;
-
-        let fast_mul = FheFastPolyMul::new(tensor_a, tensor_b, degree, modulus, root)?;
-        let result = fast_mul.execute()?;
-
-        // Read result
-        let c = tensor_to_poly(&result).await?;
-        println!("📊 c(x) = a(x) * b(x) = {:?}", c);
-
-        // Verify against naive multiplication
-        let naive_c = naive_poly_mul(&a, &b, modulus);
-        assert_eq!(c, naive_c, "Fast multiply should match naive");
-
-        println!("✅ Fast multiplication verified!");
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        */
-
-        println!("ℹ️  Fast poly multiply test skipped (requires GPU)");
         Ok(())
-    }
-
-    /// Helper: Compute modular inverse
-    fn mod_inverse(a: u64, m: u64) -> u64 {
-        let (mut old_r, mut r) = (a as i128, m as i128);
-        let (mut old_s, mut s) = (1i128, 0i128);
-
-        while r != 0 {
-            let quotient = old_r / r;
-            (old_r, r) = (r, old_r - quotient * r);
-            (old_s, s) = (s, old_s - quotient * s);
-        }
-
-        if old_s < 0 {
-            (old_s + m as i128) as u64
-        } else {
-            old_s as u64
-        }
-    }
-
-    /// Helper: Naive polynomial multiplication (for verification)
-    #[allow(dead_code)]
-    fn naive_poly_mul(a: &[u64], b: &[u64], modulus: u64) -> Vec<u64> {
-        let degree = a.len();
-        let mut result = vec![0u64; degree];
-
-        for i in 0..degree {
-            for j in 0..degree {
-                let idx = (i + j) % degree;
-                result[idx] = (result[idx] + a[i] * b[j]) % modulus;
-            }
-        }
-
-        result
     }
 }
 

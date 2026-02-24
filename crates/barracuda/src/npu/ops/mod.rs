@@ -20,8 +20,3 @@ pub mod layer_norm;
 pub mod matmul;
 pub mod relu;
 pub mod softmax; // NEW!
-
-// Future operations (Phase 5c+)
-// pub mod attention;
-// pub mod batch_matmul;
-// pub mod dropout;
