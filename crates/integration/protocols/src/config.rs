@@ -52,17 +52,7 @@ impl Default for ProtocolConfig {
     }
 }
 
-// ============================================================================
-// Authentication
-// ============================================================================
-//
-// Using canonical ServiceAuthConfig from toadstool_common::auth
-// This provides unified authentication across all ToadStool services
-//
-// For backward compatibility, you can use the type alias:
-// pub type AuthConfig = ServiceAuthConfig;
-//
-// ============================================================================
+// Authentication uses canonical `ServiceAuthConfig` from `toadstool_common::auth`.
 
 /// Connection pool configuration
 #[derive(Debug, Clone)]
