@@ -34,18 +34,18 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace --lib` | 14,000+ tests passing |
+| `cargo test --workspace --lib` | 14,200+ tests passing (4,176 across 5 core crates) |
 | Four springs validation | 4,000+ acceptance checks |
-| `unsafe` blocks | 95+ audited -- FFI only, all SAFETY documented |
+| `unsafe` blocks | 95+ audited -- FFI only, all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
+| Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
+| Production TODOs | 0 -- all evolved to formal `BLOCKED(reason)` markers |
 | Hardcoded primal names | 0 -- capability-based discovery throughout |
+| Hardcoded localhost/ports | 0 -- bind `0.0.0.0`, port 0 (OS-assigned), `discover_self_ip_address()` |
 | Orphan shaders | 0 -- all 645+ WGSL shaders wired to Rust |
 | CPU-only math in production | 0 -- all math dispatches GPU shaders |
-| TODOs/FIXMEs in production | 0 |
-| File size limit | All files under 1000 lines |
+| File size limit | All production files under 1000 lines |
 | `cargo deny check` | All passing — licenses, bans, sources |
-| Hardcoded ports/URLs | 0 — port 0 (OS-assigned), capability-based discovery |
-| Line coverage (5 core crates) | **84.33%** — config 89%, server 86%, common 84%, core 83%, distributed 82% |
 
 ---
 
@@ -238,57 +238,46 @@ toadStool/
 |--------|-------|
 | Clippy warnings | 0 |
 | Doc warnings | 0 |
-| Unit tests passing | 14,000+ |
 | Build warnings | 0 |
-| Line coverage (common) | 87% |
-| Line coverage (config) | 89% |
-| Line coverage (core) | ~87% |
-| Line coverage (server) | ~85% |
-| Line coverage (distributed) | 55% |
-| `unsafe` blocks | 95+ audited -- all FFI, all SAFETY documented |
+| Unit tests (5 core crates) | 4,176 |
+| Unit tests (full workspace) | 14,200+ |
+| `unsafe` blocks | 95+ audited -- all FFI, all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
-| Production `Box<dyn Error>` | 0 in core crates -- all typed errors |
-| Hardcoded primal names in prod | 0 |
+| Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
+| Production TODOs | 0 -- all `BLOCKED(reason)` markers |
+| Hardcoded localhost/ports/URLs in prod | 0 |
 | WGSL shaders | 645+ (zero orphans, all f64 shader-first) |
-| Dead code annotations | Audited -- all verified legitimate |
 | Four springs validation | 4,000+ acceptance checks |
 
 ---
 
-## What Needs Evolution
+## Evolution
 
-### Next
+### Active / Next
+- **GPU runtime integration** -- H-002 (CG solve loop, buffer allocation) and H-003 (GPU dispatch paths) need device testing
 - **`eigh_f64` GPU wrapper** -- Jacobi eigenvalue solver has multi-pass WGSL shader, needs orchestration wrapper
-- **Conv2D/Pool stride/padding/channels** -- WGSL exists but lacks full parameter support (D-S46-001)
-- **Test coverage -> 90%** -- planner (49%), ecosystem (62%), detector (65%) are lowest remaining
+- **Conv2D/Pool stride/padding/channels** -- WGSL exists, single-channel wired; full parametric support pending (D-S46-001)
 - **NPU model pipeline** -- train/compile/deploy from Rust (awaiting hardware)
 - **burn-inference models** -- BERT/Whisper/YOLO (currently return `ModelNotLoaded`/`ModelBackendRequired`)
 - **W-001/W-003** -- Mesa NAK upstream patches pending Titan V validation
 
-### Completed (Sessions 46-49: Shader-First Architecture, Feb 23, 2026)
-- **S49e-f: Zero CPU-only math** -- 27+ threshold-gated CPU fallbacks eliminated, 6 always-CPU ops wired to GPU, linalg (solve, cholesky) GPU-dispatched, RBF surrogate GPU pipeline (cdist + solve), PPPM electrostatics GPU FFT
-- **S49c-d: Force field + MD GPU enforcement** -- Velocity-Verlet, MSD, cubic spline, RDF, cdist all GPU-first. Coulomb, Morse, Born-Mayer, Yukawa CPU fallbacks removed. Special functions documented shader-first.
-- **S49: Spring shader ingestion** -- 13 f32→f64 evolutions (bio, ESN, numerical). All 4 springs absorbed at f64.
-- **S48: Lattice QCD GPU orchestration** -- CG solver + full HMC trajectory host loops
-- **S47: Lattice QCD shaders** -- 14 WGSL shaders (Wilson action, HMC leapfrog, Dirac, pseudofermion, polyakov loop). CPU lattice code gated `#[cfg(test)]`.
-- **S46: Cross-project absorption** -- hotSpring, neuralSpring, wetSpring shader absorption complete
-- **f64 transcendental coverage** -- `compile_shader_f64()` auto-injects `math_f64.wgsl` polyfills (exp, log, pow, sin, cos, gamma, erf) on all drivers
+### Completed (Sessions 51-53: Cross-Spring Absorption + Deep Debt, Feb 24, 2026)
+- **S53**: Hardcoded localhost eliminated from 5 production files (`discover_self_ip_address()`, bind `0.0.0.0`, port 0). Unsafe code audit (1 block removed). `Box<dyn Error>` → `ServerError` in unibin. 4 production TODOs → `BLOCKED(reason)`. `multi_gpu/mod.rs` refactored (921→54 lines). +193 new tests.
+- **S52**: 26 cross-spring absorption items completed (7 HIGH, 10 MEDIUM, 9 LOW). 15 large files refactored under 1000 lines. +103 tests. New modules: tolerances, provenance, anderson_transport, screened_coulomb, fst_variance, ncbi_cache, gpu_session, tensor_axis_ops.
+- **S51**: 7 HIGH items: CG shaders, ESN NPU export, generic ODE, CPU solver, FlatTree, FusedMapReduce dot.
 
-### Completed (Session 45: Deep Debt Evolution, Feb 23, 2026)
-- 21 `Box<dyn Error>` → typed errors in server/core production code
-- 20+ barracuda shader/device test fixes (atanh, batch_pair_reduce_f64, NPU ops, ESN)
-- 38 new coverage tests (planner, ecosystem, detector)
-- 95+ unsafe blocks audited with SAFETY comments; 0 `NonNull::new_unchecked` remaining
+### Completed (Sessions 46-50: Shader-First Architecture + Audit, Feb 23, 2026)
+- **S50**: Coverage 73→84%, cargo-deny 0.18.5, mock evolution, builder `#[must_use]`, 12 large files refactored.
+- **S49**: Zero CPU-only math in production. 13 f32→f64 shader evolutions. All 4 springs absorbed at f64.
+- **S48**: Lattice QCD GPU orchestration (CG solver + HMC trajectory).
+- **S47**: 14 lattice QCD WGSL shaders. CPU lattice code gated `#[cfg(test)]`.
+- **S46**: Cross-project shader absorption complete (hotSpring, neuralSpring, wetSpring).
 
-### Completed (Sessions 43-44: Deep Debt + Sleep Elimination, Feb 22, 2026)
-- Refactored oversized files; `gpu_job_queue.rs` 1127→344 lines; normalization/tensor_ops modularized
-- 33+ production/test sleeps → event-driven (Notify, channel, interval, black_box)
+### Completed (Sessions 43-45: Deep Debt, Feb 22-23, 2026)
+- 21 `Box<dyn Error>` → typed errors. 95+ unsafe blocks audited. 38 coverage tests. Oversized files refactored. 33+ sleeps → event-driven.
 
-### Completed (Sessions 31-41: Foundation, Springs, Physics, Shaders)
-- Zero clippy warnings; zero blind `unwrap()`; HFB nuclear physics; lattice QCD
-- Capability-based discovery; thiserror 2.0; zero-copy JSON-RPC; Four Springs validated
-- 600→645+ WGSL shaders; 55 orphan shaders wired; GpuExecutor 31 MathOps
-- 6 f64 shader compile fixes; Richards PDE solver; moving window GPU stats
+### Completed (Sessions 31-41: Foundation)
+- Zero clippy warnings. HFB nuclear physics. Lattice QCD. Capability-based discovery. thiserror 2.0. 600→645+ WGSL shaders. 6 f64 compile fixes.
 
 See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
@@ -316,4 +305,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 23, 2026 -- Session 49: Shader-first architecture complete. 645+ WGSL f64 shaders, zero CPU-only math in production, f64 transcendental polyfills, lattice QCD GPU orchestration, linalg/RBF/PPPM all GPU-dispatched, all quality gates green.
+**Last Updated**: February 24, 2026 -- Session 53: Deep debt complete. 4,176 core tests, 0 clippy warnings, 0 hardcoded localhost/ports, 0 `Box<dyn Error>`, 0 production TODOs. Cross-spring absorption complete (26 items). 15+ large files refactored. +193 new tests this session.

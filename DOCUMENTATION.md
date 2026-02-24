@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 23, 2026
+**Last Updated**: February 24, 2026
 
 ---
 
@@ -27,14 +27,16 @@
 
 ---
 
-## Current State (Session 50 — February 23, 2026)
+## Current State (Session 53 — February 24, 2026)
 
 - **Shader-first architecture complete** — all math originates as WGSL f64 shaders
 - **645+ WGSL f64 shaders** — zero orphans, zero CPU-only math in production
-- **14,000+ tests**, 0 failing | all quality gates green
-- **`compile_shader_f64()` polyfills** — exp, log, pow, sin, cos, gamma, erf on every GPU
+- **14,200+ tests** (4,176 across 5 core crates), 0 failing | all quality gates green
+- **Cross-spring absorption complete** — 26 items from hotSpring, neuralSpring, wetSpring
 - **Zero clippy warnings** workspace-wide | zero doc warnings | zero fmt diffs
-- **Zero blind unwrap()**, zero `Box<dyn Error>`, zero TODO/FIXME in production code
+- **Zero hardcoded localhost/ports** — bind `0.0.0.0`, port 0, `discover_self_ip_address()`
+- **Zero `Box<dyn Error>`** in core crates — all typed errors (thiserror)
+- **Zero production TODOs** — all evolved to formal `BLOCKED(reason)` markers
 - **Linalg GPU-dispatched** — solve, cholesky, QR, SVD, LU via WGSL shaders
 - **Lattice QCD** — 14 GPU shaders + CG solver + HMC trajectory orchestration
 - **MD fully GPU** — VV, RDF, MSD, PPPM (GPU FFT), all force fields

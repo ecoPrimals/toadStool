@@ -89,14 +89,14 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 |--------|-------|
 | Clippy warnings (full workspace) | 0 |
 | Doc warnings | 0 |
-| Unit tests (5 core crates) | 4,009 |
-| Unit tests (full workspace) | 14,000+ |
+| Unit tests (5 core crates) | 4,176 |
+| Unit tests (full workspace) | 14,200+ |
 | WGSL shaders | 645+ (zero orphans) |
-| Line coverage (5 core crates) | 84.33% |
-| Unsafe blocks | 95+ audited -- FFI only, all SAFETY documented |
-| Production `Box<dyn Error>` | 0 in core crates -- all typed errors |
-| Production panics/unwraps | 0 blind unwrap(); infallible expect() only |
-| Hardcoded primal names | 0 -- capability-based |
+| Unsafe blocks | 95+ audited -- FFI only, all `// SAFETY:` documented |
+| Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
+| Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
+| Production TODOs | 0 -- all `BLOCKED(reason)` markers |
+| Hardcoded localhost/ports/URLs in prod | 0 |
 | Zero-copy hot paths | `Cow<'a, str>` + `#[serde(borrow)]`, `from_slice`, `bytes::Bytes` |
 | **hotSpring validation** | 195/195 nuclear physics |
 | **wetSpring validation** | 728 Rust tests + 95 experiments |
@@ -174,4 +174,4 @@ cargo llvm-cov --lib -p toadstool-common --json
 
 ---
 
-**Last Updated**: February 24, 2026 -- Session 52: Cross-spring absorption complete. 18 items absorbed (M-001 through M-010, L-001 through L-009). +103 new tests. New modules: tolerances, provenance, anderson_transport, screened_coulomb, fst_variance, ncbi_cache, tensor_axis_ops, gpu_session. MixedSubstrate + domain dispatch from neuralSpring. Conv2D/Pool wired to GPU. ESN ridge regression + NPU export. Zero clippy warnings.
+**Last Updated**: February 24, 2026 -- Session 53: Deep debt complete. Hardcoded localhost eliminated (5 files → `discover_self_ip_address()`, bind `0.0.0.0`, port 0). Unsafe audit (1 block removed). `Box<dyn Error>` → `ServerError`. 4 TODOs → `BLOCKED(reason)`. `multi_gpu` refactored (921→54). +193 tests. 4,176 core tests, 0 warnings.
