@@ -18,12 +18,7 @@ impl ToadStoolConfig {
     /// - Timeout values are 0
     /// - Port ranges are invalid (start >= end)
     pub fn validate_runtime_config(&self) -> ConfigResult<()> {
-        // Validate bind address
-        if self.network.bind_address.port() == 0 {
-            return Err(ConfigError::Invalid(
-                "Bind address port cannot be 0".to_string(),
-            ));
-        }
+        // Bind address port 0 is valid (OS-assigned at bind time)
 
         // Validate legacy endpoints (deprecated - use capability-based discovery)
         // These validations are kept for backward compatibility only
@@ -368,11 +363,11 @@ mod tests {
     }
 
     #[test]
-    fn test_bind_address_port_zero() {
+    fn test_bind_address_port_zero_allowed() {
         let mut config = valid_config();
         config.network.bind_address = "127.0.0.1:0".parse().unwrap();
-        let err = config.validate_runtime_config().unwrap_err();
-        assert!(err.to_string().contains("port cannot be 0"));
+        // Port 0 is valid (OS-assigned at bind time)
+        assert!(config.validate_runtime_config().is_ok());
     }
 
     #[test]

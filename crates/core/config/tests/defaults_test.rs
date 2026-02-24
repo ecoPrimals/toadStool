@@ -17,56 +17,31 @@ fn test_network_localhost() {
 }
 
 #[test]
-fn test_network_service_ports_unique() {
-    let ports = [
-        8080, // Removed: network::SONGBIRD_PORT
-        8081, // Removed: network::BEARDOG_PORT
-        8082, // Removed: network::NESTGATE_PORT
-        8083, // Removed: network::SQUIRREL_PORT
-        network::API_PORT,
-    ];
-
-    // Check all ports are unique
-    for (i, &port1) in ports.iter().enumerate() {
-        for &port2 in ports.iter().skip(i + 1) {
-            assert_ne!(port1, port2, "Ports should be unique");
-        }
-    }
+fn test_network_service_ports_os_assigned() {
+    // Server bind ports default to 0 (OS-assigned)
+    assert_eq!(network::API_PORT, 0);
+    assert_eq!(network::METRICS_PORT, 0);
+    assert_eq!(network::DISCOVERY_PORT, 0);
+    assert_eq!(network::FEDERATION_PORT, 0);
 }
 
 #[test]
-fn test_network_ports_in_valid_range() {
-    // All ports are constants defined in code as > 1024 (non-privileged range)
-    // We verify they're accessible and in expected ranges
-    let ports = [
-        ("SONGBIRD_PORT", 8080),
-        ("BEARDOG_PORT", 8081),
-        ("NESTGATE_PORT", 8082),
-        ("SQUIRREL_PORT", 8083),
-        ("API_PORT", network::API_PORT),
-        ("METRICS_PORT", network::METRICS_PORT),
-    ];
-
-    for (name, port) in &ports {
-        assert!(
-            *port > 1024,
-            "{} should be non-privileged port (>1024), got {}",
-            name,
-            port
-        );
-    }
+fn test_network_ports_valid() {
+    // Port 0 = OS-assigned; explicit ports must be in valid range
+    assert!(network::API_PORT <= 65535);
+    assert!(network::METRICS_PORT <= 65535);
+    assert!(network::DISCOVERY_PORT <= 65535);
+    assert!(network::FEDERATION_PORT <= 65535);
 }
 
 #[test]
 fn test_network_discovery_port() {
-    assert_eq!(network::DISCOVERY_PORT, 8085); // Default is 8085
-                                               // Note: DISCOVERY_PORT > 0 is guaranteed at compile time by the constant definition
+    assert_eq!(network::DISCOVERY_PORT, 0); // OS-assigned
 }
 
 #[test]
 fn test_network_federation_port() {
-    assert_eq!(network::FEDERATION_PORT, 7777);
-    // Note: FEDERATION_PORT > 1024 is guaranteed at compile time (value is 7777)
+    assert_eq!(network::FEDERATION_PORT, 0); // OS-assigned
 }
 
 // ============================================================================
@@ -160,19 +135,14 @@ fn test_all_timeouts_positive() {
 
 #[test]
 fn test_no_port_conflicts() {
-    // Verify no overlap between service ports and port ranges
+    // Port 0 (OS-assigned) is outside container range 3000-3999
     let service_ports = [
-        8080, // Removed: network::SONGBIRD_PORT
-        8081, // Removed: network::BEARDOG_PORT
-        8082, // Removed: network::NESTGATE_PORT
-        8083, // Removed: network::SQUIRREL_PORT
         network::API_PORT,
         network::METRICS_PORT,
         network::DISCOVERY_PORT,
     ];
 
     for &port in &service_ports {
-        // Service ports should not be in container allocation range
         assert!(
             !(ports::CONTAINER_START..=ports::CONTAINER_END).contains(&port),
             "Port {} conflicts with container range",

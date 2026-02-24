@@ -181,21 +181,21 @@ fn test_fallback_endpoints_defaults() {
     assert_eq!(fallback.localhost_base_port, 9080);
 }
 
-/// Test FallbackEndpoints localhost_endpoint
+/// Test FallbackEndpoints fallback_endpoint (single-node dev only)
 #[test]
-fn test_fallback_localhost_endpoint() {
+fn test_fallback_endpoint() {
     let fallback = FallbackEndpoints::default();
 
     assert_eq!(
-        fallback.localhost_endpoint(0).unwrap(),
+        fallback.fallback_endpoint(0).unwrap(),
         "http://localhost:9080"
     );
     assert_eq!(
-        fallback.localhost_endpoint(1).unwrap(),
+        fallback.fallback_endpoint(1).unwrap(),
         "http://localhost:9081"
     );
     assert_eq!(
-        fallback.localhost_endpoint(10).unwrap(),
+        fallback.fallback_endpoint(10).unwrap(),
         "http://localhost:9090"
     );
 }
@@ -208,7 +208,7 @@ fn test_fallback_disabled() {
         localhost_base_port: 9080,
     };
 
-    let result = fallback.localhost_endpoint(0);
+    let result = fallback.fallback_endpoint(0);
     assert!(result.is_err());
     assert!(result
         .unwrap_err()

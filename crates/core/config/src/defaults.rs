@@ -33,7 +33,7 @@
 //!
 //! // Use network defaults
 //! let api_port = defaults::network::API_PORT;
-//! let bind_addr = format!("{}:{}", defaults::network::LOCALHOST, api_port);
+//! let bind_addr = format!("{}:{}", defaults::network::BIND_ADDRESS_DEFAULT, api_port);
 //!
 //! // Use timeout defaults
 //! use std::time::Duration;
@@ -89,8 +89,12 @@
 ///
 /// **Philosophy**: Know yourself, discover others at runtime.
 pub mod network {
-    /// Default localhost address for binding
-    /// ✅ Self-configuration - valid to use
+    /// Default bind address (listen on all interfaces).
+    /// Use for server bind addresses. Override via `TOADSTOOL_BIND_ADDRESS`.
+    pub const BIND_ADDRESS_DEFAULT: &str = "0.0.0.0";
+
+    /// Loopback address for local connections (e.g. client connecting to localhost).
+    /// Do NOT use for server binding; use `BIND_ADDRESS_DEFAULT` instead.
     pub const LOCALHOST: &str = "127.0.0.1";
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -115,24 +119,24 @@ pub mod network {
     pub const AI_FALLBACK_PORT: u16 = 0;
 
     /// Port for JSON-RPC event streaming (replaces deprecated `WebSocket`)
-    /// ✅ Self-configuration
-    pub const EVENTS_PORT: u16 = 8086;
+    /// Port 0 = OS-assigned at bind time.
+    pub const EVENTS_PORT: u16 = 0;
 
     /// Default ToadStool API port
-    /// ✅ Self-configuration - valid to use for our own port
-    pub const API_PORT: u16 = 8084;
+    /// Port 0 = OS-assigned at bind time.
+    pub const API_PORT: u16 = 0;
 
     /// Default metrics/telemetry port
-    /// ✅ Self-configuration - valid to use for our own metrics
-    pub const METRICS_PORT: u16 = 9090;
+    /// Port 0 = OS-assigned at bind time.
+    pub const METRICS_PORT: u16 = 0;
 
     /// Default discovery service port
-    /// ✅ Self-configuration - valid to use for our own discovery endpoint
-    pub const DISCOVERY_PORT: u16 = 8085;
+    /// Port 0 = OS-assigned at bind time.
+    pub const DISCOVERY_PORT: u16 = 0;
 
     /// Default federation port for cross-primal communication
-    /// ✅ Self-configuration - valid to use for our own federation endpoint
-    pub const FEDERATION_PORT: u16 = 7777;
+    /// Port 0 = OS-assigned at bind time.
+    pub const FEDERATION_PORT: u16 = 0;
 }
 
 /// Port range defaults for dynamic allocation
@@ -265,13 +269,17 @@ pub mod retries {
 /// let redis_url = format!("redis://localhost:{}", storage::REDIS_PORT);
 /// let postgres_url = format!("postgres://localhost:{}/toadstool", storage::POSTGRES_PORT);
 ///
-/// // Validate storage defaults
-/// assert!(!storage::DISTRIBUTED_URL.is_empty());
+/// // Validate storage defaults (DISTRIBUTED_URL may be empty - use capability discovery)
 /// assert!(storage::MINIO_PORT > 0);
 /// ```
 pub mod storage {
-    /// Default distributed storage URL (MinIO/S3 compatible)
-    pub const DISTRIBUTED_URL: &str = "s3://localhost:9000";
+    /// Default distributed storage URL.
+    /// Empty = use capability discovery. Override via `DISTRIBUTED_STORAGE_URL` env var.
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use capability-based discovery; s3://localhost:9000 was hardcoded. Set DISTRIBUTED_STORAGE_URL or discover at runtime."
+    )]
+    pub const DISTRIBUTED_URL: &str = "";
 
     /// Default MinIO/S3 port
     pub const MINIO_PORT: u16 = 9000;
@@ -354,8 +362,7 @@ pub mod resources {
 /// let url = security.endpoint; // Discovered at runtime!
 /// ```
 pub mod endpoints {
-    /// Default API endpoint
-    /// ✅ VALID: Self-knowledge - ToadStool's own API endpoint
+    /// Default API endpoint (port 0 = OS-assigned, use discovery for actual port)
     #[must_use]
     pub fn api() -> String {
         format!("http://localhost:{}", super::network::API_PORT)
@@ -363,8 +370,7 @@ pub mod endpoints {
 
     /// Default cloud endpoint
     ///
-    /// Uses the standard ToadStool API port. In production, prefer
-    /// capability-based discovery over this fallback endpoint.
+    /// Port 0 = OS-assigned. In production, prefer capability-based discovery.
     #[deprecated(note = "Use capability-based discovery via discover_or_fallback() instead")]
     #[must_use]
     pub fn cloud() -> String {
@@ -552,21 +558,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_network_ports_are_distinct() {
-        // Self-configuration ports only; primal ports (0) discovered at runtime
-        let ports = [
-            network::API_PORT,
-            network::METRICS_PORT,
-            network::DISCOVERY_PORT,
-            network::EVENTS_PORT,
-            network::FEDERATION_PORT,
-        ];
-
-        for (i, &port1) in ports.iter().enumerate() {
-            for &port2 in ports.iter().skip(i + 1) {
-                assert_ne!(port1, port2, "Ports must be distinct: {port1} vs {port2}");
-            }
-        }
+    fn test_network_ports_use_os_assigned() {
+        // All server bind ports default to 0 (OS-assigned)
+        assert_eq!(network::API_PORT, 0);
+        assert_eq!(network::METRICS_PORT, 0);
+        assert_eq!(network::DISCOVERY_PORT, 0);
+        assert_eq!(network::EVENTS_PORT, 0);
+        assert_eq!(network::FEDERATION_PORT, 0);
     }
 
     #[test]
@@ -604,9 +602,9 @@ mod tests {
 
     #[test]
     fn test_endpoints_are_valid() {
-        let songbird = endpoints::api(); // Test the only remaining endpoint
-        assert!(songbird.starts_with("http://"));
-        assert!(songbird.contains("8084")); // API_PORT
+        let api = endpoints::api();
+        assert!(api.starts_with("http://"));
+        assert!(api.contains(":0")); // API_PORT = 0 (OS-assigned)
 
         // Note: songbird() and beardog() endpoint helpers have been removed
         // Use BiomeOSClient::get_*_provider().await?.endpoint for discovery

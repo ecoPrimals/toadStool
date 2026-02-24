@@ -136,8 +136,12 @@ impl std::fmt::Debug for MappedRegion {
     }
 }
 
-// SAFETY: MappedRegion owns exclusive access to the mapped memory
+// SAFETY: Send - MappedRegion owns the mapped memory exclusively. Moving between threads
+// doesn't invalidate the mapping (mmap'd memory is process-wide). No thread-local state.
 unsafe impl Send for MappedRegion {}
+
+// SAFETY: Sync - Read operations use &self and are bounds-checked; write operations require
+// &mut self (exclusive access). Volatile MMIO reads are idempotent; concurrent reads safe.
 unsafe impl Sync for MappedRegion {}
 
 impl MappedRegion {

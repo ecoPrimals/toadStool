@@ -46,7 +46,7 @@ fn test_network_env_config() {
     let config = NetworkEnvConfig::from_env();
     assert_eq!(config.songbird_port, 9080);
     assert_eq!(config.bind_address, "0.0.0.0");
-    assert_eq!(config.songbird_endpoint(), "http://0.0.0.0:8080");
+    assert_eq!(config.songbird_endpoint(), "http://localhost:9080");
 
     if let Some(val) = original_port {
         env::set_var("SONGBIRD_PORT", val);

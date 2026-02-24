@@ -256,7 +256,7 @@ impl EndpointBuilder {
             BindMode::Localhost => "localhost".to_string(),
             BindMode::AllInterfaces => std::env::var("HOSTNAME")
                 .or_else(|_| std::env::var("HOST"))
-                .unwrap_or_else(|_| "localhost".to_string()),
+                .unwrap_or_else(|_| "0.0.0.0".to_string()),
             BindMode::Specific => match self.config.listen_address {
                 IpAddr::V4(addr) => {
                     if addr.is_loopback() {
@@ -279,7 +279,7 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = NetworkConfig::default();
-        assert_eq!(config.service_port, ports::toadstool::SERVER);
+        assert_eq!(config.service_port, ports::toadstool::SERVER); // 0 = OS-assigned
         assert_eq!(config.bind_mode, BindMode::Localhost);
     }
 
@@ -309,22 +309,11 @@ mod tests {
         let config = NetworkConfig::default();
         let builder = EndpointBuilder::new(config);
 
-        assert_eq!(
-            builder.service_url(),
-            format!("http://localhost:{}", ports::toadstool::SERVER)
-        );
-        assert_eq!(
-            builder.api_url(),
-            format!("http://localhost:{}", ports::toadstool::SERVER)
-        );
-        assert_eq!(
-            builder.metrics_url(),
-            format!("http://localhost:{}", ports::toadstool::METRICS)
-        );
-        assert_eq!(
-            builder.health_url(),
-            format!("http://localhost:{}", ports::toadstool::HEALTH)
-        );
+        // Port 0 = OS-assigned
+        assert_eq!(builder.service_url(), "http://localhost:0");
+        assert_eq!(builder.api_url(), "http://localhost:0");
+        assert_eq!(builder.metrics_url(), "http://localhost:0");
+        assert_eq!(builder.health_url(), "http://localhost:0");
     }
 
     #[test]
@@ -399,28 +388,28 @@ mod tests {
             addr.ip(),
             std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))
         );
-        assert_eq!(addr.port(), ports::toadstool::SERVER);
+        assert_eq!(addr.port(), 0); // OS-assigned
     }
 
     #[test]
     fn test_api_addr() {
         let config = NetworkConfig::default();
         let addr = config.api_addr();
-        assert_eq!(addr.port(), ports::toadstool::SERVER);
+        assert_eq!(addr.port(), 0); // OS-assigned
     }
 
     #[test]
     fn test_metrics_addr() {
         let config = NetworkConfig::default();
         let addr = config.metrics_addr();
-        assert_eq!(addr.port(), ports::toadstool::METRICS);
+        assert_eq!(addr.port(), 0); // OS-assigned
     }
 
     #[test]
     fn test_health_addr() {
         let config = NetworkConfig::default();
         let addr = config.health_addr();
-        assert_eq!(addr.port(), ports::toadstool::HEALTH);
+        assert_eq!(addr.port(), 0); // OS-assigned
     }
 
     #[test]

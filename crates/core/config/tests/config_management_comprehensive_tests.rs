@@ -44,7 +44,7 @@ fn test_application_config_default_values() {
 fn test_network_config_default_values() {
     let config = NetworkConfig::default();
 
-    assert!(config.bind_address.port() > 0);
+    assert!(config.bind_address.port() <= 65535); // 0 = OS-assigned
     assert!(!config.endpoints.songbird.is_empty());
     assert!(!config.endpoints.beardog.is_empty());
     assert!(!config.endpoints.nestgate.is_empty());

@@ -14,12 +14,7 @@ impl ToadStoolConfig {
     /// - Invalid worker thread counts
     /// - Invalid timeout values
     pub fn validate_runtime_config(&self) -> ConfigResult<()> {
-        // Validate bind address
-        if self.network.bind_address.port() == 0 {
-            return Err(ConfigError::Invalid(
-                "Bind address port cannot be 0".to_string(),
-            ));
-        }
+        // Bind address port 0 is valid (OS-assigned at bind time)
 
         // Validate endpoints
         if self.network.endpoints.songbird.is_empty() {

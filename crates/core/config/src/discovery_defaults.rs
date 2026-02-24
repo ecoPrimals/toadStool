@@ -181,13 +181,14 @@ impl FallbackEndpoints {
         }
     }
 
-    /// Get localhost endpoint for a service by offset
+    /// Get fallback endpoint for a service by offset.
     ///
-    /// This is a FALLBACK ONLY - prefer discovery
+    /// **ONLY for single-node development** when mDNS/capability discovery is unavailable.
+    /// Returns `http://localhost:{base_port + offset}`. Prefer discovery in production.
     ///
     /// # Errors
     /// Returns error if localhost fallback is disabled
-    pub fn localhost_endpoint(&self, offset: u16) -> Result<String, std::io::Error> {
+    pub fn fallback_endpoint(&self, offset: u16) -> Result<String, std::io::Error> {
         if self.enable_localhost_fallback {
             Ok(format!(
                 "http://localhost:{}",
@@ -201,6 +202,13 @@ impl FallbackEndpoints {
                 "Localhost fallback disabled - use discovery instead",
             ))
         }
+    }
+
+    /// Deprecated alias for `fallback_endpoint`. Use `fallback_endpoint` instead.
+    #[deprecated(since = "0.3.0", note = "Use fallback_endpoint() instead")]
+    #[must_use]
+    pub fn localhost_endpoint(&self, offset: u16) -> Result<String, std::io::Error> {
+        self.fallback_endpoint(offset)
     }
 }
 
@@ -238,10 +246,10 @@ mod tests {
         let fallback = FallbackEndpoints::default();
         assert!(fallback.enable_localhost_fallback);
 
-        let endpoint = fallback.localhost_endpoint(0).expect("Should succeed");
+        let endpoint = fallback.fallback_endpoint(0).expect("Should succeed");
         assert_eq!(endpoint, "http://localhost:9080");
 
-        let endpoint2 = fallback.localhost_endpoint(1).expect("Should succeed");
+        let endpoint2 = fallback.fallback_endpoint(1).expect("Should succeed");
         assert_eq!(endpoint2, "http://localhost:9081");
     }
 }

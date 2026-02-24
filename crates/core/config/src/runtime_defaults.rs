@@ -473,11 +473,20 @@ mod tests {
 
     #[test]
     fn test_load_with_overrides_success() {
+        let _guard = crate::env_config::tests::get_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         temp_env::with_vars_unset(
             [
                 "TOADSTOOL_ENVIRONMENT",
                 "TOADSTOOL_ENV",
                 "TOADSTOOL_VERBOSE",
+                "TOADSTOOL_WORKER_THREADS",
+                "TOADSTOOL_REQUEST_TIMEOUT",
+                "TOADSTOOL_EXECUTION_TIMEOUT",
+                "TOADSTOOL_MAX_CONCURRENT_EXECUTIONS",
+                "TOADSTOOL_BIND_ADDRESS",
+                "TOADSTOOL_PORT",
             ],
             || {
                 let config = ToadStoolConfig::development();

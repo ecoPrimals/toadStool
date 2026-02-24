@@ -55,8 +55,9 @@ impl PinnedMemory {
         // - Vulkan: vkAllocateMemory with HOST_VISIBLE | HOST_COHERENT
         //
         // UNAVOIDABLE UNSAFE: std::alloc::alloc is the only way to get heap
-        // memory with custom alignment (64 bytes for DMA). Vec/Box do not
-        // support aligned allocation in stable Rust.
+        // memory with custom alignment (64 bytes for DMA). Vec::with_capacity
+        // + set_len cannot replace: Vec uses default alignment (8/16), not 64.
+        // DMA requires cache-line alignment for optimal transfers.
 
         let layout = std::alloc::Layout::from_size_align(size, PINNED_ALIGNMENT)
             .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {}", e)))?;

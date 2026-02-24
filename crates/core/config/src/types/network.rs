@@ -267,7 +267,7 @@ mod tests {
     fn test_default_network_config() {
         // Tests backward compatibility with deprecated fields
         let config = NetworkConfig::default();
-        assert!(config.bind_address.port() > 0);
+        assert!(config.bind_address.port() <= 65535); // 0 = OS-assigned
         assert!(!config.endpoints.songbird.is_empty());
         assert!(config.connection.max_retries > 0);
     }

@@ -1,16 +1,11 @@
 //! Metrics, job splitting, load estimation, and coordination types
 
-use std::collections::HashMap;
-
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{ResourceRequirements, UniversalJob};
 
 use super::job_types::{
     CompletionStrategy, CoordinationJob, CoordinationStrategy, DistributionPlan, SubTask,
-    SubTaskPlan,
 };
 
 // ============================================================================

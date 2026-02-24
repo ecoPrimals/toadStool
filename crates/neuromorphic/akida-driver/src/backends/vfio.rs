@@ -326,11 +326,10 @@ impl Drop for DmaBuffer {
             );
         }
 
-        // Deallocate memory
-        // SAFETY: 4096 is always a valid alignment (power of two); self.size matches the layout
-        // used in new() where allocation succeeded.
-        let layout = unsafe { std::alloc::Layout::from_size_align_unchecked(self.size, 4096) };
-        // SAFETY: vaddr was allocated with this layout in new()
+        // Deallocate memory (use safe Layout::from_size_align - eliminates one unsafe block)
+        let layout = std::alloc::Layout::from_size_align(self.size, 4096)
+            .expect("Layout valid: size from alloc in new(), 4096 is power-of-two");
+        // SAFETY: vaddr was allocated with this layout in new(); dealloc requires unsafe.
         unsafe { std::alloc::dealloc(self.vaddr, layout) };
 
         tracing::debug!("Freed DMA buffer at iova={:#x}", self.iova);

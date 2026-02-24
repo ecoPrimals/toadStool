@@ -163,7 +163,10 @@ impl ConfigUtils {
         // ✅ SELF-KNOWLEDGE: ToadStool knows its own bind address
         // Use constant default, not cached config value
         let loader = EnvConfigLoader::with_prefix(""); // Check BIND_ADDRESS directly
-        loader.get_string("BIND_ADDRESS", "127.0.0.1")
+        loader.get_string(
+            "BIND_ADDRESS",
+            crate::defaults::network::BIND_ADDRESS_DEFAULT,
+        )
     }
 
     /// Get external hostname from environment or default
@@ -541,7 +544,10 @@ impl ConfigUtils {
     }
 
     /// Get distributed storage URL from environment or default
+    ///
+    /// Empty default = use capability discovery. Set DISTRIBUTED_STORAGE_URL for explicit URL.
     #[must_use]
+    #[allow(deprecated)]
     pub fn get_distributed_storage_url() -> String {
         let loader = EnvConfigLoader::new();
         loader.get_string(
@@ -551,6 +557,8 @@ impl ConfigUtils {
     }
 
     /// Get monitoring endpoint from environment or default
+    ///
+    /// Port 0 = OS-assigned; use discovery for actual endpoint.
     #[must_use]
     pub fn get_monitoring_endpoint() -> String {
         let loader = EnvConfigLoader::new();

@@ -107,7 +107,7 @@ impl NetworkEnvConfig {
             metrics_port: loader.get_u16("METRICS_PORT", crate::defaults::network::METRICS_PORT),
             health_port: loader.get_u16("HEALTH_PORT", crate::defaults::network::DISCOVERY_PORT),
             events_port: loader.get_u16("EVENTS_PORT", crate::defaults::network::EVENTS_PORT),
-            bind_address: loader.get_string("BIND_ADDRESS", "127.0.0.1"),
+            bind_address: loader.get_string("BIND_ADDRESS", "0.0.0.0"),
             external_hostname: loader.get_string("EXTERNAL_HOSTNAME", "localhost"),
             tls_enabled: loader.get_bool("TLS_ENABLED", false),
             connection_timeout_secs: loader.get_u64("CONNECTION_TIMEOUT_SECS", 10),
@@ -151,8 +151,10 @@ impl NetworkEnvConfig {
         note = "Use RuntimeDiscovery::discover_capability(&Capability::Coordination)"
     )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn songbird_endpoint(&self) -> String {
-        format!("http://{}:{}", self.bind_address, 8080)
+        // Client-side: connect to other primal. Port 0 = use capability discovery.
+        format!("http://localhost:{}", self.songbird_port)
     }
 
     /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::Authentication)`
@@ -161,8 +163,10 @@ impl NetworkEnvConfig {
         note = "Use RuntimeDiscovery::discover_capability(&Capability::Authentication)"
     )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn beardog_endpoint(&self) -> String {
-        format!("http://{}:{}", self.bind_address, 8081)
+        // Client-side: connect to other primal. Port 0 = use capability discovery.
+        format!("http://localhost:{}", self.beardog_port)
     }
 
     /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::Storage)`
@@ -171,8 +175,10 @@ impl NetworkEnvConfig {
         note = "Use RuntimeDiscovery::discover_capability(&Capability::Storage)"
     )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn nestgate_endpoint(&self) -> String {
-        format!("http://{}:{}", self.bind_address, 8082)
+        // Client-side: connect to other primal. Port 0 = use capability discovery.
+        format!("http://localhost:{}", self.nestgate_port)
     }
 
     /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::MCP)`
@@ -181,7 +187,9 @@ impl NetworkEnvConfig {
         note = "Use RuntimeDiscovery::discover_capability(&Capability::MCP)"
     )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn squirrel_endpoint(&self) -> String {
-        format!("http://{}:{}", self.bind_address, 8083)
+        // Client-side: connect to other primal. Port 0 = use capability discovery.
+        format!("http://localhost:{}", self.squirrel_port)
     }
 }

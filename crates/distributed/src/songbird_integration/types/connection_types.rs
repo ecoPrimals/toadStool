@@ -1,7 +1,9 @@
 //! Connection types for Songbird integration
 
+#[cfg(feature = "channels")]
 use std::sync::Arc;
 
+#[cfg(feature = "channels")]
 use super::job_types::SongbirdJobResponse;
 use super::protocols::ProtocolConfig;
 

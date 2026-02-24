@@ -6,10 +6,52 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use tracing::{debug, info, warn};
+
+/// Discovers the primal's own IP/host for `PrimalContext.network_location`.
+///
+/// Resolution order: `TOADSTOOL_BIND_ADDRESS` (host part) → `TOADSTOOL_BIND_HOST` →
+/// `BIND_HOST` → `HOST` → `HOSTNAME` → `0.0.0.0` (any interface).
+///
+/// This is the self-discovery default when no explicit bind address is configured.
+#[must_use]
+fn discover_self_ip_address() -> String {
+    // 1. TOADSTOOL_BIND_ADDRESS (host:port) — extract host
+    if let Ok(addr) = std::env::var("TOADSTOOL_BIND_ADDRESS") {
+        let host = addr.split(':').next().unwrap_or(&addr).trim();
+        if !host.is_empty() {
+            return host.to_string();
+        }
+    }
+    // 2. TOADSTOOL_BIND_HOST
+    if let Ok(h) = std::env::var("TOADSTOOL_BIND_HOST") {
+        if !h.is_empty() {
+            return h;
+        }
+    }
+    // 3. BIND_HOST
+    if let Ok(h) = std::env::var("BIND_HOST") {
+        if !h.is_empty() {
+            return h;
+        }
+    }
+    // 4. HOST
+    if let Ok(h) = std::env::var("HOST") {
+        if !h.is_empty() {
+            return h;
+        }
+    }
+    // 5. HOSTNAME
+    if let Ok(h) = std::env::var("HOSTNAME") {
+        if !h.is_empty() {
+            return h;
+        }
+    }
+    // 6. Fallback: any interface (not loopback-only)
+    "0.0.0.0".to_string()
+}
 use uuid::Uuid;
 
 use toadstool_common::constants::PRIMAL_NAME;
-use toadstool_config::defaults;
 
 use crate::execution::{ExecutionInput, ExecutionRequest, ExecutionResponse, RuntimeType};
 use crate::resources::ResourceRequirements;
@@ -57,7 +99,7 @@ impl UniversalScheduler {
                     device_id: "local".to_string(),
                     session_id: Uuid::new_v4().to_string(),
                     network_location: NetworkLocation {
-                        ip_address: defaults::network::LOCALHOST.to_string(),
+                        ip_address: discover_self_ip_address(),
                         subnet: None,
                         network_id: None,
                         geo_location: None,
@@ -320,7 +362,7 @@ impl UniversalScheduler {
                     device_id: "local".to_string(),
                     session_id: execution_id.to_string(),
                     network_location: NetworkLocation {
-                        ip_address: "127.0.0.1".to_string(),
+                        ip_address: discover_self_ip_address(),
                         subnet: None,
                         network_id: None,
                         geo_location: None,
@@ -460,7 +502,7 @@ impl UniversalScheduler {
                     device_id: "local".to_string(),
                     session_id: execution_id.to_string(),
                     network_location: NetworkLocation {
-                        ip_address: "127.0.0.1".to_string(),
+                        ip_address: discover_self_ip_address(),
                         subnet: None,
                         network_id: None,
                         geo_location: None,

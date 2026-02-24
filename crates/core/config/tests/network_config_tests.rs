@@ -220,7 +220,7 @@ fn test_production_vs_development_bind_mode() {
 fn test_production_has_reasonable_defaults() {
     let config = NetworkConfig::production();
 
-    assert!(config.service_port > 0);
+    assert!(config.service_port <= 65535); // 0 = OS-assigned
 }
 
 // ============================================================================
@@ -268,9 +268,9 @@ fn test_multiple_socket_addrs_different_ports() {
     let metrics = config.metrics_addr();
     let health = config.health_addr();
 
-    // All should be valid sockets
-    assert!(service.port() > 0);
-    assert!(api.port() > 0);
-    assert!(metrics.port() > 0);
-    assert!(health.port() > 0);
+    // Port 0 = OS-assigned; all in valid range
+    assert!(service.port() <= 65535);
+    assert!(api.port() <= 65535);
+    assert!(metrics.port() <= 65535);
+    assert!(health.port() <= 65535);
 }

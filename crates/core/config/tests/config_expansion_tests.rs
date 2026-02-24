@@ -347,8 +347,9 @@ fn test_get_toadstool_port_default() {
     // ✅ DEEP SOLUTION: Handle poisoned lock gracefully - idiomatic error recovery
     let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
     env::remove_var("TOADSTOOL_PORT");
+    env::remove_var("TOADSTOOL_API_PORT");
     let port = network::get_toadstool_port();
-    assert_eq!(port, 8084);
+    assert_eq!(port, 0); // OS-assigned default
 }
 
 #[test]

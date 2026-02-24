@@ -213,8 +213,8 @@ fn test_load_with_overrides_validates() {
     let base = ToadStoolConfig::development();
     base.save_to_file(&config_path).expect("Should save");
 
-    // Set invalid environment override (port 0)
-    std::env::set_var("TOADSTOOL_PORT", "0");
+    // Set invalid environment override (non-numeric port)
+    std::env::set_var("TOADSTOOL_PORT", "invalid");
 
     let result = ToadStoolConfig::load_with_overrides(&config_path);
 

@@ -12,22 +12,22 @@
 /// Default ports for ToadStool services
 ///
 /// **Self-Knowledge Principle**: ToadStool only defines its own ports.
-/// Other primal ports are discovered at runtime.
+/// Port 0 = OS-assigned at bind time (capability-based).
 pub mod toadstool {
-    /// Main ToadStool server port
-    pub const SERVER: u16 = 8084;
+    /// Main ToadStool server port (0 = OS-assigned)
+    pub const SERVER: u16 = 0;
 
-    /// GPU compute service port
-    pub const GPU_COMPUTE: u16 = 8085;
+    /// GPU compute service port (0 = OS-assigned)
+    pub const GPU_COMPUTE: u16 = 0;
 
-    /// Distributed scheduler port
-    pub const DISTRIBUTED: u16 = 8086;
+    /// Distributed scheduler port (0 = OS-assigned)
+    pub const DISTRIBUTED: u16 = 0;
 
-    /// Health check endpoint port
-    pub const HEALTH: u16 = 8087;
+    /// Health check endpoint port (0 = OS-assigned)
+    pub const HEALTH: u16 = 0;
 
-    /// Metrics/monitoring port
-    pub const METRICS: u16 = 9090;
+    /// Metrics/monitoring port (0 = OS-assigned)
+    pub const METRICS: u16 = 0;
 }
 
 /// Default ports for other primals (for fallback only)
@@ -110,9 +110,9 @@ pub mod test {
 
 /// Port range allocation
 pub mod ranges {
-    /// ToadStool service range: 8084-8099
-    pub const TOADSTOOL_START: u16 = 8084;
-    pub const TOADSTOOL_END: u16 = 8099;
+    /// ToadStool service range (0 = OS-assigned; explicit range for env override)
+    pub const TOADSTOOL_START: u16 = 0;
+    pub const TOADSTOOL_END: u16 = 65535;
 
     /// Test port range: 50000-65535
     pub const TEST_START: u16 = 50000;
@@ -244,9 +244,10 @@ mod tests {
 
     #[test]
     fn test_default_ports() {
-        assert_eq!(toadstool::SERVER, 8084);
-        assert_eq!(toadstool::GPU_COMPUTE, 8085);
-        assert_eq!(toadstool::DISTRIBUTED, 8086);
+        // Port 0 = OS-assigned at bind time
+        assert_eq!(toadstool::SERVER, 0);
+        assert_eq!(toadstool::GPU_COMPUTE, 0);
+        assert_eq!(toadstool::DISTRIBUTED, 0);
     }
 
     #[test]
@@ -261,24 +262,11 @@ mod tests {
 
     #[test]
     fn test_port_ranges() {
-        // Static assertions - these are checked at compile time via const evaluation
-        // If ports are outside range, this test validates the configuration
-        const _: () = assert!(
-            toadstool::SERVER >= ranges::TOADSTOOL_START,
-            "SERVER port below range"
-        );
-        const _: () = assert!(
-            toadstool::SERVER <= ranges::TOADSTOOL_END,
-            "SERVER port above range"
-        );
-        const _: () = assert!(
-            toadstool::GPU_COMPUTE >= ranges::TOADSTOOL_START,
-            "GPU_COMPUTE port below range"
-        );
-        const _: () = assert!(
-            toadstool::GPU_COMPUTE <= ranges::TOADSTOOL_END,
-            "GPU_COMPUTE port above range"
-        );
+        // Port 0 (OS-assigned) is within valid range
+        assert!(toadstool::SERVER >= ranges::TOADSTOOL_START);
+        assert!(toadstool::SERVER <= ranges::TOADSTOOL_END);
+        assert!(toadstool::GPU_COMPUTE >= ranges::TOADSTOOL_START);
+        assert!(toadstool::GPU_COMPUTE <= ranges::TOADSTOOL_END);
     }
 
     #[test]
