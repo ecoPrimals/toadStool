@@ -18,14 +18,16 @@
 //! CPU reference in hotSpring `lattice/wilson.rs`.  Expected average plaquette
 //! for a thermalized SU(3) config at β=6: ≈ 0.5937 (Wilson action).
 
+use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use std::sync::Arc;
 
-use super::su3::su3_preamble;
+use super::su3::{su3_df64_preamble, su3_preamble};
 
 const PLAQ_WG: u32 = 64;
 const PLAQ_SHADER_BODY: &str = include_str!("../../shaders/lattice/wilson_plaquette_f64.wgsl");
+const PLAQ_SHADER_DF64: &str = include_str!("../../shaders/lattice/wilson_plaquette_df64.wgsl");
 
 /// Wilson plaquette operator on a 4D SU(3) lattice.
 pub struct WilsonPlaquette {
@@ -51,10 +53,24 @@ struct PlaqParams {
 
 impl WilsonPlaquette {
     /// Compile the plaquette pipeline for a lattice of dimensions `nt×nx×ny×nz`.
+    ///
+    /// Automatically selects DF64 (f32-pair) shaders on consumer GPUs,
+    /// routing plaquette SU(3) products through FP32 cores for ~10x throughput.
     pub fn new(device: Arc<WgpuDevice>, nt: u32, nx: u32, ny: u32, nz: u32) -> Result<Self> {
         let volume = nt * nx * ny * nz;
-        let src = format!("{}{}", su3_preamble(), PLAQ_SHADER_BODY);
-        // compile_shader_f64 handles exp/log patching + ILP optimizer internally
+
+        let profile = GpuDriverProfile::from_device(&device);
+        let strategy = profile.fp64_strategy();
+        let src = match strategy {
+            Fp64Strategy::Native => format!("{}{}", su3_preamble(), PLAQ_SHADER_BODY),
+            Fp64Strategy::Hybrid => format!("{}{}", su3_df64_preamble(), PLAQ_SHADER_DF64),
+        };
+        tracing::info!(
+            ?strategy,
+            "WilsonPlaquette: compiled with {:?} FP64 strategy",
+            strategy
+        );
+
         let module = device.compile_shader_f64(&src, Some("wilson_plaquette"));
 
         let bgl = device

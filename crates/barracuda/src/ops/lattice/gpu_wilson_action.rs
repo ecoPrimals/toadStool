@@ -3,14 +3,16 @@
 //! Per-site action contribution dispatched on GPU; host-side reduction
 //! via `ReduceScalarPipeline` yields the total Wilson action.
 
+use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use std::sync::Arc;
 
-use super::su3::su3_preamble;
+use super::su3::{su3_df64_preamble, su3_preamble};
 
 const WG: u32 = 64;
 const SHADER_BODY: &str = include_str!("../../shaders/lattice/wilson_action_f64.wgsl");
+const SHADER_DF64: &str = include_str!("../../shaders/lattice/wilson_action_df64.wgsl");
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -35,9 +37,25 @@ pub struct GpuWilsonAction {
 }
 
 impl GpuWilsonAction {
+    /// Compile the Wilson action pipeline.
+    ///
+    /// Automatically selects DF64 (f32-pair) shaders on consumer GPUs,
+    /// routing plaquette products through FP32 cores for ~10x throughput.
     pub fn new(device: Arc<WgpuDevice>, nt: u32, nx: u32, ny: u32, nz: u32) -> Result<Self> {
         let volume = nt * nx * ny * nz;
-        let src = format!("{}{}", su3_preamble(), SHADER_BODY);
+
+        let profile = GpuDriverProfile::from_device(&device);
+        let strategy = profile.fp64_strategy();
+        let src = match strategy {
+            Fp64Strategy::Native => format!("{}{}", su3_preamble(), SHADER_BODY),
+            Fp64Strategy::Hybrid => format!("{}{}", su3_df64_preamble(), SHADER_DF64),
+        };
+        tracing::info!(
+            ?strategy,
+            "GpuWilsonAction: compiled with {:?} FP64 strategy",
+            strategy
+        );
+
         let module = device.compile_shader_f64(&src, Some("wilson_action"));
 
         let bgl = device

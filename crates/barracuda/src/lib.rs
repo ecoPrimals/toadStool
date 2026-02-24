@@ -199,42 +199,42 @@ pub mod prelude {
         GpuCalibration, WgpuDevice, WorkloadHint, GLOBAL_TUNER,
     };
     #[cfg(feature = "gpu")]
+    pub use crate::dispatch::{
+        batch_fitness_substrate, dispatch_for, dispatch_with_transfer_cost, hmm_substrate,
+        ode_substrate, pairwise_substrate, spatial_substrate, DispatchConfig, DispatchTarget,
+    };
+    #[cfg(feature = "gpu")]
     pub use crate::esn_v2::{ESNConfig, ESN};
     #[cfg(feature = "gpu")]
     pub use crate::genomics::{
         CompositionReport, MotifMatch, QualityReport, SequenceAnalyzer, SequenceConfig,
     };
     #[cfg(feature = "gpu")]
-    pub use crate::nn::{Layer, LossFunction, Optimizer};
-    #[cfg(feature = "gpu")]
-    pub use crate::session::{SessionTensor, TensorSession};
-    #[cfg(feature = "gpu")]
-    pub use crate::snn::{SNNConfig, SNNLayer, SpikingNetwork};
-    #[cfg(feature = "gpu")]
-    pub use crate::tensor::Tensor;
-    #[cfg(feature = "gpu")]
-    pub use crate::npu::{EventCodec, NpuMlBackend};
-    #[cfg(feature = "gpu")]
-    pub use crate::workload::{
-        ComputeDevice, DeviceHint, DeviceSelector, Priority, SparsityAnalyzer, WorkloadClassifier,
-        WorkloadType,
-    };
-    #[cfg(feature = "gpu")]
-    pub use crate::dispatch::{
-        batch_fitness_substrate, dispatch_for, dispatch_with_transfer_cost, hmm_substrate,
-        ode_substrate, pairwise_substrate, spatial_substrate, DispatchConfig, DispatchTarget,
-    };
+    pub use crate::multi_gpu::DeviceInfo as GpuDeviceInfo;
     #[cfg(feature = "gpu")]
     pub use crate::multi_gpu::{
         DeviceLease, DeviceRequirements, GpuPool, GpuVendor, MultiDevicePool, WorkloadConfig,
     };
     #[cfg(feature = "gpu")]
-    pub use crate::multi_gpu::DeviceInfo as GpuDeviceInfo;
+    pub use crate::nn::{Layer, LossFunction, Optimizer};
+    #[cfg(feature = "gpu")]
+    pub use crate::npu::{EventCodec, NpuMlBackend};
     #[cfg(feature = "gpu")]
     pub use crate::resource_quota::{presets as quota_presets, QuotaTracker, ResourceQuota};
+    #[cfg(feature = "gpu")]
+    pub use crate::session::{SessionTensor, TensorSession};
+    #[cfg(feature = "gpu")]
+    pub use crate::snn::{SNNConfig, SNNLayer, SpikingNetwork};
     #[cfg(feature = "gpu")]
     pub use crate::staging::{
         BufferDirection, GpuRingBuffer, PipelineStats, RingBufferConfig, UnidirectionalConfig,
         UnidirectionalPipeline, WorkHandle, WriteHandle,
+    };
+    #[cfg(feature = "gpu")]
+    pub use crate::tensor::Tensor;
+    #[cfg(feature = "gpu")]
+    pub use crate::workload::{
+        ComputeDevice, DeviceHint, DeviceSelector, Priority, SparsityAnalyzer, WorkloadClassifier,
+        WorkloadType,
     };
 }

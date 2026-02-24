@@ -556,9 +556,7 @@ impl ComputeExecutor for GpuExecutor {
                 padding: (pad_h, pad_w),
             } => {
                 let in_desc = inputs[0].descriptor();
-                let use_gpu = *k_h == *k_w
-                    && *stride_h == *stride_w
-                    && in_desc.shape.len() >= 2;
+                let use_gpu = *k_h == *k_w && *stride_h == *stride_w && in_desc.shape.len() >= 2;
 
                 let gpu_params = if use_gpu && in_desc.shape.len() == 4 {
                     let (n, c, h, w) = (
@@ -605,9 +603,7 @@ impl ComputeExecutor for GpuExecutor {
                 padding: (pad_h, pad_w),
             } => {
                 let in_desc = inputs[0].descriptor();
-                let use_gpu = *k_h == *k_w
-                    && *stride_h == *stride_w
-                    && in_desc.shape.len() >= 2;
+                let use_gpu = *k_h == *k_w && *stride_h == *stride_w && in_desc.shape.len() >= 2;
 
                 let gpu_params = if use_gpu && in_desc.shape.len() == 4 {
                     let (n, c, h, w) = (

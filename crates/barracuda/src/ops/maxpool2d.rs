@@ -59,10 +59,8 @@ impl MaxPool2D {
 
         let input_height = self.input.shape()[0];
         let input_width = self.input.shape()[1];
-        let output_height =
-            (input_height + 2 * self.pad_h - self.pool_size) / self.stride + 1;
-        let output_width =
-            (input_width + 2 * self.pad_w - self.pool_size) / self.stride + 1;
+        let output_height = (input_height + 2 * self.pad_h - self.pool_size) / self.stride + 1;
+        let output_width = (input_width + 2 * self.pad_w - self.pool_size) / self.stride + 1;
         let output_size = output_height * output_width;
 
         let output_buffer = device.create_buffer_f32(output_size)?;
@@ -423,10 +421,7 @@ mod tests {
         let expected = maxpool2d_cpu_padded(&input_data, 4, 4, 3, 1, 1, 1);
 
         for (i, (r, e)) in output.iter().zip(expected.iter()).enumerate() {
-            assert!(
-                (r - e).abs() < 1e-5,
-                "mismatch at {i}: gpu={r}, cpu={e}"
-            );
+            assert!((r - e).abs() < 1e-5, "mismatch at {i}: gpu={r}, cpu={e}");
         }
     }
 }

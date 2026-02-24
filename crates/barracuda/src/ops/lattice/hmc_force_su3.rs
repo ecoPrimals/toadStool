@@ -30,14 +30,16 @@
 //! Algorithm: hotSpring `lattice/hmc.rs` (v0.5.16, Feb 2026).
 //! GPU promotion: Feb 2026.  CPU reference unchanged in hotSpring.
 
+use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use std::sync::Arc;
 
-use super::su3::su3_preamble;
+use super::su3::{su3_df64_preamble, su3_preamble};
 
 const FORCE_WG: u32 = 64;
 const FORCE_SHADER_BODY: &str = include_str!("../../shaders/lattice/su3_hmc_force_f64.wgsl");
+const FORCE_SHADER_DF64: &str = include_str!("../../shaders/lattice/su3_hmc_force_df64.wgsl");
 
 /// SU(3) HMC gauge force operator (4D Wilson action).
 pub struct Su3HmcForce {
@@ -67,6 +69,11 @@ struct ForceParams {
 
 impl Su3HmcForce {
     /// Compile the HMC force pipeline for a `nt×nx×ny×nz` 4D lattice.
+    ///
+    /// Automatically selects DF64 (f32-pair) shaders on consumer GPUs where
+    /// FP64:FP32 ≤ 1:64, routing staple multiplications through the FP32 core
+    /// array for ~10x throughput. On compute-class GPUs (Titan V, A100, MI250)
+    /// with 1:2 hardware, native f64 is used directly.
     pub fn new(
         device: Arc<WgpuDevice>,
         nt: u32,
@@ -76,8 +83,19 @@ impl Su3HmcForce {
         beta: f64,
     ) -> Result<Self> {
         let volume = nt * nx * ny * nz;
-        let src = format!("{}{}", su3_preamble(), FORCE_SHADER_BODY);
-        // compile_shader_f64 handles exp/log patching + ILP optimizer internally
+
+        let profile = GpuDriverProfile::from_device(&device);
+        let strategy = profile.fp64_strategy();
+        let src = match strategy {
+            Fp64Strategy::Native => format!("{}{}", su3_preamble(), FORCE_SHADER_BODY),
+            Fp64Strategy::Hybrid => format!("{}{}", su3_df64_preamble(), FORCE_SHADER_DF64),
+        };
+        tracing::info!(
+            ?strategy,
+            "Su3HmcForce: compiled with {:?} FP64 strategy",
+            strategy
+        );
+
         let module = device.compile_shader_f64(&src, Some("su3_hmc_force"));
 
         let bgl = device

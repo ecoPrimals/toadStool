@@ -251,13 +251,7 @@ impl<'a> PeakDetectF64<'a> {
         });
 
         encoder.copy_buffer_to_buffer(&is_peak_buf, 0, &is_peak_staging, 0, (n * 4) as u64);
-        encoder.copy_buffer_to_buffer(
-            &prominence_buf,
-            0,
-            &prominence_staging,
-            0,
-            (n * 8) as u64,
-        );
+        encoder.copy_buffer_to_buffer(&prominence_buf, 0, &prominence_staging, 0, (n * 8) as u64);
 
         device.queue.submit(Some(encoder.finish()));
 
@@ -409,9 +403,7 @@ mod tests {
         };
 
         // Signal: two clear peaks at indices 3 and 8
-        let signal = vec![
-            0.0, 1.0, 2.0, 5.0, 2.0, 1.0, 0.5, 3.0, 7.0, 3.0, 0.5, 0.0,
-        ];
+        let signal = vec![0.0, 1.0, 2.0, 5.0, 2.0, 1.0, 0.5, 3.0, 7.0, 3.0, 0.5, 0.0];
 
         let peaks = PeakDetectF64::new(&signal, 1)
             .execute(&device)
@@ -428,9 +420,7 @@ mod tests {
             return;
         };
 
-        let signal = vec![
-            0.0, 1.0, 2.0, 5.0, 2.0, 1.0, 0.5, 3.0, 7.0, 3.0, 0.5, 0.0,
-        ];
+        let signal = vec![0.0, 1.0, 2.0, 5.0, 2.0, 1.0, 0.5, 3.0, 7.0, 3.0, 0.5, 0.0];
 
         let peaks = PeakDetectF64::new(&signal, 1)
             .height(6.0)
@@ -483,10 +473,7 @@ mod tests {
         let gpu_idx: Vec<usize> = gpu_peaks.iter().map(|p| p.index).collect();
         let cpu_idx: Vec<usize> = cpu_peaks.iter().map(|p| p.index).collect();
 
-        assert_eq!(
-            gpu_idx, cpu_idx,
-            "GPU and CPU should detect same peaks"
-        );
+        assert_eq!(gpu_idx, cpu_idx, "GPU and CPU should detect same peaks");
 
         for (g, c) in gpu_peaks.iter().zip(cpu_peaks.iter()) {
             assert!(

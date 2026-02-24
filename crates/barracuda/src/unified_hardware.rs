@@ -688,18 +688,12 @@ impl BandwidthTier {
         let lower = name.to_lowercase();
 
         // NVLink: data-center GPUs (multi-GPU interconnect)
-        if lower.contains("a100")
-            || lower.contains("h100")
-            || lower.contains("h200")
-        {
+        if lower.contains("a100") || lower.contains("h100") || lower.contains("h200") {
             return BandwidthTier::NvLink;
         }
 
         // Shared memory: Apple Silicon (unified), software renderers
-        if lower.contains("apple")
-            || lower.contains("llvmpipe")
-            || lower.contains("swiftshader")
-        {
+        if lower.contains("apple") || lower.contains("llvmpipe") || lower.contains("swiftshader") {
             return BandwidthTier::SharedMemory;
         }
 
@@ -749,7 +743,13 @@ pub fn mixed_substrate(
     source: HardwareType,
     target: HardwareType,
 ) -> MixedSubstrate {
-    mixed_substrate_with_tier(compute_us, data_bytes, source, target, BandwidthTier::PciE4x16)
+    mixed_substrate_with_tier(
+        compute_us,
+        data_bytes,
+        source,
+        target,
+        BandwidthTier::PciE4x16,
+    )
 }
 
 /// Select optimal mixed substrate with explicit bandwidth tier.

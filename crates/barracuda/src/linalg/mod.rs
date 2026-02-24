@@ -84,17 +84,15 @@ pub mod solve;
 pub mod sparse;
 
 #[cfg(feature = "gpu")]
-pub use solve::{solve_f64, solve_f64_cpu};
+pub use crate::ops::linalg::tridiagonal_solve;
+#[cfg(feature = "gpu")]
+pub use crate::ops::linalg::tridiagonal_solve as tridiagonal_solve_f64;
 #[cfg(feature = "gpu")]
 pub use crate::ops::linalg::{lu_decompose, lu_det, lu_inverse, lu_solve, LuDecomposition};
 #[cfg(feature = "gpu")]
 pub use crate::ops::linalg::{qr_decompose, qr_least_squares, QrDecomposition};
 #[cfg(feature = "gpu")]
 pub use crate::ops::linalg::{svd_decompose, svd_pinv, svd_values, SvdDecomposition};
-#[cfg(feature = "gpu")]
-pub use crate::ops::linalg::tridiagonal_solve;
-#[cfg(feature = "gpu")]
-pub use crate::ops::linalg::tridiagonal_solve as tridiagonal_solve_f64;
 #[cfg(feature = "gpu")]
 pub use cholesky::cholesky_f64;
 #[cfg(feature = "gpu")]
@@ -103,3 +101,5 @@ pub use eigh::eigh_f64;
 pub use gen_eigh::{gen_eigh_f64, gen_eigh_identity_b, GenEighDecomposition};
 #[cfg(feature = "gpu")]
 pub use graph::{belief_propagation_chain, disordered_laplacian, effective_rank, graph_laplacian};
+#[cfg(feature = "gpu")]
+pub use solve::{solve_f64, solve_f64_cpu};

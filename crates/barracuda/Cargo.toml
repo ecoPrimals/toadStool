@@ -89,6 +89,18 @@ debug-pppm = []
 # Unidirectional pipeline feature
 unidirectional = []
 
+[[bin]]
+name = "bench_fp64_ratio"
+required-features = ["gpu"]
+
+[[bin]]
+name = "bench_wgsize_nvk"
+required-features = ["gpu"]
+
+[[bin]]
+name = "bench_f64_builtins"
+required-features = ["gpu"]
+
 [[bench]]
 name = "unidirectional_benchmark"
 harness = false
