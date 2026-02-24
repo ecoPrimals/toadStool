@@ -46,14 +46,8 @@ pub fn quantize_affine_i8_f64(values: &[f64]) -> (Vec<i8>, f64, i64) {
         return (Vec::new(), 1.0, 0);
     }
 
-    let min_val = values
-        .iter()
-        .cloned()
-        .fold(f64::INFINITY, f64::min);
-    let max_val = values
-        .iter()
-        .cloned()
-        .fold(f64::NEG_INFINITY, f64::max);
+    let min_val = values.iter().cloned().fold(f64::INFINITY, f64::min);
+    let max_val = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
 
     let range = max_val - min_val;
     let scale = if range > 0.0 { range / 254.0 } else { 1.0 };
@@ -99,9 +93,12 @@ mod tests {
         let (quantized, scale, zero_point) = quantize_affine_i8_f64(&values);
         let dequantized = dequantize_affine_i8_f64(&quantized, scale, zero_point);
 
-        let range = values.iter().cloned().fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), x| {
-            (a.min(x), b.max(x))
-        });
+        let range = values
+            .iter()
+            .cloned()
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), x| {
+                (a.min(x), b.max(x))
+            });
         let range_size = range.1 - range.0;
         let max_error = values
             .iter()

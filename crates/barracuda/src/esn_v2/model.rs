@@ -2,6 +2,7 @@
 
 use crate::device::{Auto, Device, WgpuDevice, WorkloadHint};
 use crate::error::{BarracudaError, Result as BarracudaResult};
+use crate::linalg::solve_f64_cpu;
 use crate::tensor::Tensor;
 use rand::{Rng, SeedableRng};
 use std::sync::Arc;
@@ -209,6 +210,94 @@ impl ESN {
         Ok(error.sqrt())
     }
 
+    /// Train the readout layer using matrix ridge regression (closed-form).
+    ///
+    /// Implements W_out = Y * X^T * (X * X^T + lambda * I)^{-1} using CPU solve.
+    /// Uses `solve_f64_cpu` from linalg for the matrix solve (ESN matrices are small).
+    ///
+    /// # Arguments
+    ///
+    /// * `states` - State matrix (reservoir_size × n_samples), row-major
+    /// * `targets` - Target matrix (output_size × n_samples), row-major
+    /// * `lambda` - Ridge regularization parameter (> 0)
+    pub fn train_ridge_regression(
+        &mut self,
+        states: &[f64],
+        targets: &[f64],
+        lambda: f64,
+    ) -> BarracudaResult<()> {
+        let n = self.config.reservoir_size;
+        let m = self.config.output_size;
+
+        if states.is_empty() {
+            return Err(BarracudaError::InvalidInput {
+                message: "States cannot be empty".to_string(),
+            });
+        }
+        if !states.len().is_multiple_of(n) {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "States length {} must be divisible by reservoir_size {}",
+                    states.len(),
+                    n
+                ),
+            });
+        }
+        let n_samples = states.len() / n;
+        expect_size("Targets", m * n_samples, targets.len())?;
+
+        if lambda <= 0.0 {
+            return Err(BarracudaError::InvalidInput {
+                message: "Lambda must be positive".to_string(),
+            });
+        }
+
+        let x = states;
+        let y = targets;
+
+        let mut m_mat = vec![0.0; n * n];
+        for i in 0..n {
+            for j in 0..n {
+                let mut sum = 0.0;
+                for k in 0..n_samples {
+                    sum += x[i * n_samples + k] * x[j * n_samples + k];
+                }
+                m_mat[i * n + j] = sum;
+            }
+            m_mat[i * n + i] += lambda;
+        }
+
+        let mut b_mat = vec![0.0; n * m];
+        for i in 0..n {
+            for j in 0..m {
+                let mut sum = 0.0;
+                for k in 0..n_samples {
+                    sum += x[i * n_samples + k] * y[j * n_samples + k];
+                }
+                b_mat[i * m + j] = sum;
+            }
+        }
+
+        let mut w_out_t = vec![0.0; n * m];
+        for j in 0..m {
+            let b_col: Vec<f64> = (0..n).map(|i| b_mat[i * m + j]).collect();
+            let w_col = solve_f64_cpu(&m_mat, &b_col, n)?;
+            for (i, &w) in w_col.iter().enumerate() {
+                w_out_t[i * m + j] = w;
+            }
+        }
+
+        let w_out_f32: Vec<f32> = w_out_t.iter().map(|&x| x as f32).collect();
+        self.w_out = Some(Tensor::from_data(
+            &w_out_f32,
+            vec![n, m],
+            self.device.clone(),
+        )?);
+        self.trained = true;
+
+        Ok(())
+    }
+
     /// Solve ridge regression using gradient descent
     async fn ridge_regression_solve(
         &self,
@@ -319,12 +408,13 @@ impl ESN {
     /// applies affine quantization, and returns `NpuReadoutWeights` suitable
     /// for NPU deployment (e.g. Akida AKD1000 FC layer).
     pub fn to_npu_weights(&self) -> BarracudaResult<NpuReadoutWeights> {
-        let w_out = self.w_out.as_ref().ok_or_else(|| {
-            crate::error::BarracudaError::InvalidOperation {
-                op: "ESN::to_npu_weights".to_string(),
-                reason: "ESN has not been trained yet — call train() first".to_string(),
-            }
-        })?;
+        let w_out =
+            self.w_out
+                .as_ref()
+                .ok_or_else(|| crate::error::BarracudaError::InvalidOperation {
+                    op: "ESN::to_npu_weights".to_string(),
+                    reason: "ESN has not been trained yet — call train() first".to_string(),
+                })?;
 
         let w_out_f32 = w_out.to_vec()?;
         let w_out_f64: Vec<f64> = w_out_f32.iter().map(|&x| f64::from(x)).collect();
@@ -674,6 +764,81 @@ mod tests {
         let config = ESNConfig::default();
         let esn = ESN::new(config).await.unwrap();
         assert!(esn.to_npu_weights().is_err());
+    }
+
+    #[tokio::test]
+    async fn test_esn_train_ridge_regression_linear() {
+        let config = ESNConfig {
+            input_size: 1,
+            reservoir_size: 4,
+            output_size: 1,
+            ..Default::default()
+        };
+
+        let mut esn = ESN::new(config).await.unwrap();
+
+        let n_samples = 10;
+        let mut states = vec![0.0; 4 * n_samples];
+        let mut targets = vec![0.0; 1 * n_samples];
+        for k in 0..n_samples {
+            let x = k as f64 * 0.5;
+            states[0 * n_samples + k] = 1.0;
+            states[1 * n_samples + k] = x;
+            states[2 * n_samples + k] = x * x;
+            states[3 * n_samples + k] = x * x * x;
+            targets[k] = 2.0 + 3.0 * x;
+        }
+
+        esn.train_ridge_regression(&states, &targets, 1e-6).unwrap();
+        assert!(esn.is_trained());
+
+        let w = esn.w_out.as_ref().unwrap().to_vec().unwrap();
+        assert_eq!(w.len(), 4);
+        assert!((w[0] - 2.0).abs() < 0.1);
+        assert!((w[1] - 3.0).abs() < 0.1);
+    }
+
+    #[tokio::test]
+    async fn test_esn_train_ridge_regression_regularization() {
+        let config = ESNConfig {
+            input_size: 1,
+            reservoir_size: 5,
+            output_size: 1,
+            ..Default::default()
+        };
+
+        let mut esn_small = ESN::new(config.clone()).await.unwrap();
+        let mut esn_large = ESN::new(config).await.unwrap();
+
+        let n_samples = 8;
+        let mut states = vec![0.0; 5 * n_samples];
+        let mut targets = vec![0.0; n_samples];
+        for k in 0..n_samples {
+            for i in 0..5 {
+                states[i * n_samples + k] = (k as f64 + i as f64) * 0.1;
+            }
+            targets[k] = (k as f64) * 0.2;
+        }
+
+        esn_small
+            .train_ridge_regression(&states, &targets, 1e-6)
+            .unwrap();
+        esn_large
+            .train_ridge_regression(&states, &targets, 10.0)
+            .unwrap();
+
+        let w_small = esn_small.w_out.as_ref().unwrap().to_vec().unwrap();
+        let w_large = esn_large.w_out.as_ref().unwrap().to_vec().unwrap();
+
+        let norm_small: f32 = w_small.iter().map(|x| x * x).sum::<f32>().sqrt();
+        let norm_large: f32 = w_large.iter().map(|x| x * x).sum::<f32>().sqrt();
+
+        assert!(
+            norm_large < norm_small,
+            "Larger lambda should produce smaller weights: {} < {}",
+            norm_large,
+            norm_small
+        );
     }
 
     #[tokio::test]

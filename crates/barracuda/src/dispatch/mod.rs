@@ -69,6 +69,7 @@ pub use benchmark::{
     BenchmarkConfig, BenchmarkResult, BenchmarkSuite, OperationBenchmark, ThresholdResult,
 };
 pub use config::{
-    dispatch_for, dispatch_with_config, global_config, Dispatch, DispatchConfig, DispatchTarget,
+    batch_fitness_substrate, dispatch_for, dispatch_with_config, global_config, hmm_substrate,
+    ode_substrate, pairwise_substrate, spatial_substrate, Dispatch, DispatchConfig, DispatchTarget,
     DEFAULT_THRESHOLD,
 };

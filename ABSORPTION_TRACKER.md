@@ -1,6 +1,6 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: February 23, 2026 (Session 51)
+**Date**: February 24, 2026 (Session 52)
 **Sources**: hotSpring V067, neuralSpring V16/S48, wetSpring V16-V022, wateringHole standards
 
 ---
@@ -55,7 +55,7 @@
 | `eigensolver` | eigh_gpu, disorder_sweep_gpu |
 
 **Target**: Wire into `barracuda::dispatch` or `barracuda::ops` as appropriate
-**Status**: PENDING (S51 note: ops are neuralSpring-local dispatch wrappers around existing barracuda primitives; no new shaders needed, just dispatch routing)
+**Status**: PARTIAL (S52) -- Domain-specific dispatch heuristics absorbed into `barracuda::dispatch` (M-009). Remaining: wire individual op wrappers (these are thin dispatch wrappers around existing barracuda primitives)
 
 ---
 
@@ -135,7 +135,7 @@ to `solve_f64` so callers can use CPU path when device is `None`.
 | `argmax_dim(axis)` | Index-of-max for Viterbi | TOADSTOOL_HANDOFF L364 |
 | `softmax_dim(axis)` | Row-wise softmax for attention | TOADSTOOL_HANDOFF L368 |
 
-**Status**: PENDING
+**Status**: DONE (S52) -- `argmax_dim(axis)` returns `Tensor` of u32 indices, `softmax_dim(axis)` with numerical stability. 8 tests.
 
 ---
 
@@ -153,7 +153,7 @@ before TA projection), not the incorrect `F = TA(M)`.
 Wire `Conv2D`, `MaxPool2D`, `AvgPool2D` shaders to `GpuExecutor` with stride/padding/channels/batch.
 Enables full LeNet-5 GPU validation for neuralSpring.
 
-**Status**: PENDING
+**Status**: DONE (S52) -- `GpuExecutor::execute()` now routes Conv2D/MaxPool2D/AvgPool2D through GPU via existing `Tensor::conv2d()`/`maxpool2d()`/`avgpool2d()` for single-channel 2D inputs; multi-channel/batched falls back to CPU
 
 ---
 
@@ -163,7 +163,7 @@ Replace `mha_projection.wgsl` with `matmul` + `head_split.wgsl`.
 Replace `mha_output.wgsl` with `head_concat.wgsl` + `matmul`.
 Retire `evolved::mha` after full native MHA validation.
 
-**Status**: PENDING (blocked on H-004 shader absorption)
+**Status**: N/A (S52) -- No `evolved` module exists in barracuda. Native MHA (`Tensor::multi_head_attention()`) already uses `mha_projection.wgsl` and `mha_output.wgsl` with `head_split`/`head_concat` available natively. neuralSpring would simply call barracuda's native MHA.
 
 ---
 
@@ -181,7 +181,7 @@ Re-export at crate root to simplify deep import paths:
 
 Add `FlatTree::from_newick()` and `FlatTree::from_edges()` with automatic level computation.
 
-**Status**: PENDING
+**Status**: DONE (S52) -- `from_newick(&str)` parses Newick format with branch lengths, `from_edges(&[(usize, usize, f64)])` builds from edge list. Both compute level ordering automatically. 8 tests.
 
 ---
 
@@ -197,7 +197,7 @@ Add convenience dot-product method.
 
 `W_out = Y * X^T * (X * X^T + lambda * I)^{-1}` for proper readout training.
 
-**Status**: PENDING
+**Status**: DONE (S52) -- `ESN::train_ridge_regression(states, targets, lambda)` using `solve_f64_cpu()`. 2 tests (linear fit + regularization effect).
 
 ---
 
@@ -206,10 +206,10 @@ Add convenience dot-product method.
 | Component | Source | Target |
 |-----------|--------|--------|
 | `MixedSubstrate` enum | `metalForge/mixed.rs` | `barracuda::unified_hardware` |
-| `PcieBridge` + P2P | `metalForge/pcie_bridge.rs` | `barracuda::unified_hardware::transfer` |
+| `PcieBridge` + P2P | `metalForge/pcie_bridge.rs` | `barracuda::unified_hardware` |
 | Dispatch heuristics | `metalForge/` | `barracuda::dispatch` |
 
-**Status**: PENDING
+**Status**: DONE (S52) -- `MixedSubstrate`, `TransferCost`, `PcieBridge` added to `unified_hardware.rs`. Domain-specific dispatch (`pairwise_substrate`, `batch_fitness_substrate`, `ode_substrate`, `hmm_substrate`, `spatial_substrate`) added to `dispatch/config.rs`. 11 tests.
 
 ---
 
@@ -218,23 +218,23 @@ Add convenience dot-product method.
 24+ GPU validation tolerances in neuralSpring's `tolerances/registry.rs`.
 Consider adding `barracuda::tolerances` module with centralized physical-justification constants.
 
-**Status**: PENDING
+**Status**: DONE (S52) -- `barracuda::tolerances` module with `Tolerance` struct, `check()` helper, and 12 constants across linalg/reduction/bio/special domains. 6 tests.
 
 ---
 
 ## LOW PRIORITY
 
-| ID | Item | Source |
-|----|------|--------|
-| L-001 | Screened Coulomb eigensolve (Sturm) | hotSpring `physics/screened_coulomb.rs` |
-| L-002 | GPU ESN reservoir update shaders | wetSpring V17 |
-| L-003 | `chi_squared_f64` test primitive | wetSpring V18 |
-| L-004 | `GpuSession` builder API (pre-warmed) | wetSpring V16 |
-| L-005 | Cross-spring provenance tags (`@origin`/`@absorbed`) | wetSpring V18 |
-| L-006 | FST variance decomposition shader | neuralSpring PURE_GPU_ROADMAP |
-| L-007 | Anderson transport/conductance primitives | wetSpring V20 |
-| L-008 | NCBI data cache module | wetSpring V19 |
-| L-009 | `swarm_nn_scores.wgsl` | neuralSpring |
+| ID | Item | Source | Status |
+|----|------|--------|--------|
+| L-001 | Screened Coulomb eigensolve (Sturm) | hotSpring `physics/screened_coulomb.rs` | DONE (S52) -- `screened_coulomb_eigenvalues()` with radial grid + Sturm bisection, 6 tests |
+| L-002 | GPU ESN reservoir update shaders | wetSpring V17 | DONE (S52) -- `esn_reservoir_update_f64.wgsl` WGSL shader + `include_str!()`, naga compile test |
+| L-003 | `chi_squared_f64` test primitive | wetSpring V18 | DONE (S52) -- alias for existing `chi_squared_statistic`, 1 test |
+| L-004 | `GpuSession` builder API (pre-warmed) | wetSpring V16 | DONE (S52) -- `GpuSessionBuilder` with `pre_warm()`, `max_concurrent()`, `device()`, warmup via `WarmupConfig`, 2 tests |
+| L-005 | Cross-spring provenance tags (`@origin`/`@absorbed`) | wetSpring V18 | DONE (S52) -- `barracuda::provenance` module with 12 `ProvenanceTag` consts + `ALL_TAGS`, 3 tests |
+| L-006 | FST variance decomposition | neuralSpring PURE_GPU_ROADMAP | DONE (S52) -- `fst_variance_decomposition()` Weir-Cockerham estimator + `FstResult`, 7 tests |
+| L-007 | Anderson transport/conductance primitives | wetSpring V20 | DONE (S52) -- `anderson_conductance()` + `localization_length()` in `special::anderson_transport`, 5 tests |
+| L-008 | NCBI data cache module | wetSpring V19 | DONE (S52) -- `NcbiCache` with XDG paths, path traversal prevention, store/load/clear, 6 tests |
+| L-009 | `swarm_nn_scores.wgsl` | neuralSpring | DONE (S52) -- shader copied to `shaders/bio/`, wired via `include_str!()` in `ops/bio/swarm_nn.rs` |
 
 ---
 
@@ -269,5 +269,12 @@ Consider adding `barracuda::tolerances` module with centralized physical-justifi
 
 ---
 
-*Updated: February 23, 2026 -- Session 51*
-*Next review: After HIGH items absorbed*
+## S52 Session Summary
+
+**New implementations**: 18 items completed (M-001, M-003, M-004, M-006, M-008, M-009, M-010, L-001 through L-009)
+**New tests**: 103 tests added across all absorption items
+**Quality**: 0 clippy warnings, cargo fmt clean, all new tests passing
+**Remaining**: H-002 (GPU-resident CG Rust pipelines — needs GPU integration testing), H-003 (neuralSpring dispatch wrappers — thin wrappers around existing primitives)
+
+*Updated: February 24, 2026 -- Session 52*
+*Next review: H-002 and H-003 when GPU integration testing is available*

@@ -21,6 +21,10 @@ pub const WGSL_SWARM_NN_FORWARD: &str = include_str!("../../shaders/bio/swarm_nn
 pub const WGSL_SWARM_NN_FORWARD_F64: &str =
     include_str!("../../shaders/bio/swarm_nn_forward_f64.wgsl");
 
+/// Max activation output for mean_reduce chaining (Paper 015, L-009).
+/// Outputs f32 scores per (controller, eval) — different from forward which outputs u32 actions.
+pub const WGSL_SWARM_NN_SCORES: &str = include_str!("../../shaders/bio/swarm_nn_scores.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SwarmNnParams {

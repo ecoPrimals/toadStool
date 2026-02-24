@@ -38,10 +38,12 @@
 //! Absorbed from `neuralSpring` handoffs S-01 and S-11 (Feb 2026).
 
 mod dispatch;
+mod gpu_session;
 mod pipelines;
 mod tensor;
 mod types;
 
+pub use gpu_session::{GpuSession, GpuSessionBuilder};
 pub use tensor::SessionTensor;
 
 use crate::device::capabilities::DeviceCapabilities;

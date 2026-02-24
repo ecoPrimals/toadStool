@@ -77,7 +77,6 @@ pub fn solve_f64(device: Arc<WgpuDevice>, a: &[f64], b: &[f64], n: usize) -> Res
 /// # Returns
 ///
 /// Solution vector x, or error if matrix is singular or inputs are invalid.
-#[must_use]
 pub fn solve_f64_cpu(a: &[f64], b: &[f64], n: usize) -> Result<Vec<f64>> {
     if a.len() != n * n {
         return Err(BarracudaError::InvalidInput {

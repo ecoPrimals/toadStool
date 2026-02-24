@@ -1,6 +1,6 @@
 # ToadStool + BarraCuda -- Quick Status
 
-**Date**: February 23, 2026 (Session 50)
+**Date**: February 24, 2026 (Session 52)
 
 ---
 
@@ -177,4 +177,4 @@ cargo llvm-cov --lib -p toadstool-common --json
 
 ---
 
-**Last Updated**: February 23, 2026 -- Session 50: Deep audit remediation. Coverage 73% → 84.33% (+1,100 tests, 4,009 total), zero clippy across entire workspace, zero blind unwraps in production, cargo-deny licenses/bans/sources all passing, zero hardcoded ports/URLs, all 2,614 files <1000 lines, 12 large files refactored, mocks isolated to test, unsafe reduced with temp_env, mock server infrastructure for integration testing.
+**Last Updated**: February 24, 2026 -- Session 52: Cross-spring absorption complete. 18 items absorbed (M-001 through M-010, L-001 through L-009). +103 new tests. New modules: tolerances, provenance, anderson_transport, screened_coulomb, fst_variance, ncbi_cache, tensor_axis_ops, gpu_session. MixedSubstrate + domain dispatch from neuralSpring. Conv2D/Pool wired to GPU. ESN ridge regression + NPU export. Zero clippy warnings.

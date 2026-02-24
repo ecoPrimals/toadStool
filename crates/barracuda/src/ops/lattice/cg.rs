@@ -21,8 +21,10 @@ pub const WGSL_CG_KERNELS_F64: &str = include_str!("../../shaders/lattice/cg_ker
 // GPU-resident CG shaders (alpha/beta on GPU, no per-iteration readback).
 // Absorbed from hotSpring lattice QCD (Feb 2026).
 pub const WGSL_SUM_REDUCE_F64: &str = include_str!("../../shaders/lattice/sum_reduce_f64.wgsl");
-pub const WGSL_CG_COMPUTE_ALPHA_F64: &str = include_str!("../../shaders/lattice/cg_compute_alpha_f64.wgsl");
-pub const WGSL_CG_COMPUTE_BETA_F64: &str = include_str!("../../shaders/lattice/cg_compute_beta_f64.wgsl");
+pub const WGSL_CG_COMPUTE_ALPHA_F64: &str =
+    include_str!("../../shaders/lattice/cg_compute_alpha_f64.wgsl");
+pub const WGSL_CG_COMPUTE_BETA_F64: &str =
+    include_str!("../../shaders/lattice/cg_compute_beta_f64.wgsl");
 pub const WGSL_CG_UPDATE_XR_F64: &str = include_str!("../../shaders/lattice/cg_update_xr_f64.wgsl");
 pub const WGSL_CG_UPDATE_P_F64: &str = include_str!("../../shaders/lattice/cg_update_p_f64.wgsl");
 

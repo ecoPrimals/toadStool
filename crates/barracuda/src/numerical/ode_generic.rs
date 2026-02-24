@@ -310,8 +310,8 @@ impl<S: OdeSystem> BatchedOdeRK4<S> {
 
                 let sixth = 1.0 / 6.0;
                 for i in 0..n_vars {
-                    state[s_off + i] = y[i]
-                        + dt * sixth * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
+                    state[s_off + i] =
+                        y[i] + dt * sixth * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
                 }
             }
             t += dt;
@@ -369,14 +369,9 @@ mod tests {
         let initial = vec![1.0];
         let params = vec![k];
 
-        let result = BatchedOdeRK4::<ExponentialDecay>::integrate_cpu(
-            &initial,
-            &params,
-            dt,
-            n_steps,
-            1,
-        )
-        .expect("integrate_cpu should succeed");
+        let result =
+            BatchedOdeRK4::<ExponentialDecay>::integrate_cpu(&initial, &params, dt, n_steps, 1)
+                .expect("integrate_cpu should succeed");
 
         let expected = (-k * t_final).exp();
         assert!(
@@ -390,18 +385,13 @@ mod tests {
     #[test]
     fn test_exponential_decay_batched() {
         let initial = vec![1.0, 2.0]; // 2 batches
-        let params = vec![1.0, 0.5];  // k=1 and k=0.5
+        let params = vec![1.0, 0.5]; // k=1 and k=0.5
         let dt = 0.01;
         let n_steps = 100;
 
-        let result = BatchedOdeRK4::<ExponentialDecay>::integrate_cpu(
-            &initial,
-            &params,
-            dt,
-            n_steps,
-            2,
-        )
-        .expect("integrate_cpu should succeed");
+        let result =
+            BatchedOdeRK4::<ExponentialDecay>::integrate_cpu(&initial, &params, dt, n_steps, 2)
+                .expect("integrate_cpu should succeed");
 
         let expected_0 = (-1.0_f64).exp();
         let expected_1 = 2.0 * (-0.5_f64).exp();
@@ -432,8 +422,7 @@ mod tests {
 
     #[test]
     fn test_generated_wgsl_compiles() {
-        let Some(device) =
-            crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
         else {
             return;
         };
@@ -445,13 +434,8 @@ mod tests {
     fn test_integrate_cpu_invalid_initial_states_len() {
         let initial = vec![1.0, 2.0, 3.0]; // wrong size for batch_size=1
         let params = vec![1.0];
-        let result = BatchedOdeRK4::<ExponentialDecay>::integrate_cpu(
-            &initial,
-            &params,
-            0.01,
-            10,
-            1,
-        );
+        let result =
+            BatchedOdeRK4::<ExponentialDecay>::integrate_cpu(&initial, &params, 0.01, 10, 1);
         assert!(result.is_err());
     }
 
@@ -459,13 +443,8 @@ mod tests {
     fn test_integrate_cpu_invalid_params_len() {
         let initial = vec![1.0];
         let params = vec![1.0, 2.0]; // wrong size for batch_size=1
-        let result = BatchedOdeRK4::<ExponentialDecay>::integrate_cpu(
-            &initial,
-            &params,
-            0.01,
-            10,
-            1,
-        );
+        let result =
+            BatchedOdeRK4::<ExponentialDecay>::integrate_cpu(&initial, &params, 0.01, 10, 1);
         assert!(result.is_err());
     }
 }

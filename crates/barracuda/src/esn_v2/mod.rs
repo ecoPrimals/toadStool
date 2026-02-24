@@ -41,7 +41,30 @@ pub const WGSL_ESN_READOUT: &str = include_str!("../shaders/ml/esn_readout.wgsl"
 
 /// f64 version of the reservoir update for universal math library portability.
 pub const WGSL_ESN_RESERVOIR_UPDATE_F64: &str =
-    include_str!("../shaders/ml/esn_reservoir_update_f64.wgsl");
+    include_str!("../shaders/esn/esn_reservoir_update_f64.wgsl");
 
 /// f64 version of the readout for universal math library portability.
 pub const WGSL_ESN_READOUT_F64: &str = include_str!("../shaders/ml/esn_readout_f64.wgsl");
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn esn_reservoir_update_f64_shader_contains_main() {
+        assert!(WGSL_ESN_RESERVOIR_UPDATE_F64.contains("fn main"));
+        assert!(WGSL_ESN_RESERVOIR_UPDATE_F64.contains("f64"));
+    }
+
+    #[test]
+    fn esn_reservoir_update_f64_shader_compiles_via_naga() {
+        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available_sync()
+        else {
+            return;
+        };
+        device.compile_shader_f64(
+            WGSL_ESN_RESERVOIR_UPDATE_F64,
+            Some("esn_reservoir_update_f64"),
+        );
+    }
+}

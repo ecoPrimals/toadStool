@@ -254,6 +254,13 @@ pub fn chi_squared_mode(k: f64) -> f64 {
 /// let chi2 = chi_squared_statistic(&observed, &expected)?;
 /// # Ok::<(), barracuda::error::BarracudaError>(())
 /// ```
+/// Chi-squared statistic (alias: absorption L-003).
+///
+/// Same as `chi_squared_statistic`; provided for primal compatibility.
+pub fn chi_squared_f64(observed: &[f64], expected: &[f64]) -> Result<f64> {
+    chi_squared_statistic(observed, expected)
+}
+
 pub fn chi_squared_statistic(observed: &[f64], expected: &[f64]) -> Result<f64> {
     if observed.len() != expected.len() {
         return Err(BarracudaError::InvalidInput {
@@ -401,6 +408,19 @@ mod tests {
         assert_eq!(chi_squared_mean(k), 5.0);
         assert_eq!(chi_squared_variance(k), 10.0);
         assert_eq!(chi_squared_mode(k), 3.0);
+    }
+
+    #[test]
+    fn test_chi_squared_f64_alias() {
+        // L-003: chi_squared_f64 matches chi_squared_statistic
+        let observed = vec![16.0, 18.0, 16.0, 14.0, 12.0, 12.0];
+        let expected = vec![14.67, 14.67, 14.67, 14.67, 14.67, 14.67];
+        let via_f64 = chi_squared_f64(&observed, &expected).unwrap();
+        let via_stat = chi_squared_statistic(&observed, &expected).unwrap();
+        assert!((via_f64 - via_stat).abs() < 1e-14);
+        // Known: fair die (obs=exp) gives chi²=0
+        let fair = chi_squared_f64(&[10.0; 6], &[10.0; 6]).unwrap();
+        assert!((fair - 0.0).abs() < 1e-14);
     }
 
     #[test]

@@ -226,6 +226,65 @@ pub fn dispatch_for(operation: &str, input_size: usize) -> DispatchTarget {
     }
 }
 
+// -----------------------------------------------------------------------------
+// Domain-specific dispatch heuristics (M-009, from neuralSpring metalForge)
+// -----------------------------------------------------------------------------
+
+/// Recommend GPU vs CPU for pairwise distance computation.
+#[must_use]
+pub const fn pairwise_substrate(n_items: usize, item_dim: usize) -> DispatchTarget {
+    let n_pairs = n_items.saturating_mul(n_items.saturating_sub(1)) / 2;
+    let estimated_work = n_pairs * item_dim;
+    if estimated_work > 500_000 {
+        DispatchTarget::Gpu
+    } else {
+        DispatchTarget::Cpu
+    }
+}
+
+/// Recommend GPU vs CPU for batch fitness evaluation.
+#[must_use]
+pub const fn batch_fitness_substrate(pop_size: usize, genome_len: usize) -> DispatchTarget {
+    let total_work = pop_size * genome_len;
+    if total_work > 50_000 {
+        DispatchTarget::Gpu
+    } else {
+        DispatchTarget::Cpu
+    }
+}
+
+/// Recommend GPU vs CPU for parallel ODE integration.
+#[must_use]
+pub const fn ode_substrate(n_systems: usize, n_steps: usize) -> DispatchTarget {
+    let total_work = n_systems * n_steps;
+    if total_work > 10_000 {
+        DispatchTarget::Gpu
+    } else {
+        DispatchTarget::Cpu
+    }
+}
+
+/// Recommend GPU vs CPU for HMM forward pass.
+#[must_use]
+pub const fn hmm_substrate(n_states: usize, n_observations: usize) -> DispatchTarget {
+    let total_work = n_states * n_observations;
+    if total_work > 5_000 {
+        DispatchTarget::Gpu
+    } else {
+        DispatchTarget::Cpu
+    }
+}
+
+/// Recommend GPU vs CPU for spatial payoff (game theory grid).
+#[must_use]
+pub const fn spatial_substrate(grid_cells: usize) -> DispatchTarget {
+    if grid_cells > 4_000 {
+        DispatchTarget::Gpu
+    } else {
+        DispatchTarget::Cpu
+    }
+}
+
 /// Decide dispatch target using custom config
 pub fn dispatch_with_config(
     config: &DispatchConfig,
@@ -411,5 +470,56 @@ mod tests {
             default_config.threshold("matmul")
         );
         assert_eq!(new_config.has_gpu(), default_config.has_gpu());
+    }
+
+    // Domain-specific dispatch heuristics (M-009)
+    #[test]
+    fn test_pairwise_substrate_small_uses_cpu() {
+        assert_eq!(pairwise_substrate(20, 500), DispatchTarget::Cpu);
+    }
+
+    #[test]
+    fn test_pairwise_substrate_large_uses_gpu() {
+        assert_eq!(pairwise_substrate(200, 1000), DispatchTarget::Gpu);
+    }
+
+    #[test]
+    fn test_batch_fitness_substrate_small_uses_cpu() {
+        assert_eq!(batch_fitness_substrate(100, 10), DispatchTarget::Cpu);
+    }
+
+    #[test]
+    fn test_batch_fitness_substrate_large_uses_gpu() {
+        assert_eq!(batch_fitness_substrate(50_000, 64), DispatchTarget::Gpu);
+    }
+
+    #[test]
+    fn test_ode_substrate_small_uses_cpu() {
+        assert_eq!(ode_substrate(10, 100), DispatchTarget::Cpu);
+    }
+
+    #[test]
+    fn test_ode_substrate_large_uses_gpu() {
+        assert_eq!(ode_substrate(1000, 2000), DispatchTarget::Gpu);
+    }
+
+    #[test]
+    fn test_hmm_substrate_small_uses_cpu() {
+        assert_eq!(hmm_substrate(3, 100), DispatchTarget::Cpu);
+    }
+
+    #[test]
+    fn test_hmm_substrate_large_uses_gpu() {
+        assert_eq!(hmm_substrate(3, 5000), DispatchTarget::Gpu);
+    }
+
+    #[test]
+    fn test_spatial_substrate_small_uses_cpu() {
+        assert_eq!(spatial_substrate(100), DispatchTarget::Cpu);
+    }
+
+    #[test]
+    fn test_spatial_substrate_large_uses_gpu() {
+        assert_eq!(spatial_substrate(10_000), DispatchTarget::Gpu);
     }
 }

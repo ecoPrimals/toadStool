@@ -5,7 +5,27 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 23, 2026 (Sessions 43-50 — Deep Debt Evolution)
+## [Unreleased] - February 24, 2026 (Sessions 43-52 — Deep Debt Evolution + Cross-Spring Absorption)
+
+### Session 52 (Feb 24, 2026) — Complete Cross-Spring Absorption
+
+- **18 absorption items completed**: All MEDIUM (M-001 through M-010) and LOW (L-001 through L-009) items from the absorption tracker
+- **Tensor API**: `argmax_dim(axis)` and `softmax_dim(axis)` for Viterbi decoding and attention layers (8 tests)
+- **Conv2D/Pool GPU wiring**: `GpuExecutor` now routes Conv2D/MaxPool2D/AvgPool2D through GPU shaders instead of CPU fallback
+- **FlatTree constructors**: `from_newick()` and `from_edges()` with automatic level ordering (8 tests)
+- **ESN ridge regression**: `train_ridge_regression()` using `solve_f64_cpu()` for proper readout training
+- **Mixed-hardware infrastructure**: `MixedSubstrate`, `TransferCost`, `PcieBridge` from neuralSpring metalForge; domain-specific dispatch heuristics (11 tests)
+- **Tolerance registry**: `barracuda::tolerances` with 12 physically-justified constants across linalg/reduction/bio/special domains
+- **Screened Coulomb eigensolve**: Sturm bisection on radial Schrödinger equation for Yukawa potential (6 tests)
+- **ESN reservoir update shader**: `esn_reservoir_update_f64.wgsl` WGSL shader for GPU reservoir updates
+- **FST variance decomposition**: Weir-Cockerham estimator for Wright's F-statistics (7 tests)
+- **Anderson transport**: Landauer conductance and Thouless localization length (5 tests)
+- **NCBI data cache**: XDG-compliant local cache with path traversal prevention (6 tests)
+- **GpuSession builder**: Pre-warmed GPU sessions with pipeline warmup (2 tests)
+- **Provenance tags**: 12 cross-spring origin tracking constants for traceability
+- **swarm_nn_scores.wgsl**: Absorbed from neuralSpring metalForge
+- **chi_squared_f64**: Alias for existing chi-squared statistic
+- **Quality**: 0 clippy warnings, +103 new tests, all passing
 
 ### Session 50 (Feb 23, 2026) — Deep Audit Remediation
 

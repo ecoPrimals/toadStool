@@ -70,6 +70,7 @@
 //! - DLMF: Digital Library of Mathematical Functions (<https://dlmf.nist.gov>)
 
 // Core special functions (CPU f64)
+pub mod anderson_transport;
 pub mod bessel;
 pub mod chi_squared;
 pub mod erf;
@@ -78,12 +79,15 @@ pub mod gamma;
 pub mod hermite;
 pub mod laguerre;
 pub mod legendre;
+pub mod screened_coulomb;
 
 // Re-export CPU functions
+pub use anderson_transport::{anderson_conductance, localization_length};
 pub use bessel::{bessel_i0, bessel_j0, bessel_j1, bessel_k0};
 pub use chi_squared::{
-    chi_squared_cdf, chi_squared_mean, chi_squared_mode, chi_squared_pdf, chi_squared_quantile,
-    chi_squared_sf, chi_squared_statistic, chi_squared_test, chi_squared_variance,
+    chi_squared_cdf, chi_squared_f64, chi_squared_mean, chi_squared_mode, chi_squared_pdf,
+    chi_squared_quantile, chi_squared_sf, chi_squared_statistic, chi_squared_test,
+    chi_squared_variance,
 };
 pub use erf::{erf, erfc};
 pub use factorial::factorial;
@@ -94,6 +98,7 @@ pub use gamma::{
 pub use hermite::hermite;
 pub use laguerre::{laguerre, laguerre_all, laguerre_simple};
 pub use legendre::{assoc_legendre, legendre};
+pub use screened_coulomb::screened_coulomb_eigenvalues;
 
 // Re-export GPU ops for batch processing
 pub use crate::ops::bessel_i0_wgsl::BesselI0 as BesselI0Gpu;

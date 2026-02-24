@@ -582,6 +582,124 @@ impl TensorStorage for CpuTensorStorageSimple {
     }
 }
 
+// =============================================================================
+// Mixed-Hardware Infrastructure (M-009) — MixedSubstrate, TransferCost, PcieBridge
+// =============================================================================
+
+/// Mixed dispatch substrate — cross-device routing for GPU ↔ NPU ↔ CPU.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MixedSubstrate {
+    GpuOnly,
+    CpuOnly,
+    NpuOnly,
+    GpuToCpu,
+    CpuToGpu,
+    GpuToNpu,
+    NpuToGpu,
+}
+
+/// Estimated transfer cost for cross-device data movement.
+#[derive(Debug, Clone, Copy)]
+pub struct TransferCost {
+    pub latency_us: f64,
+    pub bandwidth_gbps: f64,
+}
+
+impl TransferCost {
+    /// Estimate total transfer time in microseconds for given byte count.
+    #[must_use]
+    pub fn estimated_us(&self, bytes: usize) -> f64 {
+        self.latency_us + (bytes as f64) / (self.bandwidth_gbps * 1000.0)
+    }
+}
+
+/// PCIe 4.0 x16 bandwidth in GB/s.
+pub const PCIE4_X16_BANDWIDTH_GBPS: f64 = 31.5;
+
+/// Estimated latency for PCIe DMA transfer in microseconds.
+pub const PCIE_DMA_LATENCY_US: f64 = 5.0;
+
+/// Empirical GPU dispatch overhead in microseconds (queue submit + readback).
+pub const GPU_DISPATCH_OVERHEAD_US: f64 = 1500.0;
+
+/// Select optimal mixed substrate for a workload.
+///
+/// Uses a cost model: if compute dominates transfer, route to target;
+/// otherwise stay on source to avoid transfer overhead.
+#[must_use]
+pub fn mixed_substrate(
+    compute_us: f64,
+    data_bytes: usize,
+    source: HardwareType,
+    target: HardwareType,
+) -> MixedSubstrate {
+    if source == target {
+        return match source {
+            HardwareType::GPU => MixedSubstrate::GpuOnly,
+            HardwareType::CPU => MixedSubstrate::CpuOnly,
+            HardwareType::NPU => MixedSubstrate::NpuOnly,
+            _ => MixedSubstrate::CpuOnly,
+        };
+    }
+
+    let cost = TransferCost {
+        latency_us: PCIE_DMA_LATENCY_US,
+        bandwidth_gbps: PCIE4_X16_BANDWIDTH_GBPS,
+    };
+    let transfer_us = cost.estimated_us(data_bytes) + GPU_DISPATCH_OVERHEAD_US;
+
+    if compute_us > transfer_us {
+        match (source, target) {
+            (HardwareType::GPU, HardwareType::CPU) => MixedSubstrate::GpuToCpu,
+            (HardwareType::CPU, HardwareType::GPU) => MixedSubstrate::CpuToGpu,
+            (HardwareType::GPU, HardwareType::NPU) => MixedSubstrate::GpuToNpu,
+            (HardwareType::NPU, HardwareType::GPU) => MixedSubstrate::NpuToGpu,
+            _ => match source {
+                HardwareType::GPU => MixedSubstrate::GpuOnly,
+                HardwareType::NPU => MixedSubstrate::NpuOnly,
+                _ => MixedSubstrate::CpuOnly,
+            },
+        }
+    } else {
+        match source {
+            HardwareType::GPU => MixedSubstrate::GpuOnly,
+            HardwareType::CPU => MixedSubstrate::CpuOnly,
+            HardwareType::NPU => MixedSubstrate::NpuOnly,
+            _ => MixedSubstrate::CpuOnly,
+        }
+    }
+}
+
+/// PCIe bridge for GPU↔NPU transfer cost estimation.
+///
+/// Minimal implementation; real P2P detection is not yet available.
+pub struct PcieBridge {
+    pub p2p_available: bool,
+    pub source_label: String,
+    pub target_label: String,
+}
+
+impl PcieBridge {
+    /// Detect P2P capability. Returns false (safe default) until real detection is implemented.
+    #[must_use]
+    pub fn detect_p2p() -> Self {
+        Self {
+            p2p_available: false,
+            source_label: "unknown".to_string(),
+            target_label: "unknown".to_string(),
+        }
+    }
+
+    /// Estimate transfer cost for given byte count.
+    #[must_use]
+    pub fn transfer_cost(&self, _bytes: usize) -> TransferCost {
+        TransferCost {
+            latency_us: PCIE_DMA_LATENCY_US,
+            bandwidth_gbps: PCIE4_X16_BANDWIDTH_GBPS,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -608,5 +726,58 @@ mod tests {
         assert_eq!(cpu.name(), "CPU (Native)");
         assert_eq!(cpu.hardware_type(), HardwareType::CPU);
         assert!(cpu.capabilities().operations.matmul);
+    }
+
+    #[test]
+    fn test_mixed_substrate_same_device() {
+        assert_eq!(
+            mixed_substrate(100.0, 1024, HardwareType::GPU, HardwareType::GPU),
+            MixedSubstrate::GpuOnly
+        );
+        assert_eq!(
+            mixed_substrate(100.0, 1024, HardwareType::CPU, HardwareType::CPU),
+            MixedSubstrate::CpuOnly
+        );
+        assert_eq!(
+            mixed_substrate(100.0, 1024, HardwareType::NPU, HardwareType::NPU),
+            MixedSubstrate::NpuOnly
+        );
+    }
+
+    #[test]
+    fn test_mixed_substrate_small_compute_stays_on_source() {
+        // Small compute: transfer overhead dominates, stay on CPU
+        let sub = mixed_substrate(100.0, 1024, HardwareType::CPU, HardwareType::GPU);
+        assert_eq!(sub, MixedSubstrate::CpuOnly);
+    }
+
+    #[test]
+    fn test_mixed_substrate_large_compute_transfers_to_target() {
+        // Large compute: worth transferring CPU -> GPU
+        let sub = mixed_substrate(100_000.0, 1_048_576, HardwareType::CPU, HardwareType::GPU);
+        assert_eq!(sub, MixedSubstrate::CpuToGpu);
+    }
+
+    #[test]
+    fn test_mixed_substrate_gpu_to_cpu() {
+        let sub = mixed_substrate(100_000.0, 1_048_576, HardwareType::GPU, HardwareType::CPU);
+        assert_eq!(sub, MixedSubstrate::GpuToCpu);
+    }
+
+    #[test]
+    fn test_pcie_bridge_detect_p2p_returns_false() {
+        let bridge = PcieBridge::detect_p2p();
+        assert!(!bridge.p2p_available);
+        assert_eq!(bridge.source_label, "unknown");
+        assert_eq!(bridge.target_label, "unknown");
+    }
+
+    #[test]
+    fn test_pcie_bridge_transfer_cost() {
+        let bridge = PcieBridge::detect_p2p();
+        let cost = bridge.transfer_cost(1_048_576);
+        assert!(cost.latency_us > 0.0);
+        assert!(cost.bandwidth_gbps > 0.0);
+        assert!(cost.estimated_us(1_048_576) > cost.latency_us);
     }
 }

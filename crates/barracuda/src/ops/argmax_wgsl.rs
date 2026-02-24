@@ -404,13 +404,13 @@ impl Tensor {
         Argmax::new(self.clone(), None, false).execute()
     }
 
-    /// Find indices of maximum values along a dimension
+    /// Find indices of maximum values along a dimension (GPU/WGSL).
     ///
     /// # Arguments
     ///
     /// * `dim` - Dimension to find max along
     /// * `keepdim` - Whether to keep the reduced dimension with size 1
-    pub fn argmax_dim(&self, dim: usize, keepdim: bool) -> Result<Self> {
+    pub fn argmax_dim_keepdim(&self, dim: usize, keepdim: bool) -> Result<Self> {
         Argmax::new(self.clone(), Some(dim), keepdim).execute()
     }
 
@@ -482,7 +482,7 @@ mod tests {
         let data = vec![1.0, 5.0, 3.0, 2.0, 4.0, 6.0];
         let input = Tensor::new(data, vec![3, 2], device.clone());
 
-        let output = input.argmax_dim(0, true).unwrap();
+        let output = input.argmax_dim_keepdim(0, true).unwrap();
 
         assert_eq!(output.shape(), &[1, 2]); // Dimension kept
         let result = output.to_vec().unwrap();

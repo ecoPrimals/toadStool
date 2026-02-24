@@ -481,20 +481,186 @@ impl ComputeExecutor for GpuExecutor {
                 first
             }
 
-            // ── Convolution ops: CPU fallback (stride/padding/channels evolution needed)
-            // ops/conv2d.wgsl handles basic 2D conv (no stride/padding/batch/channels).
-            // Wire to GPU once the WGSL shaders support the full MathOp parameter set
-            // (stride, padding, dilation, groups, batch, channels) — tracked in DEBT.md.
-            MathOp::Conv2D { .. } | MathOp::MaxPool2D { .. } | MathOp::AvgPool2D { .. } => {
-                let cpu = CpuExecutor::new();
-                // Transfer inputs to CPU, execute, then transfer result back to GPU
-                let mut cpu_inputs = Vec::with_capacity(inputs.len());
-                for inp in &inputs {
-                    let on_cpu = cpu.transfer(inp.clone()).await?;
-                    cpu_inputs.push(on_cpu);
+            // ── Convolution ops (GPU via simple WGSL shaders) ───────────────────
+            // Simple shaders support single-channel 2D [H,W]. For NCHW with N=1,C=1
+            // we reshape; for stride/padding/dilation or multi-channel, fall back to CPU.
+            MathOp::Conv2D {
+                stride: (stride_h, stride_w),
+                padding: (pad_h, pad_w),
+                dilation: (dil_h, dil_w),
+                groups,
+            } => {
+                if inputs.len() < 2 {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: "Conv2D requires 2 inputs (input, kernel)".to_string(),
+                    });
                 }
-                let cpu_result = cpu.execute(op, cpu_inputs).await?;
-                return self.transfer(cpu_result).await;
+                let in_desc = inputs[0].descriptor();
+                let kernel_desc = inputs[1].descriptor();
+
+                let use_gpu = *groups == 1
+                    && *stride_h == 1
+                    && *stride_w == 1
+                    && *pad_h == 0
+                    && *pad_w == 0
+                    && *dil_h == 1
+                    && *dil_w == 1
+                    && in_desc.shape.len() >= 2
+                    && kernel_desc.shape.len() >= 2;
+
+                let input_2d = if use_gpu && in_desc.shape.len() == 4 {
+                    let (n, c, h, w) = (
+                        in_desc.shape[0],
+                        in_desc.shape[1],
+                        in_desc.shape[2],
+                        in_desc.shape[3],
+                    );
+                    if n == 1 && c == 1 {
+                        let k_shape = &kernel_desc.shape;
+                        let (c_out, k_c_in, k_h, k_w) = if k_shape.len() == 4 {
+                            (k_shape[0], k_shape[1], k_shape[2], k_shape[3])
+                        } else {
+                            (1, 1, k_shape[0], k_shape[1])
+                        };
+                        if c_out == 1 && k_c_in == 1 {
+                            Some((vec![h, w], vec![k_h, k_w]))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                } else if use_gpu && in_desc.shape.len() == 2 {
+                    let h = in_desc.shape[0];
+                    let w = in_desc.shape[1];
+                    let (k_h, k_w) = if kernel_desc.shape.len() == 2 {
+                        (kernel_desc.shape[0], kernel_desc.shape[1])
+                    } else {
+                        (kernel_desc.shape[2], kernel_desc.shape[3])
+                    };
+                    Some((vec![h, w], vec![k_h, k_w]))
+                } else {
+                    None
+                };
+
+                if let Some((in_shape, k_shape)) = input_2d {
+                    let input_t = build_tensor(&inputs[0], &self.device).await?;
+                    let kernel_t = build_tensor(&inputs[1], &self.device).await?;
+                    let input_2d_t = input_t.reshape(in_shape)?;
+                    let kernel_2d_t = kernel_t.reshape(k_shape)?;
+                    let out = input_2d_t.conv2d(&kernel_2d_t)?;
+                    if in_desc.shape.len() == 4 {
+                        out.reshape(vec![1, 1, out.shape()[0], out.shape()[1]])?
+                    } else {
+                        out
+                    }
+                } else {
+                    let cpu = CpuExecutor::new();
+                    let mut cpu_inputs = Vec::with_capacity(inputs.len());
+                    for inp in &inputs {
+                        let on_cpu = cpu.transfer(inp.clone()).await?;
+                        cpu_inputs.push(on_cpu);
+                    }
+                    let cpu_result = cpu.execute(op, cpu_inputs).await?;
+                    return self.transfer(cpu_result).await;
+                }
+            }
+
+            MathOp::MaxPool2D {
+                kernel_size: (k_h, k_w),
+                stride: (stride_h, stride_w),
+                padding: (pad_h, pad_w),
+            } => {
+                let in_desc = inputs[0].descriptor();
+                let use_gpu = *pad_h == 0
+                    && *pad_w == 0
+                    && *k_h == *k_w
+                    && *stride_h == *stride_w
+                    && in_desc.shape.len() >= 2;
+
+                let gpu_params = if use_gpu && in_desc.shape.len() == 4 {
+                    let (n, c, h, w) = (
+                        in_desc.shape[0],
+                        in_desc.shape[1],
+                        in_desc.shape[2],
+                        in_desc.shape[3],
+                    );
+                    if n == 1 && c == 1 {
+                        Some((vec![h, w], *k_h, *stride_h))
+                    } else {
+                        None
+                    }
+                } else if use_gpu && in_desc.shape.len() == 2 {
+                    Some((in_desc.shape.clone(), *k_h, *stride_h))
+                } else {
+                    None
+                };
+
+                if let Some((in_shape, pool_size, stride)) = gpu_params {
+                    let input_t = build_tensor(&inputs[0], &self.device).await?;
+                    let input_2d_t = input_t.reshape(in_shape)?;
+                    let out = input_2d_t.maxpool2d(pool_size, stride)?;
+                    if in_desc.shape.len() == 4 {
+                        out.reshape(vec![1, 1, out.shape()[0], out.shape()[1]])?
+                    } else {
+                        out
+                    }
+                } else {
+                    let cpu = CpuExecutor::new();
+                    let mut cpu_inputs = Vec::with_capacity(inputs.len());
+                    for inp in &inputs {
+                        let on_cpu = cpu.transfer(inp.clone()).await?;
+                        cpu_inputs.push(on_cpu);
+                    }
+                    let cpu_result = cpu.execute(op, cpu_inputs).await?;
+                    return self.transfer(cpu_result).await;
+                }
+            }
+
+            MathOp::AvgPool2D {
+                kernel_size: (k_h, k_w),
+                stride: (stride_h, stride_w),
+                padding: (pad_h, pad_w),
+            } => {
+                let in_desc = inputs[0].descriptor();
+                let use_gpu = *pad_h == 0
+                    && *pad_w == 0
+                    && *k_h == *k_w
+                    && *stride_h == *stride_w
+                    && in_desc.shape.len() >= 2;
+
+                let gpu_params = if use_gpu && in_desc.shape.len() == 4 {
+                    let (n, c, h, w) = (
+                        in_desc.shape[0],
+                        in_desc.shape[1],
+                        in_desc.shape[2],
+                        in_desc.shape[3],
+                    );
+                    if n == 1 && c == 1 {
+                        Some((vec![h, w], *k_h, *stride_h))
+                    } else {
+                        None
+                    }
+                } else if use_gpu && in_desc.shape.len() == 2 {
+                    Some((in_desc.shape.clone(), *k_h, *stride_h))
+                } else {
+                    None
+                };
+
+                if let Some((in_shape, pool_size, stride)) = gpu_params {
+                    let input_t = build_tensor(&inputs[0], &self.device).await?;
+                    let input_2d_t = input_t.reshape(in_shape)?;
+                    input_2d_t.avgpool2d(pool_size, stride)?
+                } else {
+                    let cpu = CpuExecutor::new();
+                    let mut cpu_inputs = Vec::with_capacity(inputs.len());
+                    for inp in &inputs {
+                        let on_cpu = cpu.transfer(inp.clone()).await?;
+                        cpu_inputs.push(on_cpu);
+                    }
+                    let cpu_result = cpu.execute(op, cpu_inputs).await?;
+                    return self.transfer(cpu_result).await;
+                }
             }
         };
 

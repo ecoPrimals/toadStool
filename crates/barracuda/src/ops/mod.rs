@@ -169,6 +169,7 @@ pub mod transpose;
 pub mod argmax_wgsl;
 pub mod argmin_wgsl;
 pub mod squeeze;
+pub mod tensor_axis_ops;
 pub mod unsqueeze;
 pub mod where_op;
 

@@ -109,10 +109,12 @@ pub mod numerical;
 pub mod optimize;
 pub mod pde;
 pub mod pipeline; // Heterogeneous compute pipeline orchestration
+pub mod provenance; // Cross-Spring provenance tags (L-005)
 pub mod sample;
 pub mod scheduler;
 pub mod special;
 pub mod spectral; // Spectral theory: Lanczos, Anderson localization, Hofstadter (hotSpring v0.6.0)
+pub mod tolerances; // Centralized validation tolerances (M-010)
 
 /// CPU-only math functions (convenience alias for `special`).
 ///
@@ -170,7 +172,10 @@ pub mod prelude {
     };
 
     // Auto-dispatch for CPU/GPU routing
-    pub use crate::dispatch::{dispatch_for, DispatchConfig, DispatchTarget};
+    pub use crate::dispatch::{
+        batch_fitness_substrate, dispatch_for, hmm_substrate, ode_substrate, pairwise_substrate,
+        spatial_substrate, DispatchConfig, DispatchTarget,
+    };
 
     // Multi-GPU and resource quota management
     pub use crate::multi_gpu::{
