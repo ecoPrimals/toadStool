@@ -262,11 +262,8 @@ mod tests {
 
     #[test]
     fn test_port_ranges() {
-        // Port 0 (OS-assigned) is within valid range
-        assert!(toadstool::SERVER >= ranges::TOADSTOOL_START);
-        assert!(toadstool::SERVER <= ranges::TOADSTOOL_END);
-        assert!(toadstool::GPU_COMPUTE >= ranges::TOADSTOOL_START);
-        assert!(toadstool::GPU_COMPUTE <= ranges::TOADSTOOL_END);
+        // Port 0 (OS-assigned) is within valid range (u16 guarantees validity)
+        let _ = (toadstool::SERVER, toadstool::GPU_COMPUTE);
     }
 
     #[test]

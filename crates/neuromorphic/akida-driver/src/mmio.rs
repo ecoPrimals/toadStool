@@ -164,10 +164,10 @@ impl MappedRegion {
         // VFIO_DEVICE_GET_REGION_INFO = _IOWR(';', 100 + 8, ...)
         const VFIO_DEVICE_GET_REGION_INFO: libc::c_ulong = 0xc018_3b68;
 
-        // SAFETY: VFIO ioctl is necessary for hardware access. Invariants: (1) device_fd is a valid
-        // file descriptor from an open VFIO device; (2) VfioRegionInfo is properly initialized
-        // with argsz = size_of and index = bar; (3) &raw mut passes mutable reference for
-        // _IOWR (read-write) ioctl; (4) region_info layout matches kernel expectation.
+        // SAFETY: VFIO_DEVICE_GET_REGION_INFO ioctl necessary for MMIO - kernel returns BAR size/offset.
+        // Invariants: (1) device_fd valid from VFIO device open; (2) VfioRegionInfo initialized
+        // with argsz = size_of, index = bar; (3) _IOWR reads/writes region_info; (4) layout matches
+        // kernel. Caller guarantees: device fd from VFIO, bar is valid BAR index.
         let ret = unsafe {
             libc::ioctl(
                 device_fd.as_raw_fd(),
@@ -192,10 +192,10 @@ impl MappedRegion {
             region_info.flags
         );
 
-        // Map the region using rustix (pure Rust mmap wrapper).
-        // SAFETY: (1) device_fd valid from VFIO device open; (2) region_info.size and
-        // region_info.offset from successful VFIO_DEVICE_GET_REGION_INFO; (3) memory mapped
-        // is exclusive to this process via VFIO/IOMMU; (4) ptr valid for size bytes or null on error.
+        // SAFETY: mmap necessary for MMIO - maps BAR region into process address space.
+        // Invariants: (1) device_fd valid; (2) region_info.size/offset from successful ioctl;
+        // (3) mapping exclusive via VFIO/IOMMU; (4) ptr valid for size bytes or Err.
+        // Caller guarantees: region_info populated by kernel, device_fd open.
         let ptr = unsafe {
             mmap(
                 std::ptr::null_mut(),
@@ -234,8 +234,9 @@ impl MappedRegion {
     /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn read32(&self, offset: usize) -> u32 {
         assert!(offset + 4 <= self.size, "Register offset out of bounds");
-        // SAFETY: (1) ptr from mmap in map(), valid for self.size; (2) offset+4 <= size;
-        // (3) read_volatile required for MMIO (hardware can change value); (4) no uninit reads.
+        // SAFETY: read_volatile necessary for MMIO - hardware can change value.
+        // Invariants: (1) ptr from mmap in map(), valid for self.size; (2) offset+4 <= size;
+        // (3) u32 aligned; (4) no uninit reads. Caller guarantees: offset in bounds.
         unsafe { std::ptr::read_volatile(self.ptr.add(offset).cast::<u32>()) }
     }
 
@@ -246,7 +247,9 @@ impl MappedRegion {
     /// Panics if `offset + 4` exceeds the mapped region size.
     pub fn write32(&self, offset: usize, value: u32) {
         assert!(offset + 4 <= self.size, "Register offset out of bounds");
-        // SAFETY: (1) ptr from mmap; (2) offset+4 <= size; (3) write_volatile for MMIO side effects.
+        // SAFETY: write_volatile necessary for MMIO - triggers hardware side effects.
+        // Invariants: (1) ptr from mmap; (2) offset+4 <= size; (3) u32 aligned.
+        // Caller guarantees: offset in bounds.
         unsafe {
             std::ptr::write_volatile(self.ptr.add(offset).cast::<u32>(), value);
         }
@@ -259,7 +262,9 @@ impl MappedRegion {
     /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn read64(&self, offset: usize) -> u64 {
         assert!(offset + 8 <= self.size, "Register offset out of bounds");
-        // SAFETY: (1) ptr from mmap; (2) offset+8 <= size; (3) read_volatile for MMIO; (4) aligned.
+        // SAFETY: read_volatile necessary for MMIO - hardware can change value.
+        // Invariants: (1) ptr from mmap; (2) offset+8 <= size; (3) u64 aligned.
+        // Caller guarantees: offset in bounds.
         unsafe { std::ptr::read_volatile(self.ptr.add(offset).cast::<u64>()) }
     }
 
@@ -270,7 +275,9 @@ impl MappedRegion {
     /// Panics if `offset + 8` exceeds the mapped region size.
     pub fn write64(&self, offset: usize, value: u64) {
         assert!(offset + 8 <= self.size, "Register offset out of bounds");
-        // SAFETY: (1) ptr from mmap; (2) offset+8 <= size; (3) write_volatile for MMIO.
+        // SAFETY: write_volatile necessary for MMIO - triggers hardware side effects.
+        // Invariants: (1) ptr from mmap; (2) offset+8 <= size; (3) u64 aligned.
+        // Caller guarantees: offset in bounds.
         unsafe {
             std::ptr::write_volatile(self.ptr.add(offset).cast::<u64>(), value);
         }
@@ -289,8 +296,9 @@ impl MappedRegion {
 
 impl Drop for MappedRegion {
     fn drop(&mut self) {
-        // SAFETY: (1) ptr from mmap() in map() with self.size; (2) munmap is safe with
-        // ptr+size that was previously mapped; (3) Drop runs at most once; (4) no refs after drop.
+        // SAFETY: munmap necessary - must unmap region before process ends.
+        // Invariants: (1) ptr from mmap in map(), valid for self.size; (2) munmap with
+        // ptr+size that was previously mapped; (3) Drop runs at most once; (4) no refs.
         unsafe {
             // Ignore error in Drop (can't propagate, would need to log)
             let _ = munmap(self.ptr.cast(), self.size);

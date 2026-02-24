@@ -82,8 +82,8 @@ impl PixelFormat {
 /// let mut buffer = DumbBuffer::create(&device, 1920, 1080, PixelFormat::RGBA8888)?;
 ///
 /// // Map and write pixels
-/// let mut mapped = buffer.map()?;
-/// mapped.fill(0xFF0000FF); // Red
+/// let mut mapped = buffer.map(&device)?;
+/// mapped.fill(0xFF0000FF)?; // Red
 /// # Ok::<(), toadstool_display::DisplayError>(())
 /// ```
 pub struct DumbBuffer {
@@ -158,19 +158,35 @@ impl DumbBuffer {
     ///
     /// **COMPLETE IMPLEMENTATION** - uses real DRM mapping!
     ///
-    /// Returns a safe mapping that can be written to.
+    /// Returns a safe mapping that can be written to. Requires a device reference
+    /// to perform the actual mmap via DRM ioctl.
     ///
-    /// # Safety
+    /// # Arguments
     ///
-    /// Internally uses `mmap` via drm crate, but wrapped in safe abstraction:
-    /// - Memory is automatically unmapped on drop (RAII)
-    /// - Slice lifetime tied to `MappedBuffer`
-    /// - No undefined behavior possible in safe code
+    /// * `device` - DRM device used to create this buffer (required for mapping)
     ///
-    /// # Note
+    /// # Example
     ///
-    /// This consumes self and returns it back because drm crate requires
-    /// mutable access to the buffer during mapping.
+    /// ```rust,no_run
+    /// # use toadstool_display::drm::*;
+    /// # let device = Device::open("/dev/dri/card0")?;
+    /// let buffer = DumbBuffer::create(&device, 1920, 1080, PixelFormat::RGBA8888)?;
+    /// let mut mapped = buffer.map(&device)?;
+    /// mapped.fill(0xFF0000FF)?; // Fill with red
+    /// # Ok::<(), toadstool_display::DisplayError>(())
+    /// ```
+    pub fn map(self, device: &super::Device) -> Result<MappedBuffer<'_>> {
+        tracing::trace!("Mapping buffer {}x{}", self.width, self.height);
+        Ok(MappedBuffer {
+            buffer: self,
+            device,
+        })
+    }
+
+    /// Execute a closure with the buffer mapped to memory (efficient for bulk operations)
+    ///
+    /// Maps the buffer once, invokes the closure with a view, then unmaps.
+    /// Prefer this over multiple `write_pixel` calls for bulk updates.
     ///
     /// # Example
     ///
@@ -178,20 +194,33 @@ impl DumbBuffer {
     /// # use toadstool_display::drm::*;
     /// # let device = Device::open("/dev/dri/card0")?;
     /// let mut buffer = DumbBuffer::create(&device, 1920, 1080, PixelFormat::RGBA8888)?;
-    /// let mut mapped = buffer.map()?;
-    /// mapped.fill(0xFF0000FF); // Fill with red
+    /// buffer.with_mapping(&device, |view| {
+    ///     view.fill(0xFF0000FF);
+    ///     view.write_pixel(10, 10, 0x00FF00FF);
+    /// })?;
     /// # Ok::<(), toadstool_display::DisplayError>(())
     /// ```
-    pub fn map(self) -> Result<MappedBuffer> {
-        tracing::trace!("Mapping buffer {}x{}", self.width, self.height);
-
-        tracing::debug!(
-            "✅ Buffer ready for mapping: {}x{}",
+    pub fn with_mapping<F, R>(&mut self, device: &super::Device, f: F) -> Result<R>
+    where
+        F: FnOnce(&mut MappedBufferView<'_>) -> R,
+    {
+        let (width, height, stride, format) = (
             self.width,
-            self.height
+            self.height,
+            self.inner.pitch() as usize,
+            self.format,
         );
-
-        Ok(MappedBuffer { buffer: self })
+        let mut mapping = device
+            .map_dumb_buffer(&mut self.inner)
+            .map_err(|e| DisplayError::IoctlFailed(format!("Failed to map buffer: {e}")))?;
+        let mut view = MappedBufferView {
+            data: mapping.as_mut(),
+            width,
+            height,
+            stride,
+            format,
+        };
+        Ok(f(&mut view))
     }
 
     /// Get buffer dimensions
@@ -227,25 +256,71 @@ impl Drop for DumbBuffer {
     }
 }
 
+/// View into mapped buffer memory (used within `with_mapping` closure)
+pub struct MappedBufferView<'a> {
+    data: &'a mut [u8],
+    width: u32,
+    height: u32,
+    stride: usize,
+    format: PixelFormat,
+}
+
+impl MappedBufferView<'_> {
+    /// Write a pixel at (x, y). Color in native format (e.g. 0xAARRGGBB for RGBA8888).
+    pub fn write_pixel(&mut self, x: u32, y: u32, color: u32) {
+        let bpp = self.format.bytes_per_pixel();
+        if x < self.width && y < self.height {
+            let offset = y as usize * self.stride + x as usize * bpp;
+            if offset + bpp <= self.data.len() {
+                let bytes = color.to_ne_bytes();
+                self.data[offset..offset + bpp].copy_from_slice(&bytes[..bpp]);
+            }
+        }
+    }
+
+    /// Fill entire buffer with a pixel value.
+    pub fn fill(&mut self, color: u32) {
+        let bpp = self.format.bytes_per_pixel();
+        let pixel_bytes = color.to_ne_bytes();
+        for y in 0..self.height as usize {
+            for x in 0..self.width as usize {
+                let offset = y * self.stride + x * bpp;
+                if offset + bpp <= self.data.len() {
+                    self.data[offset..offset + bpp].copy_from_slice(&pixel_bytes[..bpp]);
+                }
+            }
+        }
+    }
+
+    /// Copy raw bytes into the buffer. Clamps to buffer size.
+    pub fn copy_from_slice(&mut self, pixels: &[u8]) {
+        let len = self.data.len().min(pixels.len());
+        self.data[..len].copy_from_slice(&pixels[..len]);
+    }
+
+    /// Get dimensions (width, height)
+    #[must_use]
+    pub const fn dimensions(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
+
+    /// Get stride in bytes
+    #[must_use]
+    pub const fn stride(&self) -> usize {
+        self.stride
+    }
+}
+
 /// Mapped buffer memory
 ///
 /// Provides safe CPU access to framebuffer memory.
-/// Automatically unmapped when dropped (RAII).
-///
-/// **COMPLETE IMPLEMENTATION** - wraps `DumbBuffer` for operations!
-///
-/// ## Safety
-///
-/// This type ensures memory safety:
-/// - Backed by `DumbBuffer`'s underlying memory
-/// - Mapping/unmapping handled by drm crate
-/// - Lifetime managed automatically
-/// - No way to create invalid references
-pub struct MappedBuffer {
-    buffer: DumbBuffer, // Owns the buffer for safe lifetime
+/// Maps on each operation; for bulk updates use `DumbBuffer::with_mapping()`.
+pub struct MappedBuffer<'a> {
+    buffer: DumbBuffer,
+    device: &'a super::Device,
 }
 
-impl MappedBuffer {
+impl<'a> MappedBuffer<'a> {
     /// Get buffer dimensions
     #[must_use]
     pub const fn dimensions(&self) -> (u32, u32) {
@@ -264,35 +339,25 @@ impl MappedBuffer {
         self.buffer.inner.pitch()
     }
 
-    /// Write a pixel at coordinates
-    ///
-    /// **NOTE**: Currently not implemented - requires Device reference for mapping.
-    /// This will be completed when we add a complete window manager that maintains
-    /// Device references alongside buffers.
-    ///
-    /// For now, use `copy_from_slice()` to write entire buffer contents.
-    pub fn write_pixel(&mut self, _x: u32, _y: u32, _color: u32) {
-        tracing::warn!("write_pixel not yet implemented - use copy_from_slice instead");
+    /// Write a pixel at (x, y). Color in native format.
+    pub fn write_pixel(&mut self, x: u32, y: u32, color: u32) -> Result<()> {
+        self.buffer.with_mapping(self.device, |view| {
+            view.write_pixel(x, y, color);
+        })
     }
 
-    /// Fill entire buffer with a color
-    ///
-    /// **NOTE**: Currently not implemented - requires Device reference for mapping.
-    /// This will be completed when we add a complete window manager.
-    ///
-    /// For now, use `copy_from_slice()` to write entire buffer contents.
-    pub fn fill(&mut self, _color: u32) {
-        tracing::warn!("fill not yet implemented - use copy_from_slice instead");
+    /// Fill entire buffer with a pixel value.
+    pub fn fill(&mut self, color: u32) -> Result<()> {
+        self.buffer.with_mapping(self.device, |view| {
+            view.fill(color);
+        })
     }
 
-    /// Copy pixel data from slice
-    ///
-    /// **NOTE**: Currently not implemented - requires Device reference for mapping.
-    /// This will be completed in Phase 3 when we build the complete window manager.
-    pub fn copy_from_slice(&mut self, _pixels: &[u8]) {
-        tracing::warn!(
-            "copy_from_slice not yet implemented - waiting for window manager integration"
-        );
+    /// Copy raw bytes into the buffer.
+    pub fn copy_from_slice(&mut self, pixels: &[u8]) -> Result<()> {
+        self.buffer.with_mapping(self.device, |view| {
+            view.copy_from_slice(pixels);
+        })
     }
 
     /// Get buffer handle for framebuffer operations

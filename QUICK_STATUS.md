@@ -1,6 +1,6 @@
 # ToadStool + BarraCuda -- Quick Status
 
-**Date**: February 24, 2026 (Session 54)
+**Date**: February 24, 2026 (Session 55)
 
 ---
 
@@ -26,7 +26,7 @@ hardcoded localhost in prod           0 -- bind 0.0.0.0, discover_self_ip_addres
 hardcoded cloud URLs in prod          0 -- sovereignty-compliant
 orphan WGSL shaders                   0 -- all 650+ wired to Rust
 CPU-only math in production            0 -- all math dispatches GPU shaders
-near-limit files (>900 lines)         0 -- multi_gpu refactored (921->54 mod.rs)
+near-limit files (>900 lines)         0 -- cost.rs, triangular_solve.rs, cpu_executor.rs refactored
 ```
 
 ---
@@ -89,7 +89,7 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 |--------|-------|
 | Clippy warnings (full workspace) | 0 |
 | Doc warnings | 0 |
-| Unit tests (5 core crates) | 4,176 |
+| Unit tests (5 core crates) | 4,177 |
 | Unit tests (full workspace) | 14,200+ |
 | WGSL shaders | 650+ (zero orphans) |
 | Unsafe blocks | 95+ audited -- FFI only, all `// SAFETY:` documented |
@@ -174,4 +174,4 @@ cargo llvm-cov --lib -p toadstool-common --json
 
 ---
 
-**Last Updated**: February 24, 2026 -- Session 54: Cross-spring absorption. 3 baseCamp primitives (graph_laplacian, effective_rank, numerical_hessian). 3 GPU bug fixes (TS-001 pow_f64, TS-003 acos, TS-004 buffer conflict). 5 new WGSL shaders (symmetrize, laplacian, hessian_column, histogram, metropolis). Spectral diagnostics (ESD, Marchenko-Pastur). PIE compliance verified. +16 tests.
+**Last Updated**: February 24, 2026 -- Session 55: Deep debt evolution. 3 large files refactored (cost, triangular_solve, cpu_executor). Hardcoding eliminated (execution.rs, protocols config). Panic → Result in tensor. Stubs completed (DRM buffer, Crank-Nicolson Neumann, graceful degradation). 29 tautological assertions removed. Orphan substrate crate deleted. All unsafe SAFETY-documented. 0 clippy errors, 4,177 core tests.

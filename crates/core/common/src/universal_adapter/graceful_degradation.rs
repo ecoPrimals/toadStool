@@ -3,8 +3,11 @@
 //! Provides strategies for gracefully handling situations where a requested
 //! capability is not available.
 
-use super::capability_types::{CapabilityHandle, CapabilityType};
+use super::capability_types::{
+    CapabilityHandle, CapabilityInfo, CapabilityType, HealthStatus, ServiceEndpoint,
+};
 use crate::{ToadStoolError, ToadStoolResult};
+use std::collections::HashMap;
 
 /// Graceful degradation strategy
 pub struct GracefulDegradation {
@@ -75,16 +78,28 @@ impl GracefulDegradation {
     }
 
     /// Create a no-op handle for continue mode
+    ///
+    /// Returns a synthetic capability handle that represents "continue without this capability".
+    /// The handle is valid but operations through it are no-ops. Useful for non-critical
+    /// capabilities where the system can safely degrade.
     async fn create_noop_handle(
         &self,
         capability: CapabilityType,
     ) -> ToadStoolResult<CapabilityHandle> {
-        // This would create a handle that does nothing
-        // Useful for non-critical capabilities
-
-        Err(ToadStoolError::not_found(format!(
-            "No-op mode not yet implemented for: {capability:?}"
-        )))
+        let provider_id = format!("noop-{}", uuid::Uuid::new_v4().as_simple());
+        let provider = CapabilityInfo {
+            provider_id: provider_id.clone(),
+            capability: capability.clone(),
+            metadata: {
+                let mut m = HashMap::new();
+                m.insert("degradation".to_string(), "noop".to_string());
+                m.insert("mode".to_string(), "graceful".to_string());
+                m
+            },
+            endpoint: ServiceEndpoint::InProcess,
+            health: HealthStatus::Degraded,
+        };
+        Ok(CapabilityHandle::new(provider, capability))
     }
 }
 
@@ -136,5 +151,24 @@ mod tests {
     fn test_default_strategy() {
         let degradation = GracefulDegradation::new();
         assert_eq!(degradation.strategy, DegradationStrategy::Fallback);
+    }
+
+    #[tokio::test]
+    async fn test_continue_strategy_returns_noop_handle() {
+        let degradation = GracefulDegradation::with_strategy(DegradationStrategy::Continue);
+
+        let capability = CapabilityType::Security {
+            features: vec![SecurityFeature::Encryption],
+            min_trust_level: TrustLevel::High,
+        };
+
+        let result = degradation.handle_missing_capability(capability).await;
+        assert!(
+            result.is_ok(),
+            "Continue strategy should return no-op handle"
+        );
+        let handle = result.unwrap();
+        assert!(handle.provider_id().starts_with("noop-"));
+        assert!(handle.is_healthy()); // Degraded is considered healthy for no-op
     }
 }

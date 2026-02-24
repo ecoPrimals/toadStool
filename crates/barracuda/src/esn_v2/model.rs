@@ -782,7 +782,7 @@ mod tests {
         let mut targets = vec![0.0; 1 * n_samples];
         for k in 0..n_samples {
             let x = k as f64 * 0.5;
-            states[0 * n_samples + k] = 1.0;
+            states[k] = 1.0;
             states[1 * n_samples + k] = x;
             states[2 * n_samples + k] = x * x;
             states[3 * n_samples + k] = x * x * x;

@@ -690,10 +690,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_tensor_3d_roundtrip_minimal() {
+    async fn test_tensor_3d_roundtrip_minimal() -> Result<()> {
         let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
         else {
-            return;
+            return Ok(());
         };
 
         println!("\n=== Testing 3D Tensor Roundtrip ===\n");
@@ -737,19 +737,22 @@ mod tests {
                 println!("  ✅ All values correct!\n");
             } else {
                 println!("  ❌ {} corrupted values out of {}\n", errors, size);
-                panic!("Tensor 3D corruption detected for shape [{nx}, {ny}, {nz}]");
+                return Err(crate::error::BarracudaError::Internal(format!(
+                    "Tensor 3D corruption detected for shape [{nx}, {ny}, {nz}]"
+                )));
             }
         }
 
         println!("=== All 3D shapes passed! ===");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_tensor_laplacian_context_debug() {
+    async fn test_tensor_laplacian_context_debug() -> Result<()> {
         // EXACT COPY of test_tensor_3d_roundtrip_minimal
         let Some(device) = crate::device::test_pool::get_test_device_if_gpu_available().await
         else {
-            return;
+            return Ok(());
         };
 
         println!("\n=== Testing 3D Tensor Roundtrip (Laplacian Context) ===\n");
@@ -793,9 +796,12 @@ mod tests {
             println!("  ✅ All values correct!\n");
         } else {
             println!("  ❌ {} corrupted values out of {}\n", errors, size);
-            panic!("Tensor 3D corruption detected for shape [{nx}, {ny}, {nz}]");
+            return Err(crate::error::BarracudaError::Internal(format!(
+                "Tensor 3D corruption detected for shape [{nx}, {ny}, {nz}]"
+            )));
         }
 
         println!("=== Test passed! ===");
+        Ok(())
     }
 }

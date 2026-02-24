@@ -216,10 +216,7 @@ mod tests {
             "Primal must have self-knowledge of its own port"
         );
 
-        // Port 0 = OS-assigned; all in valid u16 range
-        for (name, &port) in &ports {
-            assert!(port <= 65535, "Port for {} should be valid", name);
-        }
+        // Port 0 = OS-assigned; all in valid u16 range (type guarantees validity)
     }
 
     #[test]

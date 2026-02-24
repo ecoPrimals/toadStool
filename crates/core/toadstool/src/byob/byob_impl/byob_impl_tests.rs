@@ -1070,7 +1070,6 @@ async fn test_get_resource_usage_after_deploy() {
         .await
         .unwrap();
     assert!(usage.cpu_usage >= 0.0);
-    assert!(usage.memory_usage >= 0);
 }
 
 #[tokio::test]

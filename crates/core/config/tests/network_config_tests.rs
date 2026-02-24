@@ -218,9 +218,7 @@ fn test_production_vs_development_bind_mode() {
 
 #[test]
 fn test_production_has_reasonable_defaults() {
-    let config = NetworkConfig::production();
-
-    assert!(config.service_port <= 65535); // 0 = OS-assigned
+    let _config = NetworkConfig::production();
 }
 
 // ============================================================================
@@ -263,14 +261,10 @@ fn test_network_config_has_discovery_endpoints() {
 fn test_multiple_socket_addrs_different_ports() {
     let config = NetworkConfig::default();
 
-    let service = config.service_addr();
-    let api = config.api_addr();
-    let metrics = config.metrics_addr();
-    let health = config.health_addr();
+    let _service = config.service_addr();
+    let _api = config.api_addr();
+    let _metrics = config.metrics_addr();
+    let _health = config.health_addr();
 
-    // Port 0 = OS-assigned; all in valid range
-    assert!(service.port() <= 65535);
-    assert!(api.port() <= 65535);
-    assert!(metrics.port() <= 65535);
-    assert!(health.port() <= 65535);
+    // Port 0 = OS-assigned; all in valid range (u16 guarantees validity)
 }

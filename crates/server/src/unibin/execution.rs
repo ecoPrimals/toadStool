@@ -141,14 +141,17 @@ async fn start_tcp_servers(
 
     info!("🌐 Starting TCP IPC fallback (isomorphic mode)");
 
-    let tarpc_listener = TcpListener::bind("127.0.0.1:0")
+    let bind_addr =
+        std::env::var("TOADSTOOL_TCP_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0:0".to_string());
+
+    let tarpc_listener = TcpListener::bind(&bind_addr)
         .await
         .map_err(|e| ServerError::Network(e.to_string()))?;
     let tarpc_addr = tarpc_listener
         .local_addr()
         .map_err(|e| ServerError::Network(e.to_string()))?;
 
-    let jsonrpc_listener = TcpListener::bind("127.0.0.1:0")
+    let jsonrpc_listener = TcpListener::bind(&bind_addr)
         .await
         .map_err(|e| ServerError::Network(e.to_string()))?;
     let jsonrpc_addr = jsonrpc_listener
@@ -391,9 +394,7 @@ mod tests {
     #[test]
     fn is_platform_constraint_str_operation_not_permitted() {
         // Depends on SELinux - without SELinux this returns false
-        let r = is_platform_constraint_str("Operation not permitted");
-        // Either true (SELinux enforcing) or false (no SELinux)
-        assert!(r || !r);
+        let _ = is_platform_constraint_str("Operation not permitted");
     }
 
     #[test]

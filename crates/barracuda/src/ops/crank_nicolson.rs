@@ -40,8 +40,7 @@ struct CrankNicolsonParams {
 pub enum BoundaryCondition {
     /// Dirichlet: u(boundary) = value
     Dirichlet(f32),
-    /// Neumann: ∂u/∂x(boundary) = value (not yet implemented)
-    #[allow(dead_code)]
+    /// Neumann: ∂u/∂x(boundary) = value. Zero flux (0.0) means ghost point mirrors interior.
     Neumann(f32),
 }
 
@@ -93,16 +92,122 @@ impl CrankNicolson {
         // Courant number (stability: r ≤ 1 for explicit, unconditionally stable for CN)
         let r = alpha * dt / (dx * dx);
 
-        let (left_val, right_val) = match (left_bc, right_bc) {
-            (BoundaryCondition::Dirichlet(l), BoundaryCondition::Dirichlet(r)) => (l, r),
-            _ => {
-                return Err(BarracudaError::InvalidInput {
-                    message: "Only Dirichlet BCs are currently supported".to_string(),
-                })
+        match (left_bc, right_bc) {
+            (BoundaryCondition::Dirichlet(l), BoundaryCondition::Dirichlet(r)) => {
+                self.solve_gpu(u0, r, n_steps, l, r)
             }
-        };
+            _ => {
+                // Neumann or mixed: use CPU path (GPU shader is Dirichlet-only)
+                self.solve_neumann_cpu(u0, r, n_steps, left_bc, right_bc)
+            }
+        }
+    }
 
-        self.solve_gpu(u0, r, n_steps, left_val, right_val)
+    /// Solve with Neumann boundary conditions (CPU path).
+    /// Zero-flux Neumann: du/dx=0 means ghost point mirrors interior (u[-1]=u[0], u[n]=u[n-1]).
+    fn solve_neumann_cpu(
+        &self,
+        u0: &[f32],
+        r: f32,
+        n_steps: usize,
+        left_bc: BoundaryCondition,
+        right_bc: BoundaryCondition,
+    ) -> Result<Vec<f32>> {
+        let n = u0.len();
+        let mut u = u0.to_vec();
+        let mut rhs = vec![0.0f32; n];
+
+        let a_coef = -r / 2.0;
+        let b_coef = 1.0 + r;
+        let c_coef = -r / 2.0;
+
+        for _ in 0..n_steps {
+            // RHS with Neumann: ghost point mirrors interior for zero flux (du/dx=0)
+            for i in 0..n {
+                let (u_left, u_right) = match (i, n, &left_bc, &right_bc) {
+                    (0, 1, BoundaryCondition::Neumann(0.0), BoundaryCondition::Neumann(0.0)) => {
+                        (u[0], u[0])
+                    }
+                    (0, 1, BoundaryCondition::Dirichlet(l), BoundaryCondition::Dirichlet(r)) => {
+                        (*l, *r)
+                    }
+                    (0, 1, BoundaryCondition::Dirichlet(l), BoundaryCondition::Neumann(0.0)) => {
+                        (*l, u[0])
+                    }
+                    (0, 1, BoundaryCondition::Neumann(0.0), BoundaryCondition::Dirichlet(r)) => {
+                        (u[0], *r)
+                    }
+                    (0, _, BoundaryCondition::Neumann(0.0), _) => (u[0], u[1]),
+                    (0, _, BoundaryCondition::Dirichlet(l), _) => (*l, u[1]),
+                    (0, _, BoundaryCondition::Neumann(_), _) => {
+                        return Err(BarracudaError::InvalidInput {
+                            message: "Non-zero Neumann flux not yet implemented".to_string(),
+                        });
+                    }
+                    (i, _, _, BoundaryCondition::Neumann(0.0)) if i == n - 1 && n > 1 => {
+                        (u[n - 2], u[n - 1])
+                    }
+                    (i, _, _, BoundaryCondition::Dirichlet(r)) if i == n - 1 => (u[n - 2], *r),
+                    (i, _, _, BoundaryCondition::Neumann(_)) if i == n - 1 => {
+                        return Err(BarracudaError::InvalidInput {
+                            message: "Non-zero Neumann flux not yet implemented".to_string(),
+                        });
+                    }
+                    _ => (u[i - 1], u[i + 1]),
+                };
+
+                rhs[i] = (1.0 - r) * u[i] + (r / 2.0) * (u_left + u_right);
+
+                // Neumann zero-flux: no extra boundary term (ghost already in u_left/u_right)
+                // Dirichlet: add implicit boundary contribution
+                if i == 0 {
+                    if let BoundaryCondition::Dirichlet(l) = left_bc {
+                        rhs[i] += (r / 2.0) * l;
+                    }
+                }
+                if i == n - 1 {
+                    if let BoundaryCondition::Dirichlet(r_val) = right_bc {
+                        rhs[i] += (r / 2.0) * r_val;
+                    }
+                }
+            }
+
+            // Thomas algorithm with Neumann-modified first/last rows
+            let (b0, c0) = match (n, left_bc) {
+                (1, BoundaryCondition::Neumann(0.0)) => (1.0 + r / 2.0, 0.0),
+                (_, BoundaryCondition::Neumann(0.0)) => (1.0 + r / 2.0, -r / 2.0),
+                _ => (b_coef, c_coef),
+            };
+            let (a_n, b_n) = match (n, right_bc) {
+                (1, _) => (0.0, 1.0 + r / 2.0),
+                (_, BoundaryCondition::Neumann(0.0)) => (-r / 2.0, 1.0 + r / 2.0),
+                _ => (a_coef, b_coef),
+            };
+
+            let mut c_prime = vec![0.0f32; n];
+            let mut d_prime = vec![0.0f32; n];
+
+            c_prime[0] = if b0.abs() > 1e-10 { c0 / b0 } else { 0.0 };
+            d_prime[0] = rhs[0] / b0;
+
+            for i in 1..n {
+                let (a_i, b_i, c_i) = if i == n - 1 {
+                    (a_n, b_n, 0.0)
+                } else {
+                    (a_coef, b_coef, c_coef)
+                };
+                let m = b_i - a_i * c_prime[i - 1];
+                c_prime[i] = if m.abs() > 1e-10 { c_i / m } else { 0.0 };
+                d_prime[i] = (rhs[i] - a_i * d_prime[i - 1]) / m;
+            }
+
+            u[n - 1] = d_prime[n - 1];
+            for i in (0..n - 1).rev() {
+                u[i] = d_prime[i] - c_prime[i] * u[i + 1];
+            }
+        }
+
+        Ok(u)
     }
 
     /// CPU reference implementation (Thomas algorithm)
@@ -437,7 +542,7 @@ mod tests {
         let solver = CrankNicolson::new(device).unwrap();
 
         // With zero Dirichlet BCs, total "heat" should decrease over time
-        // but remain positive
+        // but remain positive. Use enough steps for measurable dissipation.
         let n = 20;
         let u0: Vec<f32> = (0..n)
             .map(|i| ((i as f32 + 0.5) / n as f32 * std::f32::consts::PI).sin())
@@ -468,6 +573,41 @@ mod tests {
         assert!(
             final_sum > 0.0,
             "Heat should remain positive: final={}",
+            final_sum
+        );
+    }
+
+    #[test]
+    fn test_neumann_zero_flux_conservation() {
+        let device = get_test_device();
+        let solver = CrankNicolson::new(device).unwrap();
+
+        // With zero-flux Neumann BCs, total "mass" must be conserved
+        let n = 20;
+        let u0: Vec<f32> = (0..n)
+            .map(|i| ((i as f32 + 0.5) / n as f32 * std::f32::consts::PI).sin())
+            .collect();
+        let initial_sum: f32 = u0.iter().sum();
+
+        let u = solver
+            .solve(
+                &u0,
+                1.0,
+                0.1,
+                0.001,
+                100,
+                BoundaryCondition::Neumann(0.0),
+                BoundaryCondition::Neumann(0.0),
+            )
+            .unwrap();
+
+        let final_sum: f32 = u.iter().sum();
+
+        // Mass must be conserved with zero-flux Neumann
+        assert!(
+            (final_sum - initial_sum).abs() < 0.01,
+            "Mass should be conserved: initial={}, final={}",
+            initial_sum,
             final_sum
         );
     }

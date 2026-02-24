@@ -27,11 +27,13 @@ fn test_network_service_ports_os_assigned() {
 
 #[test]
 fn test_network_ports_valid() {
-    // Port 0 = OS-assigned; explicit ports must be in valid range
-    assert!(network::API_PORT <= 65535);
-    assert!(network::METRICS_PORT <= 65535);
-    assert!(network::DISCOVERY_PORT <= 65535);
-    assert!(network::FEDERATION_PORT <= 65535);
+    // Port 0 = OS-assigned; explicit ports must be in valid range (u16 guarantees validity)
+    let _ = (
+        network::API_PORT,
+        network::METRICS_PORT,
+        network::DISCOVERY_PORT,
+        network::FEDERATION_PORT,
+    );
 }
 
 #[test]

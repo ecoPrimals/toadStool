@@ -205,10 +205,9 @@ fn test_app_config_exists() {
 
 #[test]
 fn test_network_config_exists() {
-    let config = ToadStoolConfig::default();
+    let _config = ToadStoolConfig::default();
 
     // Network config should have bind address
-    assert!(config.network.bind_address.port() <= 65535); // 0 = OS-assigned
 }
 
 #[test]

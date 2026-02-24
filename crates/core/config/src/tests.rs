@@ -59,8 +59,7 @@ fn test_default_toadstool_endpoint() {
 
 #[test]
 fn test_default_federation_address() {
-    let addr = network::default_federation_address();
-    assert!(addr.port() <= 65535); // 0 = OS-assigned
+    let _addr = network::default_federation_address();
 }
 
 // ===== Port getters (with env mutex for usage tests) =====
@@ -134,8 +133,7 @@ fn test_get_toadstool_port_default() {
     let original_api = env::var("TOADSTOOL_API_PORT").ok();
     env::remove_var("TOADSTOOL_PORT");
     env::remove_var("TOADSTOOL_API_PORT");
-    let port = network::get_toadstool_port();
-    assert!(port <= 65535); // 0 = OS-assigned
+    let _port = network::get_toadstool_port();
     if let Some(v) = original_port {
         env::set_var("TOADSTOOL_PORT", v);
     }

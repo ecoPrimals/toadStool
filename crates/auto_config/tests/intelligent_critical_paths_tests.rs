@@ -85,10 +85,6 @@ async fn test_generate_intelligent_config_completes() {
                 config.app.worker_threads > 0,
                 "Should have at least 1 worker thread"
             );
-            assert!(
-                config.network.bind_address.port() <= 65535, // 0 = OS-assigned
-                "Bind address should be set"
-            );
         }
         Err(e) => {
             // Some platforms may not support full auto-detection
@@ -111,7 +107,6 @@ async fn test_auto_configure_full_pipeline() {
             // Verify complete configuration is generated
             assert!(!config.app.name.is_empty());
             assert!(config.app.worker_threads > 0);
-            assert!(config.network.bind_address.port() <= 65535); // 0 = OS-assigned
             assert!(!config.logging.level.is_empty());
 
             // Verify sensible resource limits

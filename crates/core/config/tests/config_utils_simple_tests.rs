@@ -309,9 +309,8 @@ fn test_get_service_ports() {
     let ports = ConfigUtils::get_service_ports();
     assert!(!ports.is_empty());
     // Verify all ports are valid (0 = OS-assigned)
-    for (name, port) in &ports {
+    for (name, _port) in &ports {
         assert!(!name.is_empty());
-        assert!(*port <= 65535);
     }
 }
 

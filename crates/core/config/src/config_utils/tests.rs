@@ -115,14 +115,10 @@ fn test_get_federation_metrics_health_events_ports() {
     let _guard = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let fed = ConfigUtils::get_federation_port();
-    let metrics = ConfigUtils::get_metrics_port();
-    let health = ConfigUtils::get_health_port();
-    let events = ConfigUtils::get_events_port();
-    assert!(fed <= 65535); // 0 = OS-assigned
-    assert!(metrics <= 65535);
-    assert!(health <= 65535);
-    assert!(events <= 65535);
+    let _fed = ConfigUtils::get_federation_port();
+    let _metrics = ConfigUtils::get_metrics_port();
+    let _health = ConfigUtils::get_health_port();
+    let _events = ConfigUtils::get_events_port();
 }
 
 #[test]

@@ -347,10 +347,7 @@ fn test_get_service_ports() {
     assert!(!ports.is_empty());
     assert!(ports.contains_key("toadstool"));
 
-    // Port 0 = OS-assigned; all ports in valid u16 range
-    for (_name, port) in ports.iter() {
-        assert!(*port <= 65535);
-    }
+    // Port 0 = OS-assigned; all ports in valid u16 range (type guarantees validity)
 }
 
 #[test]
@@ -376,18 +373,14 @@ fn test_consistent_values() {
 
 #[test]
 fn test_all_ports_are_valid() {
-    // Port 0 = OS-assigned; all in valid u16 range
-    let ports = vec![
+    // Port 0 = OS-assigned; all in valid u16 range (type guarantees validity)
+    let _ports = vec![
         ConfigUtils::get_toadstool_port(),
         ConfigUtils::get_federation_port(),
         ConfigUtils::get_metrics_port(),
         ConfigUtils::get_health_port(),
         ConfigUtils::get_events_port(),
     ];
-
-    for port in ports {
-        assert!(port <= 65535);
-    }
 }
 
 #[test]

@@ -230,10 +230,6 @@ async fn test_impossible_constraint_combination() {
         "Should handle impossible constraints gracefully"
     );
 
-    let eval = evaluation.unwrap();
-    // Should be marked as infeasible
-    assert!(
-        !eval.is_feasible || eval.is_feasible,
-        "Should have feasibility determination"
-    );
+    let _eval = evaluation.unwrap();
+    // Evaluation completed; feasibility is determined by the engine
 }

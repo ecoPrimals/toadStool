@@ -110,8 +110,7 @@ fn test_application_config_custom() {
 
 #[test]
 fn test_network_config_default() {
-    let config = NetworkConfig::default();
-    assert!(config.bind_address.port() <= 65535); // 0 = OS-assigned
+    let _config = NetworkConfig::default();
 }
 
 #[test]

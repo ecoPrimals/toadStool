@@ -9,7 +9,7 @@ pub mod buffer;
 pub mod device;
 
 // Re-exports
-pub use buffer::{DumbBuffer, MappedBuffer, PixelFormat};
+pub use buffer::{DumbBuffer, MappedBuffer, MappedBufferView, PixelFormat};
 pub use device::{Device, DeviceCapabilities};
 
 use crate::Result;
@@ -51,6 +51,11 @@ impl DrmBackend {
     /// Get device capabilities
     pub fn capabilities(&self) -> Result<DeviceCapabilities> {
         self.device.query_capabilities()
+    }
+
+    /// Get the underlying DRM device (for buffer mapping)
+    pub fn device(&self) -> &Device {
+        &self.device
     }
 
     /// Create a dumb buffer

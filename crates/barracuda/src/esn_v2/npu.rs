@@ -140,7 +140,7 @@ mod tests {
     fn test_quantize_single_value() {
         // When all values are identical, range=0 → scale=1, so we quantize to nearest int.
         // Dequantized will be integer; expect error up to 0.5.
-        let values = vec![3.14; 5];
+        let values = vec![1.5; 5];
         let (quantized, scale, zero_point) = quantize_affine_i8_f64(&values);
         assert_eq!(quantized.len(), 5);
         let dequantized = dequantize_affine_i8_f64(&quantized, scale, zero_point);

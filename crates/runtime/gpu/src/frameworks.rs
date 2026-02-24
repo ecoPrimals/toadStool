@@ -78,8 +78,16 @@ impl ParallelComputeFramework for WebGpuFramework {
                     let limits = webgpu_adapter.adapter.limits();
 
                     let mut extensions = HashMap::new();
-                    // Note: wgpu::AdapterInfo doesn't expose features directly
                     extensions.insert("WebGPU".to_string(), true);
+
+                    // Estimate performance from device type and memory (wgpu doesn't expose these)
+                    let (memory_bandwidth_gbps, peak_gflops_fp32) = match info.device_type {
+                        wgpu::DeviceType::DiscreteGpu => (448.0, 12_000.0), // Typical mid-range discrete
+                        wgpu::DeviceType::IntegratedGpu => (76.8, 1_200.0), // Typical integrated
+                        wgpu::DeviceType::VirtualGpu => (100.0, 2_000.0), // Conservative for virtual
+                        wgpu::DeviceType::Cpu => (25.6, 100.0),           // Software renderer
+                        _ => (100.0, 1_000.0),
+                    };
 
                     let device = UniversalComputeDevice {
                         id: DeviceId {
@@ -88,7 +96,7 @@ impl ParallelComputeFramework for WebGpuFramework {
                             uuid: Uuid::new_v4().to_string(),
                         },
                         info: DeviceInfo {
-                            name: info.name,
+                            name: info.name.clone(),
                             vendor: info.vendor.to_string(),
                             device_type: match info.device_type {
                                 wgpu::DeviceType::DiscreteGpu => DeviceType::DiscreteGpu,
@@ -98,13 +106,13 @@ impl ParallelComputeFramework for WebGpuFramework {
                                 _ => DeviceType::Other("Unknown".to_string()),
                             },
                             driver_version: info.driver_info.clone(),
-                            architecture: "WebGPU".to_string(), // architecture field not in AdapterInfo
+                            architecture: "WebGPU".to_string(),
                             physical_location: None,
                         },
                         capabilities: DeviceCapabilities {
                             compute_capability: "WebGPU".to_string(),
                             total_memory_bytes: limits.max_buffer_size,
-                            memory_bandwidth_gbps: 100.0, // Placeholder
+                            memory_bandwidth_gbps,
                             compute_units: limits.max_compute_workgroups_per_dimension,
                             max_work_group_size: (
                                 limits.max_compute_workgroup_size_x,
@@ -119,16 +127,16 @@ impl ParallelComputeFramework for WebGpuFramework {
                             ],
                             extensions,
                             performance: PerformanceCharacteristics {
-                                peak_gflops_fp32: 0.0, // Placeholder
+                                peak_gflops_fp32,
                                 peak_gflops_fp64: None,
                                 peak_gflops_fp16: None,
-                                peak_memory_bandwidth_utilization: 0.0,
-                                typical_power_watts: 0.0,
-                                max_power_watts: 0.0,
+                                peak_memory_bandwidth_utilization: 0.8,
+                                typical_power_watts: 65.0,
+                                max_power_watts: 250.0,
                             },
                         },
                         usage: Arc::new(RwLock::new(DeviceUsage::default())),
-                        framework_handle: Some(FrameworkHandle::Placeholder("webgpu".to_string())),
+                        framework_handle: Some(FrameworkHandle::Placeholder(info.name)),
                     };
 
                     Ok(vec![device])

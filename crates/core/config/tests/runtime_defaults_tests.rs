@@ -247,10 +247,9 @@ fn test_environment_names() {
 
 #[test]
 fn test_config_has_valid_ports() {
-    let config = ToadStoolConfig::default();
+    let _config = ToadStoolConfig::default();
 
     // Ports should be non-zero
-    assert!(config.network.bind_address.port() <= 65535); // 0 = OS-assigned
 }
 
 #[test]

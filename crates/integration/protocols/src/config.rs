@@ -81,6 +81,16 @@ impl Default for ConnectionPoolConfig {
     }
 }
 
+/// Get service registry URL from environment or capability discovery.
+///
+/// Priority: `SERVICE_REGISTRY_URL` → `CONSUL_HTTP_ADDR` → dev fallback via `consul_http_addr()`.
+#[must_use]
+pub fn service_registry_url() -> String {
+    std::env::var("SERVICE_REGISTRY_URL")
+        .or_else(|_| std::env::var("CONSUL_HTTP_ADDR"))
+        .unwrap_or_else(|_| toadstool_common::constants::network::consul_http_addr())
+}
+
 /// Service discovery configuration for protocols
 #[derive(Debug, Clone)]
 pub struct ServiceDiscoveryConfig {
@@ -98,6 +108,20 @@ pub struct ServiceDiscoveryConfig {
 
     /// Enable automatic registration
     pub auto_register: bool,
+}
+
+impl ServiceDiscoveryConfig {
+    /// Create Consul discovery config with endpoint from env (`SERVICE_REGISTRY_URL`, `CONSUL_HTTP_ADDR`).
+    #[must_use]
+    pub fn consul_default() -> Self {
+        Self {
+            discovery_type: DiscoveryType::Consul,
+            registry_endpoint: Some(service_registry_url()),
+            registration_ttl: Duration::from_secs(300),
+            refresh_interval: Duration::from_secs(60),
+            auto_register: true,
+        }
+    }
 }
 
 /// Service discovery types
