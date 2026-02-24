@@ -246,15 +246,30 @@ impl FusedMapReduceF64 {
         }
 
         if n_workgroups > 1 && n_workgroups <= 256 {
-            // Encode the partials reduction in the same command encoder.
-            // A new compute pass within the same encoder provides implicit
-            // memory barriers between the write (pass 1) and read (pass 2).
+            // TS-004: Use separate partials_buffer for pass 2 input to avoid buffer conflict.
+            // Some drivers reject using output_buffer as both pass 1 write and pass 2 read.
+            let partials_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("FMR Partials"),
+                size: (n_workgroups * 8) as u64,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+
             let final_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("FMR Partials Output"),
                 size: 8,
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
                 mapped_at_creation: false,
             });
+
+            // Copy pass 1 output to partials_buffer so pass 2 reads from a distinct buffer
+            encoder.copy_buffer_to_buffer(
+                &output_buffer,
+                0,
+                &partials_buffer,
+                0,
+                (n_workgroups * 8) as u64,
+            );
 
             let pass2_params = Params {
                 n: n_workgroups as u32,
@@ -282,7 +297,7 @@ impl FusedMapReduceF64 {
                         entries: &[
                             wgpu::BindGroupEntry {
                                 binding: 0,
-                                resource: output_buffer.as_entire_binding(),
+                                resource: partials_buffer.as_entire_binding(),
                             },
                             wgpu::BindGroupEntry {
                                 binding: 1,

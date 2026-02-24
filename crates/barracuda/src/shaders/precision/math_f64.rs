@@ -73,6 +73,11 @@ pub const F64_FUNCTION_DEPS: &[(&str, &[&str])] = &[
     ),
     ("erf_f64", &["exp_f64"]),
     ("bessel_j0_f64", &["cos_f64", "sin_f64"]),
+    ("atan_kernel_f64", &[]),
+    ("atan_f64", &["atan_kernel_f64"]),
+    ("atan2_f64", &["atan_f64"]),
+    ("asin_f64", &["atan2_f64"]),
+    ("acos_f64", &["asin_f64"]),
 ];
 
 /// Ordered list for correct emission (fossils first so actives can follow).
@@ -109,6 +114,11 @@ pub const F64_FUNCTION_ORDER: &[&str] = &[
     "gamma_f64",
     "erf_f64",
     "bessel_j0_f64",
+    "atan_kernel_f64",
+    "atan_f64",
+    "atan2_f64",
+    "asin_f64",
+    "acos_f64",
 ];
 
 /// Extract a WGSL function from source by name

@@ -1,6 +1,6 @@
 # ToadStool + BarraCuda -- Quick Status
 
-**Date**: February 24, 2026 (Session 53)
+**Date**: February 24, 2026 (Session 54)
 
 ---
 
@@ -24,7 +24,7 @@ hardcoded primal names in prod        0 -- capability-based discovery
 hardcoded ports in prod               0 -- all port 0 (OS-assigned/discovered)
 hardcoded localhost in prod           0 -- bind 0.0.0.0, discover_self_ip_address()
 hardcoded cloud URLs in prod          0 -- sovereignty-compliant
-orphan WGSL shaders                   0 -- all 645+ wired to Rust
+orphan WGSL shaders                   0 -- all 650+ wired to Rust
 CPU-only math in production            0 -- all math dispatches GPU shaders
 near-limit files (>900 lines)         0 -- multi_gpu refactored (921->54 mod.rs)
 ```
@@ -46,7 +46,7 @@ ToadStool (Hardware Infrastructure Primal)
   43 crates, 3 GPUs across 2 machines, 2 vendors (NVIDIA + AMD)
 
 BarraCuda (Universal Compute Engine -- SHADER-FIRST F64)
-  645+ WGSL f64 shaders, zero orphans -- ALL math originates as WGSL
+  650+ WGSL f64 shaders, zero orphans -- ALL math originates as WGSL
   Zero CPU-only math in production -- CPU gated #[cfg(test)] only
   compile_shader_f64() polyfills transcendentals (exp, log, pow, sin, cos...)
   Linalg GPU: solve, cholesky, QR, SVD, LU all dispatch WGSL shaders
@@ -91,7 +91,7 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 | Doc warnings | 0 |
 | Unit tests (5 core crates) | 4,176 |
 | Unit tests (full workspace) | 14,200+ |
-| WGSL shaders | 645+ (zero orphans) |
+| WGSL shaders | 650+ (zero orphans) |
 | Unsafe blocks | 95+ audited -- FFI only, all `// SAFETY:` documented |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -107,7 +107,7 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 
 ## What Works
 
-- 645+ WGSL f64 shaders on any GPU (NVIDIA, AMD via Vulkan)
+- 650+ WGSL f64 shaders on any GPU (NVIDIA, AMD via Vulkan)
 - Distributed LLM inference across machines (39.85 tok/s, BearDog encrypted)
 - Hardware discovery (GPUs, NPUs, CPUs) -- pure Rust, no scripts
 - JSON-RPC 2.0 + tarpc 0.34 IPC over Unix sockets (36 methods)
@@ -130,11 +130,11 @@ Same binary. Same shader. Same results. Zero vendor SDK.
 ## Scientific Middleware (Shader-First)
 
 ```
-barracuda::linalg         - LU, QR, SVD, Cholesky, eigh, gen_eigh, tridiagonal
+barracuda::linalg         - LU, QR, SVD, Cholesky, eigh, gen_eigh, tridiagonal, graph_laplacian, effective_rank
 barracuda::linalg::sparse - CsrMatrix, CG, BiCGSTAB, Jacobi, preconditioned CG
-barracuda::numerical      - Gradient, trapz, RK45 adaptive ODE solver
+barracuda::numerical      - Gradient, trapz, RK45 adaptive ODE, numerical_hessian
 barracuda::special        - gamma, chi_squared, Hermite, Legendre, Laguerre, digamma, beta, erf, Bessel
-barracuda::stats          - norm_cdf, norm_ppf, correlation, covariance, variance, bootstrap, chi2
+barracuda::stats          - norm_cdf, norm_ppf, correlation, covariance, variance, bootstrap, chi2, spectral_density, marchenko_pastur
 barracuda::optimize       - Nelder-Mead, BFGS, bisection, Newton, Brent, diagnostics
 barracuda::surrogate      - RBF with 6 kernels, GPU-accelerated training, LOO-CV
 barracuda::sample         - Sobol, LHS, random_uniform, direct_sampler
@@ -174,4 +174,4 @@ cargo llvm-cov --lib -p toadstool-common --json
 
 ---
 
-**Last Updated**: February 24, 2026 -- Session 53: Deep debt complete. Hardcoded localhost eliminated (5 files → `discover_self_ip_address()`, bind `0.0.0.0`, port 0). Unsafe audit (1 block removed). `Box<dyn Error>` → `ServerError`. 4 TODOs → `BLOCKED(reason)`. `multi_gpu` refactored (921→54). +193 tests. 4,176 core tests, 0 warnings.
+**Last Updated**: February 24, 2026 -- Session 54: Cross-spring absorption. 3 baseCamp primitives (graph_laplacian, effective_rank, numerical_hessian). 3 GPU bug fixes (TS-001 pow_f64, TS-003 acos, TS-004 buffer conflict). 5 new WGSL shaders (symmetrize, laplacian, hessian_column, histogram, metropolis). Spectral diagnostics (ESD, Marchenko-Pastur). PIE compliance verified. +16 tests.

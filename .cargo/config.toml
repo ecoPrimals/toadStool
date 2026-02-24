@@ -5,6 +5,9 @@
 [build]
 # NOTE: -D warnings moved to [workspace.lints.rust] in Cargo.toml
 # This enables proper override via [lints.clippy] for transitive dep conflicts
+# genomeBin PIE compliance: verified — x86_64 and aarch64 Linux default to PIE.
+# Explicit flag not needed; would conflict with target-specific rustflags.
+# Verified: `file target/release/toadstool` → "ELF 64-bit LSB pie executable"
 
 # ARM64 Linux (musl for static linking)
 [target.aarch64-unknown-linux-musl]

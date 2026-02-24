@@ -129,9 +129,10 @@ fn pow_f64(base: f64, exp_v: f64) -> f64 {
     if (base == one) { return one; }
     if (exp_v == one) { return base; }
     
-    // Integer exponent: fast binary exponentiation
-    let exp_i = i32(exp_v);
-    if (f64(exp_i) == exp_v) {
+    // Integer exponent: fast binary exponentiation (use round + tolerance for robustness)
+    let exp_rounded = round(exp_v);
+    if (abs(exp_v - exp_rounded) < (zero + 1e-10)) {
+        let exp_i = i32(exp_rounded);
         var result = one;
         var b = base;
         var e = exp_i;
@@ -240,16 +241,16 @@ fn fao56_et0(
     // Extraterrestrial radiation Ra (simplified)
     let pi = zero + 3.141592653589793;
     let lat_rad = lat * pi / (zero + 180.0);
-    let dr = one + (zero + 0.033) * cos_simple((zero + 2.0) * pi * f64(doy) / (zero + 365.0));
-    let decl = (zero + 0.409) * sin_simple((zero + 2.0) * pi * f64(doy) / (zero + 365.0) - (zero + 1.39));
+    let dr = one + (zero + 0.033) * cos_f64((zero + 2.0) * pi * f64(doy) / (zero + 365.0));
+    let decl = (zero + 0.409) * sin_f64((zero + 2.0) * pi * f64(doy) / (zero + 365.0) - (zero + 1.39));
     
-    var ws = acos_simple(-tan_simple(lat_rad) * tan_simple(decl));
+    var ws = acos_f64(-tan_f64(lat_rad) * tan_f64(decl));
     if (ws != ws) { ws = pi; } // NaN check
     
     let gsc = zero + 0.0820;
     let ra = (zero + 24.0) * (zero + 60.0) / pi * gsc * dr * (
-        ws * sin_simple(lat_rad) * sin_simple(decl) +
-        cos_simple(lat_rad) * cos_simple(decl) * sin_simple(ws)
+        ws * sin_f64(lat_rad) * sin_f64(decl) +
+        cos_f64(lat_rad) * cos_f64(decl) * sin_f64(ws)
     );
     
     // Clear-sky radiation Rso
@@ -280,126 +281,8 @@ fn fao56_et0(
     return numerator / denominator;
 }
 
-// Precision trig for ET₀ (f64 Taylor series)
-//
-// Cody-Waite range reduction to minimize cancellation near multiples of π.
-// Split 2π into high+low parts: 2π = two_pi_hi + two_pi_lo.
-fn sin_simple(x: f64) -> f64 {
-    let zero = x - x;
-    let one = zero + 1.0;
-    let pi = zero + 3.141592653589793;
-    let two_pi_hi = zero + 6.283185307179586;
-    let two_pi_lo = zero + 2.4492935982947064e-16;
-    
-    // Cody-Waite range reduction to [-π, π]
-    var y = x;
-    while (y > pi) { y = y - two_pi_hi; y = y - two_pi_lo; }
-    while (y < -pi) { y = y + two_pi_hi; y = y + two_pi_lo; }
-    
-    // Taylor: sin(y) = y(1 - y²·P(y²)), 7 terms → y^15 truncation
-    let y2 = y * y;
-    let c3  = zero + 0.16666666666666666;
-    let c5  = zero + 0.008333333333333333;
-    let c7  = zero + 0.0001984126984126984;
-    let c9  = zero + 0.0000027557319223985893;
-    let c11 = zero + 2.505210838544172e-8;
-    let c13 = zero + 1.6059043836821613e-10;
-    let c15 = zero + 7.647163731819816e-13;
-    
-    var p = -c15;
-    p = p * y2 + c13;
-    p = p * y2 - c11;
-    p = p * y2 + c9;
-    p = p * y2 - c7;
-    p = p * y2 + c5;
-    p = p * y2 - c3;
-    
-    return y * (one + y2 * p);
-}
-
-fn cos_simple(x: f64) -> f64 {
-    let zero = x - x;
-    let one = zero + 1.0;
-    let pi = zero + 3.141592653589793;
-    let two_pi_hi = zero + 6.283185307179586;
-    let two_pi_lo = zero + 2.4492935982947064e-16;
-    
-    var y = x;
-    while (y > pi) { y = y - two_pi_hi; y = y - two_pi_lo; }
-    while (y < -pi) { y = y + two_pi_hi; y = y + two_pi_lo; }
-    
-    // Taylor: cos(y) = 1 + y²·P(y²), 7 terms → y^14 truncation
-    let y2 = y * y;
-    let c2  = zero + 0.5;
-    let c4  = zero + 0.041666666666666664;
-    let c6  = zero + 0.001388888888888889;
-    let c8  = zero + 0.0000248015873015873;
-    let c10 = zero + 2.7557319223985893e-7;
-    let c12 = zero + 2.08767569878681e-9;
-    let c14 = zero + 1.1470745597729725e-11;
-    
-    var p = c14;
-    p = p * y2 - c12;
-    p = p * y2 + c10;
-    p = p * y2 - c8;
-    p = p * y2 + c6;
-    p = p * y2 - c4;
-    p = p * y2 + c2;
-    
-    return one - y2 * p;
-}
-
-fn tan_simple(x: f64) -> f64 {
-    return sin_simple(x) / cos_simple(x);
-}
-
-fn acos_simple(x: f64) -> f64 {
-    let zero = x - x;
-    let one = zero + 1.0;
-    let half_pi = zero + 1.5707963267948966;
-    let pi = zero + 3.141592653589793;
-    
-    if (x >= one) { return zero; }
-    if (x <= -one) { return pi; }
-    
-    let half = zero + 0.5;
-    
-    if (x > half) {
-        let t = sqrt((one - x) * half);
-        return (zero + 2.0) * asin_core(t);
-    } else if (x < -half) {
-        let t = sqrt((one + x) * half);
-        return pi - (zero + 2.0) * asin_core(t);
-    } else {
-        return half_pi - asin_core(x);
-    }
-}
-
-// asin(x) for |x| <= ~0.707 — 8-term Taylor for full f64 precision
-fn asin_core(x: f64) -> f64 {
-    let zero = x - x;
-    let x2 = x * x;
-    
-    let c1 = zero + 0.16666666666666666;
-    let c2 = zero + 0.075;
-    let c3 = zero + 0.04464285714285714;
-    let c4 = zero + 0.030381944444444446;
-    let c5 = zero + 0.022372159090909092;
-    let c6 = zero + 0.017352764423076923;
-    let c7 = zero + 0.01396484375;
-    let c8 = zero + 0.011551800896139706;
-    
-    var p = c8;
-    p = p * x2 + c7;
-    p = p * x2 + c6;
-    p = p * x2 + c5;
-    p = p * x2 + c4;
-    p = p * x2 + c3;
-    p = p * x2 + c2;
-    p = p * x2 + c1;
-    
-    return x * ((zero + 1.0) + x2 * p);
-}
+// Precision trig for ET₀: sin_f64, cos_f64, tan_f64, acos_f64 from math_f64.wgsl
+// (injected via compile_shader_f64 when shader calls them)
 
 // ============================================================================
 // BINDINGS

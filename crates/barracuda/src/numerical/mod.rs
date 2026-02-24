@@ -41,11 +41,17 @@
 //! ```
 
 pub mod gradient;
+pub mod hessian;
 pub mod integrate;
 pub mod ode_generic;
 pub mod rk45;
 
 pub use gradient::gradient_1d;
+pub use hessian::numerical_hessian;
 pub use integrate::{trapz, trapz_product};
 pub use ode_generic::{BatchedOdeRK4, OdeSystem};
 pub use rk45::{rk45_at, rk45_solve, Rk45Config, Rk45Result};
+
+/// WGSL shader: parallel central-difference Hessian column computation
+#[allow(dead_code)]
+pub const WGSL_HESSIAN_COLUMN: &str = include_str!("../shaders/numerical/hessian_column.wgsl");

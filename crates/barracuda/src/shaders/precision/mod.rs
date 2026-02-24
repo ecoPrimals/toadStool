@@ -290,7 +290,9 @@ impl ShaderTemplate {
                 && !Self::shader_defines_function(shader_body, func_name)
             {
                 if let Some(func_code) = extract_wgsl_function(&full_lib, func_name) {
-                    preamble.push_str(&func_code);
+                    // Substitute fossil calls (sqrt_f64, etc.) with native builtins in extracted code
+                    let substituted = Self::substitute_fossil_f64(&func_code);
+                    preamble.push_str(&substituted);
                     preamble.push_str("\n\n");
                 }
             }

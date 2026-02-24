@@ -64,6 +64,7 @@
 pub mod cholesky;
 pub mod eigh;
 pub mod gen_eigh;
+pub mod graph;
 pub mod solve;
 pub mod sparse;
 
@@ -88,3 +89,4 @@ pub use crate::ops::linalg::tridiagonal_solve as tridiagonal_solve_f64;
 pub use cholesky::cholesky_f64;
 pub use eigh::eigh_f64;
 pub use gen_eigh::{gen_eigh_f64, gen_eigh_identity_b, GenEighDecomposition};
+pub use graph::{effective_rank, graph_laplacian};

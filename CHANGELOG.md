@@ -5,7 +5,32 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 24, 2026 (Sessions 43-53 — Deep Debt Evolution + Cross-Spring Absorption)
+## [Unreleased] - February 24, 2026 (Sessions 43-54 — Deep Debt Evolution + Cross-Spring Absorption)
+
+### Session 54 (Feb 24, 2026) — Cross-Spring Absorption (neuralSpring baseCamp + airSpring GPU Fixes)
+
+- **3 baseCamp primitives absorbed** from neuralSpring:
+  - `graph_laplacian(adjacency, n)` → `barracuda::linalg::graph_laplacian` (3 tests)
+  - `effective_rank(eigenvalues)` → `barracuda::linalg::effective_rank` (3 tests)
+  - `numerical_hessian(f, params, eps)` → `barracuda::numerical::numerical_hessian` (3 tests)
+- **3 airSpring GPU bugs fixed**:
+  - TS-001: `pow_f64` fractional exponent — `round()` + tolerance for integer detection
+  - TS-003: `acos_simple` precision drift — replaced with `acos_f64` from `math_f64.wgsl`
+  - TS-004: `FusedMapReduceF64` buffer conflict for N≥1024 — separate `partials_buffer`
+- **5 new WGSL shaders**:
+  - `symmetrize.wgsl` — matrix symmetrization (linalg)
+  - `laplacian.wgsl` — graph Laplacian L=D-A (linalg)
+  - `hessian_column.wgsl` — parallel central-difference Hessian (numerical)
+  - `histogram.wgsl` — atomic binning (stats)
+  - `metropolis.wgsl` — parallel Metropolis-Hastings MCMC (sample)
+- **Spectral diagnostics absorbed** from neuralSpring:
+  - `empirical_spectral_density(eigenvalues, n_bins)` → `barracuda::stats::spectral_density` (4 tests)
+  - `marchenko_pastur_bounds(gamma)` → `barracuda::stats::spectral_density` (3 tests)
+  - `level_spacing_ratio` verified against neuralSpring (barracuda version more robust)
+  - `regularized_gamma_lower` confirmed already present as `regularized_gamma_p`
+- **PIE compliance verified**: Linux targets default to PIE; documented in `.cargo/config.toml`
+- **TS-002 confirmed resolved**: `batched_elementwise_f64` orchestrator already exists
+- **Quality**: 0 clippy warnings, +16 new tests, 650+ WGSL shaders
 
 ### Session 53 (Feb 24, 2026) — Hardcoding Elimination, Unsafe Evolution, Coverage Push
 

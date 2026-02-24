@@ -50,6 +50,10 @@ pub mod sparsity;
 /// Latin hypercube sampling shader.
 pub const WGSL_LHS: &str = include_str!("../shaders/sample/lhs.wgsl");
 
+/// WGSL shader: parallel Metropolis-Hastings MCMC
+#[allow(dead_code)]
+pub const WGSL_METROPOLIS: &str = include_str!("../shaders/sample/metropolis.wgsl");
+
 pub use direct::{direct_sampler, DirectSamplerConfig, DirectSamplerResult};
 pub use lhs::{latin_hypercube, random_uniform};
 pub use sobol::{sobol_scaled, sobol_sequence, SobolGenerator};

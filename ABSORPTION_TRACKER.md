@@ -269,13 +269,63 @@ Consider adding `barracuda::tolerances` module with centralized physical-justifi
 
 ---
 
+---
+
+## SESSION 54: Cross-Spring Absorption (Feb 24, 2026)
+
+Sources: neuralSpring baseCamp V18, airSpring TS-001 through TS-004, wateringHole genomeBin
+
+### HIGH PRIORITY — S54
+
+| ID | Item | Source | Status |
+|----|------|--------|--------|
+| H-008 | `graph_laplacian(adjacency, n) -> Vec<f64>` | neuralSpring `agent_coordination.rs` | DONE — `barracuda::linalg::graph_laplacian`, 3 tests |
+| H-009 | `effective_rank(eigenvalues) -> f64` | neuralSpring `neural_pgm.rs` | DONE — `barracuda::linalg::effective_rank`, 3 tests |
+| H-010 | `numerical_hessian(f, params, eps) -> Vec<f64>` | neuralSpring `loss_landscape.rs` | DONE — `barracuda::numerical::numerical_hessian`, 3 tests |
+| H-011 | TS-001: `pow_f64` fractional exponent bug | airSpring `evolution_gaps.rs` | DONE — `round()` + tolerance for integer detection in `batched_elementwise_f64.wgsl` |
+| H-012 | TS-003: `acos_simple` precision drift | airSpring `evolution_gaps.rs` | DONE — replaced with `acos_f64` from `math_f64.wgsl` |
+| H-013 | TS-004: `FusedMapReduceF64` buffer conflict (N≥1024) | airSpring `evolution_gaps.rs` | DONE — separate `partials_buffer` for pass 2 input |
+
+### MEDIUM PRIORITY — S54
+
+| ID | Item | Source | Status |
+|----|------|--------|--------|
+| M-011 | `empirical_spectral_density(eigenvalues, n_bins)` | neuralSpring `weight_spectral.rs` | DONE — `barracuda::stats::spectral_density`, 4 tests |
+| M-012 | `marchenko_pastur_bounds(gamma) -> (f64, f64)` | neuralSpring `weight_spectral.rs` | DONE — `barracuda::stats::spectral_density`, 3 tests |
+| M-013 | Verify `level_spacing_ratio` vs neuralSpring | neuralSpring `weight_spectral.rs` | VERIFIED — barracuda version more robust (strict s>0 check) |
+| M-014 | `regularized_gamma_lower` from wetSpring | wetSpring `special.rs` | ALREADY PRESENT — `barracuda::special::regularized_gamma_p` |
+| M-015 | `symmetrize.wgsl` shader | neuralSpring V18 handoff | DONE — `shaders/linalg/symmetrize.wgsl`, registered |
+| M-016 | `laplacian.wgsl` shader | neuralSpring V18 handoff | DONE — `shaders/linalg/laplacian.wgsl`, registered |
+| M-017 | `hessian_column.wgsl` shader | neuralSpring V18 handoff | DONE — `shaders/numerical/hessian_column.wgsl`, registered |
+| M-018 | `histogram.wgsl` shader (atomic binning) | neuralSpring V18 handoff | DONE — `shaders/stats/histogram.wgsl`, registered |
+| M-019 | `metropolis.wgsl` shader (parallel MCMC) | neuralSpring V18 handoff | DONE — `shaders/sample/metropolis.wgsl`, registered |
+
+### LOW PRIORITY — S54
+
+| ID | Item | Source | Status |
+|----|------|--------|--------|
+| L-010 | PIE build compliance for genomeBin | wateringHole `manifest.toml` | VERIFIED — PIE is default on all Linux targets; documented in `.cargo/config.toml` |
+| L-011 | TS-002: Rust orchestrator for `batched_elementwise_f64` | airSpring | ALREADY PRESENT — `ops::batched_elementwise_f64` exists |
+
+### NOT ABSORBED (Deferred)
+
+- neuralSpring LOW: `belief_propagation_chain`, `boltzmann_sampling`, `disordered_laplacian`
+- hotSpring `boinc_scheduling_comparison.py` — Python research
+- airSpring domain-specific code (ET0, water balance) — stays in airSpring
+- wetSpring V19-V22 experiments — no new primitives
+- PetalTongue Phase 2 (audio/GPU backend) — future work
+
+---
+
 ## Session Summary
 
-**All 26 items completed** (7 HIGH, 10 MEDIUM, 9 LOW)
-**Tests**: 115+ across absorption items + 193 more in S53 coverage push
-**Quality**: 0 clippy warnings, cargo fmt clean, 4,176 core tests passing
+**Sessions 51-54: 43 items completed** (13 HIGH, 19 MEDIUM, 11 LOW)
+**S54 additions**: 6 HIGH + 9 MEDIUM + 2 LOW = 17 new items
+**New tests (S54)**: 16 (graph_laplacian 3, effective_rank 3, numerical_hessian 3, spectral_density 7)
+**New WGSL shaders (S54)**: 5 (symmetrize, laplacian, hessian_column, histogram, metropolis)
+**GPU bug fixes (S54)**: 3 (TS-001 pow_f64, TS-003 acos precision, TS-004 buffer conflict)
+**Quality**: 0 clippy warnings, cargo fmt clean
 **File compliance**: All production .rs files under 1000 lines
-**Remaining**: GPU runtime integration testing for H-002 (CG loop, buffer allocation) and H-003 (GPU dispatch paths)
 
-*Updated: February 24, 2026 -- Session 53*
+*Updated: February 24, 2026 -- Session 54*
 *Next review: GPU runtime integration testing (requires device)*
