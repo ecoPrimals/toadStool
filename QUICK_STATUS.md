@@ -1,6 +1,6 @@
 # ToadStool + BarraCuda -- Quick Status
 
-**Date**: February 24, 2026 (Session 52)
+**Date**: February 24, 2026 (Session 53)
 
 ---
 
@@ -12,24 +12,20 @@ cargo fmt --all -- --check            0 diffs
 cargo clippy --workspace --all-targets  0 warnings
 cargo deny check licenses bans sources  all passing
 cargo doc --workspace --no-deps       0 warnings
-cargo test --workspace --lib          14,000+ tests / 0 failed
-  core 5 crates alone                 4,009 tests / 0 failed
+cargo test --workspace --lib          14,100+ tests / 0 failed
+  core 5 crates alone                 4,122 tests / 0 failed
 unsafe blocks                         95+ audited -- FFI only, all SAFETY documented
+  1 unsafe block removed (vfio.rs)    from_size_align_unchecked -> safe
 production panics/unwraps             0 blind unwrap(); infallible expect() only
 production Box<dyn Error>             0 in core crates -- all typed errors
 production TODOs/FIXMEs               0
 hardcoded primal names in prod        0 -- capability-based discovery
 hardcoded ports in prod               0 -- all port 0 (OS-assigned/discovered)
+hardcoded localhost in prod           0 -- bind 0.0.0.0, discover_self_ip_address()
 hardcoded cloud URLs in prod          0 -- sovereignty-compliant
 orphan WGSL shaders                   0 -- all 645+ wired to Rust
 CPU-only math in production            0 -- all math dispatches GPU shaders
 near-limit files                      0 -- all 2,614 .rs files under 1000 lines
-line coverage (5 core crates)         84.33% (73,637 lines instrumented)
-  config                              89.3%
-  server                              85.7%
-  common                              84.1%
-  toadstool                           83.3%
-  distributed                         81.6%
 ```
 
 ---

@@ -5,7 +5,26 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 24, 2026 (Sessions 43-52 — Deep Debt Evolution + Cross-Spring Absorption)
+## [Unreleased] - February 24, 2026 (Sessions 43-53 — Deep Debt Evolution + Cross-Spring Absorption)
+
+### Session 53 (Feb 24, 2026) — Hardcoding Elimination, Unsafe Evolution, Coverage Push
+
+- **Hardcoded localhost eliminated**: 5 production files evolved to capability-based
+  - `execution.rs`: `discover_self_ip_address()` checks TOADSTOOL_BIND_ADDRESS, HOST, HOSTNAME, falls back to 0.0.0.0
+  - `defaults.rs`: `BIND_ADDRESS_DEFAULT = "0.0.0.0"`, server ports default to 0 (OS-assigned)
+  - `env_config/network.rs`: bind 0.0.0.0, ports from config not hardcoded
+  - `discovery_defaults.rs`: `localhost_endpoint` renamed to `fallback_endpoint` (dev-only)
+  - `network_config.rs`: HOSTNAME unset uses 0.0.0.0 not localhost
+- **Unsafe code audit**: 1 unsafe block removed (`vfio.rs`: `from_size_align_unchecked` → safe `from_size_align`), SAFETY comments expanded for MMIO Send/Sync and pinned alloc
+- **Coverage push**: +138 new tests across 12 zero-coverage modules
+  - scheduler (+4), resources (+24), plugin_system (+6), communication (+8)
+  - songbird types (+8), songbird discovery (+4), crypto_lock (+3), orchestrator (+2)
+  - unibin (+6), handlers_cluster (+10), handlers_health (+7), tarpc_server (+5)
+  - beardog client (+7 via extracted `parse_capabilities_from_json`)
+  - hosting/recursive (+9), service_discovery/config (+21), primal_identity (+9)
+- **Server test fix**: Flattened connection/tests.rs and tests_extended.rs module structure to fix `super::super::` import resolution after S52 refactor
+- **Distributed warnings**: 6 unused import warnings fixed
+- **Quality**: 0 clippy warnings, 4,122 tests across 5 core crates, all passing
 
 ### Session 52 (Feb 24, 2026) — Complete Cross-Spring Absorption
 
