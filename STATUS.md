@@ -1,4 +1,4 @@
-# Status -- February 24, 2026 (Sessions 32-57: Shader-First Architecture + Deep Debt + Cross-Spring Absorption + Coverage Push)
+# Status -- February 24, 2026 (Sessions 32-58: Shader-First Architecture + Deep Debt + Cross-Spring Absorption + Coverage Push)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace --lib` | PASS | **14,200+ tests (4,224 across 5 core crates)** |
+| `cargo test --workspace --lib` | PASS | **14,200+ tests (4,251 across 5 core crates)** |
 | hotSpring validation | PASS | **195/195 acceptance checks** |
 | wetSpring validation | PASS | **728 Rust tests, 95 experiments** |
 | neuralSpring validation | PASS | **1,560+ checks, 115 binaries** |
@@ -21,10 +21,20 @@
 | Production panics/unwraps | PASS | **Zero blind `unwrap()`; infallible `expect()` only** |
 | Production TODOs | PASS | **Zero -- all evolved to `BLOCKED(reason)` markers** |
 | File size limit | PASS | **All production files under 1000 lines** |
-| WGSL shaders | PASS | **645+ (zero orphans, all f64 shader-first)** |
+| WGSL shaders | PASS | **650+ (zero orphans, all f64 shader-first, +df64_core.wgsl)** |
 | CPU-only math in prod | PASS | **Zero -- all math dispatches GPU shaders** |
+| FP64 strategy | PASS | **Fp64Strategy::Native/Hybrid -- hardware-adaptive core selection** |
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+
+---
+
+## Session 58: Cross-Spring Absorption (hotSpring + wetSpring + neuralSpring) (Feb 24, 2026)
+
+- **hotSpring**: `df64_core.wgsl` (double-float f32-pair), `Fp64Strategy` enum (Native/Hybrid routing), `split_workgroups` 2D dispatch, FP64 ratio documentation corrected
+- **neuralSpring**: `pow(f64)` polyfill crash fix — `patch_transcendentals_in_code` now covers exp/log/pow
+- **wetSpring**: 5 biological ODE systems (`CapacitorOde`, `CooperationOde`, `MultiSignalOde`, `BistableOde`, `PhageDefenseOde`) in `numerical/ode_bio/`; NMF (Euclidean + KL divergence) in `linalg/nmf.rs`
+- **+27 tests** (14 ODE bio + 8 NMF + 5 Fp64Strategy)
 
 ---
 

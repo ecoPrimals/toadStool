@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 24, 2026 (Sessions 43-57 — Deep Debt Evolution + Cross-Spring Absorption + Coverage Push)
+## [Unreleased] - February 24, 2026 (Sessions 43-58 — Deep Debt Evolution + Cross-Spring Absorption + Coverage Push)
+
+### Session 58 (Feb 24, 2026) — Cross-Spring Absorption (hotSpring + wetSpring + neuralSpring)
+
+- **hotSpring absorptions (biomeGate FP64 core-streaming discovery)**:
+  - `df64_core.wgsl` — double-float f32-pair arithmetic shader (Knuth/Dekker) for ~14 digit precision on FP32 cores; absorbed into `shaders/math/`
+  - `Fp64Strategy` enum — hardware-adaptive FP64 execution strategy (Native vs Hybrid) added to `device/driver_profile.rs`; routes compute-class GPUs (1:2) to native f64, consumer GPUs (1:64) to DF64 bulk + f64 reductions
+  - `split_workgroups(total) -> (x, y, 1)` — 2D dispatch helper for lattices exceeding 65535 workgroups; added to `dispatch/mod.rs`
+  - **FP64 ratio claims corrected**: `~1:2` consumer GPU claims in README.md and QUICK_STATUS.md updated to reflect true 1:64 hardware ratio and hybrid core-streaming strategy
+- **neuralSpring absorption (S-17 polyfill fix)**:
+  - `patch_transcendentals_in_code` — extended `exp(`/`log(` → `exp_f64(`/`log_f64(` patching to also cover `pow(` → `pow_f64(` (native `pow(f64)` crashes on NVVM/NAK Ada Lovelace)
+- **wetSpring absorptions (v24-v25 ODE systems + NMF)**:
+  - 5 biological ODE systems — `CapacitorOde`, `CooperationOde`, `MultiSignalOde`, `BistableOde`, `PhageDefenseOde` — absorbed into `numerical/ode_bio/` with 6 param structs, inline WGSL derivatives, CPU derivatives, and 14 tests
+  - NMF (Non-negative Matrix Factorization) — Euclidean + KL divergence objectives via Lee & Seung multiplicative updates, absorbed into `linalg/nmf.rs` with 8 tests
+- **Quality**: 27 new tests (14 ODE bio + 8 NMF + 5 Fp64Strategy), 0 clippy errors, cargo fmt clean
 
 ### Session 57 (Feb 24, 2026) — Coverage Push + Quality Evolution
 

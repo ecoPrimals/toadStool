@@ -219,7 +219,8 @@ impl ShaderTemplate {
         crate::shaders::optimizer::WgslOptimizer::new(profile.latency_model()).optimize(&injected)
     }
 
-    /// Replace `exp(` → `exp_f64(` and `log(` → `log_f64(` while preserving
+    /// Replace native f64 transcendentals (`exp(`, `log(`, `pow(`) with their
+    /// polyfill equivalents (`exp_f64(`, `log_f64(`, `pow_f64(`) while preserving
     /// WGSL comments so generated shader source stays readable.
     ///
     /// Processes the shader line-by-line:
@@ -232,28 +233,32 @@ impl ShaderTemplate {
             .lines()
             .map(|line| {
                 let trimmed = line.trim_start();
-                // Skip whole-line comments unchanged
                 if trimmed.starts_with("//") {
                     return line.to_string();
                 }
-                // Split at the first inline comment marker
                 if let Some(comment_start) = line.find("//") {
                     let code = &line[..comment_start];
                     let comment = &line[comment_start..];
-                    let patched = Self::patch_exp_log_in_code(code);
+                    let patched = Self::patch_transcendentals_in_code(code);
                     format!("{patched}{comment}")
                 } else {
-                    Self::patch_exp_log_in_code(line)
+                    Self::patch_transcendentals_in_code(line)
                 }
             })
             .collect::<Vec<_>>()
             .join("\n")
     }
 
-    /// Apply the `exp`/`log` rename within a single non-comment code fragment.
+    /// Replace native f64 transcendentals with polyfill calls in a code fragment.
+    ///
+    /// Covers `exp`, `log`, and `pow` — all three crash on NVVM/NAK (Ada
+    /// Lovelace) and NVK. The `_f64` polyfills are defined in `math_f64.wgsl`
+    /// and auto-injected by `inject_missing_math_f64`.
     #[inline]
-    fn patch_exp_log_in_code(code: &str) -> String {
-        code.replace("exp(", "exp_f64(").replace("log(", "log_f64(")
+    fn patch_transcendentals_in_code(code: &str) -> String {
+        code.replace("exp(", "exp_f64(")
+            .replace("log(", "log_f64(")
+            .replace("pow(", "pow_f64(")
     }
 
     fn inject_missing_math_f64(shader_body: &str) -> String {

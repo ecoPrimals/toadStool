@@ -65,13 +65,14 @@ Zero CUDA. Zero ROCm. Pure Vulkan via WGPU. Bit-identical results.
 
 Pure-GPU double precision with `math_f64.wgsl` polyfill library (exp, log, pow, sin, cos, tan, gamma, erf -- auto-injected by `compile_shader_f64()`):
 
-| GPU | SHADER_F64 | Observed FP64:FP32 Ratio | Notes |
-|-----|-----------|-------------------------|-------|
-| RTX 3090 | Yes | ~1:2 (not 1:64!) | Vulkan bypasses CUDA throttling |
-| RTX 4070 | Yes | ~1:2 | 48MB L2 cache helps f64 |
-| RX 6950 XT | Yes | ~1:2 | 128MB Infinity Cache excellent |
+| GPU | SHADER_F64 | Hardware FP64:FP32 | Strategy | Effective Throughput |
+|-----|-----------|-------------------|----------|---------------------|
+| Titan V | Yes | 1:2 (2560 FP64 cores) | Native f64 | 7.45 TFLOPS peak |
+| RTX 3090 | Yes | 1:64 (164 FP64 units) | Hybrid DF64+f64 | ~3.5 TFLOPS effective |
+| RTX 4070 | Yes | 1:64 | Hybrid DF64+f64 | 48MB L2 cache helps |
+| RX 6950 XT | Yes | ~1:4 | Native f64 | 128MB Infinity Cache excellent |
 
-**Key insight**: Consumer GPUs advertise 1:64 FP64:FP32 ratio, but via pure Vulkan/wgpu we achieve ~1:2 -- the silicon is capable, vendor SDKs throttle it.
+**Key insight**: Consumer NVIDIA GPUs have genuine 1:64 FP64:FP32 hardware ratio (confirmed by `bench_fp64_ratio`). The breakthrough is **hybrid core-streaming**: routing bulk math through double-float f32-pair arithmetic (`df64_core.wgsl`, ~14 digits) on the massive FP32 core array, reserving native f64 for reductions and convergence tests. This delivers ~10x the effective f64-equivalent throughput on consumer GPUs. Compute-class GPUs (Titan V, V100, MI250) use native f64 everywhere via `Fp64Strategy::Native`.
 
 ### Universal Cache Awareness
 

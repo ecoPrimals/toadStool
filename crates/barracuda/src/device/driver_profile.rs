@@ -134,6 +134,23 @@ pub enum EigensolveStrategy {
     Standard,
 }
 
+// ── FP64 execution strategy ──────────────────────────────────────────────────
+
+/// Hardware-adaptive FP64 execution strategy (hotSpring core-streaming discovery).
+///
+/// On compute-class GPUs (Titan V, V100, MI250) with 1:2 FP64:FP32 hardware,
+/// native `f64` is fastest. On consumer GPUs (1:64 ratio), routing bulk math
+/// through double-float f32-pair (`Df64`) on the massive FP32 core array
+/// delivers ~10x the effective throughput, reserving native `f64` for
+/// precision-critical reductions and convergence tests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Fp64Strategy {
+    /// Use native f64 everywhere (Titan V, V100, A100, MI250X — 1:2 hardware).
+    Native,
+    /// DF64 (f32-pair, ~14 digits) for bulk math, native f64 for reductions.
+    Hybrid,
+}
+
 // ── GpuDriverProfile ──────────────────────────────────────────────────────────
 
 /// Unified GPU driver profile for data-driven shader specialisation.
@@ -236,6 +253,19 @@ impl GpuDriverProfile {
     /// proprietary (NVVM PTXAS fails on f64 transcendentals for SM89).
     pub fn supports_f64_builtins(&self) -> bool {
         self.workarounds.is_empty() && !matches!(self.driver, DriverKind::Software)
+    }
+
+    /// Choose the optimal FP64 execution strategy for this hardware.
+    ///
+    /// Compute-class GPUs (1:2 FP64:FP32) should use native f64 everywhere.
+    /// Consumer GPUs (1:64) benefit from the hybrid core-streaming approach:
+    /// DF64 (f32-pair) on the FP32 core array for bulk math, native f64 only
+    /// for accumulations and convergence tests.
+    pub fn fp64_strategy(&self) -> Fp64Strategy {
+        match self.fp64_rate {
+            Fp64Rate::Full => Fp64Strategy::Native,
+            Fp64Rate::Throttled | Fp64Rate::Minimal | Fp64Rate::Software => Fp64Strategy::Hybrid,
+        }
     }
 
     /// Whether this is an open-source driver (NVK or RADV).
@@ -377,6 +407,56 @@ impl fmt::Display for GpuDriverProfile {
             writeln!(f, "  Workarounds: {:?}", self.workarounds)?;
         }
         writeln!(f, "  Eigensolve: {:?}", self.optimal_eigensolve_strategy())?;
+        writeln!(f, "  FP64 Strategy: {:?}", self.fp64_strategy())?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_profile(rate: Fp64Rate, arch: GpuArch) -> GpuDriverProfile {
+        GpuDriverProfile {
+            driver: DriverKind::NvidiaProprietary,
+            compiler: CompilerKind::NvidiaPtxas,
+            arch,
+            fp64_rate: rate,
+            workarounds: vec![],
+        }
+    }
+
+    #[test]
+    fn fp64_strategy_native_for_full_rate() {
+        let p = make_profile(Fp64Rate::Full, GpuArch::Volta);
+        assert_eq!(p.fp64_strategy(), Fp64Strategy::Native);
+    }
+
+    #[test]
+    fn fp64_strategy_hybrid_for_throttled() {
+        let p = make_profile(Fp64Rate::Throttled, GpuArch::Ampere);
+        assert_eq!(p.fp64_strategy(), Fp64Strategy::Hybrid);
+    }
+
+    #[test]
+    fn fp64_strategy_hybrid_for_minimal() {
+        let p = make_profile(Fp64Rate::Minimal, GpuArch::Ada);
+        assert_eq!(p.fp64_strategy(), Fp64Strategy::Hybrid);
+    }
+
+    #[test]
+    fn fp64_strategy_hybrid_for_software() {
+        let p = make_profile(Fp64Rate::Software, GpuArch::Software);
+        assert_eq!(p.fp64_strategy(), Fp64Strategy::Hybrid);
+    }
+
+    #[test]
+    fn display_includes_fp64_strategy() {
+        let p = make_profile(Fp64Rate::Full, GpuArch::Volta);
+        let s = format!("{p}");
+        assert!(
+            s.contains("FP64 Strategy: Native"),
+            "display should show strategy"
+        );
     }
 }

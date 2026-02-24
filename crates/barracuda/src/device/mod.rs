@@ -63,8 +63,8 @@ pub use cache_hierarchy::{
     CacheAwareTiler, CacheLevel, CacheResidency, MainMemory, SubstrateMemoryHierarchy, TileConfig,
 };
 pub use capabilities::{
-    CompilerKind, DeviceCapabilities, DriverKind, EigensolveStrategy, Fp64Rate, GpuArch,
-    GpuDriverProfile, Workaround, WorkloadType,
+    CompilerKind, DeviceCapabilities, DriverKind, EigensolveStrategy, Fp64Rate, Fp64Strategy,
+    GpuArch, GpuDriverProfile, Workaround, WorkloadType,
 };
 pub use kernel_router::{ComputeWorkload, KernelRouter, KernelTarget, NpuModelInfo};
 pub use registry::{

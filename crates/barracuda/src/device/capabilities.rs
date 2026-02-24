@@ -31,7 +31,8 @@
 // Re-export driver/compiler types so callers that previously imported them
 // from `capabilities` continue to compile without path changes.
 pub use crate::device::driver_profile::{
-    CompilerKind, DriverKind, EigensolveStrategy, Fp64Rate, GpuArch, GpuDriverProfile, Workaround,
+    CompilerKind, DriverKind, EigensolveStrategy, Fp64Rate, Fp64Strategy, GpuArch,
+    GpuDriverProfile, Workaround,
 };
 
 use crate::device::vendor::{VENDOR_AMD, VENDOR_INTEL, VENDOR_NVIDIA};

@@ -43,12 +43,17 @@
 pub mod gradient;
 pub mod hessian;
 pub mod integrate;
+pub mod ode_bio;
 pub mod ode_generic;
 pub mod rk45;
 
 pub use gradient::gradient_1d;
 pub use hessian::numerical_hessian;
 pub use integrate::{trapz, trapz_product};
+pub use ode_bio::{
+    BistableOde, BistableParams, CapacitorOde, CapacitorParams, CooperationOde, CooperationParams,
+    MultiSignalOde, MultiSignalParams, PhageDefenseOde, PhageDefenseParams, QsBiofilmParams,
+};
 pub use ode_generic::{BatchedOdeRK4, OdeSystem};
 pub use rk45::{rk45_at, rk45_solve, Rk45Config, Rk45Result};
 

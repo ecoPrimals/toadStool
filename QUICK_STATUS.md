@@ -50,7 +50,7 @@ BarraCuda (Universal Compute Engine -- SHADER-FIRST F64)
   Zero CPU-only math in production -- CPU gated #[cfg(test)] only
   compile_shader_f64() polyfills transcendentals (exp, log, pow, sin, cos...)
   Linalg GPU: solve, cholesky, QR, SVD, LU all dispatch WGSL shaders
-  SPIR-V/Vulkan bypasses CUDA fp64 throttle (1:2 vs 1:64)
+  Hybrid FP64: DF64 (f32-pair, ~14 digits) on FP32 cores + native f64 reductions (Fp64Strategy)
   Bit-identical results: RTX 4070 = RTX 3090 = RX 6950 XT
   TensorSession: batched op recording with single-submit execution
   GpuExecutor: 31 MathOps | CpuExecutor: full dispatch

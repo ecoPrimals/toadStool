@@ -65,6 +65,7 @@ pub mod cholesky;
 pub mod eigh;
 pub mod gen_eigh;
 pub mod graph;
+pub mod nmf;
 pub mod solve;
 pub mod sparse;
 
