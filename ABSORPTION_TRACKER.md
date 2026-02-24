@@ -37,7 +37,7 @@
 | `BidirectionalStream` | `std::sync::mpsc` for CPU+NPU routing |
 
 **Target**: `crates/barracuda/src/ops/lattice/gpu_cg_resident.rs`
-**Status**: PARTIAL (S51) -- Shaders absorbed and wired; Rust pipeline structs pending (need GPU for integration testing)
+**Status**: DONE (S52) -- Shaders absorbed (S51); Rust structs absorbed: `ReducePass<B>`, `ReduceChain<B>`, `StreamObservables`, `BidirectionalStream`, `GpuResidentCgConfig`. 9 tests. Runtime GPU integration (buffer allocation, CG loop) requires device.
 
 ---
 
@@ -55,7 +55,7 @@
 | `eigensolver` | eigh_gpu, disorder_sweep_gpu |
 
 **Target**: Wire into `barracuda::dispatch` or `barracuda::ops` as appropriate
-**Status**: PARTIAL (S52) -- Domain-specific dispatch heuristics absorbed into `barracuda::dispatch` (M-009). Remaining: wire individual op wrappers (these are thin dispatch wrappers around existing barracuda primitives)
+**Status**: DONE (S52) -- Domain heuristics (M-009) + 9 dispatch wrappers in `dispatch/domain_ops.rs`: matmul, frobenius_norm, transpose, softmax, gelu, l2_distance, mean, variance, hmm_forward. Each checks device+threshold, routes GPU or CPU. 3 tests.
 
 ---
 
@@ -271,10 +271,11 @@ Consider adding `barracuda::tolerances` module with centralized physical-justifi
 
 ## S52 Session Summary
 
-**New implementations**: 18 items completed (M-001, M-003, M-004, M-006, M-008, M-009, M-010, L-001 through L-009)
-**New tests**: 103 tests added across all absorption items
+**New implementations**: ALL items completed (7 HIGH, 10 MEDIUM, 9 LOW = 26 total)
+**New tests**: 115+ tests added across all absorption items
 **Quality**: 0 clippy warnings, cargo fmt clean, all new tests passing
-**Remaining**: H-002 (GPU-resident CG Rust pipelines — needs GPU integration testing), H-003 (neuralSpring dispatch wrappers — thin wrappers around existing primitives)
+**File compliance**: All .rs files under 1000 lines (15 files refactored by logical domain)
+**Remaining**: GPU runtime integration testing for H-002 (CG loop, buffer allocation) and H-003 (GPU dispatch paths)
 
 *Updated: February 24, 2026 -- Session 52*
-*Next review: H-002 and H-003 when GPU integration testing is available*
+*Next review: GPU runtime integration testing*
