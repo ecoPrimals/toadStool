@@ -8,9 +8,13 @@
 
 pub mod client;
 pub mod client_evolved;
+pub mod discovery;
+#[cfg(test)]
+mod tests;
 pub mod types;
 
-pub use client::{BearDogClient, BearDogDiscovery};
+pub use client::BearDogClient;
+pub use discovery::BearDogDiscovery;
 pub use types::{
     BearDogCapability, BearDogEndpoint, EncryptionRequest, EncryptionResponse,
     KeyManagementRequest, KeyManagementResponse,
