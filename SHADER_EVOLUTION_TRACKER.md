@@ -8,7 +8,7 @@
 
 | Spring | Status | Notes |
 |--------|--------|-------|
-| hotSpring | 99% absorbed | `heat_current_f64.wgsl` absorbed S49. Remaining: screened Coulomb eigensolve (low pri) |
+| hotSpring | 100% absorbed | All shaders absorbed. Screened Coulomb eigensolve done S52. |
 | neuralSpring | 100% absorbed | All 4 S43 shaders + xoshiro PRNG in toadStool. 13 shaders evolved to f64 (S49), pipelines wired |
 | wetSpring | 100% absorbed | All 5 ODE shaders at f64. `BatchedOdeRK4` generic in place |
 | airSpring | 100% absorbed | Uses toadStool shaders via GPU bridge. No local shaders |

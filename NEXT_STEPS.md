@@ -1,7 +1,7 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 24, 2026 -- Sessions 32-53
-**Status**: Production-grade | Shader-first architecture | 645+ WGSL f64 shaders | 4,176 core tests | Zero CPU-only math | Zero hardcoded localhost/ports | Zero `Box<dyn Error>` | Zero production TODOs | Cross-spring absorption complete (26 items)
+**Updated**: February 24, 2026 -- Sessions 32-57
+**Status**: Production-grade | Shader-first architecture | 650+ WGSL f64 shaders | 4,224 core tests | Zero CPU-only math | Zero hardcoded localhost/ports | Zero `Box<dyn Error>` | Zero production TODOs | All 46 cross-spring absorptions complete (S51-S56) | println evolved to tracing
 
 ---
 
@@ -102,8 +102,8 @@ Prerequisites:
 - [ ] YOLO (object detection)
 
 ### Test Coverage (target 90%)
-- [ ] Current: 84.33% across 5 core crates (config 89%, server 86%, common 84%, toadstool 83%, distributed 82%) — 4,009 tests
-- [ ] Gap: deep integration/network code (~16%) — async service calls, server lifecycle, protocol handlers
+- [ ] Current: ~85% across 5 core crates — 4,224 tests (+47 in S57: cost/optimizer, cost/pricing, gpu_job_queue, credentials, compliance)
+- [ ] Gap: deep integration/network code (~15%) — async service calls, server lifecycle, protocol handlers
 - [ ] Mock infrastructure exists (TCP/Unix socket mock servers) — needs expansion for full coverage
 - [ ] Remaining pending test suites: `e2e`, `fhe`, `comprehensive` (require future APIs)
 

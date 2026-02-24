@@ -1,6 +1,6 @@
 # Cross-Spring Absorption Tracker
 
-**Date**: February 24, 2026 (Sessions 51-53)
+**Date**: February 24, 2026 (Sessions 51-57)
 **Sources**: hotSpring V067, neuralSpring V16/S48, wetSpring V16-V022, wateringHole standards
 
 ---
@@ -260,7 +260,7 @@ Consider adding `barracuda::tolerances` module with centralized physical-justifi
 
 | Standard | Status |
 |----------|--------|
-| Shader-first mandate | COMPLIANT -- 645+ WGSL f64, zero CPU-only math |
+| Shader-first mandate | COMPLIANT -- 650+ WGSL f64, zero CPU-only math |
 | ecoBin v2.0 | COMPLIANT -- pure Rust, cross-platform, XDG paths |
 | Universal IPC v3.0 | COMPLIANT -- JSON-RPC 2.0 + tarpc, Unix/TCP transport |
 | Capability discovery | COMPLIANT -- `compute.discover_capabilities` implemented |
@@ -326,12 +326,12 @@ Sources: neuralSpring baseCamp V18, airSpring TS-001 through TS-004, wateringHol
 
 ## Session Summary
 
-**Sessions 51-56: 46 items completed** (13 HIGH, 19 MEDIUM, 14 LOW)
+**Sessions 51-57: 46 items completed** (13 HIGH, 19 MEDIUM, 14 LOW)
 **S54**: 6 HIGH + 9 MEDIUM + 2 LOW (baseCamp primitives, GPU fixes, 5 shaders, spectral diagnostics)
 **S55**: Deep debt (3 file refactors, hardcoding, stubs, unsafe audit, 29 tautological assertions)
 **S56**: 3 remaining absorptions (belief_propagation, boltzmann_sampling, disordered_laplacian) + idiomatic Rust pass
-**All tests (S56)**: 25 new tests across S54-S56 + 17 idiomatic cleanup edits
-**Quality**: 0 clippy errors, cargo fmt clean, 4,177 core tests, all files under 1000 lines
+**S57**: Coverage push (+47 tests across 5 uncovered modules), println→tracing, test un-ignored
+**Quality**: 0 clippy errors, cargo fmt clean, 4,224 core tests, all files under 1000 lines
 
-*Updated: February 24, 2026 -- Session 56*
-*All cross-spring absorptions complete. Next: GPU runtime integration testing (requires device)*
+*Updated: February 24, 2026 -- Session 57*
+*All cross-spring absorptions complete. Coverage pushed to 5 previously uncovered modules.*

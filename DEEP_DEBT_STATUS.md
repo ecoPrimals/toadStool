@@ -1,7 +1,7 @@
 # Deep Debt Status Report
 
-**Sessions 32-53 -- February 24, 2026**
-**Status**: PRODUCTION-GRADE | Shader-first architecture complete | 645+ WGSL f64 shaders | Zero CPU-only math in production | All quality gates green | 0 clippy warnings | 4,176 core tests | Zero hardcoded localhost/ports | Zero `Box<dyn Error>` | Zero production TODOs | Cross-spring absorption complete (26 items)
+**Sessions 32-57 -- February 24, 2026**
+**Status**: PRODUCTION-GRADE | Shader-first architecture complete | 650+ WGSL f64 shaders | Zero CPU-only math in production | All quality gates green | 0 clippy warnings | 4,224 core tests | Zero hardcoded localhost/ports | Zero `Box<dyn Error>` | Zero production TODOs | Cross-spring absorption complete (46 items across S51-S56) | println evolved to tracing
 
 ---
 
@@ -452,7 +452,7 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | Typed errors | ✅ S43: `Box<dyn Error>` replaced with `ConfigError`/`TarpcClientError` |
 | Clippy strictness | ✅ Zero errors workspace-wide (S43: pedantic+nursery auto-fix on 122 files) |
 | Dead code hygiene | ✅ 33 files audited, 6 incorrect annotations removed (S31h) |
-| Orphan shader elimination | Zero orphans -- all 645+ WGSL wired to Rust |
+| Orphan shader elimination | Zero orphans -- all 650+ WGSL wired to Rust |
 | Hardcoded ports/paths | ✅ S43: Env vars with config defaults; constants for system paths |
 
 ---
@@ -463,7 +463,7 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 
 | Milestone | Session |
 |-----------|---------|
-| Shader-first architecture (645+ WGSL f64, zero orphans, zero CPU-only math) | S31e-S49 |
+| Shader-first architecture (650+ WGSL f64, zero orphans, zero CPU-only math) | S31e-S54 |
 | GPU-Resident + Unidirectional Pipeline (zero CPU round-trips) | S28-S29 |
 | Sovereign Compute Phases 0–3 (WgslOptimizer live) | S36-S37 |
 | Executor full MathOp coverage (GPU + CPU) | S31e |
@@ -516,7 +516,7 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 
 | Milestone | Session |
 |-----------|---------|
-| 14,000+ tests passing (4,009 in 5 core crates), 0 failures | S45, S50 |
+| 14,200+ tests passing (4,224 in 5 core crates), 0 failures | S45-S57 |
 | Four Springs validation (4,000+ acceptance checks) | S31d |
 | Coverage: 84.33% line (5 core crates) — config 89%, server 86%, common 84%, toadstool 83%, distributed 82% | S50 |
 | Env-var test isolation (ENV_MUTEX serialization) | S45 |
@@ -535,29 +535,8 @@ Previously refactored (Sessions 4-24): 21 additional files brought under limit v
 | D-S18-002 | cubecl `dirs-sys` transitive | Low | Needs upstream PR (cubecl `dirs` → `etcetera`). See `docs/debt/D-S18-002-cubecl-dirs-sys.md` |
 | D-S20-003 | neuralSpring `evolved/` migration | Low | Awaiting neuralSpring team |
 | D-S46-001 | Conv2D/Pool WGSL shader evolution | Medium | Shaders exist but lack stride/padding/channels/batch; CPU fallback active |
-| ~~D-S49-001~~ | ~~13 f32 shaders → f64 evolution~~ | — | ✅ RESOLVED S49 — all bio/numerical/ML/ESN shaders evolved to f64 |
-| ~~D-S49-002~~ | ~~heat_current_f64.wgsl (hotSpring absorption)~~ | — | ✅ RESOLVED S49 — GPU shader + Rust wrapper created |
-| ~~D-S49-003~~ | ~~f64 GPU pipelines not wired~~ | — | ✅ RESOLVED S49 — all 11 pipeline structs now use `compile_shader_f64()` as primary |
-| ~~D-S49-004~~ | ~~Broyden mixer stub (zeros)~~ | — | ✅ RESOLVED S49 — Cholesky solve + proper γ coefficients + Broyden correction |
-| ~~D-S49-005~~ | ~~Box::leak in perceptual_loss.rs~~ | — | ✅ RESOLVED S49 — replaced with owned local binding |
-| ~~D-S49c-001~~ | ~~RDF histogram CPU-only~~ | — | ✅ RESOLVED S49c — `RdfHistogramF64` wired to `rdf_histogram_f64.wgsl` GPU dispatch |
-| ~~D-S49c-002~~ | ~~cdist f32-only shader~~ | — | ✅ RESOLVED S49c — `cdist_f64.wgsl` created + `compute_distances_f64_gpu()` API |
-| ~~D-S49d-001~~ | ~~VelocityVerlet CPU-only step()~~ | — | ✅ RESOLVED S49d — 3 entry points (step/half_vel/pos_update) GPU-dispatched |
-| ~~D-S49d-002~~ | ~~MSD observable missing shader~~ | — | ✅ RESOLVED S49d — `msd_f64.wgsl` + `MsdGpu` wrapper |
-| ~~D-S49d-003~~ | ~~Cubic spline eval not using shader~~ | — | ✅ RESOLVED S49d — `eval_many_gpu()` wired to native f64 shader |
-| ~~D-S49d-004~~ | ~~Force CPU fallbacks (coulomb/morse/born_mayer/yukawa)~~ | — | ✅ RESOLVED S49d — CPU gates removed, always shader dispatch |
-| ~~D-S49d-005~~ | ~~Special functions not documented as shader-first~~ | — | ✅ RESOLVED S49d — gamma.rs, laguerre.rs documented with WGSL equivalents |
-| ~~D-S49e-001~~ | ~~27+ threshold-gated CPU fallbacks~~ | — | ✅ RESOLVED S49e — All `if n < THRESHOLD` gates removed; ops always dispatch GPU shader; CPU functions gated `#[cfg(test)]` |
-| ~~D-S49e-002~~ | ~~KineticEnergyF64 always CPU~~ | — | ✅ RESOLVED S49e — Full GPU dispatch via `kinetic_energy_f64.wgsl` |
-| ~~D-S49e-003~~ | ~~VarianceF64/CovarianceF64/CorrelationF64 always CPU~~ | — | ✅ RESOLVED S49e — All 3 wired to GPU shaders (evolved to native f64) |
-| ~~D-S49e-004~~ | ~~DigammaF64 always CPU ("GPUs don't support f64 log")~~ | — | ✅ RESOLVED S49e — Wired to `digamma_f64.wgsl` via `compile_shader_f64()` polyfill |
-| ~~D-S49e-005~~ | ~~BetaF64 always CPU ("GPUs don't support f64 log/exp")~~ | — | ✅ RESOLVED S49e — Wired to `beta_f64.wgsl` via `compile_shader_f64()` polyfill |
-| ~~D-S49f-001~~ | ~~`solve_f64` CPU-only (Gauss-Jordan)~~ | — | ✅ RESOLVED S49f — Takes `Arc<WgpuDevice>`, dispatches `linsolve_f64.wgsl` via `LinSolveF64` |
-| ~~D-S49f-002~~ | ~~`cholesky_f64` CPU-only~~ | — | ✅ RESOLVED S49f — Takes `Arc<WgpuDevice>`, dispatches `cholesky_f64.wgsl` via `CholeskyF64` |
-| ~~D-S49f-003~~ | ~~RBF surrogate CPU-only (distances + solve)~~ | — | ✅ RESOLVED S49f — `RBFSurrogate` holds device, uses `cdist_f64.wgsl` + `linsolve_f64.wgsl` |
-| ~~D-S49f-004~~ | ~~PPPM CPU FFT~~ | — | ✅ RESOLVED S49f — `Pppm` uses `Fft3DF64` (GPU) for forward/backward FFT |
-| ~~W-005~~ | ~~GPU-resident VACF~~ | — | ✅ RESOLVED S46 |
-| D-S50-019 | Test coverage → 90% | Medium | 84.33% across 5 core crates (4,009 tests). Remaining ~16% is deep integration/network code |
+| — | *22 resolved items (S46-S49f)* | — | ✅ All resolved: f32→f64 shaders, CPU→GPU dispatch, stubs, Box::leak, VACF. See CHANGELOG.md |
+| D-S50-019 | Test coverage → 90% | Medium | ~85% across 5 core crates (4,224 tests). Remaining ~15% is deep integration/network code |
 | — | NPU model pipeline | Low | Awaiting hardware |
 | — | burn-inference full implementations | Low | Future |
 

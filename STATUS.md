@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --workspace --all-targets` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace --lib` | PASS | **14,200+ tests (4,176 across 5 core crates)** |
+| `cargo test --workspace --lib` | PASS | **14,200+ tests (4,224 across 5 core crates)** |
 | hotSpring validation | PASS | **195/195 acceptance checks** |
 | wetSpring validation | PASS | **728 Rust tests, 95 experiments** |
 | neuralSpring validation | PASS | **1,560+ checks, 115 binaries** |
@@ -703,4 +703,4 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail of earlier e
 
 ---
 
-**Last Updated**: February 22, 2026 — Session 38: Zero clippy warnings, blind unwrap() audit, test race fix, 11 new behavioral tests, 589+ WGSL shaders, 3,847+ workspace tests passing.
+**Last Updated**: February 24, 2026 — Session 57: Coverage push (+47 tests). 4,224 core tests. 650+ WGSL shaders. All 46 cross-spring absorptions complete. println evolved to tracing.
