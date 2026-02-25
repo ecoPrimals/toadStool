@@ -53,7 +53,7 @@ pub mod sparsity;
 pub const WGSL_LHS: &str = include_str!("../shaders/sample/lhs.wgsl");
 
 /// WGSL shader: parallel Metropolis-Hastings MCMC
-#[allow(dead_code)]
+/// WGSL kernel for Metropolis-Hastings sampling.
 pub const WGSL_METROPOLIS: &str = include_str!("../shaders/sample/metropolis.wgsl");
 
 pub use direct::{direct_sampler, DirectSamplerConfig, DirectSamplerResult};

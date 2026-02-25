@@ -1,13 +1,13 @@
 # ToadStool + BarraCUDA
 
-**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 60 -- February 25, 2026
+**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 63 -- February 25, 2026
 
 ---
 
 ## What Is This?
 
 - **ToadStool** -- Hardware infrastructure primal. Discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. Ollama model lifecycle management. Distributed workload dispatch across machines. Cloud cost estimation, compliance validation, and federation. ecoBin compliant: single binary, pure Rust, cross-architecture, cross-platform.
-- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: 680+ WGSL shaders at f64 precision (zero orphans -- every shader wired to Rust). **All math originates as WGSL** -- barracuda does not care about hardware; toadstool routes to the best substrate at runtime. CPU reference implementations gated behind `#[cfg(test)]`. f64 transcendentals (exp, log, pow, sin, cos, etc.) fully covered via `compile_shader_f64()` polyfill pipeline -- 28 functions, Cody-Waite range reduction, Horner polynomials, Lanczos gamma -- works on every GPU regardless of native f64 support. **No vendor math libraries** (libdevice/ocml) -- pure WGSL, ships with the crate, testable in CI without hardware. **Hybrid FP64 core streaming**: `Fp64Strategy` auto-selects between native f64 (compute-class GPUs) and DF64 double-float f32-pair arithmetic (~14 digits on FP32 cores) for consumer GPUs -- 12 DF64 WGSL files including `df64_core.wgsl` (FMA-optimized) and `df64_transcendentals.wgsl` (exp, log, sqrt, sin, cos, pow, tanh at FP32 core speed). 4 force shaders fully evolved to all-DF64 (zero f64-unit dependency for transcendentals). **Nuclear physics**: HFB GPU-resident SCF suite -- 5 spherical + 6 axially-deformed shaders on cylindrical grids. **Lattice QCD**: 14 GPU shaders + host orchestration (Wilson action, HMC, Dirac, CG solver, pseudofermion). **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde, bio/genomics) -- same math for physics, ML, life science, and audio. All linalg GPU-dispatched: solve, cholesky, QR, SVD, LU via WGSL. RBF surrogates use GPU cdist + GPU solve. PPPM electrostatics use GPU FFT. **Complete MathOp coverage**: GPU and CPU executors handle all shape ops, binary ops, activations, batch matmul. **25 bio/evolution GPU ops**. **PDE solvers**: Crank-Nicolson, Richards unsaturated flow (Neumann boundary conditions). **Moving window statistics** GPU op. **ESN GPU-train → NPU-deploy** pipeline. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
+- **BarraCUDA** -- Universal math engine. **Shader-first architecture**: 687 WGSL shaders at f64 precision (zero orphans -- every shader wired to Rust). **All math originates as WGSL** -- barracuda does not care about hardware; toadstool routes to the best substrate at runtime. CPU reference implementations gated behind `#[cfg(test)]`. f64 transcendentals (exp, log, pow, sin, cos, etc.) fully covered via `compile_shader_f64()` polyfill pipeline -- 28 functions, Cody-Waite range reduction, Horner polynomials, Lanczos gamma -- works on every GPU regardless of native f64 support. **No vendor math libraries** (libdevice/ocml) -- pure WGSL, ships with the crate, testable in CI without hardware. **Hybrid FP64 core streaming**: `Fp64Strategy` auto-selects between native f64 (compute-class GPUs) and DF64 double-float f32-pair arithmetic (~14 digits on FP32 cores) for consumer GPUs -- 12 DF64 WGSL files including `df64_core.wgsl` (FMA-optimized) and `df64_transcendentals.wgsl` (exp, log, sqrt, sin, cos, pow, tanh at FP32 core speed). 4 force shaders fully evolved to all-DF64 (zero f64-unit dependency for transcendentals). **Sovereign Compiler**: naga-IR optimizer (FMA fusion, dead expression elimination) with SPIR-V passthrough -- end-to-end Rust compilation pipeline, bypassing WGSL text parsing at runtime. **Nuclear physics**: HFB GPU-resident SCF suite -- 5 spherical + 6 axially-deformed shaders on cylindrical grids. **Lattice QCD**: 14 GPU shaders + host orchestration (Wilson action, HMC, Dirac, CG solver, pseudofermion). **Scientific computing middleware** (linalg, numerical, special, stats, optimize, surrogate, sample, pde, bio/genomics) -- same math for physics, ML, life science, and audio. All linalg GPU-dispatched: solve, cholesky, QR, SVD, LU via WGSL. RBF surrogates use GPU cdist + GPU solve. PPPM electrostatics use GPU FFT. **Complete MathOp coverage**: GPU and CPU executors handle all shape ops, binary ops, activations, batch matmul. **25 bio/evolution GPU ops**. **PDE solvers**: Crank-Nicolson, Richards unsaturated flow (Neumann boundary conditions). **Moving window statistics** GPU op. **ESN GPU-train → NPU-deploy** pipeline. Vendor-agnostic -- same binary, same results on NVIDIA, AMD, Intel.
 
 ---
 
@@ -34,15 +34,15 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace --lib` | 2,435 barracuda + 21,599 workspace tests |
+| `cargo test --workspace --lib` | 2,440 barracuda + 21,599 workspace tests |
 | Four springs validation | 4,000+ acceptance checks |
-| `unsafe` blocks | 95+ audited -- FFI only, all `// SAFETY:` documented |
+| `unsafe` blocks | 2 in barracuda (SPIRV passthrough + pipeline cache), 95+ workspace-wide, all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs | 0 -- all evolved to formal `BLOCKED(reason)` markers |
 | Hardcoded primal names | 0 -- capability-based discovery throughout |
 | Hardcoded localhost/ports | 0 -- bind `0.0.0.0`, port 0 (OS-assigned), `discover_self_ip_address()` |
-| Orphan shaders | 0 -- all 680+ WGSL shaders wired to Rust (+12 DF64 files) |
+| Orphan shaders | 0 -- all 687 WGSL shaders wired to Rust (+12 DF64 files) |
 | CPU-only math in production | 0 -- all math dispatches GPU shaders |
 | File size limit | All production files under 1000 lines |
 | `cargo deny check` | All passing — licenses, bans, sources |
@@ -115,9 +115,10 @@ TinyLlama-1.1B split across two machines over LAN TCP:
 ```
 Applications (hotSpring, NUCLEUS inference, etc.)
        |
-BarraCUDA: 680+ WGSL f64 Shaders (SHADER-FIRST — ALL MATH)
+BarraCUDA: 687 WGSL f64 Shaders (SHADER-FIRST — ALL MATH)
   All math originates as WGSL f64 — barracuda does not care about hardware
   compile_shader_f64() polyfills 28 transcendentals (no libdevice/ocml)
+  SovereignCompiler: naga-IR → FMA fusion → DCE → SPIR-V passthrough
   Fp64Strategy: Native f64 (compute GPUs) | Hybrid DF64 (consumer GPUs)
   12 DF64 files: core (FMA), transcendentals, GEMM, 4 force fields, SU(3), lattice
   ComputeDispatch builder: fluent pipeline creation, ~80→5 lines per op
@@ -203,7 +204,7 @@ cargo llvm-cov --lib -p toadstool-common --json
 ```
 toadStool/
 +-- crates/                        43 crates
-|   +-- barracuda/                 650+ WGSL f64 shaders (shader-first), tensor ops, linalg, MD, HFB physics, lattice QCD, ESN, PDE, scientific middleware
+|   +-- barracuda/                 687 WGSL f64 shaders (shader-first), tensor ops, linalg, MD, HFB physics, lattice QCD, ESN, PDE, scientific middleware
 |   +-- core/
 |   |   +-- common/                Shared types, constants, primal identity, ecosystem IDs, error types
 |   |   +-- config/                Centralized configuration (env-aware, network config)
@@ -258,14 +259,14 @@ toadStool/
 | Clippy warnings | 0 |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Unit tests (barracuda) | 2,435 |
+| Unit tests (barracuda) | 2,440 |
 | Unit tests (full workspace) | 21,599+ |
-| `unsafe` blocks | 1 in barracuda (wgpu pipeline cache API), 95+ workspace-wide, all `// SAFETY:` documented |
+| `unsafe` blocks | 2 in barracuda (SPIRV passthrough + pipeline cache), 95+ workspace-wide, all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs | 0 -- all `BLOCKED(reason)` markers |
 | Hardcoded localhost/ports/URLs in prod | 0 |
-| WGSL shaders | 680+ (zero orphans, all f64 shader-first, 12 DF64 files) |
+| WGSL shaders | 687 (zero orphans, all f64 shader-first, 12 DF64 files) |
 | Four springs validation | 4,000+ acceptance checks |
 
 ---
@@ -279,14 +280,19 @@ toadStool/
 - **W-001/W-003** -- Mesa NAK upstream patches pending Titan V validation
 - **NVK/Titan V readiness** -- Ensure f64 workarounds complete for NVK/Volta including NAK-specific paths
 
+### Completed (Sessions 61-63: Sovereign Compiler + Deep Debt Evolution, Feb 25, 2026)
+- **Sovereign Compiler Phase 4**: `SovereignCompiler` built on naga-IR — parse WGSL, apply FMA fusion (Mul+Add→fma, ~1.3x), dead expression elimination, emit SPIR-V. `SPIRV_SHADER_PASSTHROUGH` in all device paths. Three-stage `compile_shader_f64()` pipeline with WGSL text fallback.
+- **Codebase-wide deep debt resolution**: 25+ `#[allow(dead_code)]` WGSL constants evolved to documented `pub` API. Fossil `wgsl_shader()` methods converted to `pub const`. Platform-aware OS compat stubs. Table-driven discovery fallbacks.
+- **Smart refactoring**: `morse_f64.rs` 953→804 lines (MorseBuffers + reduce_bond_forces extraction). `coulomb_f64/mod.rs` 610→369 lines (CoulombBuffers + staging helpers). Zero duplication in GPU pipeline code.
+- **Dead code → live code**: `solve_gpu_parallel` wired into cyclic reduction for n≥2048 (was complete but unused). `partial_maximin` O(n) optimization wired into maximin_lhs loop (was O(n²)). `erfc_deriv` promoted to public electrostatics API.
+- **Hygiene**: `instant` crate removed, `WebGPUAdapter::mock_data` → zero-size `()`, GriffinLim dead_code annotations cleaned.
+
 ### Completed (Session 60: DF64 FMA + Transcendentals + Polyfill Hardening, Feb 25, 2026)
 - **FMA-optimized DF64**: `two_prod` reduced from 17 ops to 2 via `fma(a, b, -p)` -- eliminates Dekker splitting entirely. `df64_mul` cross-terms use FMA. Critical for Krylov solver convergence.
 - **DF64 transcendental library**: new `df64_transcendentals.wgsl` with `sqrt_df64` (Newton-Raphson), `exp_df64` (Cody-Waite), `log_df64` (atanh series), `sin_df64`/`cos_df64` (Cody-Waite π/2 reduction), `pow_df64`, `tanh_df64` -- all at FP32 core speed, no vendor library dependency
 - **4 force shaders evolved** from hybrid to full FP32 core streaming: Born-Mayer, Morse, Yukawa, Lennard-Jones DF64 shaders no longer round-trip through f64 units for transcendentals
 - **Polyfill patcher hardened**: `patch_transcendentals_in_code()` protects `ldexp()`, `exp_df64()`, `log_df64()` from substring collision mangling
-- **P0 verified**: math_f64.wgsl covers all 28 polyfill functions; AMD RADV (RX 6950 XT) tested: 233 f64 tests + 18 FFT tests, 0 failures
 - **Multi-GPU adapter selection**: deterministic GPU pinning via `BARRACUDA_GPU_ADAPTER` (absorbed from hotSpring)
-- **Deep debt fixes**: Crank-Nicolson variable shadowing bug, SPD validation in Cholesky, cross-attention `q_seq_len`/`kv_seq_len` evolution, loop unroller test assertions
 
 ### Completed (Session 59: Deep Audit + Comprehensive Evolution, Feb 24, 2026)
 - **`#![deny(unsafe_code)]`** added to 36 crates. TarpcClientWrapper JSON-RPC fallback. Dependency security hardening. Smart refactoring (5 files). 21,599 tests.
@@ -329,4 +335,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 25, 2026 -- Session 60: DF64 FMA optimization + transcendental library + polyfill hardening. 2,435 barracuda tests, 680+ WGSL shaders (12 DF64 files), 0 clippy, 0 fmt diffs, 0 production TODOs, 0 hardcoded localhost/ports, 1 unsafe block (wgpu API).
+**Last Updated**: February 25, 2026 -- Session 63: Sovereign compiler + deep debt evolution. 2,440 barracuda tests, 687 WGSL shaders (12 DF64 files), 0 clippy, 0 fmt diffs, 0 production TODOs, 0 hardcoded localhost/ports, 2 unsafe blocks (SPIRV passthrough + pipeline cache).

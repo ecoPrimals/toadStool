@@ -36,6 +36,8 @@
 pub mod optimizer; // WgslDependencyGraph + IlpReorderer + WgslLoopUnroller (SOVEREIGN Phase 3, live)
 pub mod precision;
 pub mod quantized;
+#[cfg(feature = "gpu")]
+pub mod sovereign; // SovereignCompiler — naga IR optimizer + SPIR-V emission (SOVEREIGN Phase 4)
 
 pub use optimizer::WgslOptimizer;
 pub use precision::{Precision, ShaderTemplate};

@@ -18,8 +18,8 @@
 
 use crate::error::{BarracudaError, Result};
 
-#[allow(dead_code)]
-const WGSL_IOU_F64: &str = include_str!("../../shaders/misc/iou_f64.wgsl");
+/// WGSL kernel for intersection-over-union computation (f64).
+pub const WGSL_IOU_F64: &str = include_str!("../../shaders/misc/iou_f64.wgsl");
 
 mod compute;
 

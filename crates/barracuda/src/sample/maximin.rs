@@ -166,11 +166,10 @@ pub fn maximin_lhs(
         samples[row1][dim] = samples[row2][dim];
         samples[row2][dim] = tmp;
 
-        // Evaluate new maximin distance
-        let new_dist = maximin_distance(&samples);
+        // O(n) evaluation via partial_maximin instead of O(n²) full recompute
+        let new_dist = partial_maximin(&samples, row1, row2, current_dist);
 
         if new_dist > current_dist {
-            // Keep the swap
             current_dist = new_dist;
             n_swaps += 1;
         } else {
@@ -189,12 +188,10 @@ pub fn maximin_lhs(
     })
 }
 
-/// Compute the minimum pairwise distance for only the rows affected by a swap.
+/// Minimum pairwise distance restricted to rows affected by a swap.
 ///
-/// Optimization: instead of recomputing all O(n²) distances, only check distances
-/// involving the two swapped rows. Returns the minimum distance involving these rows,
-/// or the existing minimum if it's smaller.
-#[allow(dead_code)]
+/// O(n) instead of O(n²) — only distances involving `row1` or `row2` are checked.
+/// Returns the minimum of those distances and the existing `current_min`.
 fn partial_maximin(samples: &[Vec<f64>], row1: usize, row2: usize, current_min: f64) -> f64 {
     let n = samples.len();
     let mut min_dist = current_min;

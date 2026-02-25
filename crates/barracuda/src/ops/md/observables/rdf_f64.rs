@@ -77,11 +77,8 @@ impl RdfHistogramF64 {
         })
     }
 
-    /// f32 variant shader for GPUs without f64 support (fossil reference).
-    #[allow(dead_code)]
-    fn wgsl_shader_f32() -> &'static str {
-        include_str!("rdf_histogram.wgsl")
-    }
+    /// WGSL kernel for RDF histogram (f32 variant, for GPUs without f64).
+    pub const WGSL_RDF_HISTOGRAM_F32: &str = include_str!("rdf_histogram.wgsl");
 
     /// Compute RDF histogram on GPU.
     ///

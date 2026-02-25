@@ -91,9 +91,9 @@
 //! - Deserno & Holm, JCP 109 (1998) - PPPM accuracy analysis
 //! - LAMMPS PPPM implementation (BSD-3-Clause)
 
-mod bspline;
-mod charge_spread;
-mod force_interpolation;
+pub(crate) mod bspline;
+pub(crate) mod charge_spread;
+pub(crate) mod force_interpolation;
 mod greens_function;
 mod pppm;
 mod pppm_buffers; // EVOLVED: Extracted for modularity (Feb 14, 2026)
@@ -108,11 +108,16 @@ pub use charge_spread::{spread_charges, spread_charges_with_coeffs, ChargeMesh};
 pub use force_interpolation::{
     interpolate_forces, interpolate_forces_from_positions, PotentialMesh,
 };
+
+// WGSL shader sources (for custom GPU pipelines)
+pub use bspline::WGSL_BSPLINE_F64;
+pub use charge_spread::WGSL_CHARGE_SPREAD_F64;
+pub use force_interpolation::WGSL_FORCE_INTERPOLATION_F64;
 pub use greens_function::GreensFunction;
 pub use pppm::{Pppm, PppmError};
 pub use pppm_params::{PppmAccuracy, PppmParams};
 pub use short_range::{
-    compute_short_range, compute_short_range_forces, dipole_correction, erfc,
+    compute_short_range, compute_short_range_forces, dipole_correction, erfc, erfc_deriv,
     self_energy_correction,
 };
 

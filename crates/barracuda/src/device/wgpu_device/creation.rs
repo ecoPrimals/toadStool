@@ -101,6 +101,7 @@ impl WgpuDevice {
             wgpu::Features::SHADER_F64,
             wgpu::Features::SHADER_F16,
             wgpu::Features::PIPELINE_CACHE,
+            wgpu::Features::SPIRV_SHADER_PASSTHROUGH,
         ] {
             if adapter_features.contains(feature) {
                 required_features |= feature;
@@ -167,6 +168,7 @@ impl WgpuDevice {
             wgpu::Features::SHADER_F16,
             wgpu::Features::TIMESTAMP_QUERY,
             wgpu::Features::PIPELINE_CACHE,
+            wgpu::Features::SPIRV_SHADER_PASSTHROUGH,
         ] {
             if adapter_features.contains(feature) {
                 required_features |= feature;
@@ -412,6 +414,7 @@ impl WgpuDevice {
             wgpu::Features::SHADER_F16,
             wgpu::Features::TIMESTAMP_QUERY,
             wgpu::Features::PIPELINE_CACHE,
+            wgpu::Features::SPIRV_SHADER_PASSTHROUGH,
         ] {
             if adapter_features.contains(feature) {
                 required_features |= feature;
@@ -484,6 +487,7 @@ impl WgpuDevice {
             wgpu::Features::SHADER_F16,
             wgpu::Features::TIMESTAMP_QUERY,
             wgpu::Features::PIPELINE_CACHE,
+            wgpu::Features::SPIRV_SHADER_PASSTHROUGH,
         ] {
             if adapter_features.contains(feature) {
                 required_features |= feature;
@@ -491,6 +495,9 @@ impl WgpuDevice {
         }
         if required_features.contains(wgpu::Features::SHADER_F64) {
             log::info!("  SHADER_F64: enabled");
+        }
+        if required_features.contains(wgpu::Features::SPIRV_SHADER_PASSTHROUGH) {
+            log::info!("  SPIRV_SHADER_PASSTHROUGH: enabled (sovereign compiler active)");
         }
 
         let (device, queue) = adapter

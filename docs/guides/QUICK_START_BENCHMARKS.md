@@ -225,10 +225,7 @@ cargo add serde_json --package barracuda
    - Check `results/BENCHMARK_SUMMARY.txt`
    - Compare your results to documented numbers
 
-2. **Read Analysis**
-   - [Complete Analysis](COMPLETE_AMD_NVIDIA_ANALYSIS_FEB05_2026.md)
-   - [Conv2D Analysis](CONV2D_ANALYSIS_FEB05_2026.md)
-   - [Breakthrough Findings](AMD_VS_NVIDIA_BREAKTHROUGH_FEB05_2026.md)
+2. **Read Analysis** (archived — see `docs/archive/` for Feb 2026 benchmark reports)
 
 3. **Try Your Own Workloads**
    - Modify batch sizes in benchmark source
@@ -299,8 +296,7 @@ A: Absolutely! BarraCuda is production-ready. Same code deploys to any hardware.
 
 **Documentation:**
 - [Main README](README.md)
-- [Complete Analysis](COMPLETE_AMD_NVIDIA_ANALYSIS_FEB05_2026.md)
-- [Session Summary](SESSION_FEB05_2026_FINAL_SUMMARY.md)
+- Benchmark analysis reports archived in `docs/archive/`
 
 **Issues:**
 - GitHub Issues (if applicable)

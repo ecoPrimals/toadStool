@@ -37,6 +37,10 @@ use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// f64 workgroup-reduce KL divergence shader (shared-memory tree reduction).
+/// Provenance: neuralSpring metalForge → toadStool absorption.
+pub const WGSL_KL_DIVERGENCE_F64: &str = include_str!("../shaders/loss/kl_divergence_f64.wgsl");
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct KLDivergenceParams {

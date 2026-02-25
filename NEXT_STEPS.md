@@ -1,26 +1,33 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 25, 2026 -- Session 60
-**Status**: Production-grade | 680+ WGSL f64 shaders (12 DF64) | 2,435 barracuda tests | All quality gates green
+**Updated**: February 25, 2026 -- Session 63
+**Status**: Production-grade | 687 WGSL f64 shaders (12 DF64) | 2,440 barracuda tests | All quality gates green
 
 ---
 
 ## Completed This Session
 
-### DF64 FMA + Transcendentals ✅
+### Sessions 62-63: Deep Debt Evolution ✅
+
+- **Codebase-wide dead code resolution**: 25+ `#[allow(dead_code)]` WGSL constants evolved to documented `pub` API. Fossil `wgsl_shader()` methods → `pub const`. Electrostatics shader constants re-exported.
+- **Smart refactoring**: `morse_f64.rs` 953→804 lines (MorseBuffers + reduce_bond_forces). `coulomb_f64/mod.rs` 610→369 lines (CoulombBuffers + staging helpers). Zero GPU pipeline duplication.
+- **Dead code → live code**: `solve_gpu_parallel` wired for n≥2048 (cyclic reduction). `partial_maximin` O(n) wired into maximin_lhs (was O(n²)). `erfc_deriv` promoted to public electrostatics API.
+- **Platform evolution**: OS compat stubs return `SystemError::NotSupported` on wrong platform. Discovery fallbacks table-driven with env guard.
+- **Hygiene**: `instant` crate removed, `WebGPUAdapter::mock_data` → zero-size `()`, GriffinLim annotations cleaned, `fhe_key_switch` dead constant removed.
+
+### Session 61: Sovereign Compiler Phase 4 ✅
+
+- `SovereignCompiler` — naga-IR optimizer: parse WGSL → FMA fusion → DCE → SPIR-V emit
+- FMA fusion pass: detects `Mul(a,b) + c` patterns, replaces with `fma(a, b, c)` (~1.3x)
+- SPIR-V passthrough: `SPIRV_SHADER_PASSTHROUGH` in all device creation paths
+- `compile_shader_f64()` evolved to three-stage pipeline with WGSL text fallback
+
+### Session 60: DF64 FMA + Transcendentals ✅
 
 - `df64_core.wgsl`: FMA-optimized `two_prod` (17 ops → 2), `df64_mul` cross-terms use FMA
 - New `df64_transcendentals.wgsl`: sqrt, exp, log, sin, cos, pow, tanh at FP32 core speed
 - 4 force shaders evolved to all-DF64 (Born-Mayer, Morse, Yukawa, Lennard-Jones)
 - Patcher hardened against ldexp/exp_df64 substring collisions
-- P0 polyfill coverage verified (28 functions); AMD RADV tested (233+18 tests, 0 failures)
-
-### Deep Debt Fixes ✅
-
-- Crank-Nicolson variable shadowing bug fixed
-- Cholesky SPD validation added
-- Cross-attention `q_seq_len`/`kv_seq_len` evolution (6 Rust + 6 WGSL files)
-- Multi-GPU adapter selection (deterministic pinning via `BARRACUDA_GPU_ADAPTER`)
 
 ---
 
@@ -36,9 +43,10 @@ SPIR-V has no mechanism to link vendor math libraries (libdevice/ocml). `compile
 
 ### W-003: NAK Compiler — Titan V Hardware Validation
 
-Phases 0–3 complete. Optimizer wired into `compile_shader_f64()`.
+Phases 0–4 complete. Sovereign compiler (naga-IR + SPIR-V passthrough) wired into `compile_shader_f64()`.
+Phase 4 FMA fusion addresses Deficiency 4 at the IR level for all backends.
 
-**Pending**: Run `bench_wgsize_nvk` on Titan V to measure ILP pre-scheduling speedup
+**Pending**: Run `bench_wgsize_nvk` on Titan V to measure combined ILP + FMA speedup
 and confirm >= 3x before submitting the Mesa MR.
 
 ### W-004: NAK Mesa Patches (5 Deficiencies)
@@ -72,18 +80,14 @@ Different evaluation strategies per silicon family:
 - RDNA2/3 (AMD): VALU utilization patterns differ from NVIDIA
 - Requires profiling data per silicon before implementation
 
-### Sovereign Phase 4 — Full naga-IR Optimizer (Q3 2026)
+### Sovereign Phase 4+ — naga-IR Optimizer Evolution
 
-Drive naga as a library for full SSA-form analysis and register pressure estimation.
+Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations:
 
-```
-WGSL text
-  → naga::parse() → naga::Module (typed IR)
-  → BarraCuda IR passes (reorder, unroll, software pipeline)
-  → modified naga::Module
-  → naga::back::spv::write() → SPIR-V bytes  (no WGSL round-trip)
-  → wgpu device
-```
+- [ ] Register pressure estimation (live-range counting on naga expression arena)
+- [ ] Loop software pipelining at naga IR level (preload iteration i+1 during i's ops)
+- [ ] Architecture-specific peephole optimization per `GpuArch`
+- [ ] naga → NAK IR direct bridge — bypass `spirv_to_nir` (C) for full end-to-end Rust (research)
 
 ### Infrastructure
 

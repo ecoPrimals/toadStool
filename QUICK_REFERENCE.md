@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**February 25, 2026 -- Session 60**
+**February 25, 2026 -- Session 63**
 
 ---
 
@@ -253,7 +253,7 @@ Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
 | `toadstool-server` | JSON-RPC server, GPU job queue, Ollama, cross-gate router |
 | `toadstool-api` | REST API, middleware (WebSocket removed; JSON-RPC polling) |
 | `toadstool-cli` | UniBin CLI, daemon, ecosystem integration |
-| `barracuda` | 650+ WGSL shaders (+6 DF64), tensor ops, device management, hardware routing |
+| `barracuda` | 687 WGSL shaders (+12 DF64), sovereign compiler, tensor ops, device management, hardware routing |
 | `toadstool-distributed` | Multi-gate coordination, crypto integration |
 | `toadstool-testing` | Chaos, fault, property, performance testing |
 
@@ -547,4 +547,4 @@ constants::timeouts::*               // Connection, request, etc.
 
 ---
 
-**Last Updated**: February 24, 2026 — Session 58
+**Last Updated**: February 25, 2026 — Session 63

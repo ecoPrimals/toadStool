@@ -17,8 +17,8 @@
 //! This is done on CPU for correctness. GPU acceleration would require
 //! atomic operations for thread-safe mesh updates.
 
-#[allow(dead_code)]
-const WGSL_CHARGE_SPREAD_F64: &str = include_str!("charge_spread_f64.wgsl");
+/// WGSL kernel for charge-to-mesh spreading (f64).
+pub const WGSL_CHARGE_SPREAD_F64: &str = include_str!("charge_spread_f64.wgsl");
 
 use super::bspline::BsplineCoeffs;
 use super::PppmParams;

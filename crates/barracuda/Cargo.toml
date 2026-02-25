@@ -22,6 +22,10 @@ wgpu = { workspace = true, optional = true }
 pollster = { version = "0.3", optional = true }
 bytemuck = { version = "1.14", features = ["derive"], optional = true }
 
+# Sovereign compiler: naga as a library for WGSL parsing + SPIR-V emission.
+# Same version as wgpu 22 to guarantee type compatibility.
+naga = { version = "22.1", features = ["wgsl-in", "spv-out"], optional = true }
+
 # Async runtime (needed for all async operations)
 tokio = { version = "1.35", features = ["sync", "time", "macros", "rt-multi-thread"] }
 async-trait = "0.1"
@@ -65,7 +69,7 @@ unwrap_used = "warn"
 default = ["gpu"]
 
 # GPU acceleration via wgpu/WebGPU. Without this, only CPU math is available.
-gpu = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
+gpu = ["dep:wgpu", "dep:pollster", "dep:bytemuck", "dep:naga"]
 
 # Serialization support for calibration caching
 serde = []

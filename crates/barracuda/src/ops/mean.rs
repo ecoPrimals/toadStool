@@ -15,6 +15,12 @@ use wgpu::util::DeviceExt;
 /// Simple mean reduction variant (scalar path).
 pub const WGSL_MEAN_SIMPLE: &str = include_str!("../shaders/misc/mean_simple.wgsl");
 
+/// Workgroup-parallel mean reduction shader (global mean via shared-memory tree).
+pub const WGSL_MEAN_REDUCE: &str = include_str!("../shaders/reduce/mean_reduce.wgsl");
+
+/// Dimension-wise mean reduction shader.
+pub const WGSL_MEAN_DIM: &str = include_str!("../shaders/reduce/mean_dim.wgsl");
+
 /// Mean reduction operation
 pub struct Mean {
     input: Tensor,
@@ -32,14 +38,12 @@ impl Mean {
         }
     }
 
-    /// Get the WGSL shader source for global reduction
     fn wgsl_shader_reduce() -> &'static str {
-        include_str!("../shaders/reduce/mean_reduce.wgsl")
+        WGSL_MEAN_REDUCE
     }
 
-    /// Get the WGSL shader source for dimension-wise reduction
     fn wgsl_shader_dim() -> &'static str {
-        include_str!("../shaders/reduce/mean_dim.wgsl")
+        WGSL_MEAN_DIM
     }
 
     /// Execute the mean operation

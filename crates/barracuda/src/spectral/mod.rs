@@ -35,7 +35,7 @@
 //!
 //! Absorbed from hotSpring v0.6.0 (Kachkovskiy spectral theory extension)
 
-mod anderson;
+pub mod anderson;
 pub mod batch_ipr;
 mod hofstadter;
 pub(crate) mod lanczos;

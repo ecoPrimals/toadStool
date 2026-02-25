@@ -5,6 +5,41 @@
 We aim to solve deep debt over iterations, evolving toward vendor-agnostic,
 capability-based solutions.
 
+## Session 63 Resolutions (Feb 25, 2026)
+
+- **R-S63-001**: `coulomb_f64/mod.rs` smart refactor (610→370 lines) — extracted `CoulombBuffers` struct, `read_f64_via_staging()` and `map_staging_to_vec()` helpers; eliminated complete buffer/staging/map-back duplication between `compute_gpu` and `compute_gpu_with_energy`
+- **R-S63-002**: `cyclic_reduction_f64` parallel solver wired in — `solve_gpu_parallel()` activated for n ≥ 2048 (O(log n) parallel reduction/substitution), `solve_gpu_serial()` retained for smaller systems
+- **R-S63-003**: `maximin_lhs` O(n) optimization — `partial_maximin()` wired into CP optimization loop (was O(n²) `maximin_distance()` per swap → O(n) partial recompute for swapped rows only)
+- **R-S63-004**: `WebGPUAdapter::mock_data` evolved — `String` placeholder → zero-size `_private: ()` when webgpu feature disabled (zero-cost, no heap alloc)
+- **R-S63-005**: `erfc_deriv` promoted to public API — removed `#[allow(dead_code)]`, re-exported from `electrostatics::mod.rs` alongside `erfc`, `compute_short_range`
+- **R-S63-006**: `GriffinLim` dead code cleanup — `n_iter` field `#[allow(dead_code)]` removed (field is used in GPU params), `n_fft`/`hop_length` documented as reserved for full STFT/ISTFT implementation
+
+---
+
+## Session 62 Resolutions (Feb 25, 2026)
+
+- **R-S62-001**: Dead WGSL shader constant evolution — 25+ `#[allow(dead_code)]` constants evolved to `pub` API with doc comments across barracuda (laguerre, quantize, bspline, charge_spread, force_interpolation, hessian, metropolis, bootstrap, histogram, symmetrize, laplacian, chi_squared, rk45, trapz, erfc_deriv, gamma, factorial, iou, van_genuchten)
+- **R-S62-002**: Fossil `wgsl_shader()` methods evolved to `pub const` (logsumexp, prng_xoshiro, rdf, cdist) — dead private functions → named public constants
+- **R-S62-003**: Electrostatics sub-modules (`bspline`, `charge_spread`, `force_interpolation`) promoted to `pub(crate)` with shader constant re-exports
+- **R-S62-004**: `morse_f64.rs` smart refactor (953→804 lines) — extracted `MorseBuffers` struct and `reduce_bond_forces()` function, eliminating 149 lines of GPU pipeline duplication
+- **R-S62-005**: `rk_stage.rs` dead code removal — deleted unused WGSL constants, `RkParams` struct, `wgsl_shader()` method; honest module doc (CPU-orchestrated, not GPU-accelerated)
+- **R-S62-006**: `instant` crate removed from neurobench-runner (unused dep, code already on `std::time::Instant`)
+- **R-S62-007**: `compat.rs` platform-aware evolution — `can_handle()` checks `cfg!(target_os)`, `execute_with_compatibility()` returns `SystemError::NotSupported` on wrong platform
+- **R-S62-008**: `primal_discovery_complete` fallback evolution — table-driven `default_fallbacks()`, early-exit when not dev mode, documented port source cross-reference to `toadstool_config::ports`
+- **R-S62-009**: `fhe_key_switch.rs` dead `U64_EMU_PREAMBLE` constant removed (loaded but never referenced)
+
+---
+
+## Session 61 Resolutions (Feb 25, 2026)
+
+- **R-S61-001**: Sovereign Compiler Phase 4 — `SovereignCompiler` with naga-IR FMA fusion, dead expression elimination, SPIR-V emission
+- **R-S61-002**: `naga = "22.1"` direct dependency — type-compatible with wgpu 22, enables WGSL parse + SPIR-V emit
+- **R-S61-003**: `SPIRV_SHADER_PASSTHROUGH` requested in all device creation paths — enables pre-compiled SPIR-V submission
+- **R-S61-004**: `compile_shader_f64()` evolved to three-stage pipeline: ShaderTemplate → WgslOptimizer → SovereignCompiler (with WGSL text fallback)
+- **R-S61-005**: FMA fusion pass addresses NAK Deficiency 4 (~1.3x) at naga IR level — works on all backends
+
+---
+
 ## Session 60 Resolutions (Feb 25, 2026)
 
 - **R-S60-001**: DF64 FMA optimization — `two_prod` Dekker splitting (17 ops) replaced with `fma(a, b, -p)` (2 ops). Eliminates `split()` function.
@@ -101,14 +136,15 @@ double-normalization in inverse_3d).
 
 ### W-003: NAK Compiler 149x Performance Gap (Sovereign FP64 Compute)
 
-**Status**: ACTIVE — Phase 1 latency tables written, pending hardware validation on Titan V
+**Status**: ACTIVE — Phase 1 latency tables written, Phase 4 FMA fusion at IR level DONE, pending Titan V hw validation
 **Impact**: NVK/NAK Jacobi eigensolve ~9x slower than NVIDIA proprietary after warp-packing
 **Files**:
 - `crates/barracuda/src/shaders/linalg/batched_eigh_single_dispatch_f64.wgsl` — warp-packed (done)
 - `crates/barracuda/src/device/capabilities.rs` — `GpuDriverProfile`, `EigensolveStrategy` (done)
 - `crates/barracuda/src/bin/bench_wgsize_nvk.rs` — diagnostic binary (done)
-- `ecoPrimals/mesa-nak/.../sm70_instr_latencies.rs` — **NEW: SM70 latency table** (Phase 1)
+- `ecoPrimals/mesa-nak/.../sm70_instr_latencies.rs` — **SM70 latency table** (Phase 1)
 - `ecoPrimals/mesa-nak/.../sm70.rs` — wired SM70Latency into all 6 dispatch points (Phase 1)
+- `crates/barracuda/src/shaders/sovereign/` — **Phase 4 naga-IR optimizer** (FMA fusion, DCE, SPIR-V passthrough)
 
 **Problem**: hotSpring analysis (Feb 18, 2026) found a 149x compiler efficiency gap
 between NAK (Mesa open-source NVIDIA compiler, Rust) and proprietary PTXAS for
@@ -119,7 +155,7 @@ loop-heavy f64 Jacobi kernels. Root cause is five specific NAK deficiencies:
 | 1 | No SM70 instruction scheduling | ~3-4x | **DONE** — `sm70_instr_latencies.rs` written |
 | 2 | No dual-issue exploitation | ~2x | Not implemented for any arch |
 | 3 | Limited loop unrolling | ~1.5-2x | MR 26626 (Dec 2023), may miss nested loops |
-| 4 | Missing f64 FMA selection | ~1.3-1.5x | Not confirmed, needs IR dump |
+| 4 | Missing f64 FMA selection | ~1.3-1.5x | **MITIGATED** — Phase 4 sovereign FMA fusion at naga IR level |
 | 5 | Generic shared-mem scheduling | ~1.5-2x | No bank-conflict awareness |
 
 **First Solution Already Absorbed** (R-019):

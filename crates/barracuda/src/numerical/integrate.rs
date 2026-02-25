@@ -1,7 +1,7 @@
 //! Numerical integration via trapezoidal rule
 
-#[allow(dead_code)]
-const WGSL_TRAPZ_F64: &str = include_str!("../shaders/math/trapz_f64.wgsl");
+/// WGSL kernel for trapezoidal-rule numerical integration (f64).
+pub const WGSL_TRAPZ_F64: &str = include_str!("../shaders/math/trapz_f64.wgsl");
 
 use crate::error::{BarracudaError, Result};
 

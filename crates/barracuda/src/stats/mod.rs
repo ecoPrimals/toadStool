@@ -30,11 +30,10 @@
 //! - Efron & Tibshirani (1993) Bootstrap methods
 //! - hotSpring validation: `stats.rs`
 
-#[allow(dead_code)]
-const WGSL_BOOTSTRAP_MEAN_F64: &str = include_str!("../shaders/special/bootstrap_mean_f64.wgsl");
+/// WGSL kernel for GPU-parallel bootstrap mean estimation (f64).
+pub const WGSL_BOOTSTRAP_MEAN_F64: &str = include_str!("../shaders/special/bootstrap_mean_f64.wgsl");
 
-/// WGSL shader: parallel histogram via atomic binning
-#[allow(dead_code)]
+/// WGSL kernel for parallel histogram via atomic binning.
 pub const WGSL_HISTOGRAM: &str = include_str!("../shaders/stats/histogram.wgsl");
 
 pub mod bootstrap;

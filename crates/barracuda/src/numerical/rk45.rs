@@ -27,8 +27,8 @@
 //! - Dormand, J. R. & Prince, P. J. (1980)
 //! - Numerical Recipes, §17.2
 
-#[allow(dead_code)]
-const WGSL_RK45_F64: &str = include_str!("../shaders/math/rk45_f64.wgsl");
+/// WGSL kernel for Dormand-Prince RK45 adaptive ODE stepping (f64).
+pub const WGSL_RK45_F64: &str = include_str!("../shaders/math/rk45_f64.wgsl");
 
 use crate::error::{BarracudaError, Result};
 

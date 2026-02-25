@@ -558,11 +558,11 @@ async fn main() -> Result<()> {
     println!("  │    Impact: Amortize overhead across operations                          │");
     println!("  │    Status: 10 ops batch → ~10x throughput improvement                   │");
     println!("  │                                                                          │");
-    println!("  │ 2. BIND GROUP POOLING - TODO                                            │");
+    println!("  │ 2. BIND GROUP POOLING - PENDING                                         │");
     println!("  │    Impact: Reuse bind groups instead of creating per-call              │");
     println!("  │    Expected: -50-100 μs per operation                                   │");
     println!("  │                                                                          │");
-    println!("  │ 3. TIMELINE SEMAPHORES - TODO                                           │");
+    println!("  │ 3. TIMELINE SEMAPHORES - PENDING                                        │");
     println!("  │    Impact: Async submit without full sync                               │");
     println!("  │    Expected: -50-100 μs per operation                                   │");
     println!("  │                                                                          │");

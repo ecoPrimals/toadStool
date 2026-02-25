@@ -30,11 +30,8 @@ impl LogSumExp {
     /// Batched logsumexp over rows [batch × width] (neuralSpring).
     pub const WGSL_LOGSUMEXP_REDUCE: &str = include_str!("../shaders/reduce/logsumexp_reduce.wgsl");
 
-    /// f32 WGSL shader source (legacy, retained as fossil reference).
-    #[allow(dead_code)]
-    fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/math/logsumexp.wgsl")
-    }
+    /// WGSL kernel for logsumexp (f32 variant).
+    pub const WGSL_LOGSUMEXP_F32: &str = include_str!("../shaders/math/logsumexp.wgsl");
 
     /// f64 version for universal math library portability.
     pub fn wgsl_shader_f64() -> &'static str {

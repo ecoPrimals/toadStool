@@ -4,6 +4,7 @@ use std::pin::Pin;
 
 // Note: The manager module now re-exports this trait, so no circular dependency
 use crate::{ExecutionRequest, ExecutionResponse, ToadStoolResult};
+use toadstool_common::error::SystemError;
 
 /// Compatibility layer trait for different operating systems
 ///
@@ -235,7 +236,6 @@ impl LegacyCompatibilityLayer {
     }
 }
 
-// Stub trait implementations (migrated to native async)
 impl CompatibilityLayer for LinuxCompatibilityLayer {
     fn name(&self) -> &'static str {
         "linux"
@@ -246,7 +246,7 @@ impl CompatibilityLayer for LinuxCompatibilityLayer {
     }
 
     fn can_handle(&self, _request: &ExecutionRequest) -> bool {
-        true
+        cfg!(target_os = "linux")
     }
 
     fn execute_with_compatibility(
@@ -254,7 +254,12 @@ impl CompatibilityLayer for LinuxCompatibilityLayer {
         _request: ExecutionRequest,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
-            // Simplified stub implementation
+            if !cfg!(target_os = "linux") {
+                return Err(SystemError::NotSupported {
+                    feature: "linux_compat_layer".into(),
+                    reason: "LinuxCompatibilityLayer requires target_os = linux".into(),
+                }.into());
+            }
             Ok(ExecutionResponse::default())
         })
     }
@@ -278,7 +283,7 @@ impl CompatibilityLayer for WindowsCompatibilityLayer {
     }
 
     fn can_handle(&self, _request: &ExecutionRequest) -> bool {
-        true
+        cfg!(target_os = "windows")
     }
 
     fn execute_with_compatibility(
@@ -286,7 +291,12 @@ impl CompatibilityLayer for WindowsCompatibilityLayer {
         _request: ExecutionRequest,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
-            // Simplified stub implementation
+            if !cfg!(target_os = "windows") {
+                return Err(SystemError::NotSupported {
+                    feature: "windows_compat_layer".into(),
+                    reason: "WindowsCompatibilityLayer requires target_os = windows".into(),
+                }.into());
+            }
             Ok(ExecutionResponse::default())
         })
     }
@@ -310,7 +320,7 @@ impl CompatibilityLayer for MacOSCompatibilityLayer {
     }
 
     fn can_handle(&self, _request: &ExecutionRequest) -> bool {
-        true
+        cfg!(target_os = "macos")
     }
 
     fn execute_with_compatibility(
@@ -318,7 +328,12 @@ impl CompatibilityLayer for MacOSCompatibilityLayer {
         _request: ExecutionRequest,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
-            // Simplified stub implementation
+            if !cfg!(target_os = "macos") {
+                return Err(SystemError::NotSupported {
+                    feature: "macos_compat_layer".into(),
+                    reason: "MacOSCompatibilityLayer requires target_os = macos".into(),
+                }.into());
+            }
             Ok(ExecutionResponse::default())
         })
     }
@@ -349,10 +364,7 @@ impl CompatibilityLayer for LegacyCompatibilityLayer {
         &self,
         _request: ExecutionRequest,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
-            // Simplified stub implementation
-            Ok(ExecutionResponse::default())
-        })
+        Box::pin(async move { Ok(ExecutionResponse::default()) })
     }
 
     fn initialize(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
@@ -509,31 +521,36 @@ mod tests {
     fn test_linux_can_handle() {
         let layer = LinuxCompatibilityLayer::new();
         let request = ExecutionRequest::default();
-
-        assert!(CompatibilityLayer::can_handle(&layer, &request));
+        assert_eq!(
+            CompatibilityLayer::can_handle(&layer, &request),
+            cfg!(target_os = "linux")
+        );
     }
 
     #[test]
     fn test_windows_can_handle() {
         let layer = WindowsCompatibilityLayer::new();
         let request = ExecutionRequest::default();
-
-        assert!(CompatibilityLayer::can_handle(&layer, &request));
+        assert_eq!(
+            CompatibilityLayer::can_handle(&layer, &request),
+            cfg!(target_os = "windows")
+        );
     }
 
     #[test]
     fn test_macos_can_handle() {
         let layer = MacOSCompatibilityLayer::new();
         let request = ExecutionRequest::default();
-
-        assert!(CompatibilityLayer::can_handle(&layer, &request));
+        assert_eq!(
+            CompatibilityLayer::can_handle(&layer, &request),
+            cfg!(target_os = "macos")
+        );
     }
 
     #[test]
     fn test_legacy_can_handle() {
         let layer = LegacyCompatibilityLayer::new();
         let request = ExecutionRequest::default();
-
         assert!(CompatibilityLayer::can_handle(&layer, &request));
     }
 

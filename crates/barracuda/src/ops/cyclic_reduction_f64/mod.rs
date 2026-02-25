@@ -100,7 +100,11 @@ impl CyclicReductionF64 {
             return Ok(vec![d[0] / b[0]]);
         }
 
-        self.solve_gpu_serial(a, b, c, d)
+        if n >= 2048 {
+            self.solve_gpu_parallel(a, b, c, d)
+        } else {
+            self.solve_gpu_serial(a, b, c, d)
+        }
     }
 
     /// Batched solve for multiple independent systems
@@ -341,9 +345,10 @@ impl CyclicReductionF64 {
         Ok(result)
     }
 
-    /// GPU parallel cyclic reduction solver (experimental)
-    /// O(log n) parallel but has data flow complexity - use for very large n only
-    #[allow(dead_code)]
+    /// GPU parallel cyclic reduction solver
+    ///
+    /// O(log n) parallel — dispatched for n >= 2048 where parallelism amortizes
+    /// the extra passes. For smaller systems, `solve_gpu_serial` is preferred.
     fn solve_gpu_parallel(&self, a: &[f64], b: &[f64], c: &[f64], d: &[f64]) -> Result<Vec<f64>> {
         let n = b.len();
         let n_padded = n.next_power_of_two();

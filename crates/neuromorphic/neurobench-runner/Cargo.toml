@@ -33,8 +33,7 @@ thiserror = { workspace = true }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 
-# Time measurement
-instant = "0.1"
+# Time measurement: evolved to std::time::Instant (pure Rust, no external dep)
 
 [[bin]]
 name = "neurobench"

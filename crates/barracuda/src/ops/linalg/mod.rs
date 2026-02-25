@@ -103,10 +103,8 @@ pub use tridiagonal::{tridiagonal_solve, tridiagonal_solve_batch, tridiagonal_so
 // Re-export f64 Cholesky
 pub use cholesky::CholeskyF64;
 
-/// WGSL shader: symmetrize a square matrix (out[i,j] = (A[i,j] + A[j,i]) / 2)
-#[allow(dead_code)]
+/// WGSL kernel: symmetrize a square matrix (out[i,j] = (A[i,j] + A[j,i]) / 2).
 pub const WGSL_SYMMETRIZE: &str = include_str!("../../shaders/linalg/symmetrize.wgsl");
 
-/// WGSL shader: graph Laplacian (L = D - A)
-#[allow(dead_code)]
+/// WGSL kernel: graph Laplacian (L = D - A).
 pub const WGSL_LAPLACIAN: &str = include_str!("../../shaders/linalg/laplacian.wgsl");

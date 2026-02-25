@@ -115,42 +115,41 @@ impl Default for DiscoveryConfig {
 }
 
 impl DiscoveryConfig {
-    /// Get default fallbacks from environment or use defaults
+    /// Build fallbacks from environment. Fallbacks are only populated when
+    /// `TOADSTOOL_DISCOVERY_FALLBACKS` is set or `TOADSTOOL_ENV=development`.
+    ///
+    /// Each service URL is resolved from a dedicated env var first (e.g.
+    /// `SONGBIRD_URL`), falling back to `{bind_host}:{port}`. Ports mirror
+    /// `toadstool_config::ports::fallback::*` — do not duplicate here.
     fn default_fallbacks() -> HashMap<String, String> {
-        let mut fallbacks = HashMap::new();
+        let dev_mode = std::env::var("TOADSTOOL_DISCOVERY_FALLBACKS").is_ok()
+            || std::env::var("TOADSTOOL_ENV")
+                .map(|e| e == "development")
+                .unwrap_or_default();
+
+        if !dev_mode {
+            return HashMap::new();
+        }
 
         let bind_host = std::env::var("TOADSTOOL_BIND_HOST")
             .or_else(|_| std::env::var("BIND_HOST"))
             .unwrap_or_else(|_| "localhost".to_string());
 
-        // Only add fallbacks if explicitly configured or in development mode
-        if std::env::var("TOADSTOOL_DISCOVERY_FALLBACKS").is_ok()
-            || std::env::var("TOADSTOOL_ENV")
-                .map(|e| e == "development")
-                .unwrap_or_default()
-        {
-            // DEPRECATED: These fallback ports violate the self-knowledge principle.
-            // Use runtime discovery via Songbird/mDNS instead.
-            // Ports match toadstool_config::ports::fallback::{SONGBIRD, BEARDOG, NESTGATE}.
-            const SONGBIRD_FALLBACK_PORT: u16 = 8080;
-            const BEARDOG_FALLBACK_PORT: u16 = 8081;
-            const NESTGATE_FALLBACK_PORT: u16 = 8082;
+        // Capability → (env_var, default_port, capability_keys)
+        let specs: &[(&str, u16, &[&str])] = &[
+            ("SONGBIRD_URL", 8080, &["orchestration", "coordination"]),
+            ("BEARDOG_URL", 8081, &["security", "authentication"]),
+            ("NESTGATE_URL", 8082, &["storage"]),
+        ];
 
-            let songbird_url = std::env::var("SONGBIRD_URL")
-                .unwrap_or_else(|_| format!("http://{bind_host}:{SONGBIRD_FALLBACK_PORT}"));
-            fallbacks.insert("orchestration".to_string(), songbird_url.clone());
-            fallbacks.insert("coordination".to_string(), songbird_url);
-
-            let beardog_url = std::env::var("BEARDOG_URL")
-                .unwrap_or_else(|_| format!("http://{bind_host}:{BEARDOG_FALLBACK_PORT}"));
-            fallbacks.insert("security".to_string(), beardog_url.clone());
-            fallbacks.insert("authentication".to_string(), beardog_url);
-
-            let nestgate_url = std::env::var("NESTGATE_URL")
-                .unwrap_or_else(|_| format!("http://{bind_host}:{NESTGATE_FALLBACK_PORT}"));
-            fallbacks.insert("storage".to_string(), nestgate_url);
+        let mut fallbacks = HashMap::new();
+        for (env_var, port, keys) in specs {
+            let url = std::env::var(env_var)
+                .unwrap_or_else(|_| format!("http://{bind_host}:{port}"));
+            for key in *keys {
+                fallbacks.insert((*key).to_string(), url.clone());
+            }
         }
-
         fallbacks
     }
 }

@@ -34,6 +34,12 @@ use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
+/// Monte Carlo uncertainty propagation wrapper around FAO-56 ET₀.
+/// Box-Muller perturbation + xoshiro128** PRNG + batched dispatch.
+/// Provenance: groundSpring metalForge → toadStool absorption.
+pub const WGSL_MC_ET0_PROPAGATE_F64: &str =
+    include_str!("../shaders/bio/mc_et0_propagate_f64.wgsl");
+
 /// Operations for batched element-wise computation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]

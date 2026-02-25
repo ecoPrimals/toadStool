@@ -1,7 +1,7 @@
 //! Factorial function
 
-#[allow(dead_code)]
-const WGSL_FACTORIAL_F64: &str = include_str!("../shaders/special/factorial_f64.wgsl");
+/// WGSL kernel for factorial computation (f64).
+pub const WGSL_FACTORIAL_F64: &str = include_str!("../shaders/special/factorial_f64.wgsl");
 
 /// Compute n! (factorial)
 ///

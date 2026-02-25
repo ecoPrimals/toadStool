@@ -14,8 +14,8 @@
 //! The gradient of the B-spline is:
 //! ∂M(r)/∂x = M'(u_x) × M(u_y) × M(u_z) × (K_x / L_x)
 
-#[allow(dead_code)]
-const WGSL_FORCE_INTERPOLATION_F64: &str = include_str!("force_interpolation_f64.wgsl");
+/// WGSL kernel for mesh-to-particle force interpolation (f64).
+pub const WGSL_FORCE_INTERPOLATION_F64: &str = include_str!("force_interpolation_f64.wgsl");
 
 use super::bspline::BsplineCoeffs;
 use super::PppmParams;

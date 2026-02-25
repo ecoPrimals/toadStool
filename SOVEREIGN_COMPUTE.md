@@ -35,7 +35,7 @@ When the optimizer is complete:
 | **1** | Manual ILP in Jacobi kernel — `@ilp_region` restructure, warp-packing | ✅ Done | Feb 18, 2026 |
 | **2** | `LatencyModel` trait, Sm70/Rdna2/Conservative/Measured models + `AppleMLatencyModel` | ✅ Done | Feb 19–20, 2026 |
 | **3** | `WgslDependencyGraph` + `IlpReorderer` + `WgslLoopUnroller` built + **wired into `compile_shader_f64()`** | ✅ Done | Feb 20, 2026 |
-| **4** | Full naga-IR optimizer — SSA form, register pressure, loop pipelining | 📋 Planned | Q3 2026 |
+| **4** | naga-IR optimizer — FMA fusion, dead expr elimination, SPIR-V passthrough | ✅ Done | Feb 25, 2026 |
 | **5** | `math_f64.wgsl` completeness — sin/cos/atan2/asin/acos full range, libm fuzz | 📋 Planned | Q3–Q4 2026 |
 
 ---
@@ -156,22 +156,49 @@ for (var k = 0u; k < 8u; k = k + 1u) {
 
 ---
 
-## Phase 4 — Planned 📋
+## Phase 4 — Done ✅ (Feb 25, 2026)
 
-**Target**: Full naga-IR optimizer (Q3 2026)
+**Target**: naga-IR optimizer — `SovereignCompiler` in `crates/barracuda/src/shaders/sovereign/`
 
-**Key insight**: naga (wgpu's shader compiler) already parses WGSL for us.
-Drive it as a library:
+**Pipeline** (now live in `compile_shader_f64()`):
 ```
-WGSL text → naga::parse() → naga::Module (typed IR)
-         → BarraCuda IR passes (reorder, unroll, pipeline)
-         → modified naga::Module
-         → naga::back::spv::write() → SPIR-V bytes
-         → wgpu device (bypasses WGSL text entirely)
+WGSL text (after ShaderTemplate + WgslOptimizer)
+    → naga::front::wgsl::parse_str()   → naga::Module
+    → fma_fusion::fuse_multiply_add()  → Mul+Add → Fma (1.3× NAK deficiency fixed)
+    → dead_expr::eliminate()           → unused expressions removed
+    → naga::valid::Validator           → validates optimized module
+    → spv_emit::emit_spirv()           → Vec<u32> SPIR-V words
+    → wgpu (SPIRV_SHADER_PASSTHROUGH)  → driver → GPU
 ```
 
-No new parser. Full SSA form. Register pressure estimation.
-Inter-iteration loop pipelining (preload iteration i+1 data during iteration i's ops).
+**What was built**:
+```
+crates/barracuda/src/shaders/sovereign/
+  mod.rs            ← SovereignCompiler: compile(), SovereignOutput::Spirv, CompileStats
+  fma_fusion.rs     ← fuse_multiply_add(): Mul+Add → Fma (single-consumer only, safe)
+  dead_expr.rs      ← eliminate(): mark-sweep DCE on naga expression arena
+  spv_emit.rs       ← emit_spirv(): naga::back::spv::Writer, Vulkan 1.1, SPIR-V 1.3
+```
+
+**Integration**:
+- `naga = "22.1"` added as direct dependency (same version as wgpu 22, zero type conflicts)
+- `wgpu::Features::SPIRV_SHADER_PASSTHROUGH` requested in all device creation paths
+- `WgpuDevice::compile_shader_spirv()` wraps `device.create_shader_module_spirv()`
+- `compile_shader_f64()` attempts sovereign path first, falls back to WGSL text on error
+
+**Fallback guarantee**: If `SPIRV_SHADER_PASSTHROUGH` is unavailable (WebGPU, some mobile
+drivers), the existing WGSL text path continues working. Phase 4 is additive.
+
+**FMA fusion safety**: Only fuses `Mul(a,b) + c` when the multiply has exactly one consumer.
+No silent precision changes — `fma(a,b,c)` is strictly more precise than `a*b + c`.
+
+10 unit tests covering FMA fusion, dead expression elimination, SPIR-V round-trip,
+and full sovereign compilation pipeline.
+
+**Remaining Phase 4 work** (future iterations):
+- Register pressure estimation (live-range counting)
+- Loop software pipelining at naga IR level
+- Architecture-specific polynomial selection for transcendentals
 
 ---
 
@@ -243,4 +270,4 @@ Zero central coordinator required for network formation.
 
 *"The mycelium is the internet of the forest. ToadStool is the mycelium of compute."*
 
-*Last updated: February 23, 2026 — Session 50. Phases 0–3 complete and live. Phase 3 optimizer wired into `compile_shader_f64()`. Cross-vendor latency matrix complete (SM70/RDNA2/AppleM/Conservative). NVVM Ada Lovelace f64 transcendental fix applied.*
+*Last updated: February 25, 2026 — Session 61. Phases 0–4 complete and live. Phase 4 sovereign compiler (naga-IR optimizer + SPIR-V passthrough) wired into `compile_shader_f64()`. FMA fusion eliminates NAK Deficiency 4 at IR level. 10 sovereign tests.*

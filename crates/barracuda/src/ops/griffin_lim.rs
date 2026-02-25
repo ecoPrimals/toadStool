@@ -20,11 +20,12 @@ pub struct GriffinLim {
     magnitude: Tensor,
     n_frames: usize,
     n_freqs: usize,
+    /// Reserved for full iterative STFT/ISTFT reconstruction.
     #[allow(dead_code)]
     n_fft: usize,
+    /// Reserved for full iterative STFT/ISTFT reconstruction.
     #[allow(dead_code)]
     hop_length: usize,
-    #[allow(dead_code)]
     n_iter: usize,
 }
 

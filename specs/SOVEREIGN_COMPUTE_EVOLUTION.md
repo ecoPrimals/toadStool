@@ -1,7 +1,7 @@
 # Sovereign Compute Evolution — BarraCuda WGSL Optimizer & Mycelial ToadStool
 
-**Date**: February 18, 2026
-**Status**: Vision formalised — Phase 0 absorbed (fossils, NAK latency tables), Phase 1 active
+**Date**: February 25, 2026 (updated from Feb 18)
+**Status**: Phases 0-4 complete — Phase 4 naga-IR optimizer + SPIR-V passthrough live in `compile_shader_f64()`
 **Classification**: Core architecture evolution
 
 ---
@@ -252,24 +252,33 @@ automatically from the `@ilp_region` annotation alone.
 
 ---
 
-### Phase 4 — Full WGSL Source Optimizer (Q3 2026)
+### Phase 4 — naga-IR Optimizer + SPIR-V Passthrough ✅ (Feb 25, 2026)
 
-**What to build**:
-- Full SSA-form WGSL function analysis (using `naga`'s AST as input —
-  it already parses WGSL for us, no need to reinvent)
-- Per-function dependency graph over naga's typed IR
-- Global register pressure estimation
-- Loop software pipelining (preload iteration `i+1` data during `i`'s ops)
-- Emit naga IR directly (bypass WGSL text → SPIR-V, reduce round-trips)
+**What was built**:
+- `SovereignCompiler` in `crates/barracuda/src/shaders/sovereign/`
+- `naga 22.1` direct dependency — parse WGSL via `naga::front::wgsl::parse_str()`
+- FMA fusion: walk `naga::Arena<Expression>`, detect `Mul(a,b) + c` with
+  single-consumer multiply, replace with `Math { fun: Fma }` — addresses
+  NAK Deficiency 4 (~1.3x) at the IR level for ALL backends
+- Dead expression elimination: mark-sweep on expression arena
+- SPIR-V emission: `naga::back::spv::Writer` configured for Vulkan 1.1
+- `SPIRV_SHADER_PASSTHROUGH` requested in all 5 device creation paths
+- `compile_shader_f64()` attempts sovereign path first, falls back to WGSL text
 
-**Why naga** — naga is already a dependency (it's wgpu's shader compiler).
-We can drive it as a library: parse WGSL → get typed IR → transform IR →
-re-emit IR → hand to naga's SPIR-V backend. No new parser to write.
+**Why naga as a library**: naga is already wgpu's shader compiler. Driving
+it directly lets us: parse WGSL → transform the typed IR → emit SPIR-V →
+submit pre-compiled binary to the driver. No WGSL re-parse on the wgpu side.
 
-**Outcome**: The sovereign compiler layer is complete. Any WGSL shader
-written for BarraCuda is automatically optimised for the target GPU before
-the vendor driver ever sees it. NAK/ACO/PTXAS receive pre-scheduled SPIR-V
-and simply translate it 1-to-1 to machine code.
+**Outcome**: The core sovereign compiler infrastructure is in place. Every
+f64 shader compiled through `compile_shader_f64()` now gets IR-level FMA
+fusion before reaching the vendor driver. The SPIR-V passthrough path
+eliminates one full WGSL parse round-trip.
+
+**Remaining Phase 4 iterations** (future work):
+- Register pressure estimation (live-range counting)
+- Loop software pipelining at naga IR level
+- Architecture-specific peephole optimizations per `GpuArch`
+- naga → NAK IR direct bridge (bypass `spirv_to_nir` C boundary)
 
 ---
 

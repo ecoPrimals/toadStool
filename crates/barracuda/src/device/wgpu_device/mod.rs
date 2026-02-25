@@ -57,6 +57,43 @@ impl WgpuDevice {
         self.device.features().contains(wgpu::Features::SHADER_F64)
     }
 
+    /// Check if the Sovereign Compiler's SPIR-V passthrough path is available.
+    ///
+    /// Returns `true` when `wgpu::Features::SPIRV_SHADER_PASSTHROUGH` was
+    /// granted at device creation — typically available on Vulkan backends
+    /// (NVK, RADV, proprietary NVIDIA).
+    pub fn has_spirv_passthrough(&self) -> bool {
+        self.device
+            .features()
+            .contains(wgpu::Features::SPIRV_SHADER_PASSTHROUGH)
+    }
+
+    /// Compile a pre-built SPIR-V binary into a shader module.
+    ///
+    /// Requires `SPIRV_SHADER_PASSTHROUGH` — check with `has_spirv_passthrough()`.
+    ///
+    /// # Safety
+    ///
+    /// The SPIR-V binary is passed to the driver as-is. The caller must
+    /// ensure the binary was produced by a trusted source (our own naga
+    /// backend) and has been validated by `naga::valid::Validator`.
+    #[allow(unsafe_code)]
+    pub fn compile_shader_spirv(
+        &self,
+        spirv_words: &[u32],
+        label: Option<&str>,
+    ) -> wgpu::ShaderModule {
+        // SAFETY: SPIR-V was emitted by naga::back::spv::Writer from a
+        // naga::valid::Validator-approved module. No external/untrusted data.
+        unsafe {
+            self.device
+                .create_shader_module_spirv(&wgpu::ShaderModuleDescriptorSpirV {
+                    label,
+                    source: std::borrow::Cow::Borrowed(spirv_words),
+                })
+        }
+    }
+
     /// Access underlying wgpu device
     pub fn device(&self) -> &wgpu::Device {
         &self.device
@@ -104,6 +141,8 @@ impl WgpuDevice {
     /// 1. `ShaderTemplate::for_driver_auto` — patches exp/log for drivers that lack native f64
     /// 2. `WgslOptimizer::optimize` — reorders `@ilp_region` blocks + unrolls `@unroll_hint` loops
     ///    (Phase 3 SOVEREIGN_COMPUTE_EVOLUTION; only active when annotations are present)
+    /// 3. `SovereignCompiler::compile` — Phase 4: naga IR optimization (FMA fusion, dead expr
+    ///    elimination) + SPIR-V emission via `SPIRV_SHADER_PASSTHROUGH` (when available).
     ///
     /// The optimizer is keyed to the actual GPU arch detected at device-creation time,
     /// so the ILP fill width matches the hardware (8 cy on SM70, 4 cy on RDNA2, etc.).
@@ -115,15 +154,36 @@ impl WgpuDevice {
         );
 
         // Step 2: ILP optimizer — fast-path skip when no annotations present.
+        let profile = crate::device::driver_profile::GpuDriverProfile::from_device(self);
         let optimized = if patched.contains("@ilp_region") || patched.contains("@unroll_hint") {
-            use crate::device::capabilities::GpuDriverProfile;
             use crate::shaders::optimizer::WgslOptimizer;
-            let profile = GpuDriverProfile::from_device(self);
             let optimizer = WgslOptimizer::new(profile.latency_model());
             optimizer.optimize(&patched)
         } else {
             patched
         };
+
+        // Step 3: Sovereign compiler — Phase 4 naga IR path.
+        // Try SPIR-V passthrough first; fall back to WGSL text if unavailable or on error.
+        if self.has_spirv_passthrough() {
+            use crate::shaders::sovereign::{SovereignCompiler, SovereignOutput};
+            let sovereign = SovereignCompiler::new(profile);
+            match sovereign.compile(&optimized) {
+                Ok((SovereignOutput::Spirv(words), stats)) => {
+                    if stats.fma_fusions > 0 || stats.dead_exprs_eliminated > 0 {
+                        log::debug!(
+                            "sovereign: {} FMA fusions, {} dead exprs eliminated",
+                            stats.fma_fusions,
+                            stats.dead_exprs_eliminated,
+                        );
+                    }
+                    return self.compile_shader_spirv(&words, label);
+                }
+                Err(e) => {
+                    log::debug!("sovereign compiler fallback: {e}");
+                }
+            }
+        }
 
         self.compile_shader(&optimized, label)
     }

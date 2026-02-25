@@ -43,11 +43,8 @@ impl Cdist {
         }
     }
 
-    /// f32 WGSL shader (legacy, retained as fossil reference).
-    #[allow(dead_code)]
-    fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/misc/cdist.wgsl")
-    }
+    /// WGSL kernel for pairwise distance computation (f32 variant).
+    pub const WGSL_CDIST_F32: &str = include_str!("../shaders/misc/cdist.wgsl");
 
     /// f64 version for universal math library portability.
     pub fn wgsl_shader_f64() -> &'static str {
@@ -158,7 +155,7 @@ impl Cdist {
             ],
         });
 
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("Cdist"));
+        let shader = device.compile_shader(Self::WGSL_CDIST_F32, Some("Cdist"));
         let pipeline_layout =
             device
                 .device

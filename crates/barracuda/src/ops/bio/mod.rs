@@ -16,7 +16,9 @@
 //! | `dnds`              | `dnds_batch_f64.wgsl`            | Batch Nei-Gojobori dN/dS |
 //! | `pangenome`         | `pangenome_classify.wgsl`        | Gene family classification |
 //! | `quality_filter`    | `quality_filter.wgsl`            | Per-read quality trimming |
+//! | `batched_multinomial`| `batched_multinomial_f64.wgsl`  | Batched multinomial rarefaction |
 //! | `dada2`             | `dada2_e_step.wgsl`              | DADA2 E-step (batch log_p_error) |
+//! | `diversity_fusion`  | `diversity_fusion_f64.wgsl`      | Fused Shannon + Simpson + evenness |
 //! | `locus_variance`    | `locus_variance.wgsl`            | Per-locus AF variance (FST) |
 //! | `multi_obj_fitness` | `multi_obj_fitness.wgsl`         | Multi-objective fitness eval |
 //! | `pairwise_hamming`  | `pairwise_hamming.wgsl`          | Pairwise Hamming distance |
@@ -33,7 +35,9 @@
 
 pub mod ani;
 pub mod batch_fitness;
+pub mod batched_multinomial;
 pub mod dada2;
+pub mod diversity_fusion;
 pub mod dnds;
 pub mod felsenstein;
 pub mod flat_tree;
@@ -63,7 +67,9 @@ pub mod wright_fisher;
 
 pub use ani::AniBatchF64;
 pub use batch_fitness::BatchFitnessGpu;
+pub use batched_multinomial::{BatchedMultinomialGpu, multinomial_sample_cpu};
 pub use dada2::Dada2EStepGpu;
+pub use diversity_fusion::{DiversityFusionGpu, DiversityResult, diversity_fusion_cpu};
 pub use dnds::DnDsBatchF64;
 pub use felsenstein::{FelsensteinGpu, FelsensteinResult, PhyloTree};
 pub use flat_tree::FlatTree;

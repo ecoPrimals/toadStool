@@ -12,8 +12,8 @@
 //! - Abramowitz & Stegun, §7.1
 //! - DLMF 7.2: <https://dlmf.nist.gov/7.2>
 
-#[allow(dead_code)]
-const WGSL_ERFC_DERIV_F64: &str = include_str!("../shaders/special/erfc_deriv_f64.wgsl");
+/// WGSL kernel for complementary error function derivative (f64).
+pub const WGSL_ERFC_DERIV_F64: &str = include_str!("../shaders/special/erfc_deriv_f64.wgsl");
 
 /// Compute the error function erf(x).
 ///

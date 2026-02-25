@@ -36,8 +36,8 @@ pub fn erfc(x: f64) -> f64 {
 
 /// Derivative of erfc: d/dx erfc(x) = -2/√π exp(-x²)
 ///
-/// Useful for force calculations where analytical derivatives are needed.
-#[allow(dead_code)] // May be used in future GPU kernels
+/// Used in force calculations requiring analytical derivatives of the
+/// complementary error function (e.g., Ewald splitting gradient terms).
 pub fn erfc_deriv(x: f64) -> f64 {
     -2.0 / PI.sqrt() * (-x * x).exp()
 }

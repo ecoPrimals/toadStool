@@ -18,7 +18,7 @@ pub struct WebGPUAdapter {
     #[cfg(feature = "webgpu")]
     pub adapter: wgpu::Adapter,
     #[cfg(not(feature = "webgpu"))]
-    pub mock_data: String,
+    _private: (),
 }
 
 /// WebGPU framework implementation

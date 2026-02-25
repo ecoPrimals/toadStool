@@ -1,43 +1,24 @@
-//! Runge-Kutta Stage Evaluation — GPU-Accelerated via WGSL
+//! Runge-Kutta Stage Evaluation — CPU-Orchestrated RK4/RK45
 //!
-//! Parallel ODE integration using RK4/RK45 (Dormand-Prince) methods.
+//! Single-trajectory ODE integration with Dormand-Prince adaptive stepping.
 //!
 //! **Use cases**:
 //! - Soil dynamics and crop growth models (airSpring)
 //! - Time-dependent nuclear physics ODEs (hotSpring)
 //! - Population dynamics and ecosystem models (wetSpring)
 //!
-//! **Algorithm**:
-//! - Stage preparation (parallel over state dimensions)
-//! - f(t,y) evaluation (user-provided or via callback)
-//! - Solution update and error estimation (parallel)
-//! - CPU orchestrates stage ordering and adaptive stepping
+//! **Architecture**:
+//! - CPU evaluates arbitrary `f(t, y)` closures (cannot be GPU-dispatched)
+//! - For GPU-native structured ODEs, see [`Rk45AdaptiveGpu`](super::rk45_adaptive::Rk45AdaptiveGpu)
+//! - For batched parameter sweeps, see [`BatchedRK4F64`](super::batched_rk4_sweep::BatchedRK4F64)
 //!
 //! **Deep Debt Principles**:
-//! - Pure WGSL implementation (hardware-agnostic)
-//! - Parallel over state dimensions (efficient for large N)
-//! - Safe Rust wrapper (no unsafe code)
+//! - Safe Rust (zero unsafe code)
+//! - Hardware-agnostic (no vendor lock-in)
 
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
-use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
-
-/// Parallel multi-system RK4 integration (f32).
-pub const WGSL_RK4_PARALLEL: &str = include_str!("../shaders/numerical/rk4_parallel.wgsl");
-
-/// RK stage f64 variant.
-pub const WGSL_RK_STAGE_F64: &str = include_str!("../shaders/numerical/rk_stage_f64.wgsl");
-
-/// Parameters for RK stage shader
-#[repr(C)]
-#[derive(Copy, Clone, Pod, Zeroable)]
-struct RkParams {
-    n: u32,     // State dimension
-    h: f32,     // Step size
-    stage: u32, // Current stage (0-5 for RK45)
-    _pad: u32,
-}
 
 /// RK45 (Dormand-Prince) coefficients
 const DP_C: [f64; 6] = [0.0, 0.2, 0.3, 0.8, 8.0 / 9.0, 1.0];
@@ -60,9 +41,12 @@ const DP_B4: [f64; 6] = [
     187.0 / 2100.0,
 ];
 
-/// GPU-accelerated RK45 integrator
+/// CPU-orchestrated RK45 integrator with GPU state update path.
+///
+/// The ODE right-hand-side `f(t, y)` is evaluated on CPU (arbitrary closures
+/// cannot run on GPU). Linear-combination stage updates can be GPU-dispatched
+/// for large state dimensions via [`Rk45AdaptiveGpu`](super::rk45_adaptive::Rk45AdaptiveGpu).
 pub struct RkIntegrator {
-    #[allow(dead_code)] // Reserved for future GPU f(t,y) kernel support
     device: Arc<WgpuDevice>,
 }
 
@@ -70,14 +54,19 @@ pub struct RkIntegrator {
 pub type OdeFunction = Box<dyn Fn(f64, &[f64]) -> Vec<f64> + Send + Sync>;
 
 impl RkIntegrator {
-    #[allow(dead_code)] // Reserved for future GPU kernel support
-    fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/numerical/rk_stage.wgsl")
-    }
-
-    /// Create a new RK integrator
+    /// Create a new RK integrator backed by the given GPU device.
+    ///
+    /// The device is stored for future GPU-accelerated linear combination
+    /// kernels (stage preparation, error estimation) when state dimension
+    /// is large enough to amortize dispatch overhead.
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
         Ok(Self { device })
+    }
+
+    /// Access the underlying device (for callers that need it for batched dispatch).
+    #[must_use]
+    pub fn device(&self) -> &Arc<WgpuDevice> {
+        &self.device
     }
 
     /// Integrate ODE system using RK45 (Dormand-Prince) with adaptive stepping

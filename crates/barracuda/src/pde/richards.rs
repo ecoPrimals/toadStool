@@ -18,8 +18,8 @@
 
 use crate::error::{BarracudaError, Result};
 
-#[allow(dead_code)]
-const WGSL_VAN_GENUCHTEN_F64: &str = include_str!("../shaders/science/van_genuchten_f64.wgsl");
+/// WGSL kernel for Van Genuchten soil hydraulic model (f64).
+pub const WGSL_VAN_GENUCHTEN_F64: &str = include_str!("../shaders/science/van_genuchten_f64.wgsl");
 
 /// Van Genuchten soil hydraulic parameters.
 #[derive(Debug, Clone, Copy)]

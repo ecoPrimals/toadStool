@@ -58,5 +58,5 @@ pub use ode_generic::{BatchedOdeRK4, OdeSystem};
 pub use rk45::{rk45_at, rk45_solve, Rk45Config, Rk45Result};
 
 /// WGSL shader: parallel central-difference Hessian column computation
-#[allow(dead_code)]
+/// WGSL kernel for Hessian column extraction via finite differences.
 pub const WGSL_HESSIAN_COLUMN: &str = include_str!("../shaders/numerical/hessian_column.wgsl");
