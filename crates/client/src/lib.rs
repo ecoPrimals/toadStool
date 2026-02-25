@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! # ToadStool Client Library
 //!
 //! A comprehensive client library for connecting to ToadStool universal compute servers

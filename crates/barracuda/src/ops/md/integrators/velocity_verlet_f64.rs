@@ -210,8 +210,14 @@ impl VelocityVerletF64 {
             usage: wgpu::BufferUsages::STORAGE,
         });
         let out_size = (n3 * 8) as u64;
-        let dummy = d.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("VV:hv_dummy"),
+        let dummy_ro = d.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("VV:hv_dummy_ro"),
+            size: out_size.max(8),
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
+        let dummy_rw = d.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("VV:hv_dummy_rw"),
             size: out_size.max(8),
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
@@ -237,12 +243,12 @@ impl VelocityVerletF64 {
             label: Some("VV:hv_bg"),
             layout: &self.bgl,
             entries: &[
-                entry(0, &dummy),      // positions (unused by half_step)
+                entry(0, &dummy_ro),   // positions (unused by half_step)
                 entry(1, &vel_buf),    // velocities
                 entry(2, &forces_buf), // forces_old (used for forces)
-                entry(3, &dummy),      // forces_new (unused)
+                entry(3, &dummy_ro),   // forces_new (unused)
                 entry(4, &mass_buf),   // masses
-                entry(5, &dummy),      // positions_new (unused)
+                entry(5, &dummy_rw),   // positions_new (unused, RW binding)
                 entry(6, &vel_out),    // velocities_new (output)
                 entry(7, &params_buf),
             ],
@@ -285,8 +291,14 @@ impl VelocityVerletF64 {
             usage: wgpu::BufferUsages::STORAGE,
         });
         let out_size = (n3 * 8) as u64;
-        let dummy = d.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("VV:pu_dummy"),
+        let dummy_ro = d.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("VV:pu_dummy_ro"),
+            size: out_size.max(8),
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
+        let dummy_rw = d.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("VV:pu_dummy_rw"),
             size: out_size.max(8),
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
@@ -321,11 +333,11 @@ impl VelocityVerletF64 {
             entries: &[
                 entry(0, &pos_buf),    // positions
                 entry(1, &vel_buf),    // velocities (half-step)
-                entry(2, &dummy),      // forces_old (unused)
-                entry(3, &dummy),      // forces_new (unused)
+                entry(2, &dummy_ro),   // forces_old (unused)
+                entry(3, &dummy_ro),   // forces_new (unused)
                 entry(4, &mass_dummy), // masses (unused)
                 entry(5, &pos_out),    // positions_new (output)
-                entry(6, &dummy),      // velocities_new (unused)
+                entry(6, &dummy_rw),   // velocities_new (unused, RW binding)
                 entry(7, &params_buf),
             ],
         });

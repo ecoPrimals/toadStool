@@ -46,7 +46,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     is_peak[idx] = is_max;
 
     if (is_max == 0u) {
-        prominence[idx] = 0.0;
+        prominence[idx] = f64(0.0);
         return;
     }
 

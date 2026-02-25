@@ -89,16 +89,15 @@ impl CrankNicolson {
             });
         }
 
-        // Courant number (stability: r ≤ 1 for explicit, unconditionally stable for CN)
-        let r = alpha * dt / (dx * dx);
+        let courant = alpha * dt / (dx * dx);
 
         match (left_bc, right_bc) {
             (BoundaryCondition::Dirichlet(l), BoundaryCondition::Dirichlet(r)) => {
-                self.solve_gpu(u0, r, n_steps, l, r)
+                self.solve_gpu(u0, courant, n_steps, l, r)
             }
             _ => {
                 // Neumann or mixed: use CPU path (GPU shader is Dirichlet-only)
-                self.solve_neumann_cpu(u0, r, n_steps, left_bc, right_bc)
+                self.solve_neumann_cpu(u0, courant, n_steps, left_bc, right_bc)
             }
         }
     }
@@ -502,14 +501,14 @@ mod tests {
         let solver = CrankNicolson::new(device).unwrap();
 
         // Heat equation with fixed boundaries should approach linear profile.
-        // Use n=30 to exercise CPU path (n < 32) — avoids 10k+ GPU round-trips
-        // that cause 10+ min hangs on software renderers (lavapipe/swiftshader).
+        // Crank-Nicolson is unconditionally stable so we use large dt to
+        // reach steady state in few GPU round-trips (avoids 60s+ test times).
         let n = 30;
-        let u0 = vec![0.0f32; n]; // Initial: zero everywhere
+        let u0 = vec![0.0f32; n];
         let alpha = 1.0;
         let dx = 1.0 / (n + 1) as f32;
-        let dt = 0.0001;
-        let n_steps = 10000; // Run until near steady state
+        let dt = 0.01;
+        let n_steps = 200;
 
         let u = solver
             .solve(

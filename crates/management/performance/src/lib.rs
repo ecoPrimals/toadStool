@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Performance Management and Optimization for `ToadStool`
 //!
 //! This crate provides comprehensive performance management including:

@@ -219,9 +219,11 @@ impl ShaderTemplate {
         crate::shaders::optimizer::WgslOptimizer::new(profile.latency_model()).optimize(&injected)
     }
 
-    /// Replace native f64 transcendentals (`exp(`, `log(`, `pow(`) with their
-    /// polyfill equivalents (`exp_f64(`, `log_f64(`, `pow_f64(`) while preserving
-    /// WGSL comments so generated shader source stays readable.
+    /// Replace native f64 transcendentals with their polyfill equivalents while
+    /// preserving WGSL comments so generated shader source stays readable.
+    ///
+    /// Covers: `exp`, `log`, `pow`, `sin`/`cos`/`tan` (plus inverse variants
+    /// `asin`/`acos`/`atan` via suffix matching), `sinh`/`cosh`/`tanh`, `atan2`.
     ///
     /// Processes the shader line-by-line:
     /// - Pure comment lines (`//…`) are passed through unchanged.
@@ -251,14 +253,42 @@ impl ShaderTemplate {
 
     /// Replace native f64 transcendentals with polyfill calls in a code fragment.
     ///
-    /// Covers `exp`, `log`, and `pow` — all three crash on NVVM/NAK (Ada
-    /// Lovelace) and NVK. The `_f64` polyfills are defined in `math_f64.wgsl`
-    /// and auto-injected by `inject_missing_math_f64`.
+    /// NVVM's PTXAS does not implement double-precision transcendentals —
+    /// they require libdevice which SPIR-V cannot link. All known NVIDIA
+    /// proprietary drivers (Ampere, Ada Lovelace, Hopper) and NVK/RADV
+    /// exhibit this. The `_f64` polyfills (Cody-Waite + minimax polynomial)
+    /// are defined in `math_f64.wgsl` and auto-injected by
+    /// `inject_missing_math_f64`.
+    ///
+    /// Ordering note: `sin(` naturally catches `asin(` → `asin_f64(`,
+    /// `cos(` catches `acos(`, `tan(` catches `atan(` — all correct since
+    /// our polyfills cover these inverse trig functions too. `atan2` and
+    /// hyperbolic functions need explicit entries.
     #[inline]
     fn patch_transcendentals_in_code(code: &str) -> String {
-        code.replace("exp(", "exp_f64(")
+        // Protect WGSL builtins and DF64 functions whose names contain
+        // transcendental substrings (e.g. ldexp contains "exp", exp_df64
+        // contains "exp") from being mangled by the substring replacer.
+        code.replace("ldexp(", "\x00LDEXP\x00")
+            .replace("exp_df64(", "\x00EXP_DF64\x00")
+            .replace("exp_f64(", "\x00EXP_F64\x00")
+            .replace("log_df64(", "\x00LOG_DF64\x00")
+            .replace("log_f64(", "\x00LOG_F64\x00")
+            .replace("exp(", "exp_f64(")
             .replace("log(", "log_f64(")
             .replace("pow(", "pow_f64(")
+            .replace("sinh(", "sinh_f64(")
+            .replace("cosh(", "cosh_f64(")
+            .replace("tanh(", "tanh_f64(")
+            .replace("sin(", "sin_f64(")
+            .replace("cos(", "cos_f64(")
+            .replace("tan(", "tan_f64(")
+            .replace("atan2(", "atan2_f64(")
+            .replace("\x00LDEXP\x00", "ldexp(")
+            .replace("\x00EXP_DF64\x00", "exp_df64(")
+            .replace("\x00EXP_F64\x00", "exp_f64(")
+            .replace("\x00LOG_DF64\x00", "log_df64(")
+            .replace("\x00LOG_F64\x00", "log_f64(")
     }
 
     fn inject_missing_math_f64(shader_body: &str) -> String {

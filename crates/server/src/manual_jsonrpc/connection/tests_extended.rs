@@ -134,7 +134,10 @@ async fn test_unix_socket_temp_path_connect_client() {
     tokio::spawn(async move {
         let _ = server.serve(path_for_server).await;
     });
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Wait for server to bind
+    for _ in 0..100 {
+        tokio::task::yield_now().await;
+    }
 
     let mut client = UnixStream::connect(&socket_path).await.expect("connect");
     let req = r#"{"jsonrpc":"2.0","method":"toadstool.health","params":{},"id":100}"#;
@@ -163,7 +166,10 @@ async fn test_tcp_port_zero_connect_client() {
         let (stream, _) = listener.accept().await.unwrap();
         let _ = server_clone.handle_tcp_connection(stream).await;
     });
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    // Wait for server to bind
+    for _ in 0..100 {
+        tokio::task::yield_now().await;
+    }
 
     let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
     let req = r#"{"jsonrpc":"2.0","method":"toadstool.version","params":{},"id":101}"#;
@@ -331,7 +337,10 @@ async fn test_serve_tcp_accepts_connection() {
     tokio::spawn(async move {
         let _ = server.serve_tcp(listener).await;
     });
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    // Wait for server to bind
+    for _ in 0..100 {
+        tokio::task::yield_now().await;
+    }
 
     let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
     let req = r#"{"jsonrpc":"2.0","method":"gate.list","params":{},"id":200}"#;

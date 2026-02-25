@@ -82,10 +82,21 @@ impl CommunicationManager {
 
         match &channel.client {
             #[cfg(feature = "networking")]
-            ServiceClient::Tarpc(_) => Err(ToadStoolError::runtime(format!(
-                "tarpc transport not yet configured for {}; use JSON-RPC path",
-                channel.service_name
-            ))),
+            ServiceClient::Tarpc(wrapper_mutex) => {
+                let guard = wrapper_mutex.lock().await;
+                let wrapper = guard.as_ref().ok_or_else(|| {
+                    ToadStoolError::runtime(format!(
+                        "tarpc wrapper not initialized for {}",
+                        channel.service_name
+                    ))
+                })?;
+                debug!(
+                    "tarpc endpoint for {} — using JSON-RPC fallback transport",
+                    channel.service_name
+                );
+                self.send_via_unix_socket(wrapper.fallback_client(), message)
+                    .await
+            }
 
             #[cfg(feature = "networking")]
             ServiceClient::UnixSocket(rpc_client) => {
@@ -113,10 +124,21 @@ impl CommunicationManager {
             }
 
             #[cfg(feature = "networking")]
-            ServiceClient::Tarpc(_) => Err(ToadStoolError::runtime(format!(
-                "tarpc transport not yet configured for {}; use JSON-RPC path",
-                channel.service_name
-            ))),
+            ServiceClient::Tarpc(wrapper_mutex) => {
+                let guard = wrapper_mutex.lock().await;
+                let wrapper = guard.as_ref().ok_or_else(|| {
+                    ToadStoolError::runtime(format!(
+                        "tarpc wrapper not initialized for {}",
+                        channel.service_name
+                    ))
+                })?;
+                let _: serde_json::Value = wrapper
+                    .fallback_client()
+                    .call("health", serde_json::json!({}))
+                    .await
+                    .map_err(|e| ToadStoolError::network(format!("Health check failed: {e}")))?;
+                Ok(())
+            }
 
             #[cfg(not(feature = "networking"))]
             ServiceClient::Disabled => Ok(()),
@@ -184,7 +206,16 @@ impl CommunicationManager {
                 ));
             }
             if endpoint.protocol == "tarpc" {
-                continue;
+                let socket_path = Self::extract_socket_path(endpoint, &service.name);
+                let fallback =
+                    toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+                info!(
+                    "tarpc endpoint for {} — using JSON-RPC fallback until binary transport wired",
+                    service.name
+                );
+                return Ok(ServiceClient::Tarpc(Arc::new(tokio::sync::Mutex::new(
+                    Some(super::types::TarpcClientWrapper::with_fallback(fallback)),
+                ))));
             }
         }
 

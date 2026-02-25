@@ -325,9 +325,9 @@ fn jacobi() {\n\
         assert!(result.contains("if (0u < n)"), "iteration 0 needs guard");
         assert!(result.contains("if (31u < n)"), "iteration 31 needs guard");
 
-        // Body expressions still present (substituted k → literals)
-        assert!(result.contains("A_batch[0 * p]"), "k=0 substitution");
-        assert!(result.contains("A_batch[31 * p]"), "k=31 substitution");
+        // Body expressions still present (substituted k → literals with u32 suffix)
+        assert!(result.contains("A_batch[0u * p]"), "k=0 substitution");
+        assert!(result.contains("A_batch[31u * p]"), "k=31 substitution");
     }
 
     /// Verifies that an `@ilp_region` block followed immediately by a `@unroll_hint`

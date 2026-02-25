@@ -27,7 +27,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     // If mask is true, copy to output at position given by prefix sum
     if (mask[idx] != 0u) {
-        let out_idx = prefix_sum[idx] - 1u; // -1 because prefix sum is inclusive
+        let out_idx = prefix_sum[idx]; // exclusive scan gives 0-based output index
         output[out_idx] = input[idx];
     }
 }

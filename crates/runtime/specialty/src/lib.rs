@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! # ToadStool Specialty Hardware Runtime Engine
 //!
 //! Specialty hardware support for ToadStool Universal Compute Platform.
@@ -504,10 +506,10 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
                         });
                     }
                     
-                    // Polling external legacy systems that don't provide event
-                    // notifications. 1s interval balances responsiveness vs CPU cost
-                    // for mainframe/embedded/RTOS integrations that only expose status queries.
-                    tokio::time::sleep(Duration::from_millis(1000)).await;
+                    // BLOCKED(legacy-hardware): Polling external systems that don't provide
+                    // event notifications. 1s interval is the minimum responsiveness for
+                    // mainframe/embedded/RTOS integrations that only expose status queries.
+                    tokio::time::sleep(Duration::from_secs(1)).await;
                 }
             }
         }

@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Python runtime implementation for toadStool
 //!
 //! This module provides Python execution capabilities through subprocess execution.

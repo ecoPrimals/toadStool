@@ -202,10 +202,10 @@ struct ReduceParams {
     _pad1: u32,
 }
 
-@group(1) @binding(0) var<uniform> reduce_params: ReduceParams;
-@group(1) @binding(1) var<storage, read> bond_forces_in: array<f64>;   // [N_bonds*6]
-@group(1) @binding(2) var<storage, read> bond_pairs_in: array<u32>;    // [N_bonds*2]
-@group(1) @binding(3) var<storage, read_write> particle_forces: array<f64>; // [N_particles*3]
+@group(0) @binding(0) var<uniform> reduce_params: ReduceParams;
+@group(0) @binding(1) var<storage, read> bond_forces_in: array<f64>;   // [N_bonds*6]
+@group(0) @binding(2) var<storage, read> bond_pairs_in: array<u32>;    // [N_bonds*2]
+@group(0) @binding(3) var<storage, read_write> particle_forces: array<f64>; // [N_particles*3]
 
 @compute @workgroup_size(256)
 fn reduce_bond_forces_f64(@builtin(global_invocation_id) global_id: vec3<u32>) {

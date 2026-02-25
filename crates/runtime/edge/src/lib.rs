@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! # ToadStool Edge/IoT Runtime Engine
 //!
 //! Universal compute orchestration for edge devices, IoT platforms, and embedded systems.

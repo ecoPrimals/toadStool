@@ -15,19 +15,22 @@ impl Attention {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.query().device();
 
-        // Extract dimensions
-        let shape = self.query().shape();
-        let batch_size = shape[0];
-        let num_heads = shape[1];
-        let seq_len = shape[2];
-        let head_dim = shape[3];
+        // Extract dimensions (cross-attention: Q and K/V may have different seq_len)
+        let q_shape = self.query().shape();
+        let kv_shape = self.key().shape();
+        let batch_size = q_shape[0];
+        let num_heads = q_shape[1];
+        let q_seq_len = q_shape[2];
+        let kv_seq_len = kv_shape[2];
+        let head_dim = q_shape[3];
 
-        // Create parameters
         let params = AttentionParams {
             batch_size: batch_size as u32,
             num_heads: num_heads as u32,
-            seq_len: seq_len as u32,
+            q_seq_len: q_seq_len as u32,
+            kv_seq_len: kv_seq_len as u32,
             head_dim: head_dim as u32,
+            _padding: [0; 3],
         };
 
         let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -40,13 +43,13 @@ impl Attention {
             .queue
             .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
-        // Intermediate buffers
-        let scores_size = batch_size * num_heads * seq_len * seq_len;
+        // Score matrix: [B, H, q_seq, kv_seq]
+        let scores_size = batch_size * num_heads * q_seq_len * kv_seq_len;
         let scores_buffer = device.create_buffer_f32(scores_size)?;
         let weights_buffer = device.create_buffer_f32(scores_size)?;
 
-        // Output buffer
-        let output_size = batch_size * num_heads * seq_len * head_dim;
+        // Output: [B, H, q_seq, head_dim]
+        let output_size = batch_size * num_heads * q_seq_len * head_dim;
         let output_buffer = device.create_buffer_f32(output_size)?;
 
         // ═══════════════════════════════════════════════════════════
@@ -165,15 +168,12 @@ impl Attention {
             pass.set_pipeline(&pipeline_matmul);
             pass.set_bind_group(0, &bg_matmul, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
-            // Shader uses fixed 16x16 tiles (workgroup_size(16, 16, 1))
-            // We use capability awareness to determine optimal tile count
             let caps = DeviceCapabilities::from_device(device);
             let _optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            // Tile size is shader-constrained to 16x16, but we ensure capability awareness
             const TILE_SIZE: u32 = 16;
-            let workgroups_x = (seq_len as u32).div_ceil(TILE_SIZE).max(1);
-            let workgroups_y = (seq_len as u32).div_ceil(TILE_SIZE).max(1);
+            // x = key positions, y = query positions
+            let workgroups_x = (kv_seq_len as u32).div_ceil(TILE_SIZE).max(1);
+            let workgroups_y = (q_seq_len as u32).div_ceil(TILE_SIZE).max(1);
             let workgroups_z = (batch_size * num_heads) as u32;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -275,11 +275,11 @@ impl Attention {
             pass.set_pipeline(&pipeline_softmax);
             pass.set_bind_group(0, &bg_softmax, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
-            // Softmax is element-wise per [batch, head, query_pos]
+            // Softmax: one thread per [batch, head, query_pos] row
             let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = ((batch_size * num_heads * seq_len) as u32).div_ceil(optimal_wg_size);
+            let workgroups =
+                ((batch_size * num_heads * q_seq_len) as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
@@ -393,15 +393,11 @@ impl Attention {
             pass.set_pipeline(&pipeline_apply);
             pass.set_bind_group(0, &bg_apply, &[]);
 
-            // Deep Debt Evolution: Capability-based dispatch
-            // Shader uses fixed 16x16 tiles (workgroup_size(16, 16, 1))
-            // We use capability awareness to determine optimal tile count
             let caps = DeviceCapabilities::from_device(device);
             let _optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            // Tile size is shader-constrained to 16x16, but we ensure capability awareness
             const TILE_SIZE: u32 = 16;
             let workgroups_x = (head_dim as u32).div_ceil(TILE_SIZE).max(1);
-            let workgroups_y = (seq_len as u32).div_ceil(TILE_SIZE).max(1);
+            let workgroups_y = (q_seq_len as u32).div_ceil(TILE_SIZE).max(1);
             let workgroups_z = (batch_size * num_heads) as u32;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -409,10 +405,9 @@ impl Attention {
         // Submit all passes
         device.queue.submit(Some(encoder.finish()));
 
-        // Return output tensor
         Ok(Tensor::from_buffer(
             output_buffer,
-            vec![batch_size, num_heads, seq_len, head_dim],
+            vec![batch_size, num_heads, q_seq_len, head_dim],
             device.clone(),
         ))
     }

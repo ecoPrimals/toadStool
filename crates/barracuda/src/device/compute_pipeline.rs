@@ -195,7 +195,7 @@ impl<'a> ComputeDispatch<'a> {
                     layout: Some(&pl),
                     module: &module,
                     entry_point: self.entry_point,
-                    cache: None,
+                    cache: self.device.pipeline_cache(),
                     compilation_options: Default::default(),
                 });
 

@@ -19,58 +19,58 @@ struct Metadata {
 
 // I0 for |x| < 3.75 (used in K0 small-x region)
 fn i0_small(x: f64) -> f64 {
-    let y = x / 3.75;
+    let y = x / f64(3.75);
     let t = y * y;
     let t2 = t * t;
     let t3 = t2 * t;
     
-    return 1.0 
-        + 3.5156229 * t 
-        + 3.0899424 * t2 
-        + 1.2067492 * t3 
-        + 0.2659732 * t2 * t2
-        + 0.0360768 * t2 * t3 
-        + 0.0045813 * t3 * t3;
+    return f64(1.0) 
+        + f64(3.5156229) * t 
+        + f64(3.0899424) * t2 
+        + f64(1.2067492) * t3 
+        + f64(0.2659732) * t2 * t2
+        + f64(0.0360768) * t2 * t3 
+        + f64(0.0045813) * t3 * t3;
 }
 
 fn bessel_k0_approx(x: f64) -> f64 {
-    if (x <= 0.0) {
-        return 1e308; // K0 singular at x=0, return large value for x <= 0
+    if (x <= f64(0.0)) {
+        return f64(1e308); // K0 singular at x=0, return large value for x <= 0
     }
-    if (x <= 2.0) {
+    if (x <= f64(2.0)) {
         // 0 < x <= 2: K0(x) = -ln(x/2)*I0(x) + P(t) where t = (x/2)²
-        let y = x * 0.5;
+        let y = x * f64(0.5);
         let z = y * y;
         let z2 = z * z;
         let z3 = z2 * z;
         
         // Higher precision coefficients for f64
-        let p = -0.57721566 
-            + 0.42278420 * z 
-            + 0.23069756 * z2 
-            + 0.03488590 * z3 
-            + 0.00262698 * z2 * z2
-            + 0.00010750 * z2 * z3 
-            + 0.00000740 * z3 * z3;
+        let p = f64(-0.57721566) 
+            + f64(0.42278420) * z 
+            + f64(0.23069756) * z2 
+            + f64(0.03488590) * z3 
+            + f64(0.00262698) * z2 * z2
+            + f64(0.00010750) * z2 * z3 
+            + f64(0.00000740) * z3 * z3;
         
         let i0_val = i0_small(x);
         return p - i0_val * log(y);
     }
     
     // x > 2: K0(x) = exp(-x)/sqrt(x) * P(2/x)
-    let t = 2.0 / x;
+    let t = f64(2.0) / x;
     let t2 = t * t;
     let t3 = t2 * t;
     let t4 = t2 * t2;
     
     // Higher precision polynomial
-    let p = 1.25331414 
-        - 0.07832358 * t 
-        + 0.02189568 * t2 
-        - 0.01062446 * t3 
-        + 0.00587872 * t4
-        - 0.00251540 * t2 * t3 
-        + 0.00053208 * t3 * t3;
+    let p = f64(1.25331414) 
+        - f64(0.07832358) * t 
+        + f64(0.02189568) * t2 
+        - f64(0.01062446) * t3 
+        + f64(0.00587872) * t4
+        - f64(0.00251540) * t2 * t3 
+        + f64(0.00053208) * t3 * t3;
     
     return exp(-x) * p / sqrt(x);
 }

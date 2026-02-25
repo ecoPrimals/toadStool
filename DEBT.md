@@ -1,36 +1,43 @@
 # Active Technical Debt Register
 
-**Date**: February 24, 2026
+**Date**: February 25, 2026
 **Philosophy**: Workarounds are short-term solutions that increase debt.
 We aim to solve deep debt over iterations, evolving toward vendor-agnostic,
 capability-based solutions.
+
+## Session 60 Resolutions (Feb 25, 2026)
+
+- **R-S60-001**: DF64 FMA optimization — `two_prod` Dekker splitting (17 ops) replaced with `fma(a, b, -p)` (2 ops). Eliminates `split()` function.
+- **R-S60-002**: DF64 transcendental library — new `df64_transcendentals.wgsl` with sqrt, exp, log, sin, cos, pow, tanh running at FP32 core speed
+- **R-S60-003**: 4 force shaders (Born-Mayer, Morse, Yukawa, Lennard-Jones) evolved from hybrid to all-DF64 — no f64-unit transcendental dependency
+- **R-S60-004**: Patcher hardened — `patch_transcendentals_in_code()` protects ldexp/exp_df64/exp_f64/log_df64/log_f64 from substring collision
+- **R-S60-005**: Crank-Nicolson variable shadowing bug — Courant number `r` shadowed by `Dirichlet(r)` pattern match, causing solver to receive r=0.0
+- **R-S60-006**: Cholesky SPD validation — `cholesky_f64` now detects non-positive-definite matrices (NaN/non-positive diagonal)
+- **R-S60-007**: Cross-attention `q_seq_len`/`kv_seq_len` — `AttentionParams` evolved across 6 Rust + 6 WGSL files to support differing Q/KV sequence lengths
+- **R-S60-008**: Loop unroller test assertions — corrected to expect `u` suffix for `u32` literals
+- **R-S60-009**: Multi-GPU adapter selection — deterministic GPU pinning via `BARRACUDA_GPU_ADAPTER` env var (absorbed from hotSpring)
 
 ---
 
 ## Active Workarounds
 
-### W-001: Open-Source GPU Driver f64 Transcendental Workaround
+### W-001: f64 Transcendental Polyfills — Architectural Solution
 
-**Status**: ACTIVE — First solution implemented, capability probe live
-**Impact**: ~2x performance penalty for exp/log on affected drivers
+**Status**: ACTIVE — Architecturally solved; polyfill is the sovereign solution (no vendor library dependency)
+**Impact**: Enables f64 transcendentals on ALL GPUs regardless of vendor math library support
+**Root Cause**: SPIR-V has no mechanism to link vendor math libraries (NVIDIA libdevice, AMD ocml). Every f64 transcendental fails through SPIR-V on NVK/NAK, NVIDIA proprietary (Ada), and RADV.
 **Files**:
 - `crates/barracuda/src/device/wgpu_device/capabilities.rs` — `needs_f64_exp_log_workaround()`, `probe_f64_exp_capable()`
 - `crates/barracuda/src/device/probe.rs` — runtime capability probing, global cache
-- `crates/barracuda/src/shaders/precision/mod.rs` — `for_driver_auto()`, `inject_missing_math_f64()`
+- `crates/barracuda/src/shaders/precision/mod.rs` — `for_driver_auto()`, `inject_missing_math_f64()`, `patch_transcendentals_in_code()`
+- `crates/barracuda/src/shaders/math/math_f64.wgsl` — 28 polyfill functions (Cody-Waite, Lanczos, Horner)
+- `crates/barracuda/src/shaders/math/math_f64_special.wgsl` — gamma, erf, Bessel
 
-**Problem**: Open-source GPU compiler backends crash on f64 transcendentals:
-- **NVK/NAK** (NVIDIA nouveau): `exp(f64)` crashes the NAK compiler
-- **RADV/ACO** (AMD open-source): `fexp2` unimplemented for bit size 64
+**Solution**: `math_f64.wgsl` — 28 pure-WGSL polyfill functions with correct dependency ordering, Cody-Waite range reduction, Lanczos gamma, Horner polynomials. Auto-injected by `compile_shader_f64()`. No vendor dependencies, works on every GPU, ships with the crate, testable in CI without hardware.
 
-**Current Solution**: Text replacement `exp()` → `exp_f64()`, `log()` → `log_f64()`
-with software implementations from `math_f64.wgsl`. Detection is driver-name based,
-with async `probe_f64_exp_capable()` now available for definitive runtime verification.
+**Patcher** (Session 60): `patch_transcendentals_in_code()` hardened with sentinel-based protection for `ldexp()`, `exp_df64()`, `exp_f64()`, `log_df64()`, `log_f64()` to prevent substring collision.
 
-**Why This Is Debt**:
-1. Text replacement is fragile (could match comments, variable names)
-2. Driver detection is heuristic (name matching) — **DONE: capability probing implemented**
-3. Software fallbacks are ~2x slower than native hardware
-4. Applies blanket workaround rather than per-op capability check
+**Verification**: 233 f64 tests pass on AMD RADV (RX 6950 XT), 18 FFT tests pass. All 23 MD force tests pass on both NVIDIA proprietary and AMD.
 
 **F64 Built-in Capability Matrix** (probed Feb 18, 2026 via `bench_f64_builtins`):
 
@@ -220,10 +227,9 @@ The only `WgpuDevice::new()` calls outside the pool are:
 All non-showcase Rust files are under 1000 lines.
 Deflation, shift-invert, blocked, banded eigh variants are future additions (new files when implemented).
 
-### D-004: cudarc version outdated in docs
+### D-004: cudarc version outdated in docs — RESOLVED
 
-**Impact**: DEEP_DEBT_STATUS.md references 0.11 → 0.19 as future; already done
-**Evolution**: Audit and update stale documentation
+**Resolution**: cudarc 0.11 → 0.19 upgrade completed. Stale doc references cleaned up (S58).
 
 ---
 
@@ -620,6 +626,8 @@ Deflation, shift-invert, blocked, banded eigh variants are future additions (new
 | R-078 | `workload_migration/planner.rs`: all `evaluate_migration_targets` branches covered | Feb 19, 2026 |
 | R-079 | `universal/platform.rs`: all public async methods covered | Feb 19, 2026 |
 | R-080 | `ipc_helpers/connection.rs`: happy-path + error-reply paths covered via mock Unix socket server | Feb 19, 2026 |
+| R-081 | **Duplicate hand-rolled math eliminated from 7 shaders**: `ssf_f64.wgsl` (degree-7 Taylor sin/cos), `batched_elementwise_f64.wgsl` (exp/log/pow), `kriging_f64.wgsl` (degree-4 exp), `fused_map_reduce_f64.wgsl` (log), `batched_hfb_potentials_f64.wgsl` (cbrt), `deformed_energy_f64.wgsl` (cbrt), `deformed_potential_f64.wgsl` (cbrt) — all now use `math_f64.wgsl` auto-injection via `inject_missing_math_f64()`. SSF test tolerance tightened from 20% to 1%, Shannon entropy 4.5e-9→<1e-10 | Feb 24, 2026 |
+| R-082 | **`math_f64.wgsl` precision fix**: `log_f64()` ln(2) constant and `pow_f64()` 1/3, 2/3 fraction-detection constants were passing through `f64_const()` which truncates to f32 (~7 digits). Fixed to use `(zero + literal)` pattern preserving full f64 precision. This was causing the `pow_f64` cbrt/pow_two_thirds fast paths to never trigger | Feb 24, 2026 |
 
 ## Coverage Measurement — Session 13 (Feb 19, 2026)
 

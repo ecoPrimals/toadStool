@@ -83,6 +83,9 @@ fn normalize(@builtin(global_invocation_id) gid: vec3<u32>) {
     let expected = rho * v_shell * f64(n - 1u) / 2.0;
     let count = f64(atomicLoad(&histogram[bin]));
 
-    let g_r = select(0.0, count / expected, expected > 0.0);
+    var g_r = count - count;
+    if (expected > 0.0) {
+        g_r = count / expected;
+    }
     g_r_output[bin] = g_r;
 }

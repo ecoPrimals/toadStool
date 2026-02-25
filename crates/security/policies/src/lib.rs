@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Advanced Security Policy Management for ToadStool
 //!
 //! This crate provides comprehensive security policy management, including:

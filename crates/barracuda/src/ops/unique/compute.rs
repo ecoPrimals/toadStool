@@ -13,29 +13,39 @@ use crate::tensor::Tensor;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
-/// Compute GPU prefix sum for boolean mask
+const WG: u32 = 256;
+
+/// Compute GPU prefix sum for boolean mask.
+/// Returns (prefix_sum_buffer, total_count).
+/// Uses exclusive scan: total = scan_out[N-1] + flags_in[N-1].
 fn compute_prefix_sum_gpu(
     device: &Arc<crate::device::WgpuDevice>,
     mask_buffer: &wgpu::Buffer,
     size: usize,
-) -> Result<wgpu::Buffer> {
+) -> Result<(wgpu::Buffer, u32)> {
+    if size == 0 {
+        let empty = device.create_buffer_u32(0)?;
+        return Ok((empty, 0));
+    }
+
     let prefix_sum_buffer = device.create_buffer_u32(size)?;
-    let scratch_buffer = device.create_buffer_u32(size)?;
+    let n_groups = (size as u32).div_ceil(WG);
+    let scratch_buffer = device.create_buffer_u32(n_groups as usize)?;
 
     #[repr(C)]
     #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-    struct PrefixSumParams {
-        size: u32,
+    struct ScanConfig {
+        n: u32,
+        n_groups: u32,
+        _pad0: u32,
         _pad1: u32,
-        _pad2: u32,
-        _pad3: u32,
     }
 
-    let params = PrefixSumParams {
-        size: size as u32,
+    let params = ScanConfig {
+        n: size as u32,
+        n_groups,
+        _pad0: 0,
         _pad1: 0,
-        _pad2: 0,
-        _pad3: 0,
     };
 
     let params_buffer = device
@@ -127,16 +137,29 @@ fn compute_prefix_sum_gpu(
             push_constant_ranges: &[],
         });
 
-    let pipeline = device
-        .device
-        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("PrefixSum Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "inclusive_scan",
-            cache: None,
-            compilation_options: Default::default(),
-        });
+    let local_scan_pipeline =
+        device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("PrefixSum Local Scan Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "local_scan",
+                cache: None,
+                compilation_options: Default::default(),
+            });
+
+    let add_wg_offsets_pipeline =
+        device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("PrefixSum Add WG Offsets Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "add_wg_offsets",
+                cache: None,
+                compilation_options: Default::default(),
+            });
 
     let mut encoder = device
         .device
@@ -149,17 +172,29 @@ fn compute_prefix_sum_gpu(
             label: Some("PrefixSum Pass"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(&pipeline);
+        pass.set_pipeline(&local_scan_pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        // Dispatch using standard 1D shader workgroup size (256)
-        let caps = DeviceCapabilities::from_device(device);
-        let workgroups = caps.dispatch_1d(size as u32);
-        pass.dispatch_workgroups(workgroups.max(1), 1, 1);
+        pass.dispatch_workgroups(n_groups.max(1), 1, 1);
+    }
+
+    if n_groups > 1 {
+        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("PrefixSum Add WG Offsets Pass"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&add_wg_offsets_pipeline);
+        pass.set_bind_group(0, &bind_group, &[]);
+        pass.dispatch_workgroups(1, 1, 1);
     }
 
     device.queue.submit(Some(encoder.finish()));
 
-    Ok(prefix_sum_buffer)
+    // Total = scan_out[N-1] + flags_in[N-1] (exclusive scan + last flag)
+    let scan_last = read_buffer_u32_last(device, &prefix_sum_buffer, size)?;
+    let flags_last = read_buffer_u32_last(device, mask_buffer, size)?;
+    let total = scan_last + flags_last;
+
+    Ok((prefix_sum_buffer, total))
 }
 
 /// Read only the last element of a u32 buffer
@@ -369,10 +404,9 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
     device.queue.submit(Some(encoder.finish()));
 
     // Step 2: Compute prefix sum of unique flags to determine output positions
-    let prefix_sum_buffer = compute_prefix_sum_gpu(device, &unique_flags_buffer, input_size)?;
-
-    // Step 3: Read only the last element to get unique count
-    let unique_count = read_buffer_u32_last(device, &prefix_sum_buffer, input_size)? as usize;
+    let (prefix_sum_buffer, unique_count) =
+        compute_prefix_sum_gpu(device, &unique_flags_buffer, input_size)?;
+    let unique_count = unique_count as usize;
 
     if unique_count == 0 {
         return Ok(Tensor::new(vec![], vec![0], device.clone()));

@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Pure Rust `NeuroBench` Harness
 //!
 //! This crate provides a Rust implementation of `NeuroBench` benchmark suites

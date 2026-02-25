@@ -27,26 +27,8 @@ struct Params {
     _pad2: u32,
 }
 
-// Software sin/cos for f64 (portable; no native f64 trig on some drivers)
-const PI_F64: f64 = 3.141592653589793;
-// Avoid unary minus on literal (WGSL parser issue)
-const NEG_PI_F64: f64 = 0.0 - 3.141592653589793;
-const TWO_PI_F64: f64 = 6.283185307179586;
-const HALF_PI_F64: f64 = 1.5707963267948966;
-
-fn sin_f64(x_in: f64) -> f64 {
-    var x = x_in;
-    x = x - floor(x / TWO_PI_F64) * TWO_PI_F64;
-    if (x > PI_F64) { x = x - TWO_PI_F64; }
-    if (x < NEG_PI_F64) { x = x + TWO_PI_F64; }
-    let x2 = x * x;
-    let x3 = x2 * x;
-    return x - x3 / 6.0 + x3 * x2 / 120.0 - x3 * x2 * x2 / 5040.0;
-}
-
-fn cos_f64(x: f64) -> f64 {
-    return sin_f64(x + HALF_PI_F64);
-}
+// sin_f64 / cos_f64 provided by math_f64.wgsl auto-injection
+// (Cody-Waite range reduction + fdlibm minimax kernels, ~1 ULP accuracy)
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {

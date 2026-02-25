@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! `ToadStool` resources component
 //!
 //! This crate provides resource management and monitoring functionality for the `ToadStool` platform.

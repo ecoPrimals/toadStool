@@ -39,31 +39,28 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 
 // Total kinetic energy reduction (single workgroup for small N)
+var<workgroup> shared_ke: array<f64, 256>;
+
 @compute @workgroup_size(256)
 fn reduce_total(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_invocation_id) lid: vec3<u32>) {
-    var<workgroup> shared_ke: array<f64, 256>;
-    
     let i = gid.x;
     let local_idx = lid.x;
-    
-    // Load per-particle KE
+
     if (i < params.n_particles) {
         shared_ke[local_idx] = ke_buf[i];
     } else {
-        shared_ke[local_idx] = 0.0;
+        shared_ke[local_idx] = ke_buf[0] - ke_buf[0];
     }
-    
+
     workgroupBarrier();
-    
-    // Tree reduction
+
     for (var stride = 128u; stride > 0u; stride = stride >> 1u) {
         if (local_idx < stride) {
             shared_ke[local_idx] = shared_ke[local_idx] + shared_ke[local_idx + stride];
         }
         workgroupBarrier();
     }
-    
-    // Write result (first thread only)
+
     if (local_idx == 0u) {
         ke_buf[gid.x / 256u] = shared_ke[0];
     }

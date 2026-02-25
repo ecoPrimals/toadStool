@@ -194,60 +194,47 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::test_pool::get_test_device_if_gpu_available;
+    use crate::device::test_pool::get_test_device_if_f64_gpu_available;
 
     #[tokio::test]
     async fn test_logsumexp_basic() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
-        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device)
-            .await
-            .unwrap();
+        let input = Tensor::from_f64_data(&[1.0f64, 2.0, 3.0, 4.0], vec![4], device).unwrap();
 
         let output = input.logsumexp().unwrap();
-        let result = output.to_vec().unwrap();
+        let result = output.to_f64_vec().unwrap();
         assert_eq!(result.len(), 1);
         assert!(result[0].is_finite());
-        // LogSumExp should be >= max(input)
         assert!(result[0] >= 4.0);
     }
 
     #[tokio::test]
     async fn test_logsumexp_edge_cases() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
-        // Single element
-        let input = Tensor::from_vec_on(vec![5.0], vec![1], device.clone())
-            .await
-            .unwrap();
+        let input = Tensor::from_f64_data(&[5.0f64], vec![1], device.clone()).unwrap();
         let output = input.logsumexp().unwrap();
-        let result = output.to_vec().unwrap();
+        let result = output.to_f64_vec().unwrap();
         assert_eq!(result.len(), 1);
-        // LSE of single element is the element itself
         assert!((result[0] - 5.0).abs() < 0.01);
 
-        // All zeros
-        let input = Tensor::from_vec_on(vec![0.0, 0.0, 0.0], vec![3], device)
-            .await
-            .unwrap();
+        let input = Tensor::from_f64_data(&[0.0f64, 0.0, 0.0], vec![3], device).unwrap();
         let output = input.logsumexp().unwrap();
-        let result = output.to_vec().unwrap();
+        let result = output.to_f64_vec().unwrap();
         assert!(result[0].is_finite());
     }
 
     #[tokio::test]
     async fn test_logsumexp_large_values() {
-        let Some(device) = get_test_device_if_gpu_available().await else {
+        let Some(device) = get_test_device_if_f64_gpu_available().await else {
             return;
         };
-        // Large values (test numerical stability)
-        let input = Tensor::from_vec_on(vec![100.0, 101.0, 102.0], vec![3], device)
-            .await
-            .unwrap();
+        let input = Tensor::from_f64_data(&[100.0f64, 101.0, 102.0], vec![3], device).unwrap();
         let output = input.logsumexp().unwrap();
-        let result = output.to_vec().unwrap();
+        let result = output.to_f64_vec().unwrap();
         assert!(result[0].is_finite());
         assert!(result[0] > 102.0);
     }

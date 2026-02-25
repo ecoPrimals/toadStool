@@ -29,12 +29,14 @@ pub(super) fn execute_scaled_dot_product_attention(
     let weights_buffer = device.create_buffer_f32(scores_size)?;
     let output_buffer = device.create_buffer_f32(input_size)?;
 
-    // Create parameters buffer
+    // Create parameters buffer (self-attention: q_seq_len == kv_seq_len)
     let params = AttentionParams {
         batch_size: op.batch_size() as u32,
         num_heads: op.num_heads() as u32,
-        seq_len: op.seq_len() as u32,
+        q_seq_len: op.seq_len() as u32,
+        kv_seq_len: op.seq_len() as u32,
         head_dim: op.head_dim() as u32,
+        _padding: [0; 3],
     };
 
     let params_buffer = device

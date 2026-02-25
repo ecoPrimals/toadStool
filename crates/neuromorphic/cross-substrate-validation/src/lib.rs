@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Cross-substrate validation and benchmarking library
 
 pub mod comprehensive_benchmark;

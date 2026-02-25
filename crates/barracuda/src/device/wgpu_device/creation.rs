@@ -9,9 +9,42 @@ use std::sync::Arc;
 pub const ADAPTER_ENV_VAR: &str = "BARRACUDA_GPU_ADAPTER";
 
 impl WgpuDevice {
+    #[allow(unsafe_code)]
+    fn make_pipeline_cache(device: &wgpu::Device) -> Option<Arc<wgpu::PipelineCache>> {
+        if !device.features().contains(wgpu::Features::PIPELINE_CACHE) {
+            return None;
+        }
+        // SAFETY: `data: None` means empty initial cache — no previous blob to validate.
+        // The unsafe contract is solely about corrupted serialized cache data.
+        Some(Arc::new(unsafe {
+            device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
+                label: Some("barraCuda pipeline cache"),
+                data: None,
+                fallback: true,
+            })
+        }))
+    }
+
     /// Create new WebGPU device with auto-discovery
+    ///
+    /// Prefers discrete GPU via `HighPerformance` power preference.
+    /// Falls back to integrated GPU, then software rasterizer.
     pub async fn new() -> Result<Self> {
-        Self::new_with_backend(wgpu::Backends::all()).await
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: None,
+                force_fallback_adapter: false,
+            })
+            .await
+            .ok_or_else(|| BarracudaError::device("No WGPU adapter found"))?;
+
+        Self::from_adapter(adapter).await
     }
 
     /// Create device explicitly targeting GPU hardware
@@ -64,11 +97,14 @@ impl WgpuDevice {
 
         let adapter_features = adapter.features();
         let mut required_features = wgpu::Features::empty();
-        if adapter_features.contains(wgpu::Features::SHADER_F64) {
-            required_features |= wgpu::Features::SHADER_F64;
-        }
-        if adapter_features.contains(wgpu::Features::SHADER_F16) {
-            required_features |= wgpu::Features::SHADER_F16;
+        for feature in [
+            wgpu::Features::SHADER_F64,
+            wgpu::Features::SHADER_F16,
+            wgpu::Features::PIPELINE_CACHE,
+        ] {
+            if adapter_features.contains(feature) {
+                required_features |= feature;
+            }
         }
 
         let (device, queue) = adapter
@@ -84,11 +120,13 @@ impl WgpuDevice {
             .await
             .map_err(|e| BarracudaError::device(format!("Failed to create CPU device: {e}")))?;
 
+        let pipeline_cache = Self::make_pipeline_cache(&device);
         let wgpu_device = Self {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info,
             calibration: None,
+            pipeline_cache,
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         Ok(wgpu_device)
@@ -124,15 +162,15 @@ impl WgpuDevice {
 
         let adapter_features = adapter.features();
         let mut required_features = wgpu::Features::empty();
-        if adapter_features.contains(wgpu::Features::SHADER_F64) {
-            required_features |= wgpu::Features::SHADER_F64;
-            log::info!("  SHADER_F64: enabled");
-        }
-        if adapter_features.contains(wgpu::Features::SHADER_F16) {
-            required_features |= wgpu::Features::SHADER_F16;
-        }
-        if adapter_features.contains(wgpu::Features::TIMESTAMP_QUERY) {
-            required_features |= wgpu::Features::TIMESTAMP_QUERY;
+        for feature in [
+            wgpu::Features::SHADER_F64,
+            wgpu::Features::SHADER_F16,
+            wgpu::Features::TIMESTAMP_QUERY,
+            wgpu::Features::PIPELINE_CACHE,
+        ] {
+            if adapter_features.contains(feature) {
+                required_features |= feature;
+            }
         }
 
         let (device, queue) = adapter
@@ -155,11 +193,13 @@ impl WgpuDevice {
             actual_limits.max_buffer_size / (1 << 20),
         );
 
+        let pipeline_cache = Self::make_pipeline_cache(&device);
         let wgpu_device = Self {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info: info,
             calibration: None,
+            pipeline_cache,
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         Ok(wgpu_device)
@@ -321,8 +361,24 @@ impl WgpuDevice {
     }
 
     /// Create with specific backend (for testing/multi-GPU)
+    ///
+    /// Prefers `HighPerformance` adapter within the specified backends.
     pub async fn new_with_backend(backends: wgpu::Backends) -> Result<Self> {
-        Self::new_with_filter(backends, |_| true).await
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends,
+            ..Default::default()
+        });
+
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: None,
+                force_fallback_adapter: false,
+            })
+            .await
+            .ok_or_else(|| BarracudaError::device("No WGPU adapter found for requested backend"))?;
+
+        Self::from_adapter(adapter).await
     }
 
     /// Create device from a specific adapter index
@@ -351,16 +407,15 @@ impl WgpuDevice {
 
         let adapter_features = adapter.features();
         let mut required_features = wgpu::Features::empty();
-        if adapter_features.contains(wgpu::Features::SHADER_F64) {
-            required_features |= wgpu::Features::SHADER_F64;
-            log::info!("  SHADER_F64: enabled");
-        }
-        if adapter_features.contains(wgpu::Features::SHADER_F16) {
-            required_features |= wgpu::Features::SHADER_F16;
-            log::info!("  SHADER_F16: enabled");
-        }
-        if adapter_features.contains(wgpu::Features::TIMESTAMP_QUERY) {
-            required_features |= wgpu::Features::TIMESTAMP_QUERY;
+        for feature in [
+            wgpu::Features::SHADER_F64,
+            wgpu::Features::SHADER_F16,
+            wgpu::Features::TIMESTAMP_QUERY,
+            wgpu::Features::PIPELINE_CACHE,
+        ] {
+            if adapter_features.contains(feature) {
+                required_features |= feature;
+            }
         }
 
         let (device, queue) = adapter
@@ -376,11 +431,13 @@ impl WgpuDevice {
             .await
             .map_err(|e| BarracudaError::device(format!("Failed to create device: {e}")))?;
 
+        let pipeline_cache = Self::make_pipeline_cache(&device);
         let wgpu_device = Self {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info: info,
             calibration: None,
+            pipeline_cache,
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         Ok(wgpu_device)
@@ -408,6 +465,11 @@ impl WgpuDevice {
             .find(|a: &wgpu::Adapter| filter(&a.get_info()))
             .ok_or_else(|| BarracudaError::device("No adapter matching requested hardware type"))?;
 
+        Self::from_adapter(adapter).await
+    }
+
+    /// Create device from a pre-selected adapter (shared helper)
+    async fn from_adapter(adapter: wgpu::Adapter) -> Result<Self> {
         let adapter_info = adapter.get_info();
         log::info!(
             "barraCuda initialized: {} ({:?})",
@@ -417,15 +479,18 @@ impl WgpuDevice {
 
         let adapter_features = adapter.features();
         let mut required_features = wgpu::Features::empty();
-        if adapter_features.contains(wgpu::Features::SHADER_F64) {
-            required_features |= wgpu::Features::SHADER_F64;
+        for feature in [
+            wgpu::Features::SHADER_F64,
+            wgpu::Features::SHADER_F16,
+            wgpu::Features::TIMESTAMP_QUERY,
+            wgpu::Features::PIPELINE_CACHE,
+        ] {
+            if adapter_features.contains(feature) {
+                required_features |= feature;
+            }
+        }
+        if required_features.contains(wgpu::Features::SHADER_F64) {
             log::info!("  SHADER_F64: enabled");
-        }
-        if adapter_features.contains(wgpu::Features::SHADER_F16) {
-            required_features |= wgpu::Features::SHADER_F16;
-        }
-        if adapter_features.contains(wgpu::Features::TIMESTAMP_QUERY) {
-            required_features |= wgpu::Features::TIMESTAMP_QUERY;
         }
 
         let (device, queue) = adapter
@@ -441,11 +506,14 @@ impl WgpuDevice {
             .await
             .map_err(|e| BarracudaError::device(format!("Failed to create device: {e}")))?;
 
+        let pipeline_cache = Self::make_pipeline_cache(&device);
+
         let wgpu_device = Self {
             device: Arc::new(device),
             queue: Arc::new(queue),
             adapter_info,
             calibration: None,
+            pipeline_cache,
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         Ok(wgpu_device)
@@ -457,11 +525,13 @@ impl WgpuDevice {
         queue: Arc<wgpu::Queue>,
         adapter_info: wgpu::AdapterInfo,
     ) -> Self {
+        let pipeline_cache = Self::make_pipeline_cache(&device);
         let wgpu_device = Self {
             device,
             queue,
             adapter_info,
             calibration: None,
+            pipeline_cache,
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         wgpu_device
@@ -480,6 +550,7 @@ impl WgpuDevice {
         note = "Use from_existing() with real AdapterInfo; synthetic info breaks driver detection"
     )]
     pub fn from_existing_simple(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>) -> Self {
+        let pipeline_cache = Self::make_pipeline_cache(&device);
         let wgpu_device = Self {
             device,
             queue,
@@ -493,6 +564,7 @@ impl WgpuDevice {
                 backend: wgpu::Backend::Vulkan,
             },
             calibration: None,
+            pipeline_cache,
         };
         probe::seed_cache_from_heuristics(&wgpu_device);
         wgpu_device

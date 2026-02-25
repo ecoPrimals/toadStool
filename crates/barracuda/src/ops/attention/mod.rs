@@ -40,13 +40,18 @@ mod compute;
 mod tests;
 
 /// Attention parameters for WGSL shaders
+///
+/// Supports both self-attention (q_seq_len == kv_seq_len) and cross-attention
+/// (q_seq_len != kv_seq_len). The score matrix is [B, H, q_seq_len, kv_seq_len].
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct AttentionParams {
     pub batch_size: u32,
     pub num_heads: u32,
-    pub seq_len: u32,
+    pub q_seq_len: u32,
+    pub kv_seq_len: u32,
     pub head_dim: u32,
+    pub _padding: [u32; 3],
 }
 
 /// Scaled dot-product attention operation
@@ -97,10 +102,21 @@ impl Attention {
             ));
         }
 
-        if query.shape() != key.shape() || query.shape() != value.shape() {
+        // Cross-attention: Q seq_len may differ from K/V seq_len, but
+        // batch, heads, and head_dim must match. K and V must be identical shape.
+        if query.shape()[0] != key.shape()[0]
+            || query.shape()[1] != key.shape()[1]
+            || query.shape()[3] != key.shape()[3]
+        {
             return Err(BarracudaError::shape_mismatch(
                 query.shape().to_vec(),
                 key.shape().to_vec(),
+            ));
+        }
+        if key.shape() != value.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                key.shape().to_vec(),
+                value.shape().to_vec(),
             ));
         }
 

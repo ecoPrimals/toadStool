@@ -25,50 +25,7 @@
 // 2 = GAUSSIAN
 // 3 = LINEAR
 
-fn exp_f64(x: f64) -> f64 {
-    let zero = x - x;
-    let one = zero + 1.0;
-    if (x > (zero + 700.0)) { return zero + 1e300; }
-    if (x < (zero - 700.0)) { return zero; }
-    if (x > (zero - 1e-10) && x < (zero + 1e-10)) { return one + x; }
-    
-    let inv_ln2 = zero + 1.4426950408889634;
-    let k_f = floor(x * inv_ln2 + (zero + 0.5));
-    let k = i32(k_f);
-    let ln2 = zero + 0.6931471805599453;
-    let r = x - k_f * ln2;
-    let r2 = r * r;
-    
-    let c2 = zero + 0.5;
-    let c3 = zero + 0.16666666666666666;
-    let c4 = zero + 0.041666666666666664;
-    
-    var p = c4;
-    p = p * r + c3;
-    p = p * r + c2;
-    var exp_r = one + r + r2 * p;
-    
-    if (k > 0) {
-        var scale = one;
-        var rem = k;
-        if (rem >= 16) { scale = scale * (zero + 65536.0); rem = rem - 16; }
-        if (rem >= 8) { scale = scale * (zero + 256.0); rem = rem - 8; }
-        if (rem >= 4) { scale = scale * (zero + 16.0); rem = rem - 4; }
-        if (rem >= 2) { scale = scale * (zero + 4.0); rem = rem - 2; }
-        if (rem >= 1) { scale = scale * (zero + 2.0); }
-        exp_r = exp_r * scale;
-    } else if (k < 0) {
-        var scale = one;
-        var rem = -k;
-        if (rem >= 16) { scale = scale * (zero + 0.0000152587890625); rem = rem - 16; }
-        if (rem >= 8) { scale = scale * (zero + 0.00390625); rem = rem - 8; }
-        if (rem >= 4) { scale = scale * (zero + 0.0625); rem = rem - 4; }
-        if (rem >= 2) { scale = scale * (zero + 0.25); rem = rem - 2; }
-        if (rem >= 1) { scale = scale * (zero + 0.5); }
-        exp_r = exp_r * scale;
-    }
-    return exp_r;
-}
+// exp_f64 provided by math_f64.wgsl auto-injection
 
 /// Compute variogram value γ(h) for distance h
 fn variogram(h: f64, nugget: f64, sill: f64, range_param: f64, model: u32) -> f64 {

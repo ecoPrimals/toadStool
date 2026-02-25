@@ -62,8 +62,8 @@ fn compact_unique(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 
     if (unique_flags[idx] == 1u) {
-        // Use prefix sum to determine output position (prefix_sum[idx] - 1 because it's inclusive)
-        let out_pos = prefix_sum[idx] - 1u;
+        // Use prefix sum to determine output position (exclusive scan gives 0-based index)
+        let out_pos = prefix_sum[idx];
         output[out_pos] = input[idx];
     }
 }

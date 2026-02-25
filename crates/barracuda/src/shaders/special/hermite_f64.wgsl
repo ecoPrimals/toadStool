@@ -72,12 +72,13 @@ fn factorial(n: u32) -> f64 {
 }
 
 const PI: f64 = 3.14159265358979323846;
+const SQRT_PI: f64 = 1.7724538509055160273;  // sqrt(π) — avoids sqrt(f64) Naga overload issue
 
 // Hermite function: normalized Hermite × Gaussian
 fn hermite_function(n: u32, x: f64) -> f64 {
     let h_n = hermite(n, x);
     // Normalization: 1 / sqrt(2^n · n! · sqrt(π))
-    let norm = f64(1.0) / sqrt(f64(1u << n) * factorial(n) * sqrt(PI));
+    let norm = f64(1.0) / sqrt(f64(1u << n) * factorial(n) * SQRT_PI);
     return norm * h_n * exp(-x * x / f64(2.0));
 }
 

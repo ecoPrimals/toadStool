@@ -16,32 +16,33 @@ struct Params {
 }
 
 const PI: f64 = 3.14159265358979323846;
+const SQRT2: f64 = 1.4142135623730950488;  // sqrt(2) — avoids sqrt(f64) Naga overload issue
 
 // Factorial for n=0..20 (extended for f64 precision needs)
 fn factorial(n: u32) -> f64 {
     switch n {
-        case 0u: { return 1.0; }
-        case 1u: { return 1.0; }
-        case 2u: { return 2.0; }
-        case 3u: { return 6.0; }
-        case 4u: { return 24.0; }
-        case 5u: { return 120.0; }
-        case 6u: { return 720.0; }
-        case 7u: { return 5040.0; }
-        case 8u: { return 40320.0; }
-        case 9u: { return 362880.0; }
-        case 10u: { return 3628800.0; }
-        case 11u: { return 39916800.0; }
-        case 12u: { return 479001600.0; }
-        case 13u: { return 6227020800.0; }
-        case 14u: { return 87178291200.0; }
-        case 15u: { return 1307674368000.0; }
-        case 16u: { return 20922789888000.0; }
-        case 17u: { return 355687428096000.0; }
-        case 18u: { return 6402373705728000.0; }
-        case 19u: { return 121645100408832000.0; }
-        case 20u: { return 2432902008176640000.0; }
-        default: { return 1.0; }
+        case 0u: { return f64(1.0); }
+        case 1u: { return f64(1.0); }
+        case 2u: { return f64(2.0); }
+        case 3u: { return f64(6.0); }
+        case 4u: { return f64(24.0); }
+        case 5u: { return f64(120.0); }
+        case 6u: { return f64(720.0); }
+        case 7u: { return f64(5040.0); }
+        case 8u: { return f64(40320.0); }
+        case 9u: { return f64(362880.0); }
+        case 10u: { return f64(3628800.0); }
+        case 11u: { return f64(39916800.0); }
+        case 12u: { return f64(479001600.0); }
+        case 13u: { return f64(6227020800.0); }
+        case 14u: { return f64(87178291200.0); }
+        case 15u: { return f64(1307674368000.0); }
+        case 16u: { return f64(20922789888000.0); }
+        case 17u: { return f64(355687428096000.0); }
+        case 18u: { return f64(6402373705728000.0); }
+        case 19u: { return f64(121645100408832000.0); }
+        case 20u: { return f64(2432902008176640000.0); }
+        default: { return f64(1.0); }
     }
 }
 
@@ -67,6 +68,10 @@ fn assoc_legendre(l: u32, m: u32, x: f64) -> f64 {
     let t = f64(1.0) - x * x;
     if (t <= f64(0.0)) {
         if (abs_m == 0u) {
+            // P_l^0(1) = 1 for all l; P_l^0(-1) = (-1)^l
+            if (x < f64(0.0) && l % 2u == 1u) {
+                return f64(-1.0);
+            }
             return f64(1.0);
         }
         return f64(0.0);
@@ -149,7 +154,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var y_lm = n_lm * plm * angular;
 
     if (abs_m != 0u) {
-        y_lm = y_lm * sqrt(f64(2.0)); // Real form: sqrt(2) for m != 0
+        y_lm = y_lm * SQRT2;  // Real form: sqrt(2) for m != 0
     }
 
     output[idx] = y_lm;

@@ -482,7 +482,7 @@ fn log_f64(x: f64) -> f64 {
     let log_y = two * s * (one + s2 * p);
     
     // log(x) = k * ln(2) + log(y)
-    let ln2 = f64_const(x, 0.6931471805599453);
+    let ln2 = base + 0.6931471805599453;
     return k * ln2 + log_y;
 }
 
@@ -564,10 +564,11 @@ fn pow_f64(base: f64, exponent: f64) -> f64 {
         return ipow_f64(base, i32(exp_rounded));
     }
     
-    // Check for common fractions
+    // Check for common fractions (full precision via zero + literal pattern)
     let half = f64_const(base, 0.5);
-    let one_third = f64_const(base, 0.333333333333333333);
-    let two_thirds = f64_const(base, 0.666666666666666667);
+    let bz = base - base;
+    let one_third = bz + 0.3333333333333333;
+    let two_thirds = bz + 0.6666666666666667;
     let neg_half = f64_const(base, -0.5);
     
     if (abs(exponent - half) < f64_const(base, 1e-10)) {

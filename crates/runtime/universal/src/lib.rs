@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! ToadStool Universal Compute Runtime
 //!
 //! A unified runtime that treats CPU, GPU, and neuromorphic processors as

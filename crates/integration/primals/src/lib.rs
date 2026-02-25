@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! # Universal Primal Integration Framework
 //!
 //! This module provides a consistent interface for integrating with all Primals

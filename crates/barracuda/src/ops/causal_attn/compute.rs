@@ -24,12 +24,14 @@ impl CausalAttention {
         let seq_len = shape[2];
         let head_dim = shape[3];
 
-        // Create parameters
+        // Create parameters (self-attention: q_seq_len == kv_seq_len)
         let params = AttentionParams {
             batch_size: batch_size as u32,
             num_heads: num_heads as u32,
-            seq_len: seq_len as u32,
+            q_seq_len: seq_len as u32,
+            kv_seq_len: seq_len as u32,
             head_dim: head_dim as u32,
+            _padding: [0; 3],
         };
 
         let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {

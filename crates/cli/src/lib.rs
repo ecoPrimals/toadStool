@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! `ToadStool` CLI - Universal Compute Command Center
 //!
 //! The gateway to SOVEREIGN SCIENCE and universal compute capabilities.

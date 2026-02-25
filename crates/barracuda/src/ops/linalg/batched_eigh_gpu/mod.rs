@@ -22,6 +22,7 @@ mod single_dispatch;
 mod standard;
 mod sweep;
 
+use crate::device::capabilities::{CompilerKind, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
@@ -39,6 +40,20 @@ impl BatchedEighGpu {
 
     fn single_dispatch_shader() -> &'static str {
         include_str!("../../../shaders/linalg/batched_eigh_single_dispatch_f64.wgsl")
+    }
+
+    /// Select optimal eigensolve shader based on GPU driver.
+    /// NAK (NVK open-source NVIDIA) uses hand-optimized variant with manual
+    /// unrolling, hoisted locals, load-before-compute, explicit fma, and
+    /// branchless select — workarounds for 5 NAK compiler deficiencies.
+    fn single_dispatch_shader_for_device(device: &WgpuDevice) -> &'static str {
+        let profile = GpuDriverProfile::from_device(device);
+        if profile.compiler == CompilerKind::Nak {
+            tracing::info!("BatchedEighGpu: using NAK-optimized eigensolve shader");
+            include_str!("../../../shaders/linalg/batched_eigh_nak_optimized_f64.wgsl")
+        } else {
+            Self::single_dispatch_shader()
+        }
     }
 
     /// Convenience method for processing a batch of matrices

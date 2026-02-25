@@ -21,56 +21,7 @@
 // ============================================================================
 
 // ============================================================================
-// MATH PREAMBLE (subset) — Include via ShaderTemplate::with_math_f64() for full
-// ============================================================================
-
-fn log_f64(x: f64) -> f64 {
-    let zero = x - x;
-    let one = zero + 1.0;
-    
-    if (x <= zero) {
-        let big = zero + 1e38;
-        return -big * big;
-    }
-    
-    var y = x;
-    var k = zero;
-    let two = zero + 2.0;
-    let half = zero + 0.5;
-    
-    while (y >= two) {
-        y = y * half;
-        k = k + one;
-    }
-    while (y < one) {
-        y = y * two;
-        k = k - one;
-    }
-    
-    let z = y - one;
-    let s = z / (two + z);
-    let s2 = s * s;
-    
-    let c1 = zero + 0.3333333333333367565;
-    let c2 = zero + 0.1999999999970470954;
-    let c3 = zero + 0.1428571437183119575;
-    let c4 = zero + 0.1111109921607489198;
-    let c5 = zero + 0.0909178608080902506;
-    let c6 = zero + 0.0765691884960468666;
-    let c7 = zero + 0.0739909930255829295;
-    
-    var p = c7;
-    p = p * s2 + c6;
-    p = p * s2 + c5;
-    p = p * s2 + c4;
-    p = p * s2 + c3;
-    p = p * s2 + c2;
-    p = p * s2 + c1;
-    
-    let log_y = two * s * (one + s2 * p);
-    let ln2 = zero + 0.6931471805599453;
-    return k * ln2 + log_y;
-}
+// log_f64 provided by math_f64.wgsl auto-injection
 
 // ============================================================================
 // REDUCE OPERATION ENUM (selected via params.reduce_op)

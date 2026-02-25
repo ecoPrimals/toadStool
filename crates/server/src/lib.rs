@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! # `ToadStool` Server Library
 //!
 //! A comprehensive server library for building `ToadStool` universal compute servers

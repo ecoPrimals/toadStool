@@ -53,15 +53,7 @@ struct SkyParams {
 @group(0) @binding(5) var<storage, read_write> u_total: array<f64>;
 @group(0) @binding(6) var<storage, read_write> f_q: array<f64>;
 
-fn cbrt_f64(x: f64) -> f64 {
-    let zero = x - x;
-    if (x == zero) { return zero; }
-    let sign = select(zero + 1.0, zero - 1.0, x < zero);
-    let ax = abs(x);
-    let third = zero + 0.333333333333333333;
-    let ln_ax = log(ax);
-    return sign * exp(third * ln_ax);
-}
+// cbrt_f64 provided by math_f64.wgsl auto-injection (Halley's method, full f64 precision)
 
 @compute @workgroup_size(256)
 fn compute_potentials(

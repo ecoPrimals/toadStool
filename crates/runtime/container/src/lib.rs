@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! # `ToadStool` Container Runtime Engine
 //!
 //! High-performance container runtime engine with Docker, Containerd, and Podman support,

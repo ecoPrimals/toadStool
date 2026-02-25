@@ -27,7 +27,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     // If element is non-zero, write its index to output
     if (input[idx] != 0.0) {
         // prefix_sum[idx] gives the output position for this element
-        let out_pos = prefix_sum[idx] - 1u; // -1 because prefix sum is inclusive
+        let out_pos = prefix_sum[idx]; // exclusive scan gives 0-based output index
         output[out_pos] = idx;
     }
 }

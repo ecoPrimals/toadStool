@@ -274,7 +274,9 @@ async fn test_cached_endpoint_stale_after_ttl() {
     config.fallbacks.clear();
     config.enable_mdns = false;
     config.require_mdns = false;
-    config.cache_ttl = Duration::from_nanos(1);
+    // Duration::ZERO makes cache immediately stale; no sleep needed (cache uses std::time::Instant,
+    // which tokio virtual time cannot advance)
+    config.cache_ttl = Duration::ZERO;
 
     let engine = PrimalDiscoveryEngine::with_config(None, config)
         .await
@@ -288,7 +290,6 @@ async fn test_cached_endpoint_stale_after_ttl() {
         metadata: HashMap::new(),
     };
     engine.cache_service("stale_key", service).await;
-    tokio::time::sleep(Duration::from_millis(10)).await;
 
     let stats = engine.cache_stats().await;
     assert_eq!(stats.total_entries, 1);

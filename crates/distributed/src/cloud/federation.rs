@@ -66,7 +66,8 @@ impl From<FederationError> for ToadStoolError {
 pub struct FederationMember {
     pub node: FederationNode,
     /// Last heartbeat timestamp (monotonic for timeout checks).
-    pub last_heartbeat: std::time::Instant,
+    /// Uses tokio::time::Instant so tests can advance virtual time.
+    pub last_heartbeat: tokio::time::Instant,
     /// Advertised capabilities (e.g., "compute", "gpu", "storage").
     pub capabilities: Vec<String>,
 }
@@ -76,7 +77,7 @@ impl FederationMember {
         let capabilities = node.capabilities.clone();
         Self {
             node,
-            last_heartbeat: std::time::Instant::now(),
+            last_heartbeat: tokio::time::Instant::now(),
             capabilities,
         }
     }
@@ -172,7 +173,7 @@ impl CloudFederationManager {
             .into());
         }
 
-        member.last_heartbeat = std::time::Instant::now();
+        member.last_heartbeat = tokio::time::Instant::now();
         Ok(())
     }
 
@@ -478,7 +479,7 @@ mod tests {
         assert!(res.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_heartbeat_keeps_member_alive() {
         let mut mgr = CloudFederationManager::new(make_config("fed-hb"))
             .await
@@ -486,7 +487,7 @@ mod tests {
         mgr.add_node(make_node("node-a", "aws"), vec![]).unwrap();
         assert!(mgr.is_member_alive("node-a"));
 
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        tokio::time::advance(std::time::Duration::from_secs(2)).await;
         mgr.record_heartbeat("node-a").unwrap();
         assert!(mgr.is_member_alive("node-a"));
     }
@@ -643,13 +644,13 @@ mod tests {
         assert!(res.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_record_heartbeat_with_capabilities_updates_caps() {
         let mut mgr = CloudFederationManager::new(make_config("fed-hbc"))
             .await
             .unwrap();
         mgr.add_node(make_node("node-hb", "aws"), vec![]).unwrap();
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        tokio::time::advance(std::time::Duration::from_secs(2)).await;
         mgr.record_heartbeat_with_capabilities("node-hb", vec!["gpu".to_string()])
             .unwrap();
 

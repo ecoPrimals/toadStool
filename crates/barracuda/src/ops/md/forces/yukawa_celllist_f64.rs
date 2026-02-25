@@ -545,10 +545,12 @@ mod tests {
         // Should have non-zero energy due to PBC wrapping
         assert!(energies[0].abs() > 1e-10, "Should have interaction via PBC");
 
-        // Particle 0 should be pushed in negative x direction (away from particle 1 via PBC)
+        // Particle 0 at x=0.5; nearest image of particle 1 is at x=−0.5 (via PBC).
+        // Repulsive Yukawa pushes particle 0 in +x direction (away from image).
         assert!(
-            forces[0] < 0.0,
-            "Particle 0 should be pushed in -x direction"
+            forces[0] > 0.0,
+            "Particle 0 should be pushed in +x (away from PBC image): {}",
+            forces[0]
         );
     }
 }

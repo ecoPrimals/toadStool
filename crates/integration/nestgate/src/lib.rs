@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! # `ToadStool` `NestGate` Integration
 //!
 //! Integration module for connecting `ToadStool` with `NestGate` storage and data management.

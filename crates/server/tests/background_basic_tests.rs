@@ -14,7 +14,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{broadcast, RwLock};
-use tokio::time::sleep;
 
 use toadstool_server::config::{HealthCheckConfig, ServerConfig};
 use toadstool_server::state::{ServerState, ServerStatistics};
@@ -80,10 +79,10 @@ async fn test_multiple_background_tasks() {
 }
 
 /// Test 4: Task cancellation via abort
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(start_paused = true)]
 async fn test_cancel_background_task() {
     let handle = tokio::spawn(async {
-        sleep(Duration::from_secs(10)).await;
+        tokio::time::sleep(Duration::from_secs(10)).await;
     });
     handle.abort();
     let result = handle.await;
@@ -91,10 +90,10 @@ async fn test_cancel_background_task() {
 }
 
 /// Test 5: Timeout on slow task
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(start_paused = true)]
 async fn test_background_task_timeout() {
     let result = tokio::time::timeout(Duration::from_millis(50), async {
-        sleep(Duration::from_secs(1)).await
+        tokio::time::sleep(Duration::from_secs(1)).await
     })
     .await;
     assert!(result.is_err());
@@ -134,8 +133,10 @@ async fn test_background_manager_shutdown() {
     let state = create_test_state(config);
     let state_clone = state.clone();
     toadstool_server::background::start_background_services(state_clone).await;
-    // Give tasks a moment to start
-    sleep(Duration::from_millis(100)).await;
+    // Yield to let spawned tasks start — no sleep needed
+    for _ in 0..10 {
+        tokio::task::yield_now().await;
+    }
     // No panic = success
 }
 

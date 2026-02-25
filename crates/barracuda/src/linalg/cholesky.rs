@@ -140,6 +140,18 @@ pub fn cholesky_f64(device: Arc<WgpuDevice>, a: &[f64], n: usize) -> Result<Chol
     }
 
     let l = crate::ops::linalg::cholesky::CholeskyF64::execute(device, a, n)?;
+
+    // Validate SPD: Cholesky of a non-positive-definite matrix produces NaN
+    // on the diagonal (sqrt of negative value). Detect and report this.
+    for i in 0..n {
+        let diag = l[i * n + i];
+        if diag.is_nan() || diag <= 0.0 {
+            return Err(BarracudaError::InvalidInput {
+                message: format!("Matrix is not positive definite (L[{i},{i}] = {diag})"),
+            });
+        }
+    }
+
     Ok(CholeskyDecomposition { l, n })
 }
 

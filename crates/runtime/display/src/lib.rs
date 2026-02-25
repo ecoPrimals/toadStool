@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! # Toadstool Display Backend
 //!
 //! **100% Pure Rust display and input backend** for ecoPrimals ecosystem.

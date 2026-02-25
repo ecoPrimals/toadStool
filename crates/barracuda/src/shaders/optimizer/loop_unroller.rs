@@ -458,9 +458,9 @@ mod tests {
     fn test_substitute_loop_var_word_boundary() {
         // 'k' should not be substituted inside 'k_p' or 'akp'
         let result = substitute_loop_var("    let v = k + akp;", "k", 2);
-        assert!(result.contains("let v = 2 + akp"));
+        assert!(result.contains("let v = 2u + akp"), "got: {result}");
         // Ensure 'k' inside 'akp' is NOT replaced
-        assert!(!result.contains("a2p"));
+        assert!(!result.contains("a2"), "got: {result}");
     }
 
     #[test]

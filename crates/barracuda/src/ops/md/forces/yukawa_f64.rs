@@ -11,9 +11,15 @@
 //! - ✅ Zero unsafe code
 //! - ✅ f64 precision
 
+use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
+
+const WGSL_DF64_CORE: &str = include_str!("../../../shaders/math/df64_core.wgsl");
+const WGSL_DF64_TRANSCENDENTALS: &str =
+    include_str!("../../../shaders/math/df64_transcendentals.wgsl");
+const YUKAWA_SHADER_DF64: &str = include_str!("yukawa_df64.wgsl");
 
 /// f64 Yukawa force with PBC minimum-image and potential energy accumulation
 ///
@@ -123,8 +129,20 @@ impl YukawaForceF64 {
                 usage: wgpu::BufferUsages::STORAGE,
             });
 
-        let shader_body = include_str!("yukawa_f64.wgsl");
-        let shader = device.compile_shader_f64(shader_body, Some("Yukawa F64 Shader"));
+        let profile = GpuDriverProfile::from_device(device);
+        let strategy = profile.fp64_strategy();
+        tracing::info!(
+            ?strategy,
+            "YukawaForceF64: using {:?} FP64 strategy",
+            strategy
+        );
+        let shader_src = match strategy {
+            Fp64Strategy::Native => include_str!("yukawa_f64.wgsl").to_string(),
+            Fp64Strategy::Hybrid => {
+                format!("{WGSL_DF64_CORE}\n{WGSL_DF64_TRANSCENDENTALS}\n{YUKAWA_SHADER_DF64}")
+            }
+        };
+        let shader = device.compile_shader_f64(&shader_src, Some("Yukawa F64 Shader"));
 
         let bind_group_layout =
             device

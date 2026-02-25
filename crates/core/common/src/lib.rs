@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! # `ToadStool` Common Utilities
 //!
 //! This crate provides common utilities, types, and functionality shared across all `ToadStool` components.

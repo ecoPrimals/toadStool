@@ -209,8 +209,10 @@ impl TensorSession {
                     bytes_of(&AttentionParams {
                         batch_size: *batch_size,
                         num_heads: *num_heads,
-                        seq_len: *seq_len,
+                        q_seq_len: *seq_len,
+                        kv_seq_len: *seq_len,
                         head_dim: *head_dim,
+                        _padding: [0; 3],
                     }),
                     "Attn",
                 );

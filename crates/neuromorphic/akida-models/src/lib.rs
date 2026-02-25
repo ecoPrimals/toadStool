@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Akida neural network model parser
 //!
 //! This crate provides parsing and loading capabilities for Akida `.fbz` model files.

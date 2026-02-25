@@ -47,8 +47,10 @@ mod tests;
 pub(crate) struct AttentionParams {
     pub batch_size: u32,
     pub num_heads: u32,
-    pub seq_len: u32,
+    pub q_seq_len: u32,
+    pub kv_seq_len: u32,
     pub head_dim: u32,
+    pub _padding: [u32; 3],
 }
 
 /// Causal attention operation

@@ -196,21 +196,25 @@ pub enum ServiceClient {
     Disabled,
 }
 
-/// Wrapper for tarpc client to make it cloneable
+/// Wrapper for tarpc client with JSON-RPC fallback.
+///
+/// Per wateringHole `UNIVERSAL_IPC_STANDARD_V3.md`: tarpc is optional for
+/// high-performance internal paths. Until a binary tarpc transport is wired,
+/// this wrapper gracefully degrades to JSON-RPC over the same Unix socket.
 #[cfg(feature = "networking")]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TarpcClientWrapper {
-    // Placeholder for actual tarpc client
-    // Will be populated when we wire up the tarpc integration
-    _marker: std::marker::PhantomData<()>,
+    fallback: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
 }
 
 #[cfg(feature = "networking")]
-impl Clone for TarpcClientWrapper {
-    fn clone(&self) -> Self {
-        Self {
-            _marker: std::marker::PhantomData,
-        }
+impl TarpcClientWrapper {
+    pub fn with_fallback(client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient) -> Self {
+        Self { fallback: client }
+    }
+
+    pub fn fallback_client(&self) -> &toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient {
+        &self.fallback
     }
 }
 

@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! # `ToadStool` Auto-Configuration Library
 //!
 //! Zero-touch, grandma-friendly auto-configuration system for `ToadStool` Universal Compute Platform.

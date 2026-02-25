@@ -31,15 +31,14 @@ impl WgpuDevice {
     /// Known broken drivers:
     /// - NVK/NAK: crashes on native exp(f64), log(f64)
     /// - RADV/ACO (AMD open-source): `fexp2` unimplemented for f64
-    /// - NVIDIA proprietary (NVVM/PTXAS) on Ada Lovelace (SM89): fails to
-    ///   compile native f64 transcendentals (exp, log, pow). Discovered by
-    ///   wetSpring on RTX 4070 (Feb 2026).
-    ///
-    /// **Evolution (W-001)**: For definitive detection, use `probe_f64_exp_capable().await`
-    /// which dispatches a test shader and verifies empirically. This name-based method
-    /// remains as a synchronous fallback; probe results override when available.
+    /// - NVIDIA proprietary (NVVM/PTXAS): fails to compile native f64
+    ///   transcendentals (exp, log, pow, sin, cos, abs on f64). Observed on
+    ///   Ada Lovelace (SM89) and Ampere (SM86). NVVM's PTXAS does not
+    ///   implement double-precision transcendentals — it relies on libdevice
+    ///   which SPIR-V cannot link. The fix: use our Cody-Waite + minimax
+    ///   polynomial implementations from math_f64.wgsl.
     pub fn needs_f64_exp_log_workaround(&self) -> bool {
-        self.is_nvk() || self.is_radv() || self.is_nvidia_ada_lovelace()
+        self.is_nvk() || self.is_radv() || self.is_nvidia_proprietary()
     }
 
     /// Check if this device is NVIDIA Ada Lovelace (RTX 40xx) on the proprietary driver.

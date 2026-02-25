@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! `ToadStool` Advanced Analytics Engine
 //!
 //! This module provides sophisticated analytics capabilities including:

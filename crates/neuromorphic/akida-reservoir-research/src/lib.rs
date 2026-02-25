@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Akida Reservoir Computing Research Library
 //!
 //! Experimental crate for exploring reservoir computing (echo state networks)

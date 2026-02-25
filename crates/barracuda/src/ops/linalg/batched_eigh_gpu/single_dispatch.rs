@@ -85,8 +85,10 @@ impl BatchedEighGpu {
             EigensolveStrategy::WavePacked { wave_size } => wave_size,
             EigensolveStrategy::Standard => 1,
         };
-        let patched_shader =
-            ShaderTemplate::patch_warp_size(Self::single_dispatch_shader(), wave_size);
+        let patched_shader = ShaderTemplate::patch_warp_size(
+            Self::single_dispatch_shader_for_device(&device),
+            wave_size,
+        );
         let shader =
             device.compile_shader_f64(&patched_shader, Some("Batched Eigh Single-Dispatch f64"));
 
@@ -239,8 +241,10 @@ impl BatchedEighGpu {
             EigensolveStrategy::WavePacked { wave_size } => wave_size,
             EigensolveStrategy::Standard => 1,
         };
-        let patched_shader =
-            ShaderTemplate::patch_warp_size(Self::single_dispatch_shader(), wave_size);
+        let patched_shader = ShaderTemplate::patch_warp_size(
+            Self::single_dispatch_shader_for_device(device),
+            wave_size,
+        );
         let shader = device.compile_shader_f64(
             &patched_shader,
             Some("Batched Eigh Single-Dispatch f64 (buffers)"),

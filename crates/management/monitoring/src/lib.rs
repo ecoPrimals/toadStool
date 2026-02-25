@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! `ToadStool` monitoring component
 //!
 //! Cross-platform resource monitoring with configurable granularity.

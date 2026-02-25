@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**February 24, 2026**
+**February 25, 2026 -- Session 60**
 
 ---
 
@@ -253,7 +253,7 @@ Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
 | `toadstool-server` | JSON-RPC server, GPU job queue, Ollama, cross-gate router |
 | `toadstool-api` | REST API, middleware (WebSocket removed; JSON-RPC polling) |
 | `toadstool-cli` | UniBin CLI, daemon, ecosystem integration |
-| `barracuda` | 570+ WGSL shaders, tensor ops, device management, hardware routing |
+| `barracuda` | 650+ WGSL shaders (+6 DF64), tensor ops, device management, hardware routing |
 | `toadstool-distributed` | Multi-gate coordination, crypto integration |
 | `toadstool-testing` | Chaos, fault, property, performance testing |
 
@@ -532,8 +532,9 @@ constants::timeouts::*               // Connection, request, etc.
 |------|------|
 | [README.md](README.md) | Overview, architecture, status |
 | [STATUS.md](STATUS.md) | Detailed technical status |
+| [DEBT.md](DEBT.md) | Active debt register, evolution paths |
+| [NEXT_STEPS.md](NEXT_STEPS.md) | Roadmap and upcoming work |
 | [DOCUMENTATION.md](DOCUMENTATION.md) | Navigation hub |
-| [QUICK_STATUS.md](QUICK_STATUS.md) | One-page summary |
 | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | This file (API reference) |
 
 ### Scientific Middleware Docs
@@ -543,8 +544,7 @@ constants::timeouts::*               // Connection, request, etc.
 | `docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md` | Full implementation guide |
 | `docs/PHASE1_COMPLETION_REPORT.md` | Validation and metrics |
 | `docs/MIDDLEWARE_COMPLETION_SUMMARY.md` | Technical summary |
-| `DEEP_DEBT_STATUS.md` | Deep debt compliance |
 
 ---
 
-**Last Updated**: February 23, 2026 — Session 45
+**Last Updated**: February 24, 2026 — Session 58

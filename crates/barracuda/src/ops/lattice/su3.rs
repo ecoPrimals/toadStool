@@ -19,6 +19,10 @@ pub const WGSL_SU3: &str = include_str!("../../shaders/math/su3.wgsl");
 /// Raw WGSL source for the DF64 (f32-pair) arithmetic library.
 pub const WGSL_DF64_CORE: &str = include_str!("../../shaders/math/df64_core.wgsl");
 
+/// Raw WGSL source for DF64 transcendental functions (exp, log, sqrt, sin, cos, etc.)
+pub const WGSL_DF64_TRANSCENDENTALS: &str =
+    include_str!("../../shaders/math/df64_transcendentals.wgsl");
+
 /// Raw WGSL source for DF64 SU(3) matrix algebra (complex + matrix ops).
 ///
 /// Depends on `df64_core.wgsl` — always use `su3_df64_preamble()`.
@@ -36,5 +40,5 @@ pub fn su3_preamble() -> String {
 /// Includes both native f64 SU(3) ops (for algebra projection) and DF64 SU(3)
 /// ops (for bulk matmuls on FP32 cores). Use for hybrid precision shaders.
 pub fn su3_df64_preamble() -> String {
-    format!("{WGSL_COMPLEX64}\n{WGSL_SU3}\n{WGSL_DF64_CORE}\n{WGSL_SU3_DF64}\n")
+    format!("{WGSL_COMPLEX64}\n{WGSL_SU3}\n{WGSL_DF64_CORE}\n{WGSL_DF64_TRANSCENDENTALS}\n{WGSL_SU3_DF64}\n")
 }

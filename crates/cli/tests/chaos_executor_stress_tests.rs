@@ -450,8 +450,8 @@ async fn chaos_recovery_after_stress() -> Result<()> {
         let _ = handle.await;
     }
 
-    // Phase 2: Recovery check (system should be stable)
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Phase 2: Recovery check (system should be stable after all stress tasks completed)
+    tokio::task::yield_now().await;
 
     // Verify recovery
     let mut recovery_handles = vec![];

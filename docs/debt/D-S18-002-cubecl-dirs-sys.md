@@ -70,7 +70,6 @@ dirs-sys v0.4.1
 ## Related Files
 
 - `DEBT.md` — Debt register entry
-- `DEEP_DEBT_STATUS.md` — Active workarounds
 - `crates/integration-tests/tests/pure_rust_validation_tests.rs` — `test_dirs_sys_eliminated` (ignored)
 - `deny.toml` — Crate bans; dirs-sys not banned (would block burn-inference)
 

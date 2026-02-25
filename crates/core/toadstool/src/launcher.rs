@@ -197,39 +197,33 @@ pub async fn launch_toadstool(config: LaunchConfig) -> Result<()> {
     );
     let mut child = cmd.spawn().context("Failed to spawn toadstool process")?;
 
-    // Wait for startup (with timeout)
+    // Poll for endpoint readiness (no blind sleep — event-driven startup detection)
     info!(
         "   Waiting for startup (timeout: {:?})...",
         config.startup_timeout
     );
 
-    // Give the server time to start
-    tokio::time::sleep(Duration::from_secs(2)).await;
-
-    // Check if process is still alive
-    match child.try_wait() {
-        Ok(Some(status)) => {
-            return Err(anyhow::anyhow!(
-                "Toadstool process exited prematurely with status: {}",
-                status
-            ));
-        }
-        Ok(None) => {
-            info!("   ✅ Process started successfully");
-        }
-        Err(e) => {
-            return Err(anyhow::anyhow!("Failed to check process status: {}", e));
-        }
-    }
-
-    // Try to discover endpoint (polling with interval instead of sleep)
     let start = std::time::Instant::now();
     let mut last_error = None;
-    let poll_interval = Duration::from_millis(500);
-    let mut interval = tokio::time::interval(poll_interval);
+    let mut interval = tokio::time::interval(Duration::from_millis(100));
     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     while start.elapsed() < config.startup_timeout {
+        // Check if process crashed
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                return Err(anyhow::anyhow!(
+                    "Toadstool process exited prematurely with status: {}",
+                    status
+                ));
+            }
+            Ok(None) => {}
+            Err(e) => {
+                return Err(anyhow::anyhow!("Failed to check process status: {}", e));
+            }
+        }
+
+        // Try endpoint discovery
         match discover_toadstool_endpoint().await {
             Ok(endpoint) => {
                 info!("   ✅ Endpoint discovered: {}", endpoint);

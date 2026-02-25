@@ -145,7 +145,7 @@ mod tests {
         assert!(leaked.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_update_access_extends_lifetime() {
         let detector =
             ResourceLeakDetector::new(Duration::from_millis(50), Duration::from_secs(60));
@@ -154,9 +154,9 @@ mod tests {
         detector.track_allocation(allocation).await;
 
         // Update access to keep it alive
-        tokio::time::sleep(Duration::from_millis(30)).await;
+        tokio::time::advance(Duration::from_millis(30)).await;
         detector.update_access(id).await;
-        tokio::time::sleep(Duration::from_millis(30)).await;
+        tokio::time::advance(Duration::from_millis(30)).await;
 
         let leaked = detector.cleanup_leaked_resources().await;
         // Should not have leaked yet due to update_access

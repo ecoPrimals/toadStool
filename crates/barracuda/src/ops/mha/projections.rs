@@ -68,7 +68,7 @@ impl MultiHeadAttention {
     ) -> Result<Tensor> {
         let device = attention_out.device();
         let b = params.batch_size as usize;
-        let s = params.seq_len as usize;
+        let s = attention_out.shape()[2]; // q_seq_len from attention output
         let d = params.d_model as usize;
         let h = params.num_heads as usize;
         let hd = params.head_dim as usize;

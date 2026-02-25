@@ -162,9 +162,8 @@ impl AdaptiveExecutor {
         for op_type in operations {
             tracing::debug!("Profiling {:?}...", op_type);
 
-            let profile = profiler
-                .profile_operation(op_type, &size_classes, &workgroup_candidates)
-                .await?;
+            let profile =
+                profiler.profile_operation(op_type, &size_classes, &workgroup_candidates)?;
 
             // Update cache with results
             let mut cache_write = cache.write().await;

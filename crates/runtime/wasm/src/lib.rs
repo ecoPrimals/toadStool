@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! ToadStool - Universal Compute Platform  
 //! Copyright (C) 2025 ToadStool Development Team
 //!

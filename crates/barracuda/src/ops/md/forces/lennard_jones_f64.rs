@@ -18,6 +18,8 @@ use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 const WGSL_DF64_CORE: &str = include_str!("../../../shaders/math/df64_core.wgsl");
+const WGSL_DF64_TRANSCENDENTALS: &str =
+    include_str!("../../../shaders/math/df64_transcendentals.wgsl");
 const LJ_SHADER_DF64: &str = include_str!("lennard_jones_df64.wgsl");
 
 /// f64 Lennard-Jones force computation
@@ -40,7 +42,9 @@ impl LennardJonesF64 {
         tracing::info!(?strategy, "LJ F64: using {:?} FP64 strategy", strategy);
         match strategy {
             Fp64Strategy::Native => Self::wgsl_shader().to_string(),
-            Fp64Strategy::Hybrid => format!("{WGSL_DF64_CORE}\n{LJ_SHADER_DF64}"),
+            Fp64Strategy::Hybrid => {
+                format!("{WGSL_DF64_CORE}\n{WGSL_DF64_TRANSCENDENTALS}\n{LJ_SHADER_DF64}")
+            }
         }
     }
 

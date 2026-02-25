@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Security monitoring for ToadStool.
 //!
 //! Tracks security-relevant events (auth failures, policy denials, anomalous

@@ -57,17 +57,7 @@ fn pow_approx(base: f64, exponent: f64) -> f64 {
     return exp(exponent * log(base));
 }
 
-fn cbrt_f64(x: f64) -> f64 {
-    let zero = x - x;
-    if (x == zero) { return zero; }
-    let third = zero + 0.33333333333333333;
-    let ax = abs(x);
-    var y = exp(third * log(ax));
-    y = y - (y * y * y - ax) / ((zero + 3.0) * y * y);
-    y = y - (y * y * y - ax) / ((zero + 3.0) * y * y);
-    if (x < zero) { return -y; }
-    return y;
-}
+// cbrt_f64 provided by math_f64.wgsl auto-injection (Halley's method, full f64 precision)
 
 @compute @workgroup_size(256)
 fn energy_integrand(@builtin(global_invocation_id) gid: vec3<u32>) {

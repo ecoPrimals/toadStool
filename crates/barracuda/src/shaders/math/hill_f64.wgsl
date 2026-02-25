@@ -33,8 +33,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let idx = global_id.x;
     if (idx >= params.n_elements) { return; }
 
-    let x  = max(input[idx], 0.0);
-    let Kn = pow(max(params.K, 1e-30), params.n);
+    let x  = max(input[idx], f64(0.0));
+    let Kn = pow(max(params.K, f64(1e-30)), params.n);
     let xn = pow(x, params.n);
     output[idx] = xn / (Kn + xn);
 }

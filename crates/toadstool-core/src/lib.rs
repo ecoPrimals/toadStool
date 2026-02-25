@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! ToadStool Core - Hardware Infrastructure Layer
 //!
 //! Deep Debt: ToadStool directly interfaces with hardware in Rust

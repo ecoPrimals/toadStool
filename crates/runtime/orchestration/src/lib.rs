@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Workload Orchestration System
 //!
 //! **Deep Debt**: Intelligent workload distribution across compute substrates

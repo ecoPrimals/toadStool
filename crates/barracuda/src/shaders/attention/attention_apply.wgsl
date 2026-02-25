@@ -1,28 +1,34 @@
 // Attention Apply: Apply attention weights to values
 // Pass 3 of multi-pass attention implementation
 //
-// Computes: output[i,d] = sum_j (attention_weights[i,j] * V[j,d])
-// This is the final step: weighted sum of values
+// Computes: output[i,d] = sum_j (weights[i,j] * V[j,d])
+// weights: [batch, heads, q_seq_len, kv_seq_len]
+// V: [batch, heads, kv_seq_len, head_dim]
+// output: [batch, heads, q_seq_len, head_dim]
 
 struct AttentionParams {
     batch_size: u32,
     num_heads: u32,
-    seq_len: u32,
+    q_seq_len: u32,
+    kv_seq_len: u32,
     head_dim: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
 }
 
-@group(0) @binding(0) var<storage, read> weights: array<f32>;   // [batch, heads, seq, seq]
-@group(0) @binding(1) var<storage, read> value: array<f32>;     // [batch, heads, seq, head_dim]
-@group(0) @binding(2) var<storage, read_write> output: array<f32>; // [batch, heads, seq, head_dim]
+@group(0) @binding(0) var<storage, read> weights: array<f32>;
+@group(0) @binding(1) var<storage, read> value: array<f32>;
+@group(0) @binding(2) var<storage, read_write> output: array<f32>;
 @group(0) @binding(3) var<uniform> params: AttentionParams;
 
 @compute @workgroup_size(16, 16, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let batch_head = global_id.z;
-    let i = global_id.y; // output position
-    let d = global_id.x; // dimension
+    let i = global_id.y; // query position (output row)
+    let d = global_id.x; // head dimension
     
-    if (i >= params.seq_len || d >= params.head_dim) {
+    if (i >= params.q_seq_len || d >= params.head_dim) {
         return;
     }
     
@@ -33,26 +39,24 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    // Compute weighted sum: sum_j (weights[i,j] * V[j,d])
     var weighted_sum = 0.0;
     
-    for (var j = 0u; j < params.seq_len; j = j + 1u) {
-        let weight_idx = batch * params.num_heads * params.seq_len * params.seq_len
-                       + head * params.seq_len * params.seq_len
-                       + i * params.seq_len
+    for (var j = 0u; j < params.kv_seq_len; j = j + 1u) {
+        let weight_idx = batch * params.num_heads * params.q_seq_len * params.kv_seq_len
+                       + head * params.q_seq_len * params.kv_seq_len
+                       + i * params.kv_seq_len
                        + j;
         
-        let value_idx = batch * params.num_heads * params.seq_len * params.head_dim
-                      + head * params.seq_len * params.head_dim
+        let value_idx = batch * params.num_heads * params.kv_seq_len * params.head_dim
+                      + head * params.kv_seq_len * params.head_dim
                       + j * params.head_dim
                       + d;
         
         weighted_sum += weights[weight_idx] * value[value_idx];
     }
     
-    // Store output
-    let out_idx = batch * params.num_heads * params.seq_len * params.head_dim
-                + head * params.seq_len * params.head_dim
+    let out_idx = batch * params.num_heads * params.q_seq_len * params.head_dim
+                + head * params.q_seq_len * params.head_dim
                 + i * params.head_dim
                 + d;
     

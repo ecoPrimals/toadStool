@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Integration test crate for ToadStool.
 //!
 //! Contains integration and end-to-end tests previously living as orphan files

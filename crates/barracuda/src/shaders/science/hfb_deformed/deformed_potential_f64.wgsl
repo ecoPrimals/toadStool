@@ -41,18 +41,7 @@ struct PotParams {
 @group(0) @binding(4) var<storage, read_write> v_neutron: array<f64>;
 @group(0) @binding(5) var<storage, read_write> v_proton: array<f64>;
 
-fn cbrt_f64(x: f64) -> f64 {
-    let zero = x - x;
-    if (x == zero) { return zero; }
-    let third = zero + 0.33333333333333333;
-    let ax = abs(x);
-    var y = exp(third * log(ax));
-    // Two Newton-Raphson refinements for full f64 precision
-    y = y - (y * y * y - ax) / ((zero + 3.0) * y * y);
-    y = y - (y * y * y - ax) / ((zero + 3.0) * y * y);
-    if (x < zero) { return -y; }
-    return y;
-}
+// cbrt_f64 provided by math_f64.wgsl auto-injection (Halley's method, full f64 precision)
 
 fn pow_approx(base: f64, exponent: f64) -> f64 {
     let zero = base - base;

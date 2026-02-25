@@ -103,7 +103,7 @@ etcetera = "0.8"
 # Zero-copy binary payload transport (already a transitive dep via tokio/hyper/axum)
 # Use bytes::Bytes instead of Vec<u8> for data that is cloned across threads/tasks.
 # bytes::Bytes is Arc<[u8]>: clone() bumps a refcount, not a memcpy.
-bytes = { version = "1", features = ["serde"] }
+bytes = { version = "1.11.1", features = ["serde"] }
 
 # Core dependencies
 tokio = { version = "1.35", features = ["full"] }
@@ -112,11 +112,11 @@ serde_json = "1.0"
 serde_yaml = "0.9"
 uuid = { version = "1.7", features = ["v4", "serde"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
 anyhow = "1.0"
 thiserror = "2.0"
 async-trait = "0.1"
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4", default-features = false, features = ["serde", "clock", "std"] }
 regex = "1.10"
 
 # Configuration
@@ -162,7 +162,7 @@ caps = "0.5"
 # EVOLVED: nix removed (Feb 14, 2026) - unused in production, libc for tests
 
 # Cryptography — all pure Rust (no C/FFI deps)
-aes-gcm = "0.10"
+aes-gcm = "0.10.3"
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 hex = "0.4"
 hmac = "0.12"
@@ -192,10 +192,16 @@ criterion = { version = "0.5", features = ["html_reports"] }
 proptest = "1.4"
 
 [profile.dev]
-# Optimize dependencies but not local code for faster builds
+# Local crate code: unoptimized for fast incremental builds
 opt-level = 0
 debug = true
 overflow-checks = true
+
+[profile.dev.package."*"]
+# Dependencies (naga, wgpu, spirv-tools, etc.) at opt-level 2:
+# shader compilation in naga is 5-10x faster optimized, which dominates
+# barracuda's 2,700+ GPU test execution time.
+opt-level = 2
 
 [profile.release]
 # Maximum optimization for production builds

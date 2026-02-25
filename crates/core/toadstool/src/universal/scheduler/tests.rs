@@ -281,7 +281,7 @@ async fn test_schedule_job_biome_os_no_provider_returns_error() {
     ));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_get_active_job_count_during_execution() {
     let registry = Arc::new(UniversalPrimalRegistry::new());
     let mut engines = HashMap::new();
@@ -307,8 +307,8 @@ async fn test_get_active_job_count_during_execution() {
         async move { s.schedule_job(job_clone).await }
     });
 
-    // Give the job a moment to start (it gets added to active_jobs at the start)
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // Yield to let the spawned task run, then continue immediately
+    tokio::task::yield_now().await;
     let count = scheduler_clone.get_active_job_count().await;
     // Job may have already completed; either 0 or 1 is valid
     assert!(count <= 1, "active job count should be 0 or 1");

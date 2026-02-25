@@ -88,12 +88,14 @@ impl SpectralNorm1D {
             rows: u32,
             cols: u32,
             n_power_iter: u32,
+            _padding: u32,
         }
 
         let params = Params {
             rows: rows as u32,
             cols: cols as u32,
             n_power_iter: self.n_power_iterations as u32,
+            _padding: 0,
         };
 
         let params_buffer = device

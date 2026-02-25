@@ -26,6 +26,9 @@ pub struct WgpuDevice {
     pub(crate) queue: Arc<wgpu::Queue>,
     pub(crate) adapter_info: wgpu::AdapterInfo,
     calibration: Option<GpuCalibration>,
+    /// Vulkan pipeline cache — avoids re-compiling identical SPIR-V to machine code.
+    /// Shared across all pipeline creations on this device.
+    pipeline_cache: Option<Arc<wgpu::PipelineCache>>,
 }
 
 impl WgpuDevice {
@@ -67,6 +70,13 @@ impl WgpuDevice {
     /// Get adapter info (for capability detection)
     pub fn adapter_info(&self) -> &wgpu::AdapterInfo {
         &self.adapter_info
+    }
+
+    /// Get the device's pipeline cache for `create_compute_pipeline` calls.
+    ///
+    /// Returns `None` only when the Vulkan driver does not support pipeline caching.
+    pub fn pipeline_cache(&self) -> Option<&wgpu::PipelineCache> {
+        self.pipeline_cache.as_deref()
     }
 
     /// Access command queue
@@ -133,7 +143,7 @@ impl WgpuDevice {
                 layout: None,
                 module: &shader,
                 entry_point: "main",
-                cache: None,
+                cache: self.pipeline_cache(),
                 compilation_options: Default::default(),
             });
 

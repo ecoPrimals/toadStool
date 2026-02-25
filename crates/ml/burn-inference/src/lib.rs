@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Burn-based ML inference for ToadStool
 //!
 //! This crate provides cross-platform ML inference using Burn with wgpu backend.

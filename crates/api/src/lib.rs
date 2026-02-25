@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Modern API for ToadStool with OpenAPI support
 //!
 //! This crate provides both JSON-RPC 2.0 (primary) and REST (legacy) APIs

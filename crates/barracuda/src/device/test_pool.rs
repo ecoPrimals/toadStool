@@ -1,140 +1,164 @@
-//! Test device pool - reuse devices across tests to prevent exhaustion
+//! Test device pool — resilient shared device with automatic recovery
 //!
-//! **Problem**: Creating 272 wgpu devices exhausts GPU resources
-//! **Solution**: Shared device pool with lazy initialization
-//! **Deep Debt**: Runtime discovery, no hardcoding, thread-safe
-//! **Evolution**: Migrated from once_cell to std::sync::LazyLock (Rust 1.80+)
+//! **Problem**: Creating 2435 wgpu devices exhausts GPU resources.
+//! **Problem**: A single NVVM/driver shader compilation failure marks the
+//!   wgpu device as "lost", cascading to ALL subsequent tests.
+//! **Problem**: Multi-GPU systems (e.g. RTX 3090 + RX 6950 XT) can silently
+//!   select different adapters across recreations, causing cross-device
+//!   contamination via `TensorContext` (keyed by adapter fingerprint).
+//!
+//! **Solution**: Shared device behind `RwLock` with health-check + recreation.
+//!   ALL accessors funnel through ONE device. Adapter selection is pinned via
+//!   `BARRACUDA_GPU_ADAPTER` / `HOTSPRING_GPU_ADAPTER` env vars, or auto-
+//!   detected as the first discrete GPU with `SHADER_F64`.
+//!
+//! Absorbed from hotSpring adapter selection (Feb 2026).
 
 use crate::device::WgpuDevice;
-use std::sync::{Arc, LazyLock, Mutex as StdMutex};
-use tokio::sync::Mutex;
+use std::sync::{Arc, RwLock};
 
-/// Global device pool for tests
-///
-/// **Deep Debt Principles**:
-/// - Runtime discovery (no hardcoded device)
-/// - Thread-safe (Arc + Mutex)
-/// - Lazy initialization (only create when needed)
-/// - Reusable (shared across all tests)
-/// - Pure std (no external lazy_static or once_cell)
-static TEST_DEVICE_POOL: LazyLock<Arc<Mutex<Option<Arc<WgpuDevice>>>>> =
-    LazyLock::new(|| Arc::new(Mutex::new(None)));
+static DEVICE_POOL: std::sync::LazyLock<RwLock<Option<Arc<WgpuDevice>>>> =
+    std::sync::LazyLock::new(|| RwLock::new(None));
 
-/// Get or create shared test device
-///
-/// **Usage in tests**:
-/// ```rust,ignore
-/// #[tokio::test]
-/// async fn test_matmul() {
-///     let Some(dev) = get_test_device().await else { return };
-///     let result = matmul(&dev.device, &dev.queue, &a, &b).await.unwrap();
-/// }
-/// ```
-///
-/// **Benefits**:
-/// - Fixes 119 test failures (device exhaustion)
-/// - Faster tests (reuse device initialization)
-/// - Thread-safe (multiple tests can share)
-pub async fn get_test_device() -> Arc<WgpuDevice> {
-    let mut pool = TEST_DEVICE_POOL.lock().await;
+/// Cached adapter capabilities (survive device recreation).
+static IS_REAL_GPU: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+static HAS_F64: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
 
-    if let Some(device) = pool.as_ref() {
-        return Arc::clone(device);
-    }
+/// Pinned adapter selector — determined once, reused on every recreation so
+/// the test pool always returns the same physical GPU.
+static ADAPTER_SELECTOR: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
-    let device = Arc::new(
-        tokio::time::timeout(std::time::Duration::from_secs(10), WgpuDevice::new())
-            .await
-            .expect("GPU device creation timed out after 10s -- check driver")
-            .expect("Failed to create test device"),
-    );
-
-    *pool = Some(Arc::clone(&device));
-    device
-}
-
-/// Reset device pool (for integration tests that need fresh state)
-///
-/// **Use sparingly**: Only when tests need isolated devices
-pub async fn reset_test_device_pool() {
-    let mut pool = TEST_DEVICE_POOL.lock().await;
-    *pool = None;
-}
-
-/// GPU-only device pool for tests that require real GPU hardware.
-///
-/// Software adapters (llvmpipe, lavapipe, swiftshader) produce NaN/Inf for
-/// transcendental operations. Tests using this pool skip when no real GPU exists.
-static TEST_GPU_DEVICE_POOL: LazyLock<Arc<Mutex<Option<Arc<WgpuDevice>>>>> =
-    LazyLock::new(|| Arc::new(Mutex::new(None)));
-
-/// Get test device, returning None if only a software/CPU adapter is available.
-///
-/// GPU shader tests should use this to gracefully skip on machines without GPUs.
-/// Use: `let Some(device) = get_test_device().await else { return };`
-pub async fn get_test_device_if_gpu_available() -> Option<Arc<WgpuDevice>> {
-    let mut pool = TEST_GPU_DEVICE_POOL.lock().await;
-
-    if let Some(device) = pool.as_ref() {
-        return Some(Arc::clone(device));
-    }
-
-    let result =
-        tokio::time::timeout(std::time::Duration::from_secs(10), WgpuDevice::new_gpu()).await;
-
-    match result {
-        Ok(Ok(device)) => {
-            let device = Arc::new(device);
-            *pool = Some(Arc::clone(&device));
-            Some(device)
+fn resolve_adapter_selector() -> String {
+    if let Ok(v) = std::env::var("BARRACUDA_GPU_ADAPTER") {
+        if !v.is_empty() {
+            return v;
         }
-        _ => None,
     }
+    if let Ok(v) = std::env::var("HOTSPRING_GPU_ADAPTER") {
+        if !v.is_empty() {
+            return v.split(',').next().unwrap_or("auto").to_string();
+        }
+    }
+    // Auto-detect: find the first discrete GPU with SHADER_F64 and pin to its name.
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::all(),
+        ..Default::default()
+    });
+    for adapter in instance.enumerate_adapters(wgpu::Backends::all()) {
+        let info = adapter.get_info();
+        if info.device_type == wgpu::DeviceType::DiscreteGpu
+            && adapter.features().contains(wgpu::Features::SHADER_F64)
+        {
+            log::info!("test_pool: auto-pinned to '{}' (discrete, f64)", info.name);
+            return info.name.clone();
+        }
+    }
+    "auto".to_string()
 }
 
-/// f64-capable GPU device pool for tests requiring SHADER_F64 feature.
-///
-/// Many scientific shaders (SSF, forces, PDE solvers) require f64 precision.
-/// This pool selects a GPU with wgpu::Features::SHADER_F64 enabled.
-static TEST_F64_GPU_DEVICE_POOL: LazyLock<Arc<Mutex<Option<Arc<WgpuDevice>>>>> =
-    LazyLock::new(|| Arc::new(Mutex::new(None)));
-
-/// Get f64-capable test device, returning None if no f64 GPU is available.
-///
-/// f64 shader tests should use this to gracefully skip on machines without f64 GPUs.
-/// Use: `let Some(device) = get_test_device_if_f64_gpu_available().await else { return };`
-pub async fn get_test_device_if_f64_gpu_available() -> Option<Arc<WgpuDevice>> {
-    let mut pool = TEST_F64_GPU_DEVICE_POOL.lock().await;
-
-    if let Some(device) = pool.as_ref() {
-        return Some(Arc::clone(device));
-    }
-
-    let result = tokio::time::timeout(
+async fn create_device() -> Arc<WgpuDevice> {
+    let selector = ADAPTER_SELECTOR.get_or_init(resolve_adapter_selector);
+    let device = tokio::time::timeout(
         std::time::Duration::from_secs(10),
-        WgpuDevice::new_f64_capable(),
+        WgpuDevice::with_adapter_selector(selector),
     )
-    .await;
+    .await
+    .expect("GPU device creation timed out after 10s -- check driver")
+    .expect("Failed to create test device");
+    log::info!(
+        "test_pool: device '{}' ({:?})",
+        device.adapter_info().name,
+        device.adapter_info().device_type,
+    );
+    Arc::new(device)
+}
 
-    match result {
-        Ok(Ok(device)) => {
-            let device = Arc::new(device);
-            *pool = Some(Arc::clone(&device));
-            Some(device)
+fn is_device_healthy(device: &WgpuDevice) -> bool {
+    // A lost device panics in the uncaptured error handler on any GPU operation.
+    // catch_unwind detects this without crashing the test runner.
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let buf = device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("health-probe"),
+            size: 4,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        device
+            .queue()
+            .submit(std::iter::empty::<wgpu::CommandBuffer>());
+        device.device().poll(wgpu::Maintain::Wait);
+        drop(buf);
+    }))
+    .is_ok()
+}
+
+/// Get or create the shared test device, recreating if the previous one was lost.
+pub async fn get_test_device() -> Arc<WgpuDevice> {
+    // Fast path: device exists and is healthy.
+    {
+        let guard = DEVICE_POOL.read().unwrap_or_else(|e| e.into_inner());
+        if let Some(ref dev) = *guard {
+            if is_device_healthy(dev) {
+                return Arc::clone(dev);
+            }
         }
-        _ => None,
+    }
+
+    // Slow path: create or recreate.
+    let mut guard = DEVICE_POOL.write().unwrap_or_else(|e| e.into_inner());
+    // Double-check: another thread may have recreated while we waited for the write lock.
+    if let Some(ref dev) = *guard {
+        if is_device_healthy(dev) {
+            return Arc::clone(dev);
+        }
+        log::warn!("Shared test device lost — recreating");
+        crate::device::tensor_context::clear_global_contexts();
+        crate::device::pipeline_cache::clear_global_cache();
+    }
+
+    let new_device = pollster::block_on(create_device());
+
+    IS_REAL_GPU.get_or_init(|| new_device.adapter_info().device_type != wgpu::DeviceType::Cpu);
+    HAS_F64.get_or_init(|| new_device.has_f64_shaders());
+
+    *guard = Some(Arc::clone(&new_device));
+    new_device
+}
+
+/// Get the shared device if it's a real GPU (not software/CPU adapter).
+pub async fn get_test_device_if_gpu_available() -> Option<Arc<WgpuDevice>> {
+    let device = get_test_device().await;
+    if *IS_REAL_GPU.get_or_init(|| device.adapter_info().device_type != wgpu::DeviceType::Cpu) {
+        Some(device)
+    } else {
+        None
+    }
+}
+
+/// Get the shared device if it supports f64 shader operations.
+pub async fn get_test_device_if_f64_gpu_available() -> Option<Arc<WgpuDevice>> {
+    let device = get_test_device().await;
+    if *HAS_F64.get_or_init(|| device.has_f64_shaders()) {
+        Some(device)
+    } else {
+        None
     }
 }
 
 // ============================================================================
-// Sync helpers - always available for test modules across crate
+// Sync helpers
 // ============================================================================
-
-/// Serializes sync device access. wgpu/vulkan BindGroupLayout creation is not
-/// safe when the same device is used concurrently from multiple threads.
-static SYNC_DEVICE_MUTEX: StdMutex<()> = StdMutex::new(());
 
 fn get_test_device_sync_inner() -> Arc<WgpuDevice> {
+    // Try fast path without creating a runtime.
+    {
+        let guard = DEVICE_POOL.read().unwrap_or_else(|e| e.into_inner());
+        if let Some(ref dev) = *guard {
+            if is_device_healthy(dev) {
+                return Arc::clone(dev);
+            }
+        }
+    }
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -142,64 +166,37 @@ fn get_test_device_sync_inner() -> Arc<WgpuDevice> {
         .block_on(get_test_device())
 }
 
-/// Run a closure with exclusive access to the sync test device.
-///
-/// Use this for NPU ops (softmax, layer_norm, etc.) that must not run
-/// concurrently to avoid wgpu BindGroupLayout conflicts.
+/// Run a closure with the shared test device.
 pub fn run_with_sync_device<F, R>(f: F) -> R
 where
     F: FnOnce(Arc<WgpuDevice>) -> R,
 {
-    let _guard = SYNC_DEVICE_MUTEX
-        .lock()
-        .expect("Sync device mutex poisoned");
-    let device = get_test_device_sync_inner();
-    f(device)
+    f(get_test_device_sync())
 }
 
 /// Sync wrapper for `get_test_device`.
-///
-/// **Prefer async**: Use `get_test_device().await` in `#[tokio::test]` when possible.
-/// This sync helper exists for test functions that can't be async.
-///
-/// **Serialized**: Sync callers are serialized to avoid wgpu BindGroupLayout
-/// conflicts when tests run in parallel (same device, concurrent pipeline creation).
-///
-/// Uses Tokio runtime (not pollster) because get_test_device uses tokio::sync::Mutex
-/// and tokio::time::timeout, which require a Tokio runtime.
 pub fn get_test_device_sync() -> Arc<WgpuDevice> {
-    let _guard = SYNC_DEVICE_MUTEX
-        .lock()
-        .expect("Sync device mutex poisoned");
     get_test_device_sync_inner()
 }
 
 /// Sync wrapper for `get_test_device_if_gpu_available`.
-///
-/// Returns `None` if only a software adapter is available. Use for tests requiring real GPU.
 pub fn get_test_device_if_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
-    let _guard = SYNC_DEVICE_MUTEX
-        .lock()
-        .expect("Sync device mutex poisoned");
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("Failed to create Tokio runtime for sync GPU device access")
-        .block_on(get_test_device_if_gpu_available())
+    let device = get_test_device_sync();
+    if *IS_REAL_GPU.get_or_init(|| device.adapter_info().device_type != wgpu::DeviceType::Cpu) {
+        Some(device)
+    } else {
+        None
+    }
 }
 
 /// Sync wrapper for `get_test_device_if_f64_gpu_available`.
-///
-/// Returns `None` if no f64-capable GPU is present. Use for double-precision shader tests.
 pub fn get_test_device_if_f64_gpu_available_sync() -> Option<Arc<WgpuDevice>> {
-    let _guard = SYNC_DEVICE_MUTEX
-        .lock()
-        .expect("Sync device mutex poisoned");
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("Failed to create Tokio runtime for sync f64 device access")
-        .block_on(get_test_device_if_f64_gpu_available())
+    let device = get_test_device_sync();
+    if *HAS_F64.get_or_init(|| device.has_f64_shaders()) {
+        Some(device)
+    } else {
+        None
+    }
 }
 
 // ============================================================================
@@ -273,7 +270,6 @@ pub mod test_prelude {
         let size: usize = shape.iter().product();
         let mut rng = rand::thread_rng();
 
-        // Box-Muller for normal distribution
         let mut data = Vec::with_capacity(size);
         for _ in 0..(size / 2) {
             let u1: f32 = rng.gen::<f32>().max(1e-10);
@@ -313,21 +309,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_device_pool_reuse() {
-        // First access creates device
         let dev1 = get_test_device().await;
         let ptr1 = Arc::as_ptr(&dev1);
 
-        // Second access reuses device
         let dev2 = get_test_device().await;
         let ptr2 = Arc::as_ptr(&dev2);
 
-        // Should be same device (same pointer)
         assert_eq!(ptr1, ptr2, "Device pool should reuse same device");
     }
 
     #[tokio::test]
     async fn test_device_pool_concurrent() {
-        // Multiple concurrent accesses should all get same device
         let handles: Vec<_> = (0..10).map(|_| tokio::spawn(get_test_device())).collect();
 
         let mut devices = Vec::with_capacity(handles.len());
@@ -335,7 +327,6 @@ mod tests {
             devices.push(h.await.unwrap());
         }
 
-        // All should point to same device
         let first_ptr = Arc::as_ptr(&devices[0]);
         for dev in &devices[1..] {
             assert_eq!(

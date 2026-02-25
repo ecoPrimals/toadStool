@@ -10,10 +10,16 @@
 //! - Steric effects modeling
 
 use crate::device::capabilities::WORKGROUP_SIZE_1D;
+use crate::device::driver_profile::{Fp64Strategy, GpuDriverProfile};
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
+
+const WGSL_DF64_CORE: &str = include_str!("../../../shaders/math/df64_core.wgsl");
+const WGSL_DF64_TRANSCENDENTALS: &str =
+    include_str!("../../../shaders/math/df64_transcendentals.wgsl");
+const BM_SHADER_DF64: &str = include_str!("born_mayer_df64.wgsl");
 
 /// f64 Born-Mayer force calculator
 ///
@@ -34,6 +40,22 @@ impl BornMayerForceF64 {
         include_str!("born_mayer_f64.wgsl")
     }
 
+    fn wgsl_shader_for_device(device: &WgpuDevice) -> String {
+        let profile = GpuDriverProfile::from_device(device);
+        let strategy = profile.fp64_strategy();
+        tracing::info!(
+            ?strategy,
+            "BornMayer F64: using {:?} FP64 strategy",
+            strategy
+        );
+        match strategy {
+            Fp64Strategy::Native => Self::wgsl_shader().to_string(),
+            Fp64Strategy::Hybrid => {
+                format!("{WGSL_DF64_CORE}\n{WGSL_DF64_TRANSCENDENTALS}\n{BM_SHADER_DF64}")
+            }
+        }
+    }
+
     /// Compute Born-Mayer forces (always GPU dispatch).
     pub fn compute_forces(
         &self,
@@ -46,7 +68,11 @@ impl BornMayerForceF64 {
         self.compute_gpu(positions, a_params, rho_params, cutoff, n)
     }
 
-    /// Compute forces and energy (GPU dispatch).
+    /// Compute forces (GPU) and total potential energy.
+    ///
+    /// Forces come from GPU dispatch; energy is accumulated on the host from
+    /// the same Born-Mayer potential U(r) = A·exp(−r/ρ) using geometric
+    /// mixing rules: A = √(Aᵢ·Aⱼ), ρ = (ρᵢ+ρⱼ)/2.
     pub fn compute_forces_and_energy(
         &self,
         positions: &[f64],
@@ -55,7 +81,27 @@ impl BornMayerForceF64 {
         cutoff: f64,
     ) -> Result<(Vec<f64>, f64)> {
         let forces = self.compute_forces(positions, a_params, rho_params, cutoff)?;
-        Ok((forces, 0.0))
+
+        let n = positions.len() / 3;
+        let cutoff_sq = cutoff * cutoff;
+        let mut energy = 0.0_f64;
+        for i in 0..n {
+            let pi = [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]];
+            for j in (i + 1)..n {
+                let pj = [positions[j * 3], positions[j * 3 + 1], positions[j * 3 + 2]];
+                let rv = [pj[0] - pi[0], pj[1] - pi[1], pj[2] - pi[2]];
+                let r_sq = rv[0] * rv[0] + rv[1] * rv[1] + rv[2] * rv[2];
+                if r_sq > cutoff_sq || r_sq < 1e-20 {
+                    continue;
+                }
+                let r = r_sq.sqrt();
+                let a = (a_params[i] * a_params[j]).sqrt();
+                let rho = (rho_params[i] + rho_params[j]) * 0.5;
+                energy += a * (-r / rho).exp();
+            }
+        }
+
+        Ok((forces, energy))
     }
 
     fn compute_gpu(
@@ -112,7 +158,8 @@ impl BornMayerForceF64 {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        let shader = dev.compile_shader_f64(Self::wgsl_shader(), Some("BornMayer f64"));
+        let src = Self::wgsl_shader_for_device(dev);
+        let shader = dev.compile_shader_f64(&src, Some("BornMayer f64"));
 
         let bgl = dev
             .device

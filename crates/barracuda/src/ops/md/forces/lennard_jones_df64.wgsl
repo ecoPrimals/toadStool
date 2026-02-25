@@ -1,10 +1,10 @@
-// Lennard-Jones Force Kernel (DF64) — Hybrid Core Streaming
+// Lennard-Jones Force Kernel (DF64) — Full FP32 Core Streaming
 //
-// Prepend: df64_core.wgsl
+// Prepend: df64_core.wgsl, df64_transcendentals.wgsl
 //
-// HYBRID PRECISION:
-//   DF64 (FP32 cores): distance computation, σ/r powers, force accumulation
-//   f64  (FP64 units): sqrt (1 per pair), cutoff comparison, final store
+// ALL-DF64 PRECISION:
+//   DF64 (FP32 cores): distance, sqrt, σ/r powers, force accumulation
+//   f64 (FP64 units): only cutoff comparison and storage I/O
 //
 // The O(N²) pairwise loop has ~13 DF64 multiplies per pair vs 2 f64 ops.
 // Net: ~10× throughput on consumer GPUs for the force computation.
@@ -58,18 +58,15 @@ fn lennard_jones_f64(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
         let r_sq = df64_add(df64_add(df64_mul(dx, dx), df64_mul(dy, dy)), df64_mul(dz, dz));
 
-        // Boundary: DF64 → f64 for cutoff check and sqrt
         let r_sq_f64 = df64_to_f64(r_sq);
         if (r_sq_f64 > cutoff_sq || r_sq_f64 < 1e-12) { continue; }
 
-        let r_f64 = sqrt(r_sq_f64);
-        let r = df64_from_f64(r_f64);
+        let r = sqrt_df64(r_sq);
 
-        // Lorentz-Berthelot mixing (DF64)
         let sigma_j = df64_from_f64(sigmas[j]);
         let epsilon_j = df64_from_f64(epsilons[j]);
         let sigma = df64_mul(df64_add(sigma_i, sigma_j), half);
-        let epsilon = df64_from_f64(sqrt(df64_to_f64(df64_mul(epsilon_i, epsilon_j))));
+        let epsilon = sqrt_df64(df64_mul(epsilon_i, epsilon_j));
 
         // σ/r powers (DF64 — the hot compute path)
         let sigma_r = df64_div(sigma, r);
@@ -130,12 +127,12 @@ fn lennard_jones_shifted_f64(@builtin(global_invocation_id) global_id: vec3<u32>
         let r_sq_f64 = df64_to_f64(r_sq);
         if (r_sq_f64 > cutoff_sq || r_sq_f64 < 1e-12) { continue; }
 
-        let r = df64_from_f64(sqrt(r_sq_f64));
+        let r = sqrt_df64(r_sq);
 
         let sigma_j = df64_from_f64(sigmas[j]);
         let epsilon_j = df64_from_f64(epsilons[j]);
         let sigma = df64_mul(df64_add(sigma_i, sigma_j), half);
-        let epsilon = df64_from_f64(sqrt(df64_to_f64(df64_mul(epsilon_i, epsilon_j))));
+        let epsilon = sqrt_df64(df64_mul(epsilon_i, epsilon_j));
 
         let sigma_r = df64_div(sigma, r);
         let sigma_r_sq = df64_mul(sigma_r, sigma_r);
@@ -196,12 +193,12 @@ fn lennard_jones_with_energy_f64(@builtin(global_invocation_id) global_id: vec3<
         let r_sq_f64 = df64_to_f64(r_sq);
         if (r_sq_f64 > cutoff_sq || r_sq_f64 < 1e-12) { continue; }
 
-        let r = df64_from_f64(sqrt(r_sq_f64));
+        let r = sqrt_df64(r_sq);
 
         let sigma_j = df64_from_f64(sigmas[j]);
         let epsilon_j = df64_from_f64(epsilons[j]);
         let sigma = df64_mul(df64_add(sigma_i, sigma_j), half);
-        let epsilon = df64_from_f64(sqrt(df64_to_f64(df64_mul(epsilon_i, epsilon_j))));
+        let epsilon = sqrt_df64(df64_mul(epsilon_i, epsilon_j));
 
         let sigma_r = df64_div(sigma, r);
         let sigma_r_sq = df64_mul(sigma_r, sigma_r);

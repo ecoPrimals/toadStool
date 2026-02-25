@@ -7,7 +7,6 @@ use crate::cache::{OperationProfile, WorkgroupConfig};
 use crate::fingerprint::GpuFingerprint;
 use crate::types::{OpType, SizeClass};
 use anyhow::{Context, Result};
-use std::time::{Duration, Instant};
 
 /// Profiling configuration
 #[derive(Debug, Clone)]
@@ -39,6 +38,8 @@ impl Default for ProfilingConfig {
 /// All measurements done at runtime - no assumptions!
 pub struct RuntimeProfiler {
     fingerprint: GpuFingerprint,
+    #[allow(dead_code)]
+    // BLOCKED(real-gpu-executor): config drives warmup/measurement runs once real benchmarks replace the model
     config: ProfilingConfig,
 }
 
@@ -72,7 +73,7 @@ impl RuntimeProfiler {
     /// # Errors
     ///
     /// Returns error if benchmarking fails or times out.
-    pub async fn profile_operation(
+    pub fn profile_operation(
         &self,
         op_type: OpType,
         size_classes: &[SizeClass],
@@ -88,9 +89,8 @@ impl RuntimeProfiler {
                 self.fingerprint.vendor
             );
 
-            let optimal_config = self
-                .find_optimal_workgroup(op_type, size_class, workgroup_candidates)
-                .await?;
+            let optimal_config =
+                self.find_optimal_workgroup(op_type, size_class, workgroup_candidates)?;
 
             profile.add_config(size_class, optimal_config);
         }
@@ -101,7 +101,7 @@ impl RuntimeProfiler {
     /// Find optimal workgroup size for operation + size class
     ///
     /// Tests all candidates and returns best performer.
-    async fn find_optimal_workgroup(
+    fn find_optimal_workgroup(
         &self,
         op_type: OpType,
         size_class: SizeClass,
@@ -113,11 +113,7 @@ impl RuntimeProfiler {
         let size = size_class.representative_size();
 
         for &workgroup_size in candidates {
-            // Run benchmark
-            match self
-                .benchmark_workgroup(op_type, size, workgroup_size)
-                .await
-            {
+            match self.benchmark_workgroup(op_type, size, workgroup_size) {
                 Ok(avg_time_us) => {
                     tracing::trace!("  Workgroup {}: {:.2} µs", workgroup_size, avg_time_us);
 
@@ -137,47 +133,19 @@ impl RuntimeProfiler {
 
     /// Benchmark specific workgroup size
     ///
-    /// Performs warmup + measurement runs, returns average time.
-    async fn benchmark_workgroup(
+    /// Returns estimated execution time in microseconds.
+    /// BLOCKED(real-gpu-executor): Replace with actual wgpu executor micro-benchmarks
+    /// once RuntimeProfiler holds an executor reference. Current implementation returns
+    /// conservative model-based estimates without sleeping.
+    fn benchmark_workgroup(
         &self,
         op_type: OpType,
         size: usize,
         workgroup_size: usize,
     ) -> Result<f64> {
-        // Pending: Replace simulation with actual wgpu executor.execute_operation()
-        // micro-benchmarks. Requires RuntimeProfiler to hold executor reference and
-        // run real compute shaders; simulation provides conservative estimates until then.
-
-        // Simulate warmup
-        for _ in 0..self.config.warmup_runs {
-            tokio::time::sleep(Duration::from_micros(10)).await;
-        }
-
-        // Simulate measurements
-        let mut measurements = Vec::with_capacity(self.config.measurement_runs);
-        for _ in 0..self.config.measurement_runs {
-            let start = Instant::now();
-
-            // Simulate GPU operation
-            // Real implementation: await executor.execute_operation(...)
-            tokio::time::sleep(Duration::from_micros(Self::simulate_gpu_time(
-                op_type,
-                size,
-                workgroup_size,
-            )))
-            .await;
-
-            let elapsed = start.elapsed();
-            #[allow(clippy::cast_precision_loss)]
-            // microsecond measurements fit comfortably in f64
-            measurements.push(elapsed.as_micros() as f64);
-        }
-
-        // Calculate average
-        #[allow(clippy::cast_precision_loss)] // measurement count is small (~10 iterations)
-        let avg = measurements.iter().sum::<f64>() / measurements.len() as f64;
-
-        Ok(avg)
+        #[allow(clippy::cast_precision_loss)]
+        let estimated_us = Self::simulate_gpu_time(op_type, size, workgroup_size) as f64;
+        Ok(estimated_us)
     }
 
     /// Simulate GPU execution time
@@ -221,7 +189,7 @@ impl RuntimeProfiler {
     /// # Errors
     ///
     /// Returns error if profiling fails.
-    pub async fn quick_profile_all(&self) -> Result<Vec<OperationProfile>> {
+    pub fn quick_profile_all(&self) -> Result<Vec<OperationProfile>> {
         let operations = vec![
             OpType::MatMul,
             OpType::LayerNorm,
@@ -236,9 +204,7 @@ impl RuntimeProfiler {
 
         let mut profiles = Vec::new();
         for op_type in operations {
-            let profile = self
-                .profile_operation(op_type, &size_classes, &workgroup_candidates)
-                .await?;
+            let profile = self.profile_operation(op_type, &size_classes, &workgroup_candidates)?;
             profiles.push(profile);
         }
 
@@ -262,25 +228,23 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_profiler_creation() {
+    #[test]
+    fn test_profiler_creation() {
         let fingerprint = mock_fingerprint();
         let profiler = RuntimeProfiler::new(fingerprint);
         assert!(profiler.is_ok());
     }
 
-    #[tokio::test]
-    async fn test_profile_operation() {
+    #[test]
+    fn test_profile_operation() {
         let fingerprint = mock_fingerprint();
         let profiler = RuntimeProfiler::new(fingerprint).unwrap();
 
-        let profile = profiler
-            .profile_operation(
-                OpType::MatMul,
-                &[SizeClass::Small, SizeClass::Medium],
-                &[64, 128, 256],
-            )
-            .await;
+        let profile = profiler.profile_operation(
+            OpType::MatMul,
+            &[SizeClass::Small, SizeClass::Medium],
+            &[64, 128, 256],
+        );
 
         assert!(profile.is_ok());
         let profile = profile.unwrap();
@@ -288,14 +252,12 @@ mod tests {
         assert!(!profile.size_configs.is_empty());
     }
 
-    #[tokio::test]
-    async fn test_benchmark_workgroup() {
+    #[test]
+    fn test_benchmark_workgroup() {
         let fingerprint = mock_fingerprint();
         let profiler = RuntimeProfiler::new(fingerprint).unwrap();
 
-        let result = profiler
-            .benchmark_workgroup(OpType::MatMul, 10_000, 128)
-            .await;
+        let result = profiler.benchmark_workgroup(OpType::MatMul, 10_000, 128);
 
         assert!(result.is_ok());
         let time = result.unwrap();

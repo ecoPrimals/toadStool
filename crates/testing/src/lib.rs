@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+#![deny(unsafe_code)]
+
 //! # `ToadStool` Testing Infrastructure
 //!
 //! This crate provides comprehensive testing utilities, mocks, and infrastructure

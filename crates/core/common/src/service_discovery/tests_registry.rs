@@ -149,10 +149,12 @@ async fn test_find_services_stale_cache_triggers_refresh() {
     tmp.write_all(config.as_bytes()).unwrap();
     let path = tmp.path().to_string_lossy().to_string();
 
+    // Use Duration::ZERO so cache is immediately stale; no sleep needed (cache uses SystemTime,
+    // which tokio virtual time cannot advance)
     let disc = ServiceDiscovery::with_config(
         DiscoveryMethod::ConfigFile { path },
         DiscoveryConfig {
-            cache_ttl: Duration::from_millis(1),
+            cache_ttl: Duration::ZERO,
             ..DiscoveryConfig::default()
         },
     )
@@ -163,7 +165,7 @@ async fn test_find_services_stale_cache_triggers_refresh() {
     let first = disc.find_services_by_capability(&cap).await.unwrap();
     assert_eq!(first.len(), 1);
 
-    std::thread::sleep(Duration::from_millis(10));
+    // Second call: cache is stale (TTL=0), triggers refresh
     let second = disc.find_services_by_capability(&cap).await.unwrap();
     assert_eq!(second.len(), 1);
 }
@@ -384,7 +386,9 @@ async fn test_registry_http_mock_slow_response() {
                 break;
             }
         }
-        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        for _ in 0..10 {
+            tokio::task::yield_now().await;
+        }
         let response = format!(
             "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
             json_body.len(),

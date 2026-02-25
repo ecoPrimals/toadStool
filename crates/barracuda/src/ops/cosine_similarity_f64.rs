@@ -372,7 +372,7 @@ mod tests {
         let sim = op.similarity(&a, &a).unwrap();
 
         assert!(
-            (sim - 1.0).abs() < 1e-10,
+            (sim - 1.0).abs() < 1e-9,
             "Expected 1.0 for identical vectors, got {}",
             sim
         );

@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! # `ToadStool` Protocol Integration Layer
 //!
 //! This module provides integration with various ecosystem protocols and services,

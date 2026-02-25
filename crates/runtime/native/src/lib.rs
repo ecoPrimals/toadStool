@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 use bytes::Bytes;
 use std::collections::HashMap;
 use std::future::Future;

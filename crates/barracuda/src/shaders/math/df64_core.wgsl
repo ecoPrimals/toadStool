@@ -10,6 +10,12 @@
 //   df64: 48-bit mantissa, 14 decimal digits  ← this library
 //   f64:  53-bit mantissa, 16 decimal digits
 //
+// FMA optimization (Feb 2026): Uses fma() for error-free products instead
+// of Dekker splitting. On Ampere/Ada/RDNA2+, fma() is free-ish (same
+// throughput as mul). This eliminates the split() function entirely and
+// reduces two_prod from 17 ops to 2 ops. Critical for Krylov solver
+// convergence where DF64 mul is the hot path.
+//
 // Usage: prepend to any shader needing high-throughput approximate f64.
 // Use native f64 for precision-critical accumulations and convergence tests.
 //
@@ -50,20 +56,14 @@ fn two_sum(a: f32, b: f32) -> Df64 {
     return Df64(s, e);
 }
 
-// Dekker split: a = ah + al, |ah| has at most 12 significant bits
-fn split(a: f32) -> vec2<f32> {
-    let c = 4097.0 * a; // 2^12 + 1
-    let ah = c - (c - a);
-    let al = a - ah;
-    return vec2<f32>(ah, al);
-}
-
-// Two-product: exact p + e = a * b (using Dekker splitting)
+// Two-product: exact p + e = a * b
+// Uses FMA for the error term: e = fma(a, b, -p) gives the exact
+// rounding error of the product in a single instruction. This replaces
+// the 17-op Dekker splitting approach and is both faster and more
+// numerically stable on all modern GPUs (Ampere, Ada, RDNA2+, Volta).
 fn two_prod(a: f32, b: f32) -> Df64 {
     let p = a * b;
-    let sa = split(a);
-    let sb = split(b);
-    let e = ((sa.x * sb.x - p) + sa.x * sb.y + sa.y * sb.x) + sa.y * sb.y;
+    let e = fma(a, b, -p);
     return Df64(p, e);
 }
 
@@ -82,7 +82,7 @@ fn df64_sub(a: Df64, b: Df64) -> Df64 {
 
 fn df64_mul(a: Df64, b: Df64) -> Df64 {
     let p = two_prod(a.hi, b.hi);
-    let lo = p.lo + (a.hi * b.lo + a.lo * b.hi);
+    let lo = p.lo + fma(a.hi, b.lo, a.lo * b.hi);
     let r = two_sum(p.hi, lo);
     return r;
 }

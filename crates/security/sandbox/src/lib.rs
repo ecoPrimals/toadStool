@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 //! Cross-Platform Security Sandboxing for ToadStool
 //!
 //! This crate provides comprehensive security sandboxing capabilities including:

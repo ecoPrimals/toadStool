@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 24, 2026
+**Last Updated**: February 25, 2026 -- Session 60
 
 ---
 
@@ -10,9 +10,10 @@
 |--------------|----------|
 | Get started | [README.md](README.md) |
 | See current status | [STATUS.md](STATUS.md) |
-| Quick one-page summary | [QUICK_STATUS.md](QUICK_STATUS.md) |
 | Commands and API reference | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
-| Deep debt progress | [DEEP_DEBT_STATUS.md](DEEP_DEBT_STATUS.md) |
+| See active debt and evolution paths | [DEBT.md](DEBT.md) |
+| Roadmap and next steps | [NEXT_STEPS.md](NEXT_STEPS.md) |
+| Sovereign compute roadmap | [SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md) |
 | Unidirectional pipeline | [UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md) |
 | See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-36-total) |
 | Try GPU operations | [docs/guides/QUICK_START_GPU.md](docs/guides/QUICK_START_GPU.md) |
@@ -22,30 +23,27 @@
 | Deploy NPU drivers | [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md) |
 | Understand NPU driver design | [specs/NPU_DRIVER_ARCHITECTURE.md](specs/NPU_DRIVER_ARCHITECTURE.md) |
 | Multi-tenant security | [specs/MULTITENANT_COMPUTE_ARCHITECTURE.md](specs/MULTITENANT_COMPUTE_ARCHITECTURE.md) |
-| Phase 5 evolution (complete) | [specs/archive/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md](specs/archive/BARRACUDA_PHASE5_EVOLUTION_HOTSPRING.md) |
-| Phase 3 evolution (complete) | [specs/archive/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md](specs/archive/BARRACUDA_PHASE3_EVOLUTION_HOTSPRING.md) |
+| Hybrid FP64 core streaming | [specs/HYBRID_FP64_CORE_STREAMING.md](specs/HYBRID_FP64_CORE_STREAMING.md) |
 
 ---
 
-## Current State (Session 57 — February 24, 2026)
+## Current State (Session 60 — February 25, 2026)
 
 - **Shader-first architecture complete** — all math originates as WGSL f64 shaders
-- **650+ WGSL f64 shaders** — zero orphans, zero CPU-only math in production
-- **14,200+ tests** (4,224 across 5 core crates), 0 failing | all quality gates green
-- **All 46 cross-spring absorptions complete** (S51-S56) — hotSpring, neuralSpring, wetSpring, airSpring
-- **Zero clippy warnings** workspace-wide | zero doc warnings | zero fmt diffs
-- **Zero hardcoded localhost/ports** — bind `0.0.0.0`, port 0, `discover_self_ip_address()`
-- **Zero `Box<dyn Error>`** in core crates — all typed errors (thiserror)
-- **Zero production TODOs** — all evolved to formal `BLOCKED(reason)` markers
-- **Linalg GPU-dispatched** — solve, cholesky, QR, SVD, LU via WGSL shaders
+- **680+ WGSL f64 shaders** — zero orphans, 12 DF64 files, zero CPU-only math in production
+- **FMA-optimized DF64** — `two_prod` 17→2 ops via `fma(a, b, -p)`. Dekker splitting eliminated.
+- **DF64 transcendentals** — `exp_df64`, `log_df64`, `sqrt_df64`, `sin_df64`, `cos_df64`, `pow_df64`, `tanh_df64` at FP32 core speed
+- **4 force shaders fully evolved** — Born-Mayer, Morse, Yukawa, Lennard-Jones: all-DF64, zero f64-unit transcendental calls
+- **f64 polyfill library** — 28 functions, no vendor math library dependency (no libdevice/ocml)
+- **2,435 barracuda tests** + 21,599 workspace tests | all quality gates green
+- **Multi-GPU adapter selection** — deterministic pinning via `BARRACUDA_GPU_ADAPTER`
+- **All 46 cross-spring absorptions complete** (S51-S56)
+- **Zero clippy warnings** | zero fmt diffs | zero TODO/FIXME/HACK | all files under 1000 lines
+- **Linalg GPU-dispatched** — solve, cholesky (with SPD validation), QR, SVD, LU
 - **Lattice QCD** — 14 GPU shaders + CG solver + HMC trajectory orchestration
-- **MD fully GPU** — VV, RDF, MSD, PPPM (GPU FFT), all force fields
-- **RBF surrogate GPU pipeline** — cdist + solve, adaptive sampling
-- **95+ unsafe blocks** — all FFI/hardware, all SAFETY documented
-- **4,000+ four springs validation** — hotSpring + wetSpring + neuralSpring + airSpring
+- **MD fully GPU** — VV, RDF, MSD, PPPM (GPU FFT), all force fields + DF64 variants
+- **Cross-attention evolved** — separate `q_seq_len`/`kv_seq_len` across 6 Rust + 6 WGSL files
 - **36 JSON-RPC methods** across 8 domains
-- **println evolved to tracing** — structured logging throughout
-- **Coverage**: ~85% across 5 core crates (4,224 tests)
 
 ---
 
@@ -53,29 +51,31 @@
 
 **[README.md](README.md)** -- Project overview, architecture, quality gates, evolution roadmap.
 
-**[STATUS.md](STATUS.md)** -- Detailed technical status: quality gates, new features, code quality evolution, shader coverage, evolution gaps, deep debt.
+**[STATUS.md](STATUS.md)** -- Detailed technical status: quality gates, session-by-session evolution.
 
 **[DEBT.md](DEBT.md)** -- Active debt register, workarounds, and evolution paths.
 
-**[SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md)** -- Sovereign Compute Evolution tracker: Phases 0–3 complete, Phase 4 roadmap, latency models, Mesa NAK contribution plan.
+**[NEXT_STEPS.md](NEXT_STEPS.md)** -- Roadmap: active work, upcoming infrastructure, completed milestones.
+
+**[CHANGELOG.md](CHANGELOG.md)** -- Full session-by-session evolution history.
 
 ---
 
 ## Architecture and Specs
 
-**[specs/](specs/)** -- Technical specifications for compute, crypto, display, fractal composition, and more.
+**[SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md)** -- Sovereign Compute Evolution: Phases 0–3 complete, Phase 4 roadmap, latency models, Mesa NAK contribution plan.
+
+**[UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md)** -- GPU-resident unidirectional pipeline architecture.
+
+**[specs/](specs/)** -- Technical specifications (FP64 evolution, hybrid core streaming, NPU, multi-tenant, cross-platform).
 
 **[docs/architecture/](docs/architecture/)** -- Design documents, ADRs, migration patterns.
-
-**[docs/architecture/adrs/](docs/architecture/adrs/)** -- Architecture Decision Records (WGPU, feature gates, NTT, capability discovery).
 
 ---
 
 ## Guides
 
 **[docs/guides/TESTING.md](docs/guides/TESTING.md)** -- Testing strategy: unit, integration, property-based, fault, chaos testing.
-
-**[crates/integration-tests/](crates/integration-tests/)** -- Workspace integration test crate. 13 active suites, 167 tests (chaos, error paths, security, fault, runtime execution, and more). Pending suites tracked in `tests/pending/README.md`.
 
 **[docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)** -- NPU driver deployment.
 
@@ -85,21 +85,15 @@
 
 ## Scientific Middleware
 
-**[docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md](docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md)** -- Comprehensive implementation guide: all 5 modules, functions, tests, algorithms, design principles.
+**[docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md](docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md)** -- Comprehensive implementation guide: all modules, functions, tests, algorithms, design principles.
 
 **[docs/PHASE1_COMPLETION_REPORT.md](docs/PHASE1_COMPLETION_REPORT.md)** -- Validation report: test results, metrics, deep debt compliance, architecture.
-
-**[docs/MIDDLEWARE_COMPLETION_SUMMARY.md](docs/MIDDLEWARE_COMPLETION_SUMMARY.md)** -- Technical summary: deliverables, design decisions, capabilities.
-
-**[DEEP_DEBT_STATUS.md](DEEP_DEBT_STATUS.md)** -- Deep debt compliance verification (modern Rust, zero unsafe, pure dependencies).
 
 ---
 
 ## Audits
 
 **[docs/audits/](docs/audits/)** -- Dependency audits, unsafe code audits, deep debt audits.
-
-**[specs/BARRACUDA_SCIENCE_GAPS_AUDIT_FEB12_2026.md](specs/BARRACUDA_SCIENCE_GAPS_AUDIT_FEB12_2026.md)** -- hotSpring audit response (all items resolved).
 
 ---
 
@@ -113,8 +107,6 @@
 
 **DevOps Engineers**: [QUICK_REFERENCE.md](QUICK_REFERENCE.md) then [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)
 
-**Security Engineers**: [docs/guides/QUICK_START_ENCRYPTION.md](docs/guides/QUICK_START_ENCRYPTION.md) then [specs/MULTITENANT_COMPUTE_ARCHITECTURE.md](specs/MULTITENANT_COMPUTE_ARCHITECTURE.md)
-
 ---
 
 ## Directory Structure
@@ -122,18 +114,17 @@
 ```
 README.md                  -- Project overview, honest status
 STATUS.md                  -- Detailed technical status
+DEBT.md                    -- Active debt register, evolution paths
+NEXT_STEPS.md              -- Roadmap and upcoming work
+QUICK_REFERENCE.md         -- Commands, API, constants
+CHANGELOG.md               -- Full session history
+SOVEREIGN_COMPUTE.md       -- Sovereign compute roadmap
+UNIDIRECTIONAL_PIPELINE.md -- GPU-resident pipeline design
 DOCUMENTATION.md           -- This file (navigation hub)
-QUICK_STATUS.md            -- One-page summary
-QUICK_REFERENCE.md         -- Commands and API reference
 docs/
   guides/                  -- Deployment and usage guides
   architecture/            -- Design documents and ADRs
-  planning/                -- Roadmaps and evolution plans
   reference/               -- API reference, constants
   audits/                  -- Security and quality audits
 specs/                     -- Technical specifications
 ```
-
----
-
-**Last Updated**: February 24, 2026 — Session 57
