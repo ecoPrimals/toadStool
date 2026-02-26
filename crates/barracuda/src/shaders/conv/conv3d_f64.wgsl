@@ -1,13 +1,13 @@
-// Conv3D - 3D Convolution
+// Conv3D - 3D Convolution (f64 canonical)
 // Used for video analysis, medical imaging (CT/MRI), spatiotemporal feature extraction
 
 struct Conv3DParams {
     batch_size: u32,
     in_channels: u32,
     out_channels: u32,
-    input_d: u32,      // depth
-    input_h: u32,      // height
-    input_w: u32,      // width
+    input_d: u32,
+    input_h: u32,
+    input_w: u32,
     output_d: u32,
     output_h: u32,
     output_w: u32,
@@ -23,13 +23,13 @@ struct Conv3DParams {
     dilation_d: u32,
     dilation_h: u32,
     dilation_w: u32,
-    _pad: u32,         // Padding to multiple of 16 (88 bytes total)
+    _pad: u32,
 }
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read> weights: array<f32>;
-@group(0) @binding(2) var<storage, read> bias: array<f32>;
-@group(0) @binding(3) var<storage, read_write> output: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read> weights: array<f64>;
+@group(0) @binding(2) var<storage, read> bias: array<f64>;
+@group(0) @binding(3) var<storage, read_write> output: array<f64>;
 @group(0) @binding(4) var<uniform> params: Conv3DParams;
 
 @compute @workgroup_size(4, 4, 4)
@@ -38,40 +38,32 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let out_h = global_id.y;
     let out_w = global_id.x;
     
-    // Check bounds
     if (out_d >= params.output_d || out_h >= params.output_h || out_w >= params.output_w) {
         return;
     }
     
-    // For each batch and output channel
     for (var b = 0u; b < params.batch_size; b = b + 1u) {
         for (var out_c = 0u; out_c < params.out_channels; out_c = out_c + 1u) {
-            var sum = 0.0;
+            var sum: f64 = 0.0;
             
-            // For each input channel
             for (var in_c = 0u; in_c < params.in_channels; in_c = in_c + 1u) {
-                // For each kernel position
                 for (var kd = 0u; kd < params.kernel_d; kd = kd + 1u) {
                     for (var kh = 0u; kh < params.kernel_h; kh = kh + 1u) {
                         for (var kw = 0u; kw < params.kernel_w; kw = kw + 1u) {
-                            // Calculate input position with stride, padding, dilation
                             let in_d = i32(out_d * params.stride_d) + i32(kd * params.dilation_d) - i32(params.padding_d);
                             let in_h = i32(out_h * params.stride_h) + i32(kh * params.dilation_h) - i32(params.padding_h);
                             let in_w = i32(out_w * params.stride_w) + i32(kw * params.dilation_w) - i32(params.padding_w);
                             
-                            // Check if input position is valid
                             if (in_d >= 0 && in_d < i32(params.input_d) &&
                                 in_h >= 0 && in_h < i32(params.input_h) &&
                                 in_w >= 0 && in_w < i32(params.input_w)) {
                                 
-                                // Calculate input index: [batch, channel, depth, height, width]
                                 let input_idx = b * params.in_channels * params.input_d * params.input_h * params.input_w +
                                               in_c * params.input_d * params.input_h * params.input_w +
                                               u32(in_d) * params.input_h * params.input_w +
                                               u32(in_h) * params.input_w +
                                               u32(in_w);
                                 
-                                // Calculate weight index: [out_channels, in_channels, kd, kh, kw]
                                 let weight_idx = out_c * params.in_channels * params.kernel_d * params.kernel_h * params.kernel_w +
                                                in_c * params.kernel_d * params.kernel_h * params.kernel_w +
                                                kd * params.kernel_h * params.kernel_w +
@@ -85,10 +77,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 }
             }
             
-            // Add bias
             sum += bias[out_c];
             
-            // Write output: [batch, channel, depth, height, width]
             let output_idx = b * params.out_channels * params.output_d * params.output_h * params.output_w +
                            out_c * params.output_d * params.output_h * params.output_w +
                            out_d * params.output_h * params.output_w +

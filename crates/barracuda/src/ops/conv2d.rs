@@ -1,5 +1,8 @@
 //! Conv2D operation - 2D convolution
 //! Pure WGSL implementation
+//! Shader: f64 canonical (downcast to f32 at compile)
+
+const SHADER_F64: &str = include_str!("../shaders/conv/conv2d_f64.wgsl");
 
 use crate::error::Result;
 use crate::tensor::Tensor;
@@ -24,7 +27,9 @@ impl Conv2D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/conv/conv2d.wgsl")
+        static SHADER: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+        SHADER.as_str()
     }
 
     pub fn execute(self) -> Result<Tensor> {

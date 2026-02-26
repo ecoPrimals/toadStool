@@ -1,7 +1,4 @@
-// gated_conv2d.wgsl - Gated Convolution 2D
-//
-// Convolution with multiplicative gating mechanism
-// Used in PixelCNN, WaveNet, and generative models
+// gated_conv2d.wgsl - Gated Convolution 2D (f64 canonical)
 //
 // Output = tanh(W_f * x) ⊙ sigmoid(W_g * x)
 
@@ -19,12 +16,12 @@ struct Params {
     _padding: vec2<u32>,
 }
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;           // [B, C_in, H, W]
-@group(0) @binding(1) var<storage, read> weight_feature: array<f32>;  // [C_out, C_in, K, K]
-@group(0) @binding(2) var<storage, read> weight_gate: array<f32>;     // [C_out, C_in, K, K]
-@group(0) @binding(3) var<storage, read> bias_feature: array<f32>;    // [C_out]
-@group(0) @binding(4) var<storage, read> bias_gate: array<f32>;       // [C_out]
-@group(0) @binding(5) var<storage, read_write> output: array<f32>;    // [B, C_out, H_out, W_out]
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read> weight_feature: array<f64>;
+@group(0) @binding(2) var<storage, read> weight_gate: array<f64>;
+@group(0) @binding(3) var<storage, read> bias_feature: array<f64>;
+@group(0) @binding(4) var<storage, read> bias_gate: array<f64>;
+@group(0) @binding(5) var<storage, read_write> output: array<f64>;
 @group(0) @binding(6) var<uniform> params: Params;
 
 @compute @workgroup_size(8, 8, 1)
@@ -38,10 +35,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    var feature_sum: f32 = 0.0;
-    var gate_sum: f32 = 0.0;
+    var feature_sum: f64 = 0.0;
+    var gate_sum: f64 = 0.0;
     
-    // Compute both feature and gate convolutions
     for (var c_in: u32 = 0u; c_in < params.in_channels; c_in = c_in + 1u) {
         for (var kh: u32 = 0u; kh < params.kernel_size; kh = kh + 1u) {
             for (var kw: u32 = 0u; kw < params.kernel_size; kw = kw + 1u) {
@@ -72,13 +68,12 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         }
     }
     
-    // Add biases
     feature_sum = feature_sum + bias_feature[c_out];
     gate_sum = gate_sum + bias_gate[c_out];
     
     // Apply gating: tanh(feature) ⊙ sigmoid(gate)
-    let feature = tanh(feature_sum);
-    let gate = 1.0 / (1.0 + exp(-gate_sum)); // sigmoid
+    let feature = tanh_f64(feature_sum);
+    let gate = 1.0 / (1.0 + exp_f64(-gate_sum)); // sigmoid
     
     let out_idx = b * params.out_channels * params.out_height * params.out_width +
                   c_out * params.out_height * params.out_width +

@@ -2,6 +2,9 @@
 //!
 //! **Pure WGSL**: Single implementation via WebGPU shader
 //! Rotates images by random angles
+//! Shader: f64 canonical (downcast to f32 at compile)
+
+const SHADER_F64: &str = include_str!("../shaders/augmentation/random_rotation_f64.wgsl");
 
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
@@ -52,9 +55,11 @@ impl RandomRotation {
         })
     }
 
-    /// WGSL shader source (embedded at compile time)
+    /// WGSL shader source (f64 canonical, downcast to f32 at compile)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/augmentation/random_rotation.wgsl")
+        static SHADER: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+        SHADER.as_str()
     }
 
     /// Execute RandomRotation on tensor

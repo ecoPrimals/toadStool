@@ -10,6 +10,10 @@
 //! Two-pass operation:
 //! 1. Compute total norm (parallel reduction)
 //! 2. Clip gradients based on computed norm
+//!
+//! Shader: f64 canonical (downcast to f32 at compile)
+
+const SHADER_F64: &str = include_str!("../shaders/gradient/clip_grad_norm_f64.wgsl");
 
 use crate::device::DeviceCapabilities;
 use crate::error::Result;
@@ -36,9 +40,11 @@ impl ClipGradNorm {
         })
     }
 
-    /// Get the WGSL shader source
+    /// Get the WGSL shader source (f64 canonical, downcast to f32 at compile)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/gradient/clip_grad_norm.wgsl")
+        static SHADER: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+        SHADER.as_str()
     }
 
     /// Execute the clip gradient by norm operation (2-pass)

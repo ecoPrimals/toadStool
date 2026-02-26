@@ -1,4 +1,4 @@
-// Conv2D - 2D convolution
+// Conv2D - 2D convolution (f64 canonical)
 // Simplified version: single channel, no padding, stride 1
 
 struct Conv2DParams {
@@ -8,9 +8,9 @@ struct Conv2DParams {
     kernel_height: u32,
 }
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read> kernel: array<f32>;
-@group(0) @binding(2) var<storage, read_write> output: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read> kernel: array<f64>;
+@group(0) @binding(2) var<storage, read_write> output: array<f64>;
 @group(0) @binding(3) var<uniform> params: Conv2DParams;
 
 @compute @workgroup_size(16, 16)
@@ -25,9 +25,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    var sum = 0.0;
+    var sum: f64 = 0.0;
     
-    // Convolve kernel over input
     for (var ky = 0u; ky < params.kernel_height; ky = ky + 1u) {
         for (var kx = 0u; kx < params.kernel_width; kx = kx + 1u) {
             let in_x = out_x + kx;

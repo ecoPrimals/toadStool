@@ -6,6 +6,10 @@
 //!
 //! Used in: WaveNet, temporal CNNs, sequence models, audio processing
 //! Benefits: Captures temporal/sequential patterns efficiently
+//!
+//! Shader: f64 canonical (downcast to f32 at compile)
+
+const SHADER_F64: &str = include_str!("../shaders/conv/conv1d_f64.wgsl");
 
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
@@ -55,7 +59,9 @@ impl Conv1D {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/conv/conv1d.wgsl")
+        static SHADER: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+        SHADER.as_str()
     }
 
     pub fn execute(self) -> Result<Tensor> {

@@ -1,9 +1,4 @@
-// separable_conv2d.wgsl - Depthwise Separable Convolution 2D
-//
-// Efficient convolution: depthwise followed by pointwise (1x1)
-// Used in MobileNet, Xception, EfficientNet
-//
-// Reduces parameters from C_in*C_out*K*K to C_in*K*K + C_in*C_out
+// separable_conv2d.wgsl - Depthwise Separable Convolution 2D (f64 canonical)
 
 struct Params {
     batch_size: u32,
@@ -16,13 +11,13 @@ struct Params {
     kernel_size: u32,
     stride: u32,
     padding: u32,
-    mode: u32, // 0 = depthwise, 1 = pointwise
+    mode: u32,
 }
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read> weight: array<f32>;
-@group(0) @binding(2) var<storage, read> bias: array<f32>;
-@group(0) @binding(3) var<storage, read_write> output: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read> weight: array<f64>;
+@group(0) @binding(2) var<storage, read> bias: array<f64>;
+@group(0) @binding(3) var<storage, read_write> output: array<f64>;
 @group(0) @binding(4) var<uniform> params: Params;
 
 @compute @workgroup_size(16, 16)
@@ -36,10 +31,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    var sum: f32 = 0.0;
+    var sum: f64 = 0.0;
     
     if (params.mode == 0u) {
-        // Depthwise: each input channel convolved independently
         if (c >= params.in_channels) {
             return;
         }
@@ -72,7 +66,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         sum = sum + bias[c];
         
     } else {
-        // Pointwise: 1x1 convolution across channels
         if (c >= params.out_channels) {
             return;
         }

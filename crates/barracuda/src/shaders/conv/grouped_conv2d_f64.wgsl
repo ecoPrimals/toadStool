@@ -1,12 +1,4 @@
-// Grouped Conv2D - Convolution with channel groups
-// Divides input/output channels into groups, reducing parameters
-// Used in ResNeXt, ShuffleNet, MobileNet architectures
-//
-// Algorithm:
-// For each group g:
-//   - Input channels: [g * in_per_group, (g+1) * in_per_group)
-//   - Output channels: [g * out_per_group, (g+1) * out_per_group)
-//   - Perform standard 2D convolution within group
+// Grouped Conv2D - Convolution with channel groups (f64 canonical)
 
 struct Params {
     batch_size: u32,
@@ -28,10 +20,10 @@ struct Params {
 }
 
 @group(0) @binding(0) var<uniform> params: Params;
-@group(0) @binding(1) var<storage, read> input: array<f32>;    // [B, C_in, H, W]
-@group(0) @binding(2) var<storage, read> kernel: array<f32>;   // [out_per_group, in_per_group, K, K] per group
-@group(0) @binding(3) var<storage, read> bias: array<f32>;     // [out_channels]
-@group(0) @binding(4) var<storage, read_write> output: array<f32>; // [B, C_out, H_out, W_out]
+@group(0) @binding(1) var<storage, read> input: array<f64>;
+@group(0) @binding(2) var<storage, read> kernel: array<f64>;
+@group(0) @binding(3) var<storage, read> bias: array<f64>;
+@group(0) @binding(4) var<storage, read_write> output: array<f64>;
 
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -46,25 +38,19 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let oh = out_idx / params.out_width;
     let ow = out_idx % params.out_width;
     
-    // Determine which group this output channel belongs to
     let g = oc / params.out_per_group;
     let oc_local = oc % params.out_per_group;
     
-    // Start with bias
-    var sum = bias[oc];
+    var sum: f64 = bias[oc];
     
-    // Convolve over input channels in this group
-    for (var ic_local = 0u; ic_local < params.in_per_group; ic_local++) {
+    for (var ic_local = 0u; ic_local < params.in_per_group; ic_local = ic_local + 1u) {
         let ic = g * params.in_per_group + ic_local;
         
-        // Convolve over kernel
-        for (var kh = 0u; kh < params.kernel_size; kh++) {
-            for (var kw = 0u; kw < params.kernel_size; kw++) {
-                // Compute input position
+        for (var kh = 0u; kh < params.kernel_size; kh = kh + 1u) {
+            for (var kw = 0u; kw < params.kernel_size; kw = kw + 1u) {
                 let ih_raw = oh * params.stride + kh;
                 let iw_raw = ow * params.stride + kw;
                 
-                // Apply padding
                 if (ih_raw >= params.padding && ih_raw < params.in_height + params.padding &&
                     iw_raw >= params.padding && iw_raw < params.in_width + params.padding) {
                     

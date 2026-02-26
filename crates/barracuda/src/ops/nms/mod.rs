@@ -68,9 +68,11 @@ impl NMS {
         self.iou_threshold
     }
 
-    /// WGSL shader source (embedded at compile time)
+    /// WGSL shader source (f64 canonical, downcast to f32 at compile)
     pub(super) fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/detection/nms.wgsl")
+        static SHADER: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../../shaders/detection/nms_f64.wgsl")));
+        SHADER.as_str()
     }
 }
 

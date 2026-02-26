@@ -1,4 +1,4 @@
-// RandomPerspective - Random perspective transformation
+// RandomPerspective - Random perspective transformation (f64 canonical)
 //
 // Applies random perspective distortion
 
@@ -6,14 +6,14 @@ struct Params {
     channels: u32,
     height: u32,
     width: u32,
-    dst_corner0: vec2<f32>,
-    dst_corner1: vec2<f32>,
-    dst_corner2: vec2<f32>,
-    dst_corner3: vec2<f32>,
+    dst_corner0: vec2<f64>,
+    dst_corner1: vec2<f64>,
+    dst_corner2: vec2<f64>,
+    dst_corner3: vec2<f64>,
 }
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
 @group(0) @binding(2) var<uniform> params: Params;
 
 @compute @workgroup_size(16, 16)
@@ -25,8 +25,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    let u = f32(x) / f32(params.width);
-    let v = f32(y) / f32(params.height);
+    let u = f64(x) / f64(params.width);
+    let v = f64(y) / f64(params.height);
     
     // Bilinear interpolation of perspective coordinates
     let top_x = params.dst_corner0.x * (1.0 - u) + params.dst_corner1.x * u;
@@ -38,12 +38,12 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let src_y = top_y * (1.0 - v) + bottom_y * v;
     
     // Sample from source with bilinear interpolation
-    if (src_x >= 0.0 && src_x < f32(params.width) - 1.0 &&
-        src_y >= 0.0 && src_y < f32(params.height) - 1.0) {
+    if (src_x >= 0.0 && src_x < f64(params.width) - 1.0 &&
+        src_y >= 0.0 && src_y < f64(params.height) - 1.0) {
         let x0 = u32(src_x);
         let y0 = u32(src_y);
-        let dx = src_x - f32(x0);
-        let dy = src_y - f32(y0);
+        let dx = src_x - f64(x0);
+        let dy = src_y - f64(y0);
         
         for (var c = 0u; c < params.channels; c = c + 1u) {
             let idx_base = c * params.height * params.width;

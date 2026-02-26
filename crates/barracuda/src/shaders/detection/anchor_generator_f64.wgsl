@@ -1,6 +1,4 @@
-// Anchor Generator - Generate anchor boxes
-//
-// Creates anchor boxes for object detection
+// Anchor Generator - Generate anchor boxes (f64 canonical)
 
 struct Params {
     feature_h: u32,
@@ -13,10 +11,10 @@ struct Params {
     _pad2: u32,
 }
 
-@group(0) @binding(0) var<storage, read_write> anchors: array<f32>;
+@group(0) @binding(0) var<storage, read_write> anchors: array<f64>;
 @group(0) @binding(1) var<uniform> params: Params;
-@group(0) @binding(2) var<storage, read> sizes: array<f32>;
-@group(0) @binding(3) var<storage, read> aspect_ratios: array<f32>;
+@group(0) @binding(2) var<storage, read> sizes: array<f64>;
+@group(0) @binding(3) var<storage, read> aspect_ratios: array<f64>;
 
 @compute @workgroup_size(16, 16)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -27,8 +25,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    let cx = f32(w * params.stride) + f32(params.stride) * 0.5;
-    let cy = f32(h * params.stride) + f32(params.stride) * 0.5;
+    let cx = f64(w * params.stride) + f64(params.stride) * 0.5;
+    let cy = f64(h * params.stride) + f64(params.stride) * 0.5;
     
     var anchor_idx = (h * params.feature_w + w) * params.num_sizes * params.num_ratios;
     
@@ -36,8 +34,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let size = sizes[s];
         for (var r = 0u; r < params.num_ratios; r = r + 1u) {
             let ratio = aspect_ratios[r];
-            let anchor_w = size * sqrt(ratio);
-            let anchor_h = size / sqrt(ratio);
+            let anchor_w = size * sqrt_f64(ratio);
+            let anchor_h = size / sqrt_f64(ratio);
             
             anchors[anchor_idx * 4u] = cx - anchor_w * 0.5;
             anchors[anchor_idx * 4u + 1u] = cy - anchor_h * 0.5;

@@ -1,21 +1,17 @@
-// Soft NMS - Soft Non-Maximum Suppression
-//
-// Reduces scores of overlapping boxes instead of removing them
-// Note: This shader computes IoU and applies score decay
-// Full soft NMS requires iterative CPU pass for sorting
+// Soft NMS - Soft Non-Maximum Suppression (f64 canonical)
 
 struct Params {
     num_boxes: u32,
-    iou_threshold: f32,
-    sigma: f32,
+    iou_threshold: f64,
+    sigma: f64,
 }
 
-@group(0) @binding(0) var<storage, read> boxes: array<f32>; // [N, 4] (x1, y1, x2, y2)
-@group(0) @binding(1) var<storage, read_write> scores: array<f32>; // [N]
-@group(0) @binding(2) var<storage, read_write> iou_matrix: array<f32>; // [N, N] for IoU computation
+@group(0) @binding(0) var<storage, read> boxes: array<f64>;
+@group(0) @binding(1) var<storage, read_write> scores: array<f64>;
+@group(0) @binding(2) var<storage, read_write> iou_matrix: array<f64>;
 @group(0) @binding(3) var<uniform> params: Params;
 
-fn compute_iou(box1_idx: u32, box2_idx: u32) -> f32 {
+fn compute_iou(box1_idx: u32, box2_idx: u32) -> f64 {
     let idx1 = box1_idx * 4u;
     let idx2 = box2_idx * 4u;
     
@@ -53,15 +49,13 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    // Compute IoU with all other boxes
     for (var j = 0u; j < params.num_boxes; j = j + 1u) {
         if (i != j) {
             let iou = compute_iou(i, j);
             iou_matrix[i * params.num_boxes + j] = iou;
             
-            // Apply Gaussian decay if IoU exceeds threshold
             if (iou > params.iou_threshold) {
-                let decay = exp(-(iou * iou) / params.sigma);
+                let decay = exp_f64(-(iou * iou) / params.sigma);
                 scores[j] = scores[j] * decay;
             }
         } else {

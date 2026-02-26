@@ -1,14 +1,12 @@
-// BBox Transform - Transform bounding boxes
-//
-// Applies deltas to anchor boxes (object detection)
+// BBox Transform - Transform bounding boxes (f64 canonical)
 
 struct Params {
     num_boxes: u32,
 }
 
-@group(0) @binding(0) var<storage, read> anchors: array<f32>;
-@group(0) @binding(1) var<storage, read> deltas: array<f32>;
-@group(0) @binding(2) var<storage, read_write> transformed: array<f32>;
+@group(0) @binding(0) var<storage, read> anchors: array<f64>;
+@group(0) @binding(1) var<storage, read> deltas: array<f64>;
+@group(0) @binding(2) var<storage, read_write> transformed: array<f64>;
 @group(0) @binding(3) var<uniform> params: Params;
 
 @compute @workgroup_size(256)
@@ -28,8 +26,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     
     let pred_cx = deltas[idx] * anchor_w + anchor_cx;
     let pred_cy = deltas[idx + 1u] * anchor_h + anchor_cy;
-    let pred_w = exp(deltas[idx + 2u]) * anchor_w;
-    let pred_h = exp(deltas[idx + 3u]) * anchor_h;
+    let pred_w = exp_f64(deltas[idx + 2u]) * anchor_w;
+    let pred_h = exp_f64(deltas[idx + 3u]) * anchor_h;
     
     transformed[idx] = pred_cx - pred_w * 0.5;
     transformed[idx + 1u] = pred_cy - pred_h * 0.5;
