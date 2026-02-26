@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA
 
-**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 65 -- February 25, 2026
+**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 66 -- February 26, 2026
 
 ---
 
@@ -34,7 +34,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace --lib` | 2,490 barracuda + 21,599 workspace tests |
+| `cargo test --workspace --lib` | 2,526 barracuda + 21,599 workspace tests |
 | Four springs validation | 4,000+ acceptance checks |
 | `unsafe` blocks | 2 in barracuda (SPIRV passthrough + pipeline cache), 95+ workspace-wide, all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -263,7 +263,7 @@ toadStool/
 | Clippy warnings | 0 |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Unit tests (barracuda) | 2,490 |
+| Unit tests (barracuda) | 2,526 |
 | Unit tests (full workspace) | 21,599+ |
 | `unsafe` blocks | 2 in barracuda (SPIRV passthrough + pipeline cache), 95+ workspace-wide, all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -283,6 +283,15 @@ toadStool/
 - **Conv2D/Pool stride/padding/channels** -- WGSL exists, single-channel wired; full parametric support pending (D-S46-001)
 - **W-001/W-003** -- Mesa NAK upstream patches pending Titan V validation
 - **NVK/Titan V readiness** -- Ensure f64 workarounds complete for NVK/Volta including NAK-specific paths
+
+### Completed (Session 66: Absorption + Deep Debt + Dependency Evolution, Feb 26, 2026)
+- **Cross-spring absorption**: 4 new modules from airSpring/groundSpring (regression, hydrology, moving_window_f64, RAWR). Richards PDE evolved (8 named soil constants, buffer preallocation).
+- **Smart refactoring**: 15 files refactored across 3 waves (20-44% reductions each). `precision/mod.rs` 733→452, `workload.rs` 812→452, `cholesky.rs` 815→557, etc.
+- **Dependencies eliminated**: `anyhow` → typed `BarracudaError`, `log` → unified `tracing` (68 calls migrated). `async_trait` justified (dyn-required).
+- **Dead code**: 13→3 `#[allow(dead_code)]` (10 resolved via accessors/wiring). Remaining 3 are feature-gated/Phase 5+.
+- **Hardcoding**: GPU executor scoring → 15 named constants, timeseries ESN → 6 named constants.
+- **Production safety**: `expect()` audit (29 all Mutex/RwLock poison guards), 2 evolved to idiomatic patterns.
+- **+36 new tests**, all passing. Zero `todo!()`, zero `unimplemented!()`, zero production `unwrap()`.
 
 ### Completed (Sessions 64-65: Cross-Spring Absorption + Smart Refactoring, Feb 25, 2026)
 - **Cross-spring absorption**: 8 lattice QCD shaders (SU(3), PRNG, DF64 gauge force/kinetic, BLAS-like), `stats::metrics` (RMSE, NSE, R², etc.), `stats::diversity` (Shannon, Bray-Curtis, rarefaction), `chrono` dependency eliminated.
@@ -345,4 +354,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 25, 2026 -- Session 65: Smart refactoring + deep debt. 2,490 barracuda tests, 694 WGSL shaders (14 DF64 files), 0 clippy, 0 fmt diffs, 0 production TODOs, 0 hardcoded localhost/ports, 13 `#[allow(dead_code)]` (all Phase 5+ reserved), 2 unsafe blocks (SPIRV passthrough + pipeline cache).
+**Last Updated**: February 26, 2026 -- Session 66: Cross-spring absorption + deep debt + dependency evolution. 2,526 barracuda tests, 694 WGSL shaders (14 DF64 files), 0 clippy, 0 fmt diffs, 0 production TODOs, 0 hardcoded localhost/ports, 3 `#[allow(dead_code)]` (feature-gated/Phase 5+), `anyhow` + `log` eliminated (typed errors + unified tracing), 2 unsafe blocks (SPIRV passthrough + pipeline cache).

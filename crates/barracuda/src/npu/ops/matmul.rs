@@ -84,7 +84,7 @@ pub fn npu_matmul(
     let sparsity_a = codec.measure_sparsity(a);
     let sparsity_b = codec.measure_sparsity(b);
 
-    log::debug!(
+    tracing::debug!(
         "NPU matmul (WGSL): {}×{}×{}, sparsity A={:.1}%, B={:.1}%",
         m,
         k,
@@ -127,7 +127,7 @@ pub fn npu_matmul(
         let events_a = codec.encode(a);
         let events_b = codec.encode(b);
 
-        log::debug!(
+        tracing::debug!(
             "NPU event encoding: {} + {} events ({}% reduction)",
             events_a.len(),
             events_b.len(),
@@ -139,7 +139,7 @@ pub fn npu_matmul(
         let _ = npu; // Suppress unused warning for now
     }
 
-    log::debug!("✅ NPU matmul (WGSL) complete: {}×{} result", m, n);
+    tracing::debug!("✅ NPU matmul (WGSL) complete: {}×{} result", m, n);
 
     Ok(result)
 }
@@ -162,7 +162,7 @@ pub fn should_use_npu_matmul(a: &[f32], b: &[f32], priority: crate::workload::Pr
 
     match priority {
         Priority::Energy => true,                   // NPU always for energy
-        Priority::Latency if a.len() < 128 => true, // NPU good for small, real-time
+        Priority::Latency if a.len() < crate::npu_executor::npu_defaults::NPU_LATENCY_THRESHOLD => true,
         _ => avg_sparsity > 0.5,                    // Use NPU if sparse
     }
 }

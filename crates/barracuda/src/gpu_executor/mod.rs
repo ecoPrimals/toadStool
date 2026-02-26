@@ -14,6 +14,7 @@
 mod dispatch;
 mod storage;
 
+use async_trait::async_trait;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use crate::unified_hardware::{
@@ -21,7 +22,6 @@ use crate::unified_hardware::{
     ParallelismCapabilities, PerformanceCapabilities, PrecisionCapabilities, TensorStorage,
 };
 use crate::unified_math::{MathOp, TensorDescriptor};
-use async_trait::async_trait;
 use std::sync::Arc;
 
 pub(crate) use storage::GpuTensorStorage;
@@ -41,6 +41,30 @@ mod capability_defaults {
     pub const MEMORY_AVAILABLE_FRACTION: f64 = 0.8;
     pub const TYPICAL_BANDWIDTH_GB_S: u64 = 500;
     pub const BYTES_PER_GB: f64 = 1024.0 * 1024.0 * 1024.0;
+}
+
+mod scoring {
+    pub const TINY_THRESHOLD: usize = 100;
+    pub const SMALL_THRESHOLD: usize = 1_000;
+    pub const MEDIUM_THRESHOLD: usize = 10_000;
+    pub const LARGE_THRESHOLD: usize = 50_000;
+    pub const VERY_LARGE_THRESHOLD: usize = 100_000;
+
+    pub const SCORE_TINY: f64 = 0.1;
+    pub const SCORE_SMALL: f64 = 0.3;
+    pub const SCORE_GPU_DOMINANT: f64 = 0.98;
+    pub const SCORE_GPU_GOOD: f64 = 0.90;
+    pub const SCORE_GPU_CONV_LARGE: f64 = 0.95;
+    pub const SCORE_GPU_CONV_SMALL: f64 = 0.85;
+    pub const SCORE_GPU_ACTIVATION_LARGE: f64 = 0.92;
+    pub const SCORE_GPU_BINARY_LARGE: f64 = 0.90;
+    pub const SCORE_GPU_REDUCE_LARGE: f64 = 0.88;
+    pub const SCORE_GPU_SHAPE_LARGE: f64 = 0.85;
+    pub const SCORE_GPU_ACCEPTABLE: f64 = 0.70;
+    pub const SCORE_GPU_MARGINAL: f64 = 0.65;
+    pub const SCORE_GPU_REDUCE_SMALL: f64 = 0.60;
+    pub const SCORE_GPU_SHAPE_SMALL: f64 = 0.50;
+    pub const SCORE_GPU_DEFAULT: f64 = 0.80;
 }
 
 /// GPU executor wrapping WgpuDevice
@@ -192,82 +216,68 @@ impl ComputeExecutor for GpuExecutor {
     }
 
     fn score_operation(&self, op: &MathOp, inputs: &[TensorDescriptor]) -> f64 {
+        use scoring::*;
         use MathOp::*;
 
         let total_elements: usize = inputs.iter().map(|t| t.numel).sum();
 
-        // Very small operations → CPU better (avoid transfer overhead)
-        if total_elements < 100 {
-            return 0.1;
+        if total_elements < TINY_THRESHOLD {
+            return SCORE_TINY;
         }
-        if total_elements < 1_000 {
-            return 0.3;
+        if total_elements < SMALL_THRESHOLD {
+            return SCORE_SMALL;
         }
 
-        // Score based on operation type and size
         match op {
-            // Matrix operations → GPU excels (highly parallel)
             MatMul { .. } | BatchMatMul { .. } => {
-                if total_elements > 100_000 {
-                    0.98 // GPU dominates for large matrices
-                } else if total_elements > 10_000 {
-                    0.90 // GPU good for medium matrices
+                if total_elements > VERY_LARGE_THRESHOLD {
+                    SCORE_GPU_DOMINANT
+                } else if total_elements > MEDIUM_THRESHOLD {
+                    SCORE_GPU_GOOD
                 } else {
-                    0.70 // GPU acceptable for small matrices
+                    SCORE_GPU_ACCEPTABLE
                 }
             }
-
-            // Convolutions → GPU optimized (many WGSL shaders)
             Conv2D { .. } | MaxPool2D { .. } | AvgPool2D { .. } => {
-                if total_elements > 50_000 {
-                    0.95 // GPU excels at convolutions
+                if total_elements > LARGE_THRESHOLD {
+                    SCORE_GPU_CONV_LARGE
                 } else {
-                    0.85
+                    SCORE_GPU_CONV_SMALL
                 }
             }
-
-            // Element-wise operations → GPU good for large data
             ReLU | Sigmoid | Tanh | GELU | Softmax { .. } => {
-                if total_elements > 10_000 {
-                    0.92 // GPU good for large activations
+                if total_elements > MEDIUM_THRESHOLD {
+                    SCORE_GPU_ACTIVATION_LARGE
                 } else {
-                    0.70 // GPU acceptable for medium
+                    SCORE_GPU_ACCEPTABLE
                 }
             }
-
-            // Binary operations → GPU good for large data
             Add | Sub | Mul | Div | Pow | Max | Min => {
-                if total_elements > 10_000 {
-                    0.90
+                if total_elements > MEDIUM_THRESHOLD {
+                    SCORE_GPU_BINARY_LARGE
                 } else {
-                    0.65
+                    SCORE_GPU_MARGINAL
                 }
             }
-
-            // Reductions → GPU efficient (tree reduction in WGSL)
             ReduceSum { .. }
             | ReduceMean { .. }
             | ReduceMax { .. }
             | ReduceMin { .. }
             | ReduceProd { .. } => {
-                if total_elements > 10_000 {
-                    0.88
+                if total_elements > MEDIUM_THRESHOLD {
+                    SCORE_GPU_REDUCE_LARGE
                 } else {
-                    0.60
+                    SCORE_GPU_REDUCE_SMALL
                 }
             }
-
-            // Shape operations → depends on size
             Reshape { .. } | Transpose { .. } | Broadcast { .. } => {
-                if total_elements > 10_000 {
-                    0.85
+                if total_elements > MEDIUM_THRESHOLD {
+                    SCORE_GPU_SHAPE_LARGE
                 } else {
-                    0.50 // May not be worth transfer overhead
+                    SCORE_GPU_SHAPE_SMALL
                 }
             }
-
-            // Default: GPU is good for most parallel operations
-            _ => 0.80,
+            _ => SCORE_GPU_DEFAULT,
         }
     }
 

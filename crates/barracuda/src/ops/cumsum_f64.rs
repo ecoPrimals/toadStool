@@ -23,8 +23,8 @@
 //! ```
 
 use crate::device::WgpuDevice;
+use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
-use anyhow::{Context, Result};
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 
@@ -65,11 +65,12 @@ impl CumsumF64 {
 
         // Validate dimension
         if self.dim >= n_dims {
-            anyhow::bail!(
-                "Dimension {} out of bounds for tensor with {} dimensions",
-                self.dim,
-                n_dims
-            );
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "Dimension {} out of bounds for tensor with {} dimensions",
+                    self.dim, n_dims
+                ),
+            });
         }
 
         let size: usize = shape.iter().product();
@@ -242,14 +243,11 @@ impl CumsumF64 {
             return Ok(Vec::new());
         }
 
-        let tensor = Tensor::from_f64_data(data, vec![n], device.clone())
-            .context("Failed to create input tensor")?;
+        let tensor = Tensor::from_f64_data(data, vec![n], device.clone())?;
 
-        let result = Self::new(tensor, 0)
-            .execute()
-            .context("Failed to execute cumsum")?;
+        let result = Self::new(tensor, 0).execute()?;
 
-        Ok(result.to_f64_vec()?)
+        result.to_f64_vec()
     }
 }
 

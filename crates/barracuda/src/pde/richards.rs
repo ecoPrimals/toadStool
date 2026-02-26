@@ -21,6 +21,12 @@ use crate::error::{BarracudaError, Result};
 /// WGSL kernel for Van Genuchten soil hydraulic model (f64).
 pub const WGSL_VAN_GENUCHTEN_F64: &str = include_str!("../shaders/science/van_genuchten_f64.wgsl");
 
+/// Guard against division by zero in inter-node harmonic means.
+const HARMONIC_MEAN_GUARD: f64 = 1e-30;
+
+/// Minimum moisture capacity to prevent singular tridiagonal systems.
+const MIN_CAPACITY: f64 = 1e-10;
+
 /// Van Genuchten soil hydraulic parameters.
 #[derive(Debug, Clone, Copy)]
 pub struct SoilParams {
@@ -37,6 +43,39 @@ pub struct SoilParams {
 }
 
 impl SoilParams {
+    /// Sandy loam (Carsel & Parrish 1988, Table 3).
+    pub const SANDY_LOAM: Self = Self {
+        theta_s: 0.41, theta_r: 0.065, alpha: 0.075, n: 1.89, k_sat: 1.228e-3,
+    };
+    /// Silt loam (Carsel & Parrish 1988, Table 3).
+    pub const SILT_LOAM: Self = Self {
+        theta_s: 0.45, theta_r: 0.067, alpha: 0.020, n: 1.41, k_sat: 1.25e-4,
+    };
+    /// Clay loam (Carsel & Parrish 1988, Table 3).
+    pub const CLAY_LOAM: Self = Self {
+        theta_s: 0.41, theta_r: 0.095, alpha: 0.019, n: 1.31, k_sat: 7.22e-5,
+    };
+    /// Sand (Carsel & Parrish 1988, Table 3).
+    pub const SAND: Self = Self {
+        theta_s: 0.43, theta_r: 0.045, alpha: 0.145, n: 2.68, k_sat: 8.25e-3,
+    };
+    /// Clay (Carsel & Parrish 1988, Table 3).
+    pub const CLAY: Self = Self {
+        theta_s: 0.38, theta_r: 0.068, alpha: 0.008, n: 1.09, k_sat: 5.56e-5,
+    };
+    /// Loam (Carsel & Parrish 1988, Table 3).
+    pub const LOAM: Self = Self {
+        theta_s: 0.43, theta_r: 0.078, alpha: 0.036, n: 1.56, k_sat: 2.89e-4,
+    };
+    /// Silty clay loam (Carsel & Parrish 1988, Table 3).
+    pub const SILTY_CLAY_LOAM: Self = Self {
+        theta_s: 0.43, theta_r: 0.089, alpha: 0.010, n: 1.23, k_sat: 1.94e-5,
+    };
+    /// Loamy sand (Carsel & Parrish 1988, Table 3).
+    pub const LOAMY_SAND: Self = Self {
+        theta_s: 0.41, theta_r: 0.057, alpha: 0.124, n: 2.28, k_sat: 4.05e-3,
+    };
+
     /// Van Genuchten m parameter: m = 1 - 1/n
     fn m(&self) -> f64 {
         1.0 - 1.0 / self.n
@@ -166,57 +205,69 @@ pub fn solve_richards(
 
     let mut h = h0.to_vec();
     let mut total_picard = 0usize;
+    let dz2 = dz * dz;
+
+    // Preallocate Picard iteration buffers once (not per-step or per-iteration)
+    let mut h_old = vec![0.0; n];
+    let mut theta_old = vec![0.0; n];
+    let mut k_buf = vec![0.0; n];
+    let mut c_buf = vec![0.0; n];
+    let mut k_half = vec![0.0; n - 1];
+    let mut a_tri = vec![0.0; n];
+    let mut b_tri = vec![0.0; n];
+    let mut c_tri = vec![0.0; n];
+    let mut d_vec = vec![0.0; n];
 
     for _step in 0..n_steps {
-        let h_old = h.clone();
-        let theta_old: Vec<f64> = h_old.iter().map(|&hi| soil.theta(hi)).collect();
+        h_old.copy_from_slice(&h);
+        for (i, &hi) in h_old.iter().enumerate() {
+            theta_old[i] = soil.theta(hi);
+        }
 
         for _picard in 0..config.max_picard_iter {
             total_picard += 1;
 
-            // Evaluate K and C at current h
-            let k: Vec<f64> = h.iter().map(|&hi| soil.conductivity(hi)).collect();
-            let c: Vec<f64> = h.iter().map(|&hi| soil.capacity(hi)).collect();
-
-            // Inter-node conductivities (harmonic mean)
-            let mut k_half = vec![0.0; n - 1];
-            for i in 0..n - 1 {
-                k_half[i] = 2.0 * k[i] * k[i + 1] / (k[i] + k[i + 1] + 1e-30);
+            for (i, &hi) in h.iter().enumerate() {
+                k_buf[i] = soil.conductivity(hi);
+                c_buf[i] = soil.capacity(hi);
             }
 
-            // Assemble tridiagonal: a[i]*h[i-1] + b[i]*h[i] + c_tri[i]*h[i+1] = d[i]
-            let mut a_tri = vec![0.0; n];
-            let mut b_tri = vec![0.0; n];
-            let mut c_tri = vec![0.0; n];
-            let mut d_vec = vec![0.0; n];
+            for i in 0..n - 1 {
+                k_half[i] = 2.0 * k_buf[i] * k_buf[i + 1]
+                    / (k_buf[i] + k_buf[i + 1] + HARMONIC_MEAN_GUARD);
+            }
+
+            // Zero the tridiagonal vectors for this iteration
+            a_tri.fill(0.0);
+            b_tri.fill(0.0);
+            c_tri.fill(0.0);
+            d_vec.fill(0.0);
 
             for i in 1..n - 1 {
-                let ci_max = c[i].max(1e-10);
-                let coeff_l = k_half[i - 1] / (dz * dz);
-                let coeff_r = k_half[i] / (dz * dz);
+                let ci_max = c_buf[i].max(MIN_CAPACITY);
+                let coeff_l = k_half[i - 1] / dz2;
+                let coeff_r = k_half[i] / dz2;
 
                 a_tri[i] = -0.5 * dt * coeff_l;
                 c_tri[i] = -0.5 * dt * coeff_r;
                 b_tri[i] = ci_max + 0.5 * dt * (coeff_l + coeff_r);
 
-                // RHS: mass term + explicit half
                 d_vec[i] = ci_max * h_old[i] + 0.5 * dt * coeff_l * h_old[i - 1]
                     - 0.5 * dt * (coeff_l + coeff_r) * h_old[i]
                     + 0.5 * dt * coeff_r * h_old[i + 1]
-                    + dt * (k_half[i] - k_half[i - 1]) / dz; // gravity
+                    + dt * (k_half[i] - k_half[i - 1]) / dz;
 
-                d_vec[i] += ci_max * (theta_old[i] - soil.theta(h[i])) / ci_max.max(1e-20) * ci_max;
+                d_vec[i] += theta_old[i] - soil.theta(h[i]);
             }
 
-            // Boundary conditions
             match top_bc {
                 RichardsBc::PressureHead(h_top) => {
                     b_tri[0] = 1.0;
                     d_vec[0] = h_top;
                 }
                 RichardsBc::Flux(q_top) => {
-                    let coeff_r = k_half[0] / (dz * dz);
-                    let ci_max = c[0].max(1e-10);
+                    let coeff_r = k_half[0] / dz2;
+                    let ci_max = c_buf[0].max(MIN_CAPACITY);
                     b_tri[0] = ci_max + 0.5 * dt * coeff_r;
                     c_tri[0] = -0.5 * dt * coeff_r;
                     d_vec[0] = ci_max * h_old[0] - 0.5 * dt * coeff_r * h_old[0]
@@ -231,8 +282,8 @@ pub fn solve_richards(
                     d_vec[n - 1] = h_bot;
                 }
                 RichardsBc::Flux(q_bot) => {
-                    let coeff_l = k_half[n - 2] / (dz * dz);
-                    let ci_max = c[n - 1].max(1e-10);
+                    let coeff_l = k_half[n - 2] / dz2;
+                    let ci_max = c_buf[n - 1].max(MIN_CAPACITY);
                     a_tri[n - 1] = -0.5 * dt * coeff_l;
                     b_tri[n - 1] = ci_max + 0.5 * dt * coeff_l;
                     d_vec[n - 1] = ci_max * h_old[n - 1] + 0.5 * dt * coeff_l * h_old[n - 2]
@@ -241,10 +292,8 @@ pub fn solve_richards(
                 }
             }
 
-            // Thomas algorithm (tridiagonal solve)
             let h_new = thomas_solve(&a_tri, &b_tri, &c_tri, &d_vec);
 
-            // Check convergence
             let max_diff = h_new
                 .iter()
                 .zip(h.iter())
@@ -299,19 +348,18 @@ fn thomas_solve(a: &[f64], b: &[f64], c: &[f64], d: &[f64]) -> Vec<f64> {
 mod tests {
     use super::*;
 
-    fn sandy_loam() -> SoilParams {
-        SoilParams {
-            theta_s: 0.41,
-            theta_r: 0.065,
-            alpha: 0.075, // 1/cm
-            n: 1.89,
-            k_sat: 1.228e-3, // cm/s (~4.42 cm/hr)
-        }
+    #[test]
+    fn test_named_soil_constants() {
+        assert!(SoilParams::SAND.n > SoilParams::CLAY.n);
+        assert!(SoilParams::SAND.k_sat > SoilParams::CLAY.k_sat);
+        assert!(SoilParams::SANDY_LOAM.alpha > SoilParams::SILT_LOAM.alpha);
+        assert!(SoilParams::LOAMY_SAND.n > 2.0);
+        assert!(SoilParams::SILTY_CLAY_LOAM.n < 1.5);
     }
 
     #[test]
     fn test_van_genuchten_saturation() {
-        let soil = sandy_loam();
+        let soil = SoilParams::SANDY_LOAM;
         assert!((soil.effective_saturation(0.0) - 1.0).abs() < 1e-12);
         assert!((soil.effective_saturation(10.0) - 1.0).abs() < 1e-12);
         let se = soil.effective_saturation(-100.0);
@@ -320,7 +368,7 @@ mod tests {
 
     #[test]
     fn test_van_genuchten_conductivity() {
-        let soil = sandy_loam();
+        let soil = SoilParams::SANDY_LOAM;
         assert!((soil.conductivity(0.0) - soil.k_sat).abs() < 1e-12);
         let k_dry = soil.conductivity(-1000.0);
         assert!(k_dry < soil.k_sat * 0.01, "K(-1000cm) should be << K_sat");
@@ -328,7 +376,7 @@ mod tests {
 
     #[test]
     fn test_steady_state_uniform() {
-        let soil = sandy_loam();
+        let soil = SoilParams::SANDY_LOAM;
         let n = 20;
         let h0 = vec![-50.0; n]; // uniform initial condition
 
@@ -358,7 +406,7 @@ mod tests {
 
     #[test]
     fn test_infiltration_wets_top() {
-        let soil = sandy_loam();
+        let soil = SoilParams::SANDY_LOAM;
         let n = 30;
         let h0 = vec![-200.0; n]; // dry initial condition
 

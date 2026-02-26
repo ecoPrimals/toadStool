@@ -20,11 +20,7 @@ pub struct GriffinLim {
     magnitude: Tensor,
     n_frames: usize,
     n_freqs: usize,
-    /// Reserved for full iterative STFT/ISTFT reconstruction.
-    #[allow(dead_code)]
     n_fft: usize,
-    /// Reserved for full iterative STFT/ISTFT reconstruction.
-    #[allow(dead_code)]
     hop_length: usize,
     n_iter: usize,
 }
@@ -50,6 +46,25 @@ impl GriffinLim {
             });
         }
 
+        let expected_freqs = n_fft / 2 + 1;
+        if n_freqs != expected_freqs {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "n_freqs ({}) must equal n_fft/2 + 1 ({}) for STFT consistency",
+                    n_freqs, expected_freqs
+                ),
+            });
+        }
+
+        if hop_length == 0 || hop_length > n_fft {
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "hop_length ({}) must be in [1, n_fft={}]",
+                    hop_length, n_fft
+                ),
+            });
+        }
+
         Ok(Self {
             magnitude,
             n_frames,
@@ -58,6 +73,12 @@ impl GriffinLim {
             hop_length,
             n_iter,
         })
+    }
+
+    /// Expected output signal length: `n_fft + (n_frames - 1) * hop_length`.
+    #[must_use]
+    pub fn expected_signal_length(&self) -> usize {
+        self.n_fft + (self.n_frames - 1) * self.hop_length
     }
 
     /// Get the WGSL shader source

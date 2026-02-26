@@ -68,7 +68,7 @@ pub fn npu_layer_norm(input: &[f32], gamma: &[f32], beta: &[f32], eps: f32) -> R
         ));
     }
 
-    log::debug!("NPU LayerNorm (WGSL): {} features, eps={}", n, eps);
+    tracing::debug!("NPU LayerNorm (WGSL): {} features, eps={}", n, eps);
 
     use crate::device::test_pool::run_with_sync_device;
     use crate::tensor::Tensor;
@@ -86,7 +86,7 @@ pub fn npu_layer_norm(input: &[f32], gamma: &[f32], beta: &[f32], eps: f32) -> R
         let codec = EventCodec::default();
         let input_sparsity = codec.measure_sparsity(input);
         let output_sparsity = codec.measure_sparsity(&output);
-        log::debug!(
+        tracing::debug!(
             "NPU LayerNorm (WGSL) complete: {} features, sparsity {:.1}% → {:.1}%",
             n,
             input_sparsity * 100.0,
@@ -132,7 +132,7 @@ pub fn npu_rmsnorm(input: &[f32], gamma: &[f32], eps: f32) -> Result<Vec<f32>> {
         output.push(scaled);
     }
 
-    log::debug!("NPU RMSNorm: {} features", n);
+    tracing::debug!("NPU RMSNorm: {} features", n);
 
     Ok(output)
 }

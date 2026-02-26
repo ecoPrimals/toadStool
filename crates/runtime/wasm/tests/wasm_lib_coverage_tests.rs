@@ -220,7 +220,7 @@ mod component_config_tests {
 mod component_config_tests {
     #[test]
     fn test_component_config_default() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         // let config = ComponentModelConfig::default();
         // assert!(config.enabled);
         // assert!(config.max_instances > 0);
@@ -229,20 +229,20 @@ mod component_config_tests {
 
     #[test]
     fn test_component_config_custom() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         // let config = ComponentModelConfig { ... };
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_config_clone() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_config_debug() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 }
@@ -551,73 +551,73 @@ mod component_model_tests {
 mod component_model_tests {
     #[test]
     fn test_component_value_u32() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_value_string() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_value_bool() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_value_u64() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_value_f32() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_value_clone() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_state_initializing() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_state_ready() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_state_running() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_state_failed() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_state_terminating() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 
     #[test]
     fn test_component_state_clone() {
-        // TODO(component-model): Implement when feature is enabled
+        // BLOCKED(component-model): awaiting feature implementation
         eprintln!("skipped: component-model implementation pending");
     }
 }

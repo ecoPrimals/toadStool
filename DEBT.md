@@ -1,9 +1,68 @@
 # Active Technical Debt Register
 
-**Date**: February 25, 2026
+**Date**: February 26, 2026
 **Philosophy**: Workarounds are short-term solutions that increase debt.
 We aim to solve deep debt over iterations, evolving toward vendor-agnostic,
 capability-based solutions.
+
+## Session 66 Resolutions (Feb 26, 2026)
+
+### Cross-Spring Absorption (airSpring V009 + groundSpring V7)
+- **R-S66-001**: `stats::regression` module absorbed — `fit_linear`, `fit_quadratic`, `fit_exponential`, `fit_logarithmic`, `fit_all` with `FitResult::predict_one()`/`predict()` (12 tests)
+- **R-S66-002**: `stats::hydrology` module absorbed — `hargreaves_et0`, `hargreaves_et0_batch`, `crop_coefficient`, `soil_water_balance` with FAO-56 reference validation (13 tests)
+- **R-S66-003**: `stats::moving_window_f64` module absorbed — CPU f64 sliding window mean/variance/min/max complementing GPU f32 path (7 tests)
+- **R-S66-004**: `stats::bootstrap::rawr_mean` absorbed — RAWR (Wang et al. 2021) Dirichlet-weighted resampling from groundSpring (4 tests)
+- **R-S66-005**: `spearman_correlation` re-exported from `stats/mod.rs` — was implemented but not publicly accessible
+
+### Richards PDE Evolution
+- **R-S66-006**: `pde::richards` — 8 named `SoilParams` constants (Carsel & Parrish 1988): `SANDY_LOAM`, `SILT_LOAM`, `CLAY_LOAM`, `SAND`, `CLAY`, `LOAM`, `SILTY_CLAY_LOAM`, `LOAMY_SAND`
+- **R-S66-007**: `pde::richards` — Picard iteration buffer preallocation (9 vectors preallocated outside loop), magic numbers → named constants (`HARMONIC_MEAN_GUARD`, `MIN_CAPACITY`)
+
+### Smart Refactoring
+- **R-S66-008**: `morse_f64.rs` 804→556 (31% reduction) — cfg(test) methods and test module extracted to `morse_f64_tests.rs` with shared `bond_geometry()` helper and `test_bond()` factory
+- **R-S66-009**: `resource_quota.rs` 795→547 (31% reduction) — 22 tests extracted to `resource_quota_tests.rs`
+
+### Dead Code Evolution
+- **R-S66-010**: `griffin_lim.rs` — removed 2 `#[allow(dead_code)]` by using `n_fft`/`hop_length` for STFT dimension validation and `expected_signal_length()` accessor
+- **R-S66-011**: `fhe_key_switch.rs` — removed `#[allow(dead_code)]` on `pipeline_accumulate` by wiring it into the execute method (2-pass: decompose + accumulate)
+- **R-S66-012**: `nn/mod.rs` — removed blanket `#![allow(dead_code)]` (zero warnings surfaced — all items are re-exported and consumed)
+
+### Wave 2: Smart Refactoring (12 more files)
+- **R-S66-013**: `workload.rs` 812→452 (44% reduction) — 27 tests extracted to `workload_tests.rs`
+- **R-S66-014**: `cholesky.rs` 815→557 (32% reduction) — 7 GPU tests extracted to `cholesky_tests.rs`
+- **R-S66-015**: `cubic_spline.rs` 788→590 (25% reduction) — 11 tests extracted to `cubic_spline_tests.rs`
+- **R-S66-016**: `batched_bisection_gpu.rs` 758→562 (26% reduction) — 5 tests extracted to `batched_bisection_gpu_tests.rs`
+- **R-S66-017**: `anderson.rs` 657→486 (26% reduction) — 9 tests + `neighbor_var` helper extracted to `anderson_tests.rs`
+- **R-S66-018**: `timeseries.rs` 640→477 (25% reduction) — 7 tests extracted to `timeseries_tests.rs`
+- **R-S66-019**: `genomics.rs` 682→537 (21% reduction) — 10 tests extracted to `genomics_tests.rs`
+- **R-S66-020**: `solvers.rs` 692→551 (20% reduction) — 6 tests + `create_spd_tridiagonal` helper extracted to `solvers_tests.rs`
+- **R-S66-021**: `filter.rs` 705→636 — 5 tests extracted to `filter_tests.rs`
+- **R-S66-022**: `fused_map_reduce_f64.rs` 624→532 — 3 tests extracted to `fused_map_reduce_f64_tests.rs`
+- **R-S66-023**: `spin_orbit_f64.rs` 623→508 — 3 tests extracted to `spin_orbit_f64_tests.rs`
+- **R-S66-024**: `gpu_hmc_trajectory.rs` 785→767 — small test module extracted; file is cohesive GPU orchestrator
+
+### Wave 2: Dead Code Evolution (10→3)
+- **R-S66-025**: `timeseries.rs` — removed `#[allow(dead_code)]` on `TimeSeriesAnalyzer.device`, added `device()` accessor
+- **R-S66-026**: `vision.rs` — removed `#[allow(dead_code)]` on `VisionPipeline.device`, added `device()` accessor
+- **R-S66-027**: `ring_buffer.rs` — removed `#[allow(dead_code)]` on `staging_buffer`, added `staging_buffer()` accessor
+- **R-S66-028**: `unidirectional.rs` — removed `#[allow(dead_code)]` on `device`, added `device()` accessor
+- Remaining 3 `#[allow(dead_code)]`: `tpu.rs` (feature-gated variants), `akida.rs` (PCIe diagnostic fields), `unidirectional.rs` (output_throttler Phase 5+ placeholder)
+
+### Wave 2: External Dependency Evolution
+- **R-S66-029**: `anyhow` crate removed — 3 files migrated to `crate::error::{BarracudaError, Result}` with typed errors: `cumsum_f64.rs` (`anyhow::bail!` → `BarracudaError::InvalidInput`), `cumprod_f64.rs` (same), `toadstool_integration.rs` (`anyhow::Result` → `BarracudaError::Device` boundary mapping)
+- **R-S66-030**: `async_trait` dependency justified — dyn-compatible async traits (`ComputeExecutor`, `TensorStorage`) require `Pin<Box<dyn Future>>` boxing that `async_trait` provides; native async fn in traits not dyn-safe
+
+### Wave 2: Production expect() Audit
+- **R-S66-031**: `observables/mod.rs` — 2 production `expect()` calls evolved: `msd_values.last().expect()` → `if let` pattern; `stable.first/last().expect()` → direct indexing (guard already proves non-empty)
+- All 29 remaining production `expect()` are Mutex/RwLock poison guards — correct Rust practice for critical GPU state
+
+### Wave 3: Hardcoding Elimination + Dependency Evolution
+- **R-S66-032**: `gpu_executor/mod.rs` — 15 named scoring constants in `mod scoring {}` (threshold sizes + per-op-class GPU scores), replacing ~30 inline literals
+- **R-S66-033**: `timeseries.rs` — 6 named constants: `mod esn_defaults {}` (connectivity, leak_rate, regularization, seed) + `ANOMALY_WINDOW_FRACTION`, `ANOMALY_MIN_WINDOW`
+- **R-S66-034**: `shaders/precision/mod.rs` 733→452 (38% reduction) — 16 tests extracted to `precision_tests.rs`
+- **R-S66-035**: `log` crate eliminated — 68 `log::*!` calls migrated to `tracing::*!` across 18 files; `log = "0.4"` removed from Cargo.toml. Single unified logging facade.
+
+---
 
 ## Session 65 Resolutions (Feb 25, 2026)
 

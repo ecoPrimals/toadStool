@@ -15,6 +15,14 @@
 //! - GPU: Continuous compute, high power, general purpose
 //! - NPU: Event-driven, ultra-low power, neuromorphic-specialized
 
+pub(crate) mod npu_defaults {
+    pub const SRAM_PER_BOARD_BYTES: u64 = 4 * 1024 * 1024;
+    pub const AVAILABLE_PER_BOARD_BYTES: u64 = 3 * 1024 * 1024;
+    pub const ON_CHIP_BANDWIDTH_BYTES_SEC: u64 = 10 * 1024 * 1024 * 1024;
+    pub const NPU_LATENCY_THRESHOLD: usize = 128;
+}
+
+use async_trait::async_trait;
 use crate::device::akida_executor::AkidaExecutor;
 use crate::error::Result;
 use crate::unified_hardware::{
@@ -22,7 +30,6 @@ use crate::unified_hardware::{
     ParallelismCapabilities, PerformanceCapabilities, PrecisionCapabilities, TensorStorage,
 };
 use crate::unified_math::{MathOp, TensorDescriptor};
-use async_trait::async_trait;
 use std::sync::Arc;
 
 /// NPU executor wrapping AkidaExecutor
@@ -73,10 +80,9 @@ impl NpuExecutor {
             },
 
             memory: MemoryCapabilities {
-                // Akida has on-chip SRAM per board
-                total_bytes: (board_count * 4 * 1024 * 1024) as u64, // ~4MB per board
-                available_bytes: (board_count * 3 * 1024 * 1024) as u64,
-                bandwidth_bytes_per_sec: 10 * 1024 * 1024 * 1024, // ~10 GB/s on-chip
+                total_bytes: board_count as u64 * npu_defaults::SRAM_PER_BOARD_BYTES,
+                available_bytes: board_count as u64 * npu_defaults::AVAILABLE_PER_BOARD_BYTES,
+                bandwidth_bytes_per_sec: npu_defaults::ON_CHIP_BANDWIDTH_BYTES_SEC,
                 unified_memory: true,                             // On-chip is unified
                 zero_copy: true,                                  // Event-driven, no copies
             },

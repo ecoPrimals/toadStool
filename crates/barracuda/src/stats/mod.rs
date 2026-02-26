@@ -28,10 +28,24 @@
 //! - **chi2_decomposed**: Per-datum residuals, pulls, contributions
 //! - **bootstrap_ci**: Non-parametric confidence intervals
 //!
+//! # Regression (S66 absorption from airSpring)
+//!
+//! - **Linear, Quadratic, Exponential, Logarithmic**: Closed-form least-squares
+//!
+//! # Hydrology (S66 absorption from airSpring)
+//!
+//! - **Hargreaves ET₀, Crop coefficient, Soil water balance**: FAO-56 reference
+//!
+//! # Moving Window f64 (S66 absorption from airSpring)
+//!
+//! - **CPU f64 sliding window**: mean, variance, min, max
+//!
 //! # References
 //!
 //! - Abramowitz & Stegun §26, Moro (1995), Efron & Tibshirani (1993)
 //! - QIIME2/skbio for diversity metrics, Willmott (1981) for IA
+//! - Hargreaves & Samani (1985), FAO-56 (Allen et al. 1998)
+//! - Dong et al. (2020) *Agriculture* 10(12):598
 
 /// WGSL kernel for GPU-parallel bootstrap mean estimation (f64).
 pub const WGSL_BOOTSTRAP_MEAN_F64: &str = include_str!("../shaders/special/bootstrap_mean_f64.wgsl");
@@ -43,13 +57,20 @@ pub mod bootstrap;
 pub mod chi2;
 pub mod correlation;
 pub mod diversity;
+pub mod hydrology;
 pub mod metrics;
+pub mod moving_window_f64;
 pub mod normal;
+pub mod regression;
 pub mod spectral_density;
 
-pub use bootstrap::{bootstrap_ci, bootstrap_mean, bootstrap_median, bootstrap_std, BootstrapCI};
+pub use bootstrap::{
+    bootstrap_ci, bootstrap_mean, bootstrap_median, bootstrap_std, rawr_mean, BootstrapCI,
+};
 pub use chi2::{chi2_decomposed, chi2_decomposed_weighted, Chi2Decomposed};
-pub use correlation::{correlation_matrix, covariance, covariance_matrix, pearson_correlation};
+pub use correlation::{
+    correlation_matrix, covariance, covariance_matrix, pearson_correlation, spearman_correlation,
+};
 pub use metrics::{
     dot, hit_rate, index_of_agreement, l2_norm, mbe, mean, nash_sutcliffe, percentile, r_squared,
     rmse,
@@ -61,3 +82,8 @@ pub use diversity::{
     AlphaDiversity,
 };
 pub use spectral_density::{empirical_spectral_density, marchenko_pastur_bounds};
+pub use regression::{fit_all, fit_exponential, fit_linear, fit_logarithmic, fit_quadratic, FitResult};
+pub use hydrology::{
+    crop_coefficient, hargreaves_et0, hargreaves_et0_batch, soil_water_balance,
+};
+pub use moving_window_f64::{moving_window_stats_f64, MovingWindowResultF64};

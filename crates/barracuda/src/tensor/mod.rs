@@ -161,7 +161,7 @@ impl Tensor {
     /// ```
     pub fn prefer_device(&self, _device: Device) -> Self {
         // Routing hint recorded; live device migration deferred (tracked as D-S18-003).
-        log::debug!("Device preference noted; migration deferred (D-S18-003)");
+        tracing::debug!("Device preference noted; migration deferred (D-S18-003)");
         self.clone()
     }
 
@@ -175,7 +175,7 @@ impl Tensor {
     #[must_use]
     pub fn with_hint(&self, hint: WorkloadHint) -> Self {
         let preferred_device = Device::select_for_workload(&hint);
-        log::debug!("Workload hint: {:?} → Device: {}", hint, preferred_device);
+        tracing::debug!("Workload hint: {:?} → Device: {}", hint, preferred_device);
         self.clone()
     }
 

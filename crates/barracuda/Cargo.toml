@@ -11,8 +11,7 @@ keywords = ["gpu", "tensor", "compute", "webgpu", "wgsl"]
 categories = ["science", "hardware-support"]
 
 [dependencies]
-# Core
-anyhow = "1.0"
+# Core — anyhow removed S66: evolved to typed BarracudaError via thiserror
 thiserror = { workspace = true }
 
 # GPU compute (WebGPU - hardware agnostic, handles CPU/GPU/NPU/TPU!)
@@ -37,7 +36,6 @@ akida-driver = { path = "../neuromorphic/akida-driver" }
 toadstool-core = { path = "../toadstool-core" }  # Hardware infrastructure
 
 # Logging
-log = "0.4"
 tracing = "0.1"
 
 # Utilities

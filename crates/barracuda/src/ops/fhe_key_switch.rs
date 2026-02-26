@@ -76,7 +76,6 @@ pub struct FheKeySwitch {
     decomp_base: u32,   // Base for digit decomposition (e.g., 2^16)
     decomp_levels: u32, // Number of decomposition levels
     pipeline_decompose: wgpu::ComputePipeline,
-    #[allow(dead_code)] // Will be used in full key switching implementation
     pipeline_accumulate: wgpu::ComputePipeline,
     bind_group_layout: wgpu::BindGroupLayout,
 }
@@ -322,30 +321,31 @@ impl FheKeySwitch {
                 label: Some("FHE Key Switch Encoder"),
             });
 
+        let caps = DeviceCapabilities::from_device(device);
+        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
+        let num_workgroups = self.degree.div_ceil(optimal_wg_size);
+
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("FHE Key Switch Decompose Pass"),
                 timestamp_writes: None,
             });
-
             compute_pass.set_pipeline(&self.pipeline_decompose);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-
-            // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(device);
-            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
-            let num_workgroups = self.degree.div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
         }
 
-        device.queue.submit(std::iter::once(encoder.finish()));
+        {
+            let mut accumulate_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("FHE Key Switch Accumulate Pass"),
+                timestamp_writes: None,
+            });
+            accumulate_pass.set_pipeline(&self.pipeline_accumulate);
+            accumulate_pass.set_bind_group(0, &bind_group, &[]);
+            accumulate_pass.dispatch_workgroups(num_workgroups, 1, 1);
+        }
 
-        // Return result tensor
-        // NOTE: Full implementation would:
-        // 1. Multiply each decomposed digit by switching key element (via NTT)
-        // 2. Accumulate results
-        // 3. Return final switched ciphertext
-        // This simplified version demonstrates the decomposition step.
+        device.queue.submit(std::iter::once(encoder.finish()));
 
         Ok(Tensor::from_buffer(
             output_buffer,

@@ -3,9 +3,9 @@
 //! These traits define the hardware-agnostic interface that CPU, GPU, TPU,
 //! and NPU executors implement.
 
+use async_trait::async_trait;
 use crate::error::Result;
 use crate::unified_math::{MathOp, TensorDescriptor};
-use async_trait::async_trait;
 use std::sync::Arc;
 
 use super::types::{HardwareCapabilities, HardwareType};

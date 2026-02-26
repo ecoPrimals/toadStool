@@ -452,7 +452,7 @@ impl BenchmarkSuite {
                 }
                 Err(e) => {
                     // Log error but continue with other operations
-                    log::warn!("Failed to benchmark {}: {}", op, e);
+                    tracing::warn!("Failed to benchmark {}: {}", op, e);
                 }
             }
         }

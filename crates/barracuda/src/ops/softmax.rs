@@ -128,12 +128,12 @@ impl Tensor {
     pub fn softmax(self) -> Result<Self> {
         // NPU routing: delegate to Akida when tensor shape and energy policy match.
         if crate::ops::npu_bridge::should_route_to_npu(&self, None) {
-            log::debug!("Routing softmax to NPU");
+            tracing::debug!("Routing softmax to NPU");
             return self.softmax_npu();
         }
 
         // Existing WGSL path
-        log::debug!("Routing softmax to WGSL");
+        tracing::debug!("Routing softmax to WGSL");
         Softmax::new(self)?.execute()
     }
 

@@ -35,10 +35,12 @@ pub struct RingBufferConfig {
     pub label: Option<String>,
 }
 
+const DEFAULT_RING_BUFFER_BYTES: usize = 64 * 1024 * 1024;
+
 impl Default for RingBufferConfig {
     fn default() -> Self {
         Self {
-            capacity: 64 * 1024 * 1024, // 64 MB default
+            capacity: DEFAULT_RING_BUFFER_BYTES,
             direction: BufferDirection::HostToDevice,
             label: None,
         }
@@ -116,8 +118,6 @@ pub struct GpuRingBuffer {
     /// The underlying GPU buffer
     buffer: wgpu::Buffer,
     /// Staging buffer for CPU access (only for DeviceToHost)
-    /// Used in Phase 5+ for async readback of completed work
-    #[allow(dead_code)]
     staging_buffer: Option<wgpu::Buffer>,
     /// Buffer capacity (power of 2)
     capacity: usize,
@@ -348,6 +348,11 @@ impl GpuRingBuffer {
     /// Get the underlying GPU buffer (for use in compute shaders)
     pub fn gpu_buffer(&self) -> &wgpu::Buffer {
         &self.buffer
+    }
+
+    /// Get the staging buffer for async CPU readback (DeviceToHost only).
+    pub fn staging_buffer(&self) -> Option<&wgpu::Buffer> {
+        self.staging_buffer.as_ref()
     }
 
     /// Get buffer direction

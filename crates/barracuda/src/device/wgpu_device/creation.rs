@@ -89,7 +89,7 @@ impl WgpuDevice {
             .ok_or_else(|| BarracudaError::device("No CPU software rasterizer available"))?;
 
         let adapter_info = adapter.get_info();
-        log::info!(
+        tracing::info!(
             "barraCuda (cpu-relaxed): {} ({:?})",
             adapter_info.name,
             adapter_info.device_type
@@ -155,7 +155,7 @@ impl WgpuDevice {
             .ok_or_else(|| BarracudaError::device("No WGPU adapter found"))?;
 
         let info = adapter.get_info();
-        log::info!(
+        tracing::info!(
             "BarraCuda (high-capacity): {} ({:?})",
             info.name,
             info.device_type
@@ -189,7 +189,7 @@ impl WgpuDevice {
             .map_err(|e| BarracudaError::device(format!("Failed to create device: {e}")))?;
 
         let actual_limits = device.limits();
-        log::info!(
+        tracing::info!(
             "Limits: max_binding={}MB, max_buffer={}MB",
             actual_limits.max_storage_buffer_binding_size / (1 << 20),
             actual_limits.max_buffer_size / (1 << 20),
@@ -216,7 +216,7 @@ impl WgpuDevice {
             DeviceSelection::Gpu => Self::new_gpu().await,
             DeviceSelection::Cpu => Self::new_cpu().await,
             DeviceSelection::Npu => {
-                log::info!(
+                tracing::info!(
                     "NPU selected but WGSL not supported on NPU; falling back to best WGPU adapter"
                 );
                 Self::new().await
@@ -318,7 +318,7 @@ impl WgpuDevice {
         let selector = selector.trim().to_lowercase();
 
         if selector == "auto" || selector.is_empty() {
-            log::info!("Adapter selection: auto (HighPerformance)");
+            tracing::info!("Adapter selection: auto (HighPerformance)");
             return Self::new().await;
         }
 
@@ -329,14 +329,14 @@ impl WgpuDevice {
 
         if let Ok(index) = selector.parse::<usize>() {
             if index < adapters.len() {
-                log::info!(
+                tracing::info!(
                     "Adapter selection: index {} → {}",
                     index,
                     adapters[index].name
                 );
                 return Self::from_adapter_index(index).await;
             }
-            log::debug!(
+            tracing::debug!(
                 "Adapter index {} out of bounds ({}), trying name match",
                 index,
                 adapters.len()
@@ -345,7 +345,7 @@ impl WgpuDevice {
 
         for (index, info) in adapters.iter().enumerate() {
             if info.name.to_lowercase().contains(&selector) {
-                log::info!(
+                tracing::info!(
                     "Adapter selection: '{}' → {} (index {})",
                     selector,
                     info.name,
@@ -401,7 +401,7 @@ impl WgpuDevice {
 
         let adapter = &adapters[index];
         let info = adapter.get_info();
-        log::info!(
+        tracing::info!(
             "Selecting adapter {index}: {} ({:?})",
             info.name,
             info.device_type
@@ -474,7 +474,7 @@ impl WgpuDevice {
     /// Create device from a pre-selected adapter (shared helper)
     async fn from_adapter(adapter: wgpu::Adapter) -> Result<Self> {
         let adapter_info = adapter.get_info();
-        log::info!(
+        tracing::info!(
             "barraCuda initialized: {} ({:?})",
             adapter_info.name,
             adapter_info.device_type
@@ -494,10 +494,10 @@ impl WgpuDevice {
             }
         }
         if required_features.contains(wgpu::Features::SHADER_F64) {
-            log::info!("  SHADER_F64: enabled");
+            tracing::info!("  SHADER_F64: enabled");
         }
         if required_features.contains(wgpu::Features::SPIRV_SHADER_PASSTHROUGH) {
-            log::info!("  SPIRV_SHADER_PASSTHROUGH: enabled (sovereign compiler active)");
+            tracing::info!("  SPIRV_SHADER_PASSTHROUGH: enabled (sovereign compiler active)");
         }
 
         let (device, queue) = adapter

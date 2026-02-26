@@ -12,7 +12,7 @@
 
 **At birth, ToadStool knows ONLY itself:**
 - ✅ Own ports: 8084 (server), 8085 (GPU), 8086 (distributed), 9090 (metrics)
-- ❌ Other primals: NOTHING about BearDog, Songbird, NestGate, Squirrel
+- ❌ Other primals: NOTHING about BearDog, Songbird, NestGate
 
 **Discovery happens at runtime:**
 - Like an infant learning to recognize family members
@@ -76,16 +76,13 @@ Traditional (2^n):
 ToadStool ←→ BearDog
     ↕           ↕
 Songbird ←→ NestGate
-    ↕           ↕
-Squirrel ←→ Other
 
 = 2^n connections!
 
 With Universal Adapter (n):
 ToadStool ──┐
 BearDog  ──┼──→ Songbird ←─→ biomeOS
-NestGate ──┤
-Squirrel ──┘
+NestGate ──┘
 
 = n connections!
 ```
@@ -165,7 +162,6 @@ Discovered services:
   • BearDog (security capability)
   • Songbird (coordination capability)
   • NestGate (storage capability)
-  • Squirrel (AI/ML capability)
 
 Cache TTL: 5 minutes (refresh automatically)
 ```

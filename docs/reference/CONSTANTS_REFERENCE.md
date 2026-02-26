@@ -283,7 +283,6 @@ Helper functions that construct endpoint URLs from network constants.
 | `songbird()` | `String` | Songbird service URL |
 | `beardog()` | `String` | BearDog service URL |
 | `nestgate()` | `String` | NestGate service URL |
-| `squirrel()` | `String` | Squirrel MCP service URL |
 | `api()` | `String` | API endpoint URL |
 | `cloud()` | `String` | Cloud endpoint URL |
 

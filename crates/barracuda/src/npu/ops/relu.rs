@@ -53,7 +53,7 @@ type Result<T> = std::result::Result<T, crate::error::BarracudaError>;
 /// // y = [0.0, 2.0, 0.0, 3.0] - via WGSL!
 /// ```
 pub fn npu_relu(input: &[f32]) -> Result<Vec<f32>> {
-    log::debug!("NPU ReLU (WGSL): {} activations", input.len());
+    tracing::debug!("NPU ReLU (WGSL): {} activations", input.len());
 
     // ═══════════════════════════════════════════════════════════
     // CRITICAL: Use WGSL shader (same math as GPU/CPU!)
@@ -69,7 +69,7 @@ pub fn npu_relu(input: &[f32]) -> Result<Vec<f32>> {
         let output = result_tensor.to_vec()?;
 
         let sparsity = output.iter().filter(|&&x| x == 0.0).count() as f32 / output.len() as f32;
-        log::debug!(
+        tracing::debug!(
             "NPU ReLU (WGSL) complete: {:.1}% sparsity created",
             sparsity * 100.0
         );

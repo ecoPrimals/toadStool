@@ -65,6 +65,10 @@ impl SimpleRng {
     fn usize_range(&mut self, max: usize) -> usize {
         (self.next_u64() as usize) % max
     }
+
+    fn next_f64(&mut self) -> f64 {
+        (self.next_u64() >> 11) as f64 / ((1u64 << 53) as f64)
+    }
 }
 
 /// Compute bootstrap confidence interval for any statistic.
@@ -238,6 +242,88 @@ pub fn bootstrap_median(
     )
 }
 
+/// RAWR — Resampling with Analytical Weights for Reproducibility.
+///
+/// Implements Dirichlet-weighted mean resampling (Wang et al. 2021,
+/// Bioinformatics/ISMB). Each replicate draws n independent Exp(1) variates,
+/// normalizes them to Dirichlet weights, and computes a weighted mean.
+/// This is smoother than percentile bootstrap and particularly effective
+/// for small samples common in ecology.
+///
+/// # Provenance
+///
+/// Absorbed from groundSpring `bootstrap.rs::rawr_mean()` (V7).
+pub fn rawr_mean(
+    data: &[f64],
+    n_replicates: usize,
+    confidence: f64,
+    seed: u64,
+) -> Result<BootstrapCI> {
+    let n = data.len();
+    if n == 0 {
+        return Err(BarracudaError::InvalidInput {
+            message: "data cannot be empty".to_string(),
+        });
+    }
+    if n_replicates == 0 {
+        return Err(BarracudaError::InvalidInput {
+            message: "n_replicates must be > 0".to_string(),
+        });
+    }
+    if !(0.0..1.0).contains(&confidence) {
+        return Err(BarracudaError::InvalidInput {
+            message: format!("confidence must be in (0, 1), got {}", confidence),
+        });
+    }
+
+    let estimate = data.iter().sum::<f64>() / n as f64;
+    let mut rng = SimpleRng::new(seed);
+    let mut means = Vec::with_capacity(n_replicates);
+
+    const EXP_CAP: f64 = 30.0;
+    let mut weights = vec![0.0f64; n];
+
+    for _ in 0..n_replicates {
+        let mut wsum = 0.0;
+        for w in weights.iter_mut() {
+            let u = rng.next_f64();
+            *w = if u > 0.0 { -u.ln() } else { EXP_CAP };
+            wsum += *w;
+        }
+
+        let mut weighted_mean = 0.0;
+        for (j, &d) in data.iter().enumerate() {
+            weighted_mean = (weights[j] / wsum).mul_add(d, weighted_mean);
+        }
+        means.push(weighted_mean);
+    }
+
+    means.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+    let alpha = 1.0 - confidence;
+    let lower_idx = ((alpha / 2.0) * n_replicates as f64).floor() as usize;
+    let upper_idx = ((1.0 - alpha / 2.0) * n_replicates as f64)
+        .ceil()
+        .min((n_replicates - 1) as f64) as usize;
+
+    let mean_of_means: f64 = means.iter().sum::<f64>() / n_replicates as f64;
+    let variance: f64 = means
+        .iter()
+        .map(|x| (x - mean_of_means).powi(2))
+        .sum::<f64>()
+        / (n_replicates - 1).max(1) as f64;
+
+    Ok(BootstrapCI {
+        estimate,
+        lower: means[lower_idx],
+        upper: means[upper_idx],
+        confidence,
+        std_error: variance.sqrt(),
+        n_bootstrap: n_replicates,
+        distribution: means,
+    })
+}
+
 /// Bootstrap CI for standard deviation.
 ///
 /// # Example
@@ -354,14 +440,47 @@ mod tests {
 
     #[test]
     fn test_bootstrap_errors() {
-        // Empty data
         assert!(bootstrap_mean(&[], 100, 0.95, 42).is_err());
-
-        // Zero bootstrap samples
         assert!(bootstrap_mean(&[1.0, 2.0], 0, 0.95, 42).is_err());
-
-        // Invalid confidence
         assert!(bootstrap_mean(&[1.0, 2.0], 100, 1.5, 42).is_err());
         assert!(bootstrap_mean(&[1.0, 2.0], 100, -0.1, 42).is_err());
+    }
+
+    #[test]
+    fn test_rawr_mean_basic() {
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
+        let ci = rawr_mean(&data, 2000, 0.95, 42).unwrap();
+        assert!((ci.estimate - 5.5).abs() < 1e-10, "point estimate should be arithmetic mean");
+        assert!(ci.lower < 5.5 && ci.upper > 5.5, "CI should bracket true mean");
+        assert!(ci.std_error > 0.0);
+    }
+
+    #[test]
+    fn test_rawr_mean_errors() {
+        assert!(rawr_mean(&[], 100, 0.95, 42).is_err());
+        assert!(rawr_mean(&[1.0, 2.0], 0, 0.95, 42).is_err());
+        assert!(rawr_mean(&[1.0, 2.0], 100, 1.5, 42).is_err());
+    }
+
+    #[test]
+    fn test_rawr_mean_reproducibility() {
+        let data = vec![3.0, 5.0, 7.0, 9.0, 11.0];
+        let ci1 = rawr_mean(&data, 500, 0.95, 123).unwrap();
+        let ci2 = rawr_mean(&data, 500, 0.95, 123).unwrap();
+        assert!((ci1.lower - ci2.lower).abs() < 1e-10);
+        assert!((ci1.upper - ci2.upper).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_rawr_vs_bootstrap_similar_ci_width() {
+        let data: Vec<f64> = (1..=50).map(f64::from).collect();
+        let boot = bootstrap_mean(&data, 2000, 0.95, 42).unwrap();
+        let rawr = rawr_mean(&data, 2000, 0.95, 42).unwrap();
+        let boot_width = boot.upper - boot.lower;
+        let rawr_width = rawr.upper - rawr.lower;
+        assert!(
+            (boot_width - rawr_width).abs() / boot_width < 0.5,
+            "RAWR and bootstrap CI widths should be in similar ballpark"
+        );
     }
 }

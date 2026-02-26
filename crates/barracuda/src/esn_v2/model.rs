@@ -99,7 +99,7 @@ impl ESN {
 
     /// Set device preference
     pub fn prefer_device(self, _device: Device) -> Self {
-        log::debug!("Device preference set; migration not yet implemented");
+        tracing::debug!("Device preference set; migration not yet implemented");
         self
     }
 
@@ -107,7 +107,7 @@ impl ESN {
     #[must_use]
     pub fn with_hint(self, hint: WorkloadHint) -> Self {
         let preferred_device = Device::select_for_workload(&hint);
-        log::debug!("Workload hint: {:?} → Device: {}", hint, preferred_device);
+        tracing::debug!("Workload hint: {:?} → Device: {}", hint, preferred_device);
         self
     }
 

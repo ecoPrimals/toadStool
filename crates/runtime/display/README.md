@@ -116,8 +116,6 @@ async fn main() -> anyhow::Result<()> {
 
 See:
 - [Specification](../../../specs/DISPLAY_BACKEND_SPEC.md)
-- [Roadmap](../../../docs/DISPLAY_BACKEND_ROADMAP.md)
-- [Response to petalTongue](../../../PETALTONGUE_DISPLAY_BACKEND_RESPONSE.md)
 
 ## Collaboration
 

@@ -55,12 +55,16 @@ pub struct UnidirectionalConfig {
     pub strict_mode: bool,
 }
 
+const DEFAULT_INPUT_BUFFER_BYTES: usize = 128 * 1024 * 1024;
+const DEFAULT_OUTPUT_BUFFER_BYTES: usize = 16 * 1024 * 1024;
+const DEFAULT_INPUT_BW_FRACTION: f64 = 0.9;
+
 impl Default for UnidirectionalConfig {
     fn default() -> Self {
         Self {
-            input_bandwidth_fraction: 0.9,
-            input_buffer_size: 128 * 1024 * 1024, // 128 MB
-            output_buffer_size: 16 * 1024 * 1024, // 16 MB
+            input_bandwidth_fraction: DEFAULT_INPUT_BW_FRACTION,
+            input_buffer_size: DEFAULT_INPUT_BUFFER_BYTES,
+            output_buffer_size: DEFAULT_OUTPUT_BUFFER_BYTES,
             target_input_bandwidth: None,
             target_output_bandwidth: None,
             strict_mode: false,
@@ -203,8 +207,7 @@ impl BandwidthThrottler {
 ///
 /// Manages streaming data flow to GPU with fire-and-forget semantics.
 pub struct UnidirectionalPipeline {
-    /// Device reference (used for shader dispatch in Phase 5+)
-    #[allow(dead_code)]
+    /// Device reference for shader dispatch.
     device: Arc<WgpuDevice>,
     /// Input ring buffer (Host → Device)
     input_buffer: GpuRingBuffer,
@@ -220,7 +223,7 @@ pub struct UnidirectionalPipeline {
     stats: PipelineStats,
     /// Input throttler (for simulation)
     input_throttler: Option<BandwidthThrottler>,
-    /// Output throttler (for bandwidth simulation in Phase 5+)
+    /// Output throttler for bandwidth simulation (Phase 5+ parity with input_throttler).
     #[allow(dead_code)]
     output_throttler: Option<BandwidthThrottler>,
     /// Pipeline start time (for throughput calculation)
@@ -422,6 +425,11 @@ impl UnidirectionalPipeline {
     /// Get configuration
     pub fn config(&self) -> &UnidirectionalConfig {
         &self.config
+    }
+
+    /// The underlying compute device for shader dispatch.
+    pub fn device(&self) -> &Arc<WgpuDevice> {
+        &self.device
     }
 
     fn update_throughput(&mut self) {

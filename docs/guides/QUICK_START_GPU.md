@@ -284,7 +284,7 @@ println!("Cache hit rate: {:.1}%", stats.cache_hits as f64 /
 - **BearDog**: Add cryptographic receipts to results
 - **Songbird**: Advertise GPU capabilities on network
 - **NestGate**: Persist large computation results
-- **Squirrel**: Enable AI-driven scheduling
+- **NestGate**: Enable AI-driven scheduling
 
 ### Advanced Features
 - Multi-GPU per tower

@@ -7,11 +7,11 @@
 //! `Tensor` via `Tensor::from_arc_buffer` — eliminating the GPU→CPU→GPU
 //! round-trip when wrapping an executed output back into TensorStorage.
 
+use async_trait::async_trait;
 use crate::device::WgpuDevice;
 use crate::error::Result;
 use crate::unified_hardware::{HardwareType, TensorStorage};
 use crate::unified_math::{DType, TensorDescriptor};
-use async_trait::async_trait;
 use std::sync::Arc;
 
 /// GPU tensor storage for the `ComputeExecutor` scheduler interface.

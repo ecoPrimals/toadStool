@@ -49,7 +49,7 @@ fn resolve_adapter_selector() -> String {
         if info.device_type == wgpu::DeviceType::DiscreteGpu
             && adapter.features().contains(wgpu::Features::SHADER_F64)
         {
-            log::info!("test_pool: auto-pinned to '{}' (discrete, f64)", info.name);
+            tracing::info!("test_pool: auto-pinned to '{}' (discrete, f64)", info.name);
             return info.name.clone();
         }
     }
@@ -65,7 +65,7 @@ async fn create_device() -> Arc<WgpuDevice> {
     .await
     .expect("GPU device creation timed out after 10s -- check driver")
     .expect("Failed to create test device");
-    log::info!(
+    tracing::info!(
         "test_pool: device '{}' ({:?})",
         device.adapter_info().name,
         device.adapter_info().device_type,
@@ -111,7 +111,7 @@ pub async fn get_test_device() -> Arc<WgpuDevice> {
         if is_device_healthy(dev) {
             return Arc::clone(dev);
         }
-        log::warn!("Shared test device lost — recreating");
+        tracing::warn!("Shared test device lost — recreating");
         crate::device::tensor_context::clear_global_contexts();
         crate::device::pipeline_cache::clear_global_cache();
     }

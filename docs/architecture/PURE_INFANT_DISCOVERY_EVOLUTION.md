@@ -12,7 +12,7 @@
 
 ToadStool at birth knows:
 - ✅ **Self**: Own ports (8084, 8085, 8086, 9090)
-- ❌ **Others**: Nothing about BearDog, Songbird, NestGate, Squirrel
+- ❌ **Others**: Nothing about BearDog, Songbird, NestGate
 
 ---
 

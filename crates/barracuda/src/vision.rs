@@ -80,7 +80,6 @@ pub enum PadMode {
 /// - Basic transforms: Implemented
 /// - Advanced transforms: Future (will use ops:: modules)
 pub struct VisionPipeline {
-    #[allow(dead_code)] // Reserved for future GPU-accelerated transforms
     device: WgpuDevice,
     transforms: Vec<Transform>,
     built: bool,
@@ -94,6 +93,11 @@ impl VisionPipeline {
             transforms: Vec::new(),
             built: false,
         }
+    }
+
+    /// The underlying compute device for GPU-accelerated transforms.
+    pub fn device(&self) -> &WgpuDevice {
+        &self.device
     }
 
     /// Add transform to pipeline
@@ -202,7 +206,7 @@ impl VisionPipeline {
                 | Transform::Cutmix { .. }
                 | Transform::Mixup { .. }
                 | Transform::Pad { .. } => {
-                    log::info!("Advanced transform deferred to ops:: module integration");
+                    tracing::info!("Advanced transform deferred to ops:: module integration");
                 }
             }
         }

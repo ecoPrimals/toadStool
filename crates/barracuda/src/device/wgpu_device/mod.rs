@@ -171,7 +171,7 @@ impl WgpuDevice {
             match sovereign.compile(&optimized) {
                 Ok((SovereignOutput::Spirv(words), stats)) => {
                     if stats.fma_fusions > 0 || stats.dead_exprs_eliminated > 0 {
-                        log::debug!(
+                        tracing::debug!(
                             "sovereign: {} FMA fusions, {} dead exprs eliminated",
                             stats.fma_fusions,
                             stats.dead_exprs_eliminated,
@@ -180,7 +180,7 @@ impl WgpuDevice {
                     return self.compile_shader_spirv(&words, label);
                 }
                 Err(e) => {
-                    log::debug!("sovereign compiler fallback: {e}");
+                    tracing::debug!("sovereign compiler fallback: {e}");
                 }
             }
         }

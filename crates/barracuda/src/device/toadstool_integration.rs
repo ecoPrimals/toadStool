@@ -10,7 +10,7 @@
 //! Hardware guides its own performance - same WGSL on GPU vs CPU gives
 //! identical results at different speeds.
 
-use anyhow::Result;
+use crate::error::{BarracudaError, Result};
 use toadstool_core::{HardwareManager, HardwareType};
 
 // ─── Discovery ───────────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ use toadstool_core::{HardwareManager, HardwareType};
 /// Returns a `HardwareManager` with every device ToadStool can find:
 /// GPUs (via sysfs), NPUs (via PCIe scan), CPU (always available).
 pub fn discover_devices() -> Result<HardwareManager> {
-    HardwareManager::discover()
+    HardwareManager::discover().map_err(|e| BarracudaError::Device(e.to_string()))
 }
 
 /// Check if GPU compute is available
@@ -112,7 +112,7 @@ impl DeviceSelection {
 /// For general math (matmul, Cholesky, RBF, FFT), always routes to GPU/CPU
 /// because NPU cannot run arbitrary compute.
 pub fn select_best_device(workload_type: HardwareWorkload) -> Result<DeviceSelection> {
-    let hw = HardwareManager::discover()?;
+    let hw = HardwareManager::discover().map_err(|e| BarracudaError::Device(e.to_string()))?;
 
     match workload_type {
         // Dense compute: GPU > CPU (NPU can't run WGSL)
@@ -159,7 +159,7 @@ pub fn select_best_device(workload_type: HardwareWorkload) -> Result<DeviceSelec
 /// Tries the requested hardware first, falls back if unavailable.
 /// Always returns a usable device - never fails on working systems.
 pub fn select_device_prefer(preferred: DeviceSelection) -> Result<DeviceSelection> {
-    let hw = HardwareManager::discover()?;
+    let hw = HardwareManager::discover().map_err(|e| BarracudaError::Device(e.to_string()))?;
 
     match preferred {
         DeviceSelection::Gpu => {
@@ -186,7 +186,7 @@ pub fn select_device_prefer(preferred: DeviceSelection) -> Result<DeviceSelectio
 ///
 /// Returns what ToadStool found and what BarraCuda can target.
 pub fn hardware_report() -> Result<HardwareReport> {
-    let hw = HardwareManager::discover()?;
+    let hw = HardwareManager::discover().map_err(|e| BarracudaError::Device(e.to_string()))?;
     let registry = super::registry::DeviceRegistry::global();
 
     let gpu_count = hw.devices_by_type(HardwareType::Gpu).len();

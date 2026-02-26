@@ -120,7 +120,7 @@ impl NpuMlBackend {
             power_typical_watts: 2.0, // Akida AKD1000 typical (from validation)
         };
 
-        log::info!(
+        tracing::info!(
             "✅ NPU backend initialized: {} NPUs @ {} (Gen{} x{})",
             capabilities.npu_count,
             capabilities.pcie_address,
@@ -160,7 +160,7 @@ impl NpuMlBackend {
         let events = self.codec.encode_simple(input);
         let sparsity = self.codec.measure_sparsity(input);
 
-        log::debug!(
+        tracing::debug!(
             "NPU MLP: input_size={}, output_size={}, sparsity={:.1}%",
             input.len(),
             output_size,
@@ -183,7 +183,7 @@ impl NpuMlBackend {
 
         let elapsed = start.elapsed();
 
-        log::debug!(
+        tracing::debug!(
             "✅ NPU MLP complete: {:.3}ms, {} events in, {} events out",
             elapsed.as_secs_f64() * 1000.0,
             events.len(),
@@ -227,7 +227,7 @@ impl NpuMlBackend {
     /// **Deep Debt**: Runtime configuration, no hardcoding
     pub fn set_threshold(&mut self, threshold: f32) {
         self.codec = EventCodec::new(threshold);
-        log::debug!("Updated NPU event threshold to {:.3}", threshold);
+        tracing::debug!("Updated NPU event threshold to {:.3}", threshold);
     }
 }
 

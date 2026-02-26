@@ -1,5 +1,23 @@
 //! CPU executor core and op dispatch
 
+mod defaults {
+    pub const DEFAULT_MEMORY_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+    pub const SMALL_TENSOR_THRESHOLD: usize = 1_000;
+    pub const MEDIUM_TENSOR_THRESHOLD: usize = 10_000;
+    pub const LARGE_TENSOR_THRESHOLD: usize = 1_000_000;
+    pub const SCORE_CPU_SMALL_OPTIMAL: f64 = 0.9;
+    pub const SCORE_CPU_MATMUL_LARGE: f64 = 0.2;
+    pub const SCORE_CPU_MATMUL_MEDIUM: f64 = 0.5;
+    pub const SCORE_CPU_ELEMENTWISE_SMALL: f64 = 0.8;
+    pub const SCORE_CPU_ELEMENTWISE_MEDIUM: f64 = 0.5;
+    pub const SCORE_CPU_ELEMENTWISE_LARGE: f64 = 0.3;
+    pub const SCORE_CPU_REDUCE: f64 = 0.6;
+    pub const SCORE_CPU_CONV_SMALL: f64 = 0.7;
+    pub const SCORE_CPU_CONV_LARGE: f64 = 0.2;
+    pub const SCORE_CPU_DEFAULT: f64 = 0.5;
+}
+
+use async_trait::async_trait;
 use super::storage::CpuTensorStorage;
 use crate::error::Result;
 use crate::unified_hardware::{
@@ -7,7 +25,6 @@ use crate::unified_hardware::{
     ParallelismCapabilities, PerformanceCapabilities, PrecisionCapabilities, TensorStorage,
 };
 use crate::unified_math::{MathOp, TensorDescriptor};
-use async_trait::async_trait;
 use rayon::prelude::*;
 use std::sync::Arc;
 
@@ -33,7 +50,7 @@ impl CpuExecutor {
 
     /// Detect CPU capabilities at runtime
     fn detect_capabilities(num_threads: usize) -> HardwareCapabilities {
-        let total_memory = 16 * 1024 * 1024 * 1024; // 16GB default estimate
+        let total_memory = defaults::DEFAULT_MEMORY_BYTES;
 
         HardwareCapabilities {
             hardware_type: HardwareType::CPU,
@@ -233,30 +250,35 @@ impl ComputeExecutor for CpuExecutor {
     }
 
     fn score_operation(&self, op: &MathOp, inputs: &[TensorDescriptor]) -> f64 {
+        use defaults::*;
         use MathOp::*;
         let total_elements: usize = inputs.iter().map(|t| t.numel).sum();
         match op {
-            _ if total_elements < 1000 => 0.9,
-            MatMul { .. } | BatchMatMul { .. } if total_elements > 1_000_000 => 0.2,
-            MatMul { .. } | BatchMatMul { .. } => 0.5,
+            _ if total_elements < SMALL_TENSOR_THRESHOLD => SCORE_CPU_SMALL_OPTIMAL,
+            MatMul { .. } | BatchMatMul { .. } if total_elements > LARGE_TENSOR_THRESHOLD => {
+                SCORE_CPU_MATMUL_LARGE
+            }
+            MatMul { .. } | BatchMatMul { .. } => SCORE_CPU_MATMUL_MEDIUM,
             ReLU | Sigmoid | Tanh | GELU | Add | Sub | Mul | Div => {
-                if total_elements < 10_000 {
-                    0.8
-                } else if total_elements < 1_000_000 {
-                    0.5
+                if total_elements < MEDIUM_TENSOR_THRESHOLD {
+                    SCORE_CPU_ELEMENTWISE_SMALL
+                } else if total_elements < LARGE_TENSOR_THRESHOLD {
+                    SCORE_CPU_ELEMENTWISE_MEDIUM
                 } else {
-                    0.3
+                    SCORE_CPU_ELEMENTWISE_LARGE
                 }
             }
-            ReduceSum { .. } | ReduceMean { .. } | ReduceMax { .. } | ReduceMin { .. } => 0.6,
+            ReduceSum { .. } | ReduceMean { .. } | ReduceMax { .. } | ReduceMin { .. } => {
+                SCORE_CPU_REDUCE
+            }
             Conv2D { .. } | MaxPool2D { .. } | AvgPool2D { .. } => {
-                if total_elements < 10_000 {
-                    0.7
+                if total_elements < MEDIUM_TENSOR_THRESHOLD {
+                    SCORE_CPU_CONV_SMALL
                 } else {
-                    0.2
+                    SCORE_CPU_CONV_LARGE
                 }
             }
-            _ => 0.5,
+            _ => SCORE_CPU_DEFAULT,
         }
     }
 

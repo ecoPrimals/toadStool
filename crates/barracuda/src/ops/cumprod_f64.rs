@@ -16,8 +16,8 @@
 //! - Self-contained (no external dependencies)
 
 use crate::device::WgpuDevice;
+use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
-use anyhow::{Context, Result};
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 
@@ -111,11 +111,12 @@ impl CumprodF64 {
 
         // Validate dimension
         if self.dim >= n_dims {
-            anyhow::bail!(
-                "Dimension {} out of bounds for tensor with {} dimensions",
-                self.dim,
-                n_dims
-            );
+            return Err(BarracudaError::InvalidInput {
+                message: format!(
+                    "Dimension {} out of bounds for tensor with {} dimensions",
+                    self.dim, n_dims
+                ),
+            });
         }
 
         let size: usize = shape.iter().product();
@@ -284,14 +285,11 @@ impl CumprodF64 {
             return Ok(Vec::new());
         }
 
-        let tensor = Tensor::from_f64_data(data, vec![n], device.clone())
-            .context("Failed to create input tensor")?;
+        let tensor = Tensor::from_f64_data(data, vec![n], device.clone())?;
 
-        let result = Self::new(tensor, 0)
-            .execute()
-            .context("Failed to execute cumprod")?;
+        let result = Self::new(tensor, 0).execute()?;
 
-        Ok(result.to_f64_vec()?)
+        result.to_f64_vec()
     }
 
     /// Execute 1D exclusive cumprod directly on a slice
@@ -301,14 +299,11 @@ impl CumprodF64 {
             return Ok(Vec::new());
         }
 
-        let tensor = Tensor::from_f64_data(data, vec![n], device.clone())
-            .context("Failed to create input tensor")?;
+        let tensor = Tensor::from_f64_data(data, vec![n], device.clone())?;
 
-        let result = Self::exclusive(tensor, 0)
-            .execute()
-            .context("Failed to execute exclusive cumprod")?;
+        let result = Self::exclusive(tensor, 0).execute()?;
 
-        Ok(result.to_f64_vec()?)
+        result.to_f64_vec()
     }
 }
 

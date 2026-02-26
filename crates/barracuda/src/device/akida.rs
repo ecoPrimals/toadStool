@@ -85,13 +85,13 @@ pub struct AkidaCapabilities {
 ///
 /// **Deep Debt**: Runtime discovery, zero hardcoding
 pub fn detect_akida_boards() -> Result<AkidaCapabilities> {
-    log::info!("Detecting Akida NPU boards...");
+    tracing::info!("Detecting Akida NPU boards...");
 
     // Scan PCIe bus for BrainChip devices
     let pcie_devices = scan_pcie_for_akida()?;
 
     if pcie_devices.is_empty() {
-        log::info!("No Akida boards detected");
+        tracing::info!("No Akida boards detected");
         return Ok(AkidaCapabilities {
             boards: Vec::new(),
             total_npus: 0,
@@ -100,14 +100,14 @@ pub fn detect_akida_boards() -> Result<AkidaCapabilities> {
         });
     }
 
-    log::info!("Found {} Akida board(s)", pcie_devices.len());
+    tracing::info!("Found {} Akida board(s)", pcie_devices.len());
 
     // Query each board
     let mut boards = Vec::new();
     for (index, device) in pcie_devices.iter().enumerate() {
         match query_board_info(device, index) {
             Ok(board) => {
-                log::info!(
+                tracing::info!(
                     "  Board {}: {} at {} ({} NPUs, {:.1}W, {:.1}°C)",
                     index,
                     board.chip_name,
@@ -119,7 +119,7 @@ pub fn detect_akida_boards() -> Result<AkidaCapabilities> {
                 boards.push(board);
             }
             Err(e) => {
-                log::warn!("Failed to query board {}: {}", index, e);
+                tracing::warn!("Failed to query board {}: {}", index, e);
             }
         }
     }
@@ -177,7 +177,7 @@ fn scan_pcie_for_akida() -> Result<Vec<PcieDevice>> {
                 // BrainChip vendor ID is 0x1e7c
                 // Akida AKD1000 device ID is 0x1000
                 if vendor_id == 0x1e7c {
-                    log::debug!(
+                    tracing::debug!(
                         "Found BrainChip device at {}: {:04x}:{:04x}",
                         address,
                         vendor_id,
@@ -285,7 +285,7 @@ fn query_power_consumption(pcie_address: &str) -> f64 {
             if let Ok(power_str) = fs::read_to_string(&power_input_path) {
                 if let Ok(power_uw) = power_str.trim().parse::<f64>() {
                     let power_watts = power_uw / 1_000_000.0; // Convert µW to W
-                    log::debug!(
+                    tracing::debug!(
                         "Akida {}: Measured power = {:.3}W",
                         pcie_address,
                         power_watts
@@ -298,7 +298,7 @@ fn query_power_consumption(pcie_address: &str) -> f64 {
 
     // Fallback: Use Akida AKD1000 typical power (0.5-2W range)
     // But log that we're using fallback
-    log::warn!(
+    tracing::warn!(
         "Akida {}: hwmon not available, using typical power estimate",
         pcie_address
     );
@@ -322,7 +322,7 @@ fn query_temperature(pcie_address: &str) -> f64 {
             if let Ok(temp_str) = fs::read_to_string(&temp_input_path) {
                 if let Ok(temp_mdeg) = temp_str.trim().parse::<f64>() {
                     let temp_celsius = temp_mdeg / 1000.0; // Convert millidegrees to degrees
-                    log::debug!(
+                    tracing::debug!(
                         "Akida {}: Measured temperature = {:.1}°C",
                         pcie_address,
                         temp_celsius
@@ -335,7 +335,7 @@ fn query_temperature(pcie_address: &str) -> f64 {
 
     // Fallback: Use Akida AKD1000 typical operating temperature
     // But log that we're using fallback
-    log::warn!(
+    tracing::warn!(
         "Akida {}: hwmon not available, using typical temperature estimate",
         pcie_address
     );

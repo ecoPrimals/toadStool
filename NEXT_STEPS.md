@@ -1,11 +1,35 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 25, 2026 -- Session 65
-**Status**: Production-grade | 694 WGSL f64 shaders (14 DF64) | 2,490 barracuda tests | All quality gates green
+**Updated**: February 26, 2026 -- Session 66
+**Status**: Production-grade | 694 WGSL f64 shaders (14 DF64) | 2,526 barracuda tests | All quality gates green
 
 ---
 
 ## Completed This Session
+
+### Session 66: Cross-Spring Absorption + Deep Debt + Dependency Evolution ✅
+
+**Wave 1 — Absorption + Initial Refactoring:**
+- **4 new modules absorbed** from airSpring V009 + groundSpring V7: `stats::regression` (12 tests), `stats::hydrology` (13 tests), `stats::moving_window_f64` (7 tests), `stats::bootstrap::rawr_mean` (4 tests).
+- **`spearman_correlation`** re-exported (was private).
+- **Richards PDE evolved**: 8 named soil constants (Carsel & Parrish 1988), Picard buffer preallocation, magic numbers → named constants.
+- **Smart refactoring**: `morse_f64.rs` 804→556, `resource_quota.rs` 795→547.
+- **Dead code 13→10**: `griffin_lim` fields → STFT validation, `fhe_key_switch` pipeline wired, `nn/mod.rs` blanket allow removed.
+- **+36 new tests**, all passing.
+
+**Wave 2 — Deep Debt + Dependency Evolution:**
+- **12 more files refactored**: `workload.rs` (812→452), `cholesky.rs` (815→557), `cubic_spline.rs` (788→590), `batched_bisection_gpu.rs` (758→562), `anderson.rs` (657→486), `timeseries.rs` (640→477), `genomics.rs` (682→537), `solvers.rs` (692→551), `filter.rs` (705→636), `fused_map_reduce_f64.rs` (624→532), `spin_orbit_f64.rs` (623→508), `gpu_hmc_trajectory.rs` (785→767).
+- **`anyhow` crate eliminated**: 3 files migrated to typed `BarracudaError` via `thiserror`. Proper library error handling — no more `anyhow::bail!` in a library crate.
+- **`async_trait` analyzed and justified**: Required for dyn-compatible async trait objects (`ComputeExecutor`, `TensorStorage`). Native async fn in traits not dyn-safe — this dependency provides real value.
+- **Dead code 10→3**: `timeseries.device` → accessor, `vision.device` → accessor, `ring_buffer.staging_buffer` → accessor, `unidirectional.device` → accessor. Remaining 3 are feature-gated (TPU), PCIe diagnostic (Akida), and Phase 5+ placeholder.
+- **Production `expect()` audit**: 2 evolved in `observables/mod.rs` (→ `if let` + direct indexing). All 29 remaining are Mutex/RwLock poison guards (correct Rust practice).
+- **DF64 force shaders confirmed complete**: All 4 (Born-Mayer, Morse, Yukawa, Lennard-Jones) with full WGSL implementations wired via `Fp64Strategy::Hybrid`.
+
+**Wave 3 — Hardcoding Elimination + Final Dependency Cuts:**
+- **GPU executor scoring**: 15 named constants for routing thresholds (`mod scoring {}`) replacing ~30 inline literals.
+- **Timeseries ESN defaults**: 6 named constants for ESN configuration and anomaly detection window sizing.
+- **`shaders/precision/mod.rs`** 733→452 (38% reduction) — last large file with inline tests.
+- **`log` crate eliminated**: 68 `log::*!` calls migrated to `tracing::*!` across 18 files. Single unified logging facade — `log = "0.4"` removed from Cargo.toml.
 
 ### Session 65: Smart Refactoring ✅
 

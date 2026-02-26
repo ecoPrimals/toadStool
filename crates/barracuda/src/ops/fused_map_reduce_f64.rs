@@ -41,6 +41,9 @@ use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
+const FMR_WORKGROUP_SIZE: usize = 256;
+const FMR_MAX_SINGLE_PASS_WORKGROUPS: usize = 256;
+
 /// Map operations available for fused map-reduce
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -172,8 +175,7 @@ impl FusedMapReduceF64 {
                     usage: wgpu::BufferUsages::STORAGE,
                 });
 
-        // Calculate workgroups
-        let workgroup_size = 256;
+        let workgroup_size = FMR_WORKGROUP_SIZE;
         let n_workgroups = n.div_ceil(workgroup_size);
 
         // Create output buffer for partials
@@ -245,7 +247,7 @@ impl FusedMapReduceF64 {
             pass.dispatch_workgroups(n_workgroups as u32, 1, 1);
         }
 
-        if n_workgroups > 1 && n_workgroups <= 256 {
+        if n_workgroups > 1 && n_workgroups <= FMR_MAX_SINGLE_PASS_WORKGROUPS {
             // TS-004: Use separate partials_buffer for pass 2 input to avoid buffer conflict.
             // Some drivers reject using output_buffer as both pass 1 write and pass 2 read.
             let partials_buffer = self.device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -324,7 +326,7 @@ impl FusedMapReduceF64 {
             return self.read_result(&final_buffer);
         }
 
-        if n_workgroups > 256 {
+        if n_workgroups > FMR_MAX_SINGLE_PASS_WORKGROUPS {
             // Submit pass 1, then fall back to CPU-side reduction of partials
             self.device.queue.submit(Some(encoder.finish()));
             return self.reduce_partials_recursive(&output_buffer, n_workgroups, reduce_op);
@@ -335,7 +337,7 @@ impl FusedMapReduceF64 {
         self.read_result(&output_buffer)
     }
 
-    /// Recursive reduction for very large inputs (>256 workgroups)
+    /// Recursive reduction for very large inputs (>FMR_MAX_SINGLE_PASS_WORKGROUPS)
     fn reduce_partials_recursive(
         &self,
         buffer: &wgpu::Buffer,
@@ -528,97 +530,5 @@ impl FusedMapReduceF64 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_shannon_entropy_cpu() -> Result<()> {
-        // Test CPU path (small array)
-        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
-        else {
-            return Ok(()); // Skip if no f64 GPU available
-        };
-        let fmr = FusedMapReduceF64::new(device)?;
-
-        // Test case from wetSpring handoff: counts = [10, 20, 30, 40] → Shannon ≈ 1.27985422
-        let counts = vec![10.0, 20.0, 30.0, 40.0];
-        let shannon = fmr.shannon_entropy(&counts)?;
-
-        // CPU reference
-        let total: f64 = counts.iter().sum();
-        let expected: f64 = counts
-            .iter()
-            .map(|&c| {
-                let p = c / total;
-                if p > 0.0 {
-                    -p * p.ln()
-                } else {
-                    0.0
-                }
-            })
-            .sum();
-
-        let error = (shannon - expected).abs();
-        assert!(
-            error < 1e-10,
-            "Shannon error {} exceeds tolerance (got {}, expected {})",
-            error,
-            shannon,
-            expected
-        );
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_simpson_index_cpu() -> Result<()> {
-        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
-        else {
-            return Ok(()); // Skip if no f64 GPU available
-        };
-        let fmr = FusedMapReduceF64::new(device)?;
-
-        let counts = vec![10.0, 20.0, 30.0, 40.0];
-        let simpson = fmr.simpson_index(&counts)?;
-
-        // CPU reference
-        let total: f64 = counts.iter().sum();
-        let expected: f64 = counts.iter().map(|&c| (c / total).powi(2)).sum();
-
-        let error = (simpson - expected).abs();
-        assert!(
-            error < 1e-12,
-            "Simpson error {} exceeds tolerance (got {}, expected {})",
-            error,
-            simpson,
-            expected
-        );
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_large_array_sum_gpu() -> Result<()> {
-        let Some(device) = crate::device::test_pool::get_test_device_if_f64_gpu_available().await
-        else {
-            return Ok(()); // Skip if no f64 GPU available
-        };
-        let fmr = FusedMapReduceF64::new(device)?;
-
-        // Large array to trigger GPU path
-        let n = 100_000;
-        let data: Vec<f64> = (0..n).map(|i| (i as f64) * 0.001).collect();
-        let sum = fmr.sum(&data)?;
-
-        let expected: f64 = data.iter().sum();
-        let error = (sum - expected).abs() / expected.abs();
-
-        assert!(
-            error < 1e-10,
-            "Sum relative error {} exceeds tolerance",
-            error
-        );
-
-        Ok(())
-    }
-}
+#[path = "fused_map_reduce_f64_tests.rs"]
+mod tests;

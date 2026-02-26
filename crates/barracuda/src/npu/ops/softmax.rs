@@ -81,7 +81,7 @@ pub fn npu_softmax(logits: &[f32], temperature: f32) -> Result<Vec<f32>> {
         let codec = EventCodec::default();
         let sparsity = codec.measure_sparsity(&output);
         let max_prob = output.iter().copied().fold(0.0f32, f32::max);
-        log::debug!(
+        tracing::debug!(
             "NPU Softmax (WGSL) complete: {} classes, sparsity {:.1}%, max_prob {:.3}",
             logits.len(),
             sparsity * 100.0,
@@ -163,7 +163,7 @@ pub fn npu_softmax_top_k(logits: &[f32], k: usize, temperature: f32) -> Result<V
         }
     }
 
-    log::debug!("NPU Softmax Top-K: kept {}/{} classes", k, logits.len());
+    tracing::debug!("NPU Softmax Top-K: kept {}/{} classes", k, logits.len());
 
     Ok(probs)
 }

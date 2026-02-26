@@ -299,11 +299,7 @@ pub fn compute_msd(
         let t_fit: Vec<f64> = t_values[fit_start..].to_vec();
         let msd_fit: Vec<f64> = msd_values[fit_start..].to_vec();
         linear_fit_slope(&t_fit, &msd_fit) / 6.0
-    } else if !msd_values.is_empty() {
-        let msd = msd_values
-            .last()
-            .expect("msd_values non-empty in this branch");
-        let t = t_values.last().expect("t_values same length as msd_values");
+    } else if let (Some(&msd), Some(&t)) = (msd_values.last(), t_values.last()) {
         msd / (6.0 * t)
     } else {
         0.0
@@ -417,8 +413,8 @@ pub fn validate_energy(
     let var_e: f64 = totals.iter().map(|e| (e - mean_e).powi(2)).sum::<f64>() / totals.len() as f64;
     let std_e = var_e.sqrt();
 
-    let e_initial = stable.first().expect("stable non-empty").3;
-    let e_final = stable.last().expect("stable non-empty").3;
+    let e_initial = stable[0].3;
+    let e_final = stable[stable.len() - 1].3;
     let drift_pct = if mean_e.abs() > 1e-30 {
         ((e_final - e_initial) / mean_e.abs()).abs() * 100.0
     } else {

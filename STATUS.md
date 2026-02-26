@@ -1,4 +1,4 @@
-# Status -- February 25, 2026 (Sessions 32-65: Smart Refactoring + Deep Debt)
+# Status -- February 26, 2026 (Sessions 32-66: Absorption + Deep Debt)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy -p barracuda --lib -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,490 total** (2,388 pass, ~90 cascade W-003, 12 ignored) |
+| `cargo test -p barracuda --lib` | PASS | **2,526 total** (2,418 pass, ~96 cascade W-003, 12 ignored) |
 | hotSpring validation | PASS | **664 tests, 22 papers validated** |
 | wetSpring validation | PASS | **918 tests, 96.48% coverage** |
 | neuralSpring validation | PASS | **580 tests, 94.53% coverage** |
@@ -25,14 +25,70 @@
 | Production TODOs | PASS | **Zero -- all evolved to `BLOCKED(reason)` markers** |
 | File size limit | PASS | **All production files under 1000 lines** |
 | WGSL shaders | PASS | **694 (zero orphans, all f64 shader-first, 14 DF64 files)** |
-| Dead code | PASS | **13 `#[allow(dead_code)]` remain — all documented as reserved for Phase 5+** |
-| External dep hygiene | PASS | **`instant` + `chrono` eliminated; WebGPU mock_data→zero-size** |
+| Dead code | PASS | **3 `#[allow(dead_code)]` remain — feature-gated TPU + PCIe diag + Phase 5+ placeholder** |
+| External dep hygiene | PASS | **`instant` + `chrono` + `anyhow` + `log` eliminated; `async_trait` justified (dyn-required)** |
 | Production mocks | PASS | **Zero — TpuBackend::Mock behind `mock-tpu` feature gate** |
 | Platform stubs | PASS | **Evolved to platform-aware `can_handle()` + `SystemError::NotSupported`** |
 | FP64 strategy | PASS | **Fp64Strategy::Native/Hybrid -- FMA-optimized DF64 + transcendentals** |
 | Dependency security | PASS | **bytes >=1.11.1, aes-gcm >=0.10.3, zero chrono** |
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+
+---
+
+## Session 66: Absorption + Deep Debt (Feb 26, 2026)
+
+Cross-spring absorption of actionable handoff items + deep debt audit and fixes:
+
+### New Modules Absorbed (airSpring V009 + groundSpring V7)
+- **`stats::regression`**: 4 closed-form regression models (linear/quadratic/exponential/logarithmic) with `FitResult::predict()`, `fit_all()` convenience (12 tests)
+- **`stats::hydrology`**: FAO-56 reference hydrology — Hargreaves ET₀, crop coefficient interpolation, soil water balance (13 tests)
+- **`stats::moving_window_f64`**: CPU f64 sliding window statistics complementing GPU f32 path (7 tests)
+- **`stats::bootstrap::rawr_mean`**: RAWR Dirichlet-weighted resampling (Wang et al. 2021) for ecological inference (4 tests)
+- **`spearman_correlation`** re-exported from `stats/mod.rs` (was private)
+
+### Richards PDE Evolution
+- 8 named `SoilParams` constants (Carsel & Parrish 1988): SANDY_LOAM through LOAMY_SAND
+- Picard iteration buffer preallocation (9 vectors once, not per-iteration)
+- Magic numbers → `HARMONIC_MEAN_GUARD`, `MIN_CAPACITY` named constants
+
+### Smart Refactoring
+- **`morse_f64.rs`** 804→556 (31%): Tests + cfg(test) helpers extracted with shared `bond_geometry()` and `test_bond()` factory
+- **`resource_quota.rs`** 795→547 (31%): 22 tests extracted to `resource_quota_tests.rs`
+
+### Wave 2: Smart Refactoring (12 more files)
+- `workload.rs` 812→452, `cholesky.rs` 815→557, `cubic_spline.rs` 788→590, `batched_bisection_gpu.rs` 758→562
+- `anderson.rs` 657→486, `timeseries.rs` 640→477, `genomics.rs` 682→537, `solvers.rs` 692→551
+- `filter.rs` 705→636, `fused_map_reduce_f64.rs` 624→532, `spin_orbit_f64.rs` 623→508, `gpu_hmc_trajectory.rs` 785→767
+- Total: 14 files refactored across Session 66 (Wave 1: 2, Wave 2: 12)
+
+### Wave 2: External Dependency Evolution
+- **`anyhow` removed**: 3 files migrated to typed `BarracudaError` via `thiserror` — proper library error handling
+- **`async_trait` justified**: Required for dyn-compatible async trait objects (`ComputeExecutor`, `TensorStorage`)
+
+### Wave 2: Production expect() → Idiomatic Rust
+- `observables/mod.rs`: 2 production `expect()` → `if let` pattern + direct indexing
+- Full audit: 29 remaining production `expect()` are all Mutex/RwLock poison guards (correct Rust practice)
+
+### Wave 3: Hardcoding Elimination + More Dependency Evolution
+- `gpu_executor/mod.rs`: 15 named scoring constants replace ~30 inline routing thresholds
+- `timeseries.rs`: 6 named constants (ESN defaults + anomaly detection window)
+- `shaders/precision/mod.rs` 733→452 (38%) — 16 tests extracted
+- **`log` crate eliminated**: 68 calls migrated to `tracing` across 18 files — single unified logging facade
+
+### Dead Code Evolution (13 → 3)
+- `griffin_lim.rs`: `n_fft`/`hop_length` now used for STFT validation + `expected_signal_length()` accessor
+- `fhe_key_switch.rs`: `pipeline_accumulate` wired into 2-pass execute (decompose + accumulate)
+- `nn/mod.rs`: blanket `#![allow(dead_code)]` removed (zero warnings — all items consumed)
+
+### Deep Debt Audit Summary
+- **Large files (600+)**: 21 identified, top 2 refactored below threshold
+- **`unsafe`**: 2 locations only (SPIR-V passthrough, pipeline cache) — both documented
+- **`expect()` in production**: ~100 calls — all verified as lock-poisoning (correct) or test-only
+- **`unwrap()` in production**: 0 (only in test code)
+- **`todo!()`/`unimplemented!()`**: 0
+- **Production mocks**: 0 (mock TPU is feature-gated)
+- **New tests**: +36 (12 regression + 13 hydrology + 7 moving_window + 4 RAWR)
 
 ---
 
@@ -850,4 +906,4 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail of earlier e
 
 ---
 
-**Last Updated**: February 25, 2026 — Session 65: Smart refactoring + cross-spring absorption. 2,490 barracuda tests, 21,599 workspace tests. 694 WGSL shaders (14 DF64 files). 13 `#[allow(dead_code)]` remain (Phase 5+ reserved). 5 large files reduced 32-44%. Production panic eliminated (coulomb_f64). Kernel router hardcoding eliminated.
+**Last Updated**: February 26, 2026 — Session 66: Cross-spring absorption + deep debt + dependency evolution. 2,526 barracuda tests, 21,599 workspace tests. 694 WGSL shaders (14 DF64 files). 3 `#[allow(dead_code)]` remain (feature-gated/Phase 5+). 15 files refactored (20-44%). `anyhow` + `log` eliminated. Typed errors + unified tracing.

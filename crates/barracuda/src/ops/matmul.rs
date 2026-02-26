@@ -90,7 +90,7 @@ impl<'a> MatMul<'a> {
 
         let caps = DeviceCapabilities::from_device(device);
         let tier = Self::select_tier(&caps, m, n);
-        log::debug!(
+        tracing::debug!(
             "MatMul [{m}×{k}]×[{k}×{n}] → tier {:?} (device: {:?})",
             tier,
             caps.device_type
@@ -206,12 +206,12 @@ impl Tensor {
     pub fn matmul(self, other: &Self) -> Result<Self> {
         // NPU routing: sparse tensors or energy-priority policy route to Akida.
         if self.should_use_npu_for_matmul(other) {
-            log::debug!("Routing matmul to NPU (sparse or energy priority)");
+            tracing::debug!("Routing matmul to NPU (sparse or energy priority)");
             return self.matmul_npu(other);
         }
 
         // Existing WGSL path (GPU/CPU)
-        log::debug!("Routing matmul to WGSL (GPU/CPU)");
+        tracing::debug!("Routing matmul to WGSL (GPU/CPU)");
         MatMul::new(&self, other).execute()
     }
 

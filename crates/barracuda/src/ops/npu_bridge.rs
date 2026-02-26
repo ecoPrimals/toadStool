@@ -38,6 +38,8 @@
 //! let c = a.matmul(&b)?;  // Bridge handles conversion!
 //! ```
 
+const NPU_BRIDGE_LATENCY_THRESHOLD: usize = 1024;
+
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result as BarracudaResult};
 use crate::npu::NpuMlBackend;
@@ -88,15 +90,15 @@ where
 
     if backend_guard.is_none() {
         // Lazy initialization - only create NPU when first needed
-        log::info!("Initializing NPU backend (runtime discovery)...");
+        tracing::info!("Initializing NPU backend (runtime discovery)...");
 
         match NpuMlBackend::new() {
             Ok(npu) => {
-                log::info!("✅ NPU backend initialized successfully");
+                tracing::info!("✅ NPU backend initialized successfully");
                 *backend_guard = Some(npu);
             }
             Err(e) => {
-                log::warn!("⚠️  NPU not available: {:?}", e);
+                tracing::warn!("⚠️  NPU not available: {:?}", e);
                 return Err(BarracudaError::DeviceNotAvailable {
                     device: "NPU".to_string(),
                     reason: format!("NPU initialization failed: {:?}", e),
@@ -246,7 +248,7 @@ pub fn should_use_npu(data: &[f32], priority: crate::workload::Priority) -> bool
     // Decision logic based on validation data
     match priority {
         Priority::Energy => true, // NPU always for energy (7× efficient!)
-        Priority::Latency if data.len() < 1024 => true, // NPU good for small, real-time
+        Priority::Latency if data.len() < NPU_BRIDGE_LATENCY_THRESHOLD => true,
         _ => sparsity > 0.5,      // Use NPU if >50% sparse
     }
 }

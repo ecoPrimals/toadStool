@@ -39,7 +39,7 @@ impl AkidaExecutor {
             return Err(BarracudaError::device("No Akida boards available"));
         }
 
-        log::info!(
+        tracing::info!(
             "Akida executor initialized with {} boards",
             caps.boards.len()
         );
@@ -77,7 +77,7 @@ impl AkidaExecutor {
     pub async fn spike_encode_akida(&self, input: &[f32], time_steps: u32) -> Result<Vec<u32>> {
         let board = self.select_board();
 
-        log::debug!(
+        tracing::debug!(
             "Executing spike_encode on Akida board {} ({} NPUs)",
             board.index,
             board.npu_count
@@ -98,7 +98,7 @@ impl AkidaExecutor {
             .akida_spike_encode_impl(board, input, time_steps)
             .await?;
 
-        log::debug!(
+        tracing::debug!(
             "Akida encoding complete: {} spikes generated, {:.2}W power used",
             result.iter().sum::<u32>(),
             board.power_watts
@@ -127,7 +127,7 @@ impl AkidaExecutor {
     ) -> Result<Vec<u32>> {
         let board = self.select_board();
 
-        log::debug!(
+        tracing::debug!(
             "Executing LIF neurons on Akida board {} ({} NPUs, {:.1}°C)",
             board.index,
             board.npu_count,
@@ -149,7 +149,7 @@ impl AkidaExecutor {
             .akida_lif_impl(board, input_spikes, weights, threshold, leak, time_steps)
             .await?;
 
-        log::debug!(
+        tracing::debug!(
             "Akida LIF complete: {} output spikes, {:.1}W avg power",
             result.iter().sum::<u32>(),
             board.power_watts
@@ -175,7 +175,7 @@ impl AkidaExecutor {
     ) -> Result<Vec<f32>> {
         let board = self.select_board();
 
-        log::debug!("Executing STDP learning on Akida board {}", board.index);
+        tracing::debug!("Executing STDP learning on Akida board {}", board.index);
 
         // Production Implementation Strategy:
         //
@@ -191,7 +191,7 @@ impl AkidaExecutor {
             .akida_stdp_impl(board, pre_spikes, post_spikes, learning_rate)
             .await?;
 
-        log::debug!("Akida STDP complete: {} weights updated", result.len());
+        tracing::debug!("Akida STDP complete: {} weights updated", result.len());
 
         Ok(result)
     }
@@ -245,7 +245,7 @@ impl AkidaExecutor {
         let active_ratio =
             spikes.iter().sum::<u32>() as f64 / (input.len() * time_steps as usize) as f64;
 
-        log::trace!(
+        tracing::trace!(
             "Akida power scaling: {:.1}% active (vs 100% for GPU)",
             active_ratio * 100.0
         );
@@ -302,7 +302,7 @@ impl AkidaExecutor {
             }
         }
 
-        log::trace!(
+        tracing::trace!(
             "Akida LIF: {} input spikes → {} output spikes (board {}, {}W)",
             input_spikes.iter().sum::<u32>(),
             output_spikes[0],
@@ -358,7 +358,7 @@ impl AkidaExecutor {
             weights[i] = weights[i].clamp(0.0, 2.0); // Clamp to valid range
         }
 
-        log::trace!(
+        tracing::trace!(
             "Akida STDP: {} weights updated (board {})",
             weights.len(),
             board.index

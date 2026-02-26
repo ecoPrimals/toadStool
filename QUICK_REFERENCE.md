@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**February 25, 2026 -- Session 65**
+**February 26, 2026 -- Session 66**
 
 ---
 
@@ -547,4 +547,4 @@ constants::timeouts::*               // Connection, request, etc.
 
 ---
 
-**Last Updated**: February 25, 2026 — Session 65
+**Last Updated**: February 26, 2026 — Session 66

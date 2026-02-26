@@ -50,7 +50,7 @@ type Result<T> = std::result::Result<T, crate::error::BarracudaError>;
 /// // y ≈ [-0.16, 0.0, 0.84, 1.96] - via WGSL!
 /// ```
 pub fn npu_gelu(input: &[f32]) -> Result<Vec<f32>> {
-    log::debug!("NPU GELU (WGSL): {} activations", input.len());
+    tracing::debug!("NPU GELU (WGSL): {} activations", input.len());
 
     // ═══════════════════════════════════════════════════════════
     // CRITICAL: Use WGSL shader (same math as GPU/CPU!)
@@ -78,7 +78,7 @@ pub fn npu_gelu(input: &[f32]) -> Result<Vec<f32>> {
         let codec = EventCodec::default();
         let sparsity = codec.measure_sparsity(&output);
 
-        log::debug!(
+        tracing::debug!(
             "NPU GELU (WGSL) complete: {:.1}% sparsity",
             sparsity * 100.0
         );
@@ -86,7 +86,7 @@ pub fn npu_gelu(input: &[f32]) -> Result<Vec<f32>> {
         // For sparse outputs, encode as events
         if sparsity > 0.3 {
             let events = codec.encode(&output);
-            log::debug!(
+            tracing::debug!(
                 "NPU event encoding: {} events ({}% reduction)",
                 events.len(),
                 ((1.0 - events.len() as f32 / output.len() as f32) * 100.0)
