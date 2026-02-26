@@ -64,7 +64,14 @@ impl RoiPool {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/pooling/roi_pool.wgsl")
+        {
+            static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                crate::shaders::precision::downcast_f64_to_f32(include_str!(
+                    "../shaders/pooling/roi_pool_f64.wgsl"
+                ))
+            });
+            std::sync::LazyLock::force(&SHADER).as_str()
+        }
     }
 
     pub fn execute(self) -> Result<Tensor> {

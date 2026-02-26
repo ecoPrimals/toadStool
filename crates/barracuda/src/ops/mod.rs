@@ -237,7 +237,7 @@ pub use batch_pair_reduce_f64::{BatchPairReduceF64, PairReduceOp};
 pub use batch_tolerance_search_f64::BatchToleranceSearchF64;
 pub use hill_f64::HillFunctionF64;
 pub use kmd_grouping_f64::{repeat_units, KmdGroupingF64, KmdResult};
-pub use rk_stage::{BatchedOdeRK4F64, BatchedRk4Config, OdeFunction, RkIntegrator, WGSL_RK4_PARALLEL};
+pub use rk_stage::{wgsl_rk4_parallel, BatchedOdeRK4F64, BatchedRk4Config, OdeFunction, RkIntegrator};
 
 // DF64 universal math shaders (compile via compile_shader_df64)
 pub use df64_shaders::{

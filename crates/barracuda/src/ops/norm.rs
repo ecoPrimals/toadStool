@@ -48,7 +48,14 @@ impl Norm {
 
     /// Get the WGSL shader source for dimension-wise reduction
     fn wgsl_shader_dim() -> &'static str {
-        include_str!("../shaders/reduce/norm_dim.wgsl")
+        {
+            static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                    "../shaders/reduce/norm_dim_f64.wgsl"
+                ))
+            });
+            std::sync::LazyLock::force(&SHADER).as_str()
+        }
     }
 
     /// Execute the norm operation

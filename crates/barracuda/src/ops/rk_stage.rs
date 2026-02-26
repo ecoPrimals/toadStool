@@ -23,7 +23,14 @@ use std::sync::Arc;
 /// WGSL kernel for GPU-parallel multi-system RK4 integration (f32).
 ///
 /// For f64 structured ODE batches, see [`BatchedOdeRK4F64`].
-pub const WGSL_RK4_PARALLEL: &str = include_str!("../shaders/numerical/rk4_parallel.wgsl");
+pub fn wgsl_rk4_parallel() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+            "../shaders/numerical/rk4_parallel_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
 /// RK45 (Dormand-Prince) coefficients
 const DP_C: [f64; 6] = [0.0, 0.2, 0.3, 0.8, 8.0 / 9.0, 1.0];

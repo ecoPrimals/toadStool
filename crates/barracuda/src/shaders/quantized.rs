@@ -25,17 +25,45 @@
 //! - Quantized weights = less data to read from VRAM
 //! - GPU compute can hide dequantization latency
 
-/// Q4_0 dequantization shader source
-pub const DEQUANT_Q4_WGSL: &str = include_str!("quantized/dequant_q4.wgsl");
+/// Q4_0 dequantization shader source (f64 canonical, downcast to f32)
+pub fn dequant_q4_wgsl() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32(include_str!(
+            "quantized/dequant_q4_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
-/// Q8_0 dequantization shader source
-pub const DEQUANT_Q8_WGSL: &str = include_str!("quantized/dequant_q8.wgsl");
+/// Q8_0 dequantization shader source (f64 canonical, downcast to f32)
+pub fn dequant_q8_wgsl() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32(include_str!(
+            "quantized/dequant_q8_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
-/// Q4_0 GEMV shader source (on-the-fly dequantization)
-pub const GEMV_Q4_WGSL: &str = include_str!("quantized/gemv_q4.wgsl");
+/// Q4_0 GEMV shader source (on-the-fly dequantization, f64 canonical)
+pub fn gemv_q4_wgsl() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32(include_str!(
+            "quantized/gemv_q4_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
-/// Q8_0 GEMV shader source (on-the-fly dequantization)
-pub const GEMV_Q8_WGSL: &str = include_str!("quantized/gemv_q8.wgsl");
+/// Q8_0 GEMV shader source (on-the-fly dequantization, f64 canonical)
+pub fn gemv_q8_wgsl() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32(include_str!(
+            "quantized/gemv_q8_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
 /// Block size for Q4_0 and Q8_0 quantization
 pub const QUANT_BLOCK_SIZE: usize = 32;
@@ -85,16 +113,16 @@ impl QuantType {
     /// Get dequantization shader source
     pub fn dequant_shader(&self) -> &'static str {
         match self {
-            Self::Q4_0 => DEQUANT_Q4_WGSL,
-            Self::Q8_0 => DEQUANT_Q8_WGSL,
+            Self::Q4_0 => dequant_q4_wgsl(),
+            Self::Q8_0 => dequant_q8_wgsl(),
         }
     }
 
     /// Get GEMV shader source
     pub fn gemv_shader(&self) -> &'static str {
         match self {
-            Self::Q4_0 => GEMV_Q4_WGSL,
-            Self::Q8_0 => GEMV_Q8_WGSL,
+            Self::Q4_0 => gemv_q4_wgsl(),
+            Self::Q8_0 => gemv_q8_wgsl(),
         }
     }
 }
@@ -238,9 +266,9 @@ mod tests {
 
     #[test]
     fn test_shader_sources_exist() {
-        assert!(!DEQUANT_Q4_WGSL.is_empty());
-        assert!(!DEQUANT_Q8_WGSL.is_empty());
-        assert!(!GEMV_Q4_WGSL.is_empty());
-        assert!(!GEMV_Q8_WGSL.is_empty());
+        assert!(!dequant_q4_wgsl().is_empty());
+        assert!(!dequant_q8_wgsl().is_empty());
+        assert!(!gemv_q4_wgsl().is_empty());
+        assert!(!gemv_q8_wgsl().is_empty());
     }
 }

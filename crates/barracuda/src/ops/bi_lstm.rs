@@ -60,7 +60,14 @@ impl BiLSTM {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/rnn/bi_lstm.wgsl")
+        {
+            static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                    "../shaders/rnn/bi_lstm_f64.wgsl"
+                ))
+            });
+            std::sync::LazyLock::force(&SHADER).as_str()
+        }
     }
 
     /// Execute BiLSTM on tensor

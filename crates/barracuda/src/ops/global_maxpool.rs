@@ -50,7 +50,14 @@ pub struct GlobalMaxPool {
 
 impl GlobalMaxPool {
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/pooling/global_maxpool.wgsl")
+        {
+            static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                crate::shaders::precision::downcast_f64_to_f32(include_str!(
+                    "../shaders/pooling/global_maxpool_f64.wgsl"
+                ))
+            });
+            std::sync::LazyLock::force(&SHADER).as_str()
+        }
     }
 
     pub fn execute(self) -> Result<Tensor> {

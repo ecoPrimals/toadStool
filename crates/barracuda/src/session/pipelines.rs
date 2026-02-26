@@ -130,7 +130,7 @@ impl SessionPipelines {
                 "Session Softmax",
             ),
             lnrm_pl: auto_pipeline(
-                include_str!("../shaders/norm/layer_norm.wgsl"),
+                crate::ops::layer_norm_wgsl::LayerNorm::wgsl_shader(),
                 "Session LayerNorm",
             ),
             mm_naive_pl: auto_pipeline(
