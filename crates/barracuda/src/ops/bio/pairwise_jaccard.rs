@@ -17,7 +17,8 @@ use wgpu::util::DeviceExt;
 
 use crate::device::WgpuDevice;
 
-pub const WGSL_PAIRWISE_JACCARD: &str = include_str!("../../shaders/math/pairwise_jaccard.wgsl");
+static WGSL_PAIRWISE_JACCARD: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../../shaders/math/pairwise_jaccard_f64.wgsl")));
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -80,7 +81,7 @@ impl PairwiseJaccardGpu {
 
         let module = d.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("PairwiseJaccard Shader"),
-            source: wgpu::ShaderSource::Wgsl(WGSL_PAIRWISE_JACCARD.into()),
+            source: wgpu::ShaderSource::Wgsl((&*WGSL_PAIRWISE_JACCARD).into()),
         });
 
         let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {

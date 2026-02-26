@@ -13,7 +13,9 @@ use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 /// Argsort shader (tracks original indices).
-pub const WGSL_ARGSORT: &str = include_str!("../shaders/misc/argsort.wgsl");
+#[allow(dead_code)]
+static WGSL_ARGSORT: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/misc/argsort_f64.wgsl")));
 
 /// Generic sort shader.
 pub const WGSL_SORT: &str = include_str!("../shaders/misc/sort.wgsl");

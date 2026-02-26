@@ -45,7 +45,9 @@ impl Dequantize {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/misc/dequantize.wgsl")
+        static SHADER: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/misc/dequantize_f64.wgsl")));
+        &SHADER
     }
 
     /// Execute dequantize on tensor

@@ -1,4 +1,4 @@
-// spatial_payoff.wgsl — Spatial Prisoner's Dilemma Payoff Stencil (f32)
+// spatial_payoff_f64.wgsl — Spatial Prisoner's Dilemma Payoff Stencil (f64 canonical)
 //
 // Each thread computes the cumulative PD payoff for one cell in a
 // 2D grid using a Moore neighborhood (8 neighbors) with periodic
@@ -17,7 +17,7 @@ struct Params {
 }
 
 @group(0) @binding(0) var<storage, read> grid: array<u32>;
-@group(0) @binding(1) var<storage, read_write> fitness: array<f32>;
+@group(0) @binding(1) var<storage, read_write> fitness: array<f64>;
 @group(0) @binding(2) var<uniform> params: Params;
 
 @compute @workgroup_size(256)
@@ -26,14 +26,14 @@ fn spatial_payoff(@builtin(global_invocation_id) gid: vec3<u32>) {
     let n = params.grid_size;
     if idx >= n * n { return; }
 
-    let b = f32(params.b_x1000) / 1000.0;
-    let c = f32(params.c_x1000) / 1000.0;
+    let b = f64(params.b_x1000) / 1000.0;
+    let c = f64(params.c_x1000) / 1000.0;
 
     let i = idx / n;
     let j = idx % n;
     let me = grid[idx];
 
-    var total: f32 = 0.0;
+    var total: f64 = 0.0;
 
     // Moore neighborhood with periodic boundary
     for (var di: i32 = -1; di <= 1; di = di + 1) {

@@ -1,17 +1,17 @@
-// DotProduct: Compute inner product of two vectors
+// DotProduct_f64.wgsl — Compute inner product of two vectors (f64 canonical)
 // CUDA equivalent: cublas::dot
 // Use cases: Similarity, attention scores
 
-@group(0) @binding(0) var<storage, read> a: array<f32>;
-@group(0) @binding(1) var<storage, read> b: array<f32>;
-@group(0) @binding(2) var<storage, read_write> output: array<f32>;  // Partial sums
+@group(0) @binding(0) var<storage, read> a: array<f64>;
+@group(0) @binding(1) var<storage, read> b: array<f64>;
+@group(0) @binding(2) var<storage, read_write> output: array<f64>;  // Partial sums
 
 struct Params {
     size: u32,
 }
 @group(0) @binding(3) var<uniform> params: Params;
 
-var<workgroup> shared_data: array<f32, 256>;
+var<workgroup> shared_data: array<f64, 256>;
 
 @compute @workgroup_size(256)
 fn main(
@@ -21,15 +21,15 @@ fn main(
 ) {
     let tid = local_id.x;
     let gid = global_id.x;
-    
+
     // Load and multiply
-    var value: f32 = 0.0;
+    var value: f64 = 0.0;
     if (gid < params.size) {
         value = a[gid] * b[gid];
     }
     shared_data[tid] = value;
     workgroupBarrier();
-    
+
     // Tree reduction in shared memory
     for (var stride = 128u; stride > 0u; stride = stride / 2u) {
         if (tid < stride) {
@@ -37,7 +37,7 @@ fn main(
         }
         workgroupBarrier();
     }
-    
+
     // Write partial sum
     if (tid == 0u) {
         output[workgroup_id.x] = shared_data[0];

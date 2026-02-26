@@ -1,23 +1,23 @@
-// Power operation: output = input^exponent
+// pow_simple_f64.wgsl — Power operation: output = input^exponent (f64 canonical)
 //
-// Supports arbitrary floating-point exponents via WGSL pow().
+// Supports arbitrary floating-point exponents via WGSL pow_f64().
 // Special cases:
 //   exponent = 0 → 1.0
 //   exponent = 1 → identity
 //   exponent = 2 → x * x (fast path)
-//   negative exponent → 1/x^|exp| via pow()
+//   negative exponent → 1/x^|exp| via pow_f64()
 //
 // Cross-domain: elementwise power for activation functions, polynomial
 // features, physics (r^-n potentials), image gamma correction.
 
 struct Params {
     total: u32,
-    exponent: f32,
+    exponent: f64,
     _padding: vec2<u32>,
 }
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
 @group(0) @binding(2) var<uniform> params: Params;
 
 @compute @workgroup_size(256)
@@ -43,19 +43,14 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     } else if (p == -1.0) {
         output[idx] = 1.0 / x;
     } else {
-        // General case: use WGSL pow() for positive base
-        // pow(x, p) requires x > 0 in WGSL
+        // General case: use pow_f64 for positive base
         if (x > 0.0) {
-            output[idx] = pow(x, p);
+            output[idx] = pow_f64(x, p);
         } else if (x == 0.0) {
-            // 0^p = 0 for p > 0, undefined otherwise
             output[idx] = select(0.0, 0.0, p > 0.0);
         } else {
-            // Negative base with non-integer exponent: use abs and sign
-            // This handles cases like (-2)^3 = -8
-            let abs_result = pow(abs(x), p);
-            // Check if exponent is odd integer for sign
-            let is_odd = (f32(i32(p)) == p) && (i32(p) % 2 != 0);
+            let abs_result = pow_f64(abs(x), p);
+            let is_odd = (f64(i32(p)) == p) && (i32(p) % 2 != 0);
             output[idx] = select(abs_result, -abs_result, is_odd);
         }
     }

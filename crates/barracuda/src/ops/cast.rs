@@ -74,7 +74,9 @@ impl Cast {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/misc/cast.wgsl")
+        static SHADER: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/misc/cast_f64.wgsl")));
+        &SHADER
     }
 
     pub fn execute(self) -> Result<Tensor> {

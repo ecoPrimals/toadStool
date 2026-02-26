@@ -15,12 +15,16 @@ use wgpu::util::DeviceExt;
 ///
 /// Supports common patterns like matrix multiply (`ij,jk->ik`) via configurable
 /// strides. Entry point: `main`.
-pub const WGSL_EINSUM: &str = include_str!("../shaders/misc/einsum.wgsl");
+#[allow(dead_code)]
+static WGSL_EINSUM: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/misc/einsum_f64.wgsl")));
 
 /// GPU shader for Kronecker product: C[i*m+k, j*n+l] = A[i,j] * B[k,l].
 ///
 /// Each thread computes one element. Entry point: `main`.
-pub const WGSL_KRON: &str = include_str!("../shaders/misc/kron.wgsl");
+#[allow(dead_code)]
+static WGSL_KRON: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/misc/kron_f64.wgsl")));
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]

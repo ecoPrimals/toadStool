@@ -47,7 +47,9 @@ pub static WGSL_VECTORADD: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_VECTORADD_F64));
 
 /// Generic element-wise binary op shader.
-pub const WGSL_ELEMENTWISE_BINARY: &str = include_str!("../shaders/misc/elementwise_binary.wgsl");
+#[allow(dead_code)]
+static WGSL_ELEMENTWISE_BINARY: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/misc/elementwise_binary_f64.wgsl")));
 
 // Vendor IDs for capability-based dispatch (no string matching)
 use crate::device::vendor::{VENDOR_AMD, VENDOR_NVIDIA};

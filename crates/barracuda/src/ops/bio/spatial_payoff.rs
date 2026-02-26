@@ -20,7 +20,8 @@ use wgpu::util::DeviceExt;
 
 use crate::device::WgpuDevice;
 
-pub const WGSL_SPATIAL_PAYOFF: &str = include_str!("../../shaders/math/spatial_payoff.wgsl");
+static WGSL_SPATIAL_PAYOFF: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../../shaders/math/spatial_payoff_f64.wgsl")));
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -85,7 +86,7 @@ impl SpatialPayoffGpu {
 
         let module = d.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("SpatialPayoff Shader"),
-            source: wgpu::ShaderSource::Wgsl(WGSL_SPATIAL_PAYOFF.into()),
+            source: wgpu::ShaderSource::Wgsl((&*WGSL_SPATIAL_PAYOFF).into()),
         });
 
         let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {

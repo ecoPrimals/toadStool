@@ -13,7 +13,9 @@ use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 /// Simple pow variant (scalar, no vectorization).
-pub const WGSL_POW_SIMPLE: &str = include_str!("../shaders/math/pow_simple.wgsl");
+#[allow(dead_code)]
+static WGSL_POW_SIMPLE: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/pow_simple_f64.wgsl")));
 
 /// Power operation
 pub struct Pow {
@@ -29,7 +31,9 @@ impl Pow {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/math/pow.wgsl")
+        static SHADER: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/pow_f64.wgsl")));
+        &SHADER
     }
 
     /// Execute the pow operation

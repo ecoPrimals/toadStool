@@ -14,7 +14,8 @@ use wgpu::util::DeviceExt;
 
 use crate::device::WgpuDevice;
 
-pub const WGSL_PAIRWISE_L2: &str = include_str!("../../shaders/math/pairwise_l2.wgsl");
+static WGSL_PAIRWISE_L2: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../../shaders/math/pairwise_l2_f64.wgsl")));
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -77,7 +78,7 @@ impl PairwiseL2Gpu {
 
         let module = d.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("PairwiseL2 Shader"),
-            source: wgpu::ShaderSource::Wgsl(WGSL_PAIRWISE_L2.into()),
+            source: wgpu::ShaderSource::Wgsl((&*WGSL_PAIRWISE_L2).into()),
         });
 
         let pipeline = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -154,9 +155,9 @@ mod tests {
 
     #[test]
     fn sanity_constants_exported() {
-        assert!(!WGSL_PAIRWISE_L2.is_empty());
-        assert!(WGSL_PAIRWISE_L2.contains("fn main"));
-        assert!(WGSL_PAIRWISE_L2.contains("PairwiseParams"));
+        assert!(!(&*WGSL_PAIRWISE_L2).is_empty());
+        assert!((&*WGSL_PAIRWISE_L2).contains("fn main"));
+        assert!((&*WGSL_PAIRWISE_L2).contains("PairwiseParams"));
         assert!(std::any::type_name::<PairwiseL2Gpu>().contains("PairwiseL2Gpu"));
     }
 }
