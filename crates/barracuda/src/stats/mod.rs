@@ -51,7 +51,11 @@
 pub const WGSL_BOOTSTRAP_MEAN_F64: &str = include_str!("../shaders/special/bootstrap_mean_f64.wgsl");
 
 /// WGSL kernel for parallel histogram via atomic binning.
-pub const WGSL_HISTOGRAM: &str = include_str!("../shaders/stats/histogram.wgsl");
+pub static WGSL_HISTOGRAM: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+        "../shaders/stats/histogram_f64.wgsl"
+    ))
+});
 
 pub mod bootstrap;
 pub mod chi2;

@@ -6,7 +6,11 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 
 /// Where/select conditional shader.
-pub const WGSL_WHERE_OP: &str = include_str!("../shaders/tensor/where_op.wgsl");
+pub static WGSL_WHERE_OP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+        "../shaders/tensor/where_op_f64.wgsl"
+    ))
+});
 
 pub struct Where {
     condition: Tensor,
@@ -20,7 +24,14 @@ impl Where {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/tensor/where_select.wgsl")
+        {
+            static S: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                    "../shaders/tensor/where_select_f64.wgsl"
+                ))
+            });
+            &S
+        }
     }
 
     pub fn execute(self) -> Result<Tensor> {

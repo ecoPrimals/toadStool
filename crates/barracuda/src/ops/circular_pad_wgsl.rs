@@ -26,7 +26,14 @@ impl CircularPad {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/tensor/circular_pad.wgsl")
+        {
+            static S: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                    "../shaders/tensor/circular_pad_f64.wgsl"
+                ))
+            });
+            &S
+        }
     }
 
     /// Execute the circular pad operation

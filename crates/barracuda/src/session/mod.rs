@@ -39,7 +39,7 @@
 
 mod dispatch;
 mod gpu_session;
-mod pipelines;
+pub(crate) mod pipelines;
 mod tensor;
 mod types;
 

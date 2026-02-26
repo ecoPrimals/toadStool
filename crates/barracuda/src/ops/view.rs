@@ -21,7 +21,15 @@
 //! implementation pattern for view operations.
 
 use crate::error::{BarracudaError, Result};
+use crate::shaders::precision;
 use crate::tensor::Tensor;
+
+/// WGSL shader source (f64 canonical, downcast to f32 at runtime)
+pub static WGSL_VIEW: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+        "../shaders/tensor/view_f64.wgsl"
+    ))
+});
 
 /// View operation parameters
 #[repr(C)]
@@ -75,9 +83,6 @@ impl View {
 
         Ok(Self { input, new_shape })
     }
-
-    /// WGSL shader source (embedded at compile time)
-    pub const WGSL_VIEW: &'static str = include_str!("../shaders/tensor/view.wgsl");
 
     /// Execute view operation on tensor
     ///

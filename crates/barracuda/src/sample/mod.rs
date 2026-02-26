@@ -50,7 +50,11 @@ pub mod sobol;
 pub mod sparsity;
 
 /// Latin hypercube sampling shader.
-pub const WGSL_LHS: &str = include_str!("../shaders/sample/lhs.wgsl");
+pub static WGSL_LHS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+        "../shaders/sample/lhs_f64.wgsl"
+    ))
+});
 
 /// f64 is the canonical source — math is universal, precision is silicon.
 static WGSL_METROPOLIS_F64: &str = include_str!("../shaders/sample/metropolis_f64.wgsl");

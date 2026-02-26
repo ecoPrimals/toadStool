@@ -54,7 +54,14 @@ impl Chunk {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/tensor/chunk.wgsl")
+        {
+            static S: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                    "../shaders/tensor/chunk_f64.wgsl"
+                ))
+            });
+            &S
+        }
     }
 
     pub fn execute(self) -> Result<Vec<Tensor>> {

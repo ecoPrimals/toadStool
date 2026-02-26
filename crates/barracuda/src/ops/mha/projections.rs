@@ -109,7 +109,7 @@ impl MultiHeadAttention {
             });
 
         let shader = device.compile_shader(
-            include_str!("../../shaders/tensor/head_split.wgsl"),
+            &crate::session::pipelines::HEAD_SPLIT_F32,
             Some("head_split"),
         );
 
@@ -197,7 +197,7 @@ impl MultiHeadAttention {
             });
 
         let shader = device.compile_shader(
-            include_str!("../../shaders/tensor/head_concat.wgsl"),
+            &crate::session::pipelines::HEAD_CONCAT_F32,
             Some("head_concat"),
         );
 

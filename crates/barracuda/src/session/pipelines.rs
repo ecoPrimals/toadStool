@@ -15,6 +15,11 @@ pub(super) static MATMUL_CPU_F32: std::sync::LazyLock<String> =
 pub(super) static MATMUL_GPU_F32: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_gpu_evolved_f64.wgsl")));
 
+pub(crate) static HEAD_SPLIT_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/tensor/head_split_f64.wgsl")));
+pub(crate) static HEAD_CONCAT_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/tensor/head_concat_f64.wgsl")));
+
 /// All compute pipelines for a `TensorSession`.
 ///
 /// `add_pl`, `mul_pl`, `fma_pl`, `scale_pl` are now full `ComputePipeline`
@@ -162,11 +167,11 @@ impl SessionPipelines {
                 "Session Attn Apply",
             ),
             head_split_pl: auto_pipeline(
-                include_str!("../shaders/tensor/head_split.wgsl"),
+                &crate::session::pipelines::HEAD_SPLIT_F32,
                 "Session Head Split",
             ),
             head_concat_pl: auto_pipeline(
-                include_str!("../shaders/tensor/head_concat.wgsl"),
+                &crate::session::pipelines::HEAD_CONCAT_F32,
                 "Session Head Concat",
             ),
         }
