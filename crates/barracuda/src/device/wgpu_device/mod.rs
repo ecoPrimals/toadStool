@@ -250,29 +250,33 @@ impl WgpuDevice {
     ///
     /// - `Precision::F32` — downcast f64 types to f32, compile via standard path
     /// - `Precision::F64` — full `compile_shader_f64()` pipeline (polyfills + sovereign compiler)
-    /// - `Precision::Df64` — compile via `compile_shader_df64()` (caller provides DF64 source)
+    /// - `Precision::Df64` — downcast f64 to DF64 types + transcendentals, compile via
+    ///   `compile_shader_df64()` which auto-injects the DF64 core library
     /// - `Precision::F16` — downcast f64 types to f16, compile via standard path
     ///
-    /// For `F32`/`F16`/`F64`: pass the f64-canonical source (the "true math").
-    /// For `Df64`: pass the DF64-specific source (structural layout differs: `vec2<f32>`
-    /// storage, `df64_add`/`df64_mul` calls). The DF64 core library is auto-injected.
+    /// Pass the f64-canonical source (the "true math") for ALL precisions.
+    /// The pipeline handles the rest.
     ///
-    /// This is the same pattern that solved f64 builtins with polyfills — now extended
-    /// to manage all precisions as a compilation pipeline detail.
+    /// **DF64 coverage**: Types, constructors, transcendentals, and storage are
+    /// handled automatically. Infix arithmetic operators (`+`, `-`, `*`, `/`)
+    /// between f64 values require the naga-IR rewrite pass (Phase 5).
     pub fn compile_shader_universal(
         &self,
         source: &str,
         precision: crate::shaders::precision::Precision,
         label: Option<&str>,
     ) -> wgpu::ShaderModule {
-        use crate::shaders::precision::{downcast_f64_to_f32, Precision};
+        use crate::shaders::precision::{downcast_f64_to_df64, downcast_f64_to_f32, Precision};
         match precision {
             Precision::F32 => {
                 let f32_source = downcast_f64_to_f32(source);
                 self.compile_shader(&f32_source, label)
             }
             Precision::F64 => self.compile_shader_f64(source, label),
-            Precision::Df64 => self.compile_shader_df64(source, label),
+            Precision::Df64 => {
+                let df64_source = downcast_f64_to_df64(source);
+                self.compile_shader_df64(&df64_source, label)
+            }
             Precision::F16 => {
                 let f16_source = source
                     .replace("array<f64>", "array<f16>")

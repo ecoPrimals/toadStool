@@ -373,3 +373,69 @@ var approx: f64 = -1e300;
     assert!(f32_source.contains("-3.4028235e+38"));
     assert!(f32_source.contains("3.4028235e+38"));
 }
+
+#[test]
+fn test_downcast_f64_to_df64_types() {
+    let f64_source = r#"
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
+
+fn process(val: f64) -> f64 {
+    return val;
+}
+"#;
+    let df64 = downcast_f64_to_df64(f64_source);
+    assert!(df64.contains("array<vec2<f32>>"), "storage should be vec2<f32>");
+    assert!(df64.contains("val: Df64"), "param type should be Df64");
+    assert!(df64.contains("-> Df64"), "return type should be Df64");
+    assert!(!df64.contains("array<f64>"), "no raw f64 should remain in storage");
+}
+
+#[test]
+fn test_downcast_f64_to_df64_constructors() {
+    let f64_source = r#"
+let zero: f64 = f64(0.0);
+let one: f64 = f64(1.0);
+let half: f64 = f64(0.5);
+"#;
+    let df64 = downcast_f64_to_df64(f64_source);
+    assert!(df64.contains("df64_from_f32(0.0)"), "f64(0.0) → df64_from_f32(0.0)");
+    assert!(df64.contains("df64_from_f32(1.0)"), "f64(1.0) → df64_from_f32(1.0)");
+    assert!(df64.contains("df64_from_f32(0.5)"), "f64(0.5) → df64_from_f32(0.5)");
+    assert!(!df64.contains("f64("), "no raw f64 constructors should remain");
+}
+
+#[test]
+fn test_downcast_f64_to_df64_transcendentals() {
+    let f64_source = r#"
+let y = exp_f64(x);
+let z = sin_f64(x);
+let w = sqrt_f64(x);
+let v = tanh_f64(x);
+let a = abs_f64(x);
+"#;
+    let df64 = downcast_f64_to_df64(f64_source);
+    assert!(df64.contains("exp_df64("), "exp_f64 → exp_df64");
+    assert!(df64.contains("sin_df64("), "sin_f64 → sin_df64");
+    assert!(df64.contains("sqrt_df64("), "sqrt_f64 → sqrt_df64");
+    assert!(df64.contains("tanh_df64("), "tanh_f64 → tanh_df64");
+    assert!(df64.contains("df64_abs("), "abs_f64 → df64_abs");
+    assert!(!df64.contains("exp_f64"), "no raw f64 polyfill calls");
+}
+
+#[test]
+fn test_downcast_f64_to_df64_preserves_u32() {
+    let f64_source = r#"
+struct Params { size: u32, }
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let idx = gid.x;
+    if (idx >= params.size) { return; }
+}
+"#;
+    let df64 = downcast_f64_to_df64(f64_source);
+    assert!(df64.contains("size: u32"), "u32 fields preserved");
+    assert!(df64.contains("vec3<u32>"), "u32 builtins preserved");
+    assert!(df64.contains("array<vec2<f32>>"), "f64 storage → vec2<f32>");
+}

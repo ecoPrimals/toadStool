@@ -169,6 +169,76 @@ pub fn downcast_f64_to_f32_with_transcendentals(f64_source: &str) -> String {
         .replace("erf_f64(", "erf(")
 }
 
+/// Transform an f64 shader source to DF64 (f32-pair) representation.
+///
+/// Handles:
+/// - Storage types: `array<f64>` → `array<vec2<f32>>`
+/// - Type declarations: `: f64` → `: Df64`, `-> f64` → `-> Df64`
+/// - Constructors: `f64(X)` → `df64_from_f32(X)` for literal casts
+/// - Transcendentals: `exp_f64(` → `exp_df64(`, `sin_f64(` → `sin_df64(`, etc.
+/// - Polyfill builtins: `abs_f64(` → `df64_abs(`, `sqrt_f64(` → `sqrt_df64(`
+/// - Sentinels: f64-range literals clamped to f32-range (same as f32 downcast)
+///
+/// Does NOT handle infix arithmetic operators (`+`, `-`, `*`, `/`) between
+/// f64 values — these require naga-IR-based rewriting (see `df64_rewrite` module).
+/// Shaders that only use `_f64()` function calls work fully with this transform.
+///
+/// The caller must compile through `compile_shader_df64()` which prepends the
+/// DF64 core library (df64_core.wgsl + df64_transcendentals.wgsl).
+pub fn downcast_f64_to_df64(f64_source: &str) -> String {
+    let result = f64_source
+        // Protect function-name _f64( from constructor replacement
+        .replace("_f64(", "\x00_F64_CALL\x00")
+        // Storage: array<f64> → array<vec2<f32>> (DF64 wire format)
+        .replace("array<f64>", "array<vec2<f32>>")
+        .replace("array<f64,", "array<vec2<f32>,")
+        // Type declarations: f64 → Df64
+        .replace(": f64", ": Df64")
+        .replace("-> f64", "-> Df64")
+        // Generic angle brackets
+        .replace("<f64>", "<Df64>")
+        // Constructor: f64(X) → df64_from_f32(X)
+        // df64_from_f32 takes an f32 arg; WGSL auto-converts abstract literals
+        .replace("f64(", "df64_from_f32(")
+        // Restore function-name suffixes
+        .replace("\x00_F64_CALL\x00", "_f64(");
+
+    let with_transcendentals = result
+        // Transcendentals: _f64() polyfills → _df64() variants
+        .replace("exp_f64(", "exp_df64(")
+        .replace("log_f64(", "log_df64(")
+        .replace("pow_f64(", "pow_df64(")
+        .replace("sin_f64(", "sin_df64(")
+        .replace("cos_f64(", "cos_df64(")
+        .replace("tan_f64(", "tan_df64(")  // tan_df64 not yet in library; will need it
+        .replace("tanh_f64(", "tanh_df64(")
+        .replace("sqrt_f64(", "sqrt_df64(")
+        .replace("abs_f64(", "df64_abs(")
+        // These don't have df64 equivalents yet — tracked as evolution items
+        .replace("asin_f64(", "asin_df64(")
+        .replace("acos_f64(", "acos_df64(")
+        .replace("atan_f64(", "atan_df64(")
+        .replace("atan2_f64(", "atan2_df64(")
+        .replace("sinh_f64(", "sinh_df64(")
+        .replace("cosh_f64(", "cosh_df64(")
+        .replace("erf_f64(", "erf_df64(");
+
+    // Clamp f64-range sentinels to f32-range (DF64 uses f32 components)
+    clamp_f64_range_literals(&with_transcendentals)
+}
+
+/// Inject DF64 pack/unpack helpers for array load/store patterns.
+///
+/// Converts:
+/// - `let x: Df64 = arr[i]` → `let x: Df64 = Df64(arr[i].x, arr[i].y)`
+/// - Adds pack helper: `fn df64_pack(v: Df64) -> vec2<f32> { return vec2<f32>(v.hi, v.lo); }`
+///
+/// This is injected into the shader source after the DF64 core library.
+pub const DF64_PACK_UNPACK: &str = r#"
+fn df64_pack(v: Df64) -> vec2<f32> { return vec2<f32>(v.hi, v.lo); }
+fn df64_unpack(v: vec2<f32>) -> Df64 { return Df64(v.x, v.y); }
+"#;
+
 /// Shader template with precision placeholders
 pub struct ShaderTemplate {
     template: &'static str,
