@@ -21,6 +21,12 @@ pub const WGSL_MEAN_REDUCE: &str = include_str!("../shaders/reduce/mean_reduce.w
 /// Dimension-wise mean reduction shader.
 pub const WGSL_MEAN_DIM: &str = include_str!("../shaders/reduce/mean_dim.wgsl");
 
+/// f64 mean reduction (tree reduction, partial sums).
+pub const WGSL_MEAN_REDUCE_F64: &str = include_str!("../shaders/reduce/mean_reduce_f64.wgsl");
+
+/// f64 dimension-wise mean reduction.
+pub const WGSL_MEAN_DIM_F64: &str = include_str!("../shaders/reduce/mean_dim_f64.wgsl");
+
 /// Mean reduction operation
 pub struct Mean {
     input: Tensor,

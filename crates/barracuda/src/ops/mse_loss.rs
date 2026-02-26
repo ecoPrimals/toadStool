@@ -22,6 +22,11 @@ impl MseLoss {
         include_str!("../shaders/loss/mse_loss.wgsl")
     }
 
+    /// f64 MSE loss (tree reduction for accumulation accuracy).
+    pub fn wgsl_shader_f64() -> &'static str {
+        include_str!("../shaders/loss/mse_loss_f64.wgsl")
+    }
+
     pub fn execute(self) -> Result<Tensor> {
         let device = self.predictions.device();
         let size: usize = self.predictions.shape().iter().product();

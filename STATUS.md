@@ -917,4 +917,4 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail of earlier e
 
 ---
 
-**Last Updated**: February 26, 2026 — Session 66 (4 waves): Cross-spring absorption + deep debt + dependency evolution + cross-spring evolution. 2,541 barracuda tests (+15 new). 694 WGSL shaders. Sovereign compiler bug fixed. NeighborMode lattice abstraction. stats::mae + shannon_from_frequencies + hill/monod APIs. PRNG f64 polyfill. NPU + RK step hardcoding eliminated.
+**Last Updated**: February 26, 2026 — Session 66 (5 waves): 2,541 barracuda tests. 707 WGSL shaders (21 DF64, 182 f64, 504 f32). `compile_shader_df64()` pipeline. Universal DF64 math. f64 reduce/loss gap-fills. Sovereign compiler bug fixed. NeighborMode. stats::mae + shannon_from_frequencies + hill/monod. PRNG f64 polyfill.

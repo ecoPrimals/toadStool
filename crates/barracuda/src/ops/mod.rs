@@ -77,6 +77,9 @@ pub mod sigmoid;
 pub mod softmax;
 pub mod softplus_wgsl;
 pub mod swish_wgsl;
+// DF64 universal math shaders (f32-pair, ~48-bit mantissa, 9.9× f64 throughput)
+pub mod df64_shaders;
+
 // Element-wise operations
 pub mod abs_wgsl;
 pub mod add;
@@ -235,6 +238,12 @@ pub use batch_tolerance_search_f64::BatchToleranceSearchF64;
 pub use hill_f64::HillFunctionF64;
 pub use kmd_grouping_f64::{repeat_units, KmdGroupingF64, KmdResult};
 pub use rk_stage::{BatchedOdeRK4F64, BatchedRk4Config, OdeFunction, RkIntegrator, WGSL_RK4_PARALLEL};
+
+// DF64 universal math shaders (compile via compile_shader_df64)
+pub use df64_shaders::{
+    WGSL_ELEMENTWISE_ADD_DF64, WGSL_ELEMENTWISE_FMA_DF64, WGSL_ELEMENTWISE_MUL_DF64,
+    WGSL_ELEMENTWISE_SUB_DF64, WGSL_MEAN_REDUCE_DF64, WGSL_SUM_REDUCE_DF64,
+};
 
 // Cosine similarity (f64)
 pub mod cosine_similarity_f64; // Spectral matching, small-batch queries

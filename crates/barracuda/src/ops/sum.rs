@@ -42,6 +42,12 @@ impl Sum {
         include_str!("../shaders/reduce/sum_dim.wgsl")
     }
 
+    /// f64 dimension-wise sum reduction.
+    #[allow(dead_code)]
+    fn wgsl_shader_dim_f64() -> &'static str {
+        include_str!("../shaders/reduce/sum_dim_f64.wgsl")
+    }
+
     /// Execute the sum operation
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();

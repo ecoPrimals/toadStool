@@ -45,6 +45,18 @@ impl Std {
         include_str!("../../shaders/reduce/std_dim.wgsl")
     }
 
+    /// f64 std reduction (sum of squared deviations from mean).
+    #[allow(dead_code)]
+    pub(crate) fn wgsl_shader_reduce_f64() -> &'static str {
+        include_str!("../../shaders/reduce/std_reduce_f64.wgsl")
+    }
+
+    /// f64 dimension-wise std reduction.
+    #[allow(dead_code)]
+    pub(crate) fn wgsl_shader_dim_f64() -> &'static str {
+        include_str!("../../shaders/reduce/std_dim_f64.wgsl")
+    }
+
     /// Execute the std operation
     pub fn execute(self) -> Result<Tensor> {
         compute::execute(self)

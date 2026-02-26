@@ -264,6 +264,7 @@ toadStool/
 | Doc warnings | 0 |
 | Build warnings | 0 |
 | Unit tests (barracuda) | 2,541 |
+| WGSL shaders (barracuda) | 707 (21 DF64, 182 f64, 504 f32) |
 | Unit tests (full workspace) | 21,599+ |
 | `unsafe` blocks | 2 in barracuda (SPIRV passthrough + pipeline cache), 95+ workspace-wide, all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -354,4 +355,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 26, 2026 -- Session 66: Cross-spring absorption + deep debt + dependency evolution + cross-spring evolution. 2,541 barracuda tests, 694 WGSL shaders (14 DF64 files), 0 clippy, 0 fmt diffs, 0 production TODOs, 0 hardcoded localhost/ports, 3 `#[allow(dead_code)]` (feature-gated/Phase 5+), `anyhow` + `log` eliminated (typed errors + unified tracing), 2 unsafe blocks (SPIRV passthrough + pipeline cache).
+**Last Updated**: February 26, 2026 -- Session 66: Cross-spring evolution + multi-precision expansion. 2,541 barracuda tests, 707 WGSL shaders (21 DF64 + 182 f64 + 504 f32). `compile_shader_df64()` pipeline. Universal DF64 math (add/mul/sub/fma/sum/mean). f64 reduce gap-fills (mean/std/sum_dim). f64 science losses (mse/mae). 0 clippy, 0 production TODOs.

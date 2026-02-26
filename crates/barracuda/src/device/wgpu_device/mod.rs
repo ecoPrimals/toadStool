@@ -188,6 +188,61 @@ impl WgpuDevice {
         self.compile_shader(&optimized, label)
     }
 
+    /// Compile a DF64 (double-float, f32-pair) WGSL shader.
+    ///
+    /// Prepends `df64_core.wgsl` + `df64_transcendentals.wgsl` to the source,
+    /// providing the full DF64 arithmetic library: `Df64`, `df64_add`, `df64_mul`,
+    /// `df64_div`, `sqrt_df64`, `exp_df64`, `log_df64`, `sin_df64`, `cos_df64`,
+    /// `pow_df64`, `tanh_df64`.
+    ///
+    /// DF64 shaders run entirely on FP32 cores (no f64 hardware needed), achieving
+    /// ~48-bit mantissa (~14 decimal digits) at up to 9.9× the throughput of native
+    /// f64 on consumer GPUs (Ampere/Ada fp64:fp32 ≈ 1:64).
+    ///
+    /// Pipeline mirrors [`compile_shader_f64`] minus the f64 driver patching:
+    /// 1. Prepend DF64 preamble (core + transcendentals)
+    /// 2. ILP optimizer (when `@ilp_region`/`@unroll_hint` annotations present)
+    /// 3. Sovereign compiler SPIR-V path (when available)
+    pub fn compile_shader_df64(&self, source: &str, label: Option<&str>) -> wgpu::ShaderModule {
+        const DF64_CORE: &str = include_str!("../../shaders/math/df64_core.wgsl");
+        const DF64_TRANSCENDENTALS: &str =
+            include_str!("../../shaders/math/df64_transcendentals.wgsl");
+
+        let combined = format!("{DF64_CORE}\n{DF64_TRANSCENDENTALS}\n{source}");
+
+        let profile = crate::device::driver_profile::GpuDriverProfile::from_device(self);
+        let optimized =
+            if combined.contains("@ilp_region") || combined.contains("@unroll_hint") {
+                use crate::shaders::optimizer::WgslOptimizer;
+                let optimizer = WgslOptimizer::new(profile.latency_model());
+                optimizer.optimize(&combined)
+            } else {
+                combined
+            };
+
+        if self.has_spirv_passthrough() {
+            use crate::shaders::sovereign::{SovereignCompiler, SovereignOutput};
+            let sovereign = SovereignCompiler::new(profile);
+            match sovereign.compile(&optimized) {
+                Ok((SovereignOutput::Spirv(words), stats)) => {
+                    if stats.fma_fusions > 0 || stats.dead_exprs_eliminated > 0 {
+                        tracing::debug!(
+                            "sovereign df64: {} FMA fusions, {} dead exprs eliminated",
+                            stats.fma_fusions,
+                            stats.dead_exprs_eliminated,
+                        );
+                    }
+                    return self.compile_shader_spirv(&words, label);
+                }
+                Err(e) => {
+                    tracing::debug!("sovereign df64 fallback: {e}");
+                }
+            }
+        }
+
+        self.compile_shader(&optimized, label)
+    }
+
     /// Execute WGSL compute shader
     pub fn execute_compute(
         &self,
