@@ -357,3 +357,19 @@ fn test_template_renders_df64() {
     assert!(shader.contains("array<vec2<f32>>"));
     assert!(!shader.contains("vec4"));
 }
+
+#[test]
+fn test_downcast_clamps_f64_range_sentinels() {
+    let f64_source = r#"
+var max_val: f64 = -1e308;
+var min_val: f64 = 1e308;
+const DBL_MAX: f64 = 1.7976931348623157e+308;
+const NEG_DBL_MAX: f64 = -1.7976931348623157e+308;
+var approx: f64 = -1e300;
+"#;
+    let f32_source = downcast_f64_to_f32(f64_source);
+    assert!(!f32_source.contains("1e308"), "f64 sentinel survived");
+    assert!(!f32_source.contains("1e300"), "f64 sentinel survived");
+    assert!(f32_source.contains("-3.4028235e+38"));
+    assert!(f32_source.contains("3.4028235e+38"));
+}

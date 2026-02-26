@@ -111,7 +111,7 @@ impl Precision {
 pub fn downcast_f64_to_f32(f64_source: &str) -> String {
     // Protect _f64( function-name suffixes from the f64( cast replacement.
     // WGSL uses f64(...) for type casts, but _f64( appears in polyfill names.
-    f64_source
+    let result = f64_source
         .replace("_f64(", "\x00_F64_CALL\x00")
         .replace("array<f64>", "array<f32>")
         .replace("array<f64,", "array<f32,")
@@ -119,7 +119,29 @@ pub fn downcast_f64_to_f32(f64_source: &str) -> String {
         .replace("-> f64", "-> f32")
         .replace("f64(", "f32(")
         .replace("<f64>", "<f32>")
-        .replace("\x00_F64_CALL\x00", "_f64(")
+        .replace("\x00_F64_CALL\x00", "_f64(");
+
+    clamp_f64_range_literals(&result)
+}
+
+/// Replace f64-range sentinel literals with f32-safe equivalents.
+///
+/// f64 canonical shaders use values like `-1e308` or `1.7976931348623157e+308`
+/// as min/max initialization sentinels. These exceed f32 range (~3.4e38) and
+/// cause WGSL parse errors when downcasted. We replace them with the
+/// corresponding f32 extremes.
+fn clamp_f64_range_literals(source: &str) -> String {
+    source
+        .replace("-1.7976931348623157e+308", "-3.4028235e+38")
+        .replace("1.7976931348623157e+308", "3.4028235e+38")
+        .replace("-1.0e308", "-3.4028235e+38")
+        .replace("1.0e308", "3.4028235e+38")
+        .replace("-1e308", "-3.4028235e+38")
+        .replace("1e308", "3.4028235e+38")
+        .replace("-1.0e300", "-3.4028235e+38")
+        .replace("1.0e300", "3.4028235e+38")
+        .replace("-1e300", "-3.4028235e+38")
+        .replace("1e300", "3.4028235e+38")
 }
 
 /// Downcast an f64 shader source to f32, also replacing polyfill

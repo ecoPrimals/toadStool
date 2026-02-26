@@ -48,16 +48,13 @@ impl Unique {
         Ok(Self { input })
     }
 
-    /// WGSL shader source for unique marking and compaction
+    /// WGSL shader source for unique marking and compaction.
+    ///
+    /// Uses a dedicated f32 shader because the hash function is structurally
+    /// different: f32 bitcasts to u32 (4 bytes), f64 bitcasts to vec2<u32>
+    /// (8 bytes). Simple text downcast cannot bridge this.
     pub(super) fn wgsl_shader() -> &'static str {
-        {
-            static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-                crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
-                    "../../shaders/misc/unique_f64.wgsl"
-                ))
-            });
-            std::sync::LazyLock::force(&SHADER).as_str()
-        }
+        include_str!("../../shaders/misc/unique_f32.wgsl")
     }
 
     /// WGSL shader source for prefix sum computation
