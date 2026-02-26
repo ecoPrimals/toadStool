@@ -279,3 +279,81 @@ fn test_driver_workaround_disabled() {
     assert!(result.contains("exp("));
     assert!(!result.contains("exp_f64("));
 }
+
+#[test]
+fn test_precision_df64() {
+    assert_eq!(Precision::Df64.scalar(), "vec2<f32>");
+    assert_eq!(Precision::Df64.bytes_per_element(), 8);
+    assert!(!Precision::Df64.has_vec4());
+    assert!(Precision::Df64.required_feature().is_none());
+    assert!(Precision::Df64.is_f64_class());
+    assert!(Precision::F64.is_f64_class());
+    assert!(!Precision::F32.is_f64_class());
+}
+
+#[test]
+fn test_downcast_f64_to_f32_elementwise() {
+    let f64_source = r#"
+@group(0) @binding(0) var<storage, read> a: array<f64>;
+@group(0) @binding(1) var<storage, read> b: array<f64>;
+@group(0) @binding(2) var<storage, read_write> output: array<f64>;
+
+var<workgroup> shared: array<f64, 256>;
+
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let idx = gid.x;
+    if (idx >= arrayLength(&output)) { return; }
+    output[idx] = a[idx] + b[idx];
+}
+"#;
+    let f32_source = downcast_f64_to_f32(f64_source);
+    assert!(f32_source.contains("array<f32>"));
+    assert!(!f32_source.contains("array<f64>"));
+    assert!(f32_source.contains("array<f32, 256>"));
+    assert!(f32_source.contains("a[idx] + b[idx]"));
+}
+
+#[test]
+fn test_downcast_f64_to_f32_with_transcendentals() {
+    let f64_source = r#"
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    output[gid.x] = exp_f64(input[gid.x]) + sin_f64(input[gid.x]);
+}
+"#;
+    let f32_source = downcast_f64_to_f32_with_transcendentals(f64_source);
+    assert!(f32_source.contains("array<f32>"));
+    assert!(f32_source.contains("exp(input"));
+    assert!(f32_source.contains("sin(input"));
+    assert!(!f32_source.contains("exp_f64"));
+    assert!(!f32_source.contains("sin_f64"));
+}
+
+#[test]
+fn test_downcast_preserves_u32_and_structure() {
+    let f64_source = r#"
+struct Params { size: u32, _pad1: u32, _pad2: u32, _pad3: u32, }
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<uniform> params: Params;
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= params.size) { return; }
+    let val: f64 = input[gid.x];
+}
+"#;
+    let f32_source = downcast_f64_to_f32(f64_source);
+    assert!(f32_source.contains("size: u32"));
+    assert!(f32_source.contains("vec3<u32>"));
+    assert!(f32_source.contains("let val: f32"));
+    assert!(f32_source.contains("array<f32>"));
+}
+
+#[test]
+fn test_template_renders_df64() {
+    let shader = ShaderTemplate::elementwise_add(Precision::Df64);
+    assert!(shader.contains("array<vec2<f32>>"));
+    assert!(!shader.contains("vec4"));
+}

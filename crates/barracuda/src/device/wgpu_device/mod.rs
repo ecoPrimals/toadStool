@@ -243,6 +243,68 @@ impl WgpuDevice {
         self.compile_shader(&optimized, label)
     }
 
+    /// Compile a shader written as universal math, specialized to the requested precision.
+    ///
+    /// **Math is universal, precision is silicon.** The same algorithm written once
+    /// in f64 (the conceptually true math) is compiled for any target precision:
+    ///
+    /// - `Precision::F32` — downcast f64 types to f32, compile via standard path
+    /// - `Precision::F64` — full `compile_shader_f64()` pipeline (polyfills + sovereign compiler)
+    /// - `Precision::Df64` — compile via `compile_shader_df64()` (caller provides DF64 source)
+    /// - `Precision::F16` — downcast f64 types to f16, compile via standard path
+    ///
+    /// For `F32`/`F16`/`F64`: pass the f64-canonical source (the "true math").
+    /// For `Df64`: pass the DF64-specific source (structural layout differs: `vec2<f32>`
+    /// storage, `df64_add`/`df64_mul` calls). The DF64 core library is auto-injected.
+    ///
+    /// This is the same pattern that solved f64 builtins with polyfills — now extended
+    /// to manage all precisions as a compilation pipeline detail.
+    pub fn compile_shader_universal(
+        &self,
+        source: &str,
+        precision: crate::shaders::precision::Precision,
+        label: Option<&str>,
+    ) -> wgpu::ShaderModule {
+        use crate::shaders::precision::{downcast_f64_to_f32, Precision};
+        match precision {
+            Precision::F32 => {
+                let f32_source = downcast_f64_to_f32(source);
+                self.compile_shader(&f32_source, label)
+            }
+            Precision::F64 => self.compile_shader_f64(source, label),
+            Precision::Df64 => self.compile_shader_df64(source, label),
+            Precision::F16 => {
+                let f16_source = source
+                    .replace("array<f64>", "array<f16>")
+                    .replace("array<f64,", "array<f16,")
+                    .replace(": f64", ": f16")
+                    .replace("-> f64", "-> f16")
+                    .replace("f64(", "f16(")
+                    .replace("<f64>", "<f16>");
+                self.compile_shader(&f16_source, label)
+            }
+        }
+    }
+
+    /// Compile a `{{SCALAR}}`-templated shader at the given precision.
+    ///
+    /// Renders the template via [`ShaderTemplate::render`], then routes through
+    /// the appropriate compilation pipeline for the target precision.
+    pub fn compile_template(
+        &self,
+        template: &crate::shaders::precision::ShaderTemplate,
+        precision: crate::shaders::precision::Precision,
+        label: Option<&str>,
+    ) -> wgpu::ShaderModule {
+        use crate::shaders::precision::Precision;
+        let rendered = template.render(precision);
+        match precision {
+            Precision::F64 => self.compile_shader_f64(&rendered, label),
+            Precision::Df64 => self.compile_shader_df64(&rendered, label),
+            _ => self.compile_shader(&rendered, label),
+        }
+    }
+
     /// Execute WGSL compute shader
     pub fn execute_compute(
         &self,

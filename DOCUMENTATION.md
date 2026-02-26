@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 26, 2026 -- Session 66
+**Last Updated**: February 24, 2026 -- Session 67
 
 ---
 
@@ -27,16 +27,15 @@
 
 ---
 
-## Current State (Session 66 — February 26, 2026)
+## Current State (Session 67 — February 24, 2026)
 
+- **Math is universal, precision is silicon** — `compile_shader_universal()` compiles one shader source to f32/f64/df64. 12 universal `{{SCALAR}}` templates. `downcast_f64_to_f32()`.
 - **Sovereign Compiler** — naga-IR optimizer: FMA fusion, dead expression elimination, SPIR-V passthrough. End-to-end Rust GPU compilation pipeline.
-- **694 WGSL f64 shaders** — zero orphans, 14 DF64 files, zero CPU-only math in production
-- **Deep debt systematically resolved** — 15 files smart-refactored this session (20-44% reductions). 3 `#[allow(dead_code)]` remain (feature-gated/Phase 5+). Zero `todo!()`, zero `unimplemented!()`, zero production `unwrap()`.
-- **Dependencies evolved** — `anyhow` + `log` + `chrono` + `instant` eliminated. Typed errors via `thiserror`, unified logging via `tracing`.
-- **FMA-optimized DF64** — `two_prod` 17→2 ops via `fma(a, b, -p)`. DF64 transcendentals at FP32 core speed.
-- **4 force shaders fully evolved** — Born-Mayer, Morse, Yukawa, Lennard-Jones: all-DF64, zero f64-unit transcendental calls
+- **707 WGSL shaders** — zero orphans, 21 DF64 files, zero CPU-only math in production. Full precision inventory.
+- **Deep debt systematically resolved** — 15 files smart-refactored (20-44% reductions). 3 `#[allow(dead_code)]` remain (feature-gated/Phase 5+).
+- **FMA-optimized DF64** — `two_prod` 17→2 ops. DF64 transcendentals at FP32 core speed.
 - **f64 polyfill library** — 28 functions, no vendor math library dependency (no libdevice/ocml)
-- **2,526 barracuda tests** + 21,599 workspace tests | all quality gates green
+- **2,541 barracuda tests** + 21,599 workspace tests | all quality gates green
 - **Zero clippy warnings** | zero fmt diffs | zero TODO/FIXME/HACK | all files under 1000 lines
 - **Linalg GPU-dispatched** — solve, cholesky (with SPD validation), QR, SVD, LU
 - **Lattice QCD** — 14 GPU shaders + CG solver + HMC trajectory orchestration

@@ -8,23 +8,34 @@ mod math_f64;
 mod templates;
 
 use templates::{
-    remove_conditional_block, TEMPLATE_DOT_PRODUCT, TEMPLATE_ELEMENTWISE_ADD,
-    TEMPLATE_ELEMENTWISE_FMA, TEMPLATE_ELEMENTWISE_MUL, TEMPLATE_REDUCE_SUM,
+    remove_conditional_block, TEMPLATE_DOT_PRODUCT, TEMPLATE_ELEMENTWISE_ABS,
+    TEMPLATE_ELEMENTWISE_ADD, TEMPLATE_ELEMENTWISE_CLAMP, TEMPLATE_ELEMENTWISE_FMA,
+    TEMPLATE_ELEMENTWISE_MUL, TEMPLATE_ELEMENTWISE_NEG, TEMPLATE_ELEMENTWISE_SUB,
+    TEMPLATE_MAE_LOSS, TEMPLATE_MSE_LOSS, TEMPLATE_REDUCE_MEAN, TEMPLATE_REDUCE_SUM,
+    TEMPLATE_SAXPY,
 };
 
 use math_f64::{
     extract_wgsl_function, F64_FOSSIL_FUNCTIONS, F64_FUNCTION_DEPS, F64_FUNCTION_ORDER,
 };
 
-/// Supported precision types
+/// Supported precision types.
+///
+/// Math is universal — precision is a silicon detail. The same algorithm runs
+/// at every precision; the compilation pipeline (`compile_shader_universal`)
+/// handles type specialization, polyfill injection, and driver patching.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Precision {
-    /// 16-bit float (half precision) - for inference, 2x memory bandwidth
+    /// 16-bit float (half precision) — inference, 2× memory bandwidth
     F16,
-    /// 32-bit float (single precision) - default, widely supported
+    /// 32-bit float (single precision) — default, widely supported
     F32,
-    /// 64-bit float (double precision) - scientific computing
+    /// 64-bit float (double precision) — scientific computing
     F64,
+    /// Double-float f32-pair (~48-bit mantissa, ~14 decimal digits) —
+    /// unleashes FP32 cores for f64-class work. 9.9× throughput vs native
+    /// f64 on consumer GPUs.
+    Df64,
 }
 
 impl Precision {
@@ -34,6 +45,7 @@ impl Precision {
             Precision::F16 => "f16",
             Precision::F32 => "f32",
             Precision::F64 => "f64",
+            Precision::Df64 => "vec2<f32>",
         }
     }
 
@@ -43,15 +55,17 @@ impl Precision {
             Precision::F16 => "vec2<f16>",
             Precision::F32 => "vec2<f32>",
             Precision::F64 => "f64",
+            Precision::Df64 => "vec2<f32>",
         }
     }
 
-    /// WGSL vec4 type name (or scalar for f64)
+    /// WGSL vec4 type name (or scalar for f64/df64)
     pub fn vec4(&self) -> &'static str {
         match self {
             Precision::F16 => "vec4<f16>",
             Precision::F32 => "vec4<f32>",
             Precision::F64 => "f64",
+            Precision::Df64 => "vec2<f32>",
         }
     }
 
@@ -66,6 +80,7 @@ impl Precision {
             Precision::F16 => 2,
             Precision::F32 => 4,
             Precision::F64 => 8,
+            Precision::Df64 => 8,
         }
     }
 
@@ -75,8 +90,60 @@ impl Precision {
             Precision::F16 => Some(wgpu::Features::SHADER_F16),
             Precision::F32 => None,
             Precision::F64 => Some(wgpu::Features::SHADER_F64),
+            Precision::Df64 => None,
         }
     }
+
+    /// Whether this is an f64-class precision (native f64 or df64 emulation)
+    pub fn is_f64_class(&self) -> bool {
+        matches!(self, Precision::F64 | Precision::Df64)
+    }
+}
+
+/// Downcast an f64 shader source to f32 via text substitution.
+///
+/// This is the core of "math is universal, precision is silicon": the shader
+/// is written once in f64 (the conceptually true math), and this function
+/// produces the f32 variant by replacing type declarations. Only safe for
+/// shaders that use basic arithmetic (`+`, `-`, `*`, `/`, `fma`). Shaders
+/// with f64 polyfill calls (`exp_f64`, `sin_f64`, etc.) need
+/// `downcast_f64_to_f32_with_transcendentals` instead.
+pub fn downcast_f64_to_f32(f64_source: &str) -> String {
+    // Protect _f64( function-name suffixes from the f64( cast replacement.
+    // WGSL uses f64(...) for type casts, but _f64( appears in polyfill names.
+    f64_source
+        .replace("_f64(", "\x00_F64_CALL\x00")
+        .replace("array<f64>", "array<f32>")
+        .replace("array<f64,", "array<f32,")
+        .replace(": f64", ": f32")
+        .replace("-> f64", "-> f32")
+        .replace("f64(", "f32(")
+        .replace("<f64>", "<f32>")
+        .replace("\x00_F64_CALL\x00", "_f64(")
+}
+
+/// Downcast an f64 shader source to f32, also replacing polyfill
+/// transcendental calls with native WGSL builtins.
+///
+/// `exp_f64(x)` → `exp(x)`, `sin_f64(x)` → `sin(x)`, etc.
+/// Use for shaders that call math_f64 polyfill functions.
+pub fn downcast_f64_to_f32_with_transcendentals(f64_source: &str) -> String {
+    let base = downcast_f64_to_f32(f64_source);
+    base.replace("exp_f64(", "exp(")
+        .replace("log_f64(", "log(")
+        .replace("pow_f64(", "pow(")
+        .replace("sin_f64(", "sin(")
+        .replace("cos_f64(", "cos(")
+        .replace("tan_f64(", "tan(")
+        .replace("asin_f64(", "asin(")
+        .replace("acos_f64(", "acos(")
+        .replace("atan_f64(", "atan(")
+        .replace("atan2_f64(", "atan2(")
+        .replace("sinh_f64(", "sinh(")
+        .replace("cosh_f64(", "cosh(")
+        .replace("tanh_f64(", "tanh(")
+        .replace("sqrt_f64(", "sqrt(")
+        .replace("abs_f64(", "abs(")
 }
 
 /// Shader template with precision placeholders
@@ -119,8 +186,40 @@ impl ShaderTemplate {
         Self::new(TEMPLATE_DOT_PRODUCT).render(precision)
     }
 
+    pub fn elementwise_sub(precision: Precision) -> String {
+        Self::new(TEMPLATE_ELEMENTWISE_SUB).render(precision)
+    }
+
+    pub fn elementwise_abs(precision: Precision) -> String {
+        Self::new(TEMPLATE_ELEMENTWISE_ABS).render(precision)
+    }
+
+    pub fn elementwise_neg(precision: Precision) -> String {
+        Self::new(TEMPLATE_ELEMENTWISE_NEG).render(precision)
+    }
+
+    pub fn elementwise_clamp(precision: Precision) -> String {
+        Self::new(TEMPLATE_ELEMENTWISE_CLAMP).render(precision)
+    }
+
     pub fn reduce_sum(precision: Precision) -> String {
         Self::new(TEMPLATE_REDUCE_SUM).render(precision)
+    }
+
+    pub fn reduce_mean(precision: Precision) -> String {
+        Self::new(TEMPLATE_REDUCE_MEAN).render(precision)
+    }
+
+    pub fn mse_loss(precision: Precision) -> String {
+        Self::new(TEMPLATE_MSE_LOSS).render(precision)
+    }
+
+    pub fn mae_loss(precision: Precision) -> String {
+        Self::new(TEMPLATE_MAE_LOSS).render(precision)
+    }
+
+    pub fn saxpy(precision: Precision) -> String {
+        Self::new(TEMPLATE_SAXPY).render(precision)
     }
 
     pub fn math_f64_preamble() -> String {

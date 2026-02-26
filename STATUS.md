@@ -1,4 +1,4 @@
-# Status -- February 26, 2026 (Sessions 32-66: Absorption + Deep Debt)
+# Status -- February 24, 2026 (Sessions 32-67: Universal Precision)
 
 ## Quality Gates
 
@@ -24,7 +24,7 @@
 | Production panics/unwraps | PASS | **Zero blind `unwrap()`; infallible `expect()` only** |
 | Production TODOs | PASS | **Zero -- all evolved to `BLOCKED(reason)` markers** |
 | File size limit | PASS | **All production files under 1000 lines** |
-| WGSL shaders | PASS | **694 (zero orphans, all f64 shader-first, 14 DF64 files)** |
+| WGSL shaders | PASS | **707 (zero orphans, shader-first, 21 DF64 + 182 f64 + 504 f32)** |
 | Dead code | PASS | **3 `#[allow(dead_code)]` remain — feature-gated TPU + PCIe diag + Phase 5+ placeholder** |
 | External dep hygiene | PASS | **`instant` + `chrono` + `anyhow` + `log` eliminated; `async_trait` justified (dyn-required)** |
 | Production mocks | PASS | **Zero — TpuBackend::Mock behind `mock-tpu` feature gate** |
@@ -33,6 +33,38 @@
 | Dependency security | PASS | **bytes >=1.11.1, aes-gcm >=0.10.3, zero chrono** |
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+
+---
+
+## Session 67: Universal Precision Architecture (Feb 24, 2026)
+
+Math is universal, precision is silicon. Shader source is written once (conceptually f64, the true math), and the compilation pipeline handles precision specialization — the same pattern that solved f64 builtins with polyfills, extended to all precisions.
+
+### Universal Precision Pipeline
+- **`compile_shader_universal(source, precision)`**: Routes one shader source to f32/f64/df64 via the appropriate compilation pipeline. F32 uses `downcast_f64_to_f32()`, F64 uses `compile_shader_f64()` (polyfills + sovereign compiler), Df64 uses `compile_shader_df64()` (auto-injected DF64 core).
+- **`compile_template(template, precision)`**: Compiles `{{SCALAR}}`-parameterized templates at any precision, routing through the appropriate pipeline.
+- **`Precision::Df64`**: New enum variant — double-float f32-pair (~48-bit mantissa, ~14 decimal digits). `is_f64_class()` method for f64-equivalent detection. `required_feature()` returns `None` (runs on any FP32 hardware).
+- **`downcast_f64_to_f32()`**: Text-transforms f64 shaders to f32 with sentinel-protected `_f64(` function names (prevents mangling polyfill calls like `exp_f64`).
+- **`downcast_f64_to_f32_with_transcendentals()`**: Also maps polyfill calls to native WGSL builtins (`exp_f64` → `exp`, `sin_f64` → `sin`, etc.).
+
+### 12 Universal Shader Templates
+All generate valid WGSL at any precision (f16/f32/f64/df64) from `{{SCALAR}}` placeholders:
+- **Elementwise**: add, mul, sub, fma, abs, neg, clamp, saxpy
+- **Reduction**: sum, mean
+- **Loss**: MSE, MAE
+- **Existing**: dot product
+
+### Precision Inventory (707 shaders)
+- **510 pure f32** (72%) — universal math candidates (~50 can be consolidated)
+- **195 native f64** (28%) — scientific computing, lattice QCD, MD forces
+- **20 DF64** (3%) — consumer GPU f64-class precision on FP32 cores
+- **2 DF64 infrastructure** — `df64_core.wgsl`, `df64_transcendentals.wgsl`
+
+### Root Docs Cleaned
+All stale counts updated across README, STATUS, DEBT, NEXT_STEPS, QUICK_REFERENCE, DOCUMENTATION (694→707 shaders, 14→21 DF64, 2526→2541 tests).
+
+### Tests
+5 new tests: `test_precision_df64`, `test_downcast_f64_to_f32_elementwise`, `test_downcast_f64_to_f32_with_transcendentals`, `test_downcast_preserves_u32_and_structure`, `test_template_renders_df64`. All 21 precision tests pass.
 
 ---
 

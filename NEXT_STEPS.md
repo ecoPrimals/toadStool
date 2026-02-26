@@ -1,13 +1,27 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 26, 2026 -- Session 66
-**Status**: Production-grade | 694 WGSL f64 shaders (14 DF64) | 2,526 barracuda tests | All quality gates green
+**Updated**: February 24, 2026 -- Session 67
+**Status**: Production-grade | 707 WGSL shaders (21 DF64) | 2,541 barracuda tests | Universal precision pipeline | All quality gates green
 
 ---
 
 ## Completed This Session
 
-### Session 66: Cross-Spring Absorption + Deep Debt + Dependency Evolution ✅
+### Session 66: Cross-Spring Absorption + Deep Debt + Multi-Precision Expansion ✅
+
+**Wave 4 — Cross-Spring Evolution (All 5 Springs + wateringHole):**
+- **stats::mae**, **shannon_from_frequencies()**, **hill()/monod()** public APIs (+13 tests)
+- **WGSL_RK4_PARALLEL** re-exported, **PRNG f64 polyfill** (su3_random_momenta)
+- **Sovereign compiler fix**: BatchedElementwiseF64 explicit BindGroupLayout (SPIR-V passthrough panic)
+- **NeighborMode** lattice abstraction, **NPU hardcoding** → shared constants, **RK step-size** named constants
+
+**Wave 5 — Multi-Precision Expansion (Unleashing All Silicon):**
+- **`compile_shader_df64()`** — first-class DF64 compilation pipeline
+- **6 universal DF64 math shaders** — elementwise add/mul/sub/fma, sum/mean reduce
+- **5 f64 reduce gap-fills** — mean/std reduce, sum/mean/std dim
+- **2 f64 science losses** — mse_loss_f64, mae_loss_f64
+- **Full precision inventory** — 707 shaders: 510 f32, 195 f64, 20 Df64, ~50 universal candidates identified
+- **707 WGSL shaders, 2,541 tests, 0 clippy warnings**
 
 **Wave 1 — Absorption + Initial Refactoring:**
 - **4 new modules absorbed** from airSpring V009 + groundSpring V7: `stats::regression` (12 tests), `stats::hydrology` (13 tests), `stats::moving_window_f64` (7 tests), `stats::bootstrap::rawr_mean` (4 tests).
@@ -94,6 +108,29 @@ See `contrib/mesa-nak/NAK_DEFICIENCIES.md` for full decomposition.
 ---
 
 ## Upcoming
+
+### P0: Universal Precision Shaders — Math Is Universal, Precision Is Silicon
+
+**Principle**: Every shader runs at every precision. The WGSL is universal math. Precision is a compilation pipeline detail — just as we solved f64 builtins with polyfills, we solve multi-precision with compilation.
+
+**Proven**: hotSpring ran 32⁴ QCD on 3090's 1.6% FP64 cores. DF64 gives 9.9× throughput vs native f64. Consumer GPU FP64 is real.
+
+**Inventory (707 shaders)**:
+- ~50 "conceptually universal" shaders (elementwise, reduce, loss, basic linalg) — math doesn't change, only type surface (~6-15 lines per shader)
+- ~180 transcendental-dependent shaders — need polyfill pipeline (`compile_shader_f64()` / `compile_shader_df64()`)
+- ~80 precision-critical (lattice QCD, MD) — already f64/df64
+
+**Architecture**: Rust-side codegen emits f32/f64/Df64 variants from one source template. The `compile_shader_f64()` and `compile_shader_df64()` pipelines already prove the pattern. Evolution:
+1. Template system for the ~50 universal math shaders (type surface is small)
+2. Extend to transcendental-dependent shaders via polyfill injection
+3. Runtime `Fp64Strategy` selects f32/df64/f64 based on hardware capability
+
+**Infrastructure already built**:
+- `compile_shader_f64()` — 3-stage pipeline (driver patch → ILP → sovereign compiler)
+- `compile_shader_df64()` — auto-injects df64_core + df64_transcendentals
+- `Fp64Strategy::Native/Hybrid` — runtime precision selection
+- `math_f64.wgsl` — 28 transcendental polyfills
+- `df64_core.wgsl` + `df64_transcendentals.wgsl` — FMA-optimized DF64 arithmetic + transcendentals
 
 ### P1: DF64 Transcendentals — Extended Coverage
 

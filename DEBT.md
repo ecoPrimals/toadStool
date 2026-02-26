@@ -1,9 +1,25 @@
 # Active Technical Debt Register
 
-**Date**: February 26, 2026
-**Philosophy**: Workarounds are short-term solutions that increase debt.
-We aim to solve deep debt over iterations, evolving toward vendor-agnostic,
-capability-based solutions.
+**Date**: February 24, 2026
+**Philosophy**: Math is universal, precision is silicon. Workarounds are
+short-term solutions that increase debt. We aim to solve deep debt over
+iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## Session 67 Resolutions (Feb 24, 2026)
+
+### Universal Precision Architecture (Math Is Universal, Precision Is Silicon)
+- **R-S67-001**: `compile_shader_universal(source, precision)` — routes one shader source to f32/f64/df64 via the appropriate compilation pipeline. F32 downcasts, F64 polyfills, Df64 auto-injects core library. Same pattern that solved f64 builtins, extended to all precisions.
+- **R-S67-002**: `compile_template(template, precision)` — compiles `{{SCALAR}}`-templated shaders at any precision through the correct pipeline (plain compile for f32, sovereign compiler for f64, DF64 preamble injection for df64).
+- **R-S67-003**: `Precision::Df64` enum variant — double-float f32-pair (~48-bit mantissa). `is_f64_class()`, `bytes_per_element()=8`, `required_feature()=None`. Enables runtime precision selection including DF64.
+- **R-S67-004**: `downcast_f64_to_f32()` — text-transforms f64 shaders to f32 with sentinel protection for `_f64(` function names (prevents mangling `exp_f64`→`exp_f32`). Safe for universal math shaders using basic arithmetic.
+- **R-S67-005**: `downcast_f64_to_f32_with_transcendentals()` — extends downcast with polyfill→native mapping (`exp_f64`→`exp`, `sin_f64`→`sin`, etc.). For shaders that use math_f64 polyfills.
+- **R-S67-006**: 8 new universal shader templates — `TEMPLATE_ELEMENTWISE_SUB`, `TEMPLATE_ELEMENTWISE_ABS`, `TEMPLATE_ELEMENTWISE_NEG`, `TEMPLATE_ELEMENTWISE_CLAMP`, `TEMPLATE_REDUCE_MEAN`, `TEMPLATE_MSE_LOSS`, `TEMPLATE_MAE_LOSS`, `TEMPLATE_SAXPY`. All generate valid WGSL at any precision via `{{SCALAR}}` placeholders.
+- **R-S67-007**: Precision inventory — 707 shaders classified: 510 pure f32, 195 native f64, 20 Df64, 2 DF64 infrastructure. ~50 shaders identified as universal math candidates for consolidation.
+
+### Root Docs Cleaned
+- **R-S67-008**: All stale counts updated across 6 root docs (README, STATUS, DEBT, NEXT_STEPS, QUICK_REFERENCE, DOCUMENTATION): 694→707 shaders, 14→21 DF64, 2526→2541 tests.
+
+---
 
 ## Session 66 Resolutions (Feb 26, 2026)
 
@@ -72,6 +88,13 @@ capability-based solutions.
 - **R-S66-042**: `NeighborMode` lattice abstraction — `Compute` | `PrecomputedBuffer(Arc<Buffer>)` with `precompute(device, [nx,ny,nz,nt])` for 4D periodic t-major neighbor tables (hotSpring P1, 2 tests)
 - **R-S66-043**: NPU sparsity threshold — `0.5` literals in `npu_bridge.rs` + `npu/ops/matmul.rs` → shared `NPU_SPARSITY_THRESHOLD` constant from `workload.rs`
 - **R-S66-044**: RK45 step-size constants — `0.9`/`2.0`/`0.2`/`0.25` → `STEP_SAFETY`/`STEP_MAX_GROWTH`/`STEP_GROW_EXPONENT`/`STEP_SHRINK_EXPONENT`
+
+### Wave 5: Multi-Precision Expansion (Unleashing All Silicon)
+- **R-S66-045**: `compile_shader_df64()` — first-class DF64 compilation pipeline in `WgpuDevice`. Auto-injects `df64_core.wgsl` + `df64_transcendentals.wgsl`. Routes through ILP optimizer + sovereign compiler SPIR-V path. Eliminates 5+ manual preamble assemblies across MD/lattice ops.
+- **R-S66-046**: 6 universal DF64 math shaders — `elementwise_add_df64`, `elementwise_mul_df64`, `elementwise_sub_df64`, `elementwise_fma_df64`, `sum_reduce_df64`, `mean_reduce_df64`. All use `vec2<f32>` storage, compiled via `compile_shader_df64()`.
+- **R-S66-047**: 5 f64 reduce gap-fills — `mean_reduce_f64`, `std_reduce_f64`, `sum_dim_f64`, `mean_dim_f64`, `std_dim_f64`. Workgroup parallel tree reduction at native f64.
+- **R-S66-048**: 2 f64 science loss shaders — `mse_loss_f64`, `mae_loss_f64` for physics-informed ML.
+- **R-S66-049**: Full precision inventory — 707 WGSL shaders classified: 510 pure f32, 195 native f64, 20 Df64, 2 DF64 infrastructure. ~50 shaders identified as "conceptually universal" (precision-agnostic math, only type surface differs).
 
 ---
 
