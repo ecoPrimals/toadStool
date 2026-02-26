@@ -1,7 +1,7 @@
 # ToadStool/BarraCuda -- Next Steps
 
 **Updated**: February 24, 2026 -- Session 67
-**Status**: Production-grade | 702 WGSL shaders (21 DF64, 5 consolidated) | 2,546 barracuda tests | Universal precision pipeline | All quality gates green
+**Status**: Production-grade | 700 WGSL shaders (21 DF64, 0 f32-only, 296 consolidated) | 2,546 barracuda tests | Universal precision pipeline | Precision gate OPEN | All quality gates green
 
 ---
 
@@ -20,8 +20,8 @@
 - **6 universal DF64 math shaders** — elementwise add/mul/sub/fma, sum/mean reduce
 - **5 f64 reduce gap-fills** — mean/std reduce, sum/mean/std dim
 - **2 f64 science losses** — mse_loss_f64, mae_loss_f64
-- **Full precision inventory** — 707 shaders: 510 f32, 195 f64, 20 Df64, ~50 universal candidates identified
-- **707 WGSL shaders, 2,541 tests, 0 clippy warnings**
+- **Full precision inventory** — 700 shaders: all f64 canonical, 21 DF64, 0 f32-only. 296 f32 WGSL files deleted
+- **700 WGSL shaders, 2,546 tests, 0 clippy warnings**
 
 **Wave 1 — Absorption + Initial Refactoring:**
 - **4 new modules absorbed** from airSpring V009 + groundSpring V7: `stats::regression` (12 tests), `stats::hydrology` (13 tests), `stats::moving_window_f64` (7 tests), `stats::bootstrap::rawr_mean` (4 tests).
@@ -115,7 +115,7 @@ See `contrib/mesa-nak/NAK_DEFICIENCIES.md` for full decomposition.
 
 **Proven**: hotSpring ran 32⁴ QCD on 3090's 1.6% FP64 cores. DF64 gives 9.9× throughput vs native f64. Consumer GPU FP64 is real.
 
-**Inventory (707 shaders)**:
+**Inventory (700 shaders, all f64 canonical)**:
 - ~50 "conceptually universal" shaders (elementwise, reduce, loss, basic linalg) — math doesn't change, only type surface (~6-15 lines per shader)
 - ~180 transcendental-dependent shaders — need polyfill pipeline (`compile_shader_f64()` / `compile_shader_df64()`)
 - ~80 precision-critical (lattice QCD, MD) — already f64/df64

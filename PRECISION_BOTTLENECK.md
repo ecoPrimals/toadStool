@@ -22,11 +22,11 @@ automatically gets multi-precision support.
 |-------|-------------|-------|--------|
 | **1** | Infrastructure (pipeline + templates) | 6 | DONE |
 | **2** | Consolidate f32/f64 pairs | 54 total | 5 DONE, 49 EVOLVE |
-| **3** | f32-only → f64 canonical | 240 trivial, 294 transcendental | TRIVIALS DONE |
-| **4** | Algorithm evolution (f32 → f64 quality) | 49 | TODO |
+| **3** | f32-only → f64 canonical | 240 trivial + 294 transcendental | **ALL DONE** |
+| **4** | Algorithm evolution (f32 → f64 quality) | 49 | TODO (parallel-safe) |
 | **5** | Domain-specific (lattice/MD/HFB) — no change | 0 | N/A |
 
-**Gate opens when**: Phase 2 complete + Phase 3 trivials converted.
+**Gate opens when**: Phase 2 + Phase 3 complete. **GATE IS NOW OPEN.**
 Phase 4 (algorithm evolution) proceeds in parallel with absorptions.
 
 ---
@@ -96,15 +96,16 @@ the Rust dispatch code updated to match the f64 shader's interface.
 
 ---
 
-## Phase 3: f32-Only Shaders → f64 Canonical — TRIVIALS DONE
+## Phase 3: f32-Only Shaders → f64 Canonical — ALL DONE
 
 ### Session 68 Execution
 
-All **trivial** f32-only shaders (basic arithmetic, no transcendentals) are now
-f64 canonical. The f32 variant is produced at runtime via `LazyLock<String>`
-calling `downcast_f64_to_f32()`. Old f32 WGSL files deleted.
+**ALL** f32-only shaders are now f64 canonical — both trivial and transcendental.
+The f32 variant is produced at runtime via `LazyLock<String>` calling
+`downcast_f64_to_f32()` (trivial) or `downcast_f64_to_f32_with_transcendentals()`
+(transcendental). Old f32 WGSL files deleted.
 
-**Converted** (across all directories):
+**Trivial conversions** (240 shaders, `downcast_f64_to_f32`):
 - math/: sub, div, abs, neg, clamp, floor, ceil, round, sign, frac, reciprocal,
   min, max, add, clamp_simple, min_simple, max_simple, trunc, vectoradd, fma,
   slice_assign, expand
@@ -123,7 +124,37 @@ calling `downcast_f64_to_f32()`. Old f32 WGSL files deleted.
 - dropout/: dropout, spatial_dropout
 - tensor/: slice, split, concat, broadcast
 
-**Remaining**: 294 transcendental-dependent, 16 u32/i32-only (no conversion needed)
+**Transcendental conversions** (294 shaders, `downcast_f64_to_f32_with_transcendentals`):
+- math/: pow, pow_simple, rsqrt, sqrt, exp, log, sin, cos, tan, sinh, cosh,
+  asin, acos, acosh, asinh, atan, erf, erfc, lgamma, determinant, matrix_power,
+  matmul (all variants), batch_matmul, gqa_matmul, pairwise_* (all),
+  message_passing, sinkhorn_distance, spatial_payoff, random_erasing, argmin (all),
+  max_dim, max_reduce, min_dim, min_reduce, multi_margin_loss, multilabel_margin_loss,
+  index_add
+- reduce/: logsumexp_reduce, norm_dim
+- loss/: bce_loss, binary_cross_entropy, cross_entropy, center_loss,
+  chamfer_distance, contrastive_loss, cosine_embedding_loss, dice_loss,
+  earth_mover_distance, focal_loss (all), giou_loss, iou_loss, kldiv_loss,
+  label_smoothing, lovasz_loss, nll_loss, perceptual_loss, poisson_nll_loss,
+  triplet_loss, tversky_loss, wasserstein_loss
+- activation/: tanh, gelu, gelu_approximate, silu, swish, elu (all), selu (all),
+  softplus, mish, logsigmoid, celu, tanhshrink, glu, atanh,
+  softmax (all 8 variants), log_softmax
+- norm/: all 25 normalization shaders
+- optimizer/: all 10 advanced optimizers (adam, adamw, rmsprop, etc.)
+- attention/: alibi_position, flash_attention, rotary_embedding, sdpa (all)
+- audio/: griffin_lim, istft, mfcc, spectrogram, stft, window_function
+- augmentation/: random_perspective, random_rotation
+- bio/: wright_fisher_step, locus_variance, swarm_nn_scores
+- misc/: 46 miscellaneous shaders (sort, scan, interpolate, ssim, psnr, etc.)
+- rnn/: rnn_cell
+- sample/: lhs, random_uniform, sobol
+- special/: norm_cdf, norm_ppf
+- spectral/: batch_ipr
+- stats/: histogram, moving_window
+- tensor/: 39 tensor manipulation shaders
+
+**Remaining**: 16 u32/i32-only shaders (no conversion needed — no f32 types)
 
 ---
 
@@ -167,9 +198,9 @@ improves quality without creating new debt.
 | Metric | Session 67 | Session 68 | Target |
 |--------|-----------|-----------|--------|
 | Duplicate f32/f64 pairs | 50 | 49 (5 consolidated) | 0 |
-| f32 WGSL files deleted | 0 | 5 | 50+ |
-| f32-only shaders identified | ~30 | 240 trivial + 138 transcendental | 0 |
-| `downcast_f64_to_f32` callers | 0 | 5 | 50+ |
+| f32 WGSL files deleted | 0 | 296 (5 pairs + 291 f32-only) | 50+ |
+| f32-only shaders remaining | ~534 | **0** | 0 |
+| `downcast_f64_to_f32` callers | 0 | 296 | 296 |
 | `println!` in production | 14 | 0 | 0 |
 | Magic numbers in production | 5 | 0 | 0 |
 

@@ -253,7 +253,7 @@ Named constant: `toadstool_common::constants::network::DEFAULT_HTTP_PORT`
 | `toadstool-server` | JSON-RPC server, GPU job queue, Ollama, cross-gate router |
 | `toadstool-api` | REST API, middleware (WebSocket removed; JSON-RPC polling) |
 | `toadstool-cli` | UniBin CLI, daemon, ecosystem integration |
-| `barracuda` | 702 WGSL shaders (21 DF64), sovereign compiler, tensor ops, device management, hardware routing, stats metrics, diversity |
+| `barracuda` | 700 WGSL shaders (21 DF64, 0 f32-only), sovereign compiler, tensor ops, device management, hardware routing, stats metrics, diversity |
 | `toadstool-distributed` | Multi-gate coordination, crypto integration |
 | `toadstool-testing` | Chaos, fault, property, performance testing |
 
