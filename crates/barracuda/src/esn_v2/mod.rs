@@ -28,13 +28,18 @@ pub use model::{ExportedWeights, ESN};
 pub use npu::{dequantize_affine_i8_f64, quantize_affine_i8_f64, NpuReadoutWeights};
 
 /// GPU shader for fused reservoir update: W_in·input + W_res·state → leaky tanh → new state.
-pub const WGSL_RESERVOIR_UPDATE: &str = include_str!("../shaders/ml/esn_reservoir_update.wgsl");
+pub fn wgsl_reservoir_update() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+            "../shaders/ml/esn_reservoir_update_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
 /// GPU shader for readout: output[i] = W_out[i,:] · state (matrix-vector product).
 pub const WGSL_READOUT: &str = include_str!("../shaders/ml/esn_readout.wgsl");
 
-/// GPU shader for fused reservoir update (alias).
-pub const WGSL_ESN_RESERVOIR_UPDATE: &str = include_str!("../shaders/ml/esn_reservoir_update.wgsl");
 
 /// GPU shader for readout (alias).
 pub const WGSL_ESN_READOUT: &str = include_str!("../shaders/ml/esn_readout.wgsl");

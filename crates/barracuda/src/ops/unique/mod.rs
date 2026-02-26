@@ -50,7 +50,14 @@ impl Unique {
 
     /// WGSL shader source for unique marking and compaction
     pub(super) fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/misc/unique.wgsl")
+        {
+            static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                    "../../shaders/misc/unique_f64.wgsl"
+                ))
+            });
+            std::sync::LazyLock::force(&SHADER).as_str()
+        }
     }
 
     /// WGSL shader source for prefix sum computation

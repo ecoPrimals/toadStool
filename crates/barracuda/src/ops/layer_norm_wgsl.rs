@@ -18,7 +18,14 @@ use wgpu::util::DeviceExt;
 pub const WGSL_LAYERNORM_FUSED: &str = include_str!("../shaders/norm/layernorm_fused.wgsl");
 
 /// GPU shader for fused layer normalization v2 (improved numerical stability).
-pub const WGSL_LAYERNORM_FUSED_V2: &str = include_str!("../shaders/norm/layernorm_fused_v2.wgsl");
+pub fn wgsl_layernorm_fused_v2() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+            "../shaders/norm/layernorm_fused_v2_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
 /// GPU shader for optimized layer normalization (vectorized loads).
 pub const WGSL_LAYERNORM_OPTIMIZED: &str = include_str!("../shaders/norm/layernorm_optimized.wgsl");

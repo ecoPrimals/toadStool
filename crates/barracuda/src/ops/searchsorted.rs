@@ -65,11 +65,23 @@ impl SearchSorted {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/misc/searchsorted.wgsl")
+        {
+            static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                    "../shaders/misc/searchsorted_f64.wgsl"
+                ))
+            });
+            std::sync::LazyLock::force(&SHADER).as_str()
+        }
     }
 
     fn u32_to_f32_shader() -> &'static str {
-        include_str!("../shaders/misc/u32_to_f32.wgsl")
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../shaders/misc/u32_to_f32_f64.wgsl"
+            ))
+        });
+        std::sync::LazyLock::force(&SHADER).as_str()
     }
 
     pub fn execute(self) -> Result<Tensor> {

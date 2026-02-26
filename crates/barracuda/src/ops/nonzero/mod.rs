@@ -59,7 +59,12 @@ impl NonZero {
 
     /// WGSL shader source for nonzero operation
     pub(super) fn wgsl_shader() -> &'static str {
-        include_str!("../../shaders/misc/nonzero.wgsl")
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../../shaders/misc/nonzero_f64.wgsl"
+            ))
+        });
+        std::sync::LazyLock::force(&SHADER).as_str()
     }
 
     /// WGSL shader source for prefix sum
@@ -69,12 +74,22 @@ impl NonZero {
 
     /// WGSL shader source for mask conversion
     pub(super) fn mask_convert_shader() -> &'static str {
-        include_str!("../../shaders/misc/mask_convert.wgsl")
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../../shaders/misc/mask_convert_f64.wgsl"
+            ))
+        });
+        std::sync::LazyLock::force(&SHADER).as_str()
     }
 
     /// WGSL shader source for u32 to f32 conversion
     pub(super) fn u32_to_f32_shader() -> &'static str {
-        include_str!("../../shaders/misc/u32_to_f32.wgsl")
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../../shaders/misc/u32_to_f32_f64.wgsl"
+            ))
+        });
+        std::sync::LazyLock::force(&SHADER).as_str()
     }
 
     /// Get input tensor

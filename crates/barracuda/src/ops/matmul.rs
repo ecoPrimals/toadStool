@@ -24,7 +24,14 @@ const GPU_EVOLVED_THRESHOLD: usize = 256;
 pub const WGSL_MATMUL_FP64: &str = include_str!("../shaders/math/matmul_fp64.wgsl");
 
 /// Linear layer shader (matmul + bias).
-pub const WGSL_LINEAR: &str = include_str!("../shaders/misc/linear.wgsl");
+pub fn wgsl_linear() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+            "../shaders/misc/linear_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]

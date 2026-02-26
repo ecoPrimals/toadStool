@@ -26,7 +26,14 @@ impl PrngXoshiro {
     }
 
     /// Xoshiro128** stateful PRNG (neuralSpring): per-thread state, n_samples per thread.
-    pub const WGSL_XOSHIRO128SS: &str = include_str!("../shaders/misc/xoshiro128ss.wgsl");
+    pub fn wgsl_xoshiro128ss() -> &'static str {
+        static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+                "../shaders/misc/xoshiro128ss_f64.wgsl"
+            ))
+        });
+        std::sync::LazyLock::force(&SHADER).as_str()
+    }
 
     /// WGSL kernel for Xoshiro PRNG (f32 variant).
     pub const WGSL_PRNG_XOSHIRO_F32: &str = include_str!("../shaders/misc/prng_xoshiro.wgsl");

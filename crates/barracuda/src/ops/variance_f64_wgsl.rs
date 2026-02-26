@@ -18,7 +18,14 @@ use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 /// Simple variance reduction variant (scalar path).
-pub const WGSL_VARIANCE_SIMPLE: &str = include_str!("../shaders/misc/variance_simple.wgsl");
+pub fn wgsl_variance_simple() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+            "../shaders/misc/variance_simple_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
 /// Special variance shader.
 pub const WGSL_VARIANCE_SPECIAL: &str = include_str!("../shaders/special/variance.wgsl");

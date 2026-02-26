@@ -169,8 +169,8 @@ impl Trace {
 
         // If multiple workgroups, reduce partial results in a second pass using reduce shader
         let final_buffer = if workgroups > 1 {
-            // Second pass: reduce partial results using reduce.wgsl shader
-            let reduce_shader_source = include_str!("../shaders/misc/reduce.wgsl");
+            // Second pass: reduce partial results using reduce shader
+            let reduce_shader_source = crate::ops::reduce::Reduce::wgsl_shader();
             let reduce_shader = device
                 .device
                 .create_shader_module(wgpu::ShaderModuleDescriptor {

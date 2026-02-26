@@ -15,7 +15,14 @@ static SHADER_F32: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
 
 /// Meshgrid shader (expand coords to grid).
-pub const WGSL_MESHGRID: &str = include_str!("../shaders/misc/meshgrid.wgsl");
+pub fn wgsl_meshgrid() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+            "../shaders/misc/meshgrid_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]

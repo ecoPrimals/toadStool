@@ -13,7 +13,14 @@ use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 /// Simple norm reduction variant (scalar path).
-pub const WGSL_NORM_SIMPLE: &str = include_str!("../shaders/misc/norm_simple.wgsl");
+pub fn wgsl_norm_simple() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+            "../shaders/misc/norm_simple_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
 /// Norm reduction operation
 pub struct Norm {

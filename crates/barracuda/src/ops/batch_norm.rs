@@ -24,10 +24,24 @@ static SHADER_BATCH_NORM_F32: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_BATCH_NORM_F64));
 
 /// GPU shader for group normalization (groups within channels).
-pub const WGSL_GROUPNORM: &str = include_str!("../shaders/norm/groupnorm.wgsl");
+pub fn wgsl_groupnorm() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+            "../shaders/norm/groupnorm_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
 /// GPU shader for instance normalization (per-instance per-channel).
-pub const WGSL_INSTANCENORM: &str = include_str!("../shaders/norm/instancenorm.wgsl");
+pub fn wgsl_instancenorm() -> &'static str {
+    static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
+            "../shaders/norm/instancenorm_f64.wgsl"
+        ))
+    });
+    std::sync::LazyLock::force(&SHADER).as_str()
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
