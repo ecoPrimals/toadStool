@@ -41,6 +41,11 @@ mod compute;
 #[cfg(test)]
 mod tests;
 
+const SHADER_SPARSE_SOFTMAX_F64: &str =
+    include_str!("../../shaders/activation/sparse_attention_softmax_f64.wgsl");
+static SHADER_SPARSE_SOFTMAX_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_SPARSE_SOFTMAX_F64));
+
 /// Sparse attention parameters for WGSL shaders
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -106,7 +111,7 @@ impl SparseAttention {
 
     /// Pass 2 shader: Apply softmax with sparse mask (NEW - only shader needed!)
     pub(super) fn shader_sparse_softmax() -> &'static str {
-        include_str!("../../shaders/activation/sparse_attention_softmax.wgsl")
+        &SHADER_SPARSE_SOFTMAX_F32
     }
 
     /// Pass 3 shader: Apply weights to values (REUSED from attention ✅)

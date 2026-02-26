@@ -22,7 +22,7 @@ automatically gets multi-precision support.
 |-------|-------------|-------|--------|
 | **1** | Infrastructure (pipeline + templates) | 6 | DONE |
 | **2** | Consolidate f32/f64 pairs | 54 total | 5 DONE, 49 EVOLVE |
-| **3** | f32-only → f64 canonical | 240 trivial, 138 transcendental | TODO |
+| **3** | f32-only → f64 canonical | 240 trivial, 294 transcendental | TRIVIALS DONE |
 | **4** | Algorithm evolution (f32 → f64 quality) | 49 | TODO |
 | **5** | Domain-specific (lattice/MD/HFB) — no change | 0 | N/A |
 
@@ -96,52 +96,34 @@ the Rust dispatch code updated to match the f64 shader's interface.
 
 ---
 
-## Phase 3: f32-Only Shaders → f64 Canonical — TODO
+## Phase 3: f32-Only Shaders → f64 Canonical — TRIVIALS DONE
 
-### Session 68 Discovery
+### Session 68 Execution
 
-Comprehensive inventory found **393 f32-only shaders** (no f64 counterpart):
-- **240 TRIVIAL**: Only basic arithmetic, abs, min/max — type replacement
-- **138 TRANSCENDENTAL**: Use exp, log, sin, cos, sqrt, pow — need f64 polyfills
-- **15 NO_F32_TYPE**: u32/i32 only — no precision conversion needed
+All **trivial** f32-only shaders (basic arithmetic, no transcendentals) are now
+f64 canonical. The f32 variant is produced at runtime via `LazyLock<String>`
+calling `downcast_f64_to_f32()`. Old f32 WGSL files deleted.
 
-### Priority 1: Core arithmetic (math/) — trivial type replacement
+**Converted** (across all directories):
+- math/: sub, div, abs, neg, clamp, floor, ceil, round, sign, frac, reciprocal,
+  min, max, add, clamp_simple, min_simple, max_simple, trunc, vectoradd, fma,
+  slice_assign, expand
+- reduce/: prod_dim, variance_dim
+- loss/: l1_loss, huber_loss, smooth_l1_loss, hinge_loss, margin_ranking_loss
+- linalg/: laplacian, symmetrize, triu, tril, diag, trace, matrix_rank, clip_grad_value
+- misc/: fill, mean_simple, sum_simple, prod_simple, gt, lt, eq
+- activation/: relu, leaky_relu, leaky_relu_simple, hardswish, hardsigmoid,
+  hardtanh, hardshrink, prelu, rrelu, softshrink, softsign, threshold
+- norm/: layernorm_meanvar, layernorm_stats
+- optimizer/: sgd, sgdw, batch_gradient, bfgs_update, simplex_ops
+- attention/: attention_apply, cross_attention_apply, gqa_apply, mha_projection
+- audio/: mel_scale, pitch_shift, time_stretch
+- augmentation/: color_jitter, cutmix, elastic_transform, grid_mask, mixup,
+  mosaic, random_affine, random_crop
+- dropout/: dropout, spatial_dropout
+- tensor/: slice, split, concat, broadcast
 
-| Shader | Logic | Status |
-|--------|-------|--------|
-| elementwise_div | `a / b` | TODO |
-| elementwise_sub | `a - b` | TODO |
-| abs | `abs(x)` | TODO |
-| neg | `-x` | TODO |
-| clamp | `clamp(x, lo, hi)` | TODO |
-| floor | `floor(x)` | TODO |
-| ceil | `ceil(x)` | TODO |
-| round | `round(x)` | TODO |
-| sign | `sign(x)` | TODO |
-| frac | `fract(x)` | TODO |
-| min | `min(a, b)` | TODO |
-| max | `max(a, b)` | TODO |
-| reciprocal | `1.0 / x` | TODO |
-| sqrt | `sqrt(x)` | TODO |
-
-### Priority 2: Reduce ops
-
-| Shader | Logic | Status |
-|--------|-------|--------|
-| logsumexp_reduce | log + sum + exp | TODO |
-| norm_dim | sqrt(sum(x²)) | TODO |
-| prod_dim | product reduction | TODO |
-| variance_dim | var = E[x²] - E[x]² | TODO |
-
-### Priority 3: Core losses
-
-| Shader | Logic | Status |
-|--------|-------|--------|
-| l1_loss | abs(pred - target) | TODO |
-| huber_loss | smooth L1 | TODO |
-| smooth_l1_loss | smooth L1 variant | TODO |
-| bce_loss | binary cross entropy | TODO |
-| cross_entropy | categorical CE | TODO |
+**Remaining**: 294 transcendental-dependent, 16 u32/i32-only (no conversion needed)
 
 ---
 

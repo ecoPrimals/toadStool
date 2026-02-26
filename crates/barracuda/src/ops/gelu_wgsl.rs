@@ -9,6 +9,11 @@
 //! - Zero-copy output: buffer pool, no GPU→CPU→GPU round-trip
 //! - Pipeline cached: GLOBAL_CACHE eliminates recompilation overhead
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+const SHADER_F64: &str = include_str!("../shaders/activation/gelu_f64.wgsl");
+pub(crate) static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+
 use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
 use crate::device::tensor_context::get_device_context;
 use crate::device::{DeviceCapabilities, WorkloadType};
@@ -34,7 +39,7 @@ impl GELU {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/activation/gelu.wgsl")
+        &SHADER_F32
     }
 
     /// Execute GELU.

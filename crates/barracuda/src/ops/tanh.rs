@@ -7,6 +7,11 @@
 //! - Pipeline cached: GLOBAL_CACHE eliminates recompilation overhead
 //! - Bind-group cached: get_or_create_bind_group() reuses BG for same tensor pair
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+const SHADER_F64: &str = include_str!("../shaders/activation/tanh_f64.wgsl");
+pub(crate) static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+
 use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
 use crate::device::tensor_context::get_device_context;
 use crate::device::{DeviceCapabilities, WorkloadType};
@@ -24,7 +29,7 @@ impl Tanh {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/activation/tanh.wgsl")
+        &SHADER_F32
     }
 
     /// Execute Tanh.

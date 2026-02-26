@@ -142,7 +142,7 @@ impl ScaledDotProductAttention {
 
     /// Get WGSL shader for attention softmax (Pass 2)
     pub(super) fn wgsl_shader_softmax() -> &'static str {
-        include_str!("../../shaders/activation/attention_softmax.wgsl")
+        &crate::ops::attention::ATTENTION_SOFTMAX_F32
     }
 
     /// Get WGSL shader for attention apply (Pass 3)

@@ -31,6 +31,10 @@ const SHADER_F64: &str = include_str!("../../shaders/attention/gqa_apply_f64.wgs
 static SHADER_F32: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
 
+const SHADER_SOFTMAX_F64: &str = include_str!("../../shaders/activation/gqa_softmax_f64.wgsl");
+static SHADER_SOFTMAX_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_SOFTMAX_F64));
+
 #[cfg(test)]
 mod tests;
 
@@ -145,7 +149,7 @@ impl GroupedQueryAttention {
 
     /// Get WGSL shader for GQA attention softmax (Pass 2)
     pub(super) fn wgsl_shader_softmax() -> &'static str {
-        include_str!("../../shaders/activation/gqa_softmax.wgsl")
+        &SHADER_SOFTMAX_F32
     }
 
     /// Get WGSL shader for GQA attention apply (Pass 3)

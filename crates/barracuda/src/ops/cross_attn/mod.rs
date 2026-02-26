@@ -43,6 +43,11 @@ const SHADER_F64: &str = include_str!("../../shaders/attention/cross_attention_a
 static SHADER_F32: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
 
+const SHADER_SOFTMAX_F64: &str =
+    include_str!("../../shaders/activation/cross_attention_softmax_f64.wgsl");
+static SHADER_SOFTMAX_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_SOFTMAX_F64));
+
 #[cfg(test)]
 mod tests;
 
@@ -123,7 +128,7 @@ impl CrossAttention {
     }
 
     pub(super) fn shader_softmax() -> &'static str {
-        include_str!("../../shaders/activation/cross_attention_softmax.wgsl")
+        &SHADER_SOFTMAX_F32
     }
 
     pub(super) fn shader_apply() -> &'static str {

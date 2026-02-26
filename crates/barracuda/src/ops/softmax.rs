@@ -11,8 +11,15 @@ use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
-/// Basic softmax activation shader.
-pub const WGSL_SOFTMAX_BASIC: &str = include_str!("../shaders/activation/softmax.wgsl");
+/// f64 canonical — simple softmax (single workgroup).
+const SHADER_SOFTMAX_SIMPLE_F64: &str = include_str!("../shaders/activation/softmax_simple_f64.wgsl");
+pub(crate) static SHADER_SOFTMAX_SIMPLE_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_SOFTMAX_SIMPLE_F64));
+
+/// f64 canonical — basic softmax (multi-pass).
+const WGSL_SOFTMAX_BASIC_F64: &str = include_str!("../shaders/activation/softmax_f64.wgsl");
+pub static WGSL_SOFTMAX_BASIC: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_SOFTMAX_BASIC_F64));
 
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
@@ -40,7 +47,7 @@ impl Softmax {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/activation/softmax_simple.wgsl")
+        &SHADER_SOFTMAX_SIMPLE_F32
     }
 
     /// Execute Softmax — GPU-resident, pipeline-cached, batchable.

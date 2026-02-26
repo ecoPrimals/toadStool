@@ -113,11 +113,11 @@ impl SessionPipelines {
                 "Session ReLU",
             ),
             gelu_pl: auto_pipeline(
-                include_str!("../shaders/activation/gelu.wgsl"),
+                &crate::ops::gelu_wgsl::SHADER_F32,
                 "Session GELU",
             ),
             sfmx_pl: auto_pipeline(
-                include_str!("../shaders/activation/softmax_simple.wgsl"),
+                &crate::ops::softmax::SHADER_SOFTMAX_SIMPLE_F32,
                 "Session Softmax",
             ),
             lnrm_pl: auto_pipeline(
@@ -145,7 +145,7 @@ impl SessionPipelines {
                 "Session SDPA Scores",
             ),
             attn_softmax_pl: auto_pipeline(
-                include_str!("../shaders/activation/attention_softmax.wgsl"),
+                &crate::ops::attention::ATTENTION_SOFTMAX_F32,
                 "Session Attn Softmax",
             ),
             attn_apply_pl: auto_pipeline(

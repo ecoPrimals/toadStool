@@ -7,6 +7,14 @@
 //! - Pipeline cached: GLOBAL_CACHE eliminates recompilation overhead
 //! - Params fixed (S14): Rust `Params` matches WGSL `{ size, alpha }`
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+const SHADER_ELU_F64: &str = include_str!("../shaders/activation/elu_f64.wgsl");
+const SHADER_ELU_SIMPLE_F64: &str = include_str!("../shaders/activation/elu_simple_f64.wgsl");
+pub(crate) static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_ELU_F64));
+pub(crate) static SHADER_ELU_SIMPLE_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_ELU_SIMPLE_F64));
+
 use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
 use crate::device::tensor_context::get_device_context;
 use crate::device::{DeviceCapabilities, WorkloadType};
@@ -16,7 +24,9 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
 /// Simple ELU variant (single-pass, no vectorization).
-pub const WGSL_ELU_SIMPLE: &str = include_str!("../shaders/activation/elu_simple.wgsl");
+pub fn wgsl_elu_simple() -> &'static str {
+    &SHADER_ELU_SIMPLE_F32
+}
 
 /// Default alpha for ELU (matches common framework defaults).
 pub const ELU_DEFAULT_ALPHA: f32 = 1.0;
@@ -47,7 +57,7 @@ impl ELU {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/activation/elu.wgsl")
+        &SHADER_F32
     }
 
     pub fn execute(self) -> Result<Tensor> {
