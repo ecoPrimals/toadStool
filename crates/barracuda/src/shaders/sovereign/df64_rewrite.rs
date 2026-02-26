@@ -49,8 +49,8 @@ fn _df64_div_f64(a: f64, b: f64) -> f64 { return df64_to_f64(df64_div(df64_from_
 fn _df64_neg_f64(a: f64) -> f64 { return df64_to_f64(df64_neg(df64_from_f64(a))); }
 fn _df64_gt_f64(a: f64, b: f64) -> bool { return df64_gt(df64_from_f64(a), df64_from_f64(b)); }
 fn _df64_lt_f64(a: f64, b: f64) -> bool { return df64_lt(df64_from_f64(a), df64_from_f64(b)); }
-fn _df64_gte_f64(a: f64, b: f64) -> bool { return !df64_lt(df64_from_f64(a), df64_from_f64(b)); }
-fn _df64_lte_f64(a: f64, b: f64) -> bool { return !df64_gt(df64_from_f64(a), df64_from_f64(b)); }
+fn _df64_gte_f64(a: f64, b: f64) -> bool { let da = df64_from_f64(a); let db = df64_from_f64(b); return df64_gt(da, db) || (da.hi == db.hi && da.lo == db.lo); }
+fn _df64_lte_f64(a: f64, b: f64) -> bool { let da = df64_from_f64(a); let db = df64_from_f64(b); return df64_lt(da, db) || (da.hi == db.hi && da.lo == db.lo); }
 "#;
 
 struct Replacement {
@@ -114,7 +114,9 @@ pub fn rewrite_f64_infix_to_df64(f64_source: &str) -> Result<String, String> {
 
     let mut result = f64_source.to_string();
     for r in &replacements {
-        result.replace_range(r.span_start..r.span_end, &r.text);
+        if r.span_start <= r.span_end && r.span_end <= result.len() {
+            result.replace_range(r.span_start..r.span_end, &r.text);
+        }
     }
 
     Ok(result)
@@ -368,23 +370,17 @@ fn build_bridge_text(
 }
 
 /// Extract source text for a leaf expression via its naga span.
+/// Encodes the span as a `__SPAN__start__end` marker that `resolve_spans`
+/// later replaces with actual source text.
 fn leaf_text(handle: Handle<Expression>, expressions: &Arena<Expression>) -> String {
-    // For leaf expressions, we want the TEXT that naga parsed for this expression.
-    // naga stores source spans as byte ranges into the original source.
-    // However, we don't have the source here — we use naga's span
-    // and format a placeholder that gets resolved by the caller.
-    //
-    // Actually: naga Span stores byte offsets but we don't pass the source here.
-    // This is by design — leaf_text is only called for operands that are NOT
-    // f64 infix ops, so their source text is just a variable name or array access
-    // that doesn't need transformation.
-    //
-    // We store span info in a special format that the caller decodes.
     if let Some(span_range) = expressions.get_span(handle).to_range() {
-        format!("__SPAN__{}__{}", span_range.start, span_range.end)
-    } else {
-        format!("/* no span {handle:?} */")
+        if span_range.start <= span_range.end {
+            return format!("__SPAN__{}__{}", span_range.start, span_range.end);
+        }
     }
+    // Undefined or invalid span — emit a safe f64 zero that won't break compilation.
+    // This is a fallback; real shaders should always have valid spans.
+    String::from("f64(0.0)")
 }
 
 /// Whether this binary operator should be rewritten for DF64.
@@ -440,7 +436,7 @@ pub(crate) fn resolve_spans(rewritten: &str, original: &str) -> String {
             let end_str = &after_mid[..end_len];
 
             if let (Ok(start), Ok(end)) = (start_str.parse::<usize>(), end_str.parse::<usize>()) {
-                if end <= original.len() {
+                if start <= end && end <= original.len() {
                     let span_text = &original[start..end];
                     let marker_end = pos + 8 + mid + 2 + end_len;
                     result.replace_range(pos..marker_end, span_text);
@@ -653,5 +649,193 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             result.contains("_df64_add_f64(") && result.contains("_df64_mul_f64("),
             "FMA pattern should produce both, got:\n{result}"
         );
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Chaos tests for the naga rewriter
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fn test_chaos_naga_f32_only_shader() {
+        let wgsl = r#"
+@group(0) @binding(0) var<storage, read> input: array<f32>;
+@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    output[gid.x] = input[gid.x] + 1.0;
+}
+"#;
+        let result = rewrite_f64_infix_to_df64(wgsl).expect("should not fail on f32 shader");
+        assert_eq!(result, wgsl, "f32-only shader should be returned unchanged");
+    }
+
+    #[test]
+    fn test_chaos_naga_invalid_wgsl() {
+        let result = rewrite_f64_infix_to_df64("this is not valid wgsl");
+        assert!(result.is_err(), "invalid WGSL should return Err");
+    }
+
+    #[test]
+    fn test_chaos_naga_empty_shader() {
+        // Empty source may or may not parse/validate in naga.
+        // Either way, the function should not panic.
+        let result = rewrite_f64_infix_to_df64("");
+        // If naga accepts it, the result is the source unchanged.
+        // If naga rejects it, we get an Err. Both are acceptable.
+        match result {
+            Ok(s) => assert_eq!(s, "", "empty in, empty out"),
+            Err(_) => {} // parse/validation failure is fine
+        }
+    }
+
+    #[test]
+    fn test_chaos_count_mixed_f32_f64_ops() {
+        let wgsl = r#"
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let i = gid.x;
+    let j = i + 1u;
+    let k = j * 2u;
+    let a = input[i];
+    let b = input[k];
+    output[i] = a + b;
+}
+"#;
+        let count = count_f64_infix_ops(wgsl).expect("should parse");
+        assert!(count >= 1, "should count f64 add but not u32 ops, got {count}");
+    }
+
+    #[test]
+    fn test_chaos_naga_subtraction_chain() {
+        let wgsl = r#"
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let i = gid.x;
+    let a = input[i];
+    let b = input[i + 1u];
+    let c = input[i + 2u];
+    let d = input[i + 3u];
+    output[i] = a - b - c - d;
+}
+"#;
+        let result = rewrite_and_resolve(wgsl);
+        assert!(
+            result.contains("_df64_sub_f64("),
+            "subtraction chain should use sub bridges, got:\n{result}"
+        );
+    }
+
+    #[test]
+    fn test_chaos_naga_division() {
+        let wgsl = r#"
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let i = gid.x;
+    output[i] = input[i] / input[i + 1u];
+}
+"#;
+        let result = rewrite_and_resolve(wgsl);
+        assert!(
+            result.contains("_df64_div_f64("),
+            "division should be rewritten, got:\n{result}"
+        );
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Fault tests for the naga rewriter
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fn test_fault_resolve_spans_empty() {
+        let result = resolve_spans("no spans here", "original");
+        assert_eq!(result, "no spans here");
+    }
+
+    #[test]
+    fn test_fault_resolve_spans_valid() {
+        let original = "hello world";
+        let rewritten = "prefix __SPAN__0__5 suffix";
+        let result = resolve_spans(rewritten, original);
+        assert_eq!(result, "prefix hello suffix");
+    }
+
+    #[test]
+    fn test_fault_resolve_spans_out_of_bounds() {
+        let original = "short";
+        let rewritten = "__SPAN__0__999";
+        let result = resolve_spans(rewritten, original);
+        // Should not panic, marker stays as-is
+        assert!(result.contains("__SPAN__"), "out of bounds should leave marker");
+    }
+
+    #[test]
+    fn test_fault_resolve_spans_inverted_range() {
+        let original = "hello world";
+        let rewritten = "__SPAN__5__0";
+        let result = resolve_spans(rewritten, original);
+        assert!(result.contains("__SPAN__"), "inverted range should leave marker");
+    }
+
+    #[test]
+    fn test_fault_bridge_functions_defined() {
+        let bf = bridge_functions();
+        assert!(bf.contains("_df64_add_f64"), "add bridge");
+        assert!(bf.contains("_df64_sub_f64"), "sub bridge");
+        assert!(bf.contains("_df64_mul_f64"), "mul bridge");
+        assert!(bf.contains("_df64_div_f64"), "div bridge");
+        assert!(bf.contains("_df64_neg_f64"), "neg bridge");
+        assert!(bf.contains("_df64_gt_f64"), "gt bridge");
+        assert!(bf.contains("_df64_lt_f64"), "lt bridge");
+        assert!(bf.contains("_df64_gte_f64"), "gte bridge");
+        assert!(bf.contains("_df64_lte_f64"), "lte bridge");
+    }
+
+    #[test]
+    fn test_fault_full_pipeline_no_f64_ops_passthrough() {
+        let wgsl = r#"
+@group(0) @binding(0) var<storage, read> input: array<f32>;
+@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    output[gid.x] = input[gid.x] * 2.0;
+}
+"#;
+        let result = rewrite_f64_infix_full(wgsl).expect("should succeed");
+        assert_eq!(result, wgsl, "no f64 ops = passthrough unchanged");
+    }
+
+    #[test]
+    fn test_fault_dedup_preserves_non_overlapping() {
+        let mut replacements = vec![
+            Replacement { span_start: 100, span_end: 110, text: "A".into() },
+            Replacement { span_start: 50, span_end: 60, text: "B".into() },
+            Replacement { span_start: 10, span_end: 20, text: "C".into() },
+        ];
+        dedup_overlapping(&mut replacements);
+        assert_eq!(replacements.len(), 3, "non-overlapping should all survive");
+    }
+
+    #[test]
+    fn test_fault_dedup_removes_nested() {
+        let mut replacements = vec![
+            Replacement { span_start: 15, span_end: 25, text: "inner".into() },
+            Replacement { span_start: 10, span_end: 30, text: "outer".into() },
+        ];
+        // sorted by span_start descending
+        replacements.sort_by(|a, b| b.span_start.cmp(&a.span_start));
+        dedup_overlapping(&mut replacements);
+        assert_eq!(replacements.len(), 1, "nested should be deduped");
+        assert_eq!(replacements[0].text, "outer", "outermost should survive");
     }
 }

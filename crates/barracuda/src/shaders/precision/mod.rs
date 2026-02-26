@@ -108,8 +108,9 @@ impl Precision {
     /// For f32/f64: trivial inline wrappers around native operators.
     /// For DF64: routes to df64_add/df64_mul/etc from the DF64 core library.
     ///
-    /// The preamble also provides `op_load`/`op_store` for array access,
-    /// handling the DF64 pack/unpack (`vec2<f32>` ↔ `Df64`) transparently.
+    /// All preambles provide identity `op_pack`/`op_unpack` for uniform
+    /// array access patterns. DF64 uses these for `vec2<f32>` ↔ `Df64`
+    /// conversion; other precisions are identity (compiler eliminates them).
     pub fn op_preamble(&self) -> &'static str {
         match self {
             Precision::F32 => OP_PREAMBLE_F32,
@@ -139,6 +140,8 @@ fn op_le(a: f32, b: f32) -> bool { return a <= b; }
 fn op_from_f32(v: f32) -> f32 { return v; }
 fn op_zero() -> f32 { return 0.0; }
 fn op_one() -> f32 { return 1.0; }
+fn op_pack(v: f32) -> f32 { return v; }
+fn op_unpack(v: f32) -> f32 { return v; }
 "#;
 
 /// f64 operation preamble — same structure, f64 types.
@@ -160,6 +163,8 @@ fn op_le(a: f64, b: f64) -> bool { return a <= b; }
 fn op_from_f32(v: f32) -> f64 { return f64(v); }
 fn op_zero() -> f64 { return f64(0.0); }
 fn op_one() -> f64 { return f64(1.0); }
+fn op_pack(v: f64) -> f64 { return v; }
+fn op_unpack(v: f64) -> f64 { return v; }
 "#;
 
 /// DF64 operation preamble — routes to df64_core library functions.
@@ -206,6 +211,8 @@ fn op_le(a: f16, b: f16) -> bool { return a <= b; }
 fn op_from_f32(v: f32) -> f16 { return f16(v); }
 fn op_zero() -> f16 { return f16(0.0); }
 fn op_one() -> f16 { return f16(1.0); }
+fn op_pack(v: f16) -> f16 { return v; }
+fn op_unpack(v: f16) -> f16 { return v; }
 "#;
 
 /// Downcast an f64 shader source to f32 via text substitution.
@@ -250,6 +257,42 @@ fn clamp_f64_range_literals(source: &str) -> String {
         .replace("1.0e300", "3.4028235e+38")
         .replace("-1e300", "-3.4028235e+38")
         .replace("1e300", "3.4028235e+38")
+}
+
+/// Downcast an f64 shader source to f16 via text substitution.
+///
+/// Same sentinel protection and literal clamping as the f32 downcast.
+/// f16 range is ~65504 so f64-range sentinels need aggressive clamping.
+pub fn downcast_f64_to_f16(f64_source: &str) -> String {
+    let result = f64_source
+        .replace("_f64(", "\x00_F64_CALL\x00")
+        .replace("array<f64>", "array<f16>")
+        .replace("array<f64,", "array<f16,")
+        .replace(": f64", ": f16")
+        .replace("-> f64", "-> f16")
+        .replace("f64(", "f16(")
+        .replace("<f64>", "<f16>")
+        .replace("\x00_F64_CALL\x00", "_f64(");
+
+    clamp_f64_range_literals_f16(&result)
+}
+
+/// Replace f64-range sentinel literals with f16-safe equivalents.
+/// f16 max is ~65504.
+fn clamp_f64_range_literals_f16(source: &str) -> String {
+    source
+        .replace("-1.7976931348623157e+308", "-65504.0")
+        .replace("1.7976931348623157e+308", "65504.0")
+        .replace("-1.0e308", "-65504.0")
+        .replace("1.0e308", "65504.0")
+        .replace("-1e308", "-65504.0")
+        .replace("1e308", "65504.0")
+        .replace("-1.0e300", "-65504.0")
+        .replace("1.0e300", "65504.0")
+        .replace("-1e300", "-65504.0")
+        .replace("1e300", "65504.0")
+        .replace("-3.4028235e+38", "-65504.0")
+        .replace("3.4028235e+38", "65504.0")
 }
 
 /// Downcast an f64 shader source to f32, also replacing polyfill
@@ -312,24 +355,15 @@ pub fn downcast_f64_to_df64(f64_source: &str) -> String {
         .replace("\x00_F64_CALL\x00", "_f64(");
 
     let with_transcendentals = result
-        // Transcendentals: _f64() polyfills → _df64() variants
+        // Transcendentals with DF64 implementations in df64_transcendentals.wgsl:
         .replace("exp_f64(", "exp_df64(")
         .replace("log_f64(", "log_df64(")
         .replace("pow_f64(", "pow_df64(")
         .replace("sin_f64(", "sin_df64(")
         .replace("cos_f64(", "cos_df64(")
-        .replace("tan_f64(", "tan_df64(")  // tan_df64 not yet in library; will need it
         .replace("tanh_f64(", "tanh_df64(")
         .replace("sqrt_f64(", "sqrt_df64(")
-        .replace("abs_f64(", "df64_abs(")
-        // These don't have df64 equivalents yet — tracked as evolution items
-        .replace("asin_f64(", "asin_df64(")
-        .replace("acos_f64(", "acos_df64(")
-        .replace("atan_f64(", "atan_df64(")
-        .replace("atan2_f64(", "atan2_df64(")
-        .replace("sinh_f64(", "sinh_df64(")
-        .replace("cosh_f64(", "cosh_df64(")
-        .replace("erf_f64(", "erf_df64(");
+        .replace("abs_f64(", "df64_abs(");
 
     // Clamp f64-range sentinels to f32-range (DF64 uses f32 components)
     clamp_f64_range_literals(&with_transcendentals)

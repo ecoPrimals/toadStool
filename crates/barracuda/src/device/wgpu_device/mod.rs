@@ -297,13 +297,7 @@ impl WgpuDevice {
                 self.compile_shader_df64(&df64_source, label)
             }
             Precision::F16 => {
-                let f16_source = source
-                    .replace("array<f64>", "array<f16>")
-                    .replace("array<f64,", "array<f16,")
-                    .replace(": f64", ": f16")
-                    .replace("-> f64", "-> f16")
-                    .replace("f64(", "f16(")
-                    .replace("<f64>", "<f16>");
+                let f16_source = crate::shaders::precision::downcast_f64_to_f16(source);
                 self.compile_shader(&f16_source, label)
             }
         }
