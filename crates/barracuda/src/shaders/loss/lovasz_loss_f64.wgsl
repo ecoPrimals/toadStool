@@ -1,4 +1,4 @@
-// Lovasz-Softmax Loss
+// Lovasz-Softmax Loss (f64 canonical)
 // IoU-optimized loss for semantic segmentation
 //
 // The Lovasz loss is a convex surrogate for the IoU (Jaccard) loss.
@@ -12,14 +12,14 @@
 // Used in: Semantic segmentation (better than cross-entropy for IoU)
 // Reference: "The Lovász-Softmax loss" (Berman et al., CVPR 2018)
 
-@group(0) @binding(0) var<storage, read> predictions: array<f32>;  // Probabilities [0, 1]
-@group(0) @binding(1) var<storage, read> targets: array<f32>;      // Ground truth [0, 1]
-@group(0) @binding(2) var<storage, read_write> output: array<f32>; // Per-element loss
+@group(0) @binding(0) var<storage, read> predictions: array<f64>;  // Probabilities [0, 1]
+@group(0) @binding(1) var<storage, read> targets: array<f64>;      // Ground truth [0, 1]
+@group(0) @binding(2) var<storage, read_write> output: array<f64>; // Per-element loss
 @group(0) @binding(3) var<uniform> params: Params;
 
 struct Params {
     size: u32,
-    smoothing: f32,  // Smoothing factor for numerical stability
+    smoothing: f64,  // Smoothing factor for numerical stability
     _padding: vec2<u32>,
 }
 
@@ -29,13 +29,13 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if idx >= params.size {
         return;
     }
-    
+
     let pred = predictions[idx];
     let targ = targets[idx];
-    
+
     // Compute error: (1 - p) where p is probability of true class
     let error = max(0.0, 1.0 - pred * targ + params.smoothing);
-    
+
     // Store error for Lovasz extension
     // Note: Full Lovasz requires sorting, which is complex in compute shaders
     // This simplified version computes element-wise error that can be

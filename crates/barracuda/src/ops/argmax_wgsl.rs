@@ -37,12 +37,16 @@ impl Argmax {
 
     /// Get the WGSL shader source for global reduction
     fn wgsl_shader_reduce() -> &'static str {
-        include_str!("../shaders/math/argmax_reduce.wgsl")
+        static SHADER_REDUCE: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/argmax_reduce_f64.wgsl")));
+        &SHADER_REDUCE
     }
 
     /// Get the WGSL shader source for dimension-wise reduction
     fn wgsl_shader_dim() -> &'static str {
-        include_str!("../shaders/math/argmax.wgsl")
+        static SHADER_DIM: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/argmax_f64.wgsl")));
+        &SHADER_DIM
     }
 
     /// Execute the argmax operation

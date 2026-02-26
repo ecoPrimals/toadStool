@@ -121,7 +121,9 @@ impl TverskyLoss {
 
     /// WGSL shader source
     fn shader() -> &'static str {
-        include_str!("../shaders/loss/tversky_loss.wgsl")
+        static SHADER: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/loss/tversky_loss_f64.wgsl")));
+        &SHADER
     }
 
     /// Execute Tversky loss (GPU reduction)

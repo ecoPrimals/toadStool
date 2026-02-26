@@ -1,4 +1,4 @@
-// IoU Loss - Intersection over Union loss
+// IoU Loss - Intersection over Union loss (f64 canonical)
 // Direct optimization of IoU metric
 // Used in segmentation and object detection
 //
@@ -12,20 +12,20 @@
 
 struct Params {
     size: u32,
-    smooth_val: f32,
+    smooth_val: f64,
     num_partials: u32,  // number of workgroup partial results to reduce in pass 2
     _pad1: u32,
 }
 
-@group(0) @binding(0) var<storage, read> predictions: array<f32>;
-@group(0) @binding(1) var<storage, read> targets: array<f32>;
-@group(0) @binding(2) var<storage, read_write> intersection_buffer: array<f32>;  // partial sums per workgroup
-@group(0) @binding(3) var<storage, read_write> union_buffer: array<f32>;         // partial sums per workgroup
-@group(0) @binding(4) var<storage, read_write> output: array<f32>;              // [1] - final loss
+@group(0) @binding(0) var<storage, read> predictions: array<f64>;
+@group(0) @binding(1) var<storage, read> targets: array<f64>;
+@group(0) @binding(2) var<storage, read_write> intersection_buffer: array<f64>;  // partial sums per workgroup
+@group(0) @binding(3) var<storage, read_write> union_buffer: array<f64>;         // partial sums per workgroup
+@group(0) @binding(4) var<storage, read_write> output: array<f64>;              // [1] - final loss
 @group(0) @binding(5) var<uniform> params: Params;
 
-var<workgroup> shared_intersection: array<f32, 256>;
-var<workgroup> shared_union: array<f32, 256>;
+var<workgroup> shared_intersection: array<f64, 256>;
+var<workgroup> shared_union: array<f64, 256>;
 
 @compute @workgroup_size(256)
 fn main(
@@ -36,8 +36,8 @@ fn main(
     let idx = global_id.x;
     let local_idx = local_id.x;
 
-    var local_intersection: f32 = 0.0;
-    var local_union: f32 = 0.0;
+    var local_intersection: f64 = 0.0;
+    var local_union: f64 = 0.0;
 
     if (idx < params.size) {
         let pred = predictions[idx];
@@ -80,8 +80,8 @@ fn compute_loss(
     let num_wg = params.num_partials;
 
     // Load partial results into shared memory
-    var partial_int: f32 = 0.0;
-    var partial_un: f32 = 0.0;
+    var partial_int: f64 = 0.0;
+    var partial_un: f64 = 0.0;
     if (idx < num_wg) {
         partial_int = intersection_buffer[idx];
         partial_un = union_buffer[idx];
