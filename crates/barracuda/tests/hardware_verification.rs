@@ -36,8 +36,6 @@ use std::sync::Arc;
 struct HardwareInventory {
     gpus: Vec<GpuInfo>,
     npus: Vec<NpuInfo>,
-    #[allow(dead_code)]
-    total_vram_gb: f64,
 }
 
 #[derive(Debug)]
@@ -102,11 +100,7 @@ impl HardwareInventory {
             }
         }
 
-        Self {
-            gpus,
-            npus,
-            total_vram_gb: 0.0, // Would need device queries
-        }
+        Self { gpus, npus }
     }
 
     fn print_report(&self) {
@@ -140,15 +134,6 @@ impl HardwareInventory {
         self.gpus.len() >= 2
     }
 
-    #[allow(dead_code)]
-    fn has_multi_vendor_gpu(&self) -> bool {
-        if self.gpus.len() < 2 {
-            return false;
-        }
-        let vendors: std::collections::HashSet<_> = self.gpus.iter().map(|g| &g.vendor).collect();
-        vendors.len() >= 2
-    }
-
     fn has_npu(&self) -> bool {
         !self.npus.is_empty()
     }
@@ -176,28 +161,6 @@ fn assert_close(label: &str, a: &[f32], b: &[f32], tol: f32) {
     );
 }
 
-/// Compare f64 slices with tolerance
-#[allow(dead_code)]
-fn assert_close_f64(label: &str, a: &[f64], b: &[f64], tol: f64) {
-    assert_eq!(a.len(), b.len(), "{}: length mismatch", label);
-    let mut max_diff = 0.0f64;
-    let mut max_idx = 0;
-    for (i, (va, vb)) in a.iter().zip(b.iter()).enumerate() {
-        let diff = (va - vb).abs();
-        if diff > max_diff {
-            max_diff = diff;
-            max_idx = i;
-        }
-    }
-    assert!(
-        max_diff < tol,
-        "{}: max diff {} at idx {} (tol {})",
-        label,
-        max_diff,
-        max_idx,
-        tol
-    );
-}
 
 // ============================================================================
 // Discovery Tests

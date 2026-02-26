@@ -5,6 +5,19 @@
 We aim to solve deep debt over iterations, evolving toward vendor-agnostic,
 capability-based solutions.
 
+## Session 65 Resolutions (Feb 25, 2026)
+
+- **R-S65-001**: `compute_graph.rs` smart refactor (819→522 lines, 36% reduction) — extracted `compile_shader()`/`compile_elementwise()` for zero-duplication shader compilation, `dispatch_pass()` for generic BGL→pipeline→dispatch encoding, reused `storage_bgl_entry()`/`uniform_bgl_entry()` from `device::compute_pipeline`
+- **R-S65-002**: `compute_graph.rs` dead code resolved — `device_name` field `#[allow(dead_code)]` removed, `device_name()` accessor added (13 `#[allow(dead_code)]` remain, all Phase 5+ reserved)
+- **R-S65-003**: `esn_v2/model.rs` smart refactor (861→482 lines, 44% reduction) — 20 async tests extracted to `model_tests.rs` via `#[path]` attribute; production code untouched
+- **R-S65-004**: `tensor/mod.rs` smart refactor (808→529 lines, 35% reduction) — tests extracted to `tensor_tests.rs`; merged duplicate `test_tensor_laplacian_context_debug` (self-documented "EXACT COPY") into parameterized `test_tensor_3d_roundtrip`
+- **R-S65-005**: `special/gamma.rs` smart refactor (685→463 lines, 32% reduction) — 20 tests extracted to `gamma_tests.rs`
+- **R-S65-006**: `numerical/rk45.rs` smart refactor (579→352 lines, 39% reduction) — 16 tests extracted to `rk45_tests.rs`
+- **R-S65-007**: `coulomb_f64` production panic eliminated — `tx.send(result).expect(...)` in `map_async` callback → `let _ = tx.send(result)` (graceful handling if receiver dropped)
+- **R-S65-008**: `kernel_router.rs` hardcoding eliminated — 7 magic routing thresholds (1000, 128, 256, 10000, etc.) → named constants (`CPU_FALLBACK_THRESHOLD`, `EIGENDECOMP_CPU_THRESHOLD`, `LINEAR_SOLVE_CPU_THRESHOLD`, `MATMUL_LARGE_DIM`, `MATMUL_MEDIUM_DIM`)
+
+---
+
 ## Session 64 Resolutions (Feb 25, 2026)
 
 - **R-S64-001**: Lattice shader absorption wave 2 — absorbed 8 WGSL shaders from hotSpring V0613/V0614: `su3_math_f64`, `prng_pcg_f64`, `su3_f64`, `su3_gauge_force_df64`, `su3_kinetic_energy_df64`, `axpy_f64`, `complex_dot_re_f64`, `xpay_f64` (694 total shaders)

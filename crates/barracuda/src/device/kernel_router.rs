@@ -44,6 +44,21 @@ use crate::device::{Device, DeviceSelection};
 use crate::error::Result;
 use std::collections::HashMap;
 
+/// Workloads smaller than this use CPU to avoid GPU dispatch overhead.
+const CPU_FALLBACK_THRESHOLD: usize = 1_000;
+
+/// Eigendecomposition matrices smaller than this route to CPU.
+const EIGENDECOMP_CPU_THRESHOLD: usize = 128;
+
+/// Linear systems smaller than this route to CPU.
+const LINEAR_SOLVE_CPU_THRESHOLD: usize = 256;
+
+/// Matmul dimensions above which 16x16 tile workgroup is used.
+const MATMUL_LARGE_DIM: usize = 256;
+
+/// Matmul dimensions above which 8x8 tile workgroup is used.
+const MATMUL_MEDIUM_DIM: usize = 64;
+
 /// Compute workload description
 ///
 /// Describes WHAT computation needs to be done, not HOW.
@@ -218,8 +233,7 @@ impl KernelRouter {
             }
 
             ComputeWorkload::Eigendecomp { matrix_size } => {
-                // Small matrices: CPU is fine. Large: GPU.
-                let device = if *matrix_size < 128 {
+                let device = if *matrix_size < EIGENDECOMP_CPU_THRESHOLD {
                     DeviceSelection::Cpu
                 } else {
                     self.select_wgsl_device(matrix_size * matrix_size)
@@ -232,7 +246,7 @@ impl KernelRouter {
             }
 
             ComputeWorkload::LinearSolve { system_size } => {
-                let device = if *system_size < 256 {
+                let device = if *system_size < LINEAR_SOLVE_CPU_THRESHOLD {
                     DeviceSelection::Cpu
                 } else {
                     self.select_wgsl_device(system_size * system_size)
@@ -245,7 +259,7 @@ impl KernelRouter {
             }
 
             ComputeWorkload::GenericWgsl { shader_name } => {
-                let device = self.select_wgsl_device(1000); // Assume medium size
+                let device = self.select_wgsl_device(CPU_FALLBACK_THRESHOLD);
                 Ok(KernelTarget::Wgsl {
                     shader: shader_name.clone(),
                     device,
@@ -270,8 +284,7 @@ impl KernelRouter {
                         }
                     }
                 }
-                // Fallback: WGSL simulation on GPU/CPU
-                let device = self.select_wgsl_device(10000);
+                let device = self.select_wgsl_device(CPU_FALLBACK_THRESHOLD * 10);
                 Ok(KernelTarget::Wgsl {
                     shader: format!("snn/{}", model_name),
                     device,
@@ -346,11 +359,9 @@ impl KernelRouter {
 
     /// Select best WGSL device (GPU or CPU)
     fn select_wgsl_device(&self, workload_size: usize) -> DeviceSelection {
-        // Small workloads: CPU to avoid GPU dispatch overhead
-        if workload_size < 1000 {
+        if workload_size < CPU_FALLBACK_THRESHOLD {
             return DeviceSelection::Cpu;
         }
-        // Large workloads: GPU preferred
         if self.has_gpu {
             DeviceSelection::Gpu
         } else {
@@ -360,12 +371,12 @@ impl KernelRouter {
 
     /// Optimal workgroup size for matmul
     fn optimal_workgroup_for_matmul(&self, m: usize, n: usize, _k: usize) -> [u32; 3] {
-        if m >= 256 && n >= 256 {
-            [16, 16, 1] // Large: use 16x16 tiles
-        } else if m >= 64 && n >= 64 {
-            [8, 8, 1] // Medium: 8x8 tiles
+        if m >= MATMUL_LARGE_DIM && n >= MATMUL_LARGE_DIM {
+            [16, 16, 1]
+        } else if m >= MATMUL_MEDIUM_DIM && n >= MATMUL_MEDIUM_DIM {
+            [8, 8, 1]
         } else {
-            [4, 4, 1] // Small: 4x4 tiles
+            [4, 4, 1]
         }
     }
 

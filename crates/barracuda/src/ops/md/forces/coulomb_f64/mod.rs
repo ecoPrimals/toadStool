@@ -111,7 +111,7 @@ fn map_staging_to_vec(
     let slice = staging.slice(..);
     let (tx, rx) = std::sync::mpsc::channel();
     slice.map_async(wgpu::MapMode::Read, move |result| {
-        tx.send(result).expect("map_async callback: receiver must be waiting");
+        let _ = tx.send(result);
     });
     dev.device.poll(wgpu::Maintain::Wait);
     rx.recv()

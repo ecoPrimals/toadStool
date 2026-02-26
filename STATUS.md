@@ -1,4 +1,4 @@
-# Status -- February 25, 2026 (Sessions 32-64: Cross-Spring Absorption + Deep Debt)
+# Status -- February 25, 2026 (Sessions 32-65: Smart Refactoring + Deep Debt)
 
 ## Quality Gates
 
@@ -24,8 +24,8 @@
 | Production panics/unwraps | PASS | **Zero blind `unwrap()`; infallible `expect()` only** |
 | Production TODOs | PASS | **Zero -- all evolved to `BLOCKED(reason)` markers** |
 | File size limit | PASS | **All production files under 1000 lines** |
-| WGSL shaders | PASS | **694 (zero orphans, all f64 shader-first, 17 DF64 files)** |
-| Dead code | PASS | **14 `#[allow(dead_code)]` remain — all documented as reserved for Phase 5+** |
+| WGSL shaders | PASS | **694 (zero orphans, all f64 shader-first, 14 DF64 files)** |
+| Dead code | PASS | **13 `#[allow(dead_code)]` remain — all documented as reserved for Phase 5+** |
 | External dep hygiene | PASS | **`instant` + `chrono` eliminated; WebGPU mock_data→zero-size** |
 | Production mocks | PASS | **Zero — TpuBackend::Mock behind `mock-tpu` feature gate** |
 | Platform stubs | PASS | **Evolved to platform-aware `can_handle()` + `SystemError::NotSupported`** |
@@ -33,6 +33,22 @@
 | Dependency security | PASS | **bytes >=1.11.1, aes-gcm >=0.10.3, zero chrono** |
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+
+---
+
+## Session 65: Smart Refactoring (Feb 25, 2026)
+
+Large-file refactoring — smart extraction (not just splitting), duplicate elimination, dead code evolution:
+
+- **`compute_graph.rs` 819→522 (36%)**: Extracted `compile_shader()`/`compile_elementwise()` (4 near-identical shader compilation methods → 2), `dispatch_pass()` (3 identical BGL→bind→pipeline→dispatch chains → 1 generic function). Reused `storage_bgl_entry()`/`uniform_bgl_entry()` from `device::compute_pipeline` instead of hand-rolling `BindGroupLayoutEntry` arrays. Dead code `device_name` → public accessor.
+- **`esn_v2/model.rs` 861→482 (44%)**: 20 async tests extracted to `model_tests.rs` via `#[path = "model_tests.rs"] mod tests`. Production code untouched — all 478 production lines under 500.
+- **`tensor/mod.rs` 808→529 (35%)**: Tests extracted to `tensor_tests.rs`. Merged the verbatim-duplicate `test_tensor_laplacian_context_debug` (self-annotated "EXACT COPY") into parameterized `test_tensor_3d_roundtrip` covering 2×2×2, 3×3×3, 4×4×4.
+- **`special/gamma.rs` 685→463 (32%)**: 20 tests extracted to `gamma_tests.rs`.
+- **`numerical/rk45.rs` 579→352 (39%)**: 16 ODE solver tests extracted to `rk45_tests.rs`.
+- **Production panic fix**: `coulomb_f64` `map_async` callback `expect()` → `let _ = tx.send()` (no panic on dropped receiver).
+- **Hardcoding elimination**: `kernel_router.rs` — 7 magic routing thresholds → named constants (`CPU_FALLBACK_THRESHOLD`, `EIGENDECOMP_CPU_THRESHOLD`, `LINEAR_SOLVE_CPU_THRESHOLD`, `MATMUL_LARGE_DIM`, `MATMUL_MEDIUM_DIM`).
+- **Dead code count**: 14 → 13 (compute_graph `device_name` resolved). All 13 remaining are Phase 5+ reserved fields.
+- **Zero regressions**: All 84 targeted tests pass (20 ESN + 20 tensor + 1 compute_graph + 20 gamma + 16 rk45 + 7 kernel_router). Full clippy clean.
 
 ---
 
@@ -834,4 +850,4 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail of earlier e
 
 ---
 
-**Last Updated**: February 24, 2026 — Session 59: Deep audit + comprehensive evolution. 21,599 tests. 36 crates `#![deny(unsafe_code)]`. 5 large files domain-decomposed. Dependency security hardened. TarpcClientWrapper evolved.
+**Last Updated**: February 25, 2026 — Session 65: Smart refactoring + cross-spring absorption. 2,490 barracuda tests, 21,599 workspace tests. 694 WGSL shaders (14 DF64 files). 13 `#[allow(dead_code)]` remain (Phase 5+ reserved). 5 large files reduced 32-44%. Production panic eliminated (coulomb_f64). Kernel router hardcoding eliminated.

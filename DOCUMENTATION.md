@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 25, 2026 -- Session 64
+**Last Updated**: February 25, 2026 -- Session 65
 
 ---
 
@@ -27,10 +27,10 @@
 
 ---
 
-## Current State (Session 64 — February 25, 2026)
+## Current State (Session 65 — February 25, 2026)
 
 - **Sovereign Compiler** — naga-IR optimizer: FMA fusion, dead expression elimination, SPIR-V passthrough. End-to-end Rust GPU compilation pipeline.
-- **694 WGSL f64 shaders** — zero orphans, 17 DF64 files, zero CPU-only math in production
+- **694 WGSL f64 shaders** — zero orphans, 14 DF64 files, zero CPU-only math in production
 - **Deep debt systematically resolved** — dead code → live code (parallel solver, O(n) maximin, erfc_deriv API). Smart refactoring: coulomb_f64 610→369 lines, morse_f64 953→804 lines. Zero `#[allow(dead_code)]` on WGSL constants.
 - **FMA-optimized DF64** — `two_prod` 17→2 ops via `fma(a, b, -p)`. DF64 transcendentals at FP32 core speed.
 - **4 force shaders fully evolved** — Born-Mayer, Morse, Yukawa, Lennard-Jones: all-DF64, zero f64-unit transcendental calls

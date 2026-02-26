@@ -123,17 +123,6 @@ async fn read_poly_from_tensor(tensor: &Tensor) -> Vec<u64> {
     u32_pairs_to_poly(&u32_data)
 }
 
-/// Convert u64 polynomial to u32 pairs for GPU
-#[allow(dead_code)] // Reserved for future use
-fn poly_to_u32_pairs(poly: &[u64]) -> Vec<u32> {
-    let mut result = Vec::with_capacity(poly.len() * 2);
-    for &value in poly {
-        result.push((value & 0xFFFFFFFF) as u32); // Low 32 bits
-        result.push((value >> 32) as u32); // High 32 bits
-    }
-    result
-}
-
 /// Convert u32 pairs from GPU back to u64 polynomial
 fn u32_pairs_to_poly(pairs: &[u32]) -> Vec<u64> {
     pairs

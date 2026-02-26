@@ -1,26 +1,32 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 25, 2026 -- Session 64
-**Status**: Production-grade | 694 WGSL f64 shaders (17 DF64) | 2,490 barracuda tests | All quality gates green
+**Updated**: February 25, 2026 -- Session 65
+**Status**: Production-grade | 694 WGSL f64 shaders (14 DF64) | 2,490 barracuda tests | All quality gates green
 
 ---
 
 ## Completed This Session
 
-### Sessions 62-63: Deep Debt Evolution ✅
+### Session 65: Smart Refactoring ✅
 
-- **Codebase-wide dead code resolution**: 25+ `#[allow(dead_code)]` WGSL constants evolved to documented `pub` API. Fossil `wgsl_shader()` methods → `pub const`. Electrostatics shader constants re-exported.
-- **Smart refactoring**: `morse_f64.rs` 953→804 lines (MorseBuffers + reduce_bond_forces). `coulomb_f64/mod.rs` 610→369 lines (CoulombBuffers + staging helpers). Zero GPU pipeline duplication.
-- **Dead code → live code**: `solve_gpu_parallel` wired for n≥2048 (cyclic reduction). `partial_maximin` O(n) wired into maximin_lhs (was O(n²)). `erfc_deriv` promoted to public electrostatics API.
-- **Platform evolution**: OS compat stubs return `SystemError::NotSupported` on wrong platform. Discovery fallbacks table-driven with env guard.
-- **Hygiene**: `instant` crate removed, `WebGPUAdapter::mock_data` → zero-size `()`, GriffinLim annotations cleaned, `fhe_key_switch` dead constant removed.
+- **5 large files refactored** (32-44% reductions): `compute_graph.rs` 819→522 (generic `compile_shader`/`dispatch_pass`), `esn_v2/model.rs` 861→482, `tensor/mod.rs` 808→529 (merged duplicate test), `special/gamma.rs` 685→463, `numerical/rk45.rs` 579→352. Tests extracted to `*_tests.rs` files.
+- **Production panic eliminated**: `coulomb_f64` `map_async` callback `expect()` → `let _ = tx.send()`.
+- **Hardcoding eliminated**: `kernel_router.rs` — 7 magic routing thresholds → named constants.
+- **Dead code**: 14→13 (`compute_graph.device_name` → public accessor). All 13 remaining are Phase 5+ reserved.
 
-### Session 61: Sovereign Compiler Phase 4 ✅
+### Session 64: Cross-Spring Absorption ✅
 
-- `SovereignCompiler` — naga-IR optimizer: parse WGSL → FMA fusion → DCE → SPIR-V emit
-- FMA fusion pass: detects `Mul(a,b) + c` patterns, replaces with `fma(a, b, c)` (~1.3x)
-- SPIR-V passthrough: `SPIRV_SHADER_PASSTHROUGH` in all device creation paths
-- `compile_shader_f64()` evolved to three-stage pipeline with WGSL text fallback
+- **8 lattice QCD shaders** absorbed from hotSpring: `su3_math_f64`, `prng_pcg_f64`, `su3_f64`, `su3_gauge_force_df64`, `su3_kinetic_energy_df64`, `axpy_f64`, `complex_dot_re_f64`, `xpay_f64`.
+- **`stats::metrics`** module: RMSE, MBE, NSE, R², Index of Agreement, hit_rate, mean, percentile (18 tests).
+- **`stats::diversity`** module: Shannon, Simpson, Chao1, Pielou, Bray-Curtis, rarefaction (16 tests).
+- **`chrono` eliminated**: `chrono::Local::now()` → `std::time::SystemTime`.
+- **3 dead_code resolved**: `BroydenMixer::device()/vec_dim()`, `KrigingF64::device()`, `KernelRouter::has_tpu()`.
+
+### Sessions 61-63: Sovereign Compiler + Deep Debt ✅
+
+- `SovereignCompiler` — naga-IR optimizer: WGSL → FMA fusion → DCE → SPIR-V emit. Three-stage `compile_shader_f64()` pipeline.
+- 25+ `#[allow(dead_code)]` evolved to documented `pub` API. `solve_gpu_parallel` wired for n≥2048. `partial_maximin` O(n) wired into maximin_lhs.
+- Smart refactoring: `morse_f64.rs` 953→804, `coulomb_f64/mod.rs` 610→369. `instant` crate removed. Platform stubs evolved.
 
 ### Session 60: DF64 FMA + Transcendentals ✅
 
