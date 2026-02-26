@@ -48,9 +48,11 @@
 //! - Dong et al. (2020) *Agriculture* 10(12):598
 
 /// WGSL kernel for GPU-parallel bootstrap mean estimation (f64).
+#[cfg(feature = "gpu")]
 pub const WGSL_BOOTSTRAP_MEAN_F64: &str = include_str!("../shaders/special/bootstrap_mean_f64.wgsl");
 
 /// WGSL kernel for parallel histogram via atomic binning.
+#[cfg(feature = "gpu")]
 pub static WGSL_HISTOGRAM: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!(
         "../shaders/stats/histogram_f64.wgsl"

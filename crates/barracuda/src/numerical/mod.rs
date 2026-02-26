@@ -59,6 +59,7 @@ pub use rk45::{rk45_at, rk45_solve, Rk45Config, Rk45Result};
 
 /// WGSL shader: parallel central-difference Hessian column computation
 /// WGSL kernel for Hessian column extraction via finite differences.
+#[cfg(feature = "gpu")]
 pub fn wgsl_hessian_column() -> &'static str {
     static SHADER: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
         crate::shaders::precision::downcast_f64_to_f32(include_str!(
