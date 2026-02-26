@@ -91,6 +91,7 @@ struct Params {
 pub struct BatchedElementwiseF64 {
     device: Arc<WgpuDevice>,
     pipeline: wgpu::ComputePipeline,
+    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl BatchedElementwiseF64 {
@@ -100,18 +101,70 @@ impl BatchedElementwiseF64 {
         let shader_module =
             device.compile_shader_f64(shader_source, Some("BatchedElementwiseF64 Shader"));
 
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("BatchedElementwiseF64 BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("BatchedElementwiseF64 PipelineLayout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
         let pipeline = device
             .device
             .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("BatchedElementwiseF64 Pipeline"),
-                layout: None,
+                layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "batched_compute",
                 cache: None,
                 compilation_options: Default::default(),
             });
 
-        Ok(Self { device, pipeline })
+        Ok(Self {
+            device,
+            pipeline,
+            bind_group_layout,
+        })
     }
 
     /// Execute batched computation
@@ -198,14 +251,12 @@ impl BatchedElementwiseF64 {
                     usage: wgpu::BufferUsages::UNIFORM,
                 });
 
-        // Create bind group
-        let bind_group_layout = self.pipeline.get_bind_group_layout(0);
         let bind_group = self
             .device
             .device
             .create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("BatchedEW Bind Group"),
-                layout: &bind_group_layout,
+                layout: &self.bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,

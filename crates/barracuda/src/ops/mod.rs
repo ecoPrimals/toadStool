@@ -234,7 +234,7 @@ pub use batch_pair_reduce_f64::{BatchPairReduceF64, PairReduceOp};
 pub use batch_tolerance_search_f64::BatchToleranceSearchF64;
 pub use hill_f64::HillFunctionF64;
 pub use kmd_grouping_f64::{repeat_units, KmdGroupingF64, KmdResult};
-pub use rk_stage::{BatchedOdeRK4F64, BatchedRk4Config, OdeFunction, RkIntegrator};
+pub use rk_stage::{BatchedOdeRK4F64, BatchedRk4Config, OdeFunction, RkIntegrator, WGSL_RK4_PARALLEL};
 
 // Cosine similarity (f64)
 pub mod cosine_similarity_f64; // Spectral matching, small-batch queries

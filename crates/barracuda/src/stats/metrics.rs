@@ -50,6 +50,30 @@ pub fn rmse(observed: &[f64], simulated: &[f64]) -> f64 {
     (sum_sq / n as f64).sqrt()
 }
 
+/// Mean Absolute Error.
+///
+/// MAE = Σ|obs − sim| / n
+///
+/// Returns `0.0` for empty slices.
+///
+/// # Panics
+///
+/// Panics if `observed` and `simulated` have different lengths.
+#[must_use]
+pub fn mae(observed: &[f64], simulated: &[f64]) -> f64 {
+    assert_eq!(observed.len(), simulated.len(), "length mismatch");
+    let n = observed.len();
+    if n == 0 {
+        return 0.0;
+    }
+    let sum_abs: f64 = observed
+        .iter()
+        .zip(simulated)
+        .map(|(o, s)| (o - s).abs())
+        .sum();
+    sum_abs / n as f64
+}
+
 /// Mean Bias Error (simulated − observed).
 ///
 /// Positive MBE indicates the model overestimates.
@@ -241,6 +265,33 @@ pub fn l2_norm(xs: &[f64]) -> f64 {
     xs.iter().map(|x| x * x).sum::<f64>().sqrt()
 }
 
+// ── Kinetics ────────────────────────────────────────────────────────────
+
+/// Hill function: sigmoidal dose-response.
+///
+/// f(x) = x^n / (k^n + x^n)
+///
+/// Used in gene regulatory networks, enzyme kinetics, and ecological models.
+/// For the GPU WGSL version, see `hill()` in the ODE shader library.
+#[inline]
+#[must_use]
+pub fn hill(x: f64, k: f64, n: f64) -> f64 {
+    let xn = x.powf(n);
+    xn / (k.powf(n) + xn)
+}
+
+/// Monod kinetics: saturation growth rate.
+///
+/// f(x) = r * x / (k + x)
+///
+/// Special case of Hill with n=1 and a maximum rate r.
+/// Standard in microbial ecology and wastewater modeling.
+#[inline]
+#[must_use]
+pub fn monod(x: f64, r: f64, k: f64) -> f64 {
+    r * x / (k + x)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -262,6 +313,31 @@ mod tests {
     #[test]
     fn rmse_empty() {
         assert!(rmse(&[], &[]) < 1e-12);
+    }
+
+    #[test]
+    fn mae_identical_is_zero() {
+        let x = [1.0, 2.0, 3.0];
+        assert!(mae(&x, &x) < 1e-12);
+    }
+
+    #[test]
+    fn mae_known_value() {
+        let obs = [1.0, 2.0, 3.0];
+        let sim = [2.0, 1.0, 5.0];
+        assert!((mae(&obs, &sim) - 4.0 / 3.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn mae_empty() {
+        assert!(mae(&[], &[]) < 1e-12);
+    }
+
+    #[test]
+    fn mae_symmetric() {
+        let obs = [1.0, 5.0, 3.0];
+        let sim = [2.0, 3.0, 4.0];
+        assert!((mae(&obs, &sim) - mae(&sim, &obs)).abs() < 1e-12);
     }
 
     #[test]
@@ -352,5 +428,40 @@ mod tests {
     #[test]
     fn l2_norm_empty() {
         assert!(l2_norm(&[]).abs() < 1e-12);
+    }
+
+    #[test]
+    fn hill_midpoint() {
+        assert!((hill(5.0, 5.0, 1.0) - 0.5).abs() < 1e-12);
+    }
+
+    #[test]
+    fn hill_steep() {
+        assert!((hill(5.0, 5.0, 10.0) - 0.5).abs() < 1e-10);
+        assert!(hill(10.0, 5.0, 10.0) > 0.999);
+        assert!(hill(2.5, 5.0, 10.0) < 0.001);
+    }
+
+    #[test]
+    fn hill_zero_input() {
+        assert!(hill(0.0, 5.0, 2.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn monod_saturation() {
+        assert!((monod(1000.0, 1.0, 1.0) - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn monod_half_saturation() {
+        assert!((monod(5.0, 1.0, 5.0) - 0.5).abs() < 1e-12);
+    }
+
+    #[test]
+    fn monod_is_hill_n1() {
+        let x = 7.0;
+        let k = 3.0;
+        let r = 2.0;
+        assert!((monod(x, r, k) - r * hill(x, k, 1.0)).abs() < 1e-12);
     }
 }

@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy -p barracuda --lib -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,526 total** (2,418 pass, ~96 cascade W-003, 12 ignored) |
+| `cargo test -p barracuda --lib` | PASS | **2,541 total** (2,434 pass, ~95 cascade W-003, 12 ignored) |
 | hotSpring validation | PASS | **664 tests, 22 papers validated** |
 | wetSpring validation | PASS | **918 tests, 96.48% coverage** |
 | neuralSpring validation | PASS | **580 tests, 94.53% coverage** |
@@ -36,9 +36,20 @@ Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showc
 
 ---
 
-## Session 66: Absorption + Deep Debt (Feb 26, 2026)
+## Session 66: Absorption + Deep Debt + Cross-Spring Evolution (Feb 26, 2026)
 
 Cross-spring absorption of actionable handoff items + deep debt audit and fixes:
+
+### Wave 4: Cross-Spring Evolution (All 5 Springs + wateringHole)
+- **`stats::mae`**: CPU Mean Absolute Error — completes neuralSpring V39 API gap (4 tests)
+- **`shannon_from_frequencies()`**: Shannon entropy from pre-computed frequency vectors (3 tests)
+- **`hill()`/`monod()`**: Public Rust API for dose-response/Monod kinetics — was WGSL-only (6 tests)
+- **`WGSL_RK4_PARALLEL`**: Re-exported public const (removed in S65 refactor, neuralSpring dependency)
+- **PRNG type-safety**: `su3_random_momenta_f64.wgsl` evolved from f32→f64 polyfill (sqrt_f64, log_f64, cos_f64)
+- **Sovereign compiler fix**: `BatchedElementwiseF64` explicit `BindGroupLayout` — fixes SPIR-V passthrough panic (airSpring P0 blocker)
+- **`NeighborMode`**: Lattice neighbor buffer abstraction (`Compute` | `PrecomputedBuffer`) with `precompute()` for 4D periodic t-major lattices (hotSpring P1)
+- **NPU hardcoding**: `0.5` sparsity thresholds → shared `NPU_SPARSITY_THRESHOLD` constant (npu_bridge + matmul)
+- **RK step-size**: `0.9`/`2.0`/`0.25`/`0.2` → named constants `STEP_SAFETY`/`STEP_MAX_GROWTH`/`STEP_GROW_EXPONENT`/`STEP_SHRINK_EXPONENT`
 
 ### New Modules Absorbed (airSpring V009 + groundSpring V7)
 - **`stats::regression`**: 4 closed-form regression models (linear/quadratic/exponential/logarithmic) with `FitResult::predict()`, `fit_all()` convenience (12 tests)
@@ -906,4 +917,4 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail of earlier e
 
 ---
 
-**Last Updated**: February 26, 2026 — Session 66: Cross-spring absorption + deep debt + dependency evolution. 2,526 barracuda tests, 21,599 workspace tests. 694 WGSL shaders (14 DF64 files). 3 `#[allow(dead_code)]` remain (feature-gated/Phase 5+). 15 files refactored (20-44%). `anyhow` + `log` eliminated. Typed errors + unified tracing.
+**Last Updated**: February 26, 2026 — Session 66 (4 waves): Cross-spring absorption + deep debt + dependency evolution + cross-spring evolution. 2,541 barracuda tests (+15 new). 694 WGSL shaders. Sovereign compiler bug fixed. NeighborMode lattice abstraction. stats::mae + shannon_from_frequencies + hill/monod APIs. PRNG f64 polyfill. NPU + RK step hardcoding eliminated.

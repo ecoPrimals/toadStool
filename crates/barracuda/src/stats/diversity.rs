@@ -60,6 +60,24 @@ pub fn shannon(counts: &[f64]) -> f64 {
     h
 }
 
+/// Shannon entropy from pre-computed frequency proportions.
+///
+/// H' = −Σ pᵢ ln(pᵢ) where pᵢ are already normalized to sum to 1.
+///
+/// Unlike [`shannon`] which accepts raw counts and normalizes internally,
+/// this function trusts the caller to provide valid frequencies (≥0, sum ≈ 1).
+#[inline]
+#[must_use]
+pub fn shannon_from_frequencies(frequencies: &[f64]) -> f64 {
+    let mut h = 0.0;
+    for &p in frequencies {
+        if p > 0.0 {
+            h -= p * p.ln();
+        }
+    }
+    h
+}
+
 /// Simpson diversity index: 1 − Σ pᵢ². Higher = more diverse (0 to 1).
 #[inline]
 #[must_use]
@@ -269,6 +287,26 @@ mod tests {
     fn shannon_single_species() {
         let counts = vec![100.0, 0.0, 0.0, 0.0];
         assert!(shannon(&counts).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn shannon_from_freq_uniform() {
+        let freq = vec![0.25; 4];
+        assert!((shannon_from_frequencies(&freq) - 4.0_f64.ln()).abs() < 1e-10);
+    }
+
+    #[test]
+    fn shannon_from_freq_matches_counts() {
+        let counts = vec![10.0, 20.0, 30.0, 40.0];
+        let total: f64 = counts.iter().sum();
+        let freq: Vec<f64> = counts.iter().map(|c| c / total).collect();
+        assert!((shannon(&counts) - shannon_from_frequencies(&freq)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn shannon_from_freq_single_species() {
+        let freq = vec![1.0, 0.0, 0.0];
+        assert!(shannon_from_frequencies(&freq).abs() < f64::EPSILON);
     }
 
     #[test]

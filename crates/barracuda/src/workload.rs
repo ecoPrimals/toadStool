@@ -24,6 +24,9 @@ mod thresholds {
     pub const MINIMAL_SPARSITY: f32 = 0.10;
 }
 
+/// Canonical sparsity threshold for NPU routing (re-exported for npu_bridge, npu matmul).
+pub use thresholds::NPU_SPARSITY_THRESHOLD;
+
 /// Workload type classifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WorkloadType {

@@ -20,6 +20,11 @@ use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
 
+/// WGSL kernel for GPU-parallel multi-system RK4 integration (f32).
+///
+/// For f64 structured ODE batches, see [`BatchedOdeRK4F64`].
+pub const WGSL_RK4_PARALLEL: &str = include_str!("../shaders/numerical/rk4_parallel.wgsl");
+
 /// RK45 (Dormand-Prince) coefficients
 const DP_C: [f64; 6] = [0.0, 0.2, 0.3, 0.8, 8.0 / 9.0, 1.0];
 
@@ -40,6 +45,12 @@ const DP_B4: [f64; 6] = [
     -92097.0 / 339200.0,
     187.0 / 2100.0,
 ];
+
+/// Step-size control constants (Dormand-Prince adaptive stepping)
+const STEP_SAFETY: f64 = 0.9;
+const STEP_MAX_GROWTH: f64 = 2.0;
+const STEP_GROW_EXPONENT: f64 = 0.2;   // 1/p for RK5 (p=5)
+const STEP_SHRINK_EXPONENT: f64 = 0.25; // 1/p for RK4 (p=4)
 
 /// CPU-orchestrated RK45 integrator with GPU state update path.
 ///
@@ -265,13 +276,13 @@ impl RkIntegrator {
 
                 // Increase step size
                 if err > 1e-15 {
-                    h *= 0.9 * (tol / err).powf(0.2);
+                    h *= STEP_SAFETY * (tol / err).powf(STEP_GROW_EXPONENT);
                 } else {
-                    h *= 2.0;
+                    h *= STEP_MAX_GROWTH;
                 }
             } else {
                 // Reject step, decrease h
-                h *= 0.9 * (tol / err).powf(0.25);
+                h *= STEP_SAFETY * (tol / err).powf(STEP_SHRINK_EXPONENT);
             }
 
             h = h.min(t_end - t);

@@ -5,7 +5,7 @@
 //!
 //! # Agreement Metrics (S64 absorption)
 //!
-//! - **RMSE, MBE, NSE, R², IA, hit_rate**: Model validation
+//! - **RMSE, MAE, MBE, NSE, R², IA, hit_rate**: Model validation
 //! - **mean, percentile**: Descriptive statistics
 //! - **dot, l2_norm**: CPU vector operations
 //!
@@ -72,14 +72,14 @@ pub use correlation::{
     correlation_matrix, covariance, covariance_matrix, pearson_correlation, spearman_correlation,
 };
 pub use metrics::{
-    dot, hit_rate, index_of_agreement, l2_norm, mbe, mean, nash_sutcliffe, percentile, r_squared,
-    rmse,
+    dot, hill, hit_rate, index_of_agreement, l2_norm, mae, mbe, mean, monod, nash_sutcliffe,
+    percentile, r_squared, rmse,
 };
 pub use normal::{norm_cdf, norm_cdf_batch, norm_pdf, norm_pdf_batch, norm_ppf};
 pub use diversity::{
     alpha_diversity, bray_curtis, bray_curtis_condensed, bray_curtis_matrix, chao1,
-    condensed_index, observed_features, pielou_evenness, rarefaction_curve, shannon, simpson,
-    AlphaDiversity,
+    condensed_index, observed_features, pielou_evenness, rarefaction_curve, shannon,
+    shannon_from_frequencies, simpson, AlphaDiversity,
 };
 pub use spectral_density::{empirical_spectral_density, marchenko_pastur_bounds};
 pub use regression::{fit_all, fit_exponential, fit_linear, fit_logarithmic, fit_quadratic, FitResult};

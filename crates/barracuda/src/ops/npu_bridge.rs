@@ -249,7 +249,7 @@ pub fn should_use_npu(data: &[f32], priority: crate::workload::Priority) -> bool
     match priority {
         Priority::Energy => true, // NPU always for energy (7× efficient!)
         Priority::Latency if data.len() < NPU_BRIDGE_LATENCY_THRESHOLD => true,
-        _ => sparsity > 0.5,      // Use NPU if >50% sparse
+        _ => sparsity > crate::workload::NPU_SPARSITY_THRESHOLD,
     }
 }
 

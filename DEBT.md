@@ -62,6 +62,17 @@ capability-based solutions.
 - **R-S66-034**: `shaders/precision/mod.rs` 733→452 (38% reduction) — 16 tests extracted to `precision_tests.rs`
 - **R-S66-035**: `log` crate eliminated — 68 `log::*!` calls migrated to `tracing::*!` across 18 files; `log = "0.4"` removed from Cargo.toml. Single unified logging facade.
 
+### Wave 4: Cross-Spring Evolution (All 5 Springs + wateringHole Review)
+- **R-S66-036**: `stats::mae` CPU function — neuralSpring V39 API gap resolved (4 tests)
+- **R-S66-037**: `stats::diversity::shannon_from_frequencies()` — accepts pre-computed frequency vectors (3 tests)
+- **R-S66-038**: `stats::metrics::hill()` + `monod()` — public Rust API for dose-response/Monod kinetics, was WGSL-only (6 tests)
+- **R-S66-039**: `WGSL_RK4_PARALLEL` re-exported — neuralSpring dependency restored after S65 refactor
+- **R-S66-040**: `su3_random_momenta_f64.wgsl` PRNG precision — `f32(theta)→cos()` evolved to `cos_f64(theta)` via polyfill; `sqrt()→sqrt_f64()`, `log()→log_f64()` likewise
+- **R-S66-041**: `BatchedElementwiseF64` sovereign compiler fix — explicit `BindGroupLayout` instead of `layout: None` + `get_bind_group_layout(0)`. Resolves SPIR-V passthrough panic (airSpring P0 blocker, 8 tests unblocked)
+- **R-S66-042**: `NeighborMode` lattice abstraction — `Compute` | `PrecomputedBuffer(Arc<Buffer>)` with `precompute(device, [nx,ny,nz,nt])` for 4D periodic t-major neighbor tables (hotSpring P1, 2 tests)
+- **R-S66-043**: NPU sparsity threshold — `0.5` literals in `npu_bridge.rs` + `npu/ops/matmul.rs` → shared `NPU_SPARSITY_THRESHOLD` constant from `workload.rs`
+- **R-S66-044**: RK45 step-size constants — `0.9`/`2.0`/`0.2`/`0.25` → `STEP_SAFETY`/`STEP_MAX_GROWTH`/`STEP_GROW_EXPONENT`/`STEP_SHRINK_EXPONENT`
+
 ---
 
 ## Session 65 Resolutions (Feb 25, 2026)

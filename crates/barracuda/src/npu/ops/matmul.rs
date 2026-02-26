@@ -123,7 +123,9 @@ pub fn npu_matmul(
 
     // For sparse data, we can encode as events for energy savings
     // This is NPU-specific optimization, NOT the math computation!
-    if sparsity_a > 0.5 || sparsity_b > 0.5 {
+    if sparsity_a > crate::workload::NPU_SPARSITY_THRESHOLD
+        || sparsity_b > crate::workload::NPU_SPARSITY_THRESHOLD
+    {
         let events_a = codec.encode(a);
         let events_b = codec.encode(b);
 
@@ -163,7 +165,7 @@ pub fn should_use_npu_matmul(a: &[f32], b: &[f32], priority: crate::workload::Pr
     match priority {
         Priority::Energy => true,                   // NPU always for energy
         Priority::Latency if a.len() < crate::npu_executor::npu_defaults::NPU_LATENCY_THRESHOLD => true,
-        _ => avg_sparsity > 0.5,                    // Use NPU if sparse
+        _ => avg_sparsity > crate::workload::NPU_SPARSITY_THRESHOLD,
     }
 }
 
