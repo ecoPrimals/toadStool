@@ -144,7 +144,9 @@ impl GroupedQueryAttention {
 
     /// Get WGSL shader for GQA attention matrix multiplication (Pass 1)
     pub(super) fn wgsl_shader_matmul() -> &'static str {
-        include_str!("../../shaders/math/gqa_matmul.wgsl")
+        static SHADER: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../../shaders/math/gqa_matmul_f64.wgsl")));
+        &SHADER
     }
 
     /// Get WGSL shader for GQA attention softmax (Pass 2)

@@ -1,4 +1,4 @@
-// determinant.wgsl - Matrix determinant calculation
+// determinant_f64.wgsl - Matrix determinant calculation (f64 canonical)
 //
 // Computes the determinant of square matrices.
 // - 1x1: direct value
@@ -19,26 +19,26 @@ struct Params {
     _padding: vec2<u32>,
 }
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;         // Input matrices [batch, N, N]
-@group(0) @binding(1) var<storage, read_write> output: array<f32>;  // Output determinants [batch]
+@group(0) @binding(0) var<storage, read> input: array<f64>;         // Input matrices [batch, N, N]
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;  // Output determinants [batch]
 @group(0) @binding(2) var<uniform> params: Params;
 
 // 2x2 determinant
-fn det_2x2(a: f32, b: f32, c: f32, d: f32) -> f32 {
+fn det_2x2(a: f64, b: f64, c: f64, d: f64) -> f64 {
     return a * d - b * c;
 }
 
 // 3x3 determinant via Sarrus rule
-fn det_3x3(m: array<f32, 9>) -> f32 {
+fn det_3x3(m: array<f64, 9>) -> f64 {
     let pos = m[0] * m[4] * m[8] + m[1] * m[5] * m[6] + m[2] * m[3] * m[7];
     let neg = m[2] * m[4] * m[6] + m[1] * m[3] * m[8] + m[0] * m[5] * m[7];
     return pos - neg;
 }
 
 // 4x4 determinant via cofactor expansion along first row
-fn det_4x4(offset: u32) -> f32 {
+fn det_4x4(offset: u32) -> f64 {
     // Load matrix elements
-    var m: array<f32, 16>;
+    var m: array<f64, 16>;
     for (var i: u32 = 0u; i < 16u; i = i + 1u) {
         m[i] = input[offset + i];
     }
@@ -66,20 +66,20 @@ fn det_4x4(offset: u32) -> f32 {
 
 // NxN determinant via LU decomposition with partial pivoting (N <= 16)
 // Uses per-thread local array (limited by WGSL stack size)
-fn det_lu(offset: u32, n: u32) -> f32 {
+fn det_lu(offset: u32, n: u32) -> f64 {
     // Copy matrix to local working array (max 16x16 = 256 elements)
-    var a: array<f32, 256>;
+    var a: array<f64, 256>;
     let n2 = n * n;
     for (var i: u32 = 0u; i < n2; i = i + 1u) {
         a[i] = input[offset + i];
     }
 
-    var sign: f32 = 1.0;
+    var sign: f64 = 1.0;
 
     // Gaussian elimination with partial pivoting
     for (var col: u32 = 0u; col < n; col = col + 1u) {
         // Find pivot (max absolute value in column)
-        var max_val: f32 = abs(a[col * n + col]);
+        var max_val: f64 = abs(a[col * n + col]);
         var max_row: u32 = col;
         for (var row: u32 = col + 1u; row < n; row = row + 1u) {
             let val = abs(a[row * n + col]);
@@ -116,7 +116,7 @@ fn det_lu(offset: u32, n: u32) -> f32 {
     }
 
     // Determinant = sign * product of diagonal
-    var det: f32 = sign;
+    var det: f64 = sign;
     for (var i: u32 = 0u; i < n; i = i + 1u) {
         det = det * a[i * n + i];
     }
@@ -134,7 +134,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let n = params.matrix_size;
     let offset = matrix_idx * n * n;
 
-    var det: f32;
+    var det: f64;
 
     if (n == 1u) {
         det = input[offset];
@@ -144,7 +144,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             input[offset + 2u], input[offset + 3u]
         );
     } else if (n == 3u) {
-        var m: array<f32, 9>;
+        var m: array<f64, 9>;
         for (var i: u32 = 0u; i < 9u; i = i + 1u) {
             m[i] = input[offset + i];
         }

@@ -1,9 +1,9 @@
-// Log gamma function (lgamma) operation
+// Log gamma function (lgamma) operation (f64 canonical)
 // lgamma(x) = ln(Γ(x)) where Γ is the gamma function
 // Uses Lanczos approximation for positive x
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
 @group(0) @binding(2) var<uniform> metadata: Metadata;
 
 struct Metadata {
@@ -13,7 +13,7 @@ struct Metadata {
 // Lanczos approximation for gamma function
 // Accurate for x > 0. WGSL does not allow recursion, so we use iterative reflection.
 // Note: WGSL requires constant array indexing, so we unroll the loop.
-fn lgamma_lanczos(x: f32) -> f32 {
+fn lgamma_lanczos(x: f64) -> f64 {
     let g = 7.0;
     let x_shifted = x - 1.0;
     var sum = 0.99999999999980993;
@@ -27,10 +27,10 @@ fn lgamma_lanczos(x: f32) -> f32 {
     sum += 1.5056327351493116e-7 / (x_shifted + 8.0);
     let t = x_shifted + g + 0.5;
     let sqrt_2pi = 2.5066282746310002;
-    return log(sqrt_2pi) + log(sum) + (x_shifted + 0.5) * log(t) - t;
+    return log_f64(sqrt_2pi) + log_f64(sum) + (x_shifted + 0.5) * log_f64(t) - t;
 }
 
-fn lgamma_approx(x: f32) -> f32 {
+fn lgamma_approx(x: f64) -> f64 {
     if (x <= 0.0) {
         // WGSL rejects constant 0/0; use runtime NaN
         let z = x - x;
@@ -39,7 +39,7 @@ fn lgamma_approx(x: f32) -> f32 {
     // For x < 0.5: use reflection formula (no recursion - single application)
     if (x < 0.5) {
         let pi = 3.14159265358979323846;
-        return log(pi / sin(pi * x)) - lgamma_lanczos(1.0 - x);
+        return log_f64(pi / sin_f64(pi * x)) - lgamma_lanczos(1.0 - x);
     }
     return lgamma_lanczos(x);
 }
@@ -50,7 +50,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (idx >= metadata.size) {
         return;
     }
-    
+
     let x = input[idx];
     output[idx] = lgamma_approx(x);
 }

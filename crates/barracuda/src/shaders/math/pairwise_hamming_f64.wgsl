@@ -1,4 +1,4 @@
-// pairwise_hamming.wgsl — Pairwise Hamming Distance (f32)
+// pairwise_hamming_f64.wgsl — Pairwise Hamming Distance (f64 canonical)
 //
 // Each thread computes the Hamming distance (proportion of differing
 // sites) between one pair of sequences. N sequences of length L
@@ -12,7 +12,7 @@ struct Params {
 }
 
 @group(0) @binding(0) var<storage, read> sequences: array<u32>;
-@group(0) @binding(1) var<storage, read_write> distances: array<f32>;
+@group(0) @binding(1) var<storage, read_write> distances: array<f64>;
 @group(0) @binding(2) var<uniform> params: Params;
 
 @compute @workgroup_size(256)
@@ -45,5 +45,5 @@ fn pairwise_hamming(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
     }
 
-    distances[pair_idx] = f32(diff) / f32(params.seq_len);
+    distances[pair_idx] = f64(diff) / f64(params.seq_len);
 }

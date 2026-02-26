@@ -1,9 +1,9 @@
-// Inverse sine (arcsine) operation
+// Inverse sine (arcsine) operation (f64 canonical)
 // asin(x) returns the angle whose sine is x, in range [-π/2, π/2]
 // Input must be in range [-1, 1]
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
 @group(0) @binding(2) var<uniform> metadata: Metadata;
 
 struct Metadata {
@@ -16,10 +16,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (idx >= metadata.size) {
         return;
     }
-    
+
     let x = input[idx];
-    
+
     // asin is only defined for |x| <= 1
     // WGSL asin() returns NaN for out-of-range values
-    output[idx] = asin(x);
+    output[idx] = asin_f64(x);
 }

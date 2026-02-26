@@ -1,9 +1,9 @@
-// Error function (erf) operation
+// Error function (erf) operation (f64 canonical)
 // erf(x) = (2/√π) ∫[0,x] e^(-t²) dt
 // Approximation using Abramowitz and Stegun formula
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
 @group(0) @binding(2) var<uniform> metadata: Metadata;
 
 struct Metadata {
@@ -12,7 +12,7 @@ struct Metadata {
 
 // Abramowitz and Stegun approximation for erf
 // Maximum error: 1.5e-7
-fn erf_approx(x: f32) -> f32 {
+fn erf_approx(x: f64) -> f64 {
     let a1 =  0.254829592;
     let a2 = -0.284496736;
     let a3 =  1.421413741;
@@ -24,7 +24,7 @@ fn erf_approx(x: f32) -> f32 {
     let abs_x = abs(x);
 
     let t = 1.0 / (1.0 + p * abs_x);
-    let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * exp(-abs_x * abs_x);
+    let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * exp_f64(-abs_x * abs_x);
 
     return sign * y;
 }
@@ -35,7 +35,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (idx >= metadata.size) {
         return;
     }
-    
+
     let x = input[idx];
     output[idx] = erf_approx(x);
 }

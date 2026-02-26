@@ -1,8 +1,8 @@
-// Hyperbolic cosine operation
+// Hyperbolic cosine operation (f64 canonical)
 // cosh(x) = (e^x + e^(-x)) / 2
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
 @group(0) @binding(2) var<uniform> metadata: Metadata;
 
 struct Metadata {
@@ -15,7 +15,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (idx >= metadata.size) {
         return;
     }
-    
+
     let x = input[idx];
-    output[idx] = cosh(x);
+    output[idx] = cosh_f64(x);
 }

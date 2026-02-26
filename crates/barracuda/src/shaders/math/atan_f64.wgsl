@@ -1,9 +1,9 @@
-// Inverse hyperbolic sine operation
-// asinh(x) = ln(x + sqrt(x² + 1))
+// Inverse tangent (arctangent) operation (f64 canonical)
+// atan(x) returns the angle whose tangent is x, in range [-π/2, π/2]
 // Accepts all real numbers
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
 @group(0) @binding(2) var<uniform> metadata: Metadata;
 
 struct Metadata {
@@ -16,9 +16,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (idx >= metadata.size) {
         return;
     }
-    
+
     let x = input[idx];
-    
-    // asinh(x) = ln(x + sqrt(x² + 1))
-    output[idx] = asinh(x);
+    output[idx] = atan_f64(x);
 }

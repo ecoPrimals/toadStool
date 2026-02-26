@@ -144,6 +144,7 @@ pub fn downcast_f64_to_f32_with_transcendentals(f64_source: &str) -> String {
         .replace("tanh_f64(", "tanh(")
         .replace("sqrt_f64(", "sqrt(")
         .replace("abs_f64(", "abs(")
+        .replace("erf_f64(", "erf(")
 }
 
 /// Shader template with precision placeholders

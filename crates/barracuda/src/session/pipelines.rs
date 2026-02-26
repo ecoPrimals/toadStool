@@ -6,6 +6,15 @@
 //! `encode_binary_op` / `encode_ternary_op` / `encode_scale_op` used to recreate
 //! both `BindGroupLayout` and `ComputePipeline` on every `run()` invocation.
 
+pub(super) static MATMUL_NAIVE_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_f64.wgsl")));
+pub(super) static MATMUL_TILED_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_tiled_f64.wgsl")));
+pub(super) static MATMUL_CPU_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_cpu_tiled_f64.wgsl")));
+pub(super) static MATMUL_GPU_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(include_str!("../shaders/math/matmul_gpu_evolved_f64.wgsl")));
+
 /// All compute pipelines for a `TensorSession`.
 ///
 /// `add_pl`, `mul_pl`, `fma_pl`, `scale_pl` are now full `ComputePipeline`
@@ -125,19 +134,19 @@ impl SessionPipelines {
                 "Session LayerNorm",
             ),
             mm_naive_pl: auto_pipeline(
-                include_str!("../shaders/math/matmul.wgsl"),
+                &crate::session::pipelines::MATMUL_NAIVE_F32,
                 "Session MatMul Naive",
             ),
             mm_t16_pl: auto_pipeline(
-                include_str!("../shaders/math/matmul_tiled.wgsl"),
+                &crate::session::pipelines::MATMUL_TILED_F32,
                 "Session MatMul Tiled16",
             ),
             mm_cpu_pl: auto_pipeline(
-                include_str!("../shaders/math/matmul_cpu_tiled.wgsl"),
+                &crate::session::pipelines::MATMUL_CPU_F32,
                 "Session MatMul CpuTiled32",
             ),
             mm_gpu_pl: auto_pipeline(
-                include_str!("../shaders/math/matmul_gpu_evolved.wgsl"),
+                &crate::session::pipelines::MATMUL_GPU_F32,
                 "Session MatMul GpuEvolved32",
             ),
             sdpa_scores_pl: auto_pipeline(
