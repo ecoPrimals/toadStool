@@ -12,6 +12,12 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// f64 is the canonical source — f32 derived via downcast_f64_to_f32 when needed.
+const SHADER_F64: &str = include_str!("../shaders/math/trunc_f64.wgsl");
+
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
+
 /// Trunc operation
 pub struct Trunc {
     input: Tensor,
@@ -25,7 +31,7 @@ impl Trunc {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/math/trunc.wgsl")
+        &SHADER_F32
     }
 
     /// Execute the trunc operation

@@ -109,7 +109,7 @@ impl SessionPipelines {
             fma_pl: auto_pipeline(&fma_src, "Session FMA"),
             scale_pl: auto_pipeline(&scale_src, "Session Scale"),
             relu_pl: auto_pipeline(
-                include_str!("../shaders/activation/relu.wgsl"),
+                &crate::ops::relu::SHADER_F32,
                 "Session ReLU",
             ),
             gelu_pl: auto_pipeline(
@@ -149,7 +149,7 @@ impl SessionPipelines {
                 "Session Attn Softmax",
             ),
             attn_apply_pl: auto_pipeline(
-                include_str!("../shaders/attention/attention_apply.wgsl"),
+                &crate::ops::attention::ATTENTION_APPLY_F32,
                 "Session Attn Apply",
             ),
             head_split_pl: auto_pipeline(

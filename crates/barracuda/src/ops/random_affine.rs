@@ -15,6 +15,10 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+const SHADER_F64: &str = include_str!("../shaders/augmentation/random_affine_f64.wgsl");
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
+
 /// RandomAffine operation
 pub struct RandomAffine {
     input: Tensor,
@@ -55,7 +59,7 @@ impl RandomAffine {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/augmentation/random_affine.wgsl")
+        &SHADER_F32
     }
 
     /// Execute the random affine operation

@@ -147,7 +147,7 @@ impl ScaledDotProductAttention {
 
     /// Get WGSL shader for attention apply (Pass 3)
     pub(super) fn wgsl_shader_apply() -> &'static str {
-        include_str!("../../shaders/attention/attention_apply.wgsl")
+        &crate::ops::attention::ATTENTION_APPLY_F32
     }
 
     /// Get query tensor

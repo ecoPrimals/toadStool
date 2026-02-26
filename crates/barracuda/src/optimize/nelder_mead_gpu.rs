@@ -51,7 +51,12 @@ pub struct NelderMeadGpuResult {
 ///
 /// Entry points: `compute_centroid`, `reflect`, `expand`, `contract`, `shrink`,
 /// `project_bounds`, `bitonic_sort_step`.
-pub const WGSL_SIMPLEX_OPS: &str = include_str!("../shaders/optimizer/simplex_ops.wgsl");
+const WGSL_SIMPLEX_OPS_F64: &str = include_str!("../shaders/optimizer/simplex_ops_f64.wgsl");
+
+pub static WGSL_SIMPLEX_OPS: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32(WGSL_SIMPLEX_OPS_F64)
+    });
 
 /// Only reads back the best solution at the end or periodically.
 pub struct NelderMeadGpu {

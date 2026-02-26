@@ -1,11 +1,19 @@
 //! Hardshrink - Pure WGSL
 //!
+//! f64 canonical — f32 derived via downcast_f64_to_f32 when needed.
+//!
 //! Deep Debt Principles:
 //! - Self-knowledge: Operation knows its computation
 //! - Zero hardcoding: Hardware-agnostic implementation
 //! - Modern idiomatic Rust: Safe, zero unsafe code
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
+
+/// f64 is the canonical source.
+const SHADER_F64: &str = include_str!("../shaders/activation/hardshrink_f64.wgsl");
+
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
 
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
@@ -25,7 +33,7 @@ impl Hardshrink {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/activation/hardshrink.wgsl")
+        &SHADER_F32
     }
 
     /// Execute the hardshrink operation
@@ -44,9 +52,13 @@ impl Hardshrink {
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
         struct Params {
             size: u32,
+            lambda: f32,
         }
 
-        let params = Params { size: size as u32 };
+        let params = Params {
+            size: size as u32,
+            lambda: 0.5,
+        };
 
         let params_buffer = device
             .device

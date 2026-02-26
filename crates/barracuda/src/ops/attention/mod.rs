@@ -36,6 +36,12 @@ use crate::tensor::Tensor;
 
 mod compute;
 
+/// f64 canonical — f32 derived via downcast_f64_to_f32 when needed.
+pub(crate) const ATTENTION_APPLY_F64: &str =
+    include_str!("../../shaders/attention/attention_apply_f64.wgsl");
+pub(crate) static ATTENTION_APPLY_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(ATTENTION_APPLY_F64));
+
 #[cfg(test)]
 mod tests;
 
@@ -135,7 +141,7 @@ impl Attention {
 
     /// Pass 3 shader: Apply weights to values
     pub(crate) fn shader_apply() -> &'static str {
-        include_str!("../../shaders/attention/attention_apply.wgsl")
+        &ATTENTION_APPLY_F32
     }
 
     /// Get query tensor

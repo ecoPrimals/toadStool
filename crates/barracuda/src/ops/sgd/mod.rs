@@ -54,6 +54,12 @@ mod compute;
 #[cfg(test)]
 mod tests;
 
+/// f64 is the canonical source.
+const SHADER_F64: &str = include_str!("../../shaders/optimizer/sgd_f64.wgsl");
+
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
+
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 
@@ -143,9 +149,9 @@ impl SGD {
         })
     }
 
-    /// WGSL shader source
+    /// WGSL shader source (f64 canonical, f32 via downcast)
     pub(super) fn shader() -> &'static str {
-        include_str!("../../shaders/optimizer/sgd.wgsl")
+        &SHADER_F32
     }
 
     /// Get weights tensor

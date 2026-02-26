@@ -9,6 +9,12 @@
 //! - Hardware-agnostic via WebGPU
 //! - Complete implementation (production-ready)
 
+/// f64 is the canonical source.
+const SHADER_F64: &str = include_str!("../shaders/optimizer/sgdw_f64.wgsl");
+
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
+
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
@@ -76,7 +82,7 @@ impl SGDW {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/optimizer/sgdw.wgsl")
+        &SHADER_F32
     }
 
     pub fn execute(self) -> Result<(Tensor, Tensor)> {

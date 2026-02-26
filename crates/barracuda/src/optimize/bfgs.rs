@@ -28,13 +28,24 @@ use crate::error::{BarracudaError, Result};
 
 /// GPU shader for BFGS inverse Hessian update (O(n²) parallel).
 ///
+/// f64 canonical — f32 derived via downcast when needed.
+const WGSL_BFGS_UPDATE_F64: &str = include_str!("../shaders/optimizer/bfgs_update_f64.wgsl");
+
 /// Entry points: `bfgs_update`, `dot_product`, `mat_vec_mul`, `compute_Hy_and_yHy`.
-pub const WGSL_BFGS_UPDATE: &str = include_str!("../shaders/optimizer/bfgs_update.wgsl");
+pub static WGSL_BFGS_UPDATE: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32(WGSL_BFGS_UPDATE_F64)
+    });
 
 /// GPU shader for batch numerical gradient via central/forward differences.
 ///
 /// Entry points: `central_difference`, `forward_difference`, `generate_perturbed_points`.
-pub const WGSL_BATCH_GRADIENT: &str = include_str!("../shaders/optimizer/batch_gradient.wgsl");
+const WGSL_BATCH_GRADIENT_F64: &str = include_str!("../shaders/optimizer/batch_gradient_f64.wgsl");
+
+pub static WGSL_BATCH_GRADIENT: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| {
+        crate::shaders::precision::downcast_f64_to_f32(WGSL_BATCH_GRADIENT_F64)
+    });
 
 /// Configuration for the BFGS optimizer.
 #[derive(Debug, Clone)]

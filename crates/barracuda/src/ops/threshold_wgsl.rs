@@ -1,11 +1,19 @@
 //! Threshold - Threshold activation function - Pure WGSL
 //!
+//! f64 canonical — f32 derived via downcast_f64_to_f32 when needed.
+//!
 //! Deep Debt Principles:
 //! - Self-knowledge: Operation knows its threshold and value
 //! - Zero hardcoding: All parameters passed at runtime
 //! - Modern idiomatic Rust: Safe, zero unsafe code
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
+
+/// f64 is the canonical source.
+const SHADER_F64: &str = include_str!("../shaders/activation/threshold_f64.wgsl");
+
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
 
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
@@ -31,7 +39,7 @@ impl Threshold {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/activation/threshold.wgsl")
+        &SHADER_F32
     }
 
     /// Execute the threshold operation

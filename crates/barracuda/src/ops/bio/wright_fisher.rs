@@ -19,9 +19,7 @@ use wgpu::util::DeviceExt;
 
 use crate::device::WgpuDevice;
 
-pub const WGSL_WRIGHT_FISHER: &str = include_str!("../../shaders/bio/wright_fisher_step.wgsl");
-
-/// f64 version for universal math library portability.
+/// f64 canonical — f32 derived via downcast_f64_to_f32 when needed.
 pub const WGSL_WRIGHT_FISHER_F64: &str =
     include_str!("../../shaders/bio/wright_fisher_step_f64.wgsl");
 

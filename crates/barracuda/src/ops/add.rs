@@ -29,14 +29,22 @@ static SHADER_DEFAULT: std::sync::LazyLock<String> = std::sync::LazyLock::new(||
     crate::shaders::precision::downcast_f64_to_f32(WGSL_ADD_F64)
 });
 
-/// Basic element-wise add shader.
-pub const WGSL_ADD_BASIC: &str = include_str!("../shaders/math/add.wgsl");
+/// Basic element-wise add shader (f64 canonical).
+const WGSL_ADD_BASIC_F64: &str = include_str!("../shaders/math/add_f64.wgsl");
+
+/// Basic element-wise add shader (f32 derived from f64).
+pub static WGSL_ADD_BASIC: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_ADD_BASIC_F64));
 
 /// Optimized element-wise add variant.
 pub const WGSL_ADD_OPTIMIZED: &str = include_str!("../shaders/math/elementwise_add_optimized.wgsl");
 
-/// Vector-add shader.
-pub const WGSL_VECTORADD: &str = include_str!("../shaders/math/vectoradd.wgsl");
+/// Vector-add shader (f64 canonical).
+const WGSL_VECTORADD_F64: &str = include_str!("../shaders/math/vectoradd_f64.wgsl");
+
+/// Vector-add shader (f32 derived from f64).
+pub static WGSL_VECTORADD: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_VECTORADD_F64));
 
 /// Generic element-wise binary op shader.
 pub const WGSL_ELEMENTWISE_BINARY: &str = include_str!("../shaders/misc/elementwise_binary.wgsl");

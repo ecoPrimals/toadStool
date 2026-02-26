@@ -111,7 +111,7 @@ impl LocalAttention {
 
     /// Pass 3 shader: Apply weights to values (REUSED from attention ✅)
     pub(super) fn shader_apply() -> &'static str {
-        include_str!("../../shaders/attention/attention_apply.wgsl")
+        &crate::ops::attention::ATTENTION_APPLY_F32
     }
 
     /// Get query tensor

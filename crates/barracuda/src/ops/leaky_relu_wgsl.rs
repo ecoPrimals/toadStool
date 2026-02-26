@@ -1,11 +1,19 @@
 //! LeakyReLU — GPU-resident, pipeline-cached, batchable
 //!
+//! f64 canonical — f32 derived via downcast_f64_to_f32 when needed.
+//!
 //! Deep Debt Principles:
 //! - Zero hardcoding: Capability-based workgroup dispatch
 //! - Batchable: routes through TensorContext::record_operation()
 //! - Zero-copy output: buffer pool, no GPU→CPU→GPU round-trip
 //! - Pipeline cached: GLOBAL_CACHE eliminates recompilation overhead
 //! - Params fixed (S14): Rust `Params` matches WGSL `{ size, negative_slope }`
+
+/// f64 is the canonical source.
+const SHADER_F64: &str = include_str!("../shaders/activation/leaky_relu_f64.wgsl");
+
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
 
 use crate::device::pipeline_cache::{BindGroupLayoutSignature, GLOBAL_CACHE};
 use crate::device::tensor_context::get_device_context;
@@ -15,9 +23,13 @@ use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
+/// f64 canonical — f32 derived via downcast when needed.
+const WGSL_LEAKY_RELU_SIMPLE_F64: &str =
+    include_str!("../shaders/activation/leaky_relu_simple_f64.wgsl");
+
 /// Simple LeakyReLU variant (single-pass, no vectorization).
-pub const WGSL_LEAKY_RELU_SIMPLE: &str =
-    include_str!("../shaders/activation/leaky_relu_simple.wgsl");
+pub static WGSL_LEAKY_RELU_SIMPLE: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_LEAKY_RELU_SIMPLE_F64));
 
 /// Default negative slope for LeakyReLU (matches common framework defaults).
 pub const LEAKY_RELU_DEFAULT_SLOPE: f32 = 0.01;
@@ -51,7 +63,7 @@ impl LeakyRelu {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/activation/leaky_relu.wgsl")
+        &SHADER_F32
     }
 
     pub fn execute(self) -> Result<Tensor> {

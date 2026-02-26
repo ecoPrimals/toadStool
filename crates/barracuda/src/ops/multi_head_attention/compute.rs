@@ -9,10 +9,14 @@ use crate::device::{DeviceCapabilities, WgpuDevice, WorkloadType};
 use crate::error::Result;
 use wgpu::util::DeviceExt;
 
+const SHADER_F64: &str = include_str!("../../shaders/attention/mha_projection_f64.wgsl");
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
+
 impl MultiHeadAttention {
     /// Get WGSL shader for MHA projection
     pub(super) fn wgsl_shader_projection() -> &'static str {
-        include_str!("../../shaders/attention/mha_projection.wgsl")
+        &SHADER_F32
     }
 
     /// Get WGSL shader for MHA output projection

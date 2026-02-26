@@ -28,8 +28,12 @@ const SHADER_WG64: &str = include_str!("../shaders/math/fma_wg64.wgsl");
 /// Shader source optimized for AMD GPUs (WG=128)  
 const SHADER_WG128: &str = include_str!("../shaders/math/fma_wg128.wgsl");
 
-/// Default shader (WG=256, fallback)
-const SHADER_DEFAULT: &str = include_str!("../shaders/math/fma.wgsl");
+/// Default shader (WG=256, fallback) — f64 canonical.
+const SHADER_F64: &str = include_str!("../shaders/math/fma_f64.wgsl");
+
+/// Default shader (f32 derived from f64).
+static SHADER_DEFAULT: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
 
 /// Element-wise FMA shader.
 pub const WGSL_FMA_ELEMENTWISE: &str = include_str!("../shaders/math/elementwise_fma.wgsl");
@@ -76,17 +80,17 @@ impl Fma {
             if needed_workgroups <= max_dispatch {
                 (SHADER_WG64, nvidia_wg)
             } else {
-                (SHADER_DEFAULT, 256)
+                (&*SHADER_DEFAULT, 256)
             }
         } else if lower.contains("amd") || lower.contains("radeon") || lower.contains("radv") {
             let needed_workgroups = (size as u32).div_ceil(amd_wg);
             if needed_workgroups <= max_dispatch {
                 (SHADER_WG128, amd_wg)
             } else {
-                (SHADER_DEFAULT, 256)
+                (&*SHADER_DEFAULT, 256)
             }
         } else {
-            (SHADER_DEFAULT, 256)
+            (&*SHADER_DEFAULT, 256)
         }
     }
 

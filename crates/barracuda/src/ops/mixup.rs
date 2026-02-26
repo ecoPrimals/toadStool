@@ -7,6 +7,10 @@ use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+const SHADER_F64: &str = include_str!("../shaders/augmentation/mixup_f64.wgsl");
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct MixupParams {
@@ -41,7 +45,7 @@ impl Mixup {
 
     /// WGSL shader source (embedded at compile time)
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/augmentation/mixup.wgsl")
+        &SHADER_F32
     }
 
     /// Execute Mixup on tensor

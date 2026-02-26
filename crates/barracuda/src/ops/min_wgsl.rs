@@ -12,8 +12,12 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
-/// Simple min reduction variant (scalar path).
-pub const WGSL_MIN_SIMPLE: &str = include_str!("../shaders/math/min_simple.wgsl");
+/// Simple min reduction variant (f64 canonical).
+const WGSL_MIN_SIMPLE_F64: &str = include_str!("../shaders/math/min_simple_f64.wgsl");
+
+/// Simple min reduction variant (f32 derived from f64).
+pub static WGSL_MIN_SIMPLE: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_MIN_SIMPLE_F64));
 
 /// f64 is the canonical source — math is universal, precision is silicon.
 const WGSL_MIN_BASIC_F64: &str = include_str!("../shaders/math/min_f64.wgsl");

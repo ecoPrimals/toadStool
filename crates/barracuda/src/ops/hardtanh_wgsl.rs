@@ -14,10 +14,18 @@ use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
+/// f64 is the canonical source.
+const SHADER_F64: &str = include_str!("../shaders/activation/hardtanh_f64.wgsl");
+
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
+
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct Params {
     size: u32,
+    min_val: f32,
+    max_val: f32,
 }
 
 /// Hardtanh activation.
@@ -31,7 +39,7 @@ impl Hardtanh {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/activation/hardtanh.wgsl")
+        &SHADER_F32
     }
 
     /// Execute Hardtanh.
@@ -54,7 +62,11 @@ impl Hardtanh {
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Hardtanh Params"),
-                contents: bytemuck::bytes_of(&Params { size: size as u32 }),
+                contents: bytemuck::bytes_of(&Params {
+                    size: size as u32,
+                    min_val: -1.0,
+                    max_val: 1.0,
+                }),
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 

@@ -17,9 +17,7 @@ use wgpu::util::DeviceExt;
 
 use crate::device::WgpuDevice;
 
-pub const WGSL_LOCUS_VARIANCE: &str = include_str!("../../shaders/bio/locus_variance.wgsl");
-
-/// f64 version for universal math library portability.
+/// f64 canonical — f32 derived via downcast_f64_to_f32 when needed.
 pub const WGSL_LOCUS_VARIANCE_F64: &str = include_str!("../../shaders/bio/locus_variance_f64.wgsl");
 
 #[repr(C)]

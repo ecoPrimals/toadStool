@@ -5,6 +5,12 @@
 
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
+
+/// f64 is the canonical source — f32 derived via downcast_f64_to_f32 when needed.
+const SHADER_F64: &str = include_str!("../../shaders/math/expand_f64.wgsl");
+
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
@@ -353,7 +359,7 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
     });
 
     let shader = device.compile_shader(
-        include_str!("../../shaders/math/expand.wgsl"),
+        &SHADER_F32,
         Some("Expand"),
     );
     let pipeline_layout = device

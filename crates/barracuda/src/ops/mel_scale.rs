@@ -15,6 +15,10 @@ use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+const SHADER_F64: &str = include_str!("../shaders/audio/mel_scale_f64.wgsl");
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
+
 fn hz_to_mel(hz: f32) -> f32 {
     2595.0 * (1.0 + hz / 700.0).log10()
 }
@@ -69,7 +73,7 @@ impl MelScale {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/audio/mel_scale.wgsl")
+        &SHADER_F32
     }
 
     /// Build mel filterbank (CPU-side preprocessing)
