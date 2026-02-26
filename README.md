@@ -360,6 +360,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 | Document | Purpose |
 |----------|---------|
+| [PRECISION_BOTTLENECK.md](PRECISION_BOTTLENECK.md) | **Evolution gate** -- solve all precision debt before absorbing |
 | [STATUS.md](STATUS.md) | Detailed technical status, session-by-session |
 | [DEBT.md](DEBT.md) | Active debt register, workarounds, evolution paths |
 | [NEXT_STEPS.md](NEXT_STEPS.md) | Roadmap and upcoming work |

@@ -9,9 +9,11 @@
 | I Want To... | Document |
 |--------------|----------|
 | Get started | [README.md](README.md) |
+| See precision evolution gate | [PRECISION_BOTTLENECK.md](PRECISION_BOTTLENECK.md) |
 | See current status | [STATUS.md](STATUS.md) |
 | Commands and API reference | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
 | See active debt and evolution paths | [DEBT.md](DEBT.md) |
+| Universal precision design | [specs/UNIVERSAL_PRECISION_ARCHITECTURE.md](specs/UNIVERSAL_PRECISION_ARCHITECTURE.md) |
 | Roadmap and next steps | [NEXT_STEPS.md](NEXT_STEPS.md) |
 | Sovereign compute roadmap | [SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md) |
 | Unidirectional pipeline | [UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md) |
@@ -47,6 +49,8 @@
 ## Core Documentation
 
 **[README.md](README.md)** -- Project overview, architecture, quality gates, evolution roadmap.
+
+**[PRECISION_BOTTLENECK.md](PRECISION_BOTTLENECK.md)** -- **Evolution gate**: 50 duplicate f32/f64 pairs to consolidate, ~30 f32-only universals to evolve, ~64 transcendental-dependent shaders. Gate rule: no new spring absorptions until precision debt resolved.
 
 **[STATUS.md](STATUS.md)** -- Detailed technical status: quality gates, session-by-session evolution.
 
@@ -110,6 +114,7 @@
 
 ```
 README.md                  -- Project overview, honest status
+PRECISION_BOTTLENECK.md    -- Evolution gate tracker (solve before absorbing)
 STATUS.md                  -- Detailed technical status
 DEBT.md                    -- Active debt register, evolution paths
 NEXT_STEPS.md              -- Roadmap and upcoming work

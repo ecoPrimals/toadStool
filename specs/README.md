@@ -1,67 +1,62 @@
 # ToadStool + BarraCuda Specifications
 
-## Current Status (February 23, 2026)
+## Current Status (February 24, 2026)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
 - **`../STATUS.md`** — Detailed status with quality gates
-- **`BARRACUDA_PARITY_ROADMAP.md`** — Performance evolution and validation results
-- **`FP64_GPU_EVOLUTION.md`** — Pure-GPU f64 math (includes log_f64 bug fix)
+- **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
+- **`../PRECISION_BOTTLENECK.md`** — Evolution gate tracker (solve precision debt before absorbing)
 
 **Key Numbers:**
-- **15,700+ tests passing**, 0 failing
-- **480+ WGSL shaders** (shader-first architecture)
-- **82-86% theoretical bandwidth** on both NVIDIA and AMD
-- **hotSpring validated**: 169/169 nuclear EOS acceptance checks
-- **wetSpring validated**: 48/48 life science checks (Shannon, Simpson, Bray-Curtis)
-- Pure-GPU f64 math library with 27+ transcendental functions
+- **2,541 barracuda tests** + 21,599 workspace tests, all passing
+- **707 WGSL shaders** (510 f32, 195 f64, 20 Df64, 2 infrastructure)
+- **50 duplicate f32/f64 pairs** identified for consolidation
+- **12 universal `{{SCALAR}}` templates** for multi-precision generation
+- **5 Springs validated**: 4,000+ acceptance checks
+- Pure-GPU f64 math library: 28 transcendental polyfills
+- DF64 core streaming: ~9.9× throughput on consumer GPUs
 
-**Latest Updates (Feb 23):**
-
-| Update | Impact |
-|--------|--------|
-| **DF64 core streaming** | Hybrid FP64 wired into production HMC — gauge force, plaquette, Wilson action run on FP32 cores (~10× throughput on consumer GPUs) |
-| **HYBRID_FP64_CORE_STREAMING spec** | Complete implementation guide for converting any f64 shader to hybrid DF64 precision across all hardware eras |
-| **Fp64Strategy auto-detection** | `Su3HmcForce`, `WilsonPlaquette`, `GpuWilsonAction` auto-select DF64 vs native f64 at construction |
-
-**Previous (Feb 18):**
+**Latest Updates (Feb 24 — Session 67):**
 
 | Update | Impact |
 |--------|--------|
-| **Sovereign Compute spec** | WGSL optimizer roadmap — Phases 0-5, LatencyModel trait, mycelial deployment |
-| **f64 fossil functions removed** | `math_f64.wgsl` calls native WGSL builtins for abs/sqrt/min/max/floor/ceil/round/fract/sign |
-| **SM70 latency tables** | DFMA=8cy corrected — Phase 0 NAK contribution complete |
-| **Root tracker doc** | `SOVEREIGN_COMPUTE.md` — phase status dashboard |
+| **Universal precision architecture** | `compile_shader_universal()` routes one source to f32/f64/df64. Math is universal, precision is silicon. |
+| **UNIVERSAL_PRECISION_ARCHITECTURE spec** | Design spec for multi-precision compilation pipeline |
+| **PRECISION_BOTTLENECK tracker** | Evolution gate: solve all precision debt before absorbing more from springs |
+| **Precision inventory** | 707 shaders classified: 50 duplicate pairs, ~30 f32-only universals, ~64 transcendental-dependent |
+| **`Precision::Df64`** | Enum variant for double-float f32-pair (~48-bit mantissa) |
+| **12 universal templates** | add/mul/sub/fma/abs/neg/clamp/saxpy/dot/sum/mean/mse/mae |
+| **Downcast functions** | `downcast_f64_to_f32()`, `downcast_f64_to_f32_with_transcendentals()` |
 
-**Previous (Feb 17):**
-
-| Update | Impact |
-|--------|--------|
-| **Unidirectional Pipeline** | Zero round-trip architecture exploration — 4 design docs |
-| **Hardware Routing Layer** | ToadStool manages PCIe/HDMI/NVLink as data channels |
-| **Software Simulation** | 90/10 bandwidth partitioning to validate patterns |
-| **Pure Rust syscalls** | akida-driver mmap/mlock migrated to rustix |
-| **biomeOS networking** | No reqwest/hyper — Songbird TLS, Beardog crypto |
-
-**Previous Updates (Feb 16):**
+**Previous (Feb 26 — Session 66):**
 
 | Update | Impact |
 |--------|--------|
-| **log_f64 bug fix** | Coefficients halved (~1e-3 → ~1e-15 precision) — wetSpring discovery |
-| **GPU-Resident Pipeline** | Complete — zero CPU↔GPU round-trips |
-| **Device Registry** | Physical device deduplication with backend preference |
-| **ecoBin Compliance** | TOML config, XDG paths, rustix signals |
-| **NPU Executor** | `NpuExecutor` implements `ComputeExecutor` |
+| **Multi-precision expansion** | `compile_shader_df64()` pipeline, 6 DF64 math shaders, 5 f64 gap-fills, 2 f64 losses |
+| **Cross-spring evolution** | stats::mae, shannon_from_frequencies, hill/monod, NeighborMode, sovereign compiler fix |
+| **Deep debt** | 15 files refactored, anyhow + log eliminated, 13→3 dead_code |
 
 **Sibling Validation Projects:**
-- **hotSpring** — Nuclear physics (HFB), 169/169 acceptance checks
-- **wetSpring** — Life science (metagenomics) + analytical chemistry (PFAS)
+- **hotSpring** — Nuclear physics (HFB + lattice QCD), 664 tests, 22 papers validated
+- **wetSpring** — Life science (metagenomics) + analytical chemistry, 918 tests
+- **neuralSpring** — Neural network inference, 580 tests
+- **airSpring** — Precision agriculture (ET₀, soil, IoT), 468 tests
+- **groundSpring** — Hydrogeology, 154 tests
 
 ---
 
 ## Active Specifications
 
-### Sovereign Compute (Current Priority)
+### Universal Precision (Current Priority — Evolution Bottleneck)
+
+| Document | Purpose | Updated | Status |
+|----------|---------|---------|--------|
+| **[UNIVERSAL_PRECISION_ARCHITECTURE.md](./UNIVERSAL_PRECISION_ARCHITECTURE.md)** | Math is universal, precision is silicon — compilation pipeline design | **Feb 24** | 🔄 Active |
+
+**Tracker**: [`../PRECISION_BOTTLENECK.md`](../PRECISION_BOTTLENECK.md) — evolution gate (solve all precision debt before spring absorptions)
+
+### Sovereign Compute
 
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
@@ -224,10 +219,11 @@ let cache_size = if vendor == "AMD" { 128_MB } else { 6_MB };
 let hierarchy = SubstrateMemoryHierarchy::probe(&device).await;
 ```
 
-### Shader-First Architecture
+### Math Is Universal, Precision Is Silicon
 
-All math is WGSL primary. ToadStool dispatches to GPU or CPU based on hardware:
-- 480+ WGSL shaders
+All math is WGSL primary. One source, any precision via `compile_shader_universal()`:
+- 707 WGSL shaders (510 f32, 195 f64, 20 Df64)
+- 12 universal `{{SCALAR}}` templates
 - Same shader → Vulkan (NVIDIA/AMD), Metal (Apple), DX12 (Windows)
 
 ### Vendor-Agnostic Results
@@ -243,11 +239,13 @@ BarraCuda is validated by multiple domain-specific projects:
 
 | Project | Domain | Checks | Key Findings |
 |---------|--------|:------:|--------------|
-| **hotSpring** | Nuclear physics (HFB + MD) | 195/195 | GPU-resident HFB 15% faster than CPU; 2 bugs found+fixed |
-| **wetSpring** | Life science + analytical chemistry | 48/48 | log_f64 bug found+fixed; Shannon/Simpson/Bray-Curtis validated |
-| **airSpring** | Precision agriculture (ET₀, soil, IoT) | 70/70 Rust, 142 Python | FAO-56 validated; 918 real station-days; 53-72% water savings |
+| **hotSpring** | Nuclear physics (HFB + lattice QCD) | 664 tests | GPU-resident HFB, consumer QCD validated, 22 papers |
+| **wetSpring** | Life science + analytical chemistry | 918 tests | log_f64 bug found+fixed; Shannon/Simpson/Bray-Curtis validated |
+| **airSpring** | Precision agriculture (ET₀, soil, IoT) | 468 tests | FAO-56 validated; 918 real station-days; 53-72% water savings |
+| **neuralSpring** | Neural network inference | 580 tests | 6 universal ops serve every domain |
+| **groundSpring** | Hydrogeology | 154 tests | RAWR bootstrap, regression, hydrology |
 
-**Combined validation**: 313+ acceptance checks across physics, chemistry, biology, and agriculture.
+**Combined validation**: 4,000+ acceptance checks across physics, chemistry, biology, agriculture, and ML.
 
 All projects evolve compute pipelines from Python to Rust+GPU, validating accuracy
 at every step. Bugs discovered by validation projects are fixed immediately in
