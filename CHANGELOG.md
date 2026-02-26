@@ -5,7 +5,66 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 24, 2026 (Sessions 43-58 — Deep Debt Evolution + Cross-Spring Absorption + Coverage Push)
+## [Unreleased] - February 26, 2026 (Sessions 43-68 — Universal Precision + Sovereign Compiler + Deep Debt)
+
+### Session 68 (Feb 26, 2026) — Dual-Layer Universal Precision + Precision Bottleneck
+
+- **Dual-layer universal precision architecture**:
+  - Layer 1 (source): `Precision::op_preamble()` — abstract operations (`op_add`/`op_mul`/`op_pack`/`op_unpack`) for F16/F32/F64/DF64. `compile_op_shader()` injects correct preamble.
+  - Layer 2 (compiler): `sovereign/df64_rewrite.rs` — naga-guided f64 infix rewrite. Bridge functions (`_df64_add_f64` etc.) route computation through DF64 while preserving f64 type system.
+- **Precision bottleneck RESOLVED**: 296 f32 WGSL files deleted. Zero f32-only shaders remain. All f64 canonical with `LazyLock` downcast.
+- **5 near-duplicate pairs consolidated**: elementwise_add, elementwise_mul, sum_dim, mean_dim, std_dim
+- **291 f32-only shaders converted** to f64 canonical (240 trivial + 294 transcendental)
+- **F16 downcast hardened**: `downcast_f64_to_f16()` with sentinel protection + f16 literal clamping (±65504.0)
+- **DF64 transcendental ghost mappings cleaned**: removed 8 non-existent mappings (tan/asin/acos/atan/atan2/sinh/cosh/erf_df64)
+- **NaN-safe bridge functions**: `_df64_gte_f64`/`_df64_lte_f64` use equality check (IEEE 754 compliant)
+- **Span robustness**: bounds validation, undefined span fallbacks, op_pack/op_unpack consistency
+- **122 shader tests**: unit + e2e + chaos (15) + fault (13)
+- **Deep debt sweep**: production println! → tracing::info! (14), magic numbers → named constants (5), mock naming fixed
+- **Quality**: 700 WGSL shaders, 2,546+ barracuda tests, 0 clippy warnings
+
+### Session 67 (Feb 24, 2026) — Universal Precision Architecture
+
+- **`compile_shader_universal(source, precision)`** — routes one shader source to f32/f64/df64 via appropriate pipeline
+- **`Precision::Df64` variant** — extends enum with DF64 double-float (f32-pair, ~48-bit mantissa)
+- **`downcast_f64_to_f32()`** — text-transforms f64 shaders to f32 with sentinel protection
+- **`downcast_f64_to_f32_with_transcendentals()`** — polyfill→native mapping (`exp_f64`→`exp`)
+- **`compile_template(template, precision)`** — compiles `{{SCALAR}}`-templated shaders at any precision
+- **12 universal shader templates**: add/mul/sub/fma/abs/neg/clamp/saxpy, dot, sum/mean, MSE/MAE
+- **Precision inventory**: 707 shaders classified (510 f32, 195 f64, 20 Df64)
+- **Root docs cleaned**: all stale counts updated
+
+### Session 66 (Feb 26, 2026) — Cross-Spring Absorption + Deep Debt + Multi-Precision Expansion
+
+- **Cross-spring absorption**: stats::regression, hydrology, moving_window_f64, bootstrap::rawr_mean from airSpring/groundSpring
+- **Multi-precision expansion**: `compile_shader_df64()` pipeline, 6 DF64 math shaders, 5 f64 reduce gap-fills
+- **Smart refactoring**: 15 files refactored (20-44% reductions). `precision/mod.rs` 733→452, `workload.rs` 812→452
+- **Dependencies eliminated**: `anyhow` → typed BarracudaError, `log` → unified `tracing` (68 calls migrated)
+- **Dead code**: 13→3 `#[allow(dead_code)]`. +36 new tests.
+
+### Sessions 64-65 (Feb 25, 2026) — Cross-Spring Absorption + Smart Refactoring
+
+- **8 lattice QCD shaders** from hotSpring (SU(3), PRNG, DF64 gauge force/kinetic, BLAS-like)
+- **`stats::metrics`** (RMSE, NSE, R², hit_rate) + **`stats::diversity`** (Shannon, Bray-Curtis, rarefaction)
+- **`chrono` eliminated**. 5 files refactored (32-44% reductions). Dead code 17→13.
+
+### Sessions 61-63 (Feb 25, 2026) — Sovereign Compiler + Deep Debt Evolution
+
+- **SovereignCompiler**: naga-IR optimizer — FMA fusion, dead expression elimination, SPIR-V passthrough
+- **25+ dead_code** evolved to documented pub API. `solve_gpu_parallel` wired for n≥2048.
+- **Smart refactoring**: `morse_f64.rs` 953→804, `coulomb_f64/mod.rs` 610→369. `instant` crate removed.
+
+### Session 60 (Feb 25, 2026) — DF64 FMA + Transcendentals + Polyfill Hardening
+
+- **FMA-optimized DF64**: `two_prod` 17→2 ops via `fma(a, b, -p)`. `df64_mul` cross-terms use FMA.
+- **DF64 transcendental library**: `df64_transcendentals.wgsl` — sqrt, exp, log, sin, cos, pow, tanh at FP32 core speed
+- **4 force shaders evolved** to all-DF64 (Born-Mayer, Morse, Yukawa, Lennard-Jones)
+- **Polyfill patcher hardened**: protects `ldexp`, `exp_df64`, `log_df64` from substring collision
+
+### Session 59 (Feb 24, 2026) — Deep Audit + Comprehensive Evolution
+
+- **`#![deny(unsafe_code)]`** added to 36 crates. TarpcClientWrapper JSON-RPC fallback.
+- **Smart refactoring**: 5 files. **21,599 tests** workspace-wide.
 
 ### Session 58 (Feb 24, 2026) — Cross-Spring Absorption (hotSpring + wetSpring + neuralSpring)
 

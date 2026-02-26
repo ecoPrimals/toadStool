@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy -p barracuda --lib -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,541 total** (2,434 pass, ~95 cascade W-003, 12 ignored) |
+| `cargo test -p barracuda --lib` | PASS | **2,546+ total** (122 shader-specific: unit/e2e/chaos/fault) |
 | hotSpring validation | PASS | **664 tests, 22 papers validated** |
 | wetSpring validation | PASS | **918 tests, 96.48% coverage** |
 | neuralSpring validation | PASS | **580 tests, 94.53% coverage** |
@@ -37,10 +37,26 @@ Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showc
 
 ---
 
-## Session 68: Precision Bottleneck Execution (Feb 26, 2026)
+## Session 68: Dual-Layer Universal Precision + Precision Bottleneck (Feb 26, 2026)
 
-Executing on the precision bottleneck gate. Comprehensive shader inventory reveals
-actual debt structure is more nuanced than initially estimated.
+Executing on the precision bottleneck gate AND building the dual-layer universal precision architecture. Math is universal — precision is the silicon detail.
+
+### Dual-Layer Universal Precision Architecture
+- **Layer 1 — Operation Preamble (source-level)**: `Precision::op_preamble()` returns precision-specific WGSL implementing `op_add`/`op_sub`/`op_mul`/`op_div`/`op_neg`/`op_abs`/`op_max`/`op_min`/`op_gt`/`op_lt`/`op_ge`/`op_le`/`op_from_f32`/`op_zero`/`op_one`/`op_pack`/`op_unpack` for F16, F32, F64, and DF64. `compile_op_shader()` injects the correct preamble — shaders written with abstract ops work at ALL precisions without transformation.
+- **Layer 2 — Naga-Guided Rewrite (compiler-level)**: `sovereign/df64_rewrite.rs` parses f64 WGSL with naga, identifies f64 `Binary{+,-,*,/}` and comparison operators by type analysis, replaces with bridge functions (`_df64_add_f64`, `_df64_sub_f64`, `_df64_mul_f64`, `_df64_div_f64`, `_df64_neg_f64`, `_df64_gt_f64`, `_df64_lt_f64`, `_df64_gte_f64`, `_df64_lte_f64`) that route computation through DF64 while keeping the f64 type system intact. Uses `__SPAN__` markers for source-level accuracy and `dedup_overlapping()` for nested expression handling.
+- **`compile_shader_universal()` DF64 branch**: naga rewrite attempted first, text-based `downcast_f64_to_df64()` as fallback.
+
+### Precision Pipeline Hardening
+- **F16 downcast**: `downcast_f64_to_f16()` with sentinel protection (`_f64(` polyfill names preserved) + `clamp_f64_range_literals_f16()` (caps to ±65504.0).
+- **DF64 transcendental mapping**: Only maps 8 functions with actual implementations (exp, log, pow, sin, cos, tanh, sqrt, abs). Removed 8 ghost mappings (tan/asin/acos/atan/atan2/sinh/cosh/erf_df64).
+- **NaN-safe bridge functions**: `_df64_gte_f64`/`_df64_lte_f64` use explicit equality check instead of `!lt`/`!gt` (correct IEEE 754 semantics).
+- **Span robustness**: Bounds validation (`start <= end`, `end <= len`) in both `resolve_spans()` and `replace_range`. Safe `f64(0.0)` fallback for undefined naga spans.
+
+### Comprehensive Test Suite (122 tests)
+- **Unit**: Downcast edge cases, preamble structure verification, sentinel protection, literal clamping
+- **E2E**: Real shaders (elementwise add, reduce sum, comparison) validated at all precisions via naga parse
+- **Chaos** (15 tests): Empty input, nested f64 patterns, adversarial sentinel chains, boundary values, mixed types
+- **Fault** (13 tests): Idempotency (double-downcast), span bounds, dedup correctness, graceful degradation
 
 ### Shader Consolidation (Phase 2)
 - **5 near-duplicate pairs consolidated**: elementwise_add, elementwise_mul, sum_dim, mean_dim, std_dim
@@ -67,6 +83,7 @@ actual debt structure is more nuanced than initially estimated.
 - Shaders: 707 → 700 (296 f32 WGSL files deleted, f64 canonical, 7 net reduction from consolidation)
 - `downcast_f64_to_f32()` callers: 0 → 296
 - f32-only shaders remaining: 534 → **0**
+- Shader tests: 0 → **122** (unit + e2e + chaos + fault)
 - Production println!: 14 → 0
 - Production magic numbers: 5 → 0
 

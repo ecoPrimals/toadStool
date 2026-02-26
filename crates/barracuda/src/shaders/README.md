@@ -1,6 +1,6 @@
 # BarraCuda WGSL Shader Library
 
-**396 Production WGSL Shaders** | Categorized for Discovery | Cross-Vendor Compatible
+**700 Production WGSL Shaders** | Universal Precision (f16/f32/f64/DF64) | Cross-Vendor Compatible
 
 ---
 
@@ -223,8 +223,11 @@ All shaders follow these conventions:
 - **2D ops**: `@workgroup_size(16, 16)` typically
 - **3D ops**: `@workgroup_size(8, 8, 8)` typically
 
-### Precision
-- **Default**: `f32` for all computations
+### Precision (Universal — Math Is Universal, Precision Is Silicon)
+- **Canonical**: All shaders are f64 canonical. f32 generated at runtime via `LazyLock<String>` + `downcast_f64_to_f32()`.
+- **Pipeline**: `compile_shader_universal(source, precision)` routes to f16/f32/f64/DF64.
+- **Abstract ops**: New shaders can use `op_add`/`op_mul` via `compile_op_shader()` for precision-agnostic code.
+- **DF64**: `compile_shader_df64()` auto-injects `df64_core.wgsl` + `df64_transcendentals.wgsl`.
 - **FHE**: `u32` for modular arithmetic
 - **Quantization**: `u8`, `i8`, `i4` via bit packing
 
@@ -338,7 +341,7 @@ cargo test -p barracuda --lib --release
 
 ---
 
-**Last Updated**: February 12, 2026  
-**Shader Count**: 396  
+**Last Updated**: February 26, 2026 — Session 68  
+**Shader Count**: 700 (21 DF64, 182 f64, 497 f32 — zero f32-only, all f64 canonical)  
 **Categories**: 21 + 4 specialized  
-**Status**: Production
+**Status**: Production — dual-layer universal precision operational

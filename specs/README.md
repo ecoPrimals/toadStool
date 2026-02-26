@@ -1,33 +1,33 @@
 # ToadStool + BarraCuda Specifications
 
-## Current Status (February 24, 2026)
+## Current Status (February 26, 2026 — Session 68)
 
 **Quick Start:**
 - **`../README.md`** — Project overview, architecture, key achievements
 - **`../STATUS.md`** — Detailed status with quality gates
 - **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
-- **`../PRECISION_BOTTLENECK.md`** — Evolution gate tracker (solve precision debt before absorbing)
+- **`../PRECISION_BOTTLENECK.md`** — Evolution gate — RESOLVED. Dual-layer universal precision operational.
 
 **Key Numbers:**
-- **2,541 barracuda tests** + 21,599 workspace tests, all passing
-- **707 WGSL shaders** (510 f32, 195 f64, 20 Df64, 2 infrastructure)
-- **50 duplicate f32/f64 pairs** identified for consolidation
+- **2,546+ barracuda tests** (122 shader-specific: unit/e2e/chaos/fault) + 21,599 workspace tests
+- **700 WGSL shaders** (497 f32 via LazyLock, 182 f64, 21 Df64 — zero f32-only, all f64 canonical)
+- **Dual-layer universal precision**: op_preamble (source) + naga df64_rewrite (compiler)
 - **12 universal `{{SCALAR}}` templates** for multi-precision generation
 - **5 Springs validated**: 4,000+ acceptance checks
 - Pure-GPU f64 math library: 28 transcendental polyfills
-- DF64 core streaming: ~9.9× throughput on consumer GPUs
+- DF64 core streaming: ~9.9x throughput on consumer GPUs
 
-**Latest Updates (Feb 24 — Session 67):**
+**Latest Updates (Feb 26 — Session 68):**
 
 | Update | Impact |
 |--------|--------|
-| **Universal precision architecture** | `compile_shader_universal()` routes one source to f32/f64/df64. Math is universal, precision is silicon. |
-| **UNIVERSAL_PRECISION_ARCHITECTURE spec** | Design spec for multi-precision compilation pipeline |
-| **PRECISION_BOTTLENECK tracker** | Evolution gate: solve all precision debt before absorbing more from springs |
-| **Precision inventory** | 707 shaders classified: 50 duplicate pairs, ~30 f32-only universals, ~64 transcendental-dependent |
-| **`Precision::Df64`** | Enum variant for double-float f32-pair (~48-bit mantissa) |
-| **12 universal templates** | add/mul/sub/fma/abs/neg/clamp/saxpy/dot/sum/mean/mse/mae |
-| **Downcast functions** | `downcast_f64_to_f32()`, `downcast_f64_to_f32_with_transcendentals()` |
+| **Dual-layer universal precision** | Layer 1: `op_preamble` (abstract ops for F16/F32/F64/DF64). Layer 2: naga-guided `df64_rewrite` (infix→bridge functions). |
+| **Precision bottleneck RESOLVED** | Zero f32-only shaders. All f64 canonical. Gate OPEN for absorptions. |
+| **F16 downcast hardened** | `downcast_f64_to_f16()` — sentinel protection + literal clamping (±65504.0). |
+| **DF64 ghost mappings cleaned** | 8 non-existent transcendental mappings removed. |
+| **NaN-safe bridge functions** | IEEE 754 compliant `_df64_gte_f64`/`_df64_lte_f64`. |
+| **122 shader tests** | Unit + e2e + chaos (15) + fault (13). |
+| **`compile_op_shader()`** | New entry point for abstract-op shaders at any precision. |
 
 **Previous (Feb 26 — Session 66):**
 
@@ -222,7 +222,8 @@ let hierarchy = SubstrateMemoryHierarchy::probe(&device).await;
 ### Math Is Universal, Precision Is Silicon
 
 All math is WGSL primary. One source, any precision via `compile_shader_universal()`:
-- 707 WGSL shaders (510 f32, 195 f64, 20 Df64)
+- 700 WGSL shaders (497 f32 via LazyLock, 182 f64, 21 Df64 — zero f32-only)
+- Dual-layer: op_preamble (abstract ops) + naga df64_rewrite (infix→bridge functions)
 - 12 universal `{{SCALAR}}` templates
 - Same shader → Vulkan (NVIDIA/AMD), Metal (Apple), DX12 (Windows)
 

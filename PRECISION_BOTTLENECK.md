@@ -1,7 +1,7 @@
 # Precision Bottleneck — Evolution Gate
 
 **Date**: February 26, 2026 — Session 68
-**Status**: ACTIVE — solve precision debt before absorbing more from springs
+**Status**: RESOLVED — dual-layer universal precision operational. Precision gate OPEN.
 
 ---
 
@@ -34,11 +34,17 @@ Phase 4 (algorithm evolution) proceeds in parallel with absorptions.
 ## Phase 1: Infrastructure — DONE
 
 - [x] `Precision::Df64` enum variant
-- [x] `compile_shader_universal(source, precision)` on `WgpuDevice`
+- [x] `compile_shader_universal(source, precision)` on `WgpuDevice` — f16/f32/f64/df64
+- [x] `compile_op_shader(source, precision)` on `WgpuDevice` — abstract op entry point
+- [x] `Precision::op_preamble()` — abstract operations for all 4 precisions
 - [x] `compile_template(template, precision)` on `WgpuDevice`
 - [x] `downcast_f64_to_f32()` with sentinel-protected `_f64(` names
 - [x] `downcast_f64_to_f32_with_transcendentals()` (polyfill → native)
+- [x] `downcast_f64_to_f16()` with sentinel protection + f16 literal clamping
+- [x] `downcast_f64_to_df64()` with accurate transcendental mapping (8 functions only)
+- [x] `sovereign/df64_rewrite.rs` — naga-guided f64 infix → DF64 bridge functions
 - [x] 12 universal `{{SCALAR}}` templates
+- [x] 122 shader tests (unit + e2e + chaos + fault)
 
 ---
 
@@ -201,6 +207,7 @@ improves quality without creating new debt.
 | f32 WGSL files deleted | 0 | 296 (5 pairs + 291 f32-only) | 50+ |
 | f32-only shaders remaining | ~534 | **0** | 0 |
 | `downcast_f64_to_f32` callers | 0 | 296 | 296 |
+| Shader-specific tests | 0 | **122** (unit/e2e/chaos/fault) | 122+ |
 | `println!` in production | 14 | 0 | 0 |
 | Magic numbers in production | 5 | 0 | 0 |
 

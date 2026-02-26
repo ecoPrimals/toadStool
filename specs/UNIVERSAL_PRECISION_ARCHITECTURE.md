@@ -1,6 +1,6 @@
 # Universal Precision Architecture
 
-**Date**: February 24, 2026
+**Date**: February 26, 2026
 **Status**: Dual-layer universal precision — op_preamble + naga IR rewrite both operational
 **Classification**: Core architecture — applies to every shader in BarraCuda
 
@@ -48,7 +48,7 @@ compile_shader_universal(source, precision)
 | **F32** | `compile_shader_universal(src, F32)` | `downcast_f64_to_f32()`: `array<f64>` → `array<f32>`, `: f64` → `: f32`, `f64(` → `f32(`. Sentinel-protects `_f64(` function names. |
 | **F64** | `compile_shader_universal(src, F64)` | `compile_shader_f64()`: driver-aware transcendental patching (28 polyfills), ILP optimizer, sovereign compiler SPIR-V passthrough. |
 | **Df64** | `compile_shader_universal(src, Df64)` | `compile_shader_df64()`: auto-inject `df64_core.wgsl` + `df64_transcendentals.wgsl`, ILP optimizer, sovereign compiler. Separate source required (structural layout differs: `vec2<f32>` storage, `df64_add`/`df64_mul` calls). |
-| **F16** | `compile_shader_universal(src, F16)` | Text downcast `f64` → `f16`. Requires `SHADER_F16` feature. |
+| **F16** | `compile_shader_universal(src, F16)` | `downcast_f64_to_f16()`: sentinel-protected type transform + `clamp_f64_range_literals_f16()` (±65504.0). Requires `SHADER_F16` feature. |
 
 ### Template System
 
@@ -106,13 +106,13 @@ naga makes everything portable by force.
 
 ---
 
-## Precision Inventory (707 shaders)
+## Precision Inventory (700 shaders — Session 68)
 
 | Category | Count | Coverage |
 |----------|-------|----------|
-| **Pure f32** | 510 (72%) | ~50 are universal math candidates for consolidation |
-| **Native f64** | 195 (28%) | Scientific computing, lattice QCD, MD forces |
-| **Df64** | 20 (3%) | Consumer GPU f64-class on FP32 cores |
+| **f32 (LazyLock downcast)** | 497 (71%) | All generated from f64 canonical via `downcast_f64_to_f32()`. Zero f32-only. |
+| **Native f64** | 182 (26%) | Scientific computing, lattice QCD, MD forces |
+| **Df64** | 19 (3%) | Consumer GPU f64-class on FP32 cores |
 | **Df64 infrastructure** | 2 | `df64_core.wgsl`, `df64_transcendentals.wgsl` |
 
 ### By Directory
@@ -170,7 +170,7 @@ These have identical logic in both f32 and f64 files — consolidation candidate
 - [x] Bridge functions for f64→DF64→f64 transparent routing
 - [x] 12 universal `{{SCALAR}}` templates
 - [x] Full precision inventory
-- [x] 51 passing tests (precision + sovereign + df64 rewrite + universal shader validation)
+- [x] 122 passing tests (precision + sovereign + df64 rewrite + universal shader validation + chaos + fault)
 
 ### Phase 2: Consolidate Existing Duplicates
 

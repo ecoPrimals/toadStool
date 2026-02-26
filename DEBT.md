@@ -1,9 +1,28 @@
 # Active Technical Debt Register
 
-**Date**: February 24, 2026
+**Date**: February 26, 2026
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## Session 68 Resolutions (Feb 26, 2026)
+
+### Dual-Layer Universal Precision Architecture
+- **R-S68-001**: `Precision::op_preamble()` — returns precision-specific WGSL defining `op_add`/`op_sub`/`op_mul`/`op_div`/`op_neg`/`op_abs`/`op_max`/`op_min`/`op_gt`/`op_lt`/`op_ge`/`op_le`/`op_from_f32`/`op_zero`/`op_one`/`op_pack`/`op_unpack` for F16, F32, F64, and DF64. Shaders written with abstract ops run at all precisions.
+- **R-S68-002**: `compile_op_shader(source, precision)` — new entry point that injects the correct `op_preamble` for the requested precision and routes through the appropriate compiler.
+- **R-S68-003**: `sovereign/df64_rewrite.rs` — naga-guided f64 infix rewrite. Parses WGSL with naga, identifies f64 binary/comparison ops by type analysis, replaces with bridge functions (`_df64_add_f64`, `_df64_sub_f64`, `_df64_mul_f64`, `_df64_div_f64`, `_df64_neg_f64`, `_df64_gt_f64`, `_df64_lt_f64`, `_df64_gte_f64`, `_df64_lte_f64`). Bridge functions convert f64→Df64, compute, convert back — keeps f64 type system intact while routing computation through DF64 core.
+- **R-S68-004**: `compile_shader_universal()` Df64 branch — tries naga-guided rewrite first, falls back to text-based `downcast_f64_to_df64()`. Dual-layer coverage.
+
+### Precision Pipeline Hardening
+- **R-S68-005**: `downcast_f64_to_f16()` — sentinel protection (`_f64(` polyfill names preserved) + `clamp_f64_range_literals_f16()` (caps to ±65504.0). Previous F16 branch corrupted polyfill names and didn't clamp literals.
+- **R-S68-006**: `downcast_f64_to_df64()` transcendental mapping — removed 8 ghost mappings to non-existent functions (tan/asin/acos/atan/atan2/sinh/cosh/erf_df64). Only maps 8 functions with actual implementations (exp/log/pow/sin/cos/tanh/sqrt/abs).
+- **R-S68-007**: NaN-safe bridge functions — `_df64_gte_f64`/`_df64_lte_f64` use explicit equality check instead of `!lt`/`!gt` (correct IEEE 754 NaN semantics).
+- **R-S68-008**: Span robustness — bounds validation (`start <= end`, `end <= len`) in `resolve_spans()` and `replace_range`. Safe `f64(0.0)` fallback for undefined naga spans. Prevents panics from malformed markers.
+
+### Comprehensive Test Suite
+- **R-S68-009**: 122 shader-specific tests — unit (downcasts, preambles, sentinel protection, literal clamping), e2e (real shaders at all precisions via naga parse), chaos (15: empty input, nested patterns, adversarial sentinels, boundary values, mixed types), fault (13: idempotency, span bounds, dedup correctness, graceful degradation).
+
+---
 
 ## Session 67 Resolutions (Feb 24, 2026)
 

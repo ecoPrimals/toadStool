@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 24, 2026 -- Session 67
+**Last Updated**: February 26, 2026 -- Session 68
 
 ---
 
@@ -18,7 +18,7 @@
 | Sovereign compute roadmap | [SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md) |
 | Unidirectional pipeline | [UNIDIRECTIONAL_PIPELINE.md](UNIDIRECTIONAL_PIPELINE.md) |
 | See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-36-total) |
-| Try GPU operations | [docs/guides/QUICK_START_GPU.md](docs/guides/QUICK_START_GPU.md) |
+| Try GPU operations | [docs/guides/BARRACUDA_V2_QUICKSTART.md](docs/guides/BARRACUDA_V2_QUICKSTART.md) |
 | Learn FHE | [docs/guides/QUICK_START_ENCRYPTION.md](docs/guides/QUICK_START_ENCRYPTION.md) |
 | Use scientific computing | [docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md](docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md) |
 | Run tests | [docs/guides/TESTING.md](docs/guides/TESTING.md) |
@@ -29,15 +29,17 @@
 
 ---
 
-## Current State (Session 67 — February 24, 2026)
+## Current State (Session 68 — February 26, 2026)
 
-- **Math is universal, precision is silicon** — `compile_shader_universal()` compiles one shader source to f32/f64/df64. 12 universal `{{SCALAR}}` templates. `downcast_f64_to_f32()`.
-- **Sovereign Compiler** — naga-IR optimizer: FMA fusion, dead expression elimination, SPIR-V passthrough. End-to-end Rust GPU compilation pipeline.
+- **Dual-layer universal precision** — Layer 1: `op_preamble` (abstract `op_add`/`op_mul`/`Scalar` for all 4 precisions). Layer 2: naga-guided `df64_rewrite` (compiler identifies f64 infix ops, replaces with DF64 bridge functions). `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
+- **Sovereign Compiler** — naga-IR optimizer: FMA fusion, dead expression elimination, df64 infix rewrite, SPIR-V passthrough. End-to-end Rust GPU compilation pipeline.
 - **700 WGSL shaders** — zero orphans, 21 DF64 files, **zero f32-only**. All shaders f64 canonical; f32 generated via LazyLock downcast. 296 f32 WGSL files deleted.
+- **Precision pipeline hardened** — F16 sentinel protection + literal clamping. DF64 ghost mappings cleaned. NaN-safe bridge functions (IEEE 754 compliant). Span bounds validation.
+- **122 shader tests** — unit (downcasts, preambles), e2e (real shaders at all precisions via naga), chaos (15: adversarial patterns), fault (13: idempotency, degradation).
 - **Deep debt systematically resolved** — 15 files smart-refactored (20-44% reductions). 3 `#[allow(dead_code)]` remain (feature-gated/Phase 5+).
 - **FMA-optimized DF64** — `two_prod` 17→2 ops. DF64 transcendentals at FP32 core speed.
 - **f64 polyfill library** — 28 functions, no vendor math library dependency (no libdevice/ocml)
-- **2,541 barracuda tests** + 21,599 workspace tests | all quality gates green
+- **2,546+ barracuda tests** + 21,599 workspace tests | all quality gates green
 - **Zero clippy warnings** | zero fmt diffs | zero TODO/FIXME/HACK | all files under 1000 lines
 - **Linalg GPU-dispatched** — solve, cholesky (with SPD validation), QR, SVD, LU
 - **Lattice QCD** — 14 GPU shaders + CG solver + HMC trajectory orchestration
@@ -50,7 +52,7 @@
 
 **[README.md](README.md)** -- Project overview, architecture, quality gates, evolution roadmap.
 
-**[PRECISION_BOTTLENECK.md](PRECISION_BOTTLENECK.md)** -- **Evolution gate**: 50 duplicate f32/f64 pairs to consolidate, ~30 f32-only universals to evolve, ~64 transcendental-dependent shaders. Gate rule: no new spring absorptions until precision debt resolved.
+**[PRECISION_BOTTLENECK.md](PRECISION_BOTTLENECK.md)** -- **Evolution gate**: RESOLVED. Zero f32-only shaders, all f64 canonical. Dual-layer universal precision operational.
 
 **[STATUS.md](STATUS.md)** -- Detailed technical status: quality gates, session-by-session evolution.
 
@@ -100,7 +102,7 @@
 
 ## By Role
 
-**ML/AI Engineers**: [README.md](README.md) then [docs/guides/QUICK_START_GPU.md](docs/guides/QUICK_START_GPU.md)
+**ML/AI Engineers**: [README.md](README.md) then [docs/guides/BARRACUDA_V2_QUICKSTART.md](docs/guides/BARRACUDA_V2_QUICKSTART.md)
 
 **Computational Scientists**: [docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md](docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md) then [QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api)
 

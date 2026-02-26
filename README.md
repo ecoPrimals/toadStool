@@ -34,7 +34,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace --lib` | 2,541 barracuda + 21,599 workspace tests |
+| `cargo test --workspace --lib` | 2,546+ barracuda (122 shader-specific) + 21,599 workspace tests |
 | Four springs validation | 4,000+ acceptance checks |
 | `unsafe` blocks | 2 in barracuda (SPIRV passthrough + pipeline cache), 95+ workspace-wide, all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -42,7 +42,7 @@ Nest    = Tower  + NestGate           <- storage
 | Production TODOs | 0 -- all evolved to formal `BLOCKED(reason)` markers |
 | Hardcoded primal names | 0 -- capability-based discovery throughout |
 | Hardcoded localhost/ports | 0 -- bind `0.0.0.0`, port 0 (OS-assigned), `discover_self_ip_address()` |
-| Orphan shaders | 0 -- all 702 WGSL shaders wired to Rust (21 DF64 files) |
+| Orphan shaders | 0 -- all 700 WGSL shaders wired to Rust (21 DF64 files) |
 | CPU-only math in production | 0 -- all math dispatches GPU shaders |
 | File size limit | All production files under 1000 lines |
 | `cargo deny check` | All passing — licenses, bans, sources |
@@ -119,13 +119,16 @@ TinyLlama-1.1B split across two machines over LAN TCP:
 ```
 Applications (hotSpring, NUCLEUS inference, etc.)
        |
-BarraCUDA: 702 WGSL Shaders (MATH IS UNIVERSAL — PRECISION IS SILICON)
+BarraCUDA: 700 WGSL Shaders (MATH IS UNIVERSAL — PRECISION IS SILICON)
   All math originates as WGSL — barracuda does not care about hardware
-  compile_shader_universal(): one shader → f32/f64/df64 via pipeline
+  Dual-layer universal precision:
+    Layer 1 (source): op_preamble — op_add/op_mul/Scalar alias → all precisions
+    Layer 2 (compiler): naga-guided df64_rewrite — infix operators → bridge functions
+  compile_shader_universal(): one shader → f16/f32/f64/df64 via pipeline
+  compile_op_shader(): abstract ops work at ALL precisions without transformation
   compile_shader_f64() / compile_shader_df64() polyfill 28 transcendentals (no libdevice/ocml)
-  downcast_f64_to_f32(): text-transform f64 shaders to f32 (universal math)
-  12 universal templates: add/mul/sub/fma/abs/neg/clamp/saxpy/dot/sum/mean/mse/mae
-  SovereignCompiler: naga-IR → FMA fusion → DCE → SPIR-V passthrough
+  downcast_f64_to_f32/f16/df64(): text-transform with sentinel protection
+  SovereignCompiler: naga-IR → FMA fusion → DCE → df64 infix rewrite → SPIR-V passthrough
   Fp64Strategy: Native f64 (compute GPUs) | Hybrid DF64 (consumer GPUs)
   21 DF64 files: core (FMA), transcendentals, GEMM, 4 force fields, SU(3), 5 lattice QCD
   ComputeDispatch builder: fluent pipeline creation, ~80→5 lines per op
@@ -211,7 +214,7 @@ cargo llvm-cov --lib -p toadstool-common --json
 ```
 toadStool/
 +-- crates/                        43 crates
-|   +-- barracuda/                 702 WGSL shaders (shader-first), tensor ops, linalg, MD, HFB physics, lattice QCD, ESN, PDE, scientific middleware
+|   +-- barracuda/                 700 WGSL shaders (shader-first, dual-layer universal precision), tensor ops, linalg, MD, HFB physics, lattice QCD, ESN, PDE, scientific middleware
 |   +-- core/
 |   |   +-- common/                Shared types, constants, primal identity, ecosystem IDs, error types
 |   |   +-- config/                Centralized configuration (env-aware, network config)
@@ -246,7 +249,7 @@ toadStool/
 
 ### Deep Debt Principles
 
-1. **Math is universal, precision is silicon** -- all math originates as WGSL. `compile_shader_universal()` compiles one source to f32/f64/df64. 12 universal templates (`{{SCALAR}}`-parameterized) generate any precision at compile time. `downcast_f64_to_f32()` transforms f64 shaders to f32 via text substitution. Every shader runs at every precision.
+1. **Math is universal, precision is silicon** -- dual-layer universal precision. Layer 1 (source): `op_preamble` — abstract operations (`op_add`, `op_mul`, `Scalar` alias) that compile to all precisions. Layer 2 (compiler): naga-guided `df64_rewrite` — parses f64 WGSL, identifies infix operators by type, replaces with bridge functions routing computation through DF64. `compile_shader_universal()` and `compile_op_shader()` compile one source to f16/f32/f64/df64. `downcast_f64_to_f32/f16/df64()` with sentinel protection. 122 shader tests (unit + e2e + chaos + fault).
 2. **f64 portability** -- `compile_shader_f64()` auto-injects software polyfills (exp, log, pow, sin, cos, etc.) on drivers lacking native support. `compile_shader_df64()` auto-injects DF64 core + transcendentals for f64-class precision on FP32 cores. Every GPU runs every shader.
 3. **Modern idiomatic Rust** -- parameter-based APIs, zero global state mutation, thiserror 2.0
 4. **Capability-based discovery** -- self-knowledge principle: only `PRIMAL_NAME` is known; everything else discovered at runtime
@@ -266,15 +269,15 @@ toadStool/
 | Clippy warnings | 0 |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Unit tests (barracuda) | 2,541 |
-| WGSL shaders (barracuda) | 702 (21 DF64, 182 f64, 499 f32, 5 consolidated) |
+| Unit tests (barracuda) | 2,546+ |
+| Shader-specific tests | 122 (unit + e2e + chaos + fault) |
+| WGSL shaders (barracuda) | 700 (zero orphans, shader-first, 21 DF64 + 182 f64 + 497 f32 — zero f32-only, all f64 canonical) |
 | Unit tests (full workspace) | 21,599+ |
 | `unsafe` blocks | 2 in barracuda (SPIRV passthrough + pipeline cache), 95+ workspace-wide, all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs | 0 -- all `BLOCKED(reason)` markers |
 | Hardcoded localhost/ports/URLs in prod | 0 |
-| WGSL shaders | 702 (zero orphans, shader-first, 21 DF64 + 182 f64 + 499 f32, 5 consolidated) |
 | Four springs validation | 4,000+ acceptance checks |
 
 ---
@@ -282,12 +285,24 @@ toadStool/
 ## Evolution
 
 ### Active / Next
-- **P0: Universal precision shaders** -- `compile_shader_universal()` routes one shader source to f32/f64/df64 via pipeline. 12 `{{SCALAR}}`-parameterized templates. `downcast_f64_to_f32()` for f64→f32 text transform. ~50 universal candidates identified for migration.
+- **Deep debt: Large file refactoring** -- smart structural refactoring (not just splitting), extract modules by concern
+- **Deep debt: External dependencies** -- analyze remaining external deps, evolve to pure Rust where possible
+- **Deep debt: Unsafe evolution** -- evolve unsafe blocks to safe Rust (fast AND safe)
+- **Deep debt: Hardcoding → capability-based** -- primal code has self-knowledge only, discovers others at runtime
 - **P2: Architecture-specific polynomials** -- different Horner/Estrin evaluation strategies per silicon family (deferred until profiling data)
 - **ComputeDispatch migration** -- Builder pattern created; migrating existing ops to reduce boilerplate
 - **Conv2D/Pool stride/padding/channels** -- WGSL exists, single-channel wired; full parametric support pending (D-S46-001)
 - **W-001/W-003** -- Mesa NAK upstream patches pending Titan V validation
 - **NVK/Titan V readiness** -- Ensure f64 workarounds complete for NVK/Volta including NAK-specific paths
+
+### Completed (Session 68: Dual-Layer Universal Precision + Deep Audit, Feb 26, 2026)
+- **Dual-layer universal precision architecture**: Layer 1 (source) — `Precision::op_preamble()` provides `op_add`/`op_mul`/`op_pack`/`op_unpack`/`Scalar` for all 4 precisions (f16/f32/f64/DF64). `compile_op_shader()` injects the right preamble. Layer 2 (compiler) — `sovereign/df64_rewrite.rs` parses f64 WGSL with naga, identifies f64 `Binary{+,-,*,/}` by type analysis, replaces with bridge functions (`_df64_add_f64` etc.) that route computation through DF64 while keeping the f64 type system intact.
+- **Precision bottleneck execution**: 296 f32 WGSL files deleted. Zero f32-only shaders remain — all f64 canonical with `LazyLock` downcast.
+- **F16 downcast hardened**: `downcast_f64_to_f16()` with sentinel protection (`_f64(` preserved) + f16 literal clamping (65504.0).
+- **DF64 transcendental mapping cleaned**: Removed 8 ghost mappings to non-existent functions (tan/asin/acos/atan/atan2/sinh/cosh/erf_df64).
+- **NaN-safe bridge functions**: `_df64_gte_f64`/`_df64_lte_f64` use equality check instead of `!lt`/`!gt` (correct IEEE 754 NaN handling).
+- **Comprehensive audit**: All critical/important findings fixed — span bounds validation, undefined span fallbacks, op_pack/op_unpack for all precisions.
+- **122 shader tests**: unit (edge cases, downcasts), e2e (real shaders at all precisions via naga), chaos (15: empty input, adversarial patterns, boundary values), fault (13: idempotency, graceful degradation, dedup correctness).
 
 ### Completed (Session 67: Universal Precision Architecture, Feb 24, 2026)
 - **Universal precision system**: `compile_shader_universal()` — one source, any precision (f32/f64/df64). Math is universal, precision is silicon.
@@ -360,7 +375,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 | Document | Purpose |
 |----------|---------|
-| [PRECISION_BOTTLENECK.md](PRECISION_BOTTLENECK.md) | **Evolution gate** -- solve all precision debt before absorbing |
+| [PRECISION_BOTTLENECK.md](PRECISION_BOTTLENECK.md) | **Evolution gate** -- RESOLVED. Dual-layer universal precision operational |
 | [STATUS.md](STATUS.md) | Detailed technical status, session-by-session |
 | [DEBT.md](DEBT.md) | Active debt register, workarounds, evolution paths |
 | [NEXT_STEPS.md](NEXT_STEPS.md) | Roadmap and upcoming work |
@@ -372,4 +387,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 26, 2026 -- Session 68: Precision bottleneck COMPLETE. 296 f32 WGSL files deleted — ZERO f32-only shaders remain. Every shader is now f64 canonical with f32 generated via LazyLock downcast at runtime. Precision bottleneck gate OPEN for spring absorptions. 700 WGSL shaders (21 DF64 + 182 f64 + 497 f32). 2,546 barracuda tests. 0 clippy warnings.
+**Last Updated**: February 26, 2026 -- Session 68: Dual-layer universal precision COMPLETE (op_preamble + naga-guided df64_rewrite). Precision bottleneck RESOLVED — zero f32-only shaders, all f64 canonical. F16/DF64 downcasts hardened (sentinel protection, NaN-safe bridge functions, ghost mappings cleaned). 122 shader tests (unit/e2e/chaos/fault). 700 WGSL shaders. 2,546+ barracuda tests. 0 clippy warnings.

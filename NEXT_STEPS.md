@@ -1,11 +1,21 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: February 24, 2026 -- Session 67
-**Status**: Production-grade | 700 WGSL shaders (21 DF64, 0 f32-only, 296 consolidated) | 2,546 barracuda tests | Universal precision pipeline | Precision gate OPEN | All quality gates green
+**Updated**: February 26, 2026 -- Session 68
+**Status**: Production-grade | 700 WGSL shaders (21 DF64, 0 f32-only, all f64 canonical) | 2,546+ barracuda tests (122 shader-specific) | Dual-layer universal precision (op_preamble + naga df64_rewrite) | Precision gate OPEN | All quality gates green
 
 ---
 
 ## Completed This Session
+
+### Session 68: Dual-Layer Universal Precision + Precision Bottleneck ✅
+
+- **Dual-layer architecture**: Layer 1 — `op_preamble` (abstract ops for F16/F32/F64/DF64 via `compile_op_shader()`). Layer 2 — naga-guided `df64_rewrite` (bridge functions for infix f64→DF64).
+- **Precision bottleneck RESOLVED**: 296 f32 WGSL files deleted. Zero f32-only shaders. All f64 canonical.
+- **F16 downcast hardened**: sentinel protection + f16 literal clamping (±65504.0).
+- **DF64 ghost mappings cleaned**: 8 non-existent transcendental mappings removed.
+- **NaN-safe bridge functions**: IEEE 754 compliant `_df64_gte_f64`/`_df64_lte_f64`.
+- **122 shader tests**: unit + e2e + chaos (15) + fault (13).
+- **Comprehensive audit**: span bounds, undefined span fallbacks, op_pack/op_unpack consistency.
 
 ### Session 66: Cross-Spring Absorption + Deep Debt + Multi-Precision Expansion ✅
 
@@ -109,28 +119,24 @@ See `contrib/mesa-nak/NAK_DEFICIENCIES.md` for full decomposition.
 
 ## Upcoming
 
-### P0: Universal Precision Shaders — Math Is Universal, Precision Is Silicon
+### P0: Universal Precision Shaders — OPERATIONAL ✅
 
-**Principle**: Every shader runs at every precision. The WGSL is universal math. Precision is a compilation pipeline detail — just as we solved f64 builtins with polyfills, we solve multi-precision with compilation.
+**Principle**: Every shader runs at every precision. Math is universal, precision is silicon.
 
-**Proven**: hotSpring ran 32⁴ QCD on 3090's 1.6% FP64 cores. DF64 gives 9.9× throughput vs native f64. Consumer GPU FP64 is real.
+**Status**: Dual-layer architecture complete and tested (122 tests). All 700 shaders are f64 canonical. Precision bottleneck resolved.
 
-**Inventory (700 shaders, all f64 canonical)**:
-- ~50 "conceptually universal" shaders (elementwise, reduce, loss, basic linalg) — math doesn't change, only type surface (~6-15 lines per shader)
-- ~180 transcendental-dependent shaders — need polyfill pipeline (`compile_shader_f64()` / `compile_shader_df64()`)
-- ~80 precision-critical (lattice QCD, MD) — already f64/df64
-
-**Architecture**: Rust-side codegen emits f32/f64/Df64 variants from one source template. The `compile_shader_f64()` and `compile_shader_df64()` pipelines already prove the pattern. Evolution:
-1. Template system for the ~50 universal math shaders (type surface is small)
-2. Extend to transcendental-dependent shaders via polyfill injection
-3. Runtime `Fp64Strategy` selects f32/df64/f64 based on hardware capability
-
-**Infrastructure already built**:
-- `compile_shader_f64()` — 3-stage pipeline (driver patch → ILP → sovereign compiler)
-- `compile_shader_df64()` — auto-injects df64_core + df64_transcendentals
+**Infrastructure**:
+- `compile_shader_universal(source, precision)` — routes one source to f16/f32/f64/df64
+- `compile_op_shader(source, precision)` — abstract `op_add`/`op_mul` work at all precisions
+- `Precision::op_preamble()` — F16/F32/F64/DF64 preambles with full op coverage
+- `downcast_f64_to_f32/f16/df64()` — text-based with sentinel protection + literal clamping
+- `sovereign/df64_rewrite.rs` — naga-guided f64 infix → DF64 bridge functions
+- `compile_shader_f64/df64()` — polyfill injection pipelines (28 transcendentals)
 - `Fp64Strategy::Native/Hybrid` — runtime precision selection
-- `math_f64.wgsl` — 28 transcendental polyfills
-- `df64_core.wgsl` + `df64_transcendentals.wgsl` — FMA-optimized DF64 arithmetic + transcendentals
+
+**Remaining evolution**:
+- Migrate existing shaders from direct type usage to `op_add`/`op_mul` where beneficial
+- Extend DF64 transcendental coverage (see P1)
 
 ### P1: DF64 Transcendentals — Extended Coverage
 

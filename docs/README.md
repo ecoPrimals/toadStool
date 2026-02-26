@@ -1,6 +1,6 @@
 # ToadStool Documentation
 
-**Updated**: February 26, 2026 -- Session 66
+**Updated**: February 26, 2026 -- Session 68
 
 Primary documentation lives at the repository root. See [../DOCUMENTATION.md](../DOCUMENTATION.md) for the navigation hub.
 
@@ -21,8 +21,7 @@ Primary documentation lives at the repository root. See [../DOCUMENTATION.md](..
 
 ### Guides
 - **[guides/TESTING.md](guides/TESTING.md)** -- Testing strategy
-- **[guides/QUICK_START_GPU.md](guides/QUICK_START_GPU.md)** -- GPU quick start
-- **[guides/BARRACUDA_V2_QUICKSTART.md](guides/BARRACUDA_V2_QUICKSTART.md)** -- BarraCuda API
+- **[guides/BARRACUDA_V2_QUICKSTART.md](guides/BARRACUDA_V2_QUICKSTART.md)** -- BarraCuda GPU quick start
 
 ### Reference
 - **[reference/](reference/)** -- Constants, types, server methods, config patterns
