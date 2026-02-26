@@ -38,7 +38,7 @@ impl AutoContext {
     ///
     /// Discovers all available hardware and creates device pool
     pub async fn new() -> Result<Self> {
-        println!("🔧 Initializing AutoContext...");
+        tracing::info!("Initializing AutoContext...");
 
         // Initialize scheduler
         let scheduler = UnifiedScheduler::new().await?;
@@ -49,18 +49,18 @@ impl AutoContext {
         // GPU device - use shared pool for thread-safe concurrent access
         if scheduler.get_executor(HardwareType::GPU).is_some() {
             let shared_device = crate::device::test_pool::get_test_device().await;
-            println!("  ✅ GPU device from shared pool");
+            tracing::info!("GPU device from shared pool");
             devices.insert(HardwareType::GPU, shared_device.clone());
             // CPU uses the same device (wgpu handles backend selection)
             devices.insert(HardwareType::CPU, shared_device);
         } else {
             // Fallback: try to get any device from pool
             let shared_device = crate::device::test_pool::get_test_device().await;
-            println!("  ✅ Fallback device from shared pool");
+            tracing::info!("Fallback device from shared pool");
             devices.insert(HardwareType::CPU, shared_device);
         }
 
-        println!("  ✅ AutoContext ready with {} device(s)", devices.len());
+        tracing::info!("AutoContext ready with {} device(s)", devices.len());
 
         Ok(Self { scheduler, devices })
     }
@@ -114,8 +114,8 @@ impl AutoContext {
         let executor = self.scheduler.select_executor(&op, &[desc_a, desc_b]);
         let hw_type = executor.hardware_type();
 
-        println!(
-            "  🎯 MatMul {}×{} → {} (score: {:.3})",
+        tracing::info!(
+            "MatMul {}×{} → {} (score: {:.3})",
             a.shape()[0],
             a.shape()[1],
             executor.name(),
@@ -163,8 +163,8 @@ impl AutoContext {
             .select_executor(&op, std::slice::from_ref(&desc));
         let hw_type = executor.hardware_type();
 
-        println!(
-            "  🎯 ReLU [{}] → {} (score: {:.3})",
+        tracing::info!(
+            "ReLU [{}] → {} (score: {:.3})",
             input.shape().iter().product::<usize>(),
             executor.name(),
             executor.score_operation(&op, &[desc])
@@ -201,8 +201,8 @@ impl AutoContext {
             .select_executor(&op, &[desc_input.clone(), desc_kernel.clone()]);
         let hw_type = executor.hardware_type();
 
-        println!(
-            "  🎯 Conv2D {:?} * {:?} → {} (score: {:.3})",
+        tracing::info!(
+            "Conv2D {:?} * {:?} → {} (score: {:.3})",
             input.shape(),
             kernel.shape(),
             executor.name(),

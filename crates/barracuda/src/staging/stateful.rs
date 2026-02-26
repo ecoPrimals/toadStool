@@ -261,7 +261,7 @@ impl StatefulPipeline {
             .map_err(|e| BarracudaError::execution_failed(e.to_string()))?;
 
         let data = slice.get_mapped_range();
-        // SAFETY: chunks_exact(8) guarantees exactly 8-byte chunks
+        // infallible: chunks_exact(8) guarantees exactly 8-byte chunks, so try_into never fails
         let result: Vec<f64> = data
             .chunks_exact(8)
             .map(|b| f64::from_le_bytes(b.try_into().expect("chunks_exact(8) invariant")))

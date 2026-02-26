@@ -33,7 +33,7 @@
 
 - **Math is universal, precision is silicon** — `compile_shader_universal()` compiles one shader source to f32/f64/df64. 12 universal `{{SCALAR}}` templates. `downcast_f64_to_f32()`.
 - **Sovereign Compiler** — naga-IR optimizer: FMA fusion, dead expression elimination, SPIR-V passthrough. End-to-end Rust GPU compilation pipeline.
-- **707 WGSL shaders** — zero orphans, 21 DF64 files, zero CPU-only math in production. Full precision inventory.
+- **702 WGSL shaders** — zero orphans, 21 DF64 files, zero CPU-only math in production. 5 pairs consolidated (f64 canonical, f32 via downcast).
 - **Deep debt systematically resolved** — 15 files smart-refactored (20-44% reductions). 3 `#[allow(dead_code)]` remain (feature-gated/Phase 5+).
 - **FMA-optimized DF64** — `two_prod` 17→2 ops. DF64 transcendentals at FP32 core speed.
 - **f64 polyfill library** — 28 functions, no vendor math library dependency (no libdevice/ocml)

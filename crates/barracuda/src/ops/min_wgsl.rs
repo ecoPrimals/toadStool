@@ -15,8 +15,12 @@ use wgpu::util::DeviceExt;
 /// Simple min reduction variant (scalar path).
 pub const WGSL_MIN_SIMPLE: &str = include_str!("../shaders/math/min_simple.wgsl");
 
-/// Basic min reduction shader.
-pub const WGSL_MIN_BASIC: &str = include_str!("../shaders/math/min.wgsl");
+/// f64 is the canonical source — math is universal, precision is silicon.
+const WGSL_MIN_BASIC_F64: &str = include_str!("../shaders/math/min_f64.wgsl");
+
+/// Basic min reduction shader (f32 derived from f64).
+pub static WGSL_MIN_BASIC: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_MIN_BASIC_F64));
 
 /// Min reduction operation
 pub struct Min {

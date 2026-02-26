@@ -1,4 +1,4 @@
-# Status -- February 24, 2026 (Sessions 32-67: Universal Precision)
+# Status -- February 26, 2026 (Sessions 32-68: Precision Bottleneck Execution)
 
 ## Quality Gates
 
@@ -24,8 +24,9 @@
 | Production panics/unwraps | PASS | **Zero blind `unwrap()`; infallible `expect()` only** |
 | Production TODOs | PASS | **Zero -- all evolved to `BLOCKED(reason)` markers** |
 | File size limit | PASS | **All production files under 1000 lines** |
-| WGSL shaders | PASS | **707 (zero orphans, shader-first, 21 DF64 + 182 f64 + 504 f32)** |
-| Dead code | PASS | **3 `#[allow(dead_code)]` remain — feature-gated TPU + PCIe diag + Phase 5+ placeholder** |
+| WGSL shaders | PASS | **702 (zero orphans, shader-first, 21 DF64 + 182 f64 + 499 f32, 5 consolidated)** |
+| Dead code | PASS | **5 `#[allow(dead_code)]` remain — feature-gated TPU + PCIe diag + f64 shader accessors** |
+| Production println!/dbg! | PASS | **Zero — evolved to `tracing::info!`** |
 | External dep hygiene | PASS | **`instant` + `chrono` + `anyhow` + `log` eliminated; `async_trait` justified (dyn-required)** |
 | Production mocks | PASS | **Zero — TpuBackend::Mock behind `mock-tpu` feature gate** |
 | Platform stubs | PASS | **Evolved to platform-aware `can_handle()` + `SystemError::NotSupported`** |
@@ -33,6 +34,36 @@
 | Dependency security | PASS | **bytes >=1.11.1, aes-gcm >=0.10.3, zero chrono** |
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+
+---
+
+## Session 68: Precision Bottleneck Execution (Feb 26, 2026)
+
+Executing on the precision bottleneck gate. Comprehensive shader inventory reveals
+actual debt structure is more nuanced than initially estimated.
+
+### Shader Consolidation (Phase 2)
+- **5 near-duplicate pairs consolidated**: elementwise_add, elementwise_mul, sum_dim, mean_dim, std_dim
+- **Pattern**: f64 is canonical source, f32 produced via `LazyLock<String>` + `downcast_f64_to_f32()`, f32 WGSL file deleted
+- **Discovery**: Only 5 of 54 pairs are true type-only duplicates. The remaining 49 are structurally different (f64 uses superior algorithms like workgroup tree reduction, Welford statistics)
+- **New Phase 4**: Algorithm evolution — evolve f32 implementations to match f64 quality
+
+### Shader Inventory (Phase 3)
+- **393 f32-only shaders** identified (no f64 counterpart): 240 trivial (type replacement), 138 transcendental (need polyfills), 15 u32/i32-only
+- Comprehensive classification enables systematic phase 3 execution
+
+### Deep Debt Sweep
+- **Production println!**: 14 calls in `auto_tensor.rs` and `validation.rs` → evolved to `tracing::info!`
+- **Magic numbers**: `npu_executor.rs` hardcoded floats → named constants in `npu_efficiency` module
+- **Mock naming**: `MOCK_FP16_TFLOPS` → `NPU_EQUIVALENT_TFLOPS` (NPUs use spike counts, not TFLOPS)
+- **Infallible expect()**: Documented in `lanczos.rs` and `stateful.rs`
+- **Verified clean**: 0 unsafe, 0 todo!/unimplemented!, 0 dbg!, 0 production unwrap(), all files < 1000 lines
+
+### Metrics
+- Shaders: 707 → 702 (5 f32 files deleted, f64 canonical)
+- `downcast_f64_to_f32()` callers: 0 → 5
+- Production println!: 14 → 0
+- Production magic numbers: 5 → 0
 
 ---
 

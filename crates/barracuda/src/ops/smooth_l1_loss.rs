@@ -47,6 +47,13 @@ use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+const SHADER_F64: &str = include_str!("../shaders/loss/smooth_l1_loss_f64.wgsl");
+
+/// f32 variant derived from f64 via precision downcast.
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct SmoothL1LossParams {
@@ -87,7 +94,7 @@ impl SmoothL1Loss {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/loss/smooth_l1_loss.wgsl")
+        &SHADER_F32
     }
 
     pub fn execute(self) -> Result<Tensor> {

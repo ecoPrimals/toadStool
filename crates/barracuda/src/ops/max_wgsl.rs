@@ -15,8 +15,12 @@ use wgpu::util::DeviceExt;
 /// Simple max reduction variant.
 pub const WGSL_MAX_SIMPLE: &str = include_str!("../shaders/math/max_simple.wgsl");
 
-/// Basic max reduction shader.
-pub const WGSL_MAX_BASIC: &str = include_str!("../shaders/math/max.wgsl");
+/// f64 is the canonical source — math is universal, precision is silicon.
+const WGSL_MAX_BASIC_F64: &str = include_str!("../shaders/math/max_f64.wgsl");
+
+/// Basic max reduction shader (f32 derived from f64).
+pub static WGSL_MAX_BASIC: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_MAX_BASIC_F64));
 
 /// Max reduction operation
 pub struct Max {

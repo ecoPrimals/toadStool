@@ -15,6 +15,15 @@ mod tests;
 use crate::error::Result;
 use crate::tensor::Tensor;
 
+/// f64 canonical source for dimension-wise variance.
+const WGSL_VARIANCE_DIM_F64: &str =
+    include_str!("../../shaders/reduce/variance_dim_f64.wgsl");
+
+/// f32 derived from f64 canonical source.
+static WGSL_VARIANCE_DIM_F32: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32(WGSL_VARIANCE_DIM_F64)
+});
+
 /// Variance reduction operation
 pub struct Variance {
     input: Tensor,
@@ -39,7 +48,7 @@ impl Variance {
 
     /// Get the WGSL shader source for dimension-wise reduction
     pub(super) fn wgsl_shader_dim() -> &'static str {
-        include_str!("../../shaders/reduce/variance_dim.wgsl")
+        &WGSL_VARIANCE_DIM_F32
     }
 
     /// Get input tensor

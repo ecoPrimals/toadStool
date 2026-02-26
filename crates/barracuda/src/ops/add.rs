@@ -21,14 +21,16 @@ const SHADER_WG64: &str = include_str!("../shaders/math/elementwise_add_wg64.wgs
 /// Shader source optimized for AMD GPUs (WG=128)  
 const SHADER_WG128: &str = include_str!("../shaders/math/elementwise_add_wg128.wgsl");
 
-/// Default shader (WG=256, fallback)
-const SHADER_DEFAULT: &str = include_str!("../shaders/math/elementwise_add.wgsl");
+/// f64 is the canonical source — math is universal, precision is silicon.
+pub const WGSL_ADD_F64: &str = include_str!("../shaders/math/elementwise_add_f64.wgsl");
+
+/// f32 variant derived from f64 via precision downcast.
+static SHADER_DEFAULT: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32(WGSL_ADD_F64)
+});
 
 /// Basic element-wise add shader.
 pub const WGSL_ADD_BASIC: &str = include_str!("../shaders/math/add.wgsl");
-
-/// f64 element-wise add variant.
-pub const WGSL_ADD_F64: &str = include_str!("../shaders/math/elementwise_add_f64.wgsl");
 
 /// Optimized element-wise add variant.
 pub const WGSL_ADD_OPTIMIZED: &str = include_str!("../shaders/math/elementwise_add_optimized.wgsl");
@@ -86,7 +88,7 @@ impl Add {
                     (SHADER_WG64, nvidia_wg)
                 } else {
                     // Fall back to larger workgroup for huge tensors
-                    (SHADER_DEFAULT, 256)
+                    (&*SHADER_DEFAULT, 256)
                 }
             }
             VENDOR_AMD => {
@@ -94,12 +96,12 @@ impl Add {
                 if needed_workgroups <= max_dispatch {
                     (SHADER_WG128, amd_wg)
                 } else {
-                    (SHADER_DEFAULT, 256)
+                    (&*SHADER_DEFAULT, 256)
                 }
             }
             _ => {
                 // Unknown vendor - use safe default
-                (SHADER_DEFAULT, 256)
+                (&*SHADER_DEFAULT, 256)
             }
         }
     }

@@ -173,6 +173,7 @@ mod tests {
         let sturm_min = sturm_evals[0];
         let sturm_max = sturm_evals[n - 1];
         let lanczos_min = lanczos_evals[0];
+        // infallible: lanczos(&csr, n, seed) with n=100 yields m=100 iterations, so lanczos_evals is non-empty
         let lanczos_max = *lanczos_evals.last().expect("collection verified non-empty");
 
         assert!(

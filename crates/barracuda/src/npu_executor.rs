@@ -22,6 +22,23 @@ pub(crate) mod npu_defaults {
     pub const NPU_LATENCY_THRESHOLD: usize = 128;
 }
 
+/// NPU operation efficiency factors for scheduler scoring.
+/// Values represent relative efficiency vs GPU for each op class on neuromorphic hardware.
+#[allow(dead_code)]
+mod npu_efficiency {
+    /// Nominal equivalence value for NPU in TFLOPS terms. NPUs use spike counts, not TFLOPS;
+    /// this constant provides a nominal value for the unified scheduler interface.
+    pub(super) const NPU_EQUIVALENT_TFLOPS: f64 = 0.001;
+    /// MatMul/BatchMatMul efficiency on NPU (sparse matrix ops).
+    pub(super) const MATMUL_EFFICIENCY: f64 = 0.85;
+    /// Conv2D efficiency on NPU (neuromorphic convolutions).
+    pub(super) const CONV2D_EFFICIENCY: f64 = 0.90;
+    /// Sigmoid/Tanh efficiency (spike coding).
+    pub(super) const ACTIVATION_EFFICIENCY: f64 = 0.70;
+    /// ReduceSum/ReduceMax/ReduceMin efficiency (spike counting).
+    pub(super) const REDUCE_EFFICIENCY: f64 = 0.75;
+}
+
 use async_trait::async_trait;
 use crate::device::akida_executor::AkidaExecutor;
 use crate::error::Result;
@@ -109,8 +126,8 @@ impl NpuExecutor {
 
             performance: PerformanceCapabilities {
                 // NPU performance in neuromorphic terms
-                peak_tflops_fp32: 0.001, // Not TFLOPS-oriented
-                peak_tflops_fp16: 0.001,
+                peak_tflops_fp32: npu_efficiency::NPU_EQUIVALENT_TFLOPS,
+                peak_tflops_fp16: npu_efficiency::NPU_EQUIVALENT_TFLOPS,
                 peak_bandwidth_gbps: 10.0,
                 typical_power_watts: 1.0 * board_count as f64, // ~1W per board!
                 typical_latency_us: 1.0,                       // Ultra-low latency for inference

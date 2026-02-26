@@ -21,11 +21,13 @@ const SHADER_WG64: &str = include_str!("../shaders/math/elementwise_mul_wg64.wgs
 /// Shader source optimized for AMD GPUs (WG=128)  
 const SHADER_WG128: &str = include_str!("../shaders/math/elementwise_mul_wg128.wgsl");
 
-/// Default shader (WG=256, fallback)
-const SHADER_DEFAULT: &str = include_str!("../shaders/math/elementwise_mul.wgsl");
-
-/// f64 element-wise mul variant.
+/// f64 is the canonical source — math is universal, precision is silicon.
 pub const WGSL_MUL_F64: &str = include_str!("../shaders/math/elementwise_mul_f64.wgsl");
+
+/// f32 variant derived from f64 via precision downcast.
+static SHADER_DEFAULT: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    crate::shaders::precision::downcast_f64_to_f32(WGSL_MUL_F64)
+});
 
 /// Optimized element-wise mul variant.
 pub const WGSL_MUL_OPTIMIZED: &str = include_str!("../shaders/math/elementwise_mul_optimized.wgsl");
@@ -65,7 +67,7 @@ impl Mul {
                 if needed <= max_dispatch {
                     (SHADER_WG64, nvidia_wg)
                 } else {
-                    (SHADER_DEFAULT, 256)
+                    (&*SHADER_DEFAULT, 256)
                 }
             }
             VENDOR_AMD => {
@@ -73,12 +75,12 @@ impl Mul {
                 if needed <= max_dispatch {
                     (SHADER_WG128, amd_wg)
                 } else {
-                    (SHADER_DEFAULT, 256)
+                    (&*SHADER_DEFAULT, 256)
                 }
             }
             _ => {
                 // Unknown vendor - use safe default
-                (SHADER_DEFAULT, 256)
+                (&*SHADER_DEFAULT, 256)
             }
         }
     }

@@ -13,6 +13,13 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+const SHADER_F64: &str = include_str!("../shaders/math/neg_f64.wgsl");
+
+/// f32 variant derived from f64 via precision downcast.
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
+
 /// Neg operation
 pub struct Neg {
     input: Tensor,
@@ -26,7 +33,7 @@ impl Neg {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/math/neg.wgsl")
+        &SHADER_F32
     }
 
     /// Execute the neg operation

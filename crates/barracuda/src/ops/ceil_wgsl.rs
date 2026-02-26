@@ -12,6 +12,13 @@ use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+const SHADER_F64: &str = include_str!("../shaders/math/ceil_f64.wgsl");
+
+/// f32 variant derived from f64 via precision downcast.
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
+
 /// Ceil operation
 pub struct Ceil {
     input: Tensor,
@@ -25,7 +32,7 @@ impl Ceil {
 
     /// Get the WGSL shader source
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/math/ceil.wgsl")
+        &SHADER_F32
     }
 
     /// Execute the ceil operation

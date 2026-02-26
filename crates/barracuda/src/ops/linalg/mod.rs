@@ -103,8 +103,22 @@ pub use tridiagonal::{tridiagonal_solve, tridiagonal_solve_batch, tridiagonal_so
 // Re-export f64 Cholesky
 pub use cholesky::CholeskyF64;
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+const WGSL_SYMMETRIZE_F64: &str = include_str!("../../shaders/linalg/symmetrize_f64.wgsl");
+const WGSL_LAPLACIAN_F64: &str = include_str!("../../shaders/linalg/laplacian_f64.wgsl");
+
+/// f32 variants derived from f64 via precision downcast.
+static WGSL_SYMMETRIZE: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_SYMMETRIZE_F64));
+static WGSL_LAPLACIAN: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(WGSL_LAPLACIAN_F64));
+
 /// WGSL kernel: symmetrize a square matrix (out[i,j] = (A[i,j] + A[j,i]) / 2).
-pub const WGSL_SYMMETRIZE: &str = include_str!("../../shaders/linalg/symmetrize.wgsl");
+pub fn wgsl_symmetrize() -> &'static str {
+    &WGSL_SYMMETRIZE
+}
 
 /// WGSL kernel: graph Laplacian (L = D - A).
-pub const WGSL_LAPLACIAN: &str = include_str!("../../shaders/linalg/laplacian.wgsl");
+pub fn wgsl_laplacian() -> &'static str {
+    &WGSL_LAPLACIAN
+}

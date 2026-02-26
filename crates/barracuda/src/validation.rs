@@ -165,17 +165,17 @@ impl ValidationHarness {
 
     /// Print summary and exit with appropriate code.
     pub fn finish(&self) -> ! {
-        println!();
+        tracing::info!("");
         for check in &self.checks {
             let icon = if check.passed { "PASS" } else { "FAIL" };
-            println!(
-                "  [{icon}] {}: observed={:.10e}, expected={:.10e}, tol={:.2e} ({})",
+            tracing::info!(
+                "[{icon}] {}: observed={:.10e}, expected={:.10e}, tol={:.2e} ({})",
                 check.label, check.observed, check.expected, check.tolerance, check.mode
             );
         }
 
-        println!();
-        println!(
+        tracing::info!("");
+        tracing::info!(
             "=== {}: {}/{} PASS, {} FAIL ===",
             self.name,
             self.passed_count(),
@@ -192,7 +192,7 @@ impl ValidationHarness {
                 .filter(|c| !c.passed)
                 .map(|c| c.label.as_str())
                 .collect();
-            println!("FAILED: {}", failed.join(", "));
+            tracing::info!("FAILED: {}", failed.join(", "));
             process::exit(1);
         }
     }
