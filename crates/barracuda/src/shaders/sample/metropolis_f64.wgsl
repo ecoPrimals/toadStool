@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// metropolis.wgsl — Parallel Metropolis-Hastings MCMC
+// metropolis_f64.wgsl — Parallel Metropolis-Hastings MCMC (f64 canonical)
 //
 // Each thread runs one independent chain. Proposes x' = x + Normal(0, step_size),
 // accepts with probability min(1, exp(log_target(x') - log_target(x))).
@@ -15,14 +15,14 @@
 struct Params {
     n_chains: u32,
     n_dims: u32,
-    step_size: f32,
+    step_size: f64,
     _pad: u32,
 }
 
-@group(0) @binding(0) var<storage, read_write> state: array<f32>;
-@group(0) @binding(1) var<storage, read> log_target_current: array<f32>;
-@group(0) @binding(2) var<storage, read> log_target_proposed: array<f32>;
-@group(0) @binding(3) var<storage, read> proposed: array<f32>;
+@group(0) @binding(0) var<storage, read_write> state: array<f64>;
+@group(0) @binding(1) var<storage, read> log_target_current: array<f64>;
+@group(0) @binding(2) var<storage, read> log_target_proposed: array<f64>;
+@group(0) @binding(3) var<storage, read> proposed: array<f64>;
 @group(0) @binding(4) var<storage, read_write> accepted: array<atomic<u32>>;
 @group(0) @binding(5) var<storage, read_write> prng_state: array<u32>;
 @group(0) @binding(6) var<uniform> params: Params;
@@ -43,8 +43,8 @@ fn xoshiro128ss(s: ptr<function, array<u32, 4>>) -> u32 {
     return result;
 }
 
-fn rand_uniform(s: ptr<function, array<u32, 4>>) -> f32 {
-    return f32(xoshiro128ss(s)) / 4294967296.0;
+fn rand_uniform(s: ptr<function, array<u32, 4>>) -> f64 {
+    return f64(xoshiro128ss(s)) / f64(4294967296.0);
 }
 
 @compute @workgroup_size(256)
@@ -63,7 +63,7 @@ fn metropolis_step(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     let log_alpha = log_target_proposed[chain] - log_target_current[chain];
     let u = rand_uniform(&s);
-    let log_u = log(max(u, 1e-30));
+    let log_u = log_f64(max(u, f64(1e-30)));
 
     if (log_u < log_alpha) {
         let base = chain * params.n_dims;

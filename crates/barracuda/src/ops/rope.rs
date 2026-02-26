@@ -40,6 +40,11 @@ use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+static SHADER_F64: &str = include_str!("../shaders/attention/rotary_embedding_f64.wgsl");
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+
 /// RoPE parameters for WGSL shader
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -86,7 +91,7 @@ impl RotaryEmbedding {
 
     /// WGSL shader source
     fn shader() -> &'static str {
-        include_str!("../shaders/attention/rotary_embedding.wgsl")
+        &SHADER_F32
     }
 
     /// Execute RoPE (single GPU pass)

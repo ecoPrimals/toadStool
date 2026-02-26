@@ -1,4 +1,4 @@
-// Cross Attention Matrix Multiplication: Compute QK^T scores
+// Cross Attention Matrix Multiplication: Compute QK^T scores (f64 canonical)
 // Pass 1 of cross-attention (decoder attends to encoder)
 //
 // Q (decoder): [batch, heads, decoder_seq, dim]
@@ -15,9 +15,9 @@ struct Params {
     head_dim: u32,
 }
 
-@group(0) @binding(0) var<storage, read> query: array<f32>;  // [B, H, Dec, D]
-@group(0) @binding(1) var<storage, read> key: array<f32>;    // [B, H, Enc, D]
-@group(0) @binding(2) var<storage, read_write> scores: array<f32>; // [B, H, Dec, Enc]
+@group(0) @binding(0) var<storage, read> query: array<f64>;  // [B, H, Dec, D]
+@group(0) @binding(1) var<storage, read> key: array<f64>;    // [B, H, Enc, D]
+@group(0) @binding(2) var<storage, read_write> scores: array<f64>; // [B, H, Dec, Enc]
 @group(0) @binding(3) var<uniform> params: Params;
 
 @compute @workgroup_size(256)
@@ -36,7 +36,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let j = idx % params.encoder_seq; // encoder pos
 
     // Compute dot product Q[b,h,i,:] · K[b,h,j,:]
-    var score = 0.0;
+    var score = f64(0.0);
     for (var d = 0u; d < params.head_dim; d++) {
         let q_idx = b * params.num_heads * params.decoder_seq * params.head_dim +
                     h * params.decoder_seq * params.head_dim +
@@ -50,6 +50,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 
     // Scale by sqrt(head_dim)
-    let scale = sqrt(f32(params.head_dim));
+    let scale = sqrt_f64(f64(params.head_dim));
     scores[idx] = score / scale;
 }

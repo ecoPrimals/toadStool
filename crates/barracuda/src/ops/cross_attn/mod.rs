@@ -39,6 +39,11 @@ use crate::tensor::Tensor;
 
 mod compute;
 
+/// f64 canonical — cross attention matmul (sqrt).
+static CROSS_ATTENTION_MATMUL_F64: &str = include_str!("../../shaders/math/cross_attention_matmul_f64.wgsl");
+static CROSS_ATTENTION_MATMUL_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(CROSS_ATTENTION_MATMUL_F64));
+
 const SHADER_F64: &str = include_str!("../../shaders/attention/cross_attention_apply_f64.wgsl");
 static SHADER_F32: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32(SHADER_F64));
@@ -124,7 +129,7 @@ impl CrossAttention {
 
     /// Shader references
     pub(super) fn shader_matmul() -> &'static str {
-        include_str!("../../shaders/math/cross_attention_matmul.wgsl")
+        &CROSS_ATTENTION_MATMUL_F32
     }
 
     pub(super) fn shader_softmax() -> &'static str {

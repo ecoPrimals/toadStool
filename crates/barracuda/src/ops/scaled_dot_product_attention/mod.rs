@@ -44,12 +44,19 @@ mod tests;
 use crate::error::Result;
 use crate::tensor::Tensor;
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+static WGSL_SDPA_SINGLE_KERNEL_F64: &str =
+    include_str!("../../shaders/attention/scaled_dot_product_attention_f64.wgsl");
+static WGSL_SDPA_SINGLE_KERNEL_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_SDPA_SINGLE_KERNEL_F64));
+
 /// Single-kernel SDPA shader for prototyping (simplified, non-production).
 ///
 /// The production multi-pass implementation above is preferred; this constant
 /// exposes the simplified variant for experimentation and testing.
-pub const WGSL_SDPA_SINGLE_KERNEL: &str =
-    include_str!("../../shaders/attention/scaled_dot_product_attention.wgsl");
+pub fn wgsl_sdpa_single_kernel() -> &'static str {
+    &WGSL_SDPA_SINGLE_KERNEL_F32
+}
 
 /// Attention parameters
 #[repr(C)]
@@ -137,7 +144,7 @@ impl ScaledDotProductAttention {
 
     /// Get WGSL shader for attention matrix multiplication (Pass 1)
     pub(super) fn wgsl_shader_matmul() -> &'static str {
-        include_str!("../../shaders/math/attention_matmul.wgsl")
+        &crate::ops::attention::ATTENTION_MATMUL_F32
     }
 
     /// Get WGSL shader for attention softmax (Pass 2)

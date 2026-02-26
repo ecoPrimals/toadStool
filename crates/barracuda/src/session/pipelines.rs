@@ -141,7 +141,7 @@ impl SessionPipelines {
                 "Session MatMul GpuEvolved32",
             ),
             sdpa_scores_pl: auto_pipeline(
-                include_str!("../shaders/attention/sdpa_scores.wgsl"),
+                &crate::ops::attention::SDPA_SCORES_F32,
                 "Session SDPA Scores",
             ),
             attn_softmax_pl: auto_pipeline(

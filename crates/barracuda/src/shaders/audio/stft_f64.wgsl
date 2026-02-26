@@ -1,4 +1,4 @@
-// STFT - Short-Time Fourier Transform
+// STFT - Short-Time Fourier Transform (f64 canonical)
 // Converts time-domain signal to time-frequency representation
 // Input: signal [length], window [n_fft]
 // Output: Complex STFT [num_frames, n_fft/2+1] as [real, imag, real, imag, ...]
@@ -11,9 +11,9 @@ struct Params {
     bins_per_frame: u32,  // n_fft / 2 + 1
 }
 
-@group(0) @binding(0) var<storage, read> signal: array<f32>;
-@group(0) @binding(1) var<storage, read> window: array<f32>;
-@group(0) @binding(2) var<storage, read_write> output: array<f32>;  // [real, imag, real, imag, ...]
+@group(0) @binding(0) var<storage, read> signal: array<f64>;
+@group(0) @binding(1) var<storage, read> window: array<f64>;
+@group(0) @binding(2) var<storage, read_write> output: array<f64>;  // [real, imag, real, imag, ...]
 @group(0) @binding(3) var<uniform> params: Params;
 
 @compute @workgroup_size(64, 4)
@@ -26,20 +26,20 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     let start = frame_idx * params.hop_length;
-    var real: f32 = 0.0;
-    var imag: f32 = 0.0;
+    var real: f64 = f64(0.0);
+    var imag: f64 = f64(0.0);
     
-    let pi = 3.14159265358979323846;
-    let angle_base = -2.0 * pi * f32(k) / f32(params.n_fft);
+    let pi = f64(3.14159265358979323846);
+    let angle_base = f64(-2.0) * pi * f64(k) / f64(params.n_fft);
     
     // Compute DFT for frequency bin k
     for (var n: u32 = 0u; n < params.n_fft; n = n + 1u) {
         let signal_idx = start + n;
         if (signal_idx < params.signal_length) {
             let windowed = signal[signal_idx] * window[n];
-            let angle = angle_base * f32(n);
-            real = real + windowed * cos(angle);
-            imag = imag + windowed * sin(angle);
+            let angle = angle_base * f64(n);
+            real = real + windowed * cos_f64(angle);
+            imag = imag + windowed * sin_f64(angle);
         }
     }
     

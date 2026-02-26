@@ -21,14 +21,17 @@ pub struct LogSumExp {
     input: Tensor,
 }
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+static WGSL_LOGSUMEXP_REDUCE_F64: &str = include_str!("../shaders/reduce/logsumexp_reduce_f64.wgsl");
+/// Batched logsumexp over rows [batch × width] (neuralSpring).
+pub static WGSL_LOGSUMEXP_REDUCE: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_LOGSUMEXP_REDUCE_F64));
+
 impl LogSumExp {
     /// Create a new logsumexp operation
     pub fn new(input: Tensor) -> Self {
         Self { input }
     }
-
-    /// Batched logsumexp over rows [batch × width] (neuralSpring).
-    pub const WGSL_LOGSUMEXP_REDUCE: &str = include_str!("../shaders/reduce/logsumexp_reduce.wgsl");
 
     /// WGSL kernel for logsumexp (f32 variant).
     pub const WGSL_LOGSUMEXP_F32: &str = include_str!("../shaders/math/logsumexp.wgsl");

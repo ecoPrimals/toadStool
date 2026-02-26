@@ -106,7 +106,7 @@ impl LocalAttention {
 
     /// Pass 1 shader: Compute QK^T scores (REUSED from attention ✅)
     pub(super) fn shader_matmul() -> &'static str {
-        include_str!("../../shaders/math/attention_matmul.wgsl")
+        &crate::ops::attention::ATTENTION_MATMUL_F32
     }
 
     /// Pass 2 shader: Apply softmax with local window mask (NEW - only shader needed!)

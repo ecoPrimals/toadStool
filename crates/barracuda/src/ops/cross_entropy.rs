@@ -5,6 +5,11 @@ use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+static SHADER_F64: &str = include_str!("../shaders/loss/cross_entropy_f64.wgsl");
+static SHADER_F32: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(SHADER_F64));
+
 pub struct CrossEntropy {
     predictions: Tensor,
     targets: Tensor,
@@ -19,7 +24,7 @@ impl CrossEntropy {
     }
 
     fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/loss/cross_entropy.wgsl")
+        &SHADER_F32
     }
 
     pub fn execute(self) -> Result<Tensor> {

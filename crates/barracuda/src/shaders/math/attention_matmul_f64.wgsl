@@ -1,4 +1,4 @@
-// Attention Matrix Multiplication: Compute QK^T scores
+// Attention Matrix Multiplication: Compute QK^T scores (f64 canonical)
 // Pass 1 of multi-pass attention implementation
 //
 // Computes: scores[i,j] = Q[i] · K[j] / sqrt(d_k)
@@ -17,9 +17,9 @@ struct AttentionParams {
     _pad2: u32,
 }
 
-@group(0) @binding(0) var<storage, read> query: array<f32>;
-@group(0) @binding(1) var<storage, read> key: array<f32>;
-@group(0) @binding(2) var<storage, read_write> scores: array<f32>;
+@group(0) @binding(0) var<storage, read> query: array<f64>;
+@group(0) @binding(1) var<storage, read> key: array<f64>;
+@group(0) @binding(2) var<storage, read_write> scores: array<f64>;
 @group(0) @binding(3) var<uniform> params: AttentionParams;
 
 @compute @workgroup_size(16, 16, 1)
@@ -39,7 +39,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    var score = 0.0;
+    var score = f64(0.0);
     for (var d = 0u; d < params.head_dim; d = d + 1u) {
         let q_idx = batch * params.num_heads * params.q_seq_len * params.head_dim
                   + head * params.q_seq_len * params.head_dim
@@ -54,7 +54,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         score += query[q_idx] * key[k_idx];
     }
     
-    let scale = sqrt(f32(params.head_dim));
+    let scale = sqrt_f64(f64(params.head_dim));
     score = score / scale;
     
     let score_idx = batch * params.num_heads * params.q_seq_len * params.kv_seq_len

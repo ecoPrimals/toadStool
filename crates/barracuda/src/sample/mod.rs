@@ -52,9 +52,12 @@ pub mod sparsity;
 /// Latin hypercube sampling shader.
 pub const WGSL_LHS: &str = include_str!("../shaders/sample/lhs.wgsl");
 
+/// f64 is the canonical source — math is universal, precision is silicon.
+static WGSL_METROPOLIS_F64: &str = include_str!("../shaders/sample/metropolis_f64.wgsl");
 /// WGSL shader: parallel Metropolis-Hastings MCMC
 /// WGSL kernel for Metropolis-Hastings sampling.
-pub const WGSL_METROPOLIS: &str = include_str!("../shaders/sample/metropolis.wgsl");
+pub static WGSL_METROPOLIS: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| crate::shaders::precision::downcast_f64_to_f32_with_transcendentals(WGSL_METROPOLIS_F64));
 
 pub use direct::{direct_sampler, DirectSamplerConfig, DirectSamplerResult};
 pub use lhs::{latin_hypercube, random_uniform};

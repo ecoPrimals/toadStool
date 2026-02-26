@@ -1,4 +1,4 @@
-// Scaled Dot-Product Attention - Transformer core operation
+// Scaled Dot-Product Attention - Transformer core operation (f64 canonical)
 // attention(Q, K, V) = softmax(QK^T / sqrt(d_k)) * V
 //
 // Reference: "Attention is All You Need" (Vaswani et al., 2017)
@@ -15,10 +15,10 @@ struct AttentionParams {
     _pad2: u32,
 }
 
-@group(0) @binding(0) var<storage, read> query: array<f32>;        // [B, H, Sq, D]
-@group(0) @binding(1) var<storage, read> key: array<f32>;          // [B, H, Skv, D]
-@group(0) @binding(2) var<storage, read> value: array<f32>;        // [B, H, Skv, D]
-@group(0) @binding(3) var<storage, read_write> output: array<f32>; // [B, H, Sq, D]
+@group(0) @binding(0) var<storage, read> query: array<f64>;        // [B, H, Sq, D]
+@group(0) @binding(1) var<storage, read> key: array<f64>;          // [B, H, Skv, D]
+@group(0) @binding(2) var<storage, read> value: array<f64>;        // [B, H, Skv, D]
+@group(0) @binding(3) var<storage, read_write> output: array<f64>; // [B, H, Sq, D]
 @group(0) @binding(4) var<uniform> params: AttentionParams;
 
 @compute @workgroup_size(256)
@@ -34,7 +34,7 @@ fn compute_scores(
     }
     
     for (var k_pos = 0u; k_pos < params.kv_seq_len; k_pos = k_pos + 1u) {
-        var score = 0.0;
+        var score = f64(0.0);
         
         for (var d = 0u; d < params.head_dim; d = d + 1u) {
             let q_idx = batch * params.num_heads * params.q_seq_len * params.head_dim
@@ -50,7 +50,7 @@ fn compute_scores(
             score += query[q_idx] * key[k_idx];
         }
         
-        let scale = sqrt(f32(params.head_dim));
+        let scale = sqrt_f64(f64(params.head_dim));
         score = score / scale;
     }
 }

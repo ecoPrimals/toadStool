@@ -1,4 +1,4 @@
-//! Rotary Position Embedding (RoPE) - GPU implementation
+//! Rotary Position Embedding (RoPE) - GPU implementation (f64 canonical)
 //!
 //! Applies 2D rotation to query/key embeddings based on position
 //! Encodes relative position without absolute embeddings
@@ -22,14 +22,14 @@ struct Params {
     half_dim: u32,
 }
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
-@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f64>;
+@group(0) @binding(1) var<storage, read_write> output: array<f64>;
 @group(0) @binding(2) var<uniform> params: Params;
 
 // Compute frequency for dimension i
-fn compute_freq(i: u32, head_dim: u32) -> f32 {
-    let exponent = 2.0 * f32(i) / f32(head_dim);
-    return 1.0 / pow(10000.0, exponent);
+fn compute_freq(i: u32, head_dim: u32) -> f64 {
+    let exponent = 2.0 * f64(i) / f64(head_dim);
+    return f64(1.0) / pow_f64(f64(10000.0), exponent);
 }
 
 @compute @workgroup_size(256)
@@ -49,10 +49,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     // Compute frequency and rotation angle
     let freq = compute_freq(d, params.head_dim);
-    let pos = f32(s);
+    let pos = f64(s);
     let theta = pos * freq;
-    let cos_val = cos(theta);
-    let sin_val = sin(theta);
+    let cos_val = cos_f64(theta);
+    let sin_val = sin_f64(theta);
 
     // Indices for the pair [x1, x2]
     let idx1 = b * params.seq_len * params.num_heads * params.head_dim +

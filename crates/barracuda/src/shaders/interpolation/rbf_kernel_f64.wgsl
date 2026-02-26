@@ -1,4 +1,4 @@
-// RBF Kernel Evaluation - Fused pairwise distance + kernel function
+// RBF Kernel Evaluation - Fused pairwise distance + kernel function (f64 canonical)
 // Computes K[i,j] = φ(‖xᵢ - xⱼ‖) for various radial basis functions
 //
 // **Deep Debt Principles**:
@@ -26,20 +26,20 @@ struct Params {
     n_cols: u32,      // Number of rows in Y
     n_dims: u32,      // Dimension of points
     kernel_type: u32, // 0=TPS, 1=Gaussian, 2=Multiquadric, 3=InverseMQ, 4=Cubic, 5=Quintic, 6=Linear
-    epsilon: f32,     // Shape parameter (for Gaussian, MQ, IMQ)
+    epsilon: f64,     // Shape parameter (for Gaussian, MQ, IMQ)
     _pad0: u32,
     _pad1: u32,
     _pad2: u32,
 }
 
-@group(0) @binding(0) var<storage, read> x: array<f32>;     // Points X [n_rows × n_dims]
-@group(0) @binding(1) var<storage, read> y: array<f32>;     // Points Y [n_cols × n_dims]
-@group(0) @binding(2) var<storage, read_write> output: array<f32>;  // Kernel matrix K [n_rows × n_cols]
+@group(0) @binding(0) var<storage, read> x: array<f64>;     // Points X [n_rows × n_dims]
+@group(0) @binding(1) var<storage, read> y: array<f64>;     // Points Y [n_cols × n_dims]
+@group(0) @binding(2) var<storage, read_write> output: array<f64>;  // Kernel matrix K [n_rows × n_cols]
 @group(0) @binding(3) var<uniform> params: Params;
 
 // Compute Euclidean distance squared between two points
-fn distance_squared(x_idx: u32, y_idx: u32) -> f32 {
-    var dist_sq = 0.0;
+fn distance_squared(x_idx: u32, y_idx: u32) -> f64 {
+    var dist_sq = f64(0.0);
     let n_dims = params.n_dims;
     
     for (var d = 0u; d < n_dims; d = d + 1u) {
@@ -51,30 +51,30 @@ fn distance_squared(x_idx: u32, y_idx: u32) -> f32 {
 }
 
 // Apply kernel function to distance
-fn apply_kernel(r_squared: f32) -> f32 {
-    let r = sqrt(r_squared);
+fn apply_kernel(r_squared: f64) -> f64 {
+    let r = sqrt_f64(r_squared);
     let epsilon = params.epsilon;
     let eps_sq = epsilon * epsilon;
     
     switch (params.kernel_type) {
         case 0u: {
             // Thin Plate Spline: r² · log(r)
-            if (r < 1e-10) {
-                return 0.0;  // Limit as r→0
+            if (r < f64(1e-10)) {
+                return f64(0.0);  // Limit as r→0
             }
-            return r_squared * log(r);
+            return r_squared * log_f64(r);
         }
         case 1u: {
             // Gaussian: exp(-ε²r²)
-            return exp(-eps_sq * r_squared);
+            return exp_f64(-eps_sq * r_squared);
         }
         case 2u: {
             // Multiquadric: sqrt(1 + ε²r²)
-            return sqrt(1.0 + eps_sq * r_squared);
+            return sqrt_f64(f64(1.0) + eps_sq * r_squared);
         }
         case 3u: {
             // Inverse Multiquadric: 1/sqrt(1 + ε²r²)
-            return 1.0 / sqrt(1.0 + eps_sq * r_squared);
+            return f64(1.0) / sqrt_f64(f64(1.0) + eps_sq * r_squared);
         }
         case 4u: {
             // Cubic: r³
@@ -91,10 +91,10 @@ fn apply_kernel(r_squared: f32) -> f32 {
         }
         default: {
             // Default to Thin Plate Spline
-            if (r < 1e-10) {
-                return 0.0;
+            if (r < f64(1e-10)) {
+                return f64(0.0);
             }
-            return r_squared * log(r);
+            return r_squared * log_f64(r);
         }
     }
 }

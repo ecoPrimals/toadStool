@@ -1,4 +1,4 @@
-// sdpa_scores.wgsl — QK^T / sqrt(d_k) — Pass 1 of 3-pass SDPA
+// sdpa_scores_f64.wgsl — QK^T / sqrt(d_k) — Pass 1 of 3-pass SDPA (f64 canonical)
 //
 // Computes scaled dot-product scores for each (batch, head, query_pos) triple.
 // Output layout: scores[batch, head, q_pos, k_pos] (row-major)
@@ -20,9 +20,9 @@ struct AttentionParams {
     _pad2:      u32,
 }
 
-@group(0) @binding(0) var<storage, read>       query:  array<f32>;  // [B, H, Sq, D]
-@group(0) @binding(1) var<storage, read>       key:    array<f32>;  // [B, H, Skv, D]
-@group(0) @binding(2) var<storage, read_write> scores: array<f32>;  // [B, H, Sq, Skv]
+@group(0) @binding(0) var<storage, read>       query:  array<f64>;  // [B, H, Sq, D]
+@group(0) @binding(1) var<storage, read>       key:    array<f64>;  // [B, H, Skv, D]
+@group(0) @binding(2) var<storage, read_write> scores: array<f64>;  // [B, H, Sq, Skv]
 @group(0) @binding(3) var<uniform>             params: AttentionParams;
 
 @compute @workgroup_size(256)
@@ -49,12 +49,12 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let q_base = b * H * Sq * D + h * Sq * D + q_pos * D;
     let k_base = b * H * Skv * D + h * Skv * D + k_pos * D;
 
-    var dot = 0.0f;
+    var dot = f64(0.0);
     for (var d = 0u; d < D; d++) {
         dot += query[q_base + d] * key[k_base + d];
     }
 
-    let scale  = sqrt(f32(D));
+    let scale  = sqrt_f64(f64(D));
     let out_idx = b * H * Sq * Skv + h * Sq * Skv + q_pos * Skv + k_pos;
     scores[out_idx] = dot / scale;
 }
