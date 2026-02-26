@@ -1,4 +1,4 @@
-# Status -- February 25, 2026 (Sessions 32-63: Deep Debt Evolution + Sovereign Compiler)
+# Status -- February 25, 2026 (Sessions 32-64: Cross-Spring Absorption + Deep Debt)
 
 ## Quality Gates
 
@@ -8,10 +8,12 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy -p barracuda --lib -- -D warnings` | PASS | **0 warnings** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
-| `cargo test -p barracuda --lib` | PASS | **2,440 pass** (4 cascade W-003, 12 ignored) |
-| hotSpring validation | PASS | **195/195 acceptance checks** |
-| wetSpring validation | PASS | **728 Rust tests, 95 experiments** |
-| neuralSpring validation | PASS | **1,560+ checks, 115 binaries** |
+| `cargo test -p barracuda --lib` | PASS | **2,490 total** (2,388 pass, ~90 cascade W-003, 12 ignored) |
+| hotSpring validation | PASS | **664 tests, 22 papers validated** |
+| wetSpring validation | PASS | **918 tests, 96.48% coverage** |
+| neuralSpring validation | PASS | **580 tests, 94.53% coverage** |
+| airSpring validation | PASS | **468 tests, 96.84% coverage** |
+| groundSpring validation | PASS | **154 tests, 98.64% coverage** |
 | Pure Rust syscalls | PASS | mmap/mlock via rustix |
 | Zero-copy hot paths | PASS | `Cow<'a, str>` + `#[serde(borrow)]`, `from_slice`, `bytes::Bytes` |
 | Hardcoded primal names | PASS | **0 -- capability-based discovery** |
@@ -21,16 +23,42 @@
 | Production `Box<dyn Error>` | PASS | **0 in core crates -- all typed errors (thiserror)** |
 | Production panics/unwraps | PASS | **Zero blind `unwrap()`; infallible `expect()` only** |
 | Production TODOs | PASS | **Zero -- all evolved to `BLOCKED(reason)` markers** |
-| File size limit | PASS | **All production files under 1000 lines** (coulomb_f64: 610→370, morse_f64: 953→804) |
-| WGSL shaders | PASS | **687 (zero orphans, all f64 shader-first, 12 DF64 files)** |
-| Dead code | PASS | **Parallel solver wired, partial_maximin wired, erfc_deriv promoted** |
-| External dep hygiene | PASS | **`instant` crate removed; WebGPU mock_data→zero-size** |
+| File size limit | PASS | **All production files under 1000 lines** |
+| WGSL shaders | PASS | **694 (zero orphans, all f64 shader-first, 17 DF64 files)** |
+| Dead code | PASS | **14 `#[allow(dead_code)]` remain — all documented as reserved for Phase 5+** |
+| External dep hygiene | PASS | **`instant` + `chrono` eliminated; WebGPU mock_data→zero-size** |
 | Production mocks | PASS | **Zero — TpuBackend::Mock behind `mock-tpu` feature gate** |
 | Platform stubs | PASS | **Evolved to platform-aware `can_handle()` + `SystemError::NotSupported`** |
 | FP64 strategy | PASS | **Fp64Strategy::Native/Hybrid -- FMA-optimized DF64 + transcendentals** |
-| Dependency security | PASS | **bytes >=1.11.1, aes-gcm >=0.10.3, chrono hardened** |
+| Dependency security | PASS | **bytes >=1.11.1, aes-gcm >=0.10.3, zero chrono** |
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+
+---
+
+## Session 64: Cross-Spring Absorption (Feb 25, 2026)
+
+Pulled all 5 springs + wateringHole; reviewed and absorbed handoffs:
+
+### Lattice Shader Absorption (hotSpring V0613/V0614)
+- **8 new WGSL shaders** absorbed into `shaders/lattice/`: `su3_math_f64` (naga-safe composition fix), `prng_pcg_f64` (shared PRNG), `su3_f64` (base SU(3) ops), `su3_gauge_force_df64` (9.9× DF64 throughput), `su3_kinetic_energy_df64`, `axpy_f64`, `complex_dot_re_f64`, `xpay_f64`
+- All wired via `absorbed_shaders.rs` with doc comments and provenance
+
+### Statistics Absorption (airSpring V006 + groundSpring V7)
+- **`stats::metrics`** module: RMSE, MBE, Nash-Sutcliffe, R², Index of Agreement, hit_rate, mean, percentile, dot, l2_norm (18 tests)
+- Consolidated from airSpring `testutil/stats.rs` and groundSpring `stats/metrics.rs`
+
+### Diversity Absorption (wetSpring V41)
+- **`stats::diversity`** module: Shannon, Simpson, Chao1, Pielou evenness, Bray-Curtis (pairwise + condensed + full matrix), rarefaction curves, AlphaDiversity (16 tests)
+- CPU complements for GPU `DiversityFusionGpu` and `FusedMapReduceF64::shannon_entropy`
+
+### Deep Debt Resolved
+- **`chrono` dependency eliminated**: `chrono::Local::now()` → `std::time::SystemTime`, `chrono = "0.4"` removed from Cargo.toml
+- **3 `#[allow(dead_code)]` resolved**: `BroydenMixer::device()/vec_dim()`, `KrigingF64::device()`, `KernelRouter::has_tpu()` accessors
+- **neuralSpring unblocked**: Confirmed `WGSL_MEAN_REDUCE`, `argmax_dim()`, `softmax_dim()` already live in barracuda public API
+
+### Numbers
+- **694 WGSL shaders** (was 686), **2,490 tests** (was 2,440), **0 clippy warnings**, **0 external timestamp deps**
 
 ---
 

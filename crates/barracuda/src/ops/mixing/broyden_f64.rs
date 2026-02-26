@@ -296,10 +296,8 @@ impl LinearMixer {
 /// Modified Broyden II algorithm:
 /// x_{n+1} = x_n + α·r_n - Σ_m γ_m·(Δx_m + α·Δr_m)
 pub struct BroydenMixer {
-    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
     linear_mixer: LinearMixer,
-    #[allow(dead_code)]
     vec_dim: usize,
     max_history: usize,
     params: MixingParams,
@@ -335,6 +333,16 @@ impl BroydenMixer {
             df_history: Vec::with_capacity(max_history),
             iteration: 0,
         })
+    }
+
+    /// GPU device handle (for future GPU-accelerated Broyden update).
+    pub fn device(&self) -> &Arc<WgpuDevice> {
+        &self.device
+    }
+
+    /// Dimension of the vectors being mixed.
+    pub fn vec_dim(&self) -> usize {
+        self.vec_dim
     }
 
     /// Reset the mixer for a new SCF calculation

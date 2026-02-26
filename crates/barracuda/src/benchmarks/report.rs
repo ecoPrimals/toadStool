@@ -31,11 +31,14 @@ impl ReportGenerator {
         // Header
         writeln!(report, "# BarraCuda vs CUDA Performance Report\n").unwrap_or_default();
 
-        #[cfg(feature = "benchmarks")]
-        writeln!(report, "**Generated:** {}\n", chrono::Local::now()).unwrap_or_default();
-
-        #[cfg(not(feature = "benchmarks"))]
-        writeln!(report, "**Generated:** [timestamp not available]\n").unwrap_or_default();
+        {
+            use std::time::SystemTime;
+            let timestamp = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map(|d| format!("{}s since epoch", d.as_secs()))
+                .unwrap_or_else(|_| "[unknown]".to_string());
+            writeln!(report, "**Generated:** {timestamp}\n").unwrap_or_default();
+        }
 
         // Summary section
         self.write_summary(&mut report);

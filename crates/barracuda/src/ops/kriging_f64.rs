@@ -154,7 +154,6 @@ pub struct KrigingResult {
 
 /// Ordinary Kriging interpolator
 pub struct KrigingF64 {
-    #[allow(dead_code)]
     device: Arc<WgpuDevice>,
 }
 
@@ -162,6 +161,11 @@ impl KrigingF64 {
     /// Create a new kriging interpolator
     pub fn new(device: Arc<WgpuDevice>) -> Result<Self> {
         Ok(Self { device })
+    }
+
+    /// GPU device handle (for future GPU-accelerated kriging).
+    pub fn device(&self) -> &Arc<WgpuDevice> {
+        &self.device
     }
 
     /// Perform ordinary kriging interpolation

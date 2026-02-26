@@ -142,8 +142,6 @@ pub struct KernelRouter {
     has_gpu: bool,
     /// NPU available
     has_npu: bool,
-    /// TPU available (future)
-    #[allow(dead_code)]
     has_tpu: bool,
 }
 
@@ -176,6 +174,11 @@ impl KernelRouter {
             has_npu,
             has_tpu,
         })
+    }
+
+    /// Whether a TPU is available for routing.
+    pub fn has_tpu(&self) -> bool {
+        self.has_tpu
     }
 
     /// Route workload to best hardware target

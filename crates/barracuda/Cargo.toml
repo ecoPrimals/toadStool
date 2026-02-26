@@ -52,8 +52,7 @@ num-traits = "0.2"  # Generic numeric traits for CPU precision implementations
 half = "2.4"        # f16 support for quantized inference (GGUF/safetensors)
 # num_cpus removed: evolved to std::thread::available_parallelism() (pure Rust, no FFI)
 
-# Benchmarking (optional)
-chrono = { version = "0.4", optional = true }
+# Benchmarking: evolved from chrono to std::time::SystemTime (S64)
 
 [dev-dependencies]
 tempfile = { workspace = true }
@@ -83,8 +82,8 @@ cloud-tpu = ["tpu"]      # Google Cloud TPU via libtpu
 coral-tpu = ["tpu"]      # Coral Edge TPU
 mock-tpu = ["tpu"]       # Mock TPU for testing
 
-# Benchmarking
-benchmarks = ["chrono"]
+# Benchmarking (no external deps — uses std::time)
+benchmarks = []
 cuda-comparison = ["benchmarks"]
 
 # PPPM debug output (verbose charge/potential mesh dumps)

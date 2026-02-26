@@ -5,6 +5,17 @@
 We aim to solve deep debt over iterations, evolving toward vendor-agnostic,
 capability-based solutions.
 
+## Session 64 Resolutions (Feb 25, 2026)
+
+- **R-S64-001**: Lattice shader absorption wave 2 — absorbed 8 WGSL shaders from hotSpring V0613/V0614: `su3_math_f64`, `prng_pcg_f64`, `su3_f64`, `su3_gauge_force_df64`, `su3_kinetic_energy_df64`, `axpy_f64`, `complex_dot_re_f64`, `xpay_f64` (694 total shaders)
+- **R-S64-002**: `stats::metrics` module absorbed — RMSE, MBE, NSE, R², Index of Agreement, hit_rate, mean, percentile, dot, l2_norm from airSpring/groundSpring (18 tests)
+- **R-S64-003**: `stats::diversity` module absorbed — Shannon, Simpson, Chao1, Pielou, Bray-Curtis, rarefaction curves, AlphaDiversity from wetSpring (16 tests)
+- **R-S64-004**: `chrono` dependency eliminated — `chrono::Local::now()` → `std::time::SystemTime::now()` in `benchmarks/report.rs`; `chrono = "0.4"` removed from Cargo.toml
+- **R-S64-005**: Dead code → live: `BroydenMixer::device()`/`vec_dim()`, `KrigingF64::device()`, `KernelRouter::has_tpu()` accessor methods added (3 `#[allow(dead_code)]` eliminated)
+- **R-S64-006**: neuralSpring blocked upstream items confirmed live — `WGSL_MEAN_REDUCE`, `argmax_dim()`, `softmax_dim()` all available as public API
+
+---
+
 ## Session 63 Resolutions (Feb 25, 2026)
 
 - **R-S63-001**: `coulomb_f64/mod.rs` smart refactor (610→370 lines) — extracted `CoulombBuffers` struct, `read_f64_via_staging()` and `map_staging_to_vec()` helpers; eliminated complete buffer/staging/map-back duplication between `compute_gpu` and `compute_gpu_with_energy`
