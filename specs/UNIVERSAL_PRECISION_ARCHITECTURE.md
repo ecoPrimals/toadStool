@@ -1,7 +1,7 @@
 # Universal Precision Architecture
 
 **Date**: February 24, 2026
-**Status**: Phase 1 infrastructure complete — compilation pipeline and templates built
+**Status**: Dual-layer universal precision — op_preamble + naga IR rewrite both operational
 **Classification**: Core architecture — applies to every shader in BarraCuda
 
 ---
@@ -77,16 +77,32 @@ let shader = ShaderTemplate::elementwise_add(Precision::Df64);
 | `downcast_f64_to_f32(source)` | Universal math shaders using basic arithmetic (`+`, `-`, `*`, `/`, `fma`, `abs`, `clamp`). No transcendentals. |
 | `downcast_f64_to_f32_with_transcendentals(source)` | Shaders that call `math_f64` polyfills. Maps `exp_f64` → `exp`, `sin_f64` → `sin`, etc. |
 
-### Df64 Structural Difference
+### Dual-Layer DF64 Coverage
 
-Df64 shaders cannot be produced by text substitution from f64 shaders because:
-1. Storage layout: `array<f64>` → `array<vec2<f32>>` (hi/lo pair)
-2. Arithmetic: `a + b` → `df64_add(Df64(a.x, a.y), Df64(b.x, b.y))`
-3. Shared memory: one `array<f64, 256>` → two `array<f32, 256>` (hi, lo)
-4. Load/store: scalar access → pack/unpack
+DF64 precision is handled by two complementary layers:
 
-Df64 variants are maintained as separate source files, compiled through
-`compile_shader_df64()` which auto-injects the DF64 library.
+**Layer 1 — Operation Preamble (source level):**
+New shaders use abstract operations (`op_add`, `op_mul`, `Scalar` type alias).
+The preamble provides precision-specific implementations:
+- f32/f64: trivial wrappers around native operators (compiler inlines)
+- DF64: routes to `df64_add`, `df64_mul`, etc.
+
+```rust
+// One shader, all precisions:
+device.compile_op_shader(source, Precision::Df64, label);
+```
+
+**Layer 2 — Naga IR Rewrite (compiler level):**
+Existing f64 shaders with infix operators get transformed automatically.
+The sovereign compiler's `df64_rewrite` module:
+1. Parses f64 WGSL with naga for type analysis
+2. Walks the typed IR to find f64 `Binary{+,-,*,/}` and `Unary{-}`
+3. Replaces with bridge functions (`_df64_add_f64(a, b)` etc.) that
+   accept f64, compute in Df64, return f64 — type system untouched
+4. Bridge functions get prepended alongside df64 core library
+
+Together: op_preamble makes new code portable by design,
+naga makes everything portable by force.
 
 ---
 
@@ -140,15 +156,21 @@ These have identical logic in both f32 and f64 files — consolidation candidate
 
 ## Evolution Strategy
 
-### Phase 1: Infrastructure (DONE — Session 67)
+### Phase 1: Infrastructure (DONE — Session 67-68)
 
 - [x] `Precision::Df64` enum variant
 - [x] `compile_shader_universal(source, precision)`
+- [x] `compile_op_shader(source, precision)` — operation preamble path
 - [x] `compile_template(template, precision)`
 - [x] `downcast_f64_to_f32()` with sentinel protection
 - [x] `downcast_f64_to_f32_with_transcendentals()`
+- [x] `downcast_f64_to_df64()` — text-based DF64 type transform
+- [x] `rewrite_f64_infix_full()` — naga-guided infix operator rewrite (Phase 5)
+- [x] `Precision::op_preamble()` — abstract operations for all 4 precisions
+- [x] Bridge functions for f64→DF64→f64 transparent routing
 - [x] 12 universal `{{SCALAR}}` templates
 - [x] Full precision inventory
+- [x] 51 passing tests (precision + sovereign + df64 rewrite + universal shader validation)
 
 ### Phase 2: Consolidate Existing Duplicates
 

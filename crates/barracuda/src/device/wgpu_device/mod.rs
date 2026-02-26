@@ -257,9 +257,16 @@ impl WgpuDevice {
     /// Pass the f64-canonical source (the "true math") for ALL precisions.
     /// The pipeline handles the rest.
     ///
-    /// **DF64 coverage**: Types, constructors, transcendentals, and storage are
-    /// handled automatically. Infix arithmetic operators (`+`, `-`, `*`, `/`)
-    /// between f64 values require the naga-IR rewrite pass (Phase 5).
+    /// **DF64 coverage**: Full coverage via two complementary layers:
+    ///
+    /// 1. **Text-based downcast** — handles types, constructors, transcendentals,
+    ///    storage conversions (fast, always available)
+    /// 2. **Naga-guided rewrite** — parses with naga for type analysis, rewrites
+    ///    f64 infix operators (`+`, `-`, `*`, `/`) to df64 function calls.
+    ///    Falls back to text-only downcast if naga rewrite fails.
+    ///
+    /// Shaders using `op_add`/`op_mul`/etc. work at all precisions without
+    /// either layer — the operation preamble provides implementations directly.
     pub fn compile_shader_universal(
         &self,
         source: &str,
@@ -274,7 +281,19 @@ impl WgpuDevice {
             }
             Precision::F64 => self.compile_shader_f64(source, label),
             Precision::Df64 => {
-                let df64_source = downcast_f64_to_df64(source);
+                // Two-layer DF64 compilation:
+                //
+                // Layer 1 (naga-guided): Parse f64 WGSL with naga, identify f64
+                //   infix operators by type, replace with bridge functions that
+                //   route computation through DF64 while keeping f64 types.
+                //
+                // Layer 2 (text-based): downcast_f64_to_df64 handles types,
+                //   constructors, transcendentals, and storage conversions.
+                //
+                // Naga is tried first. If it fails (e.g., source uses polyfill
+                // functions naga can't validate), fall back to text-only downcast.
+                let df64_source = crate::shaders::sovereign::df64_rewrite::rewrite_f64_infix_full(source)
+                    .unwrap_or_else(|_| downcast_f64_to_df64(source));
                 self.compile_shader_df64(&df64_source, label)
             }
             Precision::F16 => {
@@ -287,6 +306,33 @@ impl WgpuDevice {
                     .replace("<f64>", "<f16>");
                 self.compile_shader(&f16_source, label)
             }
+        }
+    }
+
+    /// Compile a universal shader that uses `op_add`/`op_mul`/etc. operations.
+    ///
+    /// This is the ultimate "math is universal" entry point. The shader uses
+    /// abstract operation functions (`op_add`, `op_mul`, `op_pack`, `op_unpack`,
+    /// etc.) and `Scalar` as the type alias. The pipeline:
+    ///
+    /// 1. Injects the precision-specific operation preamble (trivial wrappers
+    ///    for f32/f64, DF64 library calls for Df64)
+    /// 2. Routes through the appropriate compilation pipeline
+    ///
+    /// Shaders written this way work at ALL precisions without naga IR rewriting.
+    pub fn compile_op_shader(
+        &self,
+        source: &str,
+        precision: crate::shaders::precision::Precision,
+        label: Option<&str>,
+    ) -> wgpu::ShaderModule {
+        use crate::shaders::precision::Precision;
+        let preamble = precision.op_preamble();
+        let combined = format!("{preamble}\n{source}");
+        match precision {
+            Precision::F64 => self.compile_shader_f64(&combined, label),
+            Precision::Df64 => self.compile_shader_df64(&combined, label),
+            _ => self.compile_shader(&combined, label),
         }
     }
 

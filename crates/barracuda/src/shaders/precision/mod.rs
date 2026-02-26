@@ -98,7 +98,115 @@ impl Precision {
     pub fn is_f64_class(&self) -> bool {
         matches!(self, Precision::F64 | Precision::Df64)
     }
+
+    /// Generate the operation preamble for this precision.
+    ///
+    /// The preamble defines abstract operations (`op_add`, `op_mul`, etc.)
+    /// whose implementation varies per precision. Shaders written against
+    /// these ops are truly universal — math is the same, precision is silicon.
+    ///
+    /// For f32/f64: trivial inline wrappers around native operators.
+    /// For DF64: routes to df64_add/df64_mul/etc from the DF64 core library.
+    ///
+    /// The preamble also provides `op_load`/`op_store` for array access,
+    /// handling the DF64 pack/unpack (`vec2<f32>` ↔ `Df64`) transparently.
+    pub fn op_preamble(&self) -> &'static str {
+        match self {
+            Precision::F32 => OP_PREAMBLE_F32,
+            Precision::F64 => OP_PREAMBLE_F64,
+            Precision::Df64 => OP_PREAMBLE_DF64,
+            Precision::F16 => OP_PREAMBLE_F16,
+        }
+    }
 }
+
+/// f32 operation preamble — trivial wrappers, compiler inlines everything.
+const OP_PREAMBLE_F32: &str = r#"
+// Universal operation preamble — f32 precision
+alias Scalar = f32;
+fn op_add(a: f32, b: f32) -> f32 { return a + b; }
+fn op_sub(a: f32, b: f32) -> f32 { return a - b; }
+fn op_mul(a: f32, b: f32) -> f32 { return a * b; }
+fn op_div(a: f32, b: f32) -> f32 { return a / b; }
+fn op_neg(a: f32) -> f32 { return -a; }
+fn op_abs(a: f32) -> f32 { return abs(a); }
+fn op_max(a: f32, b: f32) -> f32 { return max(a, b); }
+fn op_min(a: f32, b: f32) -> f32 { return min(a, b); }
+fn op_gt(a: f32, b: f32) -> bool { return a > b; }
+fn op_lt(a: f32, b: f32) -> bool { return a < b; }
+fn op_ge(a: f32, b: f32) -> bool { return a >= b; }
+fn op_le(a: f32, b: f32) -> bool { return a <= b; }
+fn op_from_f32(v: f32) -> f32 { return v; }
+fn op_zero() -> f32 { return 0.0; }
+fn op_one() -> f32 { return 1.0; }
+"#;
+
+/// f64 operation preamble — same structure, f64 types.
+const OP_PREAMBLE_F64: &str = r#"
+// Universal operation preamble — f64 precision
+alias Scalar = f64;
+fn op_add(a: f64, b: f64) -> f64 { return a + b; }
+fn op_sub(a: f64, b: f64) -> f64 { return a - b; }
+fn op_mul(a: f64, b: f64) -> f64 { return a * b; }
+fn op_div(a: f64, b: f64) -> f64 { return a / b; }
+fn op_neg(a: f64) -> f64 { return -a; }
+fn op_abs(a: f64) -> f64 { return abs(a); }
+fn op_max(a: f64, b: f64) -> f64 { return max(a, b); }
+fn op_min(a: f64, b: f64) -> f64 { return min(a, b); }
+fn op_gt(a: f64, b: f64) -> bool { return a > b; }
+fn op_lt(a: f64, b: f64) -> bool { return a < b; }
+fn op_ge(a: f64, b: f64) -> bool { return a >= b; }
+fn op_le(a: f64, b: f64) -> bool { return a <= b; }
+fn op_from_f32(v: f32) -> f64 { return f64(v); }
+fn op_zero() -> f64 { return f64(0.0); }
+fn op_one() -> f64 { return f64(1.0); }
+"#;
+
+/// DF64 operation preamble — routes to df64_core library functions.
+/// Requires df64_core.wgsl + df64_transcendentals.wgsl prepended.
+const OP_PREAMBLE_DF64: &str = r#"
+// Universal operation preamble — DF64 precision (f32-pair, ~48-bit mantissa)
+alias Scalar = Df64;
+alias StorageType = vec2<f32>;
+fn op_add(a: Df64, b: Df64) -> Df64 { return df64_add(a, b); }
+fn op_sub(a: Df64, b: Df64) -> Df64 { return df64_sub(a, b); }
+fn op_mul(a: Df64, b: Df64) -> Df64 { return df64_mul(a, b); }
+fn op_div(a: Df64, b: Df64) -> Df64 { return df64_div(a, b); }
+fn op_neg(a: Df64) -> Df64 { return df64_neg(a); }
+fn op_abs(a: Df64) -> Df64 { return df64_abs(a); }
+fn op_max(a: Df64, b: Df64) -> Df64 { if df64_gt(a, b) { return a; } return b; }
+fn op_min(a: Df64, b: Df64) -> Df64 { if df64_lt(a, b) { return a; } return b; }
+fn op_gt(a: Df64, b: Df64) -> bool { return df64_gt(a, b); }
+fn op_lt(a: Df64, b: Df64) -> bool { return df64_lt(a, b); }
+fn op_ge(a: Df64, b: Df64) -> bool { return !df64_lt(a, b); }
+fn op_le(a: Df64, b: Df64) -> bool { return !df64_gt(a, b); }
+fn op_from_f32(v: f32) -> Df64 { return df64_from_f32(v); }
+fn op_zero() -> Df64 { return df64_zero(); }
+fn op_one() -> Df64 { return df64_from_f32(1.0); }
+fn op_pack(v: Df64) -> vec2<f32> { return vec2<f32>(v.hi, v.lo); }
+fn op_unpack(v: vec2<f32>) -> Df64 { return Df64(v.x, v.y); }
+"#;
+
+/// f16 operation preamble — trivial wrappers.
+const OP_PREAMBLE_F16: &str = r#"
+// Universal operation preamble — f16 precision
+alias Scalar = f16;
+fn op_add(a: f16, b: f16) -> f16 { return a + b; }
+fn op_sub(a: f16, b: f16) -> f16 { return a - b; }
+fn op_mul(a: f16, b: f16) -> f16 { return a * b; }
+fn op_div(a: f16, b: f16) -> f16 { return a / b; }
+fn op_neg(a: f16) -> f16 { return -a; }
+fn op_abs(a: f16) -> f16 { return abs(a); }
+fn op_max(a: f16, b: f16) -> f16 { return max(a, b); }
+fn op_min(a: f16, b: f16) -> f16 { return min(a, b); }
+fn op_gt(a: f16, b: f16) -> bool { return a > b; }
+fn op_lt(a: f16, b: f16) -> bool { return a < b; }
+fn op_ge(a: f16, b: f16) -> bool { return a >= b; }
+fn op_le(a: f16, b: f16) -> bool { return a <= b; }
+fn op_from_f32(v: f32) -> f16 { return f16(v); }
+fn op_zero() -> f16 { return f16(0.0); }
+fn op_one() -> f16 { return f16(1.0); }
+"#;
 
 /// Downcast an f64 shader source to f32 via text substitution.
 ///

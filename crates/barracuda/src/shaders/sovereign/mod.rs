@@ -24,6 +24,7 @@
 //! additive — it never replaces the text path.
 
 pub mod dead_expr;
+pub mod df64_rewrite;
 pub mod fma_fusion;
 pub mod spv_emit;
 

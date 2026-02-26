@@ -424,6 +424,50 @@ let a = abs_f64(x);
 }
 
 #[test]
+fn test_op_preamble_f32_has_all_ops() {
+    let p = Precision::F32.op_preamble();
+    assert!(p.contains("fn op_add("));
+    assert!(p.contains("fn op_sub("));
+    assert!(p.contains("fn op_mul("));
+    assert!(p.contains("fn op_div("));
+    assert!(p.contains("fn op_neg("));
+    assert!(p.contains("fn op_abs("));
+    assert!(p.contains("fn op_max("));
+    assert!(p.contains("fn op_min("));
+    assert!(p.contains("fn op_gt("));
+    assert!(p.contains("fn op_lt("));
+    assert!(p.contains("fn op_from_f32("));
+    assert!(p.contains("fn op_zero("));
+    assert!(p.contains("fn op_one("));
+    assert!(p.contains("alias Scalar = f32"));
+}
+
+#[test]
+fn test_op_preamble_df64_routes_to_library() {
+    let p = Precision::Df64.op_preamble();
+    assert!(p.contains("df64_add(a, b)"), "op_add should route to df64_add");
+    assert!(p.contains("df64_mul(a, b)"), "op_mul should route to df64_mul");
+    assert!(p.contains("df64_div(a, b)"), "op_div should route to df64_div");
+    assert!(p.contains("df64_sub(a, b)"), "op_sub should route to df64_sub");
+    assert!(p.contains("df64_neg(a)"), "op_neg should route to df64_neg");
+    assert!(p.contains("fn op_pack("), "DF64 needs pack for storage");
+    assert!(p.contains("fn op_unpack("), "DF64 needs unpack for storage");
+    assert!(p.contains("alias Scalar = Df64"));
+    assert!(p.contains("alias StorageType = vec2<f32>"));
+}
+
+#[test]
+fn test_op_preamble_all_precisions_consistent() {
+    for prec in [Precision::F16, Precision::F32, Precision::F64, Precision::Df64] {
+        let p = prec.op_preamble();
+        assert!(p.contains("fn op_add("), "{:?} missing op_add", prec);
+        assert!(p.contains("fn op_mul("), "{:?} missing op_mul", prec);
+        assert!(p.contains("fn op_zero("), "{:?} missing op_zero", prec);
+        assert!(p.contains("alias Scalar"), "{:?} missing Scalar alias", prec);
+    }
+}
+
+#[test]
 fn test_downcast_f64_to_df64_preserves_u32() {
     let f64_source = r#"
 struct Params { size: u32, }
@@ -438,4 +482,132 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     assert!(df64.contains("size: u32"), "u32 fields preserved");
     assert!(df64.contains("vec3<u32>"), "u32 builtins preserved");
     assert!(df64.contains("array<vec2<f32>>"), "f64 storage → vec2<f32>");
+}
+
+/// A universal shader written with op_* functions — works at ALL precisions.
+const UNIVERSAL_ELEMENTWISE_ADD: &str = r#"
+@group(0) @binding(0) var<storage, read> a: array<Scalar>;
+@group(0) @binding(1) var<storage, read> b: array<Scalar>;
+@group(0) @binding(2) var<storage, read_write> output: array<Scalar>;
+
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let idx = gid.x;
+    if (idx >= arrayLength(&output)) { return; }
+    output[idx] = op_add(a[idx], b[idx]);
+}
+"#;
+
+/// Prove the universal shader is valid WGSL at f32 precision via naga parse.
+#[cfg(feature = "gpu")]
+#[test]
+fn test_universal_shader_validates_f32() {
+    let preamble = Precision::F32.op_preamble();
+    let source = format!("{preamble}\n{UNIVERSAL_ELEMENTWISE_ADD}");
+    let module = naga::front::wgsl::parse_str(&source)
+        .expect("f32 universal shader should parse");
+    let mut validator = naga::valid::Validator::new(
+        naga::valid::ValidationFlags::all(),
+        naga::valid::Capabilities::all(),
+    );
+    validator.validate(&module).expect("f32 universal shader should validate");
+}
+
+/// Prove the universal shader is valid WGSL at f64 precision via naga parse.
+#[cfg(feature = "gpu")]
+#[test]
+fn test_universal_shader_validates_f64() {
+    let preamble = Precision::F64.op_preamble();
+    let source = format!("{preamble}\n{UNIVERSAL_ELEMENTWISE_ADD}");
+    let module = naga::front::wgsl::parse_str(&source)
+        .expect("f64 universal shader should parse");
+    let mut validator = naga::valid::Validator::new(
+        naga::valid::ValidationFlags::all(),
+        naga::valid::Capabilities::all(),
+    );
+    validator.validate(&module).expect("f64 universal shader should validate");
+}
+
+/// Prove the universal shader is valid WGSL at DF64 precision via naga parse.
+/// The DF64 path: df64_core + df64_transcendentals + op_preamble + shader.
+#[cfg(feature = "gpu")]
+#[test]
+fn test_universal_shader_validates_df64() {
+    const DF64_CORE: &str = include_str!("../../shaders/math/df64_core.wgsl");
+    const DF64_TRANSCENDENTALS: &str = include_str!("../../shaders/math/df64_transcendentals.wgsl");
+    let preamble = Precision::Df64.op_preamble();
+    let source = format!("{DF64_CORE}\n{DF64_TRANSCENDENTALS}\n{preamble}\n{UNIVERSAL_ELEMENTWISE_ADD}");
+    let module = naga::front::wgsl::parse_str(&source)
+        .expect("DF64 universal shader should parse");
+    let mut validator = naga::valid::Validator::new(
+        naga::valid::ValidationFlags::all(),
+        naga::valid::Capabilities::all(),
+    );
+    validator.validate(&module).expect("DF64 universal shader should validate");
+}
+
+/// Universal shader with more complex math — reduction with op_add.
+const UNIVERSAL_REDUCE_SUM: &str = r#"
+var<workgroup> wg_buf: array<Scalar, 256>;
+
+@group(0) @binding(0) var<storage, read> input: array<Scalar>;
+@group(0) @binding(1) var<storage, read_write> output: array<Scalar>;
+
+@compute @workgroup_size(256)
+fn main(
+    @builtin(global_invocation_id) gid: vec3<u32>,
+    @builtin(local_invocation_id) lid: vec3<u32>,
+    @builtin(workgroup_id) wid: vec3<u32>,
+) {
+    let n = arrayLength(&input);
+    if (gid.x < n) {
+        wg_buf[lid.x] = input[gid.x];
+    } else {
+        wg_buf[lid.x] = op_zero();
+    }
+    workgroupBarrier();
+
+    for (var stride = 128u; stride > 0u; stride = stride >> 1u) {
+        if (lid.x < stride) {
+            wg_buf[lid.x] = op_add(wg_buf[lid.x], wg_buf[lid.x + stride]);
+        }
+        workgroupBarrier();
+    }
+
+    if (lid.x == 0u) {
+        output[wid.x] = wg_buf[0];
+    }
+}
+"#;
+
+/// Prove the universal reduce shader validates at all 3 main precisions.
+#[cfg(feature = "gpu")]
+#[test]
+fn test_universal_reduce_validates_all_precisions() {
+    for prec in [Precision::F32, Precision::F64] {
+        let preamble = prec.op_preamble();
+        let source = format!("{preamble}\n{UNIVERSAL_REDUCE_SUM}");
+        let module = naga::front::wgsl::parse_str(&source)
+            .unwrap_or_else(|e| panic!("{prec:?} reduce parse failed: {e}"));
+        let mut v = naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::all(),
+        );
+        v.validate(&module)
+            .unwrap_or_else(|e| panic!("{prec:?} reduce validation failed: {e}"));
+    }
+
+    // DF64 needs the core library prepended
+    const DF64_CORE: &str = include_str!("../../shaders/math/df64_core.wgsl");
+    const DF64_TRANSCENDENTALS: &str = include_str!("../../shaders/math/df64_transcendentals.wgsl");
+    let preamble = Precision::Df64.op_preamble();
+    let source = format!("{DF64_CORE}\n{DF64_TRANSCENDENTALS}\n{preamble}\n{UNIVERSAL_REDUCE_SUM}");
+    let module = naga::front::wgsl::parse_str(&source)
+        .unwrap_or_else(|e| panic!("DF64 reduce parse failed: {e}"));
+    let mut v = naga::valid::Validator::new(
+        naga::valid::ValidationFlags::all(),
+        naga::valid::Capabilities::all(),
+    );
+    v.validate(&module)
+        .unwrap_or_else(|e| panic!("DF64 reduce validation failed: {e}"));
 }
