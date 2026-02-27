@@ -17,6 +17,9 @@ impl WgpuDevice {
         if count == 0 {
             return Ok(Vec::new());
         }
+        if self.is_lost() {
+            return Err(BarracudaError::device("GPU device lost — cannot read buffer"));
+        }
         let byte_size = (count * std::mem::size_of::<T>()) as u64;
 
         let _permit = self.acquire_dispatch();
@@ -28,15 +31,16 @@ impl WgpuDevice {
             mapped_at_creation: false,
         });
 
-        {
-            let _guard = self.lock();
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("readback"),
-                });
-            encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, byte_size);
-            self.queue.submit(Some(encoder.finish()));
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("readback"),
+            });
+        encoder.copy_buffer_to_buffer(buffer, 0, &staging, 0, byte_size);
+        self.submit_and_poll_inner(Some(encoder.finish()));
+
+        if self.is_lost() {
+            return Err(BarracudaError::device("GPU device lost during readback copy"));
         }
 
         self.map_staging_buffer(&staging, count)
@@ -57,6 +61,9 @@ impl WgpuDevice {
     ) -> Result<Vec<T>> {
         if count == 0 {
             return Ok(Vec::new());
+        }
+        if self.is_lost() {
+            return Err(BarracudaError::device("GPU device lost — cannot map buffer"));
         }
         let slice = staging.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();

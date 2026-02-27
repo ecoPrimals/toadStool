@@ -456,6 +456,10 @@ impl WgpuDevice {
 
     /// Submit without acquiring a dispatch permit.
     /// Use when the caller already holds a `DispatchPermit`.
+    ///
+    /// Device-lost panics from wgpu are caught and converted to a
+    /// `lost` flag. Subsequent readback will see the lost state and
+    /// return an error instead of panicking the test thread.
     pub(crate) fn submit_and_poll_inner(
         &self,
         commands: impl IntoIterator<Item = wgpu::CommandBuffer>,
@@ -467,6 +471,15 @@ impl WgpuDevice {
         }));
         if let Err(payload) = result {
             self.lost.store(true, Ordering::Release);
+            let msg = payload
+                .downcast_ref::<String>()
+                .map(|s| s.as_str())
+                .or_else(|| payload.downcast_ref::<&str>().copied())
+                .unwrap_or("unknown");
+            if msg.contains("lost") || msg.contains("Lost") || msg.contains("Parent device") {
+                tracing::warn!("submit_and_poll: device lost (flagged, not panicking): {msg}");
+                return;
+            }
             std::panic::resume_unwind(payload);
         }
     }

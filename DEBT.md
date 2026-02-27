@@ -5,6 +5,29 @@
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
 
+## Session 68+ Deep Debt: Standalone Resilience (Feb 26, 2026)
+
+**Principle**: Pull toadStool to any machine — small dev station, cloud VM, no GPU — it must build clean and test without false failures.
+
+### GPU Device-Lost Recovery
+- **R-S68+-001**: `install_error_handler` — device-lost no longer panics the error handler. Flags `lost` for pool recovery, logs warning, returns instead of killing the thread. Non-lost errors still panic (real bugs).
+- **R-S68+-002**: `submit_and_poll_inner` — `catch_unwind` around `queue.submit` now catches device-lost panics from wgpu internals and converts to `lost` flag + warning instead of `resume_unwind`. Other panics still propagate.
+- **R-S68+-003**: `read_buffer` / `map_staging_buffer` — check `is_lost()` before GPU operations; return `Err(BarracudaError::device("GPU device lost"))` instead of submitting to a dead device.
+- **R-S68+-004**: `read_buffer` readback copy — migrated from direct `queue.submit` to `submit_and_poll_inner` for consistent device-lost handling.
+- **R-S68+-005**: `compute_graph.rs` / `pppm_gpu/mod.rs` — `catch_unwind` around direct `queue.submit` calls; device-lost → `Err`, other panics propagate.
+
+### Test Parallelism
+- **R-S68+-006**: `.cargo/config.toml` `RUST_TEST_THREADS=4` — default test thread limit prevents GPU device-lost under parallel load. Override with `RUST_TEST_THREADS=N cargo test`.
+
+### Documentation + Cleanup
+- **R-S68+-007**: Root docs updated — evolution note (fp64 shaders → true math), precision gate archived to fossil.
+- **R-S68+-008**: 5 stale scripts archived to `ecoPrimals/fossil/` (reorganize_shaders.py, benchmark_universal, etc.).
+- **R-S68+-009**: 4 old docs archived (biomeOS integration guide, error code guides — Jan 2026 era).
+- **R-S68+-010**: `run-coverage.sh` fixed — removed stale `e2e_concurrent_integration_suite` ref.
+- **R-S68+-011**: `docs/guides/TESTING.md` — updated from "~1,578 tests" to 21,599+ workspace / 2,546+ barracuda.
+
+---
+
 ## Session 68 Resolutions (Feb 26, 2026)
 
 ### Dual-Layer Universal Precision Architecture

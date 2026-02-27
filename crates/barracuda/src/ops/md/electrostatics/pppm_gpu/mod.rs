@@ -387,7 +387,23 @@ impl PppmGpu {
             pass.dispatch_workgroups(particle_workgroups, 1, 1);
         }
 
-        self.queue.submit(Some(encoder.finish()));
+        let submit_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.queue.submit(Some(encoder.finish()));
+            self.device.poll(wgpu::Maintain::Wait);
+        }));
+        if let Err(payload) = submit_result {
+            let msg = payload
+                .downcast_ref::<String>()
+                .map(|s| s.as_str())
+                .or_else(|| payload.downcast_ref::<&str>().copied())
+                .unwrap_or("unknown");
+            if msg.contains("lost") || msg.contains("Lost") || msg.contains("Parent device") {
+                return Err(crate::error::BarracudaError::device(
+                    "GPU device lost during PPPM computation",
+                ));
+            }
+            std::panic::resume_unwind(payload);
+        }
         let forces = SparseBuffers::read_f64_raw(&self.device, &self.queue, &forces_buffer, n * 3)?;
         let pe_values = SparseBuffers::read_f64_raw(&self.device, &self.queue, &pe_buffer, n)?;
         let total_energy: f64 = pe_values.iter().sum();

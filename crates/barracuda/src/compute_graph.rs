@@ -306,9 +306,24 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
             }
         }
 
-        self.queue.submit(Some(encoder.finish()));
-        self.device.poll(wgpu::Maintain::Wait);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.queue.submit(Some(encoder.finish()));
+            self.device.poll(wgpu::Maintain::Wait);
+        }));
         self.ops.clear();
+        if let Err(payload) = result {
+            let msg = payload
+                .downcast_ref::<String>()
+                .map(|s| s.as_str())
+                .or_else(|| payload.downcast_ref::<&str>().copied())
+                .unwrap_or("unknown");
+            if msg.contains("lost") || msg.contains("Lost") || msg.contains("Parent device") {
+                return Err(crate::error::BarracudaError::device(
+                    "GPU device lost during compute graph execution",
+                ));
+            }
+            std::panic::resume_unwind(payload);
+        }
 
         Ok(())
     }

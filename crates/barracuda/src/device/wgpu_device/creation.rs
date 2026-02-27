@@ -9,8 +9,14 @@ use std::sync::Arc;
 pub const ADAPTER_ENV_VAR: &str = "BARRACUDA_GPU_ADAPTER";
 
 impl WgpuDevice {
-    /// Install error handler that flags device-lost and re-panics.
-    /// Must be called before wrapping device in Arc.
+    /// Install error handler that flags device-lost without panicking.
+    ///
+    /// Device-lost is a recoverable condition: the test pool recreates the
+    /// device and subsequent operations continue. Panicking on device-lost
+    /// kills test threads under parallel load, causing false failures on
+    /// machines with real GPUs.
+    ///
+    /// Non-lost errors still panic — they indicate real bugs.
     fn install_error_handler(
         device: &wgpu::Device,
         lost_flag: &Arc<std::sync::atomic::AtomicBool>,
@@ -18,8 +24,10 @@ impl WgpuDevice {
         let flag = Arc::clone(lost_flag);
         device.on_uncaptured_error(Box::new(move |error| {
             let msg = error.to_string();
-            if msg.contains("lost") || msg.contains("Lost") {
+            if msg.contains("lost") || msg.contains("Lost") || msg.contains("Parent device") {
                 flag.store(true, std::sync::atomic::Ordering::Release);
+                tracing::warn!("GPU device lost (flagged for pool recovery): {msg}");
+                return;
             }
             panic!("wgpu uncaptured error: {msg}");
         }));
