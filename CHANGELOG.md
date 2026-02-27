@@ -5,7 +5,35 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - February 26, 2026 (Sessions 43-68 — Universal Precision + Sovereign Compiler + Deep Debt)
+## [Unreleased] - February 27, 2026 (Sessions 43-68+++ — Universal Precision + Sovereign Compiler + Deep Debt Sweep)
+
+### Session 68+++ (Feb 27, 2026) — Deep Debt Sweep
+
+- **chrono fully eliminated**: 28 Cargo.toml files, 200+ source/test files migrated to `std::time::SystemTime`. Workspace `chrono` entry removed. `system_time_serde` extended with `format_rfc3339()` and `format_display()`.
+- **Unsafe evolution (47→45)**: 2 `unsafe BorrowedFd::borrow_raw` blocks in akida-driver → safe `AsFd` trait. `IoHandle` struct removed entirely.
+- **Dead code cleanup (~400 lines)**: `BiomeLifecycle` struct+impl removed (~190 lines), unused network scanning functions (~130 lines), `ProcessInfo.cpu_usage`+`NetworkStats` removed, 6 stale `#[allow(dead_code)]` removed, `DisplayManager`/`parse_node_data` gated `#[cfg(test)]`.
+- **Dependency hygiene**: `log` removed from runtime/gpu and runtime/wasm. 2 startup `println!` → `tracing::info!` in auto_config.
+- **Hardcoding evolution**: `"localhost"`/`"127.0.0.1"` → `DEFAULT_HOSTNAME`/`LOCALHOST_IPV4` constants in 7 production files.
+- **Pattern audit confirmed**: Zero `Box<dyn Error>`, blind `.unwrap()`, `todo!()`, `dbg!()` in production.
+- **Clippy fixes**: `is_multiple_of()`, collapsible `str::replace`, `RangeInclusive::contains`, redundant closure.
+
+### Session 68++ (Feb 26, 2026) — Full Ecosystem Audit
+
+- **License compliance**: Root `LICENSE` file (AGPL-3.0-or-later). 29 SPDX headers corrected from Apache-2.0.
+- **Clippy pedantic**: 0 warnings across `--all-targets` (tests + examples). 135+ deprecated `manual_jsonrpc` warnings resolved via `#[cfg_attr(test, allow(deprecated))]`.
+- **File size**: `precision_tests.rs` 1011→923 lines. All production files under 1000 lines.
+- **Hardcoded primals → capability-based**: `get_primal_default_port()` generic pattern. Zero hardcoded primal names.
+- **Hardcoded ports → constants**: `discovery_fallback` module with named constants.
+- **chrono partial elimination**: migrated from common, core byob/ecosystem/self_identity/runtime_discovery.
+- **println! → tracing**: akida_executor.rs, pppm_params.rs migrated.
+
+### Session 68+ (Feb 26, 2026) — Standalone Resilience
+
+- **GPU device-lost recovery**: `install_error_handler` flags + returns instead of panicking. `submit_and_poll_inner` catches device-lost via `catch_unwind`. `read_buffer`/`map_staging_buffer` early-return on lost device.
+- **All submit paths hardened**: `compute_graph.rs`, `pppm_gpu/mod.rs` direct `queue.submit` wrapped in `catch_unwind`.
+- **Test parallelism**: `.cargo/config.toml` sets `RUST_TEST_THREADS=4`.
+- **Stale debris archived**: 5 scripts + 4 docs → `ecoPrimals/fossil/`. `run-coverage.sh` fixed.
+- **Result**: 128 false test failures → 0. Pull to any machine, `cargo test` works.
 
 ### Session 68 (Feb 26, 2026) — Dual-Layer Universal Precision + Precision Bottleneck
 

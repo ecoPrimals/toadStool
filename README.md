@@ -1,6 +1,6 @@
 # ToadStool + BarraCUDA
 
-**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 68 -- February 26, 2026
+**Sovereign Distributed Compute** | Pure Rust | ecoBin | Session 68+++ -- February 27, 2026
 
 ---
 
@@ -37,17 +37,17 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo test --workspace --lib` | 2,546+ barracuda (122 shader-specific) + 21,599 workspace tests |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | Four springs validation | 4,000+ acceptance checks |
-| `unsafe` blocks | 2 in barracuda (SPIRV passthrough + pipeline cache), 95+ workspace-wide, all `// SAFETY:` documented |
+| `unsafe` blocks | 45 workspace-wide (2 barracuda, rest FFI/hardware/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs | 0 -- all evolved to formal `BLOCKED(reason)` markers |
+| Dead code | ~400 lines removed; ~35 justified `#[allow(dead_code)]` (feature-gated, GPU fallbacks) |
+| External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) -- pure std::time |
 | Hardcoded primal names | 0 -- capability-based, `get_primal_default_port()` pattern |
-| Hardcoded ports | 0 inline literals -- all via `ports::discovery_fallback` named constants |
+| Hardcoded ports/localhost | 0 inline literals -- `DEFAULT_HOSTNAME` / `LOCALHOST_IPV4` constants |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
 | Orphan shaders | 0 -- all 700 WGSL shaders wired to Rust (21 DF64 files) |
-| CPU-only math in production | 0 -- all math dispatches GPU shaders |
 | File size limit | All production files under 1000 lines |
-| `cargo deny check` | All passing — licenses, bans, sources |
 
 ---
 
@@ -261,7 +261,7 @@ toadStool/
 8. **Honest documentation** -- no aspirational claims as facts; ML stubs return `ModelNotLoaded`/`ModelBackendRequired`
 9. **Vendor-agnostic** -- WGSL over CUDA/ROCm, any GPU works
 10. **Sovereign compute** -- no vendor lock-in, pure Rust core, no external math dependencies
-11. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (95+ blocks audited)
+11. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (45 blocks, all justified)
 12. **Shared error tracking** -- `AtomicU64` counter across all server transports
 
 ### Quality Metrics
@@ -275,11 +275,14 @@ toadStool/
 | Shader-specific tests | 122 (unit + e2e + chaos + fault) |
 | WGSL shaders (barracuda) | 700 (zero orphans, shader-first, 21 DF64 + 182 f64 + 497 f32 — zero f32-only, all f64 canonical) |
 | Unit tests (full workspace) | 21,599+ |
-| `unsafe` blocks | 2 in barracuda (SPIRV passthrough + pipeline cache), 95+ workspace-wide, all `// SAFETY:` documented |
+| `unsafe` blocks | 45 workspace-wide (2 barracuda, rest FFI/hardware/MMIO), all `// SAFETY:` documented |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
+| Production `todo!()`/`dbg!()` | 0 |
 | Production TODOs | 0 -- all `BLOCKED(reason)` markers |
-| Hardcoded localhost/ports/URLs in prod | 0 |
+| Dead code removed | ~400 lines; ~35 justified `#[allow(dead_code)]` remain |
+| Hardcoded localhost/ports/URLs in prod | 0 -- `DEFAULT_HOSTNAME` / `LOCALHOST_IPV4` constants |
+| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core) |
 | Four springs validation | 4,000+ acceptance checks |
 
 ---
@@ -289,18 +292,18 @@ toadStool/
 **We are still evolving.** The transition from fp64 shaders to true math is underway — the springs will have many interactions to evolve now that barracuda owns the math at all precisions.
 
 ### Active / Next
-- **Spring math evolution** -- springs migrate from local math to barracuda universal dispatch. Many interactions to evolve per spring.
-- **Test coverage 43% → 90%** -- barracuda at 80.7%, other crates need integration-test coverage capture (`--tests`)
+- **Spring math evolution** -- springs migrate from local math to barracuda universal dispatch
+- **Test coverage** -- barracuda at 80.7% (GPU-only ops untestable without hardware); other crates need `--tests` capture
+- **`anyhow` → `thiserror`** -- eliminated from core crates; ~35 peripheral crates carry forward
+- **`manual_jsonrpc` → `pure_jsonrpc`** -- serving layer needed before migration completes
 - **DF64 transcendental coverage** -- extend `asin_df64`, `acos_df64`, `atan_df64`, `sinh_df64`, `cosh_df64`, `gamma_df64`, `erf_df64`
 - **ComputeDispatch migration** -- Builder pattern created; migrating existing ops to reduce boilerplate
-- **Conv2D/Pool stride/padding/channels** -- WGSL exists, single-channel wired; full parametric support pending (D-S46-001)
-- **W-001/W-003** -- Mesa NAK upstream patches pending Titan V validation
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining, architecture-specific peepholes
 
 ### Recently Completed
-- **Session 68+++: chrono full elimination** -- `chrono` removed as direct dependency from all 28 workspace Cargo.toml files. Migrated 200+ source/test files to `std::time::SystemTime` + `system_time_serde`. Zero chrono in dependency tree (only transitive via `procfs`).
-- **Session 68++: Full ecosystem audit** -- AGPL-3 LICENSE + 29 header fixes, 0 clippy warnings across `--all-targets`, all files under 1000 lines, hardcoded primal names → capability-based, hardcoded ports → named discovery constants, `println!` → `tracing` in barracuda
-- **Session 68+: Standalone resilience** -- GPU device-lost recovery (no more test cascades), `RUST_TEST_THREADS=4` default, stale scripts/docs archived to fossil
+- **Session 68+++: Deep debt sweep** -- chrono fully eliminated (28 crates, 200+ files → `std::time`). 2 unsafe blocks evolved to safe `AsFd` (akida-driver). ~400 lines dead code removed. Hardcoded localhost → constants. `log` dep removed. Startup `println!` → `tracing`. Dead code audit: 47→45 unsafe (all justified), zero `Box<dyn Error>`, zero `todo!()`, zero blind `.unwrap()`.
+- **Session 68++: Full ecosystem audit** -- AGPL-3 LICENSE + 29 header fixes, 0 clippy warnings (`--all-targets`), all files under 1000 lines, hardcoded primals → capability-based, `println!` → `tracing` in barracuda
+- **Session 68+: Standalone resilience** -- GPU device-lost recovery, `RUST_TEST_THREADS=4` default, stale debris archived to fossil
 - **Session 68: Dual-layer universal precision** -- `op_preamble` + naga-guided `df64_rewrite`. Precision bottleneck RESOLVED. 122 shader tests.
 - **Sessions 58-67: Sovereign compiler + deep debt** -- naga-IR FMA fusion, DF64 transcendentals, 46 cross-spring absorptions, 20+ files smart-refactored
 
@@ -312,10 +315,12 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| W-001 | f64 transcendental workaround for all drivers (NVK/RADV/NVIDIA) | Active -- `compile_shader_f64()` polyfill handles 28 functions; no vendor math library needed; upstream ACO/NAK fix pending |
-| W-003 | NAK compiler scheduling gap (SM70 Volta) | Active -- Phases 0-3 live in `compile_shader_f64()`; Titan V benchmark pending; Mesa MR ready |
+| W-001 | f64 transcendental workaround for all drivers (NVK/RADV/NVIDIA) | Active -- `compile_shader_f64()` polyfill handles 28 functions; upstream ACO/NAK fix pending |
+| W-003 | NAK compiler scheduling gap (SM70 Volta) | Active -- Phases 0-3 live; Titan V benchmark pending; Mesa MR ready |
 | D-S46-001 | Conv2D/Pool stride/padding/channels in WGSL | Carried -- shaders exist but lack full parametric support |
 | D-S18-002 | cubecl transitive `dirs-sys` | Low -- needs upstream PR replacing `dirs` with `etcetera` |
+| D-S68-001 | `anyhow` → `thiserror` in ~35 peripheral crates | Carried -- core crates done, peripheral gradual |
+| D-S68-002 | `manual_jsonrpc` → `pure_jsonrpc` serving layer | Carried -- legacy support for Unibin until pure_jsonrpc ready |
 
 See [DEBT.md](DEBT.md) for full register and evolution paths.
 
@@ -336,4 +341,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: February 27, 2026 -- Session 68+++: chrono FULLY ELIMINATED (28 Cargo.toml, 200+ files migrated to std::time). AGPL-3 compliant. 0 clippy warnings (`--all-targets`). All quality gates green. Barracuda 80.7% coverage. 700 WGSL shaders. 2,546+ barracuda tests.
+**Last Updated**: February 27, 2026 -- Session 68+++ deep debt complete. chrono eliminated (28 crates). 2 unsafe blocks evolved. ~400 lines dead code removed. Hardcoded localhost → constants. AGPL-3 compliant. 0 clippy warnings (`--all-targets`). All quality gates green. 45 justified unsafe blocks. 700 WGSL shaders. 2,546+ barracuda tests.

@@ -1,4 +1,4 @@
-# Status -- February 27, 2026 (Sessions 32-68+++: Precision Bottleneck + Standalone Resilience + Full Ecosystem Audit + chrono Elimination)
+# Status -- February 27, 2026 (Sessions 32-68+++: Deep Debt Sweep Complete)
 
 ## Quality Gates
 
@@ -6,7 +6,7 @@
 |------|--------|-------|
 | `cargo build --workspace` | PASS | Clean build |
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
-| `cargo clippy -p barracuda --lib -- -D warnings` | PASS | **0 warnings** |
+| `cargo clippy --workspace --all-targets` | PASS | **0 warnings (tests + examples included)** |
 | `cargo doc --workspace --no-deps` | PASS | 0 warnings |
 | `cargo test -p barracuda --lib` | PASS | **2,546+ total** (122 shader-specific: unit/e2e/chaos/fault) |
 | Standalone clone test | PASS | **Pull to any machine, `cargo test` works — GPU-optional, CPU fallback, device-lost resilient** |
@@ -15,32 +15,54 @@
 | neuralSpring validation | PASS | **580 tests, 94.53% coverage** |
 | airSpring validation | PASS | **468 tests, 96.84% coverage** |
 | groundSpring validation | PASS | **154 tests, 98.64% coverage** |
-| Pure Rust syscalls | PASS | mmap/mlock via rustix |
-| Zero-copy hot paths | PASS | `Cow<'a, str>` + `#[serde(borrow)]`, `from_slice`, `bytes::Bytes` |
-| Hardcoded primal names | PASS | **0 -- capability-based discovery** |
-| Hardcoded localhost/ports | PASS | **0 -- bind `0.0.0.0`, port 0, `discover_self_ip_address()`** |
-| `unsafe` blocks | PASS | **2 in barracuda (SPIRV passthrough + pipeline cache); 45 total workspace (all justified: FFI/hardware/MMIO)** |
+| License compliance | PASS | **AGPL-3.0-or-later: root LICENSE file + SPDX headers** |
+| `unsafe` blocks | PASS | **45 workspace-wide (2 barracuda SPIRV/cache, rest FFI/hardware/MMIO), all `// SAFETY:` documented** |
 | `#![deny(unsafe_code)]` | PASS | **36 crates hardened** (2 justified: gpu, secure_enclave) |
 | Production `Box<dyn Error>` | PASS | **0 in core crates -- all typed errors (thiserror)** |
 | Production panics/unwraps | PASS | **Zero blind `unwrap()`; infallible `expect()` only** |
 | Production TODOs | PASS | **Zero -- all evolved to `BLOCKED(reason)` markers** |
-| File size limit | PASS | **All production files under 1000 lines** |
-| WGSL shaders | PASS | **700 (zero orphans, shader-first, 21 DF64 + 182 f64 + 497 f32, 0 f32-only — all f32 via LazyLock downcast from f64 canonical)** |
-| Dead code | PASS | **~400 lines removed; ~35 justified `#[allow(dead_code)]` remain (feature-gated, reserved fields, GPU CPU fallbacks)** |
-| Production println!/dbg! | PASS | **Zero dbg!; CLI println! intentional (user-facing output)** |
-| External dep hygiene | PASS | **`instant` + `chrono` (28 crates) + `log` (2 crates) eliminated; `anyhow` in core crates eliminated (peripheral carried); `async_trait` justified (dyn-required)** |
+| Production `println!`/`dbg!` | PASS | **Zero `dbg!`; CLI `println!` intentional (user-facing output)** |
 | Production mocks | PASS | **Zero — TpuBackend::Mock behind `mock-tpu` feature gate** |
-| Platform stubs | PASS | **Evolved to platform-aware `can_handle()` + `SystemError::NotSupported`** |
-| FP64 strategy | PASS | **Fp64Strategy::Native/Hybrid -- FMA-optimized DF64 + transcendentals** |
-| Dependency security | PASS | **bytes >=1.11.1, aes-gcm >=0.10.3, zero chrono** |
-| GPU device-lost recovery | PASS | **`catch_unwind` on all submit paths, `is_lost()` early-return, no test cascades** |
-| `cargo clippy --all-targets` | PASS | **0 warnings across tests + examples (pedantic)** |
-| License compliance | PASS | **AGPL-3.0-or-later: root LICENSE file + SPDX headers** |
+| Dead code | PASS | **~400 lines removed; ~35 justified `#[allow(dead_code)]` (feature-gated, GPU CPU fallbacks)** |
+| File size limit | PASS | **All production files under 1000 lines** |
+| WGSL shaders | PASS | **700 (zero orphans, 21 DF64 + 182 f64 + 497 f32, 0 f32-only — all f64 canonical)** |
+| External dep hygiene | PASS | **`chrono` (28 crates) + `log` (2) + `instant` eliminated; `anyhow` core crates eliminated (peripheral carried)** |
 | Hardcoded primal names | PASS | **0 -- capability-based `get_primal_default_port()` pattern** |
-| Hardcoded ports | PASS | **0 inline literals -- `ports::discovery_fallback` named constants** |
+| Hardcoded ports/localhost | PASS | **0 inline literals -- `DEFAULT_HOSTNAME` / `LOCALHOST_IPV4` constants** |
+| Zero-copy hot paths | PASS | **`Cow<'a, str>` + `#[serde(borrow)]`, `from_slice`, `bytes::Bytes`** |
+| Pure Rust syscalls | PASS | **mmap/mlock via rustix** |
+| Platform stubs | PASS | **Evolved to `can_handle()` + `SystemError::NotSupported`** |
+| FP64 strategy | PASS | **Fp64Strategy::Native/Hybrid -- FMA-optimized DF64 + transcendentals** |
+| GPU device-lost recovery | PASS | **`catch_unwind` on all submit paths, `is_lost()` early-return** |
+| Dependency security | PASS | **bytes >=1.11.1, aes-gcm >=0.10.3, zero chrono** |
 | Test coverage (llvm-cov) | 43.4% (barracuda 80.7%) | **Target: 90% -- barracuda near target; other crates need `--tests` capture** |
 
 Excludes hardware-dependent crates: `toadstool-runtime-gpu`, `ml-inference-showcase`, `homomorphic-computing`. Examples excluded (require GPU).
+
+---
+
+## Session 68+++: Deep Debt Sweep (Feb 27, 2026)
+
+### Unsafe Evolution (47 → 45)
+- **R-S68+++-012**: `akida-driver/src/io.rs` — 2 `unsafe BorrowedFd::borrow_raw` blocks → safe `AsFd` trait. `IoHandle` struct removed; `device_read`/`device_write` accept `&impl AsFd`.
+
+### Dead Code Cleanup (~400 lines)
+- **R-S68+++-013**: `BiomeLifecycle` struct + impl removed (~190 lines). `lifecycle_ops.rs` has the real implementation.
+- **R-S68+++-014**: Unused network scanning functions removed (~130 lines from `integrator_impl.rs`).
+- **R-S68+++-015**: `ProcessInfo.cpu_usage` + `NetworkStats` struct removed from monitoring.
+- **R-S68+++-016**: 6 stale `#[allow(dead_code)]` annotations removed.
+- **R-S68+++-017**: `DisplayManager` and `parse_node_data` gated with `#[cfg(test)]`.
+- **R-S68+++-018**: `configure_ecosystem_integration` method removed from auto_config.
+
+### Dependency Hygiene
+- **R-S68+++-019**: `log` crate removed from `runtime/gpu` and `runtime/wasm` (unused deps).
+- **R-S68+++-020**: 2 startup `println!` → `tracing::info!` in auto_config.
+
+### Hardcoding Evolution (7 files)
+- **R-S68+++-021**: `"localhost"` / `"127.0.0.1"` → `DEFAULT_HOSTNAME` / `LOCALHOST_IPV4` constants in config, distributed, auto_config.
+
+### Pattern Audit
+- Zero `Box<dyn Error>`, blind `.unwrap()`, `todo!()`, `dbg!()` in production confirmed.
 
 ---
 

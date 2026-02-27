@@ -6,7 +6,7 @@ authors.workspace = true
 license.workspace = true
 description = "Examples for ToadStool Universal Compute Platform"
 repository = "https://github.com/ecoPrimals/toadstool"
-readme = "EXAMPLE_STATUS.md"
+readme = "../README.md"
 keywords = ["examples", "demos", "tutorials", "compute"]
 categories = ["development-tools"]
 
@@ -45,19 +45,9 @@ path = "complete_system_integration_demo.rs"
 name = "cooperative_network_demo"
 path = "cooperative_network_demo.rs"
 
-# [[bin]]
-# name = "crypto_lock_demo"
-# path = "crypto_lock_demo.rs"
-# OUTDATED: Example needs update for Phase 1B security_provider types
-
 [[bin]]
 name = "capability_discovery_demo"
 path = "capability_discovery_demo.rs"
-
-# Archived - API mismatches (outdated struct fields)
-# [[bin]]
-# name = "ecosystem_massive_job_demo"
-# path = "ecosystem_massive_job_demo.rs"
 
 [[bin]]
 name = "enhanced_universal_substrate_demo"
@@ -99,15 +89,6 @@ path = "sprint4_distributed_orchestration_demo.rs"
 name = "sprint4_security_performance_demo"
 path = "sprint4_security_performance_demo.rs"
 
-# Archived Nov 14, 2025 - Build failures (API mismatches)
-# [[bin]]
-# name = "sprint5_monitoring_distributed_demo"
-# path = "sprint5_monitoring_distributed_demo.rs"
-
-# [[bin]]
-# name = "sprint5_zero_touch_demo"
-# path = "sprint5_zero_touch_demo.rs"
-
 [[bin]]
 name = "squirrel_mcp_coordination_demo"
 path = "squirrel_mcp_coordination_demo.rs"
@@ -115,11 +96,6 @@ path = "squirrel_mcp_coordination_demo.rs"
 [[bin]]
 name = "standalone_universal_compute"
 path = "standalone_universal_compute.rs"
-
-# Archived - references non-existent SubstrateDetectionEngine
-# [[bin]]
-# name = "universal_compute_bridge_demo"
-# path = "universal_compute_bridge_demo.rs"
 
 [[bin]]
 name = "universal_compute_demo"
@@ -129,29 +105,9 @@ path = "universal_compute_demo.rs"
 name = "universal_compute_ecosystem_demo"
 path = "universal_compute_ecosystem_demo.rs"
 
-# Archived Nov 13, 2025 - API mismatches
-# [[bin]]
-# name = "universal_compute_platform_demo"
-# path = "universal_compute_platform_demo.rs"
-
-# Archived Nov 13, 2025 - API mismatches
-# [[bin]]
-# name = "universal_substrate_demo"
-# path = "universal_substrate_demo.rs"
-
-# Archived Nov 13, 2025 - API mismatches
-# [[bin]]
-# name = "universal_substrate_demonstration"
-# path = "universal_substrate_demonstration.rs"
-
 [[bin]]
 name = "universal_platform_test"
 path = "universal_platform_test.rs"
-
-# Archived Nov 13, 2025 - RetryConfig type mismatches
-# [[bin]]
-# name = "current_api_demo"
-# path = "current_api_demo.rs"
 
 [[bin]]
 name = "comprehensive_test_coverage_demo"
@@ -160,26 +116,6 @@ path = "comprehensive_test_coverage_demo.rs"
 [[bin]]
 name = "config_management_demo"
 path = "config_management_demo.rs"
-
-# Archived - references non-existent crates
-# [[bin]]
-# name = "edge_runtime_comprehensive_demo"
-# path = "edge_runtime_comprehensive_demo.rs"
-
-# Archived Jan 27, 2026 - References incomplete component_model feature
-# [[bin]]
-# name = "enhanced_wasm_component_demo"
-# path = "enhanced_wasm_component_demo.rs"
-
-# Archived Nov 13, 2025 - Missing types (SelfIdentity, InfantDiscovery)
-# [[bin]]
-# name = "hardcoding_elimination_example"
-# path = "hardcoding_elimination_example.rs"
-
-# Archived - references non-existent crates
-# [[bin]]
-# name = "legacy_systems_comprehensive_demo"
-# path = "legacy_systems_comprehensive_demo.rs"
 
 [[bin]]
 name = "network_performance_benchmark"
@@ -201,11 +137,6 @@ required-features = []  # OpenCL feature is in GPU crate, not workspace
 [[bin]]
 name = "distributed_gpu_demo"
 path = "distributed_gpu_demo.rs"
-
-# Archived Jan 27, 2026 - Hardcoded reqwest dependency (pre-Pure-Rust pattern)
-# [[bin]]
-# name = "beardog_encrypted_workload"
-# path = "beardog_encrypted_workload.rs"
 
 [[bin]]
 name = "unified_memory_demo"
@@ -257,13 +188,9 @@ futures = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 colored = "2.0"
 
-# Networking (WebSocket removed — use JSON-RPC 2.0 polling)
-# tokio-tungstenite removed: R-011 WebSocket deprecated
 
 [features]
 default = ["pure-ecosystem"]
 pure-ecosystem = []
-# grpc = ["tonic"] # REMOVED: protobuf dependency
-# full-ecosystem = ["grpc"] # REMOVED: protobuf dependency
 full-ecosystem = ["pure-ecosystem"]
-opencl = []  # Placeholder feature for examples that reference it 
+opencl = []

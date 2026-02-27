@@ -1,21 +1,41 @@
 # ToadStool/BarraCuda -- Next Steps
 
 **Updated**: February 27, 2026 -- Session 68+++
-**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings (--all-targets) | Standalone-resilient | Zero chrono (pure std::time) | 700 WGSL shaders | 2,546+ barracuda tests | Barracuda 80.7% coverage
-**Evolving**: Springs transition from fp64 shaders → true math. Coverage gap analysis (barracuda 80.7% → 90%). manual_jsonrpc → pure_jsonrpc serving layer.
+**Status**: Production-grade | AGPL-3 compliant | 0 clippy warnings (--all-targets) | Standalone-resilient | Zero chrono | 45 justified unsafe | 700 WGSL shaders | 2,546+ barracuda tests | Barracuda 80.7% coverage
+**Evolving**: Springs transition from fp64 shaders → true math. Coverage gap analysis (barracuda 80.7% → 90%). `anyhow` → `thiserror` in peripheral crates. `manual_jsonrpc` → `pure_jsonrpc` serving layer.
 
 ---
 
 ## Completed This Session
 
-### Session 68+++: chrono Full Elimination — Deep Debt ✅
+### Session 68+++: Deep Debt Sweep ✅
 
+**chrono full elimination**:
 - **28 Cargo.toml files**: `chrono` removed as direct dependency from every workspace crate.
 - **200+ source/test files migrated**: `DateTime<Utc>` → `SystemTime`, `Utc::now()` → `SystemTime::now()`, `chrono::Duration` → `std::time::Duration`.
 - **`system_time_serde` module**: Extended with `format_rfc3339()` and `format_display()` helpers for formatted output.
 - **Workspace `[workspace.dependencies]`**: `chrono` entry removed — no crate references it.
-- **Crates migrated**: config, client, server, distributed, cli, api, management (monitoring, analytics, performance), security (policies, sandbox), integration (primals, nestgate, protocols, integration-tests), runtime (display, edge, specialty, adaptive, python, wasm, container, gpu), auto_config, testing, examples, showcase.
-- **All quality gates green**: `cargo check`, `cargo clippy --all-targets`, `cargo fmt`, `cargo doc` — zero warnings.
+
+**Unsafe evolution** (47 → 45 blocks):
+- 2 `unsafe` blocks eliminated in `akida-driver/src/io.rs`: `BorrowedFd::borrow_raw` → safe `AsFd` trait.
+- `IoHandle` struct removed entirely; `device_read`/`device_write` accept `&impl AsFd`.
+- All 45 remaining blocks justified (FFI, hardware MMIO, custom allocation, GPU API).
+
+**Dead code cleanup** (~400 lines removed):
+- `BiomeLifecycle` struct + impl (~190 lines removed).
+- Unused scanning functions (~130 lines removed from integrator_impl).
+- `ProcessInfo.cpu_usage` field and `NetworkStats` struct removed.
+- 6 stale `#[allow(dead_code)]` annotations removed.
+- `DisplayManager` and `parse_node_data` gated with `#[cfg(test)]`.
+
+**Hardcoding evolution** (7 files):
+- `"localhost"` / `"127.0.0.1"` → `DEFAULT_HOSTNAME` / `LOCALHOST_IPV4` constants.
+
+**Dependency hygiene**:
+- `log` crate removed from `runtime/gpu` and `runtime/wasm`.
+- 2 startup `println!` → `tracing::info!`.
+
+**Pattern audit confirmed**: Zero `Box<dyn Error>`, blind `.unwrap()`, `todo!()`, `dbg!()` in production.
 
 ### Session 68+: Standalone Resilience — Deep Debt ✅
 
@@ -186,7 +206,9 @@ Phase 4 core is DONE (FMA fusion, DCE, SPIR-V passthrough). Remaining iterations
 - [ ] **Conv2D/Pool full parametric support** -- WGSL exists, single-channel wired; stride/padding/channels pending (D-S46-001)
 - [ ] **NVK/Titan V readiness** -- Ensure f64 workarounds complete for NVK/Volta + NAK-specific paths
 - [ ] **NPU model pipeline** -- train/compile/deploy from Rust (VFIO backend exists)
-- [ ] **Test coverage target 90%** -- `cargo llvm-cov` gap analysis needed
+- [ ] **Test coverage target 90%** -- barracuda at 80.7%; other crates need `--tests` capture
+- [ ] **`anyhow` → `thiserror`** -- core crates done; ~35 peripheral crates carry forward
+- [ ] **`manual_jsonrpc` → `pure_jsonrpc`** -- serving layer needed before migration
 - [ ] **PCoA BatchedEighGpu** -- naga "invalid function call" in eigensolve shaders
 
 ### Cross-Repo Debt

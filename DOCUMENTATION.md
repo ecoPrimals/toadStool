@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: February 26, 2026 -- Session 68+
+**Last Updated**: February 27, 2026 -- Session 68+++
 
 ---
 
@@ -19,7 +19,7 @@
 | See all JSON-RPC methods | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#json-rpc-methods-36-total) |
 | Try GPU operations | [docs/guides/BARRACUDA_V2_QUICKSTART.md](docs/guides/BARRACUDA_V2_QUICKSTART.md) |
 | Learn FHE | [docs/guides/QUICK_START_ENCRYPTION.md](docs/guides/QUICK_START_ENCRYPTION.md) |
-| Use scientific computing | [docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md](docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md) |
+| Use scientific computing | [QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api) |
 | Run tests | [docs/guides/TESTING.md](docs/guides/TESTING.md) |
 | Deploy NPU drivers | [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md) |
 | Understand NPU driver design | [specs/NPU_DRIVER_ARCHITECTURE.md](specs/NPU_DRIVER_ARCHITECTURE.md) |
@@ -28,12 +28,13 @@
 
 ---
 
-## Current State (Session 68+ — February 26, 2026)
+## Current State (Session 68+++ — February 27, 2026)
 
-**Still evolving.** Precision bottleneck resolved. Standalone resilience hardened. Now transitioning from fp64 shaders to true math — springs will have many interactions to evolve as barracuda owns all precision.
+**Still evolving.** Deep debt sweep complete. `chrono` fully eliminated. Unsafe evolved. Dead code cleaned. Transitioning from fp64 shaders to true math — springs will have many interactions to evolve as barracuda owns all precision.
 
-- **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery prevents test cascades. `RUST_TEST_THREADS=4` default.
-- **Dual-layer universal precision** — Layer 1: `op_preamble` (abstract ops for all 4 precisions). Layer 2: naga-guided `df64_rewrite` (compiler-level f64→DF64). `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
+- **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery. `RUST_TEST_THREADS=4` default.
+- **Deep debt: clean** — Zero `chrono`, zero `log` (core), 45 justified `unsafe` blocks, ~400 lines dead code removed, zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `dbg!()`
+- **Dual-layer universal precision** — Layer 1: `op_preamble`. Layer 2: naga-guided `df64_rewrite`. `compile_shader_universal()` + `compile_op_shader()` route to f16/f32/f64/df64.
 - **Sovereign Compiler** — naga-IR optimizer: FMA fusion, DCE, df64 infix rewrite, SPIR-V passthrough.
 - **700 WGSL shaders** — zero orphans, 21 DF64 files, **zero f32-only**. All f64 canonical.
 - **122 shader tests** — unit, e2e, chaos (15), fault (13).
@@ -83,9 +84,9 @@
 
 ## Scientific Middleware
 
-**[docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md](docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md)** -- Comprehensive implementation guide: all modules, functions, tests, algorithms, design principles.
+**[QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api)** -- API reference with usage examples for all middleware modules (linalg, numerical, special, stats, optimize, surrogate, sample, PDE, mixing, grids).
 
-**[docs/PHASE1_COMPLETION_REPORT.md](docs/PHASE1_COMPLETION_REPORT.md)** -- Validation report: test results, metrics, deep debt compliance, architecture.
+Archived: `BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md` and `PHASE1_COMPLETION_REPORT.md` moved to `ecoPrimals/fossil/`.
 
 ---
 
@@ -99,7 +100,7 @@
 
 **ML/AI Engineers**: [README.md](README.md) then [docs/guides/BARRACUDA_V2_QUICKSTART.md](docs/guides/BARRACUDA_V2_QUICKSTART.md)
 
-**Computational Scientists**: [docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md](docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md) then [QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api)
+**Computational Scientists**: [QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api) then `cargo doc -p barracuda --open`
 
 **System Architects**: [STATUS.md](STATUS.md) then [specs/](specs/)
 

@@ -1,6 +1,6 @@
 # ToadStool Quick Reference
 
-**February 26, 2026 -- Session 68+**
+**February 27, 2026 -- Session 68+++**
 
 ---
 
@@ -10,9 +10,9 @@
 # All gates (run these before any commit)
 cargo fmt --all -- --check
 cargo build --workspace
-cargo clippy --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo doc --workspace --no-deps
 cargo test --workspace
-cargo deny check licenses bans sources
 cargo llvm-cov --lib -p toadstool-common -p toadstool-config -p toadstool -p toadstool-server -p toadstool-distributed --summary-only
 ```
 
@@ -537,14 +537,10 @@ constants::timeouts::*               // Connection, request, etc.
 | [DOCUMENTATION.md](DOCUMENTATION.md) | Navigation hub |
 | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | This file (API reference) |
 
-### Scientific Middleware Docs
+### Scientific Middleware
 
-| File | What |
-|------|------|
-| `docs/BARRACUDA_MIDDLEWARE_IMPLEMENTATION.md` | Full implementation guide |
-| `docs/PHASE1_COMPLETION_REPORT.md` | Validation and metrics |
-| `docs/MIDDLEWARE_COMPLETION_SUMMARY.md` | Technical summary |
+API reference: see [Scientific Computing Middleware API](#scientific-computing-middleware-api) above. Full Rust docs: `cargo doc -p barracuda --open`.
 
 ---
 
-**Last Updated**: February 26, 2026 — Session 68
+**Last Updated**: February 27, 2026 — Session 68+++

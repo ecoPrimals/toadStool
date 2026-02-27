@@ -5,26 +5,40 @@
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
 
-## Session 68+++ Deep Debt: chrono Full Elimination (Feb 27, 2026)
+## Session 68+++ Deep Debt: Deep Sweep (Feb 27, 2026)
 
-**Principle**: External dependencies evolved to pure Rust. `chrono` → `std::time::SystemTime`.
+**Principle**: External dependencies evolved to pure Rust. Unsafe code evolved to safe. Dead code removed. Hardcoded literals → named constants.
 
-### Scope
+### chrono Full Elimination
 - **R-S68+++-001**: 28 Cargo.toml files — `chrono` removed as direct dependency from every workspace crate.
 - **R-S68+++-002**: 200+ source/test files migrated — `DateTime<Utc>` → `SystemTime`, `Utc::now()` → `SystemTime::now()`, `chrono::Duration` → `std::time::Duration`.
 - **R-S68+++-003**: Workspace `[workspace.dependencies]` — `chrono` entry removed entirely.
-
-### Crates Migrated
 - **R-S68+++-004**: Core: config (unused dep removed), client (5 files), server (20 files), distributed (30+ files), cli (35+ files), api (25+ files).
 - **R-S68+++-005**: Management: monitoring (Cargo.toml only), analytics (8 files), performance (3 files).
 - **R-S68+++-006**: Security: policies (12 files), sandbox (3 files).
 - **R-S68+++-007**: Integration: primals (3 files), nestgate (6 files), protocols (13 files), integration-tests (Cargo.toml only).
 - **R-S68+++-008**: Runtime: display, edge, specialty, adaptive, python, wasm, container, gpu (15+ files total).
 - **R-S68+++-009**: Supporting: auto_config (15+ files), testing (Cargo.toml + fake features), examples (5 files), showcase/cross-platform (2 files).
-
-### Infrastructure
 - **R-S68+++-010**: `system_time_serde` extended with `format_rfc3339()` and `format_display()` for formatted timestamp output.
-- **R-S68+++-011**: Clippy fixes: `is_multiple_of()`, collapsible `str::replace`, `RangeInclusive::contains`, redundant closure.
+
+### Unsafe Code Evolution (47 → 45)
+- **R-S68+++-011**: `akida-driver/src/io.rs` — 2 `unsafe BorrowedFd::borrow_raw` blocks eliminated. `IoHandle` struct removed; new `device_read`/`device_write` accept `&impl AsFd`.
+- **R-S68+++-012**: All 45 remaining `unsafe` blocks justified (FFI, hardware MMIO, custom allocation, GPU API).
+
+### Dead Code Cleanup (~400 lines)
+- **R-S68+++-013**: `BiomeLifecycle` struct + impl removed (~190 lines from cli/executor).
+- **R-S68+++-014**: Unused network scanning functions removed (~130 lines from `integrator_impl.rs`).
+- **R-S68+++-015**: `ProcessInfo.cpu_usage` field + `NetworkStats` struct removed from monitoring.
+- **R-S68+++-016**: `configure_ecosystem_integration` method removed from auto_config generation.
+- **R-S68+++-017**: 6 stale `#[allow(dead_code)]` annotations removed.
+- **R-S68+++-018**: `DisplayManager` and `parse_node_data` gated with `#[cfg(test)]`.
+
+### Dependency & Pattern Hygiene
+- **R-S68+++-019**: `log` crate removed from `runtime/gpu` and `runtime/wasm` (unused deps).
+- **R-S68+++-020**: 2 startup `println!` → `tracing::info!` in auto_config.
+- **R-S68+++-021**: Hardcoded `"localhost"` / `"127.0.0.1"` → `DEFAULT_HOSTNAME` / `LOCALHOST_IPV4` in 7 production files (config, distributed, auto_config).
+- **R-S68+++-022**: Clippy fixes: `is_multiple_of()`, collapsible `str::replace`, `RangeInclusive::contains`, redundant closure.
+- **R-S68+++-023**: Pattern audit confirmed: zero `Box<dyn Error>`, blind `.unwrap()`, `todo!()`, `dbg!()` in production.
 
 ---
 
