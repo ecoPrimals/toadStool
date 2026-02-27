@@ -12,7 +12,7 @@ use std::path::Path;
 
 use crate::discovery::DeviceInfo;
 use crate::error::{AkidaError, Result};
-use crate::io::IoHandle;
+use crate::io;
 
 /// Akida device handle
 ///
@@ -23,11 +23,8 @@ pub struct AkidaDevice {
     /// Device information
     info: DeviceInfo,
 
-    /// Underlying device handle
+    /// Underlying device handle (owns the fd)
     handle: DeviceHandle,
-
-    /// I/O operations handler
-    io: IoHandle,
 }
 
 /// Low-level device file handle
@@ -46,14 +43,12 @@ impl AkidaDevice {
         tracing::debug!("Opening device {}: {}", info.index, info.path.display());
 
         let handle = DeviceHandle::open(&info.path, info.index)?;
-        let io = IoHandle::new(handle.as_raw_fd());
 
         tracing::info!("Opened device {}: {}", info.index, info.path.display());
 
         Ok(Self {
             info: info.clone(),
             handle,
-            io,
         })
     }
 
@@ -83,7 +78,7 @@ impl AkidaDevice {
     ///
     /// Returns error if transfer fails or times out.
     pub fn write(&mut self, data: &[u8]) -> Result<usize> {
-        self.io.write(data)
+        io::device_write(&self.handle.file, data)
     }
 
     /// Read data from device
@@ -94,7 +89,7 @@ impl AkidaDevice {
     ///
     /// Returns error if transfer fails or times out.
     pub fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
-        self.io.read(buffer)
+        io::device_read(&self.handle.file, buffer)
     }
 
     /// Get raw file descriptor (for advanced use)

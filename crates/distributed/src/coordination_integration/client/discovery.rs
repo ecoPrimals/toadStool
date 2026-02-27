@@ -90,7 +90,8 @@ impl CoordinationDiscovery {
                 .iter()
                 .filter(|s| {
                     s.endpoints.iter().any(|e| {
-                        e.address.starts_with("127.") || e.address.starts_with("localhost")
+                        e.address.starts_with("127.")
+                            || e.address == toadstool_common::constants::network::DEFAULT_HOSTNAME
                     })
                 })
                 .cloned()
@@ -99,7 +100,8 @@ impl CoordinationDiscovery {
                 .iter()
                 .filter(|s| {
                     s.endpoints.iter().any(|e| {
-                        !e.address.starts_with("127.") && !e.address.starts_with("localhost")
+                        !e.address.starts_with("127.")
+                            && e.address != toadstool_common::constants::network::DEFAULT_HOSTNAME
                     })
                 })
                 .cloned()

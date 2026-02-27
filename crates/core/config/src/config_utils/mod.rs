@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::time::Duration;
+use toadstool_common::constants::network::DEFAULT_HOSTNAME;
 use tracing::{debug, info};
 
 use crate::env_config::{EnvConfigLoader, NetworkEnvConfig};
@@ -181,7 +182,7 @@ impl ConfigUtils {
     #[must_use]
     pub fn get_external_hostname() -> String {
         let loader = EnvConfigLoader::new();
-        loader.get_string("EXTERNAL_HOSTNAME", "localhost")
+        loader.get_string("EXTERNAL_HOSTNAME", DEFAULT_HOSTNAME)
     }
 
     /// Get Songbird endpoint from environment or default
@@ -642,7 +643,7 @@ impl ConfigUtils {
     #[must_use]
     pub fn get_federation_trust_domain() -> String {
         let loader = EnvConfigLoader::new();
-        loader.get_string("FEDERATION_TRUST_DOMAIN", "localhost")
+        loader.get_string("FEDERATION_TRUST_DOMAIN", DEFAULT_HOSTNAME)
     }
 
     /// Get cluster name from environment or default

@@ -362,10 +362,12 @@ pub mod resources {
 /// let url = security.endpoint; // Discovered at runtime!
 /// ```
 pub mod endpoints {
+    use toadstool_common::constants::network::DEFAULT_HOSTNAME;
+
     /// Default API endpoint (port 0 = OS-assigned, use discovery for actual port)
     #[must_use]
     pub fn api() -> String {
-        format!("http://localhost:{}", super::network::API_PORT)
+        format!("http://{}:{}", DEFAULT_HOSTNAME, super::network::API_PORT)
     }
 
     /// Default cloud endpoint
@@ -374,7 +376,7 @@ pub mod endpoints {
     #[deprecated(note = "Use capability-based discovery via discover_or_fallback() instead")]
     #[must_use]
     pub fn cloud() -> String {
-        format!("http://localhost:{}", super::network::API_PORT)
+        format!("http://{}:{}", DEFAULT_HOSTNAME, super::network::API_PORT)
     }
 }
 

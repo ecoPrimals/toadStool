@@ -210,9 +210,8 @@ pub async fn quick_start() -> ToadStoolResult<toadstool_config::ToadStoolConfig>
         .try_init()
         .ok(); // Ignore if already initialized
 
-    println!("🍄 ToadStool Universal Compute Platform");
-    println!("🎯 Zero-Touch Auto-Configuration Starting...");
-    println!();
+    tracing::info!("🍄 ToadStool Universal Compute Platform");
+    tracing::info!("🎯 Zero-Touch Auto-Configuration Starting...");
 
     IntelligentAutoConfig::auto_configure().await
 }

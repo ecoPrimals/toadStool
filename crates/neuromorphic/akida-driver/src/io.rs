@@ -3,52 +3,33 @@
 //! Handles direct read/write operations to device files with proper
 //! error handling and tracing.
 //!
-//! Deep Debt: Minimal unsafe, well-documented.
+//! # Evolution (Feb 27, 2026)
+//!
+//! Evolved from `unsafe BorrowedFd::borrow_raw` to safe `AsFd` trait.
+//! Zero unsafe blocks — the borrow checker ensures fd validity.
 //!
 //! # Evolution (Feb 12, 2026)
 //!
 //! Evolved from `nix` to `rustix` for pure Rust syscall wrappers.
 
 use crate::error::{AkidaError, Result};
-use rustix::fd::BorrowedFd;
 use rustix::io::{read, write};
-use std::os::unix::io::RawFd;
+use std::os::unix::io::AsFd;
 
-/// I/O operations handler
+/// Read data from a file-descriptor-bearing object
 ///
-/// Wraps a file descriptor for read/write operations.
-/// Does not own the file descriptor - the caller retains ownership.
-#[derive(Debug)]
-pub struct IoHandle {
-    fd: RawFd,
+/// # Errors
+///
+/// Returns error if read operation fails.
+pub fn device_read(fd: &impl AsFd, buffer: &mut [u8]) -> Result<usize> {
+    read(fd, buffer).map_err(|e| AkidaError::transfer_failed(format!("Read failed: {e}")))
 }
 
-impl IoHandle {
-    /// Create new I/O handler for a file descriptor
-    #[must_use]
-    pub const fn new(fd: RawFd) -> Self {
-        Self { fd }
-    }
-
-    /// Read data from device
-    ///
-    /// # Errors
-    ///
-    /// Returns error if read operation fails.
-    pub fn read(&self, buffer: &mut [u8]) -> Result<usize> {
-        // SAFETY: fd is valid for the lifetime of this IoHandle (caller's responsibility)
-        let borrowed = unsafe { BorrowedFd::borrow_raw(self.fd) };
-        read(borrowed, buffer).map_err(|e| AkidaError::transfer_failed(format!("Read failed: {e}")))
-    }
-
-    /// Write data to device
-    ///
-    /// # Errors
-    ///
-    /// Returns error if write operation fails.
-    pub fn write(&self, data: &[u8]) -> Result<usize> {
-        // SAFETY: fd is valid for the lifetime of this IoHandle (caller's responsibility)
-        let borrowed = unsafe { BorrowedFd::borrow_raw(self.fd) };
-        write(borrowed, data).map_err(|e| AkidaError::transfer_failed(format!("Write failed: {e}")))
-    }
+/// Write data to a file-descriptor-bearing object
+///
+/// # Errors
+///
+/// Returns error if write operation fails.
+pub fn device_write(fd: &impl AsFd, data: &[u8]) -> Result<usize> {
+    write(fd, data).map_err(|e| AkidaError::transfer_failed(format!("Write failed: {e}")))
 }

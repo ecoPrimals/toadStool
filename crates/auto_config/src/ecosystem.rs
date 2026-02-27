@@ -235,7 +235,7 @@ impl EcosystemDiscoverer {
         let config = EnvironmentConfig::from_env();
         let local_ips = vec![
             config.network.bind_address.clone(),
-            "127.0.0.1".to_string(),
+            toadstool_common::constants::network::LOCALHOST_IPV4.to_string(),
             "0.0.0.0".to_string(),
         ];
 

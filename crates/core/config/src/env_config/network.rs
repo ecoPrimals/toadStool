@@ -8,6 +8,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use toadstool_common::constants::network::DEFAULT_HOSTNAME;
+
 use super::loader::EnvConfigLoader;
 
 /// Network configuration loaded from environment variables.
@@ -112,7 +114,7 @@ impl NetworkEnvConfig {
             health_port: loader.get_u16("HEALTH_PORT", crate::defaults::network::DISCOVERY_PORT),
             events_port: loader.get_u16("EVENTS_PORT", crate::defaults::network::EVENTS_PORT),
             bind_address: loader.get_string("BIND_ADDRESS", "0.0.0.0"),
-            external_hostname: loader.get_string("EXTERNAL_HOSTNAME", "localhost"),
+            external_hostname: loader.get_string("EXTERNAL_HOSTNAME", DEFAULT_HOSTNAME),
             tls_enabled: loader.get_bool("TLS_ENABLED", false),
             connection_timeout_secs: loader.get_u64("CONNECTION_TIMEOUT_SECS", 10),
             request_timeout_secs: loader.get_u64("REQUEST_TIMEOUT_SECS", 30),
