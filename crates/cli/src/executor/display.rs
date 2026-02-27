@@ -2,21 +2,30 @@
 //!
 //! This module provides pretty-printing and log display functionality.
 
+#[cfg(test)]
+use super::BiomeInfo;
+#[cfg(test)]
+use crate::BiomeStatus;
+#[cfg(test)]
 use anyhow::{Context, Result};
+#[cfg(test)]
 use colored::Colorize;
+#[cfg(test)]
 use std::collections::HashMap;
+#[cfg(test)]
 use std::path::{Path, PathBuf};
+#[cfg(test)]
 use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
+#[cfg(test)]
 use tokio::fs;
+#[cfg(test)]
 use tokio::io::{AsyncBufReadExt, BufReader};
 
-use super::BiomeInfo;
-use crate::BiomeStatus;
-
-/// Display manager for UI and logging
-#[allow(dead_code)]
+/// Display manager for UI and logging (test-only)
+#[cfg(test)]
 pub(super) struct DisplayManager;
 
+#[cfg(test)]
 #[allow(dead_code)]
 impl DisplayManager {
     /// Print biomes in a formatted table

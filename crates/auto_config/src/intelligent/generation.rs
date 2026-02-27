@@ -114,18 +114,6 @@ impl ConfigGenerator {
         Ok(())
     }
 
-    /// Configure ecosystem integration based on discovered services
-    #[allow(dead_code)]
-    async fn configure_ecosystem_integration(
-        &self,
-        _ecosystem: &DiscoveredServices,
-    ) -> ToadStoolResult<()> {
-        // Ecosystem integration is handled through separate configuration systems
-
-        debug!("Ecosystem integration configuration skipped");
-        Ok(())
-    }
-
     /// Configure security settings based on platform and environment
     async fn configure_security_settings(
         &self,

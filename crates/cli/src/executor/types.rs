@@ -29,16 +29,16 @@ pub(super) struct BiomeProcess {
 pub(super) enum ProcessType {
     Primal(String),
     Service(String),
-    _HealthCheck(String),
+    HealthCheck(String),
 }
 
 impl ProcessType {
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub(super) fn name(&self) -> &str {
         match self {
             ProcessType::Primal(name) => name,
             ProcessType::Service(name) => name,
-            ProcessType::_HealthCheck(name) => name,
+            ProcessType::HealthCheck(name) => name,
         }
     }
 
@@ -46,7 +46,7 @@ impl ProcessType {
         match self {
             ProcessType::Primal(_) => "primal",
             ProcessType::Service(_) => "service",
-            ProcessType::_HealthCheck(_) => "healthcheck",
+            ProcessType::HealthCheck(_) => "healthcheck",
         }
     }
 }
@@ -56,10 +56,11 @@ impl BiomeProcess {
         match &self.process_type {
             ProcessType::Primal(_) => "primal",
             ProcessType::Service(_) => "service",
-            ProcessType::_HealthCheck(_) => "healthcheck",
+            ProcessType::HealthCheck(_) => "healthcheck",
         }
     }
 
+    #[cfg(test)]
     pub(super) fn _display_name(&self) -> String {
         format!("{}:{}", self.process_type.name(), self.execution_id)
     }
@@ -88,7 +89,7 @@ mod tests {
         assert_eq!(ProcessType::Primal("x".to_string())._type_str(), "primal");
         assert_eq!(ProcessType::Service("x".to_string())._type_str(), "service");
         assert_eq!(
-            ProcessType::_HealthCheck("x".to_string())._type_str(),
+            ProcessType::HealthCheck("x".to_string())._type_str(),
             "healthcheck"
         );
     }

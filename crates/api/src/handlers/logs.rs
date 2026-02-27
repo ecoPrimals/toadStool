@@ -141,7 +141,6 @@ pub async fn get_execution_logs(
 /// Parse a log line into a `LogEntry`
 ///
 /// Basic log parsing - assumes format: "timestamp level `[source]` message"
-#[allow(dead_code)]
 pub fn parse_log_line(line: &str) -> Option<LogEntry> {
     let parts: Vec<&str> = line.splitn(4, ' ').collect();
     if parts.len() < 4 {

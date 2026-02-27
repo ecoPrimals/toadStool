@@ -20,7 +20,6 @@ pub(super) struct ActiveDeployment {
     /// Network information
     pub network_info: NetworkInfo,
     /// Created timestamp (accessed via elapsed())
-    #[allow(dead_code)]
     pub created_at: Instant,
     /// Updated timestamp
     pub updated_at: Instant,

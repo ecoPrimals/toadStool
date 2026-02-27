@@ -70,7 +70,6 @@ serde_yaml = { workspace = true }
 # Utilities
 uuid = { version = "1.8", features = ["v4", "serde"] }
 tracing = "0.1"
-log = "0.4"
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 # System integration

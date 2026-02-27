@@ -3,13 +3,15 @@
 use std::sync::Arc;
 use tracing::debug;
 
-use toadstool::error::{ToadStoolError, ToadStoolResult};
+#[cfg(test)]
+use toadstool::error::ToadStoolError;
+use toadstool::error::ToadStoolResult;
 
 use toadstool_common::constants::ecosystem::well_known;
 
-use crate::songbird_integration::types::{
-    DiscoveryClient, NodeCapabilities, NodeMetadata, NodeRegistration, NodeType, SongbirdConnection,
-};
+use crate::songbird_integration::types::{DiscoveryClient, NodeRegistration, SongbirdConnection};
+#[cfg(test)]
+use crate::songbird_integration::types::{NodeCapabilities, NodeMetadata, NodeType};
 
 impl Clone for DiscoveryClient {
     fn clone(&self) -> Self {
@@ -69,7 +71,7 @@ impl DiscoveryClient {
         Ok(nodes)
     }
 
-    #[allow(dead_code)] // Used by discovery client tests
+    #[cfg(test)]
     pub(crate) fn parse_node_data(
         &self,
         node_data: &serde_json::Value,

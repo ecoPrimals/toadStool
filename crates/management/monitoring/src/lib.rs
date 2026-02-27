@@ -40,20 +40,9 @@ pub struct SystemResourceMonitor {
 struct ProcessInfo {
     pid: u32,
     name: String,
-    #[allow(dead_code)] // Used when computing RuntimeMetrics in monitoring loop
-    cpu_usage: f64,
     last_cpu_time: u64,
     memory_usage: u64,
     start_time: u64,
-}
-
-#[derive(Default, Clone, Debug)]
-#[allow(dead_code)] // Reserved for future network monitoring aggregation
-struct NetworkStats {
-    bytes_received: u64,
-    bytes_transmitted: u64,
-    packets_received: u64,
-    packets_transmitted: u64,
 }
 
 impl SystemResourceMonitor {
@@ -104,7 +93,6 @@ impl SystemResourceMonitor {
                 .unwrap_or_default()
                 .to_string_lossy()
                 .to_string(),
-            cpu_usage: 0.0,
             last_cpu_time: 0,
             memory_usage: 0,
             start_time: Instant::now().elapsed().as_secs(),

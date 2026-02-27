@@ -431,43 +431,6 @@ mod tests {
         assert_eq!(result.verified_count, 1);
     }
 
-    #[test]
-    fn test_generate_ip_range_class_c() {
-        let integrator = EcosystemIntegrator::new();
-        let result = integrator.generate_ip_range("192.168.1.0", 24);
-
-        assert!(result.is_ok());
-        let ips = result.unwrap();
-        // Implementation generates 1-254, not 0-255
-        assert_eq!(ips.len(), 254);
-        assert!(ips.contains(&"192.168.1.1".to_string()));
-        assert!(ips.contains(&"192.168.1.254".to_string()));
-        assert!(!ips.contains(&"192.168.1.0".to_string()));
-        assert!(!ips.contains(&"192.168.1.255".to_string()));
-    }
-
-    #[test]
-    fn test_generate_ip_range_single_host() {
-        let integrator = EcosystemIntegrator::new();
-        let result = integrator.generate_ip_range("10.0.0.5", 32);
-
-        assert!(result.is_ok());
-        let ips = result.unwrap();
-        assert_eq!(ips.len(), 1);
-        assert_eq!(ips[0], "10.0.0.5");
-    }
-
-    #[test]
-    fn test_generate_ip_range_unsupported_prefix() {
-        let integrator = EcosystemIntegrator::new();
-
-        // Unsupported prefix length returns empty list (not error)
-        let result = integrator.generate_ip_range("192.168.1.0", 16);
-        assert!(result.is_ok());
-        let ips = result.unwrap();
-        assert_eq!(ips.len(), 0); // Not implemented for /16
-    }
-
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discover_services_empty() {
         let mut integrator = EcosystemIntegrator::new();

@@ -70,9 +70,8 @@ struct RunningWorkload {
 ///
 /// Coordinates workload execution with concurrency limits and lifecycle management.
 pub struct WorkloadManager {
-    /// Maximum concurrent workloads
-    #[allow(dead_code)] // Used for future capacity checking
-    max_concurrent: usize,
+    /// Maximum concurrent workloads (stored for introspection)
+    _max_concurrent: usize,
 
     /// Semaphore for concurrency control
     semaphore: Arc<Semaphore>,
@@ -98,7 +97,7 @@ impl WorkloadManager {
             .context("Failed to create BiomeExecutor")?;
 
         Ok(Self {
-            max_concurrent,
+            _max_concurrent: max_concurrent,
             semaphore: Arc::new(Semaphore::new(max_concurrent)),
             workloads: Arc::new(RwLock::new(HashMap::new())),
             executor: Arc::new(executor),
