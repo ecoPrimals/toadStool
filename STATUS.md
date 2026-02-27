@@ -19,16 +19,16 @@
 | Zero-copy hot paths | PASS | `Cow<'a, str>` + `#[serde(borrow)]`, `from_slice`, `bytes::Bytes` |
 | Hardcoded primal names | PASS | **0 -- capability-based discovery** |
 | Hardcoded localhost/ports | PASS | **0 -- bind `0.0.0.0`, port 0, `discover_self_ip_address()`** |
-| `unsafe` blocks | PASS | **2 in barracuda (SPIRV passthrough + pipeline cache), both `// SAFETY:` documented** |
+| `unsafe` blocks | PASS | **2 in barracuda (SPIRV passthrough + pipeline cache); 45 total workspace (all justified: FFI/hardware/MMIO)** |
 | `#![deny(unsafe_code)]` | PASS | **36 crates hardened** (2 justified: gpu, secure_enclave) |
 | Production `Box<dyn Error>` | PASS | **0 in core crates -- all typed errors (thiserror)** |
 | Production panics/unwraps | PASS | **Zero blind `unwrap()`; infallible `expect()` only** |
 | Production TODOs | PASS | **Zero -- all evolved to `BLOCKED(reason)` markers** |
 | File size limit | PASS | **All production files under 1000 lines** |
 | WGSL shaders | PASS | **700 (zero orphans, shader-first, 21 DF64 + 182 f64 + 497 f32, 0 f32-only — all f32 via LazyLock downcast from f64 canonical)** |
-| Dead code | PASS | **5 `#[allow(dead_code)]` remain — feature-gated TPU + PCIe diag + f64 shader accessors** |
-| Production println!/dbg! | PASS | **Zero — evolved to `tracing::info!`** |
-| External dep hygiene | PASS | **`instant` + `chrono` (28 crates) + `anyhow` + `log` eliminated; `async_trait` justified (dyn-required)** |
+| Dead code | PASS | **~400 lines removed; ~35 justified `#[allow(dead_code)]` remain (feature-gated, reserved fields, GPU CPU fallbacks)** |
+| Production println!/dbg! | PASS | **Zero dbg!; CLI println! intentional (user-facing output)** |
+| External dep hygiene | PASS | **`instant` + `chrono` (28 crates) + `log` (2 crates) eliminated; `anyhow` in core crates eliminated (peripheral carried); `async_trait` justified (dyn-required)** |
 | Production mocks | PASS | **Zero — TpuBackend::Mock behind `mock-tpu` feature gate** |
 | Platform stubs | PASS | **Evolved to platform-aware `can_handle()` + `SystemError::NotSupported`** |
 | FP64 strategy | PASS | **Fp64Strategy::Native/Hybrid -- FMA-optimized DF64 + transcendentals** |
